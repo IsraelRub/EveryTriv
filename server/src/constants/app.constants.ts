@@ -9,7 +9,8 @@ export const APP_CONSTANTS = {
     windowMs: 60000,
     max: 100,
   },
-  DIFFICULTIES: ["easy", "medium", "hard"] as const,
+  DIFFICULTIES: ["easy", "medium", "hard", "custom"] as const,
+  CUSTOM_DIFFICULTY_PREFIX: "custom:",
   QUEUE: {
     MAX_ITEMS: 1000,
     PROCESS_INTERVAL: 1000,

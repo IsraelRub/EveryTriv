@@ -36,7 +36,15 @@ export class TriviaService {
   }
 
   async getTriviaQuestion(topic: string, difficulty: string, userId?: string) {
-    const cacheKey = `trivia:${topic}:${difficulty}`;
+    // נטפל ברמת קושי מותאמת אישית
+    const isCustomDifficulty = difficulty.startsWith(
+      APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
+    );
+    const actualDifficulty = isCustomDifficulty
+      ? difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
+      : difficulty;
+
+    const cacheKey = `trivia:${topic}:${difficulty}`; // נשתמש ברמת הקושי המלאה לקאש
 
     if (userId) {
       const unanswered = await this.triviaRepo.find({
@@ -67,7 +75,10 @@ export class TriviaService {
     });
 
     const provider = this.getNextProvider();
-    const question = await provider.generateTriviaQuestion(topic, difficulty);
+    const question = await provider.generateTriviaQuestion(
+      topic,
+      actualDifficulty
+    );
 
     await this.redisService.set(
       cacheKey,
@@ -77,6 +88,7 @@ export class TriviaService {
 
     await this.triviaRepo.save({
       ...question,
+      difficulty, // נשמור את רמת הקושי המלאה (כולל custom:)
       userId: null,
       isCorrect: false,
     });
@@ -86,6 +98,13 @@ export class TriviaService {
   }
 
   private calculatePriority(difficulty: string): number {
+    // אם זה רמת קושי מותאמת, נעביר לפונקציה נפרדת
+    if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+      return this.calculateCustomPriority(
+        difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
+      );
+    }
+
     switch (difficulty.toLowerCase()) {
       case "hard":
         return APP_CONSTANTS.PRIORITIES.HIGH;
@@ -94,6 +113,32 @@ export class TriviaService {
       case "easy":
       default:
         return APP_CONSTANTS.PRIORITIES.LOW;
+    }
+  }
+
+  private calculateCustomPriority(customDifficulty: string): number {
+    // לוגיקה לחישוב עדיפות עבור רמת קושי מותאמת
+    // למשל: לפי אורך התיאור או מילות מפתח
+    const keywords = customDifficulty.toLowerCase();
+
+    if (
+      keywords.includes("expert") ||
+      keywords.includes("professional") ||
+      keywords.includes("advanced") ||
+      keywords.includes("university") ||
+      keywords.includes("phd") ||
+      keywords.includes("doctorate")
+    ) {
+      return APP_CONSTANTS.PRIORITIES.HIGH;
+    } else if (
+      keywords.includes("intermediate") ||
+      keywords.includes("moderate") ||
+      keywords.includes("college") ||
+      keywords.includes("high school")
+    ) {
+      return APP_CONSTANTS.PRIORITIES.MEDIUM;
+    } else {
+      return APP_CONSTANTS.PRIORITIES.LOW;
     }
   }
 
@@ -138,5 +183,232 @@ export class TriviaService {
       .orderBy("score", "DESC")
       .limit(limit)
       .getRawMany();
+  }
+
+  // סטטיסטיקות רמות קושי
+  async getDifficultyStats(userId?: string) {
+    const queryBuilder = this.triviaRepo.createQueryBuilder("trivia");
+
+    if (userId) {
+      queryBuilder.where("userId = :userId", { userId });
+    }
+
+    const results = await queryBuilder
+      .select("difficulty")
+      .addSelect("COUNT(*)", "total")
+      .addSelect("SUM(CASE WHEN isCorrect = true THEN 1 ELSE 0 END)", "correct")
+      .groupBy("difficulty")
+      .getRawMany();
+
+    return results.reduce(
+      (acc, row) => {
+        const difficulty = row.difficulty.startsWith(
+          APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
+        )
+          ? "custom"
+          : row.difficulty;
+
+        if (!acc[difficulty]) {
+          acc[difficulty] = { correct: 0, total: 0 };
+        }
+
+        acc[difficulty].correct += parseInt(row.correct);
+        acc[difficulty].total += parseInt(row.total);
+
+        return acc;
+      },
+      {} as Record<string, { correct: number; total: number }>
+    );
+  }
+
+  // הצעות לרמות קושי מותאמות
+  getCustomDifficultySuggestions(topic?: string) {
+    const generalSuggestions = [
+      "beginner level",
+      "elementary school level",
+      "middle school level",
+      "high school level",
+      "college level",
+      "university level",
+      "graduate level",
+      "expert level",
+      "professional level",
+      "advanced professional level",
+    ];
+
+    const topicSpecificSuggestions: Record<string, string[]> = {
+      science: [
+        "high school chemistry",
+        "university physics",
+        "medical school level biology",
+        "PhD level research concepts",
+      ],
+      sports: [
+        "casual sports fan knowledge",
+        "sports enthusiast level",
+        "professional sports analyst level",
+        "sports history expert",
+      ],
+      history: [
+        "elementary historical facts",
+        "high school world history",
+        "university level historical analysis",
+        "professional historian knowledge",
+      ],
+      cooking: [
+        "beginner home cook",
+        "intermediate cooking skills",
+        "professional chef techniques",
+        "culinary school graduate level",
+      ],
+      music: [
+        "casual music listener",
+        "music student level",
+        "professional musician knowledge",
+        "music theory expert",
+      ],
+      technology: [
+        "basic computer user",
+        "IT professional level",
+        "software developer knowledge",
+        "computer science PhD level",
+      ],
+    };
+
+    let suggestions = [...generalSuggestions];
+
+    if (topic) {
+      const topicLower = topic.toLowerCase();
+      const matchingCategory = Object.keys(topicSpecificSuggestions).find(
+        (category) => topicLower.includes(category)
+      );
+
+      if (matchingCategory) {
+        suggestions = [
+          ...topicSpecificSuggestions[matchingCategory],
+          ...suggestions,
+        ];
+      }
+    }
+
+    return {
+      suggestions: suggestions.slice(0, 10), // מגביל ל-10 הצעות
+      examples: [
+        `${topic || "your topic"} for beginners`,
+        `professional ${topic || "knowledge"}`,
+        `university level ${topic || "concepts"}`,
+        `expert ${topic || "analysis"}`,
+      ],
+    };
+  }
+
+  // חיפוש שאלות קיימות עם רמת קושי דומה
+  async findSimilarCustomDifficulties(
+    customDifficulty: string,
+    limit: number = 5
+  ) {
+    const keywords = customDifficulty
+      .toLowerCase()
+      .split(" ")
+      .filter((word) => word.length > 2);
+
+    if (keywords.length === 0) return [];
+
+    const queryBuilder = this.triviaRepo.createQueryBuilder("trivia");
+
+    // חיפוש לפי מילות מפתח
+    keywords.forEach((keyword, index) => {
+      if (index === 0) {
+        queryBuilder.where("difficulty LIKE :keyword0", {
+          [`keyword${index}`]: `%${keyword}%`,
+        });
+      } else {
+        queryBuilder.orWhere(`difficulty LIKE :keyword${index}`, {
+          [`keyword${index}`]: `%${keyword}%`,
+        });
+      }
+    });
+
+    const results = await queryBuilder
+      .andWhere("difficulty LIKE :customPrefix", {
+        customPrefix: `${APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX}%`,
+      })
+      .select("difficulty")
+      .addSelect("COUNT(*)", "usage_count")
+      .groupBy("difficulty")
+      .orderBy("usage_count", "DESC")
+      .limit(limit)
+      .getRawMany();
+
+    return results.map((row) => ({
+      difficulty: row.difficulty.substring(
+        APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length
+      ),
+      usageCount: parseInt(row.usage_count),
+    }));
+  }
+
+  // ולידציה מתקדמת לרמת קושי מותאמת
+  validateCustomDifficulty(customDifficulty: string): {
+    isValid: boolean;
+    suggestions?: string[];
+  } {
+    const text = customDifficulty.trim().toLowerCase();
+
+    // רשימת מילות מפתח מומלצות
+    const recommendedKeywords = [
+      "beginner",
+      "elementary",
+      "basic",
+      "simple",
+      "easy",
+      "intermediate",
+      "moderate",
+      "medium",
+      "standard",
+      "advanced",
+      "expert",
+      "professional",
+      "complex",
+      "difficult",
+      "university",
+      "college",
+      "school",
+      "academic",
+      "level",
+      "grade",
+      "knowledge",
+      "skills",
+    ];
+
+    const hasRecommendedKeyword = recommendedKeywords.some((keyword) =>
+      text.includes(keyword)
+    );
+
+    // בדיקות תקינות
+    if (text.length < 5) {
+      return {
+        isValid: false,
+        suggestions: [
+          "Make your description more specific (at least 5 characters)",
+          "Example: 'high school level biology'",
+        ],
+      };
+    }
+
+    if (
+      !hasRecommendedKeyword &&
+      !text.match(/\b(phd|doctorate|master|bachelor)\b/)
+    ) {
+      return {
+        isValid: false,
+        suggestions: [
+          "Include a difficulty indicator like 'beginner', 'advanced', 'professional', etc.",
+          "Examples: 'beginner cooking', 'professional sports knowledge', 'university level physics'",
+        ],
+      };
+    }
+
+    return { isValid: true };
   }
 }

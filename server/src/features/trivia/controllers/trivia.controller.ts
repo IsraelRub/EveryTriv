@@ -6,8 +6,11 @@ import {
   Query,
   HttpException,
   HttpStatus,
+  UsePipes,
+  ValidationPipe,
 } from "@nestjs/common";
 import { TriviaService } from "../services/trivia.service";
+import { TriviaRequestDto, TriviaHistoryDto } from "./trivia.dto";
 import { APP_CONSTANTS } from "../../../constants/app.constants";
 
 @Controller(`${APP_CONSTANTS.API_VERSION}/trivia`)
@@ -15,18 +18,47 @@ export class TriviaController {
   constructor(private readonly triviaService: TriviaService) {}
 
   @Post()
-  async getTrivia(
-    @Body() body: { topic: string; difficulty: string; userId?: string }
-  ) {
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async getTrivia(@Body() body: TriviaRequestDto) {
     const { topic, difficulty, userId } = body;
-    if (!topic || !difficulty) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          message: "Topic and difficulty are required",
-        },
-        HttpStatus.BAD_REQUEST
-      );
+
+    // ולידציה נוספת לרמת קושי מותאמת
+    if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+      const customDifficultyText = difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length);
+      
+      if (customDifficultyText.trim().length < 3) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            message: "Custom difficulty description must be at least 3 characters long",
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (customDifficultyText.length > 200) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            message: "Custom difficulty description must be less than 200 characters",
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // בדיקת תוכן לא הולם (בסיסי)
+      const inappropriateWords = ['hate', 'violence', 'explicit'];
+      const lowerCaseText = customDifficultyText.toLowerCase();
+      
+      if (inappropriateWords.some(word => lowerCaseText.includes(word))) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            message: "Custom difficulty description contains inappropriate content",
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
     }
 
     try {
@@ -38,35 +70,143 @@ export class TriviaController {
       return {
         data,
         status: HttpStatus.OK,
+        message: difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX) 
+          ? "Custom difficulty trivia question generated successfully"
+          : "Trivia question generated successfully"
       };
     } catch (err) {
+      console.error("Error generating trivia question:", err);
+      
+      // טיפול שגיאות ספציפי לרמות קושי מותאמות
+      if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+        throw new HttpException(
+          { 
+            status: HttpStatus.INTERNAL_SERVER_ERROR, 
+            message: "Failed to generate custom difficulty question. Please try with a clearer difficulty description.",
+            suggestion: "Try descriptions like 'university level biology', 'beginner cooking', or 'professional sports knowledge'"
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, message: err.message },
+        { 
+          status: HttpStatus.INTERNAL_SERVER_ERROR, 
+          message: err.message || "Failed to generate trivia question"
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
   @Post("history")
-  async saveHistory(@Body() body) {
-    return this.triviaService.saveQuizHistory(body);
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async saveHistory(@Body() body: TriviaHistoryDto) {
+    try {
+      const result = await this.triviaService.saveQuizHistory(body);
+      return {
+        data: result,
+        status: HttpStatus.CREATED,
+        message: "Quiz history saved successfully"
+      };
+    } catch (err) {
+      throw new HttpException(
+        { 
+          status: HttpStatus.INTERNAL_SERVER_ERROR, 
+          message: "Failed to save quiz history"
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get("score")
   async getUserScore(@Query("userId") userId: string) {
     if (!userId) {
       throw new HttpException(
-        { status: HttpStatus.BAD_REQUEST, message: "userId required" },
+        { 
+          status: HttpStatus.BAD_REQUEST, 
+          message: "userId is required" 
+        },
         HttpStatus.BAD_REQUEST
       );
     }
-    return this.triviaService.getUserScore(userId);
+
+    try {
+      const score = await this.triviaService.getUserScore(userId);
+      return {
+        data: score,
+        status: HttpStatus.OK,
+        message: "User score retrieved successfully"
+      };
+    } catch (err) {
+      throw new HttpException(
+        { 
+          status: HttpStatus.INTERNAL_SERVER_ERROR, 
+          message: "Failed to retrieve user score"
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get("leaderboard")
   async getLeaderboard(
     @Query("limit") limit = APP_CONSTANTS.DEFAULT_PAGE_SIZE
   ) {
-    return this.triviaService.getLeaderboard(Number(limit));
+    const parsedLimit = Math.min(Math.max(Number(limit), 1), 100); // מגביל בין 1 ל-100
+
+    try {
+      const leaderboard = await this.triviaService.getLeaderboard(parsedLimit);
+      return {
+        data: leaderboard,
+        status: HttpStatus.OK,
+        message: "Leaderboard retrieved successfully",
+        meta: {
+          limit: parsedLimit,
+          total: leaderboard.length
+        }
+      };
+    } catch (err) {
+      throw new HttpException(
+        { 
+          status: HttpStatus.INTERNAL_SERVER_ERROR, 
+          message: "Failed to retrieve leaderboard"
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // נקודת קצה חדשה לקבלת סטטיסטיקות רמות קושי
+  @Get("difficulty-stats")
+  async getDifficultyStats(@Query("userId") userId?: string) {
+    try {
+      const stats = await this.triviaService.getDifficultyStats(userId);
+      return {
+        data: stats,
+        status: HttpStatus.OK,
+        message: "Difficulty statistics retrieved successfully"
+      };
+    } catch (err) {
+      throw new HttpException(
+        { 
+          status: HttpStatus.INTERNAL_SERVER_ERROR, 
+          message: "Failed to retrieve difficulty statistics"
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // נקודת קצה לקבלת הצעות לרמות קושי מותאמות
+  @Get("custom-difficulty-suggestions")
+  async getCustomDifficultySuggestions(@Query("topic") topic?: string) {
+    const suggestions = this.triviaService.getCustomDifficultySuggestions(topic);
+    return {
+      data: suggestions,
+      status: HttpStatus.OK,
+      message: "Custom difficulty suggestions retrieved successfully"
+    };
   }
 }

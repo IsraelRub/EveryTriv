@@ -23,7 +23,6 @@ Contains configuration files and modules for the application:
 - `redis.config.ts` - Redis configuration
 - `redis.module.ts` / `redis.service.ts` - Redis integration
 - `global-exception.filter.ts` - Global error handling
-- `health.controller.ts` / `health.service.ts` - Health check endpoints
 
 ### Constants Directory (/constants)
 

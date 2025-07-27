@@ -1,15 +1,18 @@
 import { useState, useCallback, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import ScoringSystem from '../../shared/components/ScoringSystem';
 import Leaderboard from '../../shared/components/Leaderboard';
-import AnimatedBackground from '../../shared/components/AnimatedBackground';
+
 import TriviaGame from '../../shared/components/TriviaGame';
 import TriviaForm from '../../shared/components/TriviaForm';
 import FavoriteTopics from '../../shared/components/FavoriteTopics';
+import CustomDifficultyHistory from '../../shared/components/CustomDifficultyHistory';
 import { getOrCreateUserId } from '../../shared/services/user.util';
+import { apiService } from '../../shared/services/api.service';
 import { GameState } from '../../shared/models/game.model';
+import { isCustomDifficulty, displayDifficulty, getDifficultyIcon } from '../../shared/utils/customDifficulty.utils';
+import { AnimatedBackground } from '@/shared/components';
 
 const DEFAULT_FAVORITES = [
 	{ topic: 'General Knowledge', difficulty: 'medium' },
@@ -37,6 +40,7 @@ export default function HomeView() {
 	const [difficulty, setDifficulty] = useState('medium');
 	const [gameState, setGameState] = useState<GameState>(DEFAULT_GAME_STATE);
 	const [userId] = useState(() => getOrCreateUserId());
+	const [showHistory, setShowHistory] = useState(false);
 
 	const handleSpellCheck = async (text: string) => {
 		// TODO: Integrate with external spell-check API
@@ -48,12 +52,19 @@ export default function HomeView() {
 		updateGameState({ error: '', loading: true });
 		try {
 			const checkedTopic = await handleSpellCheck(topic);
-			const response = await axios.post('/trivia', {
+
+			// שמירת רמת קושי מותאמת להיסטוריה
+			if (isCustomDifficulty(difficulty)) {
+				apiService.saveCustomDifficulty(checkedTopic, difficulty);
+			}
+
+			const response = await apiService.getTrivia({
 				topic: checkedTopic,
 				difficulty,
 				userId,
 			});
-			updateGameState({ trivia: response.data, loading: false });
+
+			updateGameState({ trivia: response, loading: false });
 		} catch (err: unknown) {
 			updateGameState({
 				error: err instanceof Error ? err.message : 'An error occurred',
@@ -82,9 +93,24 @@ export default function HomeView() {
 		[gameState.favorites, updateGameState]
 	);
 
+	// פונקציה חדשה לטיפול בבחירת מועדף
+	const selectFavorite = useCallback((favorite: { topic: string; difficulty: string }) => {
+		setTopic(favorite.topic);
+		setDifficulty(favorite.difficulty);
+	}, []);
+
+	// פונקציה חדשה לטיפול בבחירה מההיסטוריה
+	const selectFromHistory = useCallback((historyTopic: string, historyDifficulty: string) => {
+		setTopic(historyTopic);
+		setDifficulty(historyDifficulty);
+	}, []);
+
 	const updateStats = useCallback(
 		(topic: string, difficulty: string, isCorrect: boolean) => {
 			const { stats } = gameState;
+
+			// עבור רמת קושי מותאמת, נשתמש ב"custom" לסטטיסטיקות
+			const statsDifficulty = isCustomDifficulty(difficulty) ? 'custom' : difficulty;
 
 			return {
 				topicsPlayed: {
@@ -93,9 +119,9 @@ export default function HomeView() {
 				},
 				successRateByDifficulty: {
 					...stats.successRateByDifficulty,
-					[difficulty]: {
-						correct: (stats.successRateByDifficulty[difficulty]?.correct || 0) + (isCorrect ? 1 : 0),
-						total: (stats.successRateByDifficulty[difficulty]?.total || 0) + 1,
+					[statsDifficulty]: {
+						correct: (stats.successRateByDifficulty[statsDifficulty]?.correct || 0) + (isCorrect ? 1 : 0),
+						total: (stats.successRateByDifficulty[statsDifficulty]?.total || 0) + 1,
 					},
 				},
 			};
@@ -120,7 +146,7 @@ export default function HomeView() {
 				},
 			});
 
-			await axios.post('/trivia/history', {
+			await apiService.saveHistory({
 				...gameState.trivia,
 				userId,
 				isCorrect,
@@ -128,6 +154,12 @@ export default function HomeView() {
 		},
 		[gameState, userId, updateStats, updateGameState]
 	);
+
+	// פונקציה להצגת רמת הקושי הנוכחית בצורה ידידותית
+	const getCurrentDifficultyDisplay = () => {
+		return displayDifficulty(difficulty, 50);
+	};
+
 	return (
 		<div className='min-vh-100 d-flex flex-column align-items-center justify-content-center p-4 position-relative'>
 			<AnimatedBackground />
@@ -156,7 +188,27 @@ export default function HomeView() {
 					transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
 				>
 					EveryTriv
+					<small className='d-block fs-6 mt-2 text-white-50'>Smart Trivia Platform with Custom Difficulty Levels</small>
 				</motion.h1>
+
+				{/* הצגת רמת הקושי הנוכחית עם כפתור היסטוריה */}
+				{difficulty && (
+					<div className='text-center mb-3 d-flex align-items-center justify-content-center gap-2'>
+						<span className='badge bg-info fs-6 px-3 py-2'>
+							{getDifficultyIcon(difficulty)} Current: {topic || 'No topic'} - {getCurrentDifficultyDisplay()}
+						</span>
+						{isCustomDifficulty(difficulty) && (
+							<button
+								className='btn btn-outline-light btn-sm'
+								onClick={() => setShowHistory(true)}
+								title='View custom difficulty history'
+							>
+								🕒 History
+							</button>
+						)}
+					</div>
+				)}
+
 				<TriviaForm
 					topic={topic}
 					difficulty={difficulty}
@@ -167,13 +219,31 @@ export default function HomeView() {
 					onAddFavorite={addFavorite}
 				/>
 
-				<FavoriteTopics favorites={gameState.favorites} onRemove={removeFavorite} />
+				<FavoriteTopics favorites={gameState.favorites} onRemove={removeFavorite} onSelect={selectFavorite} />
 
-				{gameState.error && <div className='alert alert-danger mt-4'>{gameState.error}</div>}
+				{gameState.error && (
+					<motion.div
+						className='alert alert-danger mt-4'
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5 }}
+					>
+						<strong>Error:</strong> {gameState.error}
+						{isCustomDifficulty(difficulty) && (
+							<div className='mt-2'>
+								<small>
+									💡 Make sure your custom difficulty description is clear and specific. Examples: "university level
+									physics", "beginner cooking skills", "professional sports knowledge"
+								</small>
+							</div>
+						)}
+					</motion.div>
+				)}
 
 				{gameState.trivia && (
 					<TriviaGame trivia={gameState.trivia} selected={gameState.selected} onAnswer={handleAnswer} />
 				)}
+
 				<ScoringSystem
 					score={gameState.score}
 					total={gameState.total}
@@ -181,6 +251,13 @@ export default function HomeView() {
 					difficultyStats={gameState.stats.successRateByDifficulty}
 				/>
 				<Leaderboard userId={userId} />
+
+				{/* רכיב היסטוריה לרמות קושי מותאמות */}
+				<CustomDifficultyHistory
+					isVisible={showHistory}
+					onSelect={selectFromHistory}
+					onClose={() => setShowHistory(false)}
+				/>
 			</motion.div>
 		</div>
 	);

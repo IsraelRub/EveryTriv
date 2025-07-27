@@ -8,7 +8,7 @@
     "autoComplete": true,
     "suggestions": true,
     "explainCode": true
-  },
+  }
   // Add more settings as needed for your team or workflow
   // Example: "preferredLanguage": "en"
 } 

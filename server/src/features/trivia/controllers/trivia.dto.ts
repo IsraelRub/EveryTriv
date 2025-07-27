@@ -9,6 +9,8 @@ import {
   IsNumber,
   Min,
   IsBoolean,
+  ValidateIf,
+  Matches,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -27,8 +29,16 @@ export class TriviaRequestDto {
   topic: string;
 
   @IsString()
+  @ValidateIf((o) => !o.difficulty.startsWith('custom:'))
   @IsIn(["easy", "medium", "hard"])
   difficulty: string;
+
+  @IsString()
+  @ValidateIf((o) => o.difficulty.startsWith('custom:'))
+  @Matches(/^custom:.+/)
+  @MinLength(8) // "custom:" + לפחות תו אחד
+  @MaxLength(100)
+  customDifficulty?: string;
 
   @IsString()
   @IsOptional()
@@ -58,6 +68,5 @@ export class TriviaHistoryDto {
   topic: string;
 
   @IsString()
-  @IsIn(["easy", "medium", "hard"])
   difficulty: string;
 }
