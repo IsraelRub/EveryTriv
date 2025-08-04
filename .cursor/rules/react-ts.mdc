@@ -1,0 +1,146 @@
+---
+alwaysApply: true
+---
+
+# Applies to: client/\*_/_.{ts,tsx}
+
+## ✅ Project Structure
+
+- All source code must reside under the `src/` directory.
+- Use feature-based organization: `views/`, `shared/`, `redux/`, `assets/`.
+- Keep components close to where they're used.
+
+## 🔧 TypeScript
+
+- Always use TypeScript with `"strict": true` mode.
+- Do not use `any`; prefer `unknown` with proper type refinement.
+- Type all props and state explicitly.
+- Store shared types in `shared/types/`.
+- Use proper type imports/exports.
+
+## 🎨 Component Design
+
+- Use functional components with hooks.
+- Keep components focused and reusable.
+- Use proper prop typing with interfaces.
+- Implement proper error boundaries.
+- Use React.memo for performance optimization.
+
+## 📦 Required Packages
+
+Core:
+- react
+- react-dom
+- react-router-dom
+- @reduxjs/toolkit
+- react-redux
+- typescript
+- vite
+
+Optional:
+- react-query
+- react-hook-form
+- tailwindcss
+- axios
+- date-fns
+
+## 🧪 Testing
+
+- Use Vitest for unit testing
+- Use React Testing Library for component testing
+- Test hooks independently
+- Mock API calls and Redux store
+
+## 📁 Folder Structure
+
+- `views/` – Main feature screens
+  - Each feature in its own directory
+  - Components specific to the feature
+  - Feature-specific hooks and utils
+  
+- `shared/` – Reusable code
+  - `components/` – Common UI components
+  - `hooks/` – Custom React hooks
+  - `utils/` – Utility functions
+  - `types/` – Shared TypeScript types
+  - `services/` – API clients and services
+
+- `redux/` – State management
+  - `store.ts` – Store configuration
+  - `hooks.ts` – Typed hooks
+  - `features/` – Redux slices
+  - `middleware/` – Custom middleware
+
+- `assets/` – Static files
+  - Images, icons, fonts, etc.
+
+## 🚀 Scripts
+
+- `"dev"` – Run development server
+- `"build"` – Build for production
+- `"preview"` – Preview production build
+- `"test"` – Run tests
+- `"lint"` – Run ESLint
+- `"format"` – Run Prettier
+
+## 🔐 Security
+
+- Sanitize user inputs
+- Use environment variables for sensitive data
+- Implement proper authentication handling
+- Use HTTPS for API calls
+- Validate data from APIs
+
+## 🌟 Best Practices
+
+### Components
+- Keep components small and focused
+- Use proper prop typing
+- Implement error boundaries
+- Use React.memo when needed
+- Follow composition over inheritance
+
+### State Management
+- Use Redux Toolkit for global state
+- Use local state for UI-only state
+- Implement proper loading states
+- Handle errors gracefully
+- Use selectors for derived state
+
+### Performance
+- Lazy load routes and components
+- Use proper key props in lists
+- Optimize re-renders
+- Use proper image formats and sizes
+- Implement proper caching
+
+### Hooks
+- Follow hooks rules
+- Create custom hooks for reusable logic
+- Use proper dependency arrays
+- Handle cleanup in useEffect
+- Use proper hook naming
+
+## 🎨 Code Style
+
+- Use PascalCase for components
+- Use camelCase for variables and functions
+- Use UPPER_CASE for constants
+- Use kebab-case for file names
+- Add JSDoc comments for complex logic
+
+## 🔄 Data Flow
+
+- Use Redux for global state
+- Use React Query for server state
+- Implement proper loading states
+- Handle errors gracefully
+- Use proper TypeScript types
+
+## 📝 Documentation
+
+- Document complex components
+- Document custom hooks
+- Keep README.md up to date
+- Document environment variables
+- Use proper JSDoc comments

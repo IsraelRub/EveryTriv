@@ -1,0 +1,35 @@
+# EveryTriv Server Instructions
+
+## Folder Structure
+
+- **src/**  
+  Main server source code.
+
+  - `app.module.ts`, `app.controller.ts`, `app.service.ts`, `main.ts`: Main NestJS app files.
+  - `api/`: API route modules.
+    - `user/`: User API (controller, service, module).
+    - `trivia/`: Trivia API (controller, service, module, model, LLM providers).
+  - `entities/`: TypeORM entities (e.g., `user.entity.ts`, `trivia.entity.ts`).
+  - `config/`: Configuration files (e.g., `app.config.ts`).
+
+- **test/**  
+  End-to-end and integration tests (e.g., `app.e2e-spec.ts`, `jest-e2e.json`).
+
+- **package.json, tsconfig.json, Dockerfile, etc.**  
+  Project configuration and setup files.
+
+## Testing
+
+- Keep test files (e.g., `test/app.e2e-spec.ts`, `app.controller.spec.ts`) only if they are actively used for development or CI.
+- Remove unused or outdated test files.
+
+## Structure
+
+- Maintain a clear directory structure (e.g., `api/`, `entities/`, `config/`).
+- Remove files and directories that are not used in the codebase.
+
+## General
+
+- Keep the server codebase clean and synchronized with actual usage.
+- Do not leave unused, example, or placeholder files in the repository.
+- Regularly review and clean up the codebase to ensure maintainability.

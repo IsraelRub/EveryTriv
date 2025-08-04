@@ -1,0 +1,12 @@
+docker cp ./init.sql mariadb:/init.sql
+
+
+CREATE DATABASE excel_upload_tasks;
+
+
+//enter to the container of mariadb
+docker exec -it mariadb /bin/bash 
+
+
+//load file into the container
+mysql -u root -p excel_upload_tasks < /init.sql

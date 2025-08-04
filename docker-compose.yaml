@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # MariaDB Database
+  db:
+    image: mariadb:11
+    container_name: everytriv-db
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - '3307:3306'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./server/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - everytriv-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: everytriv-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - everytriv-network
+
+  # phpMyAdmin - Web-based MariaDB administration
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: everytriv-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - everytriv-network
+
+  # Redis Commander - Web-based Redis administration
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: everytriv-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - everytriv-network
+
+  # Backend Server
+  server:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: everytriv-server
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER}
+      - DB_PASS=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run start:dev
+    networks:
+      - everytriv-network
+
+  # Frontend Client
+  client:
+    build: 
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: everytriv-client
+    restart: unless-stopped
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+    depends_on:
+      - server
+    networks:
+      - everytriv-network
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  everytriv-network:
+    driver: bridge

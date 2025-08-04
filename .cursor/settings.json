@@ -1,0 +1,14 @@
+{
+  // Cursor project settings
+  // Set your preferences for code formatting, linting, AI behavior, and more
+
+  "formatOnSave": true,
+  "lintOnSave": true,
+  "ai": {
+    "autoComplete": true,
+    "suggestions": true,
+    "explainCode": true
+  }
+  // Add more settings as needed for your team or workflow
+  // Example: "preferredLanguage": "en"
+} 
