@@ -4,6 +4,7 @@ import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { setUsername, setAvatar, setUser } from '../../redux/features/userSlice';
 import { RootState } from '../../redux/store';
 import { getOrCreateUserId } from '../../shared/services/user.util';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '../../shared/components/ui';
 
 export default function UserProfile() {
   const [userId] = useState(() => getOrCreateUserId());
@@ -40,40 +41,46 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white/10 rounded-xl shadow-xl p-8 mt-10">
-      <h2 className="text-2xl font-bold text-white mb-4">User Profile</h2>
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
-        <label className="text-white">Username
-          <input
-            className="rounded-lg px-4 py-2 text-lg border border-blue-400 w-full mt-1"
-            value={username}
-            onChange={e => dispatch(setUsername(e.target.value))}
-            required
-          />
-        </label>
-        <label className="text-white">Avatar URL
-          <input
-            className="rounded-lg px-4 py-2 text-lg border border-blue-400 w-full mt-1"
-            value={avatar}
-            onChange={e => dispatch(setAvatar(e.target.value))}
-            placeholder="https://..."
-          />
-        </label>
-        <button
-          type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 shadow-md"
-          disabled={loading}
-        >
-          {loading ? 'Saving...' : 'Save Profile'}
-        </button>
-        {success && <div className="text-green-400">Profile saved!</div>}
-        {error && <div className="text-red-400">{error}</div>}
-      </form>
-      {avatar && (
-        <div className="mt-4 flex justify-center">
-          <img src={avatar} alt="avatar" className="w-24 h-24 rounded-full border-4 border-blue-400 shadow-lg" />
-        </div>
-      )}
+    <div className="max-w-md mx-auto mt-10">
+      <Card>
+        <CardHeader>
+          <CardTitle>User Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="flex flex-col space-y-4">
+            <Input
+              label="Username"
+              value={username}
+              onChange={e => dispatch(setUsername(e.target.value))}
+              required
+            />
+            <Input
+              label="Avatar URL"
+              value={avatar}
+              onChange={e => dispatch(setAvatar(e.target.value))}
+              placeholder="https://..."
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={loading}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? 'Saving...' : 'Save Profile'}
+            </Button>
+            {success && <div className="text-green-400 text-center">Profile saved!</div>}
+            {error && <div className="text-red-400 text-center">{error}</div>}
+          </form>
+          {avatar && (
+            <div className="mt-6 flex justify-center">
+              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-[#667eea] shadow-lg">
+                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 } 

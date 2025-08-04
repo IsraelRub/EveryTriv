@@ -86,7 +86,7 @@ Contains code shared across multiple features:
 
 4. **Infrastructure**
    - Redis caching
-   - MariaDB database
+   - PostgreSQL database
    - Rate limiting
    - Health monitoring
    - Global error handling

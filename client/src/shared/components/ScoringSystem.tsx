@@ -119,18 +119,69 @@ export default function ScoringSystem({
   return (
     <div className="mt-4 d-flex flex-column gap-3">
       {/* תוצאה כללית */}
-      <div className="d-flex align-items-center gap-3 flex-wrap">
-        <div className="text-white">
-          <span className="fs-5 fw-semibold">Score: </span>
-          <span className={`badge ${stats.color} fs-5`}>{score} / {total}</span>
+      <div className="d-flex flex-column gap-3">
+        <div className="d-flex align-items-center gap-3 flex-wrap">
+          <div className="text-white">
+            <span className="fs-5 fw-semibold">Total Score: </span>
+            <span className={`badge ${stats.color} fs-5`}>{score}</span>
+          </div>
+          <div className="text-white">
+            <span className="fs-5 fw-semibold">Grade: </span>
+            <span className={`badge ${stats.color} fs-5`}>{stats.grade} ({stats.percentage.toFixed(1)}%)</span>
+          </div>
+          <div className="text-white">
+            <span className="fs-5 fw-semibold">Questions: </span>
+            <span className="badge bg-secondary fs-5">{total}</span>
+          </div>
+          <div className="text-white">
+            <span className="fs-5 fw-semibold">Current Streak: </span>
+            <span className={`badge ${streak > 0 ? 'bg-warning' : 'bg-secondary'} fs-5`}>{streak}</span>
+          </div>
         </div>
-        <div className="text-white">
-          <span className="fs-5 fw-semibold">Grade: </span>
-          <span className={`badge ${stats.color} fs-5`}>{stats.grade} ({stats.percentage.toFixed(1)}%)</span>
-        </div>
-        <div className="text-white">
-          <span className="fs-5 fw-semibold">Questions: </span>
-          <span className="badge bg-secondary fs-5">{total}</span>
+        
+        <div className="card bg-dark text-white">
+          <div className="card-body">
+            <h6 className="card-title">Score Multipliers</h6>
+            <div className="d-flex gap-3 flex-wrap">
+              <div>
+                <small className="text-white-50">Base Points:</small>
+                <div className="badge bg-primary">100</div>
+              </div>
+              <div>
+                <small className="text-white-50">Difficulty:</small>
+                <div className="badge bg-info">
+                  {(() => {
+                    switch(difficulty) {
+                      case 'easy': return '1x';
+                      case 'medium': return '1.5x';
+                      case 'hard': return '2x';
+                      default: return '1x';
+                    }
+                  })()}
+                </div>
+              </div>
+              <div>
+                <small className="text-white-50">Options:</small>
+                <div className="badge bg-success">
+                  {(() => {
+                    const count = trivia?.answers?.length || 3;
+                    switch(count) {
+                      case 3: return '1x';
+                      case 4: return '1.2x';
+                      case 5: return '1.4x';
+                      default: return '1x';
+                    }
+                  })()}
+                </div>
+              </div>
+              <div>
+                <small className="text-white-50">Streak:</small>
+                <div className="badge bg-warning">
+                  {(1 + (Math.min(streak, 10) * 0.1)).toFixed(1)}x
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

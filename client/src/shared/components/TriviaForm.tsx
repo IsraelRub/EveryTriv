@@ -7,7 +7,7 @@ import {
   createCustomDifficulty,
   validateCustomDifficultyText 
 } from '../utils/customDifficulty.utils';
-
+import { Button, Input, Select } from './ui';
 import { QuestionCount, TriviaFormProps } from '../types';
 
 interface TriviaFormProps {
@@ -101,39 +101,37 @@ export default function TriviaForm({
 	};
 
 	return (
-		<form onSubmit={onSubmit} className='d-flex flex-column gap-3'>
-			<input
-				className='form-control form-control-lg'
+		<form onSubmit={onSubmit} className='flex flex-col space-y-4'>
+			<Input
 				placeholder='Enter a topic (e.g. Science, Sports)'
 				value={topic}
 				onChange={(e) => onTopicChange(e.target.value)}
 				required
 			/>
 			
-			<div className="d-flex gap-3">
-				<select
-					className='form-select form-select-lg'
+			<div className="flex gap-4">
+				<Select
+					options={[
+						{ value: 'easy', label: 'Easy - Perfect for beginners' },
+						{ value: 'medium', label: 'Medium - General knowledge level' },
+						{ value: 'hard', label: 'Hard - Expert level questions' },
+						{ value: 'custom', label: 'Custom - Describe your own difficulty' }
+					]}
 					value={getCurrentDifficultyValue()}
-					onChange={(e) => handleDifficultyChange(e.target.value)}
-					title='Choose difficulty level'
-				>
-					<option value='easy'>Easy - Perfect for beginners</option>
-					<option value='medium'>Medium - General knowledge level</option>
-					<option value='hard'>Hard - Expert level questions</option>
-					<option value='custom'>Custom - Describe your own difficulty</option>
-				</select>
+					onChange={handleDifficultyChange}
+					className="flex-1"
+				/>
 
-				<select
-					className='form-select form-select-lg'
-					value={questionCount}
-					onChange={(e) => onQuestionCountChange(Number(e.target.value) as QuestionCount)}
-					title='Number of questions'
-					style={{ width: '140px' }}
-				>
-					<option value={3}>3 Questions</option>
-					<option value={4}>4 Questions</option>
-					<option value={5}>5 Questions</option>
-				</select>
+				<Select
+					options={[
+						{ value: '3', label: '3 Questions' },
+						{ value: '4', label: '4 Questions' },
+						{ value: '5', label: '5 Questions' }
+					]}
+					value={questionCount.toString()}
+					onChange={(value) => onQuestionCountChange(Number(value) as QuestionCount)}
+					className="w-40"
+				/>
 			</div>
 
 			{isCustomDifficulty && (
@@ -144,44 +142,32 @@ export default function TriviaForm({
 					transition={{ duration: 0.3 }}
 				>
 					<div className='position-relative'>
-						<textarea
-							className={`form-control ${validationResult?.error ? 'is-invalid' : validationResult?.isValid ? 'is-valid' : ''}`}
+						<Input
+							as="textarea"
 							placeholder='Describe the difficulty level in detail (e.g., "university level quantum physics", "professional chef techniques", "elementary school basic math")'
 							value={customDifficultyText}
 							onChange={(e) => handleCustomDifficultyChange(e.target.value)}
 							onFocus={() => setShowSuggestions(true)}
 							rows={3}
 							required
-							style={{ resize: 'vertical' }}
+							error={validationResult?.error}
+							helperText={validationResult?.suggestions?.join('\n')}
+							className="resize-y"
 						/>
-						{validationResult?.error && (
-							<div className='invalid-feedback'>
-								{validationResult.error}
-							</div>
-						)}
-						{validationResult?.suggestions && validationResult.suggestions.length > 0 && (
-							<div className='mt-1'>
-								{validationResult.suggestions.map((suggestion, index) => (
-									<small key={index} className='form-text text-info d-block'>
-										💡 {suggestion}
-									</small>
-								))}
-							</div>
-						)}
 					</div>
 					
-					<div className='mt-2 d-flex justify-content-between align-items-center'>
-						<small className='form-text text-muted'>
+					<div className='mt-2 flex justify-between items-center'>
+						<small className='text-white/70'>
 							<strong>Be specific!</strong> Examples: "high school chemistry", "beginner yoga poses", "expert wine knowledge"
 						</small>
-						<button
-							type='button'
-							className='btn btn-outline-light btn-sm'
+						<Button
+							variant="outline"
+							size="sm"
 							onClick={() => setShowSuggestions(!showSuggestions)}
 							title={showSuggestions ? 'Hide suggestions' : 'Show suggestions'}
 						>
 							{showSuggestions ? '🔼 Hide' : '🔽 Suggestions'}
-						</button>
+						</Button>
 					</div>
 
 					<CustomDifficultySuggestions
@@ -193,34 +179,29 @@ export default function TriviaForm({
 				</motion.div>
 			)}
 
-			<motion.button
+			<Button
 				type='submit'
-				className='btn btn-primary btn-lg shadow'
+				variant='primary'
+				size='lg'
 				disabled={loading || !isFormValid()}
 				title='Generate a new trivia question about your chosen topic and difficulty level'
-				whileHover={!loading && isFormValid() ? { scale: 1.05, boxShadow: '0 10px 25px rgba(0,0,0,0.3)' } : {}}
-				whileTap={!loading && isFormValid() ? { scale: 0.95 } : {}}
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, delay: 0.6 }}
+				className='w-full'
+				isLoading={loading}
 			>
 				{loading ? 'Generating...' : 'Generate Trivia'}
-			</motion.button>
+			</Button>
 			
-			<motion.button
+			<Button
 				type='button'
-				className='btn btn-secondary btn-lg mt-2'
+				variant='secondary'
+				size='lg'
 				onClick={onAddFavorite}
 				disabled={!isFormValid()}
 				title='Save this topic and difficulty combination to your favorites for quick access'
-				whileHover={isFormValid() ? { scale: 1.05, boxShadow: '0 10px 25px rgba(0,0,0,0.3)' } : {}}
-				whileTap={isFormValid() ? { scale: 0.95 } : {}}
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, delay: 0.7 }}
+				className='w-full'
 			>
 				+ Add to Favorites
-			</motion.button>
+			</Button>
 		</form>
 	);
 }

@@ -25,14 +25,21 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "incremental": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["vitest/globals", "node", "@testing-library/jest-dom", "react", "react-dom"]
   },
   "include": [
-    "src"
+    "src",
+    "**/*.ts",
+    "**/*.tsx",
+    "vitest.config.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
-

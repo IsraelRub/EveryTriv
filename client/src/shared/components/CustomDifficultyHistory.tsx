@@ -32,7 +32,6 @@ export default function CustomDifficultyHistory({
   const loadHistory = async () => {
     setLoading(true);
     try {
-      // טעינה מ-localStorage
       const recentItems = apiService.getRecentCustomDifficulties(20);
       setHistory(recentItems);
     } catch (error) {
@@ -70,111 +69,97 @@ export default function CustomDifficultyHistory({
   if (!isVisible) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-        style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050 }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          className="bg-dark text-white rounded-3 p-4 mx-3"
-          style={{ maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }}
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="mb-0">
-              🕒 Custom Difficulty History
-            </h5>
-            <button
-              className="btn-close btn-close-white"
-              onClick={onClose}
-              aria-label="Close"
-            />
+    <Modal
+      open={isVisible}
+      onClose={onClose}
+      isGlassy
+      size="lg"
+      className="flex items-center justify-center"
+    >
+      <div className="p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">
+            🕒 Custom Difficulty History
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="p-1"
+          >
+            ✕
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+            <p className="mt-4 text-white/60">Loading history...</p>
           </div>
+        ) : history.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">📝</div>
+            <h4 className="text-lg font-medium mb-2">No Custom Difficulties Yet</h4>
+            <p className="text-white/60">
+              Your custom difficulty levels will appear here for quick reuse.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-sm text-white/60">
+                Click on any item to reuse it
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleClearHistory}
+                isGlassy
+              >
+                🗑️ Clear All
+              </Button>
+            </div>
 
-          {loading ? (
-            <div className="text-center py-4">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              <p className="mt-2 text-white-50">Loading history...</p>
-            </div>
-          ) : history.length === 0 ? (
-            <div className="text-center py-4">
-              <div className="mb-3" style={{ fontSize: '3rem' }}>📝</div>
-              <h6>No Custom Difficulties Yet</h6>
-              <p className="text-white-50">
-                Your custom difficulty levels will appear here for quick reuse.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-3 d-flex justify-content-between align-items-center">
-                <small className="text-white-50">
-                  Click on any item to reuse it
-                </small>
-                <button
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={handleClearHistory}
-                  title="Clear all history"
+            <div className="space-y-2">
+              {history.map((item, index) => (
+                <motion.div
+                  key={`${item.topic}-${item.difficulty}-${item.timestamp}`}
+                  className="glass-morphism rounded-lg p-4 cursor-pointer"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => handleSelect(item)}
                 >
-                  🗑️ Clear All
-                </button>
-              </div>
-
-              <div className="d-flex flex-column gap-2">
-                {history.map((item, index) => (
-                  <motion.div
-                    key={`${item.topic}-${item.difficulty}-${item.timestamp}`}
-                    className="card bg-secondary bg-opacity-25 border-0"
-                    style={{ cursor: 'pointer' }}
-                    whileHover={{ 
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      scale: 1.02
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => handleSelect(item)}
-                  >
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="flex-grow-1">
-                          <div className="d-flex align-items-center gap-2 mb-1">
-                            <span>{getDifficultyIcon(item.difficulty)}</span>
-                            <span className="fw-bold text-info">
-                              {item.topic}
-                            </span>
-                          </div>
-                          <div className="text-white-75">
-                            {displayDifficulty(item.difficulty, 60)}
-                          </div>
-                        </div>
-                        <small className="text-white-50">
-                          {formatTimestamp(item.timestamp)}
-                        </small>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span>{getDifficultyIcon(item.difficulty)}</span>
+                        <span className="font-medium text-primary-400">
+                          {item.topic}
+                        </span>
+                      </div>
+                      <div className="text-white/75">
+                        {displayDifficulty(item.difficulty, 60)}
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+                    <span className="text-sm text-white/50">
+                      {formatTimestamp(item.timestamp)}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
-              <div className="mt-3 text-center">
-                <small className="text-white-50">
-                  💡 Showing last {history.length} custom difficulty levels
-                </small>
-              </div>
-            </>
-          )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+            <div className="mt-4 text-center">
+              <span className="text-sm text-white/60">
+                💡 Showing last {history.length} custom difficulty levels
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

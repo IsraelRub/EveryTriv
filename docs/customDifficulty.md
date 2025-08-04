@@ -28,7 +28,7 @@ EveryTriv is an intelligent trivia platform that allows users to generate questi
 
 ### Backend (NestJS)
 - **Framework**: NestJS with TypeScript
-- **Database**: MariaDB with TypeORM
+- **Database**: PostgreSQL with TypeORM
 - **Caching**: Redis
 - **LLM Providers**: OpenAI GPT-3.5-turbo, Anthropic Claude
 - **Features**: Priority queue system, rate limiting, global error handling
@@ -54,10 +54,9 @@ Create `.env.local` file in the root directory:
 
 ```env
 # Database
-MYSQL_ROOT_PASSWORD=your_root_password
-MYSQL_DATABASE=everytriv_db
-MYSQL_USER=ezuser
-MYSQL_PASSWORD=ezpass
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=everytriv_db
+POSTGRES_USER=postgres
 
 # LLM API Keys
 OPENAI_API_KEY=your_openai_api_key

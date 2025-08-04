@@ -1,10 +1,12 @@
--- Create database if not exists
-CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
-USE ${MYSQL_DATABASE};
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Enable UTF-8 encoding
-ALTER DATABASE ${MYSQL_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- Enable full text search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS btree_gin;
 
--- Grant privileges
-GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
-FLUSH PRIVILEGES;
+-- Set timezone
+SET timezone = 'UTC';
+
+-- Create schema if not exists
+CREATE SCHEMA IF NOT EXISTS public;
