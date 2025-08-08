@@ -6,9 +6,13 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import logger from "./shared/utils/logger";
 import { LoggerService } from "./shared/modules/logger/logger.service";
 
+// Load environment variables - default to .env, can be overridden by NODE_ENV
 dotenv.config({
   path: process.env.NODE_ENV === "prod" ? ".env.prod" : ".env",
 });
+
+// Now load NODE_ENV from the loaded environment file
+const environment = process.env.NODE_ENV || 'development';
 
 async function bootstrap() {
   const startTime = Date.now();
@@ -33,13 +37,13 @@ async function bootstrap() {
     const bootDuration = Date.now() - startTime;
     loggerService.logStartup(`Server running on port ${AppConfig.port}`, { 
       bootTime: `${bootDuration}ms`,
-      environment: process.env.NODE_ENV || 'development',
+      environment: environment,
       nodeVersion: process.version,
     });
     
     loggerService.logPerformance('server.bootstrap', bootDuration, {
       port: AppConfig.port,
-      environment: process.env.NODE_ENV || 'development'
+      environment: environment
     });
   } catch (error) {
     logger.error('Failed to start server', { 
