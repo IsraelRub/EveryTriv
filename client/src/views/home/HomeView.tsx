@@ -1,7 +1,6 @@
 import { useState, useCallback, FormEvent, createElement, useEffect } from 'react';
 import { HistoryIcon } from '../../shared/styles/icons';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import ScoringSystem from '../../shared/components/ScoringSystem';
 import Leaderboard from '../../shared/components/Leaderboard';
 import Game from '../../shared/components/Game';
