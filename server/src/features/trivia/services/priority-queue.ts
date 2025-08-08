@@ -3,7 +3,7 @@ import { BinaryHeap } from './data-structures/binary-heap';
 import { LRUCache } from './data-structures/lru-cache';
 import { Trie } from './data-structures/trie';
 import { CircularBuffer } from './data-structures/circular-buffer';
-import { QueueItem, QueueStats } from '../../../shared/types';
+import { QueueItem, QueueStats } from '../types/trivia.types';
 
 @Injectable()
 export class PriorityQueue {

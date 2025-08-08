@@ -13,37 +13,37 @@ import { UserEntity } from './user.entity';
 @Entity('trivia')
 export class TriviaEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string = '';
 
   @Column()
-  @Index({ fulltext: true })
-  topic: string;
+  @Index()
+  topic: string = '';
 
   @Column()
-  difficulty: string;
+  difficulty: string = '';
 
   @Column()
-  @Index({ fulltext: true })
-  question: string;
+  @Index()
+  question: string = '';
 
   @Column('jsonb', { default: [] })
   answers: Array<{
     text: string;
     isCorrect: boolean;
-  }>;
+  }> = [];
 
   @Column('int')
-  correctAnswerIndex: number;
+  correctAnswerIndex: number = 0;
 
   @Column({ nullable: true })
-  userId: string;
+  userId: string = '';
 
   @ManyToOne(() => UserEntity, { nullable: true })
   @JoinColumn({ name: 'userId' })
-  user: UserEntity;
+  user!: UserEntity;
 
   @Column('boolean', { default: false })
-  isCorrect: boolean;
+  isCorrect: boolean = false;
 
   @Column('jsonb', { nullable: true })
   metadata: {
@@ -52,15 +52,14 @@ export class TriviaEntity {
     source?: string;
     difficulty_score?: number;
     custom_difficulty_description?: string;
-  };
+  } = {};
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt: Date = new Date();
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt: Date = new Date();
 
   @Column('tsvector', { select: false })
-  @Index({ synchronize: false })
-  searchVector: string;
+  searchVector: string = '';
 }

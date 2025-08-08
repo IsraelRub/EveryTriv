@@ -1,27 +1,28 @@
-import React, { useState, useCallback, FormEvent } from 'react';
-import { HistoryIcon } from '../../shared/components/icons';
+import { useState, useCallback, FormEvent, createElement, useEffect } from 'react';
+import { HistoryIcon } from '../../shared/styles/icons';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import ScoringSystem from '../../shared/components/ScoringSystem';
 import Leaderboard from '../../shared/components/Leaderboard';
-
-import TriviaGame from '../../shared/components/TriviaGame';
+import Game from '../../shared/components/Game';
 import TriviaForm from '../../shared/components/TriviaForm';
-import FavoriteTopics from '../../shared/components/FavoriteTopics';
-import CustomDifficultyHistory from '../../shared/components/CustomDifficultyHistory';
-import { getOrCreateUserId } from '../../shared/services/user.util';
-import { apiService } from '../../shared/services/api.service';
-import { GameState } from '../../shared/models/game.model';
-import { isCustomDifficulty, displayDifficulty, getDifficultyIcon } from '../../shared/utils/customDifficulty.utils';
-import { AnimatedBackground } from '@/shared/components';
 
+import FavoriteTopics from '../../shared/components/FavoriteTopics';
+import GameModeUI from '../../shared/styles/ui/GameMode';
+import CustomDifficultyHistory from '../../shared/components/CustomDifficultyHistory';
+import { getOrCreateUserId } from '../../shared/utils/user.util';
+import { apiService } from '../../shared/services/api.service';
+import { GameState, QuestionCount } from '../../shared/types';
+import { isCustomDifficulty, displayDifficulty, getDifficultyIcon } from '../../shared/utils/customDifficulty.utils';
+import { Button } from '@/shared/styles/ui';
+import { useGameMusic } from '../../shared/audio';
+import { useScoreAchievementSounds } from '../../shared/hooks/useScoreAchievementSounds';
 const DEFAULT_FAVORITES = [
 	{ topic: 'General Knowledge', difficulty: 'medium' },
 	{ topic: 'Geography', difficulty: 'medium' },
 	{ topic: 'History', difficulty: 'medium' },
 	{ topic: 'Celebrities', difficulty: 'medium' },
 ];
-
 const DEFAULT_GAME_STATE: GameState = {
 	favorites: DEFAULT_FAVORITES,
 	trivia: null,
@@ -30,61 +31,99 @@ const DEFAULT_GAME_STATE: GameState = {
 	score: 0,
 	total: 0,
 	selected: null,
+	streak: 0,
 	stats: {
 		topicsPlayed: {},
 		successRateByDifficulty: {},
 	},
+	gameMode: {
+		mode: 'question-limited',
+		questionLimit: 20,
+		timeLimit: 60,
+		isGameOver: false,
+		timer: {
+			isRunning: false,
+			startTime: null,
+			timeElapsed: 0,
+		}
+	},
 };
-
 export default function HomeView() {
 	const [topic, setTopic] = useState('');
 	const [difficulty, setDifficulty] = useState('medium');
+	const [questionCount, setQuestionCount] = useState<QuestionCount>(3);
 	const [gameState, setGameState] = useState<GameState>(DEFAULT_GAME_STATE);
 	const [userId] = useState(() => getOrCreateUserId());
 	const [showHistory, setShowHistory] = useState(false);
-
+	const [isGameActive, setIsGameActive] = useState(false);
+	const [showGameModeSelector, setShowGameModeSelector] = useState(false);
+	// Use game music when trivia is active, otherwise use background music
+	useGameMusic(isGameActive);
+	// Use achievement sounds when score changes
+	useScoreAchievementSounds(gameState.score, gameState.total);
+	// Log component mounting
+	useEffect(() => {
+		return () => {
+		};
+	}, []);
 	const handleSpellCheck = async (text: string) => {
 		// TODO: Integrate with external spell-check API
 		return text;
 	};
-
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
+		
+		// Show game mode selection if not already active
+		if (!isGameActive) {
+			setShowGameModeSelector(true);
+			return;
+		}
 		updateGameState({ error: '', loading: true });
+		
 		try {
 			const checkedTopic = await handleSpellCheck(topic);
-
 			// שמירת רמת קושי מותאמת להיסטוריה
 			if (isCustomDifficulty(difficulty)) {
 				apiService.saveCustomDifficulty(checkedTopic, difficulty);
 			}
-
 			const response = await apiService.getTrivia({
 				topic: checkedTopic,
 				difficulty,
 				userId,
 			});
-
-			updateGameState({ trivia: response, loading: false });
+			
+			updateGameState({ 
+				trivia: response, 
+				loading: false,
+				gameMode: {
+					...gameState.gameMode,
+					timer: {
+						...gameState.gameMode.timer,
+						isRunning: true,
+						startTime: gameState.gameMode.timer.startTime || Date.now(),
+					}
+				}
+			});
+			// Set game active state to true when trivia is loaded
+			setIsGameActive(true);
 		} catch (err: unknown) {
+			const errorMessage = err instanceof Error ? err.message : 'An error occurred';
 			updateGameState({
-				error: err instanceof Error ? err.message : 'An error occurred',
+				error: errorMessage,
 				loading: false,
 			});
+			setIsGameActive(false);
 		}
 	};
-
 	const updateGameState = useCallback((updates: Partial<GameState>) => {
 		setGameState((prev) => ({ ...prev, ...updates }));
 	}, []);
-
 	const addFavorite = useCallback(() => {
 		if (!topic || gameState.favorites.some((f) => f.topic === topic && f.difficulty === difficulty)) return;
 		updateGameState({
 			favorites: [...gameState.favorites, { topic, difficulty }],
 		});
 	}, [topic, difficulty, gameState.favorites, updateGameState]);
-
 	const removeFavorite = useCallback(
 		(i: number) => {
 			updateGameState({
@@ -93,26 +132,21 @@ export default function HomeView() {
 		},
 		[gameState.favorites, updateGameState]
 	);
-
 	// פונקציה חדשה לטיפול בבחירת מועדף
 	const selectFavorite = useCallback((favorite: { topic: string; difficulty: string }) => {
 		setTopic(favorite.topic);
 		setDifficulty(favorite.difficulty);
 	}, []);
-
 	// פונקציה חדשה לטיפול בבחירה מההיסטוריה
 	const selectFromHistory = useCallback((historyTopic: string, historyDifficulty: string) => {
 		setTopic(historyTopic);
 		setDifficulty(historyDifficulty);
 	}, []);
-
 	const updateStats = useCallback(
 		(topic: string, difficulty: string, isCorrect: boolean) => {
 			const { stats } = gameState;
-
 			// עבור רמת קושי מותאמת, נשתמש ב"custom" לסטטיסטיקות
 			const statsDifficulty = isCustomDifficulty(difficulty) ? 'custom' : difficulty;
-
 			return {
 				topicsPlayed: {
 					...stats.topicsPlayed,
@@ -129,14 +163,11 @@ export default function HomeView() {
 		},
 		[gameState.stats]
 	);
-
 	const handleAnswer = useCallback(
 		async (i: number) => {
 			if (gameState.selected !== null || !gameState.trivia) return;
-
 			const isCorrect = gameState.trivia.answers[i].isCorrect;
 			const newStats = updateStats(gameState.trivia.topic, gameState.trivia.difficulty, isCorrect);
-
 			updateGameState({
 				selected: i,
 				total: gameState.total + 1,
@@ -144,108 +175,294 @@ export default function HomeView() {
 				stats: {
 					...gameState.stats,
 					...newStats,
-				},
+				}
 			});
-
 			await apiService.saveHistory({
 				...gameState.trivia,
 				userId,
 				isCorrect,
 			});
+			// For game modes that continue automatically, don't set inactive
+			if (gameState.gameMode.mode === 'time-limited' || gameState.gameMode.mode === 'question-limited') {
+				// Game continues automatically - handled by Game component
+			} else {
+				// For unlimited mode or if we're not in a game mode, set inactive after delay
+				setTimeout(() => {
+					setIsGameActive(false);
+				}, 2000);
+			}
 		},
 		[gameState, userId, updateStats, updateGameState]
 	);
-
+	// Handle game mode selection
+	// This needs to be defined outside other functions to avoid circular dependencies
+	const handleGameModeSelect = (config: {
+		mode: 'time-limited' | 'question-limited' | 'unlimited';
+		timeLimit?: number;
+		questionLimit?: number;
+	}) => {
+		updateGameState({
+			gameMode: {
+				...gameState.gameMode,
+				mode: config.mode,
+				timeLimit: config.timeLimit,
+				questionLimit: config.questionLimit,
+				questionsRemaining: config.questionLimit,
+				timeRemaining: config.timeLimit,
+				isGameOver: false,
+				timer: {
+					isRunning: false,
+					startTime: null,
+					timeElapsed: 0
+				}
+			}
+		});
+		// Start the game after mode selection
+		setShowGameModeSelector(false);
+		// Start fetching the first question
+		(async () => {
+			updateGameState({ error: '', loading: true });
+			try {
+				const checkedTopic = await handleSpellCheck(topic);
+				if (isCustomDifficulty(difficulty)) {
+					apiService.saveCustomDifficulty(checkedTopic, difficulty);
+				}
+				const response = await apiService.getTrivia({
+					topic: checkedTopic,
+					difficulty,
+					userId,
+				});
+				updateGameState({ 
+					trivia: response, 
+					loading: false,
+					gameMode: {
+						...gameState.gameMode,
+						timer: {
+							...gameState.gameMode.timer,
+							isRunning: true,
+							startTime: Date.now(),
+						}
+					}
+				});
+				setIsGameActive(true);
+			} catch (err: unknown) {
+				updateGameState({
+					error: err instanceof Error ? err.message : 'An error occurred',
+					loading: false,
+				});
+				setIsGameActive(false);
+			}
+		})();
+	};
+	// Handle game end
+	const handleGameEnd = useCallback(() => {
+		updateGameState({
+			gameMode: {
+				...gameState.gameMode,
+				isGameOver: true,
+				timer: {
+					...gameState.gameMode.timer,
+					isRunning: false
+				}
+			}
+		});
+		setIsGameActive(false);
+	}, [gameState.gameMode, updateGameState]);
+	// Start a new game with current settings
+	const startNewGame = useCallback(() => {
+		setShowGameModeSelector(true);
+	}, []);
+	// Load a new question during an active game
+	const loadNextQuestion = useCallback(async () => {
+		if (gameState.gameMode.isGameOver) return;
+		updateGameState({ loading: true });
+		try {
+			const checkedTopic = await handleSpellCheck(topic);
+			const response = await apiService.getTrivia({
+				topic: checkedTopic,
+				difficulty,
+				userId,
+			});
+			// Update game state with new question and decrement question count if needed
+			updateGameState({ 
+				trivia: response, 
+				loading: false,
+				selected: null,
+				gameMode: {
+					...gameState.gameMode,
+					questionsRemaining: 
+						gameState.gameMode.mode === 'question-limited' && gameState.gameMode.questionsRemaining 
+						? gameState.gameMode.questionsRemaining - 1 
+						: undefined,
+				}
+			});
+		} catch (err: unknown) {
+			updateGameState({
+				error: err instanceof Error ? err.message : 'An error occurred',
+				loading: false,
+			});
+		}
+	}, [topic, difficulty, userId, gameState.gameMode, updateGameState, handleSpellCheck]);
 	// פונקציה להצגת רמת הקושי הנוכחית בצורה ידידותית
 	const getCurrentDifficultyDisplay = () => {
 		return displayDifficulty(difficulty, 50);
 	};
-
 	return (
-		<div className='min-vh-100 d-flex flex-column align-items-center justify-content-center p-4 position-relative'>
-			<AnimatedBackground />
+		<div className='min-h-screen flex flex-col items-center justify-center p-4 pt-20'>
+			{/* Main Content Container */}
 			<motion.div
-				initial={{ x: 100, opacity: 0 }}
-				animate={{ x: 0, opacity: 1 }}
-				transition={{ duration: 0.8, ease: 'easeOut' }}
-			>
-				<Link
-					to='/profile'
-					className='position-fixed top-0 end-0 m-4 btn btn-primary rounded-pill shadow-lg fw-semibold'
-				>
-					Profile
-				</Link>
-			</motion.div>
-			<motion.div
-				className='w-100 mw-xl bg-white bg-opacity-10 rounded shadow p-4 glass-morphism'
+				className='w-full max-w-4xl glass-morphism rounded-lg p-6 mx-auto'
 				initial={{ y: 50, opacity: 0, scale: 0.9 }}
 				animate={{ y: 0, opacity: 1, scale: 1 }}
-				transition={{ duration: 1, ease: 'easeOut' }}
+				transition={{ duration: 0.8, ease: 'easeOut' }}
 			>
-				<motion.h1
-					className='display-4 fw-bold text-center mb-4 text-white'
+				{/* Title Section */}
+				<motion.div
+					className='text-center mb-8'
 					initial={{ y: -30, opacity: 0 }}
 					animate={{ y: 0, opacity: 1 }}
-					transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
+					transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
 				>
-					EveryTriv
-					<small className='d-block fs-6 mt-2 text-white-50'>Smart Trivia Platform with Custom Difficulty Levels</small>
-				</motion.h1>
+					<h1 className='text-4xl md:text-5xl font-bold text-white mb-3 gradient-text'>
+						EveryTriv
+					</h1>
+					<p className='text-lg text-white/70'>
+						Smart Trivia Platform with Custom Difficulty Levels
+					</p>
+				</motion.div>
 
-				{/* הצגת רמת הקושי הנוכחית עם כפתור היסטוריה */}
+				{/* Current Difficulty Display */}
 				{difficulty && (
-					<div className='text-center mb-3 d-flex align-items-center justify-content-center gap-2'>
-						<span className='badge bg-info fs-6 px-3 py-2'>
-							{React.createElement(getDifficultyIcon(difficulty), { className: 'me-1', size: 16 })}
-							Current: {topic || 'No topic'} - {getCurrentDifficultyDisplay()}
-						</span>
-						{isCustomDifficulty(difficulty) && (
-							<button
-								className='btn btn-outline-light btn-sm'
-								onClick={() => setShowHistory(true)}
-								title='View custom difficulty history'
-							>
-								<HistoryIcon size={14} className="me-1" /> History
-							</button>
-						)}
-					</div>
+					<motion.div 
+						className='text-center mb-6'
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.4 }}
+					>
+						<div className='flex items-center justify-center gap-3 flex-wrap'>
+							<span className='inline-flex items-center px-4 py-2 bg-blue-500/20 text-blue-200 rounded-full text-sm font-medium border border-blue-400/30'>
+								<span className='mr-2'>
+									{createElement(getDifficultyIcon(difficulty))}
+								</span>
+								Current: {topic || 'No topic'} - {getCurrentDifficultyDisplay()}
+							</span>
+							{isCustomDifficulty(difficulty) && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setShowHistory(true)}
+									className="text-white/70 hover:text-white border border-white/20 hover:border-white/40"
+								>
+									<HistoryIcon size={14} className="mr-1" /> History
+								</Button>
+							)}
+						</div>
+					</motion.div>
 				)}
 
-				<TriviaForm
-					topic={topic}
-					difficulty={difficulty}
-					loading={gameState.loading}
-					onTopicChange={setTopic}
-					onDifficultyChange={setDifficulty}
-					onSubmit={handleSubmit}
-					onAddFavorite={addFavorite}
-				/>
+				{/* Trivia Form */}
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.6 }}
+				>
+					<TriviaForm
+						topic={topic}
+						difficulty={difficulty}
+						questionCount={questionCount}
+						loading={gameState.loading}
+						onTopicChange={setTopic}
+						onDifficultyChange={setDifficulty}
+						onQuestionCountChange={setQuestionCount}
+						onSubmit={handleSubmit}
+						onAddFavorite={addFavorite}
+						onGameModeSelect={handleGameModeSelect}
+						showGameModeSelector={showGameModeSelector}
+					/>
+				</motion.div>
 
-				<FavoriteTopics favorites={gameState.favorites} onRemove={removeFavorite} onSelect={selectFavorite} />
+				{/* Favorite Topics */}
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.8 }}
+				>
+					<FavoriteTopics 
+						favorites={gameState.favorites} 
+						onRemove={removeFavorite} 
+						onSelect={selectFavorite} 
+					/>
+				</motion.div>
 
+				{/* Error Display */}
 				{gameState.error && (
 					<motion.div
-						className='alert alert-danger mt-4'
+						className='bg-red-500/20 border border-red-400/30 rounded-lg p-4 mt-6 text-red-200'
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5 }}
 					>
-						<strong>Error:</strong> {gameState.error}
-						{isCustomDifficulty(difficulty) && (
-							<div className='mt-2'>
-								<small>
-									💡 Make sure your custom difficulty description is clear and specific. Examples: "university level
-									physics", "beginner cooking skills", "professional sports knowledge"
-								</small>
+						<div className='flex items-start'>
+							<span className='text-red-400 mr-2'>⚠️</span>
+							<div>
+								<strong>Error:</strong> {gameState.error}
+								{isCustomDifficulty(difficulty) && (
+									<div className='mt-2 text-sm text-red-300'>
+										💡 Make sure your custom difficulty description is clear and specific. Examples: "university level
+										physics", "beginner cooking skills", "professional sports knowledge"
+									</div>
+								)}
 							</div>
-						)}
+						</div>
 					</motion.div>
 				)}
 
-				{gameState.trivia && (
-					<TriviaGame trivia={gameState.trivia} selected={gameState.selected} onAnswer={handleAnswer} />
+				{/* Game Mode Button */}
+				{!gameState.loading && !gameState.trivia && (
+					<motion.div
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 1 }}
+						className="mt-6"
+					>
+						<Button 
+							variant="primary" 
+							size="lg"
+							className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 transform hover:scale-105 transition-all duration-200"
+							onClick={startNewGame}
+						>
+							🎮 Start Game with Options
+						</Button>
+					</motion.div>
 				)}
 
+				{/* Active Game */}
+				{gameState.trivia && (
+					<motion.div
+						initial={{ opacity: 0, scale: 0.95 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ duration: 0.5 }}
+						className="mt-6"
+					>
+						<Game 
+							trivia={gameState.trivia}
+							selected={gameState.selected}
+							onAnswer={handleAnswer}
+							onNewQuestion={loadNextQuestion}
+							gameMode={gameState.gameMode}
+							onGameEnd={handleGameEnd}
+						/>
+					</motion.div>
+				)}
+			</motion.div>
+
+			{/* Scoring and Leaderboard Section */}
+			<motion.div
+				className='w-full max-w-4xl mt-8 space-y-6'
+				initial={{ opacity: 0, y: 30 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 1.2 }}
+			>
 				<ScoringSystem
 					score={gameState.score}
 					total={gameState.total}
@@ -253,14 +470,19 @@ export default function HomeView() {
 					difficultyStats={gameState.stats.successRateByDifficulty}
 				/>
 				<Leaderboard userId={userId} />
-
-				{/* רכיב היסטוריה לרמות קושי מותאמות */}
-				<CustomDifficultyHistory
-					isVisible={showHistory}
-					onSelect={selectFromHistory}
-					onClose={() => setShowHistory(false)}
-				/>
 			</motion.div>
+
+			{/* Modals */}
+			<CustomDifficultyHistory
+				isVisible={showHistory}
+				onSelect={selectFromHistory}
+				onClose={() => setShowHistory(false)}
+			/>
+			<GameModeUI
+				isVisible={showGameModeSelector}
+				onSelectMode={handleGameModeSelect}
+				onCancel={() => setShowGameModeSelector(false)}
+			/>
 		</div>
 	);
 }

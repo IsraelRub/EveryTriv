@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "dist",
     "baseUrl": "./",
     "paths": {
       "@modules/*": ["src/modules/*"],
@@ -23,9 +23,10 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "strict": true,
+    "strictPropertyInitialization": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*", "../client/src/shared/utils"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

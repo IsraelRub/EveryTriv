@@ -8,12 +8,12 @@ import {
 
 export class UserDto {
   @IsString()
-  userId: string;
+  userId: string = '';
 
   @IsString()
   @MinLength(3)
   @MaxLength(30)
-  username: string;
+  username: string = '';
 
   @IsString()
   @IsUrl()

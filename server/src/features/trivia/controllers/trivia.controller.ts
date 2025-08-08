@@ -14,6 +14,7 @@ import { InputValidationService } from "../../../common/validation/input-validat
 import { TriviaService } from "../services/trivia.service";
 import { TriviaRequestDto, TriviaHistoryDto } from "./trivia.dto";
 import { APP_CONSTANTS } from "../../../constants/app.constants";
+import { TRIVIA_CONSTANTS } from "../constants";
 
 @Controller(`${APP_CONSTANTS.API_VERSION}/trivia`)
 export class TriviaController {
@@ -25,14 +26,14 @@ export class TriviaController {
   @Post()
   @UsePipes(new ValidationPipe({ transform: true }))
   async getTrivia(@Body() body: TriviaRequestDto) {
-    const { topic, difficulty, questionCount, userId } = body;
+    const { topic, difficulty, userId } = body;
 
     // Validate topic and custom difficulty text
     const validationResults = await Promise.all([
       this.validationService.validateInput(topic),
-      difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)
+      difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)
         ? this.validationService.validateInput(
-            difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
+            difficulty.substring(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
           )
         : Promise.resolve({ isValid: true, errors: [] }),
     ]);
@@ -54,8 +55,8 @@ export class TriviaController {
     }
 
     // ולידציה נוספת לרמת קושי מותאמת
-    if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
-      const customDifficultyText = difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length);
+    if (difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+      const customDifficultyText = difficulty.substring(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length);
       
       if (customDifficultyText.trim().length < 3) {
         throw new HttpException(
@@ -96,13 +97,12 @@ export class TriviaController {
       const data = await this.triviaService.getTriviaQuestion(
         topic,
         difficulty,
-        questionCount,
         userId
       );
       return {
         data,
         status: HttpStatus.OK,
-        message: difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX) 
+        message: difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX) 
           ? "Custom difficulty trivia question generated successfully"
           : "Trivia question generated successfully"
       };
@@ -110,7 +110,7 @@ export class TriviaController {
       console.error("Error generating trivia question:", err);
       
       // טיפול שגיאות ספציפי לרמות קושי מותאמות
-      if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+      if (difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
         throw new HttpException(
           { 
             status: HttpStatus.INTERNAL_SERVER_ERROR, 
@@ -124,7 +124,7 @@ export class TriviaController {
       throw new HttpException(
         { 
           status: HttpStatus.INTERNAL_SERVER_ERROR, 
-          message: err.message || "Failed to generate trivia question"
+          message: err instanceof Error ? err.message : "Failed to generate trivia question"
         },
         HttpStatus.INTERNAL_SERVER_ERROR
       );

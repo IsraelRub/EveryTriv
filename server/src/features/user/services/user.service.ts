@@ -65,8 +65,8 @@ export class UserService {
       user = this.userRepository.create({
         id: userId,
         username,
-        avatar: avatar || null,
-        password_hash: '', // Will need to be set elsewhere for security
+        avatar: avatar || '',
+        passwordHash: '', // Will need to be set elsewhere for security
       });
     }
 
@@ -82,8 +82,8 @@ export class UserService {
   }): Promise<UserEntity> {
     const user = this.userRepository.create({
       username: userData.username,
-      password_hash: userData.password_hash,
-      avatar: userData.avatar || null,
+      passwordHash: userData.password_hash,
+      avatar: userData.avatar || '',
       role: userData.role || UserRole.USER,
     });
 
@@ -93,7 +93,7 @@ export class UserService {
   // Update user password
   async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
     const result = await this.userRepository.update(userId, {
-      password_hash: passwordHash,
+      passwordHash: passwordHash,
     });
 
     if (result.affected === 0) {
@@ -108,8 +108,8 @@ export class UserService {
     expiresAt: Date | null,
   ): Promise<void> {
     const result = await this.userRepository.update(userId, {
-      reset_password_token: resetToken,
-      reset_password_expires: expiresAt,
+      reset_password_token: resetToken || '',
+      reset_password_expires: expiresAt || new Date(),
     });
 
     if (result.affected === 0) {
@@ -131,7 +131,7 @@ export class UserService {
   // Get all users (for admin purposes)
   async getAllUsers(): Promise<UserEntity[]> {
     return await this.userRepository.find({
-      order: { created_at: 'DESC' },
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -182,5 +182,120 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
     return user.score;
+  }
+
+  // Google OAuth methods
+  async findByGoogleId(googleId: string): Promise<UserEntity | null> {
+    try {
+      return await this.userRepository.findOne({
+        where: { googleId },
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    try {
+      return await this.userRepository.findOne({
+        where: { email },
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async linkGoogleAccount(userId: string, googleId: string): Promise<UserEntity> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.googleId = googleId;
+    return await this.userRepository.save(user);
+  }
+
+  async createGoogleUser(userData: {
+    googleId: string;
+    email: string;
+    fullName: string;
+    username: string;
+    avatar?: string;
+  }): Promise<UserEntity> {
+    // Ensure unique username
+    let username = userData.username;
+    let counter = 1;
+    while (await this.usernameExists(username)) {
+      username = `${userData.username}${counter}`;
+      counter++;
+    }
+
+    const user = this.userRepository.create({
+      googleId: userData.googleId,
+      email: userData.email,
+      fullName: userData.fullName,
+      username,
+      avatar: userData.avatar || '',
+      role: UserRole.USER,
+      credits: 100, // Initial free credits
+      lastCreditRefill: new Date(),
+    });
+
+    return await this.userRepository.save(user);
+  }
+
+  // Credit management
+  async getUserCredits(userId: string): Promise<number> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user.credits;
+  }
+
+  async deductCredits(userId: string, amount: number): Promise<UserEntity> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.credits < amount) {
+      throw new Error('Insufficient credits');
+    }
+
+    user.credits -= amount;
+    return await this.userRepository.save(user);
+  }
+
+  async addCredits(userId: string, amount: number): Promise<UserEntity> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.credits += amount;
+    return await this.userRepository.save(user);
+  }
+
+  async refillDailyCredits(): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const users = await this.userRepository.find({
+      where: {
+        is_active: true,
+      },
+    });
+
+    for (const user of users) {
+      const lastRefill = user.lastCreditRefill || new Date(0);
+      lastRefill.setHours(0, 0, 0, 0);
+
+      if (lastRefill < today) {
+        user.credits = Math.min(user.credits + 50, 200); // Add 50 credits, max 200
+        user.lastCreditRefill = new Date();
+        await this.userRepository.save(user);
+      }
+    }
   }
 }

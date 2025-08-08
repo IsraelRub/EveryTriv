@@ -1,19 +1,16 @@
 import { motion } from 'framer-motion';
-import { TriviaQuestion, TriviaGameProps } from '../types';
-import { Card, CardContent, CardHeader, CardTitle } from './ui';
-
-interface TriviaGameProps {
-	trivia: TriviaQuestion;
-	selected: number | null;
-	onAnswer: (index: number) => void;
-}
+import { TriviaGameProps, TriviaAnswer } from '../types';
+import { Button } from '../styles/ui/Button';
+import { cn } from '../utils/cn';
+import { useAudioContext } from '../audio';
+import { AudioKey } from '../audio/constants';
 
 export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGameProps) {
   const { playSound } = useAudioContext();
 
   const handleAnswer = (index: number) => {
     const isCorrect = trivia.answers[index].isCorrect;
-    playSound(isCorrect ? 'correct' : 'wrong');
+    playSound(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
     onAnswer(index);
   };
 

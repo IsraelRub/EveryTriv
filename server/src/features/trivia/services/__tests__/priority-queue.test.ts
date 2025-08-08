@@ -1,5 +1,4 @@
 import { PriorityQueue } from '../priority-queue';
-import { QueueItem } from '../../../../shared/types';
 
 describe('PriorityQueue', () => {
   let queue: PriorityQueue;

@@ -13,11 +13,11 @@ export class AuthService {
 
   async validateUser(username: string, password: string) {
     const user = await this.userService.getUserByUsername(username);
-    if (!user || !user.is_active) {
+    if (!user || !user.is_active || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -30,7 +30,7 @@ export class AuthService {
     const payload = { 
       sub: user.id,
       username: user.username,
-      role: user.role
+      role: user.role ?? 'user'
     };
 
     return {
@@ -38,7 +38,7 @@ export class AuthService {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role,
+        role: user.role ?? 'user',
         avatar: user.avatar
       }
     };
@@ -73,7 +73,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired reset token');
     }
 
-    if (user.reset_password_expires < new Date()) {
+    if (user.reset_password_expires && user.reset_password_expires < new Date()) {
       throw new UnauthorizedException('Reset token has expired');
     }
 
@@ -82,5 +82,15 @@ export class AuthService {
     await this.userService.updateResetToken(user.id, null, null);
 
     return { message: 'Password has been reset successfully' };
+  }
+
+  async generateJWT(user: any) {
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role ?? 'user'
+    };
+
+    return this.jwtService.sign(payload);
   }
 }

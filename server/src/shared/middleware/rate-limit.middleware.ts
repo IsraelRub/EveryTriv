@@ -3,22 +3,17 @@ import {
   NestMiddleware,
   HttpException,
   HttpStatus,
+  Inject,
 } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
 import { Redis } from "ioredis";
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
-  private redis: Redis;
   private readonly WINDOW_SIZE_IN_SECONDS = 60;
   private readonly MAX_REQUESTS_PER_WINDOW = 100;
 
-  constructor() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || "localhost",
-      port: Number(process.env.REDIS_PORT) || 6379,
-    });
-  }
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
     const ip = req.ip;

@@ -9,10 +9,20 @@ const initialState: GameState = {
   score: 0,
   total: 0,
   selected: null,
+  streak: 0,
   stats: {
     topicsPlayed: {},
     successRateByDifficulty: {},
   },
+  gameMode: {
+    mode: 'unlimited',
+    isGameOver: false,
+    timer: {
+      isRunning: false,
+      startTime: null,
+      timeElapsed: 0
+    }
+  }
 };
 
 const gameSlice = createSlice({

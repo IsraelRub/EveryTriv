@@ -16,22 +16,22 @@ import { Type } from "class-transformer";
 
 export class TriviaAnswerDto {
   @IsString()
-  text: string;
+  text: string = '';
 
   @IsBoolean()
-  isCorrect: boolean;
+  isCorrect: boolean = false;
 }
 
 export class TriviaRequestDto {
   @IsString()
   @MinLength(2)
   @MaxLength(50)
-  topic: string;
+  topic: string = '';
 
   @IsString()
   @ValidateIf((o) => !o.difficulty.startsWith('custom:'))
   @IsIn(["easy", "medium", "hard"])
-  difficulty: string;
+  difficulty: string = 'medium';
 
   @IsString()
   @ValidateIf((o) => o.difficulty.startsWith('custom:'))
@@ -42,7 +42,7 @@ export class TriviaRequestDto {
 
   @IsNumber()
   @IsIn([3, 4, 5])
-  questionCount: number;
+  questionCount: number = 3;
 
   @IsString()
   @IsOptional()
@@ -51,26 +51,26 @@ export class TriviaRequestDto {
 
 export class TriviaHistoryDto {
   @IsString()
-  userId: string;
+  userId: string = '';
 
   @IsString()
-  question: string;
+  question: string = '';
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TriviaAnswerDto)
-  answers: TriviaAnswerDto[];
+  answers: TriviaAnswerDto[] = [];
 
   @IsNumber()
   @Min(0)
-  correctAnswerIndex: number;
+  correctAnswerIndex: number = 0;
 
   @IsBoolean()
-  isCorrect: boolean;
+  isCorrect: boolean = false;
 
   @IsString()
-  topic: string;
+  topic: string = '';
 
   @IsString()
-  difficulty: string;
+  difficulty: string = 'medium';
 }

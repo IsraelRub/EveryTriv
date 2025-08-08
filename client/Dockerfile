@@ -1,24 +1,38 @@
-# Use Node.js LTS version
-FROM node:20-alpine
+# Multi-stage build for production
+FROM node:20-alpine AS build
+
+# Build argument for environment file
+ARG ENV_FILE=.env.prod
 
 # Set working directory
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Install dependencies first (for better caching)
 COPY package*.json ./
-RUN pnpm install
+RUN npm install
 
-# Copy source code
+# Copy source code and environment file
 COPY . .
+COPY ${ENV_FILE} .env
 
 # Build for production
-RUN pnpm build
+RUN npm run build
+
+# Production stage with nginx
+FROM nginx:alpine AS production
+
+# Copy built files from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose port
-EXPOSE 5173
+EXPOSE 3000
 
-# Start the development server
-CMD ["pnpm", "dev", "--host"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

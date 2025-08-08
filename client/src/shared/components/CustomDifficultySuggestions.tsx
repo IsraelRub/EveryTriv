@@ -87,7 +87,7 @@ export default function CustomDifficultySuggestions({
 
         <div>
           <small className='text-white-50'>
-            ✨ Examples: "university level quantum physics", "elementary school math", 
+             Examples: "university level quantum physics", "elementary school math", 
             "professional chef techniques", "beginner yoga poses"
           </small>
         </div>

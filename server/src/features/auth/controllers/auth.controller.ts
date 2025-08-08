@@ -1,9 +1,11 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, Res} from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { LoginDto, RegisterDto } from '../../../shared/types/auth.types';
 import { UserService } from '../../user/services/user.service';
 import { AuthGuard } from '../guards/auth.guard';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import * as bcrypt from 'bcrypt';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -29,7 +31,7 @@ export class AuthController {
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const user = await this.userService.createUser({
+    await this.userService.createUser({
       username: registerDto.username,
       password_hash: hashedPassword,
     });
@@ -39,7 +41,7 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(AuthGuard)
-  async getProfile(@Request() req) {
+  async getProfile(@Request() req: Request & { user: any }) {
     return req.user;
   }
 
@@ -54,5 +56,28 @@ export class AuthController {
     @Body('password') password: string,
   ) {
     return this.authService.resetPassword(token, password);
+  }
+
+  @Get('google')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuth() {
+    // Initiates Google OAuth flow
+  }
+
+  @Get('google/callback')
+  @UseGuards(PassportAuthGuard('google'))
+  async googleAuthCallback(@Request() req: Request & { user: any }, @Res() res: Response) {
+    // Generate JWT for the authenticated user
+    const token = await this.authService.generateJWT(req.user);
+    
+    // Redirect to frontend with token
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    res.redirect(`${clientUrl}/auth/callback?token=${token}`);
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard)
+  async getCurrentUser(@Request() req: Request & { user: any }) {
+    return req.user;
   }
 }

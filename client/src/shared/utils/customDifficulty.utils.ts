@@ -197,7 +197,7 @@ export const getCustomDifficultySuggestions = (topic?: string): string[] => {
   ];
 };
 
-import { EasyIcon, MediumIcon, HardIcon, CustomIcon } from '../components/icons';
+import { EasyIcon, MediumIcon, HardIcon, CustomIcon } from '../styles/icons';
 import { FC } from 'react';
 
 // Function to get icon component by difficulty

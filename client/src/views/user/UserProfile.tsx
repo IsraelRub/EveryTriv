@@ -1,10 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-import { setUsername, setAvatar, setUser } from '../../redux/features/userSlice';
+import { setUsername, setAvatar } from '../../redux/features/userSlice';
 import { RootState } from '../../redux/store';
-import { getOrCreateUserId } from '../../shared/services/user.util';
-import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '../../shared/components/ui';
+import { getOrCreateUserId } from '../../shared/utils/user.util';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '../../shared/styles/ui';
 
 export default function UserProfile() {
   const [userId] = useState(() => getOrCreateUserId());
@@ -18,10 +18,8 @@ export default function UserProfile() {
   useEffect(() => {
     // Fetch user profile if exists
     axios.get(`/user/profile?userId=${userId}`).then(res => {
-      dispatch(setUser({
-        username: res.data.username || '',
-        avatar: res.data.avatar || '',
-      }));
+      dispatch(setUsername(res.data.username || ''));
+      dispatch(setAvatar(res.data.avatar || ''));
     }).catch(() => {});
   }, [userId, dispatch]);
 
@@ -48,22 +46,27 @@ export default function UserProfile() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="flex flex-col space-y-4">
-            <Input
-              label="Username"
-              value={username}
-              onChange={e => dispatch(setUsername(e.target.value))}
-              required
-            />
-            <Input
-              label="Avatar URL"
-              value={avatar}
-              onChange={e => dispatch(setAvatar(e.target.value))}
-              placeholder="https://..."
-            />
+            <div className="flex flex-col space-y-2">
+              <label htmlFor="username" className="text-sm font-medium">Username</label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => dispatch(setUsername(e.target.value))}
+                required
+              />
+            </div>
+            <div className="flex flex-col space-y-2">
+              <label htmlFor="avatar" className="text-sm font-medium">Avatar URL</label>
+              <Input
+                id="avatar"
+                value={avatar}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => dispatch(setAvatar(e.target.value))}
+                placeholder="https://..."
+              />
+            </div>
             <Button
               type="submit"
               variant="primary"
-              isLoading={loading}
               disabled={loading}
               className="w-full"
             >

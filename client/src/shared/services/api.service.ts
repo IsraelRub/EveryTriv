@@ -1,22 +1,77 @@
 import axios, { AxiosError } from 'axios';
-import { TriviaQuestion, ApiResponse, TriviaRequest, TriviaHistoryRequest, DifficultyStats, CustomDifficultySuggestions } from '@/shared/types';
+import { TriviaQuestion, ApiResponse } from '@/shared/types';
+import logger from './logger.service';
 
+// Additional types for API
+interface TriviaRequest {
+  topic: string;
+  difficulty: string;
+  userId: string;
+}
 
+interface TriviaHistoryRequest {
+  topic: string;
+  difficulty: string;
+  question: string;
+  answers: Array<{ text: string; isCorrect: boolean }>;
+  userId: string;
+  isCorrect: boolean;
+}
+
+interface DifficultyStats {
+  [key: string]: { correct: number; total: number };
+}
+
+interface CustomDifficultySuggestions {
+  suggestions: string[];
+  categories: string[];
+}
 
 class ApiService {
-	private baseURL = '/api';
+	private baseURL = '/v1';
 	private retryAttempts = 3;
 	private retryDelay = 1000;
 
-	private async handleRequest<T>(request: () => Promise<ApiResponse<T>>, attempts = this.retryAttempts): Promise<T> {
+	private async handleRequest<T>(
+		request: () => Promise<ApiResponse<T>>, 
+		attempts = this.retryAttempts,
+		operationName = 'API Request'
+	): Promise<T> {
+		const startTime = Date.now();
+		
 		try {
+			logger.debug(`Starting ${operationName}`, { attempts: this.retryAttempts - attempts + 1 });
 			const response = await request();
+			const duration = Date.now() - startTime;
+			
+			logger.api(`${operationName} completed`, {
+				statusCode: response.status,
+				duration: `${duration}ms`,
+				success: true,
+				attempts: this.retryAttempts - attempts + 1
+			});
+			
 			return response.data;
 		} catch (error) {
+			const duration = Date.now() - startTime;
+			
 			if (attempts > 0 && this.shouldRetry(error)) {
+				logger.warn(`Retrying ${operationName}`, { 
+					attemptsLeft: attempts - 1,
+					duration,
+					error: error instanceof Error ? error.message : 'Unknown error'
+				});
+				
 				await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
-				return this.handleRequest(request, attempts - 1);
+				return this.handleRequest(request, attempts - 1, operationName);
 			}
+			
+			logger.error(`Failed ${operationName}`, {
+				duration,
+				totalAttempts: this.retryAttempts - attempts + 1,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+			
 			throw this.handleError(error as AxiosError);
 		}
 	}
@@ -61,28 +116,28 @@ class ApiService {
 				headers: { 'Content-Type': 'application/json' },
 			});
 			return { data: response.data, status: response.status };
-		});
+		}, this.retryAttempts, `GET Trivia [${request.topic}/${request.difficulty}]`);
 	}
 
 	async saveHistory(data: TriviaHistoryRequest): Promise<void> {
 		return this.handleRequest(async () => {
 			const response = await axios.post(`${this.baseURL}/trivia/history`, data);
 			return { data: response.data, status: response.status };
-		});
+		}, this.retryAttempts, 'Save Game History');
 	}
 
 	async getUserScore(userId: string): Promise<number> {
 		return this.handleRequest(async () => {
 			const response = await axios.get(`${this.baseURL}/trivia/score?userId=${userId}`);
 			return { data: response.data, status: response.status };
-		});
+		}, this.retryAttempts, `GET User Score [${userId}]`);
 	}
 
 	async getLeaderboard(limit: number = 10): Promise<Array<{ userId: string; score: number }>> {
 		return this.handleRequest(async () => {
 			const response = await axios.get(`${this.baseURL}/trivia/leaderboard?limit=${limit}`);
 			return { data: response.data, status: response.status };
-		});
+		}, this.retryAttempts, `GET Leaderboard [limit=${limit}]`);
 	}
 
 	// נקודות קצה חדשות לרמות קושי מותאמות

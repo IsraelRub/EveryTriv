@@ -1,5 +1,6 @@
-import { Achievement, GameState } from '../types';
+import { Achievement, GameStats } from '../types';
 import { motion } from 'framer-motion';
+import { achievementIcons } from '../styles/icons';
 
 interface AchievementsProps {
 	stats: GameStats;
@@ -16,6 +17,7 @@ export default function Achievements({ stats, achievements }: AchievementsProps)
 						const progress = achievement.progress(stats);
 						const isCompleted = achievement.condition(stats);
 						const progressPercent = Math.min((progress / achievement.target) * 100, 100);
+						const AchievementIcon = achievementIcons[achievement.icon];
 
 						return (
 							<motion.div
@@ -28,7 +30,9 @@ export default function Achievements({ stats, achievements }: AchievementsProps)
 								<div className={`card ${isCompleted ? 'bg-success' : 'bg-secondary'} bg-opacity-25`}>
 									<div className='card-body'>
 										<div className='d-flex align-items-center gap-2 mb-2'>
-											<span className='fs-4'>{achievement.icon}</span>
+											<span className='fs-4'>
+												{AchievementIcon && <AchievementIcon size={24} />}
+											</span>
 											<h6 className='card-title mb-0'>{achievement.title}</h6>
 											{isCompleted && <span className='badge bg-success ms-auto'>Completed!</span>}
 										</div>

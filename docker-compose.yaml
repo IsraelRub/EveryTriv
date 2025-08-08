@@ -1,24 +1,20 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
-  db:
+  postgres:
     image: postgres:16-alpine
-    container_name: everytriv-db
+    container_name: everytriv-postgres
     restart: unless-stopped
-    env_file:
-      - .env.local
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-everytriv_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: everytriv_production
+      POSTGRES_USER: everytriv_prod
+      POSTGRES_PASSWORD: EvTr!v_Pr0d_P@ssw0rd_2025_S3cur3!
     ports:
       - '5432:5432'
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ./server/database/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U everytriv_prod -d everytriv_production"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,40 +26,16 @@ services:
     image: redis:7-alpine
     container_name: everytriv-redis
     restart: unless-stopped
+    command: redis-server --requirepass R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
     ports:
       - '6379:6379'
     volumes:
       - redis_data:/data
-    networks:
-      - everytriv-network
-
-  # pgAdmin - Web-based PostgreSQL administration
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: everytriv-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@everytriv.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "8080:80"
-    depends_on:
-      - db
-    networks:
-      - everytriv-network
-
-  # Redis Commander - Web-based Redis administration
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: everytriv-redis-commander
-    restart: unless-stopped
-    environment:
-      - REDIS_HOSTS=local:redis:6379
-    ports:
-      - "8081:8081"
-    depends_on:
-      - redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - everytriv-network
 
@@ -74,30 +46,17 @@ services:
       dockerfile: Dockerfile
     container_name: everytriv-server
     restart: unless-stopped
-    environment:
-      - NODE_ENV=development
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASS=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-everytriv_db}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    env_file:
+      - ./server/.env.prod
     ports:
-      - '3000:3000'
+      - '3001:3001'
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
-      - ./server:/app
-      - /app/node_modules
-    command: npm run start:dev
+      - ./server/logs:/app/logs
     networks:
       - everytriv-network
 
@@ -106,22 +65,38 @@ services:
     build: 
       context: ./client
       dockerfile: Dockerfile
+      args:
+        - ENV_FILE=.env.prod
     container_name: everytriv-client
     restart: unless-stopped
     ports:
-      - '5173:5173'
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    command: npm run dev -- --host
+      - '3000:3000'
     depends_on:
       - server
     networks:
       - everytriv-network
 
+  # WebDB - Modern web-based database client
+  webdb:
+    image: webdb/app:latest
+    container_name: everytriv-webdb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:22071:22071"
+    volumes:
+      - webdb_data:/usr/src/app/static/version
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - everytriv-network
+
 volumes:
-  db_data:
+  postgres_data:
   redis_data:
+  webdb_data:
 
 networks:
   everytriv-network:

@@ -1,30 +1,45 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from 'src/features/auth/services/auth.service';
 
+/**
+ * Middleware that checks if the user is logged in
+ * As shown in the architecture diagram ("auth - if the user login or not")
+ * This middleware doesn't block requests, it just identifies if user is logged in
+ */
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(AuthMiddleware.name);
   constructor(private readonly authService: AuthService) {}
 
-  async use(req: Request, res: Response, next: NextFunction) {
+  async use(req: Request & { user?: any }, _: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     
+    // If no auth header, user is not logged in - continue without setting user
     if (!authHeader) {
-      throw new UnauthorizedException('No token provided');
+      next();
+      return;
     }
 
     const [type, token] = authHeader.split(' ');
     
+    // Invalid token type - continue without setting user
     if (type !== 'Bearer') {
-      throw new UnauthorizedException('Invalid token type');
+      this.logger.debug('Invalid token type');
+      next();
+      return;
     }
 
     try {
+      // If token is valid, set user information on the request
       const decoded = await this.authService.verifyToken(token);
       req['user'] = decoded;
-      next();
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      // Invalid token - continue without setting user
+      this.logger.debug('Invalid token');
     }
+    
+    // Always proceed to next middleware/controller
+    next();
   }
 }

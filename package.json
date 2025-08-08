@@ -1,0 +1,30 @@
+{
+  "name": "everytriv",
+  "version": "1.0.0",
+  "description": "EveryTriv - Full Stack Trivia Application",
+  "private": true,
+  "scripts": {
+    "install:all": "npm run install:server && npm run install:client",
+    "install:server": "cd server && npm install",
+    "install:client": "cd client && npm install",
+    "build:all": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "clean:all": "npm run clean:server && npm run clean:client",
+    "clean:server": "cd server && npm run clean",
+    "clean:client": "cd client && npm run clean",
+    "start:server": "cd server && npm run start",
+    "start:client": "cd client && npm run start",
+    "start:dev:server": "cd server && npm run start:dev",
+    "start:prod:server": "cd server && npm run start:prod",
+    "test:all": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm run test",
+    "test:client": "cd client && npm run test",
+    "webdb:install": "npm install -g @webdb/cli",
+    "webdb:start": "webdb --port 22071 --host 127.0.0.1",
+    "webdb:start:public": "webdb --port 22071",
+    "db:admin": "npm run webdb:start"
+  },
+  "dependencies": {
+  }
+}

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ScoringSystemProps } from '../types';
+import { ScoringSystemProps, SCORING_DEFAULTS } from '../types';
 
 interface ScoreStats {
   percentage: number;
@@ -23,27 +23,14 @@ const getDifficultyDisplayName = (difficulty: string) => {
   }
 };
 
-// פונקציה לקבלת צבע לפי רמת קושי
-const getDifficultyColor = (difficulty: string) => {
-  switch (difficulty) {
-    case 'easy':
-      return 'bg-success';
-    case 'medium':
-      return 'bg-warning';
-    case 'hard':
-      return 'bg-danger';
-    case 'custom':
-      return 'bg-info';
-    default:
-      return 'bg-primary';
-  }
-};
-
 export default function ScoringSystem({ 
   score, 
   total, 
   topicsPlayed, 
-  difficultyStats 
+  difficultyStats,
+  streak = SCORING_DEFAULTS.STREAK,
+  difficulty = SCORING_DEFAULTS.DIFFICULTY,
+  answerCount = SCORING_DEFAULTS.ANSWER_COUNT
 }: ScoringSystemProps) {
   const stats = useMemo(() => {
     const gradeRanges = [
@@ -100,203 +87,207 @@ export default function ScoringSystem({
 
   if (total === 0) {
     return (
-      <div className="mt-4 text-center">
-        <div className="card bg-dark text-white">
-          <div className="card-body">
-            <h5 className="card-title">🎯 Ready to Start?</h5>
-            <p className="card-text">
-              Generate your first trivia question to see your statistics here!
-            </p>
-            <small className="text-white-50">
-              💡 Try different difficulty levels including custom descriptions
-            </small>
-          </div>
+      <div className="mt-6">
+        <div className="glass-morphism rounded-lg p-6 text-center">
+          <h3 className="text-xl font-semibold text-white mb-4">🎯 Ready to Start?</h3>
+          <p className="text-white/80 mb-2">
+            Generate your first trivia question to see your statistics here!
+          </p>
+          <p className="text-white/60 text-sm">
+            💡 Try different difficulty levels including custom descriptions
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-4 d-flex flex-column gap-3">
-      {/* תוצאה כללית */}
-      <div className="d-flex flex-column gap-3">
-        <div className="d-flex align-items-center gap-3 flex-wrap">
-          <div className="text-white">
-            <span className="fs-5 fw-semibold">Total Score: </span>
-            <span className={`badge ${stats.color} fs-5`}>{score}</span>
+    <div className="mt-6 space-y-6">
+      {/* Overall Score Summary */}
+      <div className="glass-morphism rounded-lg p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <div className={`text-2xl font-bold text-white mb-1`}>
+              {score}
+            </div>
+            <div className="text-white/70 text-sm">Total Score</div>
           </div>
-          <div className="text-white">
-            <span className="fs-5 fw-semibold">Grade: </span>
-            <span className={`badge ${stats.color} fs-5`}>{stats.grade} ({stats.percentage.toFixed(1)}%)</span>
+          <div>
+            <div className={`text-2xl font-bold mb-1`} style={{ color: stats.color.includes('success') ? '#10b981' : stats.color.includes('info') ? '#06b6d4' : stats.color.includes('warning') ? '#f59e0b' : '#ef4444' }}>
+              {stats.grade}
+            </div>
+            <div className="text-white/70 text-sm">{stats.percentage.toFixed(1)}%</div>
           </div>
-          <div className="text-white">
-            <span className="fs-5 fw-semibold">Questions: </span>
-            <span className="badge bg-secondary fs-5">{total}</span>
+          <div>
+            <div className="text-2xl font-bold text-white mb-1">
+              {total}
+            </div>
+            <div className="text-white/70 text-sm">Questions</div>
           </div>
-          <div className="text-white">
-            <span className="fs-5 fw-semibold">Current Streak: </span>
-            <span className={`badge ${streak > 0 ? 'bg-warning' : 'bg-secondary'} fs-5`}>{streak}</span>
+          <div>
+            <div className={`text-2xl font-bold mb-1 ${streak > 0 ? 'text-yellow-400' : 'text-white/60'}`}>
+              {streak}
+            </div>
+            <div className="text-white/70 text-sm">Streak</div>
           </div>
         </div>
         
-        <div className="card bg-dark text-white">
-          <div className="card-body">
-            <h6 className="card-title">Score Multipliers</h6>
-            <div className="d-flex gap-3 flex-wrap">
-              <div>
-                <small className="text-white-50">Base Points:</small>
-                <div className="badge bg-primary">100</div>
+        {/* Score Multipliers */}
+        <div className="mt-6 pt-6 border-t border-white/20">
+          <h4 className="text-white font-semibold mb-3">Score Multipliers</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="text-center">
+              <div className="text-blue-400 font-medium">Base Points</div>
+              <div className="text-white">100</div>
+            </div>
+            <div className="text-center">
+              <div className="text-purple-400 font-medium">Difficulty</div>
+              <div className="text-white">
+                {(() => {
+                  switch(difficulty) {
+                    case 'easy': return '1x';
+                    case 'medium': return '1.5x';
+                    case 'hard': return '2x';
+                    default: return '1x';
+                  }
+                })()}
               </div>
-              <div>
-                <small className="text-white-50">Difficulty:</small>
-                <div className="badge bg-info">
-                  {(() => {
-                    switch(difficulty) {
-                      case 'easy': return '1x';
-                      case 'medium': return '1.5x';
-                      case 'hard': return '2x';
-                      default: return '1x';
-                    }
-                  })()}
-                </div>
+            </div>
+            <div className="text-center">
+              <div className="text-green-400 font-medium">Options</div>
+              <div className="text-white">
+                {(() => {
+                  switch(answerCount) {
+                    case 3: return '1x';
+                    case 4: return '1.2x';
+                    case 5: return '1.4x';
+                    default: return '1x';
+                  }
+                })()}
               </div>
-              <div>
-                <small className="text-white-50">Options:</small>
-                <div className="badge bg-success">
-                  {(() => {
-                    const count = trivia?.answers?.length || 3;
-                    switch(count) {
-                      case 3: return '1x';
-                      case 4: return '1.2x';
-                      case 5: return '1.4x';
-                      default: return '1x';
-                    }
-                  })()}
-                </div>
-              </div>
-              <div>
-                <small className="text-white-50">Streak:</small>
-                <div className="badge bg-warning">
-                  {(1 + (Math.min(streak, 10) * 0.1)).toFixed(1)}x
-                </div>
+            </div>
+            <div className="text-center">
+              <div className="text-yellow-400 font-medium">Streak</div>
+              <div className="text-white">
+                {(1 + (Math.min(streak, 10) * 0.1)).toFixed(1)}x
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="row g-3">
-        {/* נושאים מובילים */}
-        <div className="col-12 col-lg-6">
-          <div className="card bg-dark text-white h-100">
-            <div className="card-body">
-              <h5 className="card-title">
-                📚 Top Topics
-                <span className="badge bg-primary ms-2">{Object.keys(topicsPlayed).length}</span>
-              </h5>
-              {topTopics.length > 0 ? (
-                <div className="d-flex flex-wrap gap-2">
-                  {topTopics.map(({ topic, count }) => (
-                    <span key={topic} className="badge bg-primary">
-                      {topic}: {count} time{count !== 1 ? 's' : ''}
+      {/* Detailed Statistics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Topics */}
+        <div className="glass-morphism rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-white font-semibold">📚 Top Topics</h4>
+            <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-sm">
+              {Object.keys(topicsPlayed).length}
+            </span>
+          </div>
+          {topTopics.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {topTopics.map(({ topic, count }) => (
+                <span key={topic} className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm border border-blue-400/30">
+                  {topic}: {count} time{count !== 1 ? 's' : ''}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/60">No topics played yet</p>
+          )}
+        </div>
+
+        {/* Success Rates by Difficulty */}
+        <div className="glass-morphism rounded-lg p-6">
+          <h4 className="text-white font-semibold mb-4">🎯 Success Rates by Difficulty</h4>
+          {Object.keys(difficultyRates).length > 0 ? (
+            <div className="space-y-3">
+              {Object.entries(difficultyRates)
+                .sort(([,a], [,b]) => b - a)
+                .map(([diff, rate]) => (
+                <div key={diff} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      diff === 'easy' ? 'bg-green-500/20 text-green-300 border border-green-400/30' :
+                      diff === 'medium' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/30' :
+                      diff === 'hard' ? 'bg-red-500/20 text-red-300 border border-red-400/30' :
+                      'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                    }`}>
+                      {getDifficultyDisplayName(diff)}
                     </span>
-                  ))}
+                    <span className="text-white/80 text-sm">
+                      {difficultyStats[diff]?.correct || 0}/{difficultyStats[diff]?.total || 0}
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        diff === 'easy' ? 'bg-green-500' :
+                        diff === 'medium' ? 'bg-yellow-500' :
+                        diff === 'hard' ? 'bg-red-500' :
+                        'bg-blue-500'
+                      }`}
+                      style={{ width: `${rate}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-right text-white/70 text-sm">
+                    {rate.toFixed(1)}%
+                  </div>
                 </div>
-              ) : (
-                <p className="text-white-50 mb-0">No topics played yet</p>
-              )}
+              ))}
             </div>
-          </div>
-        </div>
-
-        {/* שיעורי הצלחה לפי קושי */}
-        <div className="col-12 col-lg-6">
-          <div className="card bg-dark text-white h-100">
-            <div className="card-body">
-              <h5 className="card-title">🎯 Success Rates by Difficulty</h5>
-              {Object.keys(difficultyRates).length > 0 ? (
-                <div className="d-flex flex-column gap-2">
-                  {Object.entries(difficultyRates)
-                    .sort(([,a], [,b]) => b - a) // מיון לפי שיעור הצלחה
-                    .map(([diff, rate]) => (
-                    <div key={diff} className="d-flex align-items-center gap-2">
-                      <span className={`badge ${getDifficultyColor(diff)} text-white`} style={{minWidth: '70px'}}>
-                        {getDifficultyDisplayName(diff)}
-                      </span>
-                      <div className="progress flex-grow-1" style={{ height: '20px' }}>
-                        <div 
-                          className={`progress-bar ${getDifficultyColor(diff)}`}
-                          role="progressbar"
-                          style={{ width: `${rate}%` }}
-                          aria-valuenow={rate}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          {rate.toFixed(1)}%
-                        </div>
-                      </div>
-                      <small className="text-white-50" style={{minWidth: '50px'}}>
-                        ({difficultyStats[diff]?.correct || 0}/{difficultyStats[diff]?.total || 0})
-                      </small>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-white-50 mb-0">No difficulty stats yet</p>
-              )}
-            </div>
-          </div>
+          ) : (
+            <p className="text-white/60">No difficulty stats yet</p>
+          )}
         </div>
       </div>
 
-      {/* סטטיסטיקות מיוחדות לרמות קושי מותאמות */}
+      {/* Custom Difficulty Stats */}
       {customDifficultyStats && (
-        <div className="card bg-dark text-white">
-          <div className="card-body">
-            <h5 className="card-title">
-              🎨 Custom Difficulty Performance
-            </h5>
-            <div className="row g-3">
-              <div className="col-6 col-md-3">
-                <div className="text-center">
-                  <div className="fs-4 fw-bold text-info">{customDifficultyStats.total}</div>
-                  <small className="text-white-50">Questions</small>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="text-center">
-                  <div className="fs-4 fw-bold text-success">{customDifficultyStats.correct}</div>
-                  <small className="text-white-50">Correct</small>
-                </div>
-              </div>
-              <div className="col-12 col-md-6">
-                <div className="text-center">
-                  <div className="fs-4 fw-bold text-warning">{customDifficultyStats.rate.toFixed(1)}%</div>
-                  <small className="text-white-50">Success Rate</small>
-                </div>
-              </div>
+        <div className="glass-morphism rounded-lg p-6">
+          <h4 className="text-white font-semibold mb-4">🎨 Custom Difficulty Performance</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-blue-400">{customDifficultyStats.total}</div>
+              <div className="text-white/70 text-sm">Questions</div>
             </div>
-            <small className="text-white-50 mt-2 d-block">
-              💡 Custom difficulties let you challenge yourself with specific knowledge areas
-            </small>
+            <div>
+              <div className="text-2xl font-bold text-green-400">{customDifficultyStats.correct}</div>
+              <div className="text-white/70 text-sm">Correct</div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-3xl font-bold text-yellow-400">{customDifficultyStats.rate.toFixed(1)}%</div>
+              <div className="text-white/70 text-sm">Success Rate</div>
+            </div>
           </div>
+          <p className="text-white/60 text-sm mt-4 text-center">
+            💡 Custom difficulties let you challenge yourself with specific knowledge areas
+          </p>
         </div>
       )}
 
-      {/* הודעת עידוד */}
+      {/* Encouragement Messages */}
       {stats.percentage >= 80 && (
-        <div className="alert alert-success text-center">
-          <strong>🎉 Excellent work!</strong> You're doing great with a {stats.percentage.toFixed(1)}% success rate!
+        <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-4 text-center">
+          <div className="text-green-300 font-semibold">
+            🎉 Excellent work! You're doing great with a {stats.percentage.toFixed(1)}% success rate!
+          </div>
         </div>
       )}
       {stats.percentage >= 60 && stats.percentage < 80 && (
-        <div className="alert alert-info text-center">
-          <strong>👍 Good job!</strong> Keep it up! Try some custom difficulty levels to challenge yourself more.
+        <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4 text-center">
+          <div className="text-blue-300 font-semibold">
+            👍 Good job! Keep it up! Try some custom difficulty levels to challenge yourself more.
+          </div>
         </div>
       )}
       {stats.percentage < 60 && stats.percentage > 0 && (
-        <div className="alert alert-warning text-center">
-          <strong>💪 Keep trying!</strong> Consider starting with easier topics or custom difficulty descriptions that match your knowledge level.
+        <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-lg p-4 text-center">
+          <div className="text-yellow-300 font-semibold">
+            💪 Keep trying! Consider starting with easier topics or custom difficulty descriptions that match your knowledge level.
+          </div>
         </div>
       )}
     </div>

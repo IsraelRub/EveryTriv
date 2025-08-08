@@ -35,8 +35,12 @@ export interface TriviaGameState {
 export interface User {
   id: string;
   username: string;
+  email: string;
+  fullName?: string;
   avatar?: string;
   score: number;
+  credits: number;
+  googleId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +48,7 @@ export interface User {
 export interface UserState {
   username: string;
   avatar: string;
+  credits: number;
 }
 
 export interface UserStats {
@@ -61,7 +66,7 @@ export interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: string;
+  icon: 'first_correct' | 'master_easy' | 'topic_explorer' | 'streak_master' | 'hard_champion';
   condition: (stats: GameStats) => boolean;
   progress: (stats: GameStats) => number;
   target: number;
@@ -82,12 +87,28 @@ export interface GameStats {
 export interface LeaderboardEntry {
   userId: string;
   username: string;
-  score: number;
-  rank: number;
+  totalScore: number;
+  totalGames: number;
+  averageScore: number;
+  rank?: number;
 }
 
 export interface LeaderboardProps {
   userId: string;
+}
+
+// Game History types
+export interface GameHistoryEntry {
+  id: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  difficulty: string;
+  topic?: string;
+  gameMode: 'time-limited' | 'question-limited' | 'unlimited';
+  timeSpent?: number;
+  creditsUsed: number;
+  createdAt: Date;
 }
 
 // API types
@@ -121,11 +142,32 @@ export interface GameState {
   score: number;
   total: number;
   selected: number | null;
+  streak: number;
   stats: {
     topicsPlayed: Record<string, number>;
     successRateByDifficulty: Record<string, { correct: number; total: number }>;
   };
+  gameMode: {
+    mode: 'time-limited' | 'question-limited' | 'unlimited';
+    timeLimit?: number;  // Time in seconds for time-limited mode
+    questionLimit?: number; // Number of questions for question-limited mode
+    timeRemaining?: number; // Seconds remaining in time-limited mode
+    questionsRemaining?: number; // Questions remaining in question-limited mode
+    isGameOver: boolean;
+    timer: {
+      isRunning: boolean;
+      startTime: number | null;
+      timeElapsed: number;
+    }
+  };
 }
+
+// Default values for scoring system
+export const SCORING_DEFAULTS = {
+  STREAK: 0,
+  DIFFICULTY: 'easy',
+  ANSWER_COUNT: 4
+} as const;
 
 // Component prop types
 export interface ScoringSystemProps {
@@ -133,6 +175,9 @@ export interface ScoringSystemProps {
   total: number;
   topicsPlayed: Record<string, number>;
   difficultyStats: Record<string, { correct: number; total: number }>;
+  streak?: number;
+  difficulty?: string;
+  answerCount?: number;
 }
 
 export interface TriviaFormProps {
@@ -165,7 +210,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'first_correct',
     title: 'First Steps',
     description: 'Get your first correct answer',
-    icon: '🌟',
+    icon: 'first_correct',
     condition: (stats) => stats.correctAnswers >= 1,
     progress: (stats) => Math.min(stats.correctAnswers, 1),
     target: 1,
@@ -174,7 +219,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'master_easy',
     title: 'Easy Master',
     description: 'Get 90% success rate in Easy difficulty (min. 10 questions)',
-    icon: '🎯',
+    icon: 'master_easy',
     condition: (stats) => {
       const easy = stats.difficultyStats['easy'] || { correct: 0, total: 0 };
       return easy.total >= 10 && easy.correct / easy.total >= 0.9;
@@ -189,7 +234,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'topic_explorer',
     title: 'Topic Explorer',
     description: 'Play questions from 5 different topics',
-    icon: '🌍',
+    icon: 'topic_explorer',
     condition: (stats) => Object.keys(stats.topicsPlayed).length >= 5,
     progress: (stats) => Object.keys(stats.topicsPlayed).length,
     target: 5,
@@ -198,7 +243,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'streak_master',
     title: 'Streak Master',
     description: 'Get a streak of 5 correct answers',
-    icon: '🔥',
+    icon: 'streak_master',
     condition: (stats) => stats.streaks.best >= 5,
     progress: (stats) => stats.streaks.best,
     target: 5,
@@ -207,7 +252,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'hard_champion',
     title: 'Hard Champion',
     description: 'Answer 10 hard questions correctly',
-    icon: '👑',
+    icon: 'hard_champion',
     condition: (stats) => {
       const hard = stats.difficultyStats['hard'] || { correct: 0, total: 0 };
       return hard.correct >= 10;

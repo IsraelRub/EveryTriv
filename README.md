@@ -46,6 +46,43 @@ pnpm dev
 
 4. Visit http://localhost:5173 in your browser
 
+## Database Administration
+
+### WebDB - Modern Database Client
+
+EveryTriv includes WebDB for easy database management and querying.
+
+#### Option 1: Using Docker (Recommended)
+```bash
+# Local development
+docker-compose -f docker-compose.local.yaml up -d
+
+# Production
+docker-compose up -d
+```
+Then visit: http://127.0.0.1:22071
+
+#### Option 2: Using NPM
+```bash
+# Install WebDB globally
+npm run webdb:install
+
+# Start WebDB (localhost only)
+npm run webdb:start
+
+# Or use the shorthand
+npm run db:admin
+
+# Start WebDB (accessible from network)
+npm run webdb:start:public
+```
+
+#### Alternative Database Clients
+- **pgAdmin**: Available at http://localhost:8080 (local development only)
+  - Email: admin@everytriv.local
+  - Password: admin123
+- **Redis Commander**: Available at http://localhost:8081 (local development only)
+
 ## Tech Stack
 
 ### Frontend

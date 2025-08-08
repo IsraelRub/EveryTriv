@@ -1,5 +1,5 @@
+import { TriviaAnswer, TriviaQuestion } from '@/shared/types';
 import { motion } from 'framer-motion';
-import { TriviaQuestion, TriviaAnswer } from '../../shared/models/trivia.model';
 
 interface TriviaGameProps {
 	trivia: TriviaQuestion;

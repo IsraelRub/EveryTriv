@@ -1,51 +1,83 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Redis } from 'ioredis';
-import { InjectRedis } from '@nestjs/redis';
+import { LoggerService } from '../shared/modules/logger/logger.service';
+import { setupRedisLogger } from './redis.config';
 
 @Injectable()
 export class RedisService {
-  private readonly logger = new Logger(RedisService.name);
   private readonly defaultTTL = 3600; // 1 hour in seconds
 
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+  constructor(
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    private readonly logger: LoggerService
+  ) {
+    // Set up Redis event logging
+    setupRedisLogger(this.redis);
+  }
 
   private getKey(key: string): string {
     return `everytriv:${key}`;
   }
 
   async get<T>(key: string): Promise<T | null> {
+    const startTime = Date.now();
     try {
       const data = await this.redis.get(this.getKey(key));
+      const duration = Date.now() - startTime;
+      
+      if (duration > 100) { // Log slow operations
+        this.logger.logPerformance('redis.get', duration, { key });
+      }
+      
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      this.logger.error(`Error getting key ${key} from Redis:`, error);
+      this.logger.error(`Error getting key ${key} from Redis:`, { error, key });
       return null;
     }
   }
 
   async set<T>(key: string, value: T, ttl: number = this.defaultTTL): Promise<void> {
+    const startTime = Date.now();
     try {
       const data = JSON.stringify(value);
       await this.redis.set(this.getKey(key), data, 'EX', ttl);
+      
+      const duration = Date.now() - startTime;
+      if (duration > 100) { // Log slow operations
+        this.logger.logPerformance('redis.set', duration, { key, ttl });
+      }
     } catch (error) {
-      this.logger.error(`Error setting key ${key} in Redis:`, error);
+      this.logger.error(`Error setting key ${key} in Redis:`, { error, key, ttl });
     }
   }
 
   async del(key: string): Promise<void> {
+    const startTime = Date.now();
     try {
       await this.redis.del(this.getKey(key));
+      
+      const duration = Date.now() - startTime;
+      if (duration > 100) { // Log slow operations
+        this.logger.logPerformance('redis.del', duration, { key });
+      }
     } catch (error) {
-      this.logger.error(`Error deleting key ${key} from Redis:`, error);
+      this.logger.error(`Error deleting key ${key} from Redis:`, { error, key });
     }
   }
 
   async exists(key: string): Promise<boolean> {
+    const startTime = Date.now();
     try {
       const exists = await this.redis.exists(this.getKey(key));
+      
+      const duration = Date.now() - startTime;
+      if (duration > 100) { // Log slow operations
+        this.logger.logPerformance('redis.exists', duration, { key });
+      }
+      
       return exists === 1;
     } catch (error) {
-      this.logger.error(`Error checking existence of key ${key} in Redis:`, error);
+      this.logger.error(`Error checking existence of key ${key} in Redis:`, { error, key });
       return false;
     }
   }
@@ -55,17 +87,40 @@ export class RedisService {
     factory: () => Promise<T>,
     ttl: number = this.defaultTTL
   ): Promise<T> {
+    const startTime = Date.now();
     try {
       const cached = await this.get<T>(key);
       if (cached !== null) {
+        this.logger.debug(`Cache hit for key ${key}`, { 
+          context: 'Redis', 
+          key,
+          duration: Date.now() - startTime 
+        });
         return cached;
       }
 
+      this.logger.debug(`Cache miss for key ${key}`, { 
+        context: 'Redis', 
+        key 
+      });
+      
+      const factoryStartTime = Date.now();
       const value = await factory();
+      const factoryDuration = Date.now() - factoryStartTime;
+      
       await this.set(key, value, ttl);
+      
+      const totalDuration = Date.now() - startTime;
+      this.logger.logPerformance('redis.getOrSet', totalDuration, { 
+        key, 
+        factoryDuration,
+        ttl,
+        cacheHit: false 
+      });
+      
       return value;
     } catch (error) {
-      this.logger.error(`Error in getOrSet for key ${key}:`, error);
+      this.logger.error(`Error in getOrSet for key ${key}:`, { error, key, ttl });
       throw error;
     }
   }
@@ -116,11 +171,26 @@ export class RedisService {
   }
 
   async publish(channel: string, message: any): Promise<number> {
+    const startTime = Date.now();
     try {
       const data = JSON.stringify(message);
-      return await this.redis.publish(channel, data);
+      const result = await this.redis.publish(channel, data);
+      
+      const duration = Date.now() - startTime;
+      this.logger.debug(`Published to channel ${channel}`, { 
+        context: 'Redis', 
+        channel, 
+        subscribers: result,
+        duration
+      });
+      
+      return result;
     } catch (error) {
-      this.logger.error(`Error publishing to channel ${channel}:`, error);
+      this.logger.error(`Error publishing to channel ${channel}:`, { 
+        error, 
+        channel, 
+        messageType: typeof message 
+      });
       throw error;
     }
   }
@@ -128,18 +198,36 @@ export class RedisService {
   async subscribe(channel: string, callback: (message: any) => void): Promise<void> {
     try {
       await this.redis.subscribe(channel);
+      this.logger.info(`Subscribed to channel ${channel}`, { 
+        context: 'Redis', 
+        channel 
+      });
+      
       this.redis.on('message', (chan, message) => {
         if (chan === channel) {
+          const messageReceivedTime = Date.now();
           try {
             const data = JSON.parse(message);
             callback(data);
+            
+            const processingDuration = Date.now() - messageReceivedTime;
+            if (processingDuration > 100) { // Log slow message processing
+              this.logger.logPerformance('redis.messageProcessing', processingDuration, { 
+                channel,
+                messageSize: message.length 
+              });
+            }
           } catch (error) {
-            this.logger.error(`Error parsing message from channel ${channel}:`, error);
+            this.logger.error(`Error parsing message from channel ${channel}:`, { 
+              error, 
+              channel, 
+              messageSnippet: message.substring(0, 100) 
+            });
           }
         }
       });
     } catch (error) {
-      this.logger.error(`Error subscribing to channel ${channel}:`, error);
+      this.logger.error(`Error subscribing to channel ${channel}:`, { error, channel });
       throw error;
     }
   }
@@ -147,8 +235,12 @@ export class RedisService {
   async unsubscribe(channel: string): Promise<void> {
     try {
       await this.redis.unsubscribe(channel);
+      this.logger.info(`Unsubscribed from channel ${channel}`, { 
+        context: 'Redis', 
+        channel 
+      });
     } catch (error) {
-      this.logger.error(`Error unsubscribing from channel ${channel}:`, error);
+      this.logger.error(`Error unsubscribing from channel ${channel}:`, { error, channel });
       throw error;
     }
   }

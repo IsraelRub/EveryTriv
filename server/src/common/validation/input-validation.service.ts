@@ -62,7 +62,7 @@ export class InputValidationService {
       const cached = await this.redisService.get(cacheKey);
       
       if (cached) {
-        return JSON.parse(cached);
+        return JSON.parse(cached as string);
       }
 
       const response = await fetch('https://api.languagetool.org/v2/check', {

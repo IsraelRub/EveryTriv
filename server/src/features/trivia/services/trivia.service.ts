@@ -5,9 +5,10 @@ import { TriviaEntity } from "../../../shared/entities/trivia.entity";
 import { UserEntity } from "../../../shared/entities/user.entity";
 import { PriorityQueue } from "./priority-queue";
 import { RedisService } from "../../../config/redis.service";
-import { OpenAIProvider, AnthropicProvider } from "./llm.providers";
-import { LLMProvider } from "../../../shared/types/llm.types";
+import { OpenAIProvider, AnthropicProvider } from "./providers";
+import { LLMProvider } from "../types/trivia.types";
 import { APP_CONSTANTS } from "../../../constants/app.constants";
+import { TRIVIA_CONSTANTS } from "../constants";
 
 @Injectable()
 export class TriviaService {
@@ -35,13 +36,13 @@ export class TriviaService {
     return provider;
   }
 
-  async getTriviaQuestion(topic: string, difficulty: string, questionCount: number, userId?: string) {
+  async getTriviaQuestion(topic: string, difficulty: string, userId?: string) {
     // נטפל ברמת קושי מותאמת אישית
     const isCustomDifficulty = difficulty.startsWith(
-      APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
+      TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
     );
     const actualDifficulty = isCustomDifficulty
-      ? difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
+      ? difficulty.substring(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
       : difficulty;
 
     const cacheKey = `trivia:${topic}:${difficulty}`; // נשתמש ברמת הקושי המלאה לקאש
@@ -64,7 +65,7 @@ export class TriviaService {
 
     const cached = await this.redisService.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached);
+      return JSON.parse(cached as string);
     }
 
     const queueItemId = this.queue.enqueue({
@@ -88,10 +89,14 @@ export class TriviaService {
 
     await this.triviaRepo.save({
       ...question,
+      topic,
       difficulty, // נשמור את רמת הקושי המלאה (כולל custom:)
-      userId: null,
+      userId: '',
       isCorrect: false,
-    });
+      metadata: {
+        custom_difficulty_description: isCustomDifficulty ? actualDifficulty : undefined
+      }
+    } as TriviaEntity);
 
     this.queue.updateStatus(queueItemId, "completed");
     return question;
@@ -99,20 +104,20 @@ export class TriviaService {
 
   private calculatePriority(difficulty: string): number {
     // אם זה רמת קושי מותאמת, נעביר לפונקציה נפרדת
-    if (difficulty.startsWith(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
+    if (difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {
       return this.calculateCustomPriority(
-        difficulty.substring(APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
+        difficulty.substring(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length)
       );
     }
 
     switch (difficulty.toLowerCase()) {
       case "hard":
-        return APP_CONSTANTS.PRIORITIES.HIGH;
+        return TRIVIA_CONSTANTS.PRIORITIES.HIGH;
       case "medium":
-        return APP_CONSTANTS.PRIORITIES.MEDIUM;
+        return TRIVIA_CONSTANTS.PRIORITIES.MEDIUM;
       case "easy":
       default:
-        return APP_CONSTANTS.PRIORITIES.LOW;
+        return TRIVIA_CONSTANTS.PRIORITIES.LOW;
     }
   }
 
@@ -201,9 +206,9 @@ export class TriviaService {
       .getRawMany();
 
     return results.reduce(
-      (acc, row) => {
+      (acc: Record<string, { correct: number; total: number }>, row: any) => {
         const difficulty = row.difficulty.startsWith(
-          APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
+          TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
         )
           ? "custom"
           : row.difficulty;
@@ -331,7 +336,7 @@ export class TriviaService {
 
     const results = await queryBuilder
       .andWhere("difficulty LIKE :customPrefix", {
-        customPrefix: `${APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX}%`,
+        customPrefix: `${TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX}%`,
       })
       .select("difficulty")
       .addSelect("COUNT(*)", "usage_count")
@@ -342,7 +347,7 @@ export class TriviaService {
 
     return results.map((row) => ({
       difficulty: row.difficulty.substring(
-        APP_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length
+        TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX.length
       ),
       usageCount: parseInt(row.usage_count),
     }));

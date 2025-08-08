@@ -1,14 +1,54 @@
-import { RedisModuleOptions } from '@nestjs/redis';
+import { RedisOptions } from 'ioredis';
 import { config } from 'dotenv';
+import { log as logger } from '../shared/utils';
+import { REDIS_CONSTANTS } from '../constants';
 
 config();
 
-export const redisConfig: RedisModuleOptions = {
-  config: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: process.env.REDIS_PASSWORD,
-    db: 0,
+// Redis events handler for logging
+export const setupRedisLogger = (redisClient: any): void => {
+  redisClient.on('connect', () => {
+    logger.info('Redis client connecting', { 
+      context: 'Redis',
+      host: redisClient.options.host,
+      port: redisClient.options.port
+    });
+  });
+
+  redisClient.on('ready', () => {
+    logger.info('Redis client connected and ready', { 
+      context: 'Redis',
+      host: redisClient.options.host,
+      port: redisClient.options.port
+    });
+  });
+
+  redisClient.on('error', (err: Error) => {
+    logger.error(`Redis client error: ${err.message}`, { 
+      context: 'Redis',
+      error: err
+    });
+  });
+
+  redisClient.on('reconnecting', (delay: number) => {
+    logger.warn(`Redis client reconnecting in ${delay}ms`, { 
+      context: 'Redis',
+      delay
+    });
+  });
+
+  redisClient.on('end', () => {
+    logger.info('Redis client connection closed', { 
+      context: 'Redis'
+    });
+  });
+};
+
+export const redisConfig: RedisOptions = {
+    host: REDIS_CONSTANTS.CONNECTION.HOST,
+    port: REDIS_CONSTANTS.CONNECTION.PORT,
+    password: REDIS_CONSTANTS.CONNECTION.PASSWORD,
+    db: REDIS_CONSTANTS.CONNECTION.DB,
     keyPrefix: 'everytriv:',
     retryStrategy: (times: number) => {
       // Retry with exponential backoff
@@ -21,9 +61,8 @@ export const redisConfig: RedisModuleOptions = {
       return err.message.includes(targetError);
     },
     enableReadyCheck: true,
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: REDIS_CONSTANTS.CONNECTION.RECONNECT_ATTEMPTS,
     enableOfflineQueue: true,
     connectTimeout: 10000,
     commandTimeout: 5000,
-  },
-};
+  }

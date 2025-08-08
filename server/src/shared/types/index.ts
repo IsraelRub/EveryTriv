@@ -1,5 +1,4 @@
-// Re-export common types
-export * from '../../../client/src/shared/types';
+// Server types export
 
 // Server-specific types
 export type SupportedModel =

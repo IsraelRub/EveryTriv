@@ -6,9 +6,10 @@ Welcome to the EveryTriv documentation. This directory contains comprehensive do
 
 1. [Project Structure](./structure.md)
 2. [Development Guidelines](./development.md)
-3. [Features](./features/README.md)
-4. [API Documentation](./api/README.md)
-5. [Infrastructure](./infrastructure.md)
+3. [Database Management](./database-management.md)
+4. [Features](./features/README.md)
+5. [API Documentation](./api/README.md)
+6. [Infrastructure](./infrastructure.md)
 
 ## Quick Start
 

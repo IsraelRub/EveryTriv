@@ -6,7 +6,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { Response as ExpressResponse } from "express";
-import { HttpArgumentsHost } from "@nestjs/common/interfaces";
+import { log } from "../shared/utils/logger";
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -27,8 +27,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           : (exceptionResponse as any).message || message;
     }
 
-    // Log error for monitoring
-    console.error(`[Error] ${request.method} ${request.url}:`, exception);
+    // Log error using our simple logger
+    log.httpError(request.method, request.url, status, message, exception);
 
     response.status(status).json({
       status,

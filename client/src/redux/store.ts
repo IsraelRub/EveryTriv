@@ -3,6 +3,7 @@ import gameReducer from './features/gameSlice';
 import statsReducer from './features/statsSlice';
 import favoritesReducer from './features/favoritesSlice';
 import userReducer from './features/userSlice';
+import gameModeReducer from './features/gameModeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     stats: statsReducer,
     favorites: favoritesReducer,
     user: userReducer,
+    gameMode: gameModeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

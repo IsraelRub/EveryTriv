@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { PriorityQueue } from "./services/priority-queue";
+import { PriorityQueue } from "./services";
 
 @Module({
   providers: [

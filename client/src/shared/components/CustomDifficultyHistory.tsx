@@ -1,7 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useState, useEffect, createElement } from 'react';
 import { apiService } from '../services/api.service';
 import { displayDifficulty, getDifficultyIcon } from '../utils/customDifficulty.utils';
+import { Button, Modal } from '../styles/ui';
 
 interface CustomDifficultyHistoryProps {
   isVisible: boolean;
@@ -135,7 +136,7 @@ export default function CustomDifficultyHistory({
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span>{getDifficultyIcon(item.difficulty)}</span>
+                        {createElement(getDifficultyIcon(item.difficulty))}
                         <span className="font-medium text-primary-400">
                           {item.topic}
                         </span>
