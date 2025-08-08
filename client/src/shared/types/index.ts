@@ -1,3 +1,5 @@
+import { FormEvent } from "react";
+
 // Common types shared between client and server
 export type QuestionCount = 3 | 4 | 5;
 
@@ -188,7 +190,7 @@ export interface TriviaFormProps {
   onTopicChange: (topic: string) => void;
   onDifficultyChange: (difficulty: string) => void;
   onQuestionCountChange: (count: QuestionCount) => void;
-  onSubmit: (e: React.FormEvent) => Promise<void>;
+  onSubmit: (e: FormEvent) => Promise<void>;
   onAddFavorite: () => void;
 }
 

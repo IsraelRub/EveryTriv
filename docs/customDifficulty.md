@@ -35,7 +35,7 @@ EveryTriv is an intelligent trivia platform that allows users to generate questi
 
 ### Frontend (React)
 - **Framework**: React 18 with TypeScript
-- **Styling**: Bootstrap 5 + Custom CSS with glassmorphism effects
+- **Styling**: Tailwind CSS + Custom CSS with glassmorphism effects
 - **Animations**: Framer Motion
 - **State Management**: Redux Toolkit
 - **Routing**: React Router

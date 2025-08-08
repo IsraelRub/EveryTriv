@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { LeaderboardEntry } from '../types';
+import { FloatingCard } from './animations';
+import { useScrollAnimation } from '../hooks/useAdvancedAnimations';
+import { motion } from 'framer-motion';
 
 interface LeaderboardProps {
 	userId?: string;
@@ -10,6 +13,7 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 	const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string>('');
+	const { ref, isVisible } = useScrollAnimation();
 
 	useEffect(() => {
 		const fetchLeaderboard = async () => {
@@ -34,29 +38,40 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 
 	if (loading) {
 		return (
-			<div className='glass-morphism rounded-lg p-6 mt-6'>
-				<h3 className='text-xl font-semibold text-white mb-4'>🏆 Leaderboard</h3>
-				<div className="flex items-center justify-center py-8">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
-					<p className='text-white/80'>Loading...</p>
+			<FloatingCard>
+				<div className='glass-morphism rounded-lg p-6 mt-6'>
+					<h3 className='text-xl font-semibold text-white mb-4'>🏆 Leaderboard</h3>
+					<div className="flex items-center justify-center py-8">
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
+						<p className='text-white/80'>Loading...</p>
+					</div>
 				</div>
-			</div>
+			</FloatingCard>
 		);
 	}
 
 	if (error) {
 		return (
-			<div className='glass-morphism rounded-lg p-6 mt-6'>
+			<FloatingCard>
+				<div className='glass-morphism rounded-lg p-6 mt-6'>
 				<h3 className='text-xl font-semibold text-white mb-4'>🏆 Leaderboard</h3>
 				<div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4 text-center">
 					<p className='text-red-300'>{error}</p>
 				</div>
 			</div>
+			</FloatingCard>
 		);
 	}
 
 	return (
-		<div className='glass-morphism rounded-lg p-6 mt-6'>
+		<FloatingCard>
+			<motion.div 
+				ref={ref}
+				className='glass-morphism rounded-lg p-6 mt-6'
+				initial={{ opacity: 0, y: 50 }}
+				animate={isVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+				transition={{ duration: 0.6, ease: 'easeOut' }}
+			>
 			<h3 className='text-xl font-semibold text-white mb-6'>🏆 Leaderboard</h3>
 			{entries.length === 0 ? (
 				<div className="text-center py-8">
@@ -100,6 +115,7 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 					))}
 				</div>
 			)}
-		</div>
+		</motion.div>
+		</FloatingCard>
 	);
 }

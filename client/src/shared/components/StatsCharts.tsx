@@ -83,19 +83,19 @@ export default function StatsCharts({ topicsPlayed, difficultyStats }: StatsChar
 	};
 
 	return (
-		<div className='row g-4 mt-2'>
-			<div className='col-12 col-lg-8'>
-				<div className='card bg-dark text-white'>
-					<div className='card-body'>
-						<h5 className='card-title mb-4'>Topics Distribution</h5>
+		<div className='grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2'>
+			<div className='lg:col-span-2'>
+				<div className='bg-gray-800 text-white rounded-lg border border-gray-700'>
+					<div className='p-6'>
+						<h5 className='text-xl font-semibold mb-4'>Topics Distribution</h5>
 						<Bar data={topicChartData} options={chartOptions} />
 					</div>
 				</div>
 			</div>
-			<div className='col-12 col-lg-4'>
-				<div className='card bg-dark text-white'>
-					<div className='card-body'>
-						<h5 className='card-title mb-4'>Success Rate by Difficulty</h5>
+			<div className='lg:col-span-1'>
+				<div className='bg-gray-800 text-white rounded-lg border border-gray-700'>
+					<div className='p-6'>
+						<h5 className='text-xl font-semibold mb-4'>Success Rate by Difficulty</h5>
 						<Doughnut data={difficultyChartData} options={doughnutOptions} />
 					</div>
 				</div>

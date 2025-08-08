@@ -18,7 +18,6 @@ Lucide is our primary icon library, chosen for its:
 For specialized icons not available in Lucide, we use react-icons, which provides access to multiple icon sets including:
 - Font Awesome
 - Material Design Icons
-- Bootstrap Icons
 - And many more
 
 ## Usage Guidelines

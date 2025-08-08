@@ -1,14 +1,14 @@
 :root {
   --bs-body-color: #fff;
-  --bs-body-bg: linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --bs-body-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --secondary-gradient: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  --accent-gradient: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+  color: white;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
   min-height: 100vh;
   margin: 0;
 	font-family: 'Inter', 'Segoe UI', Arial, sans-serif;

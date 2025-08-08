@@ -42,18 +42,18 @@ export const displayDifficulty = (difficulty: string, maxLength: number = 50): s
 // פונקציה לקבלת צבע תג לפי רמת קושי
 export const getDifficultyBadgeClass = (difficulty: string): string => {
   if (isCustomDifficulty(difficulty)) {
-    return 'bg-info';
+    return 'bg-blue-500';
   }
   
   switch (difficulty.toLowerCase()) {
     case 'easy':
-      return 'bg-success';
+      return 'bg-green-500';
     case 'medium':
-      return 'bg-warning';
+      return 'bg-yellow-500';
     case 'hard':
-      return 'bg-danger';
+      return 'bg-red-500';
     default:
-      return 'bg-primary';
+      return 'bg-blue-600';
   }
 };
 

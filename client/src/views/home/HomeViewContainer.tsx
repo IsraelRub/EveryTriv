@@ -18,6 +18,8 @@ import { AnimatedBackground } from '@/shared/components';
 import { Button } from '@/shared/styles/ui';
 import { useGameMusic } from '../../shared/audio';
 import { useScoreAchievementSounds } from '../../shared/hooks/useScoreAchievementSounds';
+import { useAdvancedScoreAnimations } from '../../shared/hooks/useAdvancedAnimations';
+import { ConfettiEffect, PulseEffect, ShakeEffect, GlowEffect } from '@/shared/components/animations';
 import { selectGameMode, startGame, endGame } from '@/redux/features/gameModeSlice';
 
 const DEFAULT_FAVORITES = [
@@ -61,6 +63,9 @@ export default function HomeView() {
 	
 	// Use achievement sounds when score changes
 	useScoreAchievementSounds(gameState.score, gameState.total);
+	
+	// Use advanced score animations for all effects
+	const { effects, controls } = useAdvancedScoreAnimations(gameState.score, gameState.total);
 
 	const handleSpellCheck = async (text: string) => {
 		// TODO: Integrate with external spell-check API
@@ -80,7 +85,6 @@ export default function HomeView() {
 		try {
 			const checkedTopic = await handleSpellCheck(topic);
 
-			// שמירת רמת קושי מותאמת להיסטוריה
 			if (isCustomDifficulty(difficulty)) {
 				apiService.saveCustomDifficulty(checkedTopic, difficulty);
 			}
@@ -286,7 +290,7 @@ export default function HomeView() {
 	};
 
 	return (
-		<div className='min-vh-100 d-flex flex-column align-items-center justify-content-center p-4 position-relative'>
+		<div className='min-h-screen flex flex-col items-center justify-center p-4 relative'>
 			<AnimatedBackground>
 				<></>
 			</AnimatedBackground>
@@ -297,43 +301,43 @@ export default function HomeView() {
 			>
 				<Link
 					to='/profile'
-					className='position-fixed top-0 end-0 m-4 btn btn-primary rounded-pill shadow-lg fw-semibold'
+					className='fixed top-0 right-0 m-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full shadow-lg font-semibold transition-colors'
 				>
 					Profile
 				</Link>
 			</motion.div>
 			<motion.div
-				className='w-100 mw-xl bg-white bg-opacity-10 rounded shadow p-4 glass-morphism'
+				className='w-full max-w-4xl bg-white bg-opacity-10 rounded shadow p-4 glass-morphism'
 				initial={{ y: 50, opacity: 0, scale: 0.9 }}
 				animate={{ y: 0, opacity: 1, scale: 1 }}
 				transition={{ duration: 1, ease: 'easeOut' }}
 			>
 				<motion.h1
-					className='display-4 fw-bold text-center mb-4 text-white'
+					className='text-5xl font-bold text-center mb-4 text-white'
 					initial={{ y: -30, opacity: 0 }}
 					animate={{ y: 0, opacity: 1 }}
 					transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
 				>
 					EveryTriv
-					<small className='d-block fs-6 mt-2 text-white-50'>Smart Trivia Platform with Custom Difficulty Levels</small>
+					<small className='block text-base mt-2 text-white opacity-75'>Smart Trivia Platform with Custom Difficulty Levels</small>
 				</motion.h1>
 
 				{/* הצגת רמת הקושי הנוכחית עם כפתור היסטוריה */}
 				{difficulty && (
-					<div className='text-center mb-3 d-flex align-items-center justify-content-center gap-2'>
-						<span className='badge bg-info fs-6 px-3 py-2'>
-							<span className='me-1'>
+					<div className='text-center mb-3 flex items-center justify-center gap-2'>
+						<span className='bg-blue-500 text-white text-base px-3 py-2 rounded-lg'>
+							<span className='mr-1'>
 								{createElement(getDifficultyIcon(difficulty))}
 							</span>
 							Current: {topic || 'No topic'} - {getCurrentDifficultyDisplay()}
 						</span>
 						{isCustomDifficulty(difficulty) && (
 							<button
-								className='btn btn-outline-light btn-sm'
+								className='border border-white text-white hover:bg-white hover:text-gray-900 text-sm px-3 py-1 rounded transition-colors'
 								onClick={() => setShowHistory(true)}
 								title='View custom difficulty history'
 							>
-								<HistoryIcon size={14} className="me-1" /> History
+								<HistoryIcon size={14} className="mr-1" /> History
 							</button>
 						)}
 					</div>
@@ -357,7 +361,7 @@ export default function HomeView() {
 
 				{gameState.error && (
 					<motion.div
-						className='alert alert-danger mt-4'
+						className='bg-red-500 bg-opacity-20 border border-red-500 text-red-100 px-4 py-3 rounded mt-4'
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5 }}
@@ -403,12 +407,14 @@ export default function HomeView() {
 					/>
 				)}
 
-				<ScoringSystem
-					score={gameState.score}
-					total={gameState.total}
-					topicsPlayed={gameState.stats.topicsPlayed}
-					difficultyStats={gameState.stats.successRateByDifficulty}
-				/>
+				<motion.div animate={controls}>
+					<ScoringSystem
+						score={gameState.score}
+						total={gameState.total}
+						topicsPlayed={gameState.stats.topicsPlayed}
+						difficultyStats={gameState.stats.successRateByDifficulty}
+					/>
+				</motion.div>
 				<Leaderboard userId={userId} />
 
 				{/* רכיב היסטוריה לרמות קושי מותאמות */}
@@ -423,6 +429,28 @@ export default function HomeView() {
 					<GameModeSelectionContainer
 						onSelect={handleGameModeSelect}
 					/>
+				)}
+				
+				{/* Advanced Animation Effects */}
+				<ConfettiEffect isVisible={effects.confetti} />
+				{effects.pulse && (
+					<PulseEffect color="rgba(34, 197, 94, 0.3)">
+						<div className="fixed top-4 right-4 z-50 pointer-events-none">
+							<div className="text-green-400 font-bold text-lg">+{gameState.score > 0 ? 1 : 0}</div>
+						</div>
+					</PulseEffect>
+				)}
+				{effects.shake && (
+					<ShakeEffect>
+						<div className="fixed top-4 right-4 z-50 pointer-events-none">
+							<div className="text-red-400 font-bold text-lg">✗</div>
+						</div>
+					</ShakeEffect>
+				)}
+				{effects.glow && (
+					<GlowEffect>
+						<div className="fixed inset-0 pointer-events-none z-40" />
+					</GlowEffect>
 				)}
 			</motion.div>
 		</div>

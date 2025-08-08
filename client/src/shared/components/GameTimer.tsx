@@ -54,10 +54,10 @@ export default function GameTimer({
   };
   
   const getTimerColor = (): string => {
-    if (mode !== 'time-limited' || time.remaining === null) return 'bg-info';
-    if (time.remaining > 30) return 'bg-success';
-    if (time.remaining > 10) return 'bg-warning';
-    return 'bg-danger';
+    if (mode !== 'time-limited' || time.remaining === null) return 'bg-blue-500';
+    if (time.remaining > 30) return 'bg-green-500';
+    if (time.remaining > 10) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   return (
@@ -70,7 +70,7 @@ export default function GameTimer({
       {/* Time elapsed (shown for all modes) */}
       <div className="time-display flex flex-col items-center">
         <span className="text-sm font-medium text-white/80">Time Elapsed</span>
-        <div className={cn("px-4 py-2 rounded-lg text-white font-bold text-xl", "bg-info")}>
+        <div className={cn("px-4 py-2 rounded-lg text-white font-bold text-xl", "bg-blue-500")}>
           {formatTime(time.elapsed)}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ScoringSystemProps, SCORING_DEFAULTS } from '../types';
+import { FloatingCard } from './animations';
 
 interface ScoreStats {
   percentage: number;
@@ -34,11 +35,11 @@ export default function ScoringSystem({
 }: ScoringSystemProps) {
   const stats = useMemo(() => {
     const gradeRanges = [
-      { min: 90, grade: 'A', color: 'bg-success' },
-      { min: 80, grade: 'B', color: 'bg-info' },
-      { min: 70, grade: 'C', color: 'bg-primary' },
-      { min: 60, grade: 'D', color: 'bg-warning' },
-      { min: 0, grade: 'F', color: 'bg-danger' }
+      { min: 90, grade: 'A', color: 'bg-green-500' },
+      { min: 80, grade: 'B', color: 'bg-blue-500' },
+      { min: 70, grade: 'C', color: 'bg-blue-600' },
+      { min: 60, grade: 'D', color: 'bg-yellow-500' },
+      { min: 0, grade: 'F', color: 'bg-red-500' }
     ];
 
     const percentage = total === 0 ? 0 : (score / total) * 100;
@@ -52,7 +53,7 @@ export default function ScoringSystem({
         };
       }
       return acc;
-    }, { percentage: 0, grade: 'F', color: 'bg-danger' });
+    }, { percentage: 0, grade: 'F', color: 'bg-red-500' });
   }, [score, total]);
 
   const topTopics = useMemo(() => {
@@ -102,7 +103,8 @@ export default function ScoringSystem({
   }
 
   return (
-    <div className="mt-6 space-y-6">
+    <FloatingCard>
+      <div className="mt-6 space-y-6">
       {/* Overall Score Summary */}
       <div className="glass-morphism rounded-lg p-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -291,5 +293,6 @@ export default function ScoringSystem({
         </div>
       )}
     </div>
+    </FloatingCard>
   );
 }

@@ -138,7 +138,7 @@ export default function TriviaForm({
 								{ value: 'custom', label: 'Custom - Describe your own difficulty' }
 							]}
 							value={getCurrentDifficultyValue()}
-							onChange={(_, value) => handleDifficultyChange(value as string)}
+							onChange={(e) => handleDifficultyChange(e.target.value)}
 							isGlassy
 							className="w-full"
 						/>
@@ -155,7 +155,7 @@ export default function TriviaForm({
 								{ value: '5', label: '5 Questions' }
 							]}
 							value={questionCount.toString()}
-							onChange={(_, value) => onQuestionCountChange(Number(value) as QuestionCount)}
+							onChange={(e) => onQuestionCountChange(Number(e.target.value) as QuestionCount)}
 							isGlassy
 							className="w-full"
 						/>

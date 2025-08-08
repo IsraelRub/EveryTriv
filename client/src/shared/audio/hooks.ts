@@ -101,3 +101,24 @@ export const useGameMusic = (isGameActive: boolean) => {
     };
   }, [isGameActive, playSound, stopSound]);
 };
+
+/**
+ * Hook for UI sound effects with gesture animations
+ * Provides common sound effects for UI interactions
+ */
+export const useUIAudio = () => {
+  const { playSound } = useAudio();
+
+  const playClick = useCallback(() => playSound(AudioKey.CLICK), [playSound]);
+  const playSwipe = useCallback(() => playSound(AudioKey.SWIPE), [playSound]);
+  const playPop = useCallback(() => playSound(AudioKey.POP), [playSound]);
+  const playWhoosh = useCallback(() => playSound(AudioKey.WHOOSH), [playSound]);
+
+  return {
+    playClick,
+    playSwipe,
+    playPop,
+    playWhoosh,
+    playSound, // For custom audio keys
+  };
+};

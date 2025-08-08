@@ -19,6 +19,9 @@ export enum AudioKey {
   
   // UI sounds
   CLICK = 'click',
+  SWIPE = 'swipe',
+  POP = 'pop',
+  WHOOSH = 'whoosh',
   
   // Gameplay sounds
   CORRECT_ANSWER = 'correct',
@@ -43,6 +46,9 @@ export const AUDIO_PATHS: Record<AudioKey, string> = {
   
   // UI sounds
   [AudioKey.CLICK]: '/assets/audio/ui/click.wav',
+  [AudioKey.SWIPE]: '/assets/audio/ui/swipe.wav',
+  [AudioKey.POP]: '/assets/audio/ui/pop.wav',
+  [AudioKey.WHOOSH]: '/assets/audio/ui/whoosh.wav',
   
   // Gameplay sounds
   [AudioKey.CORRECT_ANSWER]: '/assets/audio/gameplay/correct-answer.wav',
@@ -67,6 +73,9 @@ export const AUDIO_CATEGORIES: Record<AudioKey, AudioCategory> = {
   
   // UI sounds
   [AudioKey.CLICK]: AudioCategory.UI,
+  [AudioKey.SWIPE]: AudioCategory.UI,
+  [AudioKey.POP]: AudioCategory.UI,
+  [AudioKey.WHOOSH]: AudioCategory.UI,
   
   // Gameplay sounds
   [AudioKey.CORRECT_ANSWER]: AudioCategory.GAMEPLAY,

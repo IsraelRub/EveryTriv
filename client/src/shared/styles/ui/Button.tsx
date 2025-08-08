@@ -1,11 +1,9 @@
-import { Button as BaseButton } from '@mui/base/Button';
-import { type ButtonProps as BaseButtonProps } from '@mui/base/Button';
 import { forwardRef } from 'react';
 import { useAudioContext } from '../../audio/context';
 import { AudioKey } from '../../audio/constants';
 import { cn } from '../../utils/cn';
 
-export interface ButtonProps extends BaseButtonProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'accent' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isGlassy?: boolean;
@@ -30,7 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       onClick?.(e);
     };
     return (
-      <BaseButton
+      <button
         ref={ref}
         className={cn(
           // Base styles
@@ -72,7 +70,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {children}
-      </BaseButton>
+      </button>
     );
   }
 );

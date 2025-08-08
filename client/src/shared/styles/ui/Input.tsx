@@ -1,9 +1,7 @@
-import { Input as BaseInput } from '@mui/base/Input';
-import { forwardRef, ComponentProps } from 'react';
+import { forwardRef } from 'react';
 import { cn } from '../../utils/cn';
 
-export interface InputProps extends Omit<ComponentProps<typeof BaseInput>, 'className'> {
-  className?: string;
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   isGlassy?: boolean;
   size?: 'sm' | 'md' | 'lg';
   error?: boolean;
@@ -12,14 +10,14 @@ export interface InputProps extends Omit<ComponentProps<typeof BaseInput>, 'clas
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, size = 'md', isGlassy = false, error, ...props }, ref) => {
     return (
-      <BaseInput
+      <input
         ref={ref}
         className={cn(
           // Base styles
-          'w-full rounded-md bg-white/10 text-white',
+          'w-full rounded-md bg-white/10 text-white border-0',
           'transition-colors duration-200',
           'placeholder:text-white/60',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+          'focus:outline-none focus:ring-2 focus:ring-white/20',
           
           // Size variants
           {
@@ -35,24 +33,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           
           // Error state
           {
-            'border-red-500 focus-visible:ring-red-500/20': error,
+            'border border-red-500 focus:ring-red-500/20': error,
           },
           
           className
         )}
-        slotProps={{
-          input: {
-            className: cn(
-              'bg-transparent w-full border-none p-0 focus:outline-none',
-              'placeholder:text-white/60',
-              {
-                'text-sm': size === 'sm',
-                'text-base': size === 'md',
-                'text-lg': size === 'lg',
-              }
-            ),
-          },
-        }}
         {...props}
       />
     );

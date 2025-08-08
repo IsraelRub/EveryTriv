@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { setUsername, setAvatar } from '../../redux/features/userSlice';
@@ -51,7 +51,7 @@ export default function UserProfile() {
               <Input
                 id="username"
                 value={username}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => dispatch(setUsername(e.target.value))}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => dispatch(setUsername(e.target.value))}
                 required
               />
             </div>

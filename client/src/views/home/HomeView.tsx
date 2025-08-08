@@ -16,6 +16,8 @@ import { isCustomDifficulty, displayDifficulty, getDifficultyIcon } from '../../
 import { Button } from '@/shared/styles/ui';
 import { useGameMusic } from '../../shared/audio';
 import { useScoreAchievementSounds } from '../../shared/hooks/useScoreAchievementSounds';
+import { useAdvancedScoreAnimations } from '../../shared/hooks/useAdvancedAnimations';
+import { ConfettiEffect, PulseEffect, ShakeEffect, GlowEffect } from '@/shared/components/animations';
 const DEFAULT_FAVORITES = [
 	{ topic: 'General Knowledge', difficulty: 'medium' },
 	{ topic: 'Geography', difficulty: 'medium' },
@@ -60,6 +62,9 @@ export default function HomeView() {
 	useGameMusic(isGameActive);
 	// Use achievement sounds when score changes
 	useScoreAchievementSounds(gameState.score, gameState.total);
+	
+	// Use advanced score animations for all effects
+	const { effects } = useAdvancedScoreAnimations(gameState.score, gameState.total);
 	// Log component mounting
 	useEffect(() => {
 		return () => {
@@ -482,6 +487,28 @@ export default function HomeView() {
 				onSelectMode={handleGameModeSelect}
 				onCancel={() => setShowGameModeSelector(false)}
 			/>
+			
+			{/* Advanced Animation Effects */}
+			<ConfettiEffect isVisible={effects.confetti} />
+			{effects.pulse && (
+				<PulseEffect color="rgba(34, 197, 94, 0.3)">
+					<div className="fixed top-4 left-4 z-50 pointer-events-none">
+						<div className="text-green-400 font-bold text-lg">Great!</div>
+					</div>
+				</PulseEffect>
+			)}
+			{effects.shake && (
+				<ShakeEffect>
+					<div className="fixed top-4 left-4 z-50 pointer-events-none">
+						<div className="text-red-400 font-bold text-lg">Try again!</div>
+					</div>
+				</ShakeEffect>
+			)}
+			{effects.glow && (
+				<GlowEffect>
+					<div className="fixed inset-0 pointer-events-none z-40" />
+				</GlowEffect>
+			)}
 		</div>
 	);
 }

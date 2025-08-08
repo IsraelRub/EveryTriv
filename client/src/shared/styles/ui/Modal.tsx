@@ -1,29 +1,67 @@
-import { Modal as BaseModal } from '@mui/base/Modal';
-import { type ModalProps as BaseModalProps } from '@mui/base/Modal';
-import { forwardRef } from 'react';
+import { forwardRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 
-export interface ModalProps extends BaseModalProps {
+export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
+  open: boolean;
+  onClose?: () => void;
   isGlassy?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  hideBackdrop?: boolean;
+  disableEscapeKeyDown?: boolean;
+  disableBackdropClick?: boolean;
 }
 
 export const Modal = forwardRef<HTMLDivElement, ModalProps>(
-  ({ children, className, isGlassy = true, size = 'md', ...props }, ref) => {
-    return (
-      <BaseModal
-        ref={ref}
-        className={cn(
-          'fixed inset-0 z-50 flex items-center justify-center',
-          'bg-black/50 backdrop-blur-sm'
-        )}
-        {...props}
+  ({ 
+    children, 
+    className, 
+    open,
+    onClose,
+    isGlassy = true, 
+    size = 'md', 
+    hideBackdrop = false,
+    disableEscapeKeyDown = false,
+    disableBackdropClick = false,
+    ...props 
+  }, ref) => {
+    
+    useEffect(() => {
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape' && !disableEscapeKeyDown && onClose) {
+          onClose();
+        }
+      };
+
+      if (open) {
+        document.addEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'hidden';
+      }
+
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'unset';
+      };
+    }, [open, disableEscapeKeyDown, onClose]);
+
+    if (!open) return null;
+
+    const handleBackdropClick = (event: React.MouseEvent) => {
+      if (event.target === event.currentTarget && !disableBackdropClick && onClose) {
+        onClose();
+      }
+    };
+
+    return createPortal(
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        onClick={handleBackdropClick}
       >
         <div
+          ref={ref}
           className={cn(
             // Base styles
-            'relative rounded-lg bg-white/10 text-white',
-            'animate-fade-in',
+            'relative rounded-lg bg-white/10 text-white animate-fade-in',
             
             // Size variants
             {
@@ -39,10 +77,12 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
             
             className
           )}
+          {...props}
         >
           {children}
         </div>
-      </BaseModal>
+      </div>,
+      document.body
     );
   }
 );

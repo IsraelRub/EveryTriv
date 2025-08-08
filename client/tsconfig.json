@@ -31,7 +31,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vitest/globals", "node", "@testing-library/jest-dom", "react", "react-dom"]
+    "types": ["node", "@testing-library/jest-dom", "react", "react-dom"]
   },
   "include": [
     "src",
