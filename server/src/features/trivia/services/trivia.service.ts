@@ -7,7 +7,7 @@ import { PriorityQueue } from "./priority-queue";
 import { RedisService } from "../../../config/redis.service";
 import { OpenAIProvider, AnthropicProvider } from "./providers";
 import { LLMProvider } from "../types/trivia.types";
-import { APP_CONSTANTS } from "../../../constants/app.constants";
+import { APP_CONSTANTS, PRIORITIES } from "../../../constants/app.constants";
 import { TRIVIA_CONSTANTS } from "../constants";
 
 @Injectable()
@@ -36,7 +36,7 @@ export class TriviaService {
     return provider;
   }
 
-  async getTriviaQuestion(topic: string, difficulty: string, userId?: string) {
+  async getTriviaQuestion(topic: string, difficulty: string, questionCount: number = 5, userId?: string) {
     // נטפל ברמת קושי מותאמת אישית
     const isCustomDifficulty = difficulty.startsWith(
       TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX
@@ -78,7 +78,8 @@ export class TriviaService {
     const provider = this.getNextProvider();
     const question = await provider.generateTriviaQuestion(
       topic,
-      actualDifficulty
+      actualDifficulty,
+      questionCount
     );
 
     await this.redisService.set(
@@ -134,16 +135,16 @@ export class TriviaService {
       keywords.includes("phd") ||
       keywords.includes("doctorate")
     ) {
-      return APP_CONSTANTS.PRIORITIES.HIGH;
+      return PRIORITIES.HIGH;
     } else if (
       keywords.includes("intermediate") ||
       keywords.includes("moderate") ||
       keywords.includes("college") ||
       keywords.includes("high school")
     ) {
-      return APP_CONSTANTS.PRIORITIES.MEDIUM;
+      return PRIORITIES.MEDIUM;
     } else {
-      return APP_CONSTANTS.PRIORITIES.LOW;
+      return PRIORITIES.LOW;
     }
   }
 

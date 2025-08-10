@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { setUsername, setAvatar } from '../../redux/features/userSlice';
 import { RootState } from '../../redux/store';
 import { getOrCreateUserId } from '../../shared/utils/user.util';
-import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '../../shared/styles/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '../../shared/components/ui';
 
 export default function UserProfile() {
   const [userId] = useState(() => getOrCreateUserId());

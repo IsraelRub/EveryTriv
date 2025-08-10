@@ -1,7 +1,9 @@
 import AppRoutes from './AppRoutes';
-import { AnimatedBackground, AdvancedAudioControls } from './shared/components';
-import AudioDiagnostics from './shared/components/AudioDiagnostics';
-import { AudioProvider } from './shared/audio';
+import { AnimatedBackground } from './shared/components/animations';
+import { AdvancedAudioControls } from './shared/components/audio';
+import AudioDiagnostics from './shared/components/audio/AudioDiagnostics';
+import { Footer, FloatingHelpButton } from './shared/components/layout';
+import { AudioProvider } from './shared/hooks';
 import logger from './shared/services/logger.service';
 import { useEffect } from 'react';
 
@@ -26,7 +28,7 @@ function App() {
 
   return (
     <AudioProvider>
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen flex flex-col">
         <AnimatedBackground>
           {/* Audio Controls positioned absolutely */}
           <div className="fixed top-20 right-4 z-50">
@@ -34,9 +36,15 @@ function App() {
           </div>
           
           {/* Main App Content */}
-          <div className="relative z-10">
+          <div className="relative z-10 flex-1">
             <AppRoutes />
           </div>
+          
+          {/* Footer */}
+          <Footer />
+          
+          {/* Floating Help Button */}
+          <FloatingHelpButton />
           
           {/* Audio Diagnostics */}
           <AudioDiagnostics />

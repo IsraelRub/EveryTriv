@@ -1,23 +1,52 @@
-// קבועים לטיפול ברמת קושי מותאמת
-export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
+/**
+ * Client-specific custom difficulty utilities for EveryTriv
+ * Uses shared utilities from the shared folder
+ */
 
-// פונקציה לבדיקה אם רמת קושי היא מותאמת אישית
-export const isCustomDifficulty = (difficulty: string): boolean => {
-  return difficulty.startsWith(CUSTOM_DIFFICULTY_PREFIX);
+// Import shared utilities
+import {
+  isCustomDifficulty,
+  extractCustomDifficultyText,
+  createCustomDifficulty,
+  getDifficultyDisplayText,
+  getCustomDifficultyMultiplier,
+  getSuggestionsForDifficulty,
+  normalizeCustomDifficulty,
+  hasValidCustomDifficultyContent
+} from '../../../../shared/utils/customDifficulty.utils';
+
+// Import shared constants
+import {
+  DIFFICULTY_LEVELS,
+  CUSTOM_DIFFICULTY_KEYWORDS,
+  GENERAL_DIFFICULTY_SUGGESTIONS
+} from '../../../../shared/constants/game.constants';
+
+// Import shared validation
+import { validateCustomDifficultyText } from '../../../../shared/validation/validation.utils';
+
+// Client-specific constants that remain here
+import {
+  DIFFICULTY_BADGE_CLASSES,
+  TOPIC_DIFFICULTY_SUGGESTIONS
+} from '../constants/game.constants';
+
+import { EasyIcon, MediumIcon, HardIcon, CustomIcon } from '../components/icons';
+import { FC } from 'react';
+
+// Re-export shared utilities for backward compatibility
+export {
+  isCustomDifficulty,
+  extractCustomDifficultyText,
+  createCustomDifficulty,
+  getDifficultyDisplayText,
+  getCustomDifficultyMultiplier,
+  getSuggestionsForDifficulty,
+  normalizeCustomDifficulty,
+  hasValidCustomDifficultyContent
 };
 
-// פונקציה לחילוץ הטקסט המותאם מרמת הקושי
-export const extractCustomDifficultyText = (difficulty: string): string => {
-  if (!isCustomDifficulty(difficulty)) return '';
-  return difficulty.substring(CUSTOM_DIFFICULTY_PREFIX.length);
-};
-
-// פונקציה ליצירת רמת קושי מותאמת
-export const createCustomDifficulty = (text: string): string => {
-  return `${CUSTOM_DIFFICULTY_PREFIX}${text.trim()}`;
-};
-
-// פונקציה להצגת רמת קושי בצורה ידידותית
+// Client-specific display utility
 export const displayDifficulty = (difficulty: string, maxLength: number = 50): string => {
   if (isCustomDifficulty(difficulty)) {
     const customText = extractCustomDifficultyText(difficulty);
@@ -28,74 +57,56 @@ export const displayDifficulty = (difficulty: string, maxLength: number = 50): s
   }
   
   switch (difficulty.toLowerCase()) {
-    case 'easy':
+    case DIFFICULTY_LEVELS.EASY:
       return 'Easy';
-    case 'medium':
+    case DIFFICULTY_LEVELS.MEDIUM:
       return 'Medium';
-    case 'hard':
+    case DIFFICULTY_LEVELS.HARD:
       return 'Hard';
     default:
       return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
   }
 };
 
-// פונקציה לקבלת צבע תג לפי רמת קושי
+// Client-specific badge class utility
 export const getDifficultyBadgeClass = (difficulty: string): string => {
   if (isCustomDifficulty(difficulty)) {
-    return 'bg-blue-500';
+    return DIFFICULTY_BADGE_CLASSES.CUSTOM;
   }
   
   switch (difficulty.toLowerCase()) {
-    case 'easy':
-      return 'bg-green-500';
-    case 'medium':
-      return 'bg-yellow-500';
-    case 'hard':
-      return 'bg-red-500';
+    case DIFFICULTY_LEVELS.EASY:
+      return DIFFICULTY_BADGE_CLASSES[DIFFICULTY_LEVELS.EASY];
+    case DIFFICULTY_LEVELS.MEDIUM:
+      return DIFFICULTY_BADGE_CLASSES[DIFFICULTY_LEVELS.MEDIUM];
+    case DIFFICULTY_LEVELS.HARD:
+      return DIFFICULTY_BADGE_CLASSES[DIFFICULTY_LEVELS.HARD];
     default:
-      return 'bg-blue-600';
+      return DIFFICULTY_BADGE_CLASSES.DEFAULT;
   }
 };
 
-// פונקציה לולידציה של טקסט רמת קושי מותאמת
-export const validateCustomDifficultyText = (text: string): { 
+// Enhanced validation with client-specific suggestions
+export const validateCustomDifficultyTextEnhanced = (text: string): { 
   isValid: boolean; 
   error?: string; 
   suggestions?: string[] 
 } => {
-  const trimmedText = text.trim();
-  
-  if (trimmedText.length === 0) {
+  // Use shared validation first
+  const baseValidation = validateCustomDifficultyText(text);
+  if (!baseValidation.isValid) {
     return {
       isValid: false,
-      error: 'Please enter a difficulty description',
+      error: baseValidation.error,
       suggestions: ['Example: "university level physics"']
     };
   }
-  
-  if (trimmedText.length < 3) {
-    return {
-      isValid: false,
-      error: 'Description must be at least 3 characters long',
-      suggestions: ['Be more specific about the difficulty level']
-    };
-  }
-  
-  if (trimmedText.length > 200) {
-    return {
-      isValid: false,
-      error: 'Description must be less than 200 characters',
-      suggestions: ['Try to be more concise']
-    };
-  }
 
-  // בדיקה למילות מפתח מומלצות
+  const trimmedText = text.trim();
   const recommendedKeywords = [
-    'beginner', 'elementary', 'basic', 'simple', 'easy',
-    'intermediate', 'moderate', 'medium', 'standard', 'average',
-    'advanced', 'expert', 'professional', 'complex', 'difficult', 'hard',
-    'university', 'college', 'school', 'academic', 'graduate',
-    'level', 'grade', 'knowledge', 'skills', 'phd', 'master', 'bachelor'
+    ...CUSTOM_DIFFICULTY_KEYWORDS.LEVELS,
+    ...CUSTOM_DIFFICULTY_KEYWORDS.EDUCATION,
+    ...CUSTOM_DIFFICULTY_KEYWORDS.DESCRIPTORS
   ];
 
   const lowerText = trimmedText.toLowerCase();
@@ -103,7 +114,7 @@ export const validateCustomDifficultyText = (text: string): {
 
   if (!hasKeyword) {
     return {
-      isValid: true, // עדיין תקין, אבל עם הצעות
+      isValid: true, // Still valid, but with suggestions
       suggestions: [
         'Consider adding difficulty indicators like "beginner", "advanced", "professional"',
         'Examples: "beginner cooking", "professional sports", "university physics"'
@@ -114,121 +125,53 @@ export const validateCustomDifficultyText = (text: string): {
   return { isValid: true };
 };
 
-// הצעות לרמות קושי מותאמות לפי נושא
+// Client-specific suggestions that use topic-specific data
 export const getCustomDifficultySuggestions = (topic?: string): string[] => {
-  const generalSuggestions = [
-    'beginner level',
-    'elementary school level',
-    'high school level', 
-    'college level',
-    'university level',
-    'professional level',
-    'expert level'
-  ];
-
-  if (!topic) return generalSuggestions;
+  if (!topic) return [...GENERAL_DIFFICULTY_SUGGESTIONS];
 
   const topicLower = topic.toLowerCase();
-  const topicSpecific: Record<string, string[]> = {
-    science: [
-      'elementary science facts',
-      'high school chemistry',
-      'university physics',
-      'graduate level biology',
-      'research scientist knowledge'
-    ],
-    sports: [
-      'casual fan knowledge',
-      'sports enthusiast level',
-      'professional athlete knowledge',
-      'sports analyst expertise'
-    ],
-    history: [
-      'basic historical facts',
-      'high school world history',
-      'university historical analysis',
-      'professional historian level'
-    ],
-    cooking: [
-      'beginner home cook',
-      'intermediate cooking skills',
-      'professional chef level',
-      'culinary expert knowledge'
-    ],
-    music: [
-      'casual music fan',
-      'music student level', 
-      'professional musician',
-      'music theory expert'
-    ],
-    technology: [
-      'basic computer user',
-      'IT professional level',
-      'software developer',
-      'computer science expert'
-    ],
-    art: [
-      'art appreciation level',
-      'art student knowledge',
-      'professional artist',
-      'art historian expert'
-    ]
-  };
-
-  // חיפוש קטגוריה מתאימה
-  const matchingCategory = Object.keys(topicSpecific).find(category => 
+  
+  // Find matching category
+  const matchingCategory = Object.keys(TOPIC_DIFFICULTY_SUGGESTIONS).find(category => 
     topicLower.includes(category)
-  );
+  ) as keyof typeof TOPIC_DIFFICULTY_SUGGESTIONS;
 
   if (matchingCategory) {
     return [
-      ...topicSpecific[matchingCategory],
-      ...generalSuggestions.slice(0, 3)
+      ...TOPIC_DIFFICULTY_SUGGESTIONS[matchingCategory],
+      ...GENERAL_DIFFICULTY_SUGGESTIONS.slice(0, 3)
     ];
   }
 
-  // אם אין התאמה ספציפית, ניצור הצעות כלליות עם הנושא
+  // If no specific match, create general suggestions with the topic
   return [
     `beginner ${topic}`,
     `intermediate ${topic}`,
     `advanced ${topic}`,
     `professional ${topic} knowledge`,
-    ...generalSuggestions.slice(0, 3)
+    ...GENERAL_DIFFICULTY_SUGGESTIONS.slice(0, 3)
   ];
 };
 
-import { EasyIcon, MediumIcon, HardIcon, CustomIcon } from '../styles/icons';
-import { FC } from 'react';
-
-// Function to get icon component by difficulty
+// Client-specific icon utility
 export const getDifficultyIcon = (difficulty: string): FC => {
   if (isCustomDifficulty(difficulty)) {
     return CustomIcon;
   }
   
   switch (difficulty.toLowerCase()) {
-    case 'easy':
+    case DIFFICULTY_LEVELS.EASY:
       return EasyIcon;
-    case 'medium':
+    case DIFFICULTY_LEVELS.MEDIUM:
       return MediumIcon;
-    case 'hard':
+    case DIFFICULTY_LEVELS.HARD:
       return HardIcon;
     default:
       return MediumIcon;
   }
 };
 
-// פונקציה לפורמט רמת קושי לשמירה
-export const formatDifficultyForStorage = (difficulty: string): string => {
-  return difficulty.trim();
-};
-
-// פונקציה להשוואת רמות קושי
-export const compareDifficulties = (diff1: string, diff2: string): boolean => {
-  return formatDifficultyForStorage(diff1) === formatDifficultyForStorage(diff2);
-};
-
-// פונקציה לקבלת כותרת מתאימה לרמת קושי
+// Client-specific title utility
 export const getDifficultyTitle = (difficulty: string): string => {
   if (isCustomDifficulty(difficulty)) {
     const customText = extractCustomDifficultyText(difficulty);
@@ -236,13 +179,22 @@ export const getDifficultyTitle = (difficulty: string): string => {
   }
   
   switch (difficulty.toLowerCase()) {
-    case 'easy':
+    case DIFFICULTY_LEVELS.EASY:
       return 'Easy difficulty - Perfect for beginners';
-    case 'medium': 
+    case DIFFICULTY_LEVELS.MEDIUM: 
       return 'Medium difficulty - General knowledge level';
-    case 'hard':
+    case DIFFICULTY_LEVELS.HARD:
       return 'Hard difficulty - Expert level questions';
     default:
       return `${difficulty} difficulty level`;
   }
+};
+
+// Utility functions for client-specific formatting
+export const formatDifficultyForStorage = (difficulty: string): string => {
+  return difficulty.trim();
+};
+
+export const compareDifficulties = (diff1: string, diff2: string): boolean => {
+  return formatDifficultyForStorage(diff1) === formatDifficultyForStorage(diff2);
 };

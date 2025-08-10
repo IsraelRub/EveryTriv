@@ -1,3 +1,16 @@
+// Import shared constants
+import {
+  VALID_DIFFICULTIES,
+  CUSTOM_DIFFICULTY_PREFIX,
+  QUEUE_CONFIG,
+  PRIORITIES
+} from '../../../shared/constants/game.constants';
+
+// Re-export shared constants for backward compatibility
+export const DIFFICULTIES = VALID_DIFFICULTIES;
+export { CUSTOM_DIFFICULTY_PREFIX, QUEUE_CONFIG, PRIORITIES };
+
+// Server-specific constants
 export const APP_CONSTANTS = {
   API_VERSION: "v1",
   CACHE_TTL: 3600,
@@ -9,21 +22,9 @@ export const APP_CONSTANTS = {
     windowMs: 60000,
     max: 100,
   },
-  DIFFICULTIES: ["easy", "medium", "hard", "custom"] as const,
-  CUSTOM_DIFFICULTY_PREFIX: "custom:",
-  QUEUE: {
-    MAX_ITEMS: 1000,
-    PROCESS_INTERVAL: 1000,
-    RETRY_DELAY: 5000,
-  },
   PAGINATION: {
     DEFAULT_PAGE: 1,
     DEFAULT_LIMIT: 10,
     MAX_LIMIT: 100,
-  },
-  PRIORITIES: {
-    HIGH: 3,
-    MEDIUM: 2,
-    LOW: 1,
   },
 } as const;

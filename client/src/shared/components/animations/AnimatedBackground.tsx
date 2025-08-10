@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useEffect } from 'react';
 import { staggerContainer, backgroundOrbVariants, backgroundParticleVariants, createFadeVariants } from './AnimationEffects';
 import { ANIMATION_CONFIG } from './AnimationConfig';
+import logger from '../../services/logger.service';
 
 interface AnimatedBackgroundProps {
   children: React.ReactNode;
@@ -45,10 +46,20 @@ export const AnimatedBackground: FC<AnimatedBackgroundProps> = ({
       },
     };
 
-    return {
+    const finalConfig = {
       ...baseConfig[intensity],
       colors: themeColors[theme],
     };
+
+    // Log animation configuration for debugging
+    logger.debug('AnimatedBackground initialized', { 
+      intensity, 
+      theme, 
+      config: finalConfig,
+      timestamp: Date.now()
+    });
+
+    return finalConfig;
   }, [intensity, theme]);
 
   const backgroundVariants = createFadeVariants('up', 0, 2);

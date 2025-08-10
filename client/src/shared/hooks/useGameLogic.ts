@@ -7,9 +7,9 @@ import {
   endGame, 
   selectGameMode, 
   resetGame,
-  setGameMode as setGameModeAction,
-  GameMode
+  setGameMode as setGameModeAction
 } from '@/redux/features/gameModeSlice';
+import { GameMode } from '../types';
 
 export function useGameTimer() {
   const dispatch = useDispatch();
@@ -80,7 +80,7 @@ export function useGameMode() {
   }, [dispatch]);
   
   const handleQuestionAnswered = useCallback(() => {
-    if (gameMode.mode === 'question-limited') {
+    if (gameMode.mode === GameMode.QUESTION_LIMITED) {
       dispatch(decrementQuestion());
     }
   }, [dispatch, gameMode.mode]);
@@ -111,17 +111,17 @@ export function useGameNavigation(onGameOver: () => void) {
     }
     
     // For unlimited mode, always continue
-    if (gameMode.mode === 'unlimited') {
+    if (gameMode.mode === GameMode.UNLIMITED) {
       return true; // Load next question
     }
     
     // For time-limited mode, continue if time remaining
-    if (gameMode.mode === 'time-limited') {
+    if (gameMode.mode === GameMode.TIME_LIMITED) {
       return gameMode.timeRemaining !== undefined && gameMode.timeRemaining > 0;
     }
     
     // For question-limited mode, continue if questions remaining
-    if (gameMode.mode === 'question-limited') {
+    if (gameMode.mode === GameMode.QUESTION_LIMITED) {
       return gameMode.questionsRemaining !== undefined && gameMode.questionsRemaining > 0;
     }
     

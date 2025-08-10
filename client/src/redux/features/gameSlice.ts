@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TriviaQuestion, GameState } from '../../shared/types';
+import { TriviaQuestion, GameState, GameMode } from '../../shared/types';
 
 const initialState: GameState = {
   favorites: [],
@@ -15,7 +15,7 @@ const initialState: GameState = {
     successRateByDifficulty: {},
   },
   gameMode: {
-    mode: 'unlimited',
+    mode: GameMode.UNLIMITED,
     isGameOver: false,
     timer: {
       isRunning: false,
@@ -56,11 +56,24 @@ const gameSlice = createSlice({
       if (action.payload.isCorrect) {
         // Calculate multipliers
         const difficultyMultiplier = (() => {
-          switch(state.trivia?.difficulty) {
+          if (!state.trivia) return 1;
+          
+          // Check if custom difficulty has metadata with multiplier
+          if (state.trivia.metadata?.customDifficultyMultiplier) {
+            return state.trivia.metadata.customDifficultyMultiplier;
+          }
+          
+          // Check if it's a custom difficulty (starts with custom:)
+          if (state.trivia.difficulty.startsWith('custom:')) {
+            return 1.3; // Default custom difficulty multiplier
+          }
+          
+          // Standard difficulty multipliers
+          switch(state.trivia.difficulty) {
             case 'easy': return 1;
             case 'medium': return 1.5;
             case 'hard': return 2;
-            default: return 1; // Custom difficulty uses base multiplier for now
+            default: return 1;
           }
         })();
 

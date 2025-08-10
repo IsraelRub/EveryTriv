@@ -9,7 +9,7 @@ import {
   Request,
 } from "@nestjs/common";
 import { UserService } from "../services/user.service";
-import { UserProfileDto } from "../../../shared/types/user.types";
+import { SaveUserProfileDto, UpdateProfileDto } from "../../../shared/types/user.types";
 import { AuthGuard } from "../../auth/guards/auth.guard";
 
 @Controller("user")
@@ -25,7 +25,7 @@ export class UserController {
   }
 
   @Post("profile")
-  async saveProfile(@Body() body: UserProfileDto) {
+  async saveProfile(@Body() body: SaveUserProfileDto) {
     return this.userService.createOrUpdateUser(
       body.userId,
       body.username,
@@ -37,11 +37,7 @@ export class UserController {
   @UseGuards(AuthGuard)
   async updateProfile(
     @Request() req: Request & { user: any },
-    @Body() updateData: {
-      fullName?: string;
-      username?: string;
-      avatar?: string;
-    }
+    @Body() updateData: UpdateProfileDto
   ) {
     return await this.userService.updateUserProfile(req.user.id, updateData);
   }

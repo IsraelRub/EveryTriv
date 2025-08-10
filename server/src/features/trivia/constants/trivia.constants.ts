@@ -1,17 +1,23 @@
 /**
- * Constants related to the trivia feature
+ * Trivia-specific constants (now using shared constants)
  */
+
+// Import shared constants
+import {
+  VALID_DIFFICULTIES,
+  CUSTOM_DIFFICULTY_PREFIX,
+  QUEUE_CONFIG,
+  PRIORITIES
+} from '../../../../../shared/constants/game.constants';
+
+// Re-export shared constants for backward compatibility
+export const DIFFICULTIES = VALID_DIFFICULTIES;
+export { CUSTOM_DIFFICULTY_PREFIX, PRIORITIES };
+
+// Trivia-specific constants
 export const TRIVIA_CONSTANTS = {
-  DIFFICULTIES: ["easy", "medium", "hard", "custom"] as const,
-  CUSTOM_DIFFICULTY_PREFIX: "custom:",
-  QUEUE: {
-    MAX_ITEMS: 1000,
-    PROCESS_INTERVAL: 1000,
-    RETRY_DELAY: 5000,
-  },
-  PRIORITIES: {
-    HIGH: 3,
-    MEDIUM: 2,
-    LOW: 1,
-  },
+  DIFFICULTIES,
+  CUSTOM_DIFFICULTY_PREFIX,
+  QUEUE: QUEUE_CONFIG,
+  PRIORITIES,
 } as const;

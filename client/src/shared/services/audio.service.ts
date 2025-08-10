@@ -5,8 +5,9 @@ import {
   AUDIO_CATEGORIES, 
   DEFAULT_VOLUMES, 
   AUDIO_CONFIG 
-} from '../audio/constants';
-import { AudioConfig, AudioServiceInterface } from '../audio/types';
+} from '../constants/audio.constants';
+import { AudioConfig, AudioServiceInterface } from '../types';
+import logger from './logger.service';
 
 /**
  * Enhanced Audio Service for EveryTriv
@@ -65,14 +66,8 @@ export class AudioService implements AudioServiceInterface {
       const defaultVolume = this.categoryVolumes.get(category) || 0.7;
       const config = AUDIO_CONFIG[audioKey] || {};
       
-      // Try without cache busting first for better compatibility
-      let finalPath = path;
-      
-      // Only add cache busting if we're in dev and it's not an MP3 file
-      // MP3 files seem to have issues with cache busting in some browsers
-      if (import.meta.env.DEV && !path.endsWith('.mp3')) {
-        finalPath = `${path}?v=${Date.now()}`;
-      }
+      // Use original path without cache busting for better compatibility
+      const finalPath = path;
       
       this.preloadAudio(
         audioKey, 
@@ -99,20 +94,12 @@ export class AudioService implements AudioServiceInterface {
     
     // Add error handling for loading
     audio.addEventListener('error', (e) => {
-      console.warn(`Failed to load audio file: ${key} (${src})`, e);
-      // Try to reload without cache busting if it fails
-      if (src.includes('?v=')) {
-        const originalSrc = src.split('?')[0];
-        console.log(`Retrying ${key} without cache busting: ${originalSrc}`);
-        setTimeout(() => {
-          audio.src = originalSrc;
-          audio.load();
-        }, 1000);
-      }
+      logger.warn(`Failed to load audio file: ${key} (${src})`, { error: e, key, src });
+      // Don't retry automatically to avoid infinite loops
     });
     
     audio.addEventListener('canplaythrough', () => {
-      console.debug(`Audio loaded successfully: ${key}`);
+      logger.debug(`Audio loaded successfully: ${key}`, { key, src });
     });
     
     // Store audio element and volume first
@@ -130,7 +117,7 @@ export class AudioService implements AudioServiceInterface {
   public play(key: AudioKey): void {
     const audio = this.audioElements.get(key);
     if (!audio) {
-      console.warn(`Audio not found: ${key}`);
+      logger.warn(`Audio not found: ${key}`, { key, availableKeys: Array.from(this.audioElements.keys()) });
       return;
     }
 
@@ -145,9 +132,9 @@ export class AudioService implements AudioServiceInterface {
       audio.play().catch(err => {
         // Handle autoplay restrictions gracefully
         if (err.name === 'NotAllowedError') {
-          console.warn(`Audio autoplay blocked for ${key}. User interaction required.`);
+          logger.warn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
         } else {
-          console.error(`Error playing audio ${key}:`, err);
+          logger.error(`Error playing audio ${key}`, { key, error: err });
         }
       });
       return;
@@ -159,9 +146,9 @@ export class AudioService implements AudioServiceInterface {
     clone.play().catch(err => {
       // Handle autoplay restrictions gracefully
       if (err.name === 'NotAllowedError') {
-        console.warn(`Audio autoplay blocked for ${key}. User interaction required.`);
+        logger.warn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
       } else {
-        console.error(`Error playing audio ${key}:`, err);
+        logger.error(`Error playing audio ${key}`, { key, error: err });
       }
     });
     

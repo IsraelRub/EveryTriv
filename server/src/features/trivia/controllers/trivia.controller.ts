@@ -15,18 +15,29 @@ import { TriviaService } from "../services/trivia.service";
 import { TriviaRequestDto, TriviaHistoryDto } from "./trivia.dto";
 import { APP_CONSTANTS } from "../../../constants/app.constants";
 import { TRIVIA_CONSTANTS } from "../constants";
+import { LoggerService } from "../../../shared/modules/logger/logger.service";
 
 @Controller(`${APP_CONSTANTS.API_VERSION}/trivia`)
 export class TriviaController {
   constructor(
     private readonly triviaService: TriviaService,
     private readonly validationService: InputValidationService,
+    private readonly logger: LoggerService,
   ) {}
 
   @Post()
   @UsePipes(new ValidationPipe({ transform: true }))
   async getTrivia(@Body() body: TriviaRequestDto) {
-    const { topic, difficulty, userId } = body;
+    const startTime = Date.now();
+    const { topic, difficulty, questionCount, userId } = body;
+
+    this.logger.api(`📝 Trivia request received`, {
+      topic: topic.substring(0, 50) + (topic.length > 50 ? '...' : ''),
+      difficulty,
+      questionCount,
+      userId: userId || 'anonymous',
+      requestSize: JSON.stringify(body).length
+    });
 
     // Validate topic and custom difficulty text
     const validationResults = await Promise.all([
@@ -97,8 +108,19 @@ export class TriviaController {
       const data = await this.triviaService.getTriviaQuestion(
         topic,
         difficulty,
+        questionCount,
         userId
       );
+      
+      const duration = Date.now() - startTime;
+      this.logger.logPerformance(`Trivia request completed`, duration, {
+        success: true,
+        questionsGenerated: Array.isArray(data) ? data.length : 1,
+        difficulty,
+        questionCount,
+        responseSize: JSON.stringify(data).length
+      });
+      
       return {
         data,
         status: HttpStatus.OK,
@@ -107,7 +129,24 @@ export class TriviaController {
           : "Trivia question generated successfully"
       };
     } catch (err) {
-      console.error("Error generating trivia question:", err);
+      const duration = Date.now() - startTime;
+      this.logger.error(`❌ Trivia request failed`, {
+        duration,
+        topic: topic.substring(0, 50),
+        difficulty,
+        questionCount,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      
+      this.logger.error("Error generating trivia question", { 
+        topic, 
+        difficulty, 
+        questionCount, 
+        error: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        requestId: `trivia-${Date.now()}`
+      });
       
       // טיפול שגיאות ספציפי לרמות קושי מותאמות
       if (difficulty.startsWith(TRIVIA_CONSTANTS.CUSTOM_DIFFICULTY_PREFIX)) {

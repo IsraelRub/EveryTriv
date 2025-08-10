@@ -1,53 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../config/redis.service';
 
-interface LanguageToolError {
-  message: string;
-  offset: number;
-  length: number;
-  rule: {
-    id: string;
-    description: string;
-    category: string;
-  };
-  context: {
-    text: string;
-    offset: number;
-    length: number;
-  };
-}
-
-interface LanguageToolResponse {
-  software: {
-    name: string;
-    version: string;
-    buildDate: string;
-    apiVersion: number;
-    status: string;
-  };
-  language: {
-    name: string;
-    code: string;
-    detectedLanguage: {
-      name: string;
-      code: string;
-      confidence: number;
-    };
-  };
-  matches: LanguageToolError[];
-}
-
-export interface ValidationResult {
-  isValid: boolean;
-  errors: Array<{
-    message: string;
-    suggestion?: string;
-    position: {
-      start: number;
-      end: number;
-    };
-  }>;
-}
+// Import shared validation types and utilities
+import {
+  LanguageToolResponse,
+  ValidationResult,
+  parseLanguageToolResponse
+} from '../../../../shared/validation/validation.utils';
 
 @Injectable()
 export class InputValidationService {
@@ -83,17 +42,8 @@ export class InputValidationService {
 
       const data: LanguageToolResponse = await response.json();
 
-      const result: ValidationResult = {
-        isValid: data.matches.length === 0,
-        errors: data.matches.map(error => ({
-          message: error.message,
-          suggestion: error.rule.description,
-          position: {
-            start: error.offset,
-            end: error.offset + error.length,
-          },
-        })),
-      };
+      // Use shared parsing function
+      const result = parseLanguageToolResponse(data);
 
       // Cache the result
       await this.redisService.set(

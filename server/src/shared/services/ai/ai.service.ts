@@ -5,7 +5,8 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatMistralAI } from "@langchain/mistralai";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { SystemMessage, HumanMessage, AIMessage as LangChainAIMessage } from "@langchain/core/messages";
-import { SupportedModel, AIMessage } from './types';
+import { SupportedModel } from '../../types/llm.types';
+import { AIMessage } from '../../types/ai.types';
 import { LoggerService } from '../../modules/logger/logger.service';
 
 @Injectable()

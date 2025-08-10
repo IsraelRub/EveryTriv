@@ -1,40 +1,9 @@
-import { ValidationResult } from '@/shared/types';
-
-interface LanguageToolError {
-  message: string;
-  offset: number;
-  length: number;
-  rule: {
-    id: string;
-    description: string;
-    category: string;
-  };
-  context: {
-    text: string;
-    offset: number;
-    length: number;
-  };
-}
-
-interface LanguageToolResponse {
-  software: {
-    name: string;
-    version: string;
-    buildDate: string;
-    apiVersion: number;
-    status: string;
-  };
-  language: {
-    name: string;
-    code: string;
-    detectedLanguage: {
-      name: string;
-      code: string;
-      confidence: number;
-    };
-  };
-  matches: LanguageToolError[];
-}
+// Import shared validation types and utilities
+import { 
+  ValidationResult,
+  LanguageToolResponse,
+  parseLanguageToolResponse
+} from '../../../../shared/validation/validation.utils';
 
 export async function validateInput(text: string): Promise<ValidationResult> {
   try {
@@ -56,19 +25,8 @@ export async function validateInput(text: string): Promise<ValidationResult> {
 
     const data: LanguageToolResponse = await response.json();
 
-    const errors = data.matches.map(error => ({
-      message: error.message,
-      suggestion: error.rule.description,
-      position: {
-        start: error.offset,
-        end: error.offset + error.length,
-      },
-    }));
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
+    // Use shared parsing function
+    return parseLanguageToolResponse(data);
   } catch (error) {
     console.error('Input validation error:', error);
     // Return valid result if service is unavailable

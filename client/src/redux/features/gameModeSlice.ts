@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
-
-export type GameMode = 'time-limited' | 'question-limited' | 'unlimited';
+import { GameMode } from '../../shared/types';
 
 export interface GameModeState {
   mode: GameMode;
@@ -18,7 +17,7 @@ export interface GameModeState {
 }
 
 const initialState: GameModeState = {
-  mode: 'question-limited',
+  mode: GameMode.QUESTION_LIMITED,
   questionLimit: 20,
   timeLimit: 60,
   questionsRemaining: 20,
@@ -43,7 +42,7 @@ export const gameModeSlice = createSlice({
       const { mode, timeLimit, questionLimit } = action.payload;
       state.mode = mode;
       
-      if (mode === 'time-limited' && timeLimit !== undefined) {
+      if (mode === GameMode.TIME_LIMITED && timeLimit !== undefined) {
         state.timeLimit = timeLimit;
         state.timeRemaining = timeLimit;
       } else {
@@ -51,7 +50,7 @@ export const gameModeSlice = createSlice({
         state.timeRemaining = undefined;
       }
       
-      if (mode === 'question-limited' && questionLimit !== undefined) {
+      if (mode === GameMode.QUESTION_LIMITED && questionLimit !== undefined) {
         state.questionLimit = questionLimit;
         state.questionsRemaining = questionLimit;
       } else {
@@ -77,7 +76,7 @@ export const gameModeSlice = createSlice({
       state.timer.timeElapsed = action.payload;
       
       // Update time remaining for time-limited mode
-      if (state.mode === 'time-limited' && state.timeRemaining !== undefined) {
+      if (state.mode === GameMode.TIME_LIMITED && state.timeRemaining !== undefined) {
         state.timeRemaining = Math.max(0, state.timeLimit! - action.payload);
         
         // End game if time is up
@@ -88,7 +87,7 @@ export const gameModeSlice = createSlice({
       }
     },
     decrementQuestion: (state) => {
-      if (state.mode === 'question-limited' && state.questionsRemaining !== undefined) {
+      if (state.mode === GameMode.QUESTION_LIMITED && state.questionsRemaining !== undefined) {
         state.questionsRemaining = Math.max(0, state.questionsRemaining - 1);
         
         // End game if questions are done

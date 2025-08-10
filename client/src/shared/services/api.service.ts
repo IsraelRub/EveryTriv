@@ -1,31 +1,18 @@
 import axios, { AxiosError } from 'axios';
-import { TriviaQuestion, ApiResponse } from '@/shared/types';
 import logger from './logger.service';
 
-// Additional types for API
-interface TriviaRequest {
-  topic: string;
-  difficulty: string;
-  userId: string;
-}
+// Import shared types
+import { 
+	TriviaQuestion, 
+	TriviaRequest, 
+	TriviaHistoryRequest,
+	ApiResponse,
+	DifficultyStats,
+	CustomDifficultySuggestions
+} from '../../../../shared/types/api.types';
 
-interface TriviaHistoryRequest {
-  topic: string;
-  difficulty: string;
-  question: string;
-  answers: Array<{ text: string; isCorrect: boolean }>;
-  userId: string;
-  isCorrect: boolean;
-}
-
-interface DifficultyStats {
-  [key: string]: { correct: number; total: number };
-}
-
-interface CustomDifficultySuggestions {
-  suggestions: string[];
-  categories: string[];
-}
+// Import shared validation
+import { validateCustomDifficultyText } from '../../../../shared/validation/validation.utils';
 
 class ApiService {
 	private baseURL = '/v1';
@@ -40,9 +27,20 @@ class ApiService {
 		const startTime = Date.now();
 		
 		try {
-			logger.debug(`Starting ${operationName}`, { attempts: this.retryAttempts - attempts + 1 });
+			logger.debug(`🚀 Starting ${operationName}`, { 
+				attempts: this.retryAttempts - attempts + 1,
+				maxRetries: this.retryAttempts,
+				timestamp: new Date().toISOString()
+			});
+			
 			const response = await request();
 			const duration = Date.now() - startTime;
+			
+			logger.performance(`${operationName} completed`, duration, {
+				success: true,
+				statusCode: 200,
+				dataSize: JSON.stringify(response).length
+			});
 			
 			logger.api(`${operationName} completed`, {
 				statusCode: response.status,
@@ -53,12 +51,12 @@ class ApiService {
 			
 			return response.data;
 		} catch (error) {
-			const duration = Date.now() - startTime;
+			const errorDuration = Date.now() - startTime;
 			
 			if (attempts > 0 && this.shouldRetry(error)) {
 				logger.warn(`Retrying ${operationName}`, { 
 					attemptsLeft: attempts - 1,
-					duration,
+					duration: errorDuration,
 					error: error instanceof Error ? error.message : 'Unknown error'
 				});
 				
@@ -67,7 +65,7 @@ class ApiService {
 			}
 			
 			logger.error(`Failed ${operationName}`, {
-				duration,
+				duration: errorDuration,
 				totalAttempts: this.retryAttempts - attempts + 1,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});
@@ -163,31 +161,8 @@ class ApiService {
 
 	// ולידציה מקומית של רמת קושי מותאמת לפני שליחה לשרת
 	validateCustomDifficulty(customText: string): { isValid: boolean; error?: string } {
-		const trimmed = customText.trim();
-		
-		if (trimmed.length === 0) {
-			return { isValid: false, error: 'Please enter a difficulty description' };
-		}
-		
-		if (trimmed.length < 3) {
-			return { isValid: false, error: 'Description must be at least 3 characters long' };
-		}
-		
-		if (trimmed.length > 200) {
-			return { isValid: false, error: 'Description must be less than 200 characters' };
-		}
-
-		// בדיקה בסיסית לתוכן לא הולם
-		const inappropriateWords = ['hate', 'violence', 'explicit', 'offensive'];
-		const lowerText = trimmed.toLowerCase();
-		
-		for (const word of inappropriateWords) {
-			if (lowerText.includes(word)) {
-				return { isValid: false, error: 'Description contains inappropriate content' };
-			}
-		}
-
-		return { isValid: true };
+		// Use shared validation function
+		return validateCustomDifficultyText(customText);
 	}
 
 	// שמירת רמות קושי מותאמות שנוצרו בעבר (localStorage)

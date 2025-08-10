@@ -7,7 +7,8 @@ export interface LLMProvider {
   name: string;
   generateTriviaQuestion(
     topic: string,
-    difficulty: string
+    difficulty: string,
+    questionCount?: number
   ): Promise<TriviaQuestion>;
 }
 

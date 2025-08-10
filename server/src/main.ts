@@ -16,6 +16,7 @@ const environment = process.env.NODE_ENV || 'development';
 
 async function bootstrap() {
   const startTime = Date.now();
+  
   try {
     // Create NestJS application
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -39,6 +40,8 @@ async function bootstrap() {
       bootTime: `${bootDuration}ms`,
       environment: environment,
       nodeVersion: process.version,
+      sessionStart: true,
+      timestamp: new Date().toISOString()
     });
     
     loggerService.logPerformance('server.bootstrap', bootDuration, {

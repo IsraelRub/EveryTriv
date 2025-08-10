@@ -1,22 +1,30 @@
-export interface TriviaAnswer {
-  text: string;
-  isCorrect: boolean;
-}
+/**
+ * Server-specific trivia types for EveryTriv
+ * Extends shared types with server-specific functionality
+ */
 
-export interface TriviaQuestion {
+// Import core shared types instead of from deprecated api.types
+import type { 
+  TriviaAnswer, 
+  TriviaQuestion,
+  TriviaRequest,
+  TriviaHistoryRequest
+} from '../../../../shared/types/core.types';
+
+// Re-export shared types
+export type { TriviaAnswer, TriviaQuestion, TriviaRequest, TriviaHistoryRequest };
+
+// Server-specific extensions
+
+// Database entity
+export interface TriviaEntity {
   id: string;
   topic: string;
   difficulty: string;
   question: string;
-  answers: TriviaAnswer[];
+  answers: Array<{ text: string; isCorrect: boolean }>;
   correctAnswerIndex: number;
+  userId: string | null;
+  isCorrect: boolean;
   createdAt: Date;
-}
-
-export interface LLMProvider {
-  name: string;
-  generateTriviaQuestion(
-    topic: string,
-    difficulty: string
-  ): Promise<TriviaQuestion>;
 }

@@ -1,19 +1,55 @@
 import * as winston from "winston";
 import * as path from "path";
+import * as fs from "fs";
+import { 
+  formatLogEntry, 
+  formatHttpRequestMessage, 
+  formatHttpErrorMessage,
+  formatAuthMessage,
+  formatValidationMessage
+} from "../../../../shared/utils/logging.utils";
+
+// Clear logs on startup
+function clearLogsOnStartup() {
+  try {
+    const serverLogPath = path.join(process.cwd(), "logs", "server.log");
+    const clientLogPath = path.join(process.cwd(), "..", "client", "logs", "client.log");
+    
+    // Clear server logs
+    if (fs.existsSync(serverLogPath)) {
+      fs.writeFileSync(serverLogPath, '', 'utf8');
+    }
+    
+    // Clear client logs  
+    if (fs.existsSync(clientLogPath)) {
+      fs.writeFileSync(clientLogPath, '', 'utf8');
+    }
+    
+    // Ensure log directories exist
+    const serverLogDir = path.dirname(serverLogPath);
+    const clientLogDir = path.dirname(clientLogPath);
+    
+    if (!fs.existsSync(serverLogDir)) {
+      fs.mkdirSync(serverLogDir, { recursive: true });
+    }
+    
+    if (!fs.existsSync(clientLogDir)) {
+      fs.mkdirSync(clientLogDir, { recursive: true });
+    }
+    
+  } catch (error) {
+    console.warn('Failed to clear logs on startup:', error);
+  }
+}
+
+// Clear logs immediately when this module is loaded
+clearLogsOnStartup();
 
 // File format with emojis but no color codes - for log files
 const fileFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.printf(({ timestamp, level, message, meta }) => {
-    const emoji =
-      {
-        error: "❌",
-        warn: "⚠️",
-        info: "📝",
-        debug: "🐛",
-      }[level] || "📝";
-
-    return `[${timestamp}] [${level.toUpperCase()}] ${emoji} ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`;
+    return formatLogEntry(timestamp as string, level as string, message as string, meta);
   })
 );
 
@@ -38,20 +74,16 @@ export const logRequest = (req: any, res: any, next: any): void => {
 
   res.on("finish", () => {
     const duration = Date.now() - startTime;
-    const statusEmoji =
-      res.statusCode >= 400 ? "🔴" : res.statusCode >= 300 ? "🟡" : "🟢";
+    const message = formatHttpRequestMessage(req.method, req.originalUrl, res.statusCode, duration);
 
-    logger.info(
-      `${statusEmoji} ${req.method} ${req.originalUrl} ${res.statusCode} (${duration}ms)`,
-      {
-        method: req.method,
-        url: req.originalUrl,
-        statusCode: res.statusCode,
-        duration,
-        ip: req.ip,
-        userAgent: req.get("user-agent")?.substring(0, 100),
-      }
-    );
+    logger.info(message, {
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      duration,
+      ip: req.ip,
+      userAgent: req.get("user-agent")?.substring(0, 100),
+    });
   });
 
   next();
@@ -86,8 +118,8 @@ export const log = {
 
   // HTTP exceptions
   httpError: (method: string, url: string, statusCode: number, message: string, error?: any) => {
-    const statusEmoji = statusCode >= 500 ? "💥" : "🔴";
-    logger.error(`${statusEmoji} HTTP ${statusCode} ${method} ${url}: ${message}`, {
+    const errorMessage = formatHttpErrorMessage(method, url, statusCode, message);
+    logger.error(errorMessage, {
       method,
       url,
       statusCode,
@@ -98,11 +130,11 @@ export const log = {
 
   // Additional specialized methods for compatibility
   auth: (message: string, meta?: any) => {
-    logger.info(`🔐 Auth: ${message}`, meta);
+    logger.info(formatAuthMessage(message), meta);
   },
 
   validationError: (field: string, value: any, constraint: string, meta?: any) => {
-    logger.warn(`🔍 Validation failed for ${field}: ${constraint}`, {
+    logger.warn(formatValidationMessage(field, constraint), {
       field,
       value: typeof value === 'object' ? JSON.stringify(value) : value,
       constraint,

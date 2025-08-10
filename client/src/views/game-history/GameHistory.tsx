@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { gameHistoryService } from '../../shared/services';
 import { GameHistoryEntry } from '../../shared/types';
-import { Button } from '../../shared/styles/ui';
+import { Button } from '../../shared/components/ui';
 import { cn } from '../../shared/utils/cn';
 
 export default function GameHistory() {

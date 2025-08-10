@@ -14,6 +14,13 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
+// Import shared constants
+import { 
+  VALID_DIFFICULTIES, 
+  VALID_QUESTION_COUNTS, 
+  VALIDATION_LIMITS 
+} from '../../../../../shared/constants/game.constants';
+
 export class TriviaAnswerDto {
   @IsString()
   text: string = '';
@@ -24,24 +31,24 @@ export class TriviaAnswerDto {
 
 export class TriviaRequestDto {
   @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @MinLength(VALIDATION_LIMITS.TOPIC.MIN_LENGTH)
+  @MaxLength(VALIDATION_LIMITS.TOPIC.MAX_LENGTH)
   topic: string = '';
 
   @IsString()
   @ValidateIf((o) => !o.difficulty.startsWith('custom:'))
-  @IsIn(["easy", "medium", "hard"])
+  @IsIn(VALID_DIFFICULTIES.filter(d => d !== 'custom'))
   difficulty: string = 'medium';
 
   @IsString()
   @ValidateIf((o) => o.difficulty.startsWith('custom:'))
   @Matches(/^custom:.+/)
-  @MinLength(8) // "custom:" + at least one character
-  @MaxLength(100)
+  @MinLength(VALIDATION_LIMITS.CUSTOM_DIFFICULTY.MIN_LENGTH + 7) // "custom:" + min length
+  @MaxLength(VALIDATION_LIMITS.CUSTOM_DIFFICULTY.MAX_LENGTH + 7) // "custom:" + max length
   customDifficulty?: string;
 
   @IsNumber()
-  @IsIn([3, 4, 5])
+  @IsIn(VALID_QUESTION_COUNTS)
   questionCount: number = 3;
 
   @IsString()

@@ -16,6 +16,12 @@ export default defineConfig({
 				secure: false,
 			},
 		},
+		// Add these settings to prevent extension communication issues
+		hmr: {
+			overlay: false, // Disable error overlay that can interfere with extensions
+		},
+		host: true, // Expose to network
+		open: false, // Don't auto-open browser (prevents some extension conflicts)
 	},
 	resolve: {
 		alias: {

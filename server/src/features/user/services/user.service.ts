@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity, UserRole } from '../../../shared/entities/user.entity';
+import { UpdateProfileDto } from '../../../shared/types/user.types';
 
 @Injectable()
 export class UserService {
@@ -151,10 +152,7 @@ export class UserService {
   }
 
   // Update user profile fields
-  async updateUserProfile(userId: string, updates: Partial<{
-    username: string;
-    avatar: string;
-  }>): Promise<UserEntity> {
+  async updateUserProfile(userId: string, updates: UpdateProfileDto): Promise<UserEntity> {
     const user = await this.getUserById(userId);
     if (!user) {
       throw new NotFoundException('User not found');

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { useAudioContext } from '../audio';
-import { AudioKey } from '../audio/constants';
+import { AudioKey } from '../constants/audio.constants';
+import { useAudioContext } from './audio.context';
 
 /**
  * Hook for easily adding UI sound effects to components

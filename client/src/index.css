@@ -50,6 +50,38 @@ body {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
+/* Enhanced gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #fb7185 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Improved button styles */
+.btn-gradient {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Social icon hover effects */
+.social-icon {
+  transition: all 0.3s ease;
+  filter: grayscale(20%);
+}
+
+.social-icon:hover {
+  transform: scale(1.2) rotate(5deg);
+  filter: grayscale(0%) brightness(1.2);
+}
+
 .cube-glow {
   box-shadow: 0 0 50px rgba(102, 126, 234, 0.3);
 }

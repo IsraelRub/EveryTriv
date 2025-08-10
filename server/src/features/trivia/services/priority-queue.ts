@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BinaryHeap } from './data-structures/binary-heap';
-import { LRUCache } from './data-structures/lru-cache';
+import { PriorityQueue as DataStructuresPriorityQueue } from '@datastructures-js/priority-queue';
+import { LRUCache } from 'lru-cache';
 import { Trie } from './data-structures/trie';
 import { CircularBuffer } from './data-structures/circular-buffer';
 import { QueueItem, QueueStats } from '../types/trivia.types';
@@ -8,7 +8,7 @@ import { QueueItem, QueueStats } from '../types/trivia.types';
 @Injectable()
 export class PriorityQueue {
   private readonly logger = new Logger(PriorityQueue.name);
-  private readonly heap: BinaryHeap<QueueItem>;
+  private readonly heap: DataStructuresPriorityQueue<QueueItem>;
   private readonly cache: LRUCache<string, QueueItem>;
   private readonly topicTrie: Trie;
   private readonly recentQuestions: CircularBuffer<QueueItem>;
@@ -16,18 +16,20 @@ export class PriorityQueue {
   private readonly maxRecentQuestions = 100;
 
   constructor() {
-    // Initialize Binary Heap with custom comparison function
-    this.heap = new BinaryHeap<QueueItem>((a, b) => {
+    // Initialize Priority Queue with custom comparison function
+    this.heap = new DataStructuresPriorityQueue<QueueItem>((a, b) => {
       // Higher priority items should come first
       if (a.priority !== b.priority) {
-        return a.priority - b.priority;
+        return b.priority - a.priority; // Reversed for max heap behavior
       }
       // If priorities are equal, older items should come first
       return a.createdAt.getTime() - b.createdAt.getTime();
     });
 
-    // Initialize LRU Cache
-    this.cache = new LRUCache<string, QueueItem>(this.maxCacheSize);
+    // Initialize LRU Cache with options object
+    this.cache = new LRUCache<string, QueueItem>({
+      max: this.maxCacheSize,
+    });
 
     // Initialize Trie for topic autocomplete
     this.topicTrie = new Trie();
@@ -46,8 +48,8 @@ export class PriorityQueue {
         status: 'pending',
       };
 
-      this.heap.insert(queueItem);
-      this.cache.put(id, queueItem);
+      this.heap.enqueue(queueItem);
+      this.cache.set(id, queueItem);
       this.topicTrie.insert(item.topic, item.priority);
 
       this.logger.debug(`Enqueued item with ID: ${id}`);
@@ -60,13 +62,13 @@ export class PriorityQueue {
 
   dequeue(): QueueItem | undefined {
     try {
-      const item = this.heap.extractMin();
+      const item = this.heap.dequeue();
       if (item) {
         this.cache.delete(item.id);
         this.recentQuestions.push(item);
         this.logger.debug(`Dequeued item with ID: ${item.id}`);
       }
-      return item;
+      return item || undefined;
     } catch (error) {
       this.logger.error('Error dequeuing item:', error);
       throw error;
@@ -74,7 +76,8 @@ export class PriorityQueue {
   }
 
   peek(): QueueItem | undefined {
-    return this.heap.peek();
+    const item = this.heap.front();
+    return item || undefined;
   }
 
   getItem(id: string): QueueItem | undefined {
@@ -85,7 +88,7 @@ export class PriorityQueue {
     const item = this.cache.get(id);
     if (item) {
       item.status = status;
-      this.cache.put(id, item);
+      this.cache.set(id, item);
       this.logger.debug(`Updated status of item ${id} to ${status}`);
     }
   }
@@ -94,10 +97,10 @@ export class PriorityQueue {
     const items = this.heap.toArray();
     return {
       totalItems: items.length,
-      pendingItems: items.filter(item => item.status === 'pending').length,
-      processingItems: items.filter(item => item.status === 'processing').length,
-      completedItems: items.filter(item => item.status === 'completed').length,
-      failedItems: items.filter(item => item.status === 'failed').length,
+      pendingItems: items.filter((item: QueueItem) => item.status === 'pending').length,
+      processingItems: items.filter((item: QueueItem) => item.status === 'processing').length,
+      completedItems: items.filter((item: QueueItem) => item.status === 'completed').length,
+      failedItems: items.filter((item: QueueItem) => item.status === 'failed').length,
       averageWaitTime: this.calculateAverageWaitTime(items),
     };
   }

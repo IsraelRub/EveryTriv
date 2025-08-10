@@ -1,50 +1,46 @@
 # EveryTriv
 
-EveryTriv is a smart trivia platform with custom difficulty levels, built with React, TypeScript, and NestJS.
+EveryTriv הוא פלטפורמת טריוויה חכמה עם רמות קושי מותאמות אישית, נבנה עם React, TypeScript ו-NestJS.
 
-## Features
+## תכונות עיקריות
 
-- Custom difficulty levels with natural language processing
-- Real-time trivia generation using LLM providers
-- User progress tracking and achievements
-- Leaderboard and social features
-- Responsive and animated UI
-- Multi-level caching system
+- רמות קושי מותאמות עם עיבוד שפה טבעית
+- יצירת שאלות טריוויה בזמן אמת באמצעות ספקי AI
+- מעקב אחר התקדמות משתמשים והישגים
+- לוח תוצאות ותכונות חברתיות
+- ממשק משתמש רספונסיבי ומונפש
+- מערכת cache רב-שכבתית
 
-## Documentation
+## 📚 תיעוד מרוכז
 
-- [Architecture Overview](docs/architecture.md)
-- [API Reference](docs/api-reference.md)
-- [Setup Instructions](docs/setup.md)
-- [Entity Diagrams](docs/entity-diagrams.md)
-- [Deployment Guide](docs/deployment.md)
-- [Contributing Guide](docs/contributing.md)
+### מסמכים עיקריים
+- 🏗️ **[ארכיטקטורה](docs/ARCHITECTURE.md)** - מבנה המערכת, טכנולוגיות וזרימת נתונים
+- 📊 **[דיאגרמות](docs/DIAGRAMS.md)** - כל דיאגרמות Mermaid במקום אחד  
+- ⚡ **[פיתוח ו-API](docs/DEVELOPMENT.md)** - מדריך פיתוח, API documentation וגיידליינים
 
-## Quick Start
+### מסמכים נוספים
+- 🚀 **[Deployment](docs/deployment.md)** - מדריך הטמעה לייצור
+- 🤝 **[Contributing](docs/contributing.md)** - מדריך תרומה לפרויקט
 
-1. Clone the repository:
+## התחלה מהירה
+
+1. שכפול הפרויקט:
 ```bash
-git clone https://github.com/yourusername/everytriv.git
-cd everytriv
+git clone https://github.com/IsraelRub/EveryTriv.git
+cd EveryTriv
 ```
 
-2. Install dependencies:
+2. התקנת dependencies:
 ```bash
-pnpm install
+npm install --legacy-peer-deps
 ```
 
-3. Start the development servers:
+3. הפעלת סביבת פיתוח:
 ```bash
-# Start backend
-cd server
-pnpm start:dev
-
-# Start frontend (in a new terminal)
-cd client
-pnpm dev
+npm run start:dev  # מפעיל גם client וגם server
 ```
 
-4. Visit http://localhost:5173 in your browser
+4. פתיחת הדפדפן בכתובת http://localhost:5173
 
 ## Database Administration
 
