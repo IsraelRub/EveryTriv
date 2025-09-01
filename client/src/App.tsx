@@ -1,57 +1,59 @@
-import AppRoutes from './AppRoutes';
-import { AnimatedBackground } from './shared/components/animations';
-import { AdvancedAudioControls } from './shared/components/audio';
-import AudioDiagnostics from './shared/components/audio/AudioDiagnostics';
-import { Footer, FloatingHelpButton } from './shared/components/layout';
-import { AudioProvider } from './shared/hooks';
-import logger from './shared/services/logger.service';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useEffect } from 'react';
 
+import AppRoutes from './AppRoutes';
+import { AnimatedBackground } from './components/animations';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import { AudioProvider } from './hooks/contexts/AudioContext';
+import { PerformanceProvider } from './hooks/contexts/PerformanceContext';
+import { logger } from './services/utils';
+import { prefetchCommonQueries } from './services/utils/queryClient';
 
+/**
+ * Main application component
+ * 
+ * @component App
+ * @description Root application component with providers, error boundaries, and initialization logic
+ * @returns JSX.Element The rendered application with all necessary providers and components
+ */
 function App() {
-  useEffect(() => {
-    // Simple application startup logging
-    logger.info('🚀 EveryTriv Client Application Started', {
-      version: '1.0.0',
-      environment: import.meta.env.MODE || 'development',
-      timestamp: new Date().toISOString()
-    });
+	useEffect(() => {
+		const initializeApp = async () => {
+			try {
+				await prefetchCommonQueries();
+				    logger.appStartup();
+			} catch (error) {
+				logger.systemError('Failed to initialize app', { 
+					error: error instanceof Error ? error.message : String(error) 
+				});
+			}
+		};
 
-    // Log when component unmounts (app shutdown)
-    return () => {
-      logger.info('👋 EveryTriv Client Application Shutting Down', {
-        sessionDuration: performance.now(),
-        timestamp: new Date().toISOString()
-      });
-    };
-  }, []);
+		initializeApp();
+	}, []);
 
-  return (
-    <AudioProvider>
-      <div className="relative min-h-screen flex flex-col">
-        <AnimatedBackground>
-          {/* Audio Controls positioned absolutely */}
-          <div className="fixed top-20 right-4 z-50">
-            <AdvancedAudioControls />
-          </div>
-          
-          {/* Main App Content */}
-          <div className="relative z-10 flex-1">
-            <AppRoutes />
-          </div>
-          
-          {/* Footer */}
-          <Footer />
-          
-          {/* Floating Help Button */}
-          <FloatingHelpButton />
-          
-          {/* Audio Diagnostics */}
-          <AudioDiagnostics />
-        </AnimatedBackground>
-      </div>
-    </AudioProvider>
-  );
+	return (
+		<ErrorBoundary>
+			<PerformanceProvider>
+				<AudioProvider>
+					<AnimatedBackground
+						intensity='medium'
+						theme='blue'
+						particles={true}
+						particlesCount={20}
+						animationSpeed={1.2}
+						enableParticles={true}
+						enableGradients={true}
+						enableFloating={true}
+					>
+						<AppRoutes />
+						{/* React Query DevTools - only in development */}
+						{import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+					</AnimatedBackground>
+				</AudioProvider>
+			</PerformanceProvider>
+		</ErrorBoundary>
+	);
 }
 
 export default App;

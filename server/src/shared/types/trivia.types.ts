@@ -2,29 +2,56 @@
  * Server-specific trivia types for EveryTriv
  * Extends shared types with server-specific functionality
  */
-
-// Import core shared types instead of from deprecated api.types
-import type { 
-  TriviaAnswer, 
-  TriviaQuestion,
-  TriviaRequest,
-  TriviaHistoryRequest
-} from '../../../../shared/types/core.types';
+// Import core shared types from workspace root
+import { DifficultyLevel } from 'everytriv-shared/constants';
+import type {
+	GameMode,
+	TriviaAnswer,
+	TriviaHistoryRequest,
+	TriviaQuestion,
+	TriviaRequest,
+} from 'everytriv-shared/types/game.types';
 
 // Re-export shared types
-export type { TriviaAnswer, TriviaQuestion, TriviaRequest, TriviaHistoryRequest };
+export type { GameMode, TriviaAnswer, TriviaHistoryRequest, TriviaQuestion, TriviaRequest };
 
 // Server-specific extensions
 
-// Database entity
-export interface TriviaEntity {
-  id: string;
-  topic: string;
-  difficulty: string;
-  question: string;
-  answers: Array<{ text: string; isCorrect: boolean }>;
-  correctAnswerIndex: number;
-  userId: string | null;
-  isCorrect: boolean;
-  createdAt: Date;
+// Database data type
+export interface TriviaData {
+	id: string;
+	topic: string;
+	difficulty: string;
+	question: string;
+	answers: TriviaAnswer[];
+	correct_answer_index: number;
+	user_id: string | null;
+	is_correct: boolean;
+	created_at: Date;
+}
+
+// Server-specific request/response types
+export interface CreateTriviaRequest extends TriviaRequest {
+	userId?: string;
+	customDifficulty?: string;
+}
+
+// Server-specific TriviaQuestion with mappedDifficulty
+export interface ServerTriviaQuestion extends Omit<TriviaQuestion, 'metadata'> {
+	metadata?: {
+		actualDifficulty?: string;
+		questionCount?: number;
+		customDifficultyMultiplier?: number;
+		mappedDifficulty?: DifficultyLevel;
+	};
+}
+
+export interface TriviaResponse {
+	question: ServerTriviaQuestion;
+	metadata?: {
+		actualDifficulty?: string;
+		questionCount?: number;
+		customDifficultyMultiplier?: number;
+		mappedDifficulty?: DifficultyLevel;
+	};
 }

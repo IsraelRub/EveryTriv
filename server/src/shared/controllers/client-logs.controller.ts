@@ -1,77 +1,66 @@
-import { Controller, Post, Body, HttpCode, Get, Inject } from '@nestjs/common';
-import { LoggerService } from '../modules/logger/logger.service';
-import type { ClientLogSyncRequest, ClientLogSyncResponse } from '../../../../shared/types/logging.types';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Body, Controller, Post } from '@nestjs/common';
+import { MESSAGE_FORMATTERS, serverLogger } from 'everytriv-shared/services';
+import { ClientLogsRequest, LogLevel, LogMeta } from 'everytriv-shared/types';
 
 @Controller('client-logs')
 export class ClientLogsController {
-  private readonly clientLogPath = path.join(process.cwd(), '..', 'client', 'logs', 'client.log');
+	constructor() {}
 
-  constructor(
-    @Inject(LoggerService) private readonly logger: LoggerService
-  ) {
-    // Ensure client logs directory exists
-    this.ensureLogDirectory();
-  }
+	@Post('batch')
+	async receiveClientLogs(@Body() request: ClientLogsRequest) {
+		const { logs, userId, sessionId } = request;
 
-  private ensureLogDirectory(): void {
-    try {
-      const logDir = path.dirname(this.clientLogPath);
-      if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir, { recursive: true });
-      }
-    } catch (error) {
-      this.logger.error('Failed to create client logs directory', { error });
-    }
-  }
+		// Process each log entry
+		for (const logEntry of logs) {
+			const meta: LogMeta = {
+				source: 'client',
+				userId: userId || 'anonymous',
+				sessionId: sessionId || 'no-session',
+				timestamp: new Date().toISOString(),
+				level: logEntry.meta?.level || 'info',
+				...logEntry.meta,
+			};
 
-  @Post('write')
-  @HttpCode(200)
-  async writeClientLogs(@Body() body: ClientLogSyncRequest): Promise<ClientLogSyncResponse> {
-    try {
-      // Append to file instead of overwriting
-      fs.appendFileSync(this.clientLogPath, body.content, 'utf8');
-      this.logger.debug('Client logs appended to file', { 
-        path: this.clientLogPath, 
-        contentLength: body.content.length 
-      });
-      return { success: true };
-    } catch (error) {
-      this.logger.error('Failed to write client logs', { error, path: this.clientLogPath });
-      return { success: false };
-    }
-  }
+			// Map client log level to shared LogLevel enum
+			const logLevel = this.mapClientLogLevel(logEntry.level);
 
-  @Post('clear')
-  @HttpCode(200)
-  async clearClientLogs(): Promise<ClientLogSyncResponse> {
-    try {
-      fs.writeFileSync(this.clientLogPath, '', 'utf8');
-      this.logger.debug('Client logs cleared', { path: this.clientLogPath });
-      return { success: true };
-    } catch (error) {
-      this.logger.error('Failed to clear client logs', { error, path: this.clientLogPath });
-      return { success: false };
-    }
-  }
+			switch (logLevel) {
+				case LogLevel.ERROR:
+					serverLogger.apiError(MESSAGE_FORMATTERS.client.error(logEntry.message), meta);
+					break;
+				case LogLevel.WARN:
+					serverLogger.apiWarn(MESSAGE_FORMATTERS.client.warn(logEntry.message), meta);
+					break;
+				case LogLevel.INFO:
+					serverLogger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
+					break;
+				case LogLevel.DEBUG:
+					serverLogger.apiDebug(MESSAGE_FORMATTERS.client.debug(logEntry.message), meta);
+					break;
+				default:
+					serverLogger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
+			}
+		}
 
-  @Get('read')
-  async readClientLogs(): Promise<{ success: boolean; content?: string }> {
-    try {
-      if (!fs.existsSync(this.clientLogPath)) {
-        return { success: true, content: '' };
-      }
-      
-      const content = fs.readFileSync(this.clientLogPath, 'utf8');
-      this.logger.debug('Client logs read from file', { 
-        path: this.clientLogPath, 
-        contentLength: content.length 
-      });
-      return { success: true, content };
-    } catch (error) {
-      this.logger.error('Failed to read client logs', { error, path: this.clientLogPath });
-      return { success: false };
-    }
-  }
+		return { success: true, processed: logs.length };
+	}
+
+	/**
+	 * Map client log level string to shared LogLevel enum
+	 */
+	private mapClientLogLevel(level: string): LogLevel {
+		switch (level.toLowerCase()) {
+			case 'error':
+				return LogLevel.ERROR;
+			case 'warn':
+			case 'warning':
+				return LogLevel.WARN;
+			case 'info':
+				return LogLevel.INFO;
+			case 'debug':
+				return LogLevel.DEBUG;
+			default:
+				return LogLevel.INFO;
+		}
+	}
 }

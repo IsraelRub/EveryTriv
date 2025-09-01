@@ -1,65 +1,66 @@
 import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  Index,
+	Column,
+	CreateDateColumn,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
 } from 'typeorm';
+
 import { UserEntity } from './user.entity';
 
 @Entity('trivia')
 export class TriviaEntity {
-  @PrimaryGeneratedColumn('uuid')
-  id: string = '';
+	@PrimaryGeneratedColumn('uuid')
+	id: string = '';
 
-  @Column()
-  @Index()
-  topic: string = '';
+	@Column()
+	@Index()
+	topic: string = '';
 
-  @Column()
-  difficulty: string = '';
+	@Column()
+	difficulty: string = '';
 
-  @Column()
-  @Index()
-  question: string = '';
+	@Column()
+	@Index()
+	question: string = '';
 
-  @Column('jsonb', { default: [] })
-  answers: Array<{
-    text: string;
-    isCorrect: boolean;
-  }> = [];
+	@Column('jsonb', { default: [] })
+	answers: Array<{
+		text: string;
+		isCorrect: boolean;
+	}> = [];
 
-  @Column('int')
-  correctAnswerIndex: number = 0;
+	@Column({ name: 'correct_answer_index', type: 'int' })
+	correctAnswerIndex: number = 0;
 
-  @Column({ nullable: true })
-  userId: string = '';
+	@Column({ name: 'user_id', nullable: true })
+	userId: string = '';
 
-  @ManyToOne(() => UserEntity, { nullable: true })
-  @JoinColumn({ name: 'userId' })
-  user!: UserEntity;
+	@ManyToOne(() => UserEntity, { nullable: true })
+	@JoinColumn({ name: 'user_id' })
+	user!: UserEntity;
 
-  @Column('boolean', { default: false })
-  isCorrect: boolean = false;
+	@Column({ name: 'is_correct', type: 'boolean', default: false })
+	isCorrect: boolean = false;
 
-  @Column('jsonb', { nullable: true })
-  metadata: {
-    category?: string;
-    tags?: string[];
-    source?: string;
-    difficulty_score?: number;
-    custom_difficulty_description?: string;
-  } = {};
+	@Column('jsonb', { nullable: true })
+	metadata: {
+		category?: string;
+		tags?: string[];
+		source?: string;
+		difficulty_score?: number;
+		custom_difficulty_description?: string;
+	} = {};
 
-  @CreateDateColumn()
-  createdAt: Date = new Date();
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt: Date = new Date();
 
-  @UpdateDateColumn()
-  updatedAt: Date = new Date();
+	@UpdateDateColumn({ name: 'updated_at' })
+	updatedAt: Date = new Date();
 
-  @Column('tsvector', { select: false })
-  searchVector: string = '';
+	@Column({ name: 'search_vector', type: 'tsvector', select: false })
+	searchVector: string = '';
 }

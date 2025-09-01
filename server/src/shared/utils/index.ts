@@ -1,6 +1,27 @@
 /**
- * Export utility functions for easy importing
+ * Server Utilities Index
+ *
+ * @module ServerUtilsModule
+ * @description Central export point for all server-side utility functions
+ * @used_by server/controllers, server/services, server/middleware
  */
-export * from './logger';
 
-// Add other utility exports here as needed
+/**
+ * HTTP interceptors utilities
+ * @description Functions for HTTP request/response interception
+ * @used_by server/middleware, server/controllers, server/services
+ */
+export { InterceptorsUtils } from './interceptors.utils';
+
+/**
+ * Retry mechanism utilities
+ * @description Functions for implementing retry logic
+ * @used_by server/services, server/middleware, server/controllers
+ */
+export { RetryUtils } from './retry.utils';
+
+/**
+ * Trivia game utilities
+ * @description Functions for trivia game logic and validation
+ * @used_by server/features/game, server/controllers, server/services
+ */

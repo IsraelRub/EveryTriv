@@ -1,45 +1,56 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
-import { AuthService } from 'src/features/auth/services/auth.service';
+import { Injectable, NestMiddleware } from '@nestjs/common';
+import { COOKIE_NAMES } from 'everytriv-shared/constants';
 
-/**
- * Middleware that checks if the user is logged in
- * As shown in the architecture diagram ("auth - if the user login or not")
- * This middleware doesn't block requests, it just identifies if user is logged in
- */
+import { AUTH_CONSTANTS } from '../constants';
+import { LoggerService } from '../controllers';
+import { NestNextFunction, NestRequest, NestResponse } from '../types';
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(AuthMiddleware.name);
-  constructor(private readonly authService: AuthService) {}
+	constructor(private readonly logger: LoggerService) {}
 
-  async use(req: Request & { user?: any }, _: Response, next: NextFunction) {
-    const authHeader = req.headers.authorization;
-    
-    // If no auth header, user is not logged in - continue without setting user
-    if (!authHeader) {
-      next();
-      return;
-    }
+	use(req: NestRequest, _res: NestResponse, next: NestNextFunction) {
+		try {
+			// Extract token from auth header or cookies
+			const authHeader = req.headers[AUTH_CONSTANTS.AUTH_HEADER.toLowerCase()];
+			const cookieToken = req.cookies?.[COOKIE_NAMES.AUTH_TOKEN];
 
-    const [type, token] = authHeader.split(' ');
-    
-    // Invalid token type - continue without setting user
-    if (type !== 'Bearer') {
-      this.logger.debug('Invalid token type');
-      next();
-      return;
-    }
+			let token = null;
 
-    try {
-      // If token is valid, set user information on the request
-      const decoded = await this.authService.verifyToken(token);
-      req['user'] = decoded;
-    } catch (error) {
-      // Invalid token - continue without setting user
-      this.logger.debug('Invalid token');
-    }
-    
-    // Always proceed to next middleware/controller
-    next();
-  }
+			// Convert authHeader to string if it's an array
+			const authHeaderString = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+
+			if (authHeaderString?.startsWith(`${AUTH_CONSTANTS.TOKEN_TYPE} `)) {
+				token = authHeaderString.substring(AUTH_CONSTANTS.TOKEN_TYPE.length + 1);
+			} else if (cookieToken) {
+				token = cookieToken;
+			}
+
+			// Log authentication attempt (without blocking)
+			if (token) {
+				this.logger.authDebug('Authentication token found', {
+					tokenType: token.startsWith('Bearer ') ? 'Bearer' : 'Other',
+					path: req.path,
+					method: req.method,
+				});
+
+				// Store token in request for guards to use
+				req.authToken = token;
+			} else {
+				this.logger.authDebug('No authentication token', {
+					path: req.path,
+					method: req.method,
+				});
+			}
+
+			next();
+		} catch (error) {
+			this.logger.authError('Auth middleware error', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				path: req.path,
+				method: req.method,
+			});
+			next();
+		}
+	}
 }

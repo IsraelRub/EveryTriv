@@ -1,38 +1,46 @@
-# Multi-stage build for production
-FROM node:20-alpine AS build
+# Use Node.js 18 Alpine as base image
+FROM node:18-alpine AS builder
 
-# Build argument for environment file
-ARG ENV_FILE=.env.prod
+# Install pnpm
+RUN npm install -g pnpm
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies first (for better caching)
-COPY package*.json ./
-RUN npm install
+# Copy workspace configuration
+COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
 
-# Copy source code and environment file
-COPY . .
-COPY ${ENV_FILE} .env
+# Copy all packages
+COPY client/ ./client/
+COPY shared/ ./shared/
+COPY server/ ./server/
 
-# Build for production
-RUN npm run build
+# Copy .npmrc for pnpm configuration
+COPY .npmrc ./
 
-# Production stage with nginx
-FROM nginx:alpine AS production
+# Install all dependencies at workspace level
+RUN pnpm install
 
-# Copy built files from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+# Build shared package first
+WORKDIR /app/shared
+RUN pnpm run build
+
+# Switch back to client directory and build
+WORKDIR /app/client
+RUN pnpm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy built application from builder stage
+COPY --from=builder /app/client/dist /usr/share/nginx/html
 
 # Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY client/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port
-EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000 || exit 1
+# Expose port 80
+EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

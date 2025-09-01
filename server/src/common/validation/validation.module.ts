@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { RedisModule } from '../../config/redis.module';
-import { InputValidationService } from './input-validation.service';
+
+import { LanguageToolService } from './languageTool.service';
+import { ValidationService } from './validation.service';
 
 @Module({
-  imports: [RedisModule],
-  providers: [InputValidationService],
-  exports: [InputValidationService],
+	providers: [ValidationService, LanguageToolService],
+	exports: [ValidationService, LanguageToolService],
 })
 export class ValidationModule {}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "server/src/main.ts",
+    "client/src/main.tsx",
+    "shared/index.ts"
+  ],
+  "project": [
+    "server/src/**/*.ts",
+    "server/test/**/*.ts",
+    "client/src/**/*.{ts,tsx}",
+    "shared/**/*.ts"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "typescript",
+    "eslint*",
+    "prettier*",
+    "jest*",
+    "vitest",
+    "@testing-library/*",
+    "jsdom",
+    "ts-jest",
+    "ts-node",
+    "tsconfig-paths",
+    "source-map-support",
+    "rimraf",
+    "ts-loader",
+    "supertest",
+    "autoprefixer",
+    "postcss"
+  ],
+  "ignoreBinaries": [
+    "tsc",
+    "nest",
+    "jest",
+    "vite",
+    "vitest"
+  ],
+  "rules": {
+    "exports": "warn",
+    "files": "warn",
+    "dependencies": "warn",
+    "devDependencies": "warn",
+    "unlisted": "warn",
+    "binaries": "warn"
+  }
+}

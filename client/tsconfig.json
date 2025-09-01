@@ -12,14 +12,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "module": "ESNext",
-    "allowImportingTsExtensions": true,
+
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+    "outDir": "./dist-temp",
     "downlevelIteration": true,
     "experimentalDecorators": true,
-    "importHelpers": true,
     "esModuleInterop": true,
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
@@ -29,9 +28,18 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "src/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@services/*": ["./src/services/*"],
+      "@types/*": ["./src/types/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@constants/*": ["./src/constants/*"],
+      "@redux/*": ["./src/redux/*"],
+      "@views/*": ["./src/views/*"]
     },
-    "types": ["node", "@testing-library/jest-dom", "react", "react-dom"]
+    "types": ["@testing-library/jest-dom", "react", "react-dom"]
   },
   "include": [
     "src",

@@ -1,77 +1,24 @@
 /**
- * User-related types for the server
+ * User-related types specific to the server
+ * These types are used internally by the server and are not shared with the client
+ *
+ * @module ServerUserTypes
+ * @description Server-specific user metadata and internal types
+ * @used_by server/src/features/user/dtos/create-user.dto.ts, server/src/shared/entities/user.entity.ts
  */
+import { UserAddress } from 'everytriv-shared/types';
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  passwordHash?: string; // Optional for DTOs
-  avatar?: string;
-  score: number;
-  credits: number;
-  googleId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Re-export shared UserAddress type
+export type { UserAddress };
 
-// Database entity
-export interface UserEntity {
-  id: string;
-  username: string;
-  email: string;
-  passwordHash: string;
-  avatar?: string;
-  score: number;
-  credits: number;
-  googleId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface UserStats {
-  id: string;
-  userId: string;
-  topicsPlayed: Record<string, number>;
-  difficultyStats: Record<string, { correct: number; total: number }>;
-  totalQuestions: number;
-  correctAnswers: number;
-  lastPlayed: Date;
-}
-
-export interface Achievement {
-  id: string;
-  userId: string;
-  title: string;
-  description: string;
-  icon: string;
-  unlockedAt: Date;
-}
-
-// DTOs
-export interface UserProfileDto {
-  id: string;
-  username: string;
-  email: string;
-  avatar?: string;
-  score: number;
-  credits: number;
-  achievements: Achievement[];
-  stats: UserStats;
-}
-
-
-// Profile management DTOs (user-facing)
-export interface UpdateProfileDto {
-  username?: string;
-  avatar?: string;
-  // Users can't change email directly (requires verification)
-}
-
-// DTO for creating/updating user profile without authentication (external systems like Google OAuth)
-export interface SaveUserProfileDto {
-  userId: string;
-  username: string;
-  email?: string;
-  avatar?: string;
+// User metadata interface for server-side tracking
+export interface UserMetadata {
+	registrationSource?: 'web' | 'mobile' | 'oauth';
+	lastLoginAt?: Date;
+	loginCount?: number;
+	deviceInfo?: {
+		userAgent?: string;
+		ipAddress?: string;
+		deviceType?: 'desktop' | 'mobile' | 'tablet';
+	};
 }

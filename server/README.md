@@ -1,104 +1,56 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# EveryTriv Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Database Migrations
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This project uses TypeORM migrations for database schema management. **Never use `synchronize: true`** as it can cause data loss and inconsistencies.
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
+### Migration Commands
 
 ```bash
-$ npm install
+# Generate a new migration (after entity changes)
+pnpm migration:generate src/migrations/MigrationName
+
+# Run pending migrations
+pnpm migration:run
+
+# Revert last migration
+pnpm migration:revert
+
+# Show migration status
+pnpm migration:show
+
+# Create empty migration file
+pnpm migration:create src/migrations/MigrationName
+
+# Drop entire schema (DANGEROUS - only for development)
+pnpm schema:drop
 ```
 
-## Running the app
+### Migration Workflow
 
-```bash
-# development
-$ npm run start
+1. **Make entity changes** in `src/shared/entities/`
+2. **Generate migration**: `pnpm migration:generate src/migrations/DescriptiveName`
+3. **Review generated migration** in `src/migrations/`
+4. **Run migration**: `pnpm migration:run`
+5. **Test the changes**
 
-# watch mode
-$ npm run start:dev
+### Important Notes
 
-# production mode
-$ npm run start:prod
-```
+- **Never commit migrations with `synchronize: true`**
+- **Always review generated migrations** before running
+- **Test migrations in development** before production
+- **Backup database** before running migrations in production
+- **Use descriptive migration names** that explain the change
 
-## Test
+### Environment Setup
 
-```bash
-# unit tests
-$ npm run test
+The database configuration automatically sets `synchronize: false` for all environments to ensure migrations are always used.
 
-# e2e tests
-$ npm run test:e2e
+### Troubleshooting
 
-# test coverage
-$ npm run test:cov
-```
+If you encounter migration issues:
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
-
-# EveryTriv: LLM-Powered Smart Trivia Platform
-
-## Overview
-EveryTriv is a smart trivia platform powered by large language models (LLMs). It dynamically generates trivia questions on any topic and difficulty, using multiple LLM providers for reliability and variety.
-
-## Features
-- Generate trivia questions on any topic and difficulty
-- Integrates with multiple LLM providers (OpenAI, Anthropic)
-- Round-robin/load-balanced LLM routing
-- Caching and rate-limiting
-- Modern, engaging UI/UX (see client/)
-
-## Environment Variables
-Create a `.env` file in the `server/` directory with the following:
-
-```
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-```
-
-## Getting Started
-1. Install dependencies: `npm install`
-2. Start the server: `npm run start:dev`
-
-## API
-- `POST /trivia` — Generate a trivia question
-  - Body: `{ "topic": "string", "difficulty": "string" }`
-
-## License
-MIT
+1. Check migration status: `pnpm migration:show`
+2. Verify database connection
+3. Review migration files for syntax errors
+4. Consider reverting and regenerating if needed

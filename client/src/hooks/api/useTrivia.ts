@@ -1,0 +1,160 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from 'everytriv-shared/types';
+
+import { apiService, gameHistoryService, storageService } from '../../services';
+
+// Query keys
+export const triviaKeys = {
+	all: ['trivia'] as const,
+	lists: () => [...triviaKeys.all, 'list'] as const,
+	list: (filters: string) => [...triviaKeys.lists(), { filters }] as const,
+	details: () => [...triviaKeys.all, 'detail'] as const,
+	detail: (id: number) => [...triviaKeys.details(), id] as const,
+	history: () => [...triviaKeys.all, 'history'] as const,
+	question: (request: TriviaRequest) => [...triviaKeys.all, 'question', request] as const,
+	score: (userId: string) => [...triviaKeys.all, 'score', userId] as const,
+	leaderboard: (limit: number) => [...triviaKeys.all, 'leaderboard', limit] as const,
+	difficultyStats: (userId?: string) => [...triviaKeys.all, 'difficulty-stats', userId] as const,
+} as const;
+
+// Custom difficulty hooks
+export const useCustomDifficulties = () => {
+	const getRecentDifficulties = () => storageService.getRecentCustomDifficulties();
+
+	return useQuery({
+		queryKey: ['custom-difficulties'],
+		queryFn: getRecentDifficulties,
+		staleTime: 0, // Always fetch from localStorage
+	});
+};
+
+export const useDifficultyStats = (userId?: string) => {
+	return useQuery({
+		queryKey: triviaKeys.difficultyStats(userId),
+		queryFn: () => apiService.getDifficultyStats(userId || ''),
+		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+	});
+};
+
+// Game History hooks
+export const useGameHistory = (limit: number = 20, offset: number = 0) => {
+	return useQuery({
+		queryKey: ['game-history', limit, offset],
+		queryFn: () => gameHistoryService.getUserGameHistory(limit, offset),
+		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+	});
+};
+
+export const useGlobalLeaderboard = (limit: number = 100) => {
+	return useQuery({
+		queryKey: ['global-leaderboard', limit],
+		queryFn: () => gameHistoryService.getLeaderboard(limit),
+		staleTime: 2 * 60 * 1000, // Consider stale after 2 minutes
+	});
+};
+
+export const useLeaderboard = (limit: number = 10) => {
+	return useQuery({
+		queryKey: triviaKeys.leaderboard(limit),
+		queryFn: () => apiService.getLeaderboard(limit),
+		staleTime: 60 * 1000, // Consider stale after 1 minute
+	});
+};
+
+export const useSaveCustomDifficulty = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ topic, difficulty }: { topic: string; difficulty: string }) => {
+			storageService.saveCustomDifficulty(topic, difficulty);
+			return Promise.resolve();
+		},
+		onSuccess: () => {
+			// Invalidate custom difficulties query
+			queryClient.invalidateQueries({ queryKey: ['custom-difficulties'] });
+		},
+	});
+};
+
+// Mutations
+export const useSaveHistory = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (data: CreateGameHistoryDto) => apiService.saveHistory(data),
+		onMutate: async newHistory => {
+			// Cancel any outgoing refetches
+			try {
+				await queryClient.cancelQueries({ queryKey: ['game-history'] });
+			} catch (error) {
+				// Ignore errors when canceling queries
+				import('../../services/utils').then(({ logger }) => {
+					logger.apiDebug('Error canceling queries', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+			}
+
+			// Snapshot the previous value
+			const previousHistory = queryClient.getQueryData(['game-history']);
+
+			// Optimistically update the cache
+			queryClient.setQueryData(['game-history'], (old: GameHistoryEntry[] | undefined) => {
+				if (!old) return [newHistory];
+				return [newHistory, ...old];
+			});
+
+			// Return a context object with the snapshotted value
+			return { previousHistory };
+		},
+		onError: (_err, _newHistory, context) => {
+			// If the mutation fails, use the context returned from onMutate to roll back
+			if (context?.previousHistory) {
+				queryClient.setQueryData(['game-history'], context.previousHistory);
+			}
+		},
+		onSettled: () => {
+			// Always refetch after error or success
+			queryClient.invalidateQueries({ queryKey: ['game-history'] });
+			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+		},
+	});
+};
+
+// Hooks
+export const useTriviaQuestion = (request: TriviaRequest) => {
+	return useQuery({
+		queryKey: triviaKeys.question(request),
+		queryFn: () => apiService.getTrivia(request),
+		staleTime: 0, // Always fetch fresh questions
+		gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+		retry: false, // Don't retry trivia questions
+	});
+};
+
+// Specialized hook for game scenarios that returns a function to fetch trivia
+export const useTriviaQuestionMutation = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (request: TriviaRequest) => apiService.getTrivia(request),
+		onSuccess: (data, request) => {
+			// Cache the result for potential reuse
+			queryClient.setQueryData(triviaKeys.question(request), data);
+		},
+	});
+};
+
+export const useUserScore = (userId: string) => {
+	return useQuery({
+		queryKey: triviaKeys.score(userId),
+		queryFn: () => apiService.getUserScore(userId),
+		staleTime: 30 * 1000, // Consider stale after 30 seconds
+		enabled: !!userId,
+	});
+};
+
+// Validation hook
+export const useValidateCustomDifficulty = () => {
+	return (customText: string) => apiService.validateCustomDifficulty(customText);
+};

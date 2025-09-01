@@ -1,0 +1,76 @@
+import { SubscriptionMetadata } from '@shared/types';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
+
+import { PaymentMethod, SubscriptionStatus } from '../../../../shared/types/payment.types';
+import { UserEntity } from './user.entity';
+
+@Entity('subscriptions')
+export class SubscriptionEntity {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
+	@Column({ name: 'user_id' })
+	@Index()
+	userId: string;
+
+	@ManyToOne(() => UserEntity, user => user.id, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'user_id' })
+	user: UserEntity;
+
+	@Column({ name: 'plan_id' })
+	planId: string;
+
+	@Column({
+		type: 'enum',
+		enum: SubscriptionStatus,
+		default: SubscriptionStatus.PENDING,
+	})
+	status: SubscriptionStatus;
+
+	@Column('decimal', { precision: 10, scale: 2 })
+	price: number;
+
+	@Column({ default: 'USD' })
+	currency: string;
+
+	@Column({ name: 'start_date' })
+	startDate: Date;
+
+	@Column({ name: 'end_date' })
+	endDate: Date;
+
+	@Column({
+		name: 'payment_method',
+		type: 'enum',
+		enum: PaymentMethod,
+		default: PaymentMethod.STRIPE,
+	})
+	paymentMethod: PaymentMethod;
+
+	@Column({ name: 'stripe_price_id', nullable: true })
+	stripePriceId?: string;
+
+	@Column({ name: 'stripe_subscription_id', nullable: true })
+	stripeSubscriptionId?: string;
+
+	@Column({ name: 'stripe_customer_id', nullable: true })
+	stripeCustomerId?: string;
+
+	@Column('jsonb', { default: {} })
+	metadata: SubscriptionMetadata;
+
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt: Date;
+
+	@UpdateDateColumn({ name: 'updated_at' })
+	updatedAt: Date;
+}
