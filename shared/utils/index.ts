@@ -3,7 +3,6 @@
  *
  * @module SharedUtils
  * @description Central export point for all shared utility functions and helpers
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/src/utils/cn.ts, server/src/shared/utils/interceptors.utils.ts, shared/services/storage.service.ts
  */
@@ -71,3 +70,11 @@ export * from './date.utils';
  * @used_by client/src/services/storage.service.ts, server/src/shared/middleware/body-validation.middleware.ts
  */
 export * from './storage.utils';
+
+/**
+ * Preferences utilities
+ * @description Functions for user preferences management and defaults
+ * @exports {Function} Preferences management utility functions
+ * @used_by client/src/views/user/UserProfile.tsx, server/src/features/user/user.service.ts
+ */
+export * from './preferences.utils';

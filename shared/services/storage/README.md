@@ -83,7 +83,7 @@ shared/services/storage/
 ### **שימוש בסיסי:**
 
 ```typescript
-import { BaseStorageService, StorageManagerService, metricsService } from 'everytriv-shared/services/storage';
+import { BaseStorageService, StorageManagerService, metricsService } from '../../shared/services/storage';
 
 // שירות בסיסי
 class MyStorageService extends BaseStorageService {
@@ -98,7 +98,7 @@ await storageManager.set('key', 'value', 3600, 'hybrid');
 ### **שימוש בפונקציות בסיס:**
 
 ```typescript
-import { StorageConfigFactory, StorageMetricsTracker, StorageUtils } from 'everytriv-shared/services/storage';
+import { StorageConfigFactory, StorageMetricsTracker, StorageUtils } from '../../shared/services/storage';
 
 // יצירת קונפיגורציה
 const config = StorageConfigFactory.createPersistentConfig({
@@ -116,7 +116,7 @@ StorageMetricsTracker.trackOperation('set', startTime, true, 'persistent', 1024)
 ### **שימוש במטריקות:**
 
 ```typescript
-import { metricsService } from 'everytriv-shared/services/storage';
+import { metricsService } from '../../shared/services/storage';
 
 // מעקב פעולה
 metricsService.trackOperation('set', 'persistent', true, 150, 1024);

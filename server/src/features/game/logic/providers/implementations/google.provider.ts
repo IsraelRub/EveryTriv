@@ -1,9 +1,8 @@
-import { PROVIDER_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { GoogleResponse, LLMApiResponse, LLMTriviaResponse, ProviderConfig } from 'everytriv-shared/types';
+import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 
-export class GoogleTriviaProvider extends BaseTriviaProvider<GoogleResponse> {
+export class GoogleTriviaProvider extends BaseTriviaProvider {
 	name = 'Google';
 	protected apiKey: string;
 
@@ -39,7 +38,13 @@ export class GoogleTriviaProvider extends BaseTriviaProvider<GoogleResponse> {
 
 	protected getProviderConfig(prompt: string): ProviderConfig {
 		return {
-			url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
+			name: 'google',
+			apiKey: this.apiKey,
+			baseUrl: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
+			timeout: 30000,
+			maxRetries: 3,
+			enabled: true,
+			priority: 2,
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -61,12 +66,11 @@ export class GoogleTriviaProvider extends BaseTriviaProvider<GoogleResponse> {
 		};
 	}
 
-	protected parseResponse(response: LLMApiResponse<GoogleResponse>): LLMTriviaResponse {
-		const data = response.data;
-		if (!data || !data.candidates || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
+		if (!response.data || !response.data.candidates || !Array.isArray(response.data.candidates) || response.data.candidates.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_GOOGLE_RESPONSE);
 		}
-		const content = data.candidates[0].content.parts[0].text;
-		return JSON.parse(content) as LLMTriviaResponse;
+		const content = response.data.candidates[0].content.parts[0].text;
+		return JSON.parse(content);
 	}
 }

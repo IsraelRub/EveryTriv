@@ -1,0 +1,69 @@
+/**
+ * Language Validation Pipe
+ *
+ * @module LanguageValidationPipe
+ * @description Pipe for validating text with language tool
+ * @used_by server/features/game, server/controllers
+ */
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { ValidationService } from '../validation/validation.service';
+import { serverLogger as logger } from '@shared';
+import type { LanguageValidationOptions } from '@shared';
+import { 
+	LanguageValidationData, 
+	LanguageValidationResult 
+} from '@shared';
+
+@Injectable()
+export class LanguageValidationPipe implements PipeTransform {
+	constructor(
+		private readonly validationService: ValidationService
+	) {}
+
+	async transform(value: LanguageValidationData): Promise<LanguageValidationResult> {
+		const startTime = Date.now();
+
+		try {
+			// Enhanced input validation
+			if (!value.text || value.text.trim().length === 0) {
+				throw new BadRequestException('Text is required');
+			}
+
+			if (value.text.length > 2000) {
+				throw new BadRequestException('Text is too long (max 2000 characters)');
+			}
+
+			const languageValidation = await this.validationService.validateInputWithLanguageTool(
+				value.text,
+				{
+				language: value.language,
+				enableSpellCheck: value.enableSpellCheck ?? true,
+				enableGrammarCheck: value.enableGrammarCheck ?? true,
+				enableLanguageDetection: true,
+			} as LanguageValidationOptions);
+
+			// Log API call for language validation
+			logger.apiUpdate('language_validation', {
+				isValid: languageValidation.isValid,
+				errorsCount: languageValidation.errors.length,
+				language: value.language || 'auto',
+				duration: Date.now() - startTime,
+			});
+
+			return {
+				isValid: languageValidation.isValid,
+				errors: languageValidation.errors,
+				suggestions: languageValidation.suggestion ? [languageValidation.suggestion] : [],
+				language: languageValidation.suggestion ? 'detected' : undefined,
+			};
+		} catch (error) {
+		logger.apiUpdateError('languageValidation', error instanceof Error ? error.message : 'Unknown error');
+
+			if (error instanceof BadRequestException) {
+				throw error;
+			}
+
+			throw new BadRequestException('Language validation failed');
+		}
+	}
+}

@@ -4,11 +4,12 @@
  * @module CurrentDifficulty
  * @used_by client/src/views/home/HomeView.tsx
  */
-import { formatTopic } from 'everytriv-shared/utils';
+import { formatTopic } from '@shared';
 
-import type { CurrentDifficultyProps } from '../../types/ui.types';
+import type { CurrentDifficultyProps } from '../../types';
 import { getDifficultyDisplayText, getDifficultyIcon, isCustomDifficulty } from '../../utils/customDifficulty.utils';
-import { FadeInUp } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp } from '../animations';
 import { Icon } from '../icons';
 import { Button } from '../ui/Button';
 
@@ -21,7 +22,7 @@ export default function CurrentDifficulty({
 }: CurrentDifficultyProps) {
 	if (!difficulty) return null;
 	return (
-		<FadeInUp className={className} delay={delay}>
+		<motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay }} className={className}>
 			<div className='text-center mb-6 flex items-center justify-center gap-3'>
 				<div className='bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 text-white text-base px-4 py-2 rounded-lg flex items-center gap-2'>
 					<Icon name={getDifficultyIcon(difficulty)} size='lg' className='text-white' />
@@ -40,6 +41,6 @@ export default function CurrentDifficulty({
 					</Button>
 				)}
 			</div>
-		</FadeInUp>
+		</motion.div>
 	);
 }

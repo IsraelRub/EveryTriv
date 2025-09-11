@@ -6,27 +6,13 @@
  */
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as dotenv from 'dotenv';
-
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
-import { setDatabaseLogger } from './config/database.config';
-import { AUTH_CONSTANTS, MESSAGE_FORMATTERS } from './shared/constants';
 
-/**
- * Load environment variables based on NODE_ENV
- * Attempts to load .env.prod for production, .env for development
- */
-try {
-	const envFile = process.env.NODE_ENV === 'prod' ? '.env.prod' : '.env';
-	dotenv.config({
-		path: envFile,
-		debug: false,
-	});
-} catch (error) {
-	// Continue with system environment variables if .env file doesn't exist
-}
+import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
+import { MESSAGE_FORMATTERS } from '@shared';
 
+// Environment configuration
 const environment = process.env.NODE_ENV || 'development';
 
 /**
@@ -38,6 +24,7 @@ async function bootstrap() {
 	const startTime = Date.now();
 
 	try {
+		// Note: Using console.log for bootstrap since logger is not yet available
 		console.log(MESSAGE_FORMATTERS.system.startup());
 		console.log(MESSAGE_FORMATTERS.system.config(), {
 			DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
@@ -53,8 +40,8 @@ async function bootstrap() {
 		if (
 			!googleClientId ||
 			!googleClientSecret ||
-			googleClientId === '123456789-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com' ||
-			googleClientSecret === 'GOCSPX-abcdefghijklmnopqrstuvwxyz123456'
+			googleClientId === 'your-google-client-id.apps.googleusercontent.com' ||
+			googleClientSecret === 'GOCSPX-your-google-client-secret'
 		) {
 			console.warn(MESSAGE_FORMATTERS.oauth.credentialsMissing('GoogleOAuth'));
 			console.warn(MESSAGE_FORMATTERS.oauth.warn('GoogleOAuth', 'Google OAuth authentication will be disabled.'));
@@ -74,8 +61,6 @@ async function bootstrap() {
 		});
 		console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
 
-		setDatabaseLogger();
-
 		app.enableCors({
 			origin: process.env.CLIENT_URL || 'http://localhost:5173',
 			credentials: true,
@@ -89,6 +74,7 @@ async function bootstrap() {
 
 		const bootDuration = Date.now() - startTime;
 
+		// Note: Using console.log for bootstrap since logger is not yet available
 		console.log('Server startup:', {
 			bootTime: `${bootDuration}ms`,
 			environment: environment,
@@ -115,13 +101,13 @@ async function bootstrap() {
 		});
 	} catch (error) {
 		try {
-			const fallback = new (require('./shared/modules/logging/logger.service').LoggerService)();
-			fallback.systemError('Failed to start server', {
+			// Use console.error for bootstrap errors since logger might not be available
+			console.error('Failed to start server:', {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 				bootAttemptDuration: `${Date.now() - startTime}ms`,
 			});
-		} catch (_) {
+		} catch (shutdownError) {
 			console.error('Shutdown: Failed to start server', error);
 		}
 		process.exit(1);

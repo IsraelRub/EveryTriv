@@ -1,107 +1,48 @@
 /**
- * Constants index for EveryTriv
+ * Constants index for EveryTriv - Reorganized Structure
  *
  * @module ConstantsIndex
- * @description Centralized export of all application constants organized by category
- * @version 1.0.0
+ * @description Centralized export of all application constants organized by domain
  * @author EveryTriv Team
  * @used_by server: server/src/shared/constants, client: client/src/shared/constants
  */
 
-/**
- * API constants
- * @description API endpoints, HTTP status codes, and request configuration
- * @exports {Object} API-related constants
- */
-export * from './api.constants';
+// ============================================================================
+// CORE CONSTANTS
+// ============================================================================
 
 /**
- * Game constants
- * @description Game mechanics, difficulty levels, scoring, and game modes
- * @exports {Object} Game-related constants
+ * Core constants
+ * @description API, game, validation, and error constants
  */
-export * from './game.constants';
+export * from './core';
 
-/**
- * HTTP constants
- * @description HTTP status codes, methods, and headers
- * @exports {Object} HTTP-related constants
- */
-export * from './http.constants';
-
-/**
- * Info constants
- * @description Application information, metadata, and branding
- * @exports {Object} Application info constants
- */
-export * from './info.constants';
+// ============================================================================
+// INFRASTRUCTURE CONSTANTS
+// ============================================================================
 
 /**
  * Infrastructure constants
- * @description Server ports, URLs, and infrastructure configuration
- * @exports {Object} Infrastructure configuration constants
+ * @description HTTP, storage, logging, and infrastructure configuration
  */
-export * from './infrastructure.constants';
+export * from './infrastructure';
+
+// ============================================================================
+// BUSINESS CONSTANTS
+// ============================================================================
 
 /**
- * Language constants
- * @description Language detection, validation, and localization
- * @exports {Object} Language-related constants
+ * Business constants
+ * @description Payment, social, language, and info constants
  */
-export * from './language.constants';
+export * from './business';
 
-/**
- * Logging constants
- * @description Logging levels, formats, and configuration
- * @exports {Object} Logging configuration constants
- */
-export * from './logging.constants';
-
-/**
- * Payment constants
- * @description Payment processing, currencies, and billing
- * @exports {Object} Payment-related constants
- */
-export * from './payment.constants';
-
-/**
- * Social constants
- * @description Social media, sharing, and community features
- * @exports {Object} Social media constants
- */
-export * from './social.constants';
-
-/**
- * Tech constants
- * @description Technology stack, versions, and technical configuration
- * @exports {Object} Technical configuration constants
- */
-export * from './tech.constants';
-
-/**
- * Validation constants
- * @description Data validation rules, thresholds, and configuration
- * @exports {Object} Validation configuration constants
- */
-export * from './validation.constants';
-
-/**
- * Error constants
- * @description Error codes, messages, and error handling
- * @exports {Object} Error-related constants
- */
-export * from './error.constants';
+// ============================================================================
+// NAVIGATION CONSTANTS
+// ============================================================================
 
 /**
  * Navigation constants
- * @description Routing, navigation, and URL configuration
- * @exports {Object} Navigation-related constants
+ * @description Navigation links, routes, and configuration
  */
-export * from './navigation.constants';
-
-/**
- * Storage constants
- * @description Storage configuration, limits, and settings
- * @exports {Object} Storage configuration constants
- */
-export * from './storage.constants';
+export * from './navigation';

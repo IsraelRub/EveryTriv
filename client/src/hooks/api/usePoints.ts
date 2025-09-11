@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { clientLogger } from '@shared';
 
 import { pointsService } from '../../services';
 import type { PointBalance } from '../../types';
+import { useAppSelector, useAppDispatch } from '../layers/utils';
+import { selectUserPointBalance, selectCanPlayFree } from '../../redux/selectors';
+import { deductPoints } from '../../redux/slices';
 
 // Query keys
 export const pointsKeys = {
@@ -13,11 +17,18 @@ export const pointsKeys = {
 };
 
 export const useCanPlay = (questionCount: number = 1) => {
-	return useQuery({
-		queryKey: pointsKeys.canPlay(questionCount),
-		queryFn: () => pointsService.canPlay(questionCount),
-		staleTime: 0, // Always check if can play
-	});
+	const pointBalance = useAppSelector(selectUserPointBalance);
+	const canPlayFree = useAppSelector(selectCanPlayFree);
+	
+	// Calculate if user can play based on Redux state
+  const canPlay = (pointBalance?.total_points || 0) >= questionCount || canPlayFree;
+	
+	return {
+		data: canPlay,
+		isLoading: false,
+		error: null,
+		refetch: () => {}, // No need to refetch from API
+	};
 };
 
 export const useConfirmPointPurchase = () => {
@@ -35,6 +46,7 @@ export const useConfirmPointPurchase = () => {
 // Mutations
 export const useDeductPoints = () => {
 	const queryClient = useQueryClient();
+	const dispatch = useAppDispatch();
 
 	return useMutation({
 		mutationFn: ({ questionCount, gameHistoryId }: { questionCount: number; gameHistoryId?: string }) =>
@@ -46,10 +58,8 @@ export const useDeductPoints = () => {
 			} catch (error) {
 				// Ignore errors when canceling queries
 				// Use logger at a low level to avoid noise
-				import('../../services/utils').then(({ logger }) => {
-					logger.apiDebug('Error canceling queries', {
-						error: error instanceof Error ? error.message : String(error),
-					});
+				clientLogger.apiDebug('Error canceling queries', {
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 
@@ -81,7 +91,9 @@ export const useDeductPoints = () => {
 				queryClient.setQueryData(pointsKeys.balance(), context.previousBalance);
 			}
 		},
-		onSettled: () => {
+		onSettled: (_, __, { questionCount }) => {
+			// Update Redux state
+			dispatch(deductPoints(questionCount));
 			// Always refetch after error or success
 			queryClient.invalidateQueries({ queryKey: pointsKeys.all });
 		},
@@ -90,11 +102,14 @@ export const useDeductPoints = () => {
 
 // Hooks
 export const usePointBalance = () => {
-	return useQuery({
-		queryKey: pointsKeys.balance(),
-		queryFn: () => pointsService.getPointBalance(),
-		staleTime: 30 * 1000, // Consider stale after 30 seconds
-	});
+	const pointBalance = useAppSelector(selectUserPointBalance);
+	
+	return {
+		data: pointBalance,
+		isLoading: false,
+		error: null,
+		refetch: () => {}, // No need to refetch from API
+	};
 };
 
 export const usePointPackages = () => {
@@ -124,3 +139,4 @@ export const useTransactionHistory = (limit: number = 50) => {
 		staleTime: 60 * 1000, // Consider stale after 1 minute
 	});
 };
+

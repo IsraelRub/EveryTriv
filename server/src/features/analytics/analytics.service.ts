@@ -1,28 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ANALYTICS_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import {
-	AnalyticsEventData,
-	AnalyticsResponse,
-	SystemInsights,
-	UserAnalytics,
-	UserAnalyticsStats,
-} from 'everytriv-shared/types';
-import {
-	DifficultyStatsData,
-	GameAnalyticsQuery,
-	GameStatsData,
-	PerformanceMetrics,
-	SecurityMetrics,
-	TopicStatsData,
-} from 'everytriv-shared/types/analytics.types';
-import { AnalyticsAnswerData } from 'everytriv-shared/types/game.types';
+import { ANALYTICS_ERROR_MESSAGES, AnalyticsEventData, AnalyticsResponse, SystemInsights, UserAnalytics, UserAnalyticsStats, PerformanceMetrics, SecurityMetrics, AnalyticsAnswerData, GameAnalyticsQuery, TopicStatsData, DifficultyStatsData, UnifiedUserAnalytics } from '@shared';
 import * as os from 'os';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 
-import { LoggerService } from '../../shared/controllers';
-import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from '../../shared/entities';
-import { CacheService } from '../../shared/modules/cache';
+import { serverLogger as logger } from '@shared';
+import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
+import { CacheService } from 'src/internal/modules/cache';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 
 /**
  * Service for trivia analytics and metrics
@@ -75,8 +60,8 @@ export class AnalyticsService implements OnModuleInit {
 		private readonly triviaRepo: Repository<TriviaEntity>,
 		@InjectRepository(PaymentHistoryEntity)
 		private readonly paymentRepository: Repository<PaymentHistoryEntity>,
-		private readonly logger: LoggerService,
-		private readonly cacheService: CacheService
+		private readonly cacheService: CacheService,
+		private readonly leaderboardService: LeaderboardService
 	) {}
 
 	async onModuleInit() {
@@ -92,14 +77,14 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async trackEvent(userId: string, eventData: AnalyticsEventData): Promise<void> {
 		try {
-			this.logger.analyticsTrack(eventData.eventType, {
+			logger.analyticsTrack(eventData.eventType, {
 				userId,
 			});
 
 			// Store event in database
 			await this.saveEventToDatabase(userId, eventData);
 		} catch (error) {
-			this.logger.analyticsError('trackEvent', {
+			logger.analyticsError('trackEvent', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -114,7 +99,7 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async getUserStats(userId: string): Promise<UserAnalytics> {
 		try {
-			this.logger.analyticsStats('user', {
+			logger.analyticsStats('user', {
 				userId,
 			});
 
@@ -144,7 +129,7 @@ export class AnalyticsService implements OnModuleInit {
 				totalPlayTime: stats.totalPlayTime,
 			};
 		} catch (error) {
-			this.logger.analyticsError('getUserStats', {
+			logger.analyticsError('getUserStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -157,9 +142,9 @@ export class AnalyticsService implements OnModuleInit {
 	 * @param query Query parameters
 	 * @returns Promise<AnalyticsResponse<GameStatsData>>
 	 */
-	async getGameStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<GameStatsData>> {
+	async getGameStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<Record<string, unknown>>> {
 		try {
-			this.logger.analyticsStats('game', {});
+			logger.analyticsStats('game', {});
 
 			// Calculate real game statistics with query filters
 			const stats = await this.calculateGameStats(query);
@@ -176,7 +161,7 @@ export class AnalyticsService implements OnModuleInit {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.analyticsError('getGameStats', {
+			logger.analyticsError('getGameStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -190,7 +175,7 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async getTopicStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<TopicStatsData>> {
 		try {
-			this.logger.analyticsStats('topic', {});
+			logger.analyticsStats('topic', {});
 
 			// Get real topics from database with query filters
 			const topics = await this.getTopicsFromDatabase(query);
@@ -208,7 +193,7 @@ export class AnalyticsService implements OnModuleInit {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.analyticsError('getTopicStats', {
+			logger.analyticsError('getTopicStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -222,7 +207,7 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async getDifficultyStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<DifficultyStatsData>> {
 		try {
-			this.logger.analyticsStats('difficulty', {});
+			logger.analyticsStats('difficulty', {});
 
 			// Calculate real difficulty statistics with query filters
 			const stats = await this.calculateDifficultyStats(query);
@@ -238,7 +223,7 @@ export class AnalyticsService implements OnModuleInit {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.analyticsError('getDifficultyStats', {
+			logger.analyticsError('getDifficultyStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -254,7 +239,7 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async trackUserAnswer(userId: string, questionId: string, answerData: AnalyticsAnswerData): Promise<void> {
 		try {
-			this.logger.analyticsTrack('user_answer', {
+			logger.analyticsTrack('user_answer', {
 				userId,
 				questionId,
 				isCorrect: answerData.isCorrect,
@@ -267,7 +252,7 @@ export class AnalyticsService implements OnModuleInit {
 			// Update question statistics
 			await this.updateQuestionStats(questionId);
 		} catch (error) {
-			this.logger.analyticsError('trackUserAnswer', {
+			logger.analyticsError('trackUserAnswer', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				questionId,
@@ -283,14 +268,14 @@ export class AnalyticsService implements OnModuleInit {
 			// Update performance data with real system metrics
 			await this.updatePerformanceMetrics();
 
-			this.logger.analyticsPerformance('get_performance_metrics', {
+			logger.analyticsPerformance('get_performance_metrics', {
 				responseTime: this.performanceData.responseTime,
 				memoryUsage: this.performanceData.memoryUsage,
 			});
 
 			return this.performanceData;
 		} catch (error) {
-			this.logger.analyticsError('getPerformanceMetrics', {
+			logger.analyticsError('getPerformanceMetrics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -304,11 +289,11 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			const businessMetrics = await this.calculateBusinessMetrics();
 
-			this.logger.analyticsMetrics('business', {});
+			logger.analyticsMetrics('business', {});
 
 			return businessMetrics;
 		} catch (error) {
-			this.logger.analyticsError('getBusinessMetrics', {
+			logger.analyticsError('getBusinessMetrics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -320,13 +305,13 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async getSecurityMetrics(): Promise<SecurityMetrics> {
 		try {
-			this.logger.analyticsMetrics('security', {
+			logger.analyticsMetrics('security', {
 				failedLogins: this.securityData.authentication.failedLogins,
 			});
 
 			return this.securityData;
 		} catch (error) {
-			this.logger.analyticsError('getSecurityMetrics', {
+			logger.analyticsError('getSecurityMetrics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -400,13 +385,13 @@ export class AnalyticsService implements OnModuleInit {
 				});
 			}
 
-			this.logger.analyticsRecommendations({
+			logger.analyticsRecommendations({
 				recommendationsCount: recommendations.length,
 			});
 
 			return recommendations;
 		} catch (error) {
-			this.logger.analyticsError('getSystemRecommendations', {
+			logger.analyticsError('getSystemRecommendations', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -423,7 +408,7 @@ export class AnalyticsService implements OnModuleInit {
 			this.securityData.authentication.failedLogins++;
 		}
 
-		this.logger.analyticsTrack('authentication_event', {
+		logger.analyticsTrack('authentication_event', {
 			success,
 			userId: userId || 'unknown',
 		});
@@ -437,7 +422,7 @@ export class AnalyticsService implements OnModuleInit {
 			this.securityData.authorization.unauthorizedAttempts++;
 		}
 
-		this.logger.analyticsTrack('authorization_event', {
+		logger.analyticsTrack('authorization_event', {
 			authorized,
 			userId: userId || 'unknown',
 		});
@@ -466,7 +451,7 @@ export class AnalyticsService implements OnModuleInit {
 		// Calculate error rate
 		this.performanceData.errorRate = (this.failedRequests / this.totalRequests) * 100;
 
-		this.logger.analyticsPerformance('performance_tracking', {
+		logger.analyticsPerformance('performance_tracking', {
 			responseTime,
 			success,
 		});
@@ -484,7 +469,7 @@ export class AnalyticsService implements OnModuleInit {
 			const user = await this.userRepo.findOne({ where: { id: userId } });
 
 			if (!user) {
-				this.logger.userWarn('User not found for analytics update', {
+				logger.userWarn('User not found for analytics update', {
 					userId,
 				});
 				return;
@@ -498,21 +483,22 @@ export class AnalyticsService implements OnModuleInit {
 
 			// Update topic-specific stats
 			if (!stats.topicsPlayed) stats.topicsPlayed = {};
+					if (answerData.topic) {
 			if (!stats.topicsPlayed[answerData.topic]) {
 				stats.topicsPlayed[answerData.topic] = 0;
 			}
-
 			stats.topicsPlayed[answerData.topic]++;
+		}
 
 			user.stats = stats;
 			await this.userRepo.save(user);
 
-			this.logger.userDebug('User statistics updated', {
+			logger.userDebug('User statistics updated', {
 				userId,
 				totalQuestions: stats.totalQuestions,
 			});
 		} catch (error) {
-			this.logger.userError('Failed to update user stats', {
+			logger.userError('Failed to update user stats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -526,15 +512,15 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async updateQuestionStats(questionId: string): Promise<void> {
 		try {
-			this.logger.gameStatistics('Question statistics would be updated', {
+			logger.gameStatistics('Question statistics would be updated', {
 				questionId,
 			});
 
-			this.logger.gameStatistics('Question statistics updated', {
+			logger.gameStatistics('Question statistics updated', {
 				questionId,
 			});
 		} catch (error) {
-			this.logger.gameError('Failed to update question stats', {
+			logger.gameError('Failed to update question stats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				questionId,
 			});
@@ -552,17 +538,17 @@ export class AnalyticsService implements OnModuleInit {
 			// Save event to analytics table or user stats
 			// This would typically use a dedicated analytics repository
 			// For now, we'll just log the event
-			this.logger.analyticsTrack('event_save_attempt', {
+			logger.analyticsTrack('event_save_attempt', {
 				userId,
 				eventType: eventData.eventType,
 			});
 
-			this.logger.analyticsTrack('event_saved', {
+			logger.analyticsTrack('event_saved', {
 				userId,
 				eventType: eventData.eventType,
 			});
 		} catch (error) {
-			this.logger.databaseError('Failed to save event to database', {
+			logger.databaseError('Failed to save event to database', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -643,7 +629,7 @@ export class AnalyticsService implements OnModuleInit {
 				totalPlayTime: totalTime,
 			};
 		} catch (error) {
-			this.logger.analyticsError('calculateUserStats', {
+			logger.analyticsError('calculateUserStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -732,7 +718,7 @@ export class AnalyticsService implements OnModuleInit {
 				},
 			};
 		} catch (error) {
-			this.logger.analyticsError('calculateGameStats', {
+			logger.analyticsError('calculateGameStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -793,7 +779,7 @@ export class AnalyticsService implements OnModuleInit {
 				300 // Cache for 5 minutes - analytics data can change frequently
 			);
 		} catch (error) {
-			this.logger.databaseError('Failed to get topics from database', {
+			logger.databaseError('Failed to get topics from database', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			return [];
@@ -860,10 +846,10 @@ export class AnalyticsService implements OnModuleInit {
 				1800 // Cache for 30 minutes - difficulty stats change less frequently
 			);
 		} catch (error) {
-			this.logger.analyticsError('calculateDifficultyStats', {
+			logger.analyticsError('calculateDifficultyStats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
-			return {};
+			return {} as Record<string, { total: number; correct: number; averageTime: number }>;
 		}
 	}
 
@@ -993,7 +979,7 @@ export class AnalyticsService implements OnModuleInit {
 				1800 // Cache for 30 minutes - business metrics change slowly
 			);
 		} catch (error) {
-			this.logger.analyticsError('calculateBusinessMetrics', {
+			logger.analyticsError('calculateBusinessMetrics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			return {};
@@ -1049,16 +1035,393 @@ export class AnalyticsService implements OnModuleInit {
 			async () => {
 				try {
 					await this.updatePerformanceMetrics();
-					this.logger.analyticsStats('metrics_updated', {
+					logger.analyticsStats('metrics_updated', {
 						uptime: this.performanceData.uptime,
 					});
 				} catch (error) {
-					this.logger.analyticsError('updateMetrics', {
+					logger.analyticsError('updateMetrics', {
 						error: error instanceof Error ? error.message : 'Unknown error',
 					});
 				}
 			},
 			5 * 60 * 1000 // 5 minutes
 		);
+	}
+
+	/**
+	 * Get unified user analytics combining basic user data with game analytics
+	 * @param userId User ID
+	 * @returns Unified user analytics data
+	 */
+	async getUnifiedUserAnalytics(userId: string): Promise<UnifiedUserAnalytics> {
+		try {
+			logger.analyticsTrack('Getting unified user analytics', {
+				userId,
+			});
+
+			const cacheKey = `unified:user:analytics:${userId}`;
+
+			return await this.cacheService.getOrSet(
+				cacheKey,
+				async () => {
+					// Get basic user data
+					const user = await this.userRepo.findOne({ where: { id: userId } });
+					if (!user) {
+						throw new Error('User not found');
+					}
+
+					// Get game analytics
+					const gameAnalytics = await this.getUserStats(userId);
+
+					// Get game history for performance metrics
+					const gameHistory = await this.gameHistoryRepo.find({
+						where: { userId },
+						order: { createdAt: 'DESC' },
+						take: 100, // Last 100 games for performance analysis
+					});
+
+					// Calculate performance metrics
+					const performanceMetrics = this.calculatePerformanceMetrics(gameHistory);
+
+					// Get real ranking data from leaderboard service
+					const rankingEntry = await this.leaderboardService.getUserRanking(userId);
+					const rankingData = rankingEntry ? {
+						rank: rankingEntry.rank,
+						score: rankingEntry.score,
+						percentile: rankingEntry.percentile,
+						totalUsers: rankingEntry.totalUsers,
+					} : {
+						rank: 0,
+						score: user.credits + user.purchasedPoints,
+						percentile: 0,
+						totalUsers: 0,
+					};
+
+					return {
+						basic: {
+							userId: user.id,
+							username: user.username,
+							credits: user.credits,
+							purchasedPoints: user.purchasedPoints,
+							totalPoints: user.credits + user.purchasedPoints,
+							created_at: user.createdAt,
+							accountAge: user.createdAt
+								? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+								: 0,
+						},
+						game: {
+							totalGames: gameAnalytics.totalQuestions || 0,
+							totalQuestions: gameAnalytics.totalQuestions || 0,
+							correctAnswers: gameAnalytics.correctAnswers || 0,
+							successRate: gameAnalytics.overallSuccessRate || 0,
+							averageTimePerQuestion: gameAnalytics.averageTimePerQuestion || 0,
+							topicsPlayed: gameAnalytics.topicsPlayed || {},
+							difficultyBreakdown: gameAnalytics.difficultyBreakdown || {},
+							recentActivity: gameAnalytics.recentActivity || [],
+							totalPlayTime: gameAnalytics.totalPlayTime || 0,
+						},
+						performance: performanceMetrics,
+						ranking: rankingData,
+					};
+				},
+				900 // Cache for 15 minutes - shorter cache for more real-time data
+			);
+		} catch (error) {
+			logger.analyticsError('getUnifiedUserAnalytics', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Calculate performance metrics from game history
+	 * @param gameHistory Array of game history records
+	 * @returns Performance metrics
+	 */
+	private calculatePerformanceMetrics(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length === 0) {
+			return {
+				lastPlayed: new Date(),
+				streakDays: 0,
+				bestStreak: 0,
+				improvementRate: 0,
+				weakestTopic: '',
+				strongestTopic: '',
+				averageGameTime: 0,
+				consistencyScore: 0,
+				learningCurve: 0,
+			};
+		}
+
+		// Calculate last played
+		const lastPlayed = gameHistory[0]?.createdAt || new Date();
+
+		// Calculate streak (improved algorithm)
+		const streakData = this.calculateAdvancedStreak(gameHistory);
+
+		// Calculate improvement rate (more sophisticated)
+		const improvementRate = this.calculateAdvancedImprovementRate(gameHistory);
+
+		// Find strongest and weakest topics (with minimum threshold)
+		const topicPerformance = this.calculateTopicPerformance(gameHistory);
+		const topicsWithMinGames = Object.keys(topicPerformance).filter(topic => 
+			gameHistory.filter(game => game.topic === topic).length >= 3
+		);
+		
+		const strongestTopic = topicsWithMinGames.length > 0 ? 
+			topicsWithMinGames.reduce((a, b) => topicPerformance[a] > topicPerformance[b] ? a : b) : '';
+		const weakestTopic = topicsWithMinGames.length > 0 ? 
+			topicsWithMinGames.reduce((a, b) => topicPerformance[a] < topicPerformance[b] ? a : b) : '';
+
+		// Calculate additional metrics
+		const averageGameTime = this.calculateAverageGameTime(gameHistory);
+		const consistencyScore = this.calculateConsistencyScore(gameHistory);
+		const learningCurve = this.calculateLearningCurve(gameHistory);
+
+		return {
+			lastPlayed,
+			streakDays: streakData.current,
+			bestStreak: streakData.best,
+			improvementRate,
+			weakestTopic,
+			strongestTopic,
+			averageGameTime,
+			consistencyScore,
+			learningCurve,
+		};
+	}
+
+
+	/**
+	 * Calculate success rate from game history
+	 * @param games Array of game history records
+	 * @returns Success rate percentage
+	 */
+	private calculateSuccessRate(games: GameHistoryEntity[]): number {
+		if (games.length === 0) return 0;
+
+		const totalQuestions = games.reduce((sum, game) => sum + (game.totalQuestions || 0), 0);
+		const correctAnswers = games.reduce((sum, game) => sum + (game.correctAnswers || 0), 0);
+
+		return totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+	}
+
+	/**
+	 * Calculate topic performance from game history
+	 * @param gameHistory Array of game history records
+	 * @returns Topic performance scores
+	 */
+	private calculateTopicPerformance(gameHistory: GameHistoryEntity[]): Record<string, number> {
+		const topicStats: Record<string, { total: number; correct: number }> = {};
+
+		gameHistory.forEach(game => {
+			const topic = game.topic || 'Unknown';
+			if (!topicStats[topic]) {
+				topicStats[topic] = { total: 0, correct: 0 };
+			}
+			topicStats[topic].total += game.totalQuestions || 0;
+			topicStats[topic].correct += game.correctAnswers || 0;
+		});
+
+		const topicPerformance: Record<string, number> = {};
+		Object.keys(topicStats).forEach(topic => {
+			const stats = topicStats[topic];
+			topicPerformance[topic] = stats.total > 0 ? (stats.correct / stats.total) * 100 : 0;
+		});
+
+		return topicPerformance;
+	}
+
+	/**
+	 * Calculate advanced streak with better algorithm
+	 * @param gameHistory Array of game history records
+	 * @returns Advanced streak data
+	 */
+	private calculateAdvancedStreak(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length === 0) {
+			return { current: 0, best: 0 };
+		}
+
+		// Sort by date (newest first)
+		const sortedHistory = [...gameHistory].sort((a, b) => 
+			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+		);
+
+		let currentStreak = 0;
+		let bestStreak = 0;
+		let tempStreak = 0;
+
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		// Check current streak
+		for (let i = 0; i < sortedHistory.length; i++) {
+			const gameDate = new Date(sortedHistory[i].createdAt);
+			gameDate.setHours(0, 0, 0, 0);
+
+			const expectedDate = new Date(today);
+			expectedDate.setDate(expectedDate.getDate() - i);
+
+			if (gameDate.getTime() === expectedDate.getTime()) {
+				currentStreak++;
+			} else {
+				break;
+			}
+		}
+
+		// Calculate best streak
+		const gameDates = sortedHistory.map(game => 
+			new Date(game.createdAt).toDateString()
+		);
+		const uniqueDates = [...new Set(gameDates)].sort();
+
+		for (let i = 0; i < uniqueDates.length; i++) {
+			if (i === 0) {
+				tempStreak = 1;
+			} else {
+				const currentDate = new Date(uniqueDates[i]);
+				const previousDate = new Date(uniqueDates[i - 1]);
+				const dayDiff = (currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24);
+
+				if (dayDiff === 1) {
+					tempStreak++;
+				} else {
+					bestStreak = Math.max(bestStreak, tempStreak);
+					tempStreak = 1;
+				}
+			}
+		}
+		bestStreak = Math.max(bestStreak, tempStreak);
+
+		return { current: currentStreak, best: bestStreak };
+	}
+
+	/**
+	 * Calculate advanced improvement rate
+	 * @param gameHistory Array of game history records
+	 * @returns Advanced improvement rate
+	 */
+	private calculateAdvancedImprovementRate(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length < 4) return 0;
+
+		// Sort by date (oldest first)
+		const sortedHistory = [...gameHistory].sort((a, b) => 
+			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+		);
+
+		// Calculate success rate for first quarter vs last quarter
+		const quarterSize = Math.floor(sortedHistory.length / 4);
+		const firstQuarter = sortedHistory.slice(0, quarterSize);
+		const lastQuarter = sortedHistory.slice(-quarterSize);
+
+		const firstQuarterSuccessRate = this.calculateSuccessRate(firstQuarter);
+		const lastQuarterSuccessRate = this.calculateSuccessRate(lastQuarter);
+
+		// Calculate improvement with trend analysis
+		const improvement = lastQuarterSuccessRate - firstQuarterSuccessRate;
+		
+		// Add trend analysis (are they getting consistently better?)
+		const recentGames = sortedHistory.slice(-10);
+		const trend = this.calculateTrend(recentGames);
+
+		return improvement + (trend * 0.1); // Small bonus for positive trend
+	}
+
+	/**
+	 * Calculate average game time
+	 * @param gameHistory Array of game history records
+	 * @returns Average game time in minutes
+	 */
+	private calculateAverageGameTime(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length === 0) return 0;
+
+		const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
+		return Math.round(totalTime / gameHistory.length / 60); // Convert to minutes
+	}
+
+	/**
+	 * Calculate consistency score (how consistent is the player?)
+	 * @param gameHistory Array of game history records
+	 * @returns Consistency score (0-100)
+	 */
+	private calculateConsistencyScore(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length < 3) return 0;
+
+		const successRates = gameHistory.map(game => 
+			game.totalQuestions > 0 ? (game.correctAnswers / game.totalQuestions) * 100 : 0
+		);
+
+		// Calculate standard deviation
+		const mean = successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length;
+		const variance = successRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / successRates.length;
+		const standardDeviation = Math.sqrt(variance);
+
+		// Convert to consistency score (lower deviation = higher consistency)
+		const consistencyScore = Math.max(0, 100 - (standardDeviation * 2));
+		return Math.round(consistencyScore);
+	}
+
+	/**
+	 * Calculate learning curve (how fast is the player improving?)
+	 * @param gameHistory Array of game history records
+	 * @returns Learning curve score (0-100)
+	 */
+	private calculateLearningCurve(gameHistory: GameHistoryEntity[]) {
+		if (gameHistory.length < 5) return 0;
+
+		// Sort by date (oldest first)
+		const sortedHistory = [...gameHistory].sort((a, b) => 
+			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+		);
+
+		// Calculate success rate for each 20% of games
+		const segmentSize = Math.max(1, Math.floor(sortedHistory.length / 5));
+		const segments = [];
+		
+		for (let i = 0; i < 5; i++) {
+			const start = i * segmentSize;
+			const end = Math.min(start + segmentSize, sortedHistory.length);
+			const segment = sortedHistory.slice(start, end);
+			segments.push(this.calculateSuccessRate(segment));
+		}
+
+		// Calculate improvement trend
+		let improvement = 0;
+		for (let i = 1; i < segments.length; i++) {
+			improvement += segments[i] - segments[i - 1];
+		}
+
+		// Convert to learning curve score
+		const learningCurve = Math.max(0, Math.min(100, 50 + (improvement * 2)));
+		return Math.round(learningCurve);
+	}
+
+	/**
+	 * Calculate trend from recent games
+	 * @param recentGames Array of recent game history records
+	 * @returns Trend score (-1 to 1)
+	 */
+	private calculateTrend(recentGames: GameHistoryEntity[]) {
+		if (recentGames.length < 3) return 0;
+
+		const successRates = recentGames.map(game => 
+			game.totalQuestions > 0 ? (game.correctAnswers / game.totalQuestions) * 100 : 0
+		);
+
+		// Simple linear regression to find trend
+		let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+		const n = successRates.length;
+
+		for (let i = 0; i < n; i++) {
+			sumX += i;
+			sumY += successRates[i];
+			sumXY += i * successRates[i];
+			sumXX += i * i;
+		}
+
+		const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+		return Math.max(-1, Math.min(1, slope / 10)); // Normalize to -1 to 1
 	}
 }

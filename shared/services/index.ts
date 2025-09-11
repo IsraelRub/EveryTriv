@@ -3,17 +3,8 @@
  *
  * @module SharedServices
  * @description Central export point for all shared services including logging and storage
- * @version 1.0.0
  * @author EveryTriv Team
  */
-
-/**
- * Logging services
- * @description Comprehensive logging system with multiple logger types
- * @exports {Object} Logger implementations for different contexts
- * @used_by client/services, server/services
- */
-export * from './logging';
 
 /**
  * Storage services
@@ -22,3 +13,19 @@ export * from './logging';
  * @used_by client/services, server/services
  */
 export * from './storage';
+
+/**
+ * Logging services
+ * @description Complete logging system for client and server
+ * @exports {Object} All logging services and utilities
+ * @used_by client/services, server/services
+ */
+export * from './logging';
+
+/**
+ * Points services
+ * @description Points management and calculation services
+ * @exports {Object} All points-related services and utilities
+ * @used_by client/services, server/services
+ */
+export * from './points';

@@ -1,11 +1,10 @@
-import { escapeHtml,truncateText } from 'everytriv-shared/utils';
+import { escapeHtml,truncateText } from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import { useOptimizedAnimations } from '../../hooks';
-import { logger } from '../../services';
+import { clientLogger } from '@shared';
 import { TriviaGameProps } from '../../types';
-import { createStaggerContainer,FadeInDown, FadeInUp, HoverScale, PulseEffect, ScaleIn } from '../animations';
+import { createStaggerContainer, fadeInDown, fadeInUp, hoverScale, scaleIn } from '../animations';
 import { GridLayout } from '../layout';
 
 /**
@@ -19,31 +18,46 @@ import { GridLayout } from '../layout';
  * @returns JSX.Element The rendered trivia game interface
  */
 export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGameProps) {
-	const { particles, addParticle } = useOptimizedAnimations(0, { 
-		enableParticles: true, 
-		enableScoreAnimations: true,
-	});
+	// Simple particle state for animations
+	const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; type: string; color: string; size: number; life: number }>>([]);
+	
+	const addParticle = (x: number, y: number, config: { color: string; size: number; life: { min: number; max: number } }) => {
+		const newParticle = { 
+			id: Date.now(), 
+			x, 
+			y, 
+			type: 'particle',
+			color: config.color,
+			size: config.size,
+			life: config.life.min
+		};
+		setParticles(prev => [...prev, newParticle]);
+		// Remove particle after animation
+		setTimeout(() => {
+			setParticles(prev => prev.filter(p => p.id !== newParticle.id));
+		}, newParticle.life);
+	};
 	
 	const staggerVariants = createStaggerContainer(0.1);
 
 	const handleAnswerClick = (index: number) => {
 		if (selected !== null) return;
 
-		logger.user(`🎯 Answer selected`, {
+		clientLogger.user(`🎯 Answer selected`, {
 			questionText: truncateText(escapeHtml(trivia.question), 100),
 			answerIndex: index,
 			answerText: truncateText(escapeHtml(trivia.answers[index].text), 50),
-			difficulty: trivia.difficulty,
-			topic: trivia.topic,
+			difficulty: (trivia as Record<string, unknown>).difficulty as string || 'unknown',
+			topic: (trivia as Record<string, unknown>).topic as string || 'unknown',
 			isCorrect: trivia.answers[index].isCorrect,
 			timestamp: new Date().toISOString(),
 		});
 
-		onAnswer(0, index);
+		onAnswer(index);
 	};
 
 	useEffect(() => {
-		if (selected !== null && trivia.answers[selected]?.isCorrect) {
+   if (selected !== null && selected !== undefined && trivia.answers[selected]?.isCorrect) {
 			for (let i = 0; i < 10; i++) {
 				setTimeout(() => {
 					addParticle(Math.random() * window.innerWidth, Math.random() * window.innerHeight, {
@@ -75,15 +89,18 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
 			))}
 
 			{/* Main Game Content */}
-			<FadeInUp className='mt-4 bg-white bg-opacity-20 rounded p-4 glass'>
-				<FadeInDown className='text-2xl font-bold mb-3 text-white'>{trivia.question}</FadeInDown>
+			<motion.div variants={fadeInUp} initial="hidden" animate="visible" className='mt-4 bg-white bg-opacity-20 rounded p-4 glass'>
+				<motion.div variants={fadeInDown} initial="hidden" animate="visible" className='text-2xl font-bold mb-3 text-white'>{trivia.question}</motion.div>
 				<motion.div variants={staggerVariants} initial="hidden" animate="visible">
 					<GridLayout variant='game' gap='md'>
-						{trivia.answers.map((a, i: number) => (
-							<ScaleIn key={i} className='w-full'>
+						{trivia.answers.map((a: { text: string; isCorrect: boolean }, i: number) => (
+							<motion.div key={i} variants={scaleIn} initial="hidden" animate="visible" className='w-full'>
 								{a.isCorrect && selected === i ? (
-									<PulseEffect>
-										<HoverScale>
+									<motion.div
+										animate={{ scale: [1, 1.05, 1] }}
+										transition={{ duration: 1, repeat: Infinity }}
+									>
+										<motion.div variants={hoverScale} initial="initial" whileHover="hover">
 											<button
 												className={`w-full p-3 text-lg rounded transition-colors ${
 													selected !== null
@@ -106,10 +123,10 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
 											>
 												{a.text}
 											</button>
-										</HoverScale>
-									</PulseEffect>
+										</motion.div>
+									</motion.div>
 								) : (
-									<HoverScale>
+									<motion.div variants={hoverScale} initial="initial" whileHover="hover">
 										<button
 											className={`w-full p-3 text-lg rounded transition-colors ${
 												selected !== null
@@ -132,13 +149,14 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
 										>
 											{a.text}
 										</button>
-									</HoverScale>
+									</motion.div>
 								)}
-							</ScaleIn>
+							</motion.div>
 						))}
 					</GridLayout>
 				</motion.div>
-			</FadeInUp>
+			</motion.div>
 		</div>
 	);
 }
+

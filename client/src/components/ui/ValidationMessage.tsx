@@ -6,13 +6,15 @@
  * @used_by client/src/components/ui/ValidatedInput.tsx, client/src/components/forms/ValidatedForm.tsx
  */
 
-import { FC } from 'react';
+import { FC, useEffect } from 'react';
 
-import type { ValidationMessageProps } from '../../types/ui.types';
+import { audioService } from '../../services';
+import { AudioKey } from '../../constants';
+import type { ValidationMessageProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 import { Icon } from '../icons/IconLibrary';
 
-export type { ValidationStatus } from 'everytriv-shared/types/validation.types';
+export type { ValidationStatus } from '@shared/types/domain/validation/validation.types';
 
 export const ValidationMessage: FC<ValidationMessageProps> = ({
 	status,
@@ -25,6 +27,12 @@ export const ValidationMessage: FC<ValidationMessageProps> = ({
 	size = 'md',
 	animationDuration = 200,
 }) => {
+	// Play audio based on status changes
+	useEffect(() => {
+		if (status === 'warning' && warnings.length > 0) {
+			audioService.play(AudioKey.WARNING);
+		}
+	}, [status, warnings.length]);
 	// Get status-specific styling
 	const getStatusStyles = () => {
 		switch (status) {

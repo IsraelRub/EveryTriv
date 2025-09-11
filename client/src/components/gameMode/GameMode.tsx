@@ -1,73 +1,51 @@
-import { VALID_GAME_MODES, VALID_QUESTION_COUNTS } from 'everytriv-shared/constants';
-import { GameMode as GameModeEnum } from 'everytriv-shared/types/game.types';
-import { useState } from 'react';
+import { VALID_GAME_MODES } from '@shared';
+import { GameMode as GameModeEnum } from '@shared';
+import { useState, useEffect } from 'react';
 
 import { GameModeUIProps } from '../../types';
-import { FadeInUp, ScaleIn } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp, scaleIn } from '../animations';
 import { Icon } from '../icons';
 import { Button } from '../ui';
+import { getGameModeDefaults, DEFAULT_GAME_MODE } from '../../constants/gameModeDefaults';
 
 export default function GameMode({ isVisible, onSelectMode, onCancel }: GameModeUIProps) {
-	const [mode, setMode] = useState<GameModeEnum>(GameModeEnum.CLASSIC);
-	const [timeLimit, setTimeLimit] = useState(60); // Default 1 minute
-	const [questionLimit, setQuestionLimit] = useState(20); // Default 20 questions
+	const [mode, setMode] = useState<GameModeEnum>(DEFAULT_GAME_MODE);
+	
+	// Get defaults from centralized constants (single source of truth)
+	const [timeLimit, setTimeLimit] = useState(() => getGameModeDefaults(DEFAULT_GAME_MODE).timeLimit);
+	const [questionLimit, setQuestionLimit] = useState(() => getGameModeDefaults(DEFAULT_GAME_MODE).questionLimit);
+
+	// Update defaults when game mode changes
+	useEffect(() => {
+		const defaults = getGameModeDefaults(mode);
+		setTimeLimit(defaults.timeLimit);
+		setQuestionLimit(defaults.questionLimit);
+	}, [mode]);
 
 	// Validate game mode
 	const isValidGameMode = (mode: GameModeEnum): boolean => {
 		return VALID_GAME_MODES.includes(mode);
 	};
 
-	// Validate question count
-	const isValidQuestionCount = (count: number): boolean => {
-		return VALID_QUESTION_COUNTS.includes(count as typeof VALID_QUESTION_COUNTS[number]);
-	};
 
 	if (!isVisible) return null;
 
 	return (
 		<div className='fixed inset-0 flex items-center justify-center z-50 bg-black/50'>
-			<ScaleIn className='bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-md glass'>
+			<motion.div 
+				variants={scaleIn} 
+				initial="hidden" 
+				animate="visible" 
+				className='bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-md glass'
+				whileHover={{ scale: 1.02 }}
+			>
 				<h2 className='text-2xl font-bold text-white mb-4'>Select Game Mode</h2>
 
 				<div className='space-y-6'>
 					{/* Game mode buttons */}
 					<div className='flex flex-col gap-3'>
-						<Button
-							variant={mode === GameModeEnum.TIME_ATTACK ? 'primary' : 'ghost'}
-							className='w-full justify-between items-center flex'
-							onClick={() => {
-								if (isValidGameMode(GameModeEnum.TIME_ATTACK)) {
-									setMode(GameModeEnum.TIME_ATTACK);
-								}
-							}}
-						>
-							<span>
-								<Icon name='timer' size='sm' className='mr-1' /> Time Limited
-							</span>
-							<span className='text-sm opacity-80'>
-								{timeLimit >= 60 ? `${Math.floor(timeLimit / 60)}m ${timeLimit % 60}s` : `${timeLimit}s`}
-							</span>
-						</Button>
-
-						{mode === GameModeEnum.TIME_LIMITED && (
-							<FadeInUp className='pl-8 flex items-center gap-2'>
-								<input
-									type='range'
-									min={10}
-									max={300}
-									step={10}
-									value={timeLimit}
-									onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-									className='w-full'
-								/>
-								<span className='text-white min-w-[60px] text-center'>
-									{timeLimit >= 60
-										? `${Math.floor(timeLimit / 60)}:${(timeLimit % 60).toString().padStart(2, '0')}`
-										: `0:${timeLimit.toString().padStart(2, '0')}`}
-								</span>
-							</FadeInUp>
-						)}
-
+						{/* Question Limited Mode */}
 						<Button
 							variant={mode === GameModeEnum.QUESTION_LIMITED ? 'primary' : 'ghost'}
 							className='w-full justify-between items-center flex'
@@ -80,27 +58,103 @@ export default function GameMode({ isVisible, onSelectMode, onCancel }: GameMode
 							<span>
 								<Icon name='list' size='sm' className='mr-1' /> Question Limited
 							</span>
-							<span className='text-sm opacity-80'>{questionLimit} questions</span>
+							<span className='text-sm opacity-80'>
+								{questionLimit} Questions
+							</span>
 						</Button>
 
+						{/* Time Limited Mode */}
+						<Button
+							variant={mode === GameModeEnum.TIME_LIMITED ? 'primary' : 'ghost'}
+							className='w-full justify-between items-center flex'
+							onClick={() => {
+								if (isValidGameMode(GameModeEnum.TIME_LIMITED)) {
+									setMode(GameModeEnum.TIME_LIMITED);
+								}
+							}}
+						>
+							<span>
+								<Icon name='timer' size='sm' className='mr-1' /> Time Limited
+							</span>
+							<span className='text-sm opacity-80'>
+								{timeLimit >= 60 ? `${Math.floor(timeLimit / 60)}m ${timeLimit % 60}s` : `${timeLimit}s`}
+							</span>
+						</Button>
+
+						{/* Unlimited Mode */}
+						<Button
+							variant={mode === GameModeEnum.UNLIMITED ? 'primary' : 'ghost'}
+							className='w-full justify-between items-center flex'
+							onClick={() => {
+								if (isValidGameMode(GameModeEnum.UNLIMITED)) {
+									setMode(GameModeEnum.UNLIMITED);
+								}
+							}}
+						>
+							<span>
+								<Icon name='infinity' size='sm' className='mr-1' /> Unlimited
+							</span>
+							<span className='text-sm opacity-80'>
+								No Scoring
+							</span>
+						</Button>
+
+						{mode === GameModeEnum.TIME_LIMITED && (
+							<motion.div 
+								variants={fadeInUp} 
+								initial="hidden" 
+								animate="visible" 
+								className='pl-8 flex items-center gap-2'
+							>
+								<input
+									type='range'
+									min={60}
+									max={600}
+									step={60}
+									value={timeLimit}
+									onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+									className='w-full'
+								/>
+								<span className='text-white min-w-[60px] text-center'>
+									{timeLimit >= 60
+										? `${Math.floor(timeLimit / 60)}:${(timeLimit % 60).toString().padStart(2, '0')}`
+										: `0:${timeLimit.toString().padStart(2, '0')}`}
+								</span>
+							</motion.div>
+						)}
+
+
 						{mode === GameModeEnum.QUESTION_LIMITED && (
-							<FadeInUp className='pl-8 flex items-center gap-2'>
+							<motion.div 
+								variants={fadeInUp} 
+								initial="hidden" 
+								animate="visible" 
+								className='pl-8 flex items-center gap-2'
+							>
 								<input
 									type='range'
 									min={5}
-									max={50}
+									max={100}
 									step={5}
 									value={questionLimit}
 									onChange={(e) => {
 										const newCount = parseInt(e.target.value);
-										if (isValidQuestionCount(newCount)) {
-											setQuestionLimit(newCount);
-										}
+										setQuestionLimit(newCount);
 									}}
 									className='w-full'
 								/>
-								<span className='text-white min-w-[40px] text-center'>{questionLimit}</span>
-							</FadeInUp>
+								<input
+									type='number'
+									min={1}
+									max={999}
+									value={questionLimit}
+									onChange={(e) => {
+										const newCount = parseInt(e.target.value) || 1;
+										setQuestionLimit(newCount);
+									}}
+									className='w-20 px-2 py-1 text-center bg-slate-700 text-white rounded border border-slate-600'
+								/>
+							</motion.div>
 						)}
 
 						<Button
@@ -118,9 +172,14 @@ export default function GameMode({ isVisible, onSelectMode, onCancel }: GameMode
 						</Button>
 
 						{mode === GameModeEnum.UNLIMITED && (
-							<FadeInUp className='pl-8 text-white/70 text-sm'>
+							<motion.div 
+								variants={fadeInUp} 
+								initial="hidden" 
+								animate="visible" 
+								className='pl-8 text-white/70 text-sm'
+							>
 								<p>Play as many questions as you want. Game continues until you stop.</p>
-							</FadeInUp>
+							</motion.div>
 						)}
 					</div>
 
@@ -154,7 +213,7 @@ export default function GameMode({ isVisible, onSelectMode, onCancel }: GameMode
 						</Button>
 					</div>
 				</div>
-			</ScaleIn>
+			</motion.div>
 		</div>
 	);
 }

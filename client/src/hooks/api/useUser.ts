@@ -1,7 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UpdateUserProfileData } from 'everytriv-shared/types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { UpdateUserProfileData } from '@shared';
 
 import { userService } from '../../services';
+import { useAppSelector, useAppDispatch } from '../layers/utils';
+import { selectCurrentUser, selectUserPointBalance } from '../../redux/selectors';
+import { updateUserProfile } from '../../redux/slices';
 
 export const useDeductCredits = () => {
 	const queryClient = useQueryClient();
@@ -18,31 +21,40 @@ export const useDeductCredits = () => {
 // Mutations
 export const useUpdateUserProfile = () => {
 	const queryClient = useQueryClient();
+	const dispatch = useAppDispatch();
 
 	return useMutation({
 		mutationFn: (data: UpdateUserProfileData) => userService.updateUserProfile(data),
-		onSuccess: () => {
+		onSuccess: (updatedUser) => {
+			// Update Redux state
+			dispatch(updateUserProfile(updatedUser));
 			// Invalidate user-related queries
 			queryClient.invalidateQueries({ queryKey: userKeys.all });
 		},
 	});
 };
 
+// Hooks that use Redux state instead of API calls
 export const useUserCredits = () => {
-	return useQuery({
-		queryKey: userKeys.credits(),
-		queryFn: () => userService.getUserCredits(),
-		staleTime: 30 * 1000, // Consider stale after 30 seconds
-	});
+	const pointBalance = useAppSelector(selectUserPointBalance);
+	
+	return {
+		data: pointBalance,
+		isLoading: false,
+		error: null,
+		refetch: () => {}, // No need to refetch from API
+	};
 };
 
-// Hooks
 export const useUserProfile = () => {
-	return useQuery({
-		queryKey: userKeys.profile(),
-		queryFn: () => userService.getUserProfile(),
-		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
-	});
+	const currentUser = useAppSelector(selectCurrentUser);
+	
+	return {
+		data: currentUser,
+		isLoading: false,
+		error: null,
+		refetch: () => {}, // No need to refetch from API
+	};
 };
 
 // Query keys

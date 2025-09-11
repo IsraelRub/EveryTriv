@@ -1,9 +1,8 @@
-import { PROVIDER_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { AnthropicResponse, LLMApiResponse, LLMTriviaResponse, ProviderConfig } from 'everytriv-shared/types';
+import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
 
-import { BaseTriviaProvider } from '../implementations';
+import { BaseTriviaProvider } from './base.provider';
 
-export class AnthropicTriviaProvider extends BaseTriviaProvider<AnthropicResponse> {
+export class AnthropicTriviaProvider extends BaseTriviaProvider {
 	name = 'Anthropic';
 	protected apiKey: string;
 
@@ -39,7 +38,13 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider<AnthropicRespons
 
 	protected getProviderConfig(prompt: string): ProviderConfig {
 		return {
-			url: 'https://api.anthropic.com/v1/messages',
+			name: 'anthropic',
+			apiKey: this.apiKey,
+			baseUrl: 'https://api.anthropic.com/v1/messages',
+			timeout: 30000,
+			maxRetries: 3,
+			enabled: true,
+			priority: 1,
 			headers: {
 				'x-api-key': this.apiKey,
 				'Content-Type': 'application/json',
@@ -58,12 +63,11 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider<AnthropicRespons
 		};
 	}
 
-	protected parseResponse(response: LLMApiResponse<AnthropicResponse>): LLMTriviaResponse {
-		const data = response.data;
-		if (!data || !data.content || !Array.isArray(data.content) || data.content.length === 0) {
+	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
+		if (!response.data || !response.data.content || !Array.isArray(response.data.content) || response.data.content.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_ANTHROPIC_RESPONSE);
 		}
-		const content = data.content[0].text;
-		return JSON.parse(content) as LLMTriviaResponse;
+		const content = response.data.content[0].text;
+		return JSON.parse(content);
 	}
 }

@@ -1,32 +1,52 @@
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useState, useEffect, memo, useCallback } from 'react';
 
-import { useAudio } from '../../hooks/contexts/AudioContext';
-import { useThrottle } from '../../hooks/layers/utils/useThrottle';
+import { useAudio } from '../../App';
 import { AudioControlsProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 import { Icon } from '../icons';
 import { Button } from '../ui';
+import { storageService } from '../../services';
+import { CLIENT_STORAGE_KEYS } from '../../constants';
 
 /**
  * Main audio controls component
  * Provides volume slider and mute toggle
  */
-const AudioControls = ({ className }: AudioControlsProps) => {
-	const { toggleMute, setMasterVolume, isMuted } = useAudio();
-	const [volume, setVolumeState] = useState(() => parseFloat(localStorage.getItem('audioVolume') || '0.7'));
+const AudioControls = memo(function AudioControls({ className }: AudioControlsProps) {
+	const audioService = useAudio();
+	const [isMuted, setIsMuted] = useState(false);
+	const [volume, setVolume] = useState(0.7);
 
-	// Throttle volume changes to avoid excessive audio updates
-	const throttledSetVolume = useThrottle(setMasterVolume, 100);
+	// Load initial state from service and storage
+	useEffect(() => {
+		const loadAudioSettings = async () => {
+			setIsMuted(!audioService.isEnabled);
+			setVolume(audioService.volume);
+			
+			// Load volume from storage
+			const storedVolume = await storageService.get<number>(CLIENT_STORAGE_KEYS.AUDIO_VOLUME);
+			if (storedVolume.success && storedVolume.data !== null && typeof storedVolume.data === 'number') {
+				setVolume(storedVolume.data);
+				audioService.setVolume(storedVolume.data);
+			}
+		};
+		
+		loadAudioSettings();
+	}, []);
 
-	const handleVolumeChange = (e: ChangeEvent<HTMLInputElement>) => {
+	const handleVolumeChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
 		const newVolume = parseFloat(e.target.value);
-		setVolumeState(newVolume);
-		throttledSetVolume(newVolume);
-	};
+		setVolume(newVolume);
+		audioService.setMasterVolume(newVolume);
+		
+		// Save volume to storage
+		await storageService.set(CLIENT_STORAGE_KEYS.AUDIO_VOLUME, newVolume);
+	}, []);
 
-	const handleMuteToggle = () => {
-		toggleMute();
-	};
+	const handleMuteToggle = useCallback(() => {
+		const newMutedState = audioService.toggleMute();
+		setIsMuted(newMutedState);
+	}, []);
 
 	return (
 		<div className={combineClassNames('flex items-center gap-2', className)}>
@@ -46,8 +66,6 @@ const AudioControls = ({ className }: AudioControlsProps) => {
 			/>
 		</div>
 	);
-};
-
-
+});
 
 export default AudioControls;

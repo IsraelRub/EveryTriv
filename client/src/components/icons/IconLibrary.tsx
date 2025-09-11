@@ -1,4 +1,4 @@
-import { DifficultyLevel } from 'everytriv-shared/constants';
+import { DifficultyLevel } from '@shared';
 import type { LucideProps } from 'lucide-react';
 import {
 	// Navigation & UI
@@ -61,7 +61,8 @@ import {
 } from 'lucide-react';
 import { ComponentType, FC } from 'react';
 
-import { IconAnimation, IconColor, IconProps, IconSize } from '../../types';
+import { IconColor, IconProps, IconSize } from '../../types';
+// import { IconAnimation } from '../../types/ui/animations.types';
 
 // Icon mapping - only including icons that are actually used
 const iconMap: Record<string, ComponentType<LucideProps>> = {
@@ -73,6 +74,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 	chevronup: ChevronUp,
 	chevrondown: ChevronDown,
 	arrowright: ArrowRight,
+	'arrow-right': ArrowRight, // Add missing arrow-right mapping
 
 	// Game & Trivia
 	gamepad: Gamepad2,
@@ -151,6 +153,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 	server: Server,
 	box: Box,
 	database: Database,
+	
 };
 
 // Main Icon component
@@ -166,15 +169,15 @@ export const Icon: FC<IconProps> = ({
 	const IconComponent = iconMap[name.toLowerCase()];
 
 	if (!IconComponent) {
-		import('../../services/utils/logger.service').then(({ loggerService }) => {
-			    loggerService.userWarn('Icon not found in icon library', { name });
+		import('@shared').then(({ clientLogger }) => {
+			    clientLogger.userWarn('Icon not found in icon library', { name });
 		});
 		return null;
 	}
 
 	const iconSize = sizeMap[size];
-	const iconColor = colorMap[color];
-	const animationClass = animationStyles[animation];
+	const iconColor = colorMap[color as IconColor] || 'currentColor';
+	const animationClass = typeof animation === 'string' ? animationStyles[animation] || '' : animationStyles[animation.type] || '';
 
 	return (
 		<IconComponent
@@ -205,14 +208,14 @@ const colorMap: Record<IconColor, string> = {
 	success: '#10b981',
 	warning: '#f59e0b',
 	error: '#ef4444',
+	info: '#06b6d4',
 	muted: '#94a3b8',
 	white: '#ffffff',
 	black: '#000000',
-	inherit: 'currentColor',
 };
 
 // Animation styles
-const animationStyles: Record<IconAnimation, string> = {
+const animationStyles: Record<string, string> = {
 	none: '',
 	spin: 'animate-spin',
 	pulse: 'animate-pulse',

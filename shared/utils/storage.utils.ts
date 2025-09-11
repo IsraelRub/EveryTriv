@@ -6,7 +6,7 @@
  * @used_by shared/services/storage.service.ts, shared/services/storageManager.service.ts
  */
 import { metricsService } from '../services/storage';
-import { StorageMetrics, StorageOperationResult } from '../types/storage.types';
+import { StorageMetrics, StorageOperationResult } from '../types/infrastructure/storage.types';
 
 /**
  * Create operation result with timing

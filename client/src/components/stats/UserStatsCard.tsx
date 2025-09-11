@@ -7,21 +7,12 @@
  * @used_by client/src/views/user/UserProfile.tsx
  */
 
-import { calculateAge,formatDate, formatDateShort, isToday, isYesterday } from 'everytriv-shared/utils';
+import { calculateAge,formatDate, formatDateShort, isToday, isYesterday } from '@shared';
 
-import { FadeInUp } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp } from '../animations';
 import { Icon } from '../icons';
-
-interface UserStatsCardProps {
-	user: {
-		username: string;
-		created_at: Date;
-		dateOfBirth?: Date;
-		lastLogin?: Date;
-		score: number;
-	};
-	className?: string;
-}
+import { UserStatsCardProps } from '../../types';
 
 export default function UserStatsCard({ user, className }: UserStatsCardProps) {
 	const formatLastLogin = (date?: Date) => {
@@ -34,7 +25,12 @@ export default function UserStatsCard({ user, className }: UserStatsCardProps) {
 	const userAge = calculateAge(user.dateOfBirth);
 
 	return (
-		<FadeInUp className={`glass rounded-lg p-6 ${className || ''}`}>
+		<motion.div 
+			variants={fadeInUp}
+			initial="hidden"
+			animate="visible"
+			className={`glass rounded-lg p-6 ${className || ''}`}
+		>
 			<div className='space-y-4'>
 				{/* User Info Header */}
 				<div className='text-center mb-6'>
@@ -105,6 +101,6 @@ export default function UserStatsCard({ user, className }: UserStatsCardProps) {
 					</div>
 				</div>
 			</div>
-		</FadeInUp>
+		</motion.div>
 	);
 }

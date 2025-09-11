@@ -1,9 +1,9 @@
 import { forwardRef } from 'react';
 
-import { SelectOption, SelectProps } from '../../types';
+import { SelectOption, UISelectProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+export const Select = forwardRef<HTMLSelectElement, UISelectProps>(
 	({ className, options, size = 'md', isGlassy = false, error, ...props }, ref) => {
 		return (
 			<select

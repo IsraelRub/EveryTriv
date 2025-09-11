@@ -6,18 +6,8 @@
  * @used_by server/features/game/logic/trivia-generation.service.ts (TriviaGenerationService.generateQuestion)
  */
 import { Injectable } from '@nestjs/common';
-import { PROVIDER_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import {
-	AIProviderWithTrivia,
-	LLMProvider,
-	ProviderHealth,
-	ProviderMetrics,
-	ProviderStats,
-	TriviaQuestion,
-} from 'everytriv-shared/types';
-import { roundToDecimals } from 'everytriv-shared/utils';
-
-import { LoggerService } from '../../../../../shared/controllers';
+import { PROVIDER_ERROR_MESSAGES, ProviderHealth, ProviderMetrics, ProviderStats, TriviaQuestion, roundToDecimals } from '@shared';
+import { serverLogger as logger } from '@shared';
 import {
 	AnthropicTriviaProvider,
 	GoogleTriviaProvider,
@@ -33,11 +23,11 @@ import {
  */
 @Injectable()
 export class AiProvidersService {
-	private llmProviders: AIProviderWithTrivia[] = [];
+	private llmProviders: (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)[] = [];
 	private currentProviderIndex = 0;
 	private providerStats: Map<string, ProviderStats> = new Map();
 
-	constructor(private readonly logger: LoggerService) {
+	constructor() {
 		this.initializeProviders();
 	}
 
@@ -54,31 +44,36 @@ export class AiProvidersService {
 		];
 
 		this.llmProviders = providers.filter(provider => {
-			const hasApiKey = provider.hasApiKey();
+			const hasApiKey = 'hasApiKey' in provider && typeof provider.hasApiKey === 'function' ? provider.hasApiKey() : false;
 			if (!hasApiKey) {
-				this.logger.providerConfig(provider.name, {
+				logger.providerConfig(provider.name, {
 					context: 'AiProvidersService',
 				});
 			}
 			return hasApiKey;
-		}) as AIProviderWithTrivia[];
+		});
 
 		if (this.llmProviders.length === 0) {
-			this.logger.providerError('all', 'No AI providers configured', {
+			logger.providerError('all', 'No AI providers configured', {
 				context: 'AiProvidersService',
 			});
 		}
 
 		// Initialize stats for each provider
 		this.llmProviders.forEach(provider => {
-			this.providerStats.set(provider.name, {
-				requests: 0,
-				successes: 0,
-				failures: 0,
-				averageResponseTime: 0,
-				lastUsed: null,
-				status: 'available',
-			});
+		this.providerStats.set(provider.name, {
+			providerName: provider.name,
+			requests: 0,
+			successes: 0,
+			failures: 0,
+			averageResponseTime: 0,
+			lastUsed: null,
+			status: 'available',
+			successRate: 0,
+			errorRate: 0,
+			created_at: new Date(),
+			updated_at: new Date(),
+		});
 		});
 	}
 
@@ -87,7 +82,7 @@ export class AiProvidersService {
 	 * @returns LLMProvider The next provider to use
 	 * @throws Error - When no providers are available
 	 */
-	private getNextProvider(): LLMProvider {
+	private getNextProvider(): (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider) | null {
 		if (this.llmProviders.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE);
 		}
@@ -110,7 +105,7 @@ export class AiProvidersService {
 		let lastError: Error | null = null;
 
 		try {
-			this.logger.providerStats('question_generation', {
+			logger.providerStats('question_generation', {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
@@ -121,13 +116,16 @@ export class AiProvidersService {
 			for (let attempt = 0; attempt <= maxRetries; attempt++) {
 				try {
 					const provider = this.getNextProvider();
+					if (!provider) {
+						throw new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE);
+					}
 					const providerName = provider.name;
 					const providerStartTime = Date.now();
 
 					// Update provider stats
 					this.updateProviderStats(providerName, 'request');
 
-					const question = await provider.generateTriviaQuestion(topic, difficulty);
+					const question = await ('generateTriviaQuestion' in provider && typeof provider.generateTriviaQuestion === 'function' ? provider.generateTriviaQuestion(topic, difficulty) : Promise.reject(new Error('Provider does not support trivia question generation')));
 
 					const duration = Date.now() - startTime;
 					const providerDuration = Date.now() - providerStartTime;
@@ -136,7 +134,7 @@ export class AiProvidersService {
 					this.updateProviderStats(providerName, 'success', providerDuration);
 
 					// Log success with comprehensive metrics
-					this.logger.providerSuccess(providerName, {
+					logger.providerSuccess(providerName, {
 						context: 'AiProvidersService',
 						topic,
 						difficulty,
@@ -155,7 +153,7 @@ export class AiProvidersService {
 					// Update provider stats on failure
 					this.updateProviderStats(providerName, 'failure');
 
-					this.logger.providerFallback(providerName, {
+					logger.providerFallback(providerName, {
 						context: 'AiProvidersService',
 						error: lastError.message,
 						attempt: attempt + 1,
@@ -171,7 +169,7 @@ export class AiProvidersService {
 
 			throw lastError || new Error('Failed to generate question after all retries');
 		} catch (error) {
-			this.logger.providerError('all', error instanceof Error ? error.message : 'Unknown error', {
+			logger.providerError('all', error instanceof Error ? error.message : 'Unknown error', {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
@@ -205,17 +203,19 @@ export class AiProvidersService {
 
 		this.providerStats.forEach((stats, providerName) => {
 			const successRate = stats.requests > 0 ? (stats.successes / stats.requests) * 100 : 0;
-			metrics[providerName] = {
-				providerName,
-				totalRequests: stats.requests,
-				successfulRequests: stats.successes,
-				failedRequests: stats.failures,
-				averageResponseTime: stats.averageResponseTime,
-				successRate: roundToDecimals(successRate, 2),
-				errorRate: stats.requests > 0 ? (stats.failures / stats.requests) * 100 : 0,
-				lastUsed: stats.lastUsed?.toISOString(),
-				status: stats.status,
-			};
+		metrics[providerName] = {
+			providerName,
+			totalRequests: stats.requests,
+			successfulRequests: stats.successes,
+			failedRequests: stats.failures,
+			averageResponseTime: stats.averageResponseTime,
+			successRate: roundToDecimals(successRate, 2),
+			errorRate: stats.requests > 0 ? (stats.failures / stats.requests) * 100 : 0,
+			lastUsed: stats.lastUsed?.toISOString() || new Date(),
+			status: stats.status,
+			created_at: new Date(),
+			updated_at: new Date(),
+		};
 		});
 
 		return metrics;
@@ -295,17 +295,22 @@ export class AiProvidersService {
 	 */
 	resetProviderStats() {
 		this.providerStats.forEach((_, providerName) => {
-			this.providerStats.set(providerName, {
-				requests: 0,
-				successes: 0,
-				failures: 0,
-				averageResponseTime: 0,
-				lastUsed: null,
-				status: 'available',
-			});
+		this.providerStats.set(providerName, {
+			providerName,
+			requests: 0,
+			successes: 0,
+			failures: 0,
+			averageResponseTime: 0,
+			lastUsed: null,
+			status: 'available',
+			successRate: 0,
+			errorRate: 0,
+			created_at: new Date(),
+			updated_at: new Date(),
+		});
 		});
 
-		this.logger.providerStats('reset', {});
+		logger.providerStats('reset', {});
 	}
 
 	/**
@@ -326,6 +331,8 @@ export class AiProvidersService {
 				errorCount: stats.failures,
 				successCount: stats.successes,
 				lastCheck: new Date().toISOString(),
+				created_at: new Date(),
+				updated_at: new Date(),
 			};
 		});
 

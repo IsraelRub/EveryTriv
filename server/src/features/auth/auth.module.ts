@@ -1,0 +1,52 @@
+/**
+ * Auth Module
+ *
+ * @module AuthModule
+ * @description Unified authentication module with login, register, guards, and OAuth
+ * @used_by server/app, server/controllers
+ */
+
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PassportModule } from '@nestjs/passport';
+import { UserEntity } from 'src/internal/entities';
+import { AUTH_CONSTANTS } from '@shared';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { GoogleStrategy } from './google.strategy';
+import { AuthenticationManager, PasswordService, JwtTokenService } from 'src/common/auth';
+import { AuthGuard, RolesGuard } from 'src/common/guards';
+
+@Module({
+	imports: [
+		TypeOrmModule.forFeature([UserEntity]),
+		PassportModule,
+		JwtModule.register({
+			secret: AUTH_CONSTANTS.JWT_SECRET,
+			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
+		}),
+	],
+	controllers: [AuthController],
+	providers: [
+		AuthService,
+		GoogleStrategy,
+		AuthenticationManager,
+		PasswordService,
+		JwtTokenService,
+		AuthGuard,
+		RolesGuard,
+	],
+	exports: [
+		AuthService,
+		GoogleStrategy,
+		AuthenticationManager,
+		PasswordService,
+		JwtTokenService,
+		AuthGuard,
+		RolesGuard,
+		PassportModule,
+		JwtModule,
+	],
+})
+export class AuthModule {}

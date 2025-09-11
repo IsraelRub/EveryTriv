@@ -116,6 +116,7 @@ export abstract class BaseStorageService implements UnifiedStorageService {
 		const existing = this.metadata.get(key);
 		this.metadata.set(key, {
 			created_at: existing?.created_at || now,
+			updated_at: now,
 			lastAccessed: now,
 			size,
 			ttl,
@@ -250,7 +251,7 @@ export abstract class BaseStorageService implements UnifiedStorageService {
 			for (const key of keys) {
 				const metadata = this.metadata.get(key);
 				if (metadata) {
-					totalSize += metadata.size;
+					totalSize += metadata.size || 0;
 					if (metadata.isExpired) {
 						expiredItems++;
 					}
@@ -315,7 +316,7 @@ export abstract class BaseStorageService implements UnifiedStorageService {
 						}
 					}
 
-					if (options.maxSize && metadata.size > options.maxSize) {
+					if (options.maxSize && (metadata.size || 0) > options.maxSize) {
 						shouldRemove = true;
 					}
 

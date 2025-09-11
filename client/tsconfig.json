@@ -37,15 +37,21 @@
       "@utils/*": ["./src/utils/*"],
       "@constants/*": ["./src/constants/*"],
       "@redux/*": ["./src/redux/*"],
-      "@views/*": ["./src/views/*"]
+      "@views/*": ["./src/views/*"],
+      "@shared": ["../shared"],
+      "@shared/*": ["../shared/*"]
     },
     "types": ["@testing-library/jest-dom", "react", "react-dom"]
   },
   "include": [
     "src",
+    "test",
+    "../shared",
+    "../shared/**/*",
     "**/*.ts",
     "**/*.tsx",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "playwright.config.ts"
   ],
   "exclude": [
     "node_modules"

@@ -291,7 +291,7 @@ import { GameTimerProps, UserState, GameMode } from '../../types';
 // ייבוא מקבצים ספציפיים (למקרים ספציפיים)
 import { GameTimerProps } from '../../types/component.types';
 import { UserState } from '../../types/redux.types';
-import { GameMode } from 'everytriv-shared/types/game.types';
+import { GameMode } from '../../shared/types/game.types';
 ```
 
 #### Props של רכיבים
@@ -363,7 +363,6 @@ const userSlice = createSlice({
 - `navigation.constants.ts` - קבועי ניווט, נתיבים
 - `logging.constants.ts` - קבועי לוגים, רמות
 - `language.constants.ts` - קבועי שפה, תמיכה בשפות
-- `tech.constants.ts` - קבועי טכנולוגיה, גרסאות
 - `social.constants.ts` - קבועי רשתות חברתיות
 - `infrastructure.constants.ts` - קבועי תשתית, URLs
 - `http.constants.ts` - קבועי HTTP, סטטוסים
@@ -670,14 +669,14 @@ export class TriviaService {
   private readonly logger = new Logger(TriviaService.name);
 
   async createQuestion(dto: CreateQuestionDto) {
-    this.logger.log(`יוצרת שאלה חדשה: ${dto.topic}`);
+    logger.log(`יוצרת שאלה חדשה: ${dto.topic}`);
     
     try {
       const question = await this.generateQuestion(dto);
-      this.logger.log(`שאלה נוצרה בהצלחה: ${question.id}`);
+      logger.log(`שאלה נוצרה בהצלחה: ${question.id}`);
       return question;
     } catch (error) {
-      this.logger.error('שגיאה ביצירת שאלה', error.stack);
+      logger.error('שגיאה ביצירת שאלה', error.stack);
       throw error;
     }
   }

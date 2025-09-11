@@ -3,7 +3,6 @@
  *
  * @module ClientServices
  * @description Central export point for all client-side services and utilities
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views, client/hooks
  */

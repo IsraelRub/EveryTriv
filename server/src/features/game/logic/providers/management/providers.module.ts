@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { AuthSharedModule } from '../../../../../shared/modules/auth/auth.module';
+import { AuthModule } from '@features/auth';
 import { AiProvidersController } from './providers.controller';
 import { AiProvidersService } from './providers.service';
 
@@ -9,7 +9,7 @@ import { AiProvidersService } from './providers.service';
  * Handles different AI service providers (OpenAI, Anthropic, Google, etc.)
  */
 @Module({
-	imports: [AuthSharedModule],
+	imports: [AuthModule],
 	controllers: [AiProvidersController],
 	providers: [AiProvidersService],
 	exports: [AiProvidersService],

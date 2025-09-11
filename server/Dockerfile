@@ -24,15 +24,15 @@ COPY .npmrc ./
 
 # Copy all packages
 COPY client/ ./client/
-COPY shared/ ./shared/
 COPY server/ ./server/
+COPY shared/ ./shared/
 
 # Install all dependencies at workspace level
 RUN pnpm install
 
 # Build shared package first
 WORKDIR /app/shared
-RUN pnpm run build
+RUN cd /app/server && pnpm exec tsc --project /app/shared/tsconfig.json
 
 # Switch back to server directory
 WORKDIR /app/server

@@ -5,8 +5,7 @@
  * @description OpenAI API integration for trivia question generation
  * @used_by server/features/game/logic/aiProviders/aiProviders.service.ts (AiProvidersService.initializeProviders)
  */
-import { PROVIDER_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { LLMApiResponse, LLMTriviaResponse, OpenAIResponse, ProviderConfig } from 'everytriv-shared/types';
+import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
@@ -18,7 +17,7 @@ import { PromptTemplates } from '../prompts';
  * @description Handles trivia generation using OpenAI's GPT models
  * @used_by server/features/game/logic/aiProviders/aiProviders.service.ts (round-robin provider selection)
  */
-export class OpenAITriviaProvider extends BaseTriviaProvider<OpenAIResponse> {
+export class OpenAITriviaProvider extends BaseTriviaProvider {
 	name = 'OpenAI';
 	protected apiKey: string;
 
@@ -54,7 +53,13 @@ export class OpenAITriviaProvider extends BaseTriviaProvider<OpenAIResponse> {
 
 	protected getProviderConfig(prompt: string): ProviderConfig {
 		return {
-			url: 'https://api.openai.com/v1/chat/completions',
+			name: 'openai',
+			apiKey: this.apiKey,
+			baseUrl: 'https://api.openai.com/v1/chat/completions',
+			timeout: 30000,
+			maxRetries: 3,
+			enabled: true,
+			priority: 4,
 			headers: {
 				Authorization: `Bearer ${this.apiKey}`,
 				'Content-Type': 'application/json',
@@ -74,12 +79,12 @@ export class OpenAITriviaProvider extends BaseTriviaProvider<OpenAIResponse> {
 		};
 	}
 
-	protected parseResponse(response: LLMApiResponse<OpenAIResponse>): LLMTriviaResponse {
+	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
 		const data = response.data;
 		if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_OPENAI_RESPONSE);
 		}
 		const content = data.choices[0].message.content;
-		return JSON.parse(content) as LLMTriviaResponse;
+		return JSON.parse(content);
 	}
 }

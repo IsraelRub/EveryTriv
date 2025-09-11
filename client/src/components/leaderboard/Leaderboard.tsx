@@ -1,76 +1,127 @@
-import { isToday, isYesterday } from 'everytriv-shared/utils';
-import { useEffect, useState } from 'react';
+import { isToday, isYesterday } from '@shared';
+import { useEffect, useState, memo, useMemo, useCallback } from 'react';
 
 import { gameHistoryService } from '@/services/game';
-import { logger } from '@/services/utils';
+import { clientLogger } from '@shared';
 import { LeaderboardEntry, LeaderboardProps } from '@/types';
 
-import { FadeInLeft, FadeInUp, FloatingCard, StaggerContainer } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInLeft, fadeInUp, createStaggerContainer } from '../animations';
 import { Icon } from '../icons';
+import { Avatar } from '../ui';
 
-export default function Leaderboard({ userId }: LeaderboardProps) {
+const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 	const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string>('');
 
-	useEffect(() => {
-		const fetchLeaderboard = async () => {
-			try {
-				setLoading(true);
-				// Use the game history service instead of the API service for better compatibility
-				const data = await gameHistoryService.getLeaderboard(10);
-				// Ensure we have an array
-				const leaderboardData = Array.isArray(data) ? data : [];
-				setEntries(leaderboardData);
-				setError('');
-			} catch (err) {
-				logger.analyticsError('Failed to fetch leaderboard', { 
-					error: err instanceof Error ? err.message : String(err) 
-				});
-				setError('Failed to load leaderboard');
-				setEntries([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchLeaderboard();
+	const fetchLeaderboard = useCallback(async () => {
+		try {
+			setLoading(true);
+			// Use the game history service instead of the API service for better compatibility
+			const data = await gameHistoryService.getLeaderboard(10);
+			// Ensure we have an array
+			const leaderboardData = Array.isArray(data) ? data : [];
+			setEntries(leaderboardData);
+			setError('');
+		} catch (err) {
+			clientLogger.analyticsError('Failed to fetch leaderboard', { 
+				error: err instanceof Error ? err.message : String(err) 
+			});
+			setError('Failed to load leaderboard');
+			setEntries([]);
+		} finally {
+			setLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {
+		fetchLeaderboard();
+	}, [fetchLeaderboard]);
+
+	// Helper function to get rank styling and medal info
+	const getRankInfo = useCallback((rank: number) => {
+		switch (rank) {
+			case 1:
+				return {
+					backgroundColor: 'bg-yellow-500 text-black',
+					medalIcon: 'medal' as const,
+					medalColor: 'warning' as const,
+					showMedal: true
+				};
+			case 2:
+				return {
+					backgroundColor: 'bg-gray-400 text-black',
+					medalIcon: 'medal' as const,
+					medalColor: 'muted' as const,
+					showMedal: true
+				};
+			case 3:
+				return {
+					backgroundColor: 'bg-orange-600 text-white',
+					medalIcon: 'medal' as const,
+					medalColor: 'muted' as const,
+					showMedal: true
+				};
+			default:
+				return {
+					backgroundColor: 'bg-blue-500/20 text-blue-300',
+					medalIcon: null,
+					medalColor: null,
+					showMedal: false
+				};
+		}
+	}, []);
+
+	const processedEntries = useMemo(() => {
+		return entries.map((entry, index) => {
+			const rank = index + 1;
+			const rankInfo = getRankInfo(rank);
+			
+			return {
+				...entry,
+				rank,
+				isCurrentUser: entry.userId === userId,
+				formattedScore: entry.score?.toLocaleString() || '0',
+				rankInfo
+			};
+		});
+	}, [entries, userId, getRankInfo]);
 
 	if (loading) {
 		return (
-			<FloatingCard>
-				<div className='glass rounded-lg p-6 mt-6'>
-					<h3 className='text-xl font-semibold text-white mb-4'>
-						<Icon name='trophy' size='sm' className='mr-1' /> Leaderboard
-					</h3>
-					<div className='flex items-center justify-center py-8'>
-						<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3'></div>
-						<p className='text-white/80'>Loading...</p>
-					</div>
+			<div className='glass rounded-lg p-6 mt-6'>
+				<h3 className='text-xl font-semibold text-white mb-4'>
+					<Icon name='trophy' size='sm' className='mr-1' /> Leaderboard
+				</h3>
+				<div className='flex items-center justify-center py-8'>
+					<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3'></div>
+					<p className='text-white/80'>Loading...</p>
 				</div>
-			</FloatingCard>
+			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<FloatingCard>
-				<div className='glass rounded-lg p-6 mt-6'>
-					<h3 className='text-xl font-semibold text-white mb-4'>
-						<Icon name='trophy' size='sm' className='mr-1' /> Leaderboard
-					</h3>
-					<div className='bg-red-500/20 border border-red-400/30 rounded-lg p-4 text-center'>
-						<p className='text-red-300'>{error}</p>
-					</div>
+			<div className='glass rounded-lg p-6 mt-6'>
+				<h3 className='text-xl font-semibold text-white mb-4'>
+					<Icon name='trophy' size='sm' className='mr-1' /> Leaderboard
+				</h3>
+				<div className='bg-red-500/20 border border-red-400/30 rounded-lg p-4 text-center'>
+					<p className='text-red-300'>{error}</p>
 				</div>
-			</FloatingCard>
+			</div>
 		);
 	}
 
 	return (
-		<FloatingCard>
-			<FadeInUp className='glass rounded-lg p-6 mt-6'>
+		<div className='glass rounded-lg p-6 mt-6'>
+			<motion.div 
+				variants={fadeInUp}
+				initial="hidden"
+				animate="visible"
+			>
 				<h3 className='text-xl font-semibold text-white mb-6'>
 					<Icon name='trophy' size='sm' className='mr-1' /> Leaderboard
 				</h3>
@@ -80,38 +131,46 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 						<p className='text-white/40 text-sm mt-2'>Be the first to appear on the leaderboard!</p>
 					</div>
 				) : (
-					<StaggerContainer className='space-y-3'>
-						{entries.map((entry, i) => (
-							<FadeInLeft key={entry.userId || i} delay={i * 0.05}>
+					<motion.div
+						variants={createStaggerContainer(0.05)}
+						initial="hidden"
+						animate="visible"
+						className='space-y-3'
+					>
+						{processedEntries.map((entry, i) => (
+							<motion.div 
+								key={entry.userId || i} 
+								variants={fadeInLeft}
+								initial="hidden"
+								animate="visible"
+								transition={{ delay: i * 0.05 }}
+							>
 								<div
 									key={entry.userId || i}
 									className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
-										entry.userId === userId
+										entry.isCurrentUser
 											? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 ring-2 ring-yellow-400/20'
 											: 'bg-white/5 hover:bg-white/10 border border-white/10'
 									}`}
 								>
 									<div className='flex items-center space-x-4'>
-										<div
-											className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-												i === 0
-													? 'bg-yellow-500 text-black'
-													: i === 1
-														? 'bg-gray-400 text-black'
-														: i === 2
-															? 'bg-orange-600 text-white'
-															: 'bg-blue-500/20 text-blue-300'
-											}`}
-										>
-											{i === 0 ? (
-												<Icon name='medal' size='sm' color='warning' />
-											) : i === 1 ? (
-												<Icon name='medal' size='sm' color='muted' />
-											) : i === 2 ? (
-												<Icon name='medal' size='sm' color='muted' />
-											) : (
-												i + 1
-											)}
+										<div className='flex items-center space-x-3'>
+											<Avatar
+												src={entry.avatar}
+												username={entry.username}
+												fullName={entry.fullName}
+												size="sm"
+												alt={entry.username || entry.userId}
+											/>
+											<div
+												className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${entry.rankInfo.backgroundColor}`}
+											>
+												{entry.rankInfo.showMedal ? (
+													<Icon name={entry.rankInfo.medalIcon!} size='xs' color={entry.rankInfo.medalColor!} />
+												) : (
+													entry.rank
+												)}
+											</div>
 										</div>
 										<div>
 											<div className='font-medium text-white'>
@@ -127,7 +186,7 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 										</div>
 									</div>
 									<div className='text-right'>
-										<div className='text-lg font-bold text-white'>{entry.score}</div>
+										<div className='text-lg font-bold text-white'>{entry.formattedScore}</div>
 										<div className='text-white/60 text-sm'>points</div>
 										{entry.lastPlayed && (
 											<div className='text-white/40 text-xs mt-1'>
@@ -140,11 +199,13 @@ export default function Leaderboard({ userId }: LeaderboardProps) {
 										)}
 									</div>
 								</div>
-							</FadeInLeft>
+							</motion.div>
 						))}
-					</StaggerContainer>
+					</motion.div>
 				)}
-			</FadeInUp>
-		</FloatingCard>
+			</motion.div>
+		</div>
 	);
-}
+});
+
+export default Leaderboard;

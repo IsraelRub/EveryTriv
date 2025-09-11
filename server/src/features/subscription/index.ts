@@ -7,6 +7,13 @@
  */
 
 /**
+ * Subscription DTOs
+ * @description Data transfer objects for subscription operations
+ * @used_by server/features/subscription, server/controllers
+ */
+export * from './dtos';
+
+/**
  * Subscription controller
  * @description Handles subscription-related HTTP requests
  * @used_by server/app, server/routes

@@ -1,10 +1,12 @@
-import { formatTimeDisplay } from 'everytriv-shared/utils';
+import { formatTimeDisplay } from '@shared/utils';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useValueChange } from '../../hooks/layers/utils/usePrevious';
-import { loggerService } from '../../services/utils/logger.service';
+import { clientLogger } from '@shared';
 import { GameMode, GameProps } from '../../types';
-import { FadeInDown, FadeInUp, ScaleIn } from '../animations';
+import { useGame } from '../../views/home/HomeView';
+import { motion } from 'framer-motion';
+import { fadeInDown, fadeInUp, scaleIn } from '../animations';
 import { Icon } from '../icons';
 import { Button } from '../ui';
 import GameTimer from './GameTimer';
@@ -25,80 +27,97 @@ import TriviaGame from './TriviaGame';
  * @returns JSX.Element The rendered game interface with all game elements
  */
 export default function Game({ trivia, selected, score, onAnswer, onNewQuestion, gameMode, onGameEnd }: GameProps) {
-	const [timeElapsed, setTimeElapsed] = useState(gameMode.timer.timeElapsed);
-	const [timeRemaining, setTimeRemaining] = useState(gameMode.timeRemaining);
-	const [isGameOver, setIsGameOver] = useState(gameMode.isGameOver);
+	const { handleAnswer: contextHandleAnswer, loadNextQuestion: contextLoadNextQuestion, handleGameEnd: contextHandleGameEnd } = useGame();
+	const [timeElapsed, setTimeElapsed] = useState(gameMode?.timer?.timeElapsed || 0);
+	const [timeRemaining, setTimeRemaining] = useState(gameMode?.timeLimit || 0);
+	const [isGameOver, setIsGameOver] = useState(gameMode?.isGameOver || false);
 
 	const scoreChange = useValueChange(score);
 
 	useEffect(() => {
-		if (!gameMode.timer.isRunning || isGameOver) return;
+		if (!gameMode?.timer?.isRunning || isGameOver) return;
 
 		const interval = setInterval(() => {
 			const now = Date.now();
-			const startTime = gameMode.timer.startTime || now;
+			const startTime = gameMode?.timer?.startTime || now;
 			const elapsed = now - startTime;
 
 			setTimeElapsed(elapsed);
 
-			if (gameMode.mode === GameMode.TIME_LIMITED && gameMode.timeLimit) {
+			if (gameMode?.mode === GameMode.TIME_LIMITED && gameMode?.timeLimit) {
 				const remaining = Math.max(0, gameMode.timeLimit - elapsed);
 				setTimeRemaining(remaining);
 
 				if (remaining <= 0) {
 					setIsGameOver(true);
-					onGameEnd();
+					onGameEnd?.();
 				}
 			}
 		}, 1000);
 
 		return () => clearInterval(interval);
-	}, [gameMode.timer.isRunning, gameMode.timer.startTime, gameMode.mode, gameMode.timeLimit, isGameOver, onGameEnd]);
+	}, [gameMode?.timer?.isRunning, gameMode?.timer?.startTime, gameMode?.mode, gameMode?.timeLimit, isGameOver, onGameEnd]);
 
 	useEffect(() => {
 		if (
-			gameMode.mode === GameMode.QUESTION_LIMITED &&
-			gameMode.questionsRemaining !== undefined &&
-			gameMode.questionsRemaining <= 0
+			gameMode?.mode === GameMode.QUESTION_LIMITED &&
+			gameMode?.questionLimit !== undefined &&
+			gameMode?.questionLimit <= 0
 		) {
 			setIsGameOver(true);
-			onGameEnd();
+			onGameEnd?.();
 		}
-	}, [gameMode.mode, gameMode.questionsRemaining, onGameEnd]);
+	}, [gameMode?.mode, gameMode?.questionLimit, onGameEnd]);
 
 	useEffect(() => {
-		setIsGameOver(gameMode.isGameOver);
-	}, [gameMode.isGameOver]);
+		setIsGameOver(gameMode?.isGameOver || false);
+	}, [gameMode?.isGameOver]);
 
 	const handleAnswer = useCallback(
 		async (index: number) => {
-			await onAnswer(index);
-
-			if (scoreChange.hasChanged && score > (scoreChange.previous || 0)) {
-				    loggerService.userDebug('Score increased! Animation triggered');
+			// Use context function if available, otherwise fallback to props
+			if (contextHandleAnswer) {
+				await contextHandleAnswer(index);
+			} else {
+				await onAnswer?.(index);
 			}
 
-			if ((gameMode.mode === GameMode.TIME_LIMITED || gameMode.mode === GameMode.QUESTION_LIMITED) && !isGameOver) {
+			// Check score change after answer
+			if (scoreChange.hasChanged && (score || 0) > (scoreChange.previous || 0)) {
+				clientLogger.userDebug('Score increased! Animation triggered');
+			}
+
+			if ((gameMode?.mode === GameMode.TIME_LIMITED || gameMode?.mode === GameMode.QUESTION_LIMITED) && !isGameOver) {
 				setTimeout(async () => {
-					if (gameMode.questionsRemaining && gameMode.questionsRemaining > 1) {
-						await onNewQuestion();
+					if (gameMode?.questionLimit && gameMode?.questionLimit > 1) {
+						if (contextLoadNextQuestion) {
+							await contextLoadNextQuestion();
+						} else {
+							await onNewQuestion?.();
+						}
 					}
 				}, 2000);
 			}
 		},
-		[onAnswer, onNewQuestion, gameMode.mode, gameMode.questionsRemaining, isGameOver, scoreChange, score]
+		[contextHandleAnswer, contextLoadNextQuestion, onAnswer, onNewQuestion, gameMode?.mode, gameMode?.questionLimit, isGameOver, scoreChange, score]
 	);
 
 	const renderGameStatus = () => {
 		if (isGameOver) {
 			return (
-				<ScaleIn className='game-over p-6 glass rounded-lg text-center mb-6'>
+				<motion.div 
+					variants={scaleIn} 
+					initial="hidden" 
+					animate="visible" 
+					className='game-over p-6 glass rounded-lg text-center mb-6'
+					whileHover={{ scale: 1.02 }}
+				>
 					<div className='text-4xl mb-4'>🎉</div>
 					<h2 className='text-2xl font-bold text-white mb-4'>Game Complete!</h2>
 					<p className='text-lg text-white/80 mb-6'>
-						{gameMode.mode === GameMode.TIME_LIMITED
+						{gameMode?.mode === GameMode.TIME_LIMITED
 							? `Time's up! You played for ${formatTimeDisplay(timeElapsed)}`
-							: gameMode.mode === GameMode.QUESTION_LIMITED
+							: gameMode?.mode === GameMode.QUESTION_LIMITED
 								? `All questions completed in ${formatTimeDisplay(timeElapsed)}!`
 								: `Great session! Time played: ${formatTimeDisplay(timeElapsed)}`}
 					</p>
@@ -110,7 +129,7 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 							Return to Menu
 						</Button>
 					</div>
-				</ScaleIn>
+				</motion.div>
 			);
 		}
 
@@ -120,16 +139,16 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 	const renderGameInfo = () => {
 		const info = [];
 
-		if (gameMode.mode === GameMode.QUESTION_LIMITED && gameMode.questionsRemaining !== undefined) {
+		if (gameMode?.mode === GameMode.QUESTION_LIMITED && gameMode?.questionLimit !== undefined) {
 			info.push(
 				<div key='questions' className='text-center'>
 					<div className='text-sm opacity-75'>Questions Remaining</div>
-					<div className='font-bold text-lg'>{gameMode.questionsRemaining}</div>
+					<div className='font-bold text-lg'>{gameMode.questionLimit}</div>
 				</div>
 			);
 		}
 
-		if (gameMode.mode === GameMode.TIME_LIMITED && timeRemaining !== undefined) {
+		if (gameMode?.mode === GameMode.TIME_LIMITED && timeRemaining !== undefined) {
 			const isUrgent = timeRemaining < 30000;
 			info.push(
 				<div key='time' className='text-center'>
@@ -143,9 +162,15 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 
 		if (info.length > 0) {
 			return (
-				<FadeInDown className='game-info p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg mb-4'>
+				<motion.div 
+					variants={fadeInDown} 
+					initial="hidden" 
+					animate="visible" 
+					className='game-info p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg mb-4'
+					whileHover={{ scale: 1.01 }}
+				>
 					<div className={`grid grid-cols-${info.length} gap-4 text-white`}>{info}</div>
-				</FadeInDown>
+				</motion.div>
 			);
 		}
 
@@ -153,22 +178,52 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 	};
 
 	const handleNextQuestion = async () => {
-		if (gameMode.mode === GameMode.UNLIMITED) {
-			await onNewQuestion();
+		if (gameMode?.mode === GameMode.UNLIMITED) {
+			if (contextLoadNextQuestion) {
+				await contextLoadNextQuestion();
+			} else {
+				await onNewQuestion?.();
+			}
 		}
 	};
 
 	return (
-		<FadeInUp className='game-container'>
+		<motion.div 
+			variants={fadeInUp} 
+			initial="hidden" 
+			animate="visible" 
+			className='game-container'
+			whileHover={{ scale: 1.01 }}
+		>
 			{/* Game Timer */}
-			<GameTimer
-				isRunning={gameMode.timer.isRunning}
-				timeElapsed={timeElapsed}
-				timeRemaining={timeRemaining || 0}
-				isGameOver={isGameOver}
-				mode={gameMode.mode}
-				onTimeUp={onGameEnd}
-			/>
+			{gameMode?.timer && (
+				<GameTimer
+					timer={{
+						...gameMode.timer,
+						timeRemaining,
+						isPaused: false,
+						startTime: gameMode.timer.startTime || 0
+					}}
+					onTimeUpdate={(timeRemaining: number) => {
+						setTimeRemaining(timeRemaining);
+					}}
+					onLowTimeWarning={() => {
+						clientLogger.userDebug('Low time warning triggered');
+					}}
+					onTimeUp={contextHandleGameEnd || onGameEnd || (() => {
+						// Default no-op game end handler
+					})}
+					isRunning={gameMode.timer.isRunning}
+					timeElapsed={timeElapsed}
+					timeRemaining={timeRemaining || 0}
+					isGameOver={isGameOver}
+					mode={{
+						name: gameMode.mode || 'unlimited',
+						timeLimit: gameMode.timeLimit || 0,
+						questionLimit: gameMode.questionLimit || 0
+					}}
+				/>
+			)}
 
 			{/* Game Progress Info */}
 			{renderGameInfo()}
@@ -183,18 +238,18 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 							trivia={trivia}
 							selected={selected}
 							onAnswer={handleAnswer}
-							onNewQuestion={onNewQuestion}
-							gameMode={gameMode}
-							onGameEnd={onGameEnd}
-							onComplete={(score: number) => {
-								loggerService.gameStatistics(`Game completed with score: ${score}`);
-							}}
 						/>
 					)}
 
 					{/* Next Question Button for Unlimited Mode */}
-					{selected !== null && gameMode.mode === GameMode.UNLIMITED && (
-						<FadeInUp className='mt-6 text-center' delay={1}>
+					{selected !== null && gameMode?.mode === GameMode.UNLIMITED && (
+						<motion.div 
+							variants={fadeInUp} 
+							initial="hidden" 
+							animate="visible" 
+							transition={{ delay: 1 }}
+							className='mt-6 text-center'
+						>
 							<Button
 								variant='primary'
 								size='lg'
@@ -203,10 +258,10 @@ export default function Game({ trivia, selected, score, onAnswer, onNewQuestion,
 							>
 								<Icon name='arrowright' size='sm' className='mr-1' /> Next Question
 							</Button>
-						</FadeInUp>
+						</motion.div>
 					)}
 				</>
 			)}
-		</FadeInUp>
+		</motion.div>
 	);
 }

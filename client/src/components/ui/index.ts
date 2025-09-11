@@ -3,10 +3,16 @@
  *
  * @module UIComponents
  * @description Reusable UI components, primitives, and design system elements
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views, client/forms
  */
+
+/**
+ * Avatar component
+ * @description Advanced avatar component with fallback system, error handling, and performance optimizations
+ * @used_by client/components/navigation/Navigation.tsx, client/views/user/UserProfile.tsx, client/components/leaderboard/Leaderboard.tsx
+ */
+export { Avatar } from './Avatar';
 
 /**
  * Button component

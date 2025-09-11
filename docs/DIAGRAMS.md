@@ -250,7 +250,6 @@ graph TB
             C8[navigation.constants.ts]
             C9[logging.constants.ts]
             C10[language.constants.ts]
-            C11[tech.constants.ts]
             C12[social.constants.ts]
             C13[infrastructure.constants.ts]
             C14[http.constants.ts]

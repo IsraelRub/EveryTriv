@@ -3,7 +3,6 @@
  *
  * @module StorageModule
  * @description Unified storage module with metrics, management, and utilities
- * @version 1.0.0
  * @author EveryTriv Team
  */
 
@@ -51,7 +50,7 @@ export { formatTime, getCurrentTimestamp } from '../../utils';
  * Error constants imports
  * @description Storage error message constants
  */
-export { STORAGE_ERROR_MESSAGES } from '../../constants/error.constants';
+export { STORAGE_ERROR_MESSAGES } from '../../constants/core/error.constants';
 
 // ============================================================================
 // TYPES
@@ -76,10 +75,10 @@ export type {
  * Extended storage types
  * @description Additional storage types for metrics and synchronization
  */
-export type { StorageMetrics, StorageSyncOptions } from '../../types/storage.types';
+export type { StorageMetrics, StorageSyncOptions } from '../../types/infrastructure/storage.types';
 
 /**
  * Cache data types
  * @description Cache-specific type definitions
  */
-export type { CacheData } from '../../types/cache.types';
+export type { CacheData } from '../../types/infrastructure/cache.types';

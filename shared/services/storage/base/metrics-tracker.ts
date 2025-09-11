@@ -5,7 +5,7 @@
  * @description Unified metrics tracking for all storage operations
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage/services/storageManager.service.ts
  */
-import { StorageMetrics } from '../../../types/storage.types';
+import { StorageMetrics } from '../../../types/infrastructure/storage.types';
 import { metricsService } from '../services/metrics.service';
 
 /**

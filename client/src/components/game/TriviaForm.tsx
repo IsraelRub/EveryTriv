@@ -1,15 +1,16 @@
-import { CUSTOM_DIFFICULTY_KEYWORDS, CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode } from 'everytriv-shared/constants';
+import { CUSTOM_DIFFICULTY_KEYWORDS, CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared';
 import { useEffect, useState } from 'react';
 
 import { useDebounce } from '../../hooks/layers/utils/useDebounce';
-import { loggerService } from '../../services/utils/logger.service';
+import { clientLogger } from '@shared';
 import { TriviaFormProps } from '../../types';
 import {
 	extractCustomDifficultyText,
 	isCustomDifficulty as isCustomDifficultyUtil,
 	validateCustomDifficultyText,
 } from '../../utils/customDifficulty.utils';
-import { FadeInUp } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp } from '../animations';
 import GameModeSelection from '../gameMode/GameMode';
 import { Icon } from '../icons';
 import { Button, Select } from '../ui';
@@ -70,13 +71,13 @@ export default function TriviaForm({
 			if (detectedDifficulty) {
 				setIsCustomDifficulty(true);
 				setCustomDifficultyText(detectedDifficulty.replace(CUSTOM_DIFFICULTY_PREFIX, ''));
-				onDifficultyChange(detectedDifficulty as DifficultyLevel);
+				onDifficultyChange?.(detectedDifficulty as DifficultyLevel);
 			}
 		}
 	}, [topic, isCustomDifficulty, onDifficultyChange]);
 
 	useEffect(() => {
-		if (isCustomDifficultyUtil(difficulty)) {
+		if (difficulty && isCustomDifficultyUtil(difficulty)) {
 			setIsCustomDifficulty(true);
 			setCustomDifficultyText(extractCustomDifficultyText(difficulty));
 		} else {
@@ -96,7 +97,7 @@ export default function TriviaForm({
 
 	useEffect(() => {
 		if (debouncedTopic && debouncedTopic !== topic) {
-			    loggerService.userDebug(`Topic search: ${debouncedTopic}`);
+			    clientLogger.userDebug(`Topic search: ${debouncedTopic}`);
 		}
 	}, [debouncedTopic, topic]);
 
@@ -106,28 +107,28 @@ export default function TriviaForm({
 		if (value === DifficultyLevel.CUSTOM) {
 			setIsCustomDifficulty(true);
 			if (customDifficultyText.trim()) {
-				onDifficultyChange(`${CUSTOM_DIFFICULTY_PREFIX}${customDifficultyText}` as DifficultyLevel);
+				onDifficultyChange?.(`${CUSTOM_DIFFICULTY_PREFIX}${customDifficultyText}` as DifficultyLevel);
 			}
 		} else {
 			setIsCustomDifficulty(false);
-			onDifficultyChange(value as DifficultyLevel);
+			onDifficultyChange?.(value as DifficultyLevel);
 		}
 	};
 
 	const handleCustomDifficultyChange = (text: string) => {
 		setCustomDifficultyText(text);
 		if (text.trim()) {
-			onDifficultyChange(`${CUSTOM_DIFFICULTY_PREFIX}${text}` as DifficultyLevel);
+			onDifficultyChange?.(`${CUSTOM_DIFFICULTY_PREFIX}${text}` as DifficultyLevel);
 		}
 	};
 
 	const getCurrentDifficultyValue = () => {
 		if (isCustomDifficulty) return DifficultyLevel.CUSTOM;
-		return isCustomDifficultyUtil(difficulty) ? DifficultyLevel.CUSTOM : difficulty;
+		return difficulty && isCustomDifficultyUtil(difficulty) ? DifficultyLevel.CUSTOM : difficulty || DifficultyLevel.EASY;
 	};
 
 	const isFormValid = () => {
-		if (!topic.trim()) return false;
+		if (!topic?.trim()) return false;
 		if (isCustomDifficulty) {
 			const validation = validateCustomDifficultyText(customDifficultyText);
 			return validation.isValid && customDifficultyText.trim().length > 0;
@@ -142,9 +143,9 @@ export default function TriviaForm({
 					<label className='block text-sm font-medium text-white/80 mb-2'>Topic</label>
 					<input
 						type='text'
-						placeholder='Enter a topic (e.g., "quantum physics", "ancient Rome", "jazz music")'
+						placeholder='Enter a topic'
 						value={topic}
-						onChange={(e) => onTopicChange(e.target.value)}
+						onChange={(e) => onTopicChange?.(e.target.value)}
 						required
 						className='w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200'
 					/>
@@ -159,7 +160,7 @@ export default function TriviaForm({
 							{ value: DifficultyLevel.HARD, label: 'Hard' },
 							{ value: DifficultyLevel.CUSTOM, label: 'Custom' },
 						]}
-						value={getCurrentDifficultyValue()}
+						value={getCurrentDifficultyValue() || DifficultyLevel.EASY}
 						onChange={(e) => handleDifficultyChange(e.target.value)}
 						isGlassy
 						className='w-full'
@@ -167,11 +168,11 @@ export default function TriviaForm({
 				</div>
 
 				{isCustomDifficulty && (
-					<FadeInUp className='space-y-3'>
+					<motion.div variants={fadeInUp} initial="hidden" animate="visible" className='space-y-3'>
 						<div>
 							<label className='block text-sm font-medium text-white/80 mb-2'>Custom Difficulty Description</label>
 							<textarea
-								placeholder='Describe the difficulty level in detail (e.g., "university level quantum physics", "professional chef techniques", "elementary school basic math")'
+								placeholder='Describe the difficulty level in detail'
 								value={customDifficultyText}
 								onChange={(e) => handleCustomDifficultyChange((e.target as HTMLTextAreaElement).value)}
 								rows={3}
@@ -191,10 +192,10 @@ export default function TriviaForm({
 								<strong>
 									<Icon name='lightbulb' size='sm' className='mr-1' /> Tip:
 								</strong>{' '}
-								Be specific! Examples: "high school chemistry", "beginner yoga poses", "expert wine knowledge"
+								Be specific about the difficulty level you want
 							</small>
 						</div>
-					</FadeInUp>
+					</motion.div>
 				)}
 
 				<div>
@@ -205,9 +206,9 @@ export default function TriviaForm({
 							{ value: '4', label: '4 Questions' },
 							{ value: '5', label: '5 Questions' },
 						]}
-						value={questionCount.toString()}
+						value={questionCount?.toString() || '3'}
 						onChange={(e) =>
-							onQuestionCountChange({ value: Number(e.target.value), label: `${e.target.value} Questions` })
+							onQuestionCountChange?.(Number(e.target.value))
 						}
 						isGlassy
 						className='w-full'
@@ -217,10 +218,12 @@ export default function TriviaForm({
 
 			<GameModeSelection
 				isVisible={showGameModeSelector}
-				onSelectMode={onGameModeSelect}
-				onCancel={onGameModeSelectorClose || (() => {})}
-				onModeSelect={(mode) =>
-					onGameModeSelect?.({ mode: mode as GameMode, timeLimit: undefined, questionLimit: undefined })
+     // onSelectMode={onGameModeSelect}
+				onCancel={onGameModeSelectorClose || (() => {
+					// Default no-op cancel handler
+				})}
+				onModeSelect={(mode: string) =>
+					onGameModeSelect?.(mode)
 				}
 			/>
 

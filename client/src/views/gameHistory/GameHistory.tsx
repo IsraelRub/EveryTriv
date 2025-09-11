@@ -1,22 +1,28 @@
 import {
 	DifficultyLevel,
 	VALID_GAME_MODES,
-} from 'everytriv-shared/constants';
-import type { GameHistoryEntry } from 'everytriv-shared/types';
-import { calculatePercentage,formatScore, isToday, isYesterday, unique } from 'everytriv-shared/utils';
-import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+} from '@shared';
+import type { GameHistoryEntry } from '@shared';
+import { calculatePercentage,formatScore, isToday, isYesterday, unique } from '@shared';
 
-import { FadeInDown, FadeInLeft, FadeInUp, StaggerContainer } from '../../components/animations';
+import { useEffect, useState, useMemo } from 'react';
+
+import { motion } from 'framer-motion';
+import { fadeInDown, fadeInLeft, fadeInUp, createStaggerContainer } from '../../components/animations';
 import { Container, GridLayout, Section } from '../../components/layout';
 import { Button } from '../../components/ui';
 import { AudioKey } from '../../constants';
 import { useGameHistory } from '../../hooks';
-import { audioService, logger, storageService } from '../../services';
-import type { RootState } from '../../types';
+import { useDeleteGameHistory, useClearGameHistory } from '../../hooks/api/useTrivia';
+import { audioService, storageService } from '../../services';
+import { clientLogger } from '@shared';
+import { CLIENT_STORAGE_KEYS } from '../../constants';
 
 export default function GameHistory() {
-	const { isAuthenticated } = useSelector((state: RootState) => state.user);
+	// Authentication is now handled by ProtectedRoute HOC
+	// const { isAuthenticated } = useSelector((state: RootState) => state.user);
+	
+	
 	const [page] = useState(0);
 	const [dateFilter, setDateFilter] = useState('');
 	const [topicFilter, setTopicFilter] = useState('');
@@ -29,87 +35,125 @@ export default function GameHistory() {
 
 	// Use custom hook for game history
 	const { data: gameHistory = [], isLoading: loading, error, refetch } = useGameHistory(20, page * 20);
+	
+	// Game history management hooks
+	const deleteGameHistory = useDeleteGameHistory();
+	const clearGameHistory = useClearGameHistory();
 
 	// Refetch when page changes
 	useEffect(() => {
-		if (isAuthenticated) {
-			refetch();
-		}
-	}, [page, isAuthenticated, refetch]);
+		// Always refetch since authentication is handled by ProtectedRoute
+		refetch();
+	}, [page, refetch]);
 
-	// Calculate statistics when game history changes
-	useEffect(() => {
-		if (gameHistory && gameHistory.length > 0) {
-					// Calculate unique topics
+	// Memoize game statistics to avoid recalculation on every render
+	const gameStatistics = useMemo(() => {
+		if (!gameHistory || gameHistory.length === 0) {
+			return {
+				topics: [],
+				totalGames: 0,
+				totalScore: 0,
+				averageScore: 0,
+				averageAccuracy: 0,
+			};
+		}
+
+		// Calculate unique topics
 		const uniqueTopics = unique(gameHistory.map((game: GameHistoryEntry) => game.topic));
-		setTopics(uniqueTopics);
 
 		// Calculate statistics
 		const games = Array.isArray(gameHistory) ? gameHistory : [];
-		setTotalGames(games.length);
-
 		const sumScore = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.score || 0), 0);
-		setTotalScore(sumScore);
-
 		const avgScore = games.length > 0 ? Math.round(sumScore / games.length) : 0;
-		setAverageScore(avgScore);
 
-		const totalCorrect = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.correct_answers || 0), 0);
-		const totalQuestions = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.total_questions || 0), 0);
+		const totalCorrect = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.correctAnswers || 0), 0);
+		const totalQuestions = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.totalQuestions || 0), 0);
 		const avgAccuracy = calculatePercentage(totalCorrect, totalQuestions);
-		setAverageAccuracy(avgAccuracy);
 
-			// Log statistics with constants
-			logger.gameStatistics('Game history statistics calculated', {
-				totalGames: games.length,
-				totalScore: sumScore,
-				averageScore: avgScore,
-				averageAccuracy: avgAccuracy,
+		return {
+			topics: uniqueTopics,
+			totalGames: games.length,
+			totalScore: sumScore,
+			averageScore: avgScore,
+			averageAccuracy: avgAccuracy,
+		};
+	}, [gameHistory]);
+
+	// Update state when statistics change
+	useEffect(() => {
+		setTopics(gameStatistics.topics);
+		setTotalGames(gameStatistics.totalGames);
+		setTotalScore(gameStatistics.totalScore);
+		setAverageScore(gameStatistics.averageScore);
+		setAverageAccuracy(gameStatistics.averageAccuracy);
+
+		// Log and save statistics when they change
+		if (gameStatistics.totalGames > 0) {
+			clientLogger.gameStatistics('Game history statistics calculated', {
+				totalGames: gameStatistics.totalGames,
+				totalScore: gameStatistics.totalScore,
+				averageScore: gameStatistics.averageScore,
+				averageAccuracy: gameStatistics.averageAccuracy,
 				gameModes: VALID_GAME_MODES,
-				
 				timestamp: new Date().toISOString(),
 			});
 
 			// Save statistics to storage
-			storageService.setItem('game-history-stats', {
-				totalGames: games.length,
-				totalScore: sumScore,
-				averageScore: avgScore,
-				averageAccuracy: avgAccuracy,
+			storageService.set(CLIENT_STORAGE_KEYS.GAME_HISTORY, {
+				totalGames: gameStatistics.totalGames,
+				totalScore: gameStatistics.totalScore,
+				averageScore: gameStatistics.averageScore,
+				averageAccuracy: gameStatistics.averageAccuracy,
 				lastUpdated: new Date().toISOString(),
 			});
-		} else {
-			setTopics([]);
-			setTotalGames(0);
-			setTotalScore(0);
-			setAverageScore(0);
-			setAverageAccuracy(0);
 		}
-	}, [gameHistory]);
+	}, [gameStatistics]);
 
-	if (!isAuthenticated) {
-		return (
-			<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700'>
-				<div className='glass p-8 rounded-lg text-center'>
-					<h2 className='text-2xl font-bold text-white mb-4'>Sign In Required</h2>
-					<p className='text-slate-300 mb-6'>Please sign in to view your game history.</p>
-					<Button variant='primary'>Sign In with Google</Button>
-				</div>
-			</div>
-		);
-	}
+	// Authentication is now handled by ProtectedRoute HOC
+	// No need for local authentication check
 
 	return (
 		<Container size='xl' className='min-h-screen flex flex-col items-center justify-start p-4 pt-20'>
 			<Section padding='xl' className='w-full space-y-8'>
 				{/* Header */}
-				<FadeInDown className='text-center mb-12' delay={0.2}>
+				<motion.div 
+					variants={fadeInDown} 
+					initial="hidden" 
+					animate="visible" 
+					transition={{ delay: 0.2 }}
+					className='text-center mb-12'
+				>
 					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Game History</h1>
 					<p className='text-xl text-slate-300'>Review your past trivia sessions</p>
-				</FadeInDown>
+					
+					{/* Management Buttons */}
+					{gameHistory.length > 0 && (
+						<div className='flex justify-center gap-4 mt-6'>
+							<Button
+								variant='secondary'
+								onClick={() => {
+									audioService.play(AudioKey.BUTTON_CLICK);
+									if (confirm('Are you sure you want to clear all game history? This action cannot be undone.')) {
+										clearGameHistory.mutate();
+									}
+								}}
+								disabled={clearGameHistory.isPending}
+								className='bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+							>
+								{clearGameHistory.isPending ? 'Clearing...' : 'Clear All History'}
+							</Button>
+						</div>
+					)}
+				</motion.div>
 
 				{/* Filters */}
-				<FadeInUp delay={0.4}>
+				<motion.div 
+					variants={fadeInUp} 
+					initial="hidden" 
+					animate="visible" 
+					transition={{ delay: 0.4 }}
+					whileHover={{ scale: 1.02 }}
+				>
 					<Section background='glass' padding='lg' className='rounded-lg'>
 						<GridLayout variant='content' gap='lg' className='items-center'>
 							<div>
@@ -165,10 +209,16 @@ export default function GameHistory() {
 							</div>
 						</GridLayout>
 					</Section>
-				</FadeInUp>
+				</motion.div>
 
 				{/* Game History List */}
-				<FadeInUp delay={0.6}>
+				<motion.div 
+					variants={fadeInUp} 
+					initial="hidden" 
+					animate="visible" 
+					transition={{ delay: 0.6 }}
+					whileHover={{ scale: 1.02 }}
+				>
 					<Section background='glass' padding='lg' className='rounded-lg'>
 						<h2 className='text-2xl font-bold text-white mb-6'>Recent Games</h2>
 						{loading ? (
@@ -186,23 +236,30 @@ export default function GameHistory() {
 								<p className='text-slate-400'>Start playing trivia to see your history here!</p>
 							</div>
 						) : (
-							<StaggerContainer className='space-y-4'>
+							<motion.div 
+								variants={createStaggerContainer(0.1)}
+								initial="hidden"
+								animate="visible"
+								className='space-y-4'
+							>
 								{gameHistory.map((game: GameHistoryEntry, index: number) => (
-									<FadeInLeft
+									<motion.div
 										key={game.id}
-										delay={index * 0.05}
+										variants={fadeInLeft}
+										custom={index * 0.05}
+										whileHover={{ scale: 1.02 }}
 										className='glass rounded-lg p-6 hover:bg-white/5 transition-all duration-200'
 									>
 										<GridLayout variant='content' gap='lg' className='items-center'>
 											<div>
 												<h3 className='text-lg font-semibold text-white mb-2'>{game.topic}</h3>
 												<p className='text-slate-300 text-sm'>
-													{isToday(new Date(game.created_at)) 
+													{isToday(new Date(game.createdAt)) 
 														? 'Today' 
-														: isYesterday(new Date(game.created_at)) 
+														: isYesterday(new Date(game.createdAt)) 
 															? 'Yesterday' 
-															: new Date(game.created_at).toLocaleDateString()} at{' '}
-													{new Date(game.created_at).toLocaleTimeString()}
+															: new Date(game.createdAt).toLocaleDateString()} at{' '}
+													{new Date(game.createdAt).toLocaleTimeString()}
 												</p>
 											</div>
 											<div className='text-center'>
@@ -210,12 +267,12 @@ export default function GameHistory() {
 												<div className='text-slate-300 text-sm'>Score</div>
 											</div>
 											<div className='text-center'>
-												<div className='text-2xl font-bold text-blue-400'>{game.total_questions}</div>
+												            <div className='text-2xl font-bold text-blue-400'>{game.totalQuestions}</div>
 												<div className='text-slate-300 text-sm'>Questions</div>
 											</div>
 											<div className='text-center'>
 												<div className='text-2xl font-bold text-yellow-400'>
-													{calculatePercentage(game.correct_answers, game.total_questions)}%
+													              {calculatePercentage(game.correctAnswers, game.totalQuestions)}%
 												</div>
 												<div className='text-slate-300 text-sm'>Accuracy</div>
 											</div>
@@ -234,17 +291,39 @@ export default function GameHistory() {
 													{game.difficulty}
 												</span>
 											</div>
+											<div className='text-center'>
+												<Button
+													variant='secondary'
+													size='sm'
+													onClick={() => {
+														audioService.play(AudioKey.BUTTON_CLICK);
+														if (confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
+															deleteGameHistory.mutate(game.id);
+														}
+													}}
+													disabled={deleteGameHistory.isPending}
+													className='bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
+												>
+													{deleteGameHistory.isPending ? '...' : 'Delete'}
+												</Button>
+											</div>
 										</GridLayout>
-									</FadeInLeft>
+									</motion.div>
 								))}
-							</StaggerContainer>
+							</motion.div>
 						)}
 					</Section>
-				</FadeInUp>
+				</motion.div>
 
 				{/* Statistics Summary */}
 				{gameHistory.length > 0 && (
-					<FadeInUp delay={0.8}>
+					<motion.div 
+						variants={fadeInUp} 
+						initial="hidden" 
+						animate="visible" 
+						transition={{ delay: 0.8 }}
+						whileHover={{ scale: 1.02 }}
+					>
 						<Section background='glass' padding='lg' className='rounded-lg'>
 							<h2 className='text-2xl font-bold text-white mb-6'>Summary</h2>
 							<GridLayout variant='stats' gap='lg'>
@@ -266,9 +345,10 @@ export default function GameHistory() {
 								</div>
 							</GridLayout>
 						</Section>
-					</FadeInUp>
+					</motion.div>
 				)}
 			</Section>
 		</Container>
 	);
 }
+

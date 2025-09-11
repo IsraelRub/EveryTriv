@@ -1,29 +1,34 @@
 /**
- * User utility functions for EveryTriv client
- * Handles user ID generation and management
+ * User Utility Functions
+ *
+ * @module UserUtils
+ * @description Utility functions for user management and operations
+ * @used_by client: client/src/components/user/CompleteProfile.tsx, client/src/hooks/layers/business/usePoints.ts
  */
-import { clientLogger } from 'everytriv-shared/services';
-import { generateUserId } from 'everytriv-shared/utils';
+import { clientLogger } from '@shared';
+import { generateUserId } from '@shared';
 
 import { STORAGE_KEYS } from '../constants';
+import { storageService } from '../services';
 
 /**
  * Generate or retrieve user ID from localStorage
  * @returns string User ID
  */
-export function getOrCreateClientUserId(): string {
+export async function getOrCreateClientUserId(): Promise<string> {
 	try {
-		let userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
+		const userIdResult = await storageService.get<string>(STORAGE_KEYS.USER_ID);
+		let userId = userIdResult.success ? userIdResult.data : null;
 
 		if (!userId) {
 			userId = generateUserId();
-			localStorage.setItem(STORAGE_KEYS.USER_ID, userId);
+			await storageService.set(STORAGE_KEYS.USER_ID, userId);
 		}
 
-		return userId;
+		return userId!;
 	} catch (error) {
-		// Fallback if localStorage is not available
-		clientLogger.storageWarn('localStorage not available, generating temporary user ID');
+		// Fallback if storage is not available
+		clientLogger.storageWarn('Storage not available, generating temporary user ID');
 		return generateUserId();
 	}
 }

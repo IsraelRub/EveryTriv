@@ -1,0 +1,269 @@
+/**
+ * JWT Token Service - Centralized JWT token management
+ *
+ * @module JwtTokenService
+ * @description Unified JWT token generation and validation service
+ * @author EveryTriv Team
+ */
+import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { serverLogger as logger } from '@shared';
+import { AUTH_CONSTANTS } from '@shared';
+import { 
+	TokenPair, 
+	TokenValidationResult,
+	AuthenticationRequest,
+	JWTDecodedToken
+} from '@shared';
+import { TokenPayload } from '@shared';
+
+@Injectable()
+export class JwtTokenService {
+	constructor(
+		private readonly jwtService: JwtService
+	) {}
+
+	/**
+	 * Generate access token
+	 */
+	async generateAccessToken(
+		userId: string,
+		username: string,
+		email: string,
+		role: string,
+		expiresIn: string = '1h'
+	): Promise<string> {
+		try {
+			const payload: TokenPayload = {
+				sub: userId,
+				email,
+				username,
+				role,
+			};
+
+			const token = await this.jwtService.signAsync(payload, {
+				secret: AUTH_CONSTANTS.JWT_SECRET,
+				expiresIn,
+			});
+
+			logger.securityLogin('Access token generated', {
+				userId,
+				username,
+				role,
+				expiresIn,
+			});
+
+			return token;
+		} catch (error) {
+			logger.securityError('Failed to generate access token', {
+				userId,
+				username,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			throw new Error('Failed to generate access token');
+		}
+	}
+
+	/**
+	 * Generate refresh token
+	 */
+	async generateRefreshToken(
+		userId: string,
+		username: string,
+		email: string,
+		role: string,
+		expiresIn: string = '7d'
+	): Promise<string> {
+		try {
+			const payload: TokenPayload = {
+				sub: userId,
+				email,
+				username,
+				role,
+			};
+
+			const token = await this.jwtService.signAsync(payload, {
+				secret: AUTH_CONSTANTS.JWT_SECRET,
+				expiresIn,
+			});
+
+			logger.securityLogin('Refresh token generated', {
+				userId,
+				username,
+				role,
+				expiresIn,
+			});
+
+			return token;
+		} catch (error) {
+			logger.securityError('Failed to generate refresh token', {
+				userId,
+				username,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			throw new Error('Failed to generate refresh token');
+		}
+	}
+
+	/**
+	 * Generate token pair (access + refresh)
+	 */
+	async generateTokenPair(
+		userId: string,
+		username: string,
+		email: string,
+		role: string,
+		accessExpiresIn: string = '1h',
+		refreshExpiresIn: string = '7d'
+	): Promise<TokenPair> {
+		try {
+			const [accessToken, refreshToken] = await Promise.all([
+				this.generateAccessToken(userId, username, email, role, accessExpiresIn),
+				this.generateRefreshToken(userId, username, email, role, refreshExpiresIn),
+			]);
+
+			logger.securityLogin('Token pair generated', {
+				userId,
+				username,
+				role,
+			});
+
+			return {
+				accessToken,
+				refreshToken,
+			};
+		} catch (error) {
+			logger.securityError('Failed to generate token pair', {
+				userId,
+				username,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			throw new Error('Failed to generate token pair');
+		}
+	}
+
+	/**
+	 * Verify and decode token
+	 */
+	async verifyToken(token: string): Promise<TokenValidationResult> {
+		try {
+			const payload = await this.jwtService.verifyAsync(token, {
+				secret: AUTH_CONSTANTS.JWT_SECRET,
+			});
+
+			logger.securityLogin('Token verified successfully', {
+				userId: payload.sub,
+				username: payload.username,
+			});
+
+			return {
+				isValid: true,
+				payload: payload as TokenPayload,
+			};
+		} catch (error) {
+			logger.securityDenied('Token verification failed', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+
+			return {
+				isValid: false,
+				error: error instanceof Error ? error.message : 'Token verification failed',
+			};
+		}
+	}
+
+	/**
+	 * Extract token from request headers
+	 */
+	extractTokenFromRequest(request: AuthenticationRequest): string | null {
+		try {
+			// Check Authorization header
+			const authHeader = request.headers?.authorization;
+			if (authHeader && authHeader.startsWith('Bearer ')) {
+				return authHeader.substring(7);
+			}
+
+			// Check cookies
+			const cookieToken = request.cookies?.auth_token;
+			if (cookieToken) {
+				return cookieToken;
+			}
+
+			// Check if token is already extracted by middleware
+			if (request.authToken) {
+				return request.authToken;
+			}
+
+			return null;
+		} catch (error) {
+			logger.securityError('Failed to extract token from request', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Get user from token
+	 */
+	async getUserFromToken(token: string): Promise<TokenPayload | null> {
+		const result = await this.verifyToken(token);
+		return result.isValid ? result.payload || null : null;
+	}
+
+	/**
+	 * Check if token is expired
+	 */
+		isTokenExpired(token: string): boolean {
+		try {
+			const decoded = this.jwtService.decode(token) as JWTDecodedToken;
+			if (!decoded || !decoded.exp) {
+				return true;
+			}
+
+			const currentTime = Math.floor(Date.now() / 1000);
+			return decoded.exp < currentTime;
+		} catch (error) {
+			logger.securityError('Failed to check token expiration', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return true;
+		}
+	}
+
+	/**
+	 * Get token expiration time
+	 */
+	getTokenExpiration(token: string): Date | null {
+		try {
+			const decoded = this.jwtService.decode(token) as JWTDecodedToken;
+			if (!decoded || !decoded.exp) {
+				return null;
+			}
+
+			return new Date(decoded.exp * 1000);
+		} catch (error) {
+			logger.securityError('Failed to get token expiration', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Generate token for specific user data
+	 */
+	async generateTokenForUser(user: {
+		id: string;
+		username: string;
+		email: string;
+		role: string;
+	}): Promise<TokenPair> {
+		return this.generateTokenPair(
+			user.id,
+			user.username,
+			user.email,
+			user.role
+		);
+	}
+}

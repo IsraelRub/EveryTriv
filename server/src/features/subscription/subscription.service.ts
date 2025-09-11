@@ -2,9 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { LoggerService } from '../../shared/controllers';
-import { UserEntity } from '../../shared/entities';
-import { SubscriptionData, UserEntitySubscription, UserStatsWithSubscription } from '../../shared/types';
+import { serverLogger as logger } from '@shared';
+import { UserEntity } from 'src/internal/entities';
+import { SubscriptionData, UserStatsWithSubscription } from '@shared';
 import { PaymentService } from '../payment';
 
 /**
@@ -16,7 +16,6 @@ export class SubscriptionService {
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
-		private readonly logger: LoggerService,
 		private readonly paymentService: PaymentService
 	) {}
 
@@ -27,7 +26,7 @@ export class SubscriptionService {
 	 */
 	async getCurrentSubscription(userId: string) {
 		try {
-			this.logger.payment('Getting current subscription', {
+			logger.payment('Getting current subscription', {
 				userId,
 			});
 
@@ -52,7 +51,7 @@ export class SubscriptionService {
 				features: subscriptionData.features,
 			};
 		} catch (error) {
-			this.logger.paymentFailed('subscription-get', 'Failed to get current subscription', {
+			logger.paymentFailed('subscription-get', 'Failed to get current subscription', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -69,7 +68,7 @@ export class SubscriptionService {
 	 */
 	async createSubscription(userId: string, plan: string, billingCycle: string = 'monthly') {
 		try {
-			this.logger.payment('Creating subscription', {
+			logger.payment('Creating subscription', {
 				userId,
 				planId: plan,
 				paymentMethodId: billingCycle,
@@ -116,13 +115,9 @@ export class SubscriptionService {
 			// Update user with subscription data
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: subscriptionId,
-				stats: {
-					...user.stats,
-					subscription: subscriptionData,
-				},
 			});
 
-			this.logger.payment('Subscription created successfully', {
+			logger.payment('Subscription created successfully', {
 				userId,
 				subscriptionId: subscriptionId,
 				planId: plan,
@@ -133,7 +128,7 @@ export class SubscriptionService {
 				paymentId: paymentResult.paymentId,
 			};
 		} catch (error) {
-			this.logger.paymentFailed('subscription-create', 'Failed to create subscription', {
+			logger.paymentFailed('subscription-create', 'Failed to create subscription', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				planId: plan,
@@ -149,7 +144,7 @@ export class SubscriptionService {
 	 */
 	async cancelSubscription(userId: string) {
 		try {
-			this.logger.payment('Canceling subscription', {
+			logger.payment('Canceling subscription', {
 				userId,
 				subscriptionId: userId, // Assuming userId is the subscriptionId for cancellation
 			});
@@ -165,16 +160,14 @@ export class SubscriptionService {
 			subscriptionData.status = 'cancelled';
 			subscriptionData.cancelledAt = new Date().toISOString();
 
+			// Update user subscription status
 			await this.userRepository.update(userId, {
-				stats: {
-					...stats,
-					subscription: subscriptionData as UserEntitySubscription,
-				},
+				currentSubscriptionId: undefined,
 			});
 
 			return { success: true, message: 'Subscription cancelled successfully' };
 		} catch (error) {
-			this.logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
+			logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				subscriptionId: userId, // Assuming userId is the subscriptionId for cancellation
@@ -189,14 +182,14 @@ export class SubscriptionService {
 	 */
 	async getAvailablePlans() {
 		try {
-			this.logger.payment('Getting available subscription plans', {
+			logger.payment('Getting available subscription plans', {
 				userId: 'all', // Assuming this is for all users or a specific context
 			});
 
 			// Use PaymentService to get plans (single source of truth)
 			return await this.paymentService.getPricingPlans();
 		} catch (error) {
-			this.logger.paymentFailed('plans-get', 'Failed to get available plans', {
+			logger.paymentFailed('plans-get', 'Failed to get available plans', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId: 'all', // Assuming this is for all users or a specific context
 			});

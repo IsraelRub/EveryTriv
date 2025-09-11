@@ -3,7 +3,6 @@
  *
  * @module Logger
  * @description Complete logger module with all implementations and utilities
- * @version 1.0.0
  * @author EveryTriv Team
  */
 
@@ -14,16 +13,16 @@
 export { BaseLoggerService } from './baseLogger.service';
 
 /**
- * Server logger implementations
- * @description Server-side logger services and factory functions
- */
-export { createServerLogger, ServerLogger, serverLogger } from './serverLogger.service';
-
-/**
  * Client logger implementations
  * @description Client-side logger services and factory functions
  */
 export { ClientLogger, clientLogger, createClientLogger } from './clientLogger.service';
+
+/**
+ * Server logger implementations
+ * @description Server-side logger services and factory functions
+ */
+export { ServerLogger, serverLogger, createServerLogger } from './serverLogger.service';
 
 /**
  * Logger type definitions
@@ -32,6 +31,7 @@ export { ClientLogger, clientLogger, createClientLogger } from './clientLogger.s
 export type {
 	ApiLogger,
 	BaseLogger,
+	BusinessLogger,
 	CacheLogger,
 	ClientLogEntry,
 	ClientLogsRequest,

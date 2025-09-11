@@ -3,7 +3,6 @@
  *
  * @module Validation
  * @description Shared validation utilities and schemas for EveryTriv
- * @version 1.0.0
  * @author EveryTriv Team
  */
 
@@ -34,6 +33,13 @@ export * from './trivia.validation';
  * @exports {Function} Payment validation utility functions
  */
 export * from './payment.validation';
+
+/**
+ * Points validation
+ * @description Points operations and transaction validation functions
+ * @exports {Function} Points validation utility functions
+ */
+export * from './points.validation';
 
 /**
  * JSON Schemas

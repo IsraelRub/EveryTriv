@@ -1,9 +1,10 @@
-import { ErrorBoundaryProps, ErrorBoundaryState } from 'everytriv-shared/types';
-import { formatTime,getCurrentTimestamp } from 'everytriv-shared/utils';
+import { ErrorBoundaryProps, ErrorBoundaryState } from '@shared';
+import { formatTime, getCurrentTimestamp } from '@shared';
 import { Component, ErrorInfo } from 'react';
-
-import { logger } from '../../services';
-import { FadeInUp, ScaleIn } from '../animations/AnimationLibrary';
+import { motion } from 'framer-motion';
+import { clientLogger } from '@shared';
+import { storageService } from '../../services';
+import { fadeInUp, scaleIn } from '../animations';
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 	constructor(props: ErrorBoundaryProps) {
@@ -15,7 +16,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 		return { hasError: true, error };
 	}
 
-	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+	async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
 		// Enhanced error logging with advanced details and retry mechanism
 		const errorDetails = {
 			error: error.message,
@@ -32,15 +33,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 			lastErrorTime: null,
 		};
 
-		logger.navigationComponentError('ErrorBoundary', error.message, errorDetails);
+		clientLogger.navigationComponentError('ErrorBoundary', error.message, errorDetails);
 
-		// Store error in localStorage for debugging
+		// Store error in storage for debugging
 		try {
 			const errorLog = {
 				...errorDetails,
 				date: new Date().toISOString(),
 			};
-			localStorage.setItem('error-log', JSON.stringify(errorLog));
+			await storageService.set('error-log', errorLog);
 		} catch (storageError) {
 			// Ignore storage errors
 		}
@@ -59,24 +60,24 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 			const errorContent = (
 				<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-red-700'>
-					<FadeInUp delay={0.1}>
+					<motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay: 0.1 }}>
 						<div className='text-center text-white p-8'>
-							<ScaleIn delay={0.2}>
+							<motion.div variants={scaleIn} initial="hidden" animate="visible" transition={{ delay: 0.2 }}>
 								<h1 className='text-4xl font-bold mb-4'>Something went wrong</h1>
-							</ScaleIn>
-							<FadeInUp delay={0.3}>
+							</motion.div>
+							<motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay: 0.3 }}>
 								<p className='text-xl mb-6'>An unexpected error occurred in the application</p>
-							</FadeInUp>
-							<ScaleIn delay={0.4}>
+							</motion.div>
+							<motion.div variants={scaleIn} initial="hidden" animate="visible" transition={{ delay: 0.4 }}>
 								<button
 									onClick={() => window.location.reload()}
 									className='bg-white text-red-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors'
 								>
 									Refresh Page
 								</button>
-							</ScaleIn>
+							</motion.div>
 							{import.meta.env.DEV && this.state.error && (
-								<FadeInUp delay={0.5}>
+								<motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay: 0.5 }}>
 									<details className='mt-6 text-left'>
 										<summary className='cursor-pointer text-lg font-semibold mb-2'>
 											Error Details (Development Only)
@@ -86,10 +87,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 											{this.state.errorInfo?.componentStack}
 										</pre>
 									</details>
-								</FadeInUp>
+								</motion.div>
 							)}
 						</div>
-					</FadeInUp>
+					</motion.div>
 				</div>
 			);
 

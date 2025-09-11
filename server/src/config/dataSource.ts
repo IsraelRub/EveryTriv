@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { AppConfig } from './app.config';
 
 /**
  * TypeORM DataSource for migrations
@@ -15,28 +16,30 @@ import { DataSource } from 'typeorm';
  */
 export const AppDataSource = new DataSource({
 	type: 'postgres',
-	host: process.env.DATABASE_HOST || 'localhost',
-	port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-	username: process.env.DATABASE_USERNAME || 'everytriv_user',
-	password: process.env.DATABASE_PASSWORD || 'test123',
-	database: process.env.DATABASE_NAME || 'everytriv',
-	schema: process.env.DATABASE_SCHEMA || 'public',
+	host: AppConfig.database.host,
+	port: AppConfig.database.port,
+	username: AppConfig.database.username,
+	password: AppConfig.database.password,
+	database: AppConfig.database.name,
+	schema: AppConfig.database.schema,
 	entities: [
-		__dirname + '/../shared/entities/user.entity.ts',
-		__dirname + '/../shared/entities/gameHistory.entity.ts',
-		__dirname + '/../shared/entities/trivia.entity.ts',
-		__dirname + '/../shared/entities/subscription.entity.ts',
-		__dirname + '/../shared/entities/paymentHistory.entity.ts',
-		__dirname + '/../shared/entities/pointTransaction.entity.ts',
+		__dirname + '/../internal/entities/user.entity.ts',
+		__dirname + '/../internal/entities/userStats.entity.ts',
+		__dirname + '/../internal/entities/gameHistory.entity.ts',
+		__dirname + '/../internal/entities/trivia.entity.ts',
+		__dirname + '/../internal/entities/subscription.entity.ts',
+		__dirname + '/../internal/entities/paymentHistory.entity.ts',
+		__dirname + '/../internal/entities/pointTransaction.entity.ts',
+		__dirname + '/../internal/entities/leaderboard.entity.ts',
 	],
 	migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-	synchronize: false, // Always false for migrations - NEVER change this!
-	logging: process.env.NODE_ENV !== 'prod',
-	ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'prod',
+	synchronize: AppConfig.database.synchronize, // Always false for migrations - NEVER change this!
+	logging: AppConfig.database.logging,
+	ssl: AppConfig.database.ssl,
 	extra: {
-		max: 20,
-		min: 5,
-		acquire: 30000,
-		idle: 10000,
+		max: AppConfig.database.pool.max,
+		min: AppConfig.database.pool.min,
+		acquire: AppConfig.database.pool.acquire,
+		idle: AppConfig.database.pool.idle,
 	},
 });

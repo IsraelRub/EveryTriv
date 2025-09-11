@@ -6,7 +6,8 @@
  * @used_by server/app, server/main
  */
 import { Controller, Get } from '@nestjs/common';
-import { API_VERSION } from 'everytriv-shared/constants';
+import { API_VERSION } from '@shared';
+import { Public } from './common';
 
 /**
  * Main application controller
@@ -16,11 +17,13 @@ import { API_VERSION } from 'everytriv-shared/constants';
 @Controller()
 export class AppController {
 	@Get('/')
+	@Public()
 	getHello(): string {
 		return 'EveryTriv API is running!';
 	}
 
 	@Get('/health')
+	@Public()
 	getHealth(): { status: string; timestamp: string; version: string } {
 		return {
 			status: 'ok',

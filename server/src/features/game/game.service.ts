@@ -1,23 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AnswerResult, LeaderboardEntry, UserScoreData } from '@shared/types';
-import { GAME_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { GameMode } from 'everytriv-shared/constants/game.constants';
-import { CACHE_TTL } from 'everytriv-shared/constants/storage.constants';
-import { groupBy } from 'everytriv-shared/utils';
+import { AnswerResult, UserScoreData } from '@shared/types';
+import { GAME_ERROR_MESSAGES, GameMode, CACHE_TTL } from '@shared';
+import { serverLogger as logger } from '@shared';
+import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
+import { CacheService } from 'src/internal/modules/cache';
+import { ServerStorageService } from 'src/internal/modules/storage';
+import { SERVER_GAME_CONSTANTS } from '@shared';
 import { MoreThan, Repository } from 'typeorm';
 
 import { ValidationService } from '../../common';
-import { SERVER_GAME_CONSTANTS } from '../../shared/constants/game.constants';
-import { LoggerService } from '../../shared/controllers';
-import { GameHistoryEntity } from '../../shared/entities/gameHistory.entity';
-import { TriviaEntity } from '../../shared/entities/trivia.entity';
-import { UserEntity } from '../../shared/entities/user.entity';
-import { CacheService } from '../../shared/modules/cache/cache.service';
-import { ServerStorageService } from '../../shared/modules/storage';
 import { AnalyticsService } from '../analytics/analytics.service';
-import { ScoringService } from './logic/scoring';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
+import { UserAnalytics } from '@shared/types';
 
 /**
  * Service for managing trivia games, game history, and user points
@@ -36,9 +31,7 @@ export class GameService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: ServerStorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
-		private readonly scoringService: ScoringService,
-		private readonly validationService: ValidationService,
-		private readonly logger: LoggerService
+		private readonly validationService: ValidationService
 	) {}
 
 	/**
@@ -61,7 +54,7 @@ export class GameService {
 		const actualQuestionCount = Math.min(questionCount, maxQuestions);
 
 		if (questionCount > maxQuestions) {
-			this.logger.gameError(
+			logger.gameError(
 				`Question count ${questionCount} exceeds limit ${maxQuestions}, using ${actualQuestionCount}`,
 				{
 					requestedCount: questionCount,
@@ -162,7 +155,7 @@ export class GameService {
 			const isCorrect = this.checkAnswer(question, answer);
 
 			// Calculate score
-			const score = this.scoringService.calculatePoints(question.difficulty, timeSpent, 0);
+			const score = this.calculatePoints(question.difficulty, timeSpent, 0);
 
 			// Save game history
 			await this.saveGameHistory(userId, {
@@ -190,21 +183,24 @@ export class GameService {
 
 			// Track analytics
 			await this.analyticsService.trackUserAnswer(userId, questionId, {
-				questionId,
-				answer,
+				selectedAnswer: answer,
+				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
 				topic: question.topic,
 				difficulty: question.difficulty,
 				isCorrect,
 				timeSpent,
-				points: score,
 			});
 
-			return {
-				isCorrect,
-				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
-				points: score,
-				feedback: isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה. נסה שוב!',
-			};
+		return {
+			questionId,
+			userAnswer: answer,
+			correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
+			isCorrect,
+			timeSpent,
+			pointsEarned: score,
+			totalScore: 0, // Will be calculated by client
+			feedback: isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה. נסה שוב!',
+		};
 		} catch (error) {
 			throw new Error(
 				`${GAME_ERROR_MESSAGES.FAILED_TO_SUBMIT_ANSWER}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -213,22 +209,13 @@ export class GameService {
 	}
 
 	/**
-	 * Get user analytics
+	 * Get user analytics - delegates to AnalyticsService
 	 * @param userId User ID
 	 * @returns User analytics
 	 */
 	async getUserAnalytics(userId: string) {
 		try {
-			// Use getOrSet for better cache efficiency
-			const cacheKey = `analytics:user:${userId}`;
-
-			return await this.cacheService.getOrSet(
-				cacheKey,
-				async () => {
-					return await this.analyticsService.getUserStats(userId);
-				},
-				1800 // Cache for 30 minutes
-			);
+			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
 			throw new Error(
 				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -236,61 +223,9 @@ export class GameService {
 		}
 	}
 
-	/**
-	 * Get leaderboard
-	 * @param limit Number of entries to return
-	 * @returns Leaderboard data
-	 */
-	async getLeaderboard(limit: number = 10): Promise<LeaderboardEntry[]> {
-		try {
-			// Use getOrSet for better cache efficiency
-			const cacheKey = `leaderboard:${limit}`;
+	// Leaderboard functionality moved to LeaderboardService for better separation of concerns
 
-			return await this.cacheService.getOrSet(
-				cacheKey,
-				async () => {
-					// Get top users by score
-					const topUsers = await this.userRepository.find({
-						select: ['id', 'username', 'score', 'avatar'],
-						where: { isActive: true },
-						order: { score: 'DESC' },
-						take: limit,
-					});
-
-					// Get user statistics for leaderboard
-					const leaderboard: LeaderboardEntry[] = await Promise.all(
-						topUsers.map(async (user, index) => {
-							const stats = await this.getUserGameStats(user.id);
-							return {
-								rank: index + 1,
-								userId: user.id,
-								username: user.username,
-								score: user.score,
-								avatar: user.avatar,
-								totalQuestions: stats.totalQuestions,
-								correctAnswers: stats.totalCorrectAnswers,
-								successRate: stats.overallSuccessRate,
-							};
-						})
-					);
-
-					return leaderboard;
-				},
-				300 // Cache for 5 minutes
-			);
-		} catch (error) {
-			throw new Error(`Failed to get leaderboard: ${error instanceof Error ? error.message : 'Unknown error'}`);
-		}
-	}
-
-	/**
-	 * Get limited leaderboard (top N users)
-	 * @param limit Number of entries
-	 * @returns Limited leaderboard
-	 */
-	async getLeaderboardLimited(limit: number = 5): Promise<LeaderboardEntry[]> {
-		return this.getLeaderboard(limit);
-	}
+	// Limited leaderboard functionality moved to LeaderboardService
 
 	// ===== PRIVATE HELPER FUNCTIONS =====
 
@@ -319,143 +254,8 @@ export class GameService {
 		}
 	}
 
-	/**
-	 * Update user statistics
-	 * @param userId User ID
-	 * @param gameData Game data
-	 */
-	private async updateUserStats(
-		userId: string,
-		gameData: {
-			score: number;
-			totalQuestions: number;
-			correctAnswers: number;
-			difficulty: string;
-			topic?: string;
-			gameMode: string;
-			timeSpent?: number;
-			creditsUsed: number;
-			questionsdata?: Record<string, unknown>;
-		}
-	) {
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				return;
-			}
+	// User statistics update moved to UserStatsService for better separation of concerns
 
-			// Update user statistics
-			const stats = user.stats || {};
-			stats.totalQuestions = (stats.totalQuestions || 0) + gameData.totalQuestions;
-			stats.correctAnswers = (stats.correctAnswers || 0) + gameData.correctAnswers;
-			stats.lastPlayed = new Date();
-
-			// Update topic statistics
-			if (!stats.topicsPlayed) stats.topicsPlayed = {};
-			if (gameData.topic) {
-				if (!stats.topicsPlayed[gameData.topic]) {
-					stats.topicsPlayed[gameData.topic] = 0;
-				}
-				stats.topicsPlayed[gameData.topic]++;
-			}
-
-			user.stats = stats;
-			await this.userRepository.save(user);
-
-			this.logger.gameStatistics('User statistics updated', {
-				userId,
-				score: gameData.score,
-				correctAnswers: gameData.correctAnswers,
-				totalQuestions: gameData.totalQuestions,
-			});
-		} catch (error) {
-			this.logger.gameError('Failed to update user stats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-				userId,
-				score: gameData.score,
-			});
-		}
-	}
-
-	/**
-	 * Calculate game statistics
-	 * @param gameHistory Game history records
-	 * @returns Calculated statistics
-	 */
-	private calculateGameStats(gameHistory: GameHistoryEntity[]) {
-		if (gameHistory.length === 0) {
-			return {
-				totalGames: 0,
-				totalQuestions: 0,
-				totalCorrectAnswers: 0,
-				overallSuccessRate: 0,
-				averageScore: 0,
-				totalTimeSpent: 0,
-				averageTimePerGame: 0,
-				topicsPlayed: {},
-				difficultyBreakdown: {},
-				gameModeBreakdown: {},
-				bestScore: 0,
-				worstScore: 0,
-				lastPlayed: null,
-			};
-		}
-
-		const totalGames = gameHistory.length;
-		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
-		const totalCorrectAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
-		const totalScore = gameHistory.reduce((sum, game) => sum + game.score, 0);
-		const totalTimeSpent = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
-
-		// Use groupBy for better performance and cleaner code
-		const topicsPlayed = groupBy(
-			gameHistory.filter(game => game.topic),
-			'topic'
-		);
-		const difficultyBreakdown = groupBy(gameHistory, 'difficulty');
-		const gameModeBreakdown = groupBy(gameHistory, 'gameMode');
-
-		// Convert to count format
-		const topicsPlayedCount: Record<string, number> = {};
-		const difficultyBreakdownCount: Record<string, number> = {};
-		const gameModeBreakdownCount: Record<string, number> = {};
-
-		Object.entries(topicsPlayed).forEach(([topic, games]) => {
-			topicsPlayedCount[topic] = games.length;
-		});
-
-		Object.entries(difficultyBreakdown).forEach(([difficulty, games]) => {
-			difficultyBreakdownCount[difficulty] = games.length;
-		});
-
-		Object.entries(gameModeBreakdown).forEach(([gameMode, games]) => {
-			gameModeBreakdownCount[gameMode] = games.length;
-		});
-
-		const scores = gameHistory.map(game => game.score);
-		const bestScore = Math.max(...scores);
-		const worstScore = Math.min(...scores);
-		const lastPlayed = gameHistory.reduce(
-			(latest, game) => (game.createdAt > latest ? game.createdAt : latest),
-			gameHistory[0].createdAt
-		);
-
-		return {
-			totalGames,
-			totalQuestions,
-			totalCorrectAnswers,
-			overallSuccessRate: totalQuestions > 0 ? (totalCorrectAnswers / totalQuestions) * 100 : 0,
-			averageScore: totalGames > 0 ? totalScore / totalGames : 0,
-			totalTimeSpent,
-			averageTimePerGame: totalGames > 0 ? totalTimeSpent / totalGames : 0,
-			topicsPlayed: topicsPlayedCount,
-			difficultyBreakdown: difficultyBreakdownCount,
-			gameModeBreakdown: gameModeBreakdownCount,
-			bestScore,
-			worstScore,
-			lastPlayed,
-		};
-	}
 
 	/**
 	 * Check if answer is correct
@@ -492,7 +292,7 @@ export class GameService {
 			// Clear active game session
 			const result = await this.storageService.removeItem(`active_game:${userId}`);
 			if (!result.success) {
-				this.logger.gameError('Failed to clear active game session', {
+				logger.gameError('Failed to clear active game session', {
 					error: result.error || 'Unknown error',
 					userId,
 				});
@@ -514,11 +314,27 @@ export class GameService {
 				throw new Error('User not found');
 			}
 
-			return {
-				userId: user.id,
-				score: user.score,
-				rank: await this.getUserRank(userId),
-			};
+			// Get game history to calculate statistics
+			const gameHistory = await this.gameHistoryRepository.find({ 
+				where: { userId },
+				select: ['score', 'correctAnswers', 'totalQuestions']
+			});
+
+			const totalPoints = gameHistory.reduce((sum, game) => sum + (game.score || 0), 0);
+			const gamesPlayed = gameHistory.length;
+			const totalCorrectAnswers = gameHistory.reduce((sum, game) => sum + (game.correctAnswers || 0), 0);
+			const totalQuestions = gameHistory.reduce((sum, game) => sum + (game.totalQuestions || 0), 0);
+			const successRate = totalQuestions > 0 ? (totalCorrectAnswers / totalQuestions) * 100 : 0;
+
+		return {
+			userId: user.id,
+			username: user.username,
+			score: user.score,
+			rank: await this.getUserRank(userId),
+			totalPoints,
+			gamesPlayed,
+			successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
+		};
 		} catch (error) {
 			throw new Error(`Failed to get user score data: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
@@ -565,13 +381,13 @@ export class GameService {
 		);
 
 		if (!result.success) {
-			this.logger.gameError('Failed to store active game session', {
+			logger.gameError('Failed to store active game session', {
 				error: result.error || 'Unknown error',
 				userId,
 			});
 		}
 		try {
-			this.logger.game('Saving game history', {
+			logger.game('Saving game history', {
 				userId,
 				score: gameData.score,
 				correctAnswers: gameData.correctAnswers,
@@ -599,15 +415,14 @@ export class GameService {
 			});
 
 			// Save to database
-			const savedHistory = await this.gameHistoryRepository.save(gameHistory);
-			this.logger.databaseCreate('game_history', {
+			const savedHistory = await this.gameHistoryRepository.save(gameHistory) as GameHistoryEntity;
+			logger.databaseCreate('game_history', {
 				historyId: savedHistory.id,
 				userId,
 				score: gameData.score,
 			});
 
-			// Update user statistics
-			await this.updateUserStats(userId, gameData);
+			// User statistics update moved to UserStatsService
 
 			return {
 				id: savedHistory.id,
@@ -624,7 +439,7 @@ export class GameService {
 				created_at: savedHistory.createdAt,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to save game history', {
+			logger.gameError('Failed to save game history', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				score: gameData.score,
@@ -641,7 +456,7 @@ export class GameService {
 	 */
 	async getUserGameHistory(userId: string, limit: number = 20) {
 		try {
-			this.logger.game('Getting user game history', {
+			logger.game('Getting user game history', {
 				userId,
 				limit,
 			});
@@ -678,7 +493,7 @@ export class GameService {
 				})),
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to get user game history', {
+			logger.gameError('Failed to get user game history', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -687,89 +502,35 @@ export class GameService {
 	}
 
 	/**
-	 * Get game statistics for user
+	 * Get user statistics for analytics - delegates to AnalyticsService
 	 * @param userId User ID
-	 * @returns User game statistics
+	 * @returns User analytics data
 	 */
-	async getUserGameStats(userId: string) {
+	async getUserGameStats(userId: string): Promise<UserAnalytics> {
 		try {
-			this.logger.game('Getting user game stats', {
-				userId,
-			});
-
-			// Validate user exists
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw new Error('User not found');
-			}
-
-			// Get all game history for user
-			const gameHistory = await this.gameHistoryRepository.find({
-				where: { userId },
-			});
-
-			// Calculate statistics
-			const stats = this.calculateGameStats(gameHistory);
-
-			return {
-				userId,
-				username: user.username,
-				totalGames: stats.totalGames,
-				totalQuestions: stats.totalQuestions,
-				totalCorrectAnswers: stats.totalCorrectAnswers,
-				overallSuccessRate: stats.overallSuccessRate,
-				averageScore: stats.averageScore,
-				totalTimeSpent: stats.totalTimeSpent,
-				averageTimePerGame: stats.averageTimePerGame,
-				topicsPlayed: stats.topicsPlayed,
-				difficultyBreakdown: stats.difficultyBreakdown,
-				gameModeBreakdown: stats.gameModeBreakdown,
-				bestScore: stats.bestScore,
-				worstScore: stats.worstScore,
-				lastPlayed: stats.lastPlayed,
-			};
+			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
-			this.logger.gameError('Failed to get user game stats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-				userId,
-			});
-			throw error;
+			throw new Error(
+				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
 		}
 	}
 
+
 	/**
-	 * Get global game statistics
+	 * Get global game statistics - delegates to AnalyticsService
 	 * @returns Global game statistics
 	 */
 	async getGlobalGameStats() {
 		try {
-			this.logger.game('Getting global game stats', {
+			logger.game('Getting global game stats', {
 				timeframe: 'all_time',
 			});
 
-			// Get all game history
-			const gameHistory = await this.gameHistoryRepository.find();
-
-			// Calculate global statistics
-			const stats = this.calculateGameStats(gameHistory);
-
-			return {
-				totalGames: stats.totalGames,
-				totalQuestions: stats.totalQuestions,
-				totalCorrectAnswers: stats.totalCorrectAnswers,
-				overallSuccessRate: stats.overallSuccessRate,
-				averageScore: stats.averageScore,
-				totalTimeSpent: stats.totalTimeSpent,
-				averageTimePerGame: stats.averageTimePerGame,
-				topicsPlayed: stats.topicsPlayed,
-				difficultyBreakdown: stats.difficultyBreakdown,
-				gameModeBreakdown: stats.gameModeBreakdown,
-				bestScore: stats.bestScore,
-				worstScore: stats.worstScore,
-				lastPlayed: stats.lastPlayed,
-			};
+			// Delegate to AnalyticsService for global statistics
+			return await this.analyticsService.getSystemInsights();
 		} catch (error) {
-			this.logger.gameError('Failed to get global game stats', {
+			logger.gameError('Failed to get global game stats', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				timeframe: 'all_time',
 			});
@@ -784,7 +545,7 @@ export class GameService {
 	 */
 	async getGameById(gameId: string) {
 		try {
-			this.logger.game('Getting game by ID', {
+			logger.game('Getting game by ID', {
 				gameId,
 			});
 
@@ -812,7 +573,7 @@ export class GameService {
 				created_at: game.createdAt,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to get game by ID', {
+			logger.gameError('Failed to get game by ID', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				gameId,
 			});
@@ -840,7 +601,7 @@ export class GameService {
 				points: user.credits || 0,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to get user point balance', {
+			logger.gameError('Failed to get user point balance', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});
@@ -856,7 +617,7 @@ export class GameService {
 	 */
 	async addPoints(userId: string, points: number) {
 		try {
-			this.logger.game('Adding points to user', {
+			logger.game('Adding points to user', {
 				userId,
 				points,
 				reason: 'Game completion',
@@ -878,7 +639,7 @@ export class GameService {
 				newPoints,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to add points', {
+			logger.gameError('Failed to add points', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				points,
@@ -895,7 +656,7 @@ export class GameService {
 	 */
 	async deductPoints(userId: string, points: number) {
 		try {
-			this.logger.game('Deducting points from user', {
+			logger.game('Deducting points from user', {
 				userId,
 				points,
 				reason: 'Game loss',
@@ -922,7 +683,7 @@ export class GameService {
 				newPoints,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to deduct points', {
+			logger.gameError('Failed to deduct points', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 				points,
@@ -949,7 +710,7 @@ export class GameService {
 		}
 	) {
 		try {
-			this.logger.game('Saving game configuration', {
+			logger.game('Saving game configuration', {
 				userId,
 				config,
 			});
@@ -967,7 +728,7 @@ export class GameService {
 			);
 
 			if (!result.success) {
-				this.logger.gameError('Failed to store game configuration', {
+				logger.gameError('Failed to store game configuration', {
 					userId,
 					error: result.error || 'Unknown error',
 				});
@@ -980,7 +741,7 @@ export class GameService {
 				config,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to save game configuration', {
+			logger.gameError('Failed to save game configuration', {
 				userId,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -995,7 +756,7 @@ export class GameService {
 	 */
 	async getGameConfiguration(userId: string) {
 		try {
-			this.logger.game('Getting game configuration', {
+			logger.game('Getting game configuration', {
 				userId,
 			});
 
@@ -1025,9 +786,123 @@ export class GameService {
 				config: defaultConfig,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to get game configuration', {
+			logger.gameError('Failed to get game configuration', {
 				userId,
 				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Calculate points for a correct answer
+	 * @param difficulty Difficulty level
+	 * @param timeSpent Time spent on question
+	 * @param streak Current streak
+	 * @returns Calculated points
+	 */
+	private calculatePoints(difficulty: string, timeSpent: number, streak: number): number {
+		// Base points by difficulty
+		const basePoints = {
+			easy: 10,
+			medium: 20,
+			hard: 30,
+		};
+
+		const base = basePoints[difficulty as keyof typeof basePoints] || 10;
+		
+		// Time bonus (faster = more points)
+		const timeBonus = Math.max(0, 10 - Math.floor(timeSpent / 1000));
+		
+		// Streak bonus
+		const streakBonus = Math.min(streak * 2, 20);
+		
+		return base + timeBonus + streakBonus;
+	}
+
+	/**
+	 * Delete specific game from history
+	 * @param userId User ID
+	 * @param gameId Game ID to delete
+	 * @returns Deletion result
+	 */
+	async deleteGameHistory(userId: string, gameId: string): Promise<{ success: boolean; message: string }> {
+		try {
+			logger.game('Deleting game history', {
+				userId,
+				gameId,
+			});
+
+			// Find the game history record
+			const gameHistory = await this.gameHistoryRepository.findOne({
+				where: { id: gameId, userId },
+			});
+
+			if (!gameHistory) {
+				throw new Error('Game history not found or access denied');
+			}
+
+			// Delete the record
+			await this.gameHistoryRepository.remove(gameHistory);
+
+			logger.game('Game history deleted', {
+				gameId,
+				userId,
+			});
+
+			// Clear cache
+			await this.cacheService.delete(`game_history:${userId}`);
+
+			return {
+				success: true,
+				message: 'Game history deleted successfully',
+			};
+		} catch (error) {
+			logger.gameError('Failed to delete game history', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				gameId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Clear all game history for user
+	 * @param userId User ID
+	 * @returns Clear result
+	 */
+	async clearUserGameHistory(userId: string): Promise<{ success: boolean; message: string; deletedCount: number }> {
+		try {
+			logger.game('Clearing all game history', {
+				userId,
+			});
+
+			// Get count before deletion
+			const count = await this.gameHistoryRepository.count({
+				where: { userId },
+			});
+
+			// Delete all game history records for user
+			await this.gameHistoryRepository.delete({ userId });
+
+			logger.game('All game history deleted', {
+				userId,
+				deletedCount: count,
+			});
+
+			// Clear cache
+			await this.cacheService.delete(`game_history:${userId}`);
+
+			return {
+				success: true,
+				message: 'All game history cleared successfully',
+				deletedCount: count,
+			};
+		} catch (error) {
+			logger.gameError('Failed to clear game history', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
 			});
 			throw error;
 		}

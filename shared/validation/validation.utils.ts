@@ -3,7 +3,6 @@
  *
  * @module ValidationUtils
  * @description Shared validation functions for input validation, content filtering, and data validation
- * @version 1.0.0
  * @author EveryTriv Team
  */
 import { VALIDATION_LIMITS } from '../constants';
@@ -12,10 +11,10 @@ import {
 	GRAMMAR_PATTERNS,
 	LANGUAGE_DETECTION,
 	LANGUAGE_TOOL_CONSTANTS,
-} from '../constants/language.constants';
-import { VALIDATION_THRESHOLDS } from '../constants/validation.constants';
+} from '../constants/business/language.constants';
+import { VALIDATION_THRESHOLDS } from '../constants/core/validation.constants';
 import { LanguageValidationOptions, LanguageValidationResult } from '../types/language.types';
-import type { PasswordStrength, PasswordValidationResult, Position, ValidationResult } from '../types/validation.types';
+import type { PasswordStrength, PasswordValidationResult, Position, ValidationResult } from '../types/domain/validation/validation.types';
 
 /**
  * Validates input content for security and content filtering
@@ -420,3 +419,7 @@ function performLocalChecks(input: string): { errors: string[]; suggestions: str
 
 	return { errors, suggestions };
 }
+
+// Aliases for backward compatibility
+export const validateTopic = validateTopicLength;
+export const validateCustomDifficulty = validateInputContent;

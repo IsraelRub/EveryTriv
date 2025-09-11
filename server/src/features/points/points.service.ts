@@ -1,14 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PointBalance, PointPurchaseOption, UrlResponse } from 'everytriv-shared/types';
-import { formatCurrency } from 'everytriv-shared/utils';
+import { PointBalance, PointPurchaseOption, formatCurrency, POINTS_PRICING_TIERS, UrlResponse } from '@shared';
+import { PointSource, PointTransactionType } from '../../internal/constants';
 import { Repository } from 'typeorm';
-
 import { ValidationService } from '../../common/validation/validation.service';
-import { POINTS_PRICING_TIERS, PointSource, PointTransactionType } from '../../shared/constants';
-import { LoggerService } from '../../shared/controllers';
-import { PointTransactionEntity, UserEntity } from '../../shared/entities';
-import { CacheService } from '../../shared/modules/cache/cache.service';
+import { serverLogger as logger } from '@shared';
+import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
+import { CacheService } from 'src/internal/modules/cache';
 import { PaymentService } from '../payment';
 
 @Injectable()
@@ -18,7 +16,6 @@ export class PointsService {
 		private readonly pointTransactionRepository: Repository<PointTransactionEntity>,
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
-		private readonly loggerService: LoggerService,
 		private readonly cacheService: CacheService,
 		private readonly paymentService: PaymentService,
 		private readonly validationService: ValidationService
@@ -54,7 +51,7 @@ export class PointsService {
 						next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 					};
 
-					this.loggerService.databaseInfo('Point balance retrieved', {
+					logger.databaseInfo('Point balance retrieved', {
 						userId,
 						total_points: balance.total_points,
 						purchased_points: balance.purchased_points,
@@ -63,10 +60,10 @@ export class PointsService {
 					});
 					return balance;
 				},
-				300 // Cache for 5 minutes - balance can change frequently
+				1800 // Cache for 30 minutes - balance changes less frequently
 			);
 		} catch (error) {
-			this.loggerService.errorWithStack(
+			logger.errorWithStack(
 				error instanceof Error ? error : new Error(String(error)),
 				'Failed to get point balance',
 				{ userId }
@@ -93,13 +90,13 @@ export class PointsService {
 						price_per_point: tier.pricePerPoint,
 					}));
 
-					this.loggerService.databaseInfo('Point packages retrieved', { count: packages.length });
+					logger.databaseInfo('Point packages retrieved', { count: packages.length });
 					return packages;
 				},
 				3600 // Cache for 1 hour - packages don't change often
 			);
 		} catch (error) {
-			this.loggerService.errorWithStack(
+			logger.errorWithStack(
 				error instanceof Error ? error : new Error(String(error)),
 				'Failed to get point packages'
 			);
@@ -139,7 +136,7 @@ export class PointsService {
 				reason: `Insufficient points. You have ${totalAvailable} points available but need ${questionCount} points.`,
 			};
 		} catch (error) {
-			this.loggerService.errorWithStack(
+			logger.errorWithStack(
 				error instanceof Error ? error : new Error(String(error)),
 				'Failed to check if user can play',
 				{ userId, questionCount }
@@ -207,11 +204,14 @@ export class PointsService {
 
 			await this.userRepository.save(user);
 
+			// Invalidate points cache
+			await this.cacheService.delete(`points:balance:${userId}`);
+
 			// Create transaction record
 			const transaction = this.pointTransactionRepository.create({
 				userId,
 				type: PointTransactionType.DEDUCTION,
-				source: PointSource.GAME_PLAY,
+				source: PointSource.PURCHASE,
 				amount: -questionCount,
 				balanceAfter: user.credits,
 				freeQuestionsAfter: user.remainingFreeQuestions,
@@ -226,7 +226,7 @@ export class PointsService {
 			});
 
 			await this.pointTransactionRepository.save(transaction);
-			this.loggerService.databaseCreate('point_transaction', {
+			logger.databaseCreate('point_transaction', {
 				transactionId: transaction.id,
 				userId,
 				type: PointTransactionType.DEDUCTION,
@@ -242,7 +242,7 @@ export class PointsService {
 				next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 			};
 
-			this.loggerService.databaseInfo('Points deducted successfully', {
+			logger.databaseInfo('Points deducted successfully', {
 				userId,
 				questionCount,
 				gameMode,
@@ -253,7 +253,7 @@ export class PointsService {
 
 			return balance;
 		} catch (error) {
-			this.loggerService.databaseError('Failed to deduct points', {
+			logger.databaseError('Failed to deduct points', {
 				userId,
 				questionCount,
 				gameMode,
@@ -285,10 +285,10 @@ export class PointsService {
 				take: limit,
 			});
 
-			this.loggerService.databaseInfo('Point history retrieved', { userId, count: transactions.length });
+			logger.databaseInfo('Point history retrieved', { userId, count: transactions.length });
 			return transactions;
 		} catch (error) {
-			this.loggerService.databaseError('Failed to get point history', {
+			logger.databaseError('Failed to get point history', {
 				userId,
 				limit,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -338,7 +338,7 @@ export class PointsService {
 				},
 			});
 
-			this.loggerService.databaseInfo('Points purchase initiated', {
+			logger.databaseInfo('Points purchase initiated', {
 				userId,
 				packageId,
 				points,
@@ -351,7 +351,7 @@ export class PointsService {
 				paymentUrl: `/payment/process/${paymentResult.paymentId}`,
 			};
 		} catch (error) {
-			this.loggerService.databaseError('Failed to purchase points', {
+			logger.databaseError('Failed to purchase points', {
 				userId,
 				packageId,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -395,7 +395,7 @@ export class PointsService {
 			const transaction = this.pointTransactionRepository.create({
 				userId,
 				type: PointTransactionType.PURCHASE,
-				source: PointSource.PURCHASED,
+				source: PointSource.PURCHASE,
 				amount: points,
 				balanceAfter: user.credits,
 				freeQuestionsAfter: user.remainingFreeQuestions,
@@ -409,6 +409,9 @@ export class PointsService {
 
 			await this.pointTransactionRepository.save(transaction);
 
+			// Invalidate points cache
+			await this.cacheService.delete(`points:balance:${userId}`);
+
 			const balance: PointBalance = {
 				total_points: user.credits,
 				purchased_points: user.purchasedPoints,
@@ -418,7 +421,7 @@ export class PointsService {
 				next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 			};
 
-			this.loggerService.databaseInfo('Point purchase confirmed', {
+			logger.databaseInfo('Point purchase confirmed', {
 				userId,
 				paymentIntentId,
 				points,
@@ -429,7 +432,7 @@ export class PointsService {
 
 			return balance;
 		} catch (error) {
-			this.loggerService.databaseError('Failed to confirm point purchase', {
+			logger.databaseError('Failed to confirm point purchase', {
 				userId,
 				paymentIntentId,
 				points,
@@ -459,14 +462,14 @@ export class PointsService {
 					user.lastFreeQuestionsReset = new Date();
 					await this.userRepository.save(user);
 
-					this.loggerService.databaseInfo('Daily free questions reset', {
+					logger.databaseInfo('Daily free questions reset', {
 						userId: user.id,
 						newFreeQuestions: user.remainingFreeQuestions,
 					});
 				}
 			}
 		} catch (error) {
-			this.loggerService.databaseError('Failed to reset daily free questions', {
+			logger.databaseError('Failed to reset daily free questions', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;

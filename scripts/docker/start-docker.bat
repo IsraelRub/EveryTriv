@@ -4,6 +4,16 @@ echo EveryTriv - Docker Production Setup
 echo ========================================
 
 echo.
+echo Checking Docker status...
+call "%~dp0check-docker.bat"
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo Cannot start EveryTriv without Docker running.
+    pause
+    exit /b 1
+)
+
+echo.
 echo Building and starting Docker containers...
 docker-compose up --build -d
 

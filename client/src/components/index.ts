@@ -3,7 +3,6 @@
  *
  * @module ClientComponents
  * @description Central export point for all client-side React components and UI elements
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/views, client/App, client/main
  */

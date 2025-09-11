@@ -6,8 +6,8 @@
  * @used_by server: server/src/shared/modules/logging/logger.service.ts, client: client/src/services/logger.service.ts
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
-import type { EnhancedLogEntry, Logger,LogMeta } from '../../types';
-import { LoggerConfig, LoggerConfigUpdate } from '../../types/logging.types';
+import type { EnhancedLogEntry, Logger } from '../../types';
+import { LoggerConfig, LoggerConfigUpdate, LogMeta } from '../../types/infrastructure/logging.types';
 import { generateSessionId, generateTraceId, sanitizeLogMessage } from '../../utils';
 
 /**
@@ -17,6 +17,8 @@ export abstract class BaseLoggerService implements Logger {
 	protected sessionId: string;
 	protected traceId: string;
 	protected config: LoggerConfig;
+	protected performanceThresholds?: Record<string, number>;
+	protected performanceStats?: Record<string, any>;
 
 	constructor(config: LoggerConfigUpdate = {}) {
 		this.sessionId = generateSessionId();
@@ -126,7 +128,7 @@ export abstract class BaseLoggerService implements Logger {
 	}
 
 	databaseDebug(message: string, meta?: LogMeta): void {
-		this.debug(MESSAGE_FORMATTERS.databaseConnection.error(message), meta);
+		this.debug(MESSAGE_FORMATTERS.databaseConnection.debug(message), meta);
 	}
 
 	// ApiLogger implementation
@@ -246,6 +248,7 @@ export abstract class BaseLoggerService implements Logger {
 		this.error(MESSAGE_FORMATTERS.cache.error(operation, key), meta);
 	}
 
+
 	// StorageLogger implementation
 	storageError(message: string, meta?: LogMeta): void {
 		this.error(MESSAGE_FORMATTERS.storage.error(message), meta);
@@ -295,6 +298,22 @@ export abstract class BaseLoggerService implements Logger {
 
 	security(type: string, message: string, meta?: LogMeta): void {
 		this.info(`${type}: ${message}`, meta);
+	}
+
+	securityInfo(message: string, meta?: LogMeta): void {
+		this.info(MESSAGE_FORMATTERS.auth.info(message), meta);
+	}
+
+	securityWarn(message: string, meta?: LogMeta): void {
+		this.warn(MESSAGE_FORMATTERS.auth.denied(message), meta);
+	}
+
+	securityError(message: string, meta?: LogMeta): void {
+		this.error(MESSAGE_FORMATTERS.auth.error(message), meta);
+	}
+
+	audit(action: string, meta?: LogMeta): void {
+		this.info(`Audit: ${action}`, meta);
 	}
 
 	// ValidationLogger implementation
@@ -411,6 +430,10 @@ export abstract class BaseLoggerService implements Logger {
 		this.debug(MESSAGE_FORMATTERS.auth.debug(message), meta);
 	}
 
+	authInfo(message: string, meta?: LogMeta): void {
+		this.info(MESSAGE_FORMATTERS.auth.info(message), meta);
+	}
+
 	// LanguageToolLogger implementation
 	languageToolServiceInit(meta?: LogMeta): void {
 		this.info(MESSAGE_FORMATTERS.languageTool.serviceInit(), meta);
@@ -471,6 +494,15 @@ export abstract class BaseLoggerService implements Logger {
 		this.debug(MESSAGE_FORMATTERS.cache.delete(key), meta);
 	}
 
+	cacheClear(): void {
+		this.info('Cache cleared', {});
+	}
+
+	// BusinessLogger implementation
+	businessInfo(message: string, meta?: LogMeta): void {
+		this.info(`Business: ${message}`, meta);
+	}
+
 	// NavigationLogger implementation
 	navigationPage(path: string, meta?: LogMeta): void {
 		this.info(MESSAGE_FORMATTERS.navigation.page(path), meta);
@@ -510,7 +542,7 @@ export abstract class BaseLoggerService implements Logger {
 	}
 
 	gameError(message: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.validation.error(message), meta);
+		this.error(MESSAGE_FORMATTERS.game.error(message), meta);
 	}
 
 	gameStatistics(message: string, meta?: LogMeta): void {
@@ -579,8 +611,166 @@ export abstract class BaseLoggerService implements Logger {
 		return [];
 	}
 
-	clearLogs(): void {
-		// Implementation depends on specific logger
+	// פונקציה לניקוי אוטומטי של הלוגר
+	public clearLogs(): void {
+		// Clear session and trace IDs
+		this.sessionId = generateSessionId();
+		this.traceId = generateTraceId();
+		
+		// Log the clearing action
+		this.info('🧹 Logger cleared - new session started', {
+			newSessionId: this.sessionId,
+			newTraceId: this.traceId
+		});
+	}
+
+	// Enhanced logging methods - default implementations
+	logUserActivityEnhanced(action: string, userId: string, context?: Record<string, unknown>): void {
+		this.logUserActivity(action, userId, context);
+	}
+
+	logSecurityEventEnhanced(message: string, level: 'info' | 'warn' | 'error', context?: Record<string, unknown>): void {
+		switch (level) {
+			case 'info':
+				this.securityInfo(message, context);
+				break;
+			case 'warn':
+				this.securityWarn(message, context);
+				break;
+			case 'error':
+				this.securityError(message, context);
+				break;
+		}
+	}
+
+	logAuthenticationEnhanced(action: string, userId: string, username: string, context?: Record<string, unknown>): void {
+		this.authInfo(`Authentication: ${action}`, {
+			userId,
+			username,
+			...context,
+		});
+	}
+
+	logAuthorizationEnhanced(action: string, userId: string, resource: string, context?: Record<string, unknown>): void {
+		this.authInfo(`Authorization: ${action}`, {
+			userId,
+			resource,
+			...context,
+		});
+	}
+
+	logBusinessEventEnhanced(event: string, userId: string, context?: Record<string, unknown>): void {
+		this.businessInfo(`Business Event: ${event}`, {
+			userId,
+			...context,
+		});
+	}
+
+	logValidationEnhanced(type: string, data: unknown, context?: Record<string, unknown>): void {
+		this.validationInfo(`Validation: ${type}`, 'validation', 'enhanced', {
+			data,
+			...context,
+		});
+	}
+
+	logCacheEventEnhanced(event: 'hit' | 'miss' | 'error', key: string, context?: Record<string, unknown>): void {
+		this.cacheInfo(`Cache ${event}: ${key}`, {
+			event,
+			key,
+			...context,
+		});
+	}
+
+	logDatabaseEventEnhanced(operation: string, table: string, context?: Record<string, unknown>): void {
+		this.databaseInfo(`Database ${operation}: ${table}`, {
+			operation,
+			table,
+			...context,
+		});
+	}
+
+	logErrorEnhanced(error: Error, context?: Record<string, unknown>): void {
+		this.errorWithStack(error, 'Enhanced Error', context);
+	}
+
+	// Enhanced performance methods - default implementations
+	trackPerformanceEnhanced(operation: string, duration: number, context?: Record<string, unknown>): void {
+		this.performance(`Performance: ${operation}`, duration, {
+			operation,
+			...context,
+		});
+	}
+
+	async trackAsyncEnhanced<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>): Promise<T> {
+		const start = Date.now();
+		try {
+			const result = await fn();
+			const duration = Date.now() - start;
+			this.trackPerformanceEnhanced(operation, duration, { ...context, success: true });
+			return result;
+		} catch (error) {
+			const duration = Date.now() - start;
+			this.trackPerformanceEnhanced(operation, duration, { ...context, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+			throw error;
+		}
+	}
+
+	trackSyncEnhanced<T>(operation: string, fn: () => T, context?: Record<string, unknown>): T {
+		const start = Date.now();
+		try {
+			const result = fn();
+			const duration = Date.now() - start;
+			this.trackPerformanceEnhanced(operation, duration, { ...context, success: true });
+			return result;
+		} catch (error) {
+			const duration = Date.now() - start;
+			this.trackPerformanceEnhanced(operation, duration, { ...context, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+			throw error;
+		}
+	}
+
+	getPerformanceStatsEnhanced(operation?: string): Record<string, unknown> {
+		return { operation, message: 'Performance stats not implemented in base logger' };
+	}
+
+	getAllPerformanceStatsEnhanced(): Record<string, unknown> {
+		return { message: 'Performance stats not implemented in base logger' };
+	}
+
+	getSlowOperationsEnhanced(threshold?: number): Array<Record<string, unknown>> {
+		return [{ message: 'Slow operations not implemented in base logger', threshold }];
+	}
+
+	setPerformanceThreshold(operation: string, threshold: number): void {
+		// Store threshold for operation
+		this.performanceThresholds = this.performanceThresholds || {};
+		this.performanceThresholds[operation] = threshold;
+	}
+
+	getPerformanceThreshold(operation: string): number {
+		if (this.performanceThresholds && this.performanceThresholds[operation]) {
+			return this.performanceThresholds[operation];
+		}
+		return 1000; // Default threshold
+	}
+
+	exceedsPerformanceThreshold(operation: string, duration: number): boolean {
+		return duration > this.getPerformanceThreshold(operation);
+	}
+
+	getPerformanceSummaryEnhanced(): Record<string, unknown> {
+		return { message: 'Performance summary not implemented in base logger' };
+	}
+
+	clearPerformanceDataEnhanced(): void {
+		// Default implementation - no-op
+	}
+
+	clearOperationPerformanceDataEnhanced(operation: string): void {
+		// Clear performance data for specific operation
+		if (this.performanceStats) {
+			delete this.performanceStats[operation];
+		}
 	}
 
 	// Private helper methods

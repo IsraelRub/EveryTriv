@@ -300,10 +300,13 @@ sequenceDiagram
 ## Monitoring ו-Logging
 
 ### מערכת לוגים
-- **Structured Logging**: עם Winston
+- **Structured Logging**: עם מערכת לוגים מותאמת אישית
+- **צבעים מותאמים**: תמיכה בצבעים לכל פורמט (קונסול, קובץ, דפדפן)
+- **ניקוי אוטומטי**: הלוג מתנקה בכל הפעלה של השרת או Docker
+- **זמן מקומי**: תמיכה בעברית עם timestamp מקומי בלבד
 - **Log Levels**: error, warn, info, debug
 - **Log Storage**: בקבצים ובמסד נתונים
-- **Log Rotation**: סיבוב לוגים
+- **Log Rotation**: ניקוי אוטומטי בכל הפעלה
 
 ### Metrics
 - **Response Times**: זמני תגובה

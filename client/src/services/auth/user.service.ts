@@ -6,10 +6,10 @@
  * @description Client-side user profile and preferences management
  * @used_by client/views/user, client/components/user, client/hooks
  */
-import { UpdateUserProfileData, User } from 'everytriv-shared/types';
+import { UpdateUserProfileData, User } from '@shared';
 
 import { apiService } from '../api';
-import { loggerService } from '../utils';
+import { clientLogger } from '@shared';
 
 /**
  * Main user service class
@@ -25,14 +25,14 @@ class ClientUserService {
 	 */
 	async getUserProfile(): Promise<User> {
 		try {
-			loggerService.userInfo('Getting user profile');
+			clientLogger.userInfo('Getting user profile');
 
 			const user = (await apiService.getUserProfile()) as User;
 
-			loggerService.userInfo('User profile retrieved successfully', { userId: user.id });
+			clientLogger.userInfo('User profile retrieved successfully', { userId: user.id });
 			return user;
 		} catch (error) {
-			loggerService.userError('Failed to get user profile', { error });
+			clientLogger.userError('Failed to get user profile', { error });
 			throw error;
 		}
 	}
@@ -42,14 +42,14 @@ class ClientUserService {
 	 */
 	async updateUserProfile(data: UpdateUserProfileData): Promise<User> {
 		try {
-			loggerService.userInfo('Updating user profile', { data });
+			clientLogger.userInfo('Updating user profile', { data });
 
 			const updatedUser = (await apiService.updateUserProfile(data as Record<string, unknown>)) as User;
 
-			loggerService.userInfo('User profile updated successfully', { userId: updatedUser.id });
+			clientLogger.userInfo('User profile updated successfully', { userId: updatedUser.id });
 			return updatedUser;
 		} catch (error) {
-			loggerService.userError('Failed to update user profile', { error, data });
+			clientLogger.userError('Failed to update user profile', { error, data });
 			throw error;
 		}
 	}
@@ -59,14 +59,14 @@ class ClientUserService {
 	 */
 	async getUserCredits(): Promise<number> {
 		try {
-			loggerService.userInfo('Getting user credits');
+			clientLogger.userInfo('Getting user credits');
 
 			const credits = (await apiService.getUserCredits()) as number;
 
-			loggerService.userInfo('User credits retrieved successfully', { credits });
+			clientLogger.userInfo('User credits retrieved successfully', { credits });
 			return credits;
 		} catch (error) {
-			loggerService.userError('Failed to get user credits', { error });
+			clientLogger.userError('Failed to get user credits', { error });
 			throw error;
 		}
 	}
@@ -76,17 +76,17 @@ class ClientUserService {
 	 */
 	async deductCredits(amount: number): Promise<User> {
 		try {
-			loggerService.userInfo('Deducting user credits', { amount });
+			clientLogger.userInfo('Deducting user credits', { amount });
 
 			const updatedUser = (await apiService.deductCredits(amount)) as User;
 
-			loggerService.userInfo('User credits deducted successfully', {
+			clientLogger.userInfo('User credits deducted successfully', {
 				amount,
 				newCredits: updatedUser.credits,
 			});
 			return updatedUser;
 		} catch (error) {
-			loggerService.userError('Failed to deduct user credits', { error, amount });
+			clientLogger.userError('Failed to deduct user credits', { error, amount });
 			throw error;
 		}
 	}

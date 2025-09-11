@@ -3,15 +3,22 @@
  * @module ClientUserTypes
  * @used_by client/src/views/user/**, client/src/services/auth/**, client/src/hooks/api/useUser.ts
  */
-import { DifficultyLevel } from 'everytriv-shared/constants';
-import type { AuthCredentials, User, UserAddress, UserPreferences, UserProfile } from 'everytriv-shared/types';
+import { DifficultyLevel } from '@shared';
+import type { 
+	AuthCredentials, 
+	User, 
+	UserAddress, 
+	UserPreferencesUpdate,
+	UserProfile,
+	UserProfileUpdateData
+} from '@shared';
 
 // Extended Types
 /**
  * Extended user profile update request
  * @used_by client/src/services/auth/user.service.ts
  */
-export interface ExtendedUserProfileUpdateRequest extends UserProfileUpdateRequest {
+export interface ExtendedUserProfileUpdateRequest extends UserProfileUpdateData {
 	id?: string;
 	role?: string;
 	created_at?: string;
@@ -92,7 +99,7 @@ export interface UserLoginRequest {
  * User preferences
  * @used_by client/src/views/user/UserProfile.tsx, client/src/services/auth/user.service.ts
  */
-export type { UserPreferences } from 'everytriv-shared/types/user.types';
+export type { UserPreferences } from '@shared/types/domain/user/user.types';
 
 /**
  * User profile complete request
@@ -108,13 +115,10 @@ export interface UserProfileCompleteRequest
  * User profile update request
  * @used_by client/src/services/auth/user.service.ts, client/src/views/user/UserProfile.tsx
  */
-export interface UserProfileUpdateRequest {
-	username?: string;
-	email?: string;
-	avatar?: string;
+export interface UserProfileUpdateRequest extends UserProfileUpdateData {
 	bio?: string;
 	location?: string;
-	preferences?: UserPreferences;
+	preferences?: UserPreferencesUpdate;
 }
 
 /**

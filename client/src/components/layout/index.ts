@@ -3,7 +3,6 @@
  *
  * @module LayoutComponents
  * @description React components for page layout, structure, and container organization
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/views, client/App
  */

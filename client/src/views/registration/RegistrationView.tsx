@@ -5,70 +5,60 @@
  * @description User registration page with validation using ValidatedForm
  */
 
-import { CUSTOM_DIFFICULTY_MULTIPLIERS, DifficultyLevel, POPULAR_TOPICS } from 'everytriv-shared/constants';
+// Removed POPULAR_TOPICS import - no longer needed
+import type { UserRole } from '@shared/types/domain/user/user.types';
 import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { motion } from 'framer-motion';
 import {
 	CardGrid,
-	FadeInLeft,
-	FadeInUp,
-	HoverScale,
 	Icon,
-	ResponsiveGrid,
-	ScaleIn,
-	StaggerContainer,
 } from '@/components';
-import { DIFFICULTY_LEVELS_UI, REGISTRATION_DEFAULT_VALUES, REGISTRATION_FIELDS } from '@/constants';
-import { setAuthenticated, setUser } from '@/redux/features/userSlice';
+import {
+	fadeInUp,
+	hoverScale,
+	scaleIn,
+} from '../../components/animations';
+import { REGISTRATION_DEFAULT_VALUES, REGISTRATION_FIELDS, USER_DEFAULT_VALUES } from '@/constants';
+import { setAuthenticated, setUser } from '@/redux/slices/userSlice';
 
 import { ValidatedForm } from '../../components/forms';
-import { Button, ValidationLoading, ValidationSuccess, ValidationWarning } from '../../components/ui';
+import { Button } from '../../components/ui';
 import { AudioKey } from '../../constants';
-import { useDebouncedCallback, usePerformance } from '../../hooks';
-import { audioService, authService, logger, storageService } from '../../services';
-import { RootState } from '../../types';
+// Removed useDebouncedCallback - no longer needed
+// Removed useLocalStorage import - not needed
+import { audioService, authService } from '../../services';
+import { clientLogger } from '@shared';
+// Authentication is now handled by PublicRoute HOC
+// import { RootState } from '../../redux/store';
 
 export default function RegistrationView() {
 	const navigate = useNavigate();
 	const dispatch = useDispatch();
-	const { isAuthenticated } = useSelector((state: RootState) => state.user);
-	const [step, setStep] = useState<'method' | 'manual' | 'preferences' | 'confirmation'>('method');
+	// Authentication is now handled by PublicRoute HOC
+	// const { isAuthenticated } = useSelector((state: RootState) => state.user);
+	
+	
+	const [step, setStep] = useState<'method' | 'manual' | 'confirmation'>('method');
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'warning'>(
-		'idle'
-	);
-	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-	const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
+
+	// Removed localStorage registration data - not needed
 
 	const [, setRegistrationSuccess] = useState(false);
 
-	// Performance tracking
-	const { startOperation, completeOperation, errorOperation } = usePerformance();
-
-	// Debounced topic selection
-	const debouncedTopicToggle = useDebouncedCallback((topic: string) => {
-		setSelectedTopics((prev) => (prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]));
-	}, 300);
-
 	useEffect(() => {
-		// Redirect if already authenticated
-		if (isAuthenticated) {
-			navigate('/profile');
-			return;
-		}
-
-		logger.game('Registration page viewed', {
+		// Authentication redirect is now handled by PublicRoute HOC
+		// No need for local authentication check
+		
+		clientLogger.game('Registration page viewed', {
 			page: 'registration',
 		});
-	}, [isAuthenticated, navigate]);
+	}, []);
 
 	const handleGoogleSignUp = () => {
-		const operationId = 'google-signup';
-		startOperation(operationId);
-
-		logger.game('Google sign-up initiated', {
+		clientLogger.game('Google sign-up initiated', {
 			provider: 'google',
 		});
 
@@ -77,79 +67,40 @@ export default function RegistrationView() {
 
 		try {
 			authService.initiateGoogleLogin();
-			completeOperation(operationId);
 		} catch (error) {
-			errorOperation(operationId, error instanceof Error ? error.message : 'Google signup failed');
+			clientLogger.gameError('Google signup failed', { 
+				error: error instanceof Error ? error.message : 'Google signup failed' 
+			});
 			audioService.play(AudioKey.ERROR);
 		}
 	};
 
-	const toggleTopic = (topic: string) => {
-		audioService.play(AudioKey.BUTTON_CLICK);
-		debouncedTopicToggle.debounced(topic);
+	// Removed topic toggle logic
 
-		logger.game('Topic toggled', {
-			topic: topic,
-			previousTopic: selectedTopics.length,
-		});
-	};
-
-	const handleDifficultySelect = (difficulty: DifficultyLevel) => {
-		audioService.play(AudioKey.BUTTON_CLICK);
-		setSelectedDifficulty(difficulty);
-
-		// Save preference to storage
-		storageService.setItem('user-preferences', {
-			difficulty: difficulty,
-			topics: selectedTopics,
-			lastUpdated: new Date().toISOString(),
-		});
-
-		logger.game('Difficulty selected', {
-			difficulty: difficulty,
-			previousDifficulty: selectedDifficulty,
-		});
-	};
 
 	const handleFormSubmit = async (values: Record<string, unknown>, isValid: boolean) => {
-		const operationId = 'registration-submit';
-		startOperation(operationId);
-
-		setValidationStatus('validating');
-
 		if (!isValid) {
-			setValidationStatus('invalid');
-			logger.gameError('Registration form validation failed');
+			clientLogger.gameError('Registration form validation failed');
 			audioService.play(AudioKey.ERROR);
-			errorOperation(operationId, 'Form validation failed');
 			return;
 		}
 
 		// Additional password confirmation validation
 		if (values.password !== values.confirmPassword) {
-			setValidationStatus('invalid');
-			logger.gameError('Password confirmation mismatch');
+			clientLogger.gameError('Password confirmation mismatch');
 			audioService.play(AudioKey.ERROR);
-			errorOperation(operationId, 'Password confirmation mismatch');
 			return;
 		}
 
 		setIsSubmitting(true);
 
 		try {
-			logger.game('Manual registration form submitted', {
+			clientLogger.game('Manual registration form submitted', {
 				username: values.username,
 				email: values.email,
 			});
 
-			// Save registration data to storage
-			storageService.setItem('registration-data', {
-				username: values.username as string,
-				email: values.email as string,
-				topics: selectedTopics,
-				difficulty: selectedDifficulty,
-				submittedAt: new Date().toISOString(),
-			});
+			// Registration data is handled by the server
 
 			// Here you would call your registration API
 			const response = await authService.register({
@@ -159,48 +110,62 @@ export default function RegistrationView() {
 			});
 
 			if (response.user) {
-				setValidationStatus('valid');
 				setRegistrationSuccess(true);
-				audioService.play(AudioKey.GAME_START);
+				audioService.play(AudioKey.SUCCESS);
 
 				dispatch(
-					setUser({
-						...response.user,
-						created_at: new Date(),
-						updated_at: new Date(),
-					})
+       setUser({
+        ...response.user,
+        ...USER_DEFAULT_VALUES,
+        role: response.user.role as UserRole,
+       createdAt: new Date(),
+       updatedAt: new Date(),
+      })
 				);
 				dispatch(setAuthenticated(true));
 				setStep('confirmation');
-				completeOperation(operationId);
 			}
 		} catch (error) {
-			setValidationStatus('invalid');
-			logger.gameError('Registration failed', { error: error instanceof Error ? error.message : 'Registration failed' });
+			clientLogger.gameError('Registration failed', { error: error instanceof Error ? error.message : 'Registration failed' });
 			audioService.play(AudioKey.ERROR);
-			errorOperation(operationId, error instanceof Error ? error.message : 'Registration failed');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
 	const renderMethodSelection = () => (
-		<FadeInUp className='space-y-8'>
+		<motion.div 
+			variants={fadeInUp} 
+			initial="hidden" 
+			animate="visible" 
+			className='space-y-8'
+			whileHover={{ scale: 1.01 }}
+		>
 			<div className='text-center'>
 				<h1 className='text-4xl font-bold gradient-text mb-4'>Join EveryTriv</h1>
 				<p className='text-slate-300 text-lg'>Choose how you'd like to create your account</p>
 			</div>
 
 			<CardGrid columns={2} gap='lg' className='max-w-4xl mx-auto'>
-				<HoverScale>
+				<motion.div 
+					variants={hoverScale} 
+					initial="initial" 
+					whileHover="hover"
+					whileTap={{ scale: 0.95 }}
+				>
 					<div className='glass rounded-xl p-8 text-center cursor-pointer' onClick={handleGoogleSignUp}>
 						<Icon name='Google' className='w-12 h-12 mx-auto mb-4 text-blue-400' />
 						<h3 className='text-xl font-semibold text-white mb-2'>Continue with Google</h3>
 						<p className='text-slate-300'>Quick and secure sign-up with your Google account</p>
 					</div>
-				</HoverScale>
+				</motion.div>
 
-				<HoverScale>
+				<motion.div 
+					variants={hoverScale} 
+					initial="initial" 
+					whileHover="hover"
+					whileTap={{ scale: 0.95 }}
+				>
 					<div
 						className='glass rounded-xl p-8 text-center cursor-pointer'
 						onClick={() => {
@@ -212,7 +177,7 @@ export default function RegistrationView() {
 						<h3 className='text-xl font-semibold text-white mb-2'>Sign up with Email</h3>
 						<p className='text-slate-300'>Create account with email and password</p>
 					</div>
-				</HoverScale>
+				</motion.div>
 			</CardGrid>
 
 			<div className='text-center'>
@@ -223,11 +188,17 @@ export default function RegistrationView() {
 					</Link>
 				</p>
 			</div>
-		</FadeInUp>
+		</motion.div>
 	);
 
 	const renderManualForm = () => (
-		<FadeInUp className='space-y-6'>
+		<motion.div 
+			variants={fadeInUp} 
+			initial="hidden" 
+			animate="visible" 
+			className='space-y-6'
+			whileHover={{ scale: 1.01 }}
+		>
 			<div className='text-center mb-8'>
 				<h2 className='text-3xl font-bold gradient-text mb-4'>Create Your Account</h2>
 				<p className='text-slate-300'>Fill in your details to get started</p>
@@ -272,133 +243,19 @@ export default function RegistrationView() {
 					</Link>
 				</p>
 			</div>
-		</FadeInUp>
+		</motion.div>
 	);
 
-	const renderPreferences = () => (
-		<FadeInUp className='space-y-6'>
-			<div className='text-center mb-8'>
-				<h2 className='text-3xl font-bold gradient-text mb-4'>Customize Your Experience</h2>
-				<p className='text-slate-300'>Choose your preferences to get personalized content</p>
-			</div>
-
-			<div className='glass rounded-xl p-6'>
-				<div className='space-y-6'>
-					{/* Difficulty Level */}
-					<div>
-						<h3 className='text-lg font-semibold text-white mb-4 flex items-center'>
-							<Icon name='Target' className='w-5 h-5 mr-2' />
-							Preferred Difficulty Level
-						</h3>
-
-						{/* Difficulty Info */}
-						<div className='mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg'>
-							<p className='text-sm text-blue-300'>
-								<strong>Multiplier:</strong> {CUSTOM_DIFFICULTY_MULTIPLIERS[selectedDifficulty] || 1.0}x points
-							</p>
-						</div>
-
-						<CardGrid columns={3} gap='md'>
-							{Object.entries(DIFFICULTY_LEVELS_UI).map(([key, level]) => (
-								<HoverScale key={key}>
-									<div
-										className={`glass rounded-lg p-4 text-center cursor-pointer border-2 transition-colors ${
-											selectedDifficulty === key
-												? 'border-blue-400 bg-blue-500/20'
-												: 'border-transparent hover:border-blue-400'
-										}`}
-										onClick={() => handleDifficultySelect(key as DifficultyLevel)}
-									>
-										<Icon name='Target' className='w-8 h-8 mx-auto mb-2 text-blue-400' />
-										<h4 className='font-semibold text-white mb-1'>{level.label}</h4>
-										<p className='text-sm text-slate-300'>{level.description}</p>
-										<div className='text-xs text-blue-300 mt-2'>
-											{CUSTOM_DIFFICULTY_MULTIPLIERS[key as DifficultyLevel] || 1.0}x points
-										</div>
-									</div>
-								</HoverScale>
-							))}
-						</CardGrid>
-					</div>
-
-					{/* Favorite Topics */}
-					<div>
-						<h3 className='text-lg font-semibold text-white mb-4 flex items-center'>
-							<Icon name='Star' className='w-5 h-5 mr-2' />
-							Favorite Topics
-						</h3>
-						<p className='text-slate-300 mb-4'>Select topics you're interested in (optional)</p>
-
-						{/* Validation Status */}
-						{validationStatus === 'validating' && <ValidationLoading className='mb-4' showMessages={true} />}
-
-						{selectedTopics.length > 0 && (
-							<ValidationSuccess
-								message={`${selectedTopics.length} topics selected`}
-								className='mb-4'
-								showMessages={true}
-							/>
-						)}
-
-						{selectedTopics.length === 0 && (
-							<ValidationWarning
-								warnings={['No topics selected - you can always add them later']}
-								className='mb-4'
-								showMessages={true}
-							/>
-						)}
-
-						<StaggerContainer>
-							<ResponsiveGrid minWidth='200px' gap='sm'>
-								{POPULAR_TOPICS.map((topic: string, index: number) => (
-									<FadeInLeft key={topic} delay={index * 0.05}>
-										<HoverScale>
-											<div
-												className={`glass rounded-lg p-3 text-center cursor-pointer border-2 transition-colors ${
-													selectedTopics.includes(topic)
-														? 'border-green-400 bg-green-400/20'
-														: 'border-transparent hover:border-green-400'
-												}`}
-												onClick={() => toggleTopic(topic)}
-											>
-												<span className='text-sm text-white'>{topic}</span>
-											</div>
-										</HoverScale>
-									</FadeInLeft>
-								))}
-							</ResponsiveGrid>
-						</StaggerContainer>
-					</div>
-				</div>
-			</div>
-
-			<div className='text-center'>
-				<Button
-					onClick={() => {
-						audioService.play(AudioKey.BUTTON_CLICK);
-						setStep('confirmation');
-					}}
-					className='mr-4'
-				>
-					Continue
-					<Icon name='ArrowRight' className='w-4 h-4 ml-2' />
-				</Button>
-				<Button
-					variant='secondary'
-					onClick={() => {
-						audioService.play(AudioKey.BUTTON_CLICK);
-						setStep('manual');
-					}}
-				>
-					<Icon name='ArrowLeft' className='w-4 h-4 mr-2' />
-					Back
-				</Button>
-			</div>
-		</FadeInUp>
-	);
+	// Removed preferences step - difficulty and topics will be set in the game itself
 
 	const renderConfirmation = () => (
-		<ScaleIn className='text-center space-y-8'>
+		<motion.div 
+			variants={scaleIn} 
+			initial="hidden" 
+			animate="visible" 
+			className='text-center space-y-8'
+			whileHover={{ scale: 1.02 }}
+		>
 			<div className='glass rounded-xl p-8 max-w-md mx-auto'>
 				<Icon name='CheckCircle' className='w-16 h-16 mx-auto mb-4 text-green-400' />
 				<h2 className='text-2xl font-bold text-white mb-4'>Welcome to EveryTriv!</h2>
@@ -416,7 +273,7 @@ export default function RegistrationView() {
 					<Icon name='ArrowRight' className='w-4 h-4 ml-2' />
 				</Button>
 			</div>
-		</ScaleIn>
+		</motion.div>
 	);
 
 	return (
@@ -424,7 +281,6 @@ export default function RegistrationView() {
 			<div className='w-full max-w-4xl'>
 				{step === 'method' && renderMethodSelection()}
 				{step === 'manual' && renderManualForm()}
-				{step === 'preferences' && renderPreferences()}
 				{step === 'confirmation' && renderConfirmation()}
 			</div>
 		</div>

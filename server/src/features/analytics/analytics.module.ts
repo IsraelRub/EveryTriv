@@ -11,16 +11,25 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { LoggerService } from '../../shared/controllers';
-import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from '../../shared/entities';
-import { CacheModule } from '../../shared/modules';
+import { ValidationModule } from '../../common';
+import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
+
+import { CacheModule } from 'src/internal/modules';
+import { AuthModule } from '../auth/auth.module';
+import { LeaderboardModule } from '../leaderboard/leaderboard.module';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, GameHistoryEntity, TriviaEntity, PaymentHistoryEntity]), CacheModule],
+	imports: [
+		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity, TriviaEntity, PaymentHistoryEntity]), 
+		CacheModule,
+		ValidationModule,
+		AuthModule,
+		LeaderboardModule
+	],
 	controllers: [AnalyticsController],
-	providers: [AnalyticsService, LoggerService],
+	providers: [AnalyticsService],
 	exports: [AnalyticsService],
 })
 export class AnalyticsModule {}

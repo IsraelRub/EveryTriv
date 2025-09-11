@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import { SCORING_DEFAULTS } from '@/constants';
 
 import { ScoreStats, ScoringSystemProps } from '../../types';
-import { FloatingCard } from '../animations';
+import type { CurrentQuestionMetadata } from '../../types/game/components.types';
+
 import { Icon } from '../icons';
 import { GridLayout } from '../layout';
 
@@ -12,15 +13,12 @@ export default function ScoringSystem({
 	total,
 	topicsPlayed,
 	difficultyStats,
-	streak = SCORING_DEFAULTS.STREAK,
+	currentStreak = SCORING_DEFAULTS.STREAK,
 	currentQuestionMetadata, // New prop for current question metadata
 }: ScoringSystemProps & {
-	currentQuestionMetadata?: {
-		customDifficultyMultiplier?: number;
-		actualDifficulty?: string;
-		questionCount?: number;
-	};
+	currentQuestionMetadata?: CurrentQuestionMetadata;
 }) {
+	const streak = currentStreak; // Use the renamed prop
 	const stats = useMemo(() => {
 		const gradeRanges = [
 			{ min: 90, grade: 'A', color: 'bg-green-500' },
@@ -79,8 +77,7 @@ export default function ScoringSystem({
 	}
 
 	return (
-		<FloatingCard>
-			<div className='mt-6 space-y-6'>
+		<div className='mt-6 space-y-6'>
 				{/* Overall Score Summary */}
 				<div className='glass rounded-lg p-6'>
 					<GridLayout variant='stats' gap='md' className='text-center'>
@@ -218,6 +215,5 @@ export default function ScoringSystem({
 					</div>
 				</GridLayout>
 			</div>
-		</FloatingCard>
-	);
+		);
 }

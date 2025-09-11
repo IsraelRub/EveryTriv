@@ -6,4 +6,4 @@
  * @used_by server/features/payment, server/controllers
  */
 
-// Payment DTOs - No DTOs currently needed
+export * from './payment.dto';

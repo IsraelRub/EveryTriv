@@ -1,10 +1,9 @@
-import { PROVIDER_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { LLMApiResponse, LLMTriviaResponse, MistralResponse, ProviderConfig } from 'everytriv-shared/types';
+import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
 
-export class MistralTriviaProvider extends BaseTriviaProvider<MistralResponse> {
+export class MistralTriviaProvider extends BaseTriviaProvider {
 	name = 'Mistral';
 	protected apiKey: string;
 
@@ -40,7 +39,13 @@ export class MistralTriviaProvider extends BaseTriviaProvider<MistralResponse> {
 
 	protected getProviderConfig(prompt: string): ProviderConfig {
 		return {
-			url: 'https://api.mistral.ai/v1/chat/completions',
+			name: 'mistral',
+			apiKey: this.apiKey,
+			baseUrl: 'https://api.mistral.ai/v1/chat/completions',
+			timeout: 30000,
+			maxRetries: 3,
+			enabled: true,
+			priority: 3,
 			headers: {
 				Authorization: `Bearer ${this.apiKey}`,
 				'Content-Type': 'application/json',
@@ -60,12 +65,12 @@ export class MistralTriviaProvider extends BaseTriviaProvider<MistralResponse> {
 		};
 	}
 
-	protected parseResponse(response: LLMApiResponse<MistralResponse>): LLMTriviaResponse {
+	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
 		const data = response.data;
 		if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_MISTRAL_RESPONSE);
 		}
 		const content = data.choices[0].message.content;
-		return JSON.parse(content) as LLMTriviaResponse;
+		return JSON.parse(content);
 	}
 }

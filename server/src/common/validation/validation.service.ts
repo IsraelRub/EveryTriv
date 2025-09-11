@@ -5,36 +5,28 @@
  * @description Service for server-side validation using shared validation functions
  */
 import { Injectable } from '@nestjs/common';
-import type { AnalyticsEventData, PersonalPaymentData } from 'everytriv-shared/types';
-import type { LanguageValidationOptions, LanguageValidationResult } from 'everytriv-shared/types/language.types';
-import { sanitizeCardNumber, sanitizeEmail, sanitizeInput } from 'everytriv-shared/utils';
-import {
-	validateCustomDifficultyText,
-	validateEmail,
-	validateInputContent,
-	validateInputWithLanguageTool,
-	validatePassword,
-	validateTopicLength,
-	validateUsername,
-} from 'everytriv-shared/validation';
+import type { AnalyticsEventData, PersonalPaymentData, LanguageValidationOptions, LanguageValidationResult, ValidationResult, ValidationOptions, UserProfileUpdateData } from '@shared';
+import { sanitizeCardNumber, sanitizeEmail, sanitizeInput, validateCustomDifficultyText, validateEmail, validateInputContent, validateInputWithLanguageTool, validatePassword, validateTopicLength, validateUsername } from '@shared';
 
-import { LoggerService } from '../../shared/controllers';
-import type { ValidationResult, ValidationServiceOptions } from '../../shared/types/validation.types';
+import { serverLogger as logger } from '@shared';
 import { LanguageToolService } from './languageTool.service';
+import { UserEntity } from 'src/internal/entities';
+import type { UserFieldUpdate } from '@shared';
+// import type { ValidationServiceInterface, ValidationContext } from '../types'; // Reserved for future use
+
 
 @Injectable()
 export class ValidationService {
 	constructor(
-		private readonly logger: LoggerService,
 		private readonly languageToolService: LanguageToolService
 	) {}
 
 	/**
 	 * Validate username
 	 */
-	async validateUsername(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validateUsername(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('username', value, 'validation_start', options);
+			logger.validationDebug('username', value, 'validation_start', options);
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -44,9 +36,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('username', value, 'validation_success', options);
+				logger.validationInfo('username', value, 'validation_success', options);
 			} else {
-				this.logger.validationWarn('username', value, 'validation_failed', {
+				logger.validationWarn('username', value, 'validation_failed', {
 					...options,
 					errors: result.errors,
 				});
@@ -54,7 +46,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('username', value, 'validation_error', {
+			logger.validationError('username', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -68,9 +60,9 @@ export class ValidationService {
 	/**
 	 * Validate email
 	 */
-	async validateEmail(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validateEmail(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('email', value, 'validation_start', options);
+			logger.validationDebug('email', value, 'validation_start', options);
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -83,9 +75,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('email', value, 'validation_success', options);
+				logger.validationInfo('email', value, 'validation_success', options);
 			} else {
-				this.logger.validationWarn('email', value, 'validation_failed', {
+				logger.validationWarn('email', value, 'validation_failed', {
 					...options,
 					errors: result.errors,
 				});
@@ -93,7 +85,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('email', value, 'validation_error', {
+			logger.validationError('email', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -107,22 +99,22 @@ export class ValidationService {
 	/**
 	 * Validate password
 	 */
-	async validatePassword(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validatePassword(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('password', '[REDACTED]', 'validation_start', options);
+			logger.validationDebug('password', '[REDACTED]', 'validation_start', options);
 
 			// Use shared validation function
 			const result = validatePassword(value);
 
 			// Log validation result (without password)
 			if (result.isValid) {
-				this.logger.validationInfo('password', '[REDACTED]', 'validation_success', {
+				logger.validationInfo('password', '[REDACTED]', 'validation_success', {
 					...options,
 					strength: result.strength,
 					score: result.score,
 				});
 			} else {
-				this.logger.validationWarn('password', '[REDACTED]', 'validation_failed', {
+				logger.validationWarn('password', '[REDACTED]', 'validation_failed', {
 					...options,
 					errors: result.errors,
 					strength: result.strength,
@@ -132,7 +124,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('password', '[REDACTED]', 'validation_error', {
+			logger.validationError('password', '[REDACTED]', 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -146,9 +138,9 @@ export class ValidationService {
 	/**
 	 * Validate input content
 	 */
-	async validateInputContent(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validateInputContent(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('input_content', value, 'validation_start', options);
+			logger.validationDebug('input_content', value, 'validation_start', options);
 
 			// Sanitize input first (already removes HTML tags)
 			const sanitizedValue = sanitizeInput(value);
@@ -158,9 +150,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('input_content', value, 'validation_success', options);
+				logger.validationInfo('input_content', value, 'validation_success', options);
 			} else {
-				this.logger.validationWarn('input_content', value, 'validation_failed', {
+				logger.validationWarn('input_content', value, 'validation_failed', {
 					...options,
 					errors: result.errors,
 				});
@@ -168,7 +160,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('input_content', value, 'validation_error', {
+			logger.validationError('input_content', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -182,9 +174,9 @@ export class ValidationService {
 	/**
 	 * Validate custom difficulty text
 	 */
-	async validateCustomDifficultyText(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validateCustomDifficultyText(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('custom_difficulty', value, 'validation_start', options);
+			logger.validationDebug('customDifficulty', value, 'validation_start', options);
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -194,9 +186,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('custom_difficulty', value, 'validation_success', options);
+				logger.validationInfo('customDifficulty', value, 'validation_success', options);
 			} else {
-				this.logger.validationWarn('custom_difficulty', value, 'validation_failed', {
+				logger.validationWarn('customDifficulty', value, 'validation_failed', {
 					...options,
 					errors: result.error ? [result.error] : ['Invalid custom difficulty'],
 				});
@@ -207,7 +199,7 @@ export class ValidationService {
 				errors: result.isValid ? [] : [result.error || 'Invalid custom difficulty'],
 			};
 		} catch (error) {
-			this.logger.validationError('custom_difficulty', value, 'validation_error', {
+			logger.validationError('customDifficulty', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -221,9 +213,9 @@ export class ValidationService {
 	/**
 	 * Validate topic length
 	 */
-	async validateTopicLength(value: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validateTopicLength(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('topic_length', value, 'validation_start', options);
+			logger.validationDebug('topic_length', value, 'validation_start', options);
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -233,9 +225,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('topic_length', value, 'validation_success', options);
+				logger.validationInfo('topic_length', value, 'validation_success', options);
 			} else {
-				this.logger.validationWarn('topic_length', value, 'validation_failed', {
+				logger.validationWarn('topic_length', value, 'validation_failed', {
 					...options,
 					errors: result.errors,
 				});
@@ -243,7 +235,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('topic_length', value, 'validation_error', {
+			logger.validationError('topic_length', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -263,7 +255,7 @@ export class ValidationService {
 	 */
 	async validateTriviaRequest(topic: string, difficulty: string, count: number): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('trivia_request', `${topic} (${difficulty})`, 'validation_start', {
+			logger.validationDebug('trivia_request', `${topic} (${difficulty})`, 'validation_start', {
 				topic,
 				difficulty,
 				count,
@@ -294,13 +286,13 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('trivia_request', `${topic} (${difficulty})`, 'validation_success', {
+				logger.validationInfo('trivia_request', `${topic} (${difficulty})`, 'validation_success', {
 					topic,
 					difficulty,
 					count,
 				});
 			} else {
-				this.logger.validationWarn('trivia_request', `${topic} (${difficulty})`, 'validation_failed', {
+				logger.validationWarn('trivia_request', `${topic} (${difficulty})`, 'validation_failed', {
 					topic,
 					difficulty,
 					count,
@@ -310,7 +302,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('trivia_request', `${topic} (${difficulty})`, 'validation_error', {
+			logger.validationError('trivia_request', `${topic} (${difficulty})`, 'validation_error', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic,
 				difficulty,
@@ -331,7 +323,7 @@ export class ValidationService {
 	 */
 	async validatePointsPurchase(userId: string, packageId: string): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('points_purchase', packageId, 'validation_start', { userId });
+			logger.validationDebug('points_purchase', packageId, 'validation_start', { userId });
 
 			const errors: string[] = [];
 
@@ -358,9 +350,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('points_purchase', packageId, 'validation_success', { userId });
+				logger.validationInfo('points_purchase', packageId, 'validation_success', { userId });
 			} else {
-				this.logger.validationWarn('points_purchase', packageId, 'validation_failed', {
+				logger.validationWarn('points_purchase', packageId, 'validation_failed', {
 					userId,
 					errors: result.errors,
 				});
@@ -368,7 +360,7 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('points_purchase', packageId, 'validation_error', {
+			logger.validationError('points_purchase', packageId, 'validation_error', {
 				userId,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -384,9 +376,9 @@ export class ValidationService {
 	 * @param phone Phone number to validate
 	 * @returns Validation result
 	 */
-	async validatePhone(phone: string, options: ValidationServiceOptions = {}): Promise<ValidationResult> {
+	async validatePhone(phone: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('phone', phone, 'validation_start', options);
+			logger.validationDebug('phone', phone, 'validation_start', options);
 
 			// Remove non-digit characters
 			const digitsOnly = phone.replace(/\D/g, '');
@@ -406,13 +398,13 @@ export class ValidationService {
 				};
 			}
 
-			this.logger.validationInfo('phone', phone, 'validation_success', options);
+			logger.validationInfo('phone', phone, 'validation_success', options);
 			return {
 				isValid: true,
 				errors: [],
 			};
 		} catch (error) {
-			this.logger.validationError('phone', phone, 'validation_error', {
+			logger.validationError('phone', phone, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -430,7 +422,7 @@ export class ValidationService {
 	 */
 	async validatePaymentData(paymentData: PersonalPaymentData): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('payment_data', '[REDACTED]', 'validation_start');
+			logger.validationDebug('payment_data', '[REDACTED]', 'validation_start');
 
 			const errors: string[] = [];
 
@@ -477,16 +469,16 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
+				logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
 			} else {
-				this.logger.validationWarn('payment_data', '[REDACTED]', 'validation_failed', {
+				logger.validationWarn('payment_data', '[REDACTED]', 'validation_failed', {
 					errors: result.errors,
 				});
 			}
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('payment_data', '[REDACTED]', 'validation_error', {
+			logger.validationError('payment_data', '[REDACTED]', 'validation_error', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			return {
@@ -503,7 +495,7 @@ export class ValidationService {
 	 */
 	async validateAnalyticsEvent(eventData: AnalyticsEventData): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('analytics_event', JSON.stringify(eventData), 'validation_start');
+			logger.validationDebug('analytics_event', JSON.stringify(eventData), 'validation_start');
 
 			const errors: string[] = [];
 
@@ -533,21 +525,272 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				this.logger.validationInfo('analytics_event', JSON.stringify(eventData), 'validation_success');
+				logger.validationInfo('analytics_event', JSON.stringify(eventData), 'validation_success');
 			} else {
-				this.logger.validationWarn('analytics_event', JSON.stringify(eventData), 'validation_failed', {
+				logger.validationWarn('analytics_event', JSON.stringify(eventData), 'validation_failed', {
 					errors: result.errors,
 				});
 			}
 
 			return result;
 		} catch (error) {
-			this.logger.validationError('analytics_event', JSON.stringify(eventData), 'validation_error', {
+			logger.validationError('analytics_event', JSON.stringify(eventData), 'validation_error', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			return {
 				isValid: false,
 				errors: ['Analytics event validation failed'],
+			};
+		}
+	}
+
+	/**
+	 * Validate game answer format
+	 * @param answer Answer text to validate
+	 * @param options Validation options
+	 * @returns Validation result
+	 */
+	async validateGameAnswer(answer: string, options: ValidationOptions = {}): Promise<ValidationResult> {
+		try {
+			logger.validationDebug('game_answer', answer, 'validation_start', options);
+
+			const errors: string[] = [];
+
+			// Basic validation
+			if (!answer || answer.trim().length === 0) {
+				errors.push('Answer cannot be empty');
+			}
+
+			if (answer && answer.length > 1000) {
+				errors.push('Answer cannot exceed 1000 characters');
+			}
+
+			// Check for inappropriate content
+			const inappropriateWords = ['spam', 'fake', 'dummy'];
+			const lowerAnswer = answer.toLowerCase();
+			for (const word of inappropriateWords) {
+				if (lowerAnswer.includes(word)) {
+					errors.push('Answer contains inappropriate content');
+					break;
+				}
+			}
+
+			// Check for excessive repetition
+			const words = answer.split(/\s+/);
+			const wordCount = words.length;
+			const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+			if (wordCount > 10 && uniqueWords.size < wordCount * 0.3) {
+				errors.push('Answer appears to have excessive repetition');
+			}
+
+			const result = {
+				isValid: errors.length === 0,
+				errors,
+			};
+
+			// Log validation result
+			if (result.isValid) {
+				logger.validationInfo('game_answer', answer, 'validation_success', options);
+			} else {
+				logger.validationWarn('game_answer', answer, 'validation_failed', {
+					...options,
+					errors: result.errors,
+				});
+			}
+
+			return result;
+		} catch (error) {
+			logger.validationError('game_answer', answer, 'validation_error', {
+				...options,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return {
+				isValid: false,
+				errors: ['Game answer validation failed'],
+			};
+		}
+	}
+
+	/**
+	 * Validate user profile data
+	 * @param profileData Profile data object
+	 * @param options Validation options
+	 * @returns Validation result
+	 */
+	async validateUserProfile(profileData: UserProfileUpdateData, options: ValidationOptions = {}): Promise<ValidationResult> {
+		try {
+			logger.validationDebug('user_profile', '[REDACTED]', 'validation_start', options);
+
+			const errors: string[] = [];
+
+			// Validate username if provided
+			if (profileData.username && typeof profileData.username === 'string') {
+				const usernameValidation = await this.validateUsername(profileData.username);
+				if (!usernameValidation.isValid) {
+					errors.push(...usernameValidation.errors);
+				}
+			}
+
+			// Validate email if provided
+			if (profileData.email && typeof profileData.email === 'string') {
+				const emailValidation = await this.validateEmail(profileData.email);
+				if (!emailValidation.isValid) {
+					errors.push(...emailValidation.errors);
+				}
+			}
+
+					// Validate first name
+		if (profileData.first_name && typeof profileData.first_name === 'string') {
+			if (profileData.first_name.length > 50) {
+				errors.push('First name cannot exceed 50 characters');
+			}
+			if (!/^[a-zA-Z\s'-]+$/.test(profileData.first_name)) {
+				errors.push('First name can only contain letters, spaces, apostrophes, and hyphens');
+			}
+		}
+
+					// Validate last name
+		if (profileData.last_name && typeof profileData.last_name === 'string') {
+			if (profileData.last_name.length > 50) {
+				errors.push('Last name cannot exceed 50 characters');
+			}
+			if (!/^[a-zA-Z\s'-]+$/.test(profileData.last_name)) {
+				errors.push('Last name can only contain letters, spaces, apostrophes, and hyphens');
+			}
+		}
+
+			// Validate bio
+			if (profileData.bio && typeof profileData.bio === 'string') {
+				if (profileData.bio.length > 500) {
+					errors.push('Bio cannot exceed 500 characters');
+				}
+			}
+
+			// Validate website URL
+			if (profileData.website && typeof profileData.website === 'string') {
+				const urlPattern = /^https?:\/\/.+\..+/;
+				if (!urlPattern.test(profileData.website)) {
+					errors.push('Website must be a valid URL starting with http:// or https://');
+				}
+			}
+
+			const result = {
+				isValid: errors.length === 0,
+				errors,
+			};
+
+			// Log validation result
+			if (result.isValid) {
+				logger.validationInfo('user_profile', '[REDACTED]', 'validation_success', options);
+			} else {
+				logger.validationWarn('user_profile', '[REDACTED]', 'validation_failed', {
+					...options,
+					errors: result.errors,
+				});
+			}
+
+			return result;
+		} catch (error) {
+			logger.validationError('user_profile', '[REDACTED]', 'validation_error', {
+				...options,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return {
+				isValid: false,
+				errors: ['User profile validation failed'],
+			};
+		}
+	}
+
+	/**
+	 * Validate subscription plan
+	 * @param plan Plan name to validate
+	 * @param options Validation options
+	 * @returns Validation result
+	 */
+	async validateSubscriptionPlan(plan: string, options: ValidationOptions = {}): Promise<ValidationResult> {
+		try {
+			logger.validationDebug('subscription_plan', plan, 'validation_start', options);
+
+			const validPlans = ['basic', 'premium', 'pro', 'enterprise'];
+			const isValid = validPlans.includes(plan.toLowerCase());
+
+			const result = {
+				isValid,
+				errors: isValid ? [] : [`Invalid plan. Must be one of: ${validPlans.join(', ')}`],
+			};
+
+			// Log validation result
+			if (result.isValid) {
+				logger.validationInfo('subscription_plan', plan, 'validation_success', options);
+			} else {
+				logger.validationWarn('subscription_plan', plan, 'validation_failed', {
+					...options,
+					errors: result.errors,
+				});
+			}
+
+			return result;
+		} catch (error) {
+			logger.validationError('subscription_plan', plan, 'validation_error', {
+				...options,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return {
+				isValid: false,
+				errors: ['Subscription plan validation failed'],
+			};
+		}
+	}
+
+	/**
+	 * Validate points amount
+	 * @param amount Points amount to validate
+	 * @param options Validation options
+	 * @returns Validation result
+	 */
+	async validatePointsAmount(amount: number, options: ValidationOptions = {}): Promise<ValidationResult> {
+		try {
+			logger.validationDebug('points_amount', amount.toString(), 'validation_start', options);
+
+			const errors: string[] = [];
+
+			if (amount < 0) {
+				errors.push('Points amount cannot be negative');
+			}
+
+			if (amount > 100000) {
+				errors.push('Points amount cannot exceed 100,000');
+			}
+
+			if (!Number.isInteger(amount)) {
+				errors.push('Points amount must be a whole number');
+			}
+
+			const result = {
+				isValid: errors.length === 0,
+				errors,
+			};
+
+			// Log validation result
+			if (result.isValid) {
+				logger.validationInfo('points_amount', amount.toString(), 'validation_success', options);
+			} else {
+				logger.validationWarn('points_amount', amount.toString(), 'validation_failed', {
+					...options,
+					errors: result.errors,
+				});
+			}
+
+			return result;
+		} catch (error) {
+			logger.validationError('points_amount', amount.toString(), 'validation_error', {
+				...options,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			return {
+				isValid: false,
+				errors: ['Points amount validation failed'],
 			};
 		}
 	}
@@ -563,14 +806,14 @@ export class ValidationService {
 		options: LanguageValidationOptions = {}
 	): Promise<ValidationResult> {
 		try {
-			this.logger.validationDebug('language_validation', value, 'validation_start', options);
+			logger.validationDebug('language_validation', value, 'validation_start', options);
 
 			// Check if LanguageTool service is available
 			const isAvailable = await this.languageToolService.isAvailable();
 
 			if (isAvailable && options.useExternalAPI !== false) {
 				// Use LanguageTool service
-				this.logger.validationDebug('language_validation', value, 'using_external_api');
+				logger.validationDebug('language_validation', value, 'using_external_api');
 
 				const languageToolResult = await this.languageToolService.checkText(value, {
 					language: options.language || 'auto',
@@ -605,14 +848,14 @@ export class ValidationService {
 
 				// Log validation result
 				if (isValid) {
-					this.logger.validationInfo('language_validation', value, 'validation_success_external', {
+					logger.validationInfo('language_validation', value, 'validation_success_external', {
 						...options,
 						language: languageToolResult.language?.detectedLanguage?.code || options.language,
 						confidence: 0.95,
 						externalService: 'LanguageTool',
 					});
 				} else {
-					this.logger.validationWarn('language_validation', value, 'validation_failed_external', {
+					logger.validationWarn('language_validation', value, 'validation_failed_external', {
 						...options,
 						errors,
 						suggestions,
@@ -628,7 +871,7 @@ export class ValidationService {
 				};
 			} else {
 				// Fall back to shared validation function
-				this.logger.validationDebug('language_validation', value, 'using_local_validation');
+				logger.validationDebug('language_validation', value, 'using_local_validation');
 
 				const result: LanguageValidationResult = await validateInputWithLanguageTool(value, {
 					...options,
@@ -637,14 +880,14 @@ export class ValidationService {
 
 				// Log validation result
 				if (result.isValid) {
-					this.logger.validationInfo('language_validation', value, 'validation_success_local', {
+					logger.validationInfo('language_validation', value, 'validation_success_local', {
 						...options,
 						language: result.language,
 						confidence: result.confidence,
 						externalService: 'Local',
 					});
 				} else {
-					this.logger.validationWarn('language_validation', value, 'validation_failed_local', {
+					logger.validationWarn('language_validation', value, 'validation_failed_local', {
 						...options,
 						errors: result.errors,
 						suggestions: result.suggestions,
@@ -660,7 +903,7 @@ export class ValidationService {
 				};
 			}
 		} catch (error) {
-			this.logger.validationError('language_validation', value, 'validation_error', {
+			logger.validationError('language_validation', value, 'validation_error', {
 				...options,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
@@ -670,4 +913,58 @@ export class ValidationService {
 			};
 		}
 	}
+
+	/**
+	 * Helper function to validate and set string field
+	 * @param user User entity
+	 * @param field Field name
+	 * @param value Value to set
+	 * @param minLength Minimum length (optional)
+	 * @param maxLength Maximum length (optional)
+	 */
+	validateAndSetStringField(
+		user: UserEntity, 
+		field: string, 
+		value: unknown, 
+		minLength?: number, 
+		maxLength?: number
+	): void {
+		if (typeof value !== 'string') {
+			throw new Error(`${field} must be a string`);
+		}
+		if (minLength && value.length < minLength) {
+			throw new Error(`${field} must be at least ${minLength} characters long`);
+		}
+		if (maxLength && value.length > maxLength) {
+			throw new Error(`${field} must be less than ${maxLength} characters`);
+		}
+		Object.assign(user, { [field]: value });
+	}
+
+	/**
+	 * Helper function to validate and set number field
+	 * @param user User entity
+	 * @param field Field name
+	 * @param value Value to set
+	 */
+	validateAndSetNumberField(user: UserEntity, field: string, value: unknown): void {
+		if (typeof value !== 'number') {
+			throw new Error(`${field} must be a number`);
+		}
+		Object.assign(user, { [field]: value });
+	}
+
+	/**
+	 * Helper function to validate and set boolean field
+	 * @param user User entity
+	 * @param field Field name
+	 * @param value Value to set
+	 */
+	validateAndSetBooleanField(user: UserEntity, field: keyof UserFieldUpdate, value: unknown): void {
+		if (typeof value !== 'boolean') {
+			throw new Error(`${field} must be a boolean`);
+		}
+		Object.assign(user, { [field]: value });
+	}
+
 }

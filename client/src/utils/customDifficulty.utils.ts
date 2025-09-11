@@ -5,13 +5,13 @@
  * @description Utility functions for handling custom difficulty levels
  * @used_by client/components/game, client/hooks, client/services
  */
-import { DifficultyLevel } from 'everytriv-shared/constants';
+import { DifficultyLevel } from '@shared';
 import {
 	extractCustomDifficultyText,
 	getDifficultyDisplayText as sharedGetDifficultyDisplayText,
 	isCustomDifficulty,
 	validateCustomDifficultyText,
-} from 'everytriv-shared/validation';
+} from '@shared/validation';
 
 export { extractCustomDifficultyText, isCustomDifficulty, validateCustomDifficultyText };
 

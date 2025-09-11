@@ -13,12 +13,6 @@
  */
 export { TriviaGenerationService } from './triviaGeneration.service';
 
-/**
- * Scoring service
- * @description Handles game scoring and leaderboard management
- * @used_by server/features/game, server/controllers
- */
-export { ScoringService } from './scoring';
 
 /**
  * AI providers service

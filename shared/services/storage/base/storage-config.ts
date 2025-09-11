@@ -5,7 +5,7 @@
  * @description Unified configuration factory for all storage services
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage/services/storageManager.service.ts
  */
-import { StorageConfig } from '../../../types/storage.types';
+import { StorageConfig } from '../../../types/infrastructure/storage.types';
 
 /**
  * Storage Configuration Factory

@@ -6,7 +6,7 @@
  */
 import { motion } from 'framer-motion';
 
-import type { ErrorBannerProps } from '../../types/ui.types';
+import type { ErrorBannerProps } from '../../types';
 import { isCustomDifficulty } from '../../utils/customDifficulty.utils';
 import { Icon } from '../icons';
 
@@ -20,10 +20,10 @@ export default function ErrorBanner({ message, difficulty }: ErrorBannerProps) {
 			transition={{ duration: 0.5 }}
 		>
 			<strong>Error:</strong> {message}
-			{isCustomDifficulty(difficulty) && (
+    {difficulty && isCustomDifficulty(difficulty) && (
 				<div className='mt-2 text-sm text-red-300 flex items-center gap-2'>
 					<Icon name='lightbulb' size='sm' className='text-yellow-400' />
-					Make sure your custom difficulty description is clear and specific. Examples: "university level physics",
+					Make sure your custom difficulty description is clear and specific.
 					"beginner cooking skills", "professional sports knowledge"
 				</div>
 			)}

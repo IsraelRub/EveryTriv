@@ -1,15 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { UserAddress, UserPreferences, UserPreferencesUpdate } from 'everytriv-shared/types';
-import { normalizeText } from 'everytriv-shared/utils';
-import { Repository } from 'typeorm';
+import { UserAddress, UserPreferences, normalizeText, UserFieldUpdate, DEFAULT_USER_PREFERENCES, PreferenceValue } from '@shared';
+import { Repository, DeepPartial } from 'typeorm';
 
-import { LoggerService } from '../../shared/controllers';
-import { UserEntity } from '../../shared/entities';
-import { CacheService } from '../../shared/modules/cache';
-import { ServerStorageService } from '../../shared/modules/storage';
+import { serverLogger as logger } from '@shared';
+import { UserEntity } from 'src/internal/entities';
+import { CacheService } from 'src/internal/modules/cache';
+import { ServerStorageService } from 'src/internal/modules/storage';
+import { AuthenticationManager } from '../../common/auth/authentication.manager';
+import { PasswordService } from '../../common/auth/password.service';
 
 /**
  * Service for managing user data, profiles, and authentication
@@ -20,10 +19,10 @@ export class UserService {
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
-		private readonly jwtService: JwtService,
-		private readonly logger: LoggerService,
 		private readonly cacheService: CacheService,
-		private readonly storageService: ServerStorageService
+		private readonly storageService: ServerStorageService,
+		private readonly authenticationManager: AuthenticationManager,
+		private readonly passwordService: PasswordService
 	) {}
 
 	/**
@@ -34,7 +33,7 @@ export class UserService {
 	 */
 	async login(email: string, password: string) {
 		try {
-			this.logger.securityLogin('User login attempt', {
+			logger.securityLogin('User login attempt', {
 				context: 'UserService',
 				email: email.substring(0, 10) + '...',
 			});
@@ -45,15 +44,22 @@ export class UserService {
 				throw new UnauthorizedException('Invalid credentials');
 			}
 
-			// Verify password
-			const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-			if (!isPasswordValid) {
-				throw new UnauthorizedException('Invalid credentials');
-			}
+			// Use AuthenticationManager for authentication
+			const authResult = await this.authenticationManager.authenticate(
+				{ username: user.username, password },
+				{
+					id: user.id,
+					username: user.username,
+					email: user.email,
+					passwordHash: user.passwordHash,
+					role: user.role,
+					isActive: user.isActive,
+				}
+			);
 
-			// Generate JWT tokens
-			const accessToken = this.generateJWT(user.id, user.email, user.role);
-			const refreshToken = this.generateJWT(user.id, user.email, user.role, '7d');
+			if (!authResult.success) {
+				throw new UnauthorizedException(authResult.error || 'Invalid credentials');
+			}
 
 			// Store user session data (persistent storage - survives cache invalidation)
 			const sessionKey = `user_session:${user.id}`;
@@ -62,13 +68,13 @@ export class UserService {
 				{
 					userId: user.id,
 					lastLogin: new Date().toISOString(),
-					accessToken: accessToken.substring(0, 20) + '...', // Store partial token for tracking
+					accessToken: authResult.accessToken!.substring(0, 20) + '...', // Store partial token for tracking
 				},
 				86400 // 24 hours TTL
 			);
 
 			if (!result.success) {
-				this.logger.userWarn('Failed to store user session data', {
+				logger.userWarn('Failed to store user session data', {
 					context: 'UserService',
 					userId: user.id,
 					error: result.error || 'Unknown error',
@@ -86,12 +92,12 @@ export class UserService {
 					avatar: user.avatar,
 					role: user.role,
 				},
-				accessToken,
-				refreshToken,
+				accessToken: authResult.accessToken!,
+				refreshToken: authResult.refreshToken!,
 				message: 'Login successful',
 			};
 		} catch (error) {
-			this.logger.securityDenied('Login failed', {
+			logger.securityDenied('Login failed', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				email: email.substring(0, 10) + '...',
@@ -113,7 +119,7 @@ export class UserService {
 		lastName?: string;
 	}) {
 		try {
-			this.logger.userInfo('User registration attempt', {
+			logger.userInfo('User registration attempt', {
 				email: registerData.email,
 				username: registerData.username,
 			});
@@ -124,9 +130,8 @@ export class UserService {
 				throw new BadRequestException('Email already registered');
 			}
 
-			// Hash password
-			const saltRounds = 12;
-			const passwordHash = await bcrypt.hash(registerData.password, saltRounds);
+			// Hash password using PasswordService
+			const passwordHash = await this.passwordService.hashPassword(registerData.password);
 
 			// Create user
 			const user = await this.createUser({
@@ -137,9 +142,13 @@ export class UserService {
 				lastName: registerData.lastName,
 			});
 
-			// Generate JWT tokens
-			const accessToken = this.generateJWT(user.id, user.email, user.role);
-			const refreshToken = this.generateJWT(user.id, user.email, user.role, '7d');
+			// Generate JWT tokens using AuthenticationManager
+			const tokenPair = await this.authenticationManager.generateTokensForUser({
+				id: user.id,
+				username: user.username,
+				email: user.email,
+				role: user.role,
+			});
 
 			return {
 				success: true,
@@ -152,12 +161,12 @@ export class UserService {
 					avatar: user.avatar,
 					role: user.role,
 				},
-				accessToken,
-				refreshToken,
+				accessToken: tokenPair.accessToken,
+				refreshToken: tokenPair.refreshToken,
 				message: 'Registration successful',
 			};
 		} catch (error) {
-			this.logger.userError('Registration failed', {
+			logger.userError('Registration failed', {
 				email: registerData.email,
 				username: registerData.username,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -166,23 +175,6 @@ export class UserService {
 		}
 	}
 
-	/**
-	 * Generate JWT token
-	 * @param userId User ID
-	 * @param email User email
-	 * @param role User role
-	 * @param expiresIn Token expiration time
-	 * @returns JWT token
-	 */
-	private generateJWT(userId: string, email: string, role: string, expiresIn: string = '1h'): string {
-		const payload = {
-			sub: userId,
-			email,
-			role,
-		};
-
-		return this.jwtService.sign(payload, { expiresIn });
-	}
 
 	/**
 	 * Get user profile by ID
@@ -191,7 +183,7 @@ export class UserService {
 	 */
 	async getUserProfile(userId: string) {
 		try {
-			this.logger.userInfo('Getting user profile', {
+			logger.userInfo('Getting user profile', {
 				context: 'UserService',
 				userId,
 			});
@@ -213,7 +205,7 @@ export class UserService {
 				created_at: user.createdAt,
 			};
 		} catch (error) {
-			this.logger.userError('Failed to get user profile', {
+			logger.userError('Failed to get user profile', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -240,7 +232,7 @@ export class UserService {
 		}
 	) {
 		try {
-			this.logger.userInfo('Updating user profile', {
+			logger.userInfo('Updating user profile', {
 				context: 'UserService',
 				userId,
 				fields: Object.keys(profileData),
@@ -267,6 +259,10 @@ export class UserService {
 			// Save updated user
 			const updatedUser = await this.userRepository.save(user);
 
+			// Invalidate user profile cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
 			return {
 				id: updatedUser.id,
 				username: updatedUser.username,
@@ -277,7 +273,7 @@ export class UserService {
 				message: 'Profile updated successfully',
 			};
 		} catch (error) {
-			this.logger.userError('Failed to update user profile', {
+			logger.userError('Failed to update user profile', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -293,7 +289,7 @@ export class UserService {
 	 */
 	async getUserStats(userId: string) {
 		try {
-			this.logger.userInfo('Getting user stats', {
+			logger.userInfo('Getting user stats', {
 				context: 'UserService',
 				userId,
 			});
@@ -321,10 +317,10 @@ export class UserService {
 							: 0,
 					};
 				},
-				600 // Cache for 10 minutes - user stats don't change frequently
+				1800 // Cache for 30 minutes - user stats don't change frequently
 			);
 		} catch (error) {
-			this.logger.userError('Failed to get user stats', {
+			logger.userError('Failed to get user stats', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -341,7 +337,7 @@ export class UserService {
 	 */
 	async searchUsers(query: string, limit: number = 10) {
 		try {
-			this.logger.userInfo('Searching users', {
+			logger.userInfo('Searching users', {
 				context: 'UserService',
 				query,
 				limit,
@@ -384,7 +380,7 @@ export class UserService {
 				300 // Cache for 5 minutes - search results can change frequently
 			);
 		} catch (error) {
-			this.logger.userError('Failed to search users', {
+			logger.userError('Failed to search users', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				query,
@@ -400,7 +396,7 @@ export class UserService {
 	 */
 	async getUserByUsername(username: string) {
 		try {
-			this.logger.userInfo('Getting user by username', {
+			logger.userInfo('Getting user by username', {
 				context: 'UserService',
 				username,
 			});
@@ -419,7 +415,7 @@ export class UserService {
 				created_at: user.createdAt,
 			};
 		} catch (error) {
-			this.logger.userError('Failed to get user by username', {
+			logger.userError('Failed to get user by username', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				username,
@@ -435,7 +431,7 @@ export class UserService {
 	 */
 	async deleteUserAccount(userId: string) {
 		try {
-			this.logger.userInfo('Deleting user account', {
+			logger.userInfo('Deleting user account', {
 				context: 'UserService',
 				userId,
 			});
@@ -449,12 +445,17 @@ export class UserService {
 			user.isActive = false;
 			await this.userRepository.save(user);
 
+			// Invalidate all user-related cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+			await this.cacheService.delete(`user:credits:${userId}`);
+
 			return {
 				success: true,
 				message: 'Account deleted successfully',
 			};
 		} catch (error) {
-			this.logger.userError('Failed to delete user account', {
+			logger.userError('Failed to delete user account', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -469,9 +470,9 @@ export class UserService {
 	 * @param preferences User preferences
 	 * @returns Updated preferences
 	 */
-	async updateUserPreferences(userId: string, preferences: UserPreferencesUpdate) {
+	async updateUserPreferences(userId: string, preferences: Record<string, unknown>) {
 		try {
-			this.logger.userInfo('Updating user preferences', {
+			logger.userInfo('Updating user preferences', {
 				context: 'UserService',
 				userId,
 			});
@@ -482,8 +483,14 @@ export class UserService {
 			}
 
 			// Merge existing preferences with new ones
-			user.preferences = { ...user.preferences, ...preferences };
+			user.preferences = {
+				...user.preferences,
+				...preferences,
+			};
 			await this.userRepository.save(user);
+
+			// Invalidate user profile cache
+			await this.cacheService.delete(`user:profile:${userId}`);
 
 			return {
 				success: true,
@@ -491,7 +498,7 @@ export class UserService {
 				message: 'Preferences updated successfully',
 			};
 		} catch (error) {
-			this.logger.userError('Failed to update user preferences', {
+			logger.userError('Failed to update user preferences', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -506,9 +513,9 @@ export class UserService {
 	 * @param updates Updates to apply
 	 * @returns Updated user
 	 */
-	async updateUser(userId: string, updates: Partial<UserEntity>): Promise<UserEntity> {
+	async updateUser(userId: string, updates: DeepPartial<UserEntity>): Promise<UserEntity> {
 		try {
-			this.logger.userInfo('Updating user', {
+			logger.userInfo('Updating user', {
 				context: 'UserService',
 				userId,
 				fields: Object.keys(updates),
@@ -523,9 +530,13 @@ export class UserService {
 			Object.assign(user, updates);
 			const updatedUser = await this.userRepository.save(user);
 
+			// Invalidate user cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
 			return updatedUser;
 		} catch (error) {
-			this.logger.userError('Failed to update user', {
+			logger.userError('Failed to update user', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -541,7 +552,7 @@ export class UserService {
 	 */
 	async getUserByEmail(email: string) {
 		try {
-			this.logger.userInfo('Getting user by email', {
+			logger.userInfo('Getting user by email', {
 				context: 'UserService',
 				email: email.substring(0, 10) + '...',
 			});
@@ -549,7 +560,7 @@ export class UserService {
 			const user = await this.userRepository.findOne({ where: { email } });
 			return user;
 		} catch (error) {
-			this.logger.userError('Failed to get user by email', {
+			logger.userError('Failed to get user by email', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				email: email.substring(0, 10) + '...',
@@ -565,7 +576,7 @@ export class UserService {
 	 */
 	async getUserById(userId: string) {
 		try {
-			this.logger.userInfo('Getting user by ID', {
+			logger.userInfo('Getting user by ID', {
 				context: 'UserService',
 				userId,
 			});
@@ -573,7 +584,7 @@ export class UserService {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			return user;
 		} catch (error) {
-			this.logger.userError('Failed to get user by ID', {
+			logger.userError('Failed to get user by ID', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
@@ -589,7 +600,7 @@ export class UserService {
 	 */
 	async getUserByResetToken(resetToken: string) {
 		try {
-			this.logger.userInfo('Getting user by reset token', {
+			logger.userInfo('Getting user by reset token', {
 				context: 'UserService',
 				token: resetToken.substring(0, 10) + '...',
 			});
@@ -597,7 +608,7 @@ export class UserService {
 			const user = await this.userRepository.findOne({ where: { resetPasswordToken: resetToken } });
 			return user;
 		} catch (error) {
-			this.logger.userError('Failed to get user by reset token', {
+			logger.userError('Failed to get user by reset token', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				token: resetToken.substring(0, 10) + '...',
@@ -613,7 +624,7 @@ export class UserService {
 	 */
 	async findByGoogleId(googleId: string) {
 		try {
-			this.logger.userInfo('Finding user by Google ID', {
+			logger.userInfo('Finding user by Google ID', {
 				context: 'UserService',
 				googleId: googleId.substring(0, 10) + '...',
 			});
@@ -621,7 +632,7 @@ export class UserService {
 			const user = await this.userRepository.findOne({ where: { googleId } });
 			return user;
 		} catch (error) {
-			this.logger.userError('Failed to find user by Google ID', {
+			logger.userError('Failed to find user by Google ID', {
 				context: 'UserService',
 				error: error instanceof Error ? error.message : 'Unknown error',
 				googleId: googleId.substring(0, 10) + '...',
@@ -644,7 +655,7 @@ export class UserService {
 		role?: 'user' | 'admin' | 'guest';
 	}) {
 		try {
-			this.logger.userInfo('Creating new user', {
+			logger.userInfo('Creating new user', {
 				email: userData.email,
 				username: userData.username,
 			});
@@ -659,10 +670,10 @@ export class UserService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
-			this.logger.databaseCreate('user', { userId: savedUser.id, email: savedUser.email });
+			logger.databaseCreate('user', { userId: savedUser.id, email: savedUser.email });
 			return savedUser;
 		} catch (error) {
-			this.logger.userError('Failed to create user', {
+			logger.userError('Failed to create user', {
 				email: userData.email,
 				username: userData.username,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -684,7 +695,7 @@ export class UserService {
 		avatar?: string;
 	}) {
 		try {
-			this.logger.userInfo('Creating Google user', {
+			logger.userInfo('Creating Google user', {
 				googleId: userData.googleId,
 				email: userData.email,
 			});
@@ -699,10 +710,10 @@ export class UserService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
-			this.logger.databaseCreate('google_user', { userId: savedUser.id, email: savedUser.email });
+			logger.databaseCreate('google_user', { userId: savedUser.id, email: savedUser.email });
 			return savedUser;
 		} catch (error) {
-			this.logger.userError('Failed to create Google user', {
+			logger.userError('Failed to create Google user', {
 				googleId: userData.googleId,
 				email: userData.email,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -719,7 +730,7 @@ export class UserService {
 	 */
 	async linkGoogleAccount(userId: string, googleId: string) {
 		try {
-			this.logger.userInfo('Linking Google account', {
+			logger.userInfo('Linking Google account', {
 				userId,
 				googleId,
 			});
@@ -733,7 +744,7 @@ export class UserService {
 			const updatedUser = await this.userRepository.save(user);
 			return updatedUser;
 		} catch (error) {
-			this.logger.userError('Failed to link Google account', {
+			logger.userError('Failed to link Google account', {
 				userId,
 				googleId,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -769,7 +780,7 @@ export class UserService {
 			);
 
 			if (!result.success) {
-				this.logger.userWarn('Failed to store audit log', {
+				logger.userWarn('Failed to store audit log', {
 					userId,
 					action,
 					error: result.error || 'Unknown error',
@@ -781,7 +792,7 @@ export class UserService {
 				auditId: auditKey,
 			};
 		} catch (error) {
-			this.logger.userError('Failed to log user activity', {
+			logger.userError('Failed to log user activity', {
 				userId,
 				action,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -801,7 +812,7 @@ export class UserService {
 	 */
 	async getUserAuditLogs(userId: string, limit: number = 50) {
 		try {
-			this.logger.userInfo('Getting user audit logs', {
+			logger.userInfo('Getting user audit logs', {
 				userId,
 				limit,
 			});
@@ -814,7 +825,7 @@ export class UserService {
 
 			const auditKeys =
 				keysResult.data
-					?.filter(key => key.startsWith(`audit_log:${userId}:`))
+					?.filter((key: string) => key.startsWith(`audit_log:${userId}:`))
 					.sort()
 					.reverse()
 					.slice(0, limit) || [];
@@ -834,11 +845,359 @@ export class UserService {
 				total: auditLogs.length,
 			};
 		} catch (error) {
-			this.logger.userError('Failed to get user audit logs', {
+			logger.userError('Failed to get user audit logs', {
 				userId,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
 		}
 	}
+
+
+	/**
+	 * Update specific user field
+	 * @param userId User ID
+	 * @param field Field name to update
+	 * @param value New value
+	 * @returns Updated user
+	 */
+	async updateUserField(userId: string, field: keyof UserFieldUpdate | 'role' | 'currentSubscriptionId' | 'status', value: PreferenceValue): Promise<UserEntity> {
+		try {
+			logger.userInfo('Updating user field', {
+				context: 'UserService',
+				userId,
+				field,
+			});
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			// Field type mapping for validation
+			const fieldTypeMap: Record<string, { type: 'string' | 'number' | 'boolean'; fieldName?: string; minLength?: number; maxLength?: number }> = {
+				username: { type: 'string', minLength: 3 },
+				email: { type: 'string' },
+				firstName: { type: 'string' },
+				lastName: { type: 'string' },
+				phone: { type: 'string' },
+				avatar: { type: 'string' },
+				bio: { type: 'string', fieldName: 'additionalInfo', maxLength: 500 },
+				additionalInfo: { type: 'string', maxLength: 500 },
+				isActive: { type: 'boolean' },
+				agreeToNewsletter: { type: 'boolean' },
+				score: { type: 'number' },
+				credits: { type: 'number' },
+				points: { type: 'number' },
+				purchasedPoints: { type: 'number' },
+				dailyFreeQuestions: { type: 'number' },
+				remainingFreeQuestions: { type: 'number' }
+			};
+
+			// Handle special fields that are not in UserFieldUpdate
+			if (field === 'role') {
+				if (value === 'admin' || value === 'user' || value === 'guest') {
+					user.role = value;
+				} else {
+					throw new Error('Role must be admin, user, or guest');
+				}
+			} else if (field === 'currentSubscriptionId') {
+				if (typeof value === 'string' || value === null) {
+					user.currentSubscriptionId = value as string | undefined;
+				} else {
+					throw new Error('Current subscription ID must be a string or null');
+				}
+			} else if (field === 'status') {
+				const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
+				user.additionalInfo = JSON.stringify({ 
+					...currentAdditionalInfo, 
+					status: value,
+					statusUpdatedAt: new Date().toISOString()
+				});
+			} else {
+				// Use field type mapping for standard fields in UserFieldUpdate
+				if (fieldTypeMap[field]) {
+					const fieldConfig = fieldTypeMap[field];
+					const targetField = fieldConfig.fieldName || field; // Use fieldName if specified, otherwise use field key
+					
+					// Create update object with proper typing
+					const updateData: Partial<UserEntity> = {};
+					
+					switch (fieldConfig.type) {
+						case 'string':
+							updateData[targetField as keyof UserEntity] = value as never;
+							break;
+						case 'number':
+							updateData[targetField as keyof UserEntity] = Number(value) as never;
+							break;
+						case 'boolean':
+							updateData[field as keyof UserEntity] = Boolean(value) as never;
+							break;
+					}
+					
+					// Apply the update using Object.assign
+					Object.assign(user, updateData);
+				} else {
+					throw new Error(`Invalid field '${field}' for user update`);
+				}
+			}
+			const updatedUser = await this.userRepository.save(user);
+
+			return updatedUser;
+		} catch (error) {
+			logger.userError('Failed to update user field', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				field,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Update single preference
+	 * @param userId User ID
+	 * @param preference Preference name
+	 * @param value New value
+	 * @returns Updated user
+	 */
+	async updateSinglePreference(userId: string, preference: string, value: PreferenceValue): Promise<UserEntity> {
+		try {
+			logger.userInfo('Updating single preference', {
+				context: 'UserService',
+				userId,
+				preference,
+			});
+
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			// Initialize preferences if not exists
+			if (!user.preferences) {
+				user.preferences = DEFAULT_USER_PREFERENCES;
+			}
+
+			// Update the specific preference
+			user.preferences = {
+				...user.preferences,
+				[preference]: value,
+			};
+			const updatedUser = await this.userRepository.save(user);
+
+			// Invalidate user profile cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+
+			return updatedUser;
+		} catch (error) {
+			logger.userError('Failed to update single preference', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				preference,
+			});
+			throw error;
+		}
+	}
+
+
+	/**
+	 * Update user credits
+	 * @param userId User ID
+	 * @param amount Amount to add/subtract
+	 * @param reason Reason for credit change
+	 * @returns Updated user
+	 */
+	async updateUserCredits(userId: string, amount: number, reason: string): Promise<UserEntity> {
+		try {
+			logger.userInfo('Updating user credits', {
+				context: 'UserService',
+				userId,
+				amount,
+				reason,
+			});
+
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			// Update credits
+			user.credits = (user.credits || 0) + amount;
+
+			// Ensure credits don't go below 0
+			if (user.credits < 0) {
+				user.credits = 0;
+			}
+
+			const updatedUser = await this.userRepository.save(user);
+
+			// Invalidate user credits cache
+			await this.cacheService.delete(`user:credits:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
+			// Log credit change
+			logger.userInfo('User credits updated', {
+				context: 'UserService',
+				userId,
+				oldCredits: (user.credits || 0) - amount,
+				newCredits: updatedUser.credits,
+				change: amount,
+				reason,
+			});
+
+			return updatedUser;
+		} catch (error) {
+			logger.userError('Failed to update user credits', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				amount,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Update user status
+	 * @param userId User ID
+	 * @param status New status
+	 * @returns Updated user
+	 */
+	async updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<UserEntity> {
+		try {
+			logger.userInfo('Updating user status', {
+				context: 'UserService',
+				userId,
+				status,
+			});
+
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			// Update status by mapping to isActive field or storing in additionalInfo
+			if (status === 'active') {
+				user.isActive = true;
+			} else if (status === 'suspended' || status === 'banned') {
+				user.isActive = false;
+			}
+
+			// Store detailed status in additionalInfo
+			const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
+			user.additionalInfo = JSON.stringify({
+				...currentAdditionalInfo,
+				status: status,
+				statusUpdatedAt: new Date().toISOString()
+			});
+			const updatedUser = await this.userRepository.save(user);
+
+			// Invalidate user cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
+			// Log status change
+			logger.userInfo('User status updated', {
+				context: 'UserService',
+				userId,
+				newStatus: status,
+			});
+
+			return updatedUser;
+		} catch (error) {
+			logger.userError('Failed to update user status', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				status,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user credits
+	 * @param userId User ID
+	 * @returns User credits
+	 */
+	async getUserCredits(userId: string): Promise<number> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				select: ['id', 'credits'],
+			});
+
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			return user.credits || 0;
+		} catch (error) {
+			logger.userError('Failed to get user credits', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Deduct user credits
+	 * @param userId User ID
+	 * @param amount Amount to deduct
+	 * @param reason Reason for deduction
+	 * @returns Updated user credits
+	 */
+	async deductCredits(userId: string, amount: number, reason: string): Promise<{ credits: number; deducted: number }> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				select: ['id', 'credits'],
+			});
+
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			const currentCredits = user.credits || 0;
+			if (currentCredits < amount) {
+				throw new BadRequestException('Insufficient credits');
+			}
+
+			const newCredits = currentCredits - amount;
+			user.credits = newCredits;
+			await this.userRepository.save(user);
+
+			// Invalidate user credits cache
+			await this.cacheService.delete(`user:credits:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
+			logger.userInfo('Credits deducted', {
+				context: 'UserService',
+				userId,
+				amount,
+				reason,
+				previousCredits: currentCredits,
+				newCredits,
+			});
+
+			return {
+				credits: newCredits,
+				deducted: amount,
+			};
+		} catch (error) {
+			logger.userError('Failed to deduct credits', {
+				context: 'UserService',
+				error: error instanceof Error ? error.message : 'Unknown error',
+				userId,
+				amount,
+				reason,
+			});
+			throw error;
+		}
+	}
 }
+

@@ -2,8 +2,8 @@
  * Prompt templates for trivia question generation
  * Centralized prompt management for all LLM providers
  */
-import { DifficultyLevel } from '@shared/constants/game.constants';
-import { PromptParams } from 'everytriv-shared/types';
+import { DifficultyLevel } from '@shared';
+import { PromptParams } from '@shared';
 
 export class PromptTemplates {
 	/**
@@ -32,14 +32,14 @@ DIFFICULTY GUIDELINES:
 - "easy": Basic knowledge, widely known facts, general awareness
 - "medium": Requires some specific knowledge, reasoning, or context
 - "hard": Specialized knowledge, complex reasoning, or obscure facts required
-- Custom levels (e.g., "university level physics"): Match the specified expertise level exactly
+- Custom levels: Match the specified expertise level exactly
 
 If the difficulty is a custom description (not just "easy", "medium", or "hard"), interpret it carefully to create an appropriately challenging question that matches the described level of expertise or knowledge.
 
-For example:
-- "university level physics" should include advanced concepts, formulas, or theoretical knowledge
-- "professional chef knowledge" should include advanced culinary techniques, ingredients, or methods
-- "elementary school geography" should be basic, age-appropriate, and widely known
+Examples:
+- Advanced levels should include complex concepts, formulas, or theoretical knowledge
+- Professional levels should include advanced techniques, methods, or specialized knowledge
+- Basic levels should be fundamental, age-appropriate, and widely known
 
 ANSWER DISTRIBUTION:
 - Generate exactly ${answerCount} answer options
@@ -61,7 +61,7 @@ Since this is a custom difficulty, please map it to one of the standard difficul
 Respond in the following JSON format with exactly ${answerCount} answer options:
 {
   "question": "<clear, well-formed question ending with ?>",
-  "answers": ["<correct answer first>", ${Array.from({ length: answerCount - 1 }, (_, i) => `"<plausible wrong answer ${i + 1}>"`).join(', ')}],
+		"answers": ["<correct answer first>", ${Array.from({ length: (answerCount || 4) - 1 }, (_, index) => `"<plausible wrong answer ${index + 1}>"`).join(', ')}],
   "explanation": "<brief explanation of why the correct answer is right and why others are wrong>"
   ${isCustomDifficulty ? `,\n  "mappedDifficulty": "<${DifficultyLevel.EASY}|${DifficultyLevel.MEDIUM}|${DifficultyLevel.HARD}>"` : ''}
 }

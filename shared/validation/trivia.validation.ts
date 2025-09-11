@@ -3,32 +3,12 @@
  *
  * @module TriviaValidation
  * @description Shared validation functions for trivia game input validation
- * @version 1.0.0
  * @author EveryTriv Team
  */
 import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES } from '../constants';
 import { validateTopicLength } from './validation.utils';
+import type { SharedTriviaInputValidation } from '../types/domain/validation/validation.types';
 
-/**
- * Interface for trivia input validation results
- *
- * @interface SharedTriviaInputValidation
- * @description Structure for validation results across topic, difficulty, and overall validation
- */
-export interface SharedTriviaInputValidation {
-	topic: {
-		isValid: boolean;
-		errors: string[];
-	};
-	difficulty: {
-		isValid: boolean;
-		errors: string[];
-	};
-	overall: {
-		isValid: boolean;
-		canProceed: boolean;
-	};
-}
 
 /**
  * Performs quick validation for trivia input without external API calls

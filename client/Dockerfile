@@ -13,8 +13,8 @@ COPY pnpm-lock.yaml ./
 
 # Copy all packages
 COPY client/ ./client/
-COPY shared/ ./shared/
 COPY server/ ./server/
+COPY shared/ ./shared/
 
 # Copy .npmrc for pnpm configuration
 COPY .npmrc ./
@@ -22,9 +22,6 @@ COPY .npmrc ./
 # Install all dependencies at workspace level
 RUN pnpm install
 
-# Build shared package first
-WORKDIR /app/shared
-RUN pnpm run build
 
 # Switch back to client directory and build
 WORKDIR /app/client
@@ -39,8 +36,8 @@ COPY --from=builder /app/client/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY client/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80
-EXPOSE 80
+# Expose port 3000
+EXPOSE 3000
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

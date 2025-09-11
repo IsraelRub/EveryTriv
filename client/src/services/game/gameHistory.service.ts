@@ -12,10 +12,10 @@ import {
 	LeaderboardEntry,
 	UserRankData,
 	UserStatsData,
-} from 'everytriv-shared/types';
+} from '@shared';
 
 import { apiService } from '../api';
-import { loggerService } from '../utils';
+import { clientLogger } from '@shared';
 
 /**
  * Main game history service class
@@ -32,7 +32,7 @@ class ClientGameHistoryService {
 	 */
 	async saveGameResult(gameData: GameHistoryRequest): Promise<GameHistoryEntry> {
 		try {
-			loggerService.gameStatistics('Saving game result to history', {
+			clientLogger.gameStatistics('Saving game result to history', {
 				score: gameData.score,
 				totalQuestions: gameData.totalQuestions,
 				correctAnswers: gameData.correctAnswers,
@@ -42,13 +42,38 @@ class ClientGameHistoryService {
 				...gameData,
 				topic: gameData.topic || 'General Knowledge',
 				timeSpent: gameData.timeSpent || 0,
+				creditsUsed: gameData.creditsUsed || 0,
+				questionsData: gameData.questionsData || [],
 			};
-			const gameHistory = (await apiService.saveGameHistory(gameHistoryDto)) as unknown as GameHistoryEntry;
+			await apiService.saveGameHistory(gameHistoryDto);
 
-			loggerService.gameStatistics('Game result saved successfully', { gameId: gameHistory.id });
+			// Create a GameHistoryEntry since saveGameHistory returns void
+			const gameHistory: GameHistoryEntry = {
+				id: `game_${Date.now()}`,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				topic: gameData.topic || 'General Knowledge',
+				difficulty: gameData.difficulty,
+				gameMode: gameData.gameMode,
+				userId: gameData.userId,
+				score: gameData.score,
+				totalQuestions: gameData.totalQuestions,
+				correctAnswers: gameData.correctAnswers,
+				timeSpent: gameData.timeSpent || 0,
+				creditsUsed: gameData.creditsUsed || 0,
+				questionsData: (gameData.questionsData || []).map(q => ({
+					question: q.question,
+					userAnswer: q.userAnswer,
+					correctAnswer: q.correctAnswer,
+					isCorrect: q.isCorrect,
+					timeSpent: q.timeSpent
+				}))
+			};
+
+			clientLogger.gameStatistics('Game result saved successfully', { gameId: gameHistory.id });
 			return gameHistory;
 		} catch (error) {
-			loggerService.gameError('Failed to save game result', { error, gameData });
+			clientLogger.gameError('Failed to save game result', { error, gameData });
 			throw error;
 		}
 	}
@@ -58,16 +83,16 @@ class ClientGameHistoryService {
 	 */
 	async getUserGameHistory(limit: number = 20, offset: number = 0): Promise<GameHistoryEntry[]> {
 		try {
-			loggerService.gameStatistics('Getting user game history', { limit, offset });
+			clientLogger.gameStatistics('Getting user game history', { limit, offset });
 
 			const gameHistory = (await apiService.getUserGameHistory(limit, offset)) as GameHistoryEntry[];
 
-			loggerService.gameStatistics('User game history retrieved successfully', {
+			clientLogger.gameStatistics('User game history retrieved successfully', {
 				count: gameHistory.length,
 			});
 			return gameHistory;
 		} catch (error) {
-			loggerService.gameError('Failed to get user game history', { error, limit, offset });
+			clientLogger.gameError('Failed to get user game history', { error, limit, offset });
 			throw error;
 		}
 	}
@@ -77,16 +102,16 @@ class ClientGameHistoryService {
 	 */
 	async getLeaderboard(limit: number = 10): Promise<LeaderboardEntry[]> {
 		try {
-			loggerService.gameStatistics('Getting leaderboard', { limit });
+			clientLogger.gameStatistics('Getting leaderboard', { limit });
 
 			const leaderboard = await apiService.getLeaderboardEntries(limit);
 
-			loggerService.gameStatistics('Leaderboard retrieved successfully', {
+			clientLogger.gameStatistics('Leaderboard retrieved successfully', {
 				entries: leaderboard.length,
 			});
 			return leaderboard;
 		} catch (error) {
-			loggerService.gameError('Failed to get leaderboard', { error, limit });
+			clientLogger.gameError('Failed to get leaderboard', { error, limit });
 			throw error;
 		}
 	}
@@ -96,14 +121,14 @@ class ClientGameHistoryService {
 	 */
 	async getUserRank(): Promise<UserRankData | null> {
 		try {
-			loggerService.gameStatistics('Getting user rank');
+			clientLogger.gameStatistics('Getting user rank');
 
 			const userRank = (await apiService.getUserRank()) as UserRankData | null;
 
-			loggerService.gameStatistics('User rank retrieved successfully', { rank: userRank?.rank });
+			clientLogger.gameStatistics('User rank retrieved successfully', { rank: userRank?.rank });
 			return userRank;
 		} catch (error) {
-			loggerService.gameError('Failed to get user rank', { error });
+			clientLogger.gameError('Failed to get user rank', { error });
 			throw error;
 		}
 	}
@@ -113,14 +138,15 @@ class ClientGameHistoryService {
 	 */
 	async getUserStats(): Promise<UserStatsData> {
 		try {
-			loggerService.gameStatistics('Getting user statistics');
+			clientLogger.gameStatistics('Getting user statistics');
 
-			const userStats = (await apiService.getUserStats()) as unknown as UserStatsData;
-
-			loggerService.gameStatistics('User statistics retrieved successfully');
+			const userStats = await apiService.getUserStats();
+			
+			// UserStats is already UserStatsData format, no conversion needed
+			clientLogger.gameStatistics('User statistics retrieved successfully');
 			return userStats;
 		} catch (error) {
-			loggerService.gameError('Failed to get user statistics', { error });
+			clientLogger.gameError('Failed to get user statistics', { error });
 			throw error;
 		}
 	}
@@ -130,16 +156,16 @@ class ClientGameHistoryService {
 	 */
 	async getGameById(gameId: string): Promise<GameHistoryEntry> {
 		try {
-			loggerService.gameStatistics('Getting game by ID', { gameId });
+			clientLogger.gameStatistics('Getting game by ID', { gameId });
 
 			const response = await apiService.get<GameHistoryEntry>(`/game-history/${gameId}`);
 
-			loggerService.gameStatistics('Game retrieved successfully', {
+			clientLogger.gameStatistics('Game retrieved successfully', {
 				gameId,
 			});
 			return response.data;
 		} catch (error) {
-			loggerService.gameError('Failed to get game by ID', { error, gameId });
+			clientLogger.gameError('Failed to get game by ID', { error, gameId });
 			throw error;
 		}
 	}

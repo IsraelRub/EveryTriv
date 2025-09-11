@@ -4,42 +4,46 @@
  * @module GameModule
  * @description Core game module handling trivia game logic, scoring, and AI providers management
  * @used_by server/app, server/controllers
- * @dependencies TypeOrmModule, AnalyticsModule, CacheModule, StorageModule
- * @provides GameService, ScoringService, AiProvidersService
+ * @dependencies TypeOrmModule, AnalyticsModule, CacheModule, StorageModule, UserModule
+ * @provides GameService, AiProvidersService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ValidationService } from '../../common';
-import { LoggerService } from '../../shared/controllers';
-import { GameHistoryEntity } from '../../shared/entities/gameHistory.entity';
-import { TriviaEntity } from '../../shared/entities/trivia.entity';
-import { UserEntity } from '../../shared/entities/user.entity';
-import { CacheModule, StorageModule } from '../../shared/modules';
+import { ValidationModule } from '../../common/validation/validation.module';
+import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
+import { CacheModule, StorageModule } from 'src/internal/modules';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { AiProvidersService } from './logic/providers/management';
-import { ScoringService } from './logic/scoring';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
+import { CustomDifficultyPipe, TriviaQuestionPipe, GameAnswerPipe, TriviaRequestPipe, LanguageValidationPipe } from '../../common/pipes';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([UserEntity, GameHistoryEntity, TriviaEntity]),
+		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity, TriviaEntity]),
 		AnalyticsModule,
+		AuthModule,
 		CacheModule,
 		StorageModule,
+		ValidationModule,
+		UserModule,
 	],
 	controllers: [GameController],
 	providers: [
 		GameService,
 		TriviaGenerationService,
-		ScoringService,
 		AiProvidersService,
-		ValidationService,
-		LoggerService,
+		CustomDifficultyPipe,
+		TriviaQuestionPipe,
+		GameAnswerPipe,
+		TriviaRequestPipe,
+		LanguageValidationPipe,
 	],
-	exports: [GameService, ScoringService, AiProvidersService],
+	exports: [GameService, AiProvidersService],
 })
 export class GameModule {}

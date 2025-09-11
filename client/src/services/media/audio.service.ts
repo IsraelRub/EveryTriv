@@ -7,7 +7,8 @@ import {
 	DEFAULT_CATEGORY_VOLUMES,
 } from '../../constants';
 import { AudioServiceInterface } from '../../types';
-import { loggerService } from '../utils';
+import { clientLogger } from '@shared';
+import type { ServerUserPreferences } from '@shared/types/domain/user/user.types';
 
 /**
  * Enhanced Audio Service for EveryTriv
@@ -23,13 +24,14 @@ export class AudioService implements AudioServiceInterface {
 	private volumes: Map<AudioKey, number> = new Map();
 	private categoryVolumes: Map<AudioCategory, number>;
 	private userInteracted = false;
+	private userPreferences: ServerUserPreferences | null = null;
 
 	constructor() {
 		// Initialize category volumes
 		this.categoryVolumes = new Map(Object.entries(DEFAULT_CATEGORY_VOLUMES) as [AudioCategory, number][]);
 
-		// Preload all audio files
-		this.preloadAllAudio();
+		// Preload essential audio files only
+		this.preloadEssentialAudio();
 
 		// Listen for first user interaction to enable audio
 		this.setupUserInteractionListener();
@@ -57,55 +59,30 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	/**
-	 * Preload all audio files defined in AUDIO_PATHS
+	 * Preload only essential audio files for immediate use
 	 */
-	private preloadAllAudio(): void {
-		Object.entries(AUDIO_PATHS).forEach(([key, path]) => {
-			const audioKey = key as AudioKey;
-			const category = AUDIO_CATEGORIES[audioKey];
-			const defaultVolume = this.categoryVolumes.get(category) || 0.7;
-			const config = AUDIO_CONFIG[audioKey] || {};
+	private preloadEssentialAudio(): void {
+		const essentialKeys: AudioKey[] = [
+			AudioKey.CLICK,
+			AudioKey.POP,
+			AudioKey.HOVER,
+			AudioKey.BACKGROUND_MUSIC,
+			AudioKey.GAME_MUSIC
+		];
 
-			// Use original path without cache busting for better compatibility
-			const finalPath = path;
+		essentialKeys.forEach(key => {
+			const path = AUDIO_PATHS[key];
+			if (path) {
+				const category = AUDIO_CATEGORIES[key];
+				const defaultVolume = this.categoryVolumes.get(category) || 0.7;
+				const config = AUDIO_CONFIG[key] || {};
 
-			// Check if file exists before preloading
-			this.checkAndPreloadAudio(audioKey, finalPath, {
-				volume: config.volume || defaultVolume,
-				loop: config.loop || false,
-			});
+				this.preloadAudioInternal(key, path, {
+					volume: config.volume || defaultVolume,
+					loop: config.loop || false,
+				});
+			}
 		});
-	}
-
-	/**
-	 * Check if audio file exists and preload if it does
-	 */
-	private async checkAndPreloadAudio(
-		key: AudioKey,
-		src: string,
-		config: { volume?: number; loop?: boolean }
-	): Promise<void> {
-		try {
-			// Check if file exists using fetch
-			const response = await fetch(src, { method: 'HEAD' });
-			if (response.ok) {
-				this.preloadAudioInternal(key, src, config);
-			} else {
-				// Only log if it's not a fallback sound (to reduce noise)
-				if (!src.includes('fallback')) {
-					loggerService.audioFallback(key, {
-						key,
-						src,
-						status: response.status,
-					});
-				}
-			}
-		} catch (error) {
-			// Only log if it's not a fallback sound (to reduce noise)
-			if (!src.includes('fallback')) {
-				loggerService.mediaDebug(`Failed to check audio file: ${key} (${src})`, { key, src, error });
-			}
-		}
 	}
 
 	/**
@@ -122,8 +99,7 @@ export class AudioService implements AudioServiceInterface {
 
 		// Add error handling for loading
 		audio.addEventListener('error', e => {
-			loggerService.mediaError(`Failed to load audio file: ${key} (${src})`, { error: e, key, src });
-			// Don't retry automatically to avoid infinite loops
+			clientLogger.mediaError(`Failed to load audio file: ${key} (${src})`, { error: e, key, src });
 		});
 
 		// Store audio element and volume first
@@ -136,12 +112,59 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	/**
+	 * Load audio file on demand if not already loaded
+	 */
+	private ensureAudioLoaded(key: AudioKey): HTMLAudioElement | null {
+		let audio = this.audioElements.get(key);
+		
+		if (!audio) {
+			const path = AUDIO_PATHS[key];
+			if (path) {
+				const category = AUDIO_CATEGORIES[key];
+				const defaultVolume = this.categoryVolumes.get(category) || 0.7;
+				const config = AUDIO_CONFIG[key] || {};
+
+				this.preloadAudioInternal(key, path, {
+					volume: config.volume || defaultVolume,
+					loop: config.loop || false,
+				});
+				audio = this.audioElements.get(key);
+			}
+		}
+
+		return audio || null;
+	}
+
+	/**
+	 * Set user preferences for audio control
+	 */
+	public setUserPreferences(preferences: ServerUserPreferences | null): void {
+		this.userPreferences = preferences;
+		clientLogger.userDebug('Audio preferences updated', { 
+			soundEnabled: preferences?.soundEnabled,
+			musicEnabled: preferences?.musicEnabled 
+		});
+	}
+
+	/**
 	 * Play a sound
 	 */
 	public play(key: AudioKey): void {
-		const audio = this.audioElements.get(key);
+		const audio = this.ensureAudioLoaded(key);
 		if (!audio) {
-			loggerService.mediaWarn(`Audio not found: ${key}`, { key, availableKeys: Array.from(this.audioElements.keys()) });
+			clientLogger.mediaWarn(`Audio not found: ${key}`, { key, availableKeys: Array.from(this.audioElements.keys()) });
+			return;
+		}
+
+		// Check user preferences for sound effects
+		if (AUDIO_CATEGORIES[key] === AudioCategory.EFFECTS && 
+			this.userPreferences && !this.userPreferences.soundEnabled) {
+			return;
+		}
+
+		// Check user preferences for music
+		if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC && 
+			this.userPreferences && !this.userPreferences.musicEnabled) {
 			return;
 		}
 
@@ -156,9 +179,9 @@ export class AudioService implements AudioServiceInterface {
 			audio.play().catch(err => {
 				// Handle autoplay restrictions gracefully
 				if (err.name === 'NotAllowedError') {
-					loggerService.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
+					clientLogger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
 				} else {
-					loggerService.audioError(key, err.message, { key, error: err });
+					clientLogger.audioError(key, err.message, { key, error: err });
 				}
 			});
 			return;
@@ -170,9 +193,9 @@ export class AudioService implements AudioServiceInterface {
 		clone.play().catch(err => {
 			// Handle autoplay restrictions gracefully
 			if (err.name === 'NotAllowedError') {
-				loggerService.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
+				clientLogger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, { key, error: err });
 			} else {
-				loggerService.audioError(key, err.message, { key, error: err });
+				clientLogger.audioError(key, err.message, { key, error: err });
 			}
 		});
 
@@ -276,105 +299,6 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	/**
-	 * Reload a specific audio file (useful for cache issues)
-	 */
-	public reloadAudio(key: AudioKey): void {
-		const src = AUDIO_PATHS[key];
-		if (!src) {
-			loggerService.mediaWarn(`No audio path found for key: ${key}`);
-			return;
-		}
-
-		const category = AUDIO_CATEGORIES[key];
-		const defaultVolume = this.categoryVolumes.get(category) || 0.7;
-		const config = AUDIO_CONFIG[key] || {};
-
-		// Remove old audio element
-		const oldAudio = this.audioElements.get(key);
-		if (oldAudio) {
-			oldAudio.pause();
-			oldAudio.src = '';
-			this.audioElements.delete(key);
-		}
-
-		// Try different loading strategies based on file type
-		let cacheBustingSrc = src;
-
-		if (import.meta.env.DEV) {
-			// For MP3 files, try without cache busting first
-			if (src.endsWith('.mp3')) {
-				cacheBustingSrc = src;
-			} else {
-				// For other files, use cache busting
-				cacheBustingSrc = `${src}?v=${Date.now()}`;
-			}
-		}
-
-		// Reload with new instance
-		this.preloadAudioInternal(key, cacheBustingSrc, {
-			volume: config.volume || defaultVolume,
-			loop: config.loop || false,
-		});
-	}
-
-	/**
-	 * Try alternative loading strategy for problematic audio files
-	 */
-	public tryAlternativeLoading(key: AudioKey): void {
-		const src = AUDIO_PATHS[key];
-		if (!src) return;
-
-		const category = AUDIO_CATEGORIES[key];
-		const defaultVolume = this.categoryVolumes.get(category) || 0.7;
-		const config = AUDIO_CONFIG[key] || {};
-
-		// Remove existing audio element
-		const oldAudio = this.audioElements.get(key);
-		if (oldAudio) {
-			oldAudio.pause();
-			oldAudio.src = '';
-			this.audioElements.delete(key);
-		}
-
-		// Create new audio element with different strategy
-		const audio = new Audio();
-		audio.volume = this.isMuted ? 0 : config.volume || defaultVolume;
-		audio.loop = config.loop || false;
-
-		// Try different preload strategies
-		audio.preload = 'none'; // Don't preload, load on demand
-		audio.crossOrigin = 'anonymous'; // Try with CORS
-
-		// Store first, then set src
-		this.audioElements.set(key, audio);
-		this.volumes.set(key, config.volume || defaultVolume);
-
-		// Load the audio file
-		audio.addEventListener('error', e => {
-			loggerService.mediaWarn(`Alternative loading also failed for ${key}:`, { error: e });
-		});
-
-		// audio.addEventListener('loadstart', () => {
-		//   loggerService.debug(`Started alternative loading for ${key}`);
-		// });
-
-		// audio.addEventListener('canplay', () => {
-		//   loggerService.debug(`Alternative loading successful for ${key}`);
-		// });
-
-		audio.src = src;
-	}
-
-	/**
-	 * Reload all audio files (useful for cache issues)
-	 */
-	public reloadAllAudio(): void {
-		Object.keys(AUDIO_PATHS).forEach(key => {
-			this.reloadAudio(key as AudioKey);
-		});
-	}
-
-	/**
 	 * Set volume for an entire category of sounds
 	 */
 	public setCategoryVolume(category: AudioCategory, volume: number): void {
@@ -390,6 +314,34 @@ export class AudioService implements AudioServiceInterface {
 				audio.volume = soundVolume * volume;
 			}
 		});
+	}
+
+	/**
+	 * Play achievement sound based on score and total
+	 * @param score Current score
+	 * @param total Total possible score
+	 * @param previousScore Previous score to determine increase
+	 */
+	public playAchievementSound(score: number, total: number, previousScore: number): void {
+		if (score <= previousScore) return;
+		
+		const scoreIncrease = score - previousScore;
+		const percentage = (score / total) * 100;
+		
+		// Play different sounds based on achievement level
+		if (percentage >= 100) {
+			this.play(AudioKey.NEW_ACHIEVEMENT);
+		} else if (percentage >= 80) {
+			this.play(AudioKey.LEVEL_UP);
+		} else if (scoreIncrease >= 5) {
+			this.play(AudioKey.POINT_STREAK);
+		} else if (scoreIncrease >= 2) {
+			this.play(AudioKey.POINT_EARNED);
+		} else if (scoreIncrease >= 1) {
+			this.play(AudioKey.ACHIEVEMENT);
+		} else {
+			this.play(AudioKey.CLICK);
+		}
 	}
 
 	// Implement AudioServiceInterface methods

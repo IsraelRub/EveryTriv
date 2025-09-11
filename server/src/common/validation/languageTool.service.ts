@@ -1,22 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { VALIDATION_ERROR_MESSAGES } from 'everytriv-shared/constants/error.constants';
-import { LANGUAGE_TOOL_CONSTANTS } from 'everytriv-shared/constants/language.constants';
-import {
-	LanguageToolConfig,
-	LanguageToolResponse,
-	LanguageValidationOptions,
-	SupportedLanguage,
-} from 'everytriv-shared/types/language.types';
-
-import { LoggerService } from '../../shared/controllers';
+import { VALIDATION_ERROR_MESSAGES, LANGUAGE_TOOL_CONSTANTS, LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions, SupportedLanguage } from '@shared';
+import { serverLogger as logger } from '@shared';
+// import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
 @Injectable()
 export class LanguageToolService {
-	private readonly logger: LoggerService;
+	;
 	private readonly config: LanguageToolConfig;
 
 	constructor() {
-		this.logger = new LoggerService();
 		this.config = {
 			baseUrl: LANGUAGE_TOOL_CONSTANTS.BASE_URL,
 			apiKey: process.env.LANGUAGE_TOOL_API_KEY,
@@ -24,7 +16,7 @@ export class LanguageToolService {
 			maxRetries: LANGUAGE_TOOL_CONSTANTS.MAX_RETRIES,
 		};
 
-		this.logger.languageToolServiceInit({
+		logger.languageToolServiceInit({
 			baseUrl: this.config.baseUrl,
 			hasApiKey: !!this.config.apiKey,
 			timeout: this.config.timeout || 5000,
@@ -44,7 +36,7 @@ export class LanguageToolService {
 		} = options;
 
 		try {
-			this.logger.languageToolDebug(`Starting text validation`, {
+			logger.languageToolDebug(`Starting text validation`, {
 				textLength: text.length,
 				language,
 				enableSpellCheck,
@@ -71,7 +63,7 @@ export class LanguageToolService {
 				headers['Authorization'] = `ApiKey ${this.config.apiKey}`;
 			}
 
-			this.logger.languageToolApiRequest(url.replace(this.config.apiKey || '', '[REDACTED]'), language, {
+			logger.languageToolApiRequest(url.replace(this.config.apiKey || '', '[REDACTED]'), language, {
 				headers: Object.keys(headers),
 			});
 
@@ -82,7 +74,7 @@ export class LanguageToolService {
 
 			if (!response.ok) {
 				const errorMessage = `${VALIDATION_ERROR_MESSAGES.LANGUAGETOOL_API_ERROR}: ${response.status} ${response.statusText}`;
-				this.logger.languageToolApiError(response.status, response.statusText, {
+				logger.languageToolApiError(response.status, response.statusText, {
 					url: url.replace(this.config.apiKey || '', '[REDACTED]'),
 				});
 				throw new Error(errorMessage);
@@ -90,7 +82,7 @@ export class LanguageToolService {
 
 			const result: LanguageToolResponse = await response.json();
 
-			this.logger.languageToolValidation(text.length, language, result.matches.length, {
+			logger.languageToolValidation(text.length, language, result.matches.length, {
 				enableSpellCheck,
 				enableGrammarCheck,
 			});
@@ -98,7 +90,7 @@ export class LanguageToolService {
 			return result;
 		} catch (error) {
 			const errorMessage = `LanguageTool API error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-			this.logger.languageToolError(errorMessage, {
+			logger.languageToolError(errorMessage, {
 				language,
 				textLength: text.length,
 				error: error instanceof Error ? error.stack : 'Unknown error type',
@@ -125,7 +117,7 @@ export class LanguageToolService {
 			);
 		}
 
-		this.logger.languageToolDebug(`Built enableOnly parameter`, {
+		logger.languageToolDebug(`Built enableOnly parameter`, {
 			enableSpellCheck,
 			enableGrammarCheck,
 			rulesCount: rules.length,
@@ -140,13 +132,13 @@ export class LanguageToolService {
 	 */
 	async getSupportedLanguages(): Promise<SupportedLanguage[]> {
 		try {
-			this.logger.languageToolInfo('Fetching supported languages');
+			logger.languageToolInfo('Fetching supported languages');
 
 			const response = await fetch(`${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.LANGUAGES}`);
 
 			if (!response.ok) {
 				const errorMessage = `${VALIDATION_ERROR_MESSAGES.FAILED_TO_FETCH_LANGUAGES}: ${response.status}`;
-				this.logger.languageToolApiError(response.status, response.statusText);
+				logger.languageToolApiError(response.status, response.statusText);
 				throw new Error(errorMessage);
 			}
 
@@ -156,14 +148,14 @@ export class LanguageToolService {
 				code: lang.longCode || lang.code,
 			}));
 
-			this.logger.languageToolLanguagesFetched(supportedLanguages.length, {
+			logger.languageToolLanguagesFetched(supportedLanguages.length, {
 				languages: supportedLanguages.map((lang: SupportedLanguage) => lang.name),
 			});
 
 			return supportedLanguages;
 		} catch (error) {
 			const errorMessage = `Failed to get supported languages: ${error instanceof Error ? error.message : 'Unknown error'}`;
-			this.logger.languageToolError(errorMessage, {
+			logger.languageToolError(errorMessage, {
 				error: error instanceof Error ? error.stack : 'Unknown error type',
 			});
 
@@ -176,7 +168,7 @@ export class LanguageToolService {
 				{ name: 'German', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.GERMAN },
 			];
 
-			this.logger.languageToolFallbackLanguages(fallbackLanguages.length, {
+			logger.languageToolFallbackLanguages(fallbackLanguages.length, {
 				languages: fallbackLanguages.map((lang: SupportedLanguage) => lang.name),
 			});
 
@@ -189,23 +181,23 @@ export class LanguageToolService {
 	 */
 	async isAvailable(): Promise<boolean> {
 		try {
-			this.logger.languageToolDebug('Checking service availability');
+			logger.languageToolDebug('Checking service availability');
 
 			const response = await fetch(`${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: 'text=test&language=en',
+				body: 'text=sample&language=en',
 			});
 
 			const isAvailable = response.ok;
 
-			this.logger.languageToolAvailabilityCheck(isAvailable, response.status, {
+			logger.languageToolAvailabilityCheck(isAvailable, response.status, {
 				statusText: response.statusText,
 			});
 
 			return isAvailable;
 		} catch (error) {
-			this.logger.languageToolError('Service availability check failed', {
+			logger.languageToolError('Service availability check failed', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			return false;

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { LoggerService } from '@shared/modules';
+import { serverLogger as logger } from '@shared';
+import { Public, Roles } from '../../../../../common';
 
 import { AiProvidersService } from './providers.service';
 
@@ -10,8 +11,7 @@ import { AiProvidersService } from './providers.service';
 @Controller('api/ai-providers')
 export class AiProvidersController {
 	constructor(
-		private readonly aiProvidersService: AiProvidersService,
-		private readonly logger: LoggerService
+		private readonly aiProvidersService: AiProvidersService
 	) {}
 
 	/**
@@ -19,9 +19,10 @@ export class AiProvidersController {
 	 * @returns Promise<ProviderStats> Provider statistics
 	 */
 	@Get('stats')
+	@Roles('admin', 'super-admin')
 	async getProviderStats() {
 		try {
-			this.logger.providerStats('ai_providers', {});
+			logger.providerStats('ai_providers', {});
 
 			const stats = this.aiProvidersService.getProviderStats();
 
@@ -30,7 +31,7 @@ export class AiProvidersController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.providerError('ai_providers', 'Failed to get provider statistics', {
+			logger.providerError('ai_providers', 'Failed to get provider statistics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -42,9 +43,10 @@ export class AiProvidersController {
 	 * @returns Promise<number> Number of available providers
 	 */
 	@Get('count')
+	@Roles('admin', 'super-admin')
 	async getAvailableProvidersCount() {
 		try {
-			this.logger.providerStats('ai_providers', {});
+			logger.providerStats('ai_providers', {});
 
 			const count = this.aiProvidersService.getAvailableProvidersCount();
 
@@ -53,7 +55,7 @@ export class AiProvidersController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.providerError('ai_providers', 'Failed to get providers count', {
+			logger.providerError('ai_providers', 'Failed to get providers count', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 			throw error;
@@ -70,6 +72,7 @@ export class AiProvidersController {
 	 * }> - Health status
 	 */
 	@Get('health')
+	@Public()
 	async getHealthStatus() {
 		try {
 			const count = this.aiProvidersService.getAvailableProvidersCount();
@@ -82,7 +85,7 @@ export class AiProvidersController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.providerError('ai_providers', 'Health check failed', {
+			logger.providerError('ai_providers', 'Health check failed', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 

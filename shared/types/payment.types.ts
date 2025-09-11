@@ -1,49 +1,17 @@
 /**
- * Payment-related types shared between client and server
- *
- * @module PaymentTypes
- * @description Payment and subscription type definitions
- * @used_by server: server/src/features/payment/services/payment.service.ts (PaymentService), client: client/src/views/payment/PaymentView.tsx (PaymentView), shared/services/storage.service.ts (payment data storage)
+ * Payment Interfaces
+ * @module PaymentInterfaces
+ * @description Payment-related interfaces and types
  */
-import { UserAddress } from './user.types';
-
-// Payment status enum (shared between client and server)
-export enum PaymentStatus {
-	SUCCEEDED = 'succeeded',
-	PENDING = 'pending',
-	FAILED = 'failed',
-	CANCELLED = 'cancelled',
-}
-
-// Payment method enum (shared between client and server)
-export enum PaymentMethod {
-	STRIPE = 'stripe',
-	PAYPAL = 'paypal',
-	MANUAL = 'manual',
-}
-
-// Subscription status enum (shared between client and server)
-export enum SubscriptionStatus {
-	ACTIVE = 'active',
-	PENDING = 'pending',
-	CANCELLED = 'cancelled',
-	EXPIRED = 'expired',
-	PAST_DUE = 'past_due',
-	UNPAID = 'unpaid',
-}
-
-// Payment type enum (shared between client and server)
-export enum PaymentType {
-	SUBSCRIPTION = 'subscription',
-	POINTS_PURCHASE = 'points_purchase',
-	ONE_TIME = 'one_time',
-}
+import type { UserAddress } from './domain/user/user.types';
 
 /**
  * Payment metadata interface
  * @interface PaymentMetadata
  * @description Metadata specific to payment operations
  */
+// Payment metadata is now self-contained without server-specific metadata
+
 export interface PaymentMetadata {
 	subscriptionId?: string;
 	plan?: string;
@@ -59,6 +27,22 @@ export interface PaymentMetadata {
 	packageId?: string;
 	points?: number;
 	bonus?: number;
+	// Optional metadata fields
+	created_at?: Date;
+	updated_at?: Date;
+	version?: string;
+	source?: string;
+	tags?: string[];
+	requestId?: string;
+	ipAddress?: string;
+	userAgent?: string;
+	referrer?: string;
+	campaign?: string;
+	affiliate?: string;
+	apiVersion?: string;
+	requestSource?: 'web' | 'mobile' | 'api';
+	gatewayTransactionId?: string;
+	refundReason?: string;
 }
 
 // Personal payment data interface for payment forms

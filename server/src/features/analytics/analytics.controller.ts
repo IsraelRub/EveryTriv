@@ -1,121 +1,79 @@
-import { Controller, Get, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
-import { AnalyticsEventData, UserAnalyticsQuery } from 'everytriv-shared/types';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 
-import { ValidationService } from '../../common';
-import { LoggerService } from '../../shared/controllers';
-import { AuthRequest } from '../../shared/types';
+import { serverLogger as logger } from '@shared';
 import { AnalyticsService } from './analytics.service';
+import { TrackEventDto, GameAnalyticsQueryDto, TopicAnalyticsQueryDto, DifficultyAnalyticsQueryDto } from './dtos';
+import { CurrentUserId, ClientIP, UserAgent, Cache } from '../../common';
 
 /**
  * Analytics controller for tracking user behavior and retrieving analytics data
  */
 @Controller('analytics')
 export class AnalyticsController {
-	constructor(
-		private readonly analyticsService: AnalyticsService,
-		private readonly logger: LoggerService,
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly analyticsService: AnalyticsService) {}
 
 	/**
 	 * Track analytics event
 	 */
 	@Post('track')
-	async trackEvent(@Req() req: AuthRequest, eventData: AnalyticsEventData) {
-		try {
-			// Validate user is authenticated
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
+	async trackEvent(
+		@CurrentUserId() userId: string, 
+		@Body() eventData: TrackEventDto,
+		@ClientIP() ip: string,
+		@UserAgent() userAgent: string
+	) {
+		// Log analytics tracking with IP and User Agent
+		logger.logUserActivity(userId, 'Analytics event tracked', {
+			eventType: eventData.eventType,
+			ip,
+			userAgent,
+		});
 
-			// Validate event data
-			const validationResult = await this.validationService.validateInputContent(JSON.stringify(eventData), {
-				customMessages: {
-					content: 'Event data is invalid',
-				},
-			});
-
-			if (!validationResult.isValid) {
-				throw new HttpException(
-					{
-						message: 'Invalid event data',
-						errors: validationResult.errors,
-					},
-					HttpStatus.BAD_REQUEST
-				);
-			}
-
-			await this.analyticsService.trackEvent(req.user.id, eventData);
-			return { message: 'Analytics event tracked successfully' };
-		} catch (error) {
-			this.logger.analyticsError('trackEvent', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get user statistics
-	 */
-	@Get('user/stats')
-	async getUserStats(@Req() req: AuthRequest) {
-		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			return await this.analyticsService.getUserStats(req.user.id);
-		} catch (error) {
-			this.logger.analyticsError('getUserStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
+		// Convert DTO to service format
+		const analyticsEventData = {
+			...eventData,
+			timestamp: eventData.timestamp || new Date()
+		};
+		await this.analyticsService.trackEvent(userId, analyticsEventData);
+		return { message: 'Analytics event tracked successfully' };
 	}
 
 	/**
 	 * Get game statistics
 	 */
 	@Get('game/stats')
-	async getGameStats(query: UserAnalyticsQuery) {
-		try {
-			return await this.analyticsService.getGameStats(query);
-		} catch (error) {
-			this.logger.analyticsError('getGameStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
+	@Cache(900) // Cache for 15 minutes
+	async getGameStats(@Query() query: GameAnalyticsQueryDto) {
+		return await this.analyticsService.getGameStats(query);
+	}
+
+	/**
+	 * Get unified user analytics
+	 */
+	@Get('user/unified')
+	@Cache(600) // Cache for 10 minutes
+	async getUnifiedUserAnalytics(@CurrentUserId() userId: string) {
+		const result = await this.analyticsService.getUnifiedUserAnalytics(userId);
+		return result;
 	}
 
 	/**
 	 * Get popular topics
 	 */
 	@Get('topics/popular')
-	async getPopularTopics(query: UserAnalyticsQuery) {
-		try {
-			return await this.analyticsService.getTopicStats(query);
-		} catch (error) {
-			this.logger.analyticsError('getPopularTopics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
+	@Cache(1800) // Cache for 30 minutes
+	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
+		const result = await this.analyticsService.getTopicStats(query);
+		return result;
 	}
 
 	/**
 	 * Get difficulty statistics
 	 */
 	@Get('difficulty/stats')
-	async getDifficultyStats(query: UserAnalyticsQuery) {
-		try {
-			return await this.analyticsService.getDifficultyStats(query);
-		} catch (error) {
-			this.logger.analyticsError('getDifficultyStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
+	@Cache(1800) // Cache for 30 minutes
+	async getDifficultyStats(@Query() query: DifficultyAnalyticsQueryDto) {
+		const result = await this.analyticsService.getDifficultyStats(query);
+		return result;
 	}
 }

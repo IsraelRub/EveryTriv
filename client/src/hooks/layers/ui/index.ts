@@ -3,4 +3,4 @@
  * Exports all UI-related hooks
  */
 
-export { useOptimizedAnimations } from './useOptimizedAnimations';
+// UI layer hooks removed - functionality moved to components

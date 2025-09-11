@@ -11,7 +11,7 @@
  * @description Data transfer objects for user operations
  * @used_by server/features/user, server/controllers
  */
-// export * from './dtos'; // No DTOs currently needed
+export * from './dtos';
 
 /**
  * User controller

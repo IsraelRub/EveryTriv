@@ -5,9 +5,25 @@
  * @description Unified utility functions for all storage services
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage/services/storageManager.service.ts
  */
-import { STORAGE_ERROR_MESSAGES } from '../../../constants/error.constants';
-import { StorageOperationResult } from '../../../types/storage.types';
-import { clientLogger } from '../../logging/clientLogger.service';
+import { STORAGE_ERROR_MESSAGES } from '../../../constants/core/error.constants';
+import { StorageOperationResult } from '../../../types/infrastructure/storage.types';
+
+// Logger is optional - will be used if available
+let logger: { storageError: (message: string, meta?: Record<string, unknown>) => void } | null = null;
+try {
+	// Check if we're in a browser environment
+	if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+		// Client-side: try to import client logger
+		const loggerModule = require('../../logging');
+		logger = loggerModule.clientLogger;
+	} else {
+		// Server-side: try to import server logger
+		const loggerModule = require('../../logging');
+		logger = loggerModule.serverLogger;
+	}
+} catch {
+	// Logger not available - continue without logging
+}
 
 /**
  * Storage Utility Functions
@@ -96,9 +112,11 @@ export class StorageUtils {
 		try {
 			return JSON.stringify(value);
 		} catch (error) {
-			clientLogger.storageError('Failed to serialize value', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			if (logger && logger.storageError) {
+				logger.storageError('Failed to serialize value', {
+					error: error instanceof Error ? error.message : 'Unknown error',
+				});
+			}
 			throw new Error(STORAGE_ERROR_MESSAGES.SERIALIZATION_FAILED);
 		}
 	}
@@ -112,9 +130,11 @@ export class StorageUtils {
 		try {
 			return JSON.parse(data);
 		} catch (error) {
-			clientLogger.storageError('Failed to deserialize data', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			if (logger && logger.storageError) {
+				logger.storageError('Failed to deserialize data', {
+					error: error instanceof Error ? error.message : 'Unknown error',
+				});
+			}
 			throw new Error(STORAGE_ERROR_MESSAGES.DESERIALIZATION_FAILED);
 		}
 	}

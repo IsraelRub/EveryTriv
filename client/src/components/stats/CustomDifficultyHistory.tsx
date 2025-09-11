@@ -1,12 +1,13 @@
-import { formatRelativeTime, formatTopic } from 'everytriv-shared/utils';
+import { formatRelativeTime, formatTopic } from '@shared';
 import { useEffect, useState } from 'react';
 
-import { logger } from '@/services/utils';
+import { clientLogger } from '@shared';
 
 import { storageService } from '../../services';
 import { CustomDifficultyHistoryProps, HistoryItem } from '../../types';
 import { getDifficultyDisplayText, getDifficultyIcon } from '../../utils/customDifficulty.utils';
-import { FadeInLeft, HoverScale, StaggerContainer } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInLeft, hoverScale, createStaggerContainer } from '../animations';
 import { Icon } from '../icons';
 import { Button, Modal } from '../ui';
 
@@ -25,17 +26,19 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 		try {
 			const recentItems = await storageService.getRecentCustomDifficulties();
 			// Convert string array to HistoryItem array
-			const historyItems: HistoryItem[] = recentItems.map((item) => {
+    const historyItems: HistoryItem[] = recentItems.map((item) => {
 				const [topic, difficulty] = item.split(':');
 				return {
 					topic: topic || '',
 					difficulty: difficulty || '',
+					score: 0,
+					date: new Date().toISOString(),
 					timestamp: Date.now(),
 				};
 			});
 			setHistory(historyItems);
 		} catch (error) {
-			logger.storageError('Failed to load custom difficulty history', { 
+			clientLogger.storageError('Failed to load custom difficulty history', { 
 				error: error instanceof Error ? error.message : String(error) 
 			});
 		} finally {
@@ -49,8 +52,8 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 	};
 
 	const handleSelect = (item: HistoryItem) => {
-		onSelect(item.topic, item.difficulty);
-		onClose();
+		onSelect?.(item.topic, item.difficulty);
+		onClose?.();
 	};
 
 	const handleClearHistory = () => {
@@ -61,7 +64,9 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 	if (!isVisible) return null;
 
 	return (
-		<Modal isOpen={isVisible} onClose={onClose} isGlassy size='lg' className='flex items-center justify-center'>
+		<Modal open={isVisible} onClose={onClose || (() => {
+			// Default no-op close handler
+		})} isGlassy size='lg' className='flex items-center justify-center'>
 			<div className='p-6 w-full max-w-2xl'>
 				<div className='flex justify-between items-center mb-4'>
 					<h3 className='text-xl font-semibold'>
@@ -94,10 +99,25 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 							</Button>
 						</div>
 
-						<StaggerContainer className='space-y-2'>
+						<motion.div
+							variants={createStaggerContainer(0.05)}
+							initial="hidden"
+							animate="visible"
+							className='space-y-2'
+						>
 							{history.map((item, index) => (
-								<FadeInLeft key={`${item.topic}-${item.difficulty}-${item.timestamp}`} delay={index * 0.05}>
-									<HoverScale>
+								<motion.div 
+									key={`${item.topic}-${item.difficulty}-${item.timestamp}`} 
+									variants={fadeInLeft}
+									initial="hidden"
+									animate="visible"
+									transition={{ delay: index * 0.05 }}
+								>
+									<motion.div
+										variants={hoverScale}
+										initial="normal"
+										whileHover="hover"
+									>
 										<div className='glass rounded-lg p-4 cursor-pointer' onClick={() => handleSelect(item)}>
 											<div className='flex justify-between items-start'>
 												<div>
@@ -107,13 +127,13 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 													</div>
 													<div className='text-white/75'>{getDifficultyDisplayText(item.difficulty)}</div>
 												</div>
-												<span className='text-sm text-white/50'>{formatTimestamp(item.timestamp)}</span>
+            <span className='text-sm text-white/50'>{formatTimestamp(item.timestamp || 0)}</span>
 											</div>
 										</div>
-									</HoverScale>
-								</FadeInLeft>
+									</motion.div>
+								</motion.div>
 							))}
-						</StaggerContainer>
+						</motion.div>
 
 						<div className='mt-4 text-center'>
 							<span className='text-sm text-white/60'>
@@ -127,3 +147,4 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 		</Modal>
 	);
 }
+

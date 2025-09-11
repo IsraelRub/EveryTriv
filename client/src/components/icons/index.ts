@@ -3,7 +3,6 @@
  *
  * @module IconComponents
  * @description React components for icons, icon management, and visual elements
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views
  */

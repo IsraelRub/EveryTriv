@@ -11,7 +11,7 @@
  * @description Data transfer objects for payment operations
  * @used_by server/features/payment, server/controllers
  */
-// export * from './dtos'; // No DTOs currently needed
+export * from './dtos';
 
 /**
  * Payment controller
@@ -32,4 +32,4 @@ export { PaymentModule } from './payment.module';
  * @description Business logic for payment processing
  * @used_by server/features/payment, server/controllers
  */
-export * from './services';
+export * from './payment.service';

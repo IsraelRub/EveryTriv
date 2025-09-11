@@ -1,77 +1,78 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query, Req } from '@nestjs/common';
-import { AuthRequest } from '@shared/types';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 
-import { ServerLogger } from '../../../../shared/services/logging';
+import { serverLogger as logger } from '@shared';
 import { PointsService } from './points.service';
+import { DeductPointsDto, PurchasePointsDto, ConfirmPointPurchaseDto, GetPointHistoryDto, CanPlayDto } from './dtos';
+import { CurrentUserId, ClientIP, UserAgent, Cache, RateLimit } from '../../common';
 
 @Controller('points')
 export class PointsController {
-	constructor(
-		private readonly pointsService: PointsService,
-		private readonly logger: ServerLogger
-	) {}
+	constructor(private readonly pointsService: PointsService) {}
 
 	@Get('balance')
-	async getPointBalance(@Req() req: AuthRequest) {
-		if (!req.user?.id) {
-			throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-		}
-		const result = this.pointsService.getPointBalance(req.user.id);
+	@Cache(60) // Cache for 1 minute
+	async getPointBalance(@CurrentUserId() userId: string) {
+		const result = this.pointsService.getPointBalance(userId);
 
 		// Log API call for balance check
-		this.logger.apiRead('points_balance', {
-			userId: req.user.id,
+		logger.apiRead('points_balance', {
+			userId: userId,
 		});
 
 		return result;
 	}
 
 	@Get('packages')
+	@Cache(300) // Cache for 5 minutes
 	async getPointPackages() {
 		const result = this.pointsService.getPointPackages();
 
 		// Log API call for packages request
-		this.logger.apiRead('points_packages', {});
+		logger.apiRead('points_packages', {});
 
 		return result;
 	}
 
 	@Get('can-play')
-	async canPlay(@Req() req: AuthRequest, @Query('questionCount') questionCount: number) {
-		if (!req.user?.id) {
-			throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-		}
-		const result = this.pointsService.canPlay(req.user.id, questionCount);
+	@Cache(30) // Cache for 30 seconds
+	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
+		const result = this.pointsService.canPlay(userId, query.questionCount);
 
 		// Log API call for can-play check
-		this.logger.apiRead('can_play', {
-			userId: req.user.id,
-			questionCount,
+		logger.apiRead('can_play', {
+			userId: userId,
+			questionCount: query.questionCount,
 		});
 
 		return result;
 	}
 
 	@Post('deduct')
-	async deductPoints(@Req() req: AuthRequest, @Body() body: { questionCount: number; gameMode: string }) {
+	@RateLimit(20, 60) // 20 deductions per minute
+	async deductPoints(
+		@CurrentUserId() userId: string, 
+		@Body() body: DeductPointsDto,
+		@ClientIP() ip: string,
+		@UserAgent() userAgent: string
+	) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-			const result = await this.pointsService.deductPoints(req.user.id, body.questionCount, body.gameMode);
+			// DTO validation is handled automatically by NestJS
+			const result = await this.pointsService.deductPoints(userId, body.questionCount, body.gameMode);
 
-			// Log API call for points deduction
-			this.logger.apiUpdate('points', {
-				userId: req.user.id,
+			// Log API call for points deduction with IP and User Agent
+			logger.apiUpdate('points', {
+				userId: userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
 				remainingPoints: result.total_points,
+				ip,
+				userAgent,
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.apiUpdateError('points', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiUpdateError('points', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
 			});
@@ -80,16 +81,14 @@ export class PointsController {
 	}
 
 	@Get('history')
-	async getPointHistory(@Req() req: AuthRequest, @Query('limit') limit: number = 50) {
-		if (!req.user?.id) {
-			throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-		}
-		const result = await this.pointsService.getPointHistory(req.user.id, limit);
+	@Cache(120) // Cache for 2 minutes
+	async getPointHistory(@CurrentUserId() userId: string, @Query() query: GetPointHistoryDto) {
+		const result = await this.pointsService.getPointHistory(userId, query.limit);
 
 		// Log API call for points history request
-		this.logger.apiRead('points_history', {
-			userId: req.user.id,
-			limit,
+		logger.apiRead('points_history', {
+			userId: userId,
+			limit: query.limit,
 			transactionsCount: result.length,
 		});
 
@@ -97,23 +96,22 @@ export class PointsController {
 	}
 
 	@Post('purchase')
-	async purchasePoints(@Req() req: AuthRequest, @Body() body: { packageId: string }) {
+	@RateLimit(5, 60) // 5 purchases per minute
+	async purchasePoints(@CurrentUserId() userId: string, @Body() body: PurchasePointsDto) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-			const result = await this.pointsService.purchasePoints(req.user.id, body.packageId);
+			// DTO validation is handled automatically by NestJS
+			const result = await this.pointsService.purchasePoints(userId, body.packageId);
 
 			// Log API call for points purchase
-			this.logger.apiCreate('points_purchase', {
-				userId: req.user.id,
+			logger.apiCreate('points_purchase', {
+				userId: userId,
 				packageId: body.packageId,
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.apiCreateError('points_purchase', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiCreateError('points_purchase', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
 				packageId: body.packageId,
 			});
 			throw error;
@@ -121,15 +119,14 @@ export class PointsController {
 	}
 
 	@Post('confirm-purchase')
-	async confirmPointPurchase(@Req() req: AuthRequest, @Body() body: { paymentIntentId: string; points: number }) {
-		if (!req.user?.id) {
-			throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-		}
-		const result = this.pointsService.confirmPointPurchase(req.user.id, body.paymentIntentId, body.points);
+	@RateLimit(10, 60) // 10 confirmations per minute
+	async confirmPointPurchase(@CurrentUserId() userId: string, @Body() body: ConfirmPointPurchaseDto) {
+		// DTO validation is handled automatically by NestJS
+		const result = this.pointsService.confirmPointPurchase(userId, body.paymentIntentId, body.points);
 
 		// Log API call for purchase confirmation
-		this.logger.apiUpdate('points_purchase', {
-			userId: req.user.id,
+		logger.apiUpdate('points_purchase', {
+			userId: userId,
 			paymentIntentId: body.paymentIntentId,
 			points: body.points,
 		});

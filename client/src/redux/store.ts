@@ -6,31 +6,56 @@
  * @used_by client/App, client/hooks, client/services
  */
 import { configureStore } from '@reduxjs/toolkit';
+import { persistStore, persistReducer } from 'redux-persist';
+import storage from 'redux-persist/lib/storage';
+import favoritesReducer from './slices/favoritesSlice';
+import gameModeReducer from './slices/gameModeSlice';
+import gameReducer from './slices/gameSlice';
+import statsReducer from './slices/statsSlice';
+import userReducer from './slices/userSlice';
 
-import favoritesReducer from './features/favoritesSlice';
-import gameModeReducer from './features/gameModeSlice';
-import gameReducer from './features/gameSlice';
-import statsReducer from './features/statsSlice';
-import userReducer from './features/userSlice';
+// Persist configuration - not used but kept for reference
+// const persistConfig = {
+// 	key: 'root',
+// 	storage,
+// 	whitelist: ['user', 'favorites', 'gameMode'], // Only persist these reducers
+// 	blacklist: ['game', 'stats'], // Don't persist temporary state
+// };
 
-/** Type for Redux dispatch function */
-export type AppDispatch = typeof store.dispatch;
-/** Type for Redux root state */
-export type RootState = ReturnType<typeof store.getState>;
+// Persist configuration for user slice
+const userPersistConfig = {
+	key: 'user',
+	storage,
+	whitelist: ['user'], // Only persist user data, not loading states
+};
+
+// Persist configuration for favorites slice
+const favoritesPersistConfig = {
+	key: 'favorites',
+	storage,
+	whitelist: ['favorites'], // Only persist favorites data
+};
+
+// Persist configuration for gameMode slice
+const gameModePersistConfig = {
+	key: 'gameMode',
+	storage,
+	whitelist: ['currentSettings'], // Only persist game mode settings
+};
 
 export const store = configureStore({
 	reducer: {
 		game: gameReducer,
 		stats: statsReducer,
-		favorites: favoritesReducer,
-		user: userReducer,
-		gameMode: gameModeReducer,
+		favorites: persistReducer(favoritesPersistConfig, favoritesReducer) as never,
+		user: persistReducer(userPersistConfig, userReducer) as never,
+		gameMode: persistReducer(gameModePersistConfig, gameModeReducer) as never,
 	},
 	middleware: getDefaultMiddleware =>
 		getDefaultMiddleware({
 			serializableCheck: {
 				// Ignore these action types
-				ignoredActions: ['stats/setStats'],
+				ignoredActions: ['stats/setStats', 'persist/PERSIST', 'persist/REHYDRATE'],
 				// Ignore these field paths in all actions
 				ignoredActionPaths: ['payload.created_at', 'payload.updated_at', 'payload.lastPlayed'],
 				// Ignore these paths in the state
@@ -38,3 +63,8 @@ export const store = configureStore({
 			},
 		}),
 });
+
+/** Type for Redux dispatch function */
+export type AppDispatch = typeof store.dispatch;
+
+export const persistor = persistStore(store);

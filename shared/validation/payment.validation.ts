@@ -3,21 +3,10 @@
  *
  * @module PaymentValidation
  * @description Shared validation functions for payment processing and transaction validation
- * @version 1.0.0
  * @author EveryTriv Team
  */
-import type { ValidationResult } from '../types/validation.types';
+import type { PaymentValidationResult } from '../types/domain/validation/validation.types';
 
-/**
- * Extended validation result for payment validation with warnings
- *
- * @interface PaymentValidationResult
- * @extends ValidationResult
- * @description Payment validation result that includes warnings in addition to errors
- */
-export interface PaymentValidationResult extends ValidationResult {
-	warnings?: string[];
-}
 
 /**
  * Validates payment amount and currency constraints

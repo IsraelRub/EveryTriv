@@ -6,7 +6,7 @@
  * @used_by client/src/components/ui/ValidatedInput.tsx, client/src/components/forms/ValidatedForm.tsx
  */
 
-import type { ValidationIconProps, ValidationStatusIndicatorProps } from 'everytriv-shared/types/validation.types';
+import type { ValidationIconProps, ValidationStatusIndicatorProps } from '../../types/ui/validation.types';
 import { FC, ReactNode } from 'react';
 
 import { combineClassNames } from '../../utils/combineClassNames';

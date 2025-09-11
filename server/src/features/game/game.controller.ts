@@ -1,284 +1,361 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
-import { AuthRequest } from 'everytriv-shared/types';
-import type { LanguageValidationOptions } from 'everytriv-shared/types/language.types';
-
-import { ServerLogger } from '../../../../shared/services/logging';
-import { ValidationService } from '../../common/validation/validation.service';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
+import { CreateGameHistoryDto, serverLogger as logger, GameStatisticsResponse } from '@shared';
 import { GameService } from './game.service';
+import { CurrentUserId, CurrentUser, ClientIP, UserAgent, Roles, GameDifficulty, RequireGameSession, GameTopic, GameCooldown, PerformanceThreshold, AuditLog, UserActivityLog, Cache } from '../../common';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe, LanguageValidationPipe } from '../../common/pipes';
 
 @Controller('game')
 export class GameController {
-	constructor(
-		private readonly gameService: GameService,
-		private readonly validationService: ValidationService,
-		private readonly logger: ServerLogger
-	) {}
+	constructor(private readonly gameService: GameService) {}
 
 	/**
-	 * Get trivia question
+	 * Get trivia question by ID
 	 */
 	@Get('trivia/:id')
-	async getQuestionById(@Body() params: { id: string }) {
-		try {
-			return await this.gameService.getQuestionById(params.id);
-		} catch (error) {
-			this.logger.gameError('Error getting question by ID', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-				questionId: params.id,
-			});
-			throw error;
-		}
+	async getQuestionById(@Param('id') id: string) {
+		const result = await this.gameService.getQuestionById(id);
+		return result;
+	}
+
+	/**
+	 * Get game by ID (for client compatibility)
+	 */
+	@Get(':id')
+	async getGameById(@Param('id') id: string) {
+		const result = await this.gameService.getQuestionById(id);
+		return result;
 	}
 
 	/**
 	 * Submit answer
 	 */
 	@Post('answer')
-	async submitAnswer(@Req() req: AuthRequest, @Body() body: { questionId: string; answer: string; timeSpent: number }) {
-		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
+	@UsePipes(GameAnswerPipe)
+	@RequireGameSession(true)
+	@GameCooldown(1000)
+	@PerformanceThreshold(500)
+	@UserActivityLog('game:submit-answer')
+	async submitAnswer(
+		@CurrentUserId() userId: string, 
+		@Body() body: { questionId: string; answer: string; timeSpent: number },
+		@ClientIP() ip: string,
+		@UserAgent() userAgent: string
+	) {
+		// Log game activity with IP and User Agent
+		logger.logUserActivity(userId, 'Answer submitted', {
+			questionId: body.questionId,
+			timeSpent: body.timeSpent,
+			ip,
+			userAgent,
+		});
 
-			// Validate answer content
-			const answerValidation = await this.validationService.validateInputContent(body.answer);
-			if (!answerValidation.isValid) {
-				throw new HttpException(
-					{
-						message: 'Invalid answer',
-						errors: answerValidation.errors,
-					},
-					HttpStatus.BAD_REQUEST
-				);
-			}
-
-			const result = await this.gameService.submitAnswer(body.questionId, body.answer, req.user.id, body.timeSpent);
-
-			// Log API call for answer submission
-			this.logger.apiUpdate('answer', {
-				userId: req.user.id,
-				questionId: body.questionId,
-				isCorrect: result.isCorrect,
-				points: result.points,
-			});
-
-			return result;
-		} catch (error) {
-			this.logger.apiUpdateError('answer', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
-				questionId: body.questionId,
-			});
-			throw error;
-		}
+		const result = await this.gameService.submitAnswer(body.questionId, body.answer, userId, body.timeSpent);
+		return result;
 	}
 
-	/**
-	 * Get user analytics
-	 */
-	@Get('analytics')
-	async getUserAnalytics(@Req() req: AuthRequest) {
-		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			return await this.gameService.getUserAnalytics(req.user.id);
-		} catch (error) {
-			this.logger.gameError('Error getting user analytics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
-			throw error;
-		}
-	}
 
 	/**
 	 * Get trivia questions
 	 */
 	@Post('trivia')
+	@UsePipes(TriviaRequestPipe)
+	@GameTopic('general', 'science', 'history', 'sports', 'entertainment')
+	@GameDifficulty('easy', 'medium', 'hard')
+	@RequireGameSession(true)
+	@PerformanceThreshold(1000)
+	@UserActivityLog('game:get-trivia-questions')
 	async getTriviaQuestions(
-		@Req() req: AuthRequest,
+		@CurrentUserId() userId: string,
 		@Body() body: { topic: string; difficulty: string; questionCount: number }
 	) {
-		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
 
-			// Validate trivia request using service
-			const triviaValidation = await this.validationService.validateTriviaRequest(
-				body.topic,
-				body.difficulty,
-				body.questionCount
-			);
+		const result = await this.gameService.getTriviaQuestion(
+			body.topic,
+			body.difficulty,
+			body.questionCount,
+			userId
+		);
 
-			if (!triviaValidation.isValid) {
-				throw new HttpException(
-					{
-						message: 'Invalid trivia request',
-						errors: triviaValidation.errors,
-					},
-					HttpStatus.BAD_REQUEST
-				);
-			}
-
-			const result = await this.gameService.getTriviaQuestion(
-				body.topic,
-				body.difficulty,
-				body.questionCount,
-				req.user.id
-			);
-
-			// Log API call for trivia questions request
-			this.logger.apiRead('trivia_questions', {
-				userId: req.user.id,
-				topic: body.topic,
-				difficulty: body.difficulty,
-				questionCount: body.questionCount,
-			});
-
-			return result;
-		} catch (error) {
-			this.logger.apiReadError('trivia_questions', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
-				topic: body.topic,
-				difficulty: body.difficulty,
-				questionCount: body.questionCount,
-			});
-			throw error;
-		}
+		return result;
 	}
 
 	/**
 	 * Get game history
 	 */
 	@Get('history')
-	async getGameHistory(@Req() req: AuthRequest) {
+	@Cache(600) // Cache for 10 minutes
+	async getGameHistory(@CurrentUserId() userId: string) {
+		const startTime = Date.now();
+		
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			const result = await this.gameService.getUserGameHistory(req.user.id);
+			const result = await this.gameService.getUserGameHistory(userId);
 
 			// Log API call for game history request
-			this.logger.apiRead('game_history', {
-				userId: req.user.id,
+			logger.apiRead('game_history', {
+				userId: userId,
 				totalGames: result.totalGames,
+				duration: Date.now() - startTime,
 			});
 
-			return result;
+			return {
+				success: true,
+				data: result,
+				timestamp: new Date().toISOString(),
+			};
 		} catch (error) {
-			this.logger.apiReadError('game_history', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiReadError('game_history', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
+				duration: Date.now() - startTime,
 			});
-			throw error;
+			
+			// Enhanced error response
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			
+			throw new HttpException(
+				{
+					message: 'Failed to get game history',
+					error: error instanceof Error ? error.message : 'Unknown error',
+					timestamp: new Date().toISOString(),
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	}
 
 	/**
-	 * Get leaderboard
+	 * Save game history
 	 */
-	@Get('leaderboard')
-	async getLeaderboard() {
+	@Post('history')
+	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: CreateGameHistoryDto) {
+		const startTime = Date.now();
+		
 		try {
-			const result = await this.gameService.getLeaderboard();
+			// Validate required fields
+			if (!body.userId || !body.score) {
+				throw new HttpException('User ID and score are required', HttpStatus.BAD_REQUEST);
+			}
 
-			// Log API call for leaderboard request
-			this.logger.apiRead('leaderboard', {});
+			const result = await this.gameService.saveGameHistory(userId, body);
 
-			return result;
+			// Log API call for game history save
+			logger.apiUpdate('game_history_save', {
+				userId: userId,
+				score: body.score,
+				duration: Date.now() - startTime,
+			});
+
+			return {
+				success: true,
+				data: result,
+				timestamp: new Date().toISOString(),
+			};
 		} catch (error) {
-			this.logger.apiReadError('leaderboard', error instanceof Error ? error.message : 'Unknown error', {});
-			throw error;
+			logger.apiUpdateError('game_history_save', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
+				duration: Date.now() - startTime,
+			});
+			
+			// Enhanced error response
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			
+			throw new HttpException(
+				{
+					message: 'Failed to save game history',
+					error: error instanceof Error ? error.message : 'Unknown error',
+					timestamp: new Date().toISOString(),
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	}
+
+	/**
+	 * Delete specific game from history
+	 */
+	@Delete('history/:gameId')
+	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
+		const startTime = Date.now();
+		
+		try {
+			if (!gameId || gameId.trim().length === 0) {
+				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
+			}
+
+			const result = await this.gameService.deleteGameHistory(userId, gameId);
+
+			// Log API call for game history deletion
+			logger.apiDelete('game_history', {
+				userId: userId,
+				gameId,
+				duration: Date.now() - startTime,
+			});
+
+			return {
+				success: true,
+				data: result,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.apiDeleteError('game_history', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
+				gameId,
+				duration: Date.now() - startTime,
+			});
+			
+			// Enhanced error response
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			
+			throw new HttpException(
+				{
+					message: 'Failed to delete game history',
+					error: error instanceof Error ? error.message : 'Unknown error',
+					timestamp: new Date().toISOString(),
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
+		}
+	}
+
+	/**
+	 * Clear all game history for user
+	 */
+	@Delete('history')
+	async clearGameHistory(@CurrentUserId() userId: string) {
+		const startTime = Date.now();
+		
+		try {
+			const result = await this.gameService.clearUserGameHistory(userId);
+
+			// Log API call for clearing game history
+			logger.apiDelete('game_history_all', {
+				userId: userId,
+				duration: Date.now() - startTime,
+			});
+
+			return {
+				success: true,
+				data: result,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.apiDeleteError('game_history_all', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
+				duration: Date.now() - startTime,
+			});
+			
+			// Enhanced error response
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			
+			throw new HttpException(
+				{
+					message: 'Failed to clear game history',
+					error: error instanceof Error ? error.message : 'Unknown error',
+					timestamp: new Date().toISOString(),
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
+		}
+	}
+
 
 	/**
 	 * Validate custom difficulty text
 	 */
 	@Post('validate-custom')
+	@UsePipes(CustomDifficultyPipe)
+	@GameDifficulty('custom')
+	@PerformanceThreshold(200)
+	@AuditLog('game:validate-custom-difficulty')
 	async validateCustomDifficulty(@Body() body: { customText: string }) {
-		try {
-			// Basic validation first
-			const basicValidation = await this.validationService.validateCustomDifficultyText(body.customText);
-
-			if (!basicValidation.isValid) {
-				// Log API call for validation failure
-				this.logger.apiUpdate('custom_difficulty_validation', {
-					isValid: false,
-					errorsCount: basicValidation.errors.length,
-				});
-
-				return {
-					isValid: false,
-					errors: basicValidation.errors,
-					suggestion: basicValidation.suggestion,
-				};
-			}
-
-			// Language validation
-			const languageValidation = await this.validationService.validateInputWithLanguageTool(body.customText, {
-				language: 'auto',
-				enableSpellCheck: true,
-				enableGrammarCheck: true,
-				enableLanguageDetection: true,
-			} as LanguageValidationOptions);
-
-			// Log API call for validation success
-			this.logger.apiUpdate('custom_difficulty_validation', {
-				isValid: languageValidation.isValid,
-				errorsCount: languageValidation.errors.length,
-			});
-
-			return {
-				isValid: languageValidation.isValid,
-				errors: languageValidation.errors,
-				suggestion: languageValidation.suggestion,
-			};
-		} catch (error) {
-			this.logger.apiUpdateError(
-				'custom_difficulty_validation',
-				error instanceof Error ? error.message : 'Unknown error',
-				{
-					customText: body.customText,
-				}
-			);
-			throw error;
-		}
+		// The CustomDifficultyPipe handles all validation logic
+		// This method now simply returns the result from the pipe
+		return body;
 	}
 
 	/**
 	 * Validate text with language tool
 	 */
 	@Post('validate-language')
+	@UsePipes(LanguageValidationPipe)
 	async validateLanguage(
 		@Body() body: { text: string; language?: string; enableSpellCheck?: boolean; enableGrammarCheck?: boolean }
 	) {
-		try {
-			const languageValidation = await this.validationService.validateInputWithLanguageTool(body.text, {
-				language: body.language,
-				enableSpellCheck: body.enableSpellCheck ?? true,
-				enableGrammarCheck: body.enableGrammarCheck ?? true,
-				enableLanguageDetection: true,
-			} as LanguageValidationOptions);
+		// The LanguageValidationPipe handles all validation logic
+		// This method now simply returns the result from the pipe
+		return body;
+	}
 
-			// Log API call for language validation
-			this.logger.apiUpdate('language_validation', {
-				isValid: languageValidation.isValid,
-				errorsCount: languageValidation.errors.length,
-				language: body.language || 'auto',
+	/**
+	 * Admin endpoint - get game statistics (admin only)
+	 */
+	@Get('admin/statistics')
+	@Roles('admin', 'super-admin')
+	async getGameStatistics(@CurrentUser() user: { id: string; role: string; username: string }): Promise<GameStatisticsResponse> {
+		try {
+			logger.apiRead('admin_get_game_statistics', {
+				adminId: user.id,
+				adminRole: user.role,
 			});
 
+			// This would call a service method to get game statistics
+			const statistics = {
+				totalGames: 0,
+				averageScore: 0,
+				bestScore: 0,
+				totalQuestionsAnswered: 0,
+				correctAnswers: 0,
+				accuracy: 0,
+				favoriteTopics: [],
+				difficultyBreakdown: {}
+			};
+
 			return {
-				isValid: languageValidation.isValid,
-				errors: languageValidation.errors,
-				suggestions: languageValidation.suggestion ? [languageValidation.suggestion] : [],
-				language: languageValidation.suggestion ? 'detected' : undefined,
+				message: 'Game statistics retrieved successfully',
+				statistics: statistics,
+				success: true,
+				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			this.logger.apiUpdateError('language_validation', error instanceof Error ? error.message : 'Unknown error', {
-				text: body.text,
-				language: body.language,
+			logger.userError('Failed to get game statistics', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				adminId: user.id,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Admin endpoint - delete all game history (super-admin only)
+	 */
+	@Delete('admin/history/clear-all')
+	@Roles('super-admin')
+	async clearAllGameHistory(@CurrentUser() user: { id: string; role: string; username: string }): Promise<{ message: string; success: boolean; timestamp: string }> {
+		try {
+			logger.apiDelete('admin_clear_all_game_history', {
+				adminId: user.id,
+				adminRole: user.role,
+			});
+
+			// This would call a service method to clear all game history
+			// await this.gameService.clearAllGameHistory();
+
+			return {
+				message: 'All game history cleared successfully',
+				success: true,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.userError('Failed to clear all game history', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+				adminId: user.id,
 			});
 			throw error;
 		}

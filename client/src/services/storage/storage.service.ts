@@ -8,14 +8,14 @@
  * - Game settings and configurations
  * - Historical data that should survive browser restarts
  */
-import { BaseStorageService } from 'everytriv-shared/services/storage';
+import { BaseStorageService } from '@shared/services/storage';
 import {
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageStats,
 	UnifiedStorageService,
-} from 'everytriv-shared/types/storage.types';
+} from '@shared/types/infrastructure/storage.types';
 
 export class ClientStorageService extends BaseStorageService implements UnifiedStorageService {
 	constructor() {
@@ -125,7 +125,7 @@ export class ClientStorageService extends BaseStorageService implements UnifiedS
 				return this.createErrorResult<void>('Failed to get keys for clearing');
 			}
 
-			keysResult.data.forEach(key => {
+			keysResult.data.forEach((key: string) => {
 				const prefixedKey = this.getPrefixedKey(key);
 				localStorage.removeItem(prefixedKey);
 			});
@@ -224,27 +224,6 @@ export class ClientStorageService extends BaseStorageService implements UnifiedS
 		await this.delete('recentCustomDifficulties');
 	}
 
-	// Legacy methods for backward compatibility
-	/**
-	 * @deprecated Use set() instead
-	 */
-	async setItem<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
-		return this.set(key, value, ttl);
-	}
-
-	/**
-	 * @deprecated Use get() instead
-	 */
-	async getItem<T>(key: string): Promise<StorageOperationResult<T | null>> {
-		return this.get(key);
-	}
-
-	/**
-	 * @deprecated Use delete() instead
-	 */
-	async removeItem(key: string): Promise<StorageOperationResult<void>> {
-		return this.delete(key);
-	}
 }
 
 export const storageService = new ClientStorageService();

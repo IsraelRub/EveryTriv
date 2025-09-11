@@ -1,13 +1,13 @@
-import { forwardRef, MouseEvent } from 'react';
+import { forwardRef, MouseEvent, memo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 
-import { useAudio } from '@/hooks';
-
+import { useAudio } from '../../App';
 import { AudioKey } from '../../constants';
 import { ButtonProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
-import { HoverScale,PulseEffect, ScaleIn } from '../animations/AnimationLibrary';
+import { hoverScale, scaleIn } from '../animations';
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
 	(
 		{
 			children,
@@ -22,12 +22,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 		},
 		ref
 	) => {
-		const { playSound } = useAudio();
-
-		const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
-			playSound(AudioKey.CLICK);
+		const audioService = useAudio();
+		
+		const handleClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+			audioService.play(AudioKey.CLICK);
 			onClick?.(e);
-		};
+		}, [onClick, audioService]);
+
+		const handleMouseEnter = useCallback(() => {
+			audioService.play(AudioKey.HOVER);
+		}, [audioService]);
 
 		const buttonElement = (
 			<button
@@ -48,8 +52,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 					// Color variants
 					{
 						'bg-[#667eea] hover:bg-[#5a6ed4] text-white': variant === 'primary' && !isGlassy,
-						'bg-[#f093fb] hover:bg-[#e083eb] text-white': variant === 'secondary' && !isGlassy,
-						'bg-[#4facfe] hover:bg-[#3f9cee] text-white': variant === 'accent' && !isGlassy,
+						'bg-[#f093fb] hover:bg-[#f083eb] text-white': variant === 'secondary' && !isGlassy,
+						'bg-[#4facfe] hover:bg-[#4facfe] text-white': variant === 'accent' && !isGlassy,
 						'hover:bg-white/10 text-white': variant === 'ghost',
 					},
 
@@ -82,6 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 					}),
 				}}
 				onClick={handleClick}
+				onMouseEnter={handleMouseEnter}
 				{...props}
 			>
 				{children}
@@ -89,15 +94,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 		);
 
 		return withAnimation ? (
-			<ScaleIn delay={0.1}>
-				<HoverScale>
-					{withGlow ? <PulseEffect>{buttonElement}</PulseEffect> : buttonElement}
-				</HoverScale>
-			</ScaleIn>
+			<motion.div variants={scaleIn} initial="hidden" animate="visible" transition={{ delay: 0.1 }}>
+				<motion.div variants={hoverScale} initial="initial" whileHover="hover">
+					{withGlow ? (
+						<motion.div
+							animate={{ scale: [1, 1.05, 1] }}
+							transition={{ duration: 2, repeat: Infinity }}
+						>
+							{buttonElement}
+						</motion.div>
+					) : (
+						buttonElement
+					)}
+				</motion.div>
+			</motion.div>
 		) : (
 			buttonElement
 		);
 	}
-);
+));
 
 Button.displayName = 'Button';

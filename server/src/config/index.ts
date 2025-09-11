@@ -45,11 +45,11 @@ export * from './dataSource';
  * @description Redis module configuration
  * @used_by server/app, server/features
  */
-export * from './redis.module';
+export * from '../internal/modules/redis.module';
 
 /**
  * Global exception filter
  * @description Global exception handling and error responses
  * @used_by server/app, server/features
  */
-export * from './globalException.filter';
+export * from '../common/globalException.filter';

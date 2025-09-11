@@ -3,7 +3,6 @@
  *
  * @module ApiHooks
  * @description Central export point for all API-related React hooks and query keys
- * @version 1.0.0
  * @author EveryTriv Team
  */
 
@@ -35,7 +34,6 @@ export {
  */
 export {
 	useCustomDifficulties,
-	useDifficultyStats,
 	useGameHistory,
 	useLeaderboard,
 	useSaveCustomDifficulty,
@@ -50,3 +48,56 @@ export {
  * @exports {Function} User-related React hooks
  */
 export { useDeductCredits, useUpdateUserProfile, useUserCredits, useUserProfile } from './useUser';
+
+/**
+ * Leaderboard features hooks
+ * @description Leaderboard and ranking hooks
+ * @exports {Function} Leaderboard-related React hooks
+ */
+export {
+	useUserRanking,
+	useUpdateUserRanking,
+	useGlobalLeaderboard,
+	useLeaderboardByPeriod,
+} from './useLeaderboardFeatures';
+
+/**
+ * Analytics dashboard hooks
+ * @description Analytics and statistics hooks
+ * @exports {Function} Analytics-related React hooks
+ */
+export {
+	useUnifiedUserAnalytics,
+	usePopularTopics,
+	useDifficultyStats,
+} from './useAnalyticsDashboard';
+
+/**
+ * Subscription management hooks
+ * @description Subscription create and cancel hooks
+ * @exports {Function} Subscription-related React hooks
+ */
+export { useCreateSubscription, useCancelSubscription } from './useSubscriptionManagement';
+
+/**
+ * User preferences hooks
+ * @description User preferences management hooks
+ * @exports {Function} User preferences-related React hooks
+ */
+export { useUserPreferences, useUpdateUserPreferences } from './useUserPreferences';
+
+/**
+ * Account management hooks
+ * @description Account management functionality hooks
+ * @exports {Function} Account management-related React hooks
+ */
+export { useDeleteUserAccount } from './useAccountManagement';
+
+/**
+ * Language validation hooks
+ * @description Language validation functionality hooks
+ * @exports {Function} Language validation-related React hooks
+ */
+export { useValidateLanguage } from './useLanguageValidation';
+
+

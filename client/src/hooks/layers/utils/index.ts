@@ -6,19 +6,12 @@
  * @used_by client/components, client/views, client/hooks
  */
 
-/**
- * Async hook
- * @description Hook for handling async operations
- * @used_by client/components, client/views
- */
-export { useAsync } from './useAsync';
 
 /**
- * Local storage hook
- * @description Hook for managing local storage
- * @used_by client/components, client/views
+ * Local storage hook - REMOVED
+ * @description Use storageService instead for consistent storage management
+ * @deprecated Replaced by storageService for unified storage API
  */
-export { useLocalStorage } from './useLocalStorage';
 
 /**
  * Previous value hook
@@ -34,12 +27,6 @@ export { usePrevious } from './usePrevious';
  */
 export { useAppDispatch, useAppSelector } from './useRedux';
 
-/**
- * Throttle hook
- * @description Hook for throttling function calls
- * @used_by client/components, client/views
- */
-export { useThrottle } from './useThrottle';
 
 /**
  * Debounce hook
@@ -47,3 +34,9 @@ export { useThrottle } from './useThrottle';
  * @used_by client/components, client/views
  */
 export { useDebounce, useDebouncedCallback } from './useDebounce';
+
+/**
+ * Cache hook
+ * @description Hook for client-side caching with server integration
+ * @used_by client/components, client/views
+ */

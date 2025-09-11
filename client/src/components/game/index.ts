@@ -3,7 +3,6 @@
  *
  * @module GameComponents
  * @description React components for trivia game functionality, gameplay, and user interaction
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/views, client/components
  */

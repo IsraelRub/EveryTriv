@@ -201,14 +201,14 @@ export class TriviaService {
   private readonly logger = new Logger(TriviaService.name);
 
   async createQuestion(dto: CreateQuestionDto) {
-    this.logger.log(`Creating question for topic: ${dto.topic}`);
+    logger.log(`Creating question for topic: ${dto.topic}`);
     
     try {
       const question = await this.generateQuestion(dto);
-      this.logger.log(`Question created successfully: ${question.id}`);
+      logger.log(`Question created successfully: ${question.id}`);
       return question;
     } catch (error) {
-      this.logger.error('Failed to create question', error.stack);
+      logger.error('Failed to create question', error.stack);
       throw error;
     }
   }
@@ -369,7 +369,7 @@ export class CacheService {
       const value = await this.redis.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
-      this.logger.error(`Cache get error for key ${key}:`, error);
+      logger.error(`Cache get error for key ${key}:`, error);
       return null;
     }
   }
@@ -383,7 +383,7 @@ export class CacheService {
         await this.redis.set(key, serialized);
       }
     } catch (error) {
-      this.logger.error(`Cache set error for key ${key}:`, error);
+      logger.error(`Cache set error for key ${key}:`, error);
     }
   }
 }
@@ -612,7 +612,7 @@ export class MetricsService {
   private readonly logger = new Logger(MetricsService.name);
 
   recordApiCall(endpoint: string, duration: number, status: number) {
-    this.logger.log('API Call', {
+    logger.log('API Call', {
       endpoint,
       duration,
       status,
@@ -621,7 +621,7 @@ export class MetricsService {
   }
 
   recordQuestionGeneration(topic: string, difficulty: string, duration: number) {
-    this.logger.log('Question Generation', {
+    logger.log('Question Generation', {
       topic,
       difficulty,
       duration,

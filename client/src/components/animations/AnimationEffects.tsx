@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-import { ANIMATION_CONFIG, EFFECT_COLORS } from '../../constants/animation.constants';
+import { ANIMATION_CONFIG, EFFECT_COLORS } from '../../constants/ui/animation.constants';
 import { FloatingCardProps, PulseEffectProps } from '../../types';
 
 export const FloatingCard = ({

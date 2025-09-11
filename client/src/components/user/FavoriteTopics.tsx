@@ -1,12 +1,15 @@
 import { animated, useSpring } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from 'everytriv-shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared';
 
 import { getDifficultyDisplayText } from '@/utils/customDifficulty.utils';
 
 import { FavoriteTopicsProps } from '../../types';
-import { AnimatedContainerComponent as AnimatedContainer, staggerContainer } from '../animations';
+import { motion } from 'framer-motion';
+import { createStaggerContainer } from '../animations';
 import { Icon } from '../icons';
+import { audioService } from '../../services';
+import { AudioKey } from '../../constants';
 
 // Individual Favorite Card component with gesture support
 const FavoriteCard = ({
@@ -20,10 +23,16 @@ const FavoriteCard = ({
 	onSelect?: (favorite: { topic: string; difficulty: string }) => void;
 	onRemove: (index: number) => void;
 }) => {
-	// Audio hooks can be added later
-	const playSwipe = () => {};
-	const playClick = () => {};
-	const playPop = () => {};
+	// Audio hooks for user interactions
+	const playSwipe = () => {
+		audioService.play(AudioKey.SWIPE);
+	};
+	const playClick = () => {
+		audioService.play(AudioKey.BUTTON_CLICK);
+	};
+	const playPop = () => {
+		audioService.play(AudioKey.POP);
+	};
 
 	const [springs, api] = useSpring(() => ({
 		x: 0,
@@ -146,11 +155,16 @@ export default function FavoriteTopics({ favorites, onRemove, onSelect }: Favori
 					{favorites.length}
 				</span>
 			</div>
-			<AnimatedContainer className='flex flex-wrap gap-3' variants={staggerContainer}>
+			<motion.div 
+				variants={createStaggerContainer(0.1)}
+				initial="hidden"
+				animate="visible"
+				className='flex flex-wrap gap-3'
+			>
 				{favorites.map((fav, i) => (
 					<FavoriteCard key={`fav-${i}`} fav={fav} index={i} onSelect={onSelect} onRemove={onRemove} />
 				))}
-			</AnimatedContainer>
+			</motion.div>
 			{favorites.some((fav) => fav.difficulty.startsWith(CUSTOM_DIFFICULTY_PREFIX)) && (
 				<div className='mt-4 p-3 bg-blue-500/10 border border-blue-400/20 rounded-lg'>
 					<p className='text-blue-300 text-sm'>

@@ -57,10 +57,31 @@ services:
     container_name: everytriv-server
     restart: unless-stopped
     environment:
+      - NODE_ENV=prod
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=everytriv_user
+      - DATABASE_NAME=everytriv
+      - DATABASE_SCHEMA=public
+      - DATABASE_SSL=false
       - DATABASE_PASSWORD=test123
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
       - REDIS_PASSWORD=R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - JWT_EXPIRES_IN=1d
+      - PORT=3002
+      - CORS_ORIGIN=http://localhost:3000
+      - LOG_LEVEL=info
+      - LOG_FILE_PATH=./logs/app.log
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - MAX_FILE_SIZE=10485760
+      - UPLOAD_PATH=./uploads
       - LANGUAGE_TOOL_API_KEY=${LANGUAGE_TOOL_API_KEY:-your-language-tool-api-key-here}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-493943099709-hpmbtnc9fjrtksic99i6ht2p7bhgm2ml.apps.googleusercontent.com}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-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}
     ports:
       - '3002:3002'
     depends_on:
@@ -72,6 +93,12 @@ services:
       - ./server/logs:/app/logs
     networks:
       - everytriv-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Frontend Client
   client:
@@ -111,7 +138,7 @@ services:
     container_name: everytriv-redis-commander
     restart: unless-stopped
     environment:
-      - REDIS_HOSTS=local:redis:6379
+      - REDIS_HOSTS=local:redis:6379:0:R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
     ports:
       - "8081:8081"
     depends_on:

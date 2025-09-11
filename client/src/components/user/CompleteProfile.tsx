@@ -1,23 +1,27 @@
-import { COUNTRIES } from 'everytriv-shared/constants';
-import { FormEvent, useState } from 'react';
+import { COUNTRIES } from '@shared';
+import type { UserRole } from '@shared/types/domain/user/user.types';
+import { FormEvent, useState, memo, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
-import { setUser } from '@/redux/features/userSlice';
+import { setUser } from '@/redux/slices/userSlice';
 import { authService } from '@/services/auth';
-import { logger } from '@/services/utils';
+import { clientLogger } from '@shared';
+import { USER_DEFAULT_VALUES } from '../../constants';
 
-import type { RootState } from '../../types/redux.types';
-import { FadeInUp, HoverScale } from '../animations';
-import { Button, ValidatedInput, ValidationMessage } from '../ui';
+import type { RootState } from '../../types/redux/state.types';
+import { motion } from 'framer-motion';
+import { fadeInUp, hoverScale } from '../animations';
+import { Button, ValidatedInput, ValidationMessage, Avatar } from '../ui';
 
-export default function CompleteProfile() {
+const CompleteProfile = memo(function CompleteProfile() {
 	const navigate = useNavigate();
 	const dispatch = useDispatch();
 	const { user } = useSelector((state: RootState) => state.user);
 
-	const [formData, setFormData] = useState({
-		fullName: user?.full_name || '',
+	// Memoize initial form data
+	const initialFormData = useMemo(() => ({
+		fullName: user?.fullName || '',
 		avatar: user?.avatar || '',
 		address: {
 			country: user?.address?.country || '',
@@ -27,7 +31,9 @@ export default function CompleteProfile() {
 			zipCode: user?.address?.zipCode || '',
 			apartment: user?.address?.apartment || '',
 		},
-	});
+	}), [user]);
+
+	const [formData, setFormData] = useState(initialFormData);
 
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -37,7 +43,7 @@ export default function CompleteProfile() {
 	const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
 	const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-	const validateForm = (): boolean => {
+	const validateForm = useCallback((): boolean => {
 		// Simple validation
 		if (!formData.fullName.trim() || formData.fullName.trim().length < 2) {
 			setValidationErrors(['Full name must be at least 2 characters']);
@@ -51,8 +57,8 @@ export default function CompleteProfile() {
 			return false;
 		}
 		
-		if (formData.avatar && !isValidUrl(formData.avatar)) {
-			setValidationErrors(['Please enter a valid avatar URL']);
+		if (formData.avatar && !isValidAvatarUrl(formData.avatar)) {
+			setValidationErrors(['Please enter a valid avatar URL from an allowed domain (HTTPS only, image formats: jpg, jpeg, png, gif, webp, svg)']);
 			setValidationStatus('invalid');
 			return false;
 		}
@@ -60,20 +66,67 @@ export default function CompleteProfile() {
 		setValidationErrors([]);
 		setValidationStatus('valid');
 		return true;
-	};
+	}, [formData]);
 
-	const isValidUrl = (url: string): boolean => {
+	const isValidAvatarUrl = useCallback((url: string): boolean => {
 		try {
-			new URL(url);
+			const urlObj = new URL(url);
+			
+			// Must be HTTPS
+			if (urlObj.protocol !== 'https:') {
+				return false;
+			}
+
+			// Check for allowed domains
+			const allowedDomains = [
+				'googleusercontent.com',
+				'gravatar.com',
+				'github.com',
+				'githubusercontent.com',
+				'imgur.com',
+				'cloudinary.com',
+				'amazonaws.com',
+				'googleapis.com'
+			];
+
+			const isAllowedDomain = allowedDomains.some(domain => 
+				urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+			);
+
+			if (!isAllowedDomain) {
+				return false;
+			}
+
+			// Check file extension
+			const validExtensions = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+			if (!validExtensions.test(urlObj.pathname)) {
+				return false;
+			}
+
+			// Check for suspicious patterns
+			const suspiciousPatterns = [
+				/\.exe$/i,
+				/\.php$/i,
+				/\.js$/i,
+				/\.html$/i,
+				/\.htm$/i,
+				/script/i,
+				/javascript/i
+			];
+
+			if (suspiciousPatterns.some(pattern => pattern.test(url))) {
+				return false;
+			}
+
 			return true;
 		} catch {
 			return false;
 		}
-	};
+	}, []);
 
 	// Form validation is now handled by the useFormValidation hook
 
-	const handleSubmit = async (e: FormEvent) => {
+	const handleSubmit = useCallback(async (e: FormEvent) => {
 		e.preventDefault();
 		setLoading(true);
 		setError('');
@@ -93,27 +146,38 @@ export default function CompleteProfile() {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
-			dispatch(setUser(userWithTimestamps));
+    dispatch(setUser({
+      ...userWithTimestamps,
+      ...USER_DEFAULT_VALUES,
+		role: userWithTimestamps.role as UserRole,
+      createdAt: userWithTimestamps.createdAt,
+      updatedAt: userWithTimestamps.updatedAt,
+    }));
 			setValidationStatus('valid');
 			navigate('/');
 		} catch (error) {
 			setError('Failed to update profile. Please try again.');
 			setValidationStatus('invalid');
-			logger.userError('Profile completion error', { 
+			clientLogger.userError('Profile completion error', { 
 				error: error instanceof Error ? error.message : String(error) 
 			});
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [formData, dispatch, navigate, validateForm]);
 
-	const handleSkip = () => {
+	const handleSkip = useCallback(() => {
 		navigate('/');
-	};
+	}, [navigate]);
 
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700 py-12 px-4 sm:px-6 lg:px-8'>
-			<FadeInUp className='max-w-md w-full space-y-8'>
+			<motion.div 
+				variants={fadeInUp}
+				initial="hidden"
+				animate="visible"
+				className='max-w-md w-full space-y-8'
+			>
 				<div className='glass p-8 rounded-lg'>
 					<div className='text-center mb-8'>
 						<h2 className='text-3xl font-bold text-white'>Complete Your Profile</h2>
@@ -136,6 +200,7 @@ export default function CompleteProfile() {
 								id='fullName'
 								type='text'
 								validationType='username'
+								value={formData.fullName}
 								initialValue={formData.fullName}
 								onChange={(value) => {
 									setFormData((prev) => ({ ...prev, fullName: value }));
@@ -185,26 +250,31 @@ export default function CompleteProfile() {
 									setFormData((prev) => ({ ...prev, avatar: value }));
 									// Form validation is handled automatically by the hook
 								}}
-								placeholder='https://example.com/your-avatar.jpg'
+								placeholder='Enter avatar URL'
 								className='w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-800 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 							/>
 						</div>
 
 						{formData.avatar && (
 							<div className='text-center'>
-								<img
+								<Avatar
 									src={formData.avatar}
-									alt='Avatar preview'
-									className='w-16 h-16 rounded-full mx-auto border-2 border-slate-600'
-									onError={(e) => {
-										e.currentTarget.style.display = 'none';
-									}}
+									username={formData.fullName}
+									fullName={formData.fullName}
+									size="lg"
+									alt="Avatar preview"
+									showLoading={true}
+									lazy={false}
 								/>
 							</div>
 						)}
 
 						<div className='flex space-x-4'>
-							<HoverScale>
+							<motion.div
+								variants={hoverScale}
+								initial="normal"
+								whileHover="hover"
+							>
 								<Button
 									type='submit'
 									variant='primary'
@@ -220,9 +290,13 @@ export default function CompleteProfile() {
 										'Complete Profile'
 									)}
 								</Button>
-							</HoverScale>
+							</motion.div>
 
-							<HoverScale>
+							<motion.div
+								variants={hoverScale}
+								initial="normal"
+								whileHover="hover"
+							>
 								<Button
 									type='button'
 									variant='ghost'
@@ -232,7 +306,7 @@ export default function CompleteProfile() {
 								>
 									Skip
 								</Button>
-							</HoverScale>
+							</motion.div>
 						</div>
 					</form>
 
@@ -240,7 +314,10 @@ export default function CompleteProfile() {
 						<p className='text-xs text-slate-400'>You can always update your profile later in the settings</p>
 					</div>
 				</div>
-			</FadeInUp>
+			</motion.div>
 		</div>
 	);
-}
+});
+
+export default CompleteProfile;
+

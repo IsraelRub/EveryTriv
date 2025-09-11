@@ -3,7 +3,6 @@
  *
  * @module ClientHooks
  * @description Central export point for all client-side React hooks and utilities
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views, client/services
  */
@@ -15,12 +14,7 @@
  */
 export * from './api';
 
-/**
- * Context provider hooks
- * @description Hooks for React context providers and state management
- * @used_by client/components, client/views
- */
-export * from './contexts';
+// Context provider hooks removed - functionality moved to components
 
 /**
  * Layer hooks
@@ -28,3 +22,5 @@ export * from './contexts';
  * @used_by client/components, client/views, client/services
  */
 export * from './layers';
+
+// UI Layer Hooks removed - functionality moved to components

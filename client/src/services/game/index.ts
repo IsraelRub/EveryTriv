@@ -13,6 +13,13 @@
 export { gameHistoryService } from './gameHistory.service';
 
 /**
+ * Score calculation service
+ * @description Game scoring, multipliers, and statistics calculation
+ * @used_by client/redux/features/gameSlice, client/components/game
+ */
+export * from './scoreCalculation.service';
+
+/**
  * Trivia validation service
  * @description Client-side trivia question validation
  * @used_by client/components/game, client/services/api

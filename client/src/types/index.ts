@@ -3,7 +3,6 @@
  *
  * @module ClientTypes
  * @description Central export file for all client-side TypeScript types and interfaces
- * @version 1.0.0
  * @author EveryTriv Team
  */
 
@@ -12,68 +11,47 @@
  * @description Animation configuration, particle effects, and score animation types
  * @exports {Object} Animation-related type definitions
  */
-export type { AnimationOptions, ParticleOptions, ScoreAnimationState } from './animation.types';
+// Animation types moved to ui.types
 
 /**
  * Audio types
  * @description Audio service interfaces, state management, and performance tracking
  * @exports {Object} Audio-related type definitions
  */
-export type {
-	AudioAnalytics,
-	AudioPerformance,
-	AudioServiceInterface,
-	AudioState,
-	AudioStatePerformance,
-	AudioStateReadonly,
-	AudioStateWithoutContext,
-	PerformanceWithMemory,
-	WindowWithWebkitAudio,
-} from './audio.types';
+// Audio types moved to ui.types
 
 /**
  * Form types
  * @description Form field definitions and validation props
  * @exports {Object} Form-related type definitions
  */
-export type { FormField, ValidatedFormProps } from './forms.types';
+// Form types moved to ui.types
 
 /**
  * Game types
  * @description Game state, configuration, and component props
  * @exports {Object} Game-related type definitions
  */
-export type {
-	Achievement,
-	FavoriteTopicsProps,
-	GameConfig,
-	GameData,
-	GameModeConfig,
-	GameModeConfigPayload,
-	GameModeState,
-	GameNavigationState,
-	GameState,
-	GameTimerProps,
-	GameTimerState,
-	QuestionCountOption,
-	TriviaAnswer,
-	TriviaFormProps,
-	TriviaGameProps,
-} from './game.types';
+export * from './game';
 
 /**
  * Shared game constants
- * @description Re-exported shared game mode constants
- * @exports {GameMode} Game mode enumeration
+ * @description Re-exported shared game constants
  */
-export { GameMode } from 'everytriv-shared/constants/game.constants';
+export { GameMode, DifficultyLevel } from '@shared';
 
 /**
  * UI component types
  * @description Re-exported UI component prop types
  * @exports {Object} UI component type definitions
  */
-export type { LeaderboardProps } from './ui.types';
+export * from './ui';
+
+// UI Component Types
+export * from './ui/components/components.base.types';
+export * from './ui/components/components.stats.types';
+export * from './ui/components/components.analytics.types';
+export * from './ui/components/components.leaderboard.types';
 
 /**
  * Utility functions
@@ -87,18 +65,10 @@ export { getOrCreateClientUserId } from '../utils';
  * @description Redux state management, async operations, and action types
  * @exports {Object} Redux-related type definitions
  */
-export type {
-	AsyncOptions,
-	AsyncState,
-	FavoritePayload,
-	FavoritesState,
-	PointBalancePayload,
-	RootState,
-	ScoreUpdatePayload,
-	StatsState,
-	UsePointsReturn,
-	UserState,
-} from './redux.types';
+export * from './redux';
+
+// Redux types alias
+export * from './redux/state.types';
 
 /**
  * Points types
@@ -112,7 +82,7 @@ export type { PointBalance, PointPurchaseOption, PointTransaction, TransferResul
  * @description API service interfaces and response types
  * @exports {Object} API-related type definitions
  */
-export type { ApiError, ApiResponse, ClientApiService } from './api.types';
+export type { ApiResponse, ClientApiService } from './api.types';
 
 /**
  * Shared types
@@ -126,72 +96,40 @@ export type {
 	LeaderboardEntry,
 	TriviaQuestion,
 	TriviaRequest,
-} from 'everytriv-shared/types';
+} from '@shared';
 
-/**
- * UI component types
- * @description Comprehensive UI component prop types and interfaces
- * @exports {Object} UI component type definitions
- */
-export type {
-	AnimatedBackgroundProps,
-	AnimatedContainerProps,
-	AudioControlsProps,
-	BaseComponentProps,
-	ButtonProps,
-	CardContentProps,
-	CardGridProps,
-	CardHeaderProps,
-	CardProps,
-	CardTitleProps,
-	CategoryVolumeControlProps,
-	ContainerProps,
-	CountdownSoundsProps,
-	CurrentDifficultyProps,
-	CustomDifficultyHistoryProps,
-	ErrorBannerProps,
-	FloatingCardProps,
-	GameModeUIProps,
-	GameProps,
-	GridLayoutProps,
-	HistoryItem,
-	HomeTitleProps,
-	IconAnimation,
-	IconColor,
-	IconProps,
-	IconSize,
-	InputProps,
-	LucideIconProps,
-	ModalProps,
-	Orb,
-	Particle,
-	PerformanceAction,
-	PerformanceContextType,
-	PerformanceState,
-	PulseEffectProps,
-	ResponsiveGridProps,
-	ScoreStats,
-	ScoringSystemProps,
-	SectionProps,
-	SelectOption,
-	SelectProps,
-	SizeVariant,
-	SocialShareProps,
-	Stats,
-	ValidatedInputProps,
-	ValidationIconProps,
-	ValidationMessageProps,
-	ValidationStatus,
-	ValidationStatusIndicatorProps,
-	ValidationType,
-} from './ui.types';
+// Question count option type
+export interface QuestionCountOption {
+	value: number;
+	label: string;
+}
+
+// History item type
+export interface HistoryItem {
+	topic: string;
+	difficulty: string;
+	score: number;
+	date: string;
+	timestamp?: number;
+}
+
+// Score stats type
+export interface ScoreStats {
+	correct: number;
+	total: number;
+	grade?: string;
+	color?: string;
+	percentage?: number;
+}
+
+// UI types are now exported from './ui' above
 
 /**
  * Statistics types
  * @description User statistics and analytics response types
  * @exports {Object} Statistics-related type definitions
  */
-export type { UserStatsResponse } from './stats.types';
+// Stats types moved to redux.types
 
 /**
  * User types
@@ -212,3 +150,14 @@ export type {
 	UserProfileUpdateRequest,
 	UserRegisterRequest,
 } from './user.types';
+
+/**
+ * Authentication types
+ * @description Authentication route components and auth-related types
+ * @exports {Object} Authentication-related type definitions
+ */
+export type {
+	ProtectedRouteProps,
+	PublicRouteProps,
+	AuthRouteState,
+} from './auth';

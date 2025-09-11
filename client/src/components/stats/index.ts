@@ -3,7 +3,6 @@
  *
  * @module StatsComponents
  * @description React components for user statistics, achievements, and analytics display
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/views/user, client/components
  */

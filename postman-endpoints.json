@@ -1,0 +1,512 @@
+{
+  "info": {
+    "name": "EveryTriv API Endpoints",
+    "description": "Complete API endpoints collection for EveryTriv application\n\n🔐 AUTHENTICATION REQUIREMENTS:\n\n📝 USER REGISTRATION:\n- Username: 3-50 characters, only letters, numbers, underscores, and hyphens\n- Email: Valid email format, max 255 characters\n- Password: 6-128 characters, must contain:\n  * At least one lowercase letter (a-z)\n  * At least one uppercase letter (A-Z)\n  * At least one number (0-9)\n- First Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n- Last Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n\n🔑 LOGIN:\n- Username: Same as registration requirements\n- Password: Same as registration requirements\n\n📊 EXAMPLE VALID DATA:\n- Username: 'israelrub'\n- Email: 'israel@example.com'\n- Password: 'Pass123'\n- First Name: 'Israel'\n- Last Name: 'Rub'\n\n🔒 AUTHENTICATION REQUIREMENTS:\n\n🔓 PUBLIC ENDPOINTS (No Auth Required):\n- POST /auth/register - User registration\n- POST /auth/login - User login\n- GET /auth/google - Google OAuth login\n- GET /auth/google/callback - Google OAuth callback\n- GET /users/username/:username - Get user by username (public profile)\n- GET /users/search - Search users\n- GET /game/trivia/:id - Get trivia question by ID\n- GET /game/:id - Get game by ID\n- GET /leaderboard/global - Get global leaderboard\n- GET /leaderboard/period/:period - Get period leaderboard\n\n🔐 PROTECTED ENDPOINTS (Bearer Token Required):\n- GET /auth/me - Get current user\n- POST /auth/refresh - Refresh token\n- POST /auth/logout - Logout user\n- GET /users/profile - Get user profile\n- PUT /users/profile - Update user profile\n- GET /users/credits - Get user credits\n- POST /users/credits - Deduct user credits\n- DELETE /users/account - Delete user account\n- PUT /users/preferences - Update user preferences\n- PATCH /users/profile/:field - Update specific profile field\n- PATCH /users/preferences/:preference - Update single preference\n- POST /game/answer - Submit game answer\n- GET /game/history - Get user game history\n- POST /game/history - Create game history\n- GET /payment/history - Get payment history\n- POST /payment/create - Create payment\n- GET /leaderboard/user/ranking - Get user ranking\n- POST /leaderboard/user/update - Update user ranking\n- GET /leaderboard/user/percentile - Get user percentile\n\n💡 HOW TO USE:\n1. First register/login to get access token\n2. Copy the 'access_token' from response\n3. Set it in the 'accessToken' variable\n4. Use protected endpoints with Bearer token",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3003",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set authorization header if token exists",
+          "if (pm.environment.get('accessToken')) {",
+          "    pm.request.headers.add({",
+          "        key: 'Authorization',",
+          "        value: 'Bearer ' + pm.environment.get('accessToken')",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-save tokens from response",
+          "if (pm.response.json() && pm.response.json().data) {",
+          "    const data = pm.response.json().data;",
+          "    if (data.access_token) {",
+          "        pm.environment.set('accessToken', data.access_token);",
+          "    }",
+          "    if (data.refresh_token) {",
+          "        pm.environment.set('refreshToken', data.refresh_token);",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+                              "raw": {
+                  "username": "israelrub",
+                  "email": "israel@example.com",
+                  "password": "Pass123",
+                  "firstName": "Israel",
+                  "lastName": "Rub"
+                }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+                              "raw": {
+                  "username": "israelrub",
+                  "password": "Pass123"
+                }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "refresh_token": "{{refreshToken}}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Logout User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "username": "new_username",
+                "firstName": "John",
+                "lastName": "Doe",
+                "bio": "My bio"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Get User Credits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/credits",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "credits"]
+            }
+          }
+        },
+        {
+          "name": "Deduct User Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "amount": 10,
+                "reason": "Game play"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/credits",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "credits"]
+            }
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/search?query=israel&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "israel",
+                  "description": "Search query for username or name"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Maximum number of results to return"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/username/israelru",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "username", "israelru"]
+            }
+          }
+        },
+        {
+          "name": "Delete User Account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/account",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "account"]
+            }
+          }
+        },
+        {
+          "name": "Update User Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "theme": "dark",
+                "language": "he",
+                "notifications": true
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "preferences"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Game",
+      "item": [
+        {
+          "name": "Get Trivia Question by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/trivia/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "trivia", "123"]
+            }
+          }
+        },
+        {
+          "name": "Get Game by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "123"]
+            }
+          }
+        },
+        {
+          "name": "Submit Game Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "questionId": "123",
+                "answer": "Paris",
+                "timeSpent": 30
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "answer"]
+            }
+          }
+        },
+        {
+          "name": "Get Trivia Questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "topic": "Geography",
+                "difficulty": "medium",
+                "questionCount": 5
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/trivia",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "trivia"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leaderboard",
+      "item": [
+        {
+          "name": "Get Global Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/global",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "global"]
+            }
+          }
+        },
+        {
+          "name": "Get User Ranking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/ranking",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "ranking"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "amount": 100,
+                "currency": "USD",
+                "description": "Points purchase"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get Payment History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "history"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Points",
+      "item": [
+        {
+          "name": "Get Point Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/points/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Get Point Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/points/packages",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "packages"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+
+
+
+
+

@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
 		"target": "ES2020",
-		"module": "commonjs",
-		"lib": ["ES2020", "DOM"],
+		"module": "CommonJS",
+		"lib": ["ES2020"],
 		"declaration": true,
 		"outDir": "./dist",
 		"rootDir": "./",
@@ -20,8 +20,7 @@
 		"paths": {
 			"@/*": ["./*"],
 			"*": ["./*"]
-		},
-		"types": ["node"]
+		}
 	},
 	"include": ["**/*.ts"],
 	"exclude": ["node_modules", "dist", "types/component.types.ts"]

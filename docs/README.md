@@ -21,6 +21,7 @@ EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI
 ## 🛠️ מסמכי פיתוח
 
 - **[מדריך פיתוח](./development/DEVELOPMENT.md)** - מדריך פיתוח, API documentation וגיידליינים
+- **[מערכת האודיו](./development/AUDIO_SYSTEM.md)** - מערכת האודיו והצלילים, ארכיטקטורה ושימוש
 - **[כלי פיתוח](./tools/DEVELOPMENT_TOOLS.md)** - כלי פיתוח, Prettier, ESLint, TypeScript
 - **[מדריך תרומה](./development/contributing.md)** - מדריך תרומה לפרויקט
 

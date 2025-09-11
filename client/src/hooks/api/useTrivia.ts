@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from 'everytriv-shared/types';
+import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
+import { clientLogger } from '@shared';
 
 import { apiService, gameHistoryService, storageService } from '../../services';
+import { useAppSelector } from '../layers/utils';
+import { selectLeaderboard } from '../../redux/selectors';
 
 // Query keys
 export const triviaKeys = {
@@ -28,13 +31,6 @@ export const useCustomDifficulties = () => {
 	});
 };
 
-export const useDifficultyStats = (userId?: string) => {
-	return useQuery({
-		queryKey: triviaKeys.difficultyStats(userId),
-		queryFn: () => apiService.getDifficultyStats(userId || ''),
-		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
-	});
-};
 
 // Game History hooks
 export const useGameHistory = (limit: number = 20, offset: number = 0) => {
@@ -45,20 +41,16 @@ export const useGameHistory = (limit: number = 20, offset: number = 0) => {
 	});
 };
 
-export const useGlobalLeaderboard = (limit: number = 100) => {
-	return useQuery({
-		queryKey: ['global-leaderboard', limit],
-		queryFn: () => gameHistoryService.getLeaderboard(limit),
-		staleTime: 2 * 60 * 1000, // Consider stale after 2 minutes
-	});
-};
 
-export const useLeaderboard = (limit: number = 10) => {
-	return useQuery({
-		queryKey: triviaKeys.leaderboard(limit),
-		queryFn: () => apiService.getLeaderboard(limit),
-		staleTime: 60 * 1000, // Consider stale after 1 minute
-	});
+export const useLeaderboard = () => {
+	const leaderboard = useAppSelector(selectLeaderboard);
+	
+	return {
+		data: leaderboard,
+		isLoading: false,
+		error: null,
+		refetch: () => {}, // No need to refetch from API
+	};
 };
 
 export const useSaveCustomDifficulty = () => {
@@ -88,11 +80,9 @@ export const useSaveHistory = () => {
 				await queryClient.cancelQueries({ queryKey: ['game-history'] });
 			} catch (error) {
 				// Ignore errors when canceling queries
-				import('../../services/utils').then(({ logger }) => {
-					logger.apiDebug('Error canceling queries', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+			clientLogger.apiDebug('Error canceling queries', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			}
 
 			// Snapshot the previous value
@@ -148,7 +138,7 @@ export const useTriviaQuestionMutation = () => {
 export const useUserScore = (userId: string) => {
 	return useQuery({
 		queryKey: triviaKeys.score(userId),
-		queryFn: () => apiService.getUserScore(userId),
+		queryFn: () => apiService.getUserScore(),
 		staleTime: 30 * 1000, // Consider stale after 30 seconds
 		enabled: !!userId,
 	});
@@ -158,3 +148,43 @@ export const useUserScore = (userId: string) => {
 export const useValidateCustomDifficulty = () => {
 	return (customText: string) => apiService.validateCustomDifficulty(customText);
 };
+
+// Game History Management hooks
+export const useDeleteGameHistory = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (gameId: string) => apiService.deleteGameHistory(gameId),
+		onSuccess: (data) => {
+			// Invalidate game history queries
+			queryClient.invalidateQueries({ queryKey: ['game-history'] });
+			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+			
+			// Show success message
+			clientLogger.userInfo('Game history deleted successfully', { message: data.message });
+		},
+		onError: (error) => {
+			clientLogger.userError('Failed to delete game history', { error });
+		},
+	});
+};
+
+export const useClearGameHistory = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: () => apiService.clearGameHistory(),
+		onSuccess: (data) => {
+			// Invalidate all game history queries
+			queryClient.invalidateQueries({ queryKey: ['game-history'] });
+			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+			
+			// Show success message
+			clientLogger.userInfo('All game history cleared successfully', { deletedCount: data.deletedCount });
+		},
+		onError: (error) => {
+			clientLogger.userError('Failed to clear game history', { error });
+		},
+	});
+};
+

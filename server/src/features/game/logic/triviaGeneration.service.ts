@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { GameMetadata, TriviaAnswer } from 'everytriv-shared/types';
-import { Repository } from 'typeorm';
+import { TriviaAnswer } from '@shared';
+import { Repository, DeepPartial } from 'typeorm';
 
-import { LoggerService } from '../../../shared/controllers';
-import { TriviaEntity } from '../../../shared/entities';
+import { serverLogger as logger } from '@shared';
+import { TriviaEntity } from 'src/internal/entities';
 import { AiProvidersService } from './providers/management';
 
 /**
@@ -16,7 +16,6 @@ export class TriviaGenerationService {
 	constructor(
 		@InjectRepository(TriviaEntity)
 		private readonly triviaRepository: Repository<TriviaEntity>,
-		private readonly logger: LoggerService,
 		private readonly aiProvidersService: AiProvidersService
 	) {}
 
@@ -29,7 +28,7 @@ export class TriviaGenerationService {
 	 */
 	async generateQuestion(topic: string, difficulty: string, userId?: string): Promise<TriviaEntity> {
 		try {
-			this.logger.gameTarget('Generating trivia question', {
+			logger.gameTarget('Generating trivia question', {
 				topic,
 				difficulty,
 				userId: userId || 'anonymous',
@@ -43,7 +42,7 @@ export class TriviaGenerationService {
 				const triviaEntity = this.convertQuestionToEntity(question, userId);
 				const savedQuestion = await this.saveQuestion(triviaEntity);
 
-				this.logger.gameTarget('Question generated successfully', {
+				logger.gameTarget('Question generated successfully', {
 					questionId: savedQuestion.id,
 					topic,
 					difficulty,
@@ -55,7 +54,7 @@ export class TriviaGenerationService {
 			// If AI generation fails, throw an error instead of using mock
 			throw new Error('Failed to generate question with AI providers');
 		} catch (error) {
-			this.logger.gameError('Failed to generate trivia question', {
+			logger.gameError('Failed to generate trivia question', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic,
 				difficulty,
@@ -79,7 +78,7 @@ export class TriviaGenerationService {
 	 */
 	async generateQuestions(topic: string, difficulty: string, count: number, userId?: string) {
 		try {
-			this.logger.gameTarget('Generating multiple trivia questions', {
+			logger.gameTarget('Generating multiple trivia questions', {
 				topic,
 				difficulty,
 				count,
@@ -92,7 +91,7 @@ export class TriviaGenerationService {
 					const question = await this.generateQuestion(topic, difficulty, userId);
 					questions.push(question);
 				} catch (error) {
-					this.logger.gameError('Failed to generate question', {
+					logger.gameError('Failed to generate question', {
 						error: error instanceof Error ? error.message : 'Unknown error',
 						attempt: i + 1,
 						topic,
@@ -104,7 +103,7 @@ export class TriviaGenerationService {
 
 			return questions;
 		} catch (error) {
-			this.logger.gameError('Failed to generate multiple trivia questions', {
+			logger.gameError('Failed to generate multiple trivia questions', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic,
 				difficulty,
@@ -122,7 +121,7 @@ export class TriviaGenerationService {
 	 */
 	async getQuestionById(questionId: string) {
 		try {
-			this.logger.gameTarget('Getting question by ID', {
+			logger.gameTarget('Getting question by ID', {
 				questionId,
 			});
 
@@ -135,14 +134,14 @@ export class TriviaGenerationService {
 				id: question.id,
 				question: question.question,
 				answers: question.answers,
-				correct_answer_index: question.correctAnswerIndex,
+				correctAnswerIndex: question.correctAnswerIndex,
 				topic: question.topic,
 				difficulty: question.difficulty,
 				metadata: question.metadata,
 				created_at: question.createdAt,
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to get question by ID', {
+			logger.gameError('Failed to get question by ID', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				questionId,
 			});
@@ -159,7 +158,7 @@ export class TriviaGenerationService {
 	 */
 	async getRandomQuestions(topic: string, difficulty: string, count: number) {
 		try {
-			this.logger.gameTarget('Getting random questions', {
+			logger.gameTarget('Getting random questions', {
 				topic,
 				difficulty,
 				count,
@@ -177,14 +176,14 @@ export class TriviaGenerationService {
 				id: question.id,
 				question: question.question,
 				answers: question.answers,
-				correct_answer_index: question.correctAnswerIndex,
+				correctAnswerIndex: question.correctAnswerIndex,
 				topic: question.topic,
 				difficulty: question.difficulty,
 				metadata: question.metadata,
 				created_at: question.createdAt,
 			}));
 		} catch (error) {
-			this.logger.gameError('Failed to get random questions', {
+			logger.gameError('Failed to get random questions', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic,
 				difficulty,
@@ -208,14 +207,14 @@ export class TriviaGenerationService {
 			// Convert AI question to our format
 			const question = this.convertAIQuestionToFormat(aiQuestion, topic, difficulty);
 
-			this.logger.gameTarget('AI question generated successfully', {
+			logger.gameTarget('AI question generated successfully', {
 				topic,
 				difficulty,
 			});
 
 			return question;
 		} catch (error) {
-			this.logger.gameError('Failed to generate AI question', {
+			logger.gameError('Failed to generate AI question', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic,
 				difficulty,
@@ -235,9 +234,9 @@ export class TriviaGenerationService {
 		aiQuestion: {
 			question: string;
 			answers: TriviaAnswer[];
-			correct_answer_index: number;
+			correctAnswerIndex: number;
 			explanation?: string;
-			metadata?: GameMetadata;
+			metadata?: Record<string, unknown>;
 		},
 		topic: string,
 		difficulty: string
@@ -247,7 +246,7 @@ export class TriviaGenerationService {
 			return {
 				question: aiQuestion.question,
 				answers: aiQuestion.answers.map(answer => answer.text),
-				correctAnswerIndex: aiQuestion.correct_answer_index,
+				correctAnswerIndex: aiQuestion.correctAnswerIndex,
 				topic,
 				difficulty,
 				explanation: aiQuestion.explanation || '',
@@ -260,7 +259,7 @@ export class TriviaGenerationService {
 				},
 			};
 		} catch (error) {
-			this.logger.gameError('Failed to convert AI question format', {
+			logger.gameError('Failed to convert AI question format', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				aiQuestion: JSON.stringify(aiQuestion),
 			});
@@ -284,7 +283,7 @@ export class TriviaGenerationService {
 			metadata?: Record<string, unknown>;
 		},
 		userId?: string
-	): Partial<TriviaEntity> {
+	): DeepPartial<TriviaEntity> {
 		return {
 			question: questionData.question,
 			answers: questionData.answers.map((answer, index) => ({
@@ -305,19 +304,19 @@ export class TriviaGenerationService {
 	 * @param triviaEntity Trivia entity
 	 * @returns Saved trivia entity
 	 */
-	private async saveQuestion(triviaEntity: Partial<TriviaEntity>): Promise<TriviaEntity> {
+	private async saveQuestion(triviaEntity: DeepPartial<TriviaEntity>): Promise<TriviaEntity> {
 		try {
 			const question = this.triviaRepository.create(triviaEntity);
 			const savedQuestion = await this.triviaRepository.save(question);
 
-			this.logger.gameTarget('Question saved to database', {
+			logger.gameTarget('Question saved to database', {
 				questionId: savedQuestion.id,
 				topic: savedQuestion.topic || 'unknown',
 			});
 
 			return savedQuestion;
 		} catch (error) {
-			this.logger.databaseError('Failed to save question to database', {
+			logger.databaseError('Failed to save question to database', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				topic: triviaEntity.topic || 'unknown',
 			});

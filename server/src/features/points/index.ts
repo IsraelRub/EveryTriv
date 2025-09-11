@@ -7,6 +7,13 @@
  */
 
 /**
+ * Points DTOs
+ * @description Data transfer objects for points operations
+ * @used_by server/features/points, server/controllers
+ */
+export * from './dtos';
+
+/**
  * Points controller
  * @description Handles points-related HTTP requests
  * @used_by server/app, server/routes

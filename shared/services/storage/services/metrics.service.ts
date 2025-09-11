@@ -5,7 +5,9 @@
  * @description Centralized metrics tracking for all storage operations
  * @used_by server/src/shared/modules/storage/storage.service.ts, server/src/shared/modules/cache/cache.service.ts, client/src/services/storage/storage.service.ts
  */
-import { StorageMetrics } from '../../../types/storage.types';
+import { StorageMetrics } from '../../../types/infrastructure/storage.types';
+import type { BasicValue, StatsValue } from '../../../types/core/data.types';
+import type { MiddlewareMetrics } from '../../../types/domain/analytics/metrics.types';
 
 /**
  * Unified metrics service class
@@ -17,6 +19,7 @@ export class MetricsService {
 	private metrics: StorageMetrics;
 	private startTime: Date;
 	private operationTimes: Map<keyof StorageMetrics['operations'], number[]> = new Map();
+	private middlewareMetrics: Map<string, MiddlewareMetrics> = new Map();
 
 	private constructor() {
 		this.startTime = new Date();
@@ -56,13 +59,16 @@ export class MetricsService {
 				cache: { operations: 0, errors: 0, size: 0 },
 				hybrid: { operations: 0, errors: 0, size: 0 },
 			},
-			uptime: {
-				ms: 0,
-				seconds: 0,
-				minutes: 0,
-				hours: 0,
-			},
-		};
+    uptime: {
+      ms: 0,
+      seconds: 0,
+      minutes: 0,
+      hours: 0,
+    },
+    totalOps: 0,
+    totalErrors: 0,
+    middleware: {},
+  };
 	}
 
 	/**
@@ -133,11 +139,93 @@ export class MetricsService {
 	}
 
 	/**
+	 * Track middleware execution metrics
+	 * @param middlewareName Middleware name
+	 * @param duration Execution duration in milliseconds
+	 * @param success Whether execution was successful
+	 * @param error Error object if execution failed
+	 */
+	trackMiddlewareExecution(
+		middlewareName: string,
+		duration: number,
+		success: boolean = true,
+		_error?: Error
+	): void {
+		const existing = this.middlewareMetrics.get(middlewareName);
+		const now = new Date();
+
+		if (existing) {
+			// Update existing metrics
+			existing.requestCount++;
+			existing.totalDuration += duration;
+			existing.averageDuration = existing.totalDuration / existing.requestCount;
+			existing.minDuration = Math.min(existing.minDuration, duration);
+			existing.maxDuration = Math.max(existing.maxDuration, duration);
+			existing.lastExecuted = now;
+
+			// Update slow operations count
+			if (duration > 1000) {
+				existing.slowOperations++;
+			}
+
+			if (!success) {
+				existing.errorCount++;
+			}
+		} else {
+			// Create new metrics entry
+			this.middlewareMetrics.set(middlewareName, {
+				requestCount: 1,
+				totalDuration: duration,
+				averageDuration: duration,
+				minDuration: duration,
+				maxDuration: duration,
+				slowOperations: duration > 1000 ? 1 : 0, // Consider operations > 1s as slow
+				errorCount: success ? 0 : 1,
+				lastExecuted: now,
+			});
+		}
+
+		// Update metrics object
+		this.updateMiddlewareMetrics();
+	}
+
+	/**
+	 * Get middleware metrics
+	 * @param middlewareName Optional middleware name to get specific metrics
+	 * @returns Middleware metrics
+	 */
+	getMiddlewareMetrics(middlewareName?: string): Record<string, MiddlewareMetrics> | MiddlewareMetrics | null {
+		if (middlewareName) {
+			return this.middlewareMetrics.get(middlewareName) || null;
+		}
+		
+		const middlewareObj: Record<string, MiddlewareMetrics> = {};
+		this.middlewareMetrics.forEach((metrics, name) => {
+			middlewareObj[name] = { ...metrics };
+		});
+		return middlewareObj;
+	}
+
+	/**
+	 * Reset middleware metrics
+	 * @param middlewareName Optional middleware name to reset specific metrics
+	 */
+	resetMiddlewareMetrics(middlewareName?: string): void {
+		if (middlewareName) {
+			this.middlewareMetrics.delete(middlewareName);
+		} else {
+			this.middlewareMetrics.clear();
+		}
+		this.updateMiddlewareMetrics();
+	}
+
+	/**
 	 * Get current metrics
 	 * @returns Current metrics
 	 */
 	getMetrics(): StorageMetrics {
 		this.updateUptime();
+		this.updateMiddlewareMetrics();
 		return { ...this.metrics };
 	}
 
@@ -182,13 +270,15 @@ export class MetricsService {
 				cache: { operations: 0, errors: 0, size: 0 },
 				hybrid: { operations: 0, errors: 0, size: 0 },
 			},
-			uptime: {
-				ms: 0,
-				seconds: 0,
-				minutes: 0,
-				hours: 0,
-			},
-		};
+    uptime: {
+      ms: 0,
+      seconds: 0,
+      minutes: 0,
+      hours: 0,
+    },
+    totalOps: 0,
+    totalErrors: 0,
+  };
 		this.operationTimes.clear();
 	}
 
@@ -227,6 +317,17 @@ export class MetricsService {
 	}
 
 	/**
+	 * Update middleware metrics in main metrics object
+	 */
+	private updateMiddlewareMetrics(): void {
+		const middlewareObj: Record<string, StatsValue> = {};
+		this.middlewareMetrics.forEach((metrics, name) => {
+			middlewareObj[name] = { ...metrics };
+		});
+		this.metrics.middleware = middlewareObj as typeof this.metrics.middleware;
+	}
+
+	/**
 	 * Update performance metrics
 	 */
 	private updatePerformanceMetrics(): void {
@@ -244,6 +345,57 @@ export class MetricsService {
 		const uptime = Date.now() - this.startTime.getTime();
 		const totalOps = Object.values(this.metrics.operations).reduce((sum: number, count: number) => sum + count, 0);
 		this.metrics.performance.opsPerSecond = uptime > 0 ? totalOps / (uptime / 1000) : 0;
+	}
+
+	/**
+	 * Track request performance
+	 * @param endpoint - The endpoint being tracked
+	 * @param duration - Duration in milliseconds
+	 * @param metadata - Additional metadata
+	 */
+	trackRequestPerformance(endpoint: string, duration: number, metadata?: Record<string, BasicValue>): void {
+		// Implementation for request performance tracking
+		console.log(`Request performance tracked: ${endpoint} - ${duration}ms`, metadata);
+	}
+
+	/**
+	 * Track endpoint performance
+	 * @param endpoint - The endpoint being tracked
+	 * @param metadata - Additional metadata
+	 */
+	trackEndpointPerformance(endpoint: string, metadata?: Record<string, StatsValue>): void {
+		// Implementation for endpoint performance tracking
+		console.log(`Endpoint performance tracked: ${endpoint}`, metadata);
+	}
+
+	/**
+	 * Track method performance
+	 * @param method - The method being tracked
+	 * @param metadata - Additional metadata
+	 */
+	trackMethodPerformance(method: string, metadata?: Record<string, StatsValue>): void {
+		// Implementation for method performance tracking
+		console.log(`Method performance tracked: ${method}`, metadata);
+	}
+
+	/**
+	 * Track slow request
+	 * @param endpoint - The endpoint being tracked
+	 * @param metadata - Additional metadata
+	 */
+	trackSlowRequest(endpoint: string, metadata?: Record<string, StatsValue>): void {
+		// Implementation for slow request tracking
+		console.log(`Slow request tracked: ${endpoint}`, metadata);
+	}
+
+	/**
+	 * Track error performance
+	 * @param endpoint - The endpoint being tracked
+	 * @param metadata - Additional metadata
+	 */
+	trackErrorPerformance(endpoint: string, metadata?: Record<string, StatsValue>): void {
+		// Implementation for error performance tracking
+		console.log(`Error performance tracked: ${endpoint}`, metadata);
 	}
 }
 

@@ -6,4 +6,4 @@
  * @used_by server/features/user, server/controllers
  */
 
-// No DTOs currently needed
+export * from './user.dto';

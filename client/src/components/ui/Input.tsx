@@ -1,10 +1,11 @@
 import { forwardRef } from 'react';
+import { motion } from 'framer-motion';
 
-import { InputProps } from '../../types';
+import { UIInputProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
-import { FadeInUp, HoverScale } from '../animations/AnimationLibrary';
+import { fadeInUp, hoverScale } from '../animations';
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
+export const Input = forwardRef<HTMLInputElement, UIInputProps>(
 	({ className, size = 'md', isGlassy = false, error, withAnimation = true, ...props }, ref) => {
 		const inputElement = (
 			<input
@@ -47,11 +48,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 		);
 
 		return withAnimation ? (
-			<FadeInUp delay={0.1}>
-				<HoverScale>
-					{inputElement}
-				</HoverScale>
-			</FadeInUp>
+					<motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay: 0.1 }}>
+			<motion.div variants={hoverScale} initial="initial" whileHover="hover">
+				{inputElement}
+			</motion.div>
+		</motion.div>
 		) : (
 			inputElement
 		);

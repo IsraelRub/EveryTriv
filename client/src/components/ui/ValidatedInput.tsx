@@ -6,16 +6,14 @@
  * @used_by client/src/components/forms, client/src/views
  */
 
-import {
-	useCustomDifficultyValidation,
-	useEmailValidation,
-	usePasswordValidation,
-	useTopicValidation,
-	useUsernameValidation,
-} from 'everytriv-shared/hooks/useValidation';
-import { ChangeEvent, forwardRef, useEffect } from 'react';
+import { validateEmail, validateUsername, validatePassword, validateTopic, validateCustomDifficulty } from '@shared/validation';
+import { clientLogger } from '@shared';
 
-import type { ValidatedInputProps } from '../../types/ui.types';
+import { ChangeEvent, forwardRef, useEffect, useState } from 'react';
+
+import { audioService } from '../../services';
+import { AudioKey } from '../../constants';
+import type { ValidatedInputProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 import { Icon } from '../icons/IconLibrary';
 
@@ -36,48 +34,72 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		},
 		ref
 	) => {
+		
+		
 		// Enhanced validation options with real-time validation
-		const enhancedValidationOptions = {
-			...validationOptions,
-			debounceMs: 300, // Real-time validation with debounce
-			validateOnMount: true, // Validate on component mount
-			required: true, // All fields are required by default
-		};
 
-		// Use appropriate validation hook based on type with enhanced options
-		const getValidationHook = () => {
+		// Validation state
+		const [isValid, setIsValid] = useState(true);
+		const [errors, setErrors] = useState<string[]>([]);
+		const [isValidating, setIsValidating] = useState(false);
+
+		const validateValue = async (value: string) => {
+			setIsValidating(true);
+			
+			let result;
 			switch (validationType) {
 				case 'username':
-					return useUsernameValidation(initialValue, enhancedValidationOptions);
+					result = validateUsername(value);
+					break;
 				case 'password':
-					return usePasswordValidation(initialValue, enhancedValidationOptions);
+					result = validatePassword(value);
+					break;
 				case 'email':
-					return useEmailValidation(initialValue, enhancedValidationOptions);
+					result = validateEmail(value);
+					break;
 				case 'topic':
-					return useTopicValidation(initialValue, enhancedValidationOptions);
+					result = validateTopic(value);
+					break;
 				case 'customDifficulty':
-					return useCustomDifficultyValidation(initialValue, enhancedValidationOptions);
+					result = await validateCustomDifficulty(value);
+					break;
 				default:
-					return useUsernameValidation(initialValue, enhancedValidationOptions);
+					result = validateUsername(value);
 			}
+			
+			setIsValid(result.isValid);
+			setErrors(result.errors);
+			setIsValidating(false);
 		};
-
-		const validation = getValidationHook();
 
 		// Handle input change
 		const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
 			const value = e.target.value;
-			validation.validate(value);
+			
+			// Log user activity
+			clientLogger.logUserActivity('input_change', validationType, {
+				valueLength: value.length,
+			});
+			
+			// Measure validation performance
+			const startTime = performance.now();
+			validateValue(value);
+			const duration = performance.now() - startTime;
+			clientLogger.performance(`validation_${validationType}`, duration);
+
+			// Play input sound
+			audioService.play(AudioKey.INPUT);
 
 			if (onChange) {
-				onChange(value, validation.isValid, validation.errors);
+				onChange(value, isValid, errors);
 			}
 		};
 
 		// Call onChange on mount if initial value exists
 		useEffect(() => {
 			if (initialValue && onChange) {
-				onChange(initialValue, validation.isValid, validation.errors);
+				validateValue(initialValue);
+				onChange(initialValue, isValid, errors);
 			}
 		}, []);
 
@@ -85,15 +107,15 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		const getValidationIcon = () => {
 			if (!showValidationIcon) return null;
 
-			if (validation.isValidating) {
+			if (isValidating) {
 				return <Icon name='Loading' className='w-4 h-4 animate-spin text-blue-400' />;
 			}
 
-			if (validation.errors.length > 0) {
+			if (errors.length > 0) {
 				return <Icon name='Error' className='w-4 h-4 text-red-400' />;
 			}
 
-			if (validation.isValid && validation.value) {
+			if (isValid && initialValue) {
 				return <Icon name='Check' className='w-4 h-4 text-green-400' />;
 			}
 
@@ -102,15 +124,15 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 
 		// Render error messages
 		const renderErrorMessages = () => {
-			if (!showErrors || validation.errors.length === 0) return null;
+			if (!showErrors || errors.length === 0) return null;
 
 			if (renderError) {
-				return renderError(validation.errors);
+				return renderError(errors);
 			}
 
 			return (
 				<div className='mt-1 space-y-1'>
-					{validation.errors.map((error, index) => (
+					{errors.map((error: string, index: number) => (
 						<p key={index} className='text-sm text-red-400 flex items-center'>
 							<Icon name='Error' className='w-3 h-3 mr-1' />
 							{error}
@@ -125,7 +147,6 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 				<div className='relative'>
 					<input
 						ref={ref}
-						value={validation.value}
 						onChange={handleChange}
 						className={combineClassNames(
 							// Base styles
@@ -148,13 +169,14 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 
 							// Validation state
 							{
-								'border border-red-500 focus:ring-red-500/20': validation.errors.length > 0,
-								'border border-green-500 focus:ring-green-500/20': validation.isValid && validation.value,
+								'border border-red-500 focus:ring-red-500/20': errors.length > 0,
+								'border border-green-500 focus:ring-green-500/20': isValid && initialValue,
 							},
 
 							className
 						)}
 						{...props}
+						value={initialValue}
 					/>
 
 					{/* Validation icon */}
@@ -171,3 +193,4 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 );
 
 ValidatedInput.displayName = 'ValidatedInput';
+

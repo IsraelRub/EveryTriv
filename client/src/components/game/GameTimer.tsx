@@ -1,10 +1,10 @@
-import { GameMode } from 'everytriv-shared/types/game.types';
-import { formatTimeDisplay } from 'everytriv-shared/utils';
+import { formatTimeDisplay } from '@shared/utils';
 import { useEffect, useState } from 'react';
 
 import { GameTimerProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
-import { FadeInDown } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInDown } from '../animations';
 
 /**
  * Game timer component with mode-specific display
@@ -42,7 +42,7 @@ export default function GameTimer({
 	const getTimerDisplay = () => {
 		const formattedElapsed = formatTimeDisplay(displayTime || 0);
 
-		if (mode === GameMode.TIME_LIMITED) {
+		if (mode?.name === 'time-limited') {
 			const formattedRemaining = timeRemaining !== undefined ? formatTimeDisplay(timeRemaining) : '0:00';
 			const isTimeRunningOut = timeRemaining !== undefined && timeRemaining < 30000; // Less than 30 seconds
 
@@ -61,7 +61,7 @@ export default function GameTimer({
 					</div>
 				</div>
 			);
-		} else if (mode === GameMode.QUESTION_LIMITED) {
+		} else if (mode?.name === 'question-limited') {
 			return (
 				<div className='text-center'>
 					<div className='text-sm opacity-75'>Time Playing</div>
@@ -83,7 +83,10 @@ export default function GameTimer({
 	}
 
 	return (
-		<FadeInDown
+		<motion.div
+			variants={fadeInDown}
+			initial="hidden"
+			animate="visible"
 			className={combineClassNames(
 				'game-timer bg-white/10 backdrop-blur-sm border border-white/20 p-3 rounded-lg mb-4 text-white',
 				className
@@ -93,10 +96,10 @@ export default function GameTimer({
 
 			{/* Game mode indicator */}
 			<div className='text-xs opacity-60 text-center mt-1'>
-				{mode === GameMode.TIME_LIMITED && 'Time Limited'}
-				{mode === GameMode.QUESTION_LIMITED && 'Question Limited'}
-				{mode === GameMode.UNLIMITED && 'Free Play'}
+		{mode?.name === 'time-limited' && 'Time Limited'}
+		{mode?.name === 'question-limited' && 'Question Limited'}
+		{mode?.name === 'unlimited' && 'Free Play'}
 			</div>
-		</FadeInDown>
+		</motion.div>
 	);
 }

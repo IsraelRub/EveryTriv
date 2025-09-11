@@ -4,7 +4,7 @@
  * @module UserModule
  * @description User management module handling user authentication, profiles, and account operations
  * @used_by server/app, server/controllers
- * @dependencies TypeOrmModule, JwtModule, AuthSharedModule, CacheModule, LoggerModule, StorageModule
+ * @dependencies TypeOrmModule, JwtModule, AuthModule, CacheModule, LoggerModule, StorageModule
  * @provides UserService
  * @entities UserEntity
  */
@@ -12,26 +12,31 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AUTH_CONSTANTS } from '../../shared/constants';
-import { LoggerService } from '../../shared/controllers';
-import { UserEntity } from '../../shared/entities';
-import { AuthSharedModule, CacheModule, StorageModule } from '../../shared/modules';
+import { AUTH_CONSTANTS } from '../../internal/constants/auth/auth.constants';
+import { UserEntity, UserStatsEntity, GameHistoryEntity } from 'src/internal/entities';
+import { CacheModule, StorageModule } from 'src/internal/modules';
+import { AuthModule } from '@features/auth';
+import { ValidationModule } from '../../common/validation/validation.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
+import { UserStatsService } from './userStats.service';
+import { UserDataPipe } from '../../common/pipes';
+import { AuthenticationManager, PasswordService } from 'src/common/auth';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([UserEntity]),
-		AuthSharedModule,
+		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity]),
+		AuthModule,
 		CacheModule,
 		StorageModule,
+		ValidationModule,
 		JwtModule.register({
 			secret: AUTH_CONSTANTS.JWT_SECRET,
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
 	],
 	controllers: [UserController],
-	providers: [UserService, LoggerService],
-	exports: [UserService],
+	providers: [UserService, UserStatsService, UserDataPipe, AuthenticationManager, PasswordService],
+	exports: [UserService, UserStatsService],
 })
 export class UserModule {}

@@ -5,8 +5,8 @@ import {
 	VALID_DIFFICULTIES,
 	VALID_QUESTION_COUNTS,
 	VALIDATION_LIMITS,
-} from 'everytriv-shared/constants';
-import { isCustomDifficulty } from 'everytriv-shared/utils';
+} from '@shared';
+import { isCustomDifficulty } from '@shared';
 
 export class TriviaRequestDto {
 	@IsString()

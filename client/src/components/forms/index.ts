@@ -3,7 +3,6 @@
  *
  * @module FormsComponents
  * @description Form-related components, utilities, and validation systems
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views
  */

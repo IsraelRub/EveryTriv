@@ -7,24 +7,12 @@
  * @used_by client/src/views/gameHistory/GameHistory.tsx
  */
 
-import { calculatePercentage,formatDuration, formatTimeDisplay, getTimeElapsed } from 'everytriv-shared/utils';
+import { calculatePercentage,formatDuration, formatTimeDisplay, getTimeElapsed } from '@shared';
 
-import { FadeInUp } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp } from '../animations';
 import { Icon } from '../icons';
-
-interface GameSessionStatsProps {
-	session: {
-		id: string;
-		startTime: number;
-		endTime?: number;
-		totalQuestions: number;
-		correctAnswers: number;
-		score: number;
-		difficulty: string;
-		topic: string;
-	};
-	className?: string;
-}
+import { GameSessionStatsProps } from '../../types';
 
 export default function GameSessionStats({ session, className }: GameSessionStatsProps) {
 	const sessionDuration = session.endTime 
@@ -36,7 +24,12 @@ export default function GameSessionStats({ session, className }: GameSessionStat
 	const timeElapsed = getTimeElapsed(session.startTime);
 
 	return (
-		<FadeInUp className={`glass rounded-lg p-6 ${className || ''}`}>
+		<motion.div 
+			variants={fadeInUp}
+			initial="hidden"
+			animate="visible"
+			className={`glass rounded-lg p-6 ${className || ''}`}
+		>
 			<div className='space-y-4'>
 				{/* Session Header */}
 				<div className='text-center mb-6'>
@@ -113,6 +106,6 @@ export default function GameSessionStats({ session, className }: GameSessionStat
 					</div>
 				</div>
 			</div>
-		</FadeInUp>
+		</motion.div>
 	);
 }

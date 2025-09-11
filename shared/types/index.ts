@@ -3,33 +3,35 @@
  *
  * @module SharedTypes
  * @description Central export point for all shared TypeScript types and interfaces
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/src/types, server/src/shared/types
  */
 
 /**
- * Core type definitions
+ * Base type definitions
  * @description Fundamental type definitions used across the application
+ * @exports {Object} Base type definitions
+ */
+// Base types are now distributed to specific files
+
+/**
+ * Core type definitions
+ * @description Core type definitions used across the application
  * @exports {Object} Core type definitions
  */
-export * from './ai.types';
-export * from './api.types';
-export * from './auth.types';
-export * from './data.types';
-export * from './error.types';
-export * from './game.types';
-export * from './http.types';
-export * from './logging.types';
-export * from './metadata.types';
+// Core types
+export * from './core';
+// Domain types
+export * from './domain';
+// Infrastructure types
+export * from './infrastructure';
+// Payment types
 export * from './payment.types';
+// Single file types
 export * from './points.types';
-export * from './response.types';
-export * from './storage.types';
 export * from './subscription.types';
-export * from './typeorm.types';
 export * from './ui.types';
-export * from './user.types';
+export * from './language.types';
 
 /**
  * Cache types
@@ -37,6 +39,7 @@ export * from './user.types';
  * @exports {Object} Cache-related type definitions
  */
 export type {
+	CacheStats,
 	CachedQuestionDto,
 	CacheHealthStatus,
 	CacheInvalidationDto,
@@ -45,14 +48,14 @@ export type {
 	CacheStorage,
 	QuestionCacheMap,
 	UserProgressData,
-} from './cache.types';
+} from './infrastructure/cache.types';
 
 /**
  * Component types
  * @description React component prop and state type definitions
  * @exports {Object} Component-related type definitions
  */
-export type { ErrorBoundaryProps, ErrorBoundaryState } from './component.types';
+// Component types moved to ui.types
 
 /**
  * Validation types
@@ -61,31 +64,29 @@ export type { ErrorBoundaryProps, ErrorBoundaryState } from './component.types';
  */
 export type {
 	AsyncValidationFunction,
-	BaseFormValidationResult,
 	BaseValidationResult,
+	CustomDifficultyValidationResponse,
+	DifficultyValidation,
 	FieldValidationResult,
-	FormValidationResult,
 	PasswordValidationResult,
-	RealTimeValidationOptions,
+	PaymentValidationResult,
+	PointsValidationResult,
 	RequestDataType,
-	StringFormValidationResult,
+	SharedTriviaInputValidation,
+	ValidateCustomDifficultyRequest,
 	ValidationContext,
+	ValidationDecoratorOptions,
 	ValidationError,
 	ValidationFunction,
-	ValidationHookOptions,
-	ValidationHookResult,
-	ValidationIconProps,
 	ValidationInterceptorOptions,
 	ValidationInterceptorResult,
 	ValidationMiddlewareConfig,
 	ValidationOptions,
 	ValidationResult,
 	ValidationRule,
-	ValidationSchema,
 	ValidationStatus,
-	ValidationStatusIndicatorProps,
 	ValidationType,
-} from './validation.types';
+} from './domain/validation/validation.types';
 
 /**
  * Analytics types
@@ -94,22 +95,20 @@ export type {
  */
 export type {
 	AnalyticsEventData,
-	AnalyticsInsights,
 	AnalyticsMetadata,
 	AnalyticsResponse,
-	PerformanceMetrics,
-	ProviderHealth,
-	ProviderMetrics,
 	QuestionAnalytics,
-	QuestionCacheEntry,
-	SecurityMetrics,
-	SystemInsights,
 	SystemStats,
 	TopicAnalytics,
 	UserAnalytics,
 	UserAnalyticsQuery,
 	UserAnalyticsStats,
-} from './analytics.types';
+	GameAnalyticsQuery,
+	GameStatsData,
+	TopicStatsData,
+	DifficultyStatsData,
+	DifficultyStats,
+} from './domain/analytics/analytics.types';
 
 /**
  * Logging types
@@ -125,7 +124,7 @@ export type {
 	Logger as ILogger,
 	LogContext,
 	LogEntry,
-} from './logging.types';
+} from './infrastructure/logging.types';
 
 /**
  * Storage types
@@ -138,7 +137,7 @@ export type {
 	StorageOperationResult,
 	StorageStats,
 	UnifiedStorageService,
-} from './storage.types';
+} from './infrastructure/storage.types';
 
 /**
  * Language validation types

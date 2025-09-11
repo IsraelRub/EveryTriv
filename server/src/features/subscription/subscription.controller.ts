@@ -1,14 +1,14 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
-import { AuthRequest } from '@shared/types';
-
-import { ServerLogger } from '../../../../shared/services/logging';
+import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
+import { serverLogger as logger } from '@shared';
 import { SubscriptionService } from './subscription.service';
+import { CreateSubscriptionDto } from './dtos';
+import { AuthGuard } from '../../common/guards';
+import { CurrentUserId } from '../../common';
 
 @Controller('subscription')
 export class SubscriptionController {
 	constructor(
 		private readonly subscriptionService: SubscriptionService,
-		private readonly logger: ServerLogger
 	) {}
 
 	/**
@@ -23,46 +23,36 @@ export class SubscriptionController {
 	 * Get current subscription for user
 	 */
 	@Get('current')
-	async getCurrentSubscription(@Req() req: AuthRequest) {
-		if (!req.user?.id) {
-			throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-		}
-
-		return await this.subscriptionService.getCurrentSubscription(req.user.id);
+	@UseGuards(AuthGuard)
+	async getCurrentSubscription(@CurrentUserId() userId: string) {
+		return await this.subscriptionService.getCurrentSubscription(userId);
 	}
 
 	/**
 	 * Create new subscription
 	 */
 	@Post('create')
-	async createSubscription(@Req() req: AuthRequest, @Body() body: { plan: string; billingCycle?: string }) {
+	@UseGuards(AuthGuard)
+	async createSubscription(@CurrentUserId() userId: string, @Body() body: CreateSubscriptionDto) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			if (!body.plan) {
-				throw new HttpException('Plan is required', HttpStatus.BAD_REQUEST);
-			}
-
 			const result = await this.subscriptionService.createSubscription(
-				req.user.id,
-				body.plan,
+				userId,
+				body.planType,
 				body.billingCycle || 'monthly'
 			);
 
 			// Log API call for subscription creation
-			this.logger.apiCreate('subscription', {
-				userId: req.user.id,
-				plan: body.plan,
+			logger.apiCreate('subscription', {
+				userId: userId,
+				plan: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.apiCreateError('subscription', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
-				plan: body.plan,
+			logger.apiCreateError('subscription', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
+				plan: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
 			});
 			throw error;
@@ -73,23 +63,20 @@ export class SubscriptionController {
 	 * Cancel subscription
 	 */
 	@Delete('cancel')
-	async cancelSubscription(@Req() req: AuthRequest) {
+	@UseGuards(AuthGuard)
+	async cancelSubscription(@CurrentUserId() userId: string) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			const result = await this.subscriptionService.cancelSubscription(req.user.id);
+			const result = await this.subscriptionService.cancelSubscription(userId);
 
 			// Log API call for subscription cancellation
-			this.logger.apiDelete('subscription', {
-				userId: req.user.id,
+			logger.apiDelete('subscription', {
+				userId: userId,
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.apiDeleteError('subscription', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiDeleteError('subscription', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
 			});
 			throw error;
 		}

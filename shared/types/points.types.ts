@@ -6,6 +6,7 @@
  * @description Points and credits management type definitions
  * @used_by server: server/src/features/points/points.service.ts (PointsService), client: client/src/services/points.service.ts (PointsService), shared/services/storage.service.ts (points data storage)
  */
+import type { BaseEntity } from './core/data.types';
 
 export interface PointBalance {
 	total_points: number;
@@ -25,26 +26,53 @@ export interface PointPurchaseOption {
 	price: number;
 	price_display: string;
 	price_per_point: number;
+	description?: string;
 	currency?: string;
 	bonus?: number;
 	savings?: string;
 	popular?: boolean;
 }
 
-export interface PointTransaction {
-	id: string;
+/**
+ * Base points entity interface
+ * @interface BasePointsEntity
+ * @description Base interface for points entities
+ */
+export interface BasePointsEntity extends BaseEntity {
+	/** User identifier */
+	userId: string;
+	/** Points amount */
 	amount: number;
-	balance_after: number;
-	free_questions_after: number;
-	purchased_points_after: number;
+	/** Transaction type */
+	type: 'purchase' | 'deduction' | 'refund' | 'transfer' | 'bonus';
+	/** Balance after transaction */
+	balanceAfter: number;
+	/** Transaction description */
 	description?: string;
-	created_at: string;
+}
+
+export interface PointTransaction extends BasePointsEntity {
+	/** User identifier (legacy field) */
+	user_id: string;
+	/** Balance after transaction (legacy field) */
+	balance_after: number;
+	/** Free questions after transaction */
+	free_questions_after: number;
+	/** Purchased points after transaction */
+	purchased_points_after: number;
+	/** Transaction metadata */
 	metadata: {
 		difficulty?: string;
 		topic?: string;
 		question_count?: number;
 		package_id?: string;
 	};
+	/** Transaction ID */
+	id: string;
+	/** Creation timestamp */
+	createdAt: Date;
+	/** Last update timestamp */
+	updatedAt: Date;
 }
 
 export interface TransferResult {

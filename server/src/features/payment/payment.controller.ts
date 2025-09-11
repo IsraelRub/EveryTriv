@@ -1,54 +1,40 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
-import { AuthRequest, PaymentData, PersonalPaymentData } from 'everytriv-shared/types';
+import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
+import { PaymentData } from '@shared';
 
-import { LoggerService } from '../../shared/controllers';
-import { PaymentService } from './services/payment.service';
+import { serverLogger as logger } from '@shared';
+import { PaymentService } from './payment.service';
+import { CreatePaymentDto } from './dtos';
+import { CurrentUserId, ClientIP, UserAgent, PerformanceThreshold, SecurityLog, AuditLog, BusinessLog } from '../../common';
+import { PaymentDataPipe } from '../../common/pipes';
 
 @Controller('payment')
 export class PaymentController {
-	private readonly logger = new LoggerService();
-
 	constructor(private readonly paymentService: PaymentService) {}
-
-	/**
-	 * Get pricing plans
-	 */
-	@Get('plans')
-	async getPricingPlans() {
-		try {
-			return await this.paymentService.getPricingPlans();
-		} catch (error) {
-			this.logger.apiReadError('pricing_plans', error instanceof Error ? error.message : 'Unknown error', {});
-			throw error;
-		}
-	}
 
 	/**
 	 * Create payment session
 	 */
 	@Post('create')
+	@UsePipes(PaymentDataPipe)
+	@SecurityLog('critical')
+	@AuditLog('payment:create')
+	@BusinessLog('payment')
+	@PerformanceThreshold(2000)
 	async createPayment(
-		@Req() req: AuthRequest,
-		@Body()
-		paymentData: PersonalPaymentData
+		@CurrentUserId() userId: string,
+		@Body() paymentData: CreatePaymentDto,
+		@ClientIP() ip: string,
+		@UserAgent() userAgent: string
 	) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
+			// DTO validation is handled automatically by NestJS
 
-			// Validate payment data
-			if (!paymentData.planType || !['basic', 'premium', 'pro'].includes(paymentData.planType)) {
-				throw new HttpException('Invalid plan type', HttpStatus.BAD_REQUEST);
-			}
-
-			if (paymentData.numberOfPayments <= 0) {
-				throw new HttpException('Invalid number of payments', HttpStatus.BAD_REQUEST);
-			}
-
-			if (!paymentData.agreeToTerms) {
-				throw new HttpException('Must agree to terms', HttpStatus.BAD_REQUEST);
-			}
+			// Log payment attempt with IP and User Agent
+			logger.logUserActivity(userId, 'Payment creation attempt', {
+				paymentType: paymentData.planType,
+				ip,
+				userAgent,
+			});
 
 			// Create payment
 			const paymentDataForService: PaymentData = {
@@ -62,11 +48,11 @@ export class PaymentController {
 					paymentMethod: 'credit_card',
 				},
 			};
-			const result = await this.paymentService.processPayment(req.user.id, paymentDataForService);
+			const result = await this.paymentService.processPayment(userId, paymentDataForService);
 
 			// Log API call for payment creation
-			this.logger.apiCreate('payment', {
-				userId: req.user.id,
+			logger.apiCreate('payment', {
+				userId: userId,
 				planType: paymentData.planType,
 				success: result.success,
 			});
@@ -77,8 +63,8 @@ export class PaymentController {
 				message: 'Payment session created successfully',
 			};
 		} catch (error) {
-			this.logger.apiCreateError('payment', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiCreateError('payment', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
 				planType: paymentData.planType,
 			});
 			throw error;
@@ -89,24 +75,20 @@ export class PaymentController {
 	 * Get payment history for user
 	 */
 	@Get('history')
-	async getPaymentHistory(@Req() req: AuthRequest) {
+	async getPaymentHistory(@CurrentUserId() userId: string) {
 		try {
-			if (!req.user?.id) {
-				throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-			}
-
-			const result = await this.paymentService.getPaymentHistory(req.user.id);
+			const result = await this.paymentService.getPaymentHistory(userId);
 
 			// Log API call for payment history request
-			this.logger.apiRead('payment_history', {
-				userId: req.user.id,
+			logger.apiRead('payment_history', {
+				userId: userId,
 				paymentsCount: result.length,
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.apiReadError('payment_history', error instanceof Error ? error.message : 'Unknown error', {
-				userId: req.user?.id,
+			logger.apiReadError('payment_history', error instanceof Error ? error.message : 'Unknown error', {
+				userId: userId,
 			});
 			throw error;
 		}

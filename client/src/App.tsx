@@ -1,13 +1,21 @@
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useEffect } from 'react';
+import { useEffect, createContext, useContext } from 'react';
+import { PersistGate } from 'redux-persist/integration/react';
 
+import { audioService } from './services';
+import { AudioKey } from './constants';
 import AppRoutes from './AppRoutes';
 import { AnimatedBackground } from './components/animations';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import { AudioProvider } from './hooks/contexts/AudioContext';
-import { PerformanceProvider } from './hooks/contexts/PerformanceContext';
-import { logger } from './services/utils';
-import { prefetchCommonQueries } from './services/utils/queryClient';
+import { clientLogger } from '@shared';
+import { prefetchCommonQueries } from './services/utils/queryClient.service';
+import { persistor } from './redux/store';
+
+// Audio Context for global audio service access
+const AudioContext = createContext(audioService);
+
+// Custom hook to use audio service
+export const useAudio = () => useContext(AudioContext);
 
 /**
  * Main application component
@@ -21,9 +29,12 @@ function App() {
 		const initializeApp = async () => {
 			try {
 				await prefetchCommonQueries();
-				    logger.appStartup();
+				clientLogger.appStartup();
+				
+				// Start background music
+				audioService.play(AudioKey.BACKGROUND_MUSIC);
 			} catch (error) {
-				logger.systemError('Failed to initialize app', { 
+				clientLogger.systemError('Failed to initialize app', { 
 					error: error instanceof Error ? error.message : String(error) 
 				});
 			}
@@ -34,8 +45,8 @@ function App() {
 
 	return (
 		<ErrorBoundary>
-			<PerformanceProvider>
-				<AudioProvider>
+			<PersistGate loading={null} persistor={persistor}>
+				<AudioContext.Provider value={audioService}>
 					<AnimatedBackground
 						intensity='medium'
 						theme='blue'
@@ -50,8 +61,8 @@ function App() {
 						{/* React Query DevTools - only in development */}
 						{import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
 					</AnimatedBackground>
-				</AudioProvider>
-			</PerformanceProvider>
+				</AudioContext.Provider>
+			</PersistGate>
 		</ErrorBoundary>
 	);
 }

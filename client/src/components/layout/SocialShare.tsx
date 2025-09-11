@@ -1,13 +1,14 @@
-import { DifficultyLevel } from 'everytriv-shared/constants';
-import { calculatePercentage } from 'everytriv-shared/utils';
+import { DifficultyLevel } from '@shared';
+import { calculatePercentage } from '@shared';
 import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
-import { logger } from '@/services/utils';
+import { clientLogger } from '@shared';
 
 import { SHARE_PLATFORMS } from '../../constants';
 import { SocialShareProps } from '../../types';
-import { FadeInUp, HoverScale, ScaleIn, StaggerContainer } from '../animations';
+import { motion } from 'framer-motion';
+import { fadeInUp, hoverScale, scaleIn, createStaggerContainer } from '../animations';
 import { Icon } from '../icons';
 import { ResponsiveGrid } from './GridLayout';
 
@@ -21,7 +22,7 @@ export default function SocialShare({
 	const [isOpen, setIsOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 
-	const percentage = calculatePercentage(score, total);
+	const percentage = calculatePercentage(score || 0, total || 0);
 	const scoreText = `Just scored ${score}/${total} (${percentage}%) on ${topic} ${difficulty} difficulty in EveryTriv!`;
 
 	const shareUrl = `${window.location.origin}?challenge=${encodeURIComponent(topic)}&difficulty=${difficulty}`;
@@ -60,7 +61,7 @@ export default function SocialShare({
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (error) {
-			logger.userError('Failed to copy link to clipboard', { 
+			clientLogger.userError('Failed to copy link to clipboard', { 
 				error: error instanceof Error ? error.message : String(error) 
 			});
 		}
@@ -72,7 +73,11 @@ export default function SocialShare({
 	return (
 		<div className={`relative ${className}`}>
 			{/* Share Button */}
-			<HoverScale>
+			<motion.div
+				variants={hoverScale}
+				initial="normal"
+				whileHover="hover"
+			>
 				<button
 					onClick={() => setIsOpen(!isOpen)}
 					className='flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 
@@ -82,7 +87,7 @@ export default function SocialShare({
 					<Icon name='share' size='sm' />
 					<span>Share Score</span>
 				</button>
-			</HoverScale>
+			</motion.div>
 
 			{/* Share Options Panel */}
 			<AnimatePresence>
@@ -92,7 +97,10 @@ export default function SocialShare({
 						<div className='fixed inset-0 bg-black/20 backdrop-blur-sm z-40' onClick={() => setIsOpen(false)} />
 
 						{/* Share Panel */}
-						<ScaleIn
+						<motion.div
+							variants={scaleIn}
+							initial="hidden"
+							animate="visible"
 							className='absolute top-full mt-2 right-0 bg-slate-800/95 backdrop-blur-lg 
                          border border-slate-600 rounded-xl shadow-2xl p-6 w-80 z-50'
 						>
@@ -123,11 +131,25 @@ export default function SocialShare({
 							{/* Social Platforms */}
 							<div className='space-y-2 mb-4'>
 								<p className='text-sm text-slate-400 mb-3'>Share on:</p>
-								<StaggerContainer>
+								<motion.div
+									variants={createStaggerContainer(0.05)}
+									initial="hidden"
+									animate="visible"
+								>
 									<ResponsiveGrid minWidth='120px' gap='sm'>
 										{socialPlatforms.map((platform, index) => (
-											<FadeInUp key={platform.name} delay={index * 0.05}>
-												<HoverScale>
+											<motion.div 
+												key={platform.name} 
+												variants={fadeInUp}
+												initial="hidden"
+												animate="visible"
+												transition={{ delay: index * 0.05 }}
+											>
+												<motion.div
+													variants={hoverScale}
+													initial="normal"
+													whileHover="hover"
+												>
 													<button
 														onClick={() => handleShare(platform.url)}
 														className={`${platform.color} text-white p-3 rounded-lg flex items-center 
@@ -136,15 +158,19 @@ export default function SocialShare({
 														<Icon name={platform.icon} size='sm' />
 														<span>{platform.name}</span>
 													</button>
-												</HoverScale>
-											</FadeInUp>
+												</motion.div>
+											</motion.div>
 										))}
 									</ResponsiveGrid>
-								</StaggerContainer>
+								</motion.div>
 							</div>
 
 							{/* Copy Link */}
-							<HoverScale>
+							<motion.div
+								variants={hoverScale}
+								initial="normal"
+								whileHover="hover"
+							>
 								<button
 									onClick={handleCopyLink}
 									className='w-full p-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg 
@@ -153,7 +179,7 @@ export default function SocialShare({
 									<Icon name={copied ? 'checkcircle' : 'copy'} size='sm' />
 									<span>{copied ? 'Copied!' : 'Copy to Clipboard'}</span>
 								</button>
-							</HoverScale>
+							</motion.div>
 
 							{/* Challenge Friends */}
 							<div className='mt-4 pt-4 border-t border-slate-600'>
@@ -161,10 +187,11 @@ export default function SocialShare({
 									<Icon name='zap' size='sm' className='mr-1' /> Challenge your friends to beat your score!
 								</p>
 							</div>
-						</ScaleIn>
+						</motion.div>
 					</>
 				)}
 			</AnimatePresence>
 		</div>
 	);
 }
+

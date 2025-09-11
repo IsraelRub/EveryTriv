@@ -15,7 +15,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App';
 import { store } from './redux/store';
-import { queryClient } from './services/utils/queryClient';
+import { queryClient } from './services/utils/queryClient.service';
 
 /**
  * Initialize and render the React application
@@ -31,7 +31,12 @@ ReactDOM.createRoot(rootElement).render(
 	<StrictMode>
 		<Provider store={store}>
 			<QueryClientProvider client={queryClient}>
-				<BrowserRouter>
+				<BrowserRouter
+					future={{
+						v7_startTransition: true,
+						v7_relativeSplatPath: true,
+					}}
+				>
 					<App />
 				</BrowserRouter>
 			</QueryClientProvider>

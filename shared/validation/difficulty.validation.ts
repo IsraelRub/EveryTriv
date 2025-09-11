@@ -3,7 +3,6 @@
  *
  * @module DifficultyValidation
  * @description Custom difficulty validation and utility functions for game difficulty management
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by server: server/src/features/game/logic/game-validation.service.ts (validateDifficulty), client: client/src/utils/customDifficulty.utils.ts (difficulty utilities), shared/validation/validation.utils.ts (input validation)
  */
@@ -125,17 +124,6 @@ export function hasValidCustomDifficultyContent(text: string): boolean {
 // VALIDATION FUNCTIONS
 // ============================================================================
 
-/**
- * Interface for difficulty validation results
- *
- * @interface DifficultyValidation
- * @description Structure for difficulty validation results including detected level
- */
-export interface DifficultyValidation {
-	isValid: boolean;
-	error?: string;
-	detectedLevel?: 'elementary' | 'high_school' | 'university' | 'expert';
-}
 
 /**
  * Validates custom difficulty text input for format and content

@@ -3,7 +3,6 @@
  *
  * @module UserComponents
  * @description React components for user profile management, authentication, and preferences
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/views/user, client/components
  */

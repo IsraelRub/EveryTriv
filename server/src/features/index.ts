@@ -14,11 +14,18 @@
 export * from './analytics';
 
 /**
+ * Auth feature
+ * @description Authentication and authorization
+ * @used_by server/app, server/controllers
+ */
+export * from './auth';
+
+/**
  * Cache feature
  * @description Caching and performance optimization
  * @used_by server/app, server/features, server/controllers
  */
-export * from '../shared/modules/cache';
+export * from 'src/internal/modules/cache';
 
 /**
  * Game feature
@@ -26,6 +33,13 @@ export * from '../shared/modules/cache';
  * @used_by server/app, server/controllers
  */
 export * from './game';
+
+/**
+ * Leaderboard feature
+ * @description Leaderboard and ranking management
+ * @used_by server/app, server/controllers
+ */
+export * from './leaderboard';
 
 /**
  * Payment feature

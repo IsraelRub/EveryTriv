@@ -13,17 +13,25 @@
     "paths": {
       "@modules/*": ["src/modules/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
-      "@shared/*": ["src/shared/*"],
-      "@shared/modules": ["src/shared/modules"],
-      "@shared/types": ["src/shared/types"],
-      "@shared/entities": ["src/shared/entities"],
-      "@shared/constants": ["src/shared/constants"],
+      "@shared": ["../shared"],
+      "@shared/*": ["../shared/*"],
+      "@shared/modules": ["../shared/modules"],
+      "@shared/types": ["../shared/types"],
+      "@shared/entities": ["../shared/entities"],
+      "@shared/constants": ["../shared/constants"],
+      "@internal/*": ["src/internal/*"],
+      "@internal/constants": ["src/internal/constants"],
+      "@internal/types": ["src/internal/types"],
+      "@internal/controllers": ["src/internal/controllers"],
+      "@internal/entities": ["src/internal/entities"],
+      "@internal/modules": ["src/internal/modules"],
+      "@internal/middleware": ["src/internal/middleware"],
       "@features/*": ["src/features/*"],
-      "everytriv-shared/*": ["../shared/*"],
+      "@common": ["src/common"],
+      "@common/*": ["src/common/*"],
       "src/*": ["src/*"],
-      "src/shared/*": ["src/shared/*"],
-      "src/modules/*": ["src/modules/*"],
-      "shared/*": ["../shared/*"]
+      "src/internal/*": ["src/internal/*"],
+      "src/modules/*": ["src/modules/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
@@ -37,6 +45,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*", "../shared/**/*", "test/**/*", "test/jest.d.ts", "../client/src/constants/animation.constants.ts"],
+  "include": ["src/**/*", "test/**/*", "test/jest.d.ts", "../client/src/constants/animation.constants.ts", "../shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }

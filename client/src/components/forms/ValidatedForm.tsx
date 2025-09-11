@@ -6,12 +6,13 @@
  * @used_by client/src/views/registration, client/src/views/user, client/src/components/game
  */
 
-import type { DifficultyLevel } from 'everytriv-shared/constants';
-import { useStringFormValidation } from 'everytriv-shared/hooks/useValidation';
-import { ChangeEvent, FormEvent, useCallback } from 'react';
+import type { DifficultyLevel } from '@shared';
+import { clientLogger, validateEmail, validateUsername, validatePassword, validateTopic, validateCustomDifficulty } from '@shared';
+import { ChangeEvent, FormEvent, useCallback, useState, useMemo, useRef } from 'react';
 
 import { VALID_DIFFICULTIES, VALID_QUESTION_COUNTS } from '../../constants';
-import type { FormField, ValidatedFormProps } from '../../types/forms.types';
+import type { ValidatedFormProps } from '../../types';
+import type { FormField } from '../../types/ui/forms.types';
 import { combineClassNames } from '../../utils/combineClassNames';
 import { Icon } from '../icons/IconLibrary';
 import { Button } from '../ui/Button';
@@ -42,87 +43,143 @@ export function ValidatedForm({
 	description,
 	submitText = 'Submit',
 	loading = false,
-	validationOptions = {},
 	onSubmit,
 	onCancel,
 	className,
 	isGlassy = false,
 	showValidationSummary = true,
 }: ValidatedFormProps<Record<string, string>>) {
-	const validators = fields.reduce(
-		(acc, field) => {
-			acc[field.name] = (value: string) => {
-				const {
-					validateUsername,
-					validatePassword,
-					validateEmail,
-					validateTopic,
-					validateCustomDifficulty,
-				} = require('everytriv-shared/validation');
+	
+	const validators = useMemo(() => 
+		fields.reduce(
+			(acc: Record<string, unknown>, field: FormField) => {
+				acc[field.name] = (value: string) => {
+					const validations = {
+						username: () => validateUsername(value),
+						password: () => validatePassword(value),
+						email: () => validateEmail(value),
+						topic: () => validateTopic(value),
+						customDifficulty: () => validateCustomDifficulty(value),
+						difficulty: () => {
+							const isValid = VALID_DIFFICULTIES.includes(value as DifficultyLevel);
+							return {
+								isValid,
+								errors: isValid ? [] : [`Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`],
+							};
+						},
+						questionCount: () => {
+							const count = parseInt(value);
+							const isValid = VALID_QUESTION_COUNTS.includes(count as typeof VALID_QUESTION_COUNTS[number]);
+							return {
+								isValid,
+								errors: isValid ? [] : [`Question count must be one of: ${VALID_QUESTION_COUNTS.join(', ')}`],
+							};
+						},
+					};
 
-				const validations = {
-					username: () => validateUsername(value),
-					password: () => validatePassword(value),
-					email: () => validateEmail(value),
-					topic: () => validateTopic(value),
-					customDifficulty: () => validateCustomDifficulty(value),
-					difficulty: () => {
-						const isValid = VALID_DIFFICULTIES.includes(value as DifficultyLevel);
-						return {
-							isValid,
-							errors: isValid ? [] : [`Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`],
-						};
-					},
-					questionCount: () => {
-						const count = parseInt(value);
-						const isValid = VALID_QUESTION_COUNTS.includes(count as typeof VALID_QUESTION_COUNTS[number]);
-						return {
-							isValid,
-							errors: isValid ? [] : [`Question count must be one of: ${VALID_QUESTION_COUNTS.join(', ')}`],
-						};
-					},
+					const validator = validations[field.validationType as keyof typeof validations];
+					return validator
+						? validator()
+						: { isValid: value.length > 0, errors: value.length === 0 ? ['This field is required'] : [] };
 				};
-
-				const validator = validations[field.validationType];
-				return validator
-					? validator()
-					: { isValid: value.length > 0, errors: value.length === 0 ? ['This field is required'] : [] };
-			};
-			return acc;
-		},
-		{} as Record<string, (value: string) => { isValid: boolean; errors: string[] }>
+				return acc;
+			},
+			{} as Record<string, (value: string) => { isValid: boolean; errors: string[] }>
+		), [fields]
 	);
 
-	const enhancedValidationOptions = {
-		...validationOptions,
-		debounceMs: 300,
-		validateOnMount: true,
-		required: true,
-	};
 
-	const formValidation = useStringFormValidation(validators, initialValues as Record<string, string>, enhancedValidationOptions);
+	// Form validation state
+	const [values, setValues] = useState<Record<string, string>>(initialValues as Record<string, string>);
+	const [errors, setErrors] = useState<Record<string, string[]>>({});
+	const [isValidating, setIsValidating] = useState(false);
+	const valuesRef = useRef(values);
+	
+	// Keep ref in sync with state
+	valuesRef.current = values;
+
+	const validateField = useCallback((field: string, value: string) => {
+		const validator = validators[field] as (value: string) => { isValid: boolean; errors: string[] };
+		if (!validator) return;
+
+		const result = validator(value);
+		if (result && typeof result === 'object' && 'errors' in result) {
+			setErrors(prev => ({
+				...prev,
+				[field]: result.errors,
+			}));
+		}
+	}, [validators]);
+
+	const validateAll = useCallback(() => {
+		setIsValidating(true);
+
+		const newErrors: Record<string, string[]> = {};
+		let allValid = true;
+		const currentValues = valuesRef.current;
+
+		Object.keys(validators).forEach(field => {
+			const value = currentValues[field];
+			const validator = validators[field];
+
+			if (validator && typeof validator === 'function') {
+				const result = validator(String(value || ''));
+				if (result && typeof result === 'object' && 'errors' in result && 'isValid' in result) {
+					newErrors[field] = result.errors;
+					if (!result.isValid) {
+						allValid = false;
+					}
+				}
+			}
+		});
+
+		setErrors(newErrors);
+		setIsValidating(false);
+		return allValid;
+	}, [validators]);
+
+	const setFieldValue = useCallback((field: string, value: string) => {
+		setValues(prev => ({
+			...prev,
+			[field]: value,
+		}));
+		validateField(field, value);
+	}, [validateField]);
+
+	const isValid = Object.values(errors).every(fieldErrors => fieldErrors.length === 0);
 
 	const handleSubmit = useCallback(
 		(e: FormEvent) => {
 			e.preventDefault();
 
-			const isValid = formValidation.validateAll();
-			onSubmit(formValidation.values, isValid);
+			// Log form submission attempt
+			clientLogger.logUserActivity('form_submit', 'validated_form', {
+				fieldCount: fields.length,
+				hasErrors: !isValid,
+			});
+
+			// Measure form validation performance
+			const startTime = performance.now();
+			const formIsValid = validateAll();
+			const duration = performance.now() - startTime;
+			clientLogger.performance('form_validation', duration);
+
+			onSubmit(valuesRef.current, formIsValid);
 		},
-		[formValidation, onSubmit]
+		[onSubmit, fields.length, validateAll, isValid]
 	);
 
 	const handleFieldChange = useCallback(
 		(fieldName: string, value: string) => {
-			formValidation.setFieldValue(fieldName, value);
+			setFieldValue(fieldName, value);
 		},
-		[formValidation]
+		[setFieldValue]
 	);
 
 	const renderField = (field: FormField) => {
 		const fieldName = field.name;
-		const value = formValidation.values[fieldName] || '';
-		const errors = formValidation.errors[fieldName] || [];
+		const value = values[fieldName] || '';
+		const fieldErrors = errors[fieldName] || [];
 
 		const baseInputProps = {
 			value: String(value),
@@ -138,8 +195,8 @@ export function ValidatedForm({
 				'focus:outline-none focus:ring-2 focus:ring-white/20',
 				'px-4 py-2 text-base',
 				{
-					'border border-red-500 focus:ring-red-500/20': errors.length > 0,
-					'border border-green-500 focus:ring-green-500/20': !errors.length && value,
+					'border border-red-500 focus:ring-red-500/20': fieldErrors.length > 0,
+					'border border-green-500 focus:ring-green-500/20': !fieldErrors.length && value,
 				}
 			),
 		};
@@ -152,7 +209,7 @@ export function ValidatedForm({
 				return (
 					<select {...baseInputProps}>
 						<option value=''>{field.placeholder || 'Select an option'}</option>
-						{field.options?.map((option) => (
+						{field.options?.map((option: { value: string; label: string }) => (
 							<option key={option.value} value={option.value}>
 								{option.label}
 							</option>
@@ -165,7 +222,7 @@ export function ValidatedForm({
 		}
 	};
 
-	const allErrors = Object.values(formValidation.errors).flat();
+	const allErrors = Object.values(errors).flat();
 
 	return (
 		<form
@@ -188,7 +245,7 @@ export function ValidatedForm({
 
 			{/* Form Fields */}
 			<div className='space-y-4'>
-				{fields.map((field) => (
+				{fields.map((field: FormField) => (
 					<div key={field.name} className='space-y-2'>
 						<label className='block text-sm font-medium text-white/80'>
 							{field.label}
@@ -198,10 +255,10 @@ export function ValidatedForm({
 						{renderField(field)}
 
 						{/* Field Errors */}
-						{formValidation.errors[field.name as string]?.map((error: string, index: number) => (
+						{errors[field.name as string]?.map((error: unknown, index: number) => (
 							<p key={index} className='text-sm text-red-400 flex items-center'>
 								<Icon name='Error' className='w-3 h-3 mr-1' />
-								{error}
+								{String(error)}
 							</p>
 						))}
 					</div>
@@ -230,7 +287,7 @@ export function ValidatedForm({
 			<div className='flex space-x-4'>
 				<Button
 					type='submit'
-					disabled={!formValidation.isValid || loading || formValidation.isValidating}
+					disabled={!isValid || loading || isValidating}
 					loading={loading}
 					className='flex-1'
 				>
@@ -245,7 +302,7 @@ export function ValidatedForm({
 			</div>
 
 			{/* Loading State */}
-			{formValidation.isValidating && (
+			{isValidating && (
 				<div className='flex items-center justify-center space-x-2 text-blue-400'>
 					<Icon name='Loading' className='w-4 h-4 animate-spin' />
 					<span className='text-sm'>Validating...</span>

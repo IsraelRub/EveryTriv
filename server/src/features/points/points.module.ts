@@ -11,17 +11,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ValidationService } from '../../common/validation/validation.service';
-import { PointTransactionEntity, UserEntity } from '../../shared/entities';
-import { CacheModule } from '../../shared/modules';
+import { ValidationModule } from '../../common/validation/validation.module';
+import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
+import { CacheModule } from 'src/internal/modules';
+import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment';
 import { PointsController } from './points.controller';
 import { PointsService } from './points.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([PointTransactionEntity, UserEntity]), CacheModule, PaymentModule],
+	imports: [TypeOrmModule.forFeature([PointTransactionEntity, UserEntity]), CacheModule, PaymentModule, ValidationModule, AuthModule],
 	controllers: [PointsController],
-	providers: [PointsService, ValidationService],
+	providers: [PointsService],
 	exports: [PointsService],
 })
 export class PointsModule {}

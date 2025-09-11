@@ -5,17 +5,18 @@
  * @description Main NestJS application module with all features and middleware
  * @used_by server/main, server/config
  */
-import { MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { BadRequestException, MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
 import { DatabaseConfig } from './config/database.config';
-import { GlobalExceptionFilter } from './config/globalException.filter';
-import { RedisModule } from './config/redis.module';
+import { GlobalExceptionFilter } from './common/globalException.filter';
+import { RedisModule } from './internal/modules/redis.module';
 import {
 	AnalyticsModule,
+	AuthModule,
 	CacheModule,
 	GameModule,
 	PaymentModule,
@@ -23,17 +24,18 @@ import {
 	SubscriptionModule,
 	UserModule,
 } from './features';
-import { AUTH_CONSTANTS } from './shared/constants';
-import { ClientLogsController,LoggerService  } from './shared/controllers';
+import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
+import { ClientLogsController, MiddlewareMetricsController } from 'src/internal/controllers';
 import {
 	AuthMiddleware,
-	BodyValidationMiddleware,
+	BulkOperationsMiddleware,
 	CountryCheckMiddleware,
-	LoggingMiddleware,
+	DecoratorAwareMiddleware,
 	RateLimitMiddleware,
-	RoleCheckMiddleware,
-} from './shared/middleware';
-import { StorageModule } from './shared/modules';
+} from 'src/internal/middleware';
+import { StorageModule } from 'src/internal/modules';
+import { CacheInterceptor, PerformanceMonitoringInterceptor, ResponseFormattingInterceptor } from './common/interceptors';
+import { AuthGuard, RolesGuard } from './common/guards';
 
 @Module({
 	imports: [
@@ -48,6 +50,7 @@ import { StorageModule } from './shared/modules';
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
 		// Feature Modules - Direct imports instead of TriviaModule
+		AuthModule,
 		GameModule,
 		AnalyticsModule,
 		CacheModule,
@@ -56,19 +59,59 @@ import { StorageModule } from './shared/modules';
 		PointsModule,
 		SubscriptionModule,
 	],
-	controllers: [AppController, ClientLogsController],
+	controllers: [AppController, ClientLogsController, MiddlewareMetricsController],
 	exports: [],
 	providers: [
-		LoggerService,
 		// Global exception filter for better error logging
 		{
 			provide: APP_FILTER,
 			useClass: GlobalExceptionFilter,
 		},
+		// Global decorator metadata guard for reading @Public, @Roles, @RateLimit, @Cache
+		// Global cache interceptor for @Cache decorator
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: CacheInterceptor,
+		},
+		// Global response formatting interceptor
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: ResponseFormattingInterceptor,
+		},
+		// Global performance monitoring interceptor
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: PerformanceMonitoringInterceptor,
+		},
+		// Global authentication guard
+		{
+			provide: APP_GUARD,
+			useClass: AuthGuard,
+		},
+		// Global roles guard
+		{
+			provide: APP_GUARD,
+			useClass: RolesGuard,
+		},
 		// Global validation pipe for DTO validation
 		{
 			provide: APP_PIPE,
-			useClass: ValidationPipe,
+			useValue: new ValidationPipe({
+				transform: true,
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				exceptionFactory: (errors) => {
+					const result = errors.map((error) => ({
+						property: error.property,
+						value: error.value,
+						constraints: error.constraints,
+					}));
+					return new BadRequestException({
+						message: 'Validation failed',
+						errors: result,
+					});
+				},
+			}),
 		},
 	],
 })
@@ -76,22 +119,21 @@ export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		// Apply middleware in the order specified in the architecture diagram
 
-		// Apply logging middleware first
-		consumer.apply(LoggingMiddleware).forRoutes('*');
+		// Apply authentication middleware first
+		consumer.apply(AuthMiddleware).forRoutes('*');
 
-		// Apply rate limiting middleware
+		// Apply decorator-aware middleware (reads @Public, @Roles, @RateLimit metadata)
+		consumer.apply(DecoratorAwareMiddleware).forRoutes('*');
+
+		// Apply rate limiting middleware (supports both default and decorator-based)
 		consumer.apply(RateLimitMiddleware).forRoutes('*');
 
 		// Apply country check middleware
 		consumer.apply(CountryCheckMiddleware).forRoutes('*');
 
-		// Apply auth middleware - checks if user is logged in
-		consumer.apply(AuthMiddleware).forRoutes('*');
+		// Note: AuthGuard and RolesGuard are now applied globally via APP_GUARD
 
-		// Apply role check middleware - checks if admin, user, or no body
-		consumer.apply(RoleCheckMiddleware).forRoutes('*');
-
-		// Apply body validation middleware - checks if request body is valid
-		consumer.apply(BodyValidationMiddleware).forRoutes('*');
+		// Apply bulk operations middleware - optimizes bulk operations
+		consumer.apply(BulkOperationsMiddleware).forRoutes('*');
 	}
 }

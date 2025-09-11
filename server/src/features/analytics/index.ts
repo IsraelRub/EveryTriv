@@ -7,6 +7,13 @@
  */
 
 /**
+ * Analytics DTOs
+ * @description Data transfer objects for analytics operations
+ * @used_by server/features/analytics, server/controllers
+ */
+export * from './dtos';
+
+/**
  * Analytics controller
  * @description Analytics API endpoints and request handling
  * @used_by server/app, server/controllers

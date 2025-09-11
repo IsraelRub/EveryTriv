@@ -3,7 +3,6 @@
  *
  * @module AnimationComponents
  * @description React components for animations, visual effects, and dynamic UI elements
- * @version 1.0.0
  * @author EveryTriv Team
  * @used_by client/components, client/views
  */
@@ -12,21 +11,21 @@
  * Animation configuration
  * @description Animation settings, configuration, and effect colors
  * @used_by client/components/animations, client/views
- * @deprecated Use 'everytriv-shared/constants/animation.constants' instead
  */
-export { ANIMATION_CONFIG, EFFECT_COLORS } from '../../constants/animation.constants';
+export { 
+	ANIMATION_CONFIG, 
+	EFFECT_COLORS, 
+	PERFORMANCE_CONFIG, 
+	ACCESSIBILITY_CONFIG,
+	ANIMATION_VARIANTS 
+} from '../../constants/ui/animation.constants';
+
+
 
 /**
- * Animation effects
- * @description Reusable animation effects, transitions, and motion components
- * @used_by client/components, client/views
- */
-export * from './AnimationEffects';
-
-/**
- * Animation library
- * @description Collection of animation components, utilities, and motion variants
- * @used_by client/components, client/views
+ * Animation library - Variants only
+ * @description Collection of animation variants for use with framer-motion
+ * @used_by client/components/animations, client/views
  */
 export * from './AnimationLibrary';
 
@@ -36,3 +35,10 @@ export * from './AnimationLibrary';
  * @used_by client/views, client/components
  */
 export { default as AnimatedBackground } from './AnimatedBackground';
+
+/**
+ * Custom animations hook
+ * @description Hook for custom animations with performance optimization and accessibility support
+ * @used_by client/hooks/layers/ui, client/components
+ */
+export { useCustomAnimations } from '../../hooks/layers/ui/useCustomAnimations';
