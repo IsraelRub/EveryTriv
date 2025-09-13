@@ -8,6 +8,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { serverLogger as logger } from '@shared';
+
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
 /**
@@ -16,20 +17,18 @@ import { NestNextFunction, NestRequest, NestResponse } from '../types';
  */
 @Injectable()
 export class DecoratorAwareMiddleware implements NestMiddleware {
-	constructor(
-		private readonly reflector: Reflector
-	) {}
+	constructor(private readonly reflector: Reflector) {}
 
 	use(req: NestRequest, _res: NestResponse, next: NestNextFunction) {
 		const startTime = Date.now();
-		
+
 		try {
 			// Analyze request pattern for smart defaults
 			const requestAnalysis = this.analyzeRequest(req);
-			
+
 			// Read decorator metadata from the handler (if available)
 			const decoratorMetadata = this.readDecoratorMetadata(req);
-			
+
 			// Initialize decorator metadata with decorator values taking precedence over smart defaults
 			req.decoratorMetadata = {
 				isPublic: decoratorMetadata.isPublic ?? requestAnalysis.isLikelyPublic,
@@ -60,7 +59,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 				path: req.path,
 				method: req.method,
 			});
-			
+
 			// Fallback to safe defaults
 			req.decoratorMetadata = {
 				isPublic: false,
@@ -75,7 +74,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 				validationSchema: undefined,
 				customValidation: undefined,
 			};
-			
+
 			next();
 		}
 	}
@@ -86,7 +85,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 	private readDecoratorMetadata(req: NestRequest) {
 		// Try to get handler from request context
 		const handler = req.route?.stack?.[0]?.handle;
-		
+
 		if (!handler) {
 			return {
 				isPublic: undefined,
@@ -137,12 +136,19 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 	private analyzeRequest(req: NestRequest) {
 		const path = req.path || '';
 		const method = req.method || 'GET';
-		
+
 		// Smart public endpoint detection
 		const publicPatterns = [
-			'/health', '/status', '/ping', '/version',
-			'/auth/register', '/auth/login', '/auth/refresh',
-			'/public', '/docs', '/swagger'
+			'/health',
+			'/status',
+			'/ping',
+			'/version',
+			'/auth/register',
+			'/auth/login',
+			'/auth/refresh',
+			'/public',
+			'/docs',
+			'/swagger',
 		];
 		const isLikelyPublic = publicPatterns.some(pattern => path.includes(pattern));
 

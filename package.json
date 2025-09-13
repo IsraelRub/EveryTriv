@@ -45,6 +45,7 @@
     "unused:check": "knip",
     "unused:check:client": "cd client && knip",
     "unused:check:server": "cd server && knip",
+  "docs:check": "node scripts/documentation/validate-doc-links.cjs",
 
     "webdb:install": "npm install -g @webdb/cli",
     "webdb:start": "webdb --port 22071 --host 127.0.0.1",

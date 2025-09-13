@@ -6,12 +6,12 @@
  * @note This module is for PERSISTENT storage only. For caching, use CacheModule instead.
  */
 import { Module } from '@nestjs/common';
+import { MetricsService } from '@shared';
+import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 
 import { RedisModule } from '../redis.module';
-import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 import { StorageController } from './storage.controller';
 import { ServerStorageService } from './storage.service';
-import { MetricsService } from '@shared';
 
 @Module({
 	imports: [RedisModule],

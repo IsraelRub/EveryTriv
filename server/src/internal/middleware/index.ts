@@ -39,7 +39,6 @@ export * from './country-check.middleware';
  */
 export * from './rateLimit.middleware';
 
-
 /**
  * Decorator-aware middleware
  * @description Middleware that reads decorator metadata
@@ -53,4 +52,3 @@ export * from './decorator-aware.middleware';
  * @used_by server/app, server/controllers
  */
 export * from './bulkOperations.middleware';
-

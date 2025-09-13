@@ -124,7 +124,6 @@ export function hasValidCustomDifficultyContent(text: string): boolean {
 // VALIDATION FUNCTIONS
 // ============================================================================
 
-
 /**
  * Validates custom difficulty text input for format and content
  *

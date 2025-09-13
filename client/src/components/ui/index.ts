@@ -76,11 +76,11 @@ export { ValidatedForm } from '../forms';
  * @used_by client/components/forms, client/views
  */
 export {
-	ValidationError,
-	ValidationLoading,
-	ValidationMessage,
-	ValidationSuccess,
-	ValidationWarning,
+  ValidationError,
+  ValidationLoading,
+  ValidationMessage,
+  ValidationSuccess,
+  ValidationWarning,
 } from './ValidationMessage';
 
 /**
@@ -89,10 +89,10 @@ export {
  * @used_by client/components/forms, client/views
  */
 export {
-	ValidationErrorIcon,
-	ValidationIcon,
-	ValidationLoadingIcon,
-	ValidationStatusIndicator,
-	ValidationSuccessIcon,
-	ValidationWarningIcon,
+  ValidationErrorIcon,
+  ValidationIcon,
+  ValidationLoadingIcon,
+  ValidationStatusIndicator,
+  ValidationSuccessIcon,
+  ValidationWarningIcon,
 } from './ValidationIcon';

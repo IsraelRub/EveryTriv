@@ -1,4 +1,6 @@
-# מערכת האנימציות - EveryTriv v2.0
+# מערכת האנימציות - EveryTriv
+
+> הערת ארגון: מסמך זה מספק פירוט יישומי (Implementation-Level) למערכת האנימציות. העקרונות הוויזואליים / טוקנים / וריאנטים מרוכזים ב-`../architecture/DESIGN_SYSTEM.md`, והקישורים להוקסים מתקדמים נמצאים ב-`../architecture/HOOKS_ARCHITECTURE.md`. אין לשכפל טוקנים או קבועים כאן – הפניה בלבד.
 
 ## סקירה כללית
 
@@ -341,6 +343,3 @@ const highContrast = window.matchMedia('(prefers-contrast: high)').matches;
 
 ---
 
-**גרסה:** 2.0.0  
-**עודכן לאחרונה:** 2024  
-**מחבר:** EveryTriv Team

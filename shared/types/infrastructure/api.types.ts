@@ -6,11 +6,9 @@
  * @description API response structures and HTTP communication interfaces
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
-import type { BaseApiResponse, BasePagination } from '../core/response.types';
-import type { BaseError } from '../core/error.types';
 import type { ApiRequestBody } from '../core/data.types';
-import type { ErrorDetails } from '../core/error.types';
-import type { SuccessResponse, PaginatedResponse } from '../core/response.types';
+import type { BaseError , ErrorDetails } from '../core/error.types';
+import type { BaseApiResponse, BasePagination , PaginatedResponse, SuccessResponse } from '../core/response.types';
 
 /**
  * Standard API response wrapper interface

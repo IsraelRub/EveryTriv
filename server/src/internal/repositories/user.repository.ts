@@ -7,11 +7,12 @@
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindManyOptions } from 'typeorm';
+import { serverLogger as logger } from '@shared';
+import { FindManyOptions, Repository } from 'typeorm';
 
-import { serverLogger as logger } from '@shared';import { UserEntity } from '../entities';
+import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
+import { UserEntity } from '../entities';
 import { BaseRepository } from './base.repository';
-import { RepositoryCache, RepositoryAudit, RepositoryRoles } from '../../common';
 
 /**
  * Repository for user entities
@@ -21,8 +22,7 @@ import { RepositoryCache, RepositoryAudit, RepositoryRoles } from '../../common'
 export class UserRepository extends BaseRepository<UserEntity> {
 	constructor(
 		@InjectRepository(UserEntity)
-		private readonly userRepository: Repository<UserEntity>,
-		
+		private readonly userRepository: Repository<UserEntity>
 	) {
 		super(userRepository);
 	}
@@ -181,10 +181,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 			logger.databaseDebug(`Searching users with query: ${query}`, { context: 'REPOSITORY' });
 
 			const searchOptions: FindManyOptions<UserEntity> = {
-				where: [
-					{ username: { $like: `%${query}%` } as never },
-					{ email: { $like: `%${query}%` } as never },
-				],
+				where: [{ username: { $like: `%${query}%` } as never }, { email: { $like: `%${query}%` } as never }],
 				order: { createdAt: 'DESC' },
 				...options,
 			};

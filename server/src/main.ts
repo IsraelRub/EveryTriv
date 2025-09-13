@@ -4,13 +4,22 @@
  * @module ServerMain
  * @description Main entry point for the NestJS server application
  */
+import * as dotenv from 'dotenv';
+
+// IMPORTANT: Load environment variables before importing anything else
+// DO NOT MOVE OR REFORMAT - This must stay before other imports
+// eslint-disable-next-line
+// prettier-ignore
+dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MESSAGE_FORMATTERS } from '@shared';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
-
 import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
-import { MESSAGE_FORMATTERS } from '@shared';
+
+
 
 // Environment configuration
 const environment = process.env.NODE_ENV || 'development';

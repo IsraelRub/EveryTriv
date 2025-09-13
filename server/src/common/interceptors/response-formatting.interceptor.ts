@@ -5,11 +5,11 @@
  * @description Interceptor that standardizes API response format across all endpoints
  * @author EveryTriv Team
  */
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { serverLogger as logger } from '@shared';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { serverLogger as logger } from '@shared';
 import type { NestRequest } from '../../internal/types';
 
 /**
@@ -23,7 +23,7 @@ import type { NestRequest } from '../../internal/types';
  *   data: result,
  *   timestamp: new Date().toISOString(),
  * };
- * 
+ *
  * // After: Automatic formatting by interceptor
  * return result; // Interceptor handles the rest
  * ```
@@ -41,9 +41,9 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 		const startTime = Date.now();
 
 		return next.handle().pipe(
-			map((data) => {
+			map(data => {
 				const duration = Date.now() - startTime;
-				
+
 				// Skip formatting for certain response types
 				if (this.shouldSkipFormatting(data, request)) {
 					return data;

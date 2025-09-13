@@ -110,7 +110,8 @@ export const RequireGameLevel = (minLevel: number) => SetMetadata('requireGameLe
  * }
  * ```
  */
-export const RequireGameAchievement = (...achievements: string[]) => SetMetadata('requireGameAchievement', achievements);
+export const RequireGameAchievement = (...achievements: string[]) =>
+	SetMetadata('requireGameAchievement', achievements);
 
 /**
  * Set game streak requirement
@@ -143,11 +144,8 @@ export const RequireGameStreak = (minStreak: number) => SetMetadata('requireGame
  * }
  * ```
  */
-export const GameTimeRestriction = (config: {
-	oncePerDay?: boolean;
-	oncePerHour?: boolean;
-	timezone?: string;
-}) => SetMetadata('gameTimeRestriction', config);
+export const GameTimeRestriction = (config: { oncePerDay?: boolean; oncePerHour?: boolean; timezone?: string }) =>
+	SetMetadata('gameTimeRestriction', config);
 
 /**
  * Set game cooldown period

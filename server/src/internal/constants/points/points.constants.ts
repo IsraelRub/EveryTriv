@@ -12,4 +12,4 @@ export const POINTS_PRICING_TIERS = {
 } as const;
 
 // Re-export types from centralized location
-export { PointTransactionType, PointSource } from '../../types/typeorm-compatibility.types';
+export { PointSource,PointTransactionType } from '../../types/typeorm-compatibility.types';

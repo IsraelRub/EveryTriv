@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { VALIDATION_ERROR_MESSAGES, LANGUAGE_TOOL_CONSTANTS, LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions, SupportedLanguage } from '@shared';
-import { serverLogger as logger } from '@shared';
+import {
+	LANGUAGE_TOOL_CONSTANTS,
+	LanguageToolConfig,
+	LanguageToolResponse,
+	LanguageValidationOptions,
+ serverLogger as logger,	SupportedLanguage,
+	VALIDATION_ERROR_MESSAGES } from '@shared';
+
 // import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
 @Injectable()
 export class LanguageToolService {
-	;
 	private readonly config: LanguageToolConfig;
 
 	constructor() {

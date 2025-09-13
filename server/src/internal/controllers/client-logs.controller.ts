@@ -1,9 +1,8 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { MESSAGE_FORMATTERS, serverLogger, ClientLogsRequest, LogLevel, LogMeta } from '@shared';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ClientLogsRequest, LogLevel, LogMeta, MESSAGE_FORMATTERS, serverLogger } from '@shared';
 
 @Controller('client-logs')
 export class ClientLogsController {
-
 	@Post('batch')
 	async receiveClientLogs(@Body() request: ClientLogsRequest) {
 		const { logs, userId, sessionId } = request;

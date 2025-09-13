@@ -5,8 +5,9 @@
  * @description Type definitions for user entities, authentication, and user management
  * @used_by server: server/src/features/user/entities/user.entity.ts (User entity), server/src/features/auth/auth.service.ts (authentication), client: client/src/components/user/UserProfile.tsx (user profile), client/src/services/auth/auth.service.ts (user authentication)
  */
-import type { BaseEntity, BasicValue } from '../../core/data.types';
 import { UserRole, UserStatus } from '../../../constants/business/info.constants';
+import type { BaseEntity, BasicValue } from '../../core/data.types';
+
 // RequiredFields and OptionalFields are not used in this file
 
 // Re-export enums for external use
@@ -179,7 +180,6 @@ export interface ServerUserPreferences extends Record<string, unknown> {
 	};
 }
 
-
 /**
  * Authentication provider types
  */
@@ -264,7 +264,6 @@ export interface User extends BaseUser {
 	/** User settings */
 	settings?: UserSettings;
 }
-
 
 /**
  * User statistics interface
@@ -735,15 +734,16 @@ export interface ServerUserPreferences {
  */
 
 // Repository Query Types
-export interface RepositoryWhereCondition extends Record<string, BasicValue | { $like: string } | { $in: string[] }> {
-}
+export interface RepositoryWhereCondition extends Record<string, BasicValue | { $like: string } | { $in: string[] }> {}
 
-export interface RepositoryUpdateData extends Record<string, BasicValue | Date | null | undefined> {
-}
+export interface RepositoryUpdateData extends Record<string, BasicValue | Date | null | undefined> {}
 
 // TypeORM Query Types
-export interface UserTypeORMWhereCondition extends Record<string, BasicValue | { $like: string } | { $in: string[] } | Array<Record<string, BasicValue | { $like: string }>>> {
-}
+export interface UserTypeORMWhereCondition
+	extends Record<
+		string,
+		BasicValue | { $like: string } | { $in: string[] } | Array<Record<string, BasicValue | { $like: string }>>
+	> {}
 
 // User with Subscription
 export interface UserWithSubscription extends User {

@@ -6,8 +6,7 @@
  * @description Server-specific user metadata and internal types
  * @used_by server/src/features/user/dtos/create-user.dto.ts, server/src/shared/entities/user.entity.ts
  */
-import type { User, UserAddress, BaseUser } from '@shared';
+import type { BaseUser, User, UserAddress } from '@shared';
 
 // Re-export shared types
-export type { UserAddress, User, BaseUser };
-
+export type { BaseUser,User, UserAddress };

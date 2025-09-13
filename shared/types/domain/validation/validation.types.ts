@@ -5,7 +5,7 @@
  * @module ValidationTypes
  * @description Validation interfaces and data structures with enhanced type safety
  */
-import { RequestData, BasicValue } from '../../core/data.types';
+import { BasicValue, RequestData } from '../../core/data.types';
 
 /**
  * Validation configuration interface
@@ -181,11 +181,11 @@ export interface ValidationRule {
 /**
  * Validation type for form fields
  */
-export type ValidationType = 
-	| 'username' 
-	| 'password' 
-	| 'email' 
-	| 'topic' 
+export type ValidationType =
+	| 'username'
+	| 'password'
+	| 'email'
+	| 'topic'
 	| 'customDifficulty'
 	| 'game_answer'
 	| 'user_profile'

@@ -4,25 +4,15 @@
  * @module PointsDTOs
  * @description Data Transfer Objects for points management
  */
-import { 
-	IsString, 
-	IsNumber, 
-	IsOptional, 
-	IsNotEmpty,
-	MinLength,
-	MaxLength,
-	IsIn,
-	Min,
-	Max
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class DeductPointsDto {
 	@ApiProperty({
 		description: 'Number of questions in the game',
 		example: 5,
 		minimum: 1,
-		maximum: 20
+		maximum: 20,
 	})
 	@IsNumber({}, { message: 'Question count must be a number' })
 	@Min(1, { message: 'Question count must be at least 1' })
@@ -32,12 +22,12 @@ export class DeductPointsDto {
 	@ApiProperty({
 		description: 'Game mode',
 		example: 'classic',
-		enum: ['classic', 'timed', 'survival', 'multiplayer']
+		enum: ['classic', 'timed', 'survival', 'multiplayer'],
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Game mode is required' })
-	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], { 
-		message: 'Game mode must be one of: classic, timed, survival, multiplayer' 
+	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], {
+		message: 'Game mode must be one of: classic, timed, survival, multiplayer',
 	})
 	gameMode: string;
 }
@@ -47,7 +37,7 @@ export class PurchasePointsDto {
 		description: 'Package ID for points purchase',
 		example: 'package_points',
 		minLength: 1,
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Package ID is required' })
@@ -61,7 +51,7 @@ export class ConfirmPointPurchaseDto {
 		description: 'Payment intent ID from payment processor',
 		example: 'pi_your_payment_intent_id',
 		minLength: 1,
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Payment intent ID is required' })
@@ -72,7 +62,7 @@ export class ConfirmPointPurchaseDto {
 	@ApiProperty({
 		description: 'Number of points purchased',
 		example: 100,
-		minimum: 1
+		minimum: 1,
 	})
 	@IsNumber({}, { message: 'Points must be a number' })
 	@Min(1, { message: 'Points must be at least 1' })
@@ -84,7 +74,7 @@ export class GetPointHistoryDto {
 		description: 'Maximum number of transactions to return',
 		example: 50,
 		minimum: 1,
-		maximum: 100
+		maximum: 100,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Limit must be a number' })
@@ -98,7 +88,7 @@ export class CanPlayDto {
 		description: 'Number of questions to check if user can play',
 		example: 5,
 		minimum: 1,
-		maximum: 20
+		maximum: 20,
 	})
 	@IsNumber({}, { message: 'Question count must be a number' })
 	@Min(1, { message: 'Question count must be at least 1' })

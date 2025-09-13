@@ -1,18 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AnswerResult, UserScoreData } from '@shared/types';
-import { GAME_ERROR_MESSAGES, GameMode, CACHE_TTL } from '@shared';
-import { serverLogger as logger } from '@shared';
+import { CACHE_TTL, GAME_ERROR_MESSAGES, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger  } from '@shared';
+import { AnswerResult, UserAnalytics,UserScoreData  } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
-import { SERVER_GAME_CONSTANTS } from '@shared';
 import { MoreThan, Repository } from 'typeorm';
 
 import { ValidationService } from '../../common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
-import { UserAnalytics } from '@shared/types';
 
 /**
  * Service for managing trivia games, game history, and user points
@@ -54,14 +51,11 @@ export class GameService {
 		const actualQuestionCount = Math.min(questionCount, maxQuestions);
 
 		if (questionCount > maxQuestions) {
-			logger.gameError(
-				`Question count ${questionCount} exceeds limit ${maxQuestions}, using ${actualQuestionCount}`,
-				{
-					requestedCount: questionCount,
-					maxQuestions,
-					actualCount: actualQuestionCount,
-				}
-			);
+			logger.gameError(`Question count ${questionCount} exceeds limit ${maxQuestions}, using ${actualQuestionCount}`, {
+				requestedCount: questionCount,
+				maxQuestions,
+				actualCount: actualQuestionCount,
+			});
 		}
 
 		try {
@@ -191,16 +185,16 @@ export class GameService {
 				timeSpent,
 			});
 
-		return {
-			questionId,
-			userAnswer: answer,
-			correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
-			isCorrect,
-			timeSpent,
-			pointsEarned: score,
-			totalScore: 0, // Will be calculated by client
-			feedback: isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה. נסה שוב!',
-		};
+			return {
+				questionId,
+				userAnswer: answer,
+				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
+				isCorrect,
+				timeSpent,
+				pointsEarned: score,
+				totalScore: 0, // Will be calculated by client
+				feedback: isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה. נסה שוב!',
+			};
 		} catch (error) {
 			throw new Error(
 				`${GAME_ERROR_MESSAGES.FAILED_TO_SUBMIT_ANSWER}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -255,7 +249,6 @@ export class GameService {
 	}
 
 	// User statistics update moved to UserStatsService for better separation of concerns
-
 
 	/**
 	 * Check if answer is correct
@@ -315,9 +308,9 @@ export class GameService {
 			}
 
 			// Get game history to calculate statistics
-			const gameHistory = await this.gameHistoryRepository.find({ 
+			const gameHistory = await this.gameHistoryRepository.find({
 				where: { userId },
-				select: ['score', 'correctAnswers', 'totalQuestions']
+				select: ['score', 'correctAnswers', 'totalQuestions'],
 			});
 
 			const totalPoints = gameHistory.reduce((sum, game) => sum + (game.score || 0), 0);
@@ -326,15 +319,15 @@ export class GameService {
 			const totalQuestions = gameHistory.reduce((sum, game) => sum + (game.totalQuestions || 0), 0);
 			const successRate = totalQuestions > 0 ? (totalCorrectAnswers / totalQuestions) * 100 : 0;
 
-		return {
-			userId: user.id,
-			username: user.username,
-			score: user.score,
-			rank: await this.getUserRank(userId),
-			totalPoints,
-			gamesPlayed,
-			successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
-		};
+			return {
+				userId: user.id,
+				username: user.username,
+				score: user.score,
+				rank: await this.getUserRank(userId),
+				totalPoints,
+				gamesPlayed,
+				successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
+			};
 		} catch (error) {
 			throw new Error(`Failed to get user score data: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
@@ -415,7 +408,7 @@ export class GameService {
 			});
 
 			// Save to database
-			const savedHistory = await this.gameHistoryRepository.save(gameHistory) as GameHistoryEntity;
+			const savedHistory = (await this.gameHistoryRepository.save(gameHistory)) as GameHistoryEntity;
 			logger.databaseCreate('game_history', {
 				historyId: savedHistory.id,
 				userId,
@@ -515,7 +508,6 @@ export class GameService {
 			);
 		}
 	}
-
 
 	/**
 	 * Get global game statistics - delegates to AnalyticsService
@@ -810,13 +802,13 @@ export class GameService {
 		};
 
 		const base = basePoints[difficulty as keyof typeof basePoints] || 10;
-		
+
 		// Time bonus (faster = more points)
 		const timeBonus = Math.max(0, 10 - Math.floor(timeSpent / 1000));
-		
+
 		// Streak bonus
 		const streakBonus = Math.min(streak * 2, 20);
-		
+
 		return base + timeBonus + streakBonus;
 	}
 

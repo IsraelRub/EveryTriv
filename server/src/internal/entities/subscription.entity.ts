@@ -1,4 +1,3 @@
-import { PaymentMethod, SubscriptionStatus, SubscriptionData } from '../types/typeorm-compatibility.types';
 import {
 	Column,
 	CreateDateColumn,
@@ -9,6 +8,8 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+
+import { PaymentMethod, SubscriptionData, SubscriptionStatus } from '../types/typeorm-compatibility.types';
 import { UserEntity } from './user.entity';
 
 @Entity('subscriptions')

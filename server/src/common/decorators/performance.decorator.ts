@@ -64,12 +64,8 @@ export const PerformanceMonitoring = (config: {
  * }
  * ```
  */
-export const QueryOptimization = (config: {
-	useIndex?: boolean;
-	limit?: number;
-	cache?: boolean;
-	timeout?: number;
-}) => SetMetadata('queryOptimization', config);
+export const QueryOptimization = (config: { useIndex?: boolean; limit?: number; cache?: boolean; timeout?: number }) =>
+	SetMetadata('queryOptimization', config);
 
 /**
  * Set memory usage monitoring
@@ -117,10 +113,8 @@ export const CpuMonitoring = (maxCpu: number) => SetMetadata('cpuMonitoring', ma
  * }
  * ```
  */
-export const ResponseTimeTracking = (config: {
-	trackPercentiles?: number[];
-	alertThreshold?: number;
-}) => SetMetadata('responseTimeTracking', config);
+export const ResponseTimeTracking = (config: { trackPercentiles?: number[]; alertThreshold?: number }) =>
+	SetMetadata('responseTimeTracking', config);
 
 /**
  * Set resource usage optimization
@@ -139,8 +133,5 @@ export const ResponseTimeTracking = (config: {
  * }
  * ```
  */
-export const ResourceOptimization = (config: {
-	compress?: boolean;
-	minify?: boolean;
-	cache?: number;
-}) => SetMetadata('resourceOptimization', config);
+export const ResourceOptimization = (config: { compress?: boolean; minify?: boolean; cache?: number }) =>
+	SetMetadata('resourceOptimization', config);

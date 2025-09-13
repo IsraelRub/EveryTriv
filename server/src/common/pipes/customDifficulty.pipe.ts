@@ -6,16 +6,14 @@
  * @used_by server/features/game, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ValidationService } from '../validation/validation.service';
-import { serverLogger as logger } from '@shared';
 import type { ValidationOptions } from '@shared';
-import { CustomDifficultyValidationResult } from '@shared';
+import { CustomDifficultyValidationResult,serverLogger as logger  } from '@shared';
+
+import { ValidationService } from '../validation/validation.service';
 
 @Injectable()
 export class CustomDifficultyPipe implements PipeTransform {
-	constructor(
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly validationService: ValidationService) {}
 
 	async transform(value: { customText: string }): Promise<CustomDifficultyValidationResult> {
 		const startTime = Date.now();
@@ -42,7 +40,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-		logger.apiUpdateError('customDifficulty_validation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('customDifficulty_validation', error instanceof Error ? error.message : 'Unknown error');
 
 			if (error instanceof BadRequestException) {
 				throw error;

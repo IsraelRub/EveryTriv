@@ -4,43 +4,43 @@
  * @module SubscriptionDTOs
  * @description Data Transfer Objects for subscription management
  */
-import { 
-	IsString, 
-	IsNumber, 
-	IsOptional, 
-	IsNotEmpty,
-	MinLength,
-	MaxLength,
-	IsIn,
-	Min,
-	Max,
-	IsBoolean,
-	IsDateString
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+	IsBoolean,
+	IsDateString,
+	IsIn,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Max,
+	MaxLength,
+	Min,
+	MinLength,
+} from 'class-validator';
 
 export class CreateSubscriptionDto {
 	@ApiProperty({
 		description: 'Plan type for subscription',
 		example: 'premium',
-		enum: ['basic', 'premium', 'pro']
+		enum: ['basic', 'premium', 'pro'],
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Plan type is required' })
-	@IsIn(['basic', 'premium', 'pro'], { 
-		message: 'Plan type must be one of: basic, premium, pro' 
+	@IsIn(['basic', 'premium', 'pro'], {
+		message: 'Plan type must be one of: basic, premium, pro',
 	})
 	planType: 'basic' | 'premium' | 'pro';
 
 	@ApiProperty({
 		description: 'Billing cycle',
 		example: 'monthly',
-		enum: ['monthly', 'yearly']
+		enum: ['monthly', 'yearly'],
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Billing cycle is required' })
-	@IsIn(['monthly', 'yearly'], { 
-		message: 'Billing cycle must be either monthly or yearly' 
+	@IsIn(['monthly', 'yearly'], {
+		message: 'Billing cycle must be either monthly or yearly',
 	})
 	billingCycle: 'monthly' | 'yearly';
 
@@ -48,7 +48,7 @@ export class CreateSubscriptionDto {
 		description: 'Payment method ID',
 		example: 'pm_your_payment_method_id',
 		minLength: 1,
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Payment method ID is required' })
@@ -59,7 +59,7 @@ export class CreateSubscriptionDto {
 	@ApiPropertyOptional({
 		description: 'Promo code for discount',
 		example: 'DISCOUNT_CODE',
-		maxLength: 20
+		maxLength: 20,
 	})
 	@IsOptional()
 	@IsString()
@@ -68,7 +68,7 @@ export class CreateSubscriptionDto {
 
 	@ApiPropertyOptional({
 		description: 'Auto-renewal preference',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Auto-renewal must be a boolean value' })
@@ -79,30 +79,30 @@ export class UpdateSubscriptionDto {
 	@ApiPropertyOptional({
 		description: 'New plan type',
 		example: 'pro',
-		enum: ['basic', 'premium', 'pro']
+		enum: ['basic', 'premium', 'pro'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['basic', 'premium', 'pro'], { 
-		message: 'Plan type must be one of: basic, premium, pro' 
+	@IsIn(['basic', 'premium', 'pro'], {
+		message: 'Plan type must be one of: basic, premium, pro',
 	})
 	planType?: 'basic' | 'premium' | 'pro';
 
 	@ApiPropertyOptional({
 		description: 'New billing cycle',
 		example: 'yearly',
-		enum: ['monthly', 'yearly']
+		enum: ['monthly', 'yearly'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['monthly', 'yearly'], { 
-		message: 'Billing cycle must be either monthly or yearly' 
+	@IsIn(['monthly', 'yearly'], {
+		message: 'Billing cycle must be either monthly or yearly',
 	})
 	billingCycle?: 'monthly' | 'yearly';
 
 	@ApiPropertyOptional({
 		description: 'Auto-renewal preference',
-		example: false
+		example: false,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Auto-renewal must be a boolean value' })
@@ -113,7 +113,7 @@ export class CancelSubscriptionDto {
 	@ApiPropertyOptional({
 		description: 'Reason for cancellation',
 		example: 'Reason for cancellation',
-		maxLength: 500
+		maxLength: 500,
 	})
 	@IsOptional()
 	@IsString()
@@ -122,7 +122,7 @@ export class CancelSubscriptionDto {
 
 	@ApiPropertyOptional({
 		description: 'Cancel immediately or at end of billing period',
-		example: false
+		example: false,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Immediate cancellation must be a boolean value' })
@@ -134,7 +134,7 @@ export class SubscriptionHistoryQueryDto {
 		description: 'Maximum number of subscriptions to return',
 		example: 10,
 		minimum: 1,
-		maximum: 50
+		maximum: 50,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Limit must be a number' })
@@ -145,24 +145,24 @@ export class SubscriptionHistoryQueryDto {
 	@ApiPropertyOptional({
 		description: 'Filter by subscription status',
 		example: 'active',
-		enum: ['active', 'pending', 'cancelled', 'expired', 'past_due', 'unpaid']
+		enum: ['active', 'pending', 'cancelled', 'expired', 'past_due', 'unpaid'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['active', 'pending', 'cancelled', 'expired', 'past_due', 'unpaid'], { 
-		message: 'Status must be one of: active, pending, cancelled, expired, past_due, unpaid' 
+	@IsIn(['active', 'pending', 'cancelled', 'expired', 'past_due', 'unpaid'], {
+		message: 'Status must be one of: active, pending, cancelled, expired, past_due, unpaid',
 	})
 	status?: string;
 
 	@ApiPropertyOptional({
 		description: 'Filter by plan type',
 		example: 'premium',
-		enum: ['basic', 'premium', 'pro']
+		enum: ['basic', 'premium', 'pro'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['basic', 'premium', 'pro'], { 
-		message: 'Plan type must be one of: basic, premium, pro' 
+	@IsIn(['basic', 'premium', 'pro'], {
+		message: 'Plan type must be one of: basic, premium, pro',
 	})
 	planType?: string;
 }
@@ -171,7 +171,7 @@ export class ReactivateSubscriptionDto {
 	@ApiPropertyOptional({
 		description: 'New payment method ID for reactivation',
 		example: 'pm_your_payment_method_id',
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsOptional()
 	@IsString()
@@ -181,7 +181,7 @@ export class ReactivateSubscriptionDto {
 	@ApiPropertyOptional({
 		description: 'Promo code for reactivation discount',
 		example: 'PROMO_CODE',
-		maxLength: 20
+		maxLength: 20,
 	})
 	@IsOptional()
 	@IsString()
@@ -192,7 +192,7 @@ export class ReactivateSubscriptionDto {
 export class SubscriptionUsageDto {
 	@ApiPropertyOptional({
 		description: 'Start date for usage query',
-		example: '2024-01-01'
+		example: '2024-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
@@ -200,7 +200,7 @@ export class SubscriptionUsageDto {
 
 	@ApiPropertyOptional({
 		description: 'End date for usage query',
-		example: '2024-01-31'
+		example: '2024-01-31',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })

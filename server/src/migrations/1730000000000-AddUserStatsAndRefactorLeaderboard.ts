@@ -50,7 +50,9 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 			console.log('Creating indexes for user_stats table');
 			await queryRunner.query(`CREATE INDEX "IDX_user_stats_user_id" ON "user_stats" ("user_id")`);
 			await queryRunner.query(`CREATE INDEX "IDX_user_stats_total_games" ON "user_stats" ("total_games")`);
-			await queryRunner.query(`CREATE INDEX "IDX_user_stats_overall_success_rate" ON "user_stats" ("overall_success_rate")`);
+			await queryRunner.query(
+				`CREATE INDEX "IDX_user_stats_overall_success_rate" ON "user_stats" ("overall_success_rate")`
+			);
 			await queryRunner.query(`CREATE INDEX "IDX_user_stats_weekly_score" ON "user_stats" ("weekly_score")`);
 			await queryRunner.query(`CREATE INDEX "IDX_user_stats_monthly_score" ON "user_stats" ("monthly_score")`);
 			await queryRunner.query(`CREATE INDEX "IDX_user_stats_yearly_score" ON "user_stats" ("yearly_score")`);

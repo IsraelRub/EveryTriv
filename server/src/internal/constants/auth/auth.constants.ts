@@ -2,10 +2,10 @@
  * Server-specific authentication constants for EveryTriv
  * Server-only authentication configuration
  */
-
 // Import and re-export shared enums
-import { TokenType, AuthHeader } from '@shared';
-export { TokenType, AuthHeader };
+import { AuthHeader, TokenType } from '@shared';
+
+export { AuthHeader,TokenType };
 
 // Auth constants
 export const AUTH_CONSTANTS = {

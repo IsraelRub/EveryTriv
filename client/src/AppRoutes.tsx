@@ -1,16 +1,17 @@
+import { clientLogger, mergeWithDefaults } from '@shared';
+import type { UserRole } from '@shared/types/domain/user/user.types';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
+
+import { ProtectedRoute, PublicRoute } from './components/auth';
 import { Footer, NotFound } from './components/layout';
 import { Navigation } from './components/navigation';
 import { CompleteProfile, OAuthCallback } from './components/user';
-import { ProtectedRoute, PublicRoute } from './components/auth';
-import { setAuthenticated, setUser, fetchUserData } from './redux/slices/userSlice';
-import { useAppDispatch } from './hooks/layers/utils';
-import { authService } from './services/auth';
-import { audioService } from './services';
-import { clientLogger, mergeWithDefaults } from '@shared';
 import { USER_DEFAULT_VALUES } from './constants';
-import type { UserRole } from '@shared/types/domain/user/user.types';
+import { useAppDispatch } from './hooks/layers/utils';
+import { fetchUserData,setAuthenticated, setUser } from './redux/slices/userSlice';
+import { audioService } from './services';
+import { authService } from './services/auth';
 import { GameHistory } from './views/gameHistory';
 import HomeView from './views/home';
 import { LeaderboardView } from './views/leaderboard';
@@ -97,7 +98,7 @@ export default function AppRoutes() {
               })
             );
             dispatch(setAuthenticated(true));
-            
+
             // Set user preferences for audio service (if available)
             if ('preferences' in user && user.preferences) {
               const mergedPreferences = mergeWithDefaults(user.preferences);
@@ -125,42 +126,57 @@ export default function AppRoutes() {
           <Route path='/play' element={<HomeView />} />
           <Route path='/start' element={<HomeView />} />
           <Route path='/leaderboard' element={<LeaderboardView />} />
-          
+
           {/* Protected routes - require authentication */}
-          <Route path='/profile' element={
-            <ProtectedRoute>
-              <UserProfile />
-            </ProtectedRoute>
-          } />
-          <Route path='/history' element={
-            <ProtectedRoute>
-              <GameHistory />
-            </ProtectedRoute>
-          } />
-          <Route path='/payment' element={
-            <ProtectedRoute>
-              <PaymentView />
-            </ProtectedRoute>
-          } />
-          <Route path='/complete-profile' element={
-            <ProtectedRoute>
-              <CompleteProfile />
-            </ProtectedRoute>
-          } />
-          
+          <Route
+            path='/profile'
+            element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/history'
+            element={
+              <ProtectedRoute>
+                <GameHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/payment'
+            element={
+              <ProtectedRoute>
+                <PaymentView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/complete-profile'
+            element={
+              <ProtectedRoute>
+                <CompleteProfile />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Public routes - redirect if authenticated */}
-          <Route path='/register' element={
-            <PublicRoute>
-              <RegistrationView />
-            </PublicRoute>
-          } />
-          
+          <Route
+            path='/register'
+            element={
+              <PublicRoute>
+                <RegistrationView />
+              </PublicRoute>
+            }
+          />
+
           {/* OAuth callback - no protection needed */}
           <Route path='/auth/callback' element={<OAuthCallback />} />
-          
+
           {/* Unauthorized page */}
           <Route path='/unauthorized' element={<UnauthorizedView />} />
-          
+
           {/* 404 */}
           <Route path='*' element={<NotFound />} />
         </Routes>

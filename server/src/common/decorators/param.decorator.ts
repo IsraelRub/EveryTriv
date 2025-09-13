@@ -5,7 +5,7 @@
  * @description Custom parameter decorators for extracting request data
  * @author EveryTriv Team
  */
-import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { createParamDecorator,ExecutionContext, UnauthorizedException } from '@nestjs/common';
 
 /**
  * Get request IP address
@@ -18,12 +18,10 @@ import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@
  * }
  * ```
  */
-export const ClientIP = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.ip || request.connection.remoteAddress || 'unknown';
-	},
-);
+export const ClientIP = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.ip || request.connection.remoteAddress || 'unknown';
+});
 
 /**
  * Get user agent from request
@@ -36,12 +34,10 @@ export const ClientIP = createParamDecorator(
  * }
  * ```
  */
-export const UserAgent = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.headers['user-agent'] || 'unknown';
-	},
-);
+export const UserAgent = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.headers['user-agent'] || 'unknown';
+});
 
 /**
  * Get current user from request
@@ -54,12 +50,10 @@ export const UserAgent = createParamDecorator(
  * }
  * ```
  */
-export const CurrentUser = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.user || null;
-	},
-);
+export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.user || null;
+});
 
 /**
  * Decorator to extract user information from request with optional property access
@@ -72,21 +66,19 @@ export const CurrentUser = createParamDecorator(
  * async getProfile(@User() user: User) {
  *   // Get full user object
  * }
- * 
+ *
  * @Get('username')
  * async getUsername(@User('username') username: string) {
  *   // Get specific user property
  * }
  * ```
  */
-export const User = createParamDecorator(
-	(data: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		const user = request.user;
+export const User = createParamDecorator((data: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	const user = request.user;
 
-		return data ? user?.[data] : user;
-	},
-);
+	return data ? user?.[data] : user;
+});
 
 /**
  * Get user role from request
@@ -99,12 +91,10 @@ export const User = createParamDecorator(
  * }
  * ```
  */
-export const UserRole = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.userRole || 'guest';
-	},
-);
+export const UserRole = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.userRole || 'guest';
+});
 
 /**
  * Get the current authenticated user ID
@@ -118,18 +108,16 @@ export const UserRole = createParamDecorator(
  * }
  * ```
  */
-export const CurrentUserId = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		const user = request.user;
-		
-		if (!user || !user.id) {
-			throw new UnauthorizedException('User not authenticated');
-		}
-		
-		return user.id;
-	},
-);
+export const CurrentUserId = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	const user = request.user;
+
+	if (!user || !user.id) {
+		throw new UnauthorizedException('User not authenticated');
+	}
+
+	return user.id;
+});
 
 /**
  * Get request ID from headers or generate one
@@ -142,14 +130,14 @@ export const CurrentUserId = createParamDecorator(
  * }
  * ```
  */
-export const RequestID = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.headers['x-request-id'] || 
-			   request.headers['x-correlation-id'] || 
-			   `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-	},
-);
+export const RequestID = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return (
+		request.headers['x-request-id'] ||
+		request.headers['x-correlation-id'] ||
+		`req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+	);
+});
 
 /**
  * Get request timestamp
@@ -162,12 +150,10 @@ export const RequestID = createParamDecorator(
  * }
  * ```
  */
-export const RequestTimestamp = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.timestamp || new Date();
-	},
-);
+export const RequestTimestamp = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.timestamp || new Date();
+});
 
 /**
  * Get request headers
@@ -179,19 +165,17 @@ export const RequestTimestamp = createParamDecorator(
  * async performAction(@RequestHeaders() headers: Record<string, string>) {
  *   // Use all headers
  * }
- * 
+ *
  * @Post('action')
  * async performAction(@RequestHeaders('authorization') auth: string) {
  *   // Use specific header
  * }
  * ```
  */
-export const RequestHeaders = createParamDecorator(
-	(headerName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return headerName ? request.headers[headerName] : request.headers;
-	},
-);
+export const RequestHeaders = createParamDecorator((headerName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return headerName ? request.headers[headerName] : request.headers;
+});
 
 /**
  * Get request query parameters
@@ -203,19 +187,17 @@ export const RequestHeaders = createParamDecorator(
  * async search(@QueryParams() params: Record<string, string>) {
  *   // Use all query params
  * }
- * 
+ *
  * @Get('search')
  * async search(@QueryParams('page') page: string) {
  *   // Use specific query param
  * }
  * ```
  */
-export const QueryParams = createParamDecorator(
-	(paramName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return paramName ? request.query[paramName] : request.query;
-	},
-);
+export const QueryParams = createParamDecorator((paramName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return paramName ? request.query[paramName] : request.query;
+});
 
 /**
  * Get request body
@@ -227,19 +209,17 @@ export const QueryParams = createParamDecorator(
  * async processData(@RequestBody() body: Record<string, unknown>) {
  *   // Use entire body
  * }
- * 
+ *
  * @Post('data')
  * async processData(@RequestBody('name') name: string) {
  *   // Use specific body property
  * }
  * ```
  */
-export const RequestBody = createParamDecorator(
-	(propertyName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return propertyName ? request.body[propertyName] : request.body;
-	},
-);
+export const RequestBody = createParamDecorator((propertyName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return propertyName ? request.body[propertyName] : request.body;
+});
 
 /**
  * Get request cookies
@@ -251,19 +231,17 @@ export const RequestBody = createParamDecorator(
  * async getData(@RequestCookies() cookies: Record<string, string>) {
  *   // Use all cookies
  * }
- * 
+ *
  * @Get('data')
  * async getData(@RequestCookies('sessionId') sessionId: string) {
  *   // Use specific cookie
  * }
  * ```
  */
-export const RequestCookies = createParamDecorator(
-	(cookieName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return cookieName ? request.cookies[cookieName] : request.cookies;
-	},
-);
+export const RequestCookies = createParamDecorator((cookieName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return cookieName ? request.cookies[cookieName] : request.cookies;
+});
 
 /**
  * Get request session
@@ -275,19 +253,17 @@ export const RequestCookies = createParamDecorator(
  * async getData(@RequestSession() session: Record<string, unknown>) {
  *   // Use entire session
  * }
- * 
+ *
  * @Get('data')
  * async getData(@RequestSession('userId') userId: string) {
  *   // Use specific session property
  * }
  * ```
  */
-export const RequestSession = createParamDecorator(
-	(propertyName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return propertyName ? request.session?.[propertyName] : request.session;
-	},
-);
+export const RequestSession = createParamDecorator((propertyName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return propertyName ? request.session?.[propertyName] : request.session;
+});
 
 /**
  * Get request file(s)
@@ -299,19 +275,17 @@ export const RequestSession = createParamDecorator(
  * async upload(@RequestFiles() files: Record<string, unknown>) {
  *   // Use all files
  * }
- * 
+ *
  * @Post('upload')
  * async upload(@RequestFiles('avatar') avatar: unknown) {
  *   // Use specific file field
  * }
  * ```
  */
-export const RequestFiles = createParamDecorator(
-	(fieldName: string, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return fieldName ? request.files?.[fieldName] : request.files;
-	},
-);
+export const RequestFiles = createParamDecorator((fieldName: string, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return fieldName ? request.files?.[fieldName] : request.files;
+});
 
 /**
  * Get request language from Accept-Language header
@@ -324,13 +298,11 @@ export const RequestFiles = createParamDecorator(
  * }
  * ```
  */
-export const RequestLanguage = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		const acceptLanguage = request.headers['accept-language'];
-		return acceptLanguage ? acceptLanguage.split(',')[0].trim() : 'en';
-	},
-);
+export const RequestLanguage = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	const acceptLanguage = request.headers['accept-language'];
+	return acceptLanguage ? acceptLanguage.split(',')[0].trim() : 'en';
+});
 
 /**
  * Get request timezone from headers
@@ -343,9 +315,7 @@ export const RequestLanguage = createParamDecorator(
  * }
  * ```
  */
-export const RequestTimezone = createParamDecorator(
-	(_data: unknown, ctx: ExecutionContext) => {
-		const request = ctx.switchToHttp().getRequest();
-		return request.headers['x-timezone'] || 'UTC';
-	},
-);
+export const RequestTimezone = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
+	const request = ctx.switchToHttp().getRequest();
+	return request.headers['x-timezone'] || 'UTC';
+});

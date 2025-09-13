@@ -20,11 +20,11 @@ export { default as Footer } from './Footer';
  * @used_by client/views, client/components
  */
 export {
-	CardGrid,
-	LayoutContainer as Container,
-	GridLayout,
-	ResponsiveGrid,
-	LayoutSection as Section,
+  CardGrid,
+  LayoutContainer as Container,
+  GridLayout,
+  ResponsiveGrid,
+  LayoutSection as Section,
 } from './GridLayout';
 
 /**

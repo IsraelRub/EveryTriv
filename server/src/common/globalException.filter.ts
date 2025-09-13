@@ -1,11 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-
 import { serverLogger as logger } from '@shared';
 import { NestRequest, NestResponse } from 'src/internal/types';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-
 	catch(exception: Error | HttpException, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse<NestResponse>();

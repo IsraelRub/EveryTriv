@@ -1,6 +1,6 @@
 /**
  * Game Types Index
- * 
+ *
  * @module GameTypesIndex
  * @description Central export point for all game-related types
  */

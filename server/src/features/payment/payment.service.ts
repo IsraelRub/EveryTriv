@@ -7,13 +7,20 @@
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PAYMENT_ERROR_MESSAGES, PaymentData, PaymentResult, PointBalance, PointPurchaseOption, SubscriptionData, SubscriptionPlans, formatCurrency, generatePaymentIntentId } from '@shared';
-import { PaymentStatus, PaymentMethod, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
-import { Repository } from 'typeorm';
-
-import { serverLogger as logger } from '@shared';
+import {
+	formatCurrency,
+	generatePaymentIntentId,
+	PAYMENT_ERROR_MESSAGES,
+	PaymentData,
+	PaymentResult,
+	PointBalance,
+	PointPurchaseOption,
+ serverLogger as logger,	SubscriptionData,
+	SubscriptionPlans } from '@shared';
+import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
-import { UserEntity, PaymentHistoryEntity, SubscriptionEntity } from 'src/internal/entities';
+import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
+import { Repository } from 'typeorm';
 
 /**
  * Pricing plans configuration

@@ -5,8 +5,8 @@
  * @description Type definitions for AI providers, models, and AI-related functionality
  * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider interface), server/src/features/ai/services/ai.service.ts (AI service), client: client/src/services/ai/ai.service.ts (AI client service)
  */
-import type { TriviaQuestion } from '../game/trivia.types';
 import type { BasicValue } from '../../core/data.types';
+import type { TriviaQuestion } from '../game/trivia.types';
 
 /**
  * AI provider types
@@ -16,7 +16,14 @@ export type AIProvider = 'openai' | 'anthropic' | 'google' | 'azure' | 'local';
 /**
  * AI model types
  */
-export type AIModel = 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo' | 'claude-3-sonnet' | 'claude-3-opus' | 'gemini-pro' | 'gemini-pro-vision';
+export type AIModel =
+	| 'gpt-3.5-turbo'
+	| 'gpt-4'
+	| 'gpt-4-turbo'
+	| 'claude-3-sonnet'
+	| 'claude-3-opus'
+	| 'gemini-pro'
+	| 'gemini-pro-vision';
 
 /**
  * AI request status types

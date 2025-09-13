@@ -7,6 +7,7 @@
  */
 import { Controller, Get } from '@nestjs/common';
 import { API_VERSION } from '@shared';
+
 import { Public } from './common';
 
 /**

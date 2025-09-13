@@ -5,6 +5,7 @@
  */
 
 import { GameMode } from '@shared';
+
 import { GameModeDefaults } from '../types/game/config.types';
 
 /**
@@ -13,16 +14,16 @@ import { GameModeDefaults } from '../types/game/config.types';
  * @returns Default settings for the mode
  */
 export const getGameModeDefaults = (mode: GameMode): GameModeDefaults => {
-	switch (mode) {
-		case GameMode.QUESTION_LIMITED:
-			return { timeLimit: 0, questionLimit: 10 }; // No time limit, 10 questions default
-		case GameMode.TIME_LIMITED:
-			return { timeLimit: 60, questionLimit: 999 }; // 1 minute default, unlimited questions
-		case GameMode.UNLIMITED:
-			return { timeLimit: 0, questionLimit: 999 }; // No time limit, unlimited questions, no scoring
-		default:
-			return { timeLimit: 0, questionLimit: 10 };
-	}
+  switch (mode) {
+    case GameMode.QUESTION_LIMITED:
+      return { timeLimit: 0, questionLimit: 10 }; // No time limit, 10 questions default
+    case GameMode.TIME_LIMITED:
+      return { timeLimit: 60, questionLimit: 999 }; // 1 minute default, unlimited questions
+    case GameMode.UNLIMITED:
+      return { timeLimit: 0, questionLimit: 999 }; // No time limit, unlimited questions, no scoring
+    default:
+      return { timeLimit: 0, questionLimit: 10 };
+  }
 };
 
 /**

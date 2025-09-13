@@ -10,11 +10,10 @@
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { LeaderboardEntity, UserEntity, UserStatsEntity, GameHistoryEntity } from 'src/internal/entities';
+import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheModule } from 'src/internal/modules';
-import { AuthModule } from '../auth/auth.module';
 
+import { AuthModule } from '../auth/auth.module';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 

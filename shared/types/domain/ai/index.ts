@@ -1,6 +1,6 @@
 /**
  * AI Types Index
- * 
+ *
  * @module AITypesIndex
  * @description Central export point for all AI-related types
  */

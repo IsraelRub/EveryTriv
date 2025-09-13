@@ -1,181 +1,109 @@
 # EveryTriv
 
-EveryTriv הוא פלטפורמת טריוויה חכמה עם רמות קושי מותאמות אישית, נבנה עם React, TypeScript ו-NestJS.
+פלטפורמת טריוויה חכמה (AI‑Enhanced Trivia) עם Frontend ב-React ו-Backend ב-NestJS. מסמך זה מספק סקירה סטטית ותמציתית של המבנה, ללא פירוט היסטוריית שינויים או תכונות עתידיות.
 
-## תכונות עיקריות
+## 🧭 מבנה תיעוד מרכזי
 
-- רמות קושי מותאמות עם עיבוד שפה טבעית
-- יצירת שאלות טריוויה בזמן אמת באמצעות ספקי AI
-- מעקב אחר התקדמות משתמשים והישגים
-- לוח תוצאות ותכונות חברתיות
-- ממשק משתמש רספונסיבי ומונפש
-- מערכת cache רב-שכבתית
+לכלל המסמכים הארגוניים: ראה `docs/README.md` (אינדקס מלא). להלן כניסות מהירות עיקריות:
 
-## 📚 תיעוד מרוכז
+- ארכיטקטורה כללית: `docs/architecture/ARCHITECTURE.md`
+- ארכיטקטורת שרת (Nest): `docs/architecture/SERVER_ARCHITECTURE.md`
+- ארכיטקטורת Hooks (Frontend): `docs/architecture/HOOKS_ARCHITECTURE.md`
+- מערכת עיצוב: `docs/architecture/DESIGN_SYSTEM.md`
+- דיאגרמות: `docs/DIAGRAMS.md`
+- פיתוח (Workflow וכלים): `docs/development/DEVELOPMENT.md`
+- פריסה: `docs/deployment/DEPLOYMENT.md`
+- Docker: `docs/deployment/DOCKER_SETUP.md`
+- מסד נתונים: `docs/database/UNIFIED_DATABASE_SETUP.md`
+- ספרייה משותפת (Shared): `shared/README.md`
 
-### מסמכים עיקריים
-- 🏗️ **[ארכיטקטורה](docs/ARCHITECTURE.md)** - מבנה המערכת, טכנולוגיות וזרימת נתונים
-- 📊 **[דיאגרמות](docs/DIAGRAMS.md)** - כל דיאגרמות Mermaid במקום אחד  
-- ⚡ **[פיתוח ו-API](docs/DEVELOPMENT.md)** - מדריך פיתוח, API documentation ומערכת טיפוסים מאוחדת
+תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
 
-### מסמכי ארכיטקטורה מפורטים
-- 🔧 **[ארכיטקטורת Hooks](docs/HOOKS_ARCHITECTURE.md)** - מבנה מבוסס שכבות עם אופטימיזציות ביצועים
-- 🎨 **[מערכת העיצוב](docs/DESIGN_SYSTEM.md)** - מערכת עיצוב מאוחדת עם CSS-in-JS ואייקונים
-- 🖥️ **[ארכיטקטורת השרת](docs/SERVER_ARCHITECTURE.md)** - מבנה NestJS עם מודולים ותכונות
+- Backend Features: `docs/backend/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Points, Payment, Subscription)
+- Frontend Structure: `docs/frontend/` (State, Hooks, Services, Components, Routing)
+- Shared Layer: `docs/shared/` (Types, Validation, Constants, Utilities)
 
-### מסמכי DevOps
-- 🚀 **[Deployment](docs/deployment.md)** - מדריך הטמעה לייצור ופלטפורמות שונות
-- 🐳 **[Docker Setup](docs/DOCKER_SETUP.md)** - הגדרת Docker וסביבת פיתוח
-- 🗄️ **[Database Setup](docs/UNIFIED_DATABASE_SETUP.md)** - הגדרת מסד נתונים מאוחד עם חיבורים וניטור
+## 🛠 טכנולוגיות עיקריות
 
-## התחלה מהירה
+### Frontend
+- React 18 + TypeScript
+- Redux Toolkit לניהול מצב
+- Vite לבנייה מהירה
+- Tailwind CSS + מערכת טוקנים מותאמת
 
-1. שכפול הפרויקט:
+### Backend
+- NestJS (מודולריות + DI)
+- PostgreSQL (Persistency) + TypeORM
+- Redis (Cache / Rate Limiting)
+- OpenAPI (Swagger) ל-API
+
+### שכבה משותפת (Shared)
+- טיפוסים אחידים (Domain / Core / Infrastructure)
+- ולידציה משותפת (Schemas)
+- Utilities + Constants
+
+## 🚀 התחלה מהירה
+
 ```bash
 git clone https://github.com/IsraelRub/EveryTriv.git
 cd EveryTriv
+pnpm install
+pnpm run dev   # הפעלה מקבילה של client+server
 ```
 
-2. התקנת dependencies:
+שרת ברירת מחדל: `http://localhost:3001`  |  ממשק לקוח: `http://localhost:5173`
+
+## � סקריפטים שימושיים (Root)
+
 ```bash
-npm install --legacy-peer-deps
+pnpm run dev           # פיתוח מלא
+pnpm run build         # בנייה לכל החבילות הרלוונטיות
+pnpm run lint          # בדיקות ESLint
+pnpm run format        # עיצוב קוד
 ```
 
-3. הפעלת סביבת פיתוח:
+סקריפטים מפורטים נוספים: ראה תיקיית `scripts/` ותיעוד ייעודי ב-`docs/tools/DEVELOPMENT_TOOLS.md`.
+
+## � סביבת Docker בסיסית
+
 ```bash
-npm run start:dev  # מפעיל גם client וגם server
-```
-
-4. פתיחת הדפדפן בכתובת http://localhost:5173
-
-## 🛠️ כלי פיתוח
-
-הפרויקט כולל כלי פיתוח מתקדמים לניהול איכות הקוד:
-
-### עיצוב קוד
-```bash
-npm run format        # עיצוב כל הקבצים
-npm run format:check  # בדיקה שהקוד מעוצב כראוי
-```
-
-### ניתוח קוד
-```bash
-npm run lint          # בדיקת שגיאות ובעיות
-npm run lint:fix      # תיקון אוטומטי של בעיות
-```
-
-📖 **[מדריך מפורט לכלי הפיתוח](docs/DEVELOPMENT_TOOLS.md)**
-
-## 📜 סקריפטים
-
-הפרויקט כולל סקריפטים מאורגנים לניהול קל:
-
-### 🐳 Docker
-```bash
-# Windows
-.\scripts\docker\start-docker.bat
-.\scripts\docker\stop-docker.bat
-
-# Linux/macOS
-./scripts/docker/start-docker.sh
-./scripts/docker/stop-docker.sh
-```
-
-### 🚀 Deployment
-```bash
-# הטמעה ל-Vercel
-.\scripts\deployment\deploy-vercel.bat
-
-# הפעלת ngrok
-.\scripts\deployment\start-ngrok.bat
-```
-
-### 💻 Development
-```bash
-# Windows
-.\scripts\development\start-local.bat
-
-# Linux/macOS
-./scripts/development/start-local.sh
-```
-
-📖 **[מדריך מפורט לסקריפטים](scripts/README.md)**
-
-## Database Administration
-
-### WebDB - Modern Database Client
-
-EveryTriv includes WebDB for easy database management and querying.
-
-#### Option 1: Using Docker (Recommended)
-```bash
-# Production (default)
 docker-compose up -d
-
-# Development with admin tools
-docker-compose --profile dev up -d
 ```
-Then visit: http://127.0.0.1:22071
+תצורות מלאות ופרופילי פיתוח מורחבים: `docs/deployment/DOCKER_SETUP.md`.
 
-#### Option 2: Using NPM
-```bash
-# Install WebDB globally
-npm run webdb:install
+## � מסד נתונים
 
-# Start WebDB (localhost only)
-npm run webdb:start
+הגדרה מאוחדת (PostgreSQL + Redis) בדוקר: `docs/database/UNIFIED_DATABASE_SETUP.md`.
 
-# Or use the shorthand
-npm run db:admin
+## 🔐 אבטחה
 
-# Start WebDB (accessible from network)
-npm run webdb:start:public
-```
+JWT + Refresh Flow, בקרות תפקידים, ולידציה בכל שכבת כניסה (DTO + Pipes), Rate Limiting, Cache Layer.
+פרטים: `docs/architecture/SERVER_ARCHITECTURE.md` ו-`docs/backend/feature-auth.md`.
 
-#### Alternative Database Clients
-- **pgAdmin**: Available at http://localhost:8080 (local development only)
-  - Email: admin@everytriv.local
-  - Password: admin123
-- **Redis Commander**: Available at http://localhost:8081 (local development only)
+## 🧩 מודולריות (Backend)
 
-### Database Configuration - Unified Docker Setup
+כל מודול תחום (Feature) כולל: Controller(s) + Service(s) + DTOs. סיכום מרוכז: `docs/backend/FEATURES.md`.
 
-The project uses a unified database configuration running entirely on Docker:
+## 🧠 לוגיקת משחק (Game Flow)
 
-**All Environments:**
-- **Host:** localhost
-- **Port:** 5432
-- **Database:** everytriv
-- **Username:** everytriv_user
-- **Password:** EvTr!v_Pr0d_P@ssw0rd_2025_S3cur3!
+תיעוד סטטי לזרימות ושכבות: `docs/backend/feature-game.md` + דיאגרמות ב-`docs/DIAGRAMS.md`.
 
-**Development Tools (with --profile dev):**
-- **pgAdmin:** http://localhost:8080 (admin@everytriv.local / admin123)
-- **Redis Commander:** http://localhost:8081
-- **WebDB:** http://localhost:22071
+## 🎨 UI ו-Hooks
 
-**No AWS or external cloud services required!**
+Frontend Hooks בשכבות (API / Business / UI / Utils): ראה `docs/architecture/HOOKS_ARCHITECTURE.md` + פירוט שכבות ב-`docs/frontend/STATE.md`.
 
-## Tech Stack
+## 📚 קונסיסטנטיות טיפוסים
 
-### Frontend
-- React with TypeScript
-- Redux Toolkit for state management
-- Tailwind CSS for styling
-- Framer Motion for animations
-- Lucide React for icons
+כל שימוש בנתונים בין לקוח ושרת עובר דרך טיפוסים משותפים ב-`shared/types`. ראה `docs/shared/types.md`.
 
-### Backend
-- NestJS framework
-- PostgreSQL database
-- Redis for caching
-- TypeORM for database access
-- OpenAPI/Swagger for API docs
+## 🤝 תרומה
 
-## Contributing
+מדריך תרומה מפורט: `docs/development/contributing.md`.
+קוד חדש נדרש: בדיקות טיפוסים, Lint נקי, תאימות לשכבת Shared.
 
-Please read our [Contributing Guide](docs/contributing.md) for details on our code of conduct and the process for submitting pull requests.
+## 📄 רישיון
 
-## License
+MIT (ראה `LICENSE`).
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+---
+מסמך זה סטטי: אין בו היסטוריית "עדכונים" או סעיפי "תכונות עתידיות". לעיון רוחבי: `docs/README.md`.

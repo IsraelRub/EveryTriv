@@ -5,8 +5,7 @@
  * @description Type definitions for analytics and metrics data structures
  * @used_by server: server/src/features/analytics/analytics.service.ts (analytics data), client: client/src/components/stats/StatsCharts.tsx (chart data), server/src/features/metrics/metrics.service.ts (metrics collection)
  */
-
-import { BasicValue } from "../../core/data.types";
+import { BasicValue } from '../../core/data.types';
 
 /**
  * Question cache entry interface
@@ -291,12 +290,15 @@ export interface GameAnalyticsQuery {
  * @interface GameAnalyticsStats
  * @description Raw game analytics data from database queries
  */
-export interface GameAnalyticsStats extends Record<string, {
-	total: number;
-	correct: number;
-	successRate: number;
-}> {
-}
+export interface GameAnalyticsStats
+	extends Record<
+		string,
+		{
+			total: number;
+			correct: number;
+			successRate: number;
+		}
+	> {}
 
 /**
  * Game statistics data interface

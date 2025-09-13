@@ -12,18 +12,18 @@ import { UnifiedUserAnalytics } from '@shared';
  * @used_by client/src/views/analytics/AnalyticsView.tsx
  */
 export interface MetricCardProps {
-	/** Card title */
-	title: string;
-	/** Card value */
-	value: string;
-	/** Card subtitle */
-	subtitle: string;
-	/** Card icon */
-	icon: string;
-	/** Card color theme */
-	color: 'yellow' | 'blue' | 'green' | 'purple';
-	/** Optional trend indicator */
-	trend?: 'up' | 'down' | 'neutral';
+  /** Card title */
+  title: string;
+  /** Card value */
+  value: string;
+  /** Card subtitle */
+  subtitle: string;
+  /** Card icon */
+  icon: string;
+  /** Card color theme */
+  color: 'yellow' | 'blue' | 'green' | 'purple';
+  /** Optional trend indicator */
+  trend?: 'up' | 'down' | 'neutral';
 }
 
 /**
@@ -33,16 +33,16 @@ export interface MetricCardProps {
  * @used_by client/src/views/analytics/AnalyticsView.tsx
  */
 export interface ComparisonCardProps {
-	/** Card title */
-	title: string;
-	/** User's value */
-	userValue: number;
-	/** Average value for comparison */
-	averageValue: number;
-	/** Unit of measurement */
-	unit: string;
-	/** Whether higher values are better */
-	higherIsBetter: boolean;
+  /** Card title */
+  title: string;
+  /** User's value */
+  userValue: number;
+  /** Average value for comparison */
+  averageValue: number;
+  /** Unit of measurement */
+  unit: string;
+  /** Whether higher values are better */
+  higherIsBetter: boolean;
 }
 
 /**
@@ -51,8 +51,8 @@ export interface ComparisonCardProps {
  * @description Props for the RecentActivity component
  */
 export interface RecentActivityProps {
-	/** Analytics data */
-	analyticsData: UnifiedUserAnalytics;
+  /** Analytics data */
+  analyticsData: UnifiedUserAnalytics;
 }
 
 /**
@@ -61,8 +61,8 @@ export interface RecentActivityProps {
  * @description Props for the TopicsChart component
  */
 export interface TopicsChartProps {
-	/** Topics played data */
-	topicsPlayed: Record<string, number>;
+  /** Topics played data */
+  topicsPlayed: Record<string, number>;
 }
 
 /**
@@ -71,6 +71,6 @@ export interface TopicsChartProps {
  * @description Props for the DifficultyChart component
  */
 export interface DifficultyChartProps {
-	/** Difficulty breakdown data */
-	difficultyBreakdown: Record<string, { correct: number; total: number }>;
+  /** Difficulty breakdown data */
+  difficultyBreakdown: Record<string, { correct: number; total: number }>;
 }

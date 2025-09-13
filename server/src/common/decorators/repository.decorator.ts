@@ -118,7 +118,8 @@ export const RepositoryValidate = (schema: string) => SetMetadata('repositoryVal
  * }
  * ```
  */
-export const RepositoryRateLimit = (limit: number, window: number) => SetMetadata('repositoryRateLimit', { limit, window });
+export const RepositoryRateLimit = (limit: number, window: number) =>
+	SetMetadata('repositoryRateLimit', { limit, window });
 
 /**
  * Set retry configuration for repository method
@@ -133,7 +134,7 @@ export const RepositoryRateLimit = (limit: number, window: number) => SetMetadat
  * }
  * ```
  */
-export const RepositoryRetry = (maxRetries: number, delay: number = 1000) => 
+export const RepositoryRetry = (maxRetries: number, delay: number = 1000) =>
 	SetMetadata('repositoryRetry', { maxRetries, delay });
 
 /**
@@ -163,7 +164,7 @@ export const RepositoryTimeout = (timeout: number) => SetMetadata('repositoryTim
  * }
  * ```
  */
-export const RepositoryLogging = (level: 'debug' | 'info' | 'warn' | 'error', includeData: boolean = false) => 
+export const RepositoryLogging = (level: 'debug' | 'info' | 'warn' | 'error', includeData: boolean = false) =>
 	SetMetadata('repositoryLogging', { level, includeData });
 
 /**

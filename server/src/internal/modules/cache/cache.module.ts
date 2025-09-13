@@ -7,9 +7,9 @@
  * @dependencies RedisModule
  */
 import { Module, OnModuleInit } from '@nestjs/common';
+import { serverLogger as logger } from '@shared';
 
 import { RedisModule } from '../redis.module';
-import { serverLogger as logger } from '@shared';
 import { CacheController } from './cache.controller';
 import { CacheService } from './cache.service';
 

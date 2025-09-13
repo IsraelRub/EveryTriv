@@ -25,14 +25,7 @@ export type StatsValue = BasicValue | Date | Record<string, BasicValue | Date>;
  * @type StorageValue
  * @description Generic data value that can be stored in cache or transmitted
  */
-export type StorageValue =
-	| BasicValue
-	| Record<string, unknown>
-	| BasicValue[]
-	| unknown[]
-	| Date
-	| null
-	| undefined
+export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] | unknown[] | Date | null | undefined;
 
 /**
  * Base entity interface with common fields
@@ -109,8 +102,8 @@ export interface AuthResponse {
  * @type BaseData
  * @description Base interface for flexible data structures
  */
-export interface BaseData extends Record<string, number | boolean | string | string[] | BaseData | BaseData[] | Date | undefined> {
-}
+export interface BaseData
+	extends Record<string, number | boolean | string | string[] | BaseData | BaseData[] | Date | undefined> {}
 
 /**
  * Form data interface

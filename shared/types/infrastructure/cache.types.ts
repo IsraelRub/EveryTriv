@@ -5,8 +5,8 @@
  * @module CacheTypes
  * @description Cache interfaces and data structures
  */
-import type { QuestionCacheEntry } from '../domain/analytics/analytics.types';
 import type { StorageValue } from '../core/data.types';
+import type { QuestionCacheEntry } from '../domain/analytics/analytics.types';
 
 /**
  * Cache statistics interface
@@ -160,8 +160,7 @@ export interface UserProgressData {
  * @description Map structure for caching trivia questions
  * @used_by server/src/features/game/logic/providers/core/base.provider.ts (BaseTriviaProvider)
  */
-export interface QuestionCacheMap extends Record<string, QuestionCacheEntry> {
-}
+export interface QuestionCacheMap extends Record<string, QuestionCacheEntry> {}
 
 /**
  * Generic cache storage interface
@@ -169,8 +168,7 @@ export interface QuestionCacheMap extends Record<string, QuestionCacheEntry> {
  * @description Generic cache storage structure
  * @used_by server/src/features/game/logic/providers/core/base.provider.ts (BaseTriviaProvider)
  */
-export interface CacheStorage extends Record<string, StorageValue> {
-}
+export interface CacheStorage extends Record<string, StorageValue> {}
 
 /**
  * Cache data interface

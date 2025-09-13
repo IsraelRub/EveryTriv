@@ -6,19 +6,14 @@
  * @used_by server/features/game, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ValidationService } from '../validation/validation.service';
-import { serverLogger as logger } from '@shared';
 import type { LanguageValidationOptions } from '@shared';
-import { 
-	LanguageValidationData, 
-	LanguageValidationResult 
-} from '@shared';
+import { LanguageValidationData, LanguageValidationResult,serverLogger as logger  } from '@shared';
+
+import { ValidationService } from '../validation/validation.service';
 
 @Injectable()
 export class LanguageValidationPipe implements PipeTransform {
-	constructor(
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly validationService: ValidationService) {}
 
 	async transform(value: LanguageValidationData): Promise<LanguageValidationResult> {
 		const startTime = Date.now();
@@ -33,9 +28,7 @@ export class LanguageValidationPipe implements PipeTransform {
 				throw new BadRequestException('Text is too long (max 2000 characters)');
 			}
 
-			const languageValidation = await this.validationService.validateInputWithLanguageTool(
-				value.text,
-				{
+			const languageValidation = await this.validationService.validateInputWithLanguageTool(value.text, {
 				language: value.language,
 				enableSpellCheck: value.enableSpellCheck ?? true,
 				enableGrammarCheck: value.enableGrammarCheck ?? true,
@@ -57,7 +50,7 @@ export class LanguageValidationPipe implements PipeTransform {
 				language: languageValidation.suggestion ? 'detected' : undefined,
 			};
 		} catch (error) {
-		logger.apiUpdateError('languageValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('languageValidation', error instanceof Error ? error.message : 'Unknown error');
 
 			if (error instanceof BadRequestException) {
 				throw error;

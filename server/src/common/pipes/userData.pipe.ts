@@ -6,16 +6,14 @@
  * @used_by server/features/user, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ValidationService } from '../validation/validation.service';
-import { serverLogger as logger } from '@shared';
 import type { UserProfileUpdateData, ValidationResult } from '@shared';
-import { UserDataValidationResult } from '@shared';
+import { serverLogger as logger , UserDataValidationResult } from '@shared';
+
+import { ValidationService } from '../validation/validation.service';
 
 @Injectable()
 export class UserDataPipe implements PipeTransform {
-	constructor(
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly validationService: ValidationService) {}
 
 	async transform(value: UserProfileUpdateData): Promise<UserDataValidationResult> {
 		const startTime = Date.now();
@@ -27,9 +25,7 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate username if provided
 			if (value.username) {
-				const usernameValidation: ValidationResult = await this.validationService.validateUsername(
-					value.username
-				);
+				const usernameValidation: ValidationResult = await this.validationService.validateUsername(value.username);
 				if (!usernameValidation.isValid) {
 					errors.push(...usernameValidation.errors);
 				}
@@ -37,9 +33,7 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate email if provided
 			if (value.email) {
-				const emailValidation: ValidationResult = await this.validationService.validateEmail(
-					value.email
-				);
+				const emailValidation: ValidationResult = await this.validationService.validateEmail(value.email);
 				if (!emailValidation.isValid) {
 					errors.push(...emailValidation.errors);
 				}
@@ -59,9 +53,7 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate last name if provided
 			if (value.last_name) {
-				const lastNameValidation: ValidationResult = await this.validationService.validateInputContent(
-					value.last_name
-				);
+				const lastNameValidation: ValidationResult = await this.validationService.validateInputContent(value.last_name);
 				if (!lastNameValidation.isValid) {
 					errors.push(...lastNameValidation.errors);
 				}
@@ -96,7 +88,7 @@ export class UserDataPipe implements PipeTransform {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-		logger.apiUpdateError('userDataValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('userDataValidation', error instanceof Error ? error.message : 'Unknown error');
 
 			throw new BadRequestException('User data validation failed');
 		}

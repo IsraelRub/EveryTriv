@@ -1,5 +1,71 @@
 # תרשימים - EveryTriv
 
+> הערת יישום (סנכרון קוד ↔ תרשימים) 12/09/2025:
+> התרשימים מציגים באופן מושגי מודולים נפרדים: Trivia, Game History, Logger. במימוש בפועל:
+> - Trivia + Game History מאוחדים בתוך `GameModule` (ניהול טריוויה, יצירת שאלות, היסטוריית משחק, ניקוד ו-AI Providers)
+> - Logger ממומש כשירות משותף `serverLogger` מתוך חבילת Shared ולא כ-LoggerModule עצמאי
+> לכן שלושת הישויות מסומנות כ-Conceptual (מסגרת מקווקוות). ראו סעיף "סנכרון תרשימים ↔ מימוש קוד" בהמשך מסמך זה.
+
+<a id="diagram-sync-status"></a>
+## סנכרון תרשימים ↔ מימוש קוד
+
+מסמך זה (הסעיף הממוזג) מרכז את הפערים (אם קיימים) בין תרשימי הארכיטקטורה לבין המימוש בפועל בקוד.
+
+### מטרות
+- שקיפות: מה מושגי בלבד ומה קיים כקוד.
+- מניעת הנחות שגויות בעת חונכות/הצטרפות.
+- בסיס להחלטה: לעדכן תרשים או להוסיף מודול.
+
+### טבלת סטטוס מודולים
+| תרשים | מצב בקוד בפועל | קובץ / מודול קיים | הערות | החלטה עתידית |
+|-------|----------------|--------------------|--------|---------------|
+| Trivia Module | ממומש חלקית בתוך `GameModule` | `server/src/features/game/game.module.ts` | כולל יצירת שאלות, ספקי AI, ולידציה ייעודית | לשקול פיצול אם גדילה | 
+| Game History Module | ממוזג בתוך `GameModule` (שירות היסטוריה/ישויות) | `GameService` + ישויות `GameHistoryEntity` | לא קיים מודול עצמאי | להשאיר מאוחד בשלב זה |
+| Logger Module | שירות משותף (לא Nest Module) | `shared` ייצוא `serverLogger` | משמש בכל שכבות; תיעוד ב-`architecture/LOGGING_MONITORING.md` | להישאר כשירות Shared |
+| AI Module | חלק מ-Game (Providers) | `logic/providers/*` בתוך game | התרשים מציג מודול נפרד למיקוד תפיסתי | להישאר משולב |
+| Validation Module | קיים | `common/validation/validation.module.ts` | תואם תרשים | — |
+| Client Logs Controller | קיים (יש לאמת בקר קונקרטי) | חיפוש נדרש | יש לוודא שם קובץ ספציפי | לבדיקה בסבב הבא |
+
+### קריטריונים לפיצול עתידי
+- קו שירות > 800 שורות קוד נטו
+- קצב שינוי עצמאי > 30% מהקומיטים שבועית
+- תלות חוצה > 5 מודולים צורכים ישירות
+- חציית גבולות Domain ברורים
+
+### תהליך עדכון תרשים
+1. שינוי מבני -> לפתוח Issue "diagram-sync".
+2. לעדכן קוד / תרשים -> להריץ `pnpm run docs:check`.
+3. לאשר PR עם תיוג `docs`.
+
+### פסאודו תרשים מושגי (Modules מקווקווים = איחוד בקוד)
+```mermaid
+graph LR
+    A[AppModule]
+    B[Auth]
+    C[Trivia]
+    D[Game History]
+    E[Logger]
+    F[AI]
+    G[Validation]
+
+    A --> B
+    A --> C
+    A --> D
+    A --> E
+    A --> F
+    A --> G
+
+    %% מקווקווים = מאוחד בפועל
+    classDef conceptual stroke-dasharray:5 3,stroke:#555;
+    class C,D,E,F conceptual;
+```
+
+### קישורים רלוונטיים
+- `architecture/LOGGING_MONITORING.md`
+- `server/src/features/game/`
+- `shared/`
+
+
 ## סקירה כללית
 
 מסמך זה מכיל את כל התרשימים של פרויקט EveryTriv, כולל ארכיטקטורה, זרימת נתונים, ומבנה המערכת.
@@ -103,7 +169,100 @@ graph TB
     O --> CC
     Q --> DD
     N --> EE
+    %% Conceptual styling (modules המיוצגים אך מאוחדים במימוש)
+    classDef conceptual stroke-dasharray:5 3,stroke:#555;
+    class O,S,T conceptual;
 ```
+
+**הערה:** מודולים מקווקווים = ייצוג לוגי; יישום ממוזג או שירות משותף.
+
+<a id="nestjs-core-flow"></a>
+## אבני יסוד NestJS ושרשרת בקשה
+
+סעיף זה מרכז בצורה מרוכזת את רכיבי הליבה של NestJS וכיצד בקשה עוברת ביניהם.
+
+### תרשים רצף – Request Lifecycle
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant MW as Middleware
+    participant G as Guard
+    participant INT as Interceptor (pre)
+    participant P as Pipe (Validation/Transform)
+    participant CTR as Controller
+    participant S as Service
+    participant R as Repository/DB
+    participant EXT as External/Cache
+    participant INT2 as Interceptor (post)
+    participant F as Exception Filter
+    participant C2 as Client (Response)
+
+    C->>MW: HTTP Request
+    MW->>G: Pass context
+    alt Authorized?
+        G->>INT: Allow
+        INT->>P: Map & Validate DTO
+        P->>CTR: Invoke handler
+        CTR->>S: Business call
+        S->>R: Query / Persist
+        S->>EXT: Cache/API (optional)
+        R-->>S: Data
+        EXT-->>S: Result
+        S-->>CTR: Domain result
+        CTR-->>INT2: Return value
+        INT2-->>C2: HTTP Response
+    else Unauthorized
+        G-->>F: UnauthorizedException
+        F-->>C2: 401 Response
+    end
+```
+
+### תרשים קשרים – רכיבי ליבה
+```mermaid
+graph TD
+    Req[Request] --> MW[Middleware]
+    MW --> G[Guard]
+    G -->|Authorized| INT[Interceptor (pre)]
+    INT --> P[Pipe]
+    P --> CTR[Controller]
+    CTR --> S[Service]
+    S --> R[(Repository)]
+    S --> C[(Cache)]
+    S --> EXT[External API]
+    R --> S
+    C --> S
+    EXT --> S
+    S --> CTR
+    CTR --> INT2[Interceptor (post)]
+    INT2 --> RES[Response]
+    CTR -->|Error| F[Exception Filter]
+    INT -->|Error| F
+    P -->|Validation Error| F
+    F --> RES
+
+    classDef layer fill:#f5f5f5,stroke:#555;
+    class Req,RES layer;
+```
+
+### טבלת אחריות
+| רכיב | רץ מתי | אחריות עיקרית | דוגמאות שימוש | לא בשביל |
+|------|--------|----------------|----------------|-----------|
+| Middleware | לפני Guards | עיבוד טכני גלובלי (Context, Trace Id) | בקשת מזהה, לוג בסיסי | ולידציה דומיין |
+| Guard | לפני Controller | הרשאות / בקרת גישה | AuthGuard JWT | טרנספורמציית DTO |
+| Pipe | לפני Handler | ולידציה + טרנספורמציה | ValidationPipe | הרשאות |
+| Interceptor | סביב Handler | מדידה, שינוי תשובה, Cache | LoggingInterceptor | ולידציה ראשית |
+| Controller | נקודת כניסה | מיפוי HTTP → שירות | GET /points | לוגיקה עסקית ארוכה |
+| Service | לוגיקה עסקית | חוקים, אגרגציות, אינטגרציות | חישוב נקודות | ניהול חיבור DB ישיר מרובים |
+| Repository | גישת נתונים | CRUD / שאילתות | findById | לוגיקה עסקית |
+| Exception Filter | בעת חריגה | מיפוי חריגות למבנה תשובה | GlobalExceptionFilter | לוגיקה דומיין |
+
+### עקרונות שימוש מהיר
+- אחריות אחת לכל שכבה – אין ולידציה עסקית ב-Middleware.
+- Interceptor לפני/אחרי מאפשר הוספת מדדים ללא זיהום הלוגיקה.
+- Pipe מבטיח ש-Service מקבל אובייקט כבר תקין טיפוסית.
+- Guard לא דולף לוגיקה עסקית – רק החלטת Allow/Deny.
+
+---
 
 ### מבנה תיקיות מפורט
 ```mermaid
@@ -352,6 +511,83 @@ graph TB
     SV3 -.-> V2
     SV4 -.-> V3
 ```
+
+<a id="shared-deps-map"></a>
+## מפת תלות Shared
+
+התרשים הבא ממפה סוגי סימבולים מתוך החבילה המשותפת (Shared) לצרכנים בצד השרת והלקוח, עם הבחנה בין שימוש Compile-Time בלבד (חצים מקווקווים) לבין שימוש Runtime (חצים מלאים).
+
+### תרשים תלות
+```mermaid
+graph LR
+    subgraph Shared
+        T[Types]
+        DTO[DTOs]
+        VAL[Validation Schemas]
+        CONST[Constants]
+        U[Utils]
+        IF[Interfaces]
+    end
+
+    subgraph Server(NestJS)
+        MOD[Feature Modules]
+        CTR[Controllers]
+        SVC[Services]
+        REP[Repositories]
+        FLT[Exception Filters]
+    end
+
+    subgraph Client(React)
+        ST[State / Slices]
+        CMP[Components]
+        HK[Hooks]
+        API[API Layer]
+    end
+
+    %% Compile-time consumption (dashed)
+    ST -.-> T
+    CMP -.-> T
+    HK -.-> T
+
+    %% API Contract
+    API --> DTO
+    CTR --> DTO
+    MOD --> DTO
+    SVC --> DTO
+
+    %% Validation (Runtime Server)
+    CTR --> VAL
+    SVC --> VAL
+
+    %% Business logic consumption
+    SVC --> CONST
+    SVC --> U
+    REP --> IF
+
+    %% Return Path
+    SVC --> DTO --> API --> CMP
+
+    classDef contract stroke:#1e88e5,stroke-width:2,fill:#e3f2fd;
+    class DTO,VAL contract;
+```
+
+### סיווג סימבולים
+| קבוצה | מקור אמת | Runtime Client | Runtime Server | הערות |
+|-------|----------|----------------|----------------|--------|
+| DTOs | Shared | ❌ (Tiping only) | ✅ (Serialize/Validate) | Base API contract |
+| Validation Schemas | Shared | ❌ | ✅ | רץ בשרת בלבד |
+| Types | Shared | ✅ (Compile-time) | ✅ | חלקם פנימיים – להגביל ייצוא עודף |
+| Constants | Shared | ✅ | ✅ | להבחין בין Public/Private במידת הצורך |
+| Utils | Shared | ✅ (Pure) | ✅ | להימנע מתלויות Node ב-Client |
+| Interfaces | Shared | ✅ | ✅ | משמשות ארכיטקטורה / Injection |
+
+### עקרונות
+- שינוי ב-DTO → מחייב Build לשני הצדדים (שבירת חוזה מזוהה מהר).
+- ולידציה מתבצעת פעמיים לוגית (Client אופציונלי, Server מחייב) – מקור אמת בסכמות Shared.
+- Utils צריכים להיות Pure כדי לאפשר tree-shaking בצד הלקוח.
+- לוגיקת דומיין נשארת בשירותי השרת; הלקוח משתמש ב-Types בלבד לצורך מצבים ותצוגה.
+
+---
 
 ## זרימת נתונים
 

@@ -1,12 +1,10 @@
-import { IsIn, IsNumber, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import {
 	CUSTOM_DIFFICULTY_PREFIX,
 	DifficultyLevel,
-	VALID_DIFFICULTIES,
+ isCustomDifficulty,	VALID_DIFFICULTIES,
 	VALID_QUESTION_COUNTS,
-	VALIDATION_LIMITS,
-} from '@shared';
-import { isCustomDifficulty } from '@shared';
+	VALIDATION_LIMITS } from '@shared';
+import { IsIn, IsNumber, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 export class TriviaRequestDto {
 	@IsString()

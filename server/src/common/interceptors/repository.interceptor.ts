@@ -5,13 +5,13 @@
  * @description Interceptor that handles repository method decorators and caching
  * @author EveryTriv Team
  */
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { serverLogger as logger } from '@shared';
 import { Observable, of } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
-import { serverLogger as logger } from '@shared';
 import type { CacheMetadata } from '../../internal/types/metadata.types';
 
 /**
@@ -46,7 +46,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 
 		// Check for repository cache decorator
 		const cacheMetadata = this.reflector.get<CacheMetadata>('repositoryCache', handler);
-		
+
 		if (cacheMetadata) {
 			return this.handleCachedMethod(context, next, cacheMetadata, className, methodName);
 		}
@@ -83,7 +83,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 		try {
 			// Check cache first
 			const cachedResult = await this.cacheService.get(cacheKey);
-			
+
 			if (cachedResult.success && cachedResult.data !== null) {
 				logger.cacheHit(cacheKey, {
 					context: 'REPOSITORY',
@@ -91,7 +91,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 					methodName,
 					ttl: cacheMetadata.ttl,
 				});
-				
+
 				return of(cachedResult.data);
 			}
 
@@ -104,10 +104,10 @@ export class RepositoryInterceptor implements NestInterceptor {
 			});
 
 			return next.handle().pipe(
-				tap(async (result) => {
+				tap(async result => {
 					try {
 						await this.cacheService.set(cacheKey, result, cacheMetadata.ttl);
-						
+
 						logger.cacheSet(cacheKey, {
 							context: 'REPOSITORY',
 							className,
@@ -131,7 +131,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 				methodName,
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
-			
+
 			// On cache error, proceed with normal method call
 			return next.handle();
 		}
@@ -151,9 +151,9 @@ export class RepositoryInterceptor implements NestInterceptor {
 		const startTime = Date.now();
 
 		return next.handle().pipe(
-			tap((_result) => {
+			tap(_result => {
 				const duration = Date.now() - startTime;
-				
+
 				logger.audit(auditMetadata.action, {
 					context: 'REPOSITORY',
 					className,
@@ -164,9 +164,9 @@ export class RepositoryInterceptor implements NestInterceptor {
 					success: true,
 				});
 			}),
-			catchError((error) => {
+			catchError(error => {
 				const duration = Date.now() - startTime;
-				
+
 				logger.audit(auditMetadata.action, {
 					context: 'REPOSITORY',
 					className,
@@ -176,7 +176,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 					duration,
 					success: false,
 				});
-				
+
 				throw error;
 			})
 		);
@@ -217,9 +217,9 @@ export class RepositoryInterceptor implements NestInterceptor {
 		const startTime = Date.now();
 
 		return next.handle().pipe(
-			tap((_result) => {
+			tap(_result => {
 				const duration = Date.now() - startTime;
-				
+
 				logger.databaseInfo(`Repository method completed: ${className}.${methodName}`, {
 					context: 'REPOSITORY',
 					className,
@@ -228,9 +228,9 @@ export class RepositoryInterceptor implements NestInterceptor {
 					success: true,
 				});
 			}),
-			catchError((error) => {
+			catchError(error => {
 				const duration = Date.now() - startTime;
-				
+
 				logger.databaseError(`Repository method failed: ${className}.${methodName}`, {
 					context: 'REPOSITORY',
 					className,
@@ -239,7 +239,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 					duration,
 					success: false,
 				});
-				
+
 				throw error;
 			})
 		);
@@ -259,20 +259,18 @@ export class RepositoryInterceptor implements NestInterceptor {
 		}
 
 		// Generate key from method and arguments
-		const argsString = args.map(arg => 
-			typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-		).join('|');
-		
+		const argsString = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join('|');
+
 		const baseKey = `${className}.${methodName}:${argsString}`;
-		
+
 		// Simple hash function for key generation
 		let hash = 0;
 		for (let i = 0; i < baseKey.length; i++) {
 			const char = baseKey.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
+			hash = (hash << 5) - hash + char;
 			hash = hash & hash; // Convert to 32-bit integer
 		}
-		
+
 		return `repo:${Math.abs(hash)}`;
 	}
 

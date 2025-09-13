@@ -7,21 +7,11 @@
  */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { serverLogger as logger } from '@shared';
-import { AUTH_CONSTANTS } from '@shared';
-import { 
-	TokenPair, 
-	TokenValidationResult,
-	AuthenticationRequest,
-	JWTDecodedToken
-} from '@shared';
-import { TokenPayload } from '@shared';
+import { AUTH_CONSTANTS , AuthenticationRequest, JWTDecodedToken, serverLogger as logger , TokenPair, TokenPayload,TokenValidationResult  } from '@shared';
 
 @Injectable()
 export class JwtTokenService {
-	constructor(
-		private readonly jwtService: JwtService
-	) {}
+	constructor(private readonly jwtService: JwtService) {}
 
 	/**
 	 * Generate access token
@@ -214,7 +204,7 @@ export class JwtTokenService {
 	/**
 	 * Check if token is expired
 	 */
-		isTokenExpired(token: string): boolean {
+	isTokenExpired(token: string): boolean {
 		try {
 			const decoded = this.jwtService.decode(token) as JWTDecodedToken;
 			if (!decoded || !decoded.exp) {
@@ -253,17 +243,7 @@ export class JwtTokenService {
 	/**
 	 * Generate token for specific user data
 	 */
-	async generateTokenForUser(user: {
-		id: string;
-		username: string;
-		email: string;
-		role: string;
-	}): Promise<TokenPair> {
-		return this.generateTokenPair(
-			user.id,
-			user.username,
-			user.email,
-			user.role
-		);
+	async generateTokenForUser(user: { id: string; username: string; email: string; role: string }): Promise<TokenPair> {
+		return this.generateTokenPair(user.id, user.username, user.email, user.role);
 	}
 }

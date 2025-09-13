@@ -7,7 +7,7 @@
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
 import type { EnhancedLogEntry, Logger } from '../../types';
-import { LoggerConfig, LoggerConfigUpdate, LogMeta } from '../../types/infrastructure/logging.types';
+import { LoggerConfig, LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { generateSessionId, generateTraceId, sanitizeLogMessage } from '../../utils';
 
 /**
@@ -247,7 +247,6 @@ export abstract class BaseLoggerService implements Logger {
 	cacheError(operation: string, key: string, meta?: LogMeta): void {
 		this.error(MESSAGE_FORMATTERS.cache.error(operation, key), meta);
 	}
-
 
 	// StorageLogger implementation
 	storageError(message: string, meta?: LogMeta): void {
@@ -616,11 +615,11 @@ export abstract class BaseLoggerService implements Logger {
 		// Clear session and trace IDs
 		this.sessionId = generateSessionId();
 		this.traceId = generateTraceId();
-		
+
 		// Log the clearing action
 		this.info('🧹 Logger cleared - new session started', {
 			newSessionId: this.sessionId,
-			newTraceId: this.traceId
+			newTraceId: this.traceId,
 		});
 	}
 
@@ -710,7 +709,11 @@ export abstract class BaseLoggerService implements Logger {
 			return result;
 		} catch (error) {
 			const duration = Date.now() - start;
-			this.trackPerformanceEnhanced(operation, duration, { ...context, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+			this.trackPerformanceEnhanced(operation, duration, {
+				...context,
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
 			throw error;
 		}
 	}
@@ -724,7 +727,11 @@ export abstract class BaseLoggerService implements Logger {
 			return result;
 		} catch (error) {
 			const duration = Date.now() - start;
-			this.trackPerformanceEnhanced(operation, duration, { ...context, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+			this.trackPerformanceEnhanced(operation, duration, {
+				...context,
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
 			throw error;
 		}
 	}

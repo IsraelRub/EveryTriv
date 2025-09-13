@@ -1,11 +1,18 @@
 import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
-import { PaymentData } from '@shared';
+import { PaymentData , serverLogger as logger } from '@shared';
 
-import { serverLogger as logger } from '@shared';
-import { PaymentService } from './payment.service';
-import { CreatePaymentDto } from './dtos';
-import { CurrentUserId, ClientIP, UserAgent, PerformanceThreshold, SecurityLog, AuditLog, BusinessLog } from '../../common';
+import {
+	AuditLog,
+	BusinessLog,
+	ClientIP,
+	CurrentUserId,
+	PerformanceThreshold,
+	SecurityLog,
+	UserAgent,
+} from '../../common';
 import { PaymentDataPipe } from '../../common/pipes';
+import { CreatePaymentDto } from './dtos';
+import { PaymentService } from './payment.service';
 
 @Controller('payment')
 export class PaymentController {

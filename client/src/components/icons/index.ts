@@ -20,7 +20,7 @@ export type { IconAnimation, IconColor, IconProps, IconSize } from '../../types'
  * @used_by client/components, client/views
  */
 export {
-	Icon, // Backward compatibility
+  Icon, // Backward compatibility
 } from './IconLibrary';
 
 /**

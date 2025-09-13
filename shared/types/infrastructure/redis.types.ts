@@ -6,8 +6,8 @@
  * @description Redis cache, client, and configuration type definitions
  * @used_by server: server/src/internal/modules/cache, client: client/src/services/cache
  */
-
 import type { Redis as IORedis } from 'ioredis';
+
 import type { StorageValue } from '../core/data.types';
 
 /**

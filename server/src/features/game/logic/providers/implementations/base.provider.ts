@@ -11,19 +11,19 @@ import {
 	AI_PROVIDER_ERROR_TYPES,
 	ERROR_CONTEXT_MESSAGES,
 	FALLBACK_QUESTION_ANSWERS,
-	PROVIDER_ERROR_MESSAGES,
 	LLMResponse,
+	PROVIDER_ERROR_MESSAGES,
 } from '@shared';
 import {
 	AnalyticsMetadata,
+	clamp,
+	isCustomDifficulty,
 	LLMApiResponse,
 	LLMTriviaResponse,
 	ProviderConfig,
 	QuestionCacheMap,
-	TriviaQuestion,
-	clamp,
-	isCustomDifficulty,
 	shuffle,
+	TriviaQuestion,
 } from '@shared';
 
 import { PromptTemplates } from '../prompts';
@@ -152,11 +152,7 @@ export abstract class BaseTriviaProvider {
 				});
 
 				// Return a fallback response with error information
-				return this.createFallbackQuestion(
-					topic,
-					difficulty,
-					'PARSE_ERROR'
-				);
+				return this.createFallbackQuestion(topic, difficulty, 'PARSE_ERROR');
 			}
 
 			// Check if AI returned null response (could not generate question)
@@ -167,11 +163,7 @@ export abstract class BaseTriviaProvider {
 					explanation: data.explanation || 'No explanation provided',
 				});
 
-				return this.createFallbackQuestion(
-					topic,
-					difficulty,
-					'VALIDATION_ERROR'
-				);
+				return this.createFallbackQuestion(topic, difficulty, 'VALIDATION_ERROR');
 			}
 
 			// Calculate custom difficulty multiplier if needed
@@ -201,11 +193,7 @@ export abstract class BaseTriviaProvider {
 				});
 
 				// Return fallback question instead of invalid one
-				return this.createFallbackQuestion(
-					topic,
-					difficulty,
-					'VALIDATION_ERROR'
-				);
+				return this.createFallbackQuestion(topic, difficulty, 'VALIDATION_ERROR');
 			}
 
 			// Sanitize the question
@@ -257,11 +245,7 @@ export abstract class BaseTriviaProvider {
 			});
 
 			// Return fallback question instead of throwing error
-			return this.createFallbackQuestion(
-				topic,
-				difficulty,
-				'API_ERROR'
-			);
+			return this.createFallbackQuestion(topic, difficulty, 'API_ERROR');
 		}
 	}
 

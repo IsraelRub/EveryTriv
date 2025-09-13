@@ -28,10 +28,10 @@ export * from './infrastructure';
 // Payment types
 export * from './payment.types';
 // Single file types
+export * from './language.types';
 export * from './points.types';
 export * from './subscription.types';
 export * from './ui.types';
-export * from './language.types';
 
 /**
  * Cache types
@@ -39,12 +39,12 @@ export * from './language.types';
  * @exports {Object} Cache-related type definitions
  */
 export type {
-	CacheStats,
 	CachedQuestionDto,
 	CacheHealthStatus,
 	CacheInvalidationDto,
 	CacheQuestionsQueryDto,
 	CacheQuestionsResponseDto,
+	CacheStats,
 	CacheStorage,
 	QuestionCacheMap,
 	UserProgressData,
@@ -97,17 +97,17 @@ export type {
 	AnalyticsEventData,
 	AnalyticsMetadata,
 	AnalyticsResponse,
+	DifficultyStats,
+	DifficultyStatsData,
+	GameAnalyticsQuery,
+	GameStatsData,
 	QuestionAnalytics,
 	SystemStats,
 	TopicAnalytics,
+	TopicStatsData,
 	UserAnalytics,
 	UserAnalyticsQuery,
 	UserAnalyticsStats,
-	GameAnalyticsQuery,
-	GameStatsData,
-	TopicStatsData,
-	DifficultyStatsData,
-	DifficultyStats,
 } from './domain/analytics/analytics.types';
 
 /**

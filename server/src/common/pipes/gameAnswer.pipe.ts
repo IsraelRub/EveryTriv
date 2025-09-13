@@ -6,18 +6,13 @@
  * @used_by server/features/game, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { GameAnswerData, GameAnswerValidationResult,serverLogger as logger  } from '@shared';
+
 import { ValidationService } from '../validation/validation.service';
-import { serverLogger as logger } from '@shared';
-import { 
-	GameAnswerData, 
-	GameAnswerValidationResult 
-} from '@shared';
 
 @Injectable()
 export class GameAnswerPipe implements PipeTransform {
-	constructor(
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly validationService: ValidationService) {}
 
 	async transform(value: GameAnswerData): Promise<GameAnswerValidationResult> {
 		const startTime = Date.now();
@@ -42,9 +37,7 @@ export class GameAnswerPipe implements PipeTransform {
 
 			// Validate answer content if answer exists
 			if (value.answer && value.answer.trim().length > 0) {
-				const answerValidation = await this.validationService.validateInputContent(
-					value.answer
-				);
+				const answerValidation = await this.validationService.validateInputContent(value.answer);
 				if (!answerValidation.isValid) {
 					errors.push(...answerValidation.errors);
 				}
@@ -79,7 +72,7 @@ export class GameAnswerPipe implements PipeTransform {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-		logger.apiUpdateError('gameAnswerValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('gameAnswerValidation', error instanceof Error ? error.message : 'Unknown error');
 
 			throw new BadRequestException('Game answer validation failed');
 		}

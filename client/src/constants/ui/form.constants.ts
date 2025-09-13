@@ -6,7 +6,10 @@
  * @used_by client/src/views/registration, client/src/components/forms
  */
 import { COUNTRIES, DifficultyLevel } from '@shared';
-import { FORM_FIELD_TYPES, FORM_VALIDATION_TYPES } from '@shared/constants/core/validation.constants';
+import {
+  FORM_FIELD_TYPES,
+  FORM_VALIDATION_TYPES,
+} from '@shared/constants/core/validation.constants';
 
 import type { FormField } from '../../types/ui/forms.types';
 
@@ -17,50 +20,50 @@ import type { FormField } from '../../types/ui/forms.types';
  * @used_by client/src/views/registration/RegistrationView.tsx
  */
 export const REGISTRATION_FIELDS: FormField[] = [
-	{
-		name: 'username',
-		label: 'Username',
-		type: FORM_FIELD_TYPES.TEXT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Enter your username',
-	},
-	{
-		name: 'email',
-		label: 'Email',
-		type: FORM_FIELD_TYPES.EMAIL,
-		validationType: FORM_VALIDATION_TYPES.EMAIL,
-		required: true,
-		placeholder: 'Enter your email',
-	},
-	{
-		name: 'address.country',
-		label: 'Country',
-		type: FORM_FIELD_TYPES.SELECT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Select your country',
-		options: COUNTRIES.map((country: { code: string; name: string; phonePrefix: string }) => ({
-			value: country.code,
-			label: `${country.name} (${country.phonePrefix})`,
-		})),
-	},
-	{
-		name: 'password',
-		label: 'Password',
-		type: FORM_FIELD_TYPES.PASSWORD,
-		validationType: FORM_VALIDATION_TYPES.PASSWORD,
-		required: true,
-		placeholder: 'Enter your password',
-	},
-	{
-		name: 'confirmPassword',
-		label: 'Confirm Password',
-		type: FORM_FIELD_TYPES.PASSWORD,
-		validationType: FORM_VALIDATION_TYPES.PASSWORD,
-		required: true,
-		placeholder: 'Confirm your password',
-	},
+  {
+    name: 'username',
+    label: 'Username',
+    type: FORM_FIELD_TYPES.TEXT,
+    validationType: FORM_VALIDATION_TYPES.USERNAME,
+    required: true,
+    placeholder: 'Enter your username',
+  },
+  {
+    name: 'email',
+    label: 'Email',
+    type: FORM_FIELD_TYPES.EMAIL,
+    validationType: FORM_VALIDATION_TYPES.EMAIL,
+    required: true,
+    placeholder: 'Enter your email',
+  },
+  {
+    name: 'address.country',
+    label: 'Country',
+    type: FORM_FIELD_TYPES.SELECT,
+    validationType: FORM_VALIDATION_TYPES.USERNAME,
+    required: true,
+    placeholder: 'Select your country',
+    options: COUNTRIES.map((country: { code: string; name: string; phonePrefix: string }) => ({
+      value: country.code,
+      label: `${country.name} (${country.phonePrefix})`,
+    })),
+  },
+  {
+    name: 'password',
+    label: 'Password',
+    type: FORM_FIELD_TYPES.PASSWORD,
+    validationType: FORM_VALIDATION_TYPES.PASSWORD,
+    required: true,
+    placeholder: 'Enter your password',
+  },
+  {
+    name: 'confirmPassword',
+    label: 'Confirm Password',
+    type: FORM_FIELD_TYPES.PASSWORD,
+    validationType: FORM_VALIDATION_TYPES.PASSWORD,
+    required: true,
+    placeholder: 'Confirm your password',
+  },
 ];
 
 /**
@@ -70,34 +73,34 @@ export const REGISTRATION_FIELDS: FormField[] = [
  * @used_by client/src/views/user/ProfileView.tsx
  */
 export const PROFILE_FIELDS: FormField[] = [
-	{
-		name: 'firstName',
-		label: 'First Name',
-		type: FORM_FIELD_TYPES.TEXT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Enter your first name',
-	},
-	{
-		name: 'lastName',
-		label: 'Last Name',
-		type: FORM_FIELD_TYPES.TEXT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Enter your last name',
-	},
-	{
-		name: 'address.country',
-		label: 'Country',
-		type: FORM_FIELD_TYPES.SELECT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Select your country',
-		options: COUNTRIES.map((country: { code: string; name: string; phonePrefix: string }) => ({
-			value: country.code,
-			label: `${country.name} (${country.phonePrefix})`,
-		})),
-	},
+  {
+    name: 'firstName',
+    label: 'First Name',
+    type: FORM_FIELD_TYPES.TEXT,
+    validationType: FORM_VALIDATION_TYPES.USERNAME,
+    required: true,
+    placeholder: 'Enter your first name',
+  },
+  {
+    name: 'lastName',
+    label: 'Last Name',
+    type: FORM_FIELD_TYPES.TEXT,
+    validationType: FORM_VALIDATION_TYPES.USERNAME,
+    required: true,
+    placeholder: 'Enter your last name',
+  },
+  {
+    name: 'address.country',
+    label: 'Country',
+    type: FORM_FIELD_TYPES.SELECT,
+    validationType: FORM_VALIDATION_TYPES.USERNAME,
+    required: true,
+    placeholder: 'Select your country',
+    options: COUNTRIES.map((country: { code: string; name: string; phonePrefix: string }) => ({
+      value: country.code,
+      label: `${country.name} (${country.phonePrefix})`,
+    })),
+  },
 ];
 
 /**
@@ -107,21 +110,21 @@ export const PROFILE_FIELDS: FormField[] = [
  * @used_by client/src/views/registration/RegistrationView.tsx
  */
 export const REGISTRATION_DEFAULT_VALUES = {
-	username: '',
-	email: '',
-	address: {
-		country: '',
-		state: '',
-		city: '',
-		street: '',
-		zipCode: '',
-		apartment: '',
-	},
-	password: '',
-	confirmPassword: '',
-	phonePrefix: '+1',
-	difficulty: DifficultyLevel.MEDIUM,
-	favoriteTopics: [],
-	agreeToTerms: false,
-	agreeToNewsletter: true,
+  username: '',
+  email: '',
+  address: {
+    country: '',
+    state: '',
+    city: '',
+    street: '',
+    zipCode: '',
+    apartment: '',
+  },
+  password: '',
+  confirmPassword: '',
+  phonePrefix: '+1',
+  difficulty: DifficultyLevel.MEDIUM,
+  favoriteTopics: [],
+  agreeToTerms: false,
+  agreeToNewsletter: true,
 } as const;

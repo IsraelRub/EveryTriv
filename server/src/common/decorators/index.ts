@@ -29,4 +29,3 @@ export * from './logging.decorator';
 
 // Game-specific decorators
 export * from './game.decorator';
-

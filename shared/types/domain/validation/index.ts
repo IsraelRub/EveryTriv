@@ -1,6 +1,6 @@
 /**
  * Validation Types Index
- * 
+ *
  * @module ValidationTypesIndex
  * @description Central export point for all validation-related types
  */

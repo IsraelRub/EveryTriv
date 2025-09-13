@@ -1,4 +1,4 @@
-import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
+import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 
@@ -67,7 +67,12 @@ export class GoogleTriviaProvider extends BaseTriviaProvider {
 	}
 
 	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
-		if (!response.data || !response.data.candidates || !Array.isArray(response.data.candidates) || response.data.candidates.length === 0) {
+		if (
+			!response.data ||
+			!response.data.candidates ||
+			!Array.isArray(response.data.candidates) ||
+			response.data.candidates.length === 0
+		) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_GOOGLE_RESPONSE);
 		}
 		const content = response.data.candidates[0].content.parts[0].text;

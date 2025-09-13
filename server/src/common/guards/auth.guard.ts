@@ -5,11 +5,10 @@
  * @description Guard that validates JWT tokens and extracts user information
  * @author EveryTriv Team
  */
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared';
-import { AUTH_CONSTANTS, AuthenticationRequest } from '@shared';
+import { JwtService } from '@nestjs/jwt';
+import { AUTH_CONSTANTS, AuthenticationRequest,serverLogger as logger  } from '@shared';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -20,10 +19,7 @@ export class AuthGuard implements CanActivate {
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		// Check if endpoint is marked as public
-		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
-			context.getHandler(),
-			context.getClass(),
-		]);
+		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [context.getHandler(), context.getClass()]);
 
 		if (isPublic) {
 			logger.authDebug('Public endpoint - skipping auth check');

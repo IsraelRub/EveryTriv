@@ -6,8 +6,14 @@
  * @used_by server/features/game/logic/trivia-generation.service.ts (TriviaGenerationService.generateQuestion)
  */
 import { Injectable } from '@nestjs/common';
-import { PROVIDER_ERROR_MESSAGES, ProviderHealth, ProviderMetrics, ProviderStats, TriviaQuestion, roundToDecimals } from '@shared';
-import { serverLogger as logger } from '@shared';
+import {
+	PROVIDER_ERROR_MESSAGES,
+	ProviderHealth,
+	ProviderMetrics,
+	ProviderStats,
+	roundToDecimals,
+ serverLogger as logger,	TriviaQuestion } from '@shared';
+
 import {
 	AnthropicTriviaProvider,
 	GoogleTriviaProvider,
@@ -23,7 +29,12 @@ import {
  */
 @Injectable()
 export class AiProvidersService {
-	private llmProviders: (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)[] = [];
+	private llmProviders: (
+		| AnthropicTriviaProvider
+		| GoogleTriviaProvider
+		| MistralTriviaProvider
+		| OpenAITriviaProvider
+	)[] = [];
 	private currentProviderIndex = 0;
 	private providerStats: Map<string, ProviderStats> = new Map();
 
@@ -44,7 +55,8 @@ export class AiProvidersService {
 		];
 
 		this.llmProviders = providers.filter(provider => {
-			const hasApiKey = 'hasApiKey' in provider && typeof provider.hasApiKey === 'function' ? provider.hasApiKey() : false;
+			const hasApiKey =
+				'hasApiKey' in provider && typeof provider.hasApiKey === 'function' ? provider.hasApiKey() : false;
 			if (!hasApiKey) {
 				logger.providerConfig(provider.name, {
 					context: 'AiProvidersService',
@@ -61,19 +73,19 @@ export class AiProvidersService {
 
 		// Initialize stats for each provider
 		this.llmProviders.forEach(provider => {
-		this.providerStats.set(provider.name, {
-			providerName: provider.name,
-			requests: 0,
-			successes: 0,
-			failures: 0,
-			averageResponseTime: 0,
-			lastUsed: null,
-			status: 'available',
-			successRate: 0,
-			errorRate: 0,
-			created_at: new Date(),
-			updated_at: new Date(),
-		});
+			this.providerStats.set(provider.name, {
+				providerName: provider.name,
+				requests: 0,
+				successes: 0,
+				failures: 0,
+				averageResponseTime: 0,
+				lastUsed: null,
+				status: 'available',
+				successRate: 0,
+				errorRate: 0,
+				created_at: new Date(),
+				updated_at: new Date(),
+			});
 		});
 	}
 
@@ -82,7 +94,9 @@ export class AiProvidersService {
 	 * @returns LLMProvider The next provider to use
 	 * @throws Error - When no providers are available
 	 */
-	private getNextProvider(): (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider) | null {
+	private getNextProvider():
+		| (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)
+		| null {
 		if (this.llmProviders.length === 0) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE);
 		}
@@ -125,7 +139,10 @@ export class AiProvidersService {
 					// Update provider stats
 					this.updateProviderStats(providerName, 'request');
 
-					const question = await ('generateTriviaQuestion' in provider && typeof provider.generateTriviaQuestion === 'function' ? provider.generateTriviaQuestion(topic, difficulty) : Promise.reject(new Error('Provider does not support trivia question generation')));
+					const question = await ('generateTriviaQuestion' in provider &&
+					typeof provider.generateTriviaQuestion === 'function'
+						? provider.generateTriviaQuestion(topic, difficulty)
+						: Promise.reject(new Error('Provider does not support trivia question generation')));
 
 					const duration = Date.now() - startTime;
 					const providerDuration = Date.now() - providerStartTime;
@@ -203,19 +220,19 @@ export class AiProvidersService {
 
 		this.providerStats.forEach((stats, providerName) => {
 			const successRate = stats.requests > 0 ? (stats.successes / stats.requests) * 100 : 0;
-		metrics[providerName] = {
-			providerName,
-			totalRequests: stats.requests,
-			successfulRequests: stats.successes,
-			failedRequests: stats.failures,
-			averageResponseTime: stats.averageResponseTime,
-			successRate: roundToDecimals(successRate, 2),
-			errorRate: stats.requests > 0 ? (stats.failures / stats.requests) * 100 : 0,
-			lastUsed: stats.lastUsed?.toISOString() || new Date(),
-			status: stats.status,
-			created_at: new Date(),
-			updated_at: new Date(),
-		};
+			metrics[providerName] = {
+				providerName,
+				totalRequests: stats.requests,
+				successfulRequests: stats.successes,
+				failedRequests: stats.failures,
+				averageResponseTime: stats.averageResponseTime,
+				successRate: roundToDecimals(successRate, 2),
+				errorRate: stats.requests > 0 ? (stats.failures / stats.requests) * 100 : 0,
+				lastUsed: stats.lastUsed?.toISOString() || new Date(),
+				status: stats.status,
+				created_at: new Date(),
+				updated_at: new Date(),
+			};
 		});
 
 		return metrics;
@@ -295,19 +312,19 @@ export class AiProvidersService {
 	 */
 	resetProviderStats() {
 		this.providerStats.forEach((_, providerName) => {
-		this.providerStats.set(providerName, {
-			providerName,
-			requests: 0,
-			successes: 0,
-			failures: 0,
-			averageResponseTime: 0,
-			lastUsed: null,
-			status: 'available',
-			successRate: 0,
-			errorRate: 0,
-			created_at: new Date(),
-			updated_at: new Date(),
-		});
+			this.providerStats.set(providerName, {
+				providerName,
+				requests: 0,
+				successes: 0,
+				failures: 0,
+				averageResponseTime: 0,
+				lastUsed: null,
+				status: 'available',
+				successRate: 0,
+				errorRate: 0,
+				created_at: new Date(),
+				updated_at: new Date(),
+			});
 		});
 
 		logger.providerStats('reset', {});

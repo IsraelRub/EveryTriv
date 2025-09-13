@@ -4,6 +4,8 @@
 
 EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI עם ארכיטקטורה מודרנית של Frontend ו-Backend נפרדים. המערכת משלבת טכנולוגיות מתקדמות ליצירת חוויית משחק מרתקת ואינטראקטיבית.
 
+> הערת סנכרון תרשימים: חלק מהמודולים המופיעים בדיאגרמות (Trivia, Game History, Logger, AI) מוצגים כגבולות נפרדים לצרכי הבהרה אך ממומשים ממוזגים בתוך `GameModule` ושירותים משותפים. טבלת סטטוס מלאה: `../DIAGRAMS.md#diagram-sync-status`. זרימת ליבת NestJS: `../DIAGRAMS.md#nestjs-core-flow`. מפת תלות Shared: `../DIAGRAMS.md#shared-deps-map`.
+
 ## Stack טכנולוגי
 
 ### Frontend

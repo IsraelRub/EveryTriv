@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PointBalance, PointPurchaseOption, formatCurrency, POINTS_PRICING_TIERS, UrlResponse } from '@shared';
-import { PointSource, PointTransactionType } from '../../internal/constants';
-import { Repository } from 'typeorm';
-import { ValidationService } from '../../common/validation/validation.service';
-import { serverLogger as logger } from '@shared';
+import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse  } from '@shared';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
+import { Repository } from 'typeorm';
+
+import { ValidationService } from '../../common/validation/validation.service';
+import { PointSource, PointTransactionType } from '../../internal/constants';
 import { PaymentService } from '../payment';
 
 @Injectable()
@@ -63,11 +63,9 @@ export class PointsService {
 				1800 // Cache for 30 minutes - balance changes less frequently
 			);
 		} catch (error) {
-			logger.errorWithStack(
-				error instanceof Error ? error : new Error(String(error)),
-				'Failed to get point balance',
-				{ userId }
-			);
+			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point balance', {
+				userId,
+			});
 			throw error;
 		}
 	}
@@ -96,10 +94,7 @@ export class PointsService {
 				3600 // Cache for 1 hour - packages don't change often
 			);
 		} catch (error) {
-			logger.errorWithStack(
-				error instanceof Error ? error : new Error(String(error)),
-				'Failed to get point packages'
-			);
+			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point packages');
 			throw error;
 		}
 	}

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
-import { serverLogger as logger } from '@shared';
+
+import { RepositoryAudit, RepositoryCache } from '../../common';
 import { BaseRepository } from './base.repository';
-import { RepositoryCache, RepositoryAudit } from '../../common';
 
 /**
  * Repository for trivia entities
@@ -14,8 +15,7 @@ import { RepositoryCache, RepositoryAudit } from '../../common';
 export class TriviaRepository extends BaseRepository<TriviaEntity> {
 	constructor(
 		@InjectRepository(TriviaEntity)
-		private readonly triviaRepository: Repository<TriviaEntity>,
-		
+		private readonly triviaRepository: Repository<TriviaEntity>
 	) {
 		super(triviaRepository);
 	}

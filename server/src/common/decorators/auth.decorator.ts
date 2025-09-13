@@ -121,7 +121,8 @@ export const RequirePhoneVerified = () => SetMetadata('requirePhoneVerified', tr
  * }
  * ```
  */
-export const RequireSubscription = (...subscriptionTypes: string[]) => SetMetadata('requireSubscription', subscriptionTypes);
+export const RequireSubscription = (...subscriptionTypes: string[]) =>
+	SetMetadata('requireSubscription', subscriptionTypes);
 
 /**
  * Mark endpoint as requiring minimum points balance

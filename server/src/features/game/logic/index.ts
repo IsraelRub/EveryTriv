@@ -13,7 +13,6 @@
  */
 export { TriviaGenerationService } from './triviaGeneration.service';
 
-
 /**
  * AI providers service
  * @description Manages AI providers for trivia generation

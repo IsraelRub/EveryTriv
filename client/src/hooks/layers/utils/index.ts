@@ -6,7 +6,6 @@
  * @used_by client/components, client/views, client/hooks
  */
 
-
 /**
  * Local storage hook - REMOVED
  * @description Use storageService instead for consistent storage management
@@ -26,7 +25,6 @@ export { usePrevious } from './usePrevious';
  * @used_by client/components, client/views
  */
 export { useAppDispatch, useAppSelector } from './useRedux';
-
 
 /**
  * Debounce hook

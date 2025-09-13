@@ -6,11 +6,11 @@
  */
 
 // Re-export shared points types
-export type { 
-	PointBalance, 
-	PointPurchaseOption, 
-	PointTransaction, 
-	TransferResult 
+export type {
+  PointBalance,
+  PointPurchaseOption,
+  PointTransaction,
+  TransferResult,
 } from '@shared/types/points.types';
 
 // Client-specific extensions can be added here if needed

@@ -4,27 +4,27 @@
  * @module AnalyticsDTOs
  * @description Data Transfer Objects for analytics tracking and queries
  */
-import { 
-	IsString, 
-	IsOptional, 
-	IsNotEmpty,
-	MinLength,
-	MaxLength,
-	IsIn,
-	IsNumber,
-	IsBoolean,
-	IsDateString,
-	IsObject,
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BasicValue } from '@shared';
+import {
+	IsBoolean,
+	IsDateString,
+	IsIn,
+	IsNotEmpty,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsString,
+	MaxLength,
+	MinLength,
+} from 'class-validator';
 
 export class TrackEventDto {
 	@ApiProperty({
 		description: 'Type of analytics event',
 		example: 'game_started',
 		minLength: 1,
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Event type is required' })
@@ -34,7 +34,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'User ID (optional, will be set from authenticated user)',
-		example: 'user_your_user_id'
+		example: 'user_your_user_id',
 	})
 	@IsOptional()
 	@IsString()
@@ -43,7 +43,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Session ID for tracking user sessions',
-		example: 'session_your_session_id'
+		example: 'session_your_session_id',
 	})
 	@IsOptional()
 	@IsString()
@@ -52,7 +52,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Event timestamp (optional, will be set automatically)',
-		example: '2024-01-01T00:00:00.000Z'
+		example: '2024-01-01T00:00:00.000Z',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Timestamp must be a valid date' })
@@ -61,7 +61,7 @@ export class TrackEventDto {
 	@ApiPropertyOptional({
 		description: 'Page or screen where event occurred',
 		example: '/game/trivia',
-		maxLength: 200
+		maxLength: 200,
 	})
 	@IsOptional()
 	@IsString()
@@ -71,7 +71,7 @@ export class TrackEventDto {
 	@ApiPropertyOptional({
 		description: 'Action performed by user',
 		example: 'click',
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsOptional()
 	@IsString()
@@ -81,18 +81,18 @@ export class TrackEventDto {
 	@ApiPropertyOptional({
 		description: 'Result of the action',
 		example: 'success',
-		enum: ['success', 'failure', 'error']
+		enum: ['success', 'failure', 'error'],
 	})
 	@IsOptional()
-	@IsIn(['success', 'failure', 'error'], { 
-		message: 'Result must be one of: success, failure, error' 
+	@IsIn(['success', 'failure', 'error'], {
+		message: 'Result must be one of: success, failure, error',
 	})
 	result?: 'success' | 'failure' | 'error';
 
 	@ApiPropertyOptional({
 		description: 'Duration of the action in milliseconds',
 		example: 1500,
-		minimum: 0
+		minimum: 0,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Duration must be a number' })
@@ -100,7 +100,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Numeric value associated with the event',
-		example: 100
+		example: 100,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Value must be a number' })
@@ -108,7 +108,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Additional properties for the event',
-		example: { difficulty: 'medium', topic: 'science' }
+		example: { difficulty: 'medium', topic: 'science' },
 	})
 	@IsOptional()
 	@IsObject()
@@ -118,7 +118,7 @@ export class TrackEventDto {
 export class UserAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for analytics query',
-		example: '2024-01-01'
+		example: '2024-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
@@ -126,7 +126,7 @@ export class UserAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'End date for analytics query',
-		example: '2024-01-31'
+		example: '2024-01-31',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
@@ -134,7 +134,7 @@ export class UserAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Include game history in results',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Include game history must be a boolean value' })
@@ -142,7 +142,7 @@ export class UserAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Include performance metrics in results',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Include performance must be a boolean value' })
@@ -150,7 +150,7 @@ export class UserAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Include topic breakdown in results',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Include topic breakdown must be a boolean value' })
@@ -160,7 +160,7 @@ export class UserAnalyticsQueryDto {
 export class GameAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for game analytics query',
-		example: '2024-01-01'
+		example: '2024-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
@@ -168,7 +168,7 @@ export class GameAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'End date for game analytics query',
-		example: '2024-01-31'
+		example: '2024-01-31',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
@@ -177,7 +177,7 @@ export class GameAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Filter by specific topic',
 		example: 'science',
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsOptional()
 	@IsString()
@@ -187,24 +187,24 @@ export class GameAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Filter by difficulty level',
 		example: 'medium',
-		enum: ['easy', 'medium', 'hard', 'expert']
+		enum: ['easy', 'medium', 'hard', 'expert'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['easy', 'medium', 'hard', 'expert'], { 
-		message: 'Difficulty must be one of: easy, medium, hard, expert' 
+	@IsIn(['easy', 'medium', 'hard', 'expert'], {
+		message: 'Difficulty must be one of: easy, medium, hard, expert',
 	})
 	difficulty?: string;
 
 	@ApiPropertyOptional({
 		description: 'Filter by game mode',
 		example: 'classic',
-		enum: ['classic', 'timed', 'survival', 'multiplayer']
+		enum: ['classic', 'timed', 'survival', 'multiplayer'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], { 
-		message: 'Game mode must be one of: classic, timed, survival, multiplayer' 
+	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], {
+		message: 'Game mode must be one of: classic, timed, survival, multiplayer',
 	})
 	gameMode?: string;
 
@@ -212,7 +212,7 @@ export class GameAnalyticsQueryDto {
 		description: 'Maximum number of results to return',
 		example: 100,
 		minimum: 1,
-		maximum: 1000
+		maximum: 1000,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Limit must be a number' })
@@ -222,7 +222,7 @@ export class GameAnalyticsQueryDto {
 export class TopicAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for topic analytics query',
-		example: '2024-01-01'
+		example: '2024-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
@@ -230,7 +230,7 @@ export class TopicAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'End date for topic analytics query',
-		example: '2024-01-31'
+		example: '2024-01-31',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
@@ -240,7 +240,7 @@ export class TopicAnalyticsQueryDto {
 		description: 'Maximum number of topics to return',
 		example: 20,
 		minimum: 1,
-		maximum: 100
+		maximum: 100,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Limit must be a number' })
@@ -249,12 +249,12 @@ export class TopicAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Sort order for topics',
 		example: 'desc',
-		enum: ['asc', 'desc']
+		enum: ['asc', 'desc'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['asc', 'desc'], { 
-		message: 'Order must be either asc or desc' 
+	@IsIn(['asc', 'desc'], {
+		message: 'Order must be either asc or desc',
 	})
 	order?: 'asc' | 'desc';
 }
@@ -262,7 +262,7 @@ export class TopicAnalyticsQueryDto {
 export class DifficultyAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for difficulty analytics query',
-		example: '2024-01-01'
+		example: '2024-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
@@ -270,7 +270,7 @@ export class DifficultyAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'End date for difficulty analytics query',
-		example: '2024-01-31'
+		example: '2024-01-31',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
@@ -278,7 +278,7 @@ export class DifficultyAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Include custom difficulties in results',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Include custom difficulties must be a boolean value' })
@@ -287,12 +287,12 @@ export class DifficultyAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Group results by time period',
 		example: 'daily',
-		enum: ['hourly', 'daily', 'weekly', 'monthly']
+		enum: ['hourly', 'daily', 'weekly', 'monthly'],
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['hourly', 'daily', 'weekly', 'monthly'], { 
-		message: 'Group by must be one of: hourly, daily, weekly, monthly' 
+	@IsIn(['hourly', 'daily', 'weekly', 'monthly'], {
+		message: 'Group by must be one of: hourly, daily, weekly, monthly',
 	})
 	groupBy?: string;
 }

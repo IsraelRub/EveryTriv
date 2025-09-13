@@ -6,19 +6,14 @@
  * @used_by server/features/game, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ValidationService } from '../validation/validation.service';
-import { serverLogger as logger } from '@shared';
 import type { ValidationResult } from '@shared';
-import { 
-	TriviaQuestionData, 
-	TriviaQuestionValidationResult 
-} from '@shared';
+import { serverLogger as logger , TriviaQuestionData, TriviaQuestionValidationResult } from '@shared';
+
+import { ValidationService } from '../validation/validation.service';
 
 @Injectable()
 export class TriviaQuestionPipe implements PipeTransform {
-	constructor(
-		private readonly validationService: ValidationService
-	) {}
+	constructor(private readonly validationService: ValidationService) {}
 
 	async transform(value: TriviaQuestionData): Promise<TriviaQuestionValidationResult> {
 		const startTime = Date.now();

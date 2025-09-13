@@ -5,7 +5,7 @@
  * @description Client-specific logger implementation with browser console logging
  * @used_by client: client/src/services/logger.service.ts
  */
-import { LoggerConfigUpdate, LogMeta } from '../../types/infrastructure/logging.types';
+import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { BaseLoggerService } from './baseLogger.service';
 
 /**
@@ -19,7 +19,7 @@ export class ClientLogger extends BaseLoggerService {
 		blue: '#0066ff',
 		green: '#00aa00',
 		white: '#ffffff',
-		gray: '#888888'
+		gray: '#888888',
 	} as const;
 
 	constructor(config?: LoggerConfigUpdate) {
@@ -46,7 +46,7 @@ export class ClientLogger extends BaseLoggerService {
 	public logWithColor(level: string, message: string, meta?: LogMeta): void {
 		const color = this.getLevelColor(level);
 		const colorCode = this.CSS_COLORS[color] || this.CSS_COLORS.white;
-		
+
 		const consoleMethod = this.getConsoleMethod(level);
 		consoleMethod(`%c${message}`, `color: ${colorCode}; font-weight: bold;`, meta);
 	}

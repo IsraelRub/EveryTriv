@@ -7,10 +7,10 @@
  */
 import { DifficultyLevel } from '@shared';
 import {
-	extractCustomDifficultyText,
-	getDifficultyDisplayText as sharedGetDifficultyDisplayText,
-	isCustomDifficulty,
-	validateCustomDifficultyText,
+  extractCustomDifficultyText,
+  getDifficultyDisplayText as sharedGetDifficultyDisplayText,
+  isCustomDifficulty,
+  validateCustomDifficultyText,
 } from '@shared/validation';
 
 export { extractCustomDifficultyText, isCustomDifficulty, validateCustomDifficultyText };
@@ -19,45 +19,45 @@ export { extractCustomDifficultyText, isCustomDifficulty, validateCustomDifficul
  * Get display text for difficulty level (client-specific formatting)
  */
 export const getDifficultyDisplayText = (difficulty: string): string => {
-	return sharedGetDifficultyDisplayText(difficulty);
+  return sharedGetDifficultyDisplayText(difficulty);
 };
 
 /**
  * Get icon name for difficulty level
  */
 export const getDifficultyIcon = (difficulty: string): string => {
-	if (isCustomDifficulty(difficulty)) {
-		return DifficultyLevel.CUSTOM;
-	}
+  if (isCustomDifficulty(difficulty)) {
+    return DifficultyLevel.CUSTOM;
+  }
 
-	switch (difficulty.toLowerCase()) {
-		case DifficultyLevel.EASY:
-			return DifficultyLevel.EASY;
-		case DifficultyLevel.MEDIUM:
-			return DifficultyLevel.MEDIUM;
-		case DifficultyLevel.HARD:
-			return DifficultyLevel.HARD;
-		default:
-			return 'question';
-	}
+  switch (difficulty.toLowerCase()) {
+    case DifficultyLevel.EASY:
+      return DifficultyLevel.EASY;
+    case DifficultyLevel.MEDIUM:
+      return DifficultyLevel.MEDIUM;
+    case DifficultyLevel.HARD:
+      return DifficultyLevel.HARD;
+    default:
+      return 'question';
+  }
 };
 
 /**
  * Get difficulty level enum value from string
  */
 export const getDifficultyLevel = (difficulty: string): DifficultyLevel => {
-	if (isCustomDifficulty(difficulty)) {
-		return DifficultyLevel.CUSTOM;
-	}
+  if (isCustomDifficulty(difficulty)) {
+    return DifficultyLevel.CUSTOM;
+  }
 
-	switch (difficulty.toLowerCase()) {
-		case DifficultyLevel.EASY:
-			return DifficultyLevel.EASY;
-		case DifficultyLevel.MEDIUM:
-			return DifficultyLevel.MEDIUM;
-		case DifficultyLevel.HARD:
-			return DifficultyLevel.HARD;
-		default:
-			return DifficultyLevel.EASY; // Default fallback
-	}
+  switch (difficulty.toLowerCase()) {
+    case DifficultyLevel.EASY:
+      return DifficultyLevel.EASY;
+    case DifficultyLevel.MEDIUM:
+      return DifficultyLevel.MEDIUM;
+    case DifficultyLevel.HARD:
+      return DifficultyLevel.HARD;
+    default:
+      return DifficultyLevel.EASY; // Default fallback
+  }
 };

@@ -1,4 +1,4 @@
-import { PROVIDER_ERROR_MESSAGES, LLMTriviaResponse, ProviderConfig, LLMResponse } from '@shared';
+import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
 
 import { BaseTriviaProvider } from './base.provider';
 
@@ -64,7 +64,12 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 	}
 
 	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
-		if (!response.data || !response.data.content || !Array.isArray(response.data.content) || response.data.content.length === 0) {
+		if (
+			!response.data ||
+			!response.data.content ||
+			!Array.isArray(response.data.content) ||
+			response.data.content.length === 0
+		) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_ANTHROPIC_RESPONSE);
 		}
 		const content = response.data.content[0].text;

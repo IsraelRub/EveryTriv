@@ -1,6 +1,6 @@
 /**
  * Analytics Types Index
- * 
+ *
  * @module AnalyticsTypesIndex
  * @description Central export point for all analytics-related types
  */

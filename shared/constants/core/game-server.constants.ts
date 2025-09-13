@@ -13,11 +13,7 @@ export {
 	VALID_GAME_MODES,
 	VALID_QUESTION_COUNTS,
 } from './game.constants';
-
-export {
-	CreditOperation,
-	VALID_CREDIT_OPERATIONS,
-} from './game.constants';
+export { CreditOperation, VALID_CREDIT_OPERATIONS } from './game.constants';
 
 // Server-specific game constants
 export const SERVER_GAME_CONSTANTS = {

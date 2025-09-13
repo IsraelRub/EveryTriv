@@ -1,6 +1,6 @@
 /**
  * User Types Index
- * 
+ *
  * @module UserTypesIndex
  * @description Central export point for all user-related types
  */

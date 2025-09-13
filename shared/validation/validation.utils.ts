@@ -13,15 +13,29 @@ import {
 	LANGUAGE_TOOL_CONSTANTS,
 } from '../constants/business/language.constants';
 import { VALIDATION_THRESHOLDS } from '../constants/core/validation.constants';
+import type {
+	PasswordStrength,
+	PasswordValidationResult,
+	Position,
+	ValidationResult,
+} from '../types/domain/validation/validation.types';
 import { LanguageValidationOptions, LanguageValidationResult } from '../types/language.types';
-import type { PasswordStrength, PasswordValidationResult, Position, ValidationResult } from '../types/domain/validation/validation.types';
 
 /**
  * Validates input content for security and content filtering
- *
  * @param input - The input string to validate
- * @returns Promise<ValidationResult> Validation result with position information and suggestions
- * @description Performs comprehensive content validation including length checks, harmful content detection, and security filtering
+ * @returns Promise resolving to validation result with position information and suggestions
+ * @description Performs comprehensive content validation including length checks, 
+ * harmful content detection, and security filtering to prevent XSS attacks
+ * @example
+ * ```typescript
+ * const result = await validateInputContent("Hello world");
+ * if (result.isValid) {
+ *   // Process input
+ * } else {
+ *   // Show errors: result.errors
+ * }
+ * ```
  */
 export async function validateInputContent(input: string): Promise<ValidationResult> {
 	const minLength = 1;
@@ -74,11 +88,11 @@ export async function validateInputContent(input: string): Promise<ValidationRes
 }
 
 /**
- * Validates email format and length
- *
+ * Validates email format and length constraints
  * @param email - The email address to validate
- * @returns ValidationResult Validation result with position information and suggestions
- * @description Checks email format using regex pattern and validates against maximum length constraints
+ * @returns Validation result with position information and suggestions
+ * @description Checks email format using RFC-compliant regex pattern and validates 
+ * against maximum length constraints to prevent abuse
  */
 export function validateEmail(email: string): ValidationResult {
 	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,10 +125,10 @@ export function validateEmail(email: string): ValidationResult {
 
 /**
  * Validates username format and constraints
- *
  * @param username - The username string to validate
- * @returns ValidationResult Validation result with position information and suggestions
- * @description Checks username length, character restrictions, and format requirements
+ * @returns Validation result with position information and suggestions
+ * @description Checks username length, character restrictions, and format requirements.
+ * Only allows letters, numbers, underscores, and hyphens
  */
 export function validateUsername(username: string): ValidationResult {
 	const usernameRegex = /^[a-zA-Z0-9_-]+$/;
@@ -164,10 +178,10 @@ export function validateUsername(username: string): ValidationResult {
 
 /**
  * Validates password strength and security requirements
- *
  * @param password - The password string to validate
- * @returns PasswordValidationResult Validation result with strength analysis and security checks
- * @description Performs comprehensive password validation including length, character types, and strength scoring
+ * @returns Password validation result with strength analysis and security checks
+ * @description Performs comprehensive password validation including length, character types, 
+ * and strength scoring. Requires uppercase, lowercase, numbers, and special characters
  */
 export function validatePassword(password: string): PasswordValidationResult {
 	const hasUpperCase = /[A-Z]/.test(password);
@@ -230,9 +244,10 @@ export function validatePassword(password: string): PasswordValidationResult {
 }
 
 /**
- * Validate topic length
- * @param topic The topic to validate
- * @returns ValidationResult Validation result with position information
+ * Validate topic length and format
+ * @param topic - The topic string to validate
+ * @returns Validation result with position information and suggestions
+ * @description Validates topic length constraints and format requirements for trivia topics
  */
 export function validateTopicLength(topic: string): ValidationResult {
 	if (!topic || topic.trim().length < VALIDATION_LIMITS.TOPIC.MIN_LENGTH) {
@@ -263,11 +278,11 @@ export function validateTopicLength(topic: string): ValidationResult {
 
 /**
  * Validates input using language tools for spell checking and grammar validation
- *
  * @param input - The input string to validate
  * @param options - Language validation configuration options
- * @returns Promise<LanguageValidationResult> Language validation result with errors and suggestions
- * @description Performs local language validation as fallback when external API is unavailable
+ * @returns Promise resolving to language validation result with errors and suggestions
+ * @description Performs local language validation as fallback when external API is unavailable.
+ * Includes spell checking, grammar validation, and language detection
  */
 export async function validateInputWithLanguageTool(
 	input: string,
@@ -306,11 +321,11 @@ export async function validateInputWithLanguageTool(
 
 /**
  * Performs local language validation as fallback when external API is unavailable
- *
  * @param input - The input string to validate
  * @param options - Language validation configuration options
- * @returns LanguageValidationResult Local validation result with errors and suggestions
+ * @returns Language validation result with errors and suggestions
  * @description Provides basic spell checking, grammar validation, and language detection
+ * using built-in patterns and dictionaries
  */
 function performLocalLanguageValidation(
 	input: string,
@@ -381,10 +396,10 @@ function performLocalLanguageValidation(
 
 /**
  * Performs local text quality checks to complement external API validation
- *
  * @param input - The input string to check
  * @returns Object containing errors and suggestions for text quality improvements
- * @description Checks for repeated words, excessive punctuation, capitalization, and word length issues
+ * @description Checks for repeated words, excessive punctuation, capitalization issues, 
+ * and word length problems to improve text quality
  */
 function performLocalChecks(input: string): { errors: string[]; suggestions: string[] } {
 	const errors: string[] = [];

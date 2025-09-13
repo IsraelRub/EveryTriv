@@ -5,5 +5,5 @@
  */
 
 export * from './achievements.types';
-export * from './config.types';
 export * from './components.types';
+export * from './config.types';

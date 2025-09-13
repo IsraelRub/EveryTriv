@@ -46,6 +46,8 @@ git commit -m "feat: add new feature"
 
 ### 3. Code Style
 
+לכללי סגנון תיעוד: ראה `../STYLE_GUIDE.md` (אין לשכפל חוקים כאן).
+
 #### TypeScript
 ```typescript
 // Use interfaces for object types

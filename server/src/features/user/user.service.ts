@@ -1,12 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserAddress, UserPreferences, normalizeText, UserFieldUpdate, DEFAULT_USER_PREFERENCES, PreferenceValue } from '@shared';
-import { Repository, DeepPartial } from 'typeorm';
-
-import { serverLogger as logger } from '@shared';
+import {
+	DEFAULT_USER_PREFERENCES,
+	normalizeText,
+	PreferenceValue,
+ serverLogger as logger,	UserAddress,
+	UserFieldUpdate,
+	UserPreferences } from '@shared';
 import { UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
+import { DeepPartial, Repository } from 'typeorm';
+
 import { AuthenticationManager } from '../../common/auth/authentication.manager';
 import { PasswordService } from '../../common/auth/password.service';
 
@@ -174,7 +179,6 @@ export class UserService {
 			throw error;
 		}
 	}
-
 
 	/**
 	 * Get user profile by ID
@@ -853,7 +857,6 @@ export class UserService {
 		}
 	}
 
-
 	/**
 	 * Update specific user field
 	 * @param userId User ID
@@ -861,20 +864,27 @@ export class UserService {
 	 * @param value New value
 	 * @returns Updated user
 	 */
-	async updateUserField(userId: string, field: keyof UserFieldUpdate | 'role' | 'currentSubscriptionId' | 'status', value: PreferenceValue): Promise<UserEntity> {
+	async updateUserField(
+		userId: string,
+		field: keyof UserFieldUpdate | 'role' | 'currentSubscriptionId' | 'status',
+		value: PreferenceValue
+	): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user field', {
 				context: 'UserService',
 				userId,
 				field,
 			});
-		const user = await this.userRepository.findOne({ where: { id: userId } });
+			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new NotFoundException('User not found');
 			}
 
 			// Field type mapping for validation
-			const fieldTypeMap: Record<string, { type: 'string' | 'number' | 'boolean'; fieldName?: string; minLength?: number; maxLength?: number }> = {
+			const fieldTypeMap: Record<
+				string,
+				{ type: 'string' | 'number' | 'boolean'; fieldName?: string; minLength?: number; maxLength?: number }
+			> = {
 				username: { type: 'string', minLength: 3 },
 				email: { type: 'string' },
 				firstName: { type: 'string' },
@@ -890,7 +900,7 @@ export class UserService {
 				points: { type: 'number' },
 				purchasedPoints: { type: 'number' },
 				dailyFreeQuestions: { type: 'number' },
-				remainingFreeQuestions: { type: 'number' }
+				remainingFreeQuestions: { type: 'number' },
 			};
 
 			// Handle special fields that are not in UserFieldUpdate
@@ -908,20 +918,20 @@ export class UserService {
 				}
 			} else if (field === 'status') {
 				const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
-				user.additionalInfo = JSON.stringify({ 
-					...currentAdditionalInfo, 
+				user.additionalInfo = JSON.stringify({
+					...currentAdditionalInfo,
 					status: value,
-					statusUpdatedAt: new Date().toISOString()
+					statusUpdatedAt: new Date().toISOString(),
 				});
 			} else {
 				// Use field type mapping for standard fields in UserFieldUpdate
 				if (fieldTypeMap[field]) {
 					const fieldConfig = fieldTypeMap[field];
 					const targetField = fieldConfig.fieldName || field; // Use fieldName if specified, otherwise use field key
-					
+
 					// Create update object with proper typing
 					const updateData: Partial<UserEntity> = {};
-					
+
 					switch (fieldConfig.type) {
 						case 'string':
 							updateData[targetField as keyof UserEntity] = value as never;
@@ -933,7 +943,7 @@ export class UserService {
 							updateData[field as keyof UserEntity] = Boolean(value) as never;
 							break;
 					}
-					
+
 					// Apply the update using Object.assign
 					Object.assign(user, updateData);
 				} else {
@@ -1000,7 +1010,6 @@ export class UserService {
 			throw error;
 		}
 	}
-
 
 	/**
 	 * Update user credits
@@ -1090,7 +1099,7 @@ export class UserService {
 			user.additionalInfo = JSON.stringify({
 				...currentAdditionalInfo,
 				status: status,
-				statusUpdatedAt: new Date().toISOString()
+				statusUpdatedAt: new Date().toISOString(),
 			});
 			const updatedUser = await this.userRepository.save(user);
 
@@ -1200,4 +1209,3 @@ export class UserService {
 		}
 	}
 }
-

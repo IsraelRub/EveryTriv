@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { BaseStorageService, metricsService } from '@shared';
-import {
+import { BaseStorageService, metricsService ,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageStats,
 	UnifiedStorageService,
 } from '@shared';
-
 import { RedisClient } from '@shared/types/infrastructure/redis.types';
 
 /**
@@ -35,10 +33,7 @@ import { RedisClient } from '@shared/types/infrastructure/redis.types';
 export class ServerStorageService extends BaseStorageService implements UnifiedStorageService {
 	private redisClient: RedisClient;
 
-	constructor(
-		redisClient: RedisClient, 
-		config: Partial<StorageConfig> = {}
-	) {
+	constructor(redisClient: RedisClient, config: Partial<StorageConfig> = {}) {
 		super({
 			...config,
 			type: 'persistent',
@@ -185,5 +180,4 @@ export class ServerStorageService extends BaseStorageService implements UnifiedS
 	async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
 		return super.getOrSet(key, factory, ttl);
 	}
-
 }

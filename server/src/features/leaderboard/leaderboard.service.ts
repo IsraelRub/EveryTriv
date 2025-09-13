@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
 import { serverLogger as logger } from '@shared';
-import { LeaderboardEntity, UserEntity, GameHistoryEntity } from 'src/internal/entities';
+import { GameHistoryEntity, LeaderboardEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
+import { Repository } from 'typeorm';
 
 /**
  * Leaderboard Service
- * 
+ *
  * @service LeaderboardService
  * @description Service for managing user rankings and leaderboard calculations
  * @used_by server/src/features/leaderboard/leaderboard.controller.ts
@@ -151,7 +150,10 @@ export class LeaderboardService {
 	 * @param limit Number of users to return
 	 * @returns Leaderboard for specific time period
 	 */
-	async getLeaderboardByPeriod(period: 'weekly' | 'monthly' | 'yearly', limit: number = 100): Promise<LeaderboardEntity[]> {
+	async getLeaderboardByPeriod(
+		period: 'weekly' | 'monthly' | 'yearly',
+		limit: number = 100
+	): Promise<LeaderboardEntity[]> {
 		try {
 			const cacheKey = `leaderboard:${period}:${limit}`;
 
@@ -159,7 +161,7 @@ export class LeaderboardService {
 				cacheKey,
 				async () => {
 					const scoreField = `${period}Score` as keyof LeaderboardEntity;
-					
+
 					const leaderboard = await this.leaderboardRepository
 						.createQueryBuilder('leaderboard')
 						.leftJoinAndSelect('leaderboard.user', 'user')
@@ -222,10 +224,10 @@ export class LeaderboardService {
 
 		// Calculate streak
 		const streakData = this.calculateStreak(gameHistory);
-		
+
 		// Calculate time-based scores
 		const timeScores = this.calculateTimeBasedScores(gameHistory);
-		
+
 		// Calculate topic and difficulty stats
 		const topicStats = this.calculateTopicStats(gameHistory);
 		const difficultyStats = this.calculateDifficultyStats(gameHistory);
@@ -262,8 +264,8 @@ export class LeaderboardService {
 		}
 
 		// Sort by date (newest first)
-		const sortedHistory = [...gameHistory].sort((a, b) => 
-			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+		const sortedHistory = [...gameHistory].sort(
+			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 		);
 
 		let currentStreak = 0;
@@ -324,7 +326,10 @@ export class LeaderboardService {
 	 * @returns Topic statistics
 	 */
 	private calculateTopicStats(gameHistory: GameHistoryEntity[]) {
-		const topicStats: Record<string, { totalQuestions: number; correctAnswers: number; successRate: number; score: number }> = {};
+		const topicStats: Record<
+			string,
+			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
+		> = {};
 
 		gameHistory.forEach(game => {
 			const topic = game.topic || 'Unknown';
@@ -351,7 +356,10 @@ export class LeaderboardService {
 	 * @returns Difficulty statistics
 	 */
 	private calculateDifficultyStats(gameHistory: GameHistoryEntity[]) {
-		const difficultyStats: Record<string, { totalQuestions: number; correctAnswers: number; successRate: number; score: number }> = {};
+		const difficultyStats: Record<
+			string,
+			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
+		> = {};
 
 		gameHistory.forEach(game => {
 			const difficulty = game.difficulty || 'Unknown';
@@ -380,19 +388,24 @@ export class LeaderboardService {
 	 * @param streakData Streak data
 	 * @returns Total calculated score
 	 */
-	private calculateTotalScore(user: UserEntity, gameHistory: GameHistoryEntity[], successRate: number, streakData: { current: number; best: number }) {
+	private calculateTotalScore(
+		user: UserEntity,
+		gameHistory: GameHistoryEntity[],
+		successRate: number,
+		streakData: { current: number; best: number }
+	) {
 		// Base score from user credits and purchased points
 		const baseScore = user.credits + user.purchasedPoints;
-		
+
 		// Game performance score
 		const totalGameScore = gameHistory.reduce((sum, game) => sum + game.score, 0);
-		
+
 		// Success rate bonus (up to 1000 points)
 		const successRateBonus = Math.min(1000, successRate * 10);
-		
+
 		// Streak bonus (up to 500 points)
 		const streakBonus = Math.min(500, streakData.current * 10 + streakData.best * 5);
-		
+
 		// Total questions bonus (up to 200 points)
 		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
 		const questionsBonus = Math.min(200, totalQuestions * 2);

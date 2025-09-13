@@ -5,21 +5,34 @@
  * @description Service for server-side validation using shared validation functions
  */
 import { Injectable } from '@nestjs/common';
-import type { AnalyticsEventData, PersonalPaymentData, LanguageValidationOptions, LanguageValidationResult, ValidationResult, ValidationOptions, UserProfileUpdateData } from '@shared';
-import { sanitizeCardNumber, sanitizeEmail, sanitizeInput, validateCustomDifficultyText, validateEmail, validateInputContent, validateInputWithLanguageTool, validatePassword, validateTopicLength, validateUsername } from '@shared';
-
-import { serverLogger as logger } from '@shared';
-import { LanguageToolService } from './languageTool.service';
+import type {
+	AnalyticsEventData,
+	LanguageValidationOptions,
+	LanguageValidationResult,
+	PersonalPaymentData,
+ UserFieldUpdate,	UserProfileUpdateData,
+	ValidationOptions,
+	ValidationResult } from '@shared';
+import {
+	sanitizeCardNumber,
+	sanitizeEmail,
+	sanitizeInput,
+ serverLogger as logger,	validateCustomDifficultyText,
+	validateEmail,
+	validateInputContent,
+	validateInputWithLanguageTool,
+	validatePassword,
+	validateTopicLength,
+	validateUsername } from '@shared';
 import { UserEntity } from 'src/internal/entities';
-import type { UserFieldUpdate } from '@shared';
-// import type { ValidationServiceInterface, ValidationContext } from '../types'; // Reserved for future use
 
+import { LanguageToolService } from './languageTool.service';
+
+// import type { ValidationServiceInterface, ValidationContext } from '../types'; // Reserved for future use
 
 @Injectable()
 export class ValidationService {
-	constructor(
-		private readonly languageToolService: LanguageToolService
-	) {}
+	constructor(private readonly languageToolService: LanguageToolService) {}
 
 	/**
 	 * Validate username
@@ -617,7 +630,10 @@ export class ValidationService {
 	 * @param options Validation options
 	 * @returns Validation result
 	 */
-	async validateUserProfile(profileData: UserProfileUpdateData, options: ValidationOptions = {}): Promise<ValidationResult> {
+	async validateUserProfile(
+		profileData: UserProfileUpdateData,
+		options: ValidationOptions = {}
+	): Promise<ValidationResult> {
 		try {
 			logger.validationDebug('user_profile', '[REDACTED]', 'validation_start', options);
 
@@ -639,25 +655,25 @@ export class ValidationService {
 				}
 			}
 
-					// Validate first name
-		if (profileData.first_name && typeof profileData.first_name === 'string') {
-			if (profileData.first_name.length > 50) {
-				errors.push('First name cannot exceed 50 characters');
+			// Validate first name
+			if (profileData.first_name && typeof profileData.first_name === 'string') {
+				if (profileData.first_name.length > 50) {
+					errors.push('First name cannot exceed 50 characters');
+				}
+				if (!/^[a-zA-Z\s'-]+$/.test(profileData.first_name)) {
+					errors.push('First name can only contain letters, spaces, apostrophes, and hyphens');
+				}
 			}
-			if (!/^[a-zA-Z\s'-]+$/.test(profileData.first_name)) {
-				errors.push('First name can only contain letters, spaces, apostrophes, and hyphens');
-			}
-		}
 
-					// Validate last name
-		if (profileData.last_name && typeof profileData.last_name === 'string') {
-			if (profileData.last_name.length > 50) {
-				errors.push('Last name cannot exceed 50 characters');
+			// Validate last name
+			if (profileData.last_name && typeof profileData.last_name === 'string') {
+				if (profileData.last_name.length > 50) {
+					errors.push('Last name cannot exceed 50 characters');
+				}
+				if (!/^[a-zA-Z\s'-]+$/.test(profileData.last_name)) {
+					errors.push('Last name can only contain letters, spaces, apostrophes, and hyphens');
+				}
 			}
-			if (!/^[a-zA-Z\s'-]+$/.test(profileData.last_name)) {
-				errors.push('Last name can only contain letters, spaces, apostrophes, and hyphens');
-			}
-		}
 
 			// Validate bio
 			if (profileData.bio && typeof profileData.bio === 'string') {
@@ -923,10 +939,10 @@ export class ValidationService {
 	 * @param maxLength Maximum length (optional)
 	 */
 	validateAndSetStringField(
-		user: UserEntity, 
-		field: string, 
-		value: unknown, 
-		minLength?: number, 
+		user: UserEntity,
+		field: string,
+		value: unknown,
+		minLength?: number,
 		maxLength?: number
 	): void {
 		if (typeof value !== 'string') {
@@ -966,5 +982,4 @@ export class ValidationService {
 		}
 		Object.assign(user, { [field]: value });
 	}
-
 }

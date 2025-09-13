@@ -76,7 +76,6 @@ export interface PerformanceMetrics {
 	activeConnections: number;
 }
 
-
 /**
  * Cache statistics interface
  * @interface CacheStats

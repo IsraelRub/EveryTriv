@@ -8,20 +8,20 @@
  * @provides UserService
  * @entities UserEntity
  */
+import { AuthModule } from '@features/auth';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { AUTH_CONSTANTS } from '../../internal/constants/auth/auth.constants';
-import { UserEntity, UserStatsEntity, GameHistoryEntity } from 'src/internal/entities';
+import { AuthenticationManager, PasswordService } from 'src/common/auth';
+import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheModule, StorageModule } from 'src/internal/modules';
-import { AuthModule } from '@features/auth';
+
+import { UserDataPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
+import { AUTH_CONSTANTS } from '../../internal/constants/auth/auth.constants';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UserStatsService } from './userStats.service';
-import { UserDataPipe } from '../../common/pipes';
-import { AuthenticationManager, PasswordService } from 'src/common/auth';
 
 @Module({
 	imports: [

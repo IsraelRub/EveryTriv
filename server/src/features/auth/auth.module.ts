@@ -5,18 +5,18 @@
  * @description Unified authentication module with login, register, guards, and OAuth
  * @used_by server/app, server/controllers
  */
-
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { UserEntity } from 'src/internal/entities';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AUTH_CONSTANTS } from '@shared';
+import { AuthenticationManager, JwtTokenService, PasswordService } from 'src/common/auth';
+import { AuthGuard, RolesGuard } from 'src/common/guards';
+import { UserEntity } from 'src/internal/entities';
+
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
-import { AuthenticationManager, PasswordService, JwtTokenService } from 'src/common/auth';
-import { AuthGuard, RolesGuard } from 'src/common/guards';
 
 @Module({
 	imports: [

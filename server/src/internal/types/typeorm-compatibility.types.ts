@@ -1,9 +1,9 @@
 /**
  * TypeORM CLI Compatibility Types and Constants
- * 
+ *
  * This file contains all types and constants that are needed for TypeORM CLI
  * to work properly, without depending on @shared imports.
- * 
+ *
  * @module TypeORMCompatibility
  * @description Centralized types and constants for TypeORM entities
  */

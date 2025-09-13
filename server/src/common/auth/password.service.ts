@@ -6,12 +6,8 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
+import { PasswordConfig, PasswordValidationResult,serverLogger as logger  } from '@shared';
 import * as bcrypt from 'bcrypt';
-import { serverLogger as logger } from '@shared';
-import { 
-	PasswordValidationResult, 
-	PasswordConfig 
-} from '@shared';
 
 @Injectable()
 export class PasswordService {
@@ -123,14 +119,7 @@ export class PasswordService {
 		}
 
 		// Common password patterns
-		const commonPatterns = [
-			/123456/,
-			/password/i,
-			/qwerty/i,
-			/abc123/i,
-			/admin/i,
-			/letmein/i,
-		];
+		const commonPatterns = [/123456/, /password/i, /qwerty/i, /abc123/i, /admin/i, /letmein/i];
 
 		if (commonPatterns.some(pattern => pattern.test(password))) {
 			errors.push('Password contains common patterns and is not secure');
@@ -195,7 +184,10 @@ export class PasswordService {
 		}
 
 		// Shuffle the password
-		return password.split('').sort(() => Math.random() - 0.5).join('');
+		return password
+			.split('')
+			.sort(() => Math.random() - 0.5)
+			.join('');
 	}
 
 	/**

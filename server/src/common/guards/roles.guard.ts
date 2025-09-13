@@ -5,10 +5,9 @@
  * @description Guard that checks user roles and permissions
  * @author EveryTriv Team
  */
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared';
-import { UserRole } from '@shared';
+import { serverLogger as logger , UserRole } from '@shared';
 
 @Injectable()
 export class RolesGuard implements CanActivate {

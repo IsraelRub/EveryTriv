@@ -1,6 +1,6 @@
+import { AuthModule } from '@features/auth';
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '@features/auth';
 import { AiProvidersController } from './providers.controller';
 import { AiProvidersService } from './providers.service';
 

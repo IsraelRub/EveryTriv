@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-
 import { serverLogger as logger } from '@shared';
+
+import { Cache, ClientIP, CurrentUserId, RateLimit, UserAgent } from '../../common';
+import { CanPlayDto, ConfirmPointPurchaseDto, DeductPointsDto, GetPointHistoryDto, PurchasePointsDto } from './dtos';
 import { PointsService } from './points.service';
-import { DeductPointsDto, PurchasePointsDto, ConfirmPointPurchaseDto, GetPointHistoryDto, CanPlayDto } from './dtos';
-import { CurrentUserId, ClientIP, UserAgent, Cache, RateLimit } from '../../common';
 
 @Controller('points')
 export class PointsController {
@@ -50,7 +50,7 @@ export class PointsController {
 	@Post('deduct')
 	@RateLimit(20, 60) // 20 deductions per minute
 	async deductPoints(
-		@CurrentUserId() userId: string, 
+		@CurrentUserId() userId: string,
 		@Body() body: DeductPointsDto,
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string

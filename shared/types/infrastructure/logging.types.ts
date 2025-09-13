@@ -8,6 +8,7 @@
 import { LogLevel } from '../../constants';
 import { BasicValue } from '../core';
 import type { ValidationContext } from '../domain/validation/validation.types';
+
 export { LogLevel };
 
 // Base log entry interface
@@ -339,8 +340,8 @@ export type LogMeta = Record<string, unknown> & {
 };
 
 /**
-* Logger Configuration
-* @used_by shared/services/logging/base-logger.service.ts
+ * Logger Configuration
+ * @used_by shared/services/logging/base-logger.service.ts
  */
 export interface LoggerConfig {
 	level: LogLevel;
@@ -349,8 +350,8 @@ export interface LoggerConfig {
 }
 
 /**
-* Logger Configuration Update
-* @used_by shared/services/logging/base-logger.service.ts, shared/services/logging/serverLogger.service.ts, shared/services/logging/clientLogger.service.ts
+ * Logger Configuration Update
+ * @used_by shared/services/logging/base-logger.service.ts, shared/services/logging/serverLogger.service.ts, shared/services/logging/clientLogger.service.ts
  */
 export interface LoggerConfigUpdate {
 	level?: LogLevel;

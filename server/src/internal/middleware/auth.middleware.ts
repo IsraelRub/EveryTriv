@@ -1,8 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { COOKIE_NAMES } from '@shared';
+import { AUTH_CONSTANTS , COOKIE_NAMES , serverLogger as logger } from '@shared';
 
-import { AUTH_CONSTANTS } from '@shared';
-import { serverLogger as logger } from '@shared';
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
 @Injectable()

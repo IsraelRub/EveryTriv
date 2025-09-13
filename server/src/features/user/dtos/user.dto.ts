@@ -4,32 +4,32 @@
  * @module UserDTOs
  * @description Data Transfer Objects for user management
  */
-import { 
-	IsString, 
-	MinLength, 
-	IsOptional, 
-	MaxLength, 
-	Matches, 
-	IsNotEmpty,
-	IsNumber,
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DifficultyLevel, PreferenceValue, UserAddress, UserPreferences } from '@shared';
+import { Type } from 'class-transformer';
+import {
+	IsArray,
 	IsBoolean,
 	IsDateString,
-	IsObject,
-	ValidateNested,
-	IsArray,
 	IsIn,
-	IsUrl
+	IsNotEmpty,
+	IsNumber,
+	IsObject,
+	IsOptional,
+	IsString,
+	IsUrl,
+	Matches,
+	MaxLength,
+	MinLength,
+	ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { UserAddress, UserPreferences, DifficultyLevel, PreferenceValue } from '@shared';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'Username',
 		example: 'username',
 		minLength: 3,
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsOptional()
 	@IsString()
@@ -41,7 +41,7 @@ export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'First name',
 		example: 'First',
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsOptional()
 	@IsString()
@@ -52,7 +52,7 @@ export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'Last name',
 		example: 'Last',
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsOptional()
 	@IsString()
@@ -62,24 +62,27 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Avatar URL - must be HTTPS and valid image format',
-		example: 'https://your-domain.com/avatar.jpg'
+		example: 'https://your-domain.com/avatar.jpg',
 	})
 	@IsOptional()
 	@IsString()
 	@MaxLength(500, { message: 'Avatar URL cannot exceed 500 characters' })
-	@IsUrl({ 
-		protocols: ['https'], 
-		require_protocol: true 
-	}, { message: 'Avatar URL must be a valid HTTPS URL' })
-	@Matches(/\.(jpg|jpeg|png|gif|webp|svg)$/i, { 
-		message: 'Avatar must be a valid image format (jpg, jpeg, png, gif, webp, svg)' 
+	@IsUrl(
+		{
+			protocols: ['https'],
+			require_protocol: true,
+		},
+		{ message: 'Avatar URL must be a valid HTTPS URL' }
+	)
+	@Matches(/\.(jpg|jpeg|png|gif|webp|svg)$/i, {
+		message: 'Avatar must be a valid image format (jpg, jpeg, png, gif, webp, svg)',
 	})
 	avatar?: string;
 
 	@ApiPropertyOptional({
 		description: 'User bio',
 		example: 'Software developer passionate about trivia',
-		maxLength: 500
+		maxLength: 500,
 	})
 	@IsOptional()
 	@IsString()
@@ -88,7 +91,7 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Date of birth',
-		example: '1990-01-01'
+		example: '1990-01-01',
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Date of birth must be a valid date' })
@@ -97,7 +100,7 @@ export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'Location',
 		example: 'New York, NY',
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsOptional()
 	@IsString()
@@ -107,7 +110,7 @@ export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'Website URL',
 		example: 'https://your-website.com',
-		maxLength: 200
+		maxLength: 200,
 	})
 	@IsOptional()
 	@IsString()
@@ -116,14 +119,14 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Social media links',
-		example: { twitter: 'https://twitter.com/username', linkedin: 'https://linkedin.com/in/username' }
+		example: { twitter: 'https://twitter.com/username', linkedin: 'https://linkedin.com/in/username' },
 	})
 	@IsOptional()
 	@IsObject()
 	socialLinks?: Record<string, string>;
 
 	@ApiPropertyOptional({
-		description: 'User preferences'
+		description: 'User preferences',
 	})
 	@IsOptional()
 	@ValidateNested()
@@ -131,7 +134,7 @@ export class UpdateUserProfileDto {
 	preferences?: UserPreferences;
 
 	@ApiPropertyOptional({
-		description: 'User address'
+		description: 'User address',
 	})
 	@IsOptional()
 	@ValidateNested()
@@ -144,7 +147,7 @@ export class SearchUsersDto {
 		description: 'Search query',
 		example: 'john',
 		minLength: 1,
-		maxLength: 100
+		maxLength: 100,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Search query is required' })
@@ -156,7 +159,7 @@ export class SearchUsersDto {
 		description: 'Maximum number of results',
 		example: 10,
 		minimum: 1,
-		maximum: 100
+		maximum: 100,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Limit must be a number' })
@@ -169,7 +172,7 @@ export class DeductCreditsDto {
 	@ApiProperty({
 		description: 'Amount of credits to deduct',
 		example: 10,
-		minimum: 1
+		minimum: 1,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
 	@MinLength(1, { message: 'Amount must be greater than 0' })
@@ -178,7 +181,7 @@ export class DeductCreditsDto {
 	@ApiPropertyOptional({
 		description: 'Reason for credit deduction',
 		example: 'Game play',
-		maxLength: 200
+		maxLength: 200,
 	})
 	@IsOptional()
 	@IsString()
@@ -189,7 +192,7 @@ export class DeductCreditsDto {
 export class UpdateUserFieldDto {
 	@ApiProperty({
 		description: 'Field value to update',
-		example: 'New Value'
+		example: 'New Value',
 	})
 	@IsNotEmpty({ message: 'Value is required' })
 	value: PreferenceValue;
@@ -199,7 +202,7 @@ export class UpdateUserPreferencesDto {
 	@ApiPropertyOptional({
 		description: 'Theme preference',
 		example: 'dark',
-		enum: ['light', 'dark']
+		enum: ['light', 'dark'],
 	})
 	@IsOptional()
 	@IsIn(['light', 'dark'], { message: 'Theme must be either light or dark' })
@@ -208,7 +211,7 @@ export class UpdateUserPreferencesDto {
 	@ApiPropertyOptional({
 		description: 'Language preference',
 		example: 'en',
-		maxLength: 10
+		maxLength: 10,
 	})
 	@IsOptional()
 	@IsString()
@@ -217,7 +220,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Notification settings',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Notifications must be a boolean value' })
@@ -225,7 +228,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Favorite topics',
-		example: ['science', 'history', 'sports']
+		example: ['science', 'history', 'sports'],
 	})
 	@IsOptional()
 	@IsArray({ message: 'Favorite topics must be an array' })
@@ -234,7 +237,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Default difficulty level',
-		example: 'medium'
+		example: 'medium',
 	})
 	@IsOptional()
 	@IsString()
@@ -242,7 +245,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Custom difficulties',
-		example: [{ description: 'Custom Difficulty', usageCount: 5, lastUsed: '2024-01-01T00:00:00.000Z' }]
+		example: [{ description: 'Custom Difficulty', usageCount: 5, lastUsed: '2024-01-01T00:00:00.000Z' }],
 	})
 	@IsOptional()
 	@IsArray({ message: 'Custom difficulties must be an array' })
@@ -254,7 +257,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Sound enabled preference',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Sound enabled must be a boolean value' })
@@ -262,7 +265,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Music enabled preference',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Music enabled must be a boolean value' })
@@ -270,7 +273,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Animations enabled preference',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Animations enabled must be a boolean value' })
@@ -278,7 +281,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Profile public preference',
-		example: false
+		example: false,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Profile public must be a boolean value' })
@@ -286,7 +289,7 @@ export class UpdateUserPreferencesDto {
 
 	@ApiPropertyOptional({
 		description: 'Show stats preference',
-		example: true
+		example: true,
 	})
 	@IsOptional()
 	@IsBoolean({ message: 'Show stats must be a boolean value' })
@@ -296,7 +299,7 @@ export class UpdateUserPreferencesDto {
 export class UpdateSinglePreferenceDto {
 	@ApiProperty({
 		description: 'Preference value',
-		example: 'dark'
+		example: 'dark',
 	})
 	@IsNotEmpty({ message: 'Value is required' })
 	value: PreferenceValue;
@@ -305,7 +308,7 @@ export class UpdateSinglePreferenceDto {
 export class UpdateUserCreditsDto {
 	@ApiProperty({
 		description: 'Amount of credits to update',
-		example: 100
+		example: 100,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
 	@MinLength(1, { message: 'Amount must be greater than 0' })
@@ -314,7 +317,7 @@ export class UpdateUserCreditsDto {
 	@ApiProperty({
 		description: 'Reason for credit update',
 		example: 'Admin adjustment',
-		maxLength: 200
+		maxLength: 200,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Reason is required' })
@@ -326,7 +329,7 @@ export class UpdateUserStatusDto {
 	@ApiProperty({
 		description: 'User status',
 		example: 'active',
-		enum: ['active', 'suspended', 'banned']
+		enum: ['active', 'suspended', 'banned'],
 	})
 	@IsIn(['active', 'suspended', 'banned'], { message: 'Status must be active, suspended, or banned' })
 	status: 'active' | 'suspended' | 'banned';

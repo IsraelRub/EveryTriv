@@ -1,16 +1,6 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { StorageValue } from '@shared';
-import {
-	StorageCleanupOptions,
-	StorageConfig,
-	StorageOperationResult,
-	StorageStats,
-	UnifiedStorageService,
-} from '@shared';
-import { createTimedResult, formatStorageError, trackOperationWithTiming } from '@shared';
+import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, UnifiedStorageService, createTimedResult, formatStorageError,  trackOperationWithTiming , serverLogger as logger } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
-
-import { serverLogger as logger } from '@shared';
 
 /**
  * Service for managing application caching
@@ -26,9 +16,7 @@ export class CacheService implements UnifiedStorageService, OnModuleDestroy {
 	private useRedis: boolean = false;
 	private config: StorageConfig;
 
-	constructor(
-		@Inject('REDIS_CLIENT') private readonly redisClient: RedisClient | null
-	) {
+	constructor(@Inject('REDIS_CLIENT') private readonly redisClient: RedisClient | null) {
 		this.useRedis = !!this.redisClient;
 		this.config = {
 			prefix: 'everytriv_cache_',

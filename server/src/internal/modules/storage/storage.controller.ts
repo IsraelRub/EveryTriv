@@ -6,8 +6,8 @@
  */
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 
+import { Cache, Public, RateLimit, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
-import { Public, Roles, RateLimit, Cache } from '../../../common';
 
 @Controller('storage')
 export class StorageController {

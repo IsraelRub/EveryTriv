@@ -5,7 +5,6 @@
  * @description Advanced point calculation and mathematical operations
  * @author EveryTriv Team
  */
-
 import type { PointBalance, PointPurchaseOption } from '../../types';
 
 /**
@@ -19,11 +18,7 @@ export class PointCalculationService {
 	 * @param timeBonus - Time-based bonus multiplier
 	 * @returns Bonus points to award
 	 */
-	calculateBonusPoints(
-		baseScore: number,
-		difficulty: string,
-		timeBonus: number = 1
-	): number {
+	calculateBonusPoints(baseScore: number, difficulty: string, timeBonus: number = 1): number {
 		// Base bonus calculation
 		let bonusMultiplier = 1;
 
@@ -166,11 +161,7 @@ export class PointCalculationService {
 	 * @param decayRate - Daily decay rate (default: 0.1%)
 	 * @returns Remaining points after decay
 	 */
-	calculatePointDecay(
-		points: number,
-		daysUnused: number,
-		decayRate: number = 0.001
-	): number {
+	calculatePointDecay(points: number, daysUnused: number, decayRate: number = 0.001): number {
 		if (daysUnused <= 30) return points; // No decay for first 30 days
 
 		const decayDays = daysUnused - 30;
@@ -187,11 +178,7 @@ export class PointCalculationService {
 	 * @param interestRate - Daily interest rate (default: 0.05%)
 	 * @returns Points with accumulated interest
 	 */
-	calculatePointInterest(
-		points: number,
-		daysHeld: number,
-		interestRate: number = 0.0005
-	): number {
+	calculatePointInterest(points: number, daysHeld: number, interestRate: number = 0.0005): number {
 		if (daysHeld <= 90) return points; // No interest for first 90 days
 
 		const interestDays = daysHeld - 90;
@@ -208,11 +195,7 @@ export class PointCalculationService {
 	 * @param totalGames - Total number of games played
 	 * @returns Efficiency score (0-100)
 	 */
-	calculatePointEfficiency(
-		pointsSpent: number,
-		gamesWon: number,
-		totalGames: number
-	): number {
+	calculatePointEfficiency(pointsSpent: number, gamesWon: number, totalGames: number): number {
 		if (totalGames === 0 || pointsSpent === 0) return 0;
 
 		const winRate = gamesWon / totalGames;

@@ -16,19 +16,19 @@ import { storageService } from '../services';
  * @returns string User ID
  */
 export async function getOrCreateClientUserId(): Promise<string> {
-	try {
-		const userIdResult = await storageService.get<string>(STORAGE_KEYS.USER_ID);
-		let userId = userIdResult.success ? userIdResult.data : null;
+  try {
+    const userIdResult = await storageService.get<string>(STORAGE_KEYS.USER_ID);
+    let userId = userIdResult.success ? userIdResult.data : null;
 
-		if (!userId) {
-			userId = generateUserId();
-			await storageService.set(STORAGE_KEYS.USER_ID, userId);
-		}
+    if (!userId) {
+      userId = generateUserId();
+      await storageService.set(STORAGE_KEYS.USER_ID, userId);
+    }
 
-		return userId!;
-	} catch (error) {
-		// Fallback if storage is not available
-		clientLogger.storageWarn('Storage not available, generating temporary user ID');
-		return generateUserId();
-	}
+    return userId!;
+  } catch (error) {
+    // Fallback if storage is not available
+    clientLogger.storageWarn('Storage not available, generating temporary user ID');
+    return generateUserId();
+  }
 }

@@ -6,17 +6,10 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
+import { AuthenticationConfig, AuthenticationRequest, AuthenticationResult, LoginCredentials, serverLogger as logger , TokenPayload , UserData } from '@shared';
+
 import { JwtTokenService } from './jwt-token.service';
-import { TokenPayload } from '@shared';
 import { PasswordService } from './password.service';
-import { serverLogger as logger } from '@shared';
-import { 
-	AuthenticationResult, 
-	LoginCredentials, 
-	UserData, 
-	AuthenticationConfig,
-	AuthenticationRequest
-} from '@shared';
 
 @Injectable()
 export class AuthenticationManager {
@@ -36,14 +29,11 @@ export class AuthenticationManager {
 	/**
 	 * Authenticate user with credentials
 	 */
-	async authenticate(
-		credentials: LoginCredentials,
-		userData: UserData
-	): Promise<AuthenticationResult> {
+	async authenticate(credentials: LoginCredentials, userData: UserData): Promise<AuthenticationResult> {
 		try {
 			// Use enhanced logging
 			logger.logAuthenticationEnhanced('login', userData.id, credentials.username, {
-				context: 'AuthenticationManager'
+				context: 'AuthenticationManager',
 			});
 
 			// Check if user is active
@@ -59,10 +49,7 @@ export class AuthenticationManager {
 			}
 
 			// Verify password
-			const isPasswordValid = await this.passwordService.comparePassword(
-				credentials.password,
-				userData.passwordHash
-			);
+			const isPasswordValid = await this.passwordService.comparePassword(credentials.password, userData.passwordHash);
 
 			if (!isPasswordValid) {
 				logger.logSecurityEventEnhanced('Invalid password', 'warn', {
@@ -88,7 +75,7 @@ export class AuthenticationManager {
 			logger.logAuthenticationEnhanced('login', userData.id, credentials.username, {
 				success: true,
 				role: userData.role,
-				context: 'AuthenticationManager'
+				context: 'AuthenticationManager',
 			});
 
 			return {

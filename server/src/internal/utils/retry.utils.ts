@@ -1,8 +1,5 @@
+import { ApiError , AxiosErrorWithConfig, ExtendedAxiosRequestConfig,HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES , serverLogger  } from '@shared';
 import { AxiosResponse } from 'axios';
-import { HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES } from '@shared';
-import { serverLogger } from '@shared';
-import { ApiError } from '@shared';
-import { AxiosErrorWithConfig, ExtendedAxiosRequestConfig } from '@shared';
 
 /**
  * Utility class for handling HTTP retry logic
@@ -96,28 +93,28 @@ export class RetryUtils {
 	formatError(error: AxiosErrorWithConfig): ApiError {
 		if (error.response) {
 			// Server responded with error status
-		return {
-			message: error.response.data?.message || HTTP_ERROR_MESSAGES.DEFAULT,
-			statusCode: error.response.status,
-			code: HTTP_ERROR_CODES.DEFAULT,
-			details: error.response.data,
-		} as ApiError;
+			return {
+				message: error.response.data?.message || HTTP_ERROR_MESSAGES.DEFAULT,
+				statusCode: error.response.status,
+				code: HTTP_ERROR_CODES.DEFAULT,
+				details: error.response.data,
+			} as ApiError;
 		} else if (error.request) {
 			// Request was made but no response received
-		return {
-			message: HTTP_ERROR_MESSAGES.NETWORK_ERROR,
-			statusCode: 0,
-			code: HTTP_ERROR_CODES.NETWORK_ERROR,
-			details: { request: 'request object' },
-		} as ApiError;
+			return {
+				message: HTTP_ERROR_MESSAGES.NETWORK_ERROR,
+				statusCode: 0,
+				code: HTTP_ERROR_CODES.NETWORK_ERROR,
+				details: { request: 'request object' },
+			} as ApiError;
 		} else {
 			// Something else happened
-		return {
-			message: error.message || HTTP_ERROR_MESSAGES.DEFAULT,
-			statusCode: 0,
-			code: HTTP_ERROR_CODES.DEFAULT,
-			details: { error: error.message },
-		} as ApiError;
+			return {
+				message: error.message || HTTP_ERROR_MESSAGES.DEFAULT,
+				statusCode: 0,
+				code: HTTP_ERROR_CODES.DEFAULT,
+				details: { error: error.message },
+			} as ApiError;
 		}
 	}
 }

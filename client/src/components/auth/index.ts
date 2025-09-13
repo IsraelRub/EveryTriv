@@ -1,6 +1,6 @@
 /**
  * Authentication Components
- * 
+ *
  * @module AuthComponents
  * @description Exports for authentication-related components
  */

@@ -11,7 +11,6 @@ import {
 
 import { UserEntity } from './user.entity';
 
-
 @Entity('trivia')
 export class TriviaEntity {
 	@PrimaryGeneratedColumn('uuid')

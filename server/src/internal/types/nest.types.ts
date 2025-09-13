@@ -1,11 +1,11 @@
-import { NextFunction, Request, Response } from 'express';
 import type { UserRole } from '@shared';
+import { NextFunction, Request, Response } from 'express';
+
 import type { BulkMetadata } from './metadata.types';
 
 /**
  * NestJS-specific types for the server
  */
-
 
 // NestJS request/response types
 export type NestRequest = Request & {
@@ -72,7 +72,6 @@ export interface UserPayload extends Record<string, unknown> {
 	iat: number;
 	exp: number;
 }
-
 
 // Request context interface (simplified)
 export interface RequestContext {

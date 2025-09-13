@@ -6,9 +6,8 @@
  */
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-google-oauth20';
-
 import { serverLogger as logger } from '@shared';
+import { Strategy } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -32,7 +31,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			logger.logAuthenticationEnhanced('login', 'google_user', profile.id, {
 				email: profile.emails?.[0]?.value || '',
 				provider: 'google',
-				context: 'GoogleStrategy'
+				context: 'GoogleStrategy',
 			});
 
 			const user = {
@@ -48,7 +47,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				email: profile.emails?.[0]?.value || '',
 				username: user.username,
 				provider: 'google',
-				context: 'GoogleStrategy'
+				context: 'GoogleStrategy',
 			});
 
 			return user;
@@ -58,7 +57,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				profileId: profile.id,
 				provider: 'google',
-				context: 'GoogleStrategy'
+				context: 'GoogleStrategy',
 			});
 			throw error;
 		}

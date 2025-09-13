@@ -5,10 +5,10 @@
  * @description Pipe for validating payment data input with comprehensive validation
  * @used_by server/features/payment, server/controllers
  */
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 // ValidationManager removed - using direct validation
-import { serverLogger as logger } from '@shared';
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { PersonalPaymentData } from '@shared';
+import { serverLogger as logger } from '@shared';
 
 export interface PaymentDataValidationResult {
 	isValid: boolean;
@@ -19,7 +19,6 @@ export interface PaymentDataValidationResult {
 
 @Injectable()
 export class PaymentDataPipe implements PipeTransform {
-
 	async transform(value: PersonalPaymentData): Promise<PaymentDataValidationResult> {
 		const startTime = Date.now();
 
@@ -56,7 +55,7 @@ export class PaymentDataPipe implements PipeTransform {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-		logger.apiUpdateError('paymentDataValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('paymentDataValidation', error instanceof Error ? error.message : 'Unknown error');
 
 			throw new BadRequestException('Payment data validation failed');
 		}
@@ -86,7 +85,7 @@ export class PaymentDataPipe implements PipeTransform {
 
 		return {
 			isValid: errors.length === 0,
-			errors
+			errors,
 		};
 	}
 }

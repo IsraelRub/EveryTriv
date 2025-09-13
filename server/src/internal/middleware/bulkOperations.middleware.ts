@@ -6,8 +6,9 @@
  * @author EveryTriv Team
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
+import { serverLogger as logger } from '@shared';
 
-import { serverLogger as logger } from '@shared';import { NestNextFunction, NestRequest, NestResponse } from '../types';
+import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
 /**
  * Bulk Operations Middleware
@@ -69,14 +70,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		}
 
 		// Check for bulk operation endpoints
-		const bulkEndpoints = [
-			'/bulk',
-			'/batch',
-			'/multiple',
-			'/batch-update',
-			'/batch-create',
-			'/batch-delete',
-		];
+		const bulkEndpoints = ['/bulk', '/batch', '/multiple', '/batch-update', '/batch-create', '/batch-delete'];
 
 		return bulkEndpoints.some(endpoint => req.path.includes(endpoint));
 	}
@@ -187,7 +181,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	 */
 	private getOptimizationLevel(req: NestRequest): 'low' | 'medium' | 'high' {
 		const batchSize = this.getBatchSize(req);
-		
+
 		if (batchSize >= 20) {
 			return 'high';
 		}
@@ -233,7 +227,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 
 		// Process batch
 		const batch = queue.splice(0, this.MAX_BATCH_SIZE);
-		
+
 		logger.system('Processing bulk operation batch', {
 			operationKey,
 			batchSize: batch.length,

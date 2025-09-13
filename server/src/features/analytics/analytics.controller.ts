@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
-
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { serverLogger as logger } from '@shared';
+
+import { Cache, ClientIP, CurrentUserId, UserAgent } from '../../common';
 import { AnalyticsService } from './analytics.service';
-import { TrackEventDto, GameAnalyticsQueryDto, TopicAnalyticsQueryDto, DifficultyAnalyticsQueryDto } from './dtos';
-import { CurrentUserId, ClientIP, UserAgent, Cache } from '../../common';
+import { DifficultyAnalyticsQueryDto, GameAnalyticsQueryDto, TopicAnalyticsQueryDto, TrackEventDto } from './dtos';
 
 /**
  * Analytics controller for tracking user behavior and retrieving analytics data
@@ -17,7 +17,7 @@ export class AnalyticsController {
 	 */
 	@Post('track')
 	async trackEvent(
-		@CurrentUserId() userId: string, 
+		@CurrentUserId() userId: string,
 		@Body() eventData: TrackEventDto,
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string
@@ -32,7 +32,7 @@ export class AnalyticsController {
 		// Convert DTO to service format
 		const analyticsEventData = {
 			...eventData,
-			timestamp: eventData.timestamp || new Date()
+			timestamp: eventData.timestamp || new Date(),
 		};
 		await this.analyticsService.trackEvent(userId, analyticsEventData);
 		return { message: 'Analytics event tracked successfully' };

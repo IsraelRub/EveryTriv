@@ -1,3 +1,6 @@
+// Import types from validation.types.ts
+import type { ValidationStatus } from './validation.types';
+
 /**
  * Form validation types for EveryTriv
  *
@@ -143,6 +146,3 @@ export interface ValidationMessageProps {
 	/** Animation duration */
 	animationDuration?: number;
 }
-
-// Import types from validation.types.ts
-import type { ValidationStatus } from './validation.types';

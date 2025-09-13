@@ -4,19 +4,24 @@
  * @module AuthController
  * @description Authentication controller with login, register, and user management endpoints
  */
-import {
-	Controller,
-	Post,
-	Get,
-	Body,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { serverLogger as logger , UsersListResponse } from '@shared';
 
+import {
+	ApiResponse,
+	AuthGuard,
+	Cache,
+	ClientIP,
+	CurrentUser,
+	CurrentUserId,
+	Public,
+	RateLimit,
+	Roles,
+	RolesGuard,
+	UserAgent,
+} from '../../common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, RefreshTokenDto, AuthResponseDto, RefreshTokenResponseDto } from './dtos/auth.dto';
-import { serverLogger as logger } from '@shared';
-import { CurrentUserId, CurrentUser, ClientIP, UserAgent, Public, Roles, RateLimit, Cache, ApiResponse, AuthGuard, RolesGuard } from '../../common';
-import { UsersListResponse } from '@shared';
+import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -102,7 +107,9 @@ export class AuthController {
 	@Get('me')
 	@Cache(300) // Cache for 5 minutes
 	@ApiResponse(200, 'User profile retrieved successfully')
-	async getCurrentUser(@CurrentUser() user: { id: string; username: string; email: string }): Promise<{ id: string; username: string; email: string }> {
+	async getCurrentUser(
+		@CurrentUser() user: { id: string; username: string; email: string }
+	): Promise<{ id: string; username: string; email: string }> {
 		logger.apiRead('user_profile', {
 			userId: user.id,
 		});
@@ -130,7 +137,7 @@ export class AuthController {
 	@Get('google')
 	async googleLogin(): Promise<{ message: string; status: string; timestamp: string }> {
 		logger.apiInfo('Google OAuth login requested');
-		
+
 		// This would redirect to Google OAuth
 		return {
 			message: 'Google OAuth login not implemented yet',
@@ -145,7 +152,7 @@ export class AuthController {
 	@Get('google/callback')
 	async googleCallback(): Promise<{ message: string; status: string; timestamp: string }> {
 		logger.apiInfo('Google OAuth callback requested');
-		
+
 		// This would handle Google OAuth callback
 		return {
 			message: 'Google OAuth callback not implemented yet',

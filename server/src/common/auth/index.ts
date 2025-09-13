@@ -6,6 +6,6 @@
  * @author EveryTriv Team
  */
 
+export * from './authentication.manager';
 export * from './jwt-token.service';
 export * from './password.service';
-export * from './authentication.manager';

@@ -61,8 +61,7 @@ export const AuditLog = (action: string) => SetMetadata('auditLog', { action });
  * }
  * ```
  */
-export const SecurityLog = (level: 'low' | 'medium' | 'high' | 'critical') => 
-	SetMetadata('securityLog', { level });
+export const SecurityLog = (level: 'low' | 'medium' | 'high' | 'critical') => SetMetadata('securityLog', { level });
 
 /**
  * Set performance logging for endpoint
@@ -81,11 +80,8 @@ export const SecurityLog = (level: 'low' | 'medium' | 'high' | 'critical') =>
  * }
  * ```
  */
-export const PerformanceLog = (config: {
-	trackDuration?: boolean;
-	trackMemory?: boolean;
-	alertThreshold?: number;
-}) => SetMetadata('performanceLog', config);
+export const PerformanceLog = (config: { trackDuration?: boolean; trackMemory?: boolean; alertThreshold?: number }) =>
+	SetMetadata('performanceLog', config);
 
 /**
  * Set error logging for endpoint
@@ -104,11 +100,8 @@ export const PerformanceLog = (config: {
  * }
  * ```
  */
-export const ErrorLog = (config: {
-	includeStack?: boolean;
-	includeContext?: boolean;
-	alertOnError?: boolean;
-}) => SetMetadata('errorLog', config);
+export const ErrorLog = (config: { includeStack?: boolean; includeContext?: boolean; alertOnError?: boolean }) =>
+	SetMetadata('errorLog', config);
 
 /**
  * Set business logic logging for endpoint
@@ -157,11 +150,8 @@ export const UserActivityLog = (activity: string) => SetMetadata('userActivityLo
  * }
  * ```
  */
-export const ApiUsageLog = (config: {
-	trackCalls?: boolean;
-	trackErrors?: boolean;
-	trackResponseTime?: boolean;
-}) => SetMetadata('apiUsageLog', config);
+export const ApiUsageLog = (config: { trackCalls?: boolean; trackErrors?: boolean; trackResponseTime?: boolean }) =>
+	SetMetadata('apiUsageLog', config);
 
 /**
  * Set data access logging for endpoint
@@ -180,8 +170,5 @@ export const ApiUsageLog = (config: {
  * }
  * ```
  */
-export const DataAccessLog = (config: {
-	logReads?: boolean;
-	logWrites?: boolean;
-	includeData?: boolean;
-}) => SetMetadata('dataAccessLog', config);
+export const DataAccessLog = (config: { logReads?: boolean; logWrites?: boolean; includeData?: boolean }) =>
+	SetMetadata('dataAccessLog', config);

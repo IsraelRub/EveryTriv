@@ -1,10 +1,19 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 
 import { UserEntity } from './user.entity';
 
 /**
  * User Stats Entity
- * 
+ *
  * @entity UserStatsEntity
  * @description Entity for storing user game statistics and performance metrics
  * @used_by server/src/features/analytics, server/src/features/game
@@ -55,21 +64,27 @@ export class UserStatsEntity {
 
 	// Topic Statistics (JSONB for flexibility)
 	@Column('jsonb', { name: 'topic_stats', default: {} })
-	topicStats: Record<string, {
-		totalQuestions: number;
-		correctAnswers: number;
-		successRate: number;
-		lastPlayed: Date;
-	}> = {};
+	topicStats: Record<
+		string,
+		{
+			totalQuestions: number;
+			correctAnswers: number;
+			successRate: number;
+			lastPlayed: Date;
+		}
+	> = {};
 
 	// Difficulty Statistics (JSONB for flexibility)
 	@Column('jsonb', { name: 'difficulty_stats', default: {} })
-	difficultyStats: Record<string, {
-		totalQuestions: number;
-		correctAnswers: number;
-		successRate: number;
-		lastPlayed: Date;
-	}> = {};
+	difficultyStats: Record<
+		string,
+		{
+			totalQuestions: number;
+			correctAnswers: number;
+			successRate: number;
+			lastPlayed: Date;
+		}
+	> = {};
 
 	// Time-based Statistics
 	@Column('int', { name: 'weekly_score', default: 0 })

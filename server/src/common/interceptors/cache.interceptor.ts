@@ -5,13 +5,13 @@
  * @description Interceptor that implements caching based on @Cache decorator metadata
  * @author EveryTriv Team
  */
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { serverLogger as logger } from '@shared';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
-import { serverLogger as logger } from '@shared';
 import type { CacheConfig, NestRequest } from '../../internal/types';
 
 /**
@@ -41,20 +41,20 @@ export class CacheInterceptor implements NestInterceptor {
 	 */
 	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
 		const request = context.switchToHttp().getRequest();
-		const cacheMetadata = this.reflector.get<CacheConfig>('cache', context.getHandler()) || 
-							  request.decoratorMetadata?.cache;
-		
+		const cacheMetadata =
+			this.reflector.get<CacheConfig>('cache', context.getHandler()) || request.decoratorMetadata?.cache;
+
 		// If no cache metadata, proceed normally
 		if (!cacheMetadata || cacheMetadata.disabled) {
 			return next.handle();
 		}
 
 		const cacheKey = this.generateCacheKey(request, cacheMetadata.key);
-		
+
 		try {
 			// Check cache first
 			const cachedResult = await this.cacheService.get(cacheKey);
-			
+
 			if (cachedResult.success && cachedResult.data !== null) {
 				logger.cacheHit(cacheKey, {
 					ttl: cacheMetadata.ttl,
@@ -63,7 +63,7 @@ export class CacheInterceptor implements NestInterceptor {
 					method: request.method,
 					url: request.originalUrl,
 				});
-				
+
 				return of(cachedResult.data);
 			}
 
@@ -77,7 +77,7 @@ export class CacheInterceptor implements NestInterceptor {
 			});
 
 			return next.handle().pipe(
-				tap(async (result) => {
+				tap(async result => {
 					try {
 						// Check cache condition if provided
 						if (cacheMetadata.condition && !cacheMetadata.condition(request, result)) {
@@ -90,7 +90,7 @@ export class CacheInterceptor implements NestInterceptor {
 						}
 
 						await this.cacheService.set(cacheKey, result, cacheMetadata.ttl);
-						
+
 						// Store cache tags if provided (if service supports it)
 						if (cacheMetadata.tags && cacheMetadata.tags.length > 0) {
 							// Log cache tags for now - implement setTags in CacheService if needed
@@ -99,7 +99,7 @@ export class CacheInterceptor implements NestInterceptor {
 								tags: cacheMetadata.tags,
 							});
 						}
-						
+
 						logger.cacheSet(cacheKey, {
 							ttl: cacheMetadata.ttl,
 							key: cacheMetadata.key,
@@ -124,7 +124,7 @@ export class CacheInterceptor implements NestInterceptor {
 				key: cacheMetadata.key,
 				tags: cacheMetadata.tags,
 			});
-			
+
 			// On cache error, proceed with normal request
 			return next.handle();
 		}
@@ -146,19 +146,19 @@ export class CacheInterceptor implements NestInterceptor {
 		const url = request.originalUrl || request.url || '/';
 		const query = request.query ? JSON.stringify(request.query) : '';
 		const params = request.params ? JSON.stringify(request.params) : '';
-		
+
 		// Create a hash-like key from request components
 		const keyComponents = [method, url, query, params].filter(Boolean);
 		const baseKey = keyComponents.join('|');
-		
+
 		// Simple hash function for key generation
 		let hash = 0;
 		for (let i = 0; i < baseKey.length; i++) {
 			const char = baseKey.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
+			hash = (hash << 5) - hash + char;
 			hash = hash & hash; // Convert to 32-bit integer
 		}
-		
+
 		return `cache:${Math.abs(hash)}`;
 	}
 }

@@ -1,18 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { GameHistoryCreationData, serverLogger as logger } from '@shared';
 import { Repository } from 'typeorm';
 
-import { serverLogger as logger, GameHistoryCreationData } from '@shared';
+import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
 import { GameHistoryEntity } from '../entities';
 import { BaseRepository } from './base.repository';
-import { RepositoryCache, RepositoryAudit, RepositoryRoles } from '../../common';
 
 @Injectable()
 export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 	constructor(
 		@InjectRepository(GameHistoryEntity)
-		private readonly gameHistoryRepository: Repository<GameHistoryEntity>,
-		
+		private readonly gameHistoryRepository: Repository<GameHistoryEntity>
 	) {
 		super(gameHistoryRepository);
 	}

@@ -1,8 +1,23 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
-import { CreateGameHistoryDto, serverLogger as logger, GameStatisticsResponse } from '@shared';
+import { CreateGameHistoryDto, GameStatisticsResponse, serverLogger as logger } from '@shared';
+
+import {
+	AuditLog,
+	Cache,
+	ClientIP,
+	CurrentUser,
+	CurrentUserId,
+	GameCooldown,
+	GameDifficulty,
+	GameTopic,
+	PerformanceThreshold,
+	RequireGameSession,
+	Roles,
+	UserActivityLog,
+	UserAgent,
+} from '../../common';
+import { CustomDifficultyPipe, GameAnswerPipe, LanguageValidationPipe, TriviaRequestPipe } from '../../common/pipes';
 import { GameService } from './game.service';
-import { CurrentUserId, CurrentUser, ClientIP, UserAgent, Roles, GameDifficulty, RequireGameSession, GameTopic, GameCooldown, PerformanceThreshold, AuditLog, UserActivityLog, Cache } from '../../common';
-import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe, LanguageValidationPipe } from '../../common/pipes';
 
 @Controller('game')
 export class GameController {
@@ -36,7 +51,7 @@ export class GameController {
 	@PerformanceThreshold(500)
 	@UserActivityLog('game:submit-answer')
 	async submitAnswer(
-		@CurrentUserId() userId: string, 
+		@CurrentUserId() userId: string,
 		@Body() body: { questionId: string; answer: string; timeSpent: number },
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string
@@ -53,7 +68,6 @@ export class GameController {
 		return result;
 	}
 
-
 	/**
 	 * Get trivia questions
 	 */
@@ -68,13 +82,7 @@ export class GameController {
 		@CurrentUserId() userId: string,
 		@Body() body: { topic: string; difficulty: string; questionCount: number }
 	) {
-
-		const result = await this.gameService.getTriviaQuestion(
-			body.topic,
-			body.difficulty,
-			body.questionCount,
-			userId
-		);
+		const result = await this.gameService.getTriviaQuestion(body.topic, body.difficulty, body.questionCount, userId);
 
 		return result;
 	}
@@ -86,7 +94,7 @@ export class GameController {
 	@Cache(600) // Cache for 10 minutes
 	async getGameHistory(@CurrentUserId() userId: string) {
 		const startTime = Date.now();
-		
+
 		try {
 			const result = await this.gameService.getUserGameHistory(userId);
 
@@ -107,12 +115,12 @@ export class GameController {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
-			
+
 			// Enhanced error response
 			if (error instanceof HttpException) {
 				throw error;
 			}
-			
+
 			throw new HttpException(
 				{
 					message: 'Failed to get game history',
@@ -130,7 +138,7 @@ export class GameController {
 	@Post('history')
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: CreateGameHistoryDto) {
 		const startTime = Date.now();
-		
+
 		try {
 			// Validate required fields
 			if (!body.userId || !body.score) {
@@ -156,12 +164,12 @@ export class GameController {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
-			
+
 			// Enhanced error response
 			if (error instanceof HttpException) {
 				throw error;
 			}
-			
+
 			throw new HttpException(
 				{
 					message: 'Failed to save game history',
@@ -179,7 +187,7 @@ export class GameController {
 	@Delete('history/:gameId')
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
 		const startTime = Date.now();
-		
+
 		try {
 			if (!gameId || gameId.trim().length === 0) {
 				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
@@ -205,12 +213,12 @@ export class GameController {
 				gameId,
 				duration: Date.now() - startTime,
 			});
-			
+
 			// Enhanced error response
 			if (error instanceof HttpException) {
 				throw error;
 			}
-			
+
 			throw new HttpException(
 				{
 					message: 'Failed to delete game history',
@@ -228,7 +236,7 @@ export class GameController {
 	@Delete('history')
 	async clearGameHistory(@CurrentUserId() userId: string) {
 		const startTime = Date.now();
-		
+
 		try {
 			const result = await this.gameService.clearUserGameHistory(userId);
 
@@ -248,12 +256,12 @@ export class GameController {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
-			
+
 			// Enhanced error response
 			if (error instanceof HttpException) {
 				throw error;
 			}
-			
+
 			throw new HttpException(
 				{
 					message: 'Failed to clear game history',
@@ -264,7 +272,6 @@ export class GameController {
 			);
 		}
 	}
-
 
 	/**
 	 * Validate custom difficulty text
@@ -298,7 +305,9 @@ export class GameController {
 	 */
 	@Get('admin/statistics')
 	@Roles('admin', 'super-admin')
-	async getGameStatistics(@CurrentUser() user: { id: string; role: string; username: string }): Promise<GameStatisticsResponse> {
+	async getGameStatistics(
+		@CurrentUser() user: { id: string; role: string; username: string }
+	): Promise<GameStatisticsResponse> {
 		try {
 			logger.apiRead('admin_get_game_statistics', {
 				adminId: user.id,
@@ -314,7 +323,7 @@ export class GameController {
 				correctAnswers: 0,
 				accuracy: 0,
 				favoriteTopics: [],
-				difficultyBreakdown: {}
+				difficultyBreakdown: {},
 			};
 
 			return {
@@ -337,7 +346,9 @@ export class GameController {
 	 */
 	@Delete('admin/history/clear-all')
 	@Roles('super-admin')
-	async clearAllGameHistory(@CurrentUser() user: { id: string; role: string; username: string }): Promise<{ message: string; success: boolean; timestamp: string }> {
+	async clearAllGameHistory(
+		@CurrentUser() user: { id: string; role: string; username: string }
+	): Promise<{ message: string; success: boolean; timestamp: string }> {
 		try {
 			logger.apiDelete('admin_clear_all_game_history', {
 				adminId: user.id,

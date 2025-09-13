@@ -1,11 +1,20 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 
 import { UserEntity } from './user.entity';
 import { UserStatsEntity } from './userStats.entity';
 
 /**
  * Leaderboard Entity
- * 
+ *
  * @entity LeaderboardEntity
  * @description Entity for storing user rankings and leaderboard data
  * Focused on ranking-specific data only, avoiding duplication with UserEntity and UserStatsEntity

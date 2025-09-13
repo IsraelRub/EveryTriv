@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
-
-import { serverLogger as logger } from '@shared';import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
+import { serverLogger as logger } from '@shared';
+import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
 
 @Injectable()
 export class CountryCheckMiddleware implements NestMiddleware {

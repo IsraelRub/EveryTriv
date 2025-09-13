@@ -6,6 +6,7 @@
  * @author EveryTriv Team
  */
 import { SetMetadata } from '@nestjs/common';
+
 import type { CacheConfig } from '../../internal/types';
 
 /**
@@ -103,7 +104,7 @@ export const CacheUser = (ttl: number, keyPrefix?: string) => SetMetadata('cache
  * }
  * ```
  */
-export const CacheConditional = (condition: (req: Record<string, unknown>) => boolean, ttl: number) => 
+export const CacheConditional = (condition: (req: Record<string, unknown>) => boolean, ttl: number) =>
 	SetMetadata('cacheConditional', { condition, ttl });
 
 /**
@@ -120,7 +121,7 @@ export const CacheConditional = (condition: (req: Record<string, unknown>) => bo
  * }
  * ```
  */
-export const CacheAutoInvalidate = (ttl: number, invalidateOn: string[]) => 
+export const CacheAutoInvalidate = (ttl: number, invalidateOn: string[]) =>
 	SetMetadata('cacheAutoInvalidate', { ttl, invalidateOn });
 
 /**
@@ -137,7 +138,7 @@ export const CacheAutoInvalidate = (ttl: number, invalidateOn: string[]) =>
  * }
  * ```
  */
-export const CacheCompressed = (ttl: number, compress: boolean = true) => 
+export const CacheCompressed = (ttl: number, compress: boolean = true) =>
 	SetMetadata('cacheCompressed', { ttl, compress });
 
 /**
@@ -154,5 +155,5 @@ export const CacheCompressed = (ttl: number, compress: boolean = true) =>
  * }
  * ```
  */
-export const CachePriority = (ttl: number, priority: 'high' | 'medium' | 'low') => 
+export const CachePriority = (ttl: number, priority: 'high' | 'medium' | 'low') =>
 	SetMetadata('cachePriority', { ttl, priority });

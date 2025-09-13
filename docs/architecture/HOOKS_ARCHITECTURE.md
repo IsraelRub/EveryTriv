@@ -675,15 +675,52 @@ export const GameComponent: React.FC = () => {
 ### 2. נוח לתחזוקה
 - קוד מאורגן ומובנה
 - קל למצוא ולשנות פונקציונליות
-- בדיקות מבודדות לכל שכבה
+# ארכיטקטורת Hooks - EveryTriv
 
-### 3. ביצועים
-- אופטימיזציות מבודדות
-- מטמון חכם
-- טעינה הדרגתית
+מסמך מצומצם: עקרונות מתקדמים בלבד. פירוט שכבות ודוגמאות בסיס מפורטים כבר ב-`../frontend/STATE.md` ו-`../frontend/STRUCTURE.md`.
 
-### 4. הרחבה
-- קל להוסיף שכבות חדשות
-- פונקציונליות מודולרית
-- שימוש חוזר בקוד
+## מטרות
+- הפרדת אחריות (API / Business / UI / Utils / Context).
+- הפחתת חזרות בלוגיקה עסקית בתוך רכיבים.
+- קלות בדיקה (Unit + Integration) דרך פונקציות טהורות והחזרי מצב מפורשים.
+
+## דפוסים מתקדמים
+| דפוס | תיאור | שימוש |
+|------|-------|-------|
+| useComposableResource | Wrapper גנרי לטעינה / cache / שגיאה | איחוד קריאות ל-API דומות |
+| useLayeredAsync | Pipeline של steps ממומשים כ-hooks פנימיים | Game Flow מורכב |
+| useStabilizedCallback | מונע שינוי reference ע"י hash תלויים | אופטימיזציית rerender |
+| useEventChannel | EventEmitter קל משקל בחזית | סינכרון בין רכיבי Game |
+
+### דוגמה תמציתית: useComposableResource
+```typescript
+export function useComposableResource<T>(key: string, loader: () => Promise<T>) {
+  const [state, set] = useState<{data?:T; error?:string; loading:boolean}>({loading:true});
+  useEffect(() => {
+    let active = true;
+    loader()
+      .then(data => active && set({ loading:false, data }))
+      .catch(e => active && set({ loading:false, error: e.message }));
+    return () => { active = false; };
+  }, [key]);
+  return state;
+}
+```
+
+## הנחיות
+- שמות hooks: `useDomainAction` (לוגיקה עסקית), `useUiSomething` (UI), `useApiX` (קריאות שרת).
+- החזרת אובייקט מפורש ולא מערך (Self-documenting).
+- הימנעות מאחסון refs לעומק אם ניתן לגזור ערך.
+- Hooks Business לא קוראים DOM.
+
+## בדיקות
+- בדיקת Hooks טהורים עם React Testing Library + act.
+- מדידת stable references (expect(fn1).toBe(fn2)).
+
+## הפניות
+- מבנה שכבות מלא: `../frontend/STRUCTURE.md`
+- ניהול State: `../frontend/STATE.md`
+
+---
  
+

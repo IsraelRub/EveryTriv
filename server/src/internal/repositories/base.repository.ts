@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { DeepPartial, FindManyOptions, FindOneOptions, FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
 import { serverLogger as logger } from '@shared';
+import { DeepPartial, FindManyOptions, FindOneOptions, FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
+
 /**
  * Base repository class providing common database operations
  * Manages all database requests with logging and error handling
@@ -8,9 +9,7 @@ import { serverLogger as logger } from '@shared';
  */
 @Injectable()
 export class BaseRepository<T extends ObjectLiteral> {
-	constructor(
-		private repository: Repository<T>
-	) {}
+	constructor(private repository: Repository<T>) {}
 
 	protected getEntityName(): string {
 		return this.repository.metadata.name;

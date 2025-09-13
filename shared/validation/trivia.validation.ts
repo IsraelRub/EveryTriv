@@ -6,9 +6,8 @@
  * @author EveryTriv Team
  */
 import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES } from '../constants';
-import { validateTopicLength } from './validation.utils';
 import type { SharedTriviaInputValidation } from '../types/domain/validation/validation.types';
-
+import { validateTopicLength } from './validation.utils';
 
 /**
  * Performs quick validation for trivia input without external API calls

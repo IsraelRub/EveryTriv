@@ -5,11 +5,9 @@
  * @description Shared validation functions for points operations and transactions
  * @author EveryTriv Team
  */
-
 import type { PointBalance, PointPurchaseOption, PointTransaction } from '../types';
 import type { PointsValidationResult } from '../types/domain/validation/validation.types';
 import { validatePaymentAmount } from './payment.validation';
-
 
 /**
  * Validate point balance for operations
@@ -43,9 +41,9 @@ export function validatePointBalance(balance: PointBalance): PointsValidationRes
 	}
 
 	// Consistency checks
-	const calculatedTotal = balance.purchased_points + (balance.free_questions * 0.1);
+	const calculatedTotal = balance.purchased_points + balance.free_questions * 0.1;
 	const difference = Math.abs(calculatedTotal - balance.total_points);
-	
+
 	if (difference > 0.1) {
 		warnings.push('Point balance calculation may be inconsistent');
 	}
@@ -146,7 +144,7 @@ export function validatePointTransaction(
 		errors.push('Transaction must have a type');
 	}
 
-	  if (!transaction.createdAt) {
+	if (!transaction.createdAt) {
 		errors.push('Transaction must have a timestamp');
 	}
 
@@ -168,10 +166,10 @@ export function validatePointTransaction(
 	}
 
 	// Timestamp validation
-	  const transactionTime = new Date(transaction.createdAt);
+	const transactionTime = new Date(transaction.createdAt);
 	const now = new Date();
 	const timeDiff = now.getTime() - transactionTime.getTime();
-	
+
 	if (timeDiff < 0) {
 		errors.push('Transaction timestamp cannot be in the future');
 	}
@@ -274,10 +272,10 @@ export function validatePointRefund(
 	}
 
 	// Time-based validation (refunds only within 30 days)
-	  const transactionTime = new Date(originalTransaction.createdAt);
+	const transactionTime = new Date(originalTransaction.createdAt);
 	const now = new Date();
 	const daysSincePurchase = (now.getTime() - transactionTime.getTime()) / (1000 * 60 * 60 * 24);
-	
+
 	if (daysSincePurchase > 30) {
 		errors.push('Refunds are only available within 30 days of purchase');
 	}
@@ -314,7 +312,7 @@ export function validatePointExpiration(
 	const now = new Date();
 	const expirationDate = new Date(purchaseDate);
 	expirationDate.setDate(expirationDate.getDate() + expirationDays);
-	
+
 	const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 	const isExpired = daysUntilExpiration <= 0;
 
@@ -357,7 +355,18 @@ export function validatePointPackages(packages: PointPurchaseOption[]): PointsVa
 
 	// Validate each package
 	for (const pkg of packages) {
-		const packageValidation = validatePointPurchase(pkg, { total_points: 0, purchased_points: 0, free_questions: 0, can_play_free: false, daily_limit: 0, next_reset_time: null }, packages);
+		const packageValidation = validatePointPurchase(
+			pkg,
+			{
+				total_points: 0,
+				purchased_points: 0,
+				free_questions: 0,
+				can_play_free: false,
+				daily_limit: 0,
+				next_reset_time: null,
+			},
+			packages
+		);
 		if (!packageValidation.isValid) {
 			errors.push(`Package ${pkg.id}: ${packageValidation.errors.join(', ')}`);
 		}
@@ -370,7 +379,7 @@ export function validatePointPackages(packages: PointPurchaseOption[]): PointsVa
 	const prices = packages.map(pkg => pkg.price);
 	const minPrice = Math.min(...prices);
 	const maxPrice = Math.max(...prices);
-	
+
 	if (maxPrice / minPrice > 100) {
 		warnings.push('Very large price range between packages may indicate pricing issues');
 	}

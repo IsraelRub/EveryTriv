@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
 import { serverLogger as logger } from '@shared';
-import { UserStatsEntity, UserEntity, GameHistoryEntity } from 'src/internal/entities';
+import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
+import { Repository } from 'typeorm';
 
 /**
  * User Stats Service
- * 
+ *
  * @service UserStatsService
  * @description Service for managing user game statistics and performance metrics
  * @used_by server/src/features/analytics, server/src/features/game, server/src/features/leaderboard
@@ -108,14 +107,17 @@ export class UserStatsService {
 	 * @param userId User ID
 	 * @param gameData Game completion data
 	 */
-	async updateUserStatsAfterGame(userId: string, gameData: {
-		score: number;
-		totalQuestions: number;
-		correctAnswers: number;
-		timeTaken: number;
-		topic: string;
-		difficulty: string;
-	}): Promise<void> {
+	async updateUserStatsAfterGame(
+		userId: string,
+		gameData: {
+			score: number;
+			totalQuestions: number;
+			correctAnswers: number;
+			timeTaken: number;
+			topic: string;
+			difficulty: string;
+		}
+	): Promise<void> {
 		try {
 			const userStats = await this.getUserStats(userId);
 
@@ -123,18 +125,16 @@ export class UserStatsService {
 			userStats.totalGames += 1;
 			userStats.totalQuestions += gameData.totalQuestions;
 			userStats.correctAnswers += gameData.correctAnswers;
-			userStats.incorrectAnswers += (gameData.totalQuestions - gameData.correctAnswers);
+			userStats.incorrectAnswers += gameData.totalQuestions - gameData.correctAnswers;
 
 			// Recalculate success rate
-			userStats.overallSuccessRate = userStats.totalQuestions > 0 
-				? (userStats.correctAnswers / userStats.totalQuestions) * 100 
-				: 0;
+			userStats.overallSuccessRate =
+				userStats.totalQuestions > 0 ? (userStats.correctAnswers / userStats.totalQuestions) * 100 : 0;
 
 			// Update time metrics
 			userStats.totalPlayTime += gameData.timeTaken;
-			userStats.averageTimePerQuestion = userStats.totalQuestions > 0 
-				? userStats.totalPlayTime / userStats.totalQuestions 
-				: 0;
+			userStats.averageTimePerQuestion =
+				userStats.totalQuestions > 0 ? userStats.totalPlayTime / userStats.totalQuestions : 0;
 
 			// Update best game score
 			if (gameData.score > userStats.bestGameScore) {
@@ -154,9 +154,10 @@ export class UserStatsService {
 			}
 			userStats.topicStats[topicKey].totalQuestions += gameData.totalQuestions;
 			userStats.topicStats[topicKey].correctAnswers += gameData.correctAnswers;
-			userStats.topicStats[topicKey].successRate = userStats.topicStats[topicKey].totalQuestions > 0 
-				? (userStats.topicStats[topicKey].correctAnswers / userStats.topicStats[topicKey].totalQuestions) * 100 
-				: 0;
+			userStats.topicStats[topicKey].successRate =
+				userStats.topicStats[topicKey].totalQuestions > 0
+					? (userStats.topicStats[topicKey].correctAnswers / userStats.topicStats[topicKey].totalQuestions) * 100
+					: 0;
 			userStats.topicStats[topicKey].lastPlayed = new Date();
 
 			// Update difficulty stats
@@ -171,9 +172,12 @@ export class UserStatsService {
 			}
 			userStats.difficultyStats[difficultyKey].totalQuestions += gameData.totalQuestions;
 			userStats.difficultyStats[difficultyKey].correctAnswers += gameData.correctAnswers;
-			userStats.difficultyStats[difficultyKey].successRate = userStats.difficultyStats[difficultyKey].totalQuestions > 0 
-				? (userStats.difficultyStats[difficultyKey].correctAnswers / userStats.difficultyStats[difficultyKey].totalQuestions) * 100 
-				: 0;
+			userStats.difficultyStats[difficultyKey].successRate =
+				userStats.difficultyStats[difficultyKey].totalQuestions > 0
+					? (userStats.difficultyStats[difficultyKey].correctAnswers /
+							userStats.difficultyStats[difficultyKey].totalQuestions) *
+						100
+					: 0;
 			userStats.difficultyStats[difficultyKey].lastPlayed = new Date();
 
 			// Update last play date

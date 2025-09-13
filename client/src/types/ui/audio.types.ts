@@ -7,10 +7,14 @@ import { AudioCategory } from '../../constants';
 
 // Browser-specific audio interfaces
 export interface WindowWithWebkitAudio extends Window {
-	webkitAudioContext?: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
 }
 
-// Audio Service Interface
+/**
+ * Audio Service Interface
+ * @interface AudioServiceInterface
+ * @description Core interface for audio management throughout the application
+ */
 export interface AudioServiceInterface {
 	isEnabled: boolean;
 	volume: number;
@@ -22,36 +26,37 @@ export interface AudioServiceInterface {
 	stopAllSounds: () => void;
 }
 
-// Audio Controls Props
+/**
+ * Audio Controls Component Props
+ * @interface AudioControlsProps
+ * @description Props for the main audio controls component
+ */
 export interface AudioControlsProps {
-	/** Audio service instance - optional when using Context */
 	audioService?: AudioServiceInterface;
-	/** Additional CSS classes */
 	className?: string;
-	/** Whether to show volume slider */
 	showVolumeSlider?: boolean;
-	/** Whether to show category controls */
 	showCategoryControls?: boolean;
 }
 
-// Category Volume Control Props
+/**
+ * Category Volume Control Props
+ * @interface CategoryVolumeControlProps
+ * @description Props for individual audio category volume controls
+ */
 export interface CategoryVolumeControlProps {
-	/** Audio category */
 	category: AudioCategory;
-	/** Current volume for this category */
 	volume: number;
-	/** Volume change handler */
 	onVolumeChange: (category: AudioCategory, volume: number) => void;
-	/** Additional CSS classes */
 	className?: string;
 }
 
-// Countdown Sounds Props
+/**
+ * Countdown Sounds Control Props
+ * @interface CountdownSoundsProps
+ * @description Props for countdown sound toggle component
+ */
 export interface CountdownSoundsProps {
-	/** Whether countdown sounds are enabled */
 	enabled: boolean;
-	/** Countdown sound change handler */
 	onToggle: (enabled: boolean) => void;
-	/** Additional CSS classes */
 	className?: string;
 }

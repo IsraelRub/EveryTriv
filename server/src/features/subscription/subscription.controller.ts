@@ -1,15 +1,14 @@
 import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
 import { serverLogger as logger } from '@shared';
-import { SubscriptionService } from './subscription.service';
-import { CreateSubscriptionDto } from './dtos';
-import { AuthGuard } from '../../common/guards';
+
 import { CurrentUserId } from '../../common';
+import { AuthGuard } from '../../common/guards';
+import { CreateSubscriptionDto } from './dtos';
+import { SubscriptionService } from './subscription.service';
 
 @Controller('subscription')
 export class SubscriptionController {
-	constructor(
-		private readonly subscriptionService: SubscriptionService,
-	) {}
+	constructor(private readonly subscriptionService: SubscriptionService) {}
 
 	/**
 	 * Get available subscription plans

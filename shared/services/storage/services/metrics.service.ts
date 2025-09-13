@@ -5,9 +5,9 @@
  * @description Centralized metrics tracking for all storage operations
  * @used_by server/src/shared/modules/storage/storage.service.ts, server/src/shared/modules/cache/cache.service.ts, client/src/services/storage/storage.service.ts
  */
-import { StorageMetrics } from '../../../types/infrastructure/storage.types';
 import type { BasicValue, StatsValue } from '../../../types/core/data.types';
 import type { MiddlewareMetrics } from '../../../types/domain/analytics/metrics.types';
+import { StorageMetrics } from '../../../types/infrastructure/storage.types';
 
 /**
  * Unified metrics service class
@@ -59,16 +59,16 @@ export class MetricsService {
 				cache: { operations: 0, errors: 0, size: 0 },
 				hybrid: { operations: 0, errors: 0, size: 0 },
 			},
-    uptime: {
-      ms: 0,
-      seconds: 0,
-      minutes: 0,
-      hours: 0,
-    },
-    totalOps: 0,
-    totalErrors: 0,
-    middleware: {},
-  };
+			uptime: {
+				ms: 0,
+				seconds: 0,
+				minutes: 0,
+				hours: 0,
+			},
+			totalOps: 0,
+			totalErrors: 0,
+			middleware: {},
+		};
 	}
 
 	/**
@@ -145,12 +145,7 @@ export class MetricsService {
 	 * @param success Whether execution was successful
 	 * @param error Error object if execution failed
 	 */
-	trackMiddlewareExecution(
-		middlewareName: string,
-		duration: number,
-		success: boolean = true,
-		_error?: Error
-	): void {
+	trackMiddlewareExecution(middlewareName: string, duration: number, success: boolean = true, _error?: Error): void {
 		const existing = this.middlewareMetrics.get(middlewareName);
 		const now = new Date();
 
@@ -198,7 +193,7 @@ export class MetricsService {
 		if (middlewareName) {
 			return this.middlewareMetrics.get(middlewareName) || null;
 		}
-		
+
 		const middlewareObj: Record<string, MiddlewareMetrics> = {};
 		this.middlewareMetrics.forEach((metrics, name) => {
 			middlewareObj[name] = { ...metrics };
@@ -270,15 +265,15 @@ export class MetricsService {
 				cache: { operations: 0, errors: 0, size: 0 },
 				hybrid: { operations: 0, errors: 0, size: 0 },
 			},
-    uptime: {
-      ms: 0,
-      seconds: 0,
-      minutes: 0,
-      hours: 0,
-    },
-    totalOps: 0,
-    totalErrors: 0,
-  };
+			uptime: {
+				ms: 0,
+				seconds: 0,
+				minutes: 0,
+				hours: 0,
+			},
+			totalOps: 0,
+			totalErrors: 0,
+		};
 		this.operationTimes.clear();
 	}
 

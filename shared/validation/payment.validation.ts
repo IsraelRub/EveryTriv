@@ -7,7 +7,6 @@
  */
 import type { PaymentValidationResult } from '../types/domain/validation/validation.types';
 
-
 /**
  * Validates payment amount and currency constraints
  *

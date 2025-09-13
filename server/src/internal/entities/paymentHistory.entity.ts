@@ -9,7 +9,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
-import { PaymentMethod, PaymentStatus, PaymentMetadata } from '../types/typeorm-compatibility.types';
+import { PaymentMetadata, PaymentMethod, PaymentStatus } from '../types/typeorm-compatibility.types';
 import { SubscriptionEntity } from './subscription.entity';
 import { UserEntity } from './user.entity';
 

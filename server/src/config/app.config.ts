@@ -5,7 +5,6 @@
  * @description Central configuration class for application settings
  * @used_by server/app, server/main, server/config
  */
-
 import { DEFAULT_PORTS } from '../../../shared';
 
 /**

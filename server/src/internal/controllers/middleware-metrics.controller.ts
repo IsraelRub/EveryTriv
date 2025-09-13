@@ -5,10 +5,10 @@
  * @description Controller for accessing middleware performance metrics
  * @author EveryTriv Team
  */
-import { Controller, Get, Delete, Param } from '@nestjs/common';
-import { MetricsService } from '@shared';
-import { serverLogger as logger } from '@shared';
 import { Roles } from '@common';
+import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { MetricsService , serverLogger as logger } from '@shared';
+
 // MiddlewareMetrics type is used implicitly
 
 /**
@@ -16,9 +16,7 @@ import { Roles } from '@common';
  */
 @Controller('admin/middleware-metrics')
 export class MiddlewareMetricsController {
-	constructor(
-		private readonly metricsService: MetricsService
-	) {}
+	constructor(private readonly metricsService: MetricsService) {}
 
 	/**
 	 * Get all middleware metrics
@@ -29,7 +27,7 @@ export class MiddlewareMetricsController {
 		try {
 			const allMetrics = this.metricsService.getMetrics();
 			const middlewareMetrics = this.metricsService.getMiddlewareMetrics();
-			
+
 			// Create summary from middleware metrics
 			if (!middlewareMetrics) {
 				return {
@@ -55,26 +53,29 @@ export class MiddlewareMetricsController {
 				const metrics = middlewareMetrics[name];
 				return sum + metrics.requestCount;
 			}, 0);
-			const averagePerformance = middlewareNames.length > 0 
-				? middlewareNames.reduce((sum, name) => {
-					const metrics = middlewareMetrics[name];
-					return sum + metrics.averageDuration;
-				}, 0) / middlewareNames.length 
-				: 0;
-			const slowestMiddleware = middlewareNames.length > 0 
-				? middlewareNames.reduce((slowest, current) => {
-					const currentMetrics = middlewareMetrics[current];
-					const slowestMetrics = middlewareMetrics[slowest];
-					return currentMetrics.averageDuration > slowestMetrics.averageDuration ? current : slowest;
-				}) 
-				: 'N/A';
-			const mostUsedMiddleware = middlewareNames.length > 0 
-				? middlewareNames.reduce((most, current) => {
-					const currentMetrics = middlewareMetrics[current];
-					const mostMetrics = middlewareMetrics[most];
-					return currentMetrics.requestCount > mostMetrics.requestCount ? current : most;
-				}) 
-				: 'N/A';
+			const averagePerformance =
+				middlewareNames.length > 0
+					? middlewareNames.reduce((sum, name) => {
+							const metrics = middlewareMetrics[name];
+							return sum + metrics.averageDuration;
+						}, 0) / middlewareNames.length
+					: 0;
+			const slowestMiddleware =
+				middlewareNames.length > 0
+					? middlewareNames.reduce((slowest, current) => {
+							const currentMetrics = middlewareMetrics[current];
+							const slowestMetrics = middlewareMetrics[slowest];
+							return currentMetrics.averageDuration > slowestMetrics.averageDuration ? current : slowest;
+						})
+					: 'N/A';
+			const mostUsedMiddleware =
+				middlewareNames.length > 0
+					? middlewareNames.reduce((most, current) => {
+							const currentMetrics = middlewareMetrics[current];
+							const mostMetrics = middlewareMetrics[most];
+							return currentMetrics.requestCount > mostMetrics.requestCount ? current : most;
+						})
+					: 'N/A';
 
 			const summary = {
 				totalMiddlewares: middlewareNames.length,

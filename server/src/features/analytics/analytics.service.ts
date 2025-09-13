@@ -1,12 +1,24 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ANALYTICS_ERROR_MESSAGES, AnalyticsEventData, AnalyticsResponse, SystemInsights, UserAnalytics, UserAnalyticsStats, PerformanceMetrics, SecurityMetrics, AnalyticsAnswerData, GameAnalyticsQuery, TopicStatsData, DifficultyStatsData, UnifiedUserAnalytics } from '@shared';
+import {
+	ANALYTICS_ERROR_MESSAGES,
+	AnalyticsAnswerData,
+	AnalyticsEventData,
+	AnalyticsResponse,
+	DifficultyStatsData,
+	GameAnalyticsQuery,
+	PerformanceMetrics,
+	SecurityMetrics,
+ serverLogger as logger,	SystemInsights,
+	TopicStatsData,
+	UnifiedUserAnalytics,
+	UserAnalytics,
+	UserAnalyticsStats } from '@shared';
 import * as os from 'os';
-import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-
-import { serverLogger as logger } from '@shared';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
+import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
 
 /**
@@ -483,12 +495,12 @@ export class AnalyticsService implements OnModuleInit {
 
 			// Update topic-specific stats
 			if (!stats.topicsPlayed) stats.topicsPlayed = {};
-					if (answerData.topic) {
-			if (!stats.topicsPlayed[answerData.topic]) {
-				stats.topicsPlayed[answerData.topic] = 0;
+			if (answerData.topic) {
+				if (!stats.topicsPlayed[answerData.topic]) {
+					stats.topicsPlayed[answerData.topic] = 0;
+				}
+				stats.topicsPlayed[answerData.topic]++;
 			}
-			stats.topicsPlayed[answerData.topic]++;
-		}
 
 			user.stats = stats;
 			await this.userRepo.save(user);
@@ -1085,17 +1097,19 @@ export class AnalyticsService implements OnModuleInit {
 
 					// Get real ranking data from leaderboard service
 					const rankingEntry = await this.leaderboardService.getUserRanking(userId);
-					const rankingData = rankingEntry ? {
-						rank: rankingEntry.rank,
-						score: rankingEntry.score,
-						percentile: rankingEntry.percentile,
-						totalUsers: rankingEntry.totalUsers,
-					} : {
-						rank: 0,
-						score: user.credits + user.purchasedPoints,
-						percentile: 0,
-						totalUsers: 0,
-					};
+					const rankingData = rankingEntry
+						? {
+								rank: rankingEntry.rank,
+								score: rankingEntry.score,
+								percentile: rankingEntry.percentile,
+								totalUsers: rankingEntry.totalUsers,
+							}
+						: {
+								rank: 0,
+								score: user.credits + user.purchasedPoints,
+								percentile: 0,
+								totalUsers: 0,
+							};
 
 					return {
 						basic: {
@@ -1166,14 +1180,18 @@ export class AnalyticsService implements OnModuleInit {
 
 		// Find strongest and weakest topics (with minimum threshold)
 		const topicPerformance = this.calculateTopicPerformance(gameHistory);
-		const topicsWithMinGames = Object.keys(topicPerformance).filter(topic => 
-			gameHistory.filter(game => game.topic === topic).length >= 3
+		const topicsWithMinGames = Object.keys(topicPerformance).filter(
+			topic => gameHistory.filter(game => game.topic === topic).length >= 3
 		);
-		
-		const strongestTopic = topicsWithMinGames.length > 0 ? 
-			topicsWithMinGames.reduce((a, b) => topicPerformance[a] > topicPerformance[b] ? a : b) : '';
-		const weakestTopic = topicsWithMinGames.length > 0 ? 
-			topicsWithMinGames.reduce((a, b) => topicPerformance[a] < topicPerformance[b] ? a : b) : '';
+
+		const strongestTopic =
+			topicsWithMinGames.length > 0
+				? topicsWithMinGames.reduce((a, b) => (topicPerformance[a] > topicPerformance[b] ? a : b))
+				: '';
+		const weakestTopic =
+			topicsWithMinGames.length > 0
+				? topicsWithMinGames.reduce((a, b) => (topicPerformance[a] < topicPerformance[b] ? a : b))
+				: '';
 
 		// Calculate additional metrics
 		const averageGameTime = this.calculateAverageGameTime(gameHistory);
@@ -1192,7 +1210,6 @@ export class AnalyticsService implements OnModuleInit {
 			learningCurve,
 		};
 	}
-
 
 	/**
 	 * Calculate success rate from game history
@@ -1245,8 +1262,8 @@ export class AnalyticsService implements OnModuleInit {
 		}
 
 		// Sort by date (newest first)
-		const sortedHistory = [...gameHistory].sort((a, b) => 
-			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+		const sortedHistory = [...gameHistory].sort(
+			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 		);
 
 		let currentStreak = 0;
@@ -1272,9 +1289,7 @@ export class AnalyticsService implements OnModuleInit {
 		}
 
 		// Calculate best streak
-		const gameDates = sortedHistory.map(game => 
-			new Date(game.createdAt).toDateString()
-		);
+		const gameDates = sortedHistory.map(game => new Date(game.createdAt).toDateString());
 		const uniqueDates = [...new Set(gameDates)].sort();
 
 		for (let i = 0; i < uniqueDates.length; i++) {
@@ -1307,8 +1322,8 @@ export class AnalyticsService implements OnModuleInit {
 		if (gameHistory.length < 4) return 0;
 
 		// Sort by date (oldest first)
-		const sortedHistory = [...gameHistory].sort((a, b) => 
-			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+		const sortedHistory = [...gameHistory].sort(
+			(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 		);
 
 		// Calculate success rate for first quarter vs last quarter
@@ -1321,12 +1336,12 @@ export class AnalyticsService implements OnModuleInit {
 
 		// Calculate improvement with trend analysis
 		const improvement = lastQuarterSuccessRate - firstQuarterSuccessRate;
-		
+
 		// Add trend analysis (are they getting consistently better?)
 		const recentGames = sortedHistory.slice(-10);
 		const trend = this.calculateTrend(recentGames);
 
-		return improvement + (trend * 0.1); // Small bonus for positive trend
+		return improvement + trend * 0.1; // Small bonus for positive trend
 	}
 
 	/**
@@ -1349,7 +1364,7 @@ export class AnalyticsService implements OnModuleInit {
 	private calculateConsistencyScore(gameHistory: GameHistoryEntity[]) {
 		if (gameHistory.length < 3) return 0;
 
-		const successRates = gameHistory.map(game => 
+		const successRates = gameHistory.map(game =>
 			game.totalQuestions > 0 ? (game.correctAnswers / game.totalQuestions) * 100 : 0
 		);
 
@@ -1359,7 +1374,7 @@ export class AnalyticsService implements OnModuleInit {
 		const standardDeviation = Math.sqrt(variance);
 
 		// Convert to consistency score (lower deviation = higher consistency)
-		const consistencyScore = Math.max(0, 100 - (standardDeviation * 2));
+		const consistencyScore = Math.max(0, 100 - standardDeviation * 2);
 		return Math.round(consistencyScore);
 	}
 
@@ -1372,14 +1387,14 @@ export class AnalyticsService implements OnModuleInit {
 		if (gameHistory.length < 5) return 0;
 
 		// Sort by date (oldest first)
-		const sortedHistory = [...gameHistory].sort((a, b) => 
-			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+		const sortedHistory = [...gameHistory].sort(
+			(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 		);
 
 		// Calculate success rate for each 20% of games
 		const segmentSize = Math.max(1, Math.floor(sortedHistory.length / 5));
 		const segments = [];
-		
+
 		for (let i = 0; i < 5; i++) {
 			const start = i * segmentSize;
 			const end = Math.min(start + segmentSize, sortedHistory.length);
@@ -1394,7 +1409,7 @@ export class AnalyticsService implements OnModuleInit {
 		}
 
 		// Convert to learning curve score
-		const learningCurve = Math.max(0, Math.min(100, 50 + (improvement * 2)));
+		const learningCurve = Math.max(0, Math.min(100, 50 + improvement * 2));
 		return Math.round(learningCurve);
 	}
 
@@ -1406,12 +1421,15 @@ export class AnalyticsService implements OnModuleInit {
 	private calculateTrend(recentGames: GameHistoryEntity[]) {
 		if (recentGames.length < 3) return 0;
 
-		const successRates = recentGames.map(game => 
+		const successRates = recentGames.map(game =>
 			game.totalQuestions > 0 ? (game.correctAnswers / game.totalQuestions) * 100 : 0
 		);
 
 		// Simple linear regression to find trend
-		let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+		let sumX = 0,
+			sumY = 0,
+			sumXY = 0,
+			sumXX = 0;
 		const n = successRates.length;
 
 		for (let i = 0; i < n; i++) {

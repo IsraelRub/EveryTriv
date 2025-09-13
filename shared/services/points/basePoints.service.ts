@@ -5,7 +5,6 @@
  * @description Abstract base service for points management with shared business logic
  * @author EveryTriv Team
  */
-
 import type { PointBalance, PointPurchaseOption } from '../../types';
 
 /**
@@ -104,7 +103,7 @@ export abstract class BasePointsService {
 			}
 		}
 
-		const newTotalPoints = newPurchasedPoints + (newFreeQuestions * 0.1); // Free questions worth 0.1 points each
+		const newTotalPoints = newPurchasedPoints + newFreeQuestions * 0.1; // Free questions worth 0.1 points each
 
 		return {
 			...currentBalance,
@@ -150,7 +149,7 @@ export abstract class BasePointsService {
 	protected calculatePointValue(amount: number, currency: string = 'USD'): number {
 		// Base conversion rate (can be made configurable)
 		const baseRate = 1; // 1 USD = 1 point
-		
+
 		// Currency conversion rates (simplified)
 		const currencyRates: Record<string, number> = {
 			USD: 1,

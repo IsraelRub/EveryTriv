@@ -9,31 +9,31 @@
 
 // Re-export shared constants
 export {
-	CUSTOM_DIFFICULTY_KEYWORDS,
-	CUSTOM_DIFFICULTY_MULTIPLIERS,
-	CUSTOM_DIFFICULTY_PREFIX,
-	DIFFICULTY_MULTIPLIERS,
-	DifficultyLevel,
-	GameMode,
-	VALID_DIFFICULTIES,
-	VALID_QUESTION_COUNTS,
+  CUSTOM_DIFFICULTY_KEYWORDS,
+  CUSTOM_DIFFICULTY_MULTIPLIERS,
+  CUSTOM_DIFFICULTY_PREFIX,
+  DIFFICULTY_MULTIPLIERS,
+  DifficultyLevel,
+  GameMode,
+  VALID_DIFFICULTIES,
+  VALID_QUESTION_COUNTS,
 } from '@shared';
 
 // Answer count enum - must be defined before use
 export enum AnswerCount {
-	THREE = 3,
-	FOUR = 4,
-	FIVE = 5,
+  THREE = 3,
+  FOUR = 4,
+  FIVE = 5,
 }
 
 // Client-specific constants only
 // Scoring system constants
 export const SCORING_DEFAULTS = {
-	BASE_POINTS: 100,
-	STREAK: 0,
-	DIFFICULTY: 'easy' as const,
-	ANSWER_COUNT: 4,
-	MAX_STREAK_BONUS: 10,
-	STREAK_MULTIPLIER: 0.1,
-	TIME_BONUS_MULTIPLIER: 0.5,
+  BASE_POINTS: 100,
+  STREAK: 0,
+  DIFFICULTY: 'easy' as const,
+  ANSWER_COUNT: 4,
+  MAX_STREAK_BONUS: 10,
+  STREAK_MULTIPLIER: 0.1,
+  TIME_BONUS_MULTIPLIER: 0.5,
 } as const;

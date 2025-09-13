@@ -1,19 +1,43 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post, Put, UsePipes } from '@nestjs/common';
-import { serverLogger, UserFieldUpdate, UserProfileResponse, UsersListResponse, AdminUserData } from '@shared';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpException,
+	HttpStatus,
+	Param,
+	Patch,
+	Post,
+	Put,
+	UsePipes,
+} from '@nestjs/common';
+import { AdminUserData, serverLogger,UserFieldUpdate, UserProfileResponse, UsersListResponse } from '@shared';
 
-import { UserService } from './user.service';
-import { 
-	UpdateUserProfileDto, 
-	SearchUsersDto, 
-	DeductCreditsDto, 
-	UpdateUserFieldDto, 
-	UpdateUserPreferencesDto, 
-	UpdateSinglePreferenceDto, 
-	UpdateUserCreditsDto, 
-	UpdateUserStatusDto 
-} from './dtos';
-import { CurrentUserId, CurrentUser, ClientIP, UserAgent, Roles, RequireEmailVerified, RequireUserStatus, PerformanceThreshold, AuditLog, UserActivityLog, Cache } from '../../common';
+import {
+	AuditLog,
+	Cache,
+	ClientIP,
+	CurrentUser,
+	CurrentUserId,
+	PerformanceThreshold,
+	RequireEmailVerified,
+	RequireUserStatus,
+	Roles,
+	UserActivityLog,
+	UserAgent,
+} from '../../common';
 import { UserDataPipe } from '../../common/pipes';
+import {
+	DeductCreditsDto,
+	SearchUsersDto,
+	UpdateSinglePreferenceDto,
+	UpdateUserCreditsDto,
+	UpdateUserFieldDto,
+	UpdateUserPreferencesDto,
+	UpdateUserProfileDto,
+	UpdateUserStatusDto,
+} from './dtos';
+import { UserService } from './user.service';
 
 @Controller('users')
 export class UserController {
@@ -24,7 +48,9 @@ export class UserController {
 	 */
 	@Get('profile')
 	@Cache(300) // Cache for 5 minutes
-	async getUserProfile(@CurrentUser() user: { id: string; username: string; email: string }): Promise<UserProfileResponse> {
+	async getUserProfile(
+		@CurrentUser() user: { id: string; username: string; email: string }
+	): Promise<UserProfileResponse> {
 		try {
 			const result = await this.userService.getUserProfile(user.id);
 			return {
@@ -127,7 +153,6 @@ export class UserController {
 			throw error;
 		}
 	}
-
 
 	/**
 	 * Search users
@@ -321,10 +346,7 @@ export class UserController {
 	 * Update user credits (for admins)
 	 */
 	@Put('credits/:userId')
-	async updateUserCredits(
-		@Param('userId') userId: string,
-		@Body() creditsData: UpdateUserCreditsDto
-	) {
+	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
 				throw new HttpException('User ID, amount, and reason are required', HttpStatus.BAD_REQUEST);
@@ -380,10 +402,7 @@ export class UserController {
 	 * Update user status (for admins)
 	 */
 	@Patch(':userId/status')
-	async updateUserStatus(
-		@Param('userId') userId: string,
-		@Body() statusData: UpdateUserStatusDto
-	) {
+	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
 				throw new HttpException('User ID and status are required', HttpStatus.BAD_REQUEST);

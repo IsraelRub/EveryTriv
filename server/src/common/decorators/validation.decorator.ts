@@ -6,7 +6,8 @@
  * @author EveryTriv Team
  */
 import { SetMetadata } from '@nestjs/common';
-import type { RateLimitConfig, ApiResponseConfig } from '../../internal/types';
+
+import type { ApiResponseConfig, RateLimitConfig } from '../../internal/types';
 
 /**
  * Set rate limit for endpoint
@@ -59,7 +60,7 @@ export const RateLimitAdvanced = (config: RateLimitConfig) => SetMetadata('rateL
  * }
  * ```
  */
-export const ApiResponse = (status: number, description: string, example?: unknown) => 
+export const ApiResponse = (status: number, description: string, example?: unknown) =>
 	SetMetadata('apiResponse', { status, description, example });
 
 /**
@@ -130,7 +131,7 @@ export const CustomValidation = (rules: Record<string, unknown>) => SetMetadata(
  * }
  * ```
  */
-export const ValidationWithErrors = (rules: Record<string, unknown>, errorMessages: Record<string, string>) => 
+export const ValidationWithErrors = (rules: Record<string, unknown>, errorMessages: Record<string, string>) =>
 	SetMetadata('validationWithErrors', { rules, errorMessages });
 
 /**
@@ -149,7 +150,7 @@ export const ValidationWithErrors = (rules: Record<string, unknown>, errorMessag
  * }
  * ```
  */
-export const AsyncValidation = (validator: (data: Record<string, unknown>) => Promise<boolean>) => 
+export const AsyncValidation = (validator: (data: Record<string, unknown>) => Promise<boolean>) =>
 	SetMetadata('asyncValidation', validator);
 
 /**
@@ -169,8 +170,10 @@ export const AsyncValidation = (validator: (data: Record<string, unknown>) => Pr
  * }
  * ```
  */
-export const ValidationWithTransform = (rules: Record<string, unknown>, transformer: (data: Record<string, unknown>) => Record<string, unknown>) => 
-	SetMetadata('validationWithTransform', { rules, transformer });
+export const ValidationWithTransform = (
+	rules: Record<string, unknown>,
+	transformer: (data: Record<string, unknown>) => Record<string, unknown>
+) => SetMetadata('validationWithTransform', { rules, transformer });
 
 /**
  * Set conditional validation
@@ -189,8 +192,10 @@ export const ValidationWithTransform = (rules: Record<string, unknown>, transfor
  * }
  * ```
  */
-export const ConditionalValidation = (condition: (data: Record<string, unknown>) => boolean, rules: Record<string, unknown>) => 
-	SetMetadata('conditionalValidation', { condition, rules });
+export const ConditionalValidation = (
+	condition: (data: Record<string, unknown>) => boolean,
+	rules: Record<string, unknown>
+) => SetMetadata('conditionalValidation', { condition, rules });
 
 /**
  * Set validation with sanitization
@@ -209,5 +214,7 @@ export const ConditionalValidation = (condition: (data: Record<string, unknown>)
  * }
  * ```
  */
-export const ValidationWithSanitization = (rules: Record<string, unknown>, sanitizer: (data: Record<string, unknown>) => Record<string, unknown>) => 
-	SetMetadata('validationWithSanitization', { rules, sanitizer });
+export const ValidationWithSanitization = (
+	rules: Record<string, unknown>,
+	sanitizer: (data: Record<string, unknown>) => Record<string, unknown>
+) => SetMetadata('validationWithSanitization', { rules, sanitizer });

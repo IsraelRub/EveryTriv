@@ -9,11 +9,25 @@ import { BadRequestException, MiddlewareConsumer, Module, NestModule, Validation
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientLogsController, MiddlewareMetricsController } from 'src/internal/controllers';
+import {
+	AuthMiddleware,
+	BulkOperationsMiddleware,
+	CountryCheckMiddleware,
+	DecoratorAwareMiddleware,
+	RateLimitMiddleware,
+} from 'src/internal/middleware';
+import { StorageModule } from 'src/internal/modules';
 
 import { AppController } from './app.controller';
-import { DatabaseConfig } from './config/database.config';
 import { GlobalExceptionFilter } from './common/globalException.filter';
-import { RedisModule } from './internal/modules/redis.module';
+import { AuthGuard, RolesGuard } from './common/guards';
+import {
+	CacheInterceptor,
+	PerformanceMonitoringInterceptor,
+	ResponseFormattingInterceptor,
+} from './common/interceptors';
+import { DatabaseConfig } from './config/database.config';
 import {
 	AnalyticsModule,
 	AuthModule,
@@ -25,17 +39,7 @@ import {
 	UserModule,
 } from './features';
 import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
-import { ClientLogsController, MiddlewareMetricsController } from 'src/internal/controllers';
-import {
-	AuthMiddleware,
-	BulkOperationsMiddleware,
-	CountryCheckMiddleware,
-	DecoratorAwareMiddleware,
-	RateLimitMiddleware,
-} from 'src/internal/middleware';
-import { StorageModule } from 'src/internal/modules';
-import { CacheInterceptor, PerformanceMonitoringInterceptor, ResponseFormattingInterceptor } from './common/interceptors';
-import { AuthGuard, RolesGuard } from './common/guards';
+import { RedisModule } from './internal/modules/redis.module';
 
 @Module({
 	imports: [
@@ -100,8 +104,8 @@ import { AuthGuard, RolesGuard } from './common/guards';
 				transform: true,
 				whitelist: true,
 				forbidNonWhitelisted: true,
-				exceptionFactory: (errors) => {
-					const result = errors.map((error) => ({
+				exceptionFactory: errors => {
+					const result = errors.map(error => ({
 						property: error.property,
 						value: error.value,
 						constraints: error.constraints,

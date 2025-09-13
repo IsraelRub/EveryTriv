@@ -4,14 +4,14 @@
  * @module AuthService
  * @description Authentication service with login, register, and token management
  */
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { UserEntity } from 'src/internal/entities';
-import { LoginDto, RegisterDto, AuthResponseDto, RefreshTokenDto, RefreshTokenResponseDto } from './dtos/auth.dto';
 import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
+import { UserEntity } from 'src/internal/entities';
+import { Repository } from 'typeorm';
+
+import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -90,17 +90,14 @@ export class AuthService {
 		}
 
 		// Use AuthenticationManager for authentication
-		const authResult = await this.authenticationManager.authenticate(
-			loginDto,
-			{
-				id: user.id,
-				username: user.username,
-				email: user.email,
-				passwordHash: user.passwordHash || '',
-				role: user.role,
-				isActive: user.isActive,
-			}
-		);
+		const authResult = await this.authenticationManager.authenticate(loginDto, {
+			id: user.id,
+			username: user.username,
+			email: user.email,
+			passwordHash: user.passwordHash || '',
+			role: user.role,
+			isActive: user.isActive,
+		});
 
 		if (!authResult.success) {
 			throw new UnauthorizedException(authResult.error || 'Invalid credentials');
@@ -128,7 +125,7 @@ export class AuthService {
 			throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
 		}
 
-		return { 
+		return {
 			success: true,
 			data: { access_token: authResult.accessToken! },
 			timestamp: new Date().toISOString(),
@@ -157,7 +154,7 @@ export class AuthService {
 	async logout(userId: string, username: string): Promise<{ success: boolean; message: string }> {
 		// Use AuthenticationManager for logout
 		await this.authenticationManager.logout(userId, username);
-		
+
 		return {
 			success: true,
 			message: 'Logged out successfully',

@@ -1,9 +1,9 @@
-import { IsArray, IsOptional, IsString } from 'class-validator';
 import {
 	CachedQuestionDto as ICachedQuestionDto,
 	CacheQuestionsQueryDto as ICacheQuestionsQueryDto,
 	CacheQuestionsResponseDto as ICacheQuestionsResponseDto,
 } from '@shared';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 
 /**
  * Cached question data DTO with validation

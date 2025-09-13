@@ -12,15 +12,13 @@
  * @description Animation settings, configuration, and effect colors
  * @used_by client/components/animations, client/views
  */
-export { 
-	ANIMATION_CONFIG, 
-	EFFECT_COLORS, 
-	PERFORMANCE_CONFIG, 
-	ACCESSIBILITY_CONFIG,
-	ANIMATION_VARIANTS 
+export {
+  ACCESSIBILITY_CONFIG,
+  ANIMATION_CONFIG,
+  ANIMATION_VARIANTS,
+  EFFECT_COLORS,
+  PERFORMANCE_CONFIG,
 } from '../../constants/ui/animation.constants';
-
-
 
 /**
  * Animation library - Variants only

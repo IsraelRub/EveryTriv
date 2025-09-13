@@ -5,9 +5,9 @@
  */
 
 // Store
-export { store } from './store';
-export type { AppDispatch } from './store';
 export type { RootState } from '../types/redux/state.types';
+export type { AppDispatch } from './store';
+export { store } from './store';
 
 // Features
 export * from './slices';
@@ -16,4 +16,3 @@ export * from './slices';
 export * from './selectors';
 
 // Services are now exported from client/src/services
-

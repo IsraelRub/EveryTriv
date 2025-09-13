@@ -1,10 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@nestjs/common';
-import { RATE_LIMIT_DEFAULTS } from '@shared';
+import { metricsService,RATE_LIMIT_DEFAULTS , serverLogger as logger  } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
-
-import { serverLogger as logger } from '@shared';
 import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
-import { metricsService } from '@shared';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -12,23 +9,21 @@ export class RateLimitMiddleware implements NestMiddleware {
 	private readonly MAX_REQUESTS_PER_WINDOW = RATE_LIMIT_DEFAULTS.MAX_REQUESTS_PER_WINDOW;
 	private readonly BURST_LIMIT = RATE_LIMIT_DEFAULTS.BURST_LIMIT;
 
-	constructor(
-		@Inject('REDIS_CLIENT') private readonly redis: RedisClient | null
-	) {}
+	constructor(@Inject('REDIS_CLIENT') private readonly redis: RedisClient | null) {}
 
 	async use(req: NestRequest, res: NestResponse, next: NestNextFunction) {
 		const startTime = Date.now();
 		const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-		
+
 		// Skip rate limiting if Redis is not available
 		if (!this.redis) {
 			logger.systemError('Redis not available for rate limiting - skipping rate limit check');
 			return next();
 		}
-		
+
 		// Check for decorator-based rate limiting first
 		const decoratorRateLimit = req.decoratorMetadata?.rateLimit;
-		
+
 		if (decoratorRateLimit) {
 			// Use decorator-based rate limiting
 			const { limit, window } = decoratorRateLimit;
@@ -56,24 +51,24 @@ export class RateLimitMiddleware implements NestMiddleware {
 						ttl,
 					});
 
-				throw new HttpException(
-					{
-						status: HttpStatus.TOO_MANY_REQUESTS,
-						message: `Rate limit exceeded. Maximum ${limit} requests per ${window} seconds.`,
-						details: {
-							currentRequests: requests,
-							limit,
-							windowSeconds: window,
-							remainingTime: ttl,
-							endpoint: req.path,
-							method: req.method,
-							ip: ip,
+					throw new HttpException(
+						{
+							status: HttpStatus.TOO_MANY_REQUESTS,
+							message: `Rate limit exceeded. Maximum ${limit} requests per ${window} seconds.`,
+							details: {
+								currentRequests: requests,
+								limit,
+								windowSeconds: window,
+								remainingTime: ttl,
+								endpoint: req.path,
+								method: req.method,
+								ip: ip,
+							},
+							retryAfter: ttl,
+							timestamp: new Date().toISOString(),
 						},
-						retryAfter: ttl,
-						timestamp: new Date().toISOString(),
-					},
-					HttpStatus.TOO_MANY_REQUESTS
-				);
+						HttpStatus.TOO_MANY_REQUESTS
+					);
 				}
 
 				// Add rate limit headers
@@ -94,14 +89,19 @@ export class RateLimitMiddleware implements NestMiddleware {
 				// Record metrics
 				const duration = Date.now() - startTime;
 				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
-				
+
 				next();
 				return;
 			} catch (err) {
 				// Record error metrics
 				const duration = Date.now() - startTime;
-				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, err instanceof Error ? err : undefined);
-				
+				metricsService.trackMiddlewareExecution(
+					'RateLimitMiddleware',
+					duration,
+					false,
+					err instanceof Error ? err : undefined
+				);
+
 				if (err instanceof HttpException) {
 					throw err;
 				}
@@ -218,13 +218,18 @@ export class RateLimitMiddleware implements NestMiddleware {
 			// Record metrics
 			const duration = Date.now() - startTime;
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
-			
+
 			next();
 		} catch (err) {
 			// Record error metrics
 			const duration = Date.now() - startTime;
-			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, err instanceof Error ? err : undefined);
-			
+			metricsService.trackMiddlewareExecution(
+				'RateLimitMiddleware',
+				duration,
+				false,
+				err instanceof Error ? err : undefined
+			);
+
 			if (err instanceof HttpException) {
 				throw err;
 			}

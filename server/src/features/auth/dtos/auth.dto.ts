@@ -4,23 +4,15 @@
  * @module AuthDTOs
  * @description Data Transfer Objects for authentication
  */
-import { 
-	IsEmail, 
-	IsString, 
-	MinLength, 
-	IsOptional, 
-	MaxLength, 
-	Matches, 
-	IsNotEmpty
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
 	@ApiProperty({
 		description: 'Username or email for login',
 		example: 'username',
 		minLength: 3,
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Username is required' })
@@ -32,14 +24,14 @@ export class LoginDto {
 	@ApiProperty({
 		description: 'User password',
 		example: 'securePassword123',
-		minLength: 6
+		minLength: 6,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
 	@MinLength(6, { message: 'Password must be at least 6 characters long' })
 	@MaxLength(128, { message: 'Password cannot exceed 128 characters' })
-	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, { 
-		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number' 
+	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
 	})
 	password: string;
 }
@@ -49,7 +41,7 @@ export class RegisterDto {
 		description: 'Unique username',
 		example: 'username',
 		minLength: 3,
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Username is required' })
@@ -60,7 +52,7 @@ export class RegisterDto {
 
 	@ApiProperty({
 		description: 'Valid email address',
-		example: 'user@your-domain.com'
+		example: 'user@your-domain.com',
 	})
 	@IsEmail({}, { message: 'Please provide a valid email address' })
 	@IsNotEmpty({ message: 'Email is required' })
@@ -70,21 +62,21 @@ export class RegisterDto {
 	@ApiProperty({
 		description: 'Secure password',
 		example: 'SecurePassword123!',
-		minLength: 6
+		minLength: 6,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
 	@MinLength(6, { message: 'Password must be at least 6 characters long' })
 	@MaxLength(128, { message: 'Password cannot exceed 128 characters' })
-	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, { 
-		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number' 
+	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
 	})
 	password: string;
 
 	@ApiPropertyOptional({
 		description: 'First name',
 		example: 'First',
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsOptional()
 	@IsString()
@@ -95,7 +87,7 @@ export class RegisterDto {
 	@ApiPropertyOptional({
 		description: 'Last name',
 		example: 'Last',
-		maxLength: 50
+		maxLength: 50,
 	})
 	@IsOptional()
 	@IsString()
@@ -107,12 +99,12 @@ export class RegisterDto {
 export class AuthResponseDto {
 	@ApiProperty({
 		description: 'Indicates if the authentication was successful',
-		example: true
+		example: true,
 	})
 	success: boolean;
 
 	@ApiProperty({
-		description: 'Response data containing auth information'
+		description: 'Response data containing auth information',
 	})
 	data: {
 		access_token: string;
@@ -129,7 +121,7 @@ export class AuthResponseDto {
 
 	@ApiProperty({
 		description: 'Response timestamp',
-		example: '2024-01-01T00:00:00.000Z'
+		example: '2024-01-01T00:00:00.000Z',
 	})
 	timestamp: string;
 }
@@ -137,7 +129,7 @@ export class AuthResponseDto {
 export class RefreshTokenDto {
 	@ApiProperty({
 		description: 'JWT refresh token',
-		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Refresh token is required' })
@@ -147,12 +139,12 @@ export class RefreshTokenDto {
 export class RefreshTokenResponseDto {
 	@ApiProperty({
 		description: 'Indicates if the refresh was successful',
-		example: true
+		example: true,
 	})
 	success: boolean;
 
 	@ApiProperty({
-		description: 'Response data containing new access token'
+		description: 'Response data containing new access token',
 	})
 	data: {
 		access_token: string;
@@ -160,7 +152,7 @@ export class RefreshTokenResponseDto {
 
 	@ApiProperty({
 		description: 'Response timestamp',
-		example: '2024-01-01T00:00:00.000Z'
+		example: '2024-01-01T00:00:00.000Z',
 	})
 	timestamp: string;
 }

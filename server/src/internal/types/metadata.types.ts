@@ -1,6 +1,6 @@
 /**
  * Core metadata types for EveryTriv
- * 
+ *
  * @module CoreMetadataTypes
  * @description Base metadata interfaces used across the entire application
  * @author EveryTriv Team
@@ -13,52 +13,34 @@
 /**
  * Request metadata interface
  * @interface RequestMetadata
- * @description Metadata for HTTP requests and API calls
+ * @description Comprehensive metadata for HTTP requests and API calls tracking
  */
 export interface RequestMetadata {
-	/** Request ID for tracking */
 	requestId?: string;
-	/** User ID making the request */
 	userId?: string;
-	/** IP address */
 	ipAddress?: string;
-	/** User agent */
 	userAgent?: string;
-	/** Referrer URL */
 	referrer?: string;
-	/** Campaign tracking */
 	campaign?: string;
-	/** Affiliate tracking */
 	affiliate?: string;
-	/** API version */
 	apiVersion?: string;
-	/** Request source */
 	requestSource?: 'web' | 'mobile' | 'api';
 }
 
 /**
  * Analytics metadata interface
  * @interface AnalyticsMetadata
- * @description Metadata for analytics and tracking events
+ * @description Comprehensive metadata for analytics and tracking events
  */
 export interface AnalyticsMetadata {
-	/** Event type */
 	eventType?: string;
-	/** Session ID */
 	sessionId?: string;
-	/** Page or endpoint */
 	page?: string;
-	/** Action performed */
 	action?: string;
-	/** Result of action */
 	result?: 'success' | 'failure' | 'error';
-	/** Duration in milliseconds */
 	duration?: number;
-	/** Value associated with event */
 	value?: number;
-	/** Environment */
 	environment?: 'development' | 'staging' | 'production' | 'test';
-	/** UTM parameters */
 	utmSource?: string;
 	utmMedium?: string;
 	utmCampaign?: string;
@@ -67,35 +49,25 @@ export interface AnalyticsMetadata {
 /**
  * Cache metadata interface
  * @interface CacheMetadata
- * @description Metadata for caching operations
+ * @description Comprehensive metadata for caching operations and configuration
  */
 export interface CacheMetadata {
-	/** Time to live in seconds */
 	ttl?: number;
-	/** Cache key */
 	key?: string;
-	/** Cache tags for invalidation */
 	tags?: string[];
-	/** Whether cache is disabled */
 	disabled?: boolean;
-	/** Cache condition function */
 	condition?: (request: unknown) => boolean;
-	/** Invalidation triggers */
 	invalidateOn?: string[];
 }
 
 /**
  * Bulk operation metadata interface
  * @interface BulkMetadata
- * @description Metadata for bulk operations
+ * @description Metadata for bulk operations and batch processing
  */
 export interface BulkMetadata {
-	/** Whether this is a bulk operation */
 	isBulk: boolean;
-	/** Batch size */
 	batchSize: number;
-	/** Type of operation */
 	operationType: string;
-	/** Optimization level */
-	optimizationLevel: string;
+	optimization: 'none' | 'basic' | 'aggressive';
 }

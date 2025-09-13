@@ -1,5 +1,5 @@
-import { IsNumber } from 'class-validator';
 import { CacheStats as ICacheStatsDto } from '@shared';
+import { IsNumber } from 'class-validator';
 
 /**
  * Cache statistics DTO with validation

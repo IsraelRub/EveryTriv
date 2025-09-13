@@ -4,6 +4,8 @@
 
 אפליקציית משחק טריוויה מבוססת NestJS עם ניהול משתמשים, אימות ותכונות משחק בזמן אמת. המערכת מאורגנת בארכיטקטורה מודולרית עם הפרדת אחריות ברורה.
 
+> הערת סנכרון תרשימים: ייצוג מודולים מסוימים (Trivia, Game History, Logger, AI) בתרשימים הוא מושגי ומאוחד בפועל בתוך `GameModule` ושירותי Shared. טבלת סטטוס מלאה: `../DIAGRAMS.md#diagram-sync-status`. תרשים זרימת ליבת NestJS: `../DIAGRAMS.md#nestjs-core-flow`.
+
 ## מבנה הפרויקט
 
 האפליקציה מאורגנת במספר תיקיות ראשיות, כל אחת משרתת מטרה ספציפית:
@@ -93,6 +95,58 @@
 - `guards/` - שומרי נתיבים גלובליים
 - `interceptors/` - interceptors
 - `pipes/` - pipes לוולידציה
+
+## זרימת בקשה (Request Lifecycle)
+
+```
+Request → Middleware Chain → Guards → Interceptors (pre) → Controller → Interceptors (post) → Response → Filters (on error)
+```
+
+### סדר עיבוד (ממוזג)
+| שלב | רכיב | תפקיד |
+|-----|-------|-------|
+| 1 | LoggingMiddleware | רישום בקשה נכנסת |
+| 2 | DecoratorAwareMiddleware | איסוף/הזרקת Metadata |
+| 3 | RateLimitMiddleware | בדיקות קצב |
+| 4 | CountryCheckMiddleware | בדיקות מיקום |
+| 5 | AuthMiddleware | אימות טוקן / public bypass |
+| 6 | RoleCheckMiddleware | הרשאות תפקיד / הרשאות מפורטות |
+| 7 | BodyValidationMiddleware | ולידציית גוף |
+| 8 | BulkOperationsMiddleware | אופטימיזציות batch |
+| 9 | Guards (DecoratorMetadataGuard) | יישום מדיניות דקורטורים |
+| 10 | CacheInterceptor | קריאה/כתיבה למטמון תשובה |
+| 11 | ResponseFormattingInterceptor | עיצוב אחיד לתגובה |
+| 12 | PerformanceMonitoringInterceptor | מדידת זמני פעולה |
+| 13 | Controller | ביצוע לוגיקה עסקית |
+| 14 | Exception Filters | טיפול שגיאות גלובלי |
+
+### דקורטורים מאורגנים
+```
+common/decorators/
+├── auth/ (@Public, @Roles, @Permissions, @RequireAuth)
+├── cache/ (@Cache, @CacheAdvanced, @NoCache, @CacheTags)
+├── validation/ (@RateLimit, @ApiResponse, @ValidateSchema)
+├── param/ (@ClientIP, @UserAgent, @CurrentUser, @UserRole)
+```
+
+### Metadata מאוחד (דוגמה)
+```typescript
+interface DecoratorMetadata {
+  isPublic: boolean;
+  roles: string[];
+  permissions: string[];
+  rateLimit?: RateLimitConfig;
+  cache?: CacheConfig;
+  cacheTags?: string[];
+  validationSchema?: string | object;
+  apiResponse?: ApiResponseConfig | ApiResponseConfig[];
+}
+```
+
+### יתרונות
+- קריאה אחת של metadata → שימוש חוזר לאורך הצינור.
+- הפרדת אחריות מוחלטת בין שכבות.
+- הרחבה קלה: הוספת Decorator = הרחבת Guard/Interceptor מתאים.
 
 ## תכונות מפתח
 

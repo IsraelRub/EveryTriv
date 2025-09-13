@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { serverLogger as logger } from '@shared';
-import { Public, Roles } from '../../../../../common';
 
+import { Public, Roles } from '../../../../../common';
 import { AiProvidersService } from './providers.service';
 
 /**
@@ -10,9 +10,7 @@ import { AiProvidersService } from './providers.service';
  */
 @Controller('api/ai-providers')
 export class AiProvidersController {
-	constructor(
-		private readonly aiProvidersService: AiProvidersService
-	) {}
+	constructor(private readonly aiProvidersService: AiProvidersService) {}
 
 	/**
 	 * Get AI providers statistics

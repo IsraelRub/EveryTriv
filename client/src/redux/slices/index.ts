@@ -46,7 +46,15 @@ export { default as userSlice } from './userSlice';
  * @description Redux actions for user state management
  * @used_by client/components, client/views
  */
-export { logout, setAvatar, setPointBalance, setUsername, fetchUserData, updateUserProfile, deductPoints } from './userSlice';
+export {
+  deductPoints,
+  fetchUserData,
+  logout,
+  setAvatar,
+  setPointBalance,
+  setUsername,
+  updateUserProfile,
+} from './userSlice';
 
 /**
  * Selectors

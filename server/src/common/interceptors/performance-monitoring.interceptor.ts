@@ -5,13 +5,10 @@
  * @description Interceptor that tracks request performance metrics and identifies bottlenecks
  * @author EveryTriv Team
  */
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { metricsService , PERFORMANCE_THRESHOLDS,serverLogger as logger  } from '@shared';
 import { Observable } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
-
-import { serverLogger as logger } from '@shared';
-import { metricsService } from '@shared';
-import { PERFORMANCE_THRESHOLDS } from '@shared';
+import { catchError, tap } from 'rxjs/operators';
 
 /**
  * Performance Monitoring Interceptor
@@ -50,7 +47,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 		const userAgent = request.get('user-agent') || 'unknown';
 
 		return next.handle().pipe(
-			tap((_data) => {
+			tap(_data => {
 				const duration = Date.now() - startTime;
 				const endMemory = process.memoryUsage();
 				const memoryDelta = endMemory.heapUsed - startMemory.heapUsed;
@@ -74,12 +71,12 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 					userAgent,
 				});
 			}),
-			catchError((error) => {
+			catchError(error => {
 				const duration = Date.now() - startTime;
-				
+
 				// Track error performance
 				this.trackErrorPerformance(endpoint, method, duration, error, userId);
-				
+
 				throw error;
 			})
 		);
@@ -153,14 +150,9 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	 * @param duration - Request duration
 	 * @param userId - User ID
 	 */
-	private alertSlowRequest(
-		endpoint: string,
-		method: string,
-		duration: number,
-		userId: string
-	): void {
+	private alertSlowRequest(endpoint: string, method: string, duration: number, userId: string): void {
 		const severity = duration > this.VERY_SLOW_REQUEST_THRESHOLD ? 'critical' : 'warning';
-		
+
 		logger.performance(`request.${severity}`, duration, {
 			endpoint,
 			method,

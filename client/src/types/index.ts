@@ -38,7 +38,7 @@ export * from './game';
  * Shared game constants
  * @description Re-exported shared game constants
  */
-export { GameMode, DifficultyLevel } from '@shared';
+export { DifficultyLevel,GameMode } from '@shared';
 
 /**
  * UI component types
@@ -48,10 +48,10 @@ export { GameMode, DifficultyLevel } from '@shared';
 export * from './ui';
 
 // UI Component Types
-export * from './ui/components/components.base.types';
-export * from './ui/components/components.stats.types';
 export * from './ui/components/components.analytics.types';
+export * from './ui/components/components.base.types';
 export * from './ui/components/components.leaderboard.types';
+export * from './ui/components/components.stats.types';
 
 /**
  * Utility functions
@@ -75,7 +75,12 @@ export * from './redux/state.types';
  * @description Point balance, transactions, and purchase options
  * @exports {Object} Points-related type definitions
  */
-export type { PointBalance, PointPurchaseOption, PointTransaction, TransferResult } from './points.types';
+export type {
+  PointBalance,
+  PointPurchaseOption,
+  PointTransaction,
+  TransferResult,
+} from './points.types';
 
 /**
  * API types
@@ -90,36 +95,36 @@ export type { ApiResponse, ClientApiService } from './api.types';
  * @exports {Object} Shared type definitions
  */
 export type {
-	AuthCredentials,
-	AuthResponse,
-	CreateGameHistoryDto,
-	LeaderboardEntry,
-	TriviaQuestion,
-	TriviaRequest,
+  AuthCredentials,
+  AuthResponse,
+  CreateGameHistoryDto,
+  LeaderboardEntry,
+  TriviaQuestion,
+  TriviaRequest,
 } from '@shared';
 
 // Question count option type
 export interface QuestionCountOption {
-	value: number;
-	label: string;
+  value: number;
+  label: string;
 }
 
 // History item type
 export interface HistoryItem {
-	topic: string;
-	difficulty: string;
-	score: number;
-	date: string;
-	timestamp?: number;
+  topic: string;
+  difficulty: string;
+  score: number;
+  date: string;
+  timestamp?: number;
 }
 
 // Score stats type
 export interface ScoreStats {
-	correct: number;
-	total: number;
-	grade?: string;
-	color?: string;
-	percentage?: number;
+  correct: number;
+  total: number;
+  grade?: string;
+  color?: string;
+  percentage?: number;
 }
 
 // UI types are now exported from './ui' above
@@ -137,18 +142,18 @@ export interface ScoreStats {
  * @exports {Object} User-related type definitions
  */
 export type {
-	ExtendedUserProfileUpdateRequest,
-	NotificationSettings,
-	RegistrationData,
-	RegistrationFormData,
-	User,
-	UserAuthResponse,
-	UserLoginRequest,
-	UserPreferences,
-	UserProfile,
-	UserProfileCompleteRequest,
-	UserProfileUpdateRequest,
-	UserRegisterRequest,
+  ExtendedUserProfileUpdateRequest,
+  NotificationSettings,
+  RegistrationData,
+  RegistrationFormData,
+  User,
+  UserAuthResponse,
+  UserLoginRequest,
+  UserPreferences,
+  UserProfile,
+  UserProfileCompleteRequest,
+  UserProfileUpdateRequest,
+  UserRegisterRequest,
 } from './user.types';
 
 /**
@@ -156,8 +161,4 @@ export type {
  * @description Authentication route components and auth-related types
  * @exports {Object} Authentication-related type definitions
  */
-export type {
-	ProtectedRouteProps,
-	PublicRouteProps,
-	AuthRouteState,
-} from './auth';
+export type { AuthRouteState,ProtectedRouteProps, PublicRouteProps } from './auth';
