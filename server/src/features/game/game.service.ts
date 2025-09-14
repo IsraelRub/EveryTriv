@@ -10,6 +10,7 @@ import { MoreThan, Repository } from 'typeorm';
 import { ValidationService } from '../../common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
+import { PointCalculationService } from '@shared/services/points/pointCalculation.service';
 
 /**
  * Service for managing trivia games, game history, and user points
@@ -28,7 +29,8 @@ export class GameService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: ServerStorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
-		private readonly validationService: ValidationService
+		private readonly validationService: ValidationService,
+		private readonly pointCalculationService: PointCalculationService
 	) {}
 
 	/**
@@ -148,8 +150,8 @@ export class GameService {
 			// Check answer
 			const isCorrect = this.checkAnswer(question, answer);
 
-			// Calculate score
-			const score = this.calculatePoints(question.difficulty, timeSpent, 0);
+			// Calculate score using algorithm
+			const score = this.pointCalculationService.calculateAnswerPoints(question.difficulty, timeSpent, 0, isCorrect);
 
 			// Save game history
 			await this.saveGameHistory(userId, {
@@ -786,31 +788,6 @@ export class GameService {
 		}
 	}
 
-	/**
-	 * Calculate points for a correct answer
-	 * @param difficulty Difficulty level
-	 * @param timeSpent Time spent on question
-	 * @param streak Current streak
-	 * @returns Calculated points
-	 */
-	private calculatePoints(difficulty: string, timeSpent: number, streak: number): number {
-		// Base points by difficulty
-		const basePoints = {
-			easy: 10,
-			medium: 20,
-			hard: 30,
-		};
-
-		const base = basePoints[difficulty as keyof typeof basePoints] || 10;
-
-		// Time bonus (faster = more points)
-		const timeBonus = Math.max(0, 10 - Math.floor(timeSpent / 1000));
-
-		// Streak bonus
-		const streakBonus = Math.min(streak * 2, 20);
-
-		return base + timeBonus + streakBonus;
-	}
 
 	/**
 	 * Delete specific game from history

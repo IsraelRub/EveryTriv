@@ -1,5 +1,5 @@
 /**
- * Unified Animation Constants for EveryTriv
+ * Animation Constants for EveryTriv
  * Centralized animation configuration for consistent performance and behavior
  *
  * @module AnimationConstants

@@ -6,7 +6,7 @@
  * @used_by server/features/game, server/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { serverLogger as logger , TriviaRequestData, TriviaRequestValidationResult } from '@shared';
+import { serverLogger as logger , TriviaRequestData, TriviaRequestValidationResult, VALIDATION_LIMITS } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -31,8 +31,8 @@ export class TriviaRequestPipe implements PipeTransform {
 				errors.push('Difficulty is required');
 			}
 
-			if (!value.questionCount || value.questionCount < 1 || value.questionCount > 50) {
-				errors.push('Question count must be between 1 and 50');
+			if (!value.questionCount || value.questionCount < VALIDATION_LIMITS.QUESTION_COUNT.MIN || value.questionCount > VALIDATION_LIMITS.QUESTION_COUNT.MAX) {
+				errors.push(`Question count must be between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX}`);
 			}
 
 			// Validate trivia request using service if basic validation passes

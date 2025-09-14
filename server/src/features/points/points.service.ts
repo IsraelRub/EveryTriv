@@ -8,9 +8,10 @@ import { Repository } from 'typeorm';
 import { ValidationService } from '../../common/validation/validation.service';
 import { PointSource, PointTransactionType } from '../../internal/constants';
 import { PaymentService } from '../payment';
+import { BasePointsService } from '@shared/services/points/basePoints.service';
 
 @Injectable()
-export class PointsService {
+export class PointsService extends BasePointsService {
 	constructor(
 		@InjectRepository(PointTransactionEntity)
 		private readonly pointTransactionRepository: Repository<PointTransactionEntity>,
@@ -19,7 +20,9 @@ export class PointsService {
 		private readonly cacheService: CacheService,
 		private readonly paymentService: PaymentService,
 		private readonly validationService: ValidationService
-	) {}
+	) {
+		super();
+	}
 
 	/**
 	 * Get user's current point balance
@@ -173,29 +176,22 @@ export class PointsService {
 				throw new BadRequestException(canPlayResult.reason);
 			}
 
-			// Deduct points (prioritize free questions first)
-			let pointsToDeduct = questionCount;
-			let freeQuestionsUsed = 0;
-			let purchasedPointsUsed = 0;
+			// Use deduction logic
+			const currentBalance: PointBalance = {
+				total_points: user.credits + user.purchasedPoints + (user.remainingFreeQuestions * 0.1),
+				purchased_points: user.purchasedPoints,
+				free_questions: user.remainingFreeQuestions,
+				can_play_free: user.remainingFreeQuestions > 0,
+				daily_limit: 10,
+				next_reset_time: null,
+			};
 
-			// Use free questions first
-			if (user.remainingFreeQuestions > 0) {
-				freeQuestionsUsed = Math.min(user.remainingFreeQuestions, pointsToDeduct);
-				user.remainingFreeQuestions -= freeQuestionsUsed;
-				pointsToDeduct -= freeQuestionsUsed;
-			}
-
-			// Use purchased points if needed
-			if (pointsToDeduct > 0 && user.purchasedPoints > 0) {
-				purchasedPointsUsed = Math.min(user.purchasedPoints, pointsToDeduct);
-				user.purchasedPoints -= purchasedPointsUsed;
-				pointsToDeduct -= purchasedPointsUsed;
-			}
-
-			// Use regular credits if still needed
-			if (pointsToDeduct > 0) {
-				user.credits -= pointsToDeduct;
-			}
+			const deductionResult = this.calculateNewBalance(currentBalance, questionCount, gameMode);
+			
+			// Update user with new balance
+			user.remainingFreeQuestions = deductionResult.newBalance.free_questions;
+			user.purchasedPoints = deductionResult.newBalance.purchased_points;
+			user.credits = deductionResult.newBalance.total_points - deductionResult.newBalance.purchased_points - (deductionResult.newBalance.free_questions * 0.1);
 
 			await this.userRepository.save(user);
 
@@ -214,9 +210,9 @@ export class PointsService {
 				description: `Points deducted for ${gameMode} game: ${questionCount} points`,
 				metadata: {
 					gameMode,
-					freeQuestionsUsed,
-					purchasedPointsUsed,
-					creditsUsed: pointsToDeduct > 0 ? pointsToDeduct : 0,
+					freeQuestionsUsed: deductionResult.deductionDetails.freeQuestionsUsed,
+					purchasedPointsUsed: deductionResult.deductionDetails.purchasedPointsUsed,
+					creditsUsed: deductionResult.deductionDetails.creditsUsed,
 				},
 			});
 

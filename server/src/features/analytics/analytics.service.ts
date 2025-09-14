@@ -11,9 +11,8 @@ import {
 	SecurityMetrics,
  serverLogger as logger,	SystemInsights,
 	TopicStatsData,
-	UnifiedUserAnalytics,
 	UserAnalytics,
-	UserAnalyticsStats } from '@shared';
+	CompleteUserAnalytics,	UserAnalyticsStats } from '@shared';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
@@ -1061,17 +1060,17 @@ export class AnalyticsService implements OnModuleInit {
 	}
 
 	/**
-	 * Get unified user analytics combining basic user data with game analytics
+	 * Get user analytics combining basic user data with game analytics
 	 * @param userId User ID
-	 * @returns Unified user analytics data
+	 * @returns user analytics data
 	 */
-	async getUnifiedUserAnalytics(userId: string): Promise<UnifiedUserAnalytics> {
+	async getUserAnalytics(userId: string): Promise<CompleteUserAnalytics> {
 		try {
-			logger.analyticsTrack('Getting unified user analytics', {
+			logger.analyticsTrack('Getting user analytics', {
 				userId,
 			});
 
-			const cacheKey = `unified:user:analytics:${userId}`;
+			const cacheKey = `:user:analytics:${userId}`;
 
 			return await this.cacheService.getOrSet(
 				cacheKey,
@@ -1141,7 +1140,7 @@ export class AnalyticsService implements OnModuleInit {
 				900 // Cache for 15 minutes - shorter cache for more real-time data
 			);
 		} catch (error) {
-			logger.analyticsError('getUnifiedUserAnalytics', {
+			logger.analyticsError('getUserAnalytics', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
 			});

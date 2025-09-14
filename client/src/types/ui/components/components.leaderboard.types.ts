@@ -13,15 +13,10 @@ import { ReactNode } from 'react';
  * @used_by client/src/views/leaderboard/LeaderboardView.tsx
  */
 export interface RankingCardProps {
-  /** Card title */
   title: string;
-  /** Card value */
   value: string;
-  /** Card subtitle */
   subtitle: string;
-  /** Card icon */
   icon: ReactNode;
-  /** Card color theme */
   color: string;
 }
 
@@ -32,10 +27,7 @@ export interface RankingCardProps {
  * @used_by client/src/views/leaderboard/LeaderboardView.tsx
  */
 export interface LeaderboardEntryProps {
-  /** Leaderboard entry data */
   entry: LeaderboardEntry;
-  /** Entry index in the list */
   index: number;
-  /** Whether this is the current user */
   isCurrentUser: boolean;
 }

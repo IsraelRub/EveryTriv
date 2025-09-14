@@ -116,7 +116,7 @@ export const AnimatedBackground: FC<AnimatedBackgroundProps> = ({
     );
   }, []);
 
-  // Unified animation loop using requestAnimationFrame
+  // animation loop using requestAnimationFrame
   useEffect(() => {
     if (!particles && !orbs) return;
 

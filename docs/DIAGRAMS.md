@@ -1,15 +1,16 @@
-# תרשימים - EveryTriv
+# תרשימים מפורטים - EveryTriv
 
-> הערת יישום (סנכרון קוד ↔ תרשימים) 12/09/2025:
-> התרשימים מציגים באופן מושגי מודולים נפרדים: Trivia, Game History, Logger. במימוש בפועל:
-> - Trivia + Game History מאוחדים בתוך `GameModule` (ניהול טריוויה, יצירת שאלות, היסטוריית משחק, ניקוד ו-AI Providers)
-> - Logger ממומש כשירות משותף `serverLogger` מתוך חבילת Shared ולא כ-LoggerModule עצמאי
-> לכן שלושת הישויות מסומנות כ-Conceptual (מסגרת מקווקוות). ראו סעיף "סנכרון תרשימים ↔ מימוש קוד" בהמשך מסמך זה.
+> **הערת יישום (סנכרון קוד ↔ תרשימים)**:
+> התרשימים מציגים באופן מושגי מודולים נפרדים לצרכי הבהרה. במימוש בפועל:
+> - **Game Module** כולל trivia, game history, AI providers
+> - **Logger** ממומש כשירות משותף מ-Shared
+> - **Analytics** ו-**Leaderboard** הם מודולים נפרדים
+> לפרטים מלאים ראו: [סנכרון תרשימים ↔ מימוש קוד](#diagram-sync-status)
 
 <a id="diagram-sync-status"></a>
 ## סנכרון תרשימים ↔ מימוש קוד
 
-מסמך זה (הסעיף הממוזג) מרכז את הפערים (אם קיימים) בין תרשימי הארכיטקטורה לבין המימוש בפועל בקוד.
+סעיף זה מרכז את הפערים (אם קיימים) בין תרשימי הארכיטקטורה לבין המימוש בפועל בקוד.
 
 ### מטרות
 - שקיפות: מה מושגי בלבד ומה קיים כקוד.
@@ -19,12 +20,12 @@
 ### טבלת סטטוס מודולים
 | תרשים | מצב בקוד בפועל | קובץ / מודול קיים | הערות | החלטה עתידית |
 |-------|----------------|--------------------|--------|---------------|
-| Trivia Module | ממומש חלקית בתוך `GameModule` | `server/src/features/game/game.module.ts` | כולל יצירת שאלות, ספקי AI, ולידציה ייעודית | לשקול פיצול אם גדילה | 
-| Game History Module | ממוזג בתוך `GameModule` (שירות היסטוריה/ישויות) | `GameService` + ישויות `GameHistoryEntity` | לא קיים מודול עצמאי | להשאיר מאוחד בשלב זה |
-| Logger Module | שירות משותף (לא Nest Module) | `shared` ייצוא `serverLogger` | משמש בכל שכבות; תיעוד ב-`architecture/LOGGING_MONITORING.md` | להישאר כשירות Shared |
-| AI Module | חלק מ-Game (Providers) | `logic/providers/*` בתוך game | התרשים מציג מודול נפרד למיקוד תפיסתי | להישאר משולב |
-| Validation Module | קיים | `common/validation/validation.module.ts` | תואם תרשים | — |
-| Client Logs Controller | קיים (יש לאמת בקר קונקרטי) | חיפוש נדרש | יש לוודא שם קובץ ספציפי | לבדיקה בסבב הבא |
+| **Game Module** | ממומש במלואו | `server/src/features/game/` | כולל trivia, AI providers, game logic | ✅ תואם |
+| **Analytics Module** | ממומש במלואו | `server/src/features/analytics/` | מודול נפרד לאנליטיקה | ✅ תואם |
+| **Leaderboard Module** | ממומש במלואו | `server/src/features/leaderboard/` | מודול נפרד ללוח תוצאות | ✅ תואם |
+| **Logger Service** | שירות משותף | `shared/services/logging/` | משמש בכל שכבות | ✅ תואם |
+| **Validation Module** | ממומש במלואו | `server/src/common/validation/` | תואם תרשים | ✅ תואם |
+| **Client Logs Controller** | ממומש במלואו | `server/src/internal/controllers/client-logs.controller.ts` | ✅ תואם |
 
 ### קריטריונים לפיצול עתידי
 - קו שירות > 800 שורות קוד נטו
@@ -61,18 +62,18 @@ graph LR
 ```
 
 ### קישורים רלוונטיים
-- `architecture/LOGGING_MONITORING.md`
+- `shared/LOGGING_MONITORING.md`
 - `server/src/features/game/`
 - `shared/`
 
 
 ## סקירה כללית
 
-מסמך זה מכיל את כל התרשימים של פרויקט EveryTriv, כולל ארכיטקטורה, זרימת נתונים, ומבנה המערכת.
+תיעוד כל התרשימים של פרויקט EveryTriv, כולל ארכיטקטורה, זרימת נתונים, ומבנה המערכת.
 
 ## ארכיטקטורה כללית
 
-### מבנה המערכת עם Shared Package
+### מבנה המערכת המעודכן עם Shared Package
 ```mermaid
 graph TB
     subgraph "Frontend (React)"
@@ -89,20 +90,20 @@ graph TB
         H[Constants]
         I[Validation Schemas]
         J[Utility Functions]
-        K[Interfaces]
+        K[Services]
         L[DTOs]
     end
     
     subgraph "Backend (NestJS)"
         M[API Gateway]
         N[Auth Module]
-        O[Trivia Module]
+        O[Game Module]
         P[User Module]
         Q[Payment Module]
         R[Points Module]
-        S[Game History Module]
-        T[Logger Module]
-        U[AI Module]
+        S[Analytics Module]
+        T[Leaderboard Module]
+        U[Subscription Module]
         V[Validation Module]
         W[Client Logs Controller]
         X[Global Exception Filter]
@@ -147,6 +148,8 @@ graph TB
     M --> Q
     M --> R
     M --> S
+    M --> T
+    M --> U
     M --> W
     M --> X
     
@@ -157,11 +160,14 @@ graph TB
     Q --> Y
     R --> Y
     S --> Y
+    T --> Y
+    U --> Y
     
     %% Cache connections
     O --> Z
     P --> Z
     S --> Z
+    T --> Z
     
     %% External services
     O --> AA
@@ -169,12 +175,22 @@ graph TB
     O --> CC
     Q --> DD
     N --> EE
-    %% Conceptual styling (modules המיוצגים אך מאוחדים במימוש)
-    classDef conceptual stroke-dasharray:5 3,stroke:#555;
-    class O,S,T conceptual;
+    
+    %% Styling
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef shared fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef backend fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class A,B,C,D,E,F frontend
+    class G,H,I,J,K,L shared
+    class M,N,O,P,Q,R,S,T,U,V,W,X backend
+    class Y,Z database
+    class AA,BB,CC,DD,EE external
 ```
 
-**הערה:** מודולים מקווקווים = ייצוג לוגי; יישום ממוזג או שירות משותף.
+**הערה:** כל המודולים ממומשים במלואם בקוד. לפרטים על מיפוי מדויק ראו: [סנכרון תרשימים ↔ מימוש קוד](#diagram-sync-status).
 
 <a id="nestjs-core-flow"></a>
 ## אבני יסוד NestJS ושרשרת בקשה
@@ -264,7 +280,7 @@ graph TD
 
 ---
 
-### מבנה תיקיות מפורט
+### מבנה תיקיות מפורט ומעודכן
 ```mermaid
 graph TB
     subgraph "EveryTriv Project"
@@ -285,9 +301,8 @@ graph TB
             C2[constants/]
             C3[validation/]
             C4[utils/]
-            C5[interfaces/]
-            C6[dto/]
-            C7[package.json]
+            C5[services/]
+            C6[package.json]
         end
         
         subgraph "Documentation"
@@ -299,51 +314,590 @@ graph TB
     %% Client structure
     A1 --> A11[components/]
     A1 --> A12[hooks/]
-    A1 --> A13[store/]
+    A1 --> A13[redux/]
     A1 --> A14[services/]
-    A1 --> A15[utils/]
+    A1 --> A15[views/]
+    A1 --> A16[types/]
+    A1 --> A17[utils/]
+    A1 --> A18[constants/]
+    A1 --> A19[styles/]
+    
+    %% Client services breakdown
+    A14 --> A141[api/]
+    A14 --> A142[auth/]
+    A14 --> A143[game/]
+    A14 --> A144[media/]
+    A14 --> A145[storage/]
+    A14 --> A146[utils/]
+    
+    %% Components breakdown
+    A11 --> A111[analytics/]
+    A11 --> A112[animations/]
+    A11 --> A113[audio/]
+    A11 --> A114[auth/]
+    A11 --> A115[forms/]
+    A11 --> A116[game/]
+    A11 --> A117[gameMode/]
+    A11 --> A118[home/]
+    A11 --> A119[icons/]
+    A11 --> A120[layout/]
+    A11 --> A121[leaderboard/]
+    A11 --> A122[monitoring/]
+    A11 --> A123[navigation/]
+    A11 --> A124[points/]
+    A11 --> A125[stats/]
+    A11 --> A126[subscription/]
+    A11 --> A127[ui/]
+    A11 --> A128[user/]
+    
+    %% UI components breakdown
+    A127 --> A1271[Avatar.tsx]
+    A127 --> A1272[Button.tsx]
+    A127 --> A1273[Card.tsx]
+    A127 --> A1274[ErrorBoundary.tsx]
+    A127 --> A1275[Input.tsx]
+    A127 --> A1276[Modal.tsx]
+    A127 --> A1277[Select.tsx]
+    A127 --> A1278[ValidatedInput.tsx]
+    A127 --> A1279[ValidationIcon.tsx]
+    A127 --> A1280[ValidationMessage.tsx]
+    
+    %% Game components breakdown
+    A116 --> A1161[Game.tsx]
+    A116 --> A1162[GameTimer.tsx]
+    A116 --> A1163[TriviaForm.tsx]
+    A116 --> A1164[TriviaGame.tsx]
+    
+    %% Stats components breakdown
+    A125 --> A1251[CustomDifficultyHistory.tsx]
+    A125 --> A1252[GameSessionStats.tsx]
+    A125 --> A1253[ScoringSystem.tsx]
+    A125 --> A1254[UserStatsCard.tsx]
+    
+    %% Animation components breakdown
+    A112 --> A1121[AnimatedBackground.tsx]
+    A112 --> A1122[AnimationEffects.tsx]
+    A112 --> A1123[AnimationLibrary.tsx]
+    
+    %% Audio components breakdown
+    A113 --> A1131[AudioControls.tsx]
+    
+    %% Auth components breakdown
+    A114 --> A1141[ProtectedRoute.tsx]
+    
+    %% Forms components breakdown
+    A115 --> A1151[ValidatedForm.tsx]
+    
+    %% GameMode components breakdown
+    A117 --> A1171[GameMode.tsx]
+    
+    %% Home components breakdown
+    A118 --> A1181[DifficultyDisplay.tsx]
+    A118 --> A1182[ErrorBanner.tsx]
+    A118 --> A1183[HomeTitle.tsx]
+    
+    %% Icons components breakdown
+    A119 --> A1191[IconLibrary.tsx]
+    
+    %% Layout components breakdown
+    A120 --> A1201[Footer.tsx]
+    A120 --> A1202[GridLayout.tsx]
+    A120 --> A1203[NotFound.tsx]
+    A120 --> A1204[SocialShare.tsx]
+    
+    %% Leaderboard components breakdown
+    A121 --> A1211[Leaderboard.tsx]
+    
+    %% Navigation components breakdown
+    A123 --> A1231[Navigation.tsx]
+    
+    %% Points components breakdown
+    A124 --> A1241[PointsManager.tsx]
+    
+    %% Subscription components breakdown
+    A126 --> A1261[SubscriptionPlans.tsx]
+    
+    %% User components breakdown
+    A128 --> A1281[CompleteProfile.tsx]
+    A128 --> A1282[FavoriteTopics.tsx]
+    A128 --> A1283[OAuthCallback.tsx]
+    
+    %% Hooks breakdown
+    A12 --> A121[api/]
+    A12 --> A122[layers/]
+    
+    %% API hooks breakdown
+    A121 --> A1211[useAccountManagement.ts]
+    A121 --> A1212[useAnalyticsDashboard.ts]
+    A121 --> A1213[useAuth.ts]
+    A121 --> A1214[useLanguageValidation.ts]
+    A121 --> A1215[useLeaderboardFeatures.ts]
+    A121 --> A1216[usePoints.ts]
+    A121 --> A1217[useSubscriptionManagement.ts]
+    A121 --> A1218[useTrivia.ts]
+    A121 --> A1219[useUser.ts]
+    A121 --> A1220[useUserPreferences.ts]
+    
+    %% Layers breakdown
+    A122 --> A1221[ui/]
+    A122 --> A1222[utils/]
+    
+    %% UI hooks breakdown
+    A1221 --> A12211[useCustomAnimations.ts]
+    
+    %% Utils hooks breakdown
+    A1222 --> A12221[useDebounce.ts]
+    A1222 --> A12222[usePrevious.ts]
+    A1222 --> A12223[useRedux.ts]
+    
+    %% Redux breakdown
+    A13 --> A131[slices/]
+    
+    %% Redux slices breakdown
+    A131 --> A1311[favoritesSlice.ts]
+    A131 --> A1312[gameModeSlice.ts]
+    A131 --> A1313[gameSlice.ts]
+    A131 --> A1314[statsSlice.ts]
+    A131 --> A1315[userSlice.ts]
+    
+    %% Client types breakdown
+    A16 --> A161[auth/]
+    A16 --> A162[game/]
+    A16 --> A163[redux/]
+    A16 --> A164[ui/]
+    
+    %% Game types breakdown
+    A162 --> A1621[achievements.types.ts]
+    A162 --> A1622[components.types.ts]
+    A162 --> A1623[config.types.ts]
+    
+    %% UI types breakdown
+    A164 --> A1641[animations.types.ts]
+    A164 --> A1642[audio.types.ts]
+    A164 --> A1643[forms.types.ts]
+    A164 --> A1644[validation.types.ts]
+    A164 --> A1645[components/]
+    
+    %% UI components types breakdown
+    A1645 --> A16451[components.analytics.types.ts]
+    A1645 --> A16452[components.base.types.ts]
+    A1645 --> A16453[components.leaderboard.types.ts]
+    A1645 --> A16454[components.stats.types.ts]
+    
+    %% Client constants breakdown
+    A18 --> A181[app/]
+    A18 --> A182[audio/]
+    A18 --> A183[game/]
+    A18 --> A184[storage/]
+    A18 --> A185[ui/]
+    A18 --> A186[user/]
+    
+    %% Game constants breakdown
+    A183 --> A1831[game-client.constants.ts]
+    A183 --> A1832[game-state.constants.ts]
+    
+    %% UI constants breakdown
+    A185 --> A1851[animation.constants.ts]
+    A185 --> A1852[avatar.constants.ts]
+    A185 --> A1853[form.constants.ts]
+    A185 --> A1854[ui.constants.ts]
+    
+    %% Views breakdown
+    A15 --> A151[admin/]
+    A15 --> A152[analytics/]
+    A15 --> A153[gameHistory/]
+    A15 --> A154[home/]
+    A15 --> A155[leaderboard/]
+    A15 --> A156[login/]
+    A15 --> A157[payment/]
+    A15 --> A158[registration/]
+    A15 --> A159[unauthorized/]
+    A15 --> A160[user/]
+    
+    %% Views files breakdown
+    A151 --> A1511[AdminDashboard.tsx]
+    A152 --> A1521[AnalyticsView.tsx]
+    A153 --> A1531[GameHistory.tsx]
+    A154 --> A1541[HomeView.tsx]
+    A155 --> A1551[LeaderboardView.tsx]
+    A156 --> A1561[LoginView.tsx]
+    A157 --> A1571[PaymentView.tsx]
+    A158 --> A1581[RegistrationView.tsx]
+    A159 --> A1591[UnauthorizedView.tsx]
+    A160 --> A1601[UserProfile.tsx]
     
     %% Server structure
     B1 --> B11[features/]
     B1 --> B12[common/]
-    B1 --> B13[shared/]
+    B1 --> B13[internal/]
     B1 --> B14[config/]
+    B1 --> B15[migrations/]
+    
+    %% Features breakdown
+    B11 --> B111[auth/]
+    B11 --> B112[user/]
+    B11 --> B113[game/]
+    B11 --> B114[points/]
+    B11 --> B115[payment/]
+    B11 --> B116[analytics/]
+    B11 --> B117[leaderboard/]
+    B11 --> B118[subscription/]
+    
+    %% Game module breakdown
+    B113 --> B1131[logic/]
+    B1131 --> B1132[providers/]
+    B1132 --> B1133[implementations/]
+    B1132 --> B1134[management/]
+    B1132 --> B1135[prompts/]
+    
+    %% Game providers breakdown
+    B1133 --> B11331[anthropic.provider.ts]
+    B1133 --> B11332[base.provider.ts]
+    B1133 --> B11333[google.provider.ts]
+    B1133 --> B11334[mistral.provider.ts]
+    B1133 --> B11335[openai.provider.ts]
+    
+    %% Game management breakdown
+    B1134 --> B11341[providers.controller.ts]
+    B1134 --> B11342[providers.module.ts]
+    B1134 --> B11343[providers.service.ts]
+    
+    %% Game prompts breakdown
+    B1135 --> B11351[prompts.ts]
+    
+    %% Game logic breakdown
+    B1131 --> B11311[triviaGeneration.service.ts]
+    
+    %% Server features breakdown
+    B111 --> B1111[auth.controller.ts]
+    B111 --> B1112[auth.module.ts]
+    B111 --> B1113[auth.service.ts]
+    B111 --> B1114[google.strategy.ts]
+    B111 --> B1115[dtos/]
+    
+    B112 --> B1121[user.controller.ts]
+    B112 --> B1122[user.module.ts]
+    B112 --> B1123[user.service.ts]
+    B112 --> B1124[userStats.service.ts]
+    B112 --> B1125[dtos/]
+    
+    B113 --> B1131[logic/]
+    B113 --> B1132[providers/]
+    B113 --> B1133[implementations/]
+    B113 --> B1134[management/]
+    B113 --> B1135[prompts/]
+    B113 --> B1136[game.controller.ts]
+    B113 --> B1137[game.module.ts]
+    B113 --> B1138[game.service.ts]
+    B113 --> B1139[dtos/]
+    
+    B114 --> B1141[points.controller.ts]
+    B114 --> B1142[points.module.ts]
+    B114 --> B1143[points.service.ts]
+    B114 --> B1144[dtos/]
+    
+    B115 --> B1151[payment.controller.ts]
+    B115 --> B1152[payment.module.ts]
+    B115 --> B1153[payment.service.ts]
+    B115 --> B1154[dtos/]
+    
+    B116 --> B1161[analytics.controller.ts]
+    B116 --> B1162[analytics.module.ts]
+    B116 --> B1163[analytics.service.ts]
+    B116 --> B1164[dtos/]
+    
+    B117 --> B1171[leaderboard.controller.ts]
+    B117 --> B1172[leaderboard.module.ts]
+    B117 --> B1173[leaderboard.service.ts]
+    B117 --> B1174[dtos/]
+    
+    B118 --> B1181[subscription.controller.ts]
+    B118 --> B1182[subscription.module.ts]
+    B118 --> B1183[subscription.service.ts]
+    B118 --> B1184[dtos/]
+    
+    %% Server features DTOs breakdown
+    B1115 --> B11151[auth.dto.ts]
+    B1125 --> B11251[user.dto.ts]
+    B1139 --> B11391[triviaRequest.dto.ts]
+    B1144 --> B11441[points.dto.ts]
+    B1154 --> B11541[payment.dto.ts]
+    B1164 --> B11641[analytics.dto.ts]
+    B1174 --> B11741[leaderboard.dto.ts]
+    B1184 --> B11841[subscription.dto.ts]
+    
+    %% Internal breakdown
+    B13 --> B131[constants/]
+    B13 --> B132[controllers/]
+    B13 --> B133[entities/]
+    B13 --> B134[middleware/]
+    B13 --> B135[modules/]
+    B13 --> B136[repositories/]
+    B13 --> B137[services/]
+    B13 --> B138[types/]
+    B13 --> B139[utils/]
+    
+    %% Internal modules breakdown
+    B135 --> B1351[cache/]
+    B135 --> B1352[storage/]
+    
+    %% Cache module breakdown
+    B1351 --> B13511[cache.controller.ts]
+    B1351 --> B13512[cache.module.ts]
+    B1351 --> B13513[cache.service.ts]
+    B1351 --> B13514[dtos/]
+    
+    %% Storage module breakdown
+    B1352 --> B13521[storage.controller.ts]
+    B1352 --> B13522[storage.module.ts]
+    B1352 --> B13523[storage.service.ts]
+    
+    %% Internal constants breakdown
+    B131 --> B1311[app/]
+    B131 --> B1312[auth/]
+    B131 --> B1313[database/]
+    B131 --> B1314[game/]
+    B131 --> B1315[points/]
+    
+    %% Internal constants files breakdown
+    B1311 --> B13111[app.constants.ts]
+    B1312 --> B13121[auth.constants.ts]
+    B1313 --> B13131[database.constants.ts]
+    B1314 --> B13141[game-server.constants.ts]
+    B1315 --> B13151[points.constants.ts]
+    
+    %% Internal types breakdown
+    B138 --> B1381[exports/]
+    
+    %% Internal types files breakdown
+    B138 --> B1382[metadata.types.ts]
+    B138 --> B1383[nest.types.ts]
+    B138 --> B1384[payment.types.ts]
+    B138 --> B1385[trivia.types.ts]
+    B138 --> B1386[typeorm-compatibility.types.ts]
+    B138 --> B1387[user.types.ts]
+    
+    %% Internal types exports breakdown
+    B1381 --> B13811[config.types.ts]
+    
+    %% Server entities breakdown
+    B133 --> B1331[gameHistory.entity.ts]
+    B133 --> B1332[leaderboard.entity.ts]
+    B133 --> B1333[paymentHistory.entity.ts]
+    B133 --> B1334[pointTransaction.entity.ts]
+    B133 --> B1335[subscription.entity.ts]
+    B133 --> B1336[trivia.entity.ts]
+    B133 --> B1337[user.entity.ts]
+    B133 --> B1338[userStats.entity.ts]
+    
+    %% Server repositories breakdown
+    B136 --> B1361[base.repository.ts]
+    B136 --> B1362[game-history.repository.ts]
+    B136 --> B1363[trivia.repository.ts]
+    B136 --> B1364[user.repository.ts]
+    
+    %% Server middleware breakdown
+    B134 --> B1341[auth.middleware.ts]
+    B134 --> B1342[bulkOperations.middleware.ts]
+    B134 --> B1343[country-check.middleware.ts]
+    B134 --> B1344[decorator-aware.middleware.ts]
+    B134 --> B1345[rateLimit.middleware.ts]
+    
+    %% Server controllers breakdown
+    B132 --> B1321[client-logs.controller.ts]
+    B132 --> B1322[middleware-metrics.controller.ts]
+    
+    %% Server utils breakdown
+    B139 --> B1391[interceptors.utils.ts]
+    B139 --> B1392[retry.utils.ts]
+    
+    %% Server common auth breakdown
+    B121 --> B1211[authentication.manager.ts]
+    B121 --> B1212[jwt-token.service.ts]
+    B121 --> B1213[password.service.ts]
+    
+    %% Common breakdown
+    B12 --> B121[auth/]
+    B12 --> B122[decorators/]
+    B12 --> B123[guards/]
+    B12 --> B124[interceptors/]
+    B12 --> B125[pipes/]
+    B12 --> B126[validation/]
+    
+    %% Server common decorators breakdown
+    B122 --> B1221[auth.decorator.ts]
+    B122 --> B1222[cache.decorator.ts]
+    B122 --> B1223[game.decorator.ts]
+    B122 --> B1224[logging.decorator.ts]
+    B122 --> B1225[param.decorator.ts]
+    B122 --> B1226[performance.decorator.ts]
+    B122 --> B1227[repository.decorator.ts]
+    B122 --> B1228[validation.decorator.ts]
+    
+    %% Server common guards breakdown
+    B123 --> B1231[auth.guard.ts]
+    B123 --> B1232[roles.guard.ts]
+    
+    %% Server common interceptors breakdown
+    B124 --> B1241[cache.interceptor.ts]
+    B124 --> B1242[performance-monitoring.interceptor.ts]
+    B124 --> B1243[repository.interceptor.ts]
+    B124 --> B1244[response-formatting.interceptor.ts]
+    
+    %% Server common pipes breakdown
+    B125 --> B1251[customDifficulty.pipe.ts]
+    B125 --> B1252[gameAnswer.pipe.ts]
+    B125 --> B1253[languageValidation.pipe.ts]
+    B125 --> B1254[paymentData.pipe.ts]
+    B125 --> B1255[triviaQuestion.pipe.ts]
+    B125 --> B1256[triviaRequest.pipe.ts]
+    B125 --> B1257[userData.pipe.ts]
+    
+    %% Server common validation breakdown
+    B126 --> B1261[languageTool.service.ts]
+    B126 --> B1262[validation.module.ts]
+    B126 --> B1263[validation.service.ts]
+    
+    %% Config breakdown
+    B14 --> B141[app.config.ts]
+    B14 --> B142[database.config.ts]
+    B14 --> B143[dataSource.ts]
+    B14 --> B144[redis.config.ts]
+    
+    %% Migrations breakdown
+    B15 --> B151[CreateInitialTables.ts]
+    B15 --> B152[AddPaymentAndSubscriptionTables.ts]
+    B15 --> B153[AddPointTransactionSystem.ts]
+    B15 --> B154[AddFullTextSearch.ts]
+    B15 --> B155[AddUserStatsAndRefactorLeaderboard.ts]
+    B15 --> B156[AddScoreToLeaderboard.ts]
+    B15 --> B157[AddPointsToUsers.ts]
     
     %% Shared structure
-    C1 --> C11[api.types.ts]
-    C1 --> C12[game.types.ts]
-    C1 --> C13[user.types.ts]
-    C1 --> C14[validation.types.ts]
-    C1 --> C15[analytics.types.ts]
-    C1 --> C16[auth.types.ts]
-    C1 --> C17[payment.types.ts]
-    C1 --> C18[points.types.ts]
-    C1 --> C19[ai.types.ts]
-    C1 --> C20[logging.types.ts]
-    C1 --> C21[storage.types.ts]
-    C1 --> C22[error.types.ts]
-    C1 --> C23[http.types.ts]
-    C1 --> C24[response.types.ts]
-    C1 --> C25[data.types.ts]
-    C1 --> C26[metadata.types.ts]
-    C1 --> C27[subscription.types.ts]
-    C1 --> C28[cache.types.ts]
-    C1 --> C29[ui.types.ts]
-    C1 --> C30[typeorm.types.ts]
-    C1 --> C31[component.types.ts]
-    C1 --> C32[language.types.ts]
+    C1 --> C11[core/]
+    C1 --> C12[domain/]
+    C1 --> C13[infrastructure/]
+    C1 --> C14[ui.types.ts]
+    C1 --> C15[payment.types.ts]
+    C1 --> C16[points.types.ts]
+    C1 --> C17[subscription.types.ts]
+    C1 --> C18[language.types.ts]
     
-    C2 --> C21[api.constants.ts]
-    C2 --> C22[game.constants.ts]
-    C2 --> C23[validation.constants.ts]
+    %% Domain breakdown
+    C12 --> C121[ai/]
+    C12 --> C122[analytics/]
+    C12 --> C123[game/]
+    C12 --> C124[user/]
+    C12 --> C125[validation/]
+    
+    %% Core types breakdown
+    C11 --> C111[data.types.ts]
+    C11 --> C112[error.types.ts]
+    C11 --> C113[response.types.ts]
+    C11 --> C114[utility.types.ts]
+    
+    %% AI types breakdown
+    C121 --> C1211[ai.types.ts]
+    C121 --> C1212[models.types.ts]
+    C121 --> C1213[providers.types.ts]
+    
+    %% Analytics types breakdown
+    C122 --> C1221[analytics.types.ts]
+    C122 --> C1222[insights.types.ts]
+    C122 --> C1223[metrics.types.ts]
+    
+    %% Game types breakdown
+    C123 --> C1231[game.types.ts]
+    C123 --> C1232[trivia.types.ts]
+    
+    %% User types breakdown
+    C124 --> C1241[preferences.types.ts]
+    C124 --> C1242[profile.types.ts]
+    C124 --> C1243[user.types.ts]
+    
+    %% Validation types breakdown
+    C125 --> C1251[forms.types.ts]
+    C125 --> C1252[rules.types.ts]
+    C125 --> C1253[validation.types.ts]
+    
+    %% Infrastructure types breakdown
+    C13 --> C131[api.types.ts]
+    C13 --> C132[auth.types.ts]
+    C13 --> C133[cache.types.ts]
+    C13 --> C134[config.types.ts]
+    C13 --> C135[http.types.ts]
+    C13 --> C136[logging.types.ts]
+    C13 --> C137[redis.types.ts]
+    C13 --> C138[storage.types.ts]
     
     C3 --> C31[schemas.ts]
     C3 --> C32[validation.utils.ts]
+    C3 --> C33[difficulty.validation.ts]
+    C3 --> C34[payment.validation.ts]
+    C3 --> C35[points.validation.ts]
+    C3 --> C36[trivia.validation.ts]
     
-    C4 --> C41[format.utils.ts]
+    C4 --> C41[data.utils.ts]
     C4 --> C42[date.utils.ts]
-    C4 --> C43[time.utils.ts]
-    C4 --> C44[data.utils.ts]
+    C4 --> C43[format.utils.ts]
+    C4 --> C44[id.utils.ts]
+    C4 --> C45[payment.utils.ts]
+    C4 --> C46[preferences.utils.ts]
+    C4 --> C47[sanitization.utils.ts]
+    C4 --> C48[storage.utils.ts]
+    C4 --> C49[time.utils.ts]
+    
+    C5 --> C51[logging/]
+    C5 --> C52[points/]
+    C5 --> C53[storage/]
+    
+    %% Services breakdown
+    C53 --> C531[base/]
+    C53 --> C532[services/]
+    
+    %% Logging services breakdown
+    C51 --> C511[baseLogger.service.ts]
+    C51 --> C512[clientLogger.service.ts]
+    C51 --> C513[serverLogger.service.ts]
+    
+    %% Points services breakdown
+    C52 --> C521[basePoints.service.ts]
+    C52 --> C522[pointCalculation.service.ts]
+    
+    %% Storage base breakdown
+    C531 --> C5311[metrics-tracker.ts]
+    C531 --> C5312[storage-config.ts]
+    C531 --> C5313[storage-utils.ts]
+    
+    %% Storage services breakdown
+    C532 --> C5321[baseStorage.service.ts]
+    C532 --> C5322[metrics.service.ts]
+    C532 --> C5323[storageManager.service.ts]
+    
+    %% Shared constants breakdown
+    C2 --> C21[business/]
+    C2 --> C22[core/]
+    C2 --> C23[infrastructure/]
+    C2 --> C24[navigation/]
+    
+    %% Shared utils breakdown
+    C4 --> C41[data.utils.ts]
+    C4 --> C42[date.utils.ts]
+    C4 --> C43[format.utils.ts]
+    C4 --> C44[id.utils.ts]
+    C4 --> C45[payment.utils.ts]
+    C4 --> C46[preferences.utils.ts]
+    C4 --> C47[sanitization.utils.ts]
+    C4 --> C48[storage.utils.ts]
+    C4 --> C49[time.utils.ts]
+    
+    %% Shared validation breakdown
+    C3 --> C31[schemas.ts]
+    C3 --> C32[validation.utils.ts]
+    C3 --> C33[difficulty.validation.ts]
+    C3 --> C34[payment.validation.ts]
+    C3 --> C35[points.validation.ts]
+    C3 --> C36[trivia.validation.ts]
     
     %% Dependencies
     A1 -.-> C1
@@ -351,18 +905,27 @@ graph TB
     A1 -.-> C3
     A1 -.-> C4
     A1 -.-> C5
-    A1 -.-> C6
     
     B1 -.-> C1
     B1 -.-> C2
     B1 -.-> C3
     B1 -.-> C4
     B1 -.-> C5
-    B1 -.-> C6
     
     %% Package dependencies
-    A3 -.-> C7
-    B2 -.-> C7
+    A3 -.-> C6
+    B2 -.-> C6
+    
+    %% Styling
+    classDef client fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef server fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef shared fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef docs fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    
+    class A1,A2,A3,A11,A12,A13,A14,A15,A16,A17,A18 client
+    class B1,B2,B3,B11,B12,B13,B14,B111,B112,B113,B114,B115,B116,B117,B118,B131,B132,B133,B134,B135,B136 server
+    class C1,C2,C3,C4,C5,C6,C11,C12,C13,C14,C15,C16,C17,C18,C21,C22,C23,C24,C31,C32,C33,C34,C35,C36,C41,C42,C43,C44,C45,C46,C47,C48,C49,C51,C52,C53 shared
+    class D1,D2 docs
 ```
 
 
@@ -783,7 +1346,7 @@ erDiagram
         timestamp reset_password_expires
         timestamp lastCreditRefill
         timestamp lastFreeQuestionsReset
-        string currentSubscriptionId
+        string subscriptionId
         boolean agreeToNewsletter
         string additionalInfo
         timestamp createdAt
@@ -870,9 +1433,10 @@ erDiagram
     USERS ||--o{ SUBSCRIPTIONS : "has"
 ```
 
+<a id="frontend-architecture"></a>
 ## ארכיטקטורת Frontend
 
-### מבנה Redux Store
+### מבנה Redux Store מפורט
 ```mermaid
 graph TD
     A[Root Store] --> B[Game Slice]
@@ -884,7 +1448,7 @@ graph TD
     B --> G[Current Question]
     B --> H[Score & Streak]
     B --> I[Game State]
-    B --> J[Favorites]
+    B --> J[Game History]
     B --> K[Game Stats]
     B --> L[Selected Answer]
     B --> M[Loading State]
@@ -915,6 +1479,99 @@ graph TD
     F --> HH[Timer State]
     F --> II[Game Limits]
     F --> JJ[Pause State]
+    
+    %% Styling
+    classDef store fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef slice fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef state fill:#e8f5e8,stroke:#388e3c,stroke-width:1px
+    
+    class A store
+    class B,C,D,E,F slice
+    class G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,BB,CC,DD,EE,FF,GG,HH,II,JJ state
+```
+
+### מבנה רכיבי UI מפורט
+```mermaid
+graph TB
+    subgraph "UI Components"
+        A[App Component]
+        A --> B[Layout Components]
+        A --> C[Page Components]
+        A --> D[Feature Components]
+        A --> E[Base Components]
+    end
+    
+    subgraph "Layout Components"
+        B --> B1[Navigation]
+        B --> B2[Footer]
+        B --> B3[GridLayout]
+        B --> B4[NotFound]
+        B --> B5[SocialShare]
+    end
+    
+    subgraph "Page Components (Views)"
+        C --> C1[HomeView]
+        C --> C2[UserView]
+        C --> C3[GameView]
+        C --> C4[LeaderboardView]
+        C --> C5[AnalyticsView]
+        C --> C6[PaymentView]
+        C --> C7[AdminDashboard]
+    end
+    
+    subgraph "Feature Components"
+        D --> D1[Game Components]
+        D --> D2[Auth Components]
+        D --> D3[User Components]
+        D --> D4[Stats Components]
+        D --> D5[Audio Components]
+        D --> D6[Animation Components]
+    end
+    
+    subgraph "Game Components"
+        D1 --> D11[Game]
+        D1 --> D12[GameTimer]
+        D1 --> D13[TriviaForm]
+        D1 --> D14[TriviaGame]
+    end
+    
+    subgraph "Auth Components"
+        D2 --> D21[ProtectedRoute]
+        D2 --> D22[OAuthCallback]
+        D2 --> D23[CompleteProfile]
+    end
+    
+    subgraph "User Components"
+        D3 --> D31[UserProfile]
+        D3 --> D32[FavoriteTopics]
+        D3 --> D33[UserStatsCard]
+    end
+    
+    subgraph "Base Components"
+        E --> E1[Button]
+        E --> E2[Card]
+        E --> E3[Modal]
+        E --> E4[Input]
+        E --> E5[Select]
+        E --> E6[Avatar]
+        E --> E7[ErrorBoundary]
+        E --> E8[ValidatedInput]
+        E --> E9[ValidationIcon]
+        E --> E10[ValidationMessage]
+    end
+    
+    %% Styling
+    classDef app fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef layout fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef page fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef feature fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef base fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class A app
+    class B,B1,B2,B3,B4,B5 layout
+    class C,C1,C2,C3,C4,C5,C6,C7 page
+    class D,D1,D2,D3,D4,D5,D6,D11,D12,D13,D14,D21,D22,D23,D31,D32,D33 feature
+    class E,E1,E2,E3,E4,E5,E6,E7,E8,E9,E10 base
 ```
 
 ### React Hooks Architecture
@@ -995,19 +1652,154 @@ graph TB
 
 ## ארכיטקטורת Backend
 
-### מבנה מודולרי
+### מבנה מודולי NestJS מפורט
 ```mermaid
-graph TD
-    A[App Module] --> B[Auth Module]
-    A --> C[Trivia Module]
-    A --> D[User Module]
-    A --> E[Points Module]
-    A --> F[Payment Module]
-    A --> G[Game History Module]
-    A --> H[Logger Module]
-    A --> I[AI Module]
-    A --> J[Validation Module]
-    A --> K[Client Logs Controller]
+graph TB
+    subgraph "NestJS Application"
+        A[App Module]
+        A --> B[Auth Module]
+        A --> C[User Module]
+        A --> D[Game Module]
+        A --> E[Points Module]
+        A --> F[Payment Module]
+        A --> G[Analytics Module]
+        A --> H[Leaderboard Module]
+        A --> I[Subscription Module]
+        A --> J[Validation Module]
+        A --> K[Client Logs Controller]
+    end
+    
+    subgraph "Internal Modules"
+        L[Cache Module]
+        M[Storage Module]
+        N[Entities]
+        O[Repositories]
+        P[Middleware]
+    end
+    
+    subgraph "Common Modules"
+        Q[Decorators]
+        R[Guards]
+        S[Interceptors]
+        T[Pipes]
+        U[Exception Filters]
+    end
+    
+    subgraph "External Dependencies"
+        V[PostgreSQL]
+        W[Redis Cache]
+        X[OpenAI API]
+        Y[Anthropic API]
+        Z[Google AI API]
+        AA[Stripe API]
+        BB[Google OAuth]
+    end
+    
+    %% Module connections
+    B --> V
+    C --> V
+    D --> V
+    E --> V
+    F --> V
+    G --> V
+    H --> V
+    I --> V
+    
+    D --> W
+    C --> W
+    G --> W
+    H --> W
+    
+    D --> X
+    D --> Y
+    D --> Z
+    F --> AA
+    B --> BB
+    
+    %% Internal connections
+    A --> L
+    A --> M
+    A --> N
+    A --> O
+    A --> P
+    
+    A --> Q
+    A --> R
+    A --> S
+    A --> T
+    A --> U
+    
+    %% Styling
+    classDef app fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef feature fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef internal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef common fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class A app
+    class B,C,D,E,F,G,H,I,J,K feature
+    class L,M,N,O,P internal
+    class Q,R,S,T,U common
+    class V,W,X,Y,Z,AA,BB external
+```
+
+### מבנה מודול Game מפורט
+```mermaid
+graph TB
+    subgraph "Game Module"
+        A[Game Module]
+        A --> B[Game Controller]
+        A --> C[Game Service]
+        A --> D[Game Logic]
+        A --> E[AI Providers]
+        A --> F[Game DTOs]
+    end
+    
+    subgraph "Game Logic"
+        D --> D1[Trivia Logic]
+        D --> D2[Question Generation]
+        D --> D3[Game State Management]
+        D --> D4[Score Calculation]
+        D --> D5[Game History]
+    end
+    
+    subgraph "AI Providers"
+        E --> E1[OpenAI Provider]
+        E --> E2[Anthropic Provider]
+        E --> E3[Google AI Provider]
+        E --> E4[Base Provider Interface]
+    end
+    
+    subgraph "Game DTOs"
+        F --> F1[Create Game DTO]
+        F --> F2[Game State DTO]
+        F --> F3[Question DTO]
+        F --> F4[Answer DTO]
+        F --> F5[Game Result DTO]
+    end
+    
+    %% External connections
+    B --> G[Database]
+    C --> G
+    D --> G
+    E1 --> H[OpenAI API]
+    E2 --> I[Anthropic API]
+    E3 --> J[Google AI API]
+    
+    %% Styling
+    classDef module fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef component fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef logic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef provider fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef dto fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef external fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    
+    class A module
+    class B,C,D,E,F component
+    class D1,D2,D3,D4,D5 logic
+    class E1,E2,E3,E4 provider
+    class F1,F2,F3,F4,F5 dto
+    class G,H,I,J external
     A --> L[Global Exception Filter]
 
     B --> M[Auth Controller]

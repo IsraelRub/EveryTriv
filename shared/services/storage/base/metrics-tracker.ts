@@ -2,7 +2,7 @@
  * Storage Metrics Tracker
  *
  * @module StorageMetricsTracker
- * @description Unified metrics tracking for all storage operations
+ * @description metrics tracking for all storage operations
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage/services/storageManager.service.ts
  */
 import { StorageMetrics } from '../../../types/infrastructure/storage.types';

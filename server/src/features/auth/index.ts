@@ -2,7 +2,7 @@
  * Auth Feature Index
  *
  * @module AuthFeature
- * @description Unified authentication feature module
+ * @description authentication feature module
  * @used_by server/app, server/controllers
  */
 
@@ -22,7 +22,7 @@ export { AuthService } from './auth.service';
 
 /**
  * Auth module
- * @description Unified authentication module configuration
+ * @description authentication module configuration
  * @used_by server/app, server/modules
  */
 export { AuthModule } from './auth.module';

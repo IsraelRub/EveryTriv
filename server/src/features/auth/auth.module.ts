@@ -2,7 +2,7 @@
  * Auth Module
  *
  * @module AuthModule
- * @description Unified authentication module with login, register, guards, and OAuth
+ * @description authentication module with login, register, guards, and OAuth
  * @used_by server/app, server/controllers
  */
 import { Module } from '@nestjs/common';

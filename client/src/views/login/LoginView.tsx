@@ -19,7 +19,7 @@ import { audioService } from '../../services';
 export default function LoginView() {
   const navigate = useNavigate();
   // const dispatch = useDispatch();
-  // Authentication is now handled by PublicRoute HOC
+  // Authentication is handled by PublicRoute HOC
   // const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
   const [email, setEmail] = useState('');
@@ -39,7 +39,7 @@ export default function LoginView() {
     try {
       // This would call the email login API
       audioService.play(AudioKey.BUTTON_CLICK);
-      // For now, just simulate success
+      // Simulate success
       setTimeout(() => {
         setIsLoading(false);
         navigate('/');

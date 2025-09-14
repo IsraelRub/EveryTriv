@@ -1,5 +1,5 @@
 /**
- * Unified metrics service for storage operations
+ * metrics service for storage operations
  *
  * @module MetricsService
  * @description Centralized metrics tracking for all storage operations
@@ -10,7 +10,7 @@ import type { MiddlewareMetrics } from '../../../types/domain/analytics/metrics.
 import { StorageMetrics } from '../../../types/infrastructure/storage.types';
 
 /**
- * Unified metrics service class
+ * metrics service class
  * @class MetricsService
  * @description Centralized metrics tracking for storage operations
  */

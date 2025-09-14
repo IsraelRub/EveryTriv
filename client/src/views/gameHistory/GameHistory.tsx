@@ -17,7 +17,7 @@ import { useClearGameHistory,useDeleteGameHistory } from '../../hooks/api/useTri
 import { audioService, storageService } from '../../services';
 
 export default function GameHistory() {
-  // Authentication is now handled by ProtectedRoute HOC
+  // Authentication is handled by ProtectedRoute HOC
   // const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
   const [page] = useState(0);
@@ -115,12 +115,12 @@ export default function GameHistory() {
         totalScore: gameStatistics.totalScore,
         averageScore: gameStatistics.averageScore,
         averageAccuracy: gameStatistics.averageAccuracy,
-        lastUpdated: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
       });
     }
   }, [gameStatistics]);
 
-  // Authentication is now handled by ProtectedRoute HOC
+  // Authentication is handled by ProtectedRoute HOC
   // No need for local authentication check
 
   return (
@@ -240,7 +240,7 @@ export default function GameHistory() {
           whileHover={{ scale: 1.02 }}
         >
           <Section background='glass' padding='lg' className='rounded-lg'>
-            <h2 className='text-2xl font-bold text-white mb-6'>Recent Games</h2>
+            <h2 className='text-2xl font-bold text-white mb-6'>Game History</h2>
             {loading ? (
               <div className='text-center py-8'>
                 <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto'></div>

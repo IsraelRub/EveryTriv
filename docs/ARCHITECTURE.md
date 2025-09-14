@@ -4,7 +4,7 @@
 
 EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI עם ארכיטקטורה מודרנית של Frontend ו-Backend נפרדים. המערכת משלבת טכנולוגיות מתקדמות ליצירת חוויית משחק מרתקת ואינטראקטיבית.
 
-> הערת סנכרון תרשימים: חלק מהמודולים המופיעים בדיאגרמות (Trivia, Game History, Logger, AI) מוצגים כגבולות נפרדים לצרכי הבהרה אך ממומשים ממוזגים בתוך `GameModule` ושירותים משותפים. טבלת סטטוס מלאה: `../DIAGRAMS.md#diagram-sync-status`. זרימת ליבת NestJS: `../DIAGRAMS.md#nestjs-core-flow`. מפת תלות Shared: `../DIAGRAMS.md#shared-deps-map`.
+> **הערת סנכרון תרשימים**: חלק מהמודולים המופיעים בדיאגרמות מוצגים כגבולות נפרדים לצרכי הבהרה אך ממומשים ממוזגים בפועל. לפרטים מלאים ראו: [סנכרון תרשימים ↔ קוד](../DIAGRAMS.md#diagram-sync-status), [זרימת ליבת NestJS](../DIAGRAMS.md#nestjs-core-flow), [מפת תלות Shared](../DIAGRAMS.md#shared-deps-map).
 
 ## Stack טכנולוגי
 
@@ -37,22 +37,40 @@ EveryTriv/
 ├── client/                    # React Frontend
 │   ├── src/
 │   │   ├── views/            # דפי האפליקציה
+│   │   │   ├── admin/        # דף מנהל
+│   │   │   ├── analytics/    # דף אנליטיקה
+│   │   │   ├── gameHistory/  # היסטוריית משחקים
 │   │   │   ├── home/         # דף הבית והמשחק
-│   │   │   ├── user/         # פרופיל משתמש
 │   │   │   ├── leaderboard/  # לוח תוצאות
-│   │   │   ├── game-history/ # היסטוריית משחקים
-│   │   │   └── payment/      # תשלומים
+│   │   │   ├── login/        # דף התחברות
+│   │   │   ├── payment/      # תשלומים
+│   │   │   ├── registration/ # דף רישום
+│   │   │   ├── unauthorized/ # דף לא מורשה
+│   │   │   └── user/         # פרופיל משתמש
 │   │   ├── components/       # רכיבי UI
+│   │   │   ├── analytics/    # רכיבי אנליטיקה
+│   │   │   ├── animations/   # אנימציות
+│   │   │   ├── audio/        # בקרת אודיו
+│   │   │   ├── auth/         # רכיבי אימות
+│   │   │   ├── forms/        # רכיבי טפסים
 │   │   │   ├── game/         # רכיבי משחק
-│   │   │   ├── ui/           # רכיבי UI בסיסיים
+│   │   │   ├── gameMode/     # בחירת מצב משחק
+│   │   │   ├── home/         # רכיבי דף הבית
+│   │   │   ├── icons/        # ספריית אייקונים
 │   │   │   ├── layout/       # רכיבי פריסה
-│   │   │   └── animations/   # אנימציות
+│   │   │   ├── leaderboard/  # רכיבי לוח תוצאות
+│   │   │   ├── monitoring/   # רכיבי ניטור
+│   │   │   ├── navigation/   # רכיבי ניווט
+│   │   │   ├── points/       # רכיבי נקודות
+│   │   │   ├── stats/        # רכיבי סטטיסטיקות
+│   │   │   ├── subscription/ # רכיבי מנוי
+│   │   │   ├── ui/           # רכיבי UI בסיסיים
+│   │   │   └── user/         # רכיבי משתמש
 │   │   ├── hooks/            # React Hooks
 │   │   │   ├── api/          # Hooks ל-API
-│   │   │   ├── contexts/     # React Contexts
-│   │   │   └── layers/       # Hooks בשכבות
+│   │   │   └── layers/       # Hooks בשכבות (ui/utils)
 │   │   ├── redux/            # ניהול מצב
-│   │   │   └── features/     # Redux slices
+│   │   │   └── slices/       # Redux slices
 │   │   ├── services/         # שירותי API
 │   │   ├── types/            # טיפוסי TypeScript
 │   │   ├── utils/            # פונקציות עזר
@@ -64,40 +82,49 @@ EveryTriv/
 │   │   ├── features/         # מודולים לפי תחום
 │   │   │   ├── auth/         # אימות והרשאות
 │   │   │   ├── user/         # ניהול משתמשים
-│   │   │   ├── trivia/       # לוגיקת הטריוויה
+│   │   │   ├── game/         # לוגיקת משחק (כולל trivia)
 │   │   │   ├── points/       # מערכת נקודות
 │   │   │   ├── payment/      # תשלומים
-│   │   │   └── game-history/ # היסטוריית משחקים
-│   │   ├── shared/           # קוד משותף
+│   │   │   ├── subscription/ # מנויים
+│   │   │   ├── analytics/    # אנליטיקה
+│   │   │   └── leaderboard/  # לוח תוצאות
+│   │   ├── internal/         # קוד פנימי משותף
+│   │   │   ├── constants/    # קבועים פנימיים
+│   │   │   ├── controllers/  # controllers פנימיים
 │   │   │   ├── entities/     # ישויות TypeORM
 │   │   │   ├── middleware/   # middleware
-│   │   │   ├── types/        # טיפוסים משותפים
-│   │   │   └── utils/        # פונקציות עזר
+│   │   │   ├── modules/      # מודולים פנימיים
+│   │   │   ├── repositories/ # repositories
+│   │   │   ├── services/     # שירותים פנימיים
+│   │   │   ├── types/        # טיפוסים פנימיים
+│   │   │   └── utils/        # כלים פנימיים
+│   │   ├── common/           # קוד משותף גלובלי
+│   │   │   ├── auth/         # שירותי אימות
+│   │   │   ├── decorators/   # דקורטורים
+│   │   │   ├── guards/       # שומרי נתיבים
+│   │   │   ├── interceptors/ # interceptors
+│   │   │   ├── pipes/        # pipes
+│   │   │   └── validation/   # ולידציה
 │   │   ├── config/           # קונפיגורציה
+│   │   │   ├── app.config.ts
+│   │   │   ├── database.config.ts
+│   │   │   ├── dataSource.ts
+│   │   │   └── redis.config.ts
+│   │   ├── migrations/       # מיגרציות מסד נתונים
+│   │   ├── app.controller.ts
+│   │   ├── app.module.ts
 │   │   └── main.ts
 │   └── package.json
 ├── shared/                    # קוד משותף בין client ו-server
-│   ├── types/                # טיפוסי TypeScript משותפים (25+ קבצים)
-│   │   ├── api.types.ts      # טיפוסי API, תגובות, שגיאות
-│   │   ├── game.types.ts     # טיפוסי משחק, שאלות, היסטוריה
-│   │   ├── user.types.ts     # טיפוסי משתמש, פרופיל, העדפות
-│   │   ├── validation.types.ts # טיפוסי אימות, סכמות
-│   │   ├── analytics.types.ts # טיפוסי אנליטיקה, מדדים
-│   │   ├── auth.types.ts     # טיפוסי אימות, הרשאות
-│   │   ├── payment.types.ts  # טיפוסי תשלומים, מנויים
-│   │   ├── points.types.ts   # טיפוסי נקודות, עסקאות
-│   │   ├── ai.types.ts       # טיפוסי AI, ספקים
-│   │   ├── logging.types.ts  # טיפוסי לוגים, רמות
-│   │   ├── storage.types.ts  # טיפוסי אחסון, מטמון
-│   │   └── ...               # ועוד 13 קבצים נוספים
-│   ├── constants/            # קבועים משותפים (14+ קבצים)
-│   │   ├── api.constants.ts  # קבועי API, נקודות קצה
-│   │   ├── game.constants.ts # קבועי משחק, רמות קושי
-│   │   ├── validation.constants.ts # קבועי אימות
-│   │   ├── info.constants.ts # קבועי אפליקציה, מידע
-│   │   ├── error.constants.ts # קבועי שגיאות, הודעות
-│   │   ├── payment.constants.ts # קבועי תשלומים, מחירים
-│   │   └── ...               # ועוד 8 קבצים נוספים
+│   ├── types/                # טיפוסי TypeScript משותפים
+│   │   ├── core/             # טיפוסי ליבה
+│   │   ├── domain/           # טיפוסי תחום
+│   │   ├── infrastructure/   # טיפוסי תשתית
+│   │   ├── ui.types.ts       # טיפוסי UI
+│   │   ├── payment.types.ts  # טיפוסי תשלומים
+│   │   ├── points.types.ts   # טיפוסי נקודות
+│   │   └── ...               # ועוד קבצים נוספים
+│   ├── constants/            # קבועים משותפים
 │   ├── utils/                # פונקציות עזר משותפות
 │   ├── validation/           # ולידציה משותפת
 │   ├── services/             # שירותים משותפים
@@ -149,18 +176,29 @@ EveryTriv/
 #### רכיבי משחק
 - **Game.tsx** - הרכיב הראשי של המשחק
 - **GameTimer.tsx** - טיימר המשחק
-- **GameMode.tsx** - בחירת סוג משחק
+- **TriviaForm.tsx** - טופס שאלות טריוויה
+- **TriviaGame.tsx** - משחק טריוויה מלא
 
 #### רכיבי UI בסיסיים
 - **Button.tsx** - כפתורים עם וריאנטים
 - **Card.tsx** - כרטיסים
 - **Modal.tsx** - חלונות מודאליים
+- **Input.tsx** - שדות קלט
+- **Select.tsx** - רשימות נפתחות
+- **Avatar.tsx** - תמונות פרופיל
 - **ErrorBoundary.tsx** - טיפול בשגיאות
 
-#### רכיבי אנימציה
+#### רכיבי אנימציה ואודיו
 - **AnimatedBackground.tsx** - רקע מונפש
 - **AnimationEffects.tsx** - אפקטי אנימציה
+- **AnimationLibrary.tsx** - ספריית אנימציות
 - **AudioControls.tsx** - בקרת אודיו
+
+#### רכיבי משתמש וסטטיסטיקות
+- **UserStatsCard.tsx** - כרטיס סטטיסטיקות משתמש
+- **ScoringSystem.tsx** - מערכת ניקוד
+- **GameSessionStats.tsx** - סטטיסטיקות משחק
+- **CustomDifficultyHistory.tsx** - היסטוריית קושי מותאם
 
 ### מערכת הניווט
 - **AppRoutes.tsx** - הגדרת הנתיבים
@@ -181,14 +219,19 @@ features/auth/
 └── auth.module.ts   # הגדרת המודול
 ```
 
-#### מודול Trivia
+#### מודול Game (כולל Trivia)
 ```typescript
-features/trivia/
+features/game/
 ├── controllers/     # API endpoints
 ├── services/        # לוגיקה עסקית
-├── providers/       # ספקי AI
-├── data-structures/ # מבני נתונים
-└── trivia.module.ts # הגדרת המודול
+├── logic/           # לוגיקת משחק ו-AI providers
+│   ├── providers/   # ספקי AI
+│   │   ├── implementations/ # מימושים של ספקים
+│   │   ├── management/      # ניהול ספקים
+│   │   └── prompts/         # תבניות שאלות
+│   └── triviaGeneration.service.ts
+├── dtos/            # Data Transfer Objects
+└── game.module.ts   # הגדרת המודול
 ```
 
 ### שירותים משותפים
@@ -198,21 +241,30 @@ features/trivia/
 - **OpenAIProvider** - אינטגרציה עם OpenAI
 - **AnthropicProvider** - אינטגרציה עם Anthropic
 - **GoogleProvider** - אינטגרציה עם Google AI
+- **MistralProvider** - אינטגרציה עם Mistral
+- **ProvidersService** - ניהול ספקי AI
+- **ProvidersController** - API לניהול ספקים
 
 #### שירותי תשתית
-- **LoggerService** - מערכת לוגים
-- **CacheService** - ניהול מטמון
-- **ValidationService** - ולידציה
+- **LoggerService** - מערכת לוגים (מ-shared)
+- **CacheService** - ניהול מטמון Redis
+- **StorageService** - ניהול אחסון
+- **ValidationService** - ולידציה (מ-shared)
+- **AuthenticationManager** - ניהול אימות
+- **JWTTokenService** - ניהול JWT tokens
+- **PasswordService** - ניהול סיסמאות
 
 ### מבנה מסד הנתונים
 
 #### טבלאות עיקריות
 - **users** - משתמשים
-- **trivia_questions** - שאלות טריוויה
-- **game_history** - היסטוריית משחקים
-- **user_stats** - סטטיסטיקות משתמשים
-- **achievements** - הישגים
-- **payment_history** - היסטוריית תשלומים
+- **trivia** - שאלות טריוויה
+- **gameHistory** - היסטוריית משחקים
+- **userStats** - סטטיסטיקות משתמשים
+- **leaderboard** - לוח תוצאות
+- **paymentHistory** - היסטוריית תשלומים
+- **pointTransaction** - עסקאות נקודות
+- **subscription** - מנויים
 
 ## זרימת נתונים
 
@@ -343,24 +395,4 @@ docker-compose up  # מפעיל עם Docker
 - **OpenAI GPT-4**: ייצור שאלות איכותיות
 - **Anthropic Claude**: שאלות מורכבות
 - **Google AI Gemini**: גיוון בשאלות
-
-### External Libraries
-- **@datastructures-js/priority-queue**: תורי עדיפויות
-- **lru-cache**: מטמון LRU
-- **Chart.js**: גרפים וויזואליזציות
-- **Framer Motion**: אנימציות
-
-## העתיד והרחבות
-
-### תכונות מתוכננות
-- **Multiplayer Mode**: משחק מרובה משתתפים
-- **Custom Question Creation**: יצירת שאלות מותאמות
-- **Voice Questions**: שאלות קוליות
-- **Mobile App**: אפליקציה למובייל
-
-### שיפורים טכניים מתוכננים
-- **GraphQL API**: מעבר ל-GraphQL
-- **Microservices Architecture**: ארכיטקטורת מיקרו-שירותים
-- **Real-time Notifications**: התראות בזמן אמת
-- **Advanced Analytics**: אנליטיקה מתקדמת
- 
+- **Mistral**: ספק AI נוסף

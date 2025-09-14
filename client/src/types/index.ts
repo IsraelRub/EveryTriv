@@ -127,7 +127,7 @@ export interface ScoreStats {
   percentage?: number;
 }
 
-// UI types are now exported from './ui' above
+// UI types are exported from './ui' above
 
 /**
  * Statistics types

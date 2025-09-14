@@ -39,14 +39,14 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			await queryRunner.query(`
 				CREATE TABLE "trivia" (
 					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-					"question" text NOT NULL,
-					"correct_answer" text NOT NULL,
-					"incorrect_answers" text[] NOT NULL,
-					"category" character varying NOT NULL,
+					"topic" character varying NOT NULL,
 					"difficulty" character varying NOT NULL,
-					"type" character varying NOT NULL DEFAULT 'multiple',
-					"explanation" text,
-					"metadata" jsonb NOT NULL DEFAULT '{}',
+					"question" text NOT NULL,
+					"answers" jsonb NOT NULL DEFAULT '[]',
+					"correct_answer_index" integer NOT NULL DEFAULT 0,
+					"user_id" uuid,
+					"is_correct" boolean NOT NULL DEFAULT false,
+					"metadata" jsonb,
 					"search_vector" tsvector,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
@@ -62,9 +62,9 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			await queryRunner.query(`CREATE INDEX "IDX_game_history_score" ON "game_history" ("score" DESC)`);
 			await queryRunner.query(`CREATE INDEX "IDX_game_history_created_at" ON "game_history" ("created_at")`);
 
-			await queryRunner.query(`CREATE INDEX "IDX_trivia_category" ON "trivia" ("category")`);
+			await queryRunner.query(`CREATE INDEX "IDX_trivia_topic" ON "trivia" ("topic")`);
 			await queryRunner.query(`CREATE INDEX "IDX_trivia_difficulty" ON "trivia" ("difficulty")`);
-			await queryRunner.query(`CREATE INDEX "IDX_trivia_type" ON "trivia" ("type")`);
+			await queryRunner.query(`CREATE INDEX "IDX_trivia_user_id" ON "trivia" ("user_id")`);
 
 			// Create full-text search indexes
 			console.log('Creating full-text search indexes');
@@ -75,6 +75,11 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			console.log('Adding foreign key constraints');
 			await queryRunner.query(`
 				ALTER TABLE "game_history" ADD CONSTRAINT "FK_game_history_user" 
+				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
+			`);
+			
+			await queryRunner.query(`
+				ALTER TABLE "trivia" ADD CONSTRAINT "FK_trivia_user" 
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
 
@@ -105,14 +110,15 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			// Drop foreign key constraints
 			console.log('Dropping foreign key constraints');
 			await queryRunner.query(`ALTER TABLE "game_history" DROP CONSTRAINT "FK_game_history_user"`);
+			await queryRunner.query(`ALTER TABLE "trivia" DROP CONSTRAINT "FK_trivia_user"`);
 
 			// Drop indexes
 			console.log('Dropping indexes');
 			await queryRunner.query(`DROP INDEX "IDX_trivia_search"`);
 			await queryRunner.query(`DROP INDEX "IDX_game_history_search"`);
-			await queryRunner.query(`DROP INDEX "IDX_trivia_type"`);
+			await queryRunner.query(`DROP INDEX "IDX_trivia_user_id"`);
 			await queryRunner.query(`DROP INDEX "IDX_trivia_difficulty"`);
-			await queryRunner.query(`DROP INDEX "IDX_trivia_category"`);
+			await queryRunner.query(`DROP INDEX "IDX_trivia_topic"`);
 			await queryRunner.query(`DROP INDEX "IDX_game_history_created_at"`);
 			await queryRunner.query(`DROP INDEX "IDX_game_history_score"`);
 			await queryRunner.query(`DROP INDEX "IDX_game_history_difficulty"`);

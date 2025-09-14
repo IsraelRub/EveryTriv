@@ -2,7 +2,7 @@
  * Storage Module Index
  *
  * @module StorageModule
- * @description Unified storage module with metrics, management, and utilities
+ * @description storage module with metrics, management, and utilities
  * @author EveryTriv Team
  */
 
@@ -44,7 +44,7 @@ export { clientLogger } from '../logging/clientLogger.service';
  * Utility function imports
  * @description Time formatting and timestamp utilities
  */
-export { formatTime, getCurrentTimestamp } from '../../utils';
+export { formatTime } from '../../utils';
 
 /**
  * Error constants imports
@@ -67,7 +67,7 @@ export type {
 	StorageItemMetadata,
 	StorageOperationResult,
 	StorageStats,
-	UnifiedStorageService,
+	StorageService as StorageService,
 	UserProgressData,
 } from '../../types';
 

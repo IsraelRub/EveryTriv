@@ -2,7 +2,7 @@
  * Authentication Manager - Centralized authentication logic
  *
  * @module AuthenticationManager
- * @description Unified authentication service that consolidates all authentication logic
+ * @description authentication service that consolidates all authentication logic
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';

@@ -48,12 +48,12 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get unified user analytics
+	 * Get user analytics
 	 */
-	@Get('user/unified')
+	@Get('user/')
 	@Cache(600) // Cache for 10 minutes
-	async getUnifiedUserAnalytics(@CurrentUserId() userId: string) {
-		const result = await this.analyticsService.getUnifiedUserAnalytics(userId);
+	async getUserAnalytics(@CurrentUserId() userId: string) {
+		const result = await this.analyticsService.getUserAnalytics(userId);
 		return result;
 	}
 

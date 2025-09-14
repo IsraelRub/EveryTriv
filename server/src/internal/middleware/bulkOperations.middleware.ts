@@ -44,7 +44,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 				isBulk: this.isBulkOperation(req),
 				batchSize: this.getBatchSize(req),
 				operationType: this.getOperationType(req),
-				optimizationLevel: this.getOptimizationLevel(req),
+				optimization: this.getOptimizationLevel(req),
 			};
 
 			next();
@@ -179,16 +179,16 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	 * @param req - Request object
 	 * @returns Optimization level
 	 */
-	private getOptimizationLevel(req: NestRequest): 'low' | 'medium' | 'high' {
+	private getOptimizationLevel(req: NestRequest): 'none' | 'basic' | 'aggressive' {
 		const batchSize = this.getBatchSize(req);
 
 		if (batchSize >= 20) {
-			return 'high';
+			return 'aggressive';
 		}
 		if (batchSize >= 5) {
-			return 'medium';
+			return 'basic';
 		}
-		return 'low';
+		return 'none';
 	}
 
 	/**

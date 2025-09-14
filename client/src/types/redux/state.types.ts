@@ -37,97 +37,63 @@ export interface UserStatsResponse {
   }>;
 }
 
-// Root State is now defined in client/src/redux/store.ts
+// Root State is defined in client/src/redux/store.ts
 
 // User State
 export interface UserState extends BaseReduxState {
-  /** Current user */
   currentUser: User | null;
-  /** Whether user is authenticated */
   isAuthenticated: boolean;
-  /** User statistics */
   stats: UserStatsResponse | null;
-  /** User */
   user: User | null;
-  /** Username */
   username: string;
-  /** Avatar */
   avatar: string;
-  /** Point balance */
   pointBalance: PointBalance | null;
 }
 
 // Game Slice State
 export interface GameSliceState extends BaseReduxState {
-  /** Game status */
   status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
-  /** Game data */
   data: GameData | null;
-  /** Game configuration */
   config: GameConfig | null;
-  /** Navigation state */
   navigation: GameNavigationState | null;
-  /** Timer */
   timer: GameTimerState | null;
-  /** Statistics */
   stats: GameSessionStats | null;
-  /** Game history */
   gameHistory: GameHistoryEntry[];
-  /** Leaderboard */
   leaderboard: LeaderboardEntry[];
 }
 
 // Game Mode Slice State
 export interface GameModeSliceState extends BaseReduxState {
-  /** Current mode */
   currentMode: GameMode;
-  /** Current topic */
   currentTopic: string;
-  /** Current difficulty level */
   currentDifficulty: string;
-  /** Current settings */
   currentSettings: GameConfig | null;
-  /** Time remaining */
   timeRemaining?: number;
-  /** Available modes */
   availableModes?: GameMode[];
 }
 
 // Stats State
 export interface StatsState extends BaseReduxState {
-  /** User statistics */
   userStats: UserStatsResponse | null;
-  /** Global statistics */
   globalStats: UserStatsResponse | null;
-  /** Statistics */
   stats: UserStatsResponse | null;
-  /** Leaderboard */
   leaderboard: LeaderboardEntry[];
 }
 
 // Favorites State
 export interface FavoritesState extends BaseReduxState {
-  /** Favorite topics */
   topics: string[];
-  /** Favorite difficulty levels */
   difficulties: string[];
-  /** Favorite games */
   games: string[];
-  /** Favorite topics (alias) */
   favoriteTopics: string[];
 }
 
 // Root State
 export interface RootState {
-  /** User state */
   user: UserState;
-  /** Game state */
   game: GameSliceState;
-  /** Game mode state */
   gameMode: GameModeSliceState;
-  /** Stats state */
   stats: StatsState;
-  /** Favorites state */
   favorites: FavoritesState;
 }
 
@@ -139,7 +105,7 @@ export interface UserState {
   role: string;
   firstName?: string;
   lastName?: string;
-  preferences?: Record<string, unknown>;
+  preferences?: Record<string, any>;
   subscription?: {
     type: string;
     status: string;

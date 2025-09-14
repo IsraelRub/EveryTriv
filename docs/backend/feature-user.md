@@ -1,6 +1,6 @@
 # Feature: User
 
-תיעוד סטטי למודול משתמשים.
+תיעוד מודול משתמשים.
 
 > הערת סנכרון: מודולים מושגיים (Logger / Game History) ממוזגים; פירוט: `../DIAGRAMS.md#diagram-sync-status`.
 

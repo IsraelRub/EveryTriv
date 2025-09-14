@@ -1,16 +1,20 @@
-# מדריך פיתוח - EveryTriv
+# מדריך פיתוח מקיף - EveryTriv
 
 ## סקירה כללית
 
-מדריך זה מכסה את כל ההיבטים של פיתוח בפרויקט EveryTriv, כולל הגדרת סביבה, גיידליינים לפיתוח, API documentation, וכלים שימושיים.
+מדריך מקיף זה מכסה את כל ההיבטים של פיתוח בפרויקט EveryTriv, כולל הגדרת סביבה, כלי פיתוח, Docker, גיידליינים לפיתוח, API documentation, בדיקות, debugging, וביצועים.
 
-## הגדרת סביבת פיתוח
+---
+
+## חלק 1: הגדרת סביבת פיתוח
 
 ### דרישות מערכת
+
 - **Node.js**: גרסה 18 ומעלה
 - **pnpm**: מנהל חבילות (מומלץ)
 - **Git**: מערכת בקרת גרסאות
-- **Docker**: (אופציונלי) לפריסה
+- **Docker**: גרסה 20.10 ומעלה (לפיתוח מקומי)
+- **Docker Compose**: גרסה 2.0 ומעלה
 
 ### התקנה ראשונית
 
@@ -24,7 +28,8 @@ pnpm install
 
 # הגדרת משתני סביבה
 cp .env.example .env
-# ערוך את קובץ .env עם הערכים הנכונים
+cp server/.env.example server/.env
+# ערוך את קבצי .env עם הערכים הנכונים
 
 # הפעלת מסד נתונים
 docker-compose up -d postgres redis
@@ -71,7 +76,338 @@ STRIPE_SECRET_KEY=your-stripe-key
 STRIPE_WEBHOOK_SECRET=your-webhook-secret
 ```
 
-## גיידליינים לפיתוח
+---
+
+## חלק 2: הגדרת Docker
+
+### קונפיגורציית Docker Compose
+
+#### docker-compose.yaml
+```yaml
+version: '3.8'
+
+services:
+  # מסד נתונים PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: everytriv-postgres
+    environment:
+      POSTGRES_DB: everytriv
+      POSTGRES_USER: everytriv_user
+      POSTGRES_PASSWORD: EvTr!v_DB_P@ssw0rd_2025_S3cur3!
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - everytriv-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U everytriv_user -d everytriv"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: everytriv-redis
+    command: redis-server --appendonly yes --requirepass EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - everytriv-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: development
+    container_name: everytriv-server
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: everytriv
+      DATABASE_USERNAME: everytriv_user
+      DATABASE_PASSWORD: EvTr!v_DB_P@ssw0rd_2025_S3cur3!
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      PORT: 3001
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - everytriv-network
+    command: pnpm run start:dev
+
+  # Frontend Client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: development
+    container_name: everytriv-client
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001
+      VITE_APP_NAME: EveryTriv
+      VITE_APP_VERSION: 2.0.0
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    networks:
+      - everytriv-network
+    command: pnpm run dev
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  everytriv-network:
+    driver: bridge
+```
+
+### פקודות Docker שימושיות
+
+#### פיתוח
+```bash
+# הפעלת סביבת פיתוח מלאה
+docker-compose up -d
+
+# צפייה בלוגים
+docker-compose logs -f
+
+# צפייה בלוגים של שירות ספציפי
+docker-compose logs -f server
+
+# עצירת שירותים
+docker-compose down
+
+# בנייה מחדש של שירות
+docker-compose build server
+
+# הפעלה מחדש של שירות
+docker-compose restart server
+```
+
+#### תחזוקה
+```bash
+# ניקוי תמונות לא בשימוש
+docker image prune -f
+
+# ניקוי containers לא פעילים
+docker container prune -f
+
+# ניקוי volumes לא בשימוש
+docker volume prune -f
+
+# ניקוי מלא
+docker system prune -a -f
+
+# בדיקת שימוש במשאבים
+docker stats
+```
+
+---
+
+## חלק 3: כלי פיתוח
+
+### כלים מותקנים
+
+#### Prettier
+- **תיאור**: מעצב קוד אוטומטי המבטיח עקביות בפורמט
+- **גרסה**: 3.1.0
+- **קבצי הגדרה**: `.prettierrc`, `.prettierignore`
+- **תפקיד**: עיצוב קוד אוטומטי ב-JavaScript, TypeScript, JSON, Markdown
+
+#### ESLint
+- **תיאור**: כלי לניתוח סטטי של קוד לזיהוי שגיאות ובעיות
+- **גרסה**: 8.57.0
+- **קבצי הגדרה**: `.eslintrc.js`
+- **Plugins**: `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`
+- **תפקיד**: זיהוי שגיאות, אכיפת סגנון קוד, אופטימיזציות
+
+#### TypeScript
+- **תיאור**: שפת תכנות מוטיפית המבוססת על JavaScript
+- **גרסה**: 5.0+
+- **קבצי הגדרה**: `tsconfig.json`, `tsconfig.build.json`
+- **תפקיד**: טיפוסים חזקים, זיהוי שגיאות בזמן קומפילציה
+
+#### Jest
+- **תיאור**: מסגרת בדיקות ל-JavaScript
+- **גרסה**: 29.0+
+- **קבצי הגדרה**: `jest.config.js`
+- **תפקיד**: בדיקות יחידה, בדיקות אינטגרציה
+
+### פקודות זמינות
+
+#### עיצוב קוד (Code Formatting)
+```bash
+# עיצוב כל הקבצים בפרויקט
+pnpm run format
+
+# בדיקה שהקוד מעוצב כראוי (ללא שינוי)
+pnpm run format:check
+
+# עיצוב קבצים ספציפיים
+pnpm prettier --write "src/**/*.{ts,tsx,js,jsx}"
+```
+
+#### ניתוח קוד (Code Linting)
+```bash
+# בדיקת שגיאות ובעיות בכל הפרויקט
+pnpm run lint
+
+# תיקון אוטומטי של בעיות שניתן לתקן
+pnpm run lint:fix
+
+# בדיקת קבצים ספציפיים
+pnpm eslint "src/**/*.{ts,tsx}"
+```
+
+#### בדיקות (Testing)
+```bash
+# הרצת כל הבדיקות
+pnpm run test
+
+# הרצת בדיקות עם coverage
+pnpm run test:coverage
+
+# הרצת בדיקות e2e
+pnpm run test:e2e
+
+# הרצת בדיקות במצב watch
+pnpm run test:watch
+```
+
+#### בנייה (Building)
+```bash
+# בניית הפרויקט לייצור
+pnpm run build
+
+# בניית הפרויקט לפיתוח
+pnpm run build:dev
+
+# בדיקת טיפוסים TypeScript
+pnpm run type-check
+```
+
+### קבצי הגדרה
+
+#### .prettierrc
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "bracketSpacing": true,
+  "arrowParens": "avoid",
+  "endOfLine": "lf"
+}
+```
+
+#### .eslintrc.js
+```javascript
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  plugins: ['@typescript-eslint'],
+  extends: [
+    'eslint:recommended',
+    '@typescript-eslint/recommended',
+    'prettier'
+  ],
+  rules: {
+    '@typescript-eslint/no-unused-vars': 'error',
+    '@typescript-eslint/explicit-function-return-type': 'warn',
+    '@typescript-eslint/no-explicit-any': 'error'
+  }
+};
+```
+
+#### tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ES6"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
+```
+
+### אינטגרציה עם IDE
+
+#### VS Code
+מומלץ להתקין את התוספים הבאים:
+- **Prettier - Code formatter**
+- **ESLint**
+- **TypeScript Importer**
+- **Auto Rename Tag**
+- **Bracket Pair Colorizer**
+
+הגדרות מומלצות ב-`settings.json`:
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true
+}
+```
+
+#### Cursor
+Cursor תומך באופן מובנה ב-Prettier ו-ESLint. הגדרות דומות ל-VS Code.
+
+---
+
+## חלק 4: גיידליינים לפיתוח
 
 ### TypeScript
 
@@ -201,48 +537,50 @@ export default gameSlice.reducer;
 ```typescript
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TriviaController } from './controllers/trivia.controller';
-import { TriviaService } from './services/trivia.service';
-import { TriviaEntity } from '../shared/entities/trivia.entity';
+import { GameController } from './controllers/game.controller';
+import { GameService } from './services/game.service';
+import { GameEntity } from '../internal/entities/game.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TriviaEntity])],
-  controllers: [TriviaController],
-  providers: [TriviaService],
-  exports: [TriviaService],
+  imports: [TypeOrmModule.forFeature([GameEntity])],
+  controllers: [GameController],
+  providers: [GameService],
+  exports: [GameService],
 })
-export class TriviaModule {}
+export class GameModule {}
 ```
 
 #### מבנה controller מומלץ
 ```typescript
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { TriviaService } from '../services/trivia.service';
-import { CreateQuestionDto } from '../dtos/create-question.dto';
-import { AuthGuard } from '../../auth/guards/auth.guard';
+import { GameService } from '../services/game.service';
+import { CreateGameDto } from '../dtos/create-game.dto';
+import { AuthGuard } from '../../common/guards/auth.guard';
 
-@ApiTags('trivia')
-@Controller('trivia')
+@ApiTags('game')
+@Controller('game')
 @UseGuards(AuthGuard)
-export class TriviaController {
-  constructor(private readonly triviaService: TriviaService) {}
+export class GameController {
+  constructor(private readonly gameService: GameService) {}
 
-  @Post('question')
-  @ApiOperation({ summary: 'יצירת שאלה חדשה' })
-  @ApiResponse({ status: 201, description: 'שאלה נוצרה בהצלחה' })
-  async createQuestion(@Body() createQuestionDto: CreateQuestionDto) {
-    return this.triviaService.createQuestion(createQuestionDto);
+  @Post('create')
+  @ApiOperation({ summary: 'יצירת משחק חדש' })
+  @ApiResponse({ status: 201, description: 'משחק נוצר בהצלחה' })
+  async createGame(@Body() createGameDto: CreateGameDto) {
+    return this.gameService.createGame(createGameDto);
   }
 }
 ```
 
-## מערכת הטיפוסים
+---
+
+## חלק 5: מערכת הטיפוסים
 
 ### מבנה הטיפוסים המאוחד
 
 #### Shared Types (`shared/types/`)
-- **מקור יחיד לאמת** עבור טיפוסים המשמשים ב-client ו-server
+- **מקור מרכזי** עבור טיפוסים המשמשים ב-client ו-server
 - מכיל טיפוסים מאורגנים לפי נושאים:
   - `api.types.ts` - טיפוסי API, תגובות, שגיאות
   - `game.types.ts` - טיפוסי משחק, שאלות, היסטוריה
@@ -276,7 +614,7 @@ export class TriviaController {
 - `audio.types.ts` - מערכת אודיו
 - `validation.types.ts` - אימות טפסים
 
-#### Server-Specific Types (`server/src/shared/types/`)
+#### Server-Specific Types (`server/src/internal/types/`)
 - `game.types.ts` - טיפוסים של משחק בשרת
 - `user.types.ts` - טיפוסים של משתמש בשרת
 - `api.types.ts` - טיפוסים של API
@@ -321,34 +659,15 @@ const userSlice = createSlice({
 ```
 
 ### יתרונות המערכת המאוחדת
-1. **מקור יחיד לאמת**: כל הטיפוסים מרוכזים במקום אחד
+1. **מקור מרכזי**: כל הטיפוסים מרוכזים במקום אחד
 2. **עקביות**: טיפוסים זהים בין client ו-server
 3. **תחזוקה קלה**: שינויים נעשים במקום אחד בלבד
 4. **Type Safety**: בדיקות טיפוסים מדויקות
 5. **תיעוד טוב יותר**: מבנה ברור ומובן
 
-### ממשקים חדשים שנוספו לאחרונה
-כחלק מהשיפורים שבוצעו, נוספו ממשקים חדשים לשיפור הטיפוסיות:
+---
 
-#### ממשקי תגובה (Response Interfaces)
-- `CanPlayResponse` - תגובה לבדיקת יכולת משחק
-- `PurchaseResponse` - תגובה לפעולות רכישה
-- `DifficultyStats` - סטטיסטיקות קושי
-- `UserRank` - מידע על דירוג משתמש
-- `UserStats` - סטטיסטיקות משתמש מפורטות
-
-#### ממשקי בקשה (Request Interfaces)
-- `DeductPointsRequest` - בקשת ניכוי נקודות
-- `ValidateCustomDifficultyRequest` - בקשת אימות קושי מותאם
-- `ValidateLanguageRequest` - בקשת אימות שפה
-
-#### שיפורים בטיפוסיות
-- הוספת `extends Record<string, unknown>` לממשקי בקשה
-- החלפת `as unknown` casts בממשקים ספציפיים
-- שיפור התיעוד עם `@used_by` מדויק
-- סימון ממשקים מיושנים כ-`@deprecated`
-
-## מערכת הקבועים המאוחדת
+## חלק 6: מערכת הקבועים המאוחדת
 
 ### מבנה הקבועים
 
@@ -403,7 +722,9 @@ import { DATABASE_CONSTANTS } from '../constants/database.constants';
 4. **Type Safety**: TypeScript יכול לזהות אי התאמות בין הצדדים
 5. **ארגון טוב יותר**: הפרדה ברורה בין קבועים משותפים לספציפיים
 
-## API Documentation
+---
+
+## חלק 7: API Documentation
 
 ### נקודות קצה עיקריות
 
@@ -416,13 +737,13 @@ POST /api/auth/logout
 GET  /api/auth/profile
 ```
 
-#### טריוויה (Trivia)
+#### משחק (Game)
 ```http
-POST /api/trivia/question
-POST /api/trivia/answer
-GET  /api/trivia/history
-GET  /api/trivia/leaderboard
-GET  /api/trivia/stats
+POST /api/game/create
+POST /api/game/answer
+GET  /api/game/history
+GET  /api/game/leaderboard
+GET  /api/game/stats
 ```
 
 #### משתמשים (Users)
@@ -442,9 +763,9 @@ GET  /api/payments/history
 
 ### דוגמאות בקשות
 
-#### יצירת שאלה חדשה
+#### יצירת משחק חדש
 ```typescript
-const response = await fetch('/api/trivia/question', {
+const response = await fetch('/api/game/create', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -457,12 +778,12 @@ const response = await fetch('/api/trivia/question', {
   })
 });
 
-const question = await response.json();
+const game = await response.json();
 ```
 
 #### שליחת תשובה
 ```typescript
-const response = await fetch('/api/trivia/answer', {
+const response = await fetch('/api/game/answer', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -478,7 +799,9 @@ const response = await fetch('/api/trivia/answer', {
 const result = await response.json();
 ```
 
-## בדיקות (Testing)
+---
+
+## חלק 8: בדיקות (Testing)
 
 ### Frontend Testing
 
@@ -539,12 +862,12 @@ describe('useGameLogic', () => {
 #### בדיקות שירותים
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
-import { TriviaService } from './trivia.service';
+import { GameService } from './game.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { TriviaEntity } from '../shared/entities/trivia.entity';
+import { GameEntity } from '../internal/entities/game.entity';
 
-describe('TriviaService', () => {
-  let service: TriviaService;
+describe('GameService', () => {
+  let service: GameService;
   let mockRepository: any;
 
   beforeEach(async () => {
@@ -556,19 +879,19 @@ describe('TriviaService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        TriviaService,
+        GameService,
         {
-          provide: getRepositoryToken(TriviaEntity),
+          provide: getRepositoryToken(GameEntity),
           useValue: mockRepository,
         },
       ],
     }).compile();
 
-    service = module.get<TriviaService>(TriviaService);
+    service = module.get<GameService>(GameService);
   });
 
-  it('יוצר שאלה חדשה', async () => {
-    const createQuestionDto = {
+  it('יוצר משחק חדש', async () => {
+    const createGameDto = {
       topic: 'היסטוריה',
       difficulty: 'בינוני',
       language: 'he'
@@ -576,10 +899,10 @@ describe('TriviaService', () => {
 
     mockRepository.save.mockResolvedValue({
       id: '123',
-      ...createQuestionDto
+      ...createGameDto
     });
 
-    const result = await service.createQuestion(createQuestionDto);
+    const result = await service.createGame(createGameDto);
 
     expect(result.id).toBe('123');
     expect(mockRepository.save).toHaveBeenCalled();
@@ -587,7 +910,9 @@ describe('TriviaService', () => {
 });
 ```
 
-## כלים לפיתוח
+---
+
+## חלק 9: כלים לפיתוח
 
 ### Frontend Tools
 
@@ -641,7 +966,9 @@ pnpm run migration:run
 pnpm run migration:revert
 ```
 
-## Debugging
+---
+
+## חלק 10: Debugging
 
 ### Frontend Debugging
 
@@ -665,18 +992,18 @@ logger.error('שגיאה במשחק', error);
 ```typescript
 import { Logger } from '@nestjs/common';
 
-export class TriviaService {
-  private readonly logger = new Logger(TriviaService.name);
+export class GameService {
+  private readonly logger = new Logger(GameService.name);
 
-  async createQuestion(dto: CreateQuestionDto) {
-    logger.log(`יוצרת שאלה חדשה: ${dto.topic}`);
+  async createGame(dto: CreateGameDto) {
+    logger.log(`יוצרת משחק חדש: ${dto.topic}`);
     
     try {
-      const question = await this.generateQuestion(dto);
-      logger.log(`שאלה נוצרה בהצלחה: ${question.id}`);
-      return question;
+      const game = await this.generateGame(dto);
+      logger.log(`משחק נוצר בהצלחה: ${game.id}`);
+      return game;
     } catch (error) {
-      logger.error('שגיאה ביצירת שאלה', error.stack);
+      logger.error('שגיאה ביצירת משחק', error.stack);
       throw error;
     }
   }
@@ -693,7 +1020,9 @@ export class TriviaService {
 }
 ```
 
-## ביצועים ואופטימיזציה
+---
+
+## חלק 11: ביצועים ואופטימיזציה
 
 ### Frontend Optimization
 
@@ -730,15 +1059,15 @@ const expensiveValue = useMemo(() => {
 @Entity()
 @Index(['topic', 'difficulty'])
 @Index(['createdAt'])
-export class TriviaEntity {
+export class GameEntity {
   // ...
 }
 
 // Query optimization
-const questions = await this.triviaRepository
-  .createQueryBuilder('trivia')
-  .where('trivia.topic = :topic', { topic })
-  .andWhere('trivia.difficulty = :difficulty', { difficulty })
+const questions = await this.gameRepository
+  .createQueryBuilder('game')
+  .where('game.topic = :topic', { topic })
+  .andWhere('game.difficulty = :difficulty', { difficulty })
   .orderBy('RANDOM()')
   .limit(1)
   .getOne();
@@ -748,10 +1077,10 @@ const questions = await this.triviaRepository
 ```typescript
 // Redis caching
 @Injectable()
-export class TriviaService {
+export class GameService {
   constructor(
     private readonly cacheService: CacheService,
-    private readonly triviaRepository: Repository<TriviaEntity>
+    private readonly gameRepository: Repository<GameEntity>
   ) {}
 
   async getQuestion(topic: string, difficulty: string) {
@@ -760,7 +1089,7 @@ export class TriviaService {
     let question = await this.cacheService.get(cacheKey);
     
     if (!question) {
-      question = await this.triviaRepository.findOne({
+      question = await this.gameRepository.findOne({
         where: { topic, difficulty }
       });
       
@@ -771,4 +1100,202 @@ export class TriviaService {
   }
 }
 ```
- 
+
+---
+
+## חלק 12: זרימת עבודה מומלצת
+
+### לפני כל commit
+```bash
+# עיצוב קוד
+pnpm run format
+
+# תיקון בעיות ESLint
+pnpm run lint:fix
+
+# בדיקת טיפוסים
+pnpm run type-check
+
+# הרצת בדיקות
+pnpm run test
+```
+
+### במהלך פיתוח
+- השתמש ב-format on save ב-IDE
+- בדוק שגיאות ESLint באופן רציף
+- השתמש ב-TypeScript strict mode
+- כתוב בדיקות לכל פונקציונליות חדשה
+
+### בדיקה רציפה
+```bash
+# בדיקת עיצוב
+pnpm run format:check
+
+# בדיקת linting
+pnpm run lint
+
+# בדיקת טיפוסים
+pnpm run type-check
+
+# הרצת בדיקות
+pnpm run test
+```
+
+---
+
+## חלק 13: פתרון בעיות נפוצות
+
+### Prettier לא עובד
+```bash
+# בדוק שהכלי מותקן
+pnpm prettier --version
+
+# התקן מחדש אם צריך
+pnpm add prettier --save-dev
+
+# בדוק הגדרות
+pnpm prettier --config .prettierrc --check "src/**/*.ts"
+```
+
+### ESLint מציג שגיאות רבות
+```bash
+# תיקון אוטומטי
+pnpm run lint:fix
+
+# בדיקת הגדרות
+pnpm eslint --print-config src/index.ts
+
+# התקנה מחדש של plugins
+pnpm add @typescript-eslint/eslint-plugin @typescript-eslint/parser --save-dev
+```
+
+### TypeScript שגיאות
+```bash
+# בדיקת טיפוסים
+pnpm tsc --noEmit
+
+# ניקוי cache
+rm -rf node_modules/.cache
+
+# התקנה מחדש של dependencies
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+```
+
+### בעיות Docker
+
+#### מסד נתונים לא מתחבר
+```bash
+# בדיקת סטטוס PostgreSQL
+docker-compose ps postgres
+
+# בדיקת לוגים
+docker-compose logs postgres
+
+# התחברות למסד נתונים
+docker exec -it everytriv-postgres psql -U everytriv_user -d everytriv
+```
+
+#### Redis לא מתחבר
+```bash
+# בדיקת סטטוס Redis
+docker-compose ps redis
+
+# בדיקת לוגים
+docker-compose logs redis
+
+# התחברות ל-Redis
+docker exec -it everytriv-redis redis-cli -a EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
+```
+
+#### שרת לא עולה
+```bash
+# בדיקת לוגים
+docker-compose logs server
+
+# בדיקת תלויות
+docker-compose ps
+
+# הפעלה מחדש
+docker-compose restart server
+```
+
+---
+
+## חלק 14: כלי אבחון
+
+### Frontend
+```bash
+# בדיקת bundle size
+pnpm run build -- --analyze
+
+# בדיקת dependencies
+pnpm audit
+
+# בדיקת TypeScript
+pnpm tsc --noEmit
+
+# בדיקת ביצועים
+pnpm run build && pnpm lighthouse http://localhost:5173
+```
+
+### Backend
+```bash
+# בדיקת health
+curl http://localhost:3001/health
+
+# בדיקת logs
+docker logs everytriv-app
+
+# בדיקת database
+docker exec -it everytriv-postgres psql -U postgres -d everytriv
+
+# בדיקת memory usage
+docker stats everytriv-app
+```
+
+### כלי אבחון מתקדמים
+
+#### React Profiler
+```typescript
+import { Profiler } from 'react';
+
+function onRenderCallback(
+  id: string,
+  phase: string,
+  actualDuration: number,
+  baseDuration: number,
+  startTime: number,
+  commitTime: number
+) {
+  console.log(`Component ${id} took ${actualDuration}ms to render`);
+}
+
+<Profiler id="GameComponent" onRender={onRenderCallback}>
+  <GameComponent />
+</Profiler>
+```
+
+#### Node.js Profiler
+```bash
+# הפעלת profiler
+node --prof server.js
+
+# ניתוח התוצאות
+node --prof-process isolate-*.log > processed.txt
+```
+
+---
+
+## סיכום
+
+מדריך זה מכסה את כל ההיבטים של פיתוח בפרויקט EveryTriv. הקפד על:
+
+1. **הגדרת סביבה נכונה** - Docker, Node.js, pnpm
+2. **שימוש בכלי פיתוח** - Prettier, ESLint, TypeScript
+3. **עקיבה אחר גיידליינים** - TypeScript, React, NestJS
+4. **כתיבת בדיקות** - Frontend ו-Backend
+5. **אופטימיזציה** - ביצועים, caching, code splitting
+6. **debugging** - כלים מתקדמים לזיהוי בעיות
+
+לשאלות נוספות, עיין בתיעוד הספציפי לכל רכיב או פנה לצוות הפיתוח.

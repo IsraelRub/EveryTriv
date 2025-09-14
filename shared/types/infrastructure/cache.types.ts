@@ -15,15 +15,10 @@ import type { QuestionCacheEntry } from '../domain/analytics/analytics.types';
  * @used_by server/src/features/cache/cache.controller.ts (getCacheStats), server/src/features/cache/cache.service.ts (getCacheStats)
  */
 export interface CacheStats {
-	/** Total number of cached topics */
 	totalCachedTopics: number;
-	/** Total number of cached questions */
 	totalCachedQuestions: number;
-	/** Cache hit rate percentage */
 	cacheHitRate: number;
-	/** Cache miss rate percentage */
 	cacheMissRate: number;
-	/** Total cache size in bytes */
 	totalCacheSize: number;
 }
 
@@ -34,11 +29,8 @@ export interface CacheStats {
  * @used_by server/src/features/cache/cache.controller.ts (getCachedQuestions)
  */
 export interface CacheQuestionsQueryDto {
-	/** Topic name */
 	topic: string;
-	/** Difficulty level */
 	difficulty: string;
-	/** Language code (default: 'he') */
 	language?: string;
 }
 
@@ -49,13 +41,9 @@ export interface CacheQuestionsQueryDto {
  * @used_by server/src/features/cache/cache.controller.ts (getCachedQuestions response)
  */
 export interface CachedQuestionDto {
-	/** Question text */
 	question: string;
-	/** Answer options */
 	options: string[];
-	/** Correct answer */
 	correctAnswer: string;
-	/** Optional explanation */
 	explanation?: string;
 }
 
@@ -66,13 +54,9 @@ export interface CachedQuestionDto {
  * @used_by server/src/features/cache/cache.controller.ts (getCachedQuestions)
  */
 export interface CacheQuestionsResponseDto {
-	/** Array of cached questions */
 	questions: CachedQuestionDto[];
-	/** Topic name */
 	topic: string;
-	/** Difficulty level */
 	difficulty: string;
-	/** Language code */
 	language: string;
 }
 
@@ -83,13 +67,9 @@ export interface CacheQuestionsResponseDto {
  * @used_by server/src/features/cache/cache.controller.ts (invalidateCache)
  */
 export interface CacheInvalidationDto {
-	/** Cache type to invalidate */
 	type: string;
-	/** Topic name to invalidate */
 	topic?: string;
-	/** Difficulty level to invalidate */
 	difficulty?: string;
-	/** Language code to invalidate (default: 'he') */
 	language?: string;
 }
 
@@ -100,15 +80,10 @@ export interface CacheInvalidationDto {
  * @used_by server/src/features/cache/cache.controller.ts (getCacheStats response)
  */
 export interface CacheStatsDto {
-	/** Total number of cached topics */
 	totalCachedTopics: number;
-	/** Total number of cached questions */
 	totalCachedQuestions: number;
-	/** Cache hit rate percentage */
 	cacheHitRate: number;
-	/** Cache miss rate percentage */
 	cacheMissRate: number;
-	/** Total cache size in bytes */
 	totalCacheSize: number;
 }
 
@@ -119,15 +94,10 @@ export interface CacheStatsDto {
  * @used_by server/src/features/cache/cache.controller.ts (getCacheHealth)
  */
 export interface CacheHealthStatus {
-	/** Health status */
 	status: 'healthy' | 'unhealthy';
-	/** Timestamp of health check */
 	timestamp: string;
-	/** Cache statistics */
 	stats?: CacheStats;
-	/** Server uptime in seconds */
 	uptime?: number;
-	/** Error details if unhealthy */
 	error?: string;
 }
 
@@ -138,19 +108,12 @@ export interface CacheHealthStatus {
  * @used_by server/src/features/cache/cache.controller.ts (getUserProgress)
  */
 export interface UserProgressData {
-	/** User ID */
 	userId: string;
-	/** Topic name */
 	topic: string;
-	/** Questions answered correctly */
 	correctAnswers: number;
-	/** Total questions attempted */
 	totalQuestions: number;
-	/** Average response time in milliseconds */
 	averageResponseTime: number;
-	/** Last played timestamp */
 	lastPlayed: string;
-	/** Difficulty level */
 	difficulty: string;
 }
 
@@ -176,12 +139,8 @@ export interface CacheStorage extends Record<string, StorageValue> {}
  * @description Structure for cache data with metadata
  */
 export interface CacheData extends Record<string, StorageValue> {
-	/** The actual cached value */
 	value: StorageValue;
-	/** Time to live in seconds */
 	ttl?: number;
-	/** When the data was cached */
 	cachedAt?: number;
-	/** When the data expires */
 	expiresAt?: string;
 }

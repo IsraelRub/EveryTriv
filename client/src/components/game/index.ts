@@ -29,7 +29,7 @@ export { default as GameTimer } from './GameTimer';
 export { default as TriviaForm } from './TriviaForm';
 
 /**
- * Unified trivia game component
+ * trivia game component
  * @description Complete trivia game interface with question display and answer selection
  * @used_by client/views, client/components
  */

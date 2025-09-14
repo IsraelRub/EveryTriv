@@ -1,6 +1,6 @@
 # Feature: Subscription
 
-תיעוד סטטי למודול מנויים.
+תיעוד מודול מנויים.
 
 > הערת סנכרון: תלויות Game/Points בדיאגרמה מרוכזות ב-`GameModule` בפועל (ראו `../DIAGRAMS.md#diagram-sync-status`).
 

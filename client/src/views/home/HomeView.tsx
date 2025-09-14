@@ -21,7 +21,7 @@ import {
 // Component imports
 import { Game, TriviaForm } from '../../components/game';
 import { GameMode as GameModeComponent } from '../../components/gameMode';
-import { CurrentDifficulty, ErrorBanner, HomeTitle } from '../../components/home';
+import { DifficultyDisplay, ErrorBanner, HomeTitle } from '../../components/home';
 // Icon imports
 import { Icon } from '../../components/icons';
 import { SocialShare } from '../../components/layout';
@@ -663,7 +663,7 @@ export default function HomeView() {
           </motion.p>
 
           {/* Current Difficulty Display */}
-          <CurrentDifficulty
+          <DifficultyDisplay
             className='text-center mb-6'
             topic={topic}
             difficulty={difficulty}

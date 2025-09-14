@@ -77,7 +77,7 @@ export abstract class BaseTriviaProvider {
 	// Updated abstract method - questionCount is not needed since it's in the prompt
 	protected abstract getProviderConfig(prompt: string): ProviderConfig;
 
-	// Unified API call method with timeout and performance optimization
+	// API call method with timeout and performance optimization
 	protected async makeApiCall(_prompt: string): Promise<LLMApiResponse> {
 		if (!this.apiKey) {
 			throw new Error(PROVIDER_ERROR_MESSAGES.API_KEY_NOT_CONFIGURED);

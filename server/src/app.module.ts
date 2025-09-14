@@ -135,7 +135,7 @@ export class AppModule implements NestModule {
 		// Apply country check middleware
 		consumer.apply(CountryCheckMiddleware).forRoutes('*');
 
-		// Note: AuthGuard and RolesGuard are now applied globally via APP_GUARD
+		// Note: AuthGuard and RolesGuard are applied globally via APP_GUARD
 
 		// Apply bulk operations middleware - optimizes bulk operations
 		consumer.apply(BulkOperationsMiddleware).forRoutes('*');

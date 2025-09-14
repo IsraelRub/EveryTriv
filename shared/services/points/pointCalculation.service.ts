@@ -5,12 +5,43 @@
  * @description Advanced point calculation and mathematical operations
  * @author EveryTriv Team
  */
+import { Injectable } from '@nestjs/common';
 import type { PointBalance, PointPurchaseOption } from '../../types';
 
 /**
  * Service for advanced point calculations and mathematical operations
  */
+@Injectable()
 export class PointCalculationService {
+	/**
+	 * Calculate points for a correct answer (ALGORITHM)
+	 * @param difficulty - Difficulty level (easy, medium, hard)
+	 * @param timeSpent - Time spent on question in milliseconds
+	 * @param streak - Current correct answer streak
+	 * @param isCorrect - Whether the answer is correct
+	 * @returns Calculated points
+	 */
+	calculateAnswerPoints(difficulty: string, timeSpent: number, streak: number, isCorrect: boolean): number {
+		if (!isCorrect) return 0;
+
+		// Base points by difficulty
+		const basePoints = {
+			easy: 10,
+			medium: 20,
+			hard: 30,
+		};
+
+		const base = basePoints[difficulty.toLowerCase() as keyof typeof basePoints] || 10;
+
+		// Time bonus (faster = more points, max 10 seconds for full bonus)
+		const timeInSeconds = timeSpent / 1000;
+		const timeBonus = Math.max(0, 10 - Math.floor(timeInSeconds));
+
+		// Streak bonus (exponential growth, capped at 20 points)
+		const streakBonus = Math.min(streak * 2, 20);
+
+		return base + timeBonus + streakBonus;
+	}
 	/**
 	 * Calculate bonus points based on performance
 	 * @param baseScore - Base score achieved

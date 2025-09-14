@@ -194,97 +194,61 @@ export interface FormSelectProps
 
 // Form-related types
 export interface FormField {
-  /** Field name */
   name: string;
-  /** Field label */
   label: string;
-  /** Field type */
   type: 'text' | 'email' | 'password' | 'textarea' | 'select';
-  /** Validation type */
   validationType: ValidationType;
-  /** Whether field is required */
   required?: boolean;
-  /** Placeholder text */
   placeholder?: string;
-  /** Select options (for select type) */
   options?: Array<{ value: string; label: string }>;
-  /** Custom validation options */
   validationOptions?: ValidationHookOptions;
 }
 
 export interface ValidatedFormProps<T extends Record<string, unknown>> {
-  /** Form fields configuration */
   fields: FormField[];
-  /** Initial form values */
   initialValues?: T;
-  /** Form title */
   title?: string;
-  /** Form description */
   description?: string;
-  /** Submit button text */
   submitText?: string;
-  /** Loading state */
   loading?: boolean;
-  /** Validation options */
   validationOptions?: ValidationHookOptions;
-  /** Form submission handler */
   onSubmit: (values: T, isValid: boolean) => void | Promise<void>;
-  /** Cancel handler */
   onCancel?: () => void;
-  /** Additional CSS classes */
   className?: string;
-  /** Whether to apply glass effect */
   isGlassy?: boolean;
-  /** Whether to show validation summary */
   showValidationSummary?: boolean;
 }
 
 // Input Props
 // Form Input Props (extends base FormInputProps)
 export interface FormInputPropsExtended extends FormInputProps {
-  /** Form field name */
   fieldName: string;
-  /** Form validation */
   validation?: ValidationHookOptions;
 }
 
 // Validated Input Props
 export interface ValidatedInputProps extends Omit<FormInputProps, 'onChange'> {
-  /** Validation type */
   validationType: ValidationType;
-  /** Validation options */
   validationOptions?: ValidationHookOptions;
-  /** Real-time validation */
   realTimeValidation?: boolean;
-  /** Validation debounce delay */
   validationDebounceMs?: number;
-  /** Initial value */
   initialValue?: string;
-  /** Whether to show errors */
   showErrors?: boolean;
-  /** Custom error renderer */
   renderError?: (errors: string[]) => React.ReactNode;
-  /** Whether to show validation icon */
   showValidationIcon?: boolean;
-  /** Change handler */
   onChange?: (value: string, isValid?: boolean, errors?: string[]) => void;
 }
 
 // Form Select Props (extends base FormSelectProps)
 export interface FormSelectPropsExtended extends FormSelectProps {
-  /** Form field name */
   fieldName: string;
-  /** Form validation */
   validation?: ValidationHookOptions;
 }
 
 // Select Option
 export interface SelectOption {
-  /** Option value */
   value: string;
-  /** Option label */
   label: string;
-  /** Whether option is disabled */
   disabled?: boolean;
 }
 

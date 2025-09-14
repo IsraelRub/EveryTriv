@@ -284,7 +284,7 @@ export const MESSAGE_FORMATTERS = {
 		message: (message: string) => `${LOG_ICONS.PAYMENT} ${message}`,
 	},
 
-	// Domain-specific formatters using unified approach
+	// Domain-specific formatters using approach
 	oauth: {
 		error: (provider: string, message: string) => `${LOG_ICONS.ERROR} [${LOG_DOMAINS.OAUTH}:${provider}] ${message}`,
 		warn: (provider: string, message: string) => `${LOG_ICONS.WARN} [${LOG_DOMAINS.OAUTH}:${provider}] ${message}`,
@@ -296,7 +296,7 @@ export const MESSAGE_FORMATTERS = {
 			`${LOG_ICONS.INFO} [${LOG_DOMAINS.OAUTH}:${provider}] Credentials are configured`,
 	},
 
-	// Media formatters with unified domain and icon
+	// Media formatters with domain and icon
 	media: {
 		...createDomainFormatters(LOG_DOMAINS.MEDIA),
 		load: (key: string) => `${LOG_ICONS.MEDIA} [${LOG_DOMAINS.MEDIA}] Load: ${key}`,

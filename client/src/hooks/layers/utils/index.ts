@@ -6,11 +6,6 @@
  * @used_by client/components, client/views, client/hooks
  */
 
-/**
- * Local storage hook - REMOVED
- * @description Use storageService instead for consistent storage management
- * @deprecated Replaced by storageService for unified storage API
- */
 
 /**
  * Previous value hook

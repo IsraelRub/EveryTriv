@@ -372,7 +372,6 @@ export class PaymentService {
 				next_reset_time: null,
 				userId,
 				balance: user.points,
-				lastUpdated: new Date(),
 			};
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to purchase points', {

@@ -4,7 +4,7 @@
  *
  * @module ClientAuthService
  * @description Client-side authentication service with token management
- * @used_by client/hooks/api/useAuth.ts (useLogin, useRegister, useLogout), client/views/registration/RegistrationView.tsx (RegistrationView component), client/components/user/OAuthCallback.tsx (OAuthCallback component)
+ * @used_by client/hooks/api/useAuth.ts, client/views/registration/RegistrationView.tsx, client/components/user/OAuthCallback.tsx
  */
 import { AuthCredentials, AuthResponse, User } from '@shared';
 import { clientLogger } from '@shared';
@@ -17,19 +17,16 @@ import { storageService } from '../storage';
  * Main authentication service class
  * @class AuthService
  * @description Handles all authentication operations for the client
- * @used_by client/hooks/useAuth, client/views/auth
+ * @used_by client/hooks/useAuth.ts, client/views/auth
  */
 class AuthService {
-  /** Local storage key for auth token - unified with api service */
   private readonly TOKEN_KEY = CLIENT_STORAGE_KEYS.AUTH_TOKEN;
-  /** Local storage key for user data */
   private readonly USER_KEY = CLIENT_STORAGE_KEYS.AUTH_USER;
 
   /**
    * Authenticate user with credentials
-   * @param {AuthCredentials} credentials - User login credentials
-   * @returns {Promise<ClientAuthService>} Authentication response with token and user data
-   * @throws {Error} When authentication fails
+   * @returns Authentication response with token and user data
+   * @throws When authentication fails
    */
   async login(credentials: AuthCredentials): Promise<AuthResponse> {
     try {
@@ -49,10 +46,9 @@ class AuthService {
   }
 
   /**
-   * Register new user account
-   * @param {AuthCredentials & { email: string }} credentials - User registration data
-   * @returns {Promise<ClientAuthService>} Authentication response after successful registration
-   * @throws {Error} When registration fails
+   * Register user account
+   * @returns Authentication response after successful registration
+   * @throws When registration fails
    */
   async register(credentials: AuthCredentials & { email: string }): Promise<AuthResponse> {
     try {
@@ -78,8 +74,8 @@ class AuthService {
   }
 
   /**
-   * Logout current user and clear session
-   * @returns {Promise<void>} Resolves when logout is complete
+   * Logout user and clear session
+   * @returns Resolves when logout is complete
    */
   async logout(): Promise<void> {
     try {
@@ -100,7 +96,7 @@ class AuthService {
   }
 
   /**
-   * Get current user info
+   * Get user info
    */
   async getCurrentUser(): Promise<AuthResponse['user']> {
     try {
@@ -154,14 +150,14 @@ class AuthService {
   }
 
   /**
-   * Get current auth token
+   * Get auth token
    */
   async getToken(): Promise<string | null> {
     return await apiService.getAuthToken();
   }
 
   /**
-   * Get current user from storage
+   * Get user from storage
    */
   async getStoredUser(): Promise<AuthResponse['user'] | null> {
     const result = await storageService.get<AuthResponse['user']>(this.USER_KEY);
@@ -169,7 +165,7 @@ class AuthService {
   }
 
   /**
-   * Get current auth state
+   * Get auth state
    */
   async getAuthState(): Promise<{
     isAuthenticated: boolean;

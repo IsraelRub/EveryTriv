@@ -1,14 +1,16 @@
 # Backend Features Overview (NestJS)
 
-מסמך זה מרכז את מבנה מודולי ה-Nest הקיימים. כל מודול עומד בעקרונות: אחריות יחידה, יצוא מינימלי, שימוש ב-DI, DTO לולידציה, ושכבת Service מבודדת.
+תיעוד מבנה מודולי ה-NestJS הקיימים. כל מודול עומד בעקרונות: אחריות יחידה, יצוא מינימלי, שימוש ב-DI, DTO ולידציה, ושכבת Service מבודדת.
+
+> **הערת סנכרון**: ייצוג מודולים בדיאגרמות הוא מושגי; פירוט מיפוי בפועל: [סנכרון תרשימים ↔ קוד](../DIAGRAMS.md#diagram-sync-status).
 
 ## רשימת מודולים
 
 | מודול | נתיב בסיס | אחריות עיקרית | תלות ליבה |
 |-------|-----------|---------------|-----------|
 | Auth | /auth | אימות, הנפקת JWT, OAuth (Google) | User, Config, Tokens |
-| User | /user | פרופיל משתמש, סטטיסטיקות בסיסיות | Points, Game History |
-| Game | /game | לוגיקת משחק, יצירת משחק, זרימת מצב | Points, User, Cache |
+| User | /user | פרופיל משתמש, סטטיסטיקות בסיסיות | Points, Game |
+| Game | /game | לוגיקת משחק, trivia, AI providers | Points, User, Cache |
 | Points | /points | חישוב וניהול נקודות | User, Game |
 | Leaderboard | /leaderboard | דירוגים וחישובי מיקום | Points, User, Analytics |
 | Analytics | /analytics | מדדים, איסוף שימוש, דוחות | Game, Points |
@@ -78,6 +80,7 @@ export class CreateItemDto {
 - יצירת מופע משחק.
 - אחזור מצב נוכחי.
 - עדכון תוצאה/סיום.
+- לוגיקת trivia ו-AI providers.
 - שימוש בקאש לשאלות ונתוני Session קצרים.
 
 ## מודול Points (feature-points)

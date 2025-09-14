@@ -2,7 +2,7 @@
  * Password Service - Centralized password management
  *
  * @module PasswordService
- * @description Unified password hashing and validation service
+ * @description password hashing and validation service
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
@@ -193,9 +193,9 @@ export class PasswordService {
 	/**
 	 * Check if password needs to be updated
 	 */
-	shouldUpdatePassword(lastUpdated: Date, maxAgeDays: number = 90): boolean {
-		const now = new Date();
-		const daysSinceUpdate = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
+	shouldUpdatePassword(lastModified: Date, maxAgeDays: number = 90): boolean {
+		const currentTime = new Date();
+		const daysSinceUpdate = Math.floor((currentTime.getTime() - lastModified.getTime()) / (1000 * 60 * 60 * 24));
 		return daysSinceUpdate >= maxAgeDays;
 	}
 

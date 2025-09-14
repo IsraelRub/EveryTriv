@@ -21,7 +21,7 @@ export { PointCalculationService } from './pointCalculation.service';
 /**
  * Point validation functions
  * @description Comprehensive validation for points operations
- * @note Validation functions are now available in shared/validation/points.validation.ts
+ * @note Validation functions are available in shared/validation/points.validation.ts
  */
 export {
 	validatePointBalance,

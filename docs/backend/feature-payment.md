@@ -1,6 +1,6 @@
 # Feature: Payment
 
-תיעוד סטטי למודול תשלומים.
+תיעוד מודול תשלומים.
 
 > הערת סנכרון: מודולי Payment/Subscription פועלים מול GameModule מאוחד; פירוט: `../DIAGRAMS.md#diagram-sync-status`.
 

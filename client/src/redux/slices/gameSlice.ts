@@ -69,10 +69,11 @@ const gameStateSlice = createSlice({
       }
 
       if (action.payload.correct) {
-        // Calculate points using the service
+        // Calculate points using the algorithm
         const totalTime = action.payload.totalTime || 30;
         const timeSpent = action.payload.timeSpent || 0;
-        const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent);
+        const streak = state.stats?.correctStreak || 0;
+        const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
 
         // Update score
         state.data.score += pointsEarned;

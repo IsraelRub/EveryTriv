@@ -4,7 +4,7 @@ import { BaseStorageService, metricsService ,
 	StorageConfig,
 	StorageOperationResult,
 	StorageStats,
-	UnifiedStorageService,
+	StorageService,
 } from '@shared';
 import { RedisClient } from '@shared/types/infrastructure/redis.types';
 
@@ -13,7 +13,7 @@ import { RedisClient } from '@shared/types/infrastructure/redis.types';
  *
  * @class ServerStorageService
  * @extends BaseStorageService
- * @implements UnifiedStorageService
+ * @implements StorageService
  * @description Redis-based persistent storage for long-term data that should survive cache invalidation
  *
  * @note This service is for PERSISTENT storage only. For temporary caching, use CacheService instead.
@@ -30,7 +30,7 @@ import { RedisClient } from '@shared/types/infrastructure/redis.types';
  * - Data that expires quickly
  */
 @Injectable()
-export class ServerStorageService extends BaseStorageService implements UnifiedStorageService {
+export class ServerStorageService extends BaseStorageService implements StorageService {
 	private redisClient: RedisClient;
 
 	constructor(redisClient: RedisClient, config: Partial<StorageConfig> = {}) {

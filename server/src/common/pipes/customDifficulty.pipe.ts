@@ -19,7 +19,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 		const startTime = Date.now();
 
 		try {
-			// Use ValidationService for unified validation
+			// Use ValidationService for validation
 			const validationResult = await this.validationService.validateCustomDifficultyText(
 				value.customText,
 				{} as ValidationOptions

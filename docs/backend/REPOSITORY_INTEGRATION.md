@@ -2,7 +2,7 @@
 
 ## סקירה כללית
 
-ה-repositories כעת מסונכרנים במלואם עם מערכת ה-decorators, guards, interceptors ו-middleware.
+ה-repositories מסונכרנים במלואם עם מערכת ה-decorators, guards, interceptors ו-middleware.
 
 ## מבנה משולב
 
@@ -101,7 +101,7 @@ async getGameStats(): Promise<GameStats>
 
 ## סיכום
 
-ה-repositories כעת מסונכרנים במלואם עם כל מערכת ה-decorators, guards, interceptors ו-middleware. זה מספק:
+ה-repositories מסונכרנים במלואם עם כל מערכת ה-decorators, guards, interceptors ו-middleware. זה מספק:
 
 - **ארכיטקטורה אחידה** בכל שכבות האפליקציה
 - **אבטחה מתקדמת** ברמת repository
@@ -109,4 +109,4 @@ async getGameStats(): Promise<GameStats>
 - **מעקב מפורט** של כל פעולה
 - **גמישות והרחבה** קלה
 
-המערכת כעת מספקת פתרון מלא ומאוחד לכל צרכי ה-data access layer.
+המערכת מספקת פתרון מלא ומאוחד לכל צרכי ה-data access layer.

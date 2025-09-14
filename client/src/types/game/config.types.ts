@@ -9,150 +9,110 @@ import { GameModeConfig as SharedGameModeConfig,TriviaAnswer } from '@shared';
 
 // Game configuration types
 /**
- * קונפיגורציית משחק
+ * Game configuration interface
+ * @interface GameConfig
+ * @description Game configuration and setup
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game-mode/GameMode.tsx
  */
 export interface GameConfig
   extends Pick<SharedGameModeConfig, 'mode' | 'timeLimit' | 'questionLimit'> {
-  /** נושא המשחק */
   topic: string;
-  /** רמת הקושי */
   difficulty: DifficultyLevel;
-  /** הגדרות נוספות */
   settings?: {
-    /** האם להציג טיימר */
     showTimer?: boolean;
-    /** האם להציג התקדמות */
     showProgress?: boolean;
-    /** האם לאפשר חזרה לשאלה קודמת */
     allowBackNavigation?: boolean;
   };
 }
 
 /**
- * נתוני משחק
+ * Game data interface
+ * @interface GameData
+ * @description Game data and state
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game/Game.tsx
  */
 export interface GameData {
-  /** רשימת השאלות */
   questions: TriviaQuestion[];
-  /** התשובות של המשתמש */
   answers: TriviaAnswer[];
-  /** ניקוד נוכחי */
   score: number;
-  /** שאלה נוכחית */
   currentQuestionIndex: number;
-  /** זמן התחלה */
   startTime: Date;
-  /** זמן סיום */
   endTime?: Date;
 }
 
 /**
- * מטען קונפיגורציית מצב משחק
+ * Game mode configuration payload interface
+ * @interface GameModeConfigPayload
+ * @description Game mode configuration payload for Redux
  * @used_by client/src/redux/features/gameModeSlice.ts
  */
 export interface GameModeConfigPayload {
-  /** מצב המשחק */
   mode: GameMode;
-  /** נושא */
   topic: string;
-  /** רמת קושי */
   difficulty: DifficultyLevel;
-  /** הגבלת זמן */
   timeLimit?: number;
-  /** הגבלת שאלות */
   questionLimit?: number;
-  /** קונפיגורציה */
   config?: Record<string, unknown>;
 }
 
 /**
- * מצב מצב משחק
+ * Game mode state interface
+ * @interface GameModeState
+ * @description Game mode state for Redux
  * @used_by client/src/redux/features/gameModeSlice.ts
  */
 export interface GameModeState {
-  /** מצב נוכחי */
   currentMode: GameMode;
-  /** נושא נוכחי */
   currentTopic: string;
-  /** רמת קושי נוכחית */
   currentDifficulty: DifficultyLevel;
-  /** הגדרות נוכחיות */
   currentSettings: GameModeConfigPayload;
-  /** האם מצב המשחק נטען */
   isLoading: boolean;
-  /** שגיאה במצב המשחק */
   error?: string;
 }
 
 /**
- * מצב ניווט במשחק
+ * Game navigation state interface
+ * @interface GameNavigationState
+ * @description Game navigation state
  * @used_by client/src/components/game/Game.tsx, client/src/views/game/GameView.tsx
  */
 export interface GameNavigationState {
-  /** שאלה נוכחית */
   currentQuestion: number;
-  /** סה"כ שאלות */
   totalQuestions: number;
-  /** האם ניתן לחזור */
   canGoBack: boolean;
-  /** האם ניתן להמשיך */
   canGoForward: boolean;
-  /** האם המשחק הסתיים */
   isGameComplete: boolean;
 }
 
 /**
- * Game state
+ * Game state interface
+ * @interface GameState
+ * @description Game state for Redux and hooks
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/redux/features/gameSlice.ts
  */
 export interface GameState {
-  /** Game status */
   status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
-  /** Is playing */
   isPlaying?: boolean;
-  /** Current question */
   currentQuestion?: number;
-  /** Total questions */
   totalQuestions?: number;
-  /** Time remaining */
   timeRemaining?: number;
-  /** Difficulty */
   difficulty?: string;
-  /** Topic */
   topic?: string;
-  /** Questions */
   questions?: TriviaQuestion[];
-  /** Answers */
   answers?: number[];
-  /** Game data */
   data?: GameData;
-  /** Game configuration */
   config?: GameConfig;
-  /** Navigation state */
   navigation?: GameNavigationState;
-  /** Timer */
   timer?: GameTimerState;
-  /** Statistics */
   stats?: GameSessionStats;
-  /** Error */
   error?: string;
-  /** Score */
   score?: number;
-  /** Total */
   total?: number;
-  /** Trivia question */
   trivia?: TriviaQuestion;
-  /** Selected answer */
   selected?: number | null;
-  /** Is loading */
   loading?: boolean;
-  /** Favorite topics */
   favorites?: Array<{ topic: string; difficulty: string }>;
-  /** Game mode */
   gameMode?: SharedGameModeConfig;
-  /** Streak */
   streak?: number;
 }
 
@@ -161,17 +121,11 @@ export interface GameState {
  * @used_by client/src/components/game/GameTimer.tsx, client/src/hooks/layers/business/useGameLogic.ts
  */
 export interface GameTimerState {
-  /** Time remaining */
   timeRemaining: number;
-  /** Start time */
   startTime: number;
-  /** End time */
   endTime?: number;
-  /** Is timer running */
   isRunning: boolean;
-  /** Is timer paused */
   isPaused: boolean;
-  /** Low time warning */
   lowTimeWarning?: boolean;
 }
 
@@ -180,31 +134,18 @@ export interface GameTimerState {
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/stats/ScoringSystem.tsx
  */
 export interface GameSessionStats {
-  /** Current score */
   currentScore: number;
-  /** Maximum score */
   maxScore: number;
-  /** Success rate */
   successRate: number;
-  /** Average time per question */
   averageTimePerQuestion: number;
-  /** Correct answer streak */
   correctStreak: number;
-  /** Maximum streak */
   maxStreak: number;
-  /** Topics played */
   topicsPlayed?: Record<string, number>;
-  /** Success rate by difficulty */
   successRateByDifficulty?: Record<string, { correct: number; total: number }>;
-  /** Questions answered */
   questionsAnswered: number;
-  /** Correct answers */
   correctAnswers: number;
-  /** Score */
   score: number;
-  /** Total games */
   totalGames: number;
-  /** Time elapsed */
   timeElapsed?: number;
 }
 
@@ -213,25 +154,15 @@ export interface GameSessionStats {
  * @used_by client/src/hooks/layers/business/useGameLogic.ts
  */
 export interface GameSessionData {
-  /** Session ID */
   sessionId?: string;
-  /** Start time */
   startTime?: Date;
-  /** End time */
   endTime?: Date;
-  /** Duration */
   duration?: number;
-  /** Statistics */
   stats?: GameSessionStats;
-  /** Results */
   results?: TriviaAnswer[];
-  /** Last game mode */
   lastGameMode: string | null;
-  /** Session count */
   sessionCount: number;
-  /** Last score */
   lastScore?: number;
-  /** Last time elapsed */
   lastTimeElapsed?: number;
 }
 
@@ -240,13 +171,9 @@ export interface GameSessionData {
  * @used_by client/src/hooks/layers/business/useGameLogic.ts
  */
 export interface GameStatsUpdate {
-  /** New score */
   score: number;
-  /** Additional time */
   timeSpent: number;
-  /** Correct answer */
   isCorrect: boolean;
-  /** Response time */
   responseTime: number;
 }
 
@@ -255,15 +182,10 @@ export interface GameStatsUpdate {
  * @used_by client/src/hooks/layers/business/useGameLogic.ts
  */
 export interface GameSessionUpdate {
-  /** Session ID */
   sessionId: string;
-  /** Statistics update */
   statsUpdate: GameStatsUpdate;
-  /** Update timestamp */
   timestamp: Date;
-  /** Last score */
   lastScore: number;
-  /** Last time elapsed */
   lastTimeElapsed?: number;
 }
 
@@ -272,13 +194,9 @@ export interface GameSessionUpdate {
  * @used_by client/src/components/game-mode/GameMode.tsx
  */
 export interface GameModeConfig extends SharedGameModeConfig {
-  /** Additional settings */
   additionalSettings?: {
-    /** Show hints */
     showHints?: boolean;
-    /** Allow skipping questions */
     allowSkip?: boolean;
-    /** Show explanations */
     showExplanations?: boolean;
   };
 }

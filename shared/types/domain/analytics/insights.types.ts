@@ -3,14 +3,14 @@
  *
  * @module InsightsTypes
  * @description Type definitions for analytics insights and system recommendations
- * @used_by server: server/src/shared/utils/trivia.utils.ts (ServerUtils.getAnalyticsInsights)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 
 /**
  * Analytics insights interface
  * @interface AnalyticsInsights
  * @description Insights derived from analytics data
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.getAnalyticsInsights)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface AnalyticsInsights {
 	/** Quality-related insights */

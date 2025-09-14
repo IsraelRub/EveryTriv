@@ -1,6 +1,6 @@
 # מערכת האנימציות - EveryTriv
 
-> הערת ארגון: מסמך זה מספק פירוט יישומי (Implementation-Level) למערכת האנימציות. העקרונות הוויזואליים / טוקנים / וריאנטים מרוכזים ב-`../architecture/DESIGN_SYSTEM.md`, והקישורים להוקסים מתקדמים נמצאים ב-`../architecture/HOOKS_ARCHITECTURE.md`. אין לשכפל טוקנים או קבועים כאן – הפניה בלבד.
+> **הערת ארגון**: תיעוד זה מספק פירוט יישומי (Implementation-Level) למערכת האנימציות. העקרונות הוויזואליים / טוקנים / וריאנטים מרוכזים ב-[מערכת העיצוב](./DESIGN_SYSTEM.md), והקישורים להוקסים מתקדמים נמצאים ב-[ארכיטקטורת Hooks](./HOOKS_ARCHITECTURE.md). טוקנים וקבועים מנוהלים במקום יחיד.
 
 ## סקירה כללית
 
@@ -22,7 +22,7 @@
 - **Screen reader** תאימות
 
 ### ארכיטקטורה משופרת
-- **Unified constants** תחת קובץ אחד
+- **constants** תחת קובץ אחד
 - **Custom hooks** לאנימציות מותאמות אישית
 - **Performance monitoring** עם useOperationTimer
 - **Type safety** מלא עם TypeScript
@@ -340,6 +340,3 @@ const highContrast = window.matchMedia('(prefers-contrast: high)').matches;
 3. בדוק תאימות במכשירים שונים
 4. הוסף unit tests לאנימציות חדשות
 5. תיעד שינויים ב-API
-
----
-

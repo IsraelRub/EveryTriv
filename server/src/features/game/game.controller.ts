@@ -283,7 +283,7 @@ export class GameController {
 	@AuditLog('game:validate-custom-difficulty')
 	async validateCustomDifficulty(@Body() body: { customText: string }) {
 		// The CustomDifficultyPipe handles all validation logic
-		// This method now simply returns the result from the pipe
+		// This method simply returns the result from the pipe
 		return body;
 	}
 
@@ -296,7 +296,7 @@ export class GameController {
 		@Body() body: { text: string; language?: string; enableSpellCheck?: boolean; enableGrammarCheck?: boolean }
 	) {
 		// The LanguageValidationPipe handles all validation logic
-		// This method now simply returns the result from the pipe
+		// This method simply returns the result from the pipe
 		return body;
 	}
 

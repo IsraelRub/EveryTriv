@@ -70,7 +70,7 @@ export const VALIDATION_LIMITS = {
 	},
 	QUESTION_COUNT: {
 		MIN: 1,
-		MAX: 10,
+		MAX: 50,
 	},
 	POINTS: {
 		MIN: 1,

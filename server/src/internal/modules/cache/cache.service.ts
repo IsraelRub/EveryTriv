@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, UnifiedStorageService, createTimedResult, formatStorageError,  trackOperationWithTiming , serverLogger as logger } from '@shared';
+import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, StorageService, createTimedResult, formatStorageError, trackOperationWithTiming, serverLogger as logger } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 
 /**
@@ -8,10 +8,10 @@ import type { RedisClient } from '@shared/types/infrastructure/redis.types';
  * @module CacheService
  * @description Handles in-memory caching and Redis caching with TTL support
  * @author EveryTriv Team
- * @implements UnifiedStorageService
+ * @implements StorageService
  */
 @Injectable()
-export class CacheService implements UnifiedStorageService, OnModuleDestroy {
+export class CacheService implements StorageService, OnModuleDestroy {
 	private memoryCache = new Map<string, { value: StorageValue; expiry: number | null }>();
 	private useRedis: boolean = false;
 	private config: StorageConfig;

@@ -1,6 +1,6 @@
 # Frontend State Management (Redux Toolkit)
 
-תיעוד סטטי לשכבת ניהול המצב.
+תיעוד שכבת ניהול המצב.
 
 ## מטרות
 - מקור אמת יחיד (Single Source of Truth) עבור נתוני משחק/משתמש.

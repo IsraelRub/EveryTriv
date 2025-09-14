@@ -15,4 +15,4 @@ export * from './slices';
 // Selectors
 export * from './selectors';
 
-// Services are now exported from client/src/services
+// Services are exported from client/src/services

@@ -4,23 +4,23 @@
  * @module UseAnalyticsDashboard
  * @description React Query hooks for analytics dashboard functionality
  */
-import { UserAnalyticsQuery } from '@shared';
+import { UserAnalyticsQuery, CompleteUserAnalytics } from '@shared';
 import { clientLogger } from '@shared';
 import { useQuery } from '@tanstack/react-query';
 
 import { apiService } from '../../services/api';
 
 /**
- * Hook for getting unified user analytics
- * @returns Query result with unified user analytics
+ * Hook for getting user analytics
+ * @returns Query result with user analytics
  */
-export const useUnifiedUserAnalytics = () => {
-  return useQuery({
-    queryKey: ['unifiedUserAnalytics'],
+export const useUserAnalytics = () => {
+  return useQuery<CompleteUserAnalytics>({
+    queryKey: ['UserAnalytics'],
     queryFn: async () => {
-      clientLogger.userInfo('Fetching unified user analytics');
-      const result = await apiService.getUnifiedUserAnalytics();
-      clientLogger.userInfo('Unified user analytics fetched successfully', {
+      clientLogger.userInfo('Fetching user analytics');
+      const result = await apiService.getUserAnalytics();
+      clientLogger.userInfo('user analytics fetched successfully', {
         userId: result.basic?.userId,
       });
       return result;
@@ -82,7 +82,7 @@ export const useRealTimeAnalytics = () => {
     queryFn: async () => {
       clientLogger.userInfo('Fetching real-time analytics');
       // This would call a real-time analytics endpoint
-      const result = await apiService.getUnifiedUserAnalytics();
+      const result = await apiService.getUserAnalytics();
       clientLogger.userInfo('Real-time analytics fetched successfully');
       return result;
     },
@@ -103,7 +103,7 @@ export const useAnalyticsExport = (format: 'csv' | 'json' | 'pdf' = 'json') => {
     queryFn: async () => {
       clientLogger.userInfo('Exporting analytics data', { format });
       // This would call an export endpoint
-      const result = await apiService.getUnifiedUserAnalytics();
+      const result = await apiService.getUserAnalytics();
       clientLogger.userInfo('Analytics data exported successfully', { format });
       return result;
     },

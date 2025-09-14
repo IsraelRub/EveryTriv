@@ -15,33 +15,25 @@ import { GameConfig, GameSessionStats,GameState, GameTimerState } from './config
  * @description Metadata for the current question being displayed
  */
 export interface CurrentQuestionMetadata {
-  /** Custom difficulty multiplier */
   customDifficultyMultiplier?: number;
-  /** Actual difficulty level */
   actualDifficulty?: string;
-  /** Number of questions */
   questionCount?: number;
 }
 
 // Game Component Props
 /**
- * פרופס לרכיב משחק
+ * Game component props interface
+ * @interface GameProps
+ * @description Props for the Game component
  * @used_by client/src/components/game/Game.tsx
  */
 export interface GameProps {
-  /** קונפיגורציית המשחק */
   config: GameConfig;
-  /** מצב המשחק */
   state: GameState;
-  /** מטפל בשינוי מצב */
   onStateChange: (newState: GameState) => void;
-  /** מטפל בסיום משחק */
   onGameComplete: (finalScore: number, timeSpent: number) => void;
-  /** מטפל בשגיאה */
   onError: (error: string) => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** שאלת טריוויה */
   trivia?: {
     id: string;
     question: string;
@@ -50,17 +42,11 @@ export interface GameProps {
     difficulty?: string;
     topic?: string;
   };
-  /** תשובה נבחרת */
   selected?: number | null;
-  /** ניקוד */
   score?: number;
-  /** מצב משחק */
   gameMode?: GameModeConfig;
-  /** מטפל בתשובה */
   onAnswer?: (index: number) => Promise<void>;
-  /** מטפל בשאלה חדשה */
   onNewQuestion?: () => Promise<void>;
-  /** מטפל בסיום משחק */
   onGameEnd?: () => void;
 }
 
@@ -69,25 +55,15 @@ export interface GameProps {
  * @used_by client/src/components/game/GameTimer.tsx
  */
 export interface GameTimerProps {
-  /** מצב הטיימר */
   timer: GameTimerState;
-  /** מטפל בשינוי זמן */
   onTimeUpdate: (timeRemaining: number) => void;
-  /** מטפל בהתראה על זמן קצר */
   onLowTimeWarning: () => void;
-  /** מטפל בסיום זמן */
   onTimeUp: () => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** האם רץ */
   isRunning?: boolean;
-  /** זמן נותר */
   timeRemaining?: number;
-  /** זמן שחלף */
   timeElapsed?: number;
-  /** האם המשחק נגמר */
   isGameOver?: boolean;
-  /** מצב משחק */
   mode?: {
     name: string;
     timeLimit: number;
@@ -100,16 +76,13 @@ export interface GameTimerProps {
  * @used_by client/src/components/game/TriviaGame.tsx
  */
 export interface TriviaGameProps {
-  /** שאלת טריוויה */
   trivia: {
     id: string;
     question: string;
     answers: Array<{ text: string; isCorrect: boolean }>;
     correctAnswerIndex: number;
   };
-  /** תשובה נבחרת */
   selected?: number | null;
-  /** מטפל בתשובה */
   onAnswer: (index: number) => void;
 }
 
@@ -118,35 +91,20 @@ export interface TriviaGameProps {
  * @used_by client/src/components/game/TriviaForm.tsx
  */
 export interface TriviaFormProps {
-  /** מטפל בשליחת טופס */
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  /** מטפל בשינוי ערכים */
   onChange: (field: string, value: BasicValue) => void;
-  /** ערכי הטופס */
   values: Record<string, BasicValue>;
-  /** האם הטופס נטען */
   loading?: boolean;
-  /** CSS classes נוספות */
   className?: string;
-  /** נושא */
   topic?: string;
-  /** רמת קושי */
   difficulty?: string;
-  /** מספר שאלות */
   questionCount?: number;
-  /** מטפל בשינוי נושא */
   onTopicChange?: (topic: string) => void;
-  /** מטפל בשינוי קושי */
   onDifficultyChange?: (difficulty: string) => void;
-  /** מטפל בשינוי מספר שאלות */
   onQuestionCountChange?: (count: number) => void;
-  /** מטפל בסגירת טופס */
   onClose?: () => void;
-  /** מטפל בבחירת מצב משחק */
   onGameModeSelect?: (mode: string) => void;
-  /** האם להציג בחירת מצב משחק */
   showGameModeSelector?: boolean;
-  /** מטפל בסגירת בחירת מצב משחק */
   onGameModeSelectorClose?: () => void;
 }
 
@@ -166,23 +124,14 @@ export interface FavoriteTopicsProps {
  * @used_by client/src/components/gameMode/GameMode.tsx
  */
 export interface GameModeUIProps {
-  /** מצב נוכחי */
   currentMode?: string;
-  /** מטפל בשינוי מצב */
   onModeChange?: (mode: string) => void;
-  /** מטפל בשינוי נושא */
   onTopicChange?: (topic: string) => void;
-  /** מטפל בשינוי קושי */
   onDifficultyChange?: (difficulty: string) => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** האם נראה */
   isVisible?: boolean;
-  /** מטפל בבחירת מצב */
   onSelectMode?: (config: { mode: GameMode; timeLimit?: number; questionLimit?: number }) => void;
-  /** מטפל בבחירת מצב */
   onModeSelect?: (mode: string) => void;
-  /** מטפל בביטול */
   onCancel?: () => void;
 }
 
@@ -191,11 +140,8 @@ export interface GameModeUIProps {
  * @used_by client/src/components/stats/Achievements.tsx
  */
 export interface AchievementsProps {
-  /** רשימת הישגים */
   achievements: Achievement[];
-  /** מטפל בלחיצה על הישג */
   onAchievementClick?: (achievement: Achievement) => void;
-  /** CSS classes נוספות */
   className?: string;
 }
 
@@ -204,29 +150,17 @@ export interface AchievementsProps {
  * @used_by client/src/components/stats/ScoringSystem.tsx
  */
 export interface ScoringSystemProps {
-  /** ניקוד נוכחי */
   currentScore: number;
-  /** ניקוד מקסימלי */
   maxScore: number;
-  /** אחוז הצלחה */
   successRate: number;
-  /** רצף נוכחי */
   currentStreak: number;
-  /** רצף מקסימלי */
   maxStreak: number;
-  /** CSS classes נוספות */
   className?: string;
-  /** סטטיסטיקות */
   stats?: GameSessionStats;
-  /** ניקוד */
   score?: number;
-  /** סה"כ */
   total?: number;
-  /** נושאים ששוחקו */
   topicsPlayed?: string[];
-  /** סטטיסטיקות קושי */
   difficultyStats?: Record<string, { correct: number; total: number }>;
-  /** מטא-דאטה של שאלה נוכחית */
   currentQuestionMetadata?: CurrentQuestionMetadata;
 }
 
@@ -235,21 +169,15 @@ export interface ScoringSystemProps {
  * @used_by client/src/components/stats/CustomDifficultyHistory.tsx
  */
 export interface CustomDifficultyHistoryProps {
-  /** היסטוריית קושי */
   history?: Array<{
     difficulty: string;
     score: number;
     date: string;
   }>;
-  /** מטפל בלחיצה על פריט */
   onItemClick?: (item: { id: string; name: string; value: number }) => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** האם נראה */
   isVisible?: boolean;
-  /** מטפל בסגירה */
   onClose?: () => void;
-  /** מטפל בבחירה */
   onSelect?: (topic: string, difficulty: string) => void;
 }
 
@@ -258,17 +186,11 @@ export interface CustomDifficultyHistoryProps {
  * @used_by client/src/components/home/CurrentDifficulty.tsx
  */
 export interface CurrentDifficultyProps {
-  /** קושי נוכחי */
   difficulty: string;
-  /** מטפל בשינוי קושי */
   onDifficultyChange: (difficulty: string) => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** עיכוב אנימציה */
   delay?: number;
-  /** נושא */
   topic?: string;
-  /** מטפל בהצגת היסטוריה */
   onShowHistory?: () => void;
 }
 
@@ -277,13 +199,9 @@ export interface CurrentDifficultyProps {
  * @used_by client/src/components/home/HomeTitle.tsx
  */
 export interface HomeTitleProps {
-  /** כותרת */
   title: string;
-  /** תת-כותרת */
   subtitle?: string;
-  /** CSS classes נוספות */
   className?: string;
-  /** עיכוב אנימציה */
   delay?: number;
 }
 
@@ -292,15 +210,10 @@ export interface HomeTitleProps {
  * @used_by client/src/components/home/ErrorBanner.tsx
  */
 export interface ErrorBannerProps {
-  /** הודעת שגיאה */
   message: string;
-  /** סוג שגיאה */
   type?: 'error' | 'warning' | 'info';
-  /** מטפל בסגירה */
   onClose?: () => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** קושי */
   difficulty?: string;
 }
 
@@ -309,21 +222,13 @@ export interface ErrorBannerProps {
  * @used_by client/src/components/layout/SocialShare.tsx
  */
 export interface SocialShareProps {
-  /** טקסט לשיתוף */
   text?: string;
-  /** URL לשיתוף */
   url?: string;
-  /** פלטפורמות שיתוף */
   platforms?: string[];
-  /** CSS classes נוספות */
   className?: string;
-  /** ניקוד */
   score?: number;
-  /** סה"כ */
   total?: number;
-  /** נושא */
   topic?: string;
-  /** רמת קושי */
   difficulty?: string;
 }
 
@@ -332,17 +237,13 @@ export interface SocialShareProps {
  * @used_by client/src/components/leaderboard/Leaderboard.tsx
  */
 export interface LeaderboardProps {
-  /** רשימת מובילים */
   entries?: Array<{
     rank: number;
     username: string;
     score: number;
     avatar?: string;
   }>;
-  /** מטפל בלחיצה על מוביל */
   onEntryClick?: (entry: { id: string; username: string; score: number; rank: number }) => void;
-  /** CSS classes נוספות */
   className?: string;
-  /** מזהה משתמש */
   userId?: string;
 }

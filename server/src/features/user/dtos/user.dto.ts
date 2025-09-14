@@ -6,7 +6,7 @@
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DifficultyLevel, PreferenceValue, UserAddress, UserPreferences } from '@shared';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -19,7 +19,9 @@ import {
 	IsString,
 	IsUrl,
 	Matches,
+	Max,
 	MaxLength,
+	Min,
 	MinLength,
 	ValidateNested,
 } from 'class-validator';
@@ -162,9 +164,10 @@ export class SearchUsersDto {
 		maximum: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@MinLength(1, { message: 'Limit must be at least 1' })
-	@MaxLength(100, { message: 'Limit cannot exceed 100' })
+	@Min(1, { message: 'Limit must be at least 1' })
+	@Max(100, { message: 'Limit cannot exceed 100' })
 	limit?: number = 10;
 }
 

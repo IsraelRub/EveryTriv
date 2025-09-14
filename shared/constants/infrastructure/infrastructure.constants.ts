@@ -4,14 +4,14 @@
  *
  * @module InfrastructureConstants
  * @description Infrastructure configuration constants
- * @used_by server: server/src/main.ts, client: vite.config.ts, docker-compose.yaml
+ * @used_by server/src/main.ts, client/vite.config.ts, docker-compose.yaml
  */
 
 /**
  * Default server and client ports configuration
  * @constant
  * @description Standardized port configuration for development environment
- * @used_by server: server/src/main.ts (bootstrap port), client: vite.config.ts (dev server port), docker-compose.yaml (service ports)
+ * @used_by server/src/main.ts, client/vite.config.ts, docker-compose.yaml
  */
 export const DEFAULT_PORTS = {
 	/** Express server port - Development mode */
@@ -27,7 +27,7 @@ export const DEFAULT_PORTS = {
 /**
  * Environment-based URLs
  * @description Base URLs for different environments
- * @used_by server: server/src/shared/services/http-client.ts (base URL), client: client/src/services/api.service.ts (API base URL), shared/services/storage.service.ts (service URLs)
+ * @used_by server/src/shared/services/http-client.ts, client/src/services/api.service.ts, shared/services/storage.service.ts
  */
 export const DEFAULT_URLS = {
 	/** Development server URL */

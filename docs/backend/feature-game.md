@@ -1,6 +1,6 @@
 # Feature: Game
 
-תיעוד סטטי למודול המשחק (Game / Trivia Flow).
+תיעוד מודול המשחק (Game / Trivia Flow).
 
 > הערת סנכרון: חלק מהגבולות המוצגים בדיאגרמות (Trivia, Game History, AI, Logger) ממוזגים בפועל בתוך `GameModule` ושירותים משותפים. פירוט: `../DIAGRAMS.md#diagram-sync-status`.
 

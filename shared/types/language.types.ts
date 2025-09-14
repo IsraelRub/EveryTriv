@@ -77,7 +77,7 @@ export interface LanguageToolConfig {
  * Language validation request interface
  * @interface ValidateLanguageRequest
  * @description Request payload for language validation
- * @used_by client/src/services/api.service.ts (validateLanguage)
+ * @used_by client/src/services/api.service.ts
  */
 export interface ValidateLanguageRequest extends Record<string, unknown> {
 	/** Text to validate */

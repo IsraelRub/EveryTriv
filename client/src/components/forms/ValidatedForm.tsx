@@ -9,6 +9,7 @@
 import type { DifficultyLevel } from '@shared';
 import {
   clientLogger,
+  VALIDATION_LIMITS,
   validateCustomDifficulty,
   validateEmail,
   validatePassword,
@@ -78,14 +79,14 @@ export function ValidatedForm({
               },
               questionCount: () => {
                 const count = parseInt(value);
-                const isValid = VALID_QUESTION_COUNTS.includes(
-                  count as (typeof VALID_QUESTION_COUNTS)[number]
-                );
+                const isValid = count >= VALIDATION_LIMITS.QUESTION_COUNT.MIN && 
+                               count <= VALIDATION_LIMITS.QUESTION_COUNT.MAX &&
+                               VALID_QUESTION_COUNTS.includes(count as (typeof VALID_QUESTION_COUNTS)[number]);
                 return {
                   isValid,
                   errors: isValid
                     ? []
-                    : [`Question count must be one of: ${VALID_QUESTION_COUNTS.join(', ')}`],
+                    : [`Question count must be between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX}`],
                 };
               },
             };

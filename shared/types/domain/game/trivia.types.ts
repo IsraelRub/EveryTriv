@@ -3,7 +3,7 @@
  *
  * @module TriviaTypes
  * @description Type definitions for trivia questions, answers, and trivia-related entities
- * @used_by server: server/src/features/trivia/entities/trivia-question.entity.ts (TriviaQuestion entity), server/src/features/trivia/entities/trivia-answer.entity.ts (TriviaAnswer entity), client: client/src/components/game/TriviaForm.tsx (trivia form), client/src/components/game/TriviaGame.tsx (trivia game)
+ * @used_by server/src/features/trivia/entities/trivia-question.entity.ts, server/src/features/trivia/entities/trivia-answer.entity.ts, client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
 import type { BaseEntity } from '../../core/data.types';
 
@@ -11,7 +11,7 @@ import type { BaseEntity } from '../../core/data.types';
  * Trivia question interface
  * @interface TriviaQuestion
  * @description Trivia question with answers and metadata
- * @used_by server: server/src/features/trivia/entities/trivia-question.entity.ts (TriviaQuestion entity), client: client/src/components/game/TriviaForm.tsx (question display), client/src/components/game/TriviaGame.tsx (question handling)
+ * @used_by server/src/features/trivia/entities/trivia-question.entity.ts, client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
 export interface TriviaQuestion extends BaseEntity {
 	/** Question text */
@@ -39,14 +39,14 @@ export interface TriviaQuestion extends BaseEntity {
 	/** Success rate */
 	successRate?: number;
 	/** Game metadata */
-	metadata?: Record<string, unknown>;
+	metadata?: Record<string, any>;
 }
 
 /**
  * Trivia answer interface
  * @interface TriviaAnswer
  * @description Trivia answer with metadata
- * @used_by server: server/src/features/trivia/entities/trivia-answer.entity.ts (TriviaAnswer entity), client: client/src/components/game/TriviaForm.tsx (answer selection), client/src/components/game/TriviaGame.tsx (answer handling)
+ * @used_by server/src/features/trivia/entities/trivia-answer.entity.ts, client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
 export interface TriviaAnswer {
 	/** Answer text */
@@ -65,7 +65,7 @@ export interface TriviaAnswer {
  * Trivia request interface
  * @interface TriviaRequest
  * @description Request payload for trivia questions
- * @used_by client: client/src/services/api.service.ts (getTriviaQuestions), client/src/hooks/api/useTrivia.ts (trivia data fetching)
+ * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaRequest {
 	/** Number of questions */
@@ -92,7 +92,7 @@ export interface TriviaRequest {
  * Trivia response interface
  * @interface TriviaResponse
  * @description Response payload for trivia questions
- * @used_by client: client/src/services/api.service.ts (getTriviaQuestions), client/src/hooks/api/useTrivia.ts (trivia data handling)
+ * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaResponse {
 	/** Trivia questions */
@@ -118,7 +118,7 @@ export interface TriviaResponse {
  * Answer result interface
  * @interface AnswerResult
  * @description Result of answering a trivia question
- * @used_by client: client/src/components/game/TriviaForm.tsx (answer result), client/src/components/game/TriviaGame.tsx (result handling), server: server/src/features/game/game.service.ts (submitAnswer method)
+ * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx, server/src/features/game/game.service.ts
  */
 export interface AnswerResult {
 	/** Question ID */
@@ -145,7 +145,7 @@ export interface AnswerResult {
  * Trivia session interface
  * @interface TriviaSession
  * @description Trivia game session
- * @used_by client: client/src/components/game/TriviaGame.tsx (session management), client/src/hooks/layers/business/useGameMode.ts (session state)
+ * @used_by client/src/components/game/TriviaGame.tsx, client/src/hooks/layers/business/useGameMode.ts
  */
 export interface TriviaSession {
 	/** Session ID */
@@ -154,7 +154,6 @@ export interface TriviaSession {
 	userId: string;
 	/** Questions */
 	questions: TriviaQuestion[];
-	/** Current question index */
 	currentQuestionIndex: number;
 	/** Answers */
 	answers: AnswerResult[];
@@ -176,7 +175,7 @@ export interface TriviaSession {
  * Trivia category interface
  * @interface TriviaCategory
  * @description Trivia question category
- * @used_by client: client/src/components/gameMode/GameMode.tsx (category selection), client/src/hooks/api/useTrivia.ts (category handling)
+ * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaCategory {
 	/** Category ID */
@@ -201,7 +200,7 @@ export interface TriviaCategory {
  * Trivia difficulty interface
  * @interface TriviaDifficulty
  * @description Trivia difficulty level
- * @used_by client: client/src/components/gameMode/GameMode.tsx (difficulty selection), client/src/hooks/api/useTrivia.ts (difficulty handling)
+ * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaDifficulty {
 	/** Difficulty ID */
@@ -224,7 +223,7 @@ export interface TriviaDifficulty {
  * Trivia topic interface
  * @interface TriviaTopic
  * @description Trivia question topic
- * @used_by client: client/src/components/gameMode/GameMode.tsx (topic selection), client/src/hooks/api/useTrivia.ts (topic handling)
+ * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaTopic {
 	/** Topic ID */
@@ -251,7 +250,7 @@ export interface TriviaTopic {
  * Trivia statistics interface
  * @interface TriviaStatistics
  * @description Trivia statistics data
- * @used_by client: client/src/views/leaderboard/Leaderboard.tsx (statistics display), client/src/hooks/api/useTrivia.ts (statistics handling)
+ * @used_by client/src/views/leaderboard/Leaderboard.tsx, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaStatistics {
 	/** Total questions */
@@ -264,7 +263,6 @@ export interface TriviaStatistics {
 	averageTimePerQuestion: number;
 	/** Best streak */
 	bestStreak: number;
-	/** Current streak */
 	currentStreak: number;
 	/** Favorite topic */
 	favoriteTopic: string;
@@ -280,7 +278,7 @@ export interface TriviaStatistics {
  * Trivia leaderboard entry interface
  * @interface TriviaLeaderboardEntry
  * @description Trivia leaderboard entry
- * @used_by client: client/src/views/leaderboard/Leaderboard.tsx (leaderboard display), client/src/hooks/api/useTrivia.ts (leaderboard handling)
+ * @used_by client/src/views/leaderboard/Leaderboard.tsx, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaLeaderboardEntry {
 	/** User ID */

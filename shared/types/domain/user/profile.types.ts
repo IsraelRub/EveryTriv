@@ -10,14 +10,14 @@ import type { BasicValue } from '../../core/data.types';
  * User profile update data interface
  * @interface UserProfileUpdateData
  * @description Data structure for updating user profile information
- * @used_by server: server/src/features/user/user.service.ts (updateUserProfile), client: client/src/components/user/UserProfile.tsx (profile updates)
+ * @used_by server/src/features/user/user.service.ts, client/src/components/user/UserProfile.tsx
  */
 
 /**
  * User profile update request interface
  * @interface UserProfileUpdateRequest
  * @description Request payload for updating user profile
- * @used_by client: client/src/services/api.service.ts (updateUserProfile), client/src/hooks/api/useUserPreferences.ts (profile updates)
+ * @used_by client/src/services/api.service.ts, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserProfileUpdateRequest {
 	/** User ID */
@@ -32,7 +32,7 @@ export interface UserProfileUpdateRequest {
  * User preferences update interface
  * @interface UserPreferencesUpdate
  * @description Data structure for updating user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences updates), client/src/hooks/api/useUserPreferences.ts (preferences management)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesUpdate {
 	/** Theme preference */
@@ -85,7 +85,7 @@ export interface UserPreferencesUpdate {
  * User profile response interface
  * @interface UserProfileResponse
  * @description Response payload for user profile data
- * @used_by client: client/src/services/api.service.ts (getUserProfile), client/src/hooks/api/useUserPreferences.ts (profile data)
+ * @used_by client/src/services/api.service.ts, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserProfileResponseType {
 	/** User profile data */
@@ -141,7 +141,7 @@ export interface UserProfileResponseType {
  * User profile validation interface
  * @interface UserProfileValidation
  * @description Validation result for user profile data
- * @used_by client: client/src/components/user/UserProfile.tsx (profile validation), client/src/hooks/api/useUserPreferences.ts (validation handling)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserProfileValidation {
 	/** Whether profile data is valid */
@@ -158,7 +158,7 @@ export interface UserProfileValidation {
  * User profile search interface
  * @interface UserProfileSearch
  * @description Search parameters for user profiles
- * @used_by client: client/src/components/user/UserProfile.tsx (profile search), client/src/hooks/api/useUserPreferences.ts (search functionality)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserProfileSearch {
 	/** Search query */
@@ -197,7 +197,7 @@ export interface UserProfileSearch {
  * User profile search result interface
  * @interface UserProfileSearchResult
  * @description Search result for user profiles
- * @used_by client: client/src/components/user/UserProfile.tsx (search results), client/src/hooks/api/useUserPreferences.ts (search results handling)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserProfileSearchResult {
 	/** Search results */
@@ -223,7 +223,6 @@ export interface UserProfileSearchResult {
 	}>;
 	/** Total results count */
 	totalCount: number;
-	/** Current page */
 	currentPage: number;
 	/** Total pages */
 	totalPages: number;
@@ -233,4 +232,3 @@ export interface UserProfileSearchResult {
 	hasPreviousPage: boolean;
 }
 
-// UserPreferencesUpdate is already exported from user.types.ts

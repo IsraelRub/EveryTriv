@@ -10,7 +10,6 @@ import {
 	CacheData,
 	CacheStorage,
 	formatTime,
-	getCurrentTimestamp,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageConfigFactory,
@@ -20,7 +19,7 @@ import {
 	StorageOperationResult,
 	StorageStats,
 	StorageUtils,
-	UnifiedStorageService,
+	StorageService,
 	UserProgressData,
 } from '../index';
 
@@ -31,7 +30,7 @@ import {
  * @note This is for PERSISTENT storage only. For caching, use CacheService instead.
  * @used_by server: server/src/shared/modules/storage/storage.service.ts (ServerStorageService extends), client: client/src/services/storage/storage.service.ts (ClientStorageService extends)
  */
-export abstract class BaseStorageService implements UnifiedStorageService {
+export abstract class BaseStorageService implements StorageService {
 	protected config: StorageConfig;
 	protected metadata = new Map<string, StorageItemMetadata>();
 
@@ -149,7 +148,7 @@ export abstract class BaseStorageService implements UnifiedStorageService {
 		const key = `user_progress_${userId}`;
 		const progressData = {
 			...progress,
-			lastSaved: getCurrentTimestamp(),
+			lastSaved: new Date(),
 			version: '1.0',
 			compressionRatio: this.config.enableCompression
 				? this.calculateCompressionRatio(JSON.stringify(progress).length)
@@ -170,7 +169,7 @@ export abstract class BaseStorageService implements UnifiedStorageService {
 		const ttl = typeof data.ttl === 'number' ? data.ttl : 3600;
 		const cacheData = {
 			...data,
-			cachedAt: getCurrentTimestamp(),
+			cachedAt: new Date(),
 			expiresAt: formatTime(Date.now() + ttl * 1000),
 		};
 		await this.set(key, cacheData, ttl);
@@ -375,6 +374,6 @@ export type {
 	StorageItemMetadata,
 	StorageOperationResult,
 	StorageStats,
-	UnifiedStorageService,
+	StorageService,
 	UserProgressData,
 };

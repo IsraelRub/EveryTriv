@@ -2,7 +2,7 @@
  * JWT Token Service - Centralized JWT token management
  *
  * @module JwtTokenService
- * @description Unified JWT token generation and validation service
+ * @description JWT token generation and validation service
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';

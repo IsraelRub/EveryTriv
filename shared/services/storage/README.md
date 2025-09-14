@@ -1,4 +1,4 @@
-# Storage Module - Unified Architecture
+# Storage Module - Architecture
 
 ## 🏗️ **ארכיטקטורה מאוחדת של מודול האחסון**
 

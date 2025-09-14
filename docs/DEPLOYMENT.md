@@ -4,6 +4,8 @@
 
 מדריך מקיף לפריסת EveryTriv בסביבת ייצור, כולל הגדרת שרת, Docker, CI/CD pipeline, ניהול נתונים וניטור. מדריך זה מכסה גם פריסה לפלטפורמות שונות כמו Vercel, Netlify, Firebase Hosting ועוד.
 
+> **מדריך פיתוח**: למידע על הגדרת סביבת פיתוח וגיידליינים, ראו [מדריך פיתוח מקיף](./DEVELOPMENT.md).
+
 ## דרישות מערכת
 
 ### שרת ייצור
@@ -885,7 +887,7 @@ top
 
 #### Application Monitoring
 ```bash
-# בדיקת לוגים בזמן אמת
+# בדיקת לוגים רציפה
 docker-compose -f docker-compose.prod.yaml logs -f
 
 # בדיקת health endpoints
@@ -895,4 +897,3 @@ curl https://your-domain.com/api/health
 # בדיקת metrics
 curl https://your-domain.com/api/metrics
 ```
- 

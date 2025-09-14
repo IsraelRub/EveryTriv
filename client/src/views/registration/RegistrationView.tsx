@@ -24,13 +24,13 @@ import { AudioKey } from '../../constants';
 // Removed useDebouncedCallback - no longer needed
 // Removed useLocalStorage import - not needed
 import { audioService, authService } from '../../services';
-// Authentication is now handled by PublicRoute HOC
+// Authentication is handled by PublicRoute HOC
 // import { RootState } from '../../redux/store';
 
 export default function RegistrationView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  // Authentication is now handled by PublicRoute HOC
+  // Authentication is handled by PublicRoute HOC
   // const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
   const [step, setStep] = useState<'method' | 'manual' | 'confirmation'>('method');
@@ -41,7 +41,7 @@ export default function RegistrationView() {
   const [, setRegistrationSuccess] = useState(false);
 
   useEffect(() => {
-    // Authentication redirect is now handled by PublicRoute HOC
+    // Authentication redirect is handled by PublicRoute HOC
     // No need for local authentication check
 
     clientLogger.game('Registration page viewed', {
@@ -69,7 +69,7 @@ export default function RegistrationView() {
 
   // Removed topic toggle logic
 
-  const handleFormSubmit = async (values: Record<string, unknown>, isValid: boolean) => {
+  const handleFormSubmit = async (values: Record<string, any>, isValid: boolean) => {
     if (!isValid) {
       clientLogger.gameError('Registration form validation failed');
       audioService.play(AudioKey.ERROR);
@@ -256,7 +256,7 @@ export default function RegistrationView() {
         <Icon name='CheckCircle' className='w-16 h-16 mx-auto mb-4 text-green-400' />
         <h2 className='text-2xl font-bold text-white mb-4'>Welcome to EveryTriv!</h2>
         <p className='text-slate-300 mb-6'>
-          Your account has been created successfully. You can now start playing and earning points!
+          Your account has been created successfully. You can start playing and earning points!
         </p>
         <Button
           onClick={() => {

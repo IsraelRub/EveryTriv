@@ -3,7 +3,7 @@
  *
  * @module MetricsTypes
  * @description Type definitions for performance metrics and monitoring
- * @used_by server: server/src/shared/utils/trivia.utils.ts (ServerUtils.getPerformanceMetrics), server/src/features/analytics/analytics.service.ts
+ * @used_by server/src/shared/utils/trivia.utils.ts, server/src/features/analytics/analytics.service.ts
  */
 import type { BasicValue } from '../../core/data.types';
 
@@ -14,13 +14,9 @@ import type { BasicValue } from '../../core/data.types';
  * @used_by server/src/internal/controllers/middleware-metrics.controller.ts
  */
 export interface MiddlewareMetrics {
-	/** Number of requests processed */
 	requestCount: number;
-	/** Total duration in milliseconds */
 	totalDuration: number;
-	/** Average duration in milliseconds */
 	averageDuration: number;
-	/** Minimum duration in milliseconds */
 	minDuration: number;
 	/** Maximum duration in milliseconds */
 	maxDuration: number;
@@ -36,7 +32,7 @@ export interface MiddlewareMetrics {
  * Question statistics interface
  * @interface QuestionStats
  * @description Comprehensive statistics for trivia questions
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.getQuestionStats)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface QuestionStats {
 	/** Total number of questions */
@@ -57,7 +53,7 @@ export interface QuestionStats {
  * Performance metrics interface
  * @interface PerformanceMetrics
  * @description System performance and monitoring metrics
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.getPerformanceMetrics)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface PerformanceMetrics {
 	/** Average response time in milliseconds */
@@ -80,7 +76,7 @@ export interface PerformanceMetrics {
  * Cache statistics interface
  * @interface CacheStats
  * @description Statistics for question cache
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.getCacheStats)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface CacheStats {
 	/** Total cache size */
@@ -95,7 +91,7 @@ export interface CacheStats {
  * Answer balance analysis interface
  * @interface AnswerBalanceAnalysis
  * @description Analysis of answer distribution and balance
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.analyzeAnswerBalance)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface AnswerBalanceAnalysis {
 	/** Whether answers are well-balanced */
@@ -110,7 +106,7 @@ export interface AnswerBalanceAnalysis {
  * Question complexity analysis interface
  * @interface QuestionComplexityAnalysis
  * @description Analysis of question complexity
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.calculateQuestionComplexity)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface QuestionComplexityAnalysis {
 	/** Complexity score (0-10) */
@@ -132,7 +128,7 @@ export interface QuestionComplexityAnalysis {
  * Answer position statistics interface
  * @interface AnswerPositionStats
  * @description Statistics about correct answer positions
- * @used_by server/src/shared/utils/trivia.utils.ts (ServerUtils.getAnswerPositionStats)
+ * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface AnswerPositionStats {
 	/** Count of correct answers in each position */

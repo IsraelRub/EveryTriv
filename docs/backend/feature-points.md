@@ -1,6 +1,6 @@
 # Feature: Points
 
-תיעוד סטטי למודול הנקודות.
+תיעוד מודול הנקודות.
 
 > הערת סנכרון: מודול הנקודות מתקשר למימוש ממוזג של Game/Trivia (ראו `../DIAGRAMS.md#diagram-sync-status`).
 

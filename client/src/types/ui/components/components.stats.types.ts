@@ -11,7 +11,6 @@
  * @used_by client/src/components/points/PointsManager.tsx
  */
 export interface PointsManagerProps {
-  /** Optional close handler */
   onClose?: () => void;
 }
 
@@ -22,7 +21,6 @@ export interface PointsManagerProps {
  * @used_by client/src/components/stats/GameSessionStats.tsx
  */
 export interface GameSessionStatsProps {
-  /** Game session data */
   session: {
     id: string;
     startTime: number;
@@ -33,7 +31,6 @@ export interface GameSessionStatsProps {
     difficulty: string;
     topic: string;
   };
-  /** Optional CSS class */
   className?: string;
 }
 
@@ -44,7 +41,6 @@ export interface GameSessionStatsProps {
  * @used_by client/src/components/stats/UserStatsCard.tsx
  */
 export interface UserStatsCardProps {
-  /** User data */
   user: {
     username: string;
     created_at: Date;
@@ -52,7 +48,6 @@ export interface UserStatsCardProps {
     lastLogin?: Date;
     score: number;
   };
-  /** Optional CSS class */
   className?: string;
 }
 
@@ -63,10 +58,7 @@ export interface UserStatsCardProps {
  * @used_by client/src/components/subscription/SubscriptionPlans.tsx
  */
 export interface SubscriptionPlansProps {
-  /** Subscription plans data */
   plans: import('@shared').SubscriptionPlans;
-  /** Optional plan selection handler */
   onPlanSelect?: (plan: string) => void;
-  /** Optional CSS class */
   className?: string;
 }

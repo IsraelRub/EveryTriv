@@ -5,7 +5,6 @@
  * @description Type definitions for AI models and their configurations
  */
 
-// AIModel is already exported from ai.types.ts
 
 /**
  * AI model configuration interface

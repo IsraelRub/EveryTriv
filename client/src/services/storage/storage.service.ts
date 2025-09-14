@@ -14,10 +14,10 @@ import {
   StorageConfig,
   StorageOperationResult,
   StorageStats,
-  UnifiedStorageService,
+  StorageService,
 } from '@shared/types/infrastructure/storage.types';
 
-export class ClientStorageService extends BaseStorageService implements UnifiedStorageService {
+export class ClientStorageService extends BaseStorageService implements StorageService {
   constructor() {
     const config: StorageConfig = {
       prefix: 'everytriv-client',

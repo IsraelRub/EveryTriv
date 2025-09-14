@@ -13,7 +13,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run build && node dist/server/src/main.js",
-    "start:dev": "nest start --watch",
+    "start:dev": "",
     "start:prod:local": "copy .env.prod .env && npm run build && node dist/server/src/main.js",
     "start:prod": "echo Use 'pnpm run start:prod' from root directory to start with Docker",
     "start:docker": "echo Use 'pnpm run start:docker' from root directory",

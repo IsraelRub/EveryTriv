@@ -1,5 +1,5 @@
 /**
- * Unified Logger Module
+ * Logger Module
  *
  * @module Logger
  * @description Complete logger module with all implementations and utilities

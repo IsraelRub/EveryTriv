@@ -69,7 +69,7 @@ export {
 export {
   useDifficultyStats,
   usePopularTopics,
-  useUnifiedUserAnalytics,
+  useUserAnalytics,
 } from './useAnalyticsDashboard';
 
 /**

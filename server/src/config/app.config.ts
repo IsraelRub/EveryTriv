@@ -43,7 +43,7 @@ export class AppConfig {
 		files: 'files',
 	};
 
-	// Database configuration - Unified for all development environments
+	// Database configuration - for all development environments
 	static get database() {
 		return {
 			host: process.env.DATABASE_HOST || 'localhost',

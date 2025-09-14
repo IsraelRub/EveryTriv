@@ -8,7 +8,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONSTANTS, AuthenticationRequest,serverLogger as logger  } from '@shared';
+import { AUTH_CONSTANTS, serverLogger as logger, TokenExtractionService } from '@shared';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -27,7 +27,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		const request = context.switchToHttp().getRequest();
-		const token = this.extractTokenFromHeader(request);
+		const token = TokenExtractionService.extractTokenFromRequest(request);
 
 		if (!token) {
 			logger.securityDenied('No authentication token provided');
@@ -58,14 +58,4 @@ export class AuthGuard implements CanActivate {
 		}
 	}
 
-	private extractTokenFromHeader(request: AuthenticationRequest): string | undefined {
-		// Try to get token from request.authToken (set by middleware)
-		if (request.authToken) {
-			return request.authToken;
-		}
-
-		// Fallback to header extraction
-		const [type, token] = request.headers?.authorization?.split(' ') ?? [];
-		return type === 'Bearer' ? token : undefined;
-	}
 }

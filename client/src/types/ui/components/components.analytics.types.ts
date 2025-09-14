@@ -3,7 +3,7 @@
  * @module AnalyticsComponentTypes
  * @description UI component prop types for analytics and metrics components
  */
-import { UnifiedUserAnalytics } from '@shared';
+import { UserAnalytics } from '@shared';
 
 /**
  * Metric Card Component Props
@@ -12,15 +12,10 @@ import { UnifiedUserAnalytics } from '@shared';
  * @used_by client/src/views/analytics/AnalyticsView.tsx
  */
 export interface MetricCardProps {
-  /** Card title */
   title: string;
-  /** Card value */
   value: string;
-  /** Card subtitle */
   subtitle: string;
-  /** Card icon */
   icon: string;
-  /** Card color theme */
   color: 'yellow' | 'blue' | 'green' | 'purple';
   /** Optional trend indicator */
   trend?: 'up' | 'down' | 'neutral';
@@ -46,13 +41,13 @@ export interface ComparisonCardProps {
 }
 
 /**
- * Recent Activity Component Props
+ * Activity Component Props
  * @interface RecentActivityProps
- * @description Props for the RecentActivity component
+ * @description Props for the Activity component
  */
 export interface RecentActivityProps {
   /** Analytics data */
-  analyticsData: UnifiedUserAnalytics;
+  analyticsData: UserAnalytics;
 }
 
 /**

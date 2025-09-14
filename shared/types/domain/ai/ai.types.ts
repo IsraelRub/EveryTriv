@@ -3,7 +3,7 @@
  *
  * @module AITypes
  * @description Type definitions for AI providers, models, and AI-related functionality
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider interface), server/src/features/ai/services/ai.service.ts (AI service), client: client/src/services/ai/ai.service.ts (AI client service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts, client/src/services/ai/ai.service.ts
  */
 import type { BasicValue } from '../../core/data.types';
 import type { TriviaQuestion } from '../game/trivia.types';
@@ -39,63 +39,40 @@ export type AIResponseStatus = 'success' | 'error' | 'partial' | 'timeout';
  * AI provider interface
  * @interface AIProvider
  * @description Interface for AI providers
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider interface), server/src/features/ai/services/ai.service.ts (AI service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
-// Note: AIProviderInterface was removed - not used anywhere in the codebase
 
 /**
  * AI provider configuration interface
  * @interface AIProviderConfig
  * @description Configuration for AI providers
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider configuration), server/src/features/ai/services/ai.service.ts (AI service configuration)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIProviderConfig {
-	/** Provider name */
 	name: AIProvider;
-	/** API key */
 	apiKey: string;
-	/** API endpoint */
 	endpoint: string;
-	/** API version */
 	version: string;
-	/** Model configuration */
 	model: AIModel;
-	/** Request timeout */
 	timeout: number;
-	/** Retry configuration */
 	retry: {
-		/** Maximum retries */
 		maxRetries: number;
-		/** Retry delay */
 		retryDelay: number;
-		/** Retry backoff */
 		retryBackoff: number;
 	};
-	/** Rate limiting */
 	rateLimit: {
-		/** Requests per minute */
 		requestsPerMinute: number;
-		/** Tokens per minute */
 		tokensPerMinute: number;
-		/** Concurrent requests */
-		concurrentRequests: number;
+		parallelRequests: number;
 	};
-	/** Caching configuration */
 	cache: {
-		/** Cache enabled */
 		enabled: boolean;
-		/** Cache TTL */
 		ttl: number;
-		/** Cache size */
 		size: number;
 	};
-	/** Monitoring configuration */
 	monitoring: {
-		/** Metrics enabled */
 		metricsEnabled: boolean;
-		/** Logging enabled */
 		loggingEnabled: boolean;
-		/** Health checks enabled */
 		healthChecksEnabled: boolean;
 	};
 }
@@ -104,30 +81,19 @@ export interface AIProviderConfig {
  * AI provider health interface
  * @interface AIProviderHealth
  * @description Health status for AI providers
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider health), server/src/features/ai/services/ai.service.ts (AI service health)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIProviderHealth {
-	/** Provider name */
 	providerName: string;
-	/** Health status */
 	status: 'healthy' | 'unhealthy' | 'degraded';
-	/** Response time in milliseconds */
 	responseTime?: number;
-	/** Error count */
 	errorCount: number;
-	/** Success count */
 	successCount: number;
-	/** Last health check */
 	lastCheck: string;
-	/** Error message if unhealthy */
 	errorMessage?: string;
-	/** Provider configuration */
 	config?: {
-		/** Model */
 		model?: string;
-		/** Version */
 		version?: string;
-		/** Rate limit */
 		rateLimit?: {
 			requestsPerMinute: number;
 			tokensPerMinute: number;
@@ -135,56 +101,34 @@ export interface AIProviderHealth {
 	};
 }
 
-// Note: AIProviderMetrics was removed - not used anywhere in the codebase
 
 /**
  * AI provider capabilities interface
  * @interface AIProviderCapabilities
  * @description Capabilities of AI providers
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI provider capabilities), server/src/features/ai/services/ai.service.ts (AI service capabilities)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIProviderCapabilities {
-	/** Text generation */
 	textGeneration: boolean;
-	/** Question generation */
 	questionGeneration: boolean;
-	/** Text validation */
 	textValidation: boolean;
-	/** Text analysis */
 	textAnalysis: boolean;
-	/** Text translation */
 	textTranslation: boolean;
-	/** Text summarization */
 	textSummarization: boolean;
-	/** Entity extraction */
 	entityExtraction: boolean;
-	/** Text classification */
 	textClassification: boolean;
-	/** Embedding generation */
 	embeddingGeneration: boolean;
-	/** Chat completion */
 	chatCompletion: boolean;
-	/** Image generation */
 	imageGeneration: boolean;
-	/** Code generation */
 	codeGeneration: boolean;
-	/** Mathematical reasoning */
 	mathematicalReasoning: boolean;
-	/** Logical reasoning */
 	logicalReasoning: boolean;
-	/** Creative writing */
 	creativeWriting: boolean;
-	/** Technical writing */
 	technicalWriting: boolean;
-	/** Multilingual support */
 	multilingualSupport: boolean;
-	/** Context length */
 	contextLength: number;
-	/** Maximum tokens */
 	maxTokens: number;
-	/** Supported languages */
 	supportedLanguages: string[];
-	/** Supported formats */
 	supportedFormats: string[];
 }
 
@@ -192,20 +136,14 @@ export interface AIProviderCapabilities {
  * AI request interface
  * @interface AIRequest
  * @description Base interface for AI requests
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI request handling), server/src/features/ai/services/ai.service.ts (AI service requests)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIRequest {
-	/** Request ID */
 	requestId: string;
-	/** Provider name */
 	provider: AIProvider;
-	/** Model name */
 	model: AIModel;
-	/** Request timestamp */
 	timestamp: Date;
-	/** Request timeout */
 	timeout?: number;
-	/** Request metadata */
 	metadata?: Record<string, BasicValue>;
 }
 
@@ -213,32 +151,20 @@ export interface AIRequest {
  * AI response interface
  * @interface AIResponse
  * @description Base interface for AI responses
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI response handling), server/src/features/ai/services/ai.service.ts (AI service responses)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIResponse {
-	/** Response ID */
 	responseId: string;
-	/** Request ID */
 	requestId: string;
-	/** Provider name */
 	provider: AIProvider;
-	/** Model name */
 	model: AIModel;
-	/** Response status */
 	status: AIResponseStatus;
-	/** Response timestamp */
 	timestamp: Date;
-	/** Processing time */
 	processingTime: number;
-	/** Response metadata */
 	metadata?: Record<string, BasicValue>;
-	/** Error information */
 	error?: {
-		/** Error code */
 		code: string;
-		/** Error message */
 		message: string;
-		/** Error details */
 		details?: Record<string, BasicValue>;
 	};
 }
@@ -247,38 +173,23 @@ export interface AIResponse {
  * AI text request interface
  * @interface AITextRequest
  * @description Request for text generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text generation), server/src/features/ai/services/ai.service.ts (AI text service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AITextRequest extends AIRequest {
-	/** Prompt text */
 	prompt: string;
-	/** Maximum tokens */
 	maxTokens?: number;
-	/** Temperature */
 	temperature?: number;
-	/** Top P */
 	topP?: number;
-	/** Frequency penalty */
 	frequencyPenalty?: number;
-	/** Presence penalty */
 	presencePenalty?: number;
-	/** Stop sequences */
 	stopSequences?: string[];
-	/** System message */
 	systemMessage?: string;
-	/** User message */
 	userMessage?: string;
-	/** Context */
 	context?: string;
-	/** Language */
 	language?: string;
-	/** Style */
 	style?: string;
-	/** Tone */
 	tone?: string;
-	/** Length */
 	length?: 'short' | 'medium' | 'long';
-	/** Format */
 	format?: 'text' | 'markdown' | 'html' | 'json' | 'xml';
 }
 
@@ -286,31 +197,20 @@ export interface AITextRequest extends AIRequest {
  * AI text response interface
  * @interface AITextResponse
  * @description Response for text generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text generation), server/src/features/ai/services/ai.service.ts (AI text service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AITextResponse extends AIResponse {
-	/** Generated text */
 	text: string;
-	/** Token usage */
 	tokenUsage: {
-		/** Prompt tokens */
 		promptTokens: number;
-		/** Completion tokens */
 		completionTokens: number;
-		/** Total tokens */
 		totalTokens: number;
 	};
-	/** Finish reason */
 	finishReason: string;
-	/** Quality score */
 	qualityScore?: number;
-	/** Confidence score */
 	confidenceScore?: number;
-	/** Alternative responses */
 	alternatives?: string[];
-	/** Suggestions */
 	suggestions?: string[];
-	/** Warnings */
 	warnings?: string[];
 }
 
@@ -318,32 +218,20 @@ export interface AITextResponse extends AIResponse {
  * AI question request interface
  * @interface AIQuestionRequest
  * @description Request for question generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI question generation), server/src/features/ai/services/ai.service.ts (AI question service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIQuestionRequest extends AIRequest {
-	/** Topic */
 	topic: string;
-	/** Difficulty level */
 	difficulty: string;
-	/** Number of questions */
 	count: number;
-	/** Question type */
 	type?: 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_answer' | 'essay';
-	/** Language */
 	language?: string;
-	/** Context */
 	context?: string;
-	/** Specific requirements */
 	requirements?: {
-		/** Minimum length */
 		minLength?: number;
-		/** Maximum length */
 		maxLength?: number;
-		/** Include explanation */
 		includeExplanation?: boolean;
-		/** Include hints */
 		includeHints?: boolean;
-		/** Include references */
 		includeReferences?: boolean;
 	};
 }
@@ -352,51 +240,30 @@ export interface AIQuestionRequest extends AIRequest {
  * AI question response interface
  * @interface AIQuestionResponse
  * @description Response for question generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI question generation), server/src/features/ai/services/ai.service.ts (AI question service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIQuestionResponse extends AIResponse {
-	/** Generated questions */
 	questions: Array<{
-		/** Question ID */
 		id: string;
-		/** Question text */
 		question: string;
-		/** Answer options */
 		answers: string[];
-		/** Correct answer index */
 		correctAnswerIndex: number;
-		/** Explanation */
 		explanation?: string;
-		/** Hints */
 		hints?: string[];
-		/** References */
 		references?: string[];
-		/** Difficulty level */
 		difficulty: string;
-		/** Topic */
 		topic: string;
-		/** Category */
 		category?: string;
-		/** Tags */
 		tags?: string[];
-		/** Quality score */
 		qualityScore?: number;
-		/** Complexity score */
 		complexityScore?: number;
 	}>;
-	/** Total questions generated */
 	totalQuestions: number;
-	/** Generation metadata */
 	generationMetadata: {
-		/** Average quality score */
 		averageQualityScore: number;
-		/** Average complexity score */
 		averageComplexityScore: number;
-		/** Topic coverage */
 		topicCoverage: Record<string, number>;
-		/** Difficulty distribution */
 		difficultyDistribution: Record<string, number>;
-		/** Category distribution */
 		categoryDistribution: Record<string, number>;
 	};
 }
@@ -405,28 +272,18 @@ export interface AIQuestionResponse extends AIResponse {
  * AI validation request interface
  * @interface AIValidationRequest
  * @description Request for text validation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text validation), server/src/features/ai/services/ai.service.ts (AI validation service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIValidationRequest extends AIRequest {
-	/** Text to validate */
 	text: string;
-	/** Validation type */
 	validationType: 'grammar' | 'spelling' | 'style' | 'factual' | 'logical' | 'completeness';
-	/** Language */
 	language?: string;
-	/** Context */
 	context?: string;
-	/** Validation criteria */
 	criteria?: {
-		/** Grammar rules */
 		grammarRules?: string[];
-		/** Style guidelines */
 		styleGuidelines?: string[];
-		/** Factual accuracy */
 		factualAccuracy?: boolean;
-		/** Logical consistency */
 		logicalConsistency?: boolean;
-		/** Completeness check */
 		completenessCheck?: boolean;
 	};
 }
@@ -435,7 +292,7 @@ export interface AIValidationRequest extends AIRequest {
  * AI validation response interface
  * @interface AIValidationResponse
  * @description Response for text validation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text validation), server/src/features/ai/services/ai.service.ts (AI validation service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIValidationResponse extends AIResponse {
 	/** Validation result */
@@ -486,7 +343,7 @@ export interface AIValidationResponse extends AIResponse {
  * AI analysis request interface
  * @interface AIAnalysisRequest
  * @description Request for text analysis
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text analysis), server/src/features/ai/services/ai.service.ts (AI analysis service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIAnalysisRequest extends AIRequest {
 	/** Text to analyze */
@@ -514,7 +371,7 @@ export interface AIAnalysisRequest extends AIRequest {
  * AI analysis response interface
  * @interface AIAnalysisResponse
  * @description Response for text analysis
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text analysis), server/src/features/ai/services/ai.service.ts (AI analysis service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIAnalysisResponse extends AIResponse {
 	/** Analysis result */
@@ -581,7 +438,7 @@ export interface AIAnalysisResponse extends AIResponse {
  * AI translation request interface
  * @interface AITranslationRequest
  * @description Request for text translation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text translation), server/src/features/ai/services/ai.service.ts (AI translation service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AITranslationRequest extends AIRequest {
 	/** Text to translate */
@@ -609,7 +466,7 @@ export interface AITranslationRequest extends AIRequest {
  * AI translation response interface
  * @interface AITranslationResponse
  * @description Response for text translation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text translation), server/src/features/ai/services/ai.service.ts (AI translation service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AITranslationResponse extends AIResponse {
 	/** Translation result */
@@ -658,7 +515,7 @@ export interface AITranslationResponse extends AIResponse {
  * AI summary request interface
  * @interface AISummaryRequest
  * @description Request for text summarization
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text summarization), server/src/features/ai/services/ai.service.ts (AI summary service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AISummaryRequest extends AIRequest {
 	/** Text to summarize */
@@ -690,7 +547,7 @@ export interface AISummaryRequest extends AIRequest {
  * AI summary response interface
  * @interface AISummaryResponse
  * @description Response for text summarization
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text summarization), server/src/features/ai/services/ai.service.ts (AI summary service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AISummaryResponse extends AIResponse {
 	/** Summary result */
@@ -741,7 +598,7 @@ export interface AISummaryResponse extends AIResponse {
  * AI entity request interface
  * @interface AIEntityRequest
  * @description Request for entity extraction
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI entity extraction), server/src/features/ai/services/ai.service.ts (AI entity service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIEntityRequest extends AIRequest {
 	/** Text to analyze */
@@ -769,7 +626,7 @@ export interface AIEntityRequest extends AIRequest {
  * AI entity response interface
  * @interface AIEntityResponse
  * @description Response for entity extraction
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI entity extraction), server/src/features/ai/services/ai.service.ts (AI entity service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIEntityResponse extends AIResponse {
 	/** Entity extraction result */
@@ -830,7 +687,7 @@ export interface AIEntityResponse extends AIResponse {
  * AI classification request interface
  * @interface AIClassificationRequest
  * @description Request for text classification
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text classification), server/src/features/ai/services/ai.service.ts (AI classification service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIClassificationRequest extends AIRequest {
 	/** Text to classify */
@@ -858,7 +715,7 @@ export interface AIClassificationRequest extends AIRequest {
  * AI classification response interface
  * @interface AIClassificationResponse
  * @description Response for text classification
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI text classification), server/src/features/ai/services/ai.service.ts (AI classification service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIClassificationResponse extends AIResponse {
 	/** Classification result */
@@ -908,7 +765,7 @@ export interface AIClassificationResponse extends AIResponse {
  * AI embedding request interface
  * @interface AIEmbeddingRequest
  * @description Request for embedding generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI embedding generation), server/src/features/ai/services/ai.service.ts (AI embedding service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIEmbeddingRequest extends AIRequest {
 	/** Text to embed */
@@ -934,7 +791,7 @@ export interface AIEmbeddingRequest extends AIRequest {
  * AI embedding response interface
  * @interface AIEmbeddingResponse
  * @description Response for embedding generation
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI embedding generation), server/src/features/ai/services/ai.service.ts (AI embedding service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIEmbeddingResponse extends AIResponse {
 	/** Embedding result */
@@ -970,7 +827,7 @@ export interface AIEmbeddingResponse extends AIResponse {
  * AI chat request interface
  * @interface AIChatRequest
  * @description Request for chat completion
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI chat completion), server/src/features/ai/services/ai.service.ts (AI chat service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIChatRequest extends AIRequest {
 	/** Chat messages */
@@ -1009,7 +866,7 @@ export interface AIChatRequest extends AIRequest {
  * AI chat response interface
  * @interface AIChatResponse
  * @description Response for chat completion
- * @used_by server: server/src/features/ai/providers/ai.provider.ts (AI chat completion), server/src/features/ai/services/ai.service.ts (AI chat service)
+ * @used_by server/src/features/ai/providers/ai.provider.ts, server/src/features/ai/services/ai.service.ts
  */
 export interface AIChatResponse extends AIResponse {
 	/** Chat result */
@@ -1068,7 +925,7 @@ export interface AIChatResponse extends AIResponse {
  * LLM API response interface
  * @interface LLMApiResponse
  * @description Standard response from LLM providers
- * @used_by server: server/src/features/game/logic/providers/implementations/*.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations
  */
 export interface LLMApiResponse {
 	/** Response content */
@@ -1085,7 +942,7 @@ export interface LLMApiResponse {
  * LLM trivia response interface
  * @interface LLMTriviaResponse
  * @description Trivia-specific response from LLM providers
- * @used_by server: server/src/features/game/logic/providers/implementations/*.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations
  */
 export interface LLMTriviaResponse {
 	/** Trivia questions */
@@ -1111,7 +968,7 @@ export interface LLMTriviaResponse {
  * Provider configuration interface
  * @interface ProviderConfig
  * @description Generic provider configuration
- * @used_by server: server/src/features/game/logic/providers/implementations/*.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations
  */
 export interface ProviderConfig {
 	/** Provider name */
@@ -1131,14 +988,14 @@ export interface ProviderConfig {
 	/** Headers */
 	headers?: Record<string, string>;
 	/** Body */
-	body?: Record<string, unknown>;
+	body?: Record<string, any>;
 }
 
 /**
  * Provider health interface
  * @interface ProviderHealth
  * @description Provider health status
- * @used_by server: server/src/features/game/logic/providers/management/providers.service.ts
+ * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 export interface ProviderHealth {
 	/** Provider name */
@@ -1155,7 +1012,6 @@ export interface ProviderHealth {
 	lastCheck: string;
 	/** Created at */
 	created_at: Date;
-	/** Updated at */
 	updated_at: Date;
 }
 
@@ -1163,7 +1019,7 @@ export interface ProviderHealth {
  * Provider metrics interface
  * @interface ProviderMetrics
  * @description Provider metrics
- * @used_by server: server/src/features/game/logic/providers/management/providers.service.ts
+ * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 export interface ProviderMetrics {
 	/** Provider name */
@@ -1182,11 +1038,8 @@ export interface ProviderMetrics {
 	errorRate: number;
 	/** Last used */
 	lastUsed: Date | string;
-	/** Status */
-	status: 'healthy' | 'unhealthy' | 'unknown' | 'available';
-	/** Created at */
+	status: 'healthy' | 'unhealthy' | 'unavailable' | 'available';
 	created_at: Date;
-	/** Updated at */
 	updated_at: Date;
 }
 
@@ -1194,18 +1047,13 @@ export interface ProviderMetrics {
  * LLM provider interface
  * @interface LLMProvider
  * @description Generic LLM provider interface
- * @used_by server: server/src/features/game/logic/providers/management/providers.service.ts
+ * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 export interface LLMProvider {
-	/** Provider name */
 	name: string;
-	/** Provider configuration */
 	config: ProviderConfig;
-	/** Provider health status */
 	health: ProviderHealth;
-	/** Provider metrics */
 	metrics: ProviderMetrics;
-	/** Provider capabilities */
 	capabilities: AIProviderCapabilities;
 }
 
@@ -1213,7 +1061,7 @@ export interface LLMProvider {
  * Provider stats interface
  * @interface ProviderStats
  * @description Provider statistics
- * @used_by server: server/src/features/game/logic/providers/management/providers.service.ts
+ * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 export interface ProviderStats {
 	/** Provider name */
@@ -1233,20 +1081,18 @@ export interface ProviderStats {
 	/** Last used timestamp */
 	lastUsed: Date | null;
 	/** Provider status */
-	status: 'healthy' | 'unhealthy' | 'unknown' | 'available';
+	status: 'healthy' | 'unhealthy' | 'unavailable' | 'available';
 	/** Created at */
 	created_at: Date;
-	/** Updated at */
 	updated_at: Date;
 }
 
-// Note: AIProviderWithTrivia was removed - not used anywhere in the codebase
 
 /**
  * Anthropic response interface
  * @interface AnthropicResponse
  * @description Response from Anthropic API
- * @used_by server: server/src/features/game/logic/providers/implementations/anthropic.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations/anthropic.provider.ts
  */
 export interface AnthropicResponse extends LLMApiResponse {
 	/** Anthropic-specific metadata */
@@ -1265,7 +1111,7 @@ export interface AnthropicResponse extends LLMApiResponse {
  * Google response interface
  * @interface GoogleResponse
  * @description Response from Google AI API
- * @used_by server: server/src/features/game/logic/providers/implementations/google.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations/google.provider.ts
  */
 export interface GoogleResponse extends LLMApiResponse {
 	/** Google-specific metadata */
@@ -1284,7 +1130,7 @@ export interface GoogleResponse extends LLMApiResponse {
  * Mistral response interface
  * @interface MistralResponse
  * @description Response from Mistral AI API
- * @used_by server: server/src/features/game/logic/providers/implementations/mistral.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations/mistral.provider.ts
  */
 export interface MistralResponse extends LLMApiResponse {
 	/** Mistral-specific metadata */
@@ -1303,7 +1149,7 @@ export interface MistralResponse extends LLMApiResponse {
  * OpenAI response interface
  * @interface OpenAIResponse
  * @description Response from OpenAI API
- * @used_by server: server/src/features/game/logic/providers/implementations/openai.provider.ts
+ * @used_by server/src/features/game/logic/providers/implementations/openai.provider.ts
  */
 export interface OpenAIResponse extends LLMApiResponse {
 	/** OpenAI-specific metadata */
@@ -1322,7 +1168,7 @@ export interface OpenAIResponse extends LLMApiResponse {
  * Prompt parameters interface
  * @interface PromptParams
  * @description Parameters for prompt generation
- * @used_by server: server/src/features/game/logic/prompts/prompts.ts
+ * @used_by server/src/features/game/logic/prompts/prompts.ts
  */
 export interface PromptParams {
 	/** Topic */
@@ -1345,7 +1191,7 @@ export interface PromptParams {
  * AI provider config interface (alias)
  * @interface AiProviderConfig
  * @description Alias for AIProviderConfig
- * @used_by server: server/src/internal/types/index.ts
+ * @used_by server/src/internal/types/index.ts
  */
 export type AiProviderConfig = AIProviderConfig;
 
@@ -1353,7 +1199,7 @@ export type AiProviderConfig = AIProviderConfig;
  * AI provider status interface
  * @interface AiProviderStatus
  * @description AI provider status
- * @used_by server: server/src/internal/types/index.ts
+ * @used_by server/src/internal/types/index.ts
  */
 export interface AiProviderStatus {
 	/** Provider name */
@@ -1374,7 +1220,7 @@ export interface AiProviderStatus {
  * Round to decimals function
  * @function roundToDecimals
  * @description Round a number to specified decimal places
- * @used_by server: server/src/features/game/logic/providers/management/providers.service.ts
+ * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 
 // LLM Provider Interface

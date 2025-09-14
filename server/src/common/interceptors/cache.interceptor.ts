@@ -93,7 +93,7 @@ export class CacheInterceptor implements NestInterceptor {
 
 						// Store cache tags if provided (if service supports it)
 						if (cacheMetadata.tags && cacheMetadata.tags.length > 0) {
-							// Log cache tags for now - implement setTags in CacheService if needed
+							// Log cache tags - implement setTags in CacheService if needed
 							logger.cacheInfo('Cache tags registered', {
 								key: cacheKey,
 								tags: cacheMetadata.tags,

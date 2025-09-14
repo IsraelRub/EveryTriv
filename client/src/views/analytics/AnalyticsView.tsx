@@ -1,10 +1,10 @@
-import { clientLogger, UnifiedUserAnalytics } from '@shared';
+import { clientLogger, CompleteUserAnalytics } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect,useState } from 'react';
 
 import { Button } from '../../components/ui';
 import { USER_DEFAULT_VALUES } from '../../constants';
-import { useDifficultyStats, usePopularTopics,useUnifiedUserAnalytics } from '../../hooks/api';
+import { useDifficultyStats, usePopularTopics,useUserAnalytics } from '../../hooks/api';
 import { useAnalyticsExport,useRealTimeAnalytics } from '../../hooks/api/useAnalyticsDashboard';
 
 export function AnalyticsView() {
@@ -15,7 +15,7 @@ export function AnalyticsView() {
     data: analytics,
     isLoading: analyticsLoading,
     error: analyticsError,
-  } = useUnifiedUserAnalytics();
+  } = useUserAnalytics();
   const { isLoading: difficultyLoading } = useDifficultyStats();
   const { isLoading: topicsLoading } = usePopularTopics();
   const { data: realTimeAnalytics } = useRealTimeAnalytics();
@@ -60,7 +60,7 @@ export function AnalyticsView() {
   }
 
   // Default analytics data
-  const defaultAnalytics: UnifiedUserAnalytics = {
+  const defaultAnalytics: CompleteUserAnalytics = {
     basic: {
       userId: '',
       username: '',
@@ -554,7 +554,7 @@ function DifficultyChart({
 }
 
 // Recent Activity Component
-function RecentActivity({ analyticsData }: { analyticsData: UnifiedUserAnalytics }) {
+function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytics }) {
   const lastPlayedDate = new Date(analyticsData.performance.lastPlayed);
   const daysSinceLastPlayed = Math.floor(
     (Date.now() - lastPlayedDate.getTime()) / (1000 * 60 * 60 * 24)

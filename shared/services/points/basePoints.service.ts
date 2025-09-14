@@ -75,41 +75,69 @@ export abstract class BasePointsService {
 	}
 
 	/**
-	 * Calculate new balance after deducting points
+	 * Calculate new balance after deducting points (LOGIC)
 	 * @param currentBalance - Current point balance
-	 * @param pointsToDeduct - Points to deduct
-	 * @param questionCount - Number of questions played
+	 * @param questionCount - Number of questions to play
 	 * @param gameMode - Game mode played
-	 * @returns New balance
+	 * @returns New balance and deduction details
 	 */
 	protected calculateNewBalance(
 		currentBalance: PointBalance,
-		pointsToDeduct: number,
-		questionCount: number
-	): PointBalance {
+		questionCount: number,
+		_gameMode: string = 'standard'
+	): {
+		newBalance: PointBalance;
+		deductionDetails: {
+			freeQuestionsUsed: number;
+			purchasedPointsUsed: number;
+			creditsUsed: number;
+		};
+	} {
 		let newPurchasedPoints = currentBalance.purchased_points;
 		let newFreeQuestions = currentBalance.free_questions;
+		let newCredits = currentBalance.total_points - currentBalance.purchased_points - (currentBalance.free_questions * 0.1);
 
-		// First use free questions if available
-		if (newFreeQuestions >= questionCount) {
-			newFreeQuestions -= questionCount;
-		} else {
-			// Use remaining free questions first
-			newFreeQuestions = 0;
+		let freeQuestionsUsed = 0;
+		let purchasedPointsUsed = 0;
+		let creditsUsed = 0;
 
-			// Then use purchased points - use the actual pointsToDeduct parameter
-			if (newPurchasedPoints >= pointsToDeduct) {
-				newPurchasedPoints -= pointsToDeduct;
-			}
+		// DEDUCTION LOGIC: Use free questions first, then purchased points, then credits
+		let remainingToDeduct = questionCount;
+
+		// Step 1: Use free questions first
+		if (newFreeQuestions > 0 && remainingToDeduct > 0) {
+			freeQuestionsUsed = Math.min(newFreeQuestions, remainingToDeduct);
+			newFreeQuestions -= freeQuestionsUsed;
+			remainingToDeduct -= freeQuestionsUsed;
 		}
 
-		const newTotalPoints = newPurchasedPoints + newFreeQuestions * 0.1; // Free questions worth 0.1 points each
+		// Step 2: Use purchased points if needed
+		if (remainingToDeduct > 0 && newPurchasedPoints > 0) {
+			purchasedPointsUsed = Math.min(newPurchasedPoints, remainingToDeduct);
+			newPurchasedPoints -= purchasedPointsUsed;
+			remainingToDeduct -= purchasedPointsUsed;
+		}
+
+		// Step 3: Use regular credits if still needed
+		if (remainingToDeduct > 0) {
+			creditsUsed = remainingToDeduct;
+			newCredits -= creditsUsed;
+		}
+
+		const newTotalPoints = newPurchasedPoints + newFreeQuestions * 0.1 + newCredits;
 
 		return {
-			...currentBalance,
-			total_points: newTotalPoints,
-			purchased_points: newPurchasedPoints,
-			free_questions: newFreeQuestions,
+			newBalance: {
+				...currentBalance,
+				total_points: newTotalPoints,
+				purchased_points: newPurchasedPoints,
+				free_questions: newFreeQuestions,
+			},
+			deductionDetails: {
+				freeQuestionsUsed,
+				purchasedPointsUsed,
+				creditsUsed,
+			},
 		};
 	}
 

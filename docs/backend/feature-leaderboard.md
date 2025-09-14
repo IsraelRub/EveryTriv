@@ -1,6 +1,6 @@
 # Feature: Leaderboard
 
-תיעוד סטטי למודול לוח תוצאות.
+תיעוד מודול לוח תוצאות.
 
 > הערת סנכרון: נתונים נצרכים ממימוש מאוחד של Game/History (ראו `../DIAGRAMS.md#diagram-sync-status`).
 

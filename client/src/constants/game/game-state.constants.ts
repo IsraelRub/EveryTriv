@@ -15,7 +15,7 @@ import { GameState } from '../../types';
 export const DEFAULT_GAME_STATE: GameState = {
   status: 'idle',
   isPlaying: false,
-  currentQuestion: GAME_STATE_DEFAULTS.CURRENT_QUESTION_INDEX,
+  currentQuestion: GAME_STATE_DEFAULTS.QUESTION_INDEX,
   totalQuestions: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
   score: GAME_STATE_DEFAULTS.SCORE,
   timeRemaining: GAME_STATE_DEFAULTS.TIME_LIMIT,

@@ -5,7 +5,6 @@
  * @description Validation rule definitions and schema types
  */
 
-// ValidationRule is already exported from validation.types.ts
 
 /**
  * Validation rule definition (extended)
@@ -41,4 +40,3 @@ export interface ValidationSchema {
 	crossFieldValidations?: ValidationRuleExtended[];
 }
 
-// ValidationFunction is not used in this file

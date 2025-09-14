@@ -6,15 +6,13 @@
 
 לכלל המסמכים הארגוניים: ראה `docs/README.md` (אינדקס מלא). להלן כניסות מהירות עיקריות:
 
-- ארכיטקטורה כללית: `docs/architecture/ARCHITECTURE.md`
-- ארכיטקטורת שרת (Nest): `docs/architecture/SERVER_ARCHITECTURE.md`
-- ארכיטקטורת Hooks (Frontend): `docs/architecture/HOOKS_ARCHITECTURE.md`
-- מערכת עיצוב: `docs/architecture/DESIGN_SYSTEM.md`
+- ארכיטקטורה כללית: `docs/ARCHITECTURE.md`
+- ארכיטקטורת Hooks (Frontend): `docs/frontend/HOOKS_ARCHITECTURE.md`
+- מערכת עיצוב: `docs/frontend/DESIGN_SYSTEM.md`
 - דיאגרמות: `docs/DIAGRAMS.md`
-- פיתוח (Workflow וכלים): `docs/development/DEVELOPMENT.md`
-- פריסה: `docs/deployment/DEPLOYMENT.md`
-- Docker: `docs/deployment/DOCKER_SETUP.md`
-- מסד נתונים: `docs/database/UNIFIED_DATABASE_SETUP.md`
+- פיתוח (Workflow וכלים): `docs/DEVELOPMENT.md`
+- פריסה: `docs/DEPLOYMENT.md`
+- מסד נתונים: `docs/database/DATABASE_SETUP.md`
 - ספרייה משותפת (Shared): `shared/README.md`
 
 תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
@@ -73,7 +71,7 @@ docker-compose up -d
 
 ## � מסד נתונים
 
-הגדרה מאוחדת (PostgreSQL + Redis) בדוקר: `docs/database/UNIFIED_DATABASE_SETUP.md`.
+הגדרה מאוחדת (PostgreSQL + Redis) בדוקר: `docs/database/DATABASE_SETUP.md`.
 
 ## 🔐 אבטחה
 

@@ -9,6 +9,7 @@ import {
 	Patch,
 	Post,
 	Put,
+	Query,
 	UsePipes,
 } from '@nestjs/common';
 import { AdminUserData, serverLogger,UserFieldUpdate, UserProfileResponse, UsersListResponse } from '@shared';
@@ -158,16 +159,16 @@ export class UserController {
 	 * Search users
 	 */
 	@Get('search')
-	async searchUsers(@Body() body: SearchUsersDto) {
+	async searchUsers(@Query() query: SearchUsersDto) {
 		try {
 			// DTO validation is handled automatically by NestJS
 
-			const result = await this.userService.searchUsers(body.query, body.limit || 10);
+			const result = await this.userService.searchUsers(query.query, query.limit || 10);
 
 			// Log API call for user search
 			serverLogger.apiRead('user_search', {
-				query: body.query,
-				limit: body.limit || 10,
+				query: query.query,
+				limit: query.limit || 10,
 				resultsCount: result.totalResults,
 			});
 

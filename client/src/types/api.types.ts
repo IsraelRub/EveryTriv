@@ -15,7 +15,7 @@ import type {
   TopicStatsData,
   TriviaQuestion,
   TriviaRequest,
-  UnifiedUserAnalytics,
+  CompleteUserAnalytics,
   UrlResponse,
   User,
   UserAnalyticsQuery,
@@ -142,7 +142,7 @@ export interface ClientApiService {
   }>;
 
   // Analytics dashboard methods
-  getUnifiedUserAnalytics(): Promise<UnifiedUserAnalytics>;
+  getUserAnalytics(): Promise<CompleteUserAnalytics>;
   getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData>;
   getDifficultyStats(query?: UserAnalyticsQuery): Promise<DifficultyStatsData>;
 

@@ -13,7 +13,7 @@ import { UserStatus } from '@shared';
  * Default user values for new user creation
  * @constant
  * @description Default values when creating a new user object
- * @used_by client/src/hooks/api/useAuth.ts (useLogin, useRegister, useUpdateProfile), client/src/components/user/CompleteProfile.tsx, client/src/views/registration/RegistrationView.tsx
+ * @used_by client/src/hooks/api/useAuth.ts, client/src/components/user/CompleteProfile.tsx, client/src/views/registration/RegistrationView.tsx
  */
 export const USER_DEFAULT_VALUES = {
   /** User status - active by default */

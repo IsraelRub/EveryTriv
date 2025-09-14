@@ -18,7 +18,6 @@ import type { BaseApiResponse, BasePagination , PaginatedResponse, SuccessRespon
  * @used_by server: server/src/features/game/game.controller.ts (getTrivia response), client: client/src/services/api.service.ts (ApiService methods), shared/services/http-client.ts (HttpClient responses))
  */
 export interface ApiResponse<T = ApiRequestBody> extends BaseApiResponse<T> {
-	/** Response metadata */
 	metadata?: ApiMetadata;
 }
 
@@ -38,49 +37,34 @@ export interface SimpleSuccessResponse<T = ApiRequestBody> extends SuccessRespon
  * @description Response for payment operations
  */
 export interface PaymentResponse {
-	/** Success status */
 	success: boolean;
-	/** Payment URL for redirect */
 	paymentUrl?: string;
-	/** Payment ID */
 	paymentId?: string;
-	/** Error message */
 	error?: string;
 }
 
 /**
- * Unified API metadata interface
+ * API metadata interface
  * @interface ApiMetadata
  * @description Additional metadata for API responses including pagination
  * @used_by server: server/src/features/game/game.controller.ts (pagination), client: client/src/services/api.service.ts (ApiService methods)
  */
 export interface ApiMetadata extends Partial<BasePagination> {
-	/** Response timestamp */
 	timestamp?: string;
-	/** Request processing time in milliseconds */
 	processingTime?: number;
 }
 
 /**
- * Unified API error response interface
+ * API error response interface
  * @interface ApiError
  * @description Standard error response structure
  * @used_by server: server/src/common/filters/http-exception.filter.ts (error responses), client: client/src/services/api.service.ts (error handling), shared/services/http-client.ts (error handling)
  */
 export interface ApiError extends BaseError {
-	/** Additional error details */
 	details?: ErrorDetails;
-	/** Request path that caused the error */
 	path?: string;
 }
 
-/**
- * Legacy error response interface (deprecated - use ApiError instead)
- * @interface ErrorResponse
- * @description Alternative error response structure - kept for backward compatibility
- * @deprecated Use ApiError instead
- * @used_by server: server/src/common/filters/http-exception.filter.ts (error responses), client: client/src/services/api.service.ts (error handling)
- */
 
 /**
  * HTTP status codes enum
@@ -90,7 +74,7 @@ export interface ApiError extends BaseError {
  */
 
 /**
- * Paginated response interface using unified metadata
+ * Paginated response interface using metadata
  * @interface ApiPaginatedResponse
  * @description Standard structure for paginated API responses
  * @template T The type of items in the paginated response
@@ -106,7 +90,6 @@ export interface ApiPaginatedResponse<T> extends PaginatedResponse<T> {
  * @description Base interface for operations involving amounts
  */
 export interface AmountDto {
-	/** Amount to process */
 	amount: number;
 }
 
@@ -118,26 +101,14 @@ export interface AmountDto {
  */
 export type DeductCreditsDto = AmountDto;
 
-/**
- * DTO for deducting user points (legacy - not used)
- * @interface DeductPointsDto
- * @description Request payload for point deduction operations
- * @deprecated Use DeductPointsRequest instead
- */
-export interface DeductPointsDto extends AmountDto {
-	/** Reason for point deduction */
-	reason: string;
-}
 
 /**
- * Base DTO for purchase operations with unified identifier
+ * Base DTO for purchase operations with identifier
  * @interface PurchaseDto
  * @description Base interface for purchase operations
  */
 export interface PurchaseDto {
-	/** Package or Plan identifier */
 	identifier: string;
-	/** Payment method identifier */
 	paymentMethodId: string;
 }
 
@@ -172,7 +143,6 @@ export type CreateSubscriptionDto = PurchaseDto;
  * @used_by client/src/services/api.service.ts (confirmPointPurchase), client/src/services/utils/points.service.ts (confirmPointPurchase)
  */
 export interface ConfirmPointPurchaseDto {
-	/** Payment intent identifier */
 	paymentIntentId: string;
 }
 
@@ -183,9 +153,7 @@ export interface ConfirmPointPurchaseDto {
  * @used_by client/src/services/api.service.ts (canPlay), client/src/services/utils/points.service.ts (canPlay)
  */
 export interface CanPlayResponse {
-	/** Whether the user can play */
 	allowed: boolean;
-	/** Reason if not allowed */
 	reason?: string;
 }
 
@@ -196,9 +164,7 @@ export interface CanPlayResponse {
  * @used_by client/src/services/api.service.ts (purchasePointPackage), client/src/services/utils/points.service.ts (purchasePoints)
  */
 export interface PurchaseResponse {
-	/** Purchase status */
 	status: string;
-	/** Purchase identifier */
 	id: string;
 }
 
@@ -209,9 +175,7 @@ export interface PurchaseResponse {
  * @used_by client/src/services/api.service.ts (deductPoints), client/src/services/utils/points.service.ts (deductPoints)
  */
 export interface DeductPointsRequest extends Record<string, unknown> {
-	/** Number of questions */
 	questionCount: number;
-	/** Game mode */
 	gameMode: string;
 }
 
@@ -221,15 +185,10 @@ export interface DeductPointsRequest extends Record<string, unknown> {
  * @description Represents a single question's data in game history
  */
 export interface QuestionData {
-	/** Question text */
 	question: string;
-	/** User's selected answer */
 	userAnswer: string;
-	/** Correct answer text */
 	correctAnswer: string;
-	/** Whether answer was correct */
 	isCorrect: boolean;
-	/** Time spent on question */
 	timeSpent?: number;
 }
 
@@ -240,25 +199,15 @@ export interface QuestionData {
  * @used_by client/src/services/api.service.ts (saveHistory, saveGameHistory)
  */
 export interface CreateGameHistoryDto {
-	/** User identifier */
 	userId: string;
-	/** Final game score */
 	score: number;
-	/** Total questions in game */
 	totalQuestions: number;
-	/** Number of correct answers */
 	correctAnswers: number;
-	/** Game difficulty level */
 	difficulty: string;
-	/** Game topic */
 	topic: string;
-	/** Game mode used */
 	gameMode: string;
-	/** Total time spent in seconds */
 	timeSpent: number;
-	/** Credits consumed */
 	creditsUsed: number;
-	/** Detailed question data */
 	questionsData: QuestionData[];
 }
 

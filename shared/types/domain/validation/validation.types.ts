@@ -13,17 +13,11 @@ import { BasicValue, RequestData } from '../../core/data.types';
  * @description Configuration for validation middleware
  */
 export interface ValidationConfig {
-	/** Whether to validate request body */
 	validateBody?: boolean;
-	/** Whether to validate query parameters */
 	validateQuery?: boolean;
-	/** Whether to validate path parameters */
 	validateParams?: boolean;
-	/** Custom validation rules */
 	customRules?: Record<string, BasicValue>;
-	/** Body validation rules */
 	body?: ValidationRule[];
-	/** Stop on first error */
 	stopOnFirstError?: boolean;
 }
 
@@ -33,9 +27,7 @@ export interface ValidationConfig {
  * @description Represents a position range in text
  */
 export interface Position {
-	/** Start position */
 	start: number;
-	/** End position */
 	end: number;
 }
 
@@ -43,11 +35,8 @@ export interface Position {
  * Base validation result interface
  */
 export interface BaseValidationResult {
-	/** Whether the validation passed */
 	isValid: boolean;
-	/** Array of validation error messages */
 	errors: string[];
-	/** Optional warnings that don't fail validation */
 	warnings?: string[];
 }
 
@@ -55,11 +44,8 @@ export interface BaseValidationResult {
  * Field-specific validation result
  */
 export interface FieldValidationResult extends BaseValidationResult {
-	/** Field name being validated */
 	field: string;
-	/** Current field value */
 	value: string;
-	/** Whether field is required */
 	required: boolean;
 }
 
@@ -72,21 +58,13 @@ export type PasswordStrength = 'weak' | 'medium' | 'strong';
  * Password validation result interface
  */
 export interface PasswordValidationResult extends BaseValidationResult {
-	/** Password strength level */
 	strength: PasswordStrength;
-	/** Strength score (0-100) */
 	score: number;
-	/** Specific validation checks */
 	checks: {
-		/** Has minimum length */
 		hasMinLength: boolean;
-		/** Has uppercase letter */
 		hasUppercase: boolean;
-		/** Has lowercase letter */
 		hasLowercase: boolean;
-		/** Has number */
 		hasNumber: boolean;
-		/** Has special character */
 		hasSpecialChar: boolean;
 	};
 }
@@ -98,9 +76,7 @@ export interface PasswordValidationResult extends BaseValidationResult {
  * @used_by server: server/src/common/validation/input-validation.service.ts (validateInput), client: client/src/components/user/CompleteProfile.tsx (form validation), shared/validation/validation.utils.ts (validateInputWithLanguageTool)
  */
 export interface ValidationResult extends BaseValidationResult {
-	/** Suggestion for fixing validation errors */
 	suggestion?: string;
-	/** Position information for UI highlighting */
 	position?: Position;
 }
 
@@ -108,18 +84,13 @@ export interface ValidationResult extends BaseValidationResult {
  * Validation error with position information
  */
 export interface ValidationError {
-	/** Error message */
 	message: string;
-	/** Error code for internationalization */
 	code: string;
-	/** Field name where error occurred */
 	field?: string;
-	/** Character position where error occurred */
 	position?: {
 		start: number;
 		end: number;
 	};
-	/** Error severity level */
 	severity: 'error' | 'warning' | 'info';
 }
 
@@ -127,17 +98,11 @@ export interface ValidationError {
  * Validation context for providing additional information
  */
 export interface ValidationContext {
-	/** Current user ID if available */
 	userId?: string;
-	/** Current session data */
 	session?: RequestData;
-	/** Validation options */
 	options?: {
-		/** Whether to perform strict validation */
 		strict?: boolean;
-		/** Whether to include warnings */
 		includeWarnings?: boolean;
-		/** Custom validation rules */
 		customRules?: RequestData;
 	};
 }
@@ -162,19 +127,12 @@ export type AsyncValidationFunction<T = string> = (
  * Validation rule definition
  */
 export interface ValidationRule {
-	/** Rule name */
 	name: string;
-	/** Field name to validate */
 	field: string;
-	/** Rule description */
 	description?: string;
-	/** Error message template */
 	errorMessage?: string;
-	/** Whether rule is required */
 	required: boolean;
-	/** Rule priority (lower = higher priority) */
 	priority: number;
-	/** Validation function */
 	validator: ValidationFunction;
 }
 
@@ -208,23 +166,14 @@ export type RequestDataType = 'body' | 'query' | 'params';
  * Validation options for decorators and interceptors
  */
 export interface ValidationOptions {
-	/** Schema name for validation */
 	schema?: string;
-	/** Whether to transform data */
 	transform?: boolean;
-	/** Whether to strip unknown properties */
 	stripUnknown?: boolean;
-	/** Custom error message */
 	errorMessage?: string;
-	/** Whether to sanitize inputs */
 	sanitizeInputs?: boolean;
-	/** Whether to validate inputs */
 	validateInputs?: boolean;
-	/** Whether to log validation failures */
 	logFailures?: boolean;
-	/** Fields to exclude from validation */
 	excludeFields?: string[];
-	/** Custom validation rules */
 	customRules?: Record<string, ValidationFunction>;
 	[key: string]: unknown;
 }
@@ -235,11 +184,8 @@ export interface ValidationOptions {
  * @description Options for validation decorators with error handling and transformation settings
  */
 export interface ValidationDecoratorOptions {
-	/** Error message to display */
 	errorMessage?: string;
-	/** Whether to strip unknown properties */
 	stripUnknown?: boolean;
-	/** Whether to transform the data */
 	transform?: boolean;
 }
 
@@ -247,15 +193,10 @@ export interface ValidationDecoratorOptions {
  * Validation interceptor options
  */
 export interface ValidationInterceptorOptions {
-	/** Whether to sanitize inputs */
 	sanitizeInputs?: boolean;
-	/** Whether to validate inputs */
 	validateInputs?: boolean;
-	/** Whether to log validation failures */
 	logFailures?: boolean;
-	/** Fields to exclude from validation */
 	excludeFields?: string[];
-	/** Custom validation rules */
 	customRules?: Record<string, ValidationFunction>;
 }
 
@@ -263,15 +204,10 @@ export interface ValidationInterceptorOptions {
  * Validation result for interceptor
  */
 export interface ValidationInterceptorResult {
-	/** Whether validation passed */
 	isValid: boolean;
-	/** Validation error message */
 	error?: string;
-	/** Validation warnings */
 	warnings?: string[];
-	/** Field name */
 	field?: string;
-	/** Data type */
 	dataType?: RequestDataType;
 }
 
@@ -279,15 +215,10 @@ export interface ValidationInterceptorResult {
  * Validation middleware configuration
  */
 export interface ValidationMiddlewareConfig {
-	/** Body validation rules */
 	body?: ValidationRule[];
-	/** Query parameter validation rules */
 	query?: ValidationRule[];
-	/** Path parameter validation rules */
 	params?: ValidationRule[];
-	/** Whether to stop on first error */
 	stopOnFirstError?: boolean;
-	/** Custom error handler */
 	errorHandler?: (errors: ValidationError[]) => void;
 }
 
@@ -298,9 +229,7 @@ export interface ValidationMiddlewareConfig {
  * @used_by client/src/services/api.service.ts (validateCustomDifficulty)
  */
 export interface CustomDifficultyValidationResponse {
-	/** Whether the custom difficulty is valid */
 	isValid: boolean;
-	/** Validation errors if any */
 	errors?: string[];
 }
 
@@ -311,7 +240,6 @@ export interface CustomDifficultyValidationResponse {
  * @used_by client/src/services/api.service.ts (validateCustomDifficulty)
  */
 export interface ValidateCustomDifficultyRequest extends Record<string, BasicValue> {
-	/** Custom difficulty text to validate */
 	customText: string;
 }
 
@@ -359,11 +287,8 @@ export interface SharedTriviaInputValidation {
  * @used_by shared/validation/payment.validation.ts (validatePaymentAmount)
  */
 export interface PaymentValidationResult {
-	/** Whether the validation passed */
 	isValid: boolean;
-	/** Array of validation error messages */
 	errors: string[];
-	/** Optional warnings that don't fail validation */
 	warnings?: string[];
 }
 
@@ -374,11 +299,8 @@ export interface PaymentValidationResult {
  * @used_by shared/validation/points.validation.ts (validatePointBalance, validatePointPurchase, etc.)
  */
 export interface PointsValidationResult {
-	/** Whether the validation passed */
 	isValid: boolean;
-	/** Array of validation error messages */
 	errors: string[];
-	/** Optional warnings that don't fail validation */
 	warnings?: string[];
 }
 

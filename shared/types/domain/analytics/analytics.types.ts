@@ -3,7 +3,7 @@
  *
  * @module AnalyticsTypes
  * @description Type definitions for analytics and metrics data structures
- * @used_by server: server/src/features/analytics/analytics.service.ts (analytics data), client: client/src/components/stats/StatsCharts.tsx (chart data), server/src/features/metrics/metrics.service.ts (metrics collection)
+ * @used_by server/src/features/analytics/analytics.service.ts, client/src/components/stats/StatsCharts.tsx, server/src/features/metrics/metrics.service.ts
  */
 import { BasicValue } from '../../core/data.types';
 
@@ -13,7 +13,6 @@ import { BasicValue } from '../../core/data.types';
  * @description Cache entry for trivia questions
  */
 export interface QuestionCacheEntry {
-	/** Question data */
 	question: {
 		question: string;
 		answers: string[];
@@ -21,11 +20,8 @@ export interface QuestionCacheEntry {
 		difficulty: string;
 		topic: string;
 	};
-	/** Creation timestamp */
 	created_at: Date;
-	/** Access count */
 	accessCount: number;
-	/** Last accessed timestamp */
 	lastAccessed: Date;
 }
 
@@ -53,23 +49,14 @@ export interface AnalyticsEventData {
  * @description Metadata specific to analytics events
  */
 export interface AnalyticsMetadata {
-	/** Event type */
 	eventType?: string;
-	/** Session ID */
 	sessionId?: string;
-	/** Page or endpoint */
 	page?: string;
-	/** Action performed */
 	action?: string;
-	/** Result of action */
 	result?: 'success' | 'failure' | 'error';
-	/** Duration in milliseconds */
 	duration?: number;
-	/** Value associated with event */
 	value?: number;
-	/** Environment */
 	environment?: 'development' | 'staging' | 'production' | 'test';
-	/** UTM parameters */
 	utmSource?: string;
 	utmMedium?: string;
 	utmCampaign?: string;
@@ -93,33 +80,19 @@ export interface AnalyticsMetadata {
  * @description Analytics data for individual questions
  */
 export interface QuestionAnalytics {
-	/** Question ID */
 	id?: string;
-	/** Question ID (legacy) */
 	questionId?: string;
-	/** Question text */
 	question?: string;
-	/** Topic */
 	topic: string;
-	/** Difficulty level */
 	difficulty: string;
-	/** Difficulty level (alias) */
 	difficultyLevel?: string;
-	/** Number of times answered */
 	answerCount: number;
-	/** Total attempts (alias) */
 	totalAttempts: number;
-	/** Number of correct answers */
 	correctCount: number;
-	/** Correct attempts (alias) */
 	correctAttempts: number;
-	/** Success rate percentage */
 	successRate: number;
-	/** Average time to answer in seconds */
 	averageTimeToAnswer: number;
-	/** Average time (alias) */
 	averageTime: number;
-	/** Complexity score */
 	complexityScore: number;
 }
 
@@ -183,7 +156,6 @@ export interface UserAnalytics {
 	topicsPlayed: Record<string, number>;
 	/** Difficulty breakdown */
 	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
-	/** Recent activity */
 	recentActivity: Array<{
 		date: Date;
 		action: string;
@@ -217,7 +189,6 @@ export interface UserAnalyticsStats {
 	topicsPlayed: Record<string, number>;
 	/** Difficulty breakdown */
 	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
-	/** Recent activity */
 	recentActivity: Array<{
 		date: Date;
 		action: string;
@@ -436,11 +407,11 @@ export interface UserAnalyticsQuery {
 }
 
 /**
- * Unified User Analytics Data Interface
- * @interface UnifiedUserAnalytics
+ * User Analytics Data Interface
+ * @interface CompleteUserAnalytics
  * @description Complete user analytics data combining basic user info with game analytics
  */
-export interface UnifiedUserAnalytics {
+export interface CompleteUserAnalytics {
 	/** Basic user information */
 	basic: {
 		userId: string;

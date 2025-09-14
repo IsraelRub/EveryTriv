@@ -2,9 +2,10 @@
  * Storage Manager Service
  *
  * @module StorageManagerService
- * @description Unified storage management service that coordinates between persistent storage and caching
+ * @description Storage management service that coordinates between persistent storage and caching
  * @used_by server/src/shared/modules/storage/storage.service.ts, server/src/shared/modules/cache/cache.service.ts
  */
+import { CacheStrategyService } from '../../cache/cache.service';
 import {
 	StorageCleanupOptions,
 	StorageConfig,
@@ -15,7 +16,7 @@ import {
 	StorageStats,
 	StorageSyncOptions,
 	StorageUtils,
-	UnifiedStorageService,
+	StorageService,
 } from '../index';
 
 /**
@@ -24,27 +25,24 @@ import {
  * @description Coordinates between persistent storage and caching with fallback mechanisms
  */
 export class StorageManagerService {
-	private persistentStorage: UnifiedStorageService;
-	private cacheStorage: UnifiedStorageService;
+	private persistentStorage: StorageService;
+	private cacheStorage: StorageService;
+	private cacheStrategy: CacheStrategyService;
 	private config: StorageConfig;
 
 	constructor(
-		persistentStorage: UnifiedStorageService,
-		cacheStorage: UnifiedStorageService,
+		persistentStorage: StorageService,
+		cacheStorage: StorageService,
 		config: Partial<StorageConfig> = {}
 	) {
 		this.persistentStorage = persistentStorage;
 		this.cacheStorage = cacheStorage;
+		this.cacheStrategy = new CacheStrategyService(cacheStorage, persistentStorage);
 		this.config = StorageConfigFactory.createHybridConfig(config);
 	}
 
 	/**
 	 * Create operation result with timing using shared utility
-	 * @param success Whether operation was successful
-	 * @param data Operation data
-	 * @param error Error message
-	 * @param startTime Operation start time
-	 * @param storageType Storage type
 	 * @returns Operation result with timing
 	 */
 	private createTimedResult<T>(
@@ -59,11 +57,6 @@ export class StorageManagerService {
 
 	/**
 	 * Track operation with timing
-	 * @param operation Operation name
-	 * @param startTime Operation start time
-	 * @param success Whether operation was successful
-	 * @param storageType Storage type
-	 * @param size Data size in bytes (optional)
 	 */
 	private trackOperationWithTiming(
 		operation: keyof StorageMetrics['operations'],
@@ -77,7 +70,6 @@ export class StorageManagerService {
 
 	/**
 	 * Handle error with consistent formatting using shared utility
-	 * @param error Error object
 	 * @returns Formatted error message
 	 */
 	private formatError(error: unknown): string {
@@ -86,10 +78,6 @@ export class StorageManagerService {
 
 	/**
 	 * Set value with intelligent storage strategy
-	 * @param key Storage key
-	 * @param value Value to store
-	 * @param ttl Time to live in seconds
-	 * @param strategy Storage strategy
 	 * @returns Operation result
 	 */
 	async set<T>(
@@ -145,106 +133,18 @@ export class StorageManagerService {
 
 	/**
 	 * Get value with intelligent fallback strategy
-	 * @param key Storage key
-	 * @param strategy Retrieval strategy
 	 * @returns Operation result
 	 */
 	async get<T>(
 		key: string,
 		strategy: 'cache-first' | 'persistent-first' | 'hybrid' = 'cache-first'
 	): Promise<StorageOperationResult<T | null>> {
-		const startTime = Date.now();
-		let success = false;
-		let data: T | null = null;
-		let error: string | undefined;
-		let storageType: 'persistent' | 'cache' | 'hybrid' = 'hybrid';
-
-		try {
-			switch (strategy) {
-				case 'cache-first': {
-					// Try cache first, then persistent
-					const cacheResult = await this.cacheStorage.get<T>(key);
-					if (cacheResult.success && cacheResult.data !== null && cacheResult.data !== undefined) {
-						data = cacheResult.data;
-						success = true;
-						storageType = 'cache';
-					} else {
-						const persistentResult = await this.persistentStorage.get<T>(key);
-						if (persistentResult.success && persistentResult.data !== null && persistentResult.data !== undefined) {
-							data = persistentResult.data;
-							success = true;
-							storageType = 'persistent';
-							// Cache for future access
-							await this.cacheStorage.set(key, data, 300); // 5 min cache
-						}
-					}
-					break;
-				}
-
-				case 'persistent-first': {
-					// Try persistent first, then cache
-					const persistentResult = await this.persistentStorage.get<T>(key);
-					if (persistentResult.success && persistentResult.data !== null && persistentResult.data !== undefined) {
-						data = persistentResult.data;
-						success = true;
-						storageType = 'persistent';
-					} else {
-						const cacheResult = await this.cacheStorage.get<T>(key);
-						if (cacheResult.success && cacheResult.data !== null && cacheResult.data !== undefined) {
-							data = cacheResult.data;
-							success = true;
-							storageType = 'cache';
-						}
-					}
-					break;
-				}
-
-				case 'hybrid': {
-					// Try both simultaneously
-					const [persistentResult, cacheResult] = await Promise.allSettled([
-						this.persistentStorage.get<T>(key),
-						this.cacheStorage.get<T>(key),
-					]);
-
-					if (
-						persistentResult.status === 'fulfilled' &&
-						persistentResult.value.success &&
-						persistentResult.value.data !== null &&
-						persistentResult.value.data !== undefined
-					) {
-						data = persistentResult.value.data;
-						success = true;
-						storageType = 'persistent';
-					} else if (
-						cacheResult.status === 'fulfilled' &&
-						cacheResult.value.success &&
-						cacheResult.value.data !== null &&
-						cacheResult.value.data !== undefined
-					) {
-						data = cacheResult.value.data;
-						success = true;
-						storageType = 'cache';
-					}
-					break;
-				}
-			}
-
-			this.trackOperationWithTiming('get', startTime, success, storageType);
-
-			return this.createTimedResult<T | null>(success, data, error, startTime, storageType);
-		} catch (err) {
-			this.trackOperationWithTiming('get', startTime, false, 'hybrid');
-
-			return this.createTimedResult<T | null>(false, null, this.formatError(err), startTime, 'hybrid');
-		}
+		// Use cache service for consistent behavior
+		return this.cacheStrategy.get<T>(key, strategy);
 	}
 
 	/**
 	 * Get or set value with factory function
-	 * @param key Storage key
-	 * @param factory Factory function to generate value
-	 * @param ttl Time to live in seconds
-	 * @param strategy Storage strategy
 	 * @returns Value
 	 */
 	async getOrSet<T>(
@@ -274,7 +174,6 @@ export class StorageManagerService {
 
 	/**
 	 * Delete value from all storages
-	 * @param key Storage key
 	 * @returns Operation result
 	 */
 	async delete(key: string): Promise<StorageOperationResult<void>> {
@@ -302,7 +201,6 @@ export class StorageManagerService {
 
 	/**
 	 * Invalidate cache entries
-	 * @param pattern Pattern to match keys
 	 * @returns Operation result
 	 */
 	async invalidate(pattern: string): Promise<StorageOperationResult<void>> {
@@ -323,7 +221,6 @@ export class StorageManagerService {
 
 	/**
 	 * Sync data between storages
-	 * @param options Sync options
 	 * @returns Sync result
 	 */
 	async sync(options: StorageSyncOptions = {}): Promise<StorageOperationResult<void>> {
@@ -371,7 +268,7 @@ export class StorageManagerService {
 	}
 
 	/**
-	 * Get unified statistics
+	 * Get statistics
 	 * @returns Combined statistics
 	 */
 	async getStats(): Promise<StorageOperationResult<{ persistent: StorageStats | null; cache: StorageStats | null }>> {

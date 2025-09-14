@@ -5,13 +5,12 @@
  * @description Type definitions for user preferences and settings management
  */
 
-// UserPreferences is already exported from user.types.ts
 
 /**
  * User preferences interface (extended)
  * @interface UserPreferencesExtended
  * @description Extended user preferences and settings
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences display), client/src/hooks/api/useUserPreferences.ts (preferences management)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesExtended {
 	/** Theme preference */
@@ -56,13 +55,12 @@ export interface UserPreferencesExtended {
 	};
 }
 
-// UserPreferencesUpdate is already exported from user.types.ts
 
 /**
  * User preferences update interface (extended)
  * @interface UserPreferencesUpdateExtended
  * @description Extended data structure for updating user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences updates), client/src/hooks/api/useUserPreferences.ts (preferences management)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesUpdateExtended {
 	/** Theme preference */
@@ -111,7 +109,7 @@ export interface UserPreferencesUpdateExtended {
  * User preferences validation interface
  * @interface UserPreferencesValidation
  * @description Validation result for user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences validation), client/src/hooks/api/useUserPreferences.ts (validation handling)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesValidation {
 	/** Whether preferences are valid */
@@ -128,7 +126,7 @@ export interface UserPreferencesValidation {
  * User preferences reset interface
  * @interface UserPreferencesReset
  * @description Reset options for user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences reset), client/src/hooks/api/useUserPreferences.ts (reset functionality)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesReset {
 	/** Reset theme to default */
@@ -151,7 +149,7 @@ export interface UserPreferencesReset {
  * User preferences export interface
  * @interface UserPreferencesExport
  * @description Export format for user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences export), client/src/hooks/api/useUserPreferences.ts (export functionality)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesExport {
 	/** Export timestamp */
@@ -177,7 +175,7 @@ export interface UserPreferencesExport {
  * User preferences import interface
  * @interface UserPreferencesImport
  * @description Import format for user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences import), client/src/hooks/api/useUserPreferences.ts (import functionality)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesImport {
 	/** Import file */
@@ -201,7 +199,7 @@ export interface UserPreferencesImport {
  * User preferences sync interface
  * @interface UserPreferencesSync
  * @description Sync status for user preferences
- * @used_by client: client/src/components/user/UserProfile.tsx (preferences sync), client/src/hooks/api/useUserPreferences.ts (sync functionality)
+ * @used_by client/src/components/user/UserProfile.tsx, client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesSync {
 	/** Sync status */

@@ -21,7 +21,7 @@ import {
   TopicStatsData,
   TriviaQuestion,
   TriviaRequest,
-  UnifiedUserAnalytics,
+  CompleteUserAnalytics,
   UrlResponse,
   User,
   UserAnalyticsQuery,
@@ -410,10 +410,10 @@ class ApiService implements ClientApiService {
   }
 
   async getUserStats(): Promise<UserStatsData> {
-    // Use unified analytics instead of separate stats endpoint
-    const response = await this.get<UnifiedUserAnalytics>('/analytics/user/unified');
+    // Use analytics instead of separate stats endpoint
+    const response = await this.get<CompleteUserAnalytics>('/analytics/user/');
 
-    // Convert UnifiedUserAnalytics to UserStatsData format
+    // Convert UserAnalytics to UserStatsData format
     const analytics = response.data;
     return {
       userId: analytics.basic.userId,
@@ -696,8 +696,8 @@ class ApiService implements ClientApiService {
   }
 
   // Analytics dashboard methods
-  async getUnifiedUserAnalytics(): Promise<UnifiedUserAnalytics> {
-    const response = await this.get<UnifiedUserAnalytics>('/analytics/user/unified');
+  async getUserAnalytics(): Promise<CompleteUserAnalytics> {
+    const response = await this.get<CompleteUserAnalytics>('/analytics/user/');
     return response.data;
   }
 

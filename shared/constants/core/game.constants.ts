@@ -10,7 +10,7 @@
  * Prefix for custom difficulty levels
  * @constant
  * @description Used to identify custom difficulty strings
- * @used_by server: server/src/features/game/logic/game-validation.service.ts (validateDifficulty), client: client/src/utils/customDifficulty.utils.ts (createCustomDifficulty, extractCustomDifficultyText)
+ * @used_by server/src/features/game/logic/game-validation.service.ts, client/src/utils/customDifficulty.utils.ts
  */
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
 
@@ -18,16 +18,12 @@ export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
  * Standard difficulty levels enumeration
  * @enum {string} DifficultyLevel
  * @description Core difficulty levels supported by the game
- * @used_by server: server/src/features/game/dtos/trivia-request.dto.ts (TriviaRequestDto.difficulty), client: client/src/components/game/TriviaForm.tsx (difficulty selection), client/src/redux/features/gameModeSlice.ts (difficultyLevel state)
+ * @used_by server/src/features/game/dtos/trivia-request.dto.ts, client/src/components/game/TriviaForm.tsx, client/src/redux/features/gameModeSlice.ts
  */
 export enum DifficultyLevel {
-	/** Beginner level questions */
 	EASY = 'easy',
-	/** Intermediate level questions */
 	MEDIUM = 'medium',
-	/** Advanced level questions */
 	HARD = 'hard',
-	/** User-defined custom difficulty */
 	CUSTOM = 'custom',
 }
 
@@ -35,7 +31,7 @@ export enum DifficultyLevel {
  * Array of all valid difficulty levels
  * @constant
  * @description Complete list of supported difficulty levels
- * @used_by server: server/src/features/game/logic/game-validation.service.ts (validateDifficulty), client: client/src/components/game/TriviaForm.tsx (difficulty dropdown options), shared/validation/difficulty.validation.ts (isValidDifficulty)
+ * @used_by server/src/features/game/logic/game-validation.service.ts, client/src/components/game/TriviaForm.tsx, shared/validation/difficulty.validation.ts
  */
 export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
 
@@ -43,18 +39,13 @@ export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
  * Scoring multipliers for different difficulty levels
  * @constant
  * @description Points multiplier based on question difficulty
- * @used_by server: server/src/features/game/logic/scoring/scoring.service.ts (calculatePoints), client: client/src/hooks/layers/business/useGameLogic.ts (score calculation), server/src/features/analytics/analytics.service.ts (performance metrics)
+ * @used_by server/src/features/game/logic/scoring/scoring.service.ts, client/src/hooks/layers/business/useGameLogic.ts, server/src/features/analytics/analytics.service.ts
  */
 export const DIFFICULTY_MULTIPLIERS = {
-	/** Easy questions multiplier */
 	[DifficultyLevel.EASY]: 1,
-	/** Medium questions multiplier */
 	[DifficultyLevel.MEDIUM]: 1.5,
-	/** Hard questions multiplier */
 	[DifficultyLevel.HARD]: 2,
-	/** Default custom difficulty multiplier */
 	CUSTOM_DEFAULT: 1.3,
-	/** Enhanced multipliers with bonus system */
 	BONUS_MULTIPLIER: 1.2,
 	STREAK_MULTIPLIER: 1.1,
 	PERFECT_SCORE_MULTIPLIER: 1.5,
@@ -64,16 +55,12 @@ export const DIFFICULTY_MULTIPLIERS = {
  * Custom difficulty multipliers based on detected keywords
  * @constant
  * @description Advanced multipliers for specific custom difficulty types
- * @used_by server/game/logic, shared/utils, server/analytics
+ * @used_by server/src/features/game/logic, shared/utils, server/src/features/analytics
  */
 export const CUSTOM_DIFFICULTY_MULTIPLIERS = {
-	/** Easy level multiplier */
 	[DifficultyLevel.EASY]: 1.0,
-	/** Medium level multiplier */
 	[DifficultyLevel.MEDIUM]: 1.5,
-	/** Hard level multiplier */
 	[DifficultyLevel.HARD]: 2.0,
-	/** Custom difficulty default multiplier */
 	[DifficultyLevel.CUSTOM]: 1.3,
 } as const;
 
@@ -81,22 +68,19 @@ export const CUSTOM_DIFFICULTY_MULTIPLIERS = {
  * Valid question count options per game
  * @constant
  * @description Allowed number of questions in a single game session
- * @used_by shared/validation, client/forms, server/game/logic
+ * @used_by shared/validation, client/forms, server/src/features/game/logic
  */
-export const VALID_QUESTION_COUNTS = [3, 4, 5] as const;
+export const VALID_QUESTION_COUNTS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
 
 /**
  * Game mode enumeration
  * @enum {string} GameMode
  * @description Different game modes available in the application
- * @used_by shared/types, client/redux, server/game/logic
+ * @used_by shared/types, client/redux, server/src/features/game/logic
  */
 export enum GameMode {
-	/** Game with limited number of questions */
 	QUESTION_LIMITED = 'question-limited',
-	/** Time-limited game session */
 	TIME_LIMITED = 'time-limited',
-	/** Unlimited questions mode (no scoring) */
 	UNLIMITED = 'unlimited',
 }
 
@@ -104,7 +88,7 @@ export enum GameMode {
  * Array of all valid game modes
  * @constant
  * @description Complete list of supported game modes
- * @used_by shared/validation, client/forms, server/validation
+ * @used_by shared/validation, client/forms, server/src/validation
  */
 export const VALID_GAME_MODES = Object.values(GameMode);
 
@@ -112,14 +96,11 @@ export const VALID_GAME_MODES = Object.values(GameMode);
  * Credit operation types enumeration
  * @enum {string} CreditOperation
  * @description Operations that can be performed on user credits
- * @used_by server/user/service, server/points/service, shared/validation
+ * @used_by server/src/features/user, server/src/features/points, shared/validation
  */
 export enum CreditOperation {
-	/** Add credits to user account */
 	ADD = 'add',
-	/** Deduct credits from user account */
 	DEDUCT = 'deduct',
-	/** Set absolute credit amount */
 	SET = 'set',
 }
 
@@ -127,7 +108,7 @@ export enum CreditOperation {
  * Array of all valid credit operations
  * @constant
  * @description Complete list of supported credit operations
- * @used_by shared/validation, server/validation, client/forms
+ * @used_by shared/validation, server/src/validation, client/forms
  */
 export const VALID_CREDIT_OPERATIONS = Object.values(CreditOperation);
 
@@ -165,7 +146,7 @@ export const GAME_STATE_DEFAULTS = {
 	IS_GAME_ACTIVE: false,
 	IS_GAME_PAUSED: false,
 	IS_GAME_OVER: false,
-	CURRENT_QUESTION_INDEX: 0,
+	QUESTION_INDEX: 0,
 	TOTAL_QUESTIONS: 10, // Default for question-limited mode
 	TIME_LIMIT: 300, // 5 minutes default for time-limited mode
 	DIFFICULTY: DifficultyLevel.EASY,

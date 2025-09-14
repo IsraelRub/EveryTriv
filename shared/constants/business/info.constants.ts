@@ -4,14 +4,14 @@
  *
  * @module InfoConstants
  * @description Information and data constants with advanced features
- * @used_by server: server/src/features/user/user.service.ts, client: client/src/components/layout/Footer.tsx, client/src/views/registration/RegistrationView.tsx
+ * @used_by server/src/features/user/user.service.ts, client/src/components/layout/Footer.tsx, client/src/views/registration/RegistrationView.tsx
  */
 
 /**
  * Application name constant
  * @constant
  * @description Main application name used across the platform
- * @used_by server: server/src/config/app.config.ts (AppConfig), client: client/src/components/layout/Footer.tsx (Footer component), shared/constants/index.ts (re-export)
+ * @used_by server/src/config/app.config.ts, client/src/components/layout/Footer.tsx, shared/constants/index.ts
  */
 export const APP_NAME = 'EveryTriv';
 
@@ -19,7 +19,7 @@ export const APP_NAME = 'EveryTriv';
  * Application description constant
  * @constant
  * @description Main application description for metadata and SEO
- * @used_by server: server/src/config/app.config.ts (AppConfig), client: client/src/components/layout/Footer.tsx (Footer component), docs/README.md (project description)
+ * @used_by server/src/config/app.config.ts, client/src/components/layout/Footer.tsx, docs/README.md
  */
 export const APP_DESCRIPTION = 'Smart Trivia Platform with Custom Difficulty Levels';
 
@@ -27,7 +27,7 @@ export const APP_DESCRIPTION = 'Smart Trivia Platform with Custom Difficulty Lev
  * Contact information and branding constants
  * @constant
  * @description Company contact details and marketing content
- * @used_by server: server/src/features/user/user.service.ts (user profile), client: client/src/components/layout/Footer.tsx (contact info), client/src/views/user/UserProfile.tsx (user settings)
+ * @used_by server/src/features/user/user.service.ts, client/src/components/layout/Footer.tsx, client/src/views/user/UserProfile.tsx
  */
 export const CONTACT_INFO = {
 	/** Support email address */
@@ -43,7 +43,7 @@ export const CONTACT_INFO = {
 	/** Enhanced metadata */
 	metadata: {
 		version: '2.0.0',
-		lastUpdated: '2024-01-01',
+		releaseDate: '2024-01-01',
 		supportedLanguages: ['en', 'he'],
 		apiVersion: 'v1',
 		maintenanceWindow: 'Sundays 2-4 AM UTC',
@@ -54,7 +54,7 @@ export const CONTACT_INFO = {
  * Supported countries list with phone prefixes
  * @constant
  * @description Countries supported for registration and payments
- * @used_by server: server/src/features/auth/auth.service.ts (user registration), client: client/src/views/registration/RegistrationView.tsx (country selection), client/src/components/user/CompleteProfile.tsx (profile completion)
+ * @used_by server/src/features/auth/auth.service.ts, client/src/views/registration/RegistrationView.tsx, client/src/components/user/CompleteProfile.tsx
  */
 export const COUNTRIES = [
 	{ code: 'US', name: 'United States', phonePrefix: '+1' },
@@ -73,7 +73,7 @@ export const COUNTRIES = [
  * Popular trivia topics list
  * @constant
  * @description Most popular and commonly used trivia categories
- * @used_by server: server/src/features/game/logic/trivia-generation.service.ts (topic generation), client: client/src/components/game/TriviaForm.tsx (topic selection), client/src/components/user/FavoriteTopics.tsx (topic preferences)
+ * @used_by server/src/features/game/logic/trivia-generation.service.ts, client/src/components/game/TriviaForm.tsx, client/src/components/user/FavoriteTopics.tsx
  */
 export const POPULAR_TOPICS = [
 	'General Knowledge',

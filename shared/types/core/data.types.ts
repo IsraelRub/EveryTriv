@@ -33,11 +33,8 @@ export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] |
  * @description Base interface for all entities with common fields
  */
 export interface BaseEntity {
-	/** Unique identifier */
 	id: string;
-	/** Creation timestamp */
 	createdAt: Date;
-	/** Last update timestamp */
 	updatedAt: Date;
 }
 
@@ -47,15 +44,10 @@ export interface BaseEntity {
  * @description Request interface with user authentication data
  */
 export interface AuthRequest {
-	/** User data */
 	user: {
-		/** User ID */
 		id: string;
-		/** User role */
 		role: string;
-		/** User email */
 		email: string;
-		/** User username */
 		username: string;
 	};
 }
@@ -66,11 +58,8 @@ export interface AuthRequest {
  * @description User login credentials
  */
 export interface AuthCredentials {
-	/** Email address */
 	email: string;
-	/** Username */
 	username: string;
-	/** Password */
 	password: string;
 }
 
@@ -80,19 +69,12 @@ export interface AuthCredentials {
  * @description Response from authentication service
  */
 export interface AuthResponse {
-	/** Access token */
 	accessToken: string;
-	/** Refresh token */
 	refreshToken?: string;
-	/** User data */
 	user: {
-		/** User ID */
 		id: string;
-		/** Username */
 		username: string;
-		/** Email */
 		email: string;
-		/** Role */
 		role: string;
 	};
 }

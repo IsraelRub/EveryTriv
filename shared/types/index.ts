@@ -12,7 +12,7 @@
  * @description Fundamental type definitions used across the application
  * @exports {Object} Base type definitions
  */
-// Base types are now distributed to specific files
+// Base types are distributed to specific files
 
 /**
  * Core type definitions
@@ -136,7 +136,7 @@ export type {
 	StorageConfig,
 	StorageOperationResult,
 	StorageStats,
-	UnifiedStorageService,
+	StorageService as StorageService,
 } from './infrastructure/storage.types';
 
 /**

@@ -5,9 +5,6 @@
  * @description Type definitions for AI providers and their configurations
  */
 
-// AIProvider is already exported from ai.types.ts
-
-// AIProviderConfig is already exported from ai.types.ts
 
 /**
  * AI provider configuration interface (extended)
@@ -42,8 +39,7 @@ export interface AIProviderConfigExtended {
 		requestsPerMinute: number;
 		/** Tokens per minute */
 		tokensPerMinute: number;
-		/** Concurrent requests */
-		concurrentRequests: number;
+		parallelRequests: number;
 	};
 	/** Caching configuration */
 	cache: {
@@ -65,7 +61,6 @@ export interface AIProviderConfigExtended {
 	};
 }
 
-// AIProviderHealth is already exported from ai.types.ts
 
 /**
  * AI provider health interface (extended)
@@ -101,7 +96,6 @@ export interface AIProviderHealthExtended {
 	};
 }
 
-// AIProviderMetrics is already exported from ai.types.ts
 
 /**
  * AI provider metrics interface (extended)
@@ -125,11 +119,10 @@ export interface AIProviderMetricsExtended {
 	errorRate: number;
 	/** Last used timestamp */
 	lastUsed?: string;
-	/** Current status */
+	/** Status */
 	status: 'available' | 'unavailable' | 'error';
 }
 
-// AIProviderCapabilities is already exported from ai.types.ts
 
 /**
  * AI provider capabilities interface (extended)

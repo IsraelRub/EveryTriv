@@ -3,7 +3,7 @@
  *
  * @module ReduxStore
  * @description Main Redux store configuration with all reducers and middleware
- * @used_by client/App, client/hooks, client/services
+ * @used_by client/App.tsx, client/hooks, client/services
  */
 import { configureStore } from '@reduxjs/toolkit';
 import { persistReducer,persistStore } from 'redux-persist';

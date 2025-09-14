@@ -29,3 +29,19 @@ export * from './logging';
  * @used_by client/services, server/services
  */
 export * from './points';
+
+/**
+ * Auth services
+ * @description Authentication and authorization services
+ * @exports {Object} All auth-related services and utilities
+ * @used_by client/services, server/services
+ */
+export * from './auth';
+
+/**
+ * Cache services
+ * @description caching services
+ * @exports {Object} All cache-related services and utilities
+ * @used_by client/services, server/services
+ */
+export * from './cache';

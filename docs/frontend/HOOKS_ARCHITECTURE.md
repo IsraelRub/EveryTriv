@@ -677,7 +677,7 @@ export const GameComponent: React.FC = () => {
 - קל למצוא ולשנות פונקציונליות
 # ארכיטקטורת Hooks - EveryTriv
 
-מסמך מצומצם: עקרונות מתקדמים בלבד. פירוט שכבות ודוגמאות בסיס מפורטים כבר ב-`../frontend/STATE.md` ו-`../frontend/STRUCTURE.md`.
+עקרונות מתקדמים בלבד. פירוט שכבות ודוגמאות בסיס מפורטים ב-`./STATE.md` ו-`../ARCHITECTURE.md#ארכיטקטורת-frontend`.
 
 ## מטרות
 - הפרדת אחריות (API / Business / UI / Utils / Context).
@@ -718,8 +718,8 @@ export function useComposableResource<T>(key: string, loader: () => Promise<T>) 
 - מדידת stable references (expect(fn1).toBe(fn2)).
 
 ## הפניות
-- מבנה שכבות מלא: `../frontend/STRUCTURE.md`
-- ניהול State: `../frontend/STATE.md`
+- מבנה שכבות מלא: `../ARCHITECTURE.md#ארכיטקטורת-frontend`
+- ניהול State: `./STATE.md`
 
 ---
  
