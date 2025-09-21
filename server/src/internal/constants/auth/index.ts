@@ -3,7 +3,7 @@
  *
  * @module AuthConstants
  * @description Central export point for all authentication-related constants
- * @used_by server/features/auth, server/middleware
+ * @used_by server/src/features/auth, server/src/middleware
  */
 
 /**

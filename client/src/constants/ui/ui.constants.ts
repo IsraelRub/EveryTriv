@@ -4,15 +4,13 @@
  *
  * @module UIConstants
  * @description UI configuration constants
- * @used_by client/components, client/hooks, client/services
+ * @used_by client/components, client/src/hooks, client/services
  */
 import { DifficultyLevel } from '@shared';
 import { UI_THEME_VARIANTS } from '@shared';
 
-// Theme enum - using shared constants
 export const Theme = UI_THEME_VARIANTS;
 
-// Client-specific difficulty levels with UI styling
 export const DIFFICULTY_LEVELS_UI = [
   {
     id: DifficultyLevel.EASY,

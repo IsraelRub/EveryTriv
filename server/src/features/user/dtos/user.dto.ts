@@ -64,7 +64,7 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Avatar URL - must be HTTPS and valid image format',
-		example: 'https://your-domain.com/avatar.jpg',
+		example: 'https://example.com/avatar.jpg',
 	})
 	@IsOptional()
 	@IsString()
@@ -111,7 +111,7 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Website URL',
-		example: 'https://your-website.com',
+		example: 'https://example.com',
 		maxLength: 200,
 	})
 	@IsOptional()
@@ -121,7 +121,7 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Social media links',
-		example: { twitter: 'https://twitter.com/username', linkedin: 'https://linkedin.com/in/username' },
+		example: { twitter: 'https://twitter.com/example', linkedin: 'https://linkedin.com/in/example' },
 	})
 	@IsOptional()
 	@IsObject()

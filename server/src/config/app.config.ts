@@ -3,14 +3,14 @@
  *
  * @module AppConfig
  * @description Central configuration class for application settings
- * @used_by server/app, server/main, server/config
+ * @used_by server/src/app, server/src/main, server/src/config
  */
 import { DEFAULT_PORTS } from '../../../shared';
 
 /**
  * Application configuration class
  * @description Provides centralized access to application configuration
- * @used_by server/app, server/main, server/config
+ * @used_by server/src/app, server/src/main, server/src/config
  */
 export class AppConfig {
 	static get port() {
@@ -37,13 +37,11 @@ export class AppConfig {
 		return process.env.COOKIE_SECRET || 'everytriv-secret-key';
 	}
 
-	// container apps prefix as in production
 	static readonly apiUrl = {
 		users: 'users',
 		files: 'files',
 	};
 
-	// Database configuration - for all development environments
 	static get database() {
 		return {
 			host: process.env.DATABASE_HOST || 'localhost',
@@ -52,7 +50,7 @@ export class AppConfig {
 			password: process.env.DATABASE_PASSWORD || 'test123',
 			name: process.env.DATABASE_NAME || 'everytriv',
 			schema: process.env.DATABASE_SCHEMA || 'public',
-			synchronize: false, // Always use migrations for consistency
+			synchronize: false,
 			logging: process.env.NODE_ENV !== 'prod',
 			ssl: process.env.DATABASE_SSL === 'true',
 			pool: {
@@ -64,7 +62,6 @@ export class AppConfig {
 		};
 	}
 
-	// Redis configuration
 	static get redis() {
 		return {
 			host: process.env.REDIS_HOST || 'localhost',
@@ -88,7 +85,6 @@ export class AppConfig {
 		};
 	}
 
-	// JWT configuration
 	static get jwt() {
 		return {
 			secret: process.env.JWT_SECRET || 'everytriv-jwt-secret',

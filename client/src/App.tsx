@@ -11,10 +11,8 @@ import { persistor } from './redux/store';
 import { audioService } from './services';
 import { prefetchCommonQueries } from './services/utils/queryClient.service';
 
-// Audio Context for global audio service access
 const AudioContext = createContext(audioService);
 
-// Custom hook to use audio service
 export const useAudio = () => useContext(AudioContext);
 
 /**
@@ -31,7 +29,6 @@ function App() {
         await prefetchCommonQueries();
         clientLogger.appStartup();
 
-        // Start background music
         audioService.play(AudioKey.BACKGROUND_MUSIC);
       } catch (error) {
         clientLogger.systemError('Failed to initialize app', {

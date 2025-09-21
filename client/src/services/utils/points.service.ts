@@ -4,7 +4,7 @@
  *
  * @module ClientPointsService
  * @description Client-side points management and balance tracking
- * @used_by client/components/payment, client/views/user, client/hooks
+ * @used_by client/src/components/payment, client/src/views/user, client/src/hooks
  */
 import { PointPurchaseOption } from '@shared';
 import { formatTimeUntilReset } from '@shared';
@@ -17,7 +17,7 @@ import { apiService } from '../api';
  * Main points management service class
  * @class ClientPointsService
  * @description Handles all points-related operations for the client
- * @used_by client/components/payment, client/views/user
+ * @used_by client/src/components/payment, client/src/views/user
  */
 class ClientPointsService {
   /**
@@ -173,7 +173,6 @@ class ClientPointsService {
    * Format time until reset for display
    */
   formatTimeUntilReset(resetTime: Date): string {
-    // Use shared utility function to avoid duplication
     return formatTimeUntilReset(resetTime);
   }
 }

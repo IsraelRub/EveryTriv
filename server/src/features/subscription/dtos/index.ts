@@ -3,7 +3,7 @@
  *
  * @module SubscriptionDTOs
  * @description Data transfer objects for subscription feature
- * @used_by server/features/subscription, server/controllers
+ * @used_by server/src/features/subscription, server/src/controllers
  */
 
 export * from './subscription.dto';

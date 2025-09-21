@@ -3,7 +3,7 @@
  *
  * @module AuthModule
  * @description authentication module with login, register, guards, and OAuth
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/src/controllers
  */
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';

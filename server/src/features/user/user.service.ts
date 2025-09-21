@@ -43,13 +43,11 @@ export class UserService {
 				email: email.substring(0, 10) + '...',
 			});
 
-			// Get user by email
 			const user = await this.getUserByEmail(email);
 			if (!user || !user.isActive || !user.passwordHash) {
 				throw new UnauthorizedException('Invalid credentials');
 			}
 
-			// Use AuthenticationManager for authentication
 			const authResult = await this.authenticationManager.authenticate(
 				{ username: user.username, password },
 				{
@@ -66,16 +64,15 @@ export class UserService {
 				throw new UnauthorizedException(authResult.error || 'Invalid credentials');
 			}
 
-			// Store user session data (persistent storage - survives cache invalidation)
 			const sessionKey = `user_session:${user.id}`;
 			const result = await this.storageService.setItem(
 				sessionKey,
 				{
 					userId: user.id,
 					lastLogin: new Date().toISOString(),
-					accessToken: authResult.accessToken!.substring(0, 20) + '...', // Store partial token for tracking
+					accessToken: authResult.accessToken!.substring(0, 20) + '...',
 				},
-				86400 // 24 hours TTL
+				86400
 			);
 
 			if (!result.success) {
@@ -129,16 +126,13 @@ export class UserService {
 				username: registerData.username,
 			});
 
-			// Check if user already exists
 			const existingEmail = await this.getUserByEmail(registerData.email);
 			if (existingEmail) {
 				throw new BadRequestException('Email already registered');
 			}
 
-			// Hash password using PasswordService
 			const passwordHash = await this.passwordService.hashPassword(registerData.password);
 
-			// Create user
 			const user = await this.createUser({
 				username: registerData.username,
 				email: registerData.email,
@@ -147,7 +141,6 @@ export class UserService {
 				lastName: registerData.lastName,
 			});
 
-			// Generate JWT tokens using AuthenticationManager
 			const tokenPair = await this.authenticationManager.generateTokensForUser({
 				id: user.id,
 				username: user.username,

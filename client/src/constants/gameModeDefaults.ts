@@ -1,7 +1,7 @@
 /**
  * Game Mode Default Settings
  * @description Centralized default settings for all game modes
- * @used_by client/src/redux/features/gameModeSlice.ts, client/src/components/gameMode/GameMode.tsx
+ * @used_by client/src/redux/features, client/src/components/gameMode
  */
 
 import { GameMode } from '@shared';
@@ -16,11 +16,11 @@ import { GameModeDefaults } from '../types/game/config.types';
 export const getGameModeDefaults = (mode: GameMode): GameModeDefaults => {
   switch (mode) {
     case GameMode.QUESTION_LIMITED:
-      return { timeLimit: 0, questionLimit: 10 }; // No time limit, 10 questions default
+      return { timeLimit: 0, questionLimit: 10 };
     case GameMode.TIME_LIMITED:
-      return { timeLimit: 60, questionLimit: 999 }; // 1 minute default, unlimited questions
+      return { timeLimit: 60, questionLimit: 999 };
     case GameMode.UNLIMITED:
-      return { timeLimit: 0, questionLimit: 999 }; // No time limit, unlimited questions, no scoring
+      return { timeLimit: 0, questionLimit: 999 };
     default:
       return { timeLimit: 0, questionLimit: 10 };
   }

@@ -3,7 +3,7 @@
  *
  * @module GameAnswerPipe
  * @description Pipe for validating game answer submission data
- * @used_by server/features/game, server/controllers
+ * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { GameAnswerData, GameAnswerValidationResult,serverLogger as logger  } from '@shared';

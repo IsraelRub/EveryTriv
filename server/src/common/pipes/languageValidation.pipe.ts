@@ -3,7 +3,7 @@
  *
  * @module LanguageValidationPipe
  * @description Pipe for validating text with language tool
- * @used_by server/features/game, server/controllers
+ * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { LanguageValidationOptions } from '@shared';

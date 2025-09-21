@@ -3,7 +3,7 @@
  *
  * @module LoggingTypes
  * @description Logging system type definitions with modular interfaces
- * @used_by server: server/src/shared/modules/logging/logger.service.ts, client: client/src/services/logger.service.ts
+ * @used_by shared/services/logging
  */
 import { LogLevel } from '../../constants';
 import { BasicValue } from '../core';

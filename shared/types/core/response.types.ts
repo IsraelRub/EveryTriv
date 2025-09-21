@@ -13,15 +13,10 @@ import type { ApiRequestBody, StorageValue } from './data.types';
  * @description Generic wrapper for all API responses
  */
 export interface BaseApiResponse<T = StorageValue> {
-	/** Response data */
 	data: T;
-	/** Success status */
 	success: boolean;
-	/** Optional message */
 	message?: string;
-	/** HTTP status code */
 	statusCode?: number;
-	/** Response timestamp */
 	timestamp?: string;
 }
 
@@ -59,7 +54,6 @@ export interface DataResponse<T = ApiRequestBody> extends BaseResponse {
  * @description Success response with guaranteed success status
  */
 export interface SuccessResponse<T = unknown> extends BaseApiResponse<T> {
-	/** Success status is always true */
 	success: true;
 }
 
@@ -69,9 +63,7 @@ export interface SuccessResponse<T = unknown> extends BaseApiResponse<T> {
  * @description Error response with guaranteed failure status
  */
 export interface ErrorResponse extends BaseApiResponse<null> {
-	/** Success status is always false */
 	success: false;
-	/** Error details */
 	error?: {
 		message: string;
 		code?: string;
@@ -85,7 +77,6 @@ export interface ErrorResponse extends BaseApiResponse<null> {
  * @description Paginated response with items and pagination metadata
  */
 export interface PaginatedResponse<T> extends BaseApiResponse<T[]> {
-	/** Pagination metadata */
 	pagination: BasePagination;
 }
 
@@ -95,13 +86,9 @@ export interface PaginatedResponse<T> extends BaseApiResponse<T[]> {
  * @description Response with additional metadata
  */
 export interface MetadataResponse<T> extends BaseApiResponse<T> {
-	/** Additional metadata */
 	metadata?: {
-		/** Processing time in milliseconds */
 		processingTime?: number;
-		/** Request timestamp */
 		timestamp?: string;
-		/** Additional context */
 		context?: Record<string, unknown>;
 	};
 }
@@ -112,16 +99,10 @@ export interface MetadataResponse<T> extends BaseApiResponse<T> {
  * @description Base pagination structure
  */
 export interface BasePagination {
-	/** Current page */
 	page: number;
-	/** Items per page */
 	limit: number;
-	/** Total items */
 	total: number;
-	/** Total pages */
 	totalPages: number;
-	/** Has next page */
 	hasNext: boolean;
-	/** Has previous page */
 	hasPrev: boolean;
 }

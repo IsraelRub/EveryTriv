@@ -3,7 +3,7 @@
  *
  * @module StorageManagerService
  * @description Storage management service that coordinates between persistent storage and caching
- * @used_by server/src/shared/modules/storage/storage.service.ts, server/src/shared/modules/cache/cache.service.ts
+ * @used_by server/src/internal/modules/storage
  */
 import { CacheStrategyService } from '../../cache/cache.service';
 import {

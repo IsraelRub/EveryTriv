@@ -17,7 +17,7 @@ import type { FormField } from '../../types/ui/forms.types';
  * Registration form field configurations
  * @constant
  * @description Predefined form fields for user registration
- * @used_by client/src/views/registration/RegistrationView.tsx
+ * @used_by client/src/views/registration
  */
 export const REGISTRATION_FIELDS: FormField[] = [
   {
@@ -107,7 +107,7 @@ export const PROFILE_FIELDS: FormField[] = [
  * Default form values for registration
  * @constant
  * @description Initial values for registration form
- * @used_by client/src/views/registration/RegistrationView.tsx
+ * @used_by client/src/views/registration
  */
 export const REGISTRATION_DEFAULT_VALUES = {
   username: '',

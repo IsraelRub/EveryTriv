@@ -3,7 +3,7 @@
  *
  * @module AnalyticsModule
  * @description Analytics and metrics collection module for game statistics and user behavior tracking
- * @used_by server/app, server/features/game, server/controllers
+ * @used_by server/src/app, server/src/features/game, server/src/controllers
  * @dependencies TypeOrmModule, CacheModule
  * @provides AnalyticsService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity, PaymentHistoryEntity

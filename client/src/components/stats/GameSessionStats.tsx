@@ -4,7 +4,7 @@
  *
  * @module GameSessionStats
  * @description Component for displaying game session statistics with time formatting
- * @used_by client/src/views/gameHistory/GameHistory.tsx
+ * @used_by client/src/views/gameHistory
  */
 
 import { calculatePercentage, formatDuration, formatTimeDisplay, getTimeElapsed } from '@shared';

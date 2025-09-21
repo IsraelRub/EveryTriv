@@ -3,7 +3,7 @@
  *
  * @module CustomDifficultyUtils
  * @description Utility functions for handling custom difficulty levels
- * @used_by client/components/game, client/hooks, client/services
+ * @used_by client/src/components/game, client/src/hooks, client/src/services
  */
 import { DifficultyLevel } from '@shared';
 import {
@@ -58,6 +58,6 @@ export const getDifficultyLevel = (difficulty: string): DifficultyLevel => {
     case DifficultyLevel.HARD:
       return DifficultyLevel.HARD;
     default:
-      return DifficultyLevel.EASY; // Default fallback
+      return DifficultyLevel.EASY;
   }
 };

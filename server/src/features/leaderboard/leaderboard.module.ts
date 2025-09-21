@@ -3,7 +3,7 @@
  *
  * @module LeaderboardModule
  * @description Module for managing user rankings and leaderboard functionality
- * @used_by server/app, server/features/analytics
+ * @used_by server/src/app, server/src/features/analytics
  * @dependencies TypeOrmModule, CacheModule
  * @provides LeaderboardService
  * @entities LeaderboardEntity, UserEntity, GameHistoryEntity

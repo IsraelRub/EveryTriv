@@ -1,8 +1,8 @@
 /**
- * תצוגת קושי נוכחי
- * מציג תג קושי כעת ואפשרות לפתיחת היסטוריית קושי מותאם.
+ * Current difficulty display
+ * Shows current difficulty tag and option to open custom difficulty history.
  * @module CurrentDifficulty
- * @used_by client/src/views/home/HomeView.tsx
+ * @used_by client/src/views/home
  */
 import { formatTopic } from '@shared';
 import { motion } from 'framer-motion';

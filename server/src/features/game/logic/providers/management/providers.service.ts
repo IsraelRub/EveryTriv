@@ -3,7 +3,7 @@
  *
  * @module AiProvidersService
  * @description Service for managing multiple AI providers with load balancing and fallback
- * @used_by server/features/game/logic/trivia-generation.service.ts (TriviaGenerationService.generateQuestion)
+ * @used_by server/src/features/game/logic
  */
 import { Injectable } from '@nestjs/common';
 import {
@@ -71,7 +71,6 @@ export class AiProvidersService {
 			});
 		}
 
-		// Initialize stats for each provider
 		this.llmProviders.forEach(provider => {
 			this.providerStats.set(provider.name, {
 				providerName: provider.name,
@@ -126,7 +125,6 @@ export class AiProvidersService {
 				language,
 			});
 
-			// Try each provider with retry logic
 			for (let attempt = 0; attempt <= maxRetries; attempt++) {
 				try {
 					const provider = this.getNextProvider();
@@ -136,7 +134,6 @@ export class AiProvidersService {
 					const providerName = provider.name;
 					const providerStartTime = Date.now();
 
-					// Update provider stats
 					this.updateProviderStats(providerName, 'request');
 
 					const question = await ('generateTriviaQuestion' in provider &&
@@ -147,10 +144,9 @@ export class AiProvidersService {
 					const duration = Date.now() - startTime;
 					const providerDuration = Date.now() - providerStartTime;
 
-					// Update provider stats on success
+ on success
 					this.updateProviderStats(providerName, 'success', providerDuration);
 
-					// Log success with comprehensive metrics
 					logger.providerSuccess(providerName, {
 						context: 'AiProvidersService',
 						topic,
@@ -167,7 +163,7 @@ export class AiProvidersService {
 					const providerName = (this.llmProviders[this.currentProviderIndex - 1] || {}).name || 'unknown';
 					lastError = error instanceof Error ? error : new Error('Unknown error');
 
-					// Update provider stats on failure
+ on failure
 					this.updateProviderStats(providerName, 'failure');
 
 					logger.providerFallback(providerName, {
@@ -177,7 +173,6 @@ export class AiProvidersService {
 						maxRetries,
 					});
 
-					// If this was the last attempt, throw the error
 					if (attempt === maxRetries) {
 						throw lastError;
 					}
@@ -258,8 +253,7 @@ export class AiProvidersService {
 			const successRate = stats.requests > 0 ? stats.successes / stats.requests : 0;
 			const avgResponseTime = stats.averageResponseTime || 0;
 
-			// Score based on success rate and response time
-			const score = successRate * 100 - avgResponseTime / 1000; // Convert to seconds
+			const score = successRate * 100 - avgResponseTime / 1000;
 
 			if (score > bestScore) {
 				bestScore = score;

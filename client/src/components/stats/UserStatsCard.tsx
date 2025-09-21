@@ -4,7 +4,7 @@
  *
  * @module UserStatsCard
  * @description Card component for displaying user statistics with date formatting
- * @used_by client/src/views/user/UserProfile.tsx
+ * @used_by client/src/views/user
  */
 
 import { calculateAge, formatDate, formatDateShort, isToday, isYesterday } from '@shared';

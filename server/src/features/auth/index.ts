@@ -3,13 +3,13 @@
  *
  * @module AuthFeature
  * @description authentication feature module
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/src/controllers
  */
 
 /**
  * Auth controller
  * @description Authentication API endpoints
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/src/controllers
  */
 export { AuthController } from './auth.controller';
 

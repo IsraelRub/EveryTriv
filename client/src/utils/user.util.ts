@@ -3,7 +3,7 @@
  *
  * @module UserUtils
  * @description Utility functions for user management and operations
- * @used_by client: client/src/components/user/CompleteProfile.tsx, client/src/hooks/layers/business/usePoints.ts
+ * @used_by client/src/components/user, client/src/hooks/layers/business
  */
 import { clientLogger } from '@shared';
 import { generateUserId } from '@shared';
@@ -27,7 +27,6 @@ export async function getOrCreateClientUserId(): Promise<string> {
 
     return userId!;
   } catch (error) {
-    // Fallback if storage is not available
     clientLogger.storageWarn('Storage not available, generating temporary user ID');
     return generateUserId();
   }

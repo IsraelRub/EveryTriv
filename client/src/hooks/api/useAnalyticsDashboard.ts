@@ -25,8 +25,8 @@ export const useUserAnalytics = () => {
       });
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes - analytics can change frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };
 
@@ -46,8 +46,8 @@ export const usePopularTopics = (query?: UserAnalyticsQuery) => {
       });
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };
 
@@ -67,8 +67,8 @@ export const useDifficultyStats = (query?: UserAnalyticsQuery) => {
       });
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };
 
@@ -81,14 +81,13 @@ export const useRealTimeAnalytics = () => {
     queryKey: ['realTimeAnalytics'],
     queryFn: async () => {
       clientLogger.userInfo('Fetching real-time analytics');
-      // This would call a real-time analytics endpoint
       const result = await apiService.getUserAnalytics();
       clientLogger.userInfo('Real-time analytics fetched successfully');
       return result;
     },
-    staleTime: 30 * 1000, // 30 seconds - real-time data
-    gcTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    staleTime: 30 * 1000,
+    gcTime: 2 * 60 * 1000,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -102,13 +101,12 @@ export const useAnalyticsExport = (format: 'csv' | 'json' | 'pdf' = 'json') => {
     queryKey: ['analyticsExport', format],
     queryFn: async () => {
       clientLogger.userInfo('Exporting analytics data', { format });
-      // This would call an export endpoint
       const result = await apiService.getUserAnalytics();
       clientLogger.userInfo('Analytics data exported successfully', { format });
       return result;
     },
-    staleTime: 0, // Always fetch fresh export data
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    enabled: false, // Only fetch when explicitly called
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    enabled: false,
   });
 };

@@ -26,7 +26,7 @@ import { LeaderboardService } from '../leaderboard/leaderboard.service';
  *
  * @module ServerAnalyticsService
  * @description User behavior tracking, performance analytics, and system metrics service
- * @used_by server/features/game, server/controllers/analytics, server/features/metrics
+ * @used_by server/src/features/game, server/controllers/analytics, server/src/features/metrics
  */
 @Injectable()
 export class AnalyticsService implements OnModuleInit {
@@ -76,7 +76,6 @@ export class AnalyticsService implements OnModuleInit {
 	) {}
 
 	async onModuleInit() {
-		// Start collecting metrics
 		this.startMetricsCollection();
 	}
 
@@ -92,7 +91,6 @@ export class AnalyticsService implements OnModuleInit {
 				userId,
 			});
 
-			// Store event in database
 			await this.saveEventToDatabase(userId, eventData);
 		} catch (error) {
 			logger.analyticsError('trackEvent', {
@@ -119,7 +117,6 @@ export class AnalyticsService implements OnModuleInit {
 				throw new Error(ANALYTICS_ERROR_MESSAGES.USER_NOT_FOUND);
 			}
 
-			// Calculate real user statistics from game history
 			const stats = await this.calculateUserStats(userId);
 
 			return {
@@ -157,7 +154,6 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			logger.analyticsStats('game', {});
 
-			// Calculate real game statistics with query filters
 			const stats = await this.calculateGameStats(query);
 
 			return {
@@ -188,7 +184,6 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			logger.analyticsStats('topic', {});
 
-			// Get real topics from database with query filters
 			const topics = await this.getTopicsFromDatabase(query);
 
 			return {
@@ -220,7 +215,6 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			logger.analyticsStats('difficulty', {});
 
-			// Calculate real difficulty statistics with query filters
 			const stats = await this.calculateDifficultyStats(query);
 
 			return {
@@ -257,10 +251,8 @@ export class AnalyticsService implements OnModuleInit {
 				timeSpent: answerData.timeSpent,
 			});
 
-			// Update user statistics
 			await this.updateUserStats(userId, answerData);
 
-			// Update question statistics
 			await this.updateQuestionStats(questionId);
 		} catch (error) {
 			logger.analyticsError('trackUserAnswer', {
@@ -276,7 +268,6 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	async getPerformanceMetrics(): Promise<PerformanceMetrics> {
 		try {
-			// Update performance data with real system metrics
 			await this.updatePerformanceMetrics();
 
 			logger.analyticsPerformance('get_performance_metrics', {
@@ -336,7 +327,6 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			const recommendations: Record<string, unknown>[] = [];
 
-			// Performance recommendations based on real data
 			if (this.performanceData.responseTime > 2000) {
 				recommendations.push({
 					id: 'perf-001',
@@ -351,7 +341,6 @@ export class AnalyticsService implements OnModuleInit {
 				});
 			}
 
-			// Security recommendations based on real data
 			if (this.securityData.authentication.failedLogins > 100) {
 				recommendations.push({
 					id: 'sec-001',
@@ -366,7 +355,6 @@ export class AnalyticsService implements OnModuleInit {
 				});
 			}
 
-			// Memory recommendations based on real system data
 			if (this.performanceData.memoryUsage > 80) {
 				recommendations.push({
 					id: 'mem-001',
@@ -381,7 +369,6 @@ export class AnalyticsService implements OnModuleInit {
 				});
 			}
 
-			// Error rate recommendations
 			if (this.performanceData.errorRate > 5) {
 				recommendations.push({
 					id: 'err-001',
@@ -443,13 +430,10 @@ export class AnalyticsService implements OnModuleInit {
 	 * Track performance event
 	 */
 	trackPerformanceEvent(responseTime: number, success: boolean) {
-		// Store response time for averaging
 		this.responseTimes.push(responseTime);
 		if (this.responseTimes.length > 100) {
-			this.responseTimes.shift(); // Keep only last 100 measurements
+			this.responseTimes.shift();
 		}
-
-		// Update average response time
 		this.performanceData.responseTime = this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length;
 
 		this.totalRequests++;
@@ -458,8 +442,6 @@ export class AnalyticsService implements OnModuleInit {
 		if (!success) {
 			this.failedRequests++;
 		}
-
-		// Calculate error rate
 		this.performanceData.errorRate = (this.failedRequests / this.totalRequests) * 100;
 
 		logger.analyticsPerformance('performance_tracking', {
@@ -476,7 +458,6 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async updateUserStats(userId: string, answerData: AnalyticsAnswerData): Promise<void> {
 		try {
-			// Get user data from database
 			const user = await this.userRepo.findOne({ where: { id: userId } });
 
 			if (!user) {
@@ -486,13 +467,11 @@ export class AnalyticsService implements OnModuleInit {
 				return;
 			}
 
-			// Update user statistics
 			const stats = user.stats || {};
 
 			stats.totalQuestions = (stats.totalQuestions || 0) + 1;
 			stats.correctAnswers = (stats.correctAnswers || 0) + (answerData.isCorrect ? 1 : 0);
 
-			// Update topic-specific stats
 			if (!stats.topicsPlayed) stats.topicsPlayed = {};
 			if (answerData.topic) {
 				if (!stats.topicsPlayed[answerData.topic]) {
@@ -546,9 +525,6 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async saveEventToDatabase(userId: string, eventData: AnalyticsEventData): Promise<void> {
 		try {
-			// Save event to analytics table or user stats
-			// This would typically use a dedicated analytics repository
-			// For now, we'll just log the event
 			logger.analyticsTrack('event_save_attempt', {
 				userId,
 				eventType: eventData.eventType,
@@ -573,18 +549,15 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async calculateUserStats(userId: string): Promise<UserAnalyticsStats> {
 		try {
-			// Get real game history for user
 			const gameHistory = await this.gameHistoryRepo.find({
 				where: { userId },
 				order: { createdAt: 'DESC' },
 			});
 
-			// Calculate real statistics
 			const totalQuestions = gameHistory.length;
 			const correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const successRate = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
-			// Calculate favorite topic
 			const topicCounts: Record<string, number> = {};
 			gameHistory.forEach(game => {
 				if (game.topic) {
@@ -597,14 +570,11 @@ export class AnalyticsService implements OnModuleInit {
 					? Object.keys(topicCounts).reduce((a, b) => (topicCounts[a] > topicCounts[b] ? a : b))
 					: 'None';
 
-			// Calculate average time
 			const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
 			const averageTime = totalQuestions > 0 ? totalTime / totalQuestions : 0;
 
-			// Calculate total points (using score from game history)
 			const totalPoints = gameHistory.reduce((sum, game) => sum + game.score, 0);
 
-			// Calculate difficulty breakdown
 			const difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }> = {};
 			gameHistory.forEach(game => {
 				if (game.difficulty) {
@@ -618,7 +588,6 @@ export class AnalyticsService implements OnModuleInit {
 				}
 			});
 
-			// Get recent activity (last 10 games)
 			const recentActivity = gameHistory.slice(0, 10).map(game => ({
 				date: game.createdAt,
 				action: 'game_completed',
@@ -655,10 +624,8 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async calculateGameStats(query?: GameAnalyticsQuery): Promise<Record<string, unknown>> {
 		try {
-			// Build query with filters
 			const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
 
-			// Apply date filters
 			if (query?.startDate) {
 				queryBuilder.andWhere('game.createdAt >= :startDate', { startDate: new Date(query.startDate) });
 			}
@@ -666,21 +633,17 @@ export class AnalyticsService implements OnModuleInit {
 				queryBuilder.andWhere('game.createdAt <= :endDate', { endDate: new Date(query.endDate) });
 			}
 
-			// Apply topic filter
 			if (query?.topic) {
 				queryBuilder.andWhere('game.topic = :topic', { topic: query.topic });
 			}
 
-			// Apply difficulty filter
 			if (query?.difficulty) {
 				queryBuilder.andWhere('game.difficulty = :difficulty', { difficulty: query.difficulty });
 			}
 
-			// Get real game statistics from database with filters
 			const totalGames = await queryBuilder.getCount();
 			const totalQuestions = await this.triviaRepo.count();
 
-			// Calculate average score with filters
 			const totalCorrectAnswers = await queryBuilder.select('SUM(game.correctAnswers)', 'total').getRawOne();
 			const totalQuestionsAsked = await queryBuilder.select('SUM(game.totalQuestions)', 'total').getRawOne();
 
@@ -688,7 +651,6 @@ export class AnalyticsService implements OnModuleInit {
 			const questionsAsked = parseInt(totalQuestionsAsked?.total || '0');
 			const averageScore = questionsAsked > 0 ? (correctAnswers / questionsAsked) * 100 : 0;
 
-			// Get popular topics with filters
 			const topicStats = await queryBuilder
 				.select('game.topic', 'topic')
 				.addSelect('COUNT(*)', 'count')
@@ -699,7 +661,6 @@ export class AnalyticsService implements OnModuleInit {
 
 			const popularTopics = topicStats.map(stat => stat.topic);
 
-			// Calculate difficulty distribution with filters
 			const difficultyStats = await queryBuilder
 				.select('game.difficulty', 'difficulty')
 				.addSelect('COUNT(*)', 'count')
@@ -711,7 +672,6 @@ export class AnalyticsService implements OnModuleInit {
 				difficultyDistribution[stat.difficulty] = parseInt(stat.count);
 			});
 
-			// Calculate time statistics with filters
 			const timeStats = await queryBuilder
 				.select('AVG(game.timeSpent)', 'averageTime')
 				.addSelect('AVG(game.timeSpent)', 'medianTime')
@@ -743,16 +703,13 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async getTopicsFromDatabase(query?: GameAnalyticsQuery): Promise<Record<string, unknown>[]> {
 		try {
-			// Create cache key based on query parameters
 			const cacheKey = `analytics:topics:stats:${JSON.stringify(query || {})}`;
 
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					// Build query with filters
 					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
 
-					// Apply date filters
 					if (query?.startDate) {
 						queryBuilder.andWhere('game.createdAt >= :startDate', { startDate: new Date(query.startDate) });
 					}
@@ -760,17 +717,14 @@ export class AnalyticsService implements OnModuleInit {
 						queryBuilder.andWhere('game.createdAt <= :endDate', { endDate: new Date(query.endDate) });
 					}
 
-					// Apply topic filter
 					if (query?.topic) {
 						queryBuilder.andWhere('game.topic = :topic', { topic: query.topic });
 					}
 
-					// Apply difficulty filter
 					if (query?.difficulty) {
 						queryBuilder.andWhere('game.difficulty = :difficulty', { difficulty: query.difficulty });
 					}
 
-					// Get real topic statistics from database with filters
 					const topicStats = await queryBuilder
 						.select('game.topic', 'topic')
 						.addSelect('COUNT(*)', 'count')
@@ -787,7 +741,7 @@ export class AnalyticsService implements OnModuleInit {
 						averageTimeSpent: parseFloat(stat.avgTime || '0'),
 					}));
 				},
-				300 // Cache for 5 minutes - analytics data can change frequently
+				300
 			);
 		} catch (error) {
 			logger.databaseError('Failed to get topics from database', {
@@ -806,16 +760,13 @@ export class AnalyticsService implements OnModuleInit {
 		query?: GameAnalyticsQuery
 	): Promise<Record<string, { total: number; correct: number; averageTime: number }>> {
 		try {
-			// Create cache key based on query parameters
 			const cacheKey = `analytics:difficulty:stats:${JSON.stringify(query || {})}`;
 
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					// Build query with filters
 					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
 
-					// Apply date filters
 					if (query?.startDate) {
 						queryBuilder.andWhere('game.createdAt >= :startDate', { startDate: new Date(query.startDate) });
 					}
@@ -823,17 +774,14 @@ export class AnalyticsService implements OnModuleInit {
 						queryBuilder.andWhere('game.createdAt <= :endDate', { endDate: new Date(query.endDate) });
 					}
 
-					// Apply topic filter
 					if (query?.topic) {
 						queryBuilder.andWhere('game.topic = :topic', { topic: query.topic });
 					}
 
-					// Apply difficulty filter
 					if (query?.difficulty) {
 						queryBuilder.andWhere('game.difficulty = :difficulty', { difficulty: query.difficulty });
 					}
 
-					// Get real difficulty statistics from database with filters
 					const difficultyStats = await queryBuilder
 						.select('game.difficulty', 'difficulty')
 						.addSelect('COUNT(*)', 'total')
@@ -854,7 +802,7 @@ export class AnalyticsService implements OnModuleInit {
 
 					return result;
 				},
-				1800 // Cache for 30 minutes - difficulty stats change less frequently
+				1800
 			);
 		} catch (error) {
 			logger.analyticsError('calculateDifficultyStats', {
@@ -868,15 +816,12 @@ export class AnalyticsService implements OnModuleInit {
 	 * Update performance metrics with real system data
 	 */
 	private async updatePerformanceMetrics() {
-		// Update uptime
 		this.performanceData.uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
-		// Get real memory usage
 		const totalMemory = os.totalmem();
 		const freeMemory = os.freemem();
 		this.performanceData.memoryUsage = ((totalMemory - freeMemory) / totalMemory) * 100;
 
-		// Get real CPU usage (average over last minute)
 		const cpus = os.cpus();
 		let totalIdle = 0;
 		let totalTick = 0;
@@ -890,7 +835,6 @@ export class AnalyticsService implements OnModuleInit {
 
 		this.performanceData.cpuUsage = 100 - (totalIdle / totalTick) * 100;
 
-		// Estimate active connections based on server load
 		this.performanceData.activeConnections = Math.floor(this.performanceData.throughput / 10);
 	}
 
@@ -899,7 +843,6 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async calculateBusinessMetrics(): Promise<Record<string, unknown>> {
 		try {
-			// Get real user statistics with caching
 			const cacheKey = 'analytics:business:metrics';
 
 			return await this.cacheService.getOrSet(
@@ -910,7 +853,6 @@ export class AnalyticsService implements OnModuleInit {
 						where: { isActive: true },
 					});
 
-					// Get recent activity (last 30 days)
 					const thirtyDaysAgo = new Date();
 					thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -920,7 +862,6 @@ export class AnalyticsService implements OnModuleInit {
 						},
 					});
 
-					// Calculate real revenue data
 					const totalRevenue = await this.paymentRepository
 						.createQueryBuilder('payment')
 						.select('SUM(payment.amount)', 'total')
@@ -934,7 +875,6 @@ export class AnalyticsService implements OnModuleInit {
 						.andWhere('payment.createdAt >= :date', { date: thirtyDaysAgo })
 						.getRawOne();
 
-					// Calculate real engagement metrics
 					const dailyActiveUsers = await this.gameHistoryRepo
 						.createQueryBuilder('game')
 						.select('COUNT(DISTINCT game.userId)', 'count')
@@ -951,7 +891,6 @@ export class AnalyticsService implements OnModuleInit {
 						})
 						.getRawOne();
 
-					// Calculate real churn rate
 					const lastMonthUsers = await this.userRepo.count({
 						where: {
 							createdAt: LessThan(thirtyDaysAgo),
@@ -970,8 +909,8 @@ export class AnalyticsService implements OnModuleInit {
 					return {
 						revenue: {
 							total: totalRevenue?.total || 0,
-							mrr: monthlyRevenue?.total || 0, // Monthly Recurring Revenue
-							arpu: totalUsers > 0 ? (totalRevenue?.total || 0) / totalUsers : 0, // Average Revenue Per User
+							mrr: monthlyRevenue?.total || 0,
+							arpu: totalUsers > 0 ? (totalRevenue?.total || 0) / totalUsers : 0,
 						},
 						users: {
 							total: totalUsers,
@@ -982,12 +921,12 @@ export class AnalyticsService implements OnModuleInit {
 						engagement: {
 							dau: parseInt(dailyActiveUsers?.count || '0'),
 							wau: parseInt(weeklyActiveUsers?.count || '0'),
-							mau: activeUsers, // All active users monthly
-							avgSessionDuration: 1800, // 30 minutes in seconds (could be calculated from game data)
+							mau: activeUsers,
+							avgSessionDuration: 1800,
 						},
 					};
 				},
-				1800 // Cache for 30 minutes - business metrics change slowly
+				1800
 			);
 		} catch (error) {
 			logger.analyticsError('calculateBusinessMetrics', {
@@ -1001,7 +940,6 @@ export class AnalyticsService implements OnModuleInit {
 	 * Get system insights with enhanced analytics
 	 */
 	async getSystemInsights(): Promise<SystemInsights> {
-		// Enhanced system insights with advanced metrics
 		const performanceInsights = [
 			'Response time is within optimal range',
 			'System throughput is stable',
@@ -1041,7 +979,6 @@ export class AnalyticsService implements OnModuleInit {
 	 * Start metrics collection
 	 */
 	private startMetricsCollection() {
-		// Update metrics every 5 minutes
 		setInterval(
 			async () => {
 				try {
@@ -1055,7 +992,7 @@ export class AnalyticsService implements OnModuleInit {
 					});
 				}
 			},
-			5 * 60 * 1000 // 5 minutes
+			5 * 60 * 1000
 		);
 	}
 
@@ -1075,26 +1012,21 @@ export class AnalyticsService implements OnModuleInit {
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					// Get basic user data
 					const user = await this.userRepo.findOne({ where: { id: userId } });
 					if (!user) {
 						throw new Error('User not found');
 					}
 
-					// Get game analytics
 					const gameAnalytics = await this.getUserStats(userId);
 
-					// Get game history for performance metrics
 					const gameHistory = await this.gameHistoryRepo.find({
 						where: { userId },
 						order: { createdAt: 'DESC' },
-						take: 100, // Last 100 games for performance analysis
+						take: 100,
 					});
 
-					// Calculate performance metrics
 					const performanceMetrics = this.calculatePerformanceMetrics(gameHistory);
 
-					// Get real ranking data from leaderboard service
 					const rankingEntry = await this.leaderboardService.getUserRanking(userId);
 					const rankingData = rankingEntry
 						? {
@@ -1137,7 +1069,7 @@ export class AnalyticsService implements OnModuleInit {
 						ranking: rankingData,
 					};
 				},
-				900 // Cache for 15 minutes - shorter cache for more real-time data
+				900
 			);
 		} catch (error) {
 			logger.analyticsError('getUserAnalytics', {
@@ -1168,16 +1100,12 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		}
 
-		// Calculate last played
 		const lastPlayed = gameHistory[0]?.createdAt || new Date();
 
-		// Calculate streak (improved algorithm)
 		const streakData = this.calculateAdvancedStreak(gameHistory);
 
-		// Calculate improvement rate (more sophisticated)
 		const improvementRate = this.calculateAdvancedImprovementRate(gameHistory);
 
-		// Find strongest and weakest topics (with minimum threshold)
 		const topicPerformance = this.calculateTopicPerformance(gameHistory);
 		const topicsWithMinGames = Object.keys(topicPerformance).filter(
 			topic => gameHistory.filter(game => game.topic === topic).length >= 3
@@ -1192,7 +1120,6 @@ export class AnalyticsService implements OnModuleInit {
 				? topicsWithMinGames.reduce((a, b) => (topicPerformance[a] < topicPerformance[b] ? a : b))
 				: '';
 
-		// Calculate additional metrics
 		const averageGameTime = this.calculateAverageGameTime(gameHistory);
 		const consistencyScore = this.calculateConsistencyScore(gameHistory);
 		const learningCurve = this.calculateLearningCurve(gameHistory);
@@ -1260,7 +1187,6 @@ export class AnalyticsService implements OnModuleInit {
 			return { current: 0, best: 0 };
 		}
 
-		// Sort by date (newest first)
 		const sortedHistory = [...gameHistory].sort(
 			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 		);

@@ -3,7 +3,7 @@
  *
  * @module StorageUtils
  * @description Shared utility functions for storage operations
- * @used_by shared/services/storage.service.ts, shared/services/storageManager.service.ts
+ * @used_by shared/services/storage
  */
 import { metricsService } from '../services/storage';
 import { StorageMetrics, StorageOperationResult } from '../types/infrastructure/storage.types';

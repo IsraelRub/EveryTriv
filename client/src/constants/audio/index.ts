@@ -3,7 +3,7 @@
  *
  * @module AudioConstants
  * @description Central export point for all audio-related constants
- * @used_by client/components/audio, client/services/audio
+ * @used_by client/src/components/audio, client/src/services/audio
  */
 
 /**

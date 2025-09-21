@@ -4,7 +4,7 @@
  *
  * @module PointsTypes
  * @description Points and credits management type definitions
- * @used_by server/src/features/points/points.service.ts, client/src/services/points.service.ts, shared/services/storage.service.ts
+ * @used_by server/src/features/points/points.service.ts, client/src/services/utils/points.service.ts
  */
 import type { BaseEntity } from './core/data.types';
 

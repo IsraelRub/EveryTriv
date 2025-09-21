@@ -4,7 +4,7 @@
  *
  * @module SanitizationUtils
  * @description Data cleaning and security utilities
- * @used_by server: server/src/common/validation/validation.service.ts (input sanitization), shared/services/logging.service.ts (log sanitization), server/src/features/user/user.service.ts (text normalization)
+ * @used_by server/src/common/validation, shared/services/logging, server/src/features/user/user.service.ts
  */
 
 /**

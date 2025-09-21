@@ -3,7 +3,7 @@
  *
  * @module QueryClient
  * @description React Query client setup and utility functions for data fetching
- * @used_by client/hooks, client/components, client/views
+ * @used_by client/src/hooks, client/src/components, client/src/views
  */
 import { clientLogger } from '@shared';
 import { QueryClient } from '@tanstack/react-query';
@@ -16,7 +16,7 @@ export const prefetchCommonQueries = async () => {
         const { apiService } = await import('../api/api.service');
         return apiService.getLeaderboardEntries(10);
       },
-      staleTime: 2 * 60 * 1000, // 2 minutes
+      staleTime: 2 * 60 * 1000,
     });
 
     await queryClient.prefetchQuery({
@@ -25,7 +25,7 @@ export const prefetchCommonQueries = async () => {
         const { apiService } = await import('../api/api.service');
         return apiService.getPointPackages();
       },
-      staleTime: 10 * 60 * 1000, // 10 minutes
+      staleTime: 10 * 60 * 1000,
     });
 
     clientLogger.apiInfo('Common queries prefetched successfully');
@@ -66,4 +66,3 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Export as named export only to avoid duplicate exports

@@ -4,10 +4,9 @@
  * @description Achievement-related types and interfaces
  */
 
-// Achievement Types
 /**
- * הישגי משתמש במשחק
- * @used_by client/src/components/stats/Achievements.tsx
+ * User game achievements
+ * @used_by client/src/components/stats
  */
 export interface Achievement {
   id: string;

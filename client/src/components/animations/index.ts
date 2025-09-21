@@ -4,13 +4,13 @@
  * @module AnimationComponents
  * @description React components for animations, visual effects, and dynamic UI elements
  * @author EveryTriv Team
- * @used_by client/components, client/views
+ * @used_by client/src/components, client/src/views
  */
 
 /**
  * Animation configuration
  * @description Animation settings, configuration, and effect colors
- * @used_by client/components/animations, client/views
+ * @used_by client/components/animations, client/src/views
  */
 export {
   ACCESSIBILITY_CONFIG,
@@ -23,14 +23,14 @@ export {
 /**
  * Animation library - Variants only
  * @description Collection of animation variants for use with framer-motion
- * @used_by client/components/animations, client/views
+ * @used_by client/components/animations, client/src/views
  */
 export * from './AnimationLibrary';
 
 /**
  * Animated background component
  * @description Advanced animated background with particles, orbs, and dynamic effects
- * @used_by client/views, client/components
+ * @used_by client/src/views, client/components
  */
 export { default as AnimatedBackground } from './AnimatedBackground';
 

@@ -10,7 +10,7 @@
  * Prefix for custom difficulty levels
  * @constant
  * @description Used to identify custom difficulty strings
- * @used_by server/src/features/game/logic/game-validation.service.ts, client/src/utils/customDifficulty.utils.ts
+ * @used_by client/src/utils/customDifficulty.utils.ts
  */
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
 
@@ -18,7 +18,7 @@ export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
  * Standard difficulty levels enumeration
  * @enum {string} DifficultyLevel
  * @description Core difficulty levels supported by the game
- * @used_by server/src/features/game/dtos/trivia-request.dto.ts, client/src/components/game/TriviaForm.tsx, client/src/redux/features/gameModeSlice.ts
+ * @used_by server/src/features/game/dtos/trivia-request.dto.ts, client/src/components/game, client/src/redux/features/gameModeSlice.ts
  */
 export enum DifficultyLevel {
 	EASY = 'easy',
@@ -31,7 +31,7 @@ export enum DifficultyLevel {
  * Array of all valid difficulty levels
  * @constant
  * @description Complete list of supported difficulty levels
- * @used_by server/src/features/game/logic/game-validation.service.ts, client/src/components/game/TriviaForm.tsx, shared/validation/difficulty.validation.ts
+ * @used_by server/src/features/game/logic, client/src/components/game, shared/validation
  */
 export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
 
@@ -39,7 +39,7 @@ export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
  * Scoring multipliers for different difficulty levels
  * @constant
  * @description Points multiplier based on question difficulty
- * @used_by server/src/features/game/logic/scoring/scoring.service.ts, client/src/hooks/layers/business/useGameLogic.ts, server/src/features/analytics/analytics.service.ts
+ * @used_by server/src/features/game/logic, client/src/hooks/layers/business, server/src/features/analytics/analytics.service.ts
  */
 export const DIFFICULTY_MULTIPLIERS = {
 	[DifficultyLevel.EASY]: 1,
@@ -76,7 +76,7 @@ export const VALID_QUESTION_COUNTS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50]
  * Game mode enumeration
  * @enum {string} GameMode
  * @description Different game modes available in the application
- * @used_by shared/types, client/redux, server/src/features/game/logic
+ * @used_by shared/types, client/src/redux, server/src/features/game/logic
  */
 export enum GameMode {
 	QUESTION_LIMITED = 'question-limited',
@@ -134,7 +134,7 @@ export const CUSTOM_DIFFICULTY_KEYWORDS = {
  * Game state constants
  * @constant
  * @description Default game state values and configuration
- * @used_by client/src/constants/game-state.constants.ts, client/src/hooks/layers/business/useGameLogic.ts
+ * @used_by client/src/constants/game-state.constants.ts, client/src/hooks/layers/business
  */
 export const GAME_STATE_DEFAULTS = {
 	SCORE: 0,

@@ -14,10 +14,8 @@ import type {
   GameTimerState,
 } from '../game/config.types';
 import type { PointBalance } from '../points.types';
-// GameState import removed - not used in this file
 import { BaseReduxState } from './async.types';
 
-// Stats Types
 export interface UserStatsResponse {
   totalGames: number;
   totalScore: number;
@@ -37,9 +35,7 @@ export interface UserStatsResponse {
   }>;
 }
 
-// Root State is defined in client/src/redux/store.ts
 
-// User State
 export interface UserState extends BaseReduxState {
   currentUser: User | null;
   isAuthenticated: boolean;
@@ -97,7 +93,7 @@ export interface RootState {
   favorites: FavoritesState;
 }
 
-// User State Interface
+ Interface
 export interface UserState {
   id: string;
   username: string;

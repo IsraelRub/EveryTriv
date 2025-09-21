@@ -1,7 +1,7 @@
 /**
  * User types
  * @module ClientUserTypes
- * @used_by client/src/views/user/**, client/src/services/auth/**, client/src/hooks/api/useUser.ts
+ * @used_by client/src/views/user, client/src/services/auth, client/src/hooks/api
  */
 import type {
   AuthCredentials,
@@ -13,10 +13,9 @@ import type {
 } from '@shared';
 import { DifficultyLevel } from '@shared';
 
-// Extended Types
 /**
  * Extended user profile update request
- * @used_by client/src/services/auth/user.service.ts
+ * @used_by client/src/services/auth
  */
 export interface ExtendedUserProfileUpdateRequest extends UserProfileUpdateData {
   id?: string;
@@ -39,7 +38,7 @@ export interface NotificationSettings {
 
 /**
  * Registration data
- * @used_by client/src/services/auth/auth.service.ts
+ * @used_by client/src/services/auth
  */
 export interface RegistrationData {
   username: string;
@@ -54,10 +53,9 @@ export interface RegistrationData {
   additional_info?: string;
 }
 
-// Registration Types
 /**
  * Registration form data
- *@used_by client/src/views/registration/RegistrationView.tsx
+ *@used_by client/src/views/registration
  */
 export interface RegistrationFormData extends Omit<RegistrationData, 'phone' | 'additional_info'> {
   confirmPassword: string;
@@ -75,7 +73,7 @@ export type { User, UserAddress, UserProfile };
 // Auth Types
 /**
  * User authentication response
- * @used_by client/src/services/auth/auth.service.ts, client/src/hooks/api/useAuth.ts
+ * @used_by client/src/services/auth, client/src/hooks/api
  */
 export interface UserAuthResponse {
   access_token: string;
@@ -87,7 +85,7 @@ export interface UserAuthResponse {
 // User Login and Registration Types
 /**
  * User login request
- * @used_by client/src/services/auth/auth.service.ts, client/src/hooks/api/useAuth.ts
+ * @used_by client/src/services/auth, client/src/hooks/api
  */
 export interface UserLoginRequest {
   email: string;
@@ -97,7 +95,7 @@ export interface UserLoginRequest {
 
 /**
  * User preferences
- * @used_by client/src/views/user/UserProfile.tsx, client/src/services/auth/user.service.ts
+ * @used_by client/src/views/user/UserProfile.tsx, client/src/services/auth
  */
 export type { UserPreferences } from '@shared/types/domain/user/user.types';
 
@@ -116,7 +114,7 @@ export interface UserProfileCompleteRequest
 // User Profile Types
 /**
  * User profile update request
- * @used_by client/src/services/auth/user.service.ts, client/src/views/user/UserProfile.tsx
+ * @used_by client/src/services/auth, client/src/views/user/UserProfile.tsx
  */
 export interface UserProfileUpdateRequest extends UserProfileUpdateData {
   bio?: string;
@@ -126,7 +124,7 @@ export interface UserProfileUpdateRequest extends UserProfileUpdateData {
 
 /**
  * User register request
- * @used_by client/src/services/auth/auth.service.ts, client/src/views/registration/RegistrationView.tsx
+ * @used_by client/src/services/auth, client/src/views/registration
  */
 export interface UserRegisterRequest extends AuthCredentials {
   confirmPassword: string;

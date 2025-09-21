@@ -3,7 +3,7 @@
  *
  * @module AppConstants
  * @description Central export point for all app-related constants
- * @used_by client/components, client/services, client/hooks
+ * @used_by client/components, client/src/services, client/src/hooks
  */
 
 /**

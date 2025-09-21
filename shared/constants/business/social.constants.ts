@@ -4,7 +4,7 @@
  *
  * @module SocialConstants
  * @description Social media and sharing configuration constants
- * @used_by client/src/components/layout/SocialShare.tsx, client/src/components/layout/Footer.tsx
+ * @used_by client/src/components/layout
  */
 
 // Social media platforms for sharing

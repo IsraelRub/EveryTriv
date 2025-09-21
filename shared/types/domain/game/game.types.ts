@@ -3,7 +3,7 @@
  *
  * @module GameTypes
  * @description Type definitions for game entities, history, and game modes
- * @used_by server: server/src/features/game/entities/game.entity.ts (Game entity), server/src/features/game/entities/game-history.entity.ts (GameHistory entity), client: client/src/components/game/TriviaGame.tsx (game state), client/src/views/gameHistory/GameHistory.tsx (game history display)
+ * @used_by client/src/components/game/TriviaGame.tsx, client/src/views/gameHistory
  */
 import { DifficultyLevel, GameMode } from '../../../constants/core/game.constants';
 import type { BaseEntity } from '../../core/data.types';

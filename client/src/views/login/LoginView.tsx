@@ -18,15 +18,11 @@ import { audioService } from '../../services';
 
 export default function LoginView() {
   const navigate = useNavigate();
-  // const dispatch = useDispatch();
-  // Authentication is handled by PublicRoute HOC
-  // const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Google OAuth hook
   const googleOAuth = useGoogleOAuth();
 
   // Authentication redirect is now handled by PublicRoute HOC

@@ -3,14 +3,21 @@ import { motion } from 'framer-motion';
 import { useEffect,useState } from 'react';
 
 import { Button } from '../../components/ui';
+import { Icon } from '../../components/icons';
 import { USER_DEFAULT_VALUES } from '../../constants';
 import { useDifficultyStats, usePopularTopics,useUserAnalytics } from '../../hooks/api';
 import { useAnalyticsExport,useRealTimeAnalytics } from '../../hooks/api/useAnalyticsDashboard';
 
+/**
+ * Analytics Dashboard View Component
+ * 
+ * Displays comprehensive user analytics including performance metrics,
+ * game statistics, and comparison data with visual charts and real-time updates.
+ * 
+ * @returns JSX element containing the analytics dashboard
+ */
 export function AnalyticsView() {
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'all'>('month');
-
-  // Use analytics hooks
   const {
     data: analytics,
     isLoading: analyticsLoading,
@@ -51,15 +58,14 @@ export function AnalyticsView() {
       <div className='min-h-screen bg-gradient-to-br from-red-50 to-pink-50 p-6'>
         <div className='max-w-7xl mx-auto'>
           <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded'>
-            <h2 className='text-xl font-bold mb-2'>שגיאה בטעינת הנתונים</h2>
-            <p>נתקלנו בבעיה בטעינת הסטטיסטיקות שלך. אנא נסה שוב מאוחר יותר.</p>
+            <h2 className='text-xl font-bold mb-2'>Error loading data</h2>
+            <p>We encountered a problem loading your statistics. Please try again later.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Default analytics data
   const defaultAnalytics: CompleteUserAnalytics = {
     basic: {
       userId: '',
@@ -107,7 +113,7 @@ export function AnalyticsView() {
       <div className='max-w-7xl mx-auto'>
         {/* Header */}
         <div className='flex justify-between items-center mb-8'>
-          <h1 className='text-3xl font-bold text-gray-900'>דשבורד אנליטיקה</h1>
+          <h1 className='text-3xl font-bold text-gray-900'>Analytics Dashboard</h1>
           <div className='flex space-x-2 rtl:space-x-reverse'>
             {(['week', 'month', 'all'] as const).map(filter => (
               <button
@@ -119,7 +125,7 @@ export function AnalyticsView() {
                     : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {filter === 'week' ? 'שבוע' : filter === 'month' ? 'חודש' : 'כל הזמן'}
+                {filter === 'week' ? 'Week' : filter === 'month' ? 'Month' : 'All time'}
               </button>
             ))}
             <Button
@@ -127,7 +133,7 @@ export function AnalyticsView() {
               onClick={() => exportAnalytics()}
               className='ml-4 bg-green-500 hover:bg-green-600 text-white'
             >
-              ייצא נתונים
+              Export data
             </Button>
           </div>
         </div>
@@ -135,34 +141,34 @@ export function AnalyticsView() {
         {/* Key Metrics */}
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
           <MetricCard
-            title='דירוג כללי'
+            title='Overall ranking'
             value={analyticsData.ranking.rank.toString()}
-            subtitle={`מתוך ${analyticsData.ranking.totalUsers} משתמשים`}
-            icon='🏆'
+            subtitle={`Out of ${analyticsData.ranking.totalUsers} users`}
+            icon='trophy'
             color='yellow'
             trend={analyticsData.ranking.percentile > 50 ? 'up' : 'down'}
           />
           <MetricCard
-            title='נקודות כולל'
+            title='Total points'
             value={analyticsData.basic.totalPoints.toLocaleString()}
-            subtitle={`${analyticsData.basic.credits} נקודות בסיס + ${analyticsData.basic.purchasedPoints} רכישות`}
-            icon='💎'
+            subtitle={`${analyticsData.basic.credits} base points + ${analyticsData.basic.purchasedPoints} purchases`}
+            icon='star'
             color='blue'
             trend='up'
           />
           <MetricCard
-            title='משחקים שוחקו'
+            title='Games played'
             value={analyticsData.game.totalGames.toString()}
-            subtitle='משחקים בסך הכל'
-            icon='🎮'
+            subtitle='Total games'
+            icon='gamepad'
             color='green'
             trend='up'
           />
           <MetricCard
-            title='אחוז הצלחה'
+            title='Success rate'
             value={`${analyticsData.game.successRate.toFixed(1)}%`}
-            subtitle='ממוצע תשובות נכונות'
-            icon='🎯'
+            subtitle='Average correct answers'
+            icon='target'
             color='purple'
             trend={analyticsData.performance.improvementRate > 0 ? 'up' : 'down'}
           />
@@ -171,35 +177,35 @@ export function AnalyticsView() {
         {/* Performance Insights */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
           <div className='bg-white rounded-lg shadow-lg p-6'>
-            <h3 className='text-lg font-bold text-gray-900 mb-4'>ניתוח ביצועים</h3>
+            <h3 className='text-lg font-bold text-gray-900 mb-4'>Performance Analysis</h3>
             <div className='space-y-3'>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>עקביות</span>
+                <span className='text-sm text-gray-600'>Consistency</span>
                 <span className='font-semibold text-gray-900'>
                   {analyticsData.performance.consistencyScore || 0}%
                 </span>
               </div>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>עקומת למידה</span>
+                <span className='text-sm text-gray-600'>Learning curve</span>
                 <span className='font-semibold text-gray-900'>
                   {analyticsData.performance.learningCurve || 0}%
                 </span>
               </div>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>זמן משחק ממוצע</span>
+                <span className='text-sm text-gray-600'>Average game time</span>
                 <span className='font-semibold text-gray-900'>
-                  {analyticsData.performance.averageGameTime || 0} דק'
+                  {analyticsData.performance.averageGameTime || 0} min
                 </span>
               </div>
             </div>
           </div>
 
           <div className='bg-white rounded-lg shadow-lg p-6'>
-            <h3 className='text-lg font-bold text-gray-900 mb-4'>נושאים</h3>
+            <h3 className='text-lg font-bold text-gray-900 mb-4'>Topics</h3>
             <div className='space-y-3'>
               {analyticsData.performance.strongestTopic && (
                 <div className='flex justify-between items-center'>
-                  <span className='text-sm text-gray-600'>הכי חזק</span>
+                  <span className='text-sm text-gray-600'>Strongest</span>
                   <span className='font-semibold text-green-600'>
                     {analyticsData.performance.strongestTopic}
                   </span>
@@ -207,14 +213,14 @@ export function AnalyticsView() {
               )}
               {analyticsData.performance.weakestTopic && (
                 <div className='flex justify-between items-center'>
-                  <span className='text-sm text-gray-600'>לשפר</span>
+                  <span className='text-sm text-gray-600'>To improve</span>
                   <span className='font-semibold text-red-600'>
                     {analyticsData.performance.weakestTopic}
                   </span>
                 </div>
               )}
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>נושאים שוחקו</span>
+                <span className='text-sm text-gray-600'>Topics played</span>
                 <span className='font-semibold text-gray-900'>
                   {Object.keys(analyticsData.game.topicsPlayed).length}
                 </span>
@@ -223,24 +229,24 @@ export function AnalyticsView() {
           </div>
 
           <div className='bg-white rounded-lg shadow-lg p-6'>
-            <h3 className='text-lg font-bold text-gray-900 mb-4'>סטטיסטיקות</h3>
+            <h3 className='text-lg font-bold text-gray-900 mb-4'>Statistics</h3>
             <div className='space-y-3'>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>שאלות נכונות</span>
+                <span className='text-sm text-gray-600'>Correct questions</span>
                 <span className='font-semibold text-gray-900'>
                   {analyticsData.game.correctAnswers}
                 </span>
               </div>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>זמן משחק כולל</span>
+                <span className='text-sm text-gray-600'>Total play time</span>
                 <span className='font-semibold text-gray-900'>
-                  {Math.round(analyticsData.game.totalPlayTime / 60)} דק'
+                  {Math.round(analyticsData.game.totalPlayTime / 60)} min
                 </span>
               </div>
               <div className='flex justify-between items-center'>
-                <span className='text-sm text-gray-600'>גיל חשבון</span>
+                <span className='text-sm text-gray-600'>Account age</span>
                 <span className='font-semibold text-gray-900'>
-                  {analyticsData.basic.accountAge} ימים
+                  {analyticsData.basic.accountAge} days
                 </span>
               </div>
             </div>
@@ -251,7 +257,7 @@ export function AnalyticsView() {
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8'>
           {/* Topics Performance */}
           <div className='bg-white rounded-lg shadow-lg p-6'>
-            <h3 className='text-xl font-bold text-gray-900 mb-4'>ביצועים לפי נושא</h3>
+            <h3 className='text-xl font-bold text-gray-900 mb-4'>Performance by topic</h3>
             {topicsLoading ? (
               <div className='animate-pulse'>
                 <div className='h-4 bg-gray-300 rounded w-3/4 mb-2'></div>
@@ -265,7 +271,7 @@ export function AnalyticsView() {
 
           {/* Difficulty Breakdown */}
           <div className='bg-white rounded-lg shadow-lg p-6'>
-            <h3 className='text-xl font-bold text-gray-900 mb-4'>פירוט לפי רמת קושי</h3>
+            <h3 className='text-xl font-bold text-gray-900 mb-4'>Breakdown by difficulty level</h3>
             {difficultyLoading ? (
               <div className='animate-pulse'>
                 <div className='h-4 bg-gray-300 rounded w-3/4 mb-2'></div>
@@ -281,25 +287,25 @@ export function AnalyticsView() {
         {/* Real-time Analytics */}
         {realTimeAnalytics && (
           <div className='bg-white rounded-lg shadow-lg p-6 mb-8'>
-            <h3 className='text-xl font-bold text-gray-900 mb-4'>נתונים בזמן אמת</h3>
+            <h3 className='text-xl font-bold text-gray-900 mb-4'>Real-time data</h3>
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div className='text-center p-4 bg-green-50 rounded-lg'>
                 <div className='text-2xl font-bold text-green-600'>
                   {realTimeAnalytics.game?.totalGames || 0}
                 </div>
-                <div className='text-sm text-green-700'>משחקים היום</div>
+                <div className='text-sm text-green-700'>Games today</div>
               </div>
               <div className='text-center p-4 bg-blue-50 rounded-lg'>
                 <div className='text-2xl font-bold text-blue-600'>
                   {realTimeAnalytics.game?.correctAnswers || 0}
                 </div>
-                <div className='text-sm text-blue-700'>תשובות נכונות</div>
+                <div className='text-sm text-blue-700'>Correct answers</div>
               </div>
               <div className='text-center p-4 bg-purple-50 rounded-lg'>
                 <div className='text-2xl font-bold text-purple-600'>
                   {realTimeAnalytics.performance?.streakDays || 0}
                 </div>
-                <div className='text-sm text-purple-700'>רצף ימים</div>
+                <div className='text-sm text-purple-700'>Day streak</div>
               </div>
             </div>
           </div>
@@ -307,33 +313,33 @@ export function AnalyticsView() {
 
         {/* Comparison Section */}
         <div className='bg-white rounded-lg shadow-lg p-6 mb-8'>
-          <h3 className='text-xl font-bold text-gray-900 mb-4'>השוואה עם ממוצע כללי</h3>
+          <h3 className='text-xl font-bold text-gray-900 mb-4'>Comparison with general average</h3>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
             <ComparisonCard
-              title='אחוז הצלחה'
+              title='Success rate'
               userValue={analyticsData.game.successRate}
-              averageValue={75} // This would come from server
+              averageValue={75}
               unit='%'
               higherIsBetter={true}
             />
             <ComparisonCard
-              title='משחקים שוחקו'
+              title='Games played'
               userValue={analyticsData.game.totalGames}
-              averageValue={25} // This would come from server
-              unit='משחקים'
+              averageValue={25}
+              unit='games'
               higherIsBetter={true}
             />
             <ComparisonCard
-              title='זמן משחק ממוצע'
+              title='Average game time'
               userValue={analyticsData.performance.averageGameTime || 0}
-              averageValue={8} // This would come from server
-              unit='דקות'
+              averageValue={8}
+              unit='min'
               higherIsBetter={false}
             />
             <ComparisonCard
-              title='עקביות'
+              title='Consistency'
               userValue={analyticsData.performance.consistencyScore || 0}
-              averageValue={65} // This would come from server
+              averageValue={65}
               unit='%'
               higherIsBetter={true}
             />
@@ -342,7 +348,7 @@ export function AnalyticsView() {
 
         {/* Recent Activity */}
         <div className='bg-white rounded-lg shadow-lg p-6'>
-          <h3 className='text-xl font-bold text-gray-900 mb-4'>פעילות אחרונה</h3>
+          <h3 className='text-xl font-bold text-gray-900 mb-4'>Recent activity</h3>
           <RecentActivity analyticsData={analyticsData} />
         </div>
       </div>
@@ -350,10 +356,23 @@ export function AnalyticsView() {
   );
 }
 
-// Metric Card Component
 import { MetricCardProps } from '../../types';
 
-function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: MetricCardProps) {
+/**
+ * Metric Card Component
+ * 
+ * Displays a single metric with title, value, subtitle, icon, and trend indicator.
+ * Used in the analytics dashboard to show key performance indicators.
+ * 
+ * @param title - The metric title
+ * @param value - The metric value to display
+ * @param subtitle - Additional context text
+ * @param icon - Icon name to display
+ * @param color - Color theme for the card
+ * @param trend - Trend direction (up, down, neutral)
+ * @returns JSX element containing the metric card
+ */
+function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: MetricCardProps & { icon: string }) {
   const colorClasses = {
     yellow: 'from-yellow-400 to-orange-500',
     blue: 'from-blue-400 to-indigo-600',
@@ -392,18 +411,30 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
           <p className='text-xs text-gray-500'>{subtitle}</p>
         </div>
         <div
-          className={`text-3xl p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} text-white`}
+          className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} text-white`}
         >
-          {icon}
+          <Icon name={icon} size='xl' color='white' />
         </div>
       </div>
     </motion.div>
   );
 }
 
-// Comparison Card Component
 import { ComparisonCardProps } from '../../types';
 
+/**
+ * Comparison Card Component
+ * 
+ * Displays a comparison between user value and average value with visual indicators.
+ * Shows percentage difference and trend direction for performance metrics.
+ * 
+ * @param title - The metric title
+ * @param userValue - User's value for the metric
+ * @param averageValue - Average value for comparison
+ * @param unit - Unit of measurement
+ * @param higherIsBetter - Whether higher values are better
+ * @returns JSX element containing the comparison card
+ */
 function ComparisonCard({
   title,
   userValue,
@@ -437,21 +468,21 @@ function ComparisonCard({
       </div>
       <div className='space-y-1'>
         <div className='flex justify-between items-center'>
-          <span className='text-xs text-gray-500'>שלך:</span>
+          <span className='text-xs text-gray-500'>Yours:</span>
           <span className='text-sm font-semibold text-gray-900'>
             {userValue.toFixed(1)}
             {unit}
           </span>
         </div>
         <div className='flex justify-between items-center'>
-          <span className='text-xs text-gray-500'>ממוצע:</span>
+          <span className='text-xs text-gray-500'>Average:</span>
           <span className='text-sm text-gray-600'>
             {averageValue.toFixed(1)}
             {unit}
           </span>
         </div>
         <div className='flex justify-between items-center'>
-          <span className='text-xs text-gray-500'>הפרש:</span>
+          <span className='text-xs text-gray-500'>Difference:</span>
           <span className={`text-xs font-medium ${getStatusColor()}`}>
             {Math.abs(percentageDiff).toFixed(1)}%
           </span>
@@ -461,7 +492,15 @@ function ComparisonCard({
   );
 }
 
-// Topics Chart Component
+/**
+ * Topics Chart Component
+ * 
+ * Displays a horizontal bar chart showing the most played topics.
+ * Shows top 5 topics with animated progress bars.
+ * 
+ * @param topicsPlayed - Object mapping topic names to play counts
+ * @returns JSX element containing the topics chart
+ */
 function TopicsChart({ topicsPlayed }: { topicsPlayed: Record<string, number> }) {
   const topics = Object.entries(topicsPlayed)
     .sort((a, b) => b[1] - a[1])
@@ -470,7 +509,7 @@ function TopicsChart({ topicsPlayed }: { topicsPlayed: Record<string, number> })
   if (topics.length === 0) {
     return (
       <div className='text-center text-gray-500 py-8'>
-        <p>עדיין לא שיחקת במשחקים</p>
+        <p>You haven't played any games yet</p>
       </div>
     );
   }
@@ -499,7 +538,15 @@ function TopicsChart({ topicsPlayed }: { topicsPlayed: Record<string, number> })
   );
 }
 
-// Difficulty Chart Component
+/**
+ * Difficulty Chart Component
+ * 
+ * Displays success rates by difficulty level with color-coded progress bars.
+ * Shows correct/total ratios and percentage success rates.
+ * 
+ * @param difficultyBreakdown - Object mapping difficulty levels to correct/total stats
+ * @returns JSX element containing the difficulty chart
+ */
 function DifficultyChart({
   difficultyBreakdown,
 }: {
@@ -510,7 +557,7 @@ function DifficultyChart({
   if (difficulties.length === 0) {
     return (
       <div className='text-center text-gray-500 py-8'>
-        <p>אין נתונים זמינים</p>
+        <p>No data available</p>
       </div>
     );
   }
@@ -553,63 +600,53 @@ function DifficultyChart({
   );
 }
 
-// Recent Activity Component
+/**
+ * Recent Activity Component
+ * 
+ * Displays recent user activity including last game, streak, and performance metrics.
+ * Shows additional performance indicators when available.
+ * 
+ * @param analyticsData - Complete user analytics data
+ * @returns JSX element containing the recent activity section
+ */
 function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytics }) {
   const lastPlayedDate = new Date(analyticsData.performance.lastPlayed);
   const daysSinceLastPlayed = Math.floor(
     (Date.now() - lastPlayedDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const lastActiveText = daysSinceLastPlayed === 0 ? 'היום' : `לפני ${daysSinceLastPlayed} ימים`;
+  const lastActiveText = daysSinceLastPlayed === 0 ? 'Today' : `${daysSinceLastPlayed} days ago`;
 
   return (
     <div className='space-y-4'>
       <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
         <div>
-          <p className='font-medium text-gray-900'>משחק אחרון</p>
+          <p className='font-medium text-gray-900'>Last game</p>
           <p className='text-sm text-gray-600'>{lastActiveText}</p>
         </div>
         <div className='text-green-500'>
-          <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-            <path
-              fillRule='evenodd'
-              d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
-              clipRule='evenodd'
-            />
-          </svg>
+          <Icon name='checkcircle' size='md' color='success' />
         </div>
       </div>
 
       <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
         <div>
-          <p className='font-medium text-gray-900'>רצף ימים</p>
-          <p className='text-sm text-gray-600'>{analyticsData.performance.streakDays} ימים</p>
+          <p className='font-medium text-gray-900'>Day streak</p>
+          <p className='text-sm text-gray-600'>{analyticsData.performance.streakDays} days</p>
         </div>
         <div className='text-blue-500'>
-          <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-            <path
-              fillRule='evenodd'
-              d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z'
-              clipRule='evenodd'
-            />
-          </svg>
+          <Icon name='calendar' size='md' color='info' />
         </div>
       </div>
 
       <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
         <div>
-          <p className='font-medium text-gray-900'>שיפור</p>
+          <p className='font-medium text-gray-900'>Improvement</p>
           <p className='text-sm text-gray-600'>
             {analyticsData.performance.improvementRate.toFixed(1)}%
           </p>
         </div>
         <div className='text-purple-500'>
-          <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-            <path
-              fillRule='evenodd'
-              d='M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z'
-              clipRule='evenodd'
-            />
-          </svg>
+          <Icon name='zap' size='md' color='accent' />
         </div>
       </div>
 
@@ -617,19 +654,13 @@ function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytic
       {analyticsData.performance.averageGameTime && (
         <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
           <div>
-            <p className='font-medium text-gray-900'>זמן משחק ממוצע</p>
+            <p className='font-medium text-gray-900'>Average game time</p>
             <p className='text-sm text-gray-600'>
-              {analyticsData.performance.averageGameTime} דקות
+              {analyticsData.performance.averageGameTime} min
             </p>
           </div>
           <div className='text-blue-500'>
-            <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-              <path
-                fillRule='evenodd'
-                d='M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z'
-                clipRule='evenodd'
-              />
-            </svg>
+            <Icon name='clock' size='md' color='info' />
           </div>
         </div>
       )}
@@ -637,17 +668,11 @@ function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytic
       {analyticsData.performance.consistencyScore && (
         <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
           <div>
-            <p className='font-medium text-gray-900'>עקביות</p>
+            <p className='font-medium text-gray-900'>Consistency</p>
             <p className='text-sm text-gray-600'>{analyticsData.performance.consistencyScore}%</p>
           </div>
           <div className='text-green-500'>
-            <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-              <path
-                fillRule='evenodd'
-                d='M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z'
-                clipRule='evenodd'
-              />
-            </svg>
+            <Icon name='list' size='md' color='success' />
           </div>
         </div>
       )}
@@ -655,17 +680,11 @@ function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytic
       {analyticsData.performance.learningCurve && (
         <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
           <div>
-            <p className='font-medium text-gray-900'>עקומת למידה</p>
+            <p className='font-medium text-gray-900'>Learning curve</p>
             <p className='text-sm text-gray-600'>{analyticsData.performance.learningCurve}%</p>
           </div>
           <div className='text-orange-500'>
-            <svg className='w-6 h-6' fill='currentColor' viewBox='0 0 20 20'>
-              <path
-                fillRule='evenodd'
-                d='M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z'
-                clipRule='evenodd'
-              />
-            </svg>
+            <Icon name='barchart' size='md' color='warning' />
           </div>
         </div>
       )}

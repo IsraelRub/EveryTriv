@@ -48,7 +48,7 @@ export class UserController {
 	 * Get user profile
 	 */
 	@Get('profile')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(300)
 	async getUserProfile(
 		@CurrentUser() user: { id: string; username: string; email: string }
 	): Promise<UserProfileResponse> {
@@ -78,7 +78,7 @@ export class UserController {
 	 * Get user credits
 	 */
 	@Get('credits')
-	@Cache(60) // Cache for 1 minute
+	@Cache(60)
 	async getUserCredits(@CurrentUserId() userId: string) {
 		try {
 			const credits = await this.userService.getUserCredits(userId);
@@ -101,7 +101,6 @@ export class UserController {
 	@Post('credits')
 	async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCreditsDto) {
 		try {
-			// DTO validation is handled automatically by NestJS
 
 			const result = await this.userService.deductCredits(userId, body.amount, body.reason || 'Game play');
 			return {
@@ -134,7 +133,6 @@ export class UserController {
 		@UserAgent() userAgent: string
 	) {
 		try {
-			// DTO validation is handled automatically by NestJS
 
 			const result = await this.userService.updateUserProfile(userId, profileData);
 
@@ -161,7 +159,6 @@ export class UserController {
 	@Get('search')
 	async searchUsers(@Query() query: SearchUsersDto) {
 		try {
-			// DTO validation is handled automatically by NestJS
 
 			const result = await this.userService.searchUsers(query.query, query.limit || 10);
 

@@ -4,7 +4,7 @@
  *
  * @module FormatUtils
  * @description Data formatting and display utilities for numbers, text, and data presentation
- * @used_by server: server/src/features/gameHistory/gameHistory.service.ts (format scores), client: client/src/components/stats/ScoringSystem.tsx (display formatting), shared/services/logging.service.ts (log formatting)
+ * @used_by client: client/src/components/stats/ScoringSystem.tsx (display formatting), shared/services/logging (log formatting)
  */
 
 /**

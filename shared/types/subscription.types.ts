@@ -11,23 +11,14 @@
  * @description Core subscription data structure
  */
 export interface BaseSubscriptionData {
-	/** Unique subscription identifier */
 	subscriptionId: string;
-	/** Subscription plan type */
 	plan: string;
-	/** Subscription status */
 	status: string;
-	/** Subscription start date */
 	startDate: string;
-	/** Subscription end date */
 	endDate: string;
-	/** Subscription price */
 	price: number;
-	/** Billing cycle */
 	billingCycle: string;
-	/** Available features */
 	features: string[];
-	/** Cancellation date (if cancelled) */
 	cancelledAt?: string;
 }
 
@@ -66,17 +57,11 @@ export type SubscriptionData = {
  * @description User statistics including subscription data
  */
 export interface UserStatsWithSubscription {
-	/** Topics played with question counts */
 	topicsPlayed: Record<string, number>;
-	/** Difficulty statistics */
 	difficultyStats: Record<string, { correct: number; total: number }>;
-	/** Total questions answered */
 	totalQuestions: number;
-	/** Total correct answers */
 	correctAnswers: number;
-	/** Last gameplay timestamp */
 	lastPlayed: Date;
-	/** Subscription data */
 	subscription?: UserEntitySubscription;
 }
 
@@ -86,19 +71,12 @@ export interface UserStatsWithSubscription {
  * @description Details for each subscription plan
  */
 export interface SubscriptionPlanDetails {
-	/** Plan name */
 	name?: string;
-	/** Plan price */
 	price: number;
-	/** Plan currency */
 	currency?: string;
-	/** Billing interval */
 	interval?: string;
-	/** Available features */
 	features: string[];
-	/** Point bonus for plan */
 	pointBonus?: number;
-	/** Question limit */
 	questionLimit?: number;
 }
 

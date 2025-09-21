@@ -4,12 +4,9 @@
  * @module ClientConstants
  * @description Central export point for all client-side constants and configuration
  * @author EveryTriv Team
- * @used_by client/components, client/services, client/hooks
+ * @used_by client/src/components, client/src/services, client/src/hooks
  */
 
-// ============================================================================
-// UI CONSTANTS
-// ============================================================================
 
 /**
  * UI constants
@@ -17,9 +14,7 @@
  */
 export * from './ui';
 
-// ============================================================================
 // AUDIO CONSTANTS
-// ============================================================================
 
 /**
  * Audio constants
@@ -27,9 +22,7 @@ export * from './ui';
  */
 export * from './audio';
 
-// ============================================================================
 // GAME CONSTANTS
-// ============================================================================
 
 /**
  * Game constants
@@ -37,9 +30,7 @@ export * from './audio';
  */
 export * from './game';
 
-// ============================================================================
 // APP CONSTANTS
-// ============================================================================
 
 /**
  * App constants
@@ -47,9 +38,7 @@ export * from './game';
  */
 export * from './app';
 
-// ============================================================================
 // USER CONSTANTS
-// ============================================================================
 
 /**
  * User constants
@@ -57,9 +46,7 @@ export * from './app';
  */
 export * from './user';
 
-// ============================================================================
 // SHARED CONSTANTS RE-EXPORTS
-// ============================================================================
 
 /**
  * Navigation constants

@@ -4,7 +4,7 @@
  *
  * @module StorageConstants
  * @description Storage keys and configuration constants
- * @used_by client/src/constants/storage.constants.ts (client storage), server/src/shared/modules/storage (server storage)
+ * @used_by client/src/constants, server/src/internal/modules/storage
  */
 
 // Storage keys for client-side data

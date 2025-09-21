@@ -4,7 +4,7 @@
  *
  * @module BaseStorageService
  * @description Abstract storage service for client and server implementations
- * @used_by server: server/src/shared/modules/storage/storage.service.ts (ServerStorageService), client: client/src/services/storage/storage.service.ts (ClientStorageService)
+ * @used_by client/src/services/storage/storage.service.ts
  */
 import {
 	CacheData,

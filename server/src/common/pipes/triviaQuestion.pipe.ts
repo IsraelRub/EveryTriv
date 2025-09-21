@@ -3,7 +3,7 @@
  *
  * @module TriviaQuestionPipe
  * @description Pipe for validating trivia question data input with comprehensive validation
- * @used_by server/features/game, server/controllers
+ * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { ValidationResult } from '@shared';

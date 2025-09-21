@@ -3,9 +3,8 @@
  *
  * @module ServerLogger
  * @description Server-specific logger implementation with file logging
- * @used_by server: server/src/shared/modules/logging/logger.service.ts
+ * @used_by server/src/features
  */
-// LogLevel is not used directly in this file, removed import
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -24,7 +23,6 @@ export class ServerLogger extends BaseLoggerService {
 	private requestCounts: Map<string, number>;
 	private errorCounts: Map<string, number>;
 
-	// Enhanced performance tracking (from PerformanceManager)
 	protected performanceStats: Map<
 		string,
 		{
@@ -39,7 +37,6 @@ export class ServerLogger extends BaseLoggerService {
 	> = new Map();
 	protected performanceThresholds: Record<string, number> = {};
 
-	// Enhanced logging configuration (from LoggingManager)
 	private loggingConfig: {
 		enableConsole?: boolean;
 		enableFile?: boolean;
@@ -61,31 +58,25 @@ export class ServerLogger extends BaseLoggerService {
 	constructor(config?: LoggerConfigUpdate) {
 		super(config);
 
-		// Initialize performance tracking
 		this.performanceMetrics = new Map();
 		this.requestCounts = new Map();
 		this.errorCounts = new Map();
 
-		// Initialize performance thresholds
 		this.initializePerformanceThresholds();
 
-		// Check if we're in a browser environment
 		if (typeof process === 'undefined') {
-			// Browser environment - no file logging
 			this.logDir = '';
 			this.logFile = '';
 			return;
 		}
 
-		// Server environment
 		this.logDir = process.env.LOG_DIR || 'logs';
 		this.logFile = path.join(this.logDir, 'server.log');
 		this.ensureLogDirectory();
-		this.clearLogFile(); // Clear log file on startup
+		this.clearLogFile();
 	}
 
 	protected logError(message: string, meta?: LogMeta): void {
-		// Track error counts
 		const errorType = (meta?.errorType as string) || 'unknown';
 		this.errorCounts.set(errorType, (this.errorCounts.get(errorType) || 0) + 1);
 
@@ -111,7 +102,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private ensureLogDirectory(): void {
-		if (typeof fs === 'undefined') return; // Browser environment
+		if (typeof fs === 'undefined') return;
 
 		if (!fs.existsSync(this.logDir)) {
 			fs.mkdirSync(this.logDir, { recursive: true });
@@ -119,26 +110,22 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private clearLogFile(): void {
-		if (typeof fs === 'undefined') return; // Browser environment
+		if (typeof fs === 'undefined') return;
 
 		try {
-			// Clear the log file by writing an empty string
 			fs.writeFileSync(this.logFile, '', 'utf8');
 		} catch (error) {
 			console.error('Failed to clear log file:', error);
 		}
 	}
 
-	// פונקציה לניקוי ידני של קובץ הלוג
 	public clearLogFileManually(): void {
-		if (typeof fs === 'undefined') return; // Browser environment
+		if (typeof fs === 'undefined') return;
 
 		try {
-			// Clear the log file by writing an empty string
 			fs.writeFileSync(this.logFile, '', 'utf8');
 			console.log('📝 Log file manually cleared:', this.logFile);
 
-			// Log the clearing action
 			this.info('🧹 Log file manually cleared', {
 				action: 'manual_clear',
 				timestamp: new Date().toLocaleString('he-IL'),
@@ -151,10 +138,9 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private writeToFile(level: string, message: string, meta?: LogMeta): void {
-		if (typeof fs === 'undefined') return; // Browser environment - no file logging
+		if (typeof fs === 'undefined') return; - no file logging
 
 		try {
-			// Create local timestamp
 			const now = new Date();
 			const localTimestamp = now.toLocaleString('he-IL', {
 				year: 'numeric',
@@ -167,7 +153,7 @@ export class ServerLogger extends BaseLoggerService {
 			});
 
 			const logEntry = {
-				timestamp: now.toISOString(), // Keep ISO for structured data
+				timestamp: now.toISOString(),
 				level,
 				message,
 				meta: meta || {},
@@ -208,7 +194,6 @@ export class ServerLogger extends BaseLoggerService {
 		metric.endTime = endTime;
 		metric.duration = duration;
 
-		// Log performance metrics
 		this.logInfo(`Performance tracking completed for ${operationId}`, {
 			...meta,
 			operationId,
@@ -217,7 +202,6 @@ export class ServerLogger extends BaseLoggerService {
 			endTime,
 		});
 
-		// Clean up old metrics (keep only last 100)
 		if (this.performanceMetrics.size > 100) {
 			const firstKey = this.performanceMetrics.keys().next().value;
 			if (firstKey) {
@@ -292,7 +276,6 @@ export class ServerLogger extends BaseLoggerService {
 		return this.traceId;
 	}
 
-	// ===== Enhanced Logging Methods (from LoggingManager) =====
 
 	/**
 	 * Log user activity with enhanced context
@@ -519,7 +502,6 @@ export class ServerLogger extends BaseLoggerService {
 		return requestedLevelIndex >= currentLevelIndex;
 	}
 
-	// ===== Enhanced Performance Methods (from PerformanceManager) =====
 
 	/**
 	 * Track performance with enhanced metrics
@@ -529,7 +511,6 @@ export class ServerLogger extends BaseLoggerService {
 
 		const duration = Date.now() - startTime;
 
-		// Store enhanced metric
 		this.storePerformanceMetric(operation, {
 			operation,
 			duration,
@@ -537,13 +518,10 @@ export class ServerLogger extends BaseLoggerService {
 			metadata,
 		});
 
-		// Update enhanced stats
 		this.updatePerformanceStats(operation, duration);
 
-		// Check thresholds
 		this.checkPerformanceThresholds(operation, duration, metadata);
 
-		// Log performance
 		this.performance(operation, duration, metadata);
 	}
 
@@ -655,7 +633,7 @@ export class ServerLogger extends BaseLoggerService {
 	 * Get performance threshold for an operation
 	 */
 	public getPerformanceThreshold(operation: string): number {
-		return this.performanceThresholds[operation] || 1000; // Default threshold
+		return this.performanceThresholds[operation] || 1000;
 	}
 
 	/**
@@ -726,7 +704,6 @@ export class ServerLogger extends BaseLoggerService {
 		this.logInfo(`Enhanced performance data cleared for operation: ${operation}`);
 	}
 
-	// ===== Private Helper Methods =====
 
 	/**
 	 * Initialize performance thresholds
@@ -756,7 +733,6 @@ export class ServerLogger extends BaseLoggerService {
 			metadata?: Record<string, BasicValue>;
 		}
 	): void {
-		// Store in existing performanceMetrics for backward compatibility
 		const key = `${operation}_${Date.now()}`;
 		this.performanceMetrics.set(key, {
 			startTime: metric.timestamp.getTime() - metric.duration,
@@ -788,12 +764,10 @@ export class ServerLogger extends BaseLoggerService {
 		stats.maxDuration = Math.max(stats.maxDuration, duration);
 		stats.lastUpdated = new Date();
 
-		// Check if it's a slow operation
 		if (this.exceedsPerformanceThreshold(operation, duration)) {
 			stats.slowOperations++;
 		}
 
-		// Check if it's an error (duration < 0 indicates error)
 		if (duration < 0) {
 			stats.errorCount++;
 		}
@@ -814,8 +788,6 @@ export class ServerLogger extends BaseLoggerService {
 	}
 }
 
-// Export singleton instance
 export const serverLogger = new ServerLogger();
 
-// Export factory function for custom configurations
 export const createServerLogger = (config?: LoggerConfigUpdate) => new ServerLogger(config);

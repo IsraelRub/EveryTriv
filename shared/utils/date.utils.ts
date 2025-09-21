@@ -4,7 +4,7 @@
  *
  * @module DateUtils
  * @description Date manipulation and formatting utilities
- * @used_by client: client/src/components/stats/CustomDifficultyHistory.tsx (date display), server: server/src/features/gameHistory/gameHistory.service.ts (date calculations), shared/services/logging.service.ts (date formatting)
+ * @used_by client: client/src/components/stats/CustomDifficultyHistory.tsx (date display), shared/services/logging (date formatting)
  */
 
 /**

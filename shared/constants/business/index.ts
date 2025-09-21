@@ -3,7 +3,7 @@
  *
  * @module BusinessConstants
  * @description Central export point for all business-related constants
- * @used_by client: client/src/constants, server: server/src/internal/constants
+ * @used_by client/src/constants, server/src/internal/constants
  */
 
 /**

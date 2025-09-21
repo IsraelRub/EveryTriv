@@ -4,10 +4,9 @@
  *
  * @module ClientGameConstants
  * @description Client game configuration and scoring constants
- * @used_by client/src/components/game/Game.tsx (Game component), client/src/hooks/layers/business/useGameLogic.ts (useGameLogic hook)
+ * @used_by client/src/components/game (Game component), client/src/hooks/layers/business (useGameLogic hook)
  */
 
-// Re-export shared constants
 export {
   CUSTOM_DIFFICULTY_KEYWORDS,
   CUSTOM_DIFFICULTY_MULTIPLIERS,
@@ -19,15 +18,12 @@ export {
   VALID_QUESTION_COUNTS,
 } from '@shared';
 
-// Answer count enum - must be defined before use
 export enum AnswerCount {
   THREE = 3,
   FOUR = 4,
   FIVE = 5,
 }
 
-// Client-specific constants only
-// Scoring system constants
 export const SCORING_DEFAULTS = {
   BASE_POINTS: 100,
   STREAK: 0,

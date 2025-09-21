@@ -48,7 +48,7 @@ import { storageService } from '../storage';
 class ApiService implements ClientApiService {
   private baseURL: string;
   private retryAttempts: number = 3;
-  private retryDelay: number = 1000; // 1 second
+  private retryDelay: number = 1000;
 
   constructor() {
     this.baseURL = import.meta.env.VITE_API_URL || API_BASE_URL;
@@ -73,7 +73,6 @@ class ApiService implements ClientApiService {
     } catch (error) {
       const apiError = error as ApiError;
 
-      // Only retry on server errors (5xx) or network errors
       const shouldRetry =
         attempt < this.retryAttempts &&
         ((apiError as ApiError & { isServerError?: boolean }).isServerError ||
@@ -93,7 +92,6 @@ class ApiService implements ClientApiService {
       let errorData: Record<string, unknown> = {};
       const contentType = response.headers.get('content-type');
 
-      // Try to parse error response based on content type
       if (contentType && contentType.includes('application/json')) {
         try {
           errorData = await response.json();
@@ -104,7 +102,6 @@ class ApiService implements ClientApiService {
         errorData = { message: await response.text().catch(() => 'Unknown error') };
       }
 
-      // Use HTTP_STATUS_CODES for better error handling
       const isServerError =
         response.status >= HTTP_STATUS_CODES.SERVER_ERROR_MIN &&
         response.status <= HTTP_STATUS_CODES.SERVER_ERROR_MAX;

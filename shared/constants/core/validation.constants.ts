@@ -4,7 +4,7 @@
  *
  * @module SharedValidationConstants
  * @description Input validation and error message constants
- * @used_by server: server/src/common/validation/input-validation.service.ts (validation rules), client: client/src/components/user/CompleteProfile.tsx (form validation), shared/validation/validation.utils.ts (validation patterns)
+ * @used_by server/src/common/validation, client/src/components/user, shared/validation
  */
 
 // Debounce delays for different validation types

@@ -3,7 +3,7 @@
  *
  * @module ServerLogging
  * @description Server-specific logger exports (Node.js only)
- * @used_by server: server/src/shared/modules/logging/logger.service.ts
+ * @used_by server/src/features
  */
 
 /**

@@ -3,7 +3,7 @@
  *
  * @module UIConstants
  * @description Central export point for all UI-related constants
- * @used_by client/components, client/hooks, client/services
+ * @used_by client/components, client/src/hooks, client/services
  */
 
 /**

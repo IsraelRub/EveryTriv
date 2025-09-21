@@ -4,7 +4,7 @@
  *
  * @module DataUtils
  * @description Data transformation and manipulation utilities
- * @used_by server: server/src/features/game/game.service.ts (statistics calculation), client: client/src/views/gameHistory/GameHistory.tsx (topic filtering), server/src/features/game/logic/providers/management/base.provider.ts (answer shuffling)
+ * @used_by server/src/features/game/game.service.ts, client/src/views/gameHistory, server/src/features/game/logic/providers/management
  */
 
 /**

@@ -3,7 +3,7 @@
  *
  * @module OpenAITriviaProvider
  * @description OpenAI API integration for trivia question generation
- * @used_by server/features/game/logic/aiProviders/aiProviders.service.ts (AiProvidersService.initializeProviders)
+ * @used_by server/src/features/game/logic (AiProvidersService.initializeProviders)
  */
 import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
 
@@ -15,13 +15,12 @@ import { PromptTemplates } from '../prompts';
  * @class OpenAITriviaProvider
  * @extends BaseTriviaProvider
  * @description Handles trivia generation using OpenAI's GPT models
- * @used_by server/features/game/logic/aiProviders/aiProviders.service.ts (round-robin provider selection)
+ * @used_by server/src/features/game/logic (round-robin provider selection)
  */
 export class OpenAITriviaProvider extends BaseTriviaProvider {
 	name = 'OpenAI';
 	protected apiKey: string;
 
-	// Provider instance for AIProviderWithTrivia interface
 	provider = {
 		name: 'OpenAI',
 		config: {

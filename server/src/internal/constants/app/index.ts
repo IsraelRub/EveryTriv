@@ -3,7 +3,7 @@
  *
  * @module AppConstants
  * @description Central export point for all app-related constants
- * @used_by server/app, server/middleware, server/services
+ * @used_by server/src/app, server/src/middleware, server/src/services
  */
 
 /**

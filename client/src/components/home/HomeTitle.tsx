@@ -2,7 +2,7 @@
  * HomeTitle component
  * Displays the main title and subtitle of the app
  * @module HomeTitle
- * @used_by client/src/views/home/HomeView.tsx
+ * @used_by client/src/views/home
  */
 import { motion } from 'framer-motion';
 

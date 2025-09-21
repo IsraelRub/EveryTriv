@@ -3,7 +3,7 @@
  *
  * @module MetricsTypes
  * @description Type definitions for performance metrics and monitoring
- * @used_by server/src/shared/utils/trivia.utils.ts, server/src/features/analytics/analytics.service.ts
+ * @used_by server/src/features/analytics/analytics.service.ts
  */
 import type { BasicValue } from '../../core/data.types';
 
@@ -18,13 +18,9 @@ export interface MiddlewareMetrics {
 	totalDuration: number;
 	averageDuration: number;
 	minDuration: number;
-	/** Maximum duration in milliseconds */
 	maxDuration: number;
-	/** Number of slow operations */
 	slowOperations: number;
-	/** Error count */
 	errorCount: number;
-	/** Last executed timestamp */
 	lastExecuted: Date;
 }
 
@@ -35,17 +31,11 @@ export interface MiddlewareMetrics {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface QuestionStats {
-	/** Total number of questions */
 	totalQuestions: number;
-	/** Questions by topic */
 	byTopic: Record<string, number>;
-	/** Questions by difficulty */
 	byDifficulty: Record<string, number>;
-	/** Average number of answers per question */
 	averageAnswerCount: number;
-	/** Question quality score (0-100) */
 	questionQualityScore: number;
-	/** Duplicate rate percentage */
 	duplicateRate: number;
 }
 
@@ -56,19 +46,12 @@ export interface QuestionStats {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface PerformanceMetrics {
-	/** Average response time in milliseconds */
 	responseTime: number;
-	/** Memory usage in bytes */
 	memoryUsage: number;
-	/** CPU usage in microseconds */
 	cpuUsage: number;
-	/** Error rate percentage */
 	errorRate: number;
-	/** Total requests processed */
 	throughput: number;
-	/** Server uptime in seconds */
 	uptime: number;
-	/** Number of active connections */
 	activeConnections: number;
 }
 
@@ -79,11 +62,8 @@ export interface PerformanceMetrics {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface CacheStats {
-	/** Total cache size */
 	size: number;
-	/** Cache hit rate percentage */
 	hitRate: number;
-	/** Most accessed cache entries */
 	mostAccessed: Array<Record<string, BasicValue>>;
 }
 
@@ -94,11 +74,8 @@ export interface CacheStats {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface AnswerBalanceAnalysis {
-	/** Whether answers are well-balanced */
 	isBalanced: boolean;
-	/** Balance score (0-100) */
 	balanceScore?: number;
-	/** Issues found with answer distribution */
 	issues?: string[];
 }
 
@@ -109,18 +86,12 @@ export interface AnswerBalanceAnalysis {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface QuestionComplexityAnalysis {
-	/** Complexity score (0-10) */
 	complexityScore: number;
-	/** Factors contributing to complexity */
 	factors: {
-		/** Question length factor */
 		questionLength: number;
-		/** Answer count factor */
 		answerCount: number;
-		/** Answer variance factor */
 		answerVariance: number;
 	};
-	/** Overall complexity level */
 	level: 'low' | 'medium' | 'high';
 }
 
@@ -131,13 +102,9 @@ export interface QuestionComplexityAnalysis {
  * @used_by server/src/shared/utils/trivia.utils.ts
  */
 export interface AnswerPositionStats {
-	/** Count of correct answers in each position */
 	positionCounts: Record<number, number>;
-	/** Total questions analyzed */
 	totalQuestions: number;
-	/** Position bias score (0-1, higher means more bias) */
 	biasScore: number;
-	/** Whether position distribution is balanced */
 	isBalanced: boolean;
 }
 
@@ -161,29 +128,18 @@ export interface AnswerPositionStats {
  * @description Security-related metrics
  */
 export interface SecurityMetrics {
-	/** Authentication metrics */
 	authentication: {
-		/** Failed login attempts */
 		failedLogins: number;
-		/** Successful logins */
 		successfulLogins: number;
-		/** Account lockouts */
 		accountLockouts: number;
 	};
-	/** Authorization metrics */
 	authorization: {
-		/** Unauthorized access attempts */
 		unauthorizedAttempts: number;
-		/** Permission violations */
 		permissionViolations: number;
 	};
-	/** Data security metrics */
 	dataSecurity: {
-		/** Data breaches */
 		dataBreaches: number;
-		/** Data encryption coverage */
 		encryptionCoverage: number;
-		/** Backup success rate */
 		backupSuccessRate: number;
 	};
 }

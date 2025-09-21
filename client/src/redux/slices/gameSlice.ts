@@ -52,7 +52,6 @@ const gameStateSlice = createSlice({
       const currentQuestion = state.data.questions[state.data.currentQuestionIndex];
       if (!currentQuestion) return;
 
-      // Initialize stats if not exists
       if (!state.stats) {
         state.stats = {
           currentScore: 0,
@@ -69,16 +68,13 @@ const gameStateSlice = createSlice({
       }
 
       if (action.payload.correct) {
-        // Calculate points using the algorithm
         const totalTime = action.payload.totalTime || 30;
         const timeSpent = action.payload.timeSpent || 0;
         const streak = state.stats?.correctStreak || 0;
         const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
 
-        // Update score
         state.data.score += pointsEarned;
 
-        // Update stats for correct answer
         if (state.stats) {
           state.stats.currentScore += pointsEarned;
           state.stats.correctStreak += 1;

@@ -4,7 +4,7 @@
  *
  * @module ErrorConstants
  * @description Error messages and error handling constants
- * @used_by server: server/src/features/game/logic/providers/management/base.provider.ts (fallback questions), client: client/src/components/error/ErrorBoundary.tsx (error display)
+ * @used_by server/src/features/game/logic/providers/management, client/src/components/error
  */
 
 // AI Provider error types (for type safety)

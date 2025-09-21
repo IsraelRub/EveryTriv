@@ -3,7 +3,7 @@
  *
  * @module TriviaRequestPipe
  * @description Pipe for validating trivia request data
- * @used_by server/features/game, server/controllers
+ * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { serverLogger as logger , TriviaRequestData, TriviaRequestValidationResult, VALIDATION_LIMITS } from '@shared';

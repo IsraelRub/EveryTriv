@@ -3,7 +3,7 @@
  *
  * @module PointsModule
  * @description Module for managing user points, purchases, and transactions
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/src/controllers
  * @dependencies TypeOrmModule, CacheModule, PaymentModule
  * @provides PointsService
  * @entities PointTransactionEntity, UserEntity

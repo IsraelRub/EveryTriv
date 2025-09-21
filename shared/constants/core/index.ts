@@ -3,7 +3,7 @@
  *
  * @module CoreConstants
  * @description Central export point for all core application constants
- * @used_by client: client/src/constants, server: server/src/internal/constants
+ * @used_by client/src/constants, server/src/internal/constants
  */
 
 /**

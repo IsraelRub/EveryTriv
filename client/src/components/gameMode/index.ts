@@ -4,12 +4,12 @@
  * @module GameModeComponents
  * @description React components for game mode selection and configuration
  * @author EveryTriv Team
- * @used_by client/components/game, client/views
+ * @used_by client/src/components/game, client/src/views
  */
 
 /**
  * Game mode component
  * @description Game mode selection, configuration, and mode management
- * @used_by client/components/game, client/views
+ * @used_by client/src/components/game, client/src/views
  */
 export { default as GameMode } from './GameMode';

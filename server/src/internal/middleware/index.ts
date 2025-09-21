@@ -3,13 +3,13 @@
  *
  * @module ServerMiddleware
  * @description Central export point for all server-side middleware
- * @used_by server/controllers, server/app, server/features
+ * @used_by server/src/controllers, server/src/app, server/src/features
  */
 
 /**
  * Authentication middleware
  * @description Middleware for user authentication and authorization
- * @used_by server/controllers, server/features/auth
+ * @used_by server/src/controllers, server/src/features/auth
  */
 export * from './auth.middleware';
 
@@ -29,26 +29,26 @@ export * from './country-check.middleware';
 /**
  * Logging middleware
  * @description Middleware for request/response logging
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/controllers
  */
 
 /**
  * Rate limiting middleware
  * @description Middleware for API rate limiting
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/controllers
  */
 export * from './rateLimit.middleware';
 
 /**
  * Decorator-aware middleware
  * @description Middleware that reads decorator metadata
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/controllers
  */
 export * from './decorator-aware.middleware';
 
 /**
  * Bulk operations middleware
  * @description Middleware for optimizing bulk operations and batching
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/controllers
  */
 export * from './bulkOperations.middleware';

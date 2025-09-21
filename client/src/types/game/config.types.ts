@@ -5,9 +5,7 @@
  */
 import { DifficultyLevel, GameMode, TriviaQuestion } from '@shared';
 import { GameModeConfig as SharedGameModeConfig,TriviaAnswer } from '@shared';
-// FormEvent import removed as it's not used
 
-// Game configuration types
 /**
  * Game configuration interface
  * @interface GameConfig
@@ -131,7 +129,7 @@ export interface GameTimerState {
 
 /**
  * Game session statistics
- * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/stats/ScoringSystem.tsx
+ * @used_by client/src/components/stats/ScoringSystem.tsx
  */
 export interface GameSessionStats {
   currentScore: number;

@@ -3,7 +3,7 @@
  *
  * @module BaseLoggerService
  * @description Abstract base class for all logger implementations
- * @used_by server: server/src/shared/modules/logging/logger.service.ts, client: client/src/services/logger.service.ts
+ * @used_by server/src/features, client/src/services
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
 import type { EnhancedLogEntry, Logger } from '../../types';
@@ -610,7 +610,7 @@ export abstract class BaseLoggerService implements Logger {
 		return [];
 	}
 
-	// פונקציה לניקוי אוטומטי של הלוגר
+	// Function for automatic logger cleanup
 	public clearLogs(): void {
 		// Clear session and trace IDs
 		this.sessionId = generateSessionId();

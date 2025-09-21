@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 
-// Animation variants
 import {
   createStaggerContainer,
   fadeInRight,
@@ -18,22 +17,18 @@ import {
   hoverScale,
   scaleIn,
 } from '../../components/animations';
-// Component imports
 import { Game, TriviaForm } from '../../components/game';
 import { GameMode as GameModeComponent } from '../../components/gameMode';
 import { DifficultyDisplay, ErrorBanner, HomeTitle } from '../../components/home';
-// Icon imports
 import { Icon } from '../../components/icons';
 import { SocialShare } from '../../components/layout';
 import { Leaderboard } from '../../components/leaderboard';
 import { CustomDifficultyHistory, ScoringSystem } from '../../components/stats';
 import { FavoriteTopics } from '../../components/user';
 import { APP_DESCRIPTION, CLIENT_STORAGE_KEYS,POPULAR_TOPICS  } from '../../constants';
-// Constants
 import { DEFAULT_GAME_STATE, GAME_STATE_UPDATES } from '../../constants';
 import { AudioKey } from '../../constants/audio/audio.constants';
 import { useUserProfile } from '../../hooks/api';
-// Hook imports - using real hooks instead of mocks
 import {
   useSaveHistory,
   useTriviaQuestionMutation,
@@ -52,7 +47,12 @@ import { GameState, getOrCreateClientUserId, QuestionCountOption } from '../../t
 import type { GameConfig, GameSessionData } from '../../types/game/config.types';
 import { isCustomDifficulty } from '../../utils';
 
-// Game Context for sharing game state between components
+/**
+ * Game Context for sharing game state between components
+ * 
+ * Provides game state management and handlers to child components
+ * in the trivia game interface.
+ */
 const GameContext = createContext<{
   gameState: GameState;
   updateGameState: (updates: Partial<GameState> | ((prev: GameState) => GameState)) => void;
@@ -61,7 +61,15 @@ const GameContext = createContext<{
   handleGameEnd: () => void;
 } | null>(null);
 
-// Custom hook to use game context
+/**
+ * Custom hook to use game context
+ * 
+ * Provides access to the game context with proper error handling.
+ * Must be used within a GameProvider component.
+ * 
+ * @returns Game context with state and handlers
+ * @throws Error if used outside of GameProvider
+ */
 export const useGame = () => {
   const context = useContext(GameContext);
   if (!context) {
@@ -70,35 +78,40 @@ export const useGame = () => {
   return context;
 };
 
+/**
+ * Home View Component
+ * 
+ * Main trivia game interface that provides game state management,
+ * user preferences, and game mode selection. Handles game flow,
+ * scoring, and analytics tracking.
+ * 
+ * @returns JSX element containing the home view interface
+ */
 export default function HomeView() {
   const dispatch = useAppDispatch();
   const gameMode = useAppSelector(selectCurrentGameMode);
   const currentTopic = useAppSelector(selectCurrentTopic);
   const currentDifficulty = useAppSelector(selectCurrentDifficulty);
 
-  // Get user profile for preferences
   const { data: userProfile } = useUserProfile();
 
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState(DifficultyLevel.MEDIUM);
 
-  // Initialize from user preferences
   useEffect(() => {
     if (userProfile?.preferences?.game) {
       const gamePrefs = userProfile.preferences.game;
 
-      // Set default difficulty from preferences
       if (gamePrefs.defaultDifficulty) {
         setDifficulty(gamePrefs.defaultDifficulty as DifficultyLevel);
       }
 
-      // Set default topic from preferences
       if (gamePrefs.defaultTopic) {
         setTopic(gamePrefs.defaultTopic);
       }
     }
   }, [userProfile]);
-  // Memoize game mode configuration to avoid recalculation
+
   const gameModeConfig = useMemo(() => {
     const getDefaultQuestionCount = (gameMode: GameMode): QuestionCountOption => {
       const count = (() => {
@@ -106,9 +119,9 @@ export default function HomeView() {
           case GameMode.QUESTION_LIMITED:
             return 10;
           case GameMode.TIME_LIMITED:
-            return 999; // Unlimited questions in time mode
+            return 999;
           case GameMode.UNLIMITED:
-            return 999; // Unlimited questions, no scoring
+            return 999;
           default:
             return 10;
         }
@@ -137,31 +150,21 @@ export default function HomeView() {
   const [isGameActive, setIsGameActive] = useState(false);
   const [showGameModeSelector, setShowGameModeSelector] = useState(false);
 
-  // Use storageService for score history
-
-  // Track previous values for better UX
   const previousScore = usePrevious(gameState.score);
   const scoreChange = useValueChange(gameState.score);
 
-  // Use global audio service
-
-  // Simple particle animation function
   const addParticleBurst = (x: number, y: number, type: string) => {
-    // Simple particle effect - just log for now
     clientLogger.logUserActivity('particleBurst', `x: ${x}, y: ${y}, type: ${type}`);
   };
 
-  // Use trivia hooks
   const triviaMutation = useTriviaQuestionMutation();
   const saveHistoryMutation = useSaveHistory();
   const validateCustomDifficulty = useValidateCustomDifficulty();
 
-  // Validation state (simplified)
   const isFormValid = topic.trim().length > 0 && difficulty.trim().length > 0;
   const validationErrors: string[] = [];
   const isValidating = false;
 
-  // Game mode and session management (simplified)
   const setHookGameMode = (config: GameConfig) => {
     clientLogger.logUserActivity('gameModeChanged', JSON.stringify(config));
   };
@@ -170,7 +173,6 @@ export default function HomeView() {
     clientLogger.logUserActivity('sessionUpdated', JSON.stringify(data));
   };
 
-  // Sync Redux state with local state
   useEffect(() => {
     setGameState(prev => ({
       ...prev,
@@ -189,15 +191,12 @@ export default function HomeView() {
       },
     }));
 
-    // Update local state with Redux values
     if (currentTopic) setTopic(currentTopic);
     if (currentDifficulty) setDifficulty(currentDifficulty as DifficultyLevel);
 
-    // Update question count based on game mode
     setQuestionCount(gameModeConfig.questionCount);
   }, [gameMode, currentTopic, currentDifficulty, gameModeConfig]);
 
-  // Load user ID
   useEffect(() => {
     const loadUserId = async () => {
       const id = await getOrCreateClientUserId();
@@ -206,7 +205,6 @@ export default function HomeView() {
     loadUserId();
   }, []);
 
-  // Log component mounting and score changes
   useEffect(() => {
     clientLogger.navigationPage('home');
     return () => {
@@ -214,7 +212,6 @@ export default function HomeView() {
     };
   }, []);
 
-  // Log score changes for analytics and save to storage
   useEffect(() => {
     const handleScoreChange = async () => {
       if (scoreChange.hasChanged && previousScore !== undefined) {
@@ -224,14 +221,12 @@ export default function HomeView() {
           change: (gameState.score || 0) - previousScore,
         });
 
-        // Play achievement sound
         audioService.playAchievementSound(
           gameState.score || 0,
           gameState.total || 0,
           previousScore
         );
 
-        // Save score history to storage
         await storageService.set(CLIENT_STORAGE_KEYS.SCORE_HISTORY, {
           score: gameState.score,
           topic,
@@ -239,7 +234,6 @@ export default function HomeView() {
           timestamp: Date.now(),
         });
 
-        // Play sound effect based on score change
         if ((gameState.score || 0) > previousScore) {
           audioService.play(AudioKey.POINT_EARNED);
         } else if ((gameState.score || 0) < previousScore) {
@@ -271,13 +265,11 @@ export default function HomeView() {
     [updateGameState]
   );
 
-  // פונקציה חדשה לטיפול בבחירת מועדף
   const selectFavorite = useCallback((favorite: { topic: string; difficulty: string }) => {
     setTopic(favorite.topic);
     setDifficulty(favorite.difficulty as DifficultyLevel);
   }, []);
 
-  // פונקציה חדשה לטיפול בבחירה מההיסטוריה
   const selectFromHistory = useCallback((historyTopic: string, historyDifficulty: string) => {
     setTopic(historyTopic);
     setDifficulty(historyDifficulty as DifficultyLevel);
@@ -318,7 +310,6 @@ export default function HomeView() {
         gameState.stats
       );
 
-      // Add particle effect and play sound for correct answers
       if (isCorrect) {
         addParticleBurst(0, 0, 'correct-answer');
         audioService.play(AudioKey.CORRECT_ANSWER);
@@ -349,7 +340,6 @@ export default function HomeView() {
         },
       });
 
-      // Use mutation hook instead of direct API call
       await saveHistoryMutation.mutateAsync({
         userId,
         score: (gameState.score || 0) + (isCorrect ? 1 : 0),
@@ -372,7 +362,6 @@ export default function HomeView() {
         ],
       });
 
-      // Update session data
       updateSessionData({
         sessionId: '',
         startTime: new Date(),
@@ -398,21 +387,16 @@ export default function HomeView() {
         lastTimeElapsed: gameState.gameMode?.timer?.timeElapsed || 0,
       });
 
-      // For game modes that continue automatically, don't set inactive
       if (
         gameState.gameMode?.mode === 'time-limited' ||
         gameState.gameMode?.mode === 'question-limited'
       ) {
-        // Game continues automatically - handled by Game component
-        // Play time warning sound when time is running low
         if (gameState.gameMode?.timeLimit && gameState.gameMode?.timeLimit <= 10) {
           audioService.play(AudioKey.TIME_WARNING);
         }
-        // Play countdown sound for last 3 seconds
         if (gameState.gameMode?.timeLimit && gameState.gameMode?.timeLimit <= 3) {
           audioService.play(AudioKey.COUNTDOWN);
         }
-        // Play beep sound for time updates
         if (
           gameState.gameMode?.timeLimit &&
           gameState.gameMode?.timeLimit % 30 === 0 &&
@@ -421,7 +405,6 @@ export default function HomeView() {
           audioService.play(AudioKey.BEEP);
         }
       } else {
-        // For unlimited mode or if we're not in a game mode, set inactive after delay
         setTimeout(() => {
           setIsGameActive(false);
         }, GAME_STATE_UPDATES.ANIMATION_DELAYS.ANSWER_FEEDBACK);
@@ -439,15 +422,12 @@ export default function HomeView() {
     ]
   );
 
-  // Handle game mode selection
   const handleGameModeSelect = (config: {
     mode: GameMode;
     timeLimit?: number;
     questionLimit?: number;
   }) => {
-    // Play sound effect for game mode selection
     audioService.play(AudioKey.BUTTON_CLICK);
-    // Use hook instead of direct state update
     setHookGameMode({
       mode: gameMode,
       topic: topic,
@@ -475,18 +455,15 @@ export default function HomeView() {
         },
       },
     });
-    // Start the game after mode selection
     audioService.play(AudioKey.MENU_CLOSE);
     audioService.play(AudioKey.MENU_MUSIC);
     setShowGameModeSelector(false);
-    // Start fetching the first question
     handleSubmitWithMode();
   };
 
   const handleSubmitWithMode = async () => {
     updateGameState({ error: '', loading: true });
     try {
-      // Use validation hook instead of manual validation
       if (!isFormValid) {
         throw new Error(validationErrors.join(', '));
       }
@@ -495,7 +472,6 @@ export default function HomeView() {
         await validateCustomDifficulty(`${topic} ${difficulty}`);
       }
 
-      // Use mutation hook instead of direct API call
       const response = await triviaMutation.mutateAsync({
         topic,
         difficulty,
@@ -519,9 +495,7 @@ export default function HomeView() {
           },
         },
       });
-      // Set game active state to true when trivia is loaded
       setIsGameActive(true);
-      // Play game start sound and music
       audioService.play(AudioKey.GAME_START);
       audioService.play(AudioKey.GAME_MUSIC);
     } catch (err: unknown) {
@@ -531,7 +505,6 @@ export default function HomeView() {
         loading: false,
       });
       setIsGameActive(false);
-      // Play error sound
       audioService.play(AudioKey.ERROR);
     }
   };
@@ -539,7 +512,6 @@ export default function HomeView() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Play sound effect for form submission
     audioService.play(AudioKey.BUTTON_CLICK);
 
     clientLogger.gameForm('Trivia form submitted', {
@@ -551,7 +523,6 @@ export default function HomeView() {
       timestamp: new Date().toISOString(),
     });
 
-    // Show game mode selection if not already active
     if (!isGameActive) {
       clientLogger.gameGamepad('Game mode selector opened', {
         reason: 'new_game_start',
@@ -583,25 +554,21 @@ export default function HomeView() {
     dispatch(resetGame());
   }, [gameState.gameMode, updateGameState, dispatch, audioService]);
 
-  // Start a new game with current settings
   const startNewGame = useCallback(() => {
     audioService.play(AudioKey.GAME_START);
     setShowGameModeSelector(true);
   }, [audioService]);
 
-  // Load a new question during an active game
   const loadNextQuestion = useCallback(async () => {
     if (gameState.gameMode?.isGameOver) return;
     updateGameState({ loading: true });
     try {
-      // Use mutation hook instead of direct API call
       const response = await triviaMutation.mutateAsync({
         topic,
         difficulty,
         question_count: questionCount.value,
         userId: userId,
       });
-      // Update game state with new question and decrement question count if needed
       updateGameState({
         trivia: response,
         loading: false,
@@ -624,8 +591,6 @@ export default function HomeView() {
       });
     }
   }, [topic, difficulty, userId, gameState.gameMode, updateGameState, triviaMutation]);
-
-  // Title and current difficulty UI moved to dedicated components for clarity
 
   const gameContextValue = {
     gameState,
@@ -694,7 +659,6 @@ export default function HomeView() {
                 setQuestionCount({ value: count, label: `${count} Questions` })
               }
               onSubmit={handleSubmit}
-              // onGameModeSelect={handleGameModeSelect}
               showGameModeSelector={showGameModeSelector}
               onGameModeSelectorClose={() => setShowGameModeSelector(false)}
               onChange={(value: string) => setTopic(value)}

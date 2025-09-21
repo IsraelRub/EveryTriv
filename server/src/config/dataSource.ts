@@ -34,7 +34,7 @@ export const AppDataSource = new DataSource({
 		__dirname + '/../internal/entities/leaderboard.entity.ts',
 	],
 	migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-	synchronize: AppConfig.database.synchronize, // Always false for migrations - NEVER change this!
+	synchronize: AppConfig.database.synchronize,
 	logging: AppConfig.database.logging,
 	ssl: AppConfig.database.ssl,
 	extra: {

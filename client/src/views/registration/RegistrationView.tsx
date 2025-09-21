@@ -5,7 +5,6 @@
  * @description User registration page with validation using ValidatedForm
  */
 
-// Removed POPULAR_TOPICS import - no longer needed
 import { clientLogger } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
@@ -21,16 +20,12 @@ import { fadeInUp, hoverScale, scaleIn } from '../../components/animations';
 import { ValidatedForm } from '../../components/forms';
 import { Button } from '../../components/ui';
 import { AudioKey } from '../../constants';
-// Removed useDebouncedCallback - no longer needed
-// Removed useLocalStorage import - not needed
 import { audioService, authService } from '../../services';
-// Authentication is handled by PublicRoute HOC
 // import { RootState } from '../../redux/store';
 
 export default function RegistrationView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  // Authentication is handled by PublicRoute HOC
   // const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
   const [step, setStep] = useState<'method' | 'manual' | 'confirmation'>('method');

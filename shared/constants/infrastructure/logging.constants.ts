@@ -4,7 +4,7 @@
  *
  * @module LoggingConstants
  * @description Logging configuration and formatting constants
- * @used_by server: server/src/shared/modules/logging/logger.service.ts (LoggerService), client: client/src/services/logger.service.ts (ClientLogger), shared/services/logger.service.ts (log formatting)
+ * @used_by server/src/features, client/src/services, shared/services
  */
 
 // Log levels enum

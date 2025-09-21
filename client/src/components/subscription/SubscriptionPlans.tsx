@@ -4,7 +4,7 @@
  *
  * @component SubscriptionPlans
  * @description Component for displaying and selecting subscription plans
- * @used_by client/views/payment
+ * @used_by client/src/views/payment
  */
 import { formatCurrency } from '@shared';
 import { SubscriptionPlanDetails } from '@shared/types/subscription.types';
@@ -40,13 +40,13 @@ export default function SubscriptionPlans({
         billingCycle,
       });
     } catch (error) {
-      // Error is handled by the mutation hook
+      // Error handling is managed by the mutation hook
     }
   };
 
   const getPlanPrice = (plan: SubscriptionPlanDetails) => {
     const basePrice = plan.price;
-    const discount = billingCycle === 'yearly' ? 0.2 : 0; // 20% discount for yearly
+    const discount = billingCycle === 'yearly' ? 0.2 : 0;
     return basePrice * (1 - discount);
   };
 

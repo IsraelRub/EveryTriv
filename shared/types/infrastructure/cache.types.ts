@@ -12,7 +12,7 @@ import type { QuestionCacheEntry } from '../domain/analytics/analytics.types';
  * Cache statistics interface
  * @interface CacheStats
  * @description Comprehensive cache performance and usage statistics
- * @used_by server/src/features/cache/cache.controller.ts (getCacheStats), server/src/features/cache/cache.service.ts (getCacheStats)
+ * @used_by server/src/internal/modules/cache
  */
 export interface CacheStats {
 	totalCachedTopics: number;

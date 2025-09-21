@@ -14,7 +14,7 @@
  * All shared constants (excluding types to avoid conflicts)
  * @description Complete set of all shared constants
  * @exports {Object} All shared constants
- * @used_by client/services, server/controllers
+ * @used_by client/src/services, server/src/controllers
  */
 export {
 	AI_PROVIDER_ERROR_TYPES,
@@ -94,7 +94,7 @@ export {
  * All shared services
  * @description Complete set of all shared services including storage and logging
  * @exports {Object} All shared services
- * @used_by client/services, server/services
+ * @used_by client/src/services, server/services
  */
 export * from './services';
 
@@ -106,7 +106,7 @@ export * from './services';
  * All shared types
  * @description Complete set of all shared type definitions
  * @exports {Object} All shared types
- * @used_by client/services, server/controllers
+ * @used_by client/src/services, server/src/controllers
  */
 export * from './types';
 

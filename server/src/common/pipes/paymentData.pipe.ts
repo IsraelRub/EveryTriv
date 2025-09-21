@@ -3,7 +3,7 @@
  *
  * @module PaymentDataPipe
  * @description Pipe for validating payment data input with comprehensive validation
- * @used_by server/features/payment, server/controllers
+ * @used_by server/src/features/payment, server/src/controllers
  */
 // ValidationManager removed - using direct validation
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';

@@ -47,7 +47,6 @@ export interface AsyncStateWithData<T = Record<string, any>> extends BaseReduxSt
   data: T | null;
 }
 
-// Use Points Return
 export interface UsePointsReturn {
   balance: number;
   total_points: number;

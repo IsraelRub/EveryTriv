@@ -46,7 +46,7 @@ const PRICING_PLANS: SubscriptionPlans = {
 			'Export functionality',
 		],
 		pointBonus: 250,
-		questionLimit: -1, // Unlimited
+		questionLimit: -1,
 	},
 	pro: {
 		name: 'Pro Plan',
@@ -61,7 +61,7 @@ const PRICING_PLANS: SubscriptionPlans = {
 			'Custom integrations',
 		],
 		pointBonus: 500,
-		questionLimit: -1, // Unlimited
+		questionLimit: -1,
 	},
 	enterprise: {
 		name: 'Enterprise Plan',
@@ -76,7 +76,7 @@ const PRICING_PLANS: SubscriptionPlans = {
 			'Custom branding',
 		],
 		pointBonus: 1000,
-		questionLimit: -1, // Unlimited
+		questionLimit: -1,
 	},
 };
 
@@ -111,13 +111,11 @@ export class PaymentService {
 		try {
 			logger.payment('Getting pricing plans');
 
-			// Check if we have cached plans
 			const cachedPlans = await this.cacheService.get<SubscriptionPlans>('pricing_plans');
 			if (cachedPlans.success && cachedPlans.data) {
 				return cachedPlans.data;
 			}
 
-			// Cache plans for 1 hour
 			await this.cacheService.set('pricing_plans', PRICING_PLANS, 3600);
 
 			return PRICING_PLANS;
@@ -137,13 +135,11 @@ export class PaymentService {
 		try {
 			logger.payment('Getting point purchase options');
 
-			// Check if we have cached options
 			const cachedOptions = await this.cacheService.get<PointPurchaseOption[]>('point_purchase_options');
 			if (cachedOptions.success && cachedOptions.data) {
 				return cachedOptions.data;
 			}
 
-			// Cache options for 1 hour
 			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_OPTIONS, 3600);
 
 			return POINT_PURCHASE_OPTIONS;
@@ -165,12 +161,10 @@ export class PaymentService {
 		try {
 			logger.payment('Processing payment', { userId, paymentType: paymentData.planType || 'unknown' });
 
-			// Validate payment data
 			if (!paymentData.amount || paymentData.amount <= 0) {
 				throw new Error(PAYMENT_ERROR_MESSAGES.INVALID_PAYMENT_AMOUNT);
 			}
 
-			// Create payment history record
 			const paymentHistory = this.paymentHistoryRepository.create({
 				userId: userId,
 				amount: paymentData.amount,

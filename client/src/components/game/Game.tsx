@@ -94,14 +94,12 @@ export default function Game({
 
   const handleAnswer = useCallback(
     async (index: number) => {
-      // Use context function if available, otherwise fallback to props
       if (contextHandleAnswer) {
         await contextHandleAnswer(index);
       } else {
         await onAnswer?.(index);
       }
 
-      // Check score change after answer
       if (scoreChange.hasChanged && (score || 0) > (scoreChange.previous || 0)) {
         clientLogger.userDebug('Score increased! Animation triggered');
       }
@@ -257,7 +255,6 @@ export default function Game({
             contextHandleGameEnd ||
             onGameEnd ||
             (() => {
-              // Default no-op game end handler
             })
           }
           isRunning={gameMode.timer.isRunning}

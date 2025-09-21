@@ -34,7 +34,6 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Get subscription data from user stats
 			const stats = user.stats || {};
 			const subscriptionData = stats.subscription || this.getDefaultSubscription();
 
@@ -78,7 +77,6 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Calculate subscription details
 			const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 			const startDate = new Date();
 			const endDate = new Date();
@@ -96,7 +94,6 @@ export class SubscriptionService {
 				features: planDetails.features,
 			};
 
-			// Create payment session using PaymentService
 			const paymentResult = await this.paymentService.processPayment(userId, {
 				amount: planDetails.price,
 				currency: 'USD',
@@ -111,7 +108,6 @@ export class SubscriptionService {
 				},
 			});
 
-			// Update user with subscription data
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: subscriptionId,
 			});
@@ -145,7 +141,7 @@ export class SubscriptionService {
 		try {
 			logger.payment('Canceling subscription', {
 				userId,
-				subscriptionId: userId, // Assuming userId is the subscriptionId for cancellation
+				subscriptionId: userId,
 			});
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -153,13 +149,11 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Update subscription status
 			const stats = user.stats || {};
 			const subscriptionData = (stats as UserStatsWithSubscription).subscription || this.getDefaultSubscription();
 			subscriptionData.status = 'cancelled';
 			subscriptionData.cancelledAt = new Date().toISOString();
 
-			// Update user subscription status
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: undefined,
 			});
@@ -169,7 +163,7 @@ export class SubscriptionService {
 			logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
 				error: error instanceof Error ? error.message : 'Unknown error',
 				userId,
-				subscriptionId: userId, // Assuming userId is the subscriptionId for cancellation
+				subscriptionId: userId,
 			});
 			throw error;
 		}
@@ -182,7 +176,7 @@ export class SubscriptionService {
 	async getAvailablePlans() {
 		try {
 			logger.payment('Getting available subscription plans', {
-				userId: 'all', // Assuming this is for all users or a specific context
+				userId: 'all',
 			});
 
 			// Use PaymentService to get plans (single source of truth)
@@ -190,7 +184,7 @@ export class SubscriptionService {
 		} catch (error) {
 			logger.paymentFailed('plans-get', 'Failed to get available plans', {
 				error: error instanceof Error ? error.message : 'Unknown error',
-				userId: 'all', // Assuming this is for all users or a specific context
+				userId: 'all',
 			});
 			throw error;
 		}

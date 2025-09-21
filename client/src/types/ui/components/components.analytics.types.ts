@@ -17,7 +17,6 @@ export interface MetricCardProps {
   subtitle: string;
   icon: string;
   color: 'yellow' | 'blue' | 'green' | 'purple';
-  /** Optional trend indicator */
   trend?: 'up' | 'down' | 'neutral';
 }
 
@@ -28,15 +27,10 @@ export interface MetricCardProps {
  * @used_by client/src/views/analytics/AnalyticsView.tsx
  */
 export interface ComparisonCardProps {
-  /** Card title */
   title: string;
-  /** User's value */
   userValue: number;
-  /** Average value for comparison */
   averageValue: number;
-  /** Unit of measurement */
   unit: string;
-  /** Whether higher values are better */
   higherIsBetter: boolean;
 }
 
@@ -46,7 +40,6 @@ export interface ComparisonCardProps {
  * @description Props for the Activity component
  */
 export interface RecentActivityProps {
-  /** Analytics data */
   analyticsData: UserAnalytics;
 }
 
@@ -56,7 +49,6 @@ export interface RecentActivityProps {
  * @description Props for the TopicsChart component
  */
 export interface TopicsChartProps {
-  /** Topics played data */
   topicsPlayed: Record<string, number>;
 }
 
@@ -66,6 +58,5 @@ export interface TopicsChartProps {
  * @description Props for the DifficultyChart component
  */
 export interface DifficultyChartProps {
-  /** Difficulty breakdown data */
   difficultyBreakdown: Record<string, { correct: number; total: number }>;
 }

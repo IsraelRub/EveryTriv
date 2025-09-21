@@ -4,7 +4,7 @@
  *
  * @module NavigationConstants
  * @description Navigation links and routing constants
- * @used_by client/src/constants/navigation.constants.ts (client navigation), client/src/components/navigation (navigation components)
+ * @used_by client/src/constants, client/src/components/navigation
  */
 
 // Navigation links for the application

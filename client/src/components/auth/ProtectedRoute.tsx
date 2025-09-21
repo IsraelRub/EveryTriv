@@ -3,7 +3,7 @@
  *
  * @module ProtectedRoute
  * @description Higher Order Component for protecting routes that require authentication
- * @used_by AppRoutes.tsx for protecting sensitive routes
+ * @used_by client/src/AppRoutes.tsx for protecting sensitive routes
  */
 import { clientLogger } from '@shared';
 import { memo } from 'react';
@@ -33,7 +33,6 @@ export const ProtectedRoute = memo(function ProtectedRoute({
   const { isAuthenticated, user } = useSelector((state: RootState) => state.user);
   const location = useLocation();
 
-  // Log authentication check
   clientLogger.info('Route access check', {
     path: location.pathname,
     isAuthenticated,
@@ -41,21 +40,17 @@ export const ProtectedRoute = memo(function ProtectedRoute({
     requiredRole,
   });
 
-  // Check authentication
   if (!isAuthenticated) {
     clientLogger.securityDenied('Unauthenticated access attempt', {
       path: location.pathname,
       redirectTo,
     });
 
-    // Store the attempted path for redirect after login (session only)
-    // Note: This is temporary session data, not user state, so direct sessionStorage is appropriate
     sessionStorage.setItem(CLIENT_STORAGE_KEYS.REDIRECT_AFTER_LOGIN, location.pathname);
 
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Check role requirement if specified
   if (requiredRole && user?.role !== requiredRole) {
     clientLogger.securityDenied('Insufficient permissions', {
       path: location.pathname,
@@ -66,7 +61,6 @@ export const ProtectedRoute = memo(function ProtectedRoute({
     return <Navigate to='/unauthorized' replace />;
   }
 
-  // Log successful access
   clientLogger.info('Route access granted', {
     path: location.pathname,
     userRole: user?.role,
@@ -94,13 +88,11 @@ export const PublicRoute = memo(function PublicRoute({
   };
   const location = useLocation();
 
-  // Log public route access
   clientLogger.info('Public route access', {
     path: location.pathname,
     isAuthenticated,
   });
 
-  // Redirect authenticated users
   if (isAuthenticated) {
     clientLogger.info('Authenticated user redirected from public route', {
       path: location.pathname,

@@ -3,7 +3,7 @@
  *
  * @module AvatarConstants
  * @description Avatar component size definitions, styling constants, and configuration
- * @used_by client/src/components/ui/Avatar.tsx
+ * @used_by client/src/components/ui
  */
 
 /**
@@ -44,7 +44,7 @@ export const AVATAR_BACKGROUND_COLORS = [
  */
 export const AVATAR_CONFIG = {
   MAX_RETRIES: 2,
-  RETRY_DELAY: 1000, // milliseconds
+  RETRY_DELAY: 1000,
   GRAVATAR_BASE_URL: 'https://www.gravatar.com/avatar',
   GRAVATAR_DEFAULT: 'identicon',
 } as const;

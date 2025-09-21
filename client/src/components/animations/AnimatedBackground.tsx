@@ -33,7 +33,6 @@ export const AnimatedBackground: FC<AnimatedBackgroundProps> = ({
   const animationFrameRef = useRef<number>();
   const lastUpdateRef = useRef<number>(0);
 
-  // Initialize particles
   useEffect(() => {
     if (!particles) return;
 

@@ -30,14 +30,10 @@ import type {
 } from '@shared/types/language.types';
 
 import type { PointBalance, PointPurchaseOption, PointTransaction } from './points.types';
-// BaseApiResponse not used in this file
 
-// Re-export shared API types
 export type { ApiResponse } from '@shared/types/infrastructure/api.types';
 
-// Using shared types instead of duplicates
 
-// Client-specific API service interface
 export interface ClientApiService {
   // HTTP methods
   get<T>(url: string, config?: RequestInit): Promise<ApiResponse<T>>;

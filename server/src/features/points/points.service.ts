@@ -29,7 +29,6 @@ export class PointsService extends BasePointsService {
 	 */
 	async getPointBalance(userId: string): Promise<PointBalance> {
 		try {
-			// Validate user ID
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
 				throw new BadRequestException('Invalid user ID');
@@ -63,7 +62,7 @@ export class PointsService extends BasePointsService {
 					});
 					return balance;
 				},
-				1800 // Cache for 30 minutes - balance changes less frequently
+				1800
 			);
 		} catch (error) {
 			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point balance', {
@@ -94,7 +93,7 @@ export class PointsService extends BasePointsService {
 					logger.databaseInfo('Point packages retrieved', { count: packages.length });
 					return packages;
 				},
-				3600 // Cache for 1 hour - packages don't change often
+				3600
 			);
 		} catch (error) {
 			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point packages');
@@ -107,13 +106,11 @@ export class PointsService extends BasePointsService {
 	 */
 	async canPlay(userId: string, questionCount: number): Promise<{ canPlay: boolean; reason?: string }> {
 		try {
-			// Validate user ID
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			// Validate question count
 			if (!questionCount || questionCount < 1 || questionCount > 50) {
 				throw new BadRequestException('Question count must be between 1 and 50');
 			}
@@ -148,18 +145,15 @@ export class PointsService extends BasePointsService {
 	 */
 	async deductPoints(userId: string, questionCount: number, gameMode: string = 'standard'): Promise<PointBalance> {
 		try {
-			// Validate user ID
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			// Validate question count
 			if (!questionCount || questionCount < 1 || questionCount > 50) {
 				throw new BadRequestException('Question count must be between 1 and 50');
 			}
 
-			// Validate game mode
 			const gameModeValidation = await this.validationService.validateInputContent(gameMode);
 			if (!gameModeValidation.isValid) {
 				throw new BadRequestException('Invalid game mode');
@@ -170,7 +164,6 @@ export class PointsService extends BasePointsService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Check if user can play
 			const canPlayResult = await this.canPlay(userId, questionCount);
 			if (!canPlayResult.canPlay) {
 				throw new BadRequestException(canPlayResult.reason);
@@ -259,7 +252,6 @@ export class PointsService extends BasePointsService {
 	 */
 	async getPointHistory(userId: string, limit: number = 50): Promise<PointTransactionEntity[]> {
 		try {
-			// Validate user ID
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
 				throw new BadRequestException('Invalid user ID');
@@ -356,7 +348,6 @@ export class PointsService extends BasePointsService {
 	 */
 	async confirmPointPurchase(userId: string, paymentIntentId: string, points: number): Promise<PointBalance> {
 		try {
-			// Validate user ID
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
 				throw new BadRequestException('Invalid user ID');

@@ -4,10 +4,9 @@
  *
  * @module AppConstants
  * @description Core application configuration constants
- * @used_by client/components, client/services, client/hooks
+ * @used_by client/src/components, client/src/services, client/src/hooks
  */
 
-// Re-export shared constants from the new organized structure
 export {
   APP_DESCRIPTION,
   APP_NAME,
@@ -20,7 +19,6 @@ export {
   SOCIAL_LINKS,
 } from '@shared';
 
-// Client-specific app constants
 export const CLIENT_APP_CONFIG = {
   VERSION: '2.0.0',
   ENVIRONMENT: import.meta.env.MODE || 'development',

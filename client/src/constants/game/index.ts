@@ -3,7 +3,7 @@
  *
  * @module GameConstants
  * @description Central export point for all game-related constants
- * @used_by client/components/game, client/hooks
+ * @used_by client/src/components/game, client/src/hooks
  */
 
 /**

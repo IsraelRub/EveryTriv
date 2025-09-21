@@ -3,7 +3,7 @@
  *
  * @module PointsConstants
  * @description Central export point for all points-related constants
- * @used_by server/features/points, server/services
+ * @used_by server/src/features/points, server/src/services
  */
 
 /**

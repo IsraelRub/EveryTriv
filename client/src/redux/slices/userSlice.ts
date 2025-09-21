@@ -6,7 +6,6 @@ import { authService } from '../../services/auth';
 import { PointBalancePayload, UserState } from '../../types';
 import { ErrorPayload,LoadingPayload } from '../../types/redux';
 
-// Async thunks
 export const fetchUserData = createAsyncThunk(
   'user/fetchUserData',
   async (_, { rejectWithValue }) => {
@@ -23,7 +22,6 @@ export const updateUserProfile = createAsyncThunk(
   'user/updateUserProfile',
   async (userData: Partial<User>, { rejectWithValue }) => {
     try {
-      // This would call an API to update user profile
       return userData;
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -85,7 +83,6 @@ const userStateSlice = createSlice({
     },
     updateScore: (state, _action: PayloadAction<number>) => {
       if (state.user) {
-        // User doesn't have score property, skip this
       }
     },
     setPointBalance: (state, action: PayloadAction<PointBalancePayload>) => {
@@ -102,7 +99,6 @@ const userStateSlice = createSlice({
       const pointsToDeduct = action.payload;
       let remaining = pointsToDeduct;
 
-      // Check if pointBalance exists
       if (!state.pointBalance) {
         return;
       }

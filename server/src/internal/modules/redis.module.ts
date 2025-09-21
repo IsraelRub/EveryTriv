@@ -3,7 +3,7 @@
  *
  * @module RedisModule
  * @description Global Redis module providing Redis client configuration and connection management
- * @used_by server/features, server/shared/modules, server/controllers
+ * @used_by server/src/features, server/src/internal/modules, server/src/controllers
  * @global
  * @provides REDIS_CLIENT
  */

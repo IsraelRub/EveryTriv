@@ -17,7 +17,7 @@ import { AudioServiceInterface } from '../../types';
  *
  * @module ClientAudioService
  * @description Client-side audio management and playback service
- * @used_by client/components/audio, client/components/game, client/hooks
+ * @used_by client/src/components/audio, client/src/components/game, client/src/hooks
  */
 export class AudioService implements AudioServiceInterface {
   private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
@@ -28,15 +28,12 @@ export class AudioService implements AudioServiceInterface {
   private userPreferences: ServerUserPreferences | null = null;
 
   constructor() {
-    // Initialize category volumes
     this.categoryVolumes = new Map(
       Object.entries(DEFAULT_CATEGORY_VOLUMES) as [AudioCategory, number][]
     );
 
-    // Preload essential audio files only
     this.preloadEssentialAudio();
 
-    // Listen for first user interaction to enable audio
     this.setupUserInteractionListener();
   }
 
@@ -46,11 +43,9 @@ export class AudioService implements AudioServiceInterface {
   private setupUserInteractionListener(): void {
     const enableAudio = () => {
       this.userInteracted = true;
-      // Try to start background music if not muted
       if (!this.isMuted) {
         this.play(AudioKey.BACKGROUND_MUSIC);
       }
-      // Remove listeners after first interaction
       document.removeEventListener('click', enableAudio);
       document.removeEventListener('keydown', enableAudio);
       document.removeEventListener('touchstart', enableAudio);
@@ -96,20 +91,16 @@ export class AudioService implements AudioServiceInterface {
     src: string,
     config: { volume?: number; loop?: boolean }
   ): void {
-    // Create audio element
     const audio = new Audio();
     audio.volume = this.isMuted ? 0 : config.volume || 0.7;
     audio.loop = config.loop || false;
 
-    // Set preload strategy to avoid cache issues
     audio.preload = 'metadata';
 
-    // Add error handling for loading
     audio.addEventListener('error', e => {
       clientLogger.mediaError(`Failed to load audio file: ${key} (${src})`, { error: e, key, src });
     });
 
-    // Store audio element and volume first
     this.audioElements.set(key, audio);
     this.volumes.set(key, config.volume || 0.7);
 

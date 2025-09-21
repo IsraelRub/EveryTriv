@@ -10,7 +10,7 @@ import { ReactNode } from 'react';
  * Ranking Card Component Props
  * @interface RankingCardProps
  * @description Props for the RankingCard component used in leaderboard
- * @used_by client/src/views/leaderboard/LeaderboardView.tsx
+ * @used_by client/src/views/leaderboard
  */
 export interface RankingCardProps {
   title: string;
@@ -24,7 +24,7 @@ export interface RankingCardProps {
  * Leaderboard Entry Component Props
  * @interface LeaderboardEntryProps
  * @description Props for the LeaderboardEntry component
- * @used_by client/src/views/leaderboard/LeaderboardView.tsx
+ * @used_by client/src/views/leaderboard
  */
 export interface LeaderboardEntryProps {
   entry: LeaderboardEntry;

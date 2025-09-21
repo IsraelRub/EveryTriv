@@ -3,7 +3,7 @@
  *
  * @module MetricsService
  * @description Centralized metrics tracking for all storage operations
- * @used_by server/src/shared/modules/storage/storage.service.ts, server/src/shared/modules/cache/cache.service.ts, client/src/services/storage/storage.service.ts
+ * @used_by client/src/services/storage/storage.service.ts
  */
 import type { BasicValue, StatsValue } from '../../../types/core/data.types';
 import type { MiddlewareMetrics } from '../../../types/domain/analytics/metrics.types';

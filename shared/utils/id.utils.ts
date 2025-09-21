@@ -4,7 +4,7 @@
  *
  * @module IdUtils
  * @description Unique identifier generation utilities
- * @used_by shared/services/logging.service.ts (generateTraceId, generateSessionId), client: client/src/utils/user.util.ts (generateUserId), server: server/src/features/game/logic/providers/management/base.provider.ts (generateQuestionId), server: server/src/features/payment/services/payment.service.ts (generatePaymentIntentId)
+ * @used_by shared/services/logging, client/src/utils/user.util.ts, server/src/features/game/logic/providers/management, server/src/features/payment
  */
 
 /**

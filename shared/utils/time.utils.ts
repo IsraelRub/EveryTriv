@@ -4,7 +4,7 @@
  *
  * @module TimeUtils
  * @description Time and date manipulation utilities for calculations, timestamps, and time-based operations
- * @used_by server: server/src/features/gameHistory/gameHistory.service.ts (time calculations), client: client/src/components/game/GameTimer.tsx (timer display), shared/services/logging.service.ts (timestamp generation)
+ * @used_by client/src/components/game/GameTimer.tsx, shared/services/logging
  */
 
 /**

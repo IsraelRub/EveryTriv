@@ -3,7 +3,7 @@
  *
  * @module ValidationSchemas
  * @description JSON Schema definitions for validation rules
- * @used_by client/src/utils/validation.utils.ts, server/src/common/validation/input-validation.service.ts
+ * @used_by client/src/utils, server/src/common/validation
  */
 import { CUSTOM_DIFFICULTY_PREFIX, VALIDATION_LIMITS } from '../constants';
 

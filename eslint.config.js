@@ -1,9 +1,9 @@
 /**
  * EveryTriv ESLint Configuration
- * קונפיגורציה מאוחדת עבור client, server ו-shared
+ * Unified configuration for client, server and shared
  *
- * @description קובץ ESLint מאוחד המחליף את הקובצים הנפרדים
- * @used_by כל קבצי TypeScript/JavaScript בפרויקט
+ * @description Unified ESLint configuration file replacing separate files
+ * @used_by All TypeScript/JavaScript files in the project
  */
 
 const js = require('@eslint/js');

@@ -5,7 +5,7 @@
  *
  * @module combineClassNames
  * @description CSS class name combination utility with Tailwind support
- * @used_by client/src/components/ui/Button.tsx, client/src/components/ui/Card.tsx, client/src/styles/styled-components.ts
+ * @used_by client/src/components/ui, client/src/styles
  */
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -18,5 +18,3 @@ import { twMerge } from 'tailwind-merge';
 export function combineClassNames(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-// Export as named export only to avoid duplicate exports

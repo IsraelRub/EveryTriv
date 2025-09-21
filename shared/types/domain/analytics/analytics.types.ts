@@ -3,7 +3,7 @@
  *
  * @module AnalyticsTypes
  * @description Type definitions for analytics and metrics data structures
- * @used_by server/src/features/analytics/analytics.service.ts, client/src/components/stats/StatsCharts.tsx, server/src/features/metrics/metrics.service.ts
+ * @used_by server/src/features/analytics/analytics.service.ts
  */
 import { BasicValue } from '../../core/data.types';
 
@@ -102,25 +102,15 @@ export interface QuestionAnalytics {
  * @description Analytics data for topics
  */
 export interface TopicAnalytics {
-	/** Topic name */
 	topic: string;
-	/** Total questions in topic */
 	totalQuestions: number;
-	/** Average success rate */
 	averageSuccessRate: number;
-	/** Success rate (alias) */
 	successRate: number;
-	/** Correct answers count */
 	correctAnswers: number;
-	/** Most difficult question */
 	mostDifficultQuestion: string;
-	/** Easiest question */
 	easiestQuestion: string;
-	/** Average time to answer */
 	averageTimeToAnswer: number;
-	/** Average time (alias) */
 	averageTime: number;
-	/** Difficulty breakdown */
 	difficultyBreakdown: Record<string, number>;
 }
 
@@ -130,31 +120,18 @@ export interface TopicAnalytics {
  * @description Analytics data for users
  */
 export interface UserAnalytics {
-	/** User ID */
 	userId: string;
-	/** Total questions answered */
 	totalQuestionsAnswered: number;
-	/** Total questions (alias) */
 	totalQuestions: number;
-	/** Total correct answers */
 	totalCorrectAnswers: number;
-	/** Correct answers (alias) */
 	correctAnswers: number;
-	/** Overall success rate */
 	overallSuccessRate: number;
-	/** Success rate (alias) */
 	successRate: number;
-	/** Favorite topic */
 	favoriteTopic: string;
-	/** Average time per question */
 	averageTimePerQuestion: number;
-	/** Average response time */
 	averageResponseTime: number;
-	/** Total points */
 	totalPoints: number;
-	/** Topics played */
 	topicsPlayed: Record<string, number>;
-	/** Difficulty breakdown */
 	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
 	recentActivity: Array<{
 		date: Date;
@@ -163,7 +140,6 @@ export interface UserAnalytics {
 		topic?: string;
 		durationSeconds?: number;
 	}>;
-	/** Total play time in minutes */
 	totalPlayTime: number;
 }
 
@@ -173,21 +149,13 @@ export interface UserAnalytics {
  * @description Raw analytics data from database queries
  */
 export interface UserAnalyticsStats {
-	/** Total questions */
 	totalQuestions: number;
-	/** Correct answers */
 	correctAnswers: number;
-	/** Success rate */
 	successRate: number;
-	/** Favorite topic */
 	favoriteTopic: string;
-	/** Average time */
 	averageTime: number;
-	/** Total points */
 	totalPoints: number;
-	/** Topics played */
 	topicsPlayed: Record<string, number>;
-	/** Difficulty breakdown */
 	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
 	recentActivity: Array<{
 		date: Date;
@@ -196,7 +164,6 @@ export interface UserAnalyticsStats {
 		topic?: string;
 		durationSeconds?: number;
 	}>;
-	/** Total play time */
 	totalPlayTime: number;
 }
 
@@ -206,21 +173,13 @@ export interface UserAnalyticsStats {
  * @description System-level statistics
  */
 export interface SystemStats {
-	/** Total users */
 	totalUsers: number;
-	/** Active users in last 24 hours */
 	activeUsers24h: number;
-	/** Active users (alias for activeUsers24h) */
 	activeUsers: number;
-	/** Total questions generated */
 	totalQuestionsGenerated: number;
-	/** Total questions (alias) */
 	totalQuestions: number;
-	/** System uptime in seconds */
 	uptime: number;
-	/** Average response time */
 	averageResponseTime: number;
-	/** Error rate percentage */
 	errorRate: number;
 }
 
@@ -230,11 +189,8 @@ export interface SystemStats {
  * @description Query parameters for system statistics
  */
 export interface SystemStatsQuery {
-	/** Time range start */
 	startDate?: string;
-	/** Time range end */
 	endDate?: string;
-	/** Include inactive users */
 	includeInactive?: boolean;
 }
 
@@ -244,15 +200,10 @@ export interface SystemStatsQuery {
  * @description Query parameters for game analytics
  */
 export interface GameAnalyticsQuery {
-	/** Time range start */
 	startDate?: string;
-	/** Time range end */
 	endDate?: string;
-	/** Topic filter */
 	topic?: string;
-	/** Difficulty filter */
 	difficulty?: string;
-	/** Include detailed stats */
 	includeDetailedStats?: boolean;
 }
 
@@ -277,17 +228,11 @@ export interface GameAnalyticsStats
  * @description Data structure for game statistics analytics
  */
 export interface GameStatsData {
-	/** Total number of games */
 	totalGames: number;
-	/** Total number of questions */
 	totalQuestions: number;
-	/** Average score */
 	averageScore: number;
-	/** Popular topics */
 	popularTopics: string[];
-	/** Difficulty distribution */
 	difficultyDistribution: Record<string, number>;
-	/** Time statistics */
 	timeStats: {
 		averageTime: number;
 		medianTime: number;
@@ -300,14 +245,12 @@ export interface GameStatsData {
  * @description Data structure for topic statistics analytics
  */
 export interface TopicStatsData {
-	/** Topics data */
 	topics: Array<{
 		name: string;
 		totalGames: number;
 		averageCorrectAnswers: number;
 		averageTimeSpent: number;
 	}>;
-	/** Total number of topics */
 	totalTopics: number;
 }
 
@@ -317,7 +260,6 @@ export interface TopicStatsData {
  * @description Data structure for difficulty statistics analytics
  */
 export interface DifficultyStatsData {
-	/** Difficulties data */
 	difficulties: Record<
 		string,
 		{
@@ -326,7 +268,6 @@ export interface DifficultyStatsData {
 			averageTime: number;
 		}
 	>;
-	/** Total number of questions */
 	totalQuestions: number;
 }
 
@@ -349,19 +290,12 @@ export interface DifficultyStats {
  * @description User score data for leaderboards
  */
 export interface UserScoreData {
-	/** User ID */
 	userId: string;
-	/** Username */
 	username: string;
-	/** Score */
 	score: number;
-	/** Rank */
 	rank: number;
-	/** Total points */
 	totalPoints: number;
-	/** Games played */
 	gamesPlayed: number;
-	/** Success rate */
 	successRate: number;
 }
 
@@ -371,20 +305,13 @@ export interface UserScoreData {
  * @description Generic analytics response structure
  */
 export interface AnalyticsResponse<T = AnalyticsEventData> {
-	/** Response data */
 	data: T;
-	/** Response metadata */
 	metadata?: {
-		/** Total count */
 		total?: number;
-		/** Page number */
 		page?: number;
-		/** Page size */
 		pageSize?: number;
-		/** Has more data */
 		hasMore?: boolean;
 	};
-	/** Response timestamp */
 	timestamp: string;
 }
 
@@ -394,15 +321,10 @@ export interface AnalyticsResponse<T = AnalyticsEventData> {
  * @description Query parameters for user analytics
  */
 export interface UserAnalyticsQuery {
-	/** Time range start */
 	startDate?: string;
-	/** Time range end */
 	endDate?: string;
-	/** Include game history */
 	includeGameHistory?: boolean;
-	/** Include performance metrics */
 	includePerformance?: boolean;
-	/** Include topic breakdown */
 	includeTopicBreakdown?: boolean;
 }
 
@@ -412,7 +334,6 @@ export interface UserAnalyticsQuery {
  * @description Complete user analytics data combining basic user info with game analytics
  */
 export interface CompleteUserAnalytics {
-	/** Basic user information */
 	basic: {
 		userId: string;
 		username: string;
@@ -422,7 +343,6 @@ export interface CompleteUserAnalytics {
 		created_at: Date;
 		accountAge: number;
 	};
-	/** Game analytics data */
 	game: {
 		totalGames: number;
 		totalQuestions: number;
@@ -440,7 +360,6 @@ export interface CompleteUserAnalytics {
 		}>;
 		totalPlayTime: number;
 	};
-	/** Performance metrics */
 	performance: {
 		lastPlayed: Date;
 		streakDays: number;
@@ -452,7 +371,6 @@ export interface CompleteUserAnalytics {
 		consistencyScore?: number;
 		learningCurve?: number;
 	};
-	/** Ranking information */
 	ranking: {
 		rank: number;
 		score: number;
@@ -467,16 +385,10 @@ export interface CompleteUserAnalytics {
  * @description Data structure for tracking user answers
  */
 export interface AnalyticsAnswerData {
-	/** Whether the answer was correct */
 	isCorrect: boolean;
-	/** Time spent on the question in seconds */
 	timeSpent: number;
-	/** Question topic */
 	topic?: string;
-	/** Question difficulty */
 	difficulty?: string;
-	/** Answer selected */
 	selectedAnswer?: string;
-	/** Correct answer */
 	correctAnswer?: string;
 }

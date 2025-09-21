@@ -3,7 +3,7 @@
  *
  * @module UserModule
  * @description User management module handling user authentication, profiles, and account operations
- * @used_by server/app, server/controllers
+ * @used_by server/src/app, server/src/controllers
  * @dependencies TypeOrmModule, JwtModule, AuthModule, CacheModule, LoggerModule, StorageModule
  * @provides UserService
  * @entities UserEntity

@@ -3,7 +3,7 @@
  *
  * @module GameConstants
  * @description Central export point for all game-related constants
- * @used_by server/features/game, server/services
+ * @used_by server/src/features/game, server/src/services
  */
 
 /**

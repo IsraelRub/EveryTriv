@@ -3,32 +3,32 @@
  *
  * @module ServerSharedModules
  * @description Central export point for all server-side shared modules
- * @used_by server/features, server/controllers, server/services
+ * @used_by server/src/features, server/src/controllers, server/services
  */
 
 /**
  * Authentication shared module
  * @description Shared authentication functionality moved to features/auth
- * @used_by server/features/auth, server/middleware
+ * @used_by server/src/features/auth, server/middleware
  */
 
 /**
  * Cache module
  * @description Caching functionality
- * @used_by server/features, server/controllers
+ * @used_by server/src/features, server/src/controllers
  */
 export { CacheModule } from './cache/cache.module';
 
 /**
  * Storage module
  * @description Storage functionality
- * @used_by server/features, server/controllers
+ * @used_by server/src/features, server/src/controllers
  */
 export { StorageModule } from './storage/storage.module';
 
 /**
  * Redis module
  * @description Redis connection and configuration
- * @used_by server/features, server/controllers
+ * @used_by server/src/features, server/src/controllers
  */
 export { RedisModule } from './redis.module';

@@ -3,7 +3,7 @@
  *
  * @module AppController
  * @description Main application controller for health checks and basic routes
- * @used_by server/app, server/main
+ * @used_by server/src/app, server/src/main
  */
 import { Controller, Get } from '@nestjs/common';
 import { API_VERSION } from '@shared';
@@ -13,7 +13,7 @@ import { Public } from './common';
 /**
  * Main application controller
  * @description Handles basic application routes and health checks
- * @used_by server/app, server/main
+ * @used_by server/src/app, server/src/main
  */
 @Controller()
 export class AppController {

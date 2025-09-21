@@ -3,7 +3,7 @@
  *
  * @module UserDataPipe
  * @description Pipe for validating user profile data input with comprehensive validation
- * @used_by server/features/user, server/controllers
+ * @used_by server/src/features/user, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { UserProfileUpdateData, ValidationResult } from '@shared';

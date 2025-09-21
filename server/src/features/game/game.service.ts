@@ -42,13 +42,11 @@ export class GameService {
 	 * @returns Trivia question
 	 */
 	async getTriviaQuestion(topic: string, difficulty: string, questionCount: number = 1, userId?: string) {
-		// Validate request
 		const validation = await this.validationService.validateTriviaRequest(topic, difficulty, questionCount);
 		if (!validation.isValid) {
 			throw new BadRequestException(validation.errors.join(', '));
 		}
 
-		// Apply server-side game limits
 		const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
 		const actualQuestionCount = Math.min(questionCount, maxQuestions);
 
@@ -61,13 +59,11 @@ export class GameService {
 		}
 
 		try {
-			// Use getOrSet for better cache efficiency
 			const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
 
 			const questions = await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					// Generate questions with server-side timeout
 					const generatedQuestions = [];
 					const generationTimeout = SERVER_GAME_CONSTANTS.QUESTION_GENERATION_TIMEOUT;
 
@@ -86,7 +82,6 @@ export class GameService {
 				CACHE_TTL.TRIVIA_QUESTIONS
 			);
 
-			// Track analytics
 			if (userId) {
 				await this.analyticsService.trackEvent(userId, {
 					eventType: 'game',
@@ -99,7 +94,7 @@ export class GameService {
 
 			return {
 				questions,
-				fromCache: false, // getOrSet handles cache internally
+				fromCache: false,
 			};
 		} catch (error) {
 			throw new Error(
@@ -141,19 +136,15 @@ export class GameService {
 	 */
 	async submitAnswer(questionId: string, answer: string, userId: string, timeSpent: number): Promise<AnswerResult> {
 		try {
-			// Get question
 			const question = await this.getQuestionById(questionId);
 			if (!question) {
 				throw new Error(GAME_ERROR_MESSAGES.QUESTION_NOT_FOUND);
 			}
 
-			// Check answer
 			const isCorrect = this.checkAnswer(question, answer);
 
-			// Calculate score using algorithm
 			const score = this.pointCalculationService.calculateAnswerPoints(question.difficulty, timeSpent, 0, isCorrect);
 
-			// Save game history
 			await this.saveGameHistory(userId, {
 				score,
 				totalQuestions: 1,
@@ -174,10 +165,8 @@ export class GameService {
 				],
 			});
 
-			// Update user score
 			await this.updateUserScore(userId, score);
 
-			// Track analytics
 			await this.analyticsService.trackUserAnswer(userId, questionId, {
 				selectedAnswer: answer,
 				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
@@ -194,8 +183,8 @@ export class GameService {
 				isCorrect,
 				timeSpent,
 				pointsEarned: score,
-				totalScore: 0, // Will be calculated by client
-				feedback: isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה. נסה שוב!',
+				totalScore: 0,
+				feedback: isCorrect ? 'Correct answer!' : 'Wrong answer. Try again!',
 			};
 		} catch (error) {
 			throw new Error(
@@ -219,11 +208,9 @@ export class GameService {
 		}
 	}
 
-	// Leaderboard functionality moved to LeaderboardService for better separation of concerns
-
-	// Limited leaderboard functionality moved to LeaderboardService
-
-	// ===== PRIVATE HELPER FUNCTIONS =====
+	/**
+	 * Private helper functions for internal game operations
+	 */
 
 	/**
 	 * Get user rank
@@ -249,8 +236,6 @@ export class GameService {
 			return 0;
 		}
 	}
-
-	// User statistics update moved to UserStatsService for better separation of concerns
 
 	/**
 	 * Check if answer is correct
@@ -278,13 +263,10 @@ export class GameService {
 			user.score += score;
 			await this.userRepository.save(user);
 
-			// Invalidate user score cache
 			await this.cacheService.delete(`user:score:${userId}`);
-			// Also invalidate related caches
 			await this.cacheService.invalidatePattern(`leaderboard:*`);
 			await this.cacheService.invalidatePattern(`analytics:user:${userId}`);
 
-			// Clear active game session
 			const result = await this.storageService.removeItem(`active_game:${userId}`);
 			if (!result.success) {
 				logger.gameError('Failed to clear active game session', {
@@ -309,7 +291,6 @@ export class GameService {
 				throw new Error('User not found');
 			}
 
-			// Get game history to calculate statistics
 			const gameHistory = await this.gameHistoryRepository.find({
 				where: { userId },
 				select: ['score', 'correctAnswers', 'totalQuestions'],
@@ -328,14 +309,13 @@ export class GameService {
 				rank: await this.getUserRank(userId),
 				totalPoints,
 				gamesPlayed,
-				successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
+				successRate: Math.round(successRate * 100) / 100,
 			};
 		} catch (error) {
 			throw new Error(`Failed to get user score data: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 
-	// ===== GAME HISTORY FUNCTIONS =====
 
 	/**
 	 * Save game history
@@ -363,7 +343,6 @@ export class GameService {
 			}>;
 		}
 	) {
-		// Store active game session temporarily (persistent storage - survives cache invalidation)
 		const sessionKey = `active_game:${userId}`;
 		const result = await this.storageService.setItem(
 			sessionKey,
@@ -372,7 +351,7 @@ export class GameService {
 				startedAt: new Date().toISOString(),
 				status: 'active',
 			},
-			3600 // 1 hour TTL
+			3600
 		);
 
 		if (!result.success) {
@@ -389,13 +368,11 @@ export class GameService {
 				totalQuestions: gameData.totalQuestions,
 			});
 
-			// Validate user exists
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new Error('User not found');
 			}
 
-			// Create game history record
 			const gameHistory = this.gameHistoryRepository.create({
 				userId,
 				score: gameData.score,
@@ -409,7 +386,6 @@ export class GameService {
 				questionsData: gameData.questionsData,
 			});
 
-			// Save to database
 			const savedHistory = (await this.gameHistoryRepository.save(gameHistory)) as GameHistoryEntity;
 			logger.databaseCreate('game_history', {
 				historyId: savedHistory.id,
@@ -417,7 +393,6 @@ export class GameService {
 				score: gameData.score,
 			});
 
-			// User statistics update moved to UserStatsService
 
 			return {
 				id: savedHistory.id,
@@ -456,13 +431,11 @@ export class GameService {
 				limit,
 			});
 
-			// Validate user exists
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new Error('User not found');
 			}
 
-			// Get game history records
 			const gameHistory = await this.gameHistoryRepository.find({
 				where: { userId },
 				order: { createdAt: 'DESC' },
@@ -521,7 +494,6 @@ export class GameService {
 				timeframe: 'all_time',
 			});
 
-			// Delegate to AnalyticsService for global statistics
 			return await this.analyticsService.getSystemInsights();
 		} catch (error) {
 			logger.gameError('Failed to get global game stats', {
@@ -575,7 +547,6 @@ export class GameService {
 		}
 	}
 
-	// ===== POINTS MANAGEMENT FUNCTIONS =====
 
 	/**
 	 * Get user point balance
@@ -709,7 +680,6 @@ export class GameService {
 				config,
 			});
 
-			// Store game configuration in persistent storage (survives cache invalidation)
 			const configKey = `game_config:${userId}`;
 			const result = await this.storageService.setItem(
 				configKey,
@@ -718,7 +688,7 @@ export class GameService {
 					updatedAt: new Date().toISOString(),
 					userId,
 				},
-				0 // No TTL - persistent storage
+				0
 			);
 
 			if (!result.success) {
@@ -754,7 +724,6 @@ export class GameService {
 				userId,
 			});
 
-			// Get configuration from persistent storage
 			const configKey = `game_config:${userId}`;
 			const result = await this.storageService.getItem(configKey);
 
@@ -765,7 +734,6 @@ export class GameService {
 				};
 			}
 
-			// Return default configuration if not found
 			const defaultConfig = {
 				defaultDifficulty: 'medium',
 				defaultTopic: 'general',
@@ -802,7 +770,6 @@ export class GameService {
 				gameId,
 			});
 
-			// Find the game history record
 			const gameHistory = await this.gameHistoryRepository.findOne({
 				where: { id: gameId, userId },
 			});
@@ -811,7 +778,6 @@ export class GameService {
 				throw new Error('Game history not found or access denied');
 			}
 
-			// Delete the record
 			await this.gameHistoryRepository.remove(gameHistory);
 
 			logger.game('Game history deleted', {

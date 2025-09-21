@@ -3,7 +3,7 @@
  *
  * @module DatabaseConstants
  * @description Central export point for all database-related constants
- * @used_by server/features, server/repositories
+ * @used_by server/src/features, server/repositories
  */
 
 /**

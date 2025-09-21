@@ -8,7 +8,6 @@ import { FormEvent } from 'react';
 
 import { Achievement } from './achievements.types';
 import { GameConfig, GameSessionStats,GameState, GameTimerState } from './config.types';
-// CurrentQuestionMetadata moved here from metadata.types.ts
 
 /**
  * @interface CurrentQuestionMetadata
@@ -20,7 +19,6 @@ export interface CurrentQuestionMetadata {
   questionCount?: number;
 }
 
-// Game Component Props
 /**
  * Game component props interface
  * @interface GameProps
@@ -51,7 +49,7 @@ export interface GameProps {
 }
 
 /**
- * פרופס לרכיב טיימר משחק
+ * Props for game timer component
  * @used_by client/src/components/game/GameTimer.tsx
  */
 export interface GameTimerProps {
@@ -72,7 +70,7 @@ export interface GameTimerProps {
 }
 
 /**
- * פרופס לרכיב טריוויה
+ * Props for trivia component
  * @used_by client/src/components/game/TriviaGame.tsx
  */
 export interface TriviaGameProps {
@@ -87,7 +85,7 @@ export interface TriviaGameProps {
 }
 
 /**
- * פרופס לרכיב טופס טריוויה
+ * Props for trivia form component
  * @used_by client/src/components/game/TriviaForm.tsx
  */
 export interface TriviaFormProps {
@@ -109,7 +107,7 @@ export interface TriviaFormProps {
 }
 
 /**
- * פרופס לרכיב נושאים מועדפים
+ * Props for favorite topics component
  * @used_by client/src/components/user/FavoriteTopics.tsx
  */
 export interface FavoriteTopicsProps {
@@ -120,7 +118,7 @@ export interface FavoriteTopicsProps {
 }
 
 /**
- * פרופס לרכיב מצב משחק UI
+ * Props for game mode UI component
  * @used_by client/src/components/gameMode/GameMode.tsx
  */
 export interface GameModeUIProps {
@@ -136,8 +134,8 @@ export interface GameModeUIProps {
 }
 
 /**
- * פרופס לרכיב הישגים
- * @used_by client/src/components/stats/Achievements.tsx
+ * Props for achievements component
+ * @used_by client/src/components/stats
  */
 export interface AchievementsProps {
   achievements: Achievement[];
@@ -146,7 +144,7 @@ export interface AchievementsProps {
 }
 
 /**
- * פרופס לרכיב סטטיסטיקות ניקוד
+ * Props for scoring statistics component
  * @used_by client/src/components/stats/ScoringSystem.tsx
  */
 export interface ScoringSystemProps {
@@ -165,7 +163,7 @@ export interface ScoringSystemProps {
 }
 
 /**
- * פרופס לרכיב היסטוריית קושי מותאם אישית
+ * Props for custom difficulty history component
  * @used_by client/src/components/stats/CustomDifficultyHistory.tsx
  */
 export interface CustomDifficultyHistoryProps {
@@ -182,7 +180,7 @@ export interface CustomDifficultyHistoryProps {
 }
 
 /**
- * פרופס לרכיב קושי נוכחי
+ * Props for current difficulty component
  * @used_by client/src/components/home/CurrentDifficulty.tsx
  */
 export interface CurrentDifficultyProps {
@@ -195,7 +193,7 @@ export interface CurrentDifficultyProps {
 }
 
 /**
- * פרופס לרכיב כותרת בית
+ * Props for home title component
  * @used_by client/src/components/home/HomeTitle.tsx
  */
 export interface HomeTitleProps {
@@ -206,7 +204,7 @@ export interface HomeTitleProps {
 }
 
 /**
- * פרופס לרכיב שגיאה
+ * Props for error component
  * @used_by client/src/components/home/ErrorBanner.tsx
  */
 export interface ErrorBannerProps {
@@ -218,7 +216,7 @@ export interface ErrorBannerProps {
 }
 
 /**
- * פרופס לרכיב שיתוף חברתי
+ * Props for social sharing component
  * @used_by client/src/components/layout/SocialShare.tsx
  */
 export interface SocialShareProps {
@@ -233,7 +231,7 @@ export interface SocialShareProps {
 }
 
 /**
- * פרופס לרכיב לוח מובילים
+ * Props for leaderboard component
  * @used_by client/src/components/leaderboard/Leaderboard.tsx
  */
 export interface LeaderboardProps {

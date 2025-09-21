@@ -4,7 +4,7 @@
  *
  * @module ServerUserTypes
  * @description Server-specific user metadata and internal types
- * @used_by server/src/features/user/dtos/create-user.dto.ts, server/src/shared/entities/user.entity.ts
+ * @used_by server/src/features/user/dtos, server/src/internal/entities
  */
 import type { BaseUser, User, UserAddress } from '@shared';
 

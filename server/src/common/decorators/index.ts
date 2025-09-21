@@ -3,7 +3,7 @@
  *
  * @module CommonDecorators
  * @description Central export point for all common decorators
- * @used_by server/features, server/controllers, server/app
+ * @used_by server/src/features, server/src/controllers, server/src/app
  */
 
 // Authentication decorators

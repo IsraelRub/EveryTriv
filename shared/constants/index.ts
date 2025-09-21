@@ -4,7 +4,7 @@
  * @module ConstantsIndex
  * @description Centralized export of all application constants organized by domain
  * @author EveryTriv Team
- * @used_by server: server/src/shared/constants, client: client/src/shared/constants
+ * @used_by server/src/shared/constants, client/src/shared/constants
  */
 
 // ============================================================================

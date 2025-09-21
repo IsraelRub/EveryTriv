@@ -3,7 +3,7 @@
  *
  * @module CacheModule
  * @description Module for cache operations, handling cache management, statistics, and cache invalidation
- * @used_by server/features, server/controllers, server/services
+ * @used_by server/src/features, server/src/controllers, server/src/services
  * @dependencies RedisModule
  */
 import { Module, OnModuleInit } from '@nestjs/common';

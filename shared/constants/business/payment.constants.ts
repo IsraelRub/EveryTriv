@@ -4,14 +4,14 @@
  *
  * @module PaymentConstants
  * @description Payment configuration constants with advanced options
- * @used_by client/src/views/payment/PaymentView.tsx
+ * @used_by client/src/views/payment
  */
 
 /**
  * Payment page features and content
  * @constant
  * @description Features displayed on the payment page
- * @used_by client/src/views/payment/PaymentView.tsx
+ * @used_by client/src/views/payment
  */
 export const PAYMENT_FEATURES = {
 	UNLIMITED_QUESTIONS: {
@@ -46,7 +46,7 @@ export const PAYMENT_FEATURES = {
  * Payment page text content
  * @constant
  * @description Text content used throughout the payment page
- * @used_by client/src/views/payment/PaymentView.tsx
+ * @used_by client/src/views/payment
  */
 export const PAYMENT_CONTENT = {
 	HEADER: {

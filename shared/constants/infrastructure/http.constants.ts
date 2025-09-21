@@ -4,7 +4,7 @@
  *
  * @module HttpConstants
  * @description HTTP configuration and status code constants
- * @used_by server: server/src/shared/services/http-client.ts (HttpClient), client: client/src/services/http-client.ts (ClientHttpClient), shared/services/logging.service.ts (HTTP logging)
+ * @used_by client/src/services, shared/services
  */
 
 // API base URL configuration

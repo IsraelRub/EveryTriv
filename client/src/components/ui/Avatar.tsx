@@ -3,7 +3,7 @@
  *
  * @module Avatar
  * @description Advanced avatar component with fallback system, error handling, and performance optimizations
- * @used_by client/src/components/navigation/Navigation.tsx, client/src/views/user/UserProfile.tsx, client/src/components/leaderboard/Leaderboard.tsx
+ * @used_by client/src/components/navigation, client/src/views/user, client/src/components/leaderboard
  */
 
 import { motion } from 'framer-motion';
@@ -32,7 +32,6 @@ export const Avatar = memo(function Avatar({
   const [imageLoading, setImageLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Generate initials from available name data
   const initials = useMemo(() => {
     if (fullName) {
       const names = fullName.trim().split(' ');
@@ -53,43 +52,36 @@ export const Avatar = memo(function Avatar({
     return '?';
   }, [fullName, firstName, lastName, username]);
 
-  // Generate background color based on initials
   const backgroundColor = useMemo(() => {
     const hash = initials.charCodeAt(0) + initials.charCodeAt(1);
     return AVATAR_BACKGROUND_COLORS[hash % AVATAR_BACKGROUND_COLORS.length];
   }, [initials]);
 
-  // Handle image load success
   const handleImageLoad = useCallback(() => {
     setImageLoading(false);
     setImageError(false);
     setRetryCount(0);
   }, []);
 
-  // Handle image load error with retry logic
   const handleImageError = useCallback(() => {
     if (retryCount < AVATAR_CONFIG.MAX_RETRIES) {
       setRetryCount(prev => prev + 1);
       setImageLoading(true);
-      // Trigger re-render to retry loading
       setTimeout(() => {
         setImageError(false);
-      }, AVATAR_CONFIG.RETRY_DELAY * retryCount); // Exponential backoff
+      }, AVATAR_CONFIG.RETRY_DELAY * retryCount);
     } else {
       setImageError(true);
       setImageLoading(false);
     }
   }, [retryCount]);
 
-  // Determine what to display
   const shouldShowImage = src && !imageError && retryCount <= AVATAR_CONFIG.MAX_RETRIES;
   const shouldShowInitials = !shouldShowImage || imageError;
 
-  // Calculate size
   const avatarSize = customSize || AVATAR_SIZES[size].pixels;
   const sizeClass = customSize ? '' : AVATAR_SIZES[size].classes;
 
-  // Generate Gravatar URL as fallback
   const gravatarUrl = useMemo(() => {
     if (!username && !fullName) return null;
 

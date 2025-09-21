@@ -3,7 +3,7 @@
  *
  * @module UserTypes
  * @description Type definitions for user entities, authentication, and user management
- * @used_by server: server/src/features/user/entities/user.entity.ts (User entity), server/src/features/auth/auth.service.ts (authentication), client: client/src/components/user/UserProfile.tsx (user profile), client/src/services/auth/auth.service.ts (user authentication)
+ * @used_by server/src/features/auth/auth.service.ts, client/src/services/auth/auth.service.ts
  */
 import { UserRole, UserStatus } from '../../../constants/business/info.constants';
 import type { BaseEntity, BasicValue } from '../../core/data.types';

@@ -3,7 +3,7 @@
  *
  * @module GameModule
  * @description Core game module handling trivia game logic, scoring, and AI providers management
- * @used_by server/app, server/controllers
+ * @used_by server/app, server/src/controllers
  * @dependencies TypeOrmModule, AnalyticsModule, CacheModule, StorageModule, UserModule
  * @provides GameService, AiProvidersService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity

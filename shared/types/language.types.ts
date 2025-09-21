@@ -80,8 +80,6 @@ export interface LanguageToolConfig {
  * @used_by client/src/services/api.service.ts
  */
 export interface ValidateLanguageRequest extends Record<string, unknown> {
-	/** Text to validate */
 	text: string;
-	/** Validation options */
 	options?: LanguageValidationOptions;
 }

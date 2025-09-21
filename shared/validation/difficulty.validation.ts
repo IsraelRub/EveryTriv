@@ -4,7 +4,7 @@
  * @module DifficultyValidation
  * @description Custom difficulty validation and utility functions for game difficulty management
  * @author EveryTriv Team
- * @used_by server: server/src/features/game/logic/game-validation.service.ts (validateDifficulty), client: client/src/utils/customDifficulty.utils.ts (difficulty utilities), shared/validation/validation.utils.ts (input validation)
+ * @used_by client/src/utils/customDifficulty.utils.ts, shared/validation
  */
 import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '../constants';
 

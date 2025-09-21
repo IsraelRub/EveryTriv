@@ -11,7 +11,7 @@ import { BasicValue } from '../core';
  * storage service interface
  * @interface StorageService
  * @description interface for both persistent storage and caching
- * @used_by shared/services/storage.service.ts (BaseStorageService), server/src/shared/modules/storage/storage.service.ts (ServerStorageService), client/src/services/storage/storage.service.ts (ClientStorageService)
+ * @used_by client/src/services/storage/storage.service.ts
  */
 export interface StorageService {
 	set<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;

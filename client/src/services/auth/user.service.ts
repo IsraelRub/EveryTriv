@@ -4,7 +4,7 @@
  *
  * @module ClientUserServiceModule
  * @description Client-side user profile and preferences management
- * @used_by client/views/user, client/components/user, client/hooks
+ * @used_by client/src/views/user, client/src/components/user, client/src/hooks
  */
 import { UpdateUserProfileData, User } from '@shared';
 import { clientLogger } from '@shared';
@@ -15,7 +15,7 @@ import { apiService } from '../api';
  * Main user service class
  * @class UserService
  * @description Handles all user profile operations for the client
- * @used_by client/views/user, client/components/user
+ * @used_by client/src/views/user, client/src/components/user
  */
 class ClientUserService {
   /**

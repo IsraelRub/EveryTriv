@@ -8,7 +8,7 @@
  * Points Manager Component Props
  * @interface PointsManagerProps
  * @description Props for the PointsManager component
- * @used_by client/src/components/points/PointsManager.tsx
+ * @used_by client/src/components/points
  */
 export interface PointsManagerProps {
   onClose?: () => void;

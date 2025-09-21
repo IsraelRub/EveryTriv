@@ -4,7 +4,7 @@
  * @module ServerConstants
  * @description Central export point for all server-side constants and configuration
  * @author EveryTriv Team
- * @used_by server/features, server/controllers, server/services
+ * @used_by server/src/features, server/src/controllers, server/src/services
  */
 
 // ============================================================================

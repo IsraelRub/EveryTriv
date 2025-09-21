@@ -4,7 +4,7 @@
  *
  * @module InfoConstants
  * @description Information and data constants with advanced features
- * @used_by server/src/features/user/user.service.ts, client/src/components/layout/Footer.tsx, client/src/views/registration/RegistrationView.tsx
+ * @used_by server/src/features/user/user.service.ts, client/src/components/layout, client/src/views/registration
  */
 
 /**
@@ -30,17 +30,11 @@ export const APP_DESCRIPTION = 'Smart Trivia Platform with Custom Difficulty Lev
  * @used_by server/src/features/user/user.service.ts, client/src/components/layout/Footer.tsx, client/src/views/user/UserProfile.tsx
  */
 export const CONTACT_INFO = {
-	/** Support email address */
 	email: 'support@everytrivia.com',
-	/** Main website domain */
 	website: 'everytrivia.com',
-	/** Platform description */
 	description: 'Smart Trivia Platform',
-	/** Marketing tagline */
 	tagline: 'Challenge your knowledge with our AI-powered trivia platform',
-	/** Key platform features */
 	features: ['Custom difficulty levels', 'Unlimited topics', 'Competitive gameplay', 'AI-powered questions'],
-	/** Enhanced metadata */
 	metadata: {
 		version: '2.0.0',
 		releaseDate: '2024-01-01',

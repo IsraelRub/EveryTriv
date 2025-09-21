@@ -4,7 +4,7 @@
  *
  * @module ApiConstants
  * @description API endpoints and configuration constants
- * @used_by server: server/src/features/game/game.controller.ts (route definitions), client: client/src/services/api.service.ts (endpoint URLs), shared/services/http-client.ts (base URL configuration)
+ * @used_by server/src/features/game/game.controller.ts, client/src/services/api.service.ts, shared/services
  */
 
 // Base API endpoints structure

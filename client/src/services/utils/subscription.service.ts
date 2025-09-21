@@ -4,7 +4,7 @@
  *
  * @module ClientSubscriptionService
  * @description Client-side subscription management service
- * @used_by client/views/payment, client/components/subscription
+ * @used_by client/src/views/payment, client/src/components/subscription
  */
 import { SubscriptionData,SubscriptionPlans } from '@shared';
 import { clientLogger } from '@shared';
@@ -15,7 +15,7 @@ import { apiService } from '../api';
  * Main subscription service class
  * @class ClientSubscriptionService
  * @description Handles all subscription operations for the client
- * @used_by client/views/payment, client/components/subscription
+ * @used_by client/src/views/payment, client/src/components/subscription
  */
 class ClientSubscriptionService {
   /**

@@ -3,7 +3,7 @@
  *
  * @module ClientLogger
  * @description Client-specific logger implementation with browser console logging
- * @used_by client: client/src/services/logger.service.ts
+ * @used_by client/src/services
  */
 import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { BaseLoggerService } from './baseLogger.service';
@@ -42,7 +42,7 @@ export class ClientLogger extends BaseLoggerService {
 		console.debug(`%c${message}`, `color: ${this.CSS_COLORS.green}; font-weight: bold;`, meta);
 	}
 
-	// פונקציה ללוג עם צבעים בדפדפן
+	// Function for logging with colors in browser
 	public logWithColor(level: string, message: string, meta?: LogMeta): void {
 		const color = this.getLevelColor(level);
 		const colorCode = this.CSS_COLORS[color] || this.CSS_COLORS.white;
@@ -51,7 +51,7 @@ export class ClientLogger extends BaseLoggerService {
 		consoleMethod(`%c${message}`, `color: ${colorCode}; font-weight: bold;`, meta);
 	}
 
-	// פונקציה לקבלת צבע לפי רמת הלוג
+	// Function to get color by log level
 	private getLevelColor(level: string): keyof typeof this.CSS_COLORS {
 		switch (level.toUpperCase()) {
 			case 'ERROR':
@@ -67,7 +67,7 @@ export class ClientLogger extends BaseLoggerService {
 		}
 	}
 
-	// פונקציה לקבלת שיטת console לפי רמת הלוג
+	// Function to get console method by log level
 	private getConsoleMethod(level: string): (...args: unknown[]) => void {
 		switch (level.toUpperCase()) {
 			case 'ERROR':
