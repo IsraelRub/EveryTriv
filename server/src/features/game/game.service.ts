@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_TTL, GAME_ERROR_MESSAGES, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger  } from '@shared';
+import { CACHE_TTL, GAME_ERROR_MESSAGES, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger, getErrorMessage, createServerError, createNotFoundError  } from '@shared';
 import { AnswerResult, UserAnalytics,UserScoreData  } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
@@ -10,7 +10,7 @@ import { MoreThan, Repository } from 'typeorm';
 import { ValidationService } from '../../common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
-import { PointCalculationService } from '@shared/services/points/pointCalculation.service';
+import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 
 /**
  * Service for managing trivia games, game history, and user points
@@ -70,9 +70,14 @@ export class GameService {
 					for (let i = 0; i < actualQuestionCount; i++) {
 						const question = await Promise.race([
 							this.triviaGenerationService.generateQuestion(topic, difficulty),
-							new Promise((_, reject) =>
-								setTimeout(() => reject(new Error('Question generation timeout')), generationTimeout)
-							),
+							new Promise<never>((_, reject) => {
+								const timeoutId = setTimeout(() => {
+									reject(new Error('Question generation timeout'));
+								}, generationTimeout);
+								
+								// Clean up timeout if promise resolves
+								setTimeout(() => clearTimeout(timeoutId), 0);
+							}),
 						]);
 						generatedQuestions.push(question);
 					}
@@ -98,7 +103,7 @@ export class GameService {
 			};
 		} catch (error) {
 			throw new Error(
-				`Failed to generate trivia questions: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`Failed to generate trivia questions: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -121,7 +126,7 @@ export class GameService {
 			return question;
 		} catch (error) {
 			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_QUESTION}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_QUESTION}: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -188,7 +193,7 @@ export class GameService {
 			};
 		} catch (error) {
 			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_SUBMIT_ANSWER}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`${GAME_ERROR_MESSAGES.FAILED_TO_SUBMIT_ANSWER}: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -203,7 +208,7 @@ export class GameService {
 			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
 			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -257,7 +262,7 @@ export class GameService {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			user.score += score;
@@ -275,7 +280,7 @@ export class GameService {
 				});
 			}
 		} catch (error) {
-			throw new Error(`Failed to update user score: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			throw createServerError('update user score', error);
 		}
 	}
 
@@ -288,7 +293,7 @@ export class GameService {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const gameHistory = await this.gameHistoryRepository.find({
@@ -312,7 +317,7 @@ export class GameService {
 				successRate: Math.round(successRate * 100) / 100,
 			};
 		} catch (error) {
-			throw new Error(`Failed to get user score data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			throw createServerError('get user score data', error);
 		}
 	}
 
@@ -370,7 +375,7 @@ export class GameService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const gameHistory = this.gameHistoryRepository.create({
@@ -410,7 +415,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to save game history', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				score: gameData.score,
 			});
@@ -433,7 +438,7 @@ export class GameService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const gameHistory = await this.gameHistoryRepository.find({
@@ -462,7 +467,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to get user game history', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -479,7 +484,7 @@ export class GameService {
 			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
 			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -497,7 +502,7 @@ export class GameService {
 			return await this.analyticsService.getSystemInsights();
 		} catch (error) {
 			logger.gameError('Failed to get global game stats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timeframe: 'all_time',
 			});
 			throw error;
@@ -520,7 +525,7 @@ export class GameService {
 			});
 
 			if (!game) {
-				throw new Error('Game not found');
+				throw createNotFoundError('Game');
 			}
 
 			return {
@@ -540,7 +545,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to get game by ID', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				gameId,
 			});
 			throw error;
@@ -557,7 +562,7 @@ export class GameService {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			return {
@@ -567,7 +572,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to get user point balance', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -590,7 +595,7 @@ export class GameService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const newPoints = (user.credits || 0) + points;
@@ -605,7 +610,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to add points', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				points,
 			});
@@ -629,7 +634,7 @@ export class GameService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const currentPoints = user.credits || 0;
@@ -649,7 +654,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to deduct points', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				points,
 			});
@@ -707,7 +712,7 @@ export class GameService {
 		} catch (error) {
 			logger.gameError('Failed to save game configuration', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -750,7 +755,7 @@ export class GameService {
 		} catch (error) {
 			logger.gameError('Failed to get game configuration', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -794,7 +799,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to delete game history', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				gameId,
 			});
@@ -836,7 +841,7 @@ export class GameService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to clear game history', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;

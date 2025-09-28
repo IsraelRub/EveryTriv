@@ -18,6 +18,9 @@ import {
 	sanitizeEmail,
 	sanitizeInput,
  serverLogger as logger,	validateCustomDifficultyText,
+	getErrorMessage,
+	createValidationError,
+	createStringLengthValidationError,
 	validateEmail,
 	validateInputContent,
 	validateInputWithLanguageTool,
@@ -61,7 +64,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('username', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -100,7 +103,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('email', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -139,7 +142,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('password', '[REDACTED]', 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -175,7 +178,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('input_content', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -214,7 +217,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('customDifficulty', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -250,7 +253,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('topic_length', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -316,7 +319,7 @@ export class ValidationService {
 			return result;
 		} catch (error) {
 			logger.validationError('trivia_request', `${topic} (${difficulty})`, 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 				count,
@@ -375,7 +378,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('points_purchase', packageId, 'validation_error', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -419,7 +422,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('phone', phone, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -492,7 +495,7 @@ export class ValidationService {
 			return result;
 		} catch (error) {
 			logger.validationError('payment_data', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -548,7 +551,7 @@ export class ValidationService {
 			return result;
 		} catch (error) {
 			logger.validationError('analytics_event', JSON.stringify(eventData), 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -615,7 +618,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('game_answer', answer, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -709,7 +712,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('user_profile', '[REDACTED]', 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -750,7 +753,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('subscription_plan', plan, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -802,7 +805,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('points_amount', amount.toString(), 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -921,7 +924,7 @@ export class ValidationService {
 		} catch (error) {
 			logger.validationError('language_validation', value, 'validation_error', {
 				...options,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
@@ -946,13 +949,13 @@ export class ValidationService {
 		maxLength?: number
 	): void {
 		if (typeof value !== 'string') {
-			throw new Error(`${field} must be a string`);
+			throw createValidationError(field, 'string');
 		}
 		if (minLength && value.length < minLength) {
-			throw new Error(`${field} must be at least ${minLength} characters long`);
+			throw createStringLengthValidationError(field, minLength);
 		}
 		if (maxLength && value.length > maxLength) {
-			throw new Error(`${field} must be less than ${maxLength} characters`);
+			throw createStringLengthValidationError(field, undefined, maxLength);
 		}
 		Object.assign(user, { [field]: value });
 	}
@@ -965,7 +968,7 @@ export class ValidationService {
 	 */
 	validateAndSetNumberField(user: UserEntity, field: string, value: unknown): void {
 		if (typeof value !== 'number') {
-			throw new Error(`${field} must be a number`);
+			throw createValidationError(field, 'number');
 		}
 		Object.assign(user, { [field]: value });
 	}
@@ -978,7 +981,7 @@ export class ValidationService {
 	 */
 	validateAndSetBooleanField(user: UserEntity, field: keyof UserFieldUpdate, value: unknown): void {
 		if (typeof value !== 'boolean') {
-			throw new Error(`${field} must be a boolean`);
+			throw createValidationError(field, 'boolean');
 		}
 		Object.assign(user, { [field]: value });
 	}

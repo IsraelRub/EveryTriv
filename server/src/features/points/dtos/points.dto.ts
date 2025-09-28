@@ -5,6 +5,7 @@
  * @description Data Transfer Objects for points management
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class DeductPointsDto {
@@ -77,6 +78,7 @@ export class GetPointHistoryDto {
 		maximum: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(100, { message: 'Limit cannot exceed 100' })

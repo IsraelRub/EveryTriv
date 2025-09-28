@@ -8,7 +8,7 @@
 // ValidationManager removed - using direct validation
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { PersonalPaymentData } from '@shared';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 export interface PaymentDataValidationResult {
 	isValid: boolean;
@@ -52,10 +52,10 @@ export class PaymentDataPipe implements PipeTransform {
 			};
 		} catch (error) {
 			logger.validationError('payment_data', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
-			logger.apiUpdateError('paymentDataValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('paymentDataValidation', getErrorMessage(error));
 
 			throw new BadRequestException('Payment data validation failed');
 		}

@@ -159,11 +159,7 @@ export const POPULAR_TOPICS = [
 	'Technology',
 	'Literature',
 ];
-export const DEFAULT_PORTS = {
-	SERVER: 3001,
-	DATABASE: 5432,
-	REDIS: 6379,
-};
+
 
 // ============================================================================
 // ENVIRONMENT TYPES

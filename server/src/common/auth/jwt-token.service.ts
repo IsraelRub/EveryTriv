@@ -7,7 +7,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONSTANTS , AuthenticationRequest, JWTDecodedToken, serverLogger as logger , TokenPair, TokenPayload,TokenValidationResult  } from '@shared';
+import { AUTH_CONSTANTS , AuthenticationRequest, JWTDecodedToken, serverLogger as logger , TokenPair, TokenPayload,TokenValidationResult, getErrorMessage, createServerError  } from '@shared';
 
 @Injectable()
 export class JwtTokenService {
@@ -48,9 +48,9 @@ export class JwtTokenService {
 			logger.securityError('Failed to generate access token', {
 				userId,
 				username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
-			throw new Error('Failed to generate access token');
+			throw createServerError('generate access token', error);
 		}
 	}
 
@@ -89,9 +89,9 @@ export class JwtTokenService {
 			logger.securityError('Failed to generate refresh token', {
 				userId,
 				username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
-			throw new Error('Failed to generate refresh token');
+			throw createServerError('generate refresh token', error);
 		}
 	}
 
@@ -126,9 +126,9 @@ export class JwtTokenService {
 			logger.securityError('Failed to generate token pair', {
 				userId,
 				username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
-			throw new Error('Failed to generate token pair');
+			throw createServerError('generate token pair', error);
 		}
 	}
 
@@ -152,12 +152,12 @@ export class JwtTokenService {
 			};
 		} catch (error) {
 			logger.securityDenied('Token verification failed', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				isValid: false,
-				error: error instanceof Error ? error.message : 'Token verification failed',
+				error: getErrorMessage(error),
 			};
 		}
 	}
@@ -187,7 +187,7 @@ export class JwtTokenService {
 			return null;
 		} catch (error) {
 			logger.securityError('Failed to extract token from request', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return null;
 		}
@@ -215,7 +215,7 @@ export class JwtTokenService {
 			return decoded.exp < currentTime;
 		} catch (error) {
 			logger.securityError('Failed to check token expiration', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return true;
 		}
@@ -234,7 +234,7 @@ export class JwtTokenService {
 			return new Date(decoded.exp * 1000);
 		} catch (error) {
 			logger.securityError('Failed to get token expiration', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return null;
 		}

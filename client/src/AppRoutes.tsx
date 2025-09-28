@@ -12,6 +12,7 @@ import { useAppDispatch } from './hooks/layers/utils';
 import { fetchUserData,setAuthenticated, setUser } from './redux/slices/userSlice';
 import { audioService } from './services';
 import { authService } from './services/auth';
+import { prefetchAuthenticatedQueries } from './services/utils/queryClient.service';
 import { GameHistory } from './views/gameHistory';
 import HomeView from './views/home';
 import { LeaderboardView } from './views/leaderboard';
@@ -103,6 +104,13 @@ export default function AppRoutes() {
             if ('preferences' in user && user.preferences) {
               const mergedPreferences = mergeWithDefaults(user.preferences);
               audioService.setUserPreferences(mergedPreferences);
+            }
+
+            // Prefetch authenticated-only data
+            try {
+              await prefetchAuthenticatedQueries();
+            } catch (error) {
+              clientLogger.apiError('Failed to prefetch authenticated queries', { error });
             }
           }
         } catch (error) {

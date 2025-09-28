@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { getErrorMessage } from '@shared';
 
 export class AddFullTextSearch1720000000000 implements MigrationInterface {
 	name = 'AddFullTextSearch1720000000000';
@@ -94,7 +95,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			console.error('Migration failed: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'up',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -141,7 +142,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			console.error('Migration rollback failed: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'down',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

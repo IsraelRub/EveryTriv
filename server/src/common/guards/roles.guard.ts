@@ -14,6 +14,33 @@ export class RolesGuard implements CanActivate {
 	constructor(private readonly reflector: Reflector) {}
 
 	canActivate(context: ExecutionContext): boolean {
+		// Check if endpoint is marked as public
+		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+			context.getHandler(),
+			context.getClass(),
+		]);
+
+		const request = context.switchToHttp().getRequest();
+
+		// Fallback: also honor decorator-aware middleware metadata if present
+		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
+
+		// Hardcoded public endpoints as fallback
+		const publicEndpoints = [
+			'/leaderboard/global',
+			'/leaderboard/period',
+			'/health',
+			'/status',
+		];
+		const isHardcodedPublic = publicEndpoints.some(endpoint => 
+			request.path?.includes(endpoint) || false
+		);
+
+		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
+			logger.authDebug('Public endpoint - skipping role check');
+			return true;
+		}
+
 		// Get required roles from decorator
 		const requiredRoles = this.reflector.getAllAndOverride<string[]>('roles', [
 			context.getHandler(),
@@ -25,7 +52,6 @@ export class RolesGuard implements CanActivate {
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest();
 		const user = request.user;
 
 		if (!user) {

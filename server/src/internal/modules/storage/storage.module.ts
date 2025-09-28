@@ -5,7 +5,7 @@
  * @description Module for persistent storage operations using Redis
  * @note This module is for PERSISTENT storage only. For caching, use CacheModule instead.
  */
-import { Module } from '@nestjs/common';
+import { Module, BadRequestException } from '@nestjs/common';
 import { MetricsService } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 
@@ -21,7 +21,7 @@ import { ServerStorageService } from './storage.service';
 			provide: ServerStorageService,
 			useFactory: (redisClient: RedisClient | null) => {
 				if (!redisClient) {
-					throw new Error('Redis client is required for ServerStorageService');
+					throw new BadRequestException('Redis client is required for ServerStorageService');
 				}
 				return new ServerStorageService(redisClient, {});
 			},

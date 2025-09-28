@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage, createNotFoundError } from '@shared';
 import { GameHistoryEntity, LeaderboardEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
@@ -36,7 +36,7 @@ export class LeaderboardService {
 			// Get user data
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Get game history for calculations
@@ -75,7 +75,7 @@ export class LeaderboardService {
 			return savedEntry;
 		} catch (error) {
 			logger.analyticsError('updateUserRanking', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -105,7 +105,7 @@ export class LeaderboardService {
 			);
 		} catch (error) {
 			logger.analyticsError('getUserRanking', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -138,7 +138,7 @@ export class LeaderboardService {
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -175,7 +175,7 @@ export class LeaderboardService {
 			);
 		} catch (error) {
 			logger.analyticsError('getLeaderboardByPeriod', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				period,
 			});
 			throw error;
@@ -203,7 +203,7 @@ export class LeaderboardService {
 			return Math.min(100, Math.max(0, percentile));
 		} catch (error) {
 			logger.analyticsError('getUserPercentile', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			return 0;
@@ -438,7 +438,7 @@ export class LeaderboardService {
 			});
 		} catch (error) {
 			logger.analyticsError('updateGlobalRankings', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 		}
 	}

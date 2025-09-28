@@ -8,7 +8,8 @@
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
 import type { EnhancedLogEntry, Logger } from '../../types';
 import { LoggerConfig, LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
-import { generateSessionId, generateTraceId, sanitizeLogMessage } from '../../utils';
+import { generateSessionId, generateTraceId, sanitizeLogMessage, getErrorMessage } from '../../utils';
+import type { BasicValue } from '../../types/core/data.types';
 
 /**
  * Abstract Base Logger Service implementing all modular interfaces
@@ -18,7 +19,15 @@ export abstract class BaseLoggerService implements Logger {
 	protected traceId: string;
 	protected config: LoggerConfig;
 	protected performanceThresholds?: Record<string, number>;
-	protected performanceStats?: Record<string, any>;
+	protected performanceStats?: Map<string, {
+		totalOperations: number;
+		averageDuration: number;
+		minDuration: number;
+		maxDuration: number;
+		slowOperations: number;
+		errorCount: number;
+		lastUpdated: Date;
+	}> | Record<string, BasicValue>;
 
 	constructor(config: LoggerConfigUpdate = {}) {
 		this.sessionId = generateSessionId();
@@ -712,7 +721,7 @@ export abstract class BaseLoggerService implements Logger {
 			this.trackPerformanceEnhanced(operation, duration, {
 				...context,
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -730,7 +739,7 @@ export abstract class BaseLoggerService implements Logger {
 			this.trackPerformanceEnhanced(operation, duration, {
 				...context,
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -776,7 +785,11 @@ export abstract class BaseLoggerService implements Logger {
 	clearOperationPerformanceDataEnhanced(operation: string): void {
 		// Clear performance data for specific operation
 		if (this.performanceStats) {
-			delete this.performanceStats[operation];
+			if (this.performanceStats instanceof Map) {
+				this.performanceStats.delete(operation);
+			} else {
+				delete this.performanceStats[operation];
+			}
 		}
 	}
 

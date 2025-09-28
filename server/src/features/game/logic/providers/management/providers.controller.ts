@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { Public, Roles } from '../../../../../common';
 import { AiProvidersService } from './providers.service';
@@ -30,7 +30,7 @@ export class AiProvidersController {
 			};
 		} catch (error) {
 			logger.providerError('ai_providers', 'Failed to get provider statistics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -54,7 +54,7 @@ export class AiProvidersController {
 			};
 		} catch (error) {
 			logger.providerError('ai_providers', 'Failed to get providers count', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -84,12 +84,12 @@ export class AiProvidersController {
 			};
 		} catch (error) {
 			logger.providerError('ai_providers', 'Health check failed', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				status: 'error',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timestamp: new Date().toISOString(),
 			};
 		}

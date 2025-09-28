@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
@@ -51,7 +51,7 @@ export class UserStatsService {
 			);
 		} catch (error) {
 			logger.analyticsError('getUserStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -95,7 +95,7 @@ export class UserStatsService {
 			return await this.userStatsRepository.save(userStats);
 		} catch (error) {
 			logger.analyticsError('createUserStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -196,7 +196,7 @@ export class UserStatsService {
 			});
 		} catch (error) {
 			logger.analyticsError('updateUserStatsAfterGame', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -225,7 +225,7 @@ export class UserStatsService {
 			await this.cacheService.delete(`user:stats:${userId}`);
 		} catch (error) {
 			logger.analyticsError('updateStreaks', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -319,7 +319,7 @@ export class UserStatsService {
 			};
 		} catch (error) {
 			logger.analyticsError('getUserPerformanceMetrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;

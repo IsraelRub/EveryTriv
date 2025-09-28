@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { GameHistoryCreationData, serverLogger as logger } from '@shared';
+import { GameHistoryCreationData, serverLogger as logger, getErrorMessage } from '@shared';
 import { Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
@@ -36,7 +36,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find game history by user ID: ${userId}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -62,7 +62,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find game history by topic: ${topic}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -97,7 +97,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		} catch (error) {
 			logger.databaseError('Failed to get game statistics', {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -119,7 +119,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		} catch (error) {
 			logger.databaseError('Failed to create game history record', {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

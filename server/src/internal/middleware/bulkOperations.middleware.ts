@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -50,7 +50,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 			next();
 		} catch (error) {
 			logger.systemError('Bulk operations middleware error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				path: req.path,
 				method: req.method,
 			});

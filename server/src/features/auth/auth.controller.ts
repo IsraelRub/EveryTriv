@@ -5,7 +5,7 @@
  * @description Authentication controller with login, register, and user management endpoints
  */
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { serverLogger as logger , UsersListResponse } from '@shared';
+import { serverLogger as logger , UsersListResponse, getErrorMessage } from '@shared';
 
 import {
 	ApiResponse,
@@ -189,7 +189,7 @@ export class AuthController {
 			};
 		} catch (error) {
 			logger.userError('Failed to get all users', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				adminId: user.id,
 			});
 			throw error;

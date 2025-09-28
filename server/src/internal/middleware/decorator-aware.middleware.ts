@@ -7,7 +7,7 @@
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -55,7 +55,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 			next();
 		} catch (error) {
 			logger.systemError('DecoratorAwareMiddleware error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				path: req.path,
 				method: req.method,
 			});

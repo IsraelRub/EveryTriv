@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
-import { CreateGameHistoryDto, GameStatisticsResponse, serverLogger as logger } from '@shared';
+import { CreateGameHistoryDto, GameStatisticsResponse, serverLogger as logger, getErrorMessage } from '@shared';
 
 import {
 	AuditLog,
@@ -111,7 +111,7 @@ export class GameController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			logger.apiReadError('game_history', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiReadError('game_history', getErrorMessage(error), {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
@@ -124,7 +124,7 @@ export class GameController {
 			throw new HttpException(
 				{
 					message: 'Failed to get game history',
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					timestamp: new Date().toISOString(),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -160,7 +160,7 @@ export class GameController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			logger.apiUpdateError('game_history_save', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiUpdateError('game_history_save', getErrorMessage(error), {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
@@ -173,7 +173,7 @@ export class GameController {
 			throw new HttpException(
 				{
 					message: 'Failed to save game history',
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					timestamp: new Date().toISOString(),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -208,7 +208,7 @@ export class GameController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			logger.apiDeleteError('game_history', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiDeleteError('game_history', getErrorMessage(error), {
 				userId: userId,
 				gameId,
 				duration: Date.now() - startTime,
@@ -222,7 +222,7 @@ export class GameController {
 			throw new HttpException(
 				{
 					message: 'Failed to delete game history',
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					timestamp: new Date().toISOString(),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -252,7 +252,7 @@ export class GameController {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			logger.apiDeleteError('game_history_all', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiDeleteError('game_history_all', getErrorMessage(error), {
 				userId: userId,
 				duration: Date.now() - startTime,
 			});
@@ -265,7 +265,7 @@ export class GameController {
 			throw new HttpException(
 				{
 					message: 'Failed to clear game history',
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					timestamp: new Date().toISOString(),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -334,7 +334,7 @@ export class GameController {
 			};
 		} catch (error) {
 			logger.userError('Failed to get game statistics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				adminId: user.id,
 			});
 			throw error;
@@ -365,7 +365,7 @@ export class GameController {
 			};
 		} catch (error) {
 			logger.userError('Failed to clear all game history', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				adminId: user.id,
 			});
 			throw error;

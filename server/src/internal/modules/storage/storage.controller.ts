@@ -8,6 +8,7 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from 
 
 import { Cache, Public, RateLimit, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
+import { getErrorMessage, createStorageError } from '@shared';
 
 @Controller('storage')
 export class StorageController {
@@ -33,7 +34,7 @@ export class StorageController {
 				{
 					success: false,
 					error: 'Failed to get storage metrics',
-					message: error instanceof Error ? error.message : 'Unknown error',
+					message: getErrorMessage(error),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);
@@ -59,7 +60,7 @@ export class StorageController {
 				{
 					success: false,
 					error: 'Failed to reset storage metrics',
-					message: error instanceof Error ? error.message : 'Unknown error',
+					message: getErrorMessage(error),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);
@@ -78,7 +79,7 @@ export class StorageController {
 		try {
 			const result = await this.storageService.getKeys();
 			if (!result.success) {
-				throw new Error(result.error || 'Failed to get keys');
+				throw createStorageError('get keys', result.error);
 			}
 
 			return {
@@ -91,7 +92,7 @@ export class StorageController {
 				{
 					success: false,
 					error: 'Failed to get storage keys',
-					message: error instanceof Error ? error.message : 'Unknown error',
+					message: getErrorMessage(error),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);
@@ -111,7 +112,7 @@ export class StorageController {
 		try {
 			const result = await this.storageService.get(key);
 			if (!result.success) {
-				throw new Error(result.error || 'Failed to get item');
+				throw createStorageError('get item', result.error);
 			}
 
 			return {
@@ -124,7 +125,7 @@ export class StorageController {
 				{
 					success: false,
 					error: 'Failed to get storage item',
-					message: error instanceof Error ? error.message : 'Unknown error',
+					message: getErrorMessage(error),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);
@@ -142,7 +143,7 @@ export class StorageController {
 		try {
 			const result = await this.storageService.clear();
 			if (!result.success) {
-				throw new Error(result.error || 'Failed to clear storage');
+				throw createStorageError('clear storage', result.error);
 			}
 
 			return {
@@ -154,7 +155,7 @@ export class StorageController {
 				{
 					success: false,
 					error: 'Failed to clear storage',
-					message: error instanceof Error ? error.message : 'Unknown error',
+					message: getErrorMessage(error),
 				},
 				HttpStatus.INTERNAL_SERVER_ERROR
 			);

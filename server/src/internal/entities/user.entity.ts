@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 import { DEFAULT_USER_PREFERENCES, ServerUserPreferences, UserAddress } from '../types/typeorm-compatibility.types';
+import type { BasicValue } from '@shared/types/core/data.types';
 import { GameHistoryEntity } from './gameHistory.entity';
 import { TriviaEntity } from './trivia.entity';
 
@@ -102,7 +103,7 @@ export class UserEntity {
 	}>;
 
 	@Column('jsonb', { default: {} })
-	stats: Record<string, any> = {};
+	stats: Record<string, BasicValue> = {};
 
 	@OneToMany(() => TriviaEntity, trivia => trivia.user)
 	triviaHistory: TriviaEntity[];

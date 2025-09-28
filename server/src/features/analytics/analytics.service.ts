@@ -9,10 +9,15 @@ import {
 	GameAnalyticsQuery,
 	PerformanceMetrics,
 	SecurityMetrics,
- serverLogger as logger,	SystemInsights,
+	serverLogger as logger,
+	SystemInsights,
 	TopicStatsData,
 	UserAnalytics,
-	CompleteUserAnalytics,	UserAnalyticsStats } from '@shared';
+	CompleteUserAnalytics,
+	UserAnalyticsStats,
+	getErrorMessage,
+	BasicValue,
+} from '@shared';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
@@ -94,7 +99,7 @@ export class AnalyticsService implements OnModuleInit {
 			await this.saveEventToDatabase(userId, eventData);
 		} catch (error) {
 			logger.analyticsError('trackEvent', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 		}
@@ -138,7 +143,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('getUserStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -169,7 +174,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('getGameStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -200,7 +205,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('getTopicStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -229,7 +234,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('getDifficultyStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -256,7 +261,7 @@ export class AnalyticsService implements OnModuleInit {
 			await this.updateQuestionStats(questionId);
 		} catch (error) {
 			logger.analyticsError('trackUserAnswer', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				questionId,
 			});
@@ -278,7 +283,7 @@ export class AnalyticsService implements OnModuleInit {
 			return this.performanceData;
 		} catch (error) {
 			logger.analyticsError('getPerformanceMetrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -296,7 +301,7 @@ export class AnalyticsService implements OnModuleInit {
 			return businessMetrics;
 		} catch (error) {
 			logger.analyticsError('getBusinessMetrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -314,7 +319,7 @@ export class AnalyticsService implements OnModuleInit {
 			return this.securityData;
 		} catch (error) {
 			logger.analyticsError('getSecurityMetrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -390,7 +395,7 @@ export class AnalyticsService implements OnModuleInit {
 			return recommendations;
 		} catch (error) {
 			logger.analyticsError('getSystemRecommendations', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -467,20 +472,23 @@ export class AnalyticsService implements OnModuleInit {
 				return;
 			}
 
-			const stats = user.stats || {};
+			const stats = user.stats as Record<string, unknown> || {};
 
-			stats.totalQuestions = (stats.totalQuestions || 0) + 1;
-			stats.correctAnswers = (stats.correctAnswers || 0) + (answerData.isCorrect ? 1 : 0);
+			stats.totalQuestions = ((stats.totalQuestions as number) || 0) + 1;
+			stats.correctAnswers = ((stats.correctAnswers as number) || 0) + (answerData.isCorrect ? 1 : 0);
 
-			if (!stats.topicsPlayed) stats.topicsPlayed = {};
+			if (!stats.topicsPlayed) {
+				stats.topicsPlayed = {};
+			}
 			if (answerData.topic) {
-				if (!stats.topicsPlayed[answerData.topic]) {
-					stats.topicsPlayed[answerData.topic] = 0;
+				const topicsPlayed = stats.topicsPlayed as Record<string, number>;
+				if (!topicsPlayed[answerData.topic]) {
+					topicsPlayed[answerData.topic] = 0;
 				}
-				stats.topicsPlayed[answerData.topic]++;
+				topicsPlayed[answerData.topic]++;
 			}
 
-			user.stats = stats;
+			user.stats = stats as Record<string, BasicValue>;
 			await this.userRepo.save(user);
 
 			logger.userDebug('User statistics updated', {
@@ -489,7 +497,7 @@ export class AnalyticsService implements OnModuleInit {
 			});
 		} catch (error) {
 			logger.userError('Failed to update user stats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 		}
@@ -511,7 +519,7 @@ export class AnalyticsService implements OnModuleInit {
 			});
 		} catch (error) {
 			logger.gameError('Failed to update question stats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				questionId,
 			});
 		}
@@ -536,7 +544,7 @@ export class AnalyticsService implements OnModuleInit {
 			});
 		} catch (error) {
 			logger.databaseError('Failed to save event to database', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 		}
@@ -610,7 +618,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('calculateUserStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -690,7 +698,7 @@ export class AnalyticsService implements OnModuleInit {
 			};
 		} catch (error) {
 			logger.analyticsError('calculateGameStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -745,7 +753,7 @@ export class AnalyticsService implements OnModuleInit {
 			);
 		} catch (error) {
 			logger.databaseError('Failed to get topics from database', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return [];
 		}
@@ -806,7 +814,7 @@ export class AnalyticsService implements OnModuleInit {
 			);
 		} catch (error) {
 			logger.analyticsError('calculateDifficultyStats', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {} as Record<string, { total: number; correct: number; averageTime: number }>;
 		}
@@ -930,7 +938,7 @@ export class AnalyticsService implements OnModuleInit {
 			);
 		} catch (error) {
 			logger.analyticsError('calculateBusinessMetrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {};
 		}
@@ -988,7 +996,7 @@ export class AnalyticsService implements OnModuleInit {
 					});
 				} catch (error) {
 					logger.analyticsError('updateMetrics', {
-						error: error instanceof Error ? error.message : 'Unknown error',
+						error: getErrorMessage(error),
 					});
 				}
 			},
@@ -1073,7 +1081,7 @@ export class AnalyticsService implements OnModuleInit {
 			);
 		} catch (error) {
 			logger.analyticsError('getUserAnalytics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;

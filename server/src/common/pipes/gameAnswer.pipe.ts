@@ -6,7 +6,7 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { GameAnswerData, GameAnswerValidationResult,serverLogger as logger  } from '@shared';
+import { GameAnswerData, GameAnswerValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -69,10 +69,10 @@ export class GameAnswerPipe implements PipeTransform {
 			};
 		} catch (error) {
 			logger.validationError('game_answer', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
-			logger.apiUpdateError('gameAnswerValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('gameAnswerValidation', getErrorMessage(error));
 
 			throw new BadRequestException('Game answer validation failed');
 		}

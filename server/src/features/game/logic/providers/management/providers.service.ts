@@ -12,7 +12,9 @@ import {
 	ProviderMetrics,
 	ProviderStats,
 	roundToDecimals,
- serverLogger as logger,	TriviaQuestion } from '@shared';
+ serverLogger as logger,
+ getErrorMessage,
+ TriviaQuestion } from '@shared';
 
 import {
 	AnthropicTriviaProvider,
@@ -144,7 +146,6 @@ export class AiProvidersService {
 					const duration = Date.now() - startTime;
 					const providerDuration = Date.now() - providerStartTime;
 
- on success
 					this.updateProviderStats(providerName, 'success', providerDuration);
 
 					logger.providerSuccess(providerName, {
@@ -161,9 +162,8 @@ export class AiProvidersService {
 					return question;
 				} catch (error) {
 					const providerName = (this.llmProviders[this.currentProviderIndex - 1] || {}).name || 'unknown';
-					lastError = error instanceof Error ? error : new Error('Unknown error');
+					lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
 
- on failure
 					this.updateProviderStats(providerName, 'failure');
 
 					logger.providerFallback(providerName, {
@@ -181,7 +181,7 @@ export class AiProvidersService {
 
 			throw lastError || new Error('Failed to generate question after all retries');
 		} catch (error) {
-			logger.providerError('all', error instanceof Error ? error.message : 'Unknown error', {
+			logger.providerError('all', getErrorMessage(error), {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,

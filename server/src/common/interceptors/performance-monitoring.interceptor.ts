@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { metricsService , PERFORMANCE_THRESHOLDS,serverLogger as logger  } from '@shared';
+import { metricsService , PERFORMANCE_THRESHOLDS,serverLogger as logger, getErrorMessage  } from '@shared';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
@@ -191,7 +191,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 			endpoint,
 			method,
 			userId,
-			error: error instanceof Error ? error.message : 'Unknown error',
+			error: getErrorMessage(error),
 			context: 'PerformanceMonitoringInterceptor',
 		});
 
@@ -200,7 +200,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 			method,
 			duration,
 			userId,
-			error: error instanceof Error ? error.message : 'Unknown error',
+			error: getErrorMessage(error),
 			timestamp: new Date(),
 		});
 	}

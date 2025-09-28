@@ -6,7 +6,7 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { serverLogger as logger , TriviaRequestData, TriviaRequestValidationResult, VALIDATION_LIMITS } from '@shared';
+import { serverLogger as logger , TriviaRequestData, TriviaRequestValidationResult, VALIDATION_LIMITS, getErrorMessage } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -74,10 +74,10 @@ export class TriviaRequestPipe implements PipeTransform {
 			};
 		} catch (error) {
 			logger.validationError('trivia_request', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
-			logger.apiUpdateError('triviaRequestValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('triviaRequestValidation', getErrorMessage(error));
 
 			throw new BadRequestException('Trivia request validation failed');
 		}

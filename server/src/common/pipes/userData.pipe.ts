@@ -7,7 +7,7 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { UserProfileUpdateData, ValidationResult } from '@shared';
-import { serverLogger as logger , UserDataValidationResult } from '@shared';
+import { serverLogger as logger , UserDataValidationResult, getErrorMessage } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -85,10 +85,10 @@ export class UserDataPipe implements PipeTransform {
 			};
 		} catch (error) {
 			logger.validationError('user_data', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
-			logger.apiUpdateError('userDataValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('userDataValidation', getErrorMessage(error));
 
 			throw new BadRequestException('User data validation failed');
 		}

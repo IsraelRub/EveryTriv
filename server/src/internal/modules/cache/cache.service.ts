@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, StorageService, createTimedResult, formatStorageError, trackOperationWithTiming, serverLogger as logger } from '@shared';
+import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, StorageService, createTimedResult, formatStorageError, trackOperationWithTiming, serverLogger as logger, getErrorMessage } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 
 /**
@@ -63,7 +63,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('set', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('set', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
 		}
@@ -103,7 +103,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('get', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('get', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<T | null>(false, null, formatStorageError(error), startTime, 'cache');
 		}
@@ -130,7 +130,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			return value;
 		} catch (error) {
 			logger.cacheError('getOrSet', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -152,7 +152,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 		} catch (error) {
 			logger.cacheError('mget', keys.join(','), {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return keys.map(() => null);
 		}
@@ -178,7 +178,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			});
 		} catch (error) {
 			logger.cacheError('mset', 'multiple', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				keysCount: keyValues.length,
 			});
 		}
@@ -201,7 +201,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 		} catch (error) {
 			logger.cacheError('increment', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return 0;
 		}
@@ -233,7 +233,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('delete', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('delete', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
 		}
@@ -261,7 +261,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('exists', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('exists', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<boolean>(false, false, formatStorageError(error), startTime, 'cache');
 		}
@@ -282,7 +282,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 		} catch (error) {
 			logger.cacheError('setTTL', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -303,7 +303,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 		} catch (error) {
 			logger.cacheError('getTTL', key, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return -1;
 		}
@@ -328,7 +328,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('clear', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('clear', '', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
 		}
@@ -354,7 +354,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('getStats', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('getStats', '', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<StorageStats>(
 				false,
@@ -399,7 +399,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('invalidate', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('invalidatePattern', pattern, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
 		}
@@ -427,7 +427,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('getKeys', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('getKeys', '', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return createTimedResult<string[]>(false, [], formatStorageError(error), startTime, 'cache');
 		}
@@ -505,7 +505,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		} catch (error) {
 			trackOperationWithTiming('cleanup', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('cleanup', '', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				options: options ? JSON.stringify(options) : 'none',
 			});
 			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
@@ -529,7 +529,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 		} catch (error) {
 			logger.cacheError('invalidatePattern', pattern, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return 0;
 		}
@@ -777,7 +777,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			});
 		} catch (error) {
 			logger.cacheError('invalidateOnStorageChange', pattern, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 		}
 	}
@@ -788,7 +788,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			logger.system('Cache service destroyed', {});
 		} catch (error) {
 			logger.systemError('Failed to destroy cache service', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 		}
 	}

@@ -745,7 +745,7 @@ export interface ProviderConfig {
 	enabled: boolean;
 	priority: number;
 	headers?: Record<string, string>;
-	body?: Record<string, any>;
+	body?: Record<string, unknown>;
 }
 
 /**

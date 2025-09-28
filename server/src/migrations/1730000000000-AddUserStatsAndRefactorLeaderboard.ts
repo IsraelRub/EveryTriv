@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@shared';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserStatsAndRefactorLeaderboard1730000000000 implements MigrationInterface {
@@ -152,7 +153,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 			console.error('Migration failed: AddUserStatsAndRefactorLeaderboard', {
 				migrationName: this.name,
 				operation: 'up',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -191,7 +192,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 			console.error('Migration rollback failed: AddUserStatsAndRefactorLeaderboard', {
 				migrationName: this.name,
 				operation: 'down',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

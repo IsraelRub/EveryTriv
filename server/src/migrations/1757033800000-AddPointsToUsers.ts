@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { getErrorMessage } from '@shared';
 
 export class AddPointsToUsers1757033800000 implements MigrationInterface {
 	name = 'AddPointsToUsers1757033800000';
@@ -23,7 +24,7 @@ export class AddPointsToUsers1757033800000 implements MigrationInterface {
 			console.error('Migration failed: AddPointsToUsers', {
 				migrationName: this.name,
 				operation: 'up',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -49,7 +50,7 @@ export class AddPointsToUsers1757033800000 implements MigrationInterface {
 			console.error('Migration rollback failed: AddPointsToUsers', {
 				migrationName: this.name,
 				operation: 'down',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

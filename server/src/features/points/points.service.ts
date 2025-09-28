@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse  } from '@shared';
+import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse, getErrorMessage  } from '@shared';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
@@ -65,7 +65,7 @@ export class PointsService extends BasePointsService {
 				1800
 			);
 		} catch (error) {
-			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point balance', {
+			logger.errorWithStack(error instanceof Error ? error : new Error(getErrorMessage(error)), 'Failed to get point balance', {
 				userId,
 			});
 			throw error;
@@ -96,7 +96,7 @@ export class PointsService extends BasePointsService {
 				3600
 			);
 		} catch (error) {
-			logger.errorWithStack(error instanceof Error ? error : new Error(String(error)), 'Failed to get point packages');
+			logger.errorWithStack(error instanceof Error ? error : new Error(getErrorMessage(error)), 'Failed to get point packages');
 			throw error;
 		}
 	}
@@ -132,7 +132,7 @@ export class PointsService extends BasePointsService {
 			};
 		} catch (error) {
 			logger.errorWithStack(
-				error instanceof Error ? error : new Error(String(error)),
+				error instanceof Error ? error : new Error(getErrorMessage(error)),
 				'Failed to check if user can play',
 				{ userId, questionCount }
 			);
@@ -241,7 +241,7 @@ export class PointsService extends BasePointsService {
 				userId,
 				questionCount,
 				gameMode,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -274,7 +274,7 @@ export class PointsService extends BasePointsService {
 			logger.databaseError('Failed to get point history', {
 				userId,
 				limit,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -337,7 +337,7 @@ export class PointsService extends BasePointsService {
 			logger.databaseError('Failed to purchase points', {
 				userId,
 				packageId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -418,7 +418,7 @@ export class PointsService extends BasePointsService {
 				userId,
 				paymentIntentId,
 				points,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -452,7 +452,7 @@ export class PointsService extends BasePointsService {
 			}
 		} catch (error) {
 			logger.databaseError('Failed to reset daily free questions', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

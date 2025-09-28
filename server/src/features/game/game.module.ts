@@ -28,7 +28,7 @@ import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { AiProvidersService } from './logic/providers/management';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
-import { PointCalculationService } from '@shared/services/points/pointCalculation.service';
+import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 
 @Module({
 	imports: [

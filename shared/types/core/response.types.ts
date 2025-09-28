@@ -53,7 +53,7 @@ export interface DataResponse<T = ApiRequestBody> extends BaseResponse {
  * @interface SuccessResponse
  * @description Success response with guaranteed success status
  */
-export interface SuccessResponse<T = unknown> extends BaseApiResponse<T> {
+export interface SuccessResponse<T = unknown> extends Omit<BaseApiResponse<T>, 'success'> {
 	success: true;
 }
 
@@ -62,7 +62,7 @@ export interface SuccessResponse<T = unknown> extends BaseApiResponse<T> {
  * @interface ErrorResponse
  * @description Error response with guaranteed failure status
  */
-export interface ErrorResponse extends BaseApiResponse<null> {
+export interface ErrorResponse extends Omit<BaseApiResponse<null>, 'success'> {
 	success: false;
 	error?: {
 		message: string;

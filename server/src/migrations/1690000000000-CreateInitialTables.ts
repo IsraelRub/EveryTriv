@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@shared';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateInitialTables1690000000000 implements MigrationInterface {
@@ -74,7 +75,7 @@ export class CreateInitialTables1690000000000 implements MigrationInterface {
 			console.error('Migration failed: CreateInitialTables', {
 				migrationName: this.name,
 				operation: 'up',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -99,7 +100,7 @@ export class CreateInitialTables1690000000000 implements MigrationInterface {
 			console.error('Migration rollback failed: CreateInitialTables', {
 				migrationName: this.name,
 				operation: 'down',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

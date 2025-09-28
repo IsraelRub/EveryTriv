@@ -1,4 +1,4 @@
-import { clientLogger,ErrorBoundaryProps, ErrorBoundaryState , formatTime, getCurrentTimestamp  } from '@shared';
+import { clientLogger,ErrorBoundaryProps, ErrorBoundaryState , formatTime, getCurrentTimestamp, getErrorMessage, getErrorStack, getErrorType  } from '@shared';
 import { motion } from 'framer-motion';
 import { Component, ErrorInfo } from 'react';
 
@@ -18,8 +18,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Enhanced error logging with advanced details and retry mechanism
     const errorDetails = {
-      error: error.message,
-      stack: error.stack,
+      error: getErrorMessage(error),
+      stack: getErrorStack(error),
       componentStack: errorInfo.componentStack || '',
       timestamp: getCurrentTimestamp(),
       type: 'component_error',
@@ -28,13 +28,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       timeSincePageLoad: formatTime(
         Math.floor((Date.now() - performance.timing.navigationStart) / 1000)
       ),
-      errorType: error.constructor.name,
+      errorType: getErrorType(error),
       errorCode: (error as Error & { code?: string }).code || 'UNKNOWN',
       retryCount: 0,
       lastErrorTime: null,
     };
 
-    clientLogger.navigationComponentError('ErrorBoundary', error.message, errorDetails);
+    clientLogger.navigationComponentError('ErrorBoundary', getErrorMessage(error), errorDetails);
 
     // Store error in storage for debugging
     try {
@@ -44,7 +44,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       };
       await storageService.set('error-log', errorLog);
     } catch (storageError) {
-      // Ignore storage errors
+      // Ignore storage errors - log with error utility
+      console.warn('Failed to store error log:', getErrorMessage(storageError));
     }
 
     this.setState({

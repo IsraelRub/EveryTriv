@@ -12,11 +12,7 @@
  */
 export { BasePointsService } from './basePoints.service';
 
-/**
- * Point calculation service
- * @description Advanced mathematical operations for points
- */
-export { PointCalculationService } from './pointCalculation.service';
+// Note: PointCalculationService is server-only (depends on NestJS). Do not export here to keep client bundle browser-safe.
 
 /**
  * Point validation functions

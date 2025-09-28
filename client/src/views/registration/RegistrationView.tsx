@@ -5,7 +5,7 @@
  * @description User registration page with validation using ValidatedForm
  */
 
-import { clientLogger } from '@shared';
+import { clientLogger, getErrorMessage } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -56,7 +56,7 @@ export default function RegistrationView() {
       authService.initiateGoogleLogin();
     } catch (error) {
       clientLogger.gameError('Google signup failed', {
-        error: error instanceof Error ? error.message : 'Google signup failed',
+        error: getErrorMessage(error),
       });
       audioService.play(AudioKey.ERROR);
     }
@@ -113,7 +113,7 @@ export default function RegistrationView() {
       }
     } catch (error) {
       clientLogger.gameError('Registration failed', {
-        error: error instanceof Error ? error.message : 'Registration failed',
+        error: getErrorMessage(error),
       });
       audioService.play(AudioKey.ERROR);
     } finally {

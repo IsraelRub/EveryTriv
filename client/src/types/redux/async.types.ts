@@ -4,6 +4,7 @@
  * @description Async operation types for Redux
  */
 import type { PointBalance } from '../points.types';
+import type { BasicValue } from '@shared/types/core/data.types';
 
 /**
  * Base state interface for all Redux slices
@@ -30,7 +31,7 @@ export interface ErrorPayload {
 /**
  * Success action payload
  */
-export interface SuccessPayload<T = Record<string, any>> {
+export interface SuccessPayload<T = Record<string, BasicValue>> {
   data: T;
 }
 
@@ -42,7 +43,7 @@ export type AsyncStateStatus = 'idle' | 'loading' | 'success' | 'error';
 /**
  * Async state with data
  */
-export interface AsyncStateWithData<T = Record<string, any>> extends BaseReduxState {
+export interface AsyncStateWithData<T = Record<string, BasicValue>> extends BaseReduxState {
   status: AsyncStateStatus;
   data: T | null;
 }

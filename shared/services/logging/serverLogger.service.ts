@@ -11,6 +11,7 @@ import * as path from 'path';
 import type { BasicValue, StatsValue } from '../../types/core/data.types';
 import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { BaseLoggerService } from './baseLogger.service';
+import { getErrorMessage, getErrorStack } from '../../utils';
 
 /**
  * Server Logger Implementation
@@ -64,7 +65,8 @@ export class ServerLogger extends BaseLoggerService {
 
 		this.initializePerformanceThresholds();
 
-		if (typeof process === 'undefined') {
+		// Guard: avoid Node-only APIs when bundled in browser accidentally
+		if (typeof process === 'undefined' || typeof path?.join !== 'function') {
 			this.logDir = '';
 			this.logFile = '';
 			return;
@@ -138,7 +140,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private writeToFile(level: string, message: string, meta?: LogMeta): void {
-		if (typeof fs === 'undefined') return; - no file logging
+		if (typeof fs === 'undefined') return;
 
 		try {
 			const now = new Date();
@@ -464,8 +466,8 @@ export class ServerLogger extends BaseLoggerService {
 	 * Log error with enhanced context
 	 */
 	public logErrorEnhanced(error: Error | string, metadata?: Record<string, BasicValue>): void {
-		const errorMessage = error instanceof Error ? error.message : error;
-		const errorStack = error instanceof Error ? error.stack : undefined;
+		const errorMessage = getErrorMessage(error);
+		const errorStack = getErrorStack(error);
 
 		const context = {
 			error: errorMessage,
@@ -543,7 +545,7 @@ export class ServerLogger extends BaseLoggerService {
 			this.trackPerformanceEnhanced(operation, startTime, {
 				...metadata,
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -563,7 +565,7 @@ export class ServerLogger extends BaseLoggerService {
 			this.trackPerformanceEnhanced(operation, startTime, {
 				...metadata,
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

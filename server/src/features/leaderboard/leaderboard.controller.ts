@@ -1,7 +1,8 @@
 import { Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { CurrentUserId } from '../../common';
+import { Public } from '../../common/decorators/auth.decorator';
 import { GetLeaderboardDto } from './dtos';
 import { LeaderboardService } from './leaderboard.service';
 
@@ -35,7 +36,7 @@ export class LeaderboardController {
 			return ranking;
 		} catch (error) {
 			logger.analyticsError('getUserRanking', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId: userId,
 			});
 			throw new HttpException('Failed to get user ranking', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -61,7 +62,7 @@ export class LeaderboardController {
 			return ranking;
 		} catch (error) {
 			logger.analyticsError('updateUserRanking', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId: userId,
 			});
 			throw new HttpException('Failed to update user ranking', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -75,6 +76,7 @@ export class LeaderboardController {
 	 * @returns Global leaderboard data
 	 */
 	@Get('global')
+	@Public()
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
@@ -96,7 +98,7 @@ export class LeaderboardController {
 			};
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new HttpException('Failed to get global leaderboard', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
@@ -109,6 +111,7 @@ export class LeaderboardController {
 	 * @returns Leaderboard for specific time period
 	 */
 	@Get('period/:period')
+	@Public()
 	async getLeaderboardByPeriod(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
@@ -136,7 +139,7 @@ export class LeaderboardController {
 			};
 		} catch (error) {
 			logger.analyticsError('getLeaderboardByPeriod', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				period: query.type || 'weekly',
 			});
 			throw new HttpException('Failed to get period leaderboard', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -159,7 +162,7 @@ export class LeaderboardController {
 			};
 		} catch (error) {
 			logger.analyticsError('getUserPercentile', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId: userId,
 			});
 			throw new HttpException('Failed to get user percentile', HttpStatus.INTERNAL_SERVER_ERROR);

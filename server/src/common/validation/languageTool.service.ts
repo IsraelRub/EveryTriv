@@ -5,7 +5,9 @@ import {
 	LanguageToolResponse,
 	LanguageValidationOptions,
  serverLogger as logger,	SupportedLanguage,
-	VALIDATION_ERROR_MESSAGES } from '@shared';
+	VALIDATION_ERROR_MESSAGES,
+	getErrorMessage,
+	getErrorStack } from '@shared';
 
 // import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
@@ -94,11 +96,11 @@ export class LanguageToolService {
 
 			return result;
 		} catch (error) {
-			const errorMessage = `LanguageTool API error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			const errorMessage = `LanguageTool API error: ${getErrorMessage(error)}`;
 			logger.languageToolError(errorMessage, {
 				language,
 				textLength: text.length,
-				error: error instanceof Error ? error.stack : 'Unknown error type',
+				error: getErrorStack(error),
 			});
 			throw error;
 		}
@@ -159,9 +161,9 @@ export class LanguageToolService {
 
 			return supportedLanguages;
 		} catch (error) {
-			const errorMessage = `Failed to get supported languages: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			const errorMessage = `Failed to get supported languages: ${getErrorMessage(error)}`;
 			logger.languageToolError(errorMessage, {
-				error: error instanceof Error ? error.stack : 'Unknown error type',
+				error: getErrorStack(error),
 			});
 
 			// Return basic languages as fallback
@@ -203,7 +205,7 @@ export class LanguageToolService {
 			return isAvailable;
 		} catch (error) {
 			logger.languageToolError('Service availability check failed', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return false;
 		}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
 
@@ -45,7 +45,7 @@ export class TriviaRepository extends BaseRepository<TriviaEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find trivia questions by topic: ${topic}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -76,7 +76,7 @@ export class TriviaRepository extends BaseRepository<TriviaEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find trivia questions by difficulty: ${difficulty}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

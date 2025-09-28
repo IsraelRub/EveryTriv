@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
-import { PasswordConfig, PasswordValidationResult,serverLogger as logger  } from '@shared';
+import { PasswordConfig, PasswordValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -35,7 +35,7 @@ export class PasswordService {
 			return hashedPassword;
 		} catch (error) {
 			logger.securityError('Failed to hash password', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error('Failed to hash password');
 		}
@@ -57,7 +57,7 @@ export class PasswordService {
 			return isMatch;
 		} catch (error) {
 			logger.securityError('Failed to compare password', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -211,7 +211,7 @@ export class PasswordService {
 			return hashedPassword;
 		} catch (error) {
 			logger.securityError('Failed to hash password with custom salt', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error('Failed to hash password with custom salt');
 		}
@@ -230,7 +230,7 @@ export class PasswordService {
 			};
 		} catch (error) {
 			logger.securityError('Failed to get password hash info', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return null;
 		}

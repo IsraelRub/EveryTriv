@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { CurrentUserId } from '../../common';
 import { AuthGuard } from '../../common/guards';
@@ -49,7 +49,7 @@ export class SubscriptionController {
 
 			return result;
 		} catch (error) {
-			logger.apiCreateError('subscription', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiCreateError('subscription', getErrorMessage(error), {
 				userId: userId,
 				plan: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
@@ -74,7 +74,7 @@ export class SubscriptionController {
 
 			return result;
 		} catch (error) {
-			logger.apiDeleteError('subscription', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiDeleteError('subscription', getErrorMessage(error), {
 				userId: userId,
 			});
 			throw error;

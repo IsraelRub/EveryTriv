@@ -6,6 +6,7 @@
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BasicValue } from '@shared';
+import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
 	IsDateString,
@@ -95,6 +96,7 @@ export class TrackEventDto {
 		minimum: 0,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Duration must be a number' })
 	duration?: number;
 
@@ -103,6 +105,7 @@ export class TrackEventDto {
 		example: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Value must be a number' })
 	value?: number;
 
@@ -215,6 +218,7 @@ export class GameAnalyticsQueryDto {
 		maximum: 1000,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	limit?: number;
 }
@@ -243,6 +247,7 @@ export class TopicAnalyticsQueryDto {
 		maximum: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	limit?: number;
 

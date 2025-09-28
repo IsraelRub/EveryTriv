@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
-import { PaymentData , serverLogger as logger } from '@shared';
+import { PaymentData , serverLogger as logger, getErrorMessage } from '@shared';
 
 import {
 	AuditLog,
@@ -70,7 +70,7 @@ export class PaymentController {
 				message: 'Payment session created successfully',
 			};
 		} catch (error) {
-			logger.apiCreateError('payment', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiCreateError('payment', getErrorMessage(error), {
 				userId: userId,
 				planType: paymentData.planType,
 			});
@@ -94,7 +94,7 @@ export class PaymentController {
 
 			return result;
 		} catch (error) {
-			logger.apiReadError('payment_history', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiReadError('payment_history', getErrorMessage(error), {
 				userId: userId,
 			});
 			throw error;

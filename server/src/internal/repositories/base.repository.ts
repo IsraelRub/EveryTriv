@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
-import { DeepPartial, FindManyOptions, FindOneOptions, FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { serverLogger as logger, getErrorMessage } from '@shared';
+import { DeepPartial, FindManyOptions, FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
 
 /**
  * Base repository class providing common database operations
@@ -38,7 +38,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 		} catch (error) {
 			logger.databaseError(`Failed to create entity: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -60,7 +60,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 
 			const entity = await this.repository.findOne({
 				where: { id } as unknown as FindOptionsWhere<T>,
-			} as FindOneOptions<T>);
+			});
 
 			if (entity) {
 				logger.databaseInfo(`Entity found: ${entityName}`, {
@@ -81,7 +81,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 			logger.databaseError(`Failed to find entity: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
 				entityId: id.toString(),
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -109,7 +109,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 		} catch (error) {
 			logger.databaseError(`Failed to find entities: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -136,7 +136,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 		} catch (error) {
 			logger.databaseError(`Failed to find all entities: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -158,7 +158,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 			const updatedEntity = await this.findById(id);
 
 			if (!updatedEntity) {
-				throw new Error('Entity not found after update');
+				throw new NotFoundException('Entity not found after update');
 			}
 
 			logger.databaseInfo(`Entity updated: ${entityName}`, {
@@ -171,7 +171,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 			logger.databaseError(`Failed to update entity: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
 				entityId: id.toString(),
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -201,7 +201,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 			logger.databaseError(`Failed to delete entity: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
 				entityId: id.toString(),
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -221,7 +221,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 			logger.databaseError(`Failed to check entity existence: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
 				entityId: id.toString(),
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -249,7 +249,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 		} catch (error) {
 			logger.databaseError(`Failed to count entities: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

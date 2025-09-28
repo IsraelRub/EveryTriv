@@ -3,9 +3,7 @@
  * @module ScoreCalculationService
  * @description Service for calculating game scores and multipliers
  */
-import {
-  PointCalculationService,
-} from '@shared';
+import { calculateAnswerPoints } from '@shared/utils';
 
 import { TriviaQuestion } from '../../types';
 
@@ -20,14 +18,7 @@ export const calculateScore = (
   streak: number = 0,
   isCorrect: boolean = true
 ): number => {
-  // Use the point calculation service
-  const pointCalculationService = new PointCalculationService();
-  return pointCalculationService.calculateAnswerPoints(
-    question.difficulty,
-    timeSpent,
-    streak,
-    isCorrect
-  );
+  return calculateAnswerPoints(question.difficulty, timeSpent, streak, isCorrect);
 };
 
 /**

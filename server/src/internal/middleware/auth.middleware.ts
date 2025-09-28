@@ -1,5 +1,5 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { serverLogger as logger, TokenExtractionService } from '@shared';
+import { serverLogger as logger, TokenExtractionService, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -25,7 +25,7 @@ export class AuthMiddleware implements NestMiddleware {
 			next();
 		} catch (error) {
 			logger.authError('Auth middleware error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				path: req.path,
 				method: req.method,
 			});

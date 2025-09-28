@@ -5,6 +5,7 @@
  * @description Data Transfer Objects for subscription management
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
 	IsDateString,
@@ -137,6 +138,7 @@ export class SubscriptionHistoryQueryDto {
 		maximum: 50,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(50, { message: 'Limit cannot exceed 50' })

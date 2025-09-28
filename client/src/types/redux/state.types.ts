@@ -5,6 +5,7 @@
  */
 import { GameMode } from '@shared';
 import { GameHistoryEntry, LeaderboardEntry, User } from '@shared';
+import type { BasicValue } from '@shared/types/core/data.types';
 
 import type {
   GameConfig,
@@ -93,7 +94,7 @@ export interface RootState {
   favorites: FavoritesState;
 }
 
- Interface
+// User State
 export interface UserState {
   id: string;
   username: string;
@@ -101,7 +102,7 @@ export interface UserState {
   role: string;
   firstName?: string;
   lastName?: string;
-  preferences?: Record<string, any>;
+  preferences?: Record<string, BasicValue>;
   subscription?: {
     type: string;
     status: string;

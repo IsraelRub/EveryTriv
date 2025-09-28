@@ -131,3 +131,17 @@ export const COMMON_ERROR_MESSAGES = {
 	RATE_LIMIT_EXCEEDED: 'Too many requests. Please try again later.',
 	TIMEOUT: 'Request timed out. Please try again.',
 } as const;
+
+/**
+ * NestJS exception names array
+ * @constant
+ * @description Array of NestJS exception names used for error handling
+ * @used_by shared/utils/error.utils.ts
+ */
+export const NEST_EXCEPTION_NAMES = [
+	'BadRequestException',
+	'NotFoundException',
+	'InternalServerErrorException',
+	'UnauthorizedException',
+	'ForbiddenException',
+] as const;

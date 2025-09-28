@@ -6,7 +6,10 @@ import {
 	PreferenceValue,
  serverLogger as logger,	UserAddress,
 	UserFieldUpdate,
-	UserPreferences } from '@shared';
+	UserPreferences,
+	getErrorMessage,
+	createServerError,
+	createValidationError } from '@shared';
 import { UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
@@ -101,7 +104,7 @@ export class UserService {
 		} catch (error) {
 			logger.securityDenied('Login failed', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				email: email.substring(0, 10) + '...',
 			});
 			throw error;
@@ -167,7 +170,7 @@ export class UserService {
 			logger.userError('Registration failed', {
 				email: registerData.email,
 				username: registerData.username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -204,7 +207,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user profile', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -272,7 +275,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user profile', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -319,7 +322,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user stats', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -379,7 +382,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to search users', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				query,
 			});
 			throw error;
@@ -414,7 +417,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user by username', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				username,
 			});
 			throw error;
@@ -454,7 +457,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to delete user account', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -497,7 +500,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user preferences', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -535,7 +538,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -559,7 +562,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user by email', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				email: email.substring(0, 10) + '...',
 			});
 			return null;
@@ -583,7 +586,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user by ID', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			return null;
@@ -607,7 +610,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user by reset token', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				token: resetToken.substring(0, 10) + '...',
 			});
 			return null;
@@ -631,7 +634,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to find user by Google ID', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				googleId: googleId.substring(0, 10) + '...',
 			});
 			return null;
@@ -673,7 +676,7 @@ export class UserService {
 			logger.userError('Failed to create user', {
 				email: userData.email,
 				username: userData.username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -713,7 +716,7 @@ export class UserService {
 			logger.userError('Failed to create Google user', {
 				googleId: userData.googleId,
 				email: userData.email,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -744,7 +747,7 @@ export class UserService {
 			logger.userError('Failed to link Google account', {
 				userId,
 				googleId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -792,11 +795,11 @@ export class UserService {
 			logger.userError('Failed to log user activity', {
 				userId,
 				action,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			};
 		}
 	}
@@ -817,7 +820,7 @@ export class UserService {
 			// Get all audit keys for this user
 			const keysResult = await this.storageService.getKeys();
 			if (!keysResult.success) {
-				throw new Error('Failed to get audit keys');
+				throw createServerError('get audit keys', keysResult.error);
 			}
 
 			const auditKeys =
@@ -844,7 +847,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user audit logs', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -901,13 +904,13 @@ export class UserService {
 				if (value === 'admin' || value === 'user' || value === 'guest') {
 					user.role = value;
 				} else {
-					throw new Error('Role must be admin, user, or guest');
+					throw createValidationError('role', 'string');
 				}
 			} else if (field === 'currentSubscriptionId') {
 				if (typeof value === 'string' || value === null) {
 					user.currentSubscriptionId = value as string | undefined;
 				} else {
-					throw new Error('Current subscription ID must be a string or null');
+					throw createValidationError('currentSubscriptionId', 'string');
 				}
 			} else if (field === 'status') {
 				const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
@@ -949,7 +952,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user field', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				field,
 			});
@@ -996,7 +999,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update single preference', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				preference,
 			});
@@ -1053,7 +1056,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user credits', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				amount,
 			});
@@ -1111,7 +1114,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to update user status', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				status,
 			});
@@ -1139,7 +1142,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to get user credits', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -1193,7 +1196,7 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to deduct credits', {
 				context: 'UserService',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				amount,
 				reason,

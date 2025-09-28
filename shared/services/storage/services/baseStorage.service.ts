@@ -9,6 +9,7 @@
 import {
 	CacheData,
 	CacheStorage,
+	getErrorMessage,
 	formatTime,
 	StorageCleanupOptions,
 	StorageConfig,
@@ -204,7 +205,7 @@ export abstract class BaseStorageService implements StorageService {
 			return this.createSuccessResult<void>();
 		} catch (error) {
 			return this.createErrorResult<void>(
-				`Failed to invalidate keys: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`Failed to invalidate keys: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -277,7 +278,7 @@ export abstract class BaseStorageService implements StorageService {
 			});
 		} catch (error) {
 			return this.createErrorResult<StorageStats>(
-				`Failed to get stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`Failed to get stats: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -332,7 +333,7 @@ export abstract class BaseStorageService implements StorageService {
 			return this.createSuccessResult<void>();
 		} catch (error) {
 			return this.createErrorResult<void>(
-				`Failed to cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`Failed to cleanup: ${getErrorMessage(error)}`
 			);
 		}
 	}

@@ -7,7 +7,7 @@
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
 import type { ApiRequestBody } from '../core/data.types';
-import type { BaseError , ErrorDetails } from '../core/error.types';
+import type { BaseData } from '../core/data.types';
 import type { BaseApiResponse, BasePagination , PaginatedResponse, SuccessResponse } from '../core/response.types';
 
 /**
@@ -60,8 +60,12 @@ export interface ApiMetadata extends Partial<BasePagination> {
  * @description Standard error response structure
  * @used_by server: server/src/common/filters/http-exception.filter.ts (error responses), client: client/src/services/api.service.ts (error handling), shared/services/http-client.ts (error handling)
  */
-export interface ApiError extends BaseError {
-	details?: ErrorDetails;
+export interface ApiError {
+	message: string;
+	code?: string;
+	statusCode: number;
+	timestamp?: string;
+	details?: BaseData;
 	path?: string;
 }
 
@@ -211,22 +215,6 @@ export interface CreateGameHistoryDto {
 	questionsData: QuestionData[];
 }
 
-// User Profile Response
-export interface UserProfileResponse {
-	data: {
-		id: string;
-		username: string;
-		email: string;
-		firstName?: string;
-		lastName?: string;
-		role?: string;
-		createdAt?: string;
-		updatedAt?: string;
-		preferences?: Record<string, unknown>;
-	};
-	timestamp: string;
-}
-
 // Admin User Data
 export interface AdminUserData {
 	id: string;
@@ -235,6 +223,17 @@ export interface AdminUserData {
 	role: string;
 	createdAt: string;
 	lastLogin?: string;
+}
+
+// User Profile Response
+export interface UserProfileResponse {
+	data: Pick<AdminUserData, 'id' | 'username' | 'email' | 'role' | 'createdAt'> & {
+		firstName?: string;
+		lastName?: string;
+		updatedAt?: string;
+		preferences?: Record<string, unknown>;
+	};
+	timestamp: string;
 }
 
 // Users List Response

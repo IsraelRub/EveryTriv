@@ -7,7 +7,7 @@
  */
 import { Roles } from '@common';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
-import { MetricsService , serverLogger as logger } from '@shared';
+import { MetricsService , serverLogger as logger, getErrorMessage } from '@shared';
 
 // MiddlewareMetrics type is used implicitly
 
@@ -101,13 +101,13 @@ export class MiddlewareMetricsController {
 			};
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				success: false,
 				message: 'Failed to retrieve middleware metrics',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timestamp: new Date().toISOString(),
 			};
 		}
@@ -143,13 +143,13 @@ export class MiddlewareMetricsController {
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
 				middleware: middlewareName,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				success: false,
 				message: `Failed to retrieve metrics for middleware: ${middlewareName}`,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timestamp: new Date().toISOString(),
 			};
 		}
@@ -176,13 +176,13 @@ export class MiddlewareMetricsController {
 		} catch (error) {
 			logger.systemError('Failed to reset middleware metrics', {
 				middleware: middlewareName,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				success: false,
 				message: `Failed to reset metrics for middleware: ${middlewareName}`,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timestamp: new Date().toISOString(),
 			};
 		}
@@ -206,13 +206,13 @@ export class MiddlewareMetricsController {
 			};
 		} catch (error) {
 			logger.systemError('Failed to reset all middleware metrics', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			return {
 				success: false,
 				message: 'Failed to reset all middleware metrics',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				timestamp: new Date().toISOString(),
 			};
 		}

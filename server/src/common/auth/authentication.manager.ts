@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
-import { AuthenticationConfig, AuthenticationRequest, AuthenticationResult, LoginCredentials, serverLogger as logger , TokenPayload , UserData } from '@shared';
+import { AuthenticationConfig, AuthenticationRequest, AuthenticationResult, LoginCredentials, serverLogger as logger , TokenPayload , UserData, getErrorMessage } from '@shared';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';
@@ -93,7 +93,7 @@ export class AuthenticationManager {
 		} catch (error) {
 			logger.securityError('Authentication failed', {
 				username: credentials.username,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				success: false,
@@ -148,7 +148,7 @@ export class AuthenticationManager {
 			};
 		} catch (error) {
 			logger.securityError('Token refresh failed', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				success: false,
@@ -183,7 +183,7 @@ export class AuthenticationManager {
 			};
 		} catch (error) {
 			logger.securityError('Token validation failed', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return {
 				success: false,
@@ -205,7 +205,7 @@ export class AuthenticationManager {
 			return await this.jwtTokenService.getUserFromToken(token);
 		} catch (error) {
 			logger.securityError('Failed to extract user from request', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			return null;
 		}

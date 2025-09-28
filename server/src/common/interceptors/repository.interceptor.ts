@@ -7,7 +7,7 @@
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
@@ -119,7 +119,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 							context: 'REPOSITORY',
 							className,
 							methodName,
-							error: error instanceof Error ? error.message : 'Unknown error',
+							error: getErrorMessage(error),
 						});
 					}
 				})
@@ -129,7 +129,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 				context: 'REPOSITORY',
 				className,
 				methodName,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
 			// On cache error, proceed with normal method call
@@ -172,7 +172,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 					className,
 					methodName,
 					args: this.sanitizeArgs(args),
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					duration,
 					success: false,
 				});
@@ -235,7 +235,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 					context: 'REPOSITORY',
 					className,
 					methodName,
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: getErrorMessage(error),
 					duration,
 					success: false,
 				});

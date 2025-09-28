@@ -82,3 +82,9 @@ export type { StorageMetrics, StorageSyncOptions } from '../../types/infrastruct
  * @description Cache-specific type definitions
  */
 export type { CacheData } from '../../types/infrastructure/cache.types';
+
+/**
+ * Error utility function imports
+ * @description Error utility function for formatting error messages
+ */
+export { getErrorMessage } from '../../utils';

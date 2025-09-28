@@ -8,7 +8,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONSTANTS, serverLogger as logger, TokenExtractionService } from '@shared';
+import { AUTH_CONSTANTS, serverLogger as logger, TokenExtractionService, getErrorMessage } from '@shared';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -18,15 +18,43 @@ export class AuthGuard implements CanActivate {
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		// Check if endpoint is marked as public
+		// Check if endpoint is marked as public via decorators
 		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [context.getHandler(), context.getClass()]);
 
-		if (isPublic) {
+		const request = context.switchToHttp().getRequest();
+
+		// Fallback: also honor decorator-aware middleware metadata if present
+		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
+
+		// Hardcoded public endpoints as fallback
+		const publicEndpoints = [
+			'/leaderboard/global',
+			'/leaderboard/period',
+			'/health',
+			'/status',
+		];
+		const isHardcodedPublic = publicEndpoints.some(endpoint => 
+			request.path?.includes(endpoint) || false
+		);
+
+		// Additional check for leaderboard endpoints
+		const isLeaderboardGlobal = request.path === '/leaderboard/global' || 
+			request.path?.startsWith('/leaderboard/global?') || false;
+
+		// Debug logging
+		logger.authDebug('AuthGuard check', {
+			path: request.path,
+			method: request.method,
+			isPublic,
+			middlewarePublicFlag,
+			isHardcodedPublic,
+			hasDecoratorMetadata: !!request?.decoratorMetadata,
+		});
+
+		if (isPublic || middlewarePublicFlag || isHardcodedPublic || isLeaderboardGlobal) {
 			logger.authDebug('Public endpoint - skipping auth check');
 			return true;
 		}
-
-		const request = context.switchToHttp().getRequest();
 		const token = TokenExtractionService.extractTokenFromRequest(request);
 
 		if (!token) {
@@ -52,7 +80,7 @@ export class AuthGuard implements CanActivate {
 			return true;
 		} catch (error) {
 			logger.securityDenied('Invalid authentication token', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new UnauthorizedException('Invalid authentication token');
 		}

@@ -19,6 +19,14 @@ export const prefetchCommonQueries = async () => {
       staleTime: 2 * 60 * 1000,
     });
 
+    clientLogger.apiInfo('Common queries prefetched successfully');
+  } catch (error) {
+    clientLogger.apiError('Failed to prefetch common queries', { error });
+  }
+};
+
+export const prefetchAuthenticatedQueries = async () => {
+  try {
     await queryClient.prefetchQuery({
       queryKey: ['points', 'packages'],
       queryFn: async () => {
@@ -28,9 +36,9 @@ export const prefetchCommonQueries = async () => {
       staleTime: 10 * 60 * 1000,
     });
 
-    clientLogger.apiInfo('Common queries prefetched successfully');
+    clientLogger.apiInfo('Authenticated queries prefetched successfully');
   } catch (error) {
-    clientLogger.apiError('Failed to prefetch common queries', { error });
+    clientLogger.apiError('Failed to prefetch authenticated queries', { error });
   }
 };
 

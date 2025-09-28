@@ -1,17 +1,9 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { DEFAULT_PORTS, DEFAULT_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
 import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
-// Define constants locally for vite config
-const DEFAULT_PORTS = {
-	CLIENT: 3000,
-	SERVER: 3003, // Update to match running server
-} as const;
-
-const DEFAULT_URLS = {
-	DEV_SERVER: 'http://localhost:3003', // Update to match running server
-} as const;
 
 export default defineConfig({
 	plugins: [react()],

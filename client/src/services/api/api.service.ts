@@ -27,6 +27,7 @@ import {
   UserAnalyticsQuery,
   UserRankData,
   UserStatsData,
+  getErrorMessage,
 } from '@shared';
 import {
   API_BASE_URL,
@@ -55,7 +56,7 @@ class ApiService implements ClientApiService {
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const tokenResult = await storageService.get<string>('accessToken');
+    const tokenResult = await storageService.get<string>(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
     const token = tokenResult.success ? tokenResult.data : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
@@ -95,11 +96,11 @@ class ApiService implements ClientApiService {
       if (contentType && contentType.includes('application/json')) {
         try {
           errorData = await response.json();
-        } catch {
-          errorData = { message: 'Failed to parse error response' };
+        } catch (parseError) {
+          errorData = { message: getErrorMessage(parseError) };
         }
       } else {
-        errorData = { message: await response.text().catch(() => 'Unknown error') };
+        errorData = { message: await response.text().catch((textError) => getErrorMessage(textError)) };
       }
 
       const isServerError =
@@ -110,8 +111,7 @@ class ApiService implements ClientApiService {
         response.status < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
 
       // Enhanced error message with more context
-      const errorMessage =
-        errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      const errorMessage = getErrorMessage(errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`);
 
       throw {
         message: errorMessage,
@@ -297,16 +297,16 @@ class ApiService implements ClientApiService {
       await this.post('/auth/logout');
     } catch (error) {
       // Continue with logout even if server request fails
-      console.warn('Logout request failed, but clearing local tokens:', error);
+      console.warn('Logout request failed, but clearing local tokens:', getErrorMessage(error));
     } finally {
       // Always clear local tokens
-      await storageService.delete('access_token');
-      await storageService.delete('refresh_token');
+      await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+      await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
     }
   }
 
   async refreshToken(): Promise<{ accessToken: string }> {
-    const refreshTokenResult = await storageService.get<string>('refresh_token');
+    const refreshTokenResult = await storageService.get<string>(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
     const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
     if (!refreshToken) {
       throw new Error('No refresh token available');
@@ -316,7 +316,7 @@ class ApiService implements ClientApiService {
 
     // Update stored access token
     if (response.data.accessToken) {
-      await storageService.set('accessToken', response.data.accessToken);
+      await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
     }
 
     return response.data;

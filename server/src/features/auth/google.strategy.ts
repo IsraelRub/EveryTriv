@@ -6,7 +6,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { Strategy } from 'passport-google-oauth20';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		super({
 			clientID: process.env.GOOGLE_CLIENT_ID || '',
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-			callbackURL: `${process.env.SERVER_URL || 'http://localhost:3000'}/auth/google/callback`,
+			callbackURL: `${process.env.SERVER_URL || 'http://localhost:3003'}/auth/google/callback`,
 			scope: ['email', 'profile'],
 		});
 	}
@@ -54,7 +54,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		} catch (error) {
 			// Use enhanced security logging
 			logger.logSecurityEventEnhanced('Google OAuth validation failed', 'error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				profileId: profile.id,
 				provider: 'google',
 				context: 'GoogleStrategy',

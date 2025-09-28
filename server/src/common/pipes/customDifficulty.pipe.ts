@@ -7,7 +7,7 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { ValidationOptions } from '@shared';
-import { CustomDifficultyValidationResult,serverLogger as logger  } from '@shared';
+import { CustomDifficultyValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -40,7 +40,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
-			logger.apiUpdateError('customDifficulty_validation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('customDifficulty_validation', getErrorMessage(error));
 
 			if (error instanceof BadRequestException) {
 				throw error;

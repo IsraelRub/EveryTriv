@@ -7,7 +7,7 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { ValidationResult } from '@shared';
-import { serverLogger as logger , TriviaQuestionData, TriviaQuestionValidationResult } from '@shared';
+import { serverLogger as logger , TriviaQuestionData, TriviaQuestionValidationResult, getErrorMessage } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -105,10 +105,10 @@ export class TriviaQuestionPipe implements PipeTransform {
 			};
 		} catch (error) {
 			logger.validationError('trivia_question', '[REDACTED]', 'validation_error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 
-			logger.apiUpdateError('trivia_question_validation', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiUpdateError('trivia_question_validation', getErrorMessage(error), {
 				duration: Date.now() - startTime,
 			});
 

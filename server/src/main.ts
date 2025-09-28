@@ -14,7 +14,7 @@ dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { MESSAGE_FORMATTERS } from '@shared';
+import { MESSAGE_FORMATTERS, getErrorMessage, getErrorStack } from '@shared';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
 import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
@@ -71,7 +71,7 @@ async function bootstrap() {
 		console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
 
 		app.enableCors({
-			origin: process.env.CLIENT_URL || 'http://localhost:5173',
+			origin: process.env.CLIENT_URL || 'http://localhost:3000',
 			credentials: true,
 			methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 			allowedHeaders: ['Content-Type', AUTH_CONSTANTS.AUTH_HEADER, 'X-Requested-With'],
@@ -112,8 +112,8 @@ async function bootstrap() {
 		try {
 			// Use console.error for bootstrap errors since logger might not be available
 			console.error('Failed to start server:', {
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
+				error: getErrorMessage(error),
+				stack: getErrorStack(error),
 				bootAttemptDuration: `${Date.now() - startTime}ms`,
 			});
 		} catch (shutdownError) {

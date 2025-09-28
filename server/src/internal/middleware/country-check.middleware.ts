@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
 
 @Injectable()
@@ -51,7 +51,7 @@ export class CountryCheckMiddleware implements NestMiddleware {
 			}
 
 			logger.securityDenied('Country check middleware error', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				ip: req.ip || 'unknown',
 				path: req.path,
 			});

@@ -5,6 +5,7 @@
  * @description Data Transfer Objects for payment processing
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreatePaymentDto {
@@ -56,6 +57,7 @@ export class PaymentHistoryQueryDto {
 		maximum: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(100, { message: 'Limit cannot exceed 100' })

@@ -34,7 +34,7 @@ export interface UserProfileUpdateData {
 	bio?: string;
 	website?: string;
 	preferences?: UserPreferences;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, BasicValue>;
 }
 
 /**
@@ -42,17 +42,7 @@ export interface UserProfileUpdateData {
  * @interface UserFieldUpdate
  * @description Data for updating specific user fields
  */
-export interface UserFieldUpdate {
-	username?: string;
-	email?: string;
-	role?: UserRole;
-	status?: UserStatus;
-	emailVerified?: boolean;
-	lastLogin?: Date;
-	authProvider?: AuthProvider;
-	preferences?: UserPreferences;
-	metadata?: Record<string, any>;
-}
+export type UserFieldUpdate = Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'achievements' | 'badges' | 'friends' | 'notifications'>>;
 
 /**
  * User preferences interface
@@ -103,27 +93,7 @@ export interface UserGamePreferences {
  * @interface ServerUserPreferences
  * @description Server-specific user preferences
  */
-export interface ServerUserPreferences extends Record<string, unknown> {
-	theme: 'light' | 'dark' | 'auto';
-	language: string;
-	timezone: string;
-	emailNotifications: boolean;
-	pushNotifications: boolean;
-	soundEnabled: boolean;
-	musicEnabled: boolean;
-	animationsEnabled: boolean;
-	autoSaveEnabled: boolean;
-	privacy: {
-		profileVisibility: 'public' | 'private' | 'friends';
-		showOnlineStatus: boolean;
-		showActivity: boolean;
-		showAchievements: boolean;
-	};
-	game: {
-		timeLimit: number;
-		questionLimit: number;
-	};
-}
+export interface ServerUserPreferences extends Required<Pick<UserPreferences, 'theme' | 'language' | 'timezone' | 'emailNotifications' | 'pushNotifications' | 'soundEnabled' | 'musicEnabled' | 'animationsEnabled' | 'autoSaveEnabled' | 'privacy' | 'game'>> {}
 
 /**
  * Authentication provider types
@@ -284,33 +254,6 @@ export interface UserNotification {
 	};
 }
 
-/**
- * User field update interface
- * @interface UserFieldUpdate
- * @description Fields that can be updated for a user
- * @used_by server: server/src/common/validation/validation.service.ts (validateAndSetBooleanField method)
- */
-export interface UserFieldUpdate {
-	username?: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	bio?: string;
-	website?: string;
-	avatar?: string;
-	dateOfBirth?: Date;
-	country?: string;
-	timezone?: string;
-	language?: string;
-	credits?: number;
-	purchasedPoints?: number;
-	totalPoints?: number;
-	subscriptionStatus?: string;
-	subscriptionExpiry?: Date;
-	preferences?: UserPreferences;
-	statistics?: UserStatistics;
-	settings?: UserSettings;
-}
 
 /**
  * User address interface
@@ -376,20 +319,7 @@ export interface UserSettings {
  * @description Data for updating user profile
  * @used_by server: server/src/features/user/user.service.ts (updateUserProfile method)
  */
-export interface UpdateUserProfileData {
-	username?: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	bio?: string;
-	website?: string;
-	avatar?: string;
-	dateOfBirth?: Date;
-	country?: string;
-	timezone?: string;
-	language?: string;
-	preferences?: UserPreferences;
-	address?: UserAddress;
+export interface UpdateUserProfileData extends Partial<Pick<User, 'username' | 'email' | 'firstName' | 'lastName' | 'bio' | 'website' | 'avatar' | 'dateOfBirth' | 'country' | 'timezone' | 'language' | 'preferences' | 'address'>> {
 	additional_info?: string;
 }
 
@@ -399,23 +329,8 @@ export interface UpdateUserProfileData {
  * @description User profile data
  * @used_by server: server/src/features/user/user.service.ts (getUserProfile method)
  */
-export interface UserProfile {
+export interface UserProfile extends Pick<User, 'username' | 'email' | 'firstName' | 'lastName' | 'bio' | 'website' | 'avatar' | 'dateOfBirth' | 'country' | 'timezone' | 'language' | 'preferences' | 'address' | 'createdAt' | 'updatedAt'> {
 	userId: string;
-	username: string;
-	email: string;
-	firstName?: string;
-	lastName?: string;
-	bio?: string;
-	website?: string;
-	avatar?: string;
-	dateOfBirth?: Date;
-	country?: string;
-	timezone?: string;
-	language?: string;
-	preferences?: UserPreferences;
-	address?: UserAddress;
-	createdAt: Date;
-	updatedAt: Date;
 }
 
 /**
@@ -424,19 +339,8 @@ export interface UserProfile {
  * @description User statistics
  * @used_by server: server/src/features/user/user.service.ts (getUserStats method)
  */
-export interface UserStats {
+export interface UserStats extends Pick<UserStatistics, 'totalGames' | 'totalQuestions' | 'totalCorrectAnswers' | 'successRate' | 'averageScore' | 'bestScore' | 'totalPlayTime' | 'currentStreak' | 'bestStreak' | 'favoriteTopic' | 'lastPlayed'> {
 	userId: string;
-	totalGames: number;
-	totalQuestions: number;
-	totalCorrectAnswers: number;
-	successRate: number;
-	averageScore: number;
-	bestScore: number;
-	totalPlayTime: number;
-	currentStreak: number;
-	bestStreak: number;
-	favoriteTopic: string;
-	lastPlayed: Date;
 }
 
 /**

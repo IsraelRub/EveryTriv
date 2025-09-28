@@ -43,7 +43,7 @@ pnpm run migration:run
 
 #### Frontend (.env)
 ```env
-VITE_API_BASE_URL=http://localhost:3001
+VITE_API_BASE_URL=http://localhost:3003
 VITE_APP_NAME=EveryTriv
 VITE_APP_VERSION=2.0.0
 ```
@@ -145,12 +145,12 @@ services:
       REDIS_PASSWORD: EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       JWT_EXPIRES_IN: 24h
-      PORT: 3001
+      PORT: 3003
     volumes:
       - ./server:/app
       - /app/node_modules
     ports:
-      - "3001:3001"
+      - "3003:3003"
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,7 +168,7 @@ services:
       target: development
     container_name: everytriv-client
     environment:
-      VITE_API_BASE_URL: http://localhost:3001
+      VITE_API_BASE_URL: http://localhost:3003
       VITE_APP_NAME: EveryTriv
       VITE_APP_VERSION: 2.0.0
     volumes:
@@ -1242,7 +1242,7 @@ pnpm run build && pnpm lighthouse http://localhost:5173
 ### Backend
 ```bash
 # בדיקת health
-curl http://localhost:3001/health
+curl http://localhost:3003/health
 
 # בדיקת logs
 docker logs everytriv-app

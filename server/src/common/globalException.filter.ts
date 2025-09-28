@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage, getErrorStack } from '@shared';
 import { NestRequest, NestResponse } from 'src/internal/types';
 
 @Catch()
@@ -12,7 +12,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
 		const message =
-			exception instanceof HttpException ? exception.getResponse() : exception.message || 'Internal server error';
+			exception instanceof HttpException ? exception.getResponse() : getErrorMessage(exception);
 
 		// Handle validation errors specifically
 		if (exception instanceof HttpException && status === HttpStatus.BAD_REQUEST) {
@@ -29,13 +29,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		}
 
 		// Log the error with essential context only
-		logger.systemError(`Global Exception: ${exception.message}`, {
+		logger.systemError(`Global Exception: ${getErrorMessage(exception)}`, {
 			status,
 			path: request.url || 'unknown',
-			stack: exception.stack || 'no stack trace',
+			stack: getErrorStack(exception),
 		});
 
 		// Send error response with essential information only
+		const standardError = {
+			message: getErrorMessage(exception),
+			stack: getErrorStack(exception),
+			context: {
+				status,
+				path: request.url || 'unknown',
+			}
+		};
+		
 		const errorResponse: {
 			statusCode: number;
 			path: string;
@@ -43,10 +52,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		} = {
 			statusCode: status,
 			path: request.url || 'unknown',
-			message:
-				typeof message === 'string'
-					? message
-					: ((message as Record<string, unknown>).message as string) || 'Internal server error',
+			message: getErrorMessage(message) || standardError.message,
 		};
 
 		// Send the error response

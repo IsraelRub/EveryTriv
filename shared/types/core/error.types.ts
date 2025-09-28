@@ -5,36 +5,36 @@
  * @module ErrorTypes
  * @description Error handling and error response structures
  */
-import type { BaseData, BasicValue } from './data.types';
 
 /**
- * Base error interface
- * @interface BaseError
- * @description Base error structure
+ * NestJS exception names type derived from constants
+ * @type NestExceptionName
+ * @description Type derived from NEST_EXCEPTION_NAMES constant
  */
-export interface BaseError {
-	message: string;
-	code?: string;
-	statusCode: number;
-	timestamp?: string;
+export type NestExceptionName = typeof import('../../constants/core/error.constants').NEST_EXCEPTION_NAMES[number];
+
+
+/**
+ * Axios error interface
+ * @interface AxiosErrorLike
+ * @description Axios-like error structure for network requests
+ */
+export interface AxiosErrorLike extends Error {
+	code?: 'ECONNABORTED' | 'ENOTFOUND' | 'ECONNREFUSED' | string;
+	response?: {
+		status?: number;
+		data?: {
+			message?: string;
+		};
+	};
 }
 
 /**
- * Error value interface
- * @interface ErrorValue
- * @description Value that represents an error
+ * Generic error-like object interface
+ * @interface ErrorLike
+ * @description Generic object that might contain error information
  */
-export interface ErrorValue {
-	message: string;
-	code?: string | number;
-	details?: Record<string, unknown>;
-	stack?: string;
-	name?: string;
+export interface ErrorLike {
+	message?: string;
+	error?: string;
 }
-
-/**
- * Error details type for API error responses
- * @type ErrorDetails
- * @description Flexible error details structure
- */
-export type ErrorDetails = BaseData | BasicValue | null;

@@ -6,7 +6,7 @@
  * @used_by server/src/features/game/logic/providers
  */
 import { DIFFICULTY_MULTIPLIERS, DifficultyLevel } from '@shared';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import {
 	AI_PROVIDER_ERROR_TYPES,
 	ERROR_CONTEXT_MESSAGES,
@@ -239,7 +239,7 @@ export abstract class BaseTriviaProvider {
 		} catch (error) {
 			this.recordError();
 			logger.providerError(this.name, ERROR_CONTEXT_MESSAGES.AI_GENERATION_FAILED, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 			});

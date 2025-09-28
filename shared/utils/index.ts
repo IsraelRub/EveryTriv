@@ -78,3 +78,16 @@ export * from './storage.utils';
  * @used_by client/src/views/user/UserProfile.tsx, server/src/features/user/user.service.ts
  */
 export * from './preferences.utils';
+
+/**
+ * Error handling utilities
+ * @description Functions for consistent error processing and handling
+ * @exports {Function} Error handling utility functions
+ * @used_by server/src/features, client/src/services, shared/services/logging
+ */
+export * from './error.utils';
+
+/**
+ * Points calculation utilities (pure, shared by client and server)
+ */
+export * from './points.utils';

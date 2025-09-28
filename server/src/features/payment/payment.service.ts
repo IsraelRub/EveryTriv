@@ -16,7 +16,8 @@ import {
 	PointBalance,
 	PointPurchaseOption,
  serverLogger as logger,	SubscriptionData,
-	SubscriptionPlans } from '@shared';
+	SubscriptionPlans,
+	getErrorMessage } from '@shared';
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
@@ -121,7 +122,7 @@ export class PaymentService {
 			return PRICING_PLANS;
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get pricing plans', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PRICING_PLANS);
 		}
@@ -145,7 +146,7 @@ export class PaymentService {
 			return POINT_PURCHASE_OPTIONS;
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get point purchase options', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_POINT_OPTIONS);
 		}
@@ -230,7 +231,7 @@ export class PaymentService {
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Payment processing error', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.PAYMENT_PROCESSING_FAILED);
 		}
@@ -258,7 +259,7 @@ export class PaymentService {
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get payment history', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY);
 		}
@@ -302,7 +303,7 @@ export class PaymentService {
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get user subscription', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION);
 		}
@@ -371,7 +372,7 @@ export class PaymentService {
 			logger.paymentFailed('unknown', 'Failed to purchase points', {
 				userId,
 				optionId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_POINTS);
 		}
@@ -457,7 +458,7 @@ export class PaymentService {
 			logger.paymentFailed('unknown', 'Failed to subscribe to plan', {
 				userId,
 				planType,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CREATE_SUBSCRIPTION);
 		}
@@ -491,7 +492,7 @@ export class PaymentService {
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to cancel subscription', {
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CANCEL_SUBSCRIPTION);
 		}

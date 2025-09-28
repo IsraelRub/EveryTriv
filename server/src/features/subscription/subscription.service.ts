@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger , SubscriptionData, UserStatsWithSubscription } from '@shared';
+import { serverLogger as logger , SubscriptionData, getErrorMessage } from '@shared';
 import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
 
@@ -34,23 +34,22 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			const stats = user.stats || {};
-			const subscriptionData = stats.subscription || this.getDefaultSubscription();
+			const defaultSubscription = this.getDefaultSubscription();
 
 			return {
 				userId: user.id,
-				subscriptionId: user.currentSubscriptionId || subscriptionData.subscriptionId,
-				plan: subscriptionData.plan,
-				status: subscriptionData.status,
-				startDate: subscriptionData.startDate,
-				endDate: subscriptionData.endDate,
-				price: subscriptionData.price,
-				billingCycle: subscriptionData.billingCycle,
-				features: subscriptionData.features,
+				subscriptionId: user.currentSubscriptionId || defaultSubscription.subscriptionId,
+				plan: defaultSubscription.plan,
+				status: defaultSubscription.status,
+				startDate: defaultSubscription.startDate,
+				endDate: defaultSubscription.endDate,
+				price: defaultSubscription.price,
+				billingCycle: defaultSubscription.billingCycle,
+				features: defaultSubscription.features,
 			};
 		} catch (error) {
 			logger.paymentFailed('subscription-get', 'Failed to get current subscription', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -124,7 +123,7 @@ export class SubscriptionService {
 			};
 		} catch (error) {
 			logger.paymentFailed('subscription-create', 'Failed to create subscription', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				planId: plan,
 			});
@@ -149,10 +148,9 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			const stats = user.stats || {};
-			const subscriptionData = (stats as UserStatsWithSubscription).subscription || this.getDefaultSubscription();
-			subscriptionData.status = 'cancelled';
-			subscriptionData.cancelledAt = new Date().toISOString();
+			const defaultSubscription = this.getDefaultSubscription();
+			defaultSubscription.status = 'cancelled';
+			(defaultSubscription as any).cancelledAt = new Date().toISOString();
 
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: undefined,
@@ -161,7 +159,7 @@ export class SubscriptionService {
 			return { success: true, message: 'Subscription cancelled successfully' };
 		} catch (error) {
 			logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 				subscriptionId: userId,
 			});
@@ -183,7 +181,7 @@ export class SubscriptionService {
 			return await this.paymentService.getPricingPlans();
 		} catch (error) {
 			logger.paymentFailed('plans-get', 'Failed to get available plans', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId: 'all',
 			});
 			throw error;

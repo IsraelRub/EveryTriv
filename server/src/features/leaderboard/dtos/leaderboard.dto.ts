@@ -5,6 +5,7 @@
  * @description Data Transfer Objects for leaderboard management
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
 	IsDateString,
 	IsIn,
@@ -48,6 +49,7 @@ export class GetLeaderboardDto {
 		maximum: 100,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(100, { message: 'Limit cannot exceed 100' })
@@ -59,6 +61,7 @@ export class GetLeaderboardDto {
 		minimum: 0,
 	})
 	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Offset must be a number' })
 	@Min(0, { message: 'Offset must be at least 0' })
 	offset?: number = 0;

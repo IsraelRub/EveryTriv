@@ -12,7 +12,7 @@ import {
 	Query,
 	UsePipes,
 } from '@nestjs/common';
-import { AdminUserData, serverLogger,UserFieldUpdate, UserProfileResponse, UsersListResponse } from '@shared';
+import { AdminUserData, serverLogger,UserFieldUpdate, UserProfileResponse, UsersListResponse, getErrorMessage } from '@shared';
 
 import {
 	AuditLog,
@@ -50,7 +50,7 @@ export class UserController {
 	@Get('profile')
 	@Cache(300)
 	async getUserProfile(
-		@CurrentUser() user: { id: string; username: string; email: string }
+		@CurrentUser() user: { id: string; username: string; email: string; role: string }
 	): Promise<UserProfileResponse> {
 		try {
 			const result = await this.userService.getUserProfile(user.id);
@@ -59,6 +59,7 @@ export class UserController {
 					id: result.id,
 					username: result.username,
 					email: result.email,
+					role: user.role,
 					firstName: result.firstName,
 					lastName: result.last_name,
 					createdAt: result.created_at?.toISOString(),
@@ -68,7 +69,7 @@ export class UserController {
 			};
 		} catch (error) {
 			serverLogger.userError('Error getting user profile', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -89,7 +90,7 @@ export class UserController {
 			};
 		} catch (error) {
 			serverLogger.userError('Error getting user credits', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -110,7 +111,7 @@ export class UserController {
 			};
 		} catch (error) {
 			serverLogger.userError('Error deducting credits', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -147,7 +148,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating user profile', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -172,7 +173,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error searching users', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -198,7 +199,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error getting user by username', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -220,7 +221,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error deleting user account', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -243,7 +244,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating user preferences', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -274,7 +275,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating user field', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				field,
 			});
 			throw error;
@@ -306,7 +307,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating single preference', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				preference,
 			});
 			throw error;
@@ -333,7 +334,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error getting user by ID', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId: id,
 			});
 			throw error;
@@ -362,7 +363,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating user credits', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -389,7 +390,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error deleting user', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -422,7 +423,7 @@ export class UserController {
 			return result;
 		} catch (error) {
 			serverLogger.userError('Error updating user status', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				userId,
 			});
 			throw error;
@@ -434,7 +435,7 @@ export class UserController {
 	 */
 	@Get('admin/all')
 	@Roles('admin', 'super-admin')
-	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }): Promise<UsersListResponse> {
+	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string; email: string }): Promise<UsersListResponse> {
 		try {
 			serverLogger.apiRead('admin_get_all_users', {
 				adminId: user.id,
@@ -449,7 +450,7 @@ export class UserController {
 				adminUser: {
 					id: user.id,
 					username: user.username,
-					email: user.username + '@example.com', // Default email
+					email: user.email,
 					role: user.role,
 					createdAt: new Date().toISOString(),
 				},
@@ -459,7 +460,7 @@ export class UserController {
 			};
 		} catch (error) {
 			serverLogger.userError('Failed to get all users', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				adminId: user.id,
 			});
 			throw error;
@@ -492,7 +493,7 @@ export class UserController {
 			};
 		} catch (error) {
 			serverLogger.userError('Failed to update user status', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				adminId: adminUser.id,
 				targetUserId: userId,
 			});

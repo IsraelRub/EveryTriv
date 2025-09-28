@@ -7,7 +7,7 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { LanguageValidationOptions } from '@shared';
-import { LanguageValidationData, LanguageValidationResult,serverLogger as logger  } from '@shared';
+import { LanguageValidationData, LanguageValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -50,7 +50,7 @@ export class LanguageValidationPipe implements PipeTransform {
 				language: languageValidation.suggestion ? 'detected' : undefined,
 			};
 		} catch (error) {
-			logger.apiUpdateError('languageValidation', error instanceof Error ? error.message : 'Unknown error');
+			logger.apiUpdateError('languageValidation', getErrorMessage(error));
 
 			if (error instanceof BadRequestException) {
 				throw error;

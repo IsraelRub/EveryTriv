@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger,TriviaAnswer  } from '@shared';
+import { serverLogger as logger,TriviaAnswer, getErrorMessage  } from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { DeepPartial, Repository } from 'typeorm';
 
@@ -54,7 +54,7 @@ export class TriviaGenerationService {
 			throw new Error('Failed to generate question with AI providers');
 		} catch (error) {
 			logger.gameError('Failed to generate trivia question', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 				userId: userId || 'anonymous',
@@ -62,7 +62,7 @@ export class TriviaGenerationService {
 
 			// Re-throw the error instead of falling back to mock
 			throw new Error(
-				`Failed to generate trivia question: ${error instanceof Error ? error.message : 'Unknown error'}`
+				`Failed to generate trivia question: ${getErrorMessage(error)}`
 			);
 		}
 	}
@@ -91,7 +91,7 @@ export class TriviaGenerationService {
 					questions.push(question);
 				} catch (error) {
 					logger.gameError('Failed to generate question', {
-						error: error instanceof Error ? error.message : 'Unknown error',
+						error: getErrorMessage(error),
 						attempt: i + 1,
 						topic,
 						difficulty,
@@ -103,7 +103,7 @@ export class TriviaGenerationService {
 			return questions;
 		} catch (error) {
 			logger.gameError('Failed to generate multiple trivia questions', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 				count,
@@ -141,7 +141,7 @@ export class TriviaGenerationService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to get question by ID', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				questionId,
 			});
 			throw error;
@@ -183,7 +183,7 @@ export class TriviaGenerationService {
 			}));
 		} catch (error) {
 			logger.gameError('Failed to get random questions', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 				count,
@@ -214,7 +214,7 @@ export class TriviaGenerationService {
 			return question;
 		} catch (error) {
 			logger.gameError('Failed to generate AI question', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic,
 				difficulty,
 			});
@@ -259,7 +259,7 @@ export class TriviaGenerationService {
 			};
 		} catch (error) {
 			logger.gameError('Failed to convert AI question format', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				aiQuestion: JSON.stringify(aiQuestion),
 			});
 			throw new Error('Invalid AI question format');
@@ -316,7 +316,7 @@ export class TriviaGenerationService {
 			return savedQuestion;
 		} catch (error) {
 			logger.databaseError('Failed to save question to database', {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				topic: triviaEntity.topic || 'unknown',
 			});
 			throw error;

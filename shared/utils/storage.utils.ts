@@ -7,6 +7,7 @@
  */
 import { metricsService } from '../services/storage';
 import { StorageMetrics, StorageOperationResult } from '../types/infrastructure/storage.types';
+import { getErrorMessage } from './error.utils';
 
 /**
  * Create operation result with timing
@@ -73,7 +74,7 @@ export function trackOperationWithTiming(
  * @returns Formatted error message
  */
 export function formatStorageError(error: unknown): string {
-	return error instanceof Error ? error.message : 'Unknown error';
+	return getErrorMessage(error);
 }
 
 /**

@@ -4,14 +4,8 @@ export class AddPaymentAndSubscriptionTables1700000000000 implements MigrationIn
 	name = 'AddPaymentAndSubscriptionTables1700000000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		console.log('Starting migration: AddPaymentAndSubscriptionTables', {
-			migrationName: this.name,
-			operation: 'up',
-		});
-
 		try {
 			// Create payment_history table
-			console.log('Creating payment_history table');
 			await queryRunner.query(`
 				CREATE TABLE "payment_history" (
 					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -30,7 +24,6 @@ export class AddPaymentAndSubscriptionTables1700000000000 implements MigrationIn
 			`);
 
 			// Create subscriptions table
-			console.log('Creating subscriptions table');
 			await queryRunner.query(`
 				CREATE TABLE "subscriptions" (
 					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -49,7 +42,6 @@ export class AddPaymentAndSubscriptionTables1700000000000 implements MigrationIn
 			`);
 
 			// Create indexes
-			console.log('Creating indexes for payment and subscription tables');
 			await queryRunner.query(`CREATE INDEX "IDX_payment_history_user_id" ON "payment_history" ("user_id")`);
 			await queryRunner.query(`CREATE INDEX "IDX_payment_history_payment_id" ON "payment_history" ("payment_id")`);
 			await queryRunner.query(`CREATE INDEX "IDX_payment_history_status" ON "payment_history" ("status")`);
@@ -63,7 +55,6 @@ export class AddPaymentAndSubscriptionTables1700000000000 implements MigrationIn
 			await queryRunner.query(`CREATE INDEX "IDX_subscriptions_plan_id" ON "subscriptions" ("plan_id")`);
 
 			// Add foreign key constraints
-			console.log('Adding foreign key constraints');
 			await queryRunner.query(`
 				ALTER TABLE "payment_history" ADD CONSTRAINT "FK_payment_history_user" 
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
@@ -82,44 +73,21 @@ export class AddPaymentAndSubscriptionTables1700000000000 implements MigrationIn
 				foreignKeysAdded: 2,
 			});
 		} catch (error) {
-			console.error('Migration failed: AddPaymentAndSubscriptionTables', {
-				migrationName: this.name,
-				operation: 'up',
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
 			throw error;
 		}
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		console.log('Starting migration rollback: AddPaymentAndSubscriptionTables', {
-			migrationName: this.name,
-			operation: 'down',
-		});
-
 		try {
 			// Drop foreign key constraints
-			console.log('Dropping foreign key constraints');
 			await queryRunner.query(`ALTER TABLE "subscriptions" DROP CONSTRAINT "FK_subscriptions_user"`);
 			await queryRunner.query(`ALTER TABLE "payment_history" DROP CONSTRAINT "FK_payment_history_user"`);
 
 			// Drop tables
-			console.log('Dropping payment and subscription tables');
 			await queryRunner.query(`DROP TABLE "subscriptions"`);
 			await queryRunner.query(`DROP TABLE "payment_history"`);
 
-			console.log('Migration rollback completed: AddPaymentAndSubscriptionTables', {
-				migrationName: this.name,
-				operation: 'down',
-				tablesDropped: ['subscriptions', 'payment_history'],
-				foreignKeysDropped: 2,
-			});
 		} catch (error) {
-			console.error('Migration rollback failed: AddPaymentAndSubscriptionTables', {
-				migrationName: this.name,
-				operation: 'down',
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
 			throw error;
 		}
 	}

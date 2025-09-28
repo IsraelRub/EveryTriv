@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { Cache, ClientIP, CurrentUserId, RateLimit, UserAgent } from '../../common';
 import { CanPlayDto, ConfirmPointPurchaseDto, DeductPointsDto, GetPointHistoryDto, PurchasePointsDto } from './dtos';
@@ -71,7 +71,7 @@ export class PointsController {
 
 			return result;
 		} catch (error) {
-			logger.apiUpdateError('points', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiUpdateError('points', getErrorMessage(error), {
 				userId: userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
@@ -110,7 +110,7 @@ export class PointsController {
 
 			return result;
 		} catch (error) {
-			logger.apiCreateError('points_purchase', error instanceof Error ? error.message : 'Unknown error', {
+			logger.apiCreateError('points_purchase', getErrorMessage(error), {
 				userId: userId,
 				packageId: body.packageId,
 			});

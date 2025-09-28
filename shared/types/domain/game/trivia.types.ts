@@ -5,7 +5,7 @@
  * @description Type definitions for trivia questions, answers, and trivia-related entities
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
-import type { BaseEntity } from '../../core/data.types';
+import type { BaseEntity, BasicValue } from '../../core/data.types';
 
 /**
  * Trivia question interface
@@ -26,7 +26,7 @@ export interface TriviaQuestion extends BaseEntity {
 	rating?: number;
 	timesAnswered?: number;
 	successRate?: number;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, BasicValue>;
 }
 
 /**

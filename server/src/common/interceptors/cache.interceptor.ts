@@ -7,7 +7,7 @@
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -109,7 +109,7 @@ export class CacheInterceptor implements NestInterceptor {
 						});
 					} catch (error) {
 						logger.cacheError('set', cacheKey, {
-							error: error instanceof Error ? error.message : 'Unknown error',
+							error: getErrorMessage(error),
 							ttl: cacheMetadata.ttl,
 							key: cacheMetadata.key,
 							tags: cacheMetadata.tags,
@@ -119,7 +119,7 @@ export class CacheInterceptor implements NestInterceptor {
 			);
 		} catch (error) {
 			logger.cacheError('get', cacheKey, {
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 				ttl: cacheMetadata.ttl,
 				key: cacheMetadata.key,
 				tags: cacheMetadata.tags,

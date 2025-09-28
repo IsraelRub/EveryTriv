@@ -7,7 +7,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared';
+import { serverLogger as logger, getErrorMessage } from '@shared';
 import { FindManyOptions, Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
@@ -60,7 +60,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find user by email: ${email}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -99,7 +99,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find user by username: ${username}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -132,7 +132,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find users by role: ${role}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -163,7 +163,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to find users by status: ${status}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -197,7 +197,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 		} catch (error) {
 			logger.databaseError(`Failed to search users with query: ${query}`, {
 				context: 'REPOSITORY',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -228,7 +228,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 			logger.databaseError(`Failed to update last login for user: ${userId}`, {
 				context: 'REPOSITORY',
 				userId,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}
