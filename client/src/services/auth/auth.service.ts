@@ -200,7 +200,7 @@ class AuthService {
       clientLogger.securityLogin('Initiating Google OAuth login');
 
       // Redirect to Google OAuth endpoint
-      const googleAuthUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003'}/auth/google`;
+      const googleAuthUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}/auth/google`;
       window.location.href = googleAuthUrl;
     } catch (error) {
       clientLogger.securityDenied('Google login initiation failed', { error });

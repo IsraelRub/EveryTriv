@@ -2,20 +2,22 @@
 
 תיעוד מבנה מודולי ה-NestJS הקיימים. כל מודול עומד בעקרונות: אחריות יחידה, יצוא מינימלי, שימוש ב-DI, DTO ולידציה, ושכבת Service מבודדת.
 
-> **הערת סנכרון**: ייצוג מודולים בדיאגרמות הוא מושגי; פירוט מיפוי בפועל: [סנכרון תרשימים ↔ קוד](../DIAGRAMS.md#diagram-sync-status).
-
 ## רשימת מודולים
 
 | מודול | נתיב בסיס | אחריות עיקרית | תלות ליבה |
 |-------|-----------|---------------|-----------|
 | Auth | /auth | אימות, הנפקת JWT, OAuth (Google) | User, Config, Tokens |
-| User | /user | פרופיל משתמש, סטטיסטיקות בסיסיות | Points, Game |
+| User | /users | פרופיל משתמש, סטטיסטיקות בסיסיות | Points, Game |
 | Game | /game | לוגיקת משחק, trivia, AI providers | Points, User, Cache |
 | Points | /points | חישוב וניהול נקודות | User, Game |
 | Leaderboard | /leaderboard | דירוגים וחישובי מיקום | Points, User, Analytics |
 | Analytics | /analytics | מדדים, איסוף שימוש, דוחות | Game, Points |
 | Payment | /payment | תשלומים, טרנזקציות | Subscription, User |
 | Subscription | /subscription | ניהול מנויים והרשאות פרימיום | Payment, User |
+| AI Providers | /api/ai-providers | ניהול ספקי AI, סטטיסטיקות | Game, Cache |
+| Cache | /cache | ניהול מטמון Redis | - |
+| Storage | /storage | ניהול אחסון נתונים | - |
+| Admin | /admin | כלי ניהול ומדדים | - |
 
 ## עקרון שכבות
 
@@ -71,8 +73,12 @@ export class CreateItemDto {
 
 ## מודול User (feature-user)
 
-- קריאת פרופיל.
-- עדכון בסיסי (שדות מותרים בלבד).
+- קריאת פרופיל משתמש.
+- עדכון פרופיל (שדות מותרים בלבד).
+- ניהול נקודות זכות.
+- עדכון העדפות משתמש.
+- ניהול חשבון משתמש.
+- פונקציות מנהל למשתמשים.
 - שאילתות קונסיסטנטיות מוגנות ע"י DTO.
 
 ## מודול Game (feature-game)
@@ -109,6 +115,36 @@ export class CreateItemDto {
 
 - רמות מנוי (Tier) סטטיות.
 - החלת הרשאות (Feature Flags) בצד השרת.
+- יצירת מנוי חדש.
+- ביטול מנוי קיים.
+- בדיקת סטטוס מנוי נוכחי.
+
+## מודול AI Providers (feature-ai-providers)
+
+- ניהול ספקי AI (OpenAI, Anthropic, Google, Mistral).
+- בדיקת סטטוס בריאות של ספקים.
+- סטטיסטיקות שימוש בספקים.
+- ניהול מפתחות API.
+
+## מודול Cache (internal-cache)
+
+- ניהול מטמון Redis.
+- בדיקת קיום מפתחות.
+- ניהול TTL.
+- ניקוי מטמון.
+
+## מודול Storage (internal-storage)
+
+- ניהול אחסון נתונים.
+- מדדי אחסון.
+- ניהול מפתחות.
+- ניקוי אחסון.
+
+## מודול Admin (internal-admin)
+
+- מדדי middleware.
+- סטטיסטיקות מערכת.
+- כלי ניהול מתקדמים.
 
 ## תלות בשכבת Shared
 

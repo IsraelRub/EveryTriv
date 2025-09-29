@@ -2,9 +2,39 @@
 
 תיעוד שכבת השירותים (Services) בצד הלקוח.
 
+## מבנה תיקיית Services
+
+```
+services/
+├── api/
+│   ├── api.service.ts
+│   └── index.ts
+├── auth/
+│   ├── auth.service.ts
+│   ├── user.service.ts
+│   └── index.ts
+├── game/
+│   ├── gameHistory.service.ts
+│   ├── scoreCalculation.service.ts
+│   └── index.ts
+├── media/
+│   ├── audio.service.ts
+│   └── index.ts
+├── storage/
+│   ├── storage.service.ts
+│   └── index.ts
+├── utils/
+│   ├── points.service.ts
+│   ├── queryClient.service.ts
+│   ├── subscription.service.ts
+│   └── index.ts
+├── index.ts
+└── README.md
+```
+
 ## תפקיד
 - עטיפת קריאות HTTP.
-- החלת מדיניות (Timeout / Retry קל / Logging).
+- החלת מדיניות (Timeout / Retry / Logging).
 - פורמט תגובות אחיד.
 
 ## מבנה מוצע

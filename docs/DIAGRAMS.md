@@ -331,96 +331,94 @@ graph TB
     A14 --> A146[utils/]
     
     %% Components breakdown
-    A11 --> A111[analytics/]
-    A11 --> A112[animations/]
-    A11 --> A113[audio/]
-    A11 --> A114[auth/]
-    A11 --> A115[forms/]
-    A11 --> A116[game/]
-    A11 --> A117[gameMode/]
-    A11 --> A118[home/]
-    A11 --> A119[icons/]
-    A11 --> A120[layout/]
-    A11 --> A121[leaderboard/]
-    A11 --> A122[monitoring/]
-    A11 --> A123[navigation/]
-    A11 --> A124[points/]
-    A11 --> A125[stats/]
-    A11 --> A126[subscription/]
-    A11 --> A127[ui/]
-    A11 --> A128[user/]
+    A11 --> A111[animations/]
+    A11 --> A112[audio/]
+    A11 --> A113[auth/]
+    A11 --> A114[forms/]
+    A11 --> A115[game/]
+    A11 --> A116[gameMode/]
+    A11 --> A117[home/]
+    A11 --> A118[icons/]
+    A11 --> A119[layout/]
+    A11 --> A120[leaderboard/]
+    A11 --> A121[navigation/]
+    A11 --> A122[points/]
+    A11 --> A123[stats/]
+    A11 --> A124[subscription/]
+    A11 --> A125[ui/]
+    A11 --> A126[user/]
     
     %% UI components breakdown
-    A127 --> A1271[Avatar.tsx]
-    A127 --> A1272[Button.tsx]
-    A127 --> A1273[Card.tsx]
-    A127 --> A1274[ErrorBoundary.tsx]
-    A127 --> A1275[Input.tsx]
-    A127 --> A1276[Modal.tsx]
-    A127 --> A1277[Select.tsx]
-    A127 --> A1278[ValidatedInput.tsx]
-    A127 --> A1279[ValidationIcon.tsx]
-    A127 --> A1280[ValidationMessage.tsx]
+    A125 --> A1251[Avatar.tsx]
+    A125 --> A1252[Button.tsx]
+    A125 --> A1253[Card.tsx]
+    A125 --> A1254[ErrorBoundary.tsx]
+    A125 --> A1255[Input.tsx]
+    A125 --> A1256[Modal.tsx]
+    A125 --> A1257[Select.tsx]
+    A125 --> A1258[ValidatedInput.tsx]
+    A125 --> A1259[ValidationIcon.tsx]
+    A125 --> A1260[ValidationMessage.tsx]
     
     %% Game components breakdown
-    A116 --> A1161[Game.tsx]
-    A116 --> A1162[GameTimer.tsx]
-    A116 --> A1163[TriviaForm.tsx]
-    A116 --> A1164[TriviaGame.tsx]
+    A115 --> A1151[Game.tsx]
+    A115 --> A1152[GameTimer.tsx]
+    A115 --> A1153[TriviaForm.tsx]
+    A115 --> A1154[TriviaGame.tsx]
     
     %% Stats components breakdown
-    A125 --> A1251[CustomDifficultyHistory.tsx]
-    A125 --> A1252[GameSessionStats.tsx]
-    A125 --> A1253[ScoringSystem.tsx]
-    A125 --> A1254[UserStatsCard.tsx]
+    A123 --> A1231[CustomDifficultyHistory.tsx]
+    A123 --> A1232[GameSessionStats.tsx]
+    A123 --> A1233[ScoringSystem.tsx]
+    A123 --> A1234[UserStatsCard.tsx]
     
     %% Animation components breakdown
-    A112 --> A1121[AnimatedBackground.tsx]
-    A112 --> A1122[AnimationEffects.tsx]
-    A112 --> A1123[AnimationLibrary.tsx]
+    A111 --> A1111[AnimatedBackground.tsx]
+    A111 --> A1112[AnimationEffects.tsx]
+    A111 --> A1113[AnimationLibrary.tsx]
     
     %% Audio components breakdown
-    A113 --> A1131[AudioControls.tsx]
+    A112 --> A1121[AudioControls.tsx]
     
     %% Auth components breakdown
-    A114 --> A1141[ProtectedRoute.tsx]
+    A113 --> A1131[ProtectedRoute.tsx]
     
     %% Forms components breakdown
-    A115 --> A1151[ValidatedForm.tsx]
+    A114 --> A1141[ValidatedForm.tsx]
     
     %% GameMode components breakdown
-    A117 --> A1171[GameMode.tsx]
+    A116 --> A1161[GameMode.tsx]
     
     %% Home components breakdown
-    A118 --> A1181[DifficultyDisplay.tsx]
-    A118 --> A1182[ErrorBanner.tsx]
-    A118 --> A1183[HomeTitle.tsx]
+    A117 --> A1171[CurrentDifficulty.tsx]
+    A117 --> A1172[ErrorBanner.tsx]
+    A117 --> A1173[HomeTitle.tsx]
     
     %% Icons components breakdown
-    A119 --> A1191[IconLibrary.tsx]
+    A118 --> A1181[IconLibrary.tsx]
     
     %% Layout components breakdown
-    A120 --> A1201[Footer.tsx]
-    A120 --> A1202[GridLayout.tsx]
-    A120 --> A1203[NotFound.tsx]
-    A120 --> A1204[SocialShare.tsx]
+    A119 --> A1191[Footer.tsx]
+    A119 --> A1192[GridLayout.tsx]
+    A119 --> A1193[NotFound.tsx]
+    A119 --> A1194[SocialShare.tsx]
     
     %% Leaderboard components breakdown
-    A121 --> A1211[Leaderboard.tsx]
+    A120 --> A1201[Leaderboard.tsx]
     
     %% Navigation components breakdown
-    A123 --> A1231[Navigation.tsx]
+    A121 --> A1211[Navigation.tsx]
     
     %% Points components breakdown
-    A124 --> A1241[PointsManager.tsx]
+    A122 --> A1221[PointsManager.tsx]
     
     %% Subscription components breakdown
-    A126 --> A1261[SubscriptionPlans.tsx]
+    A124 --> A1241[SubscriptionPlans.tsx]
     
     %% User components breakdown
-    A128 --> A1281[CompleteProfile.tsx]
-    A128 --> A1282[FavoriteTopics.tsx]
-    A128 --> A1283[OAuthCallback.tsx]
+    A126 --> A1261[CompleteProfile.tsx]
+    A126 --> A1262[FavoriteTopics.tsx]
+    A126 --> A1263[OAuthCallback.tsx]
     
     %% Hooks breakdown
     A12 --> A121[api/]
@@ -465,6 +463,9 @@ graph TB
     A16 --> A162[game/]
     A16 --> A163[redux/]
     A16 --> A164[ui/]
+    A16 --> A165[api.types.ts]
+    A16 --> A166[points.types.ts]
+    A16 --> A167[user.types.ts]
     
     %% Game types breakdown
     A162 --> A1621[achievements.types.ts]
@@ -491,6 +492,7 @@ graph TB
     A18 --> A184[storage/]
     A18 --> A185[ui/]
     A18 --> A186[user/]
+    A18 --> A187[gameModeDefaults.ts]
     
     %% Game constants breakdown
     A183 --> A1831[game-client.constants.ts]
@@ -503,28 +505,26 @@ graph TB
     A185 --> A1854[ui.constants.ts]
     
     %% Views breakdown
-    A15 --> A151[admin/]
-    A15 --> A152[analytics/]
-    A15 --> A153[gameHistory/]
-    A15 --> A154[home/]
-    A15 --> A155[leaderboard/]
-    A15 --> A156[login/]
-    A15 --> A157[payment/]
-    A15 --> A158[registration/]
-    A15 --> A159[unauthorized/]
-    A15 --> A160[user/]
+    A15 --> A151[analytics/]
+    A15 --> A152[gameHistory/]
+    A15 --> A153[home/]
+    A15 --> A154[leaderboard/]
+    A15 --> A155[login/]
+    A15 --> A156[payment/]
+    A15 --> A157[registration/]
+    A15 --> A158[unauthorized/]
+    A15 --> A159[user/]
     
     %% Views files breakdown
-    A151 --> A1511[AdminDashboard.tsx]
-    A152 --> A1521[AnalyticsView.tsx]
-    A153 --> A1531[GameHistory.tsx]
-    A154 --> A1541[HomeView.tsx]
-    A155 --> A1551[LeaderboardView.tsx]
-    A156 --> A1561[LoginView.tsx]
-    A157 --> A1571[PaymentView.tsx]
-    A158 --> A1581[RegistrationView.tsx]
-    A159 --> A1591[UnauthorizedView.tsx]
-    A160 --> A1601[UserProfile.tsx]
+    A151 --> A1511[AnalyticsView.tsx]
+    A152 --> A1521[GameHistory.tsx]
+    A153 --> A1531[HomeView.tsx]
+    A154 --> A1541[LeaderboardView.tsx]
+    A155 --> A1551[LoginView.tsx]
+    A156 --> A1561[PaymentView.tsx]
+    A157 --> A1571[RegistrationView.tsx]
+    A158 --> A1581[UnauthorizedView.tsx]
+    A159 --> A1591[UserProfile.tsx]
     
     %% Server structure
     B1 --> B11[features/]
@@ -640,12 +640,18 @@ graph TB
     %% Internal modules breakdown
     B135 --> B1351[cache/]
     B135 --> B1352[storage/]
+    B135 --> B1353[redis.module.ts]
     
     %% Cache module breakdown
     B1351 --> B13511[cache.controller.ts]
     B1351 --> B13512[cache.module.ts]
     B1351 --> B13513[cache.service.ts]
     B1351 --> B13514[dtos/]
+    
+    %% Cache DTOs breakdown
+    B13514 --> B135141[cacheInvalidation.dto.ts]
+    B13514 --> B135142[cacheQuestions.dto.ts]
+    B13514 --> B135143[cacheStats.dto.ts]
     
     %% Storage module breakdown
     B1352 --> B13521[storage.controller.ts]
@@ -711,11 +717,6 @@ graph TB
     B139 --> B1391[interceptors.utils.ts]
     B139 --> B1392[retry.utils.ts]
     
-    %% Server common auth breakdown
-    B121 --> B1211[authentication.manager.ts]
-    B121 --> B1212[jwt-token.service.ts]
-    B121 --> B1213[password.service.ts]
-    
     %% Common breakdown
     B12 --> B121[auth/]
     B12 --> B122[decorators/]
@@ -723,6 +724,12 @@ graph TB
     B12 --> B124[interceptors/]
     B12 --> B125[pipes/]
     B12 --> B126[validation/]
+    B12 --> B127[globalException.filter.ts]
+    
+    %% Server common auth breakdown
+    B121 --> B1211[authentication.manager.ts]
+    B121 --> B1212[jwt-token.service.ts]
+    B121 --> B1213[password.service.ts]
     
     %% Server common decorators breakdown
     B122 --> B1221[auth.decorator.ts]

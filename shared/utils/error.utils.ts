@@ -22,18 +22,29 @@ export function getErrorMessage(error: unknown): string {
     // Handle Axios errors specifically
     if (errorName === 'AxiosError') {
       const axiosError = error as AxiosErrorLike;
-      if (axiosError.code === 'ECONNABORTED') {
+      
+      // Handle specific error codes
+      if (['ECONNABORTED', 'ETIMEDOUT'].includes(axiosError.code || '')) {
         return 'Request timed out. Please check your connection and try again.';
       }
-      if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
+      if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(axiosError.code || '')) {
         return 'Unable to connect to server. Please check your connection.';
       }
+      
+      // Handle response errors
       if (axiosError.response?.data?.message) {
         return axiosError.response.data.message;
+      }
+      if (axiosError.response?.data?.error) {
+        return axiosError.response.data.error;
+      }
+      if (axiosError.response?.statusText) {
+        return axiosError.response.statusText;
       }
       if (axiosError.response?.status) {
         return `Server error (${axiosError.response.status}). Please try again later.`;
       }
+      
       return error.message || 'Network request failed.';
     }
 

@@ -5,29 +5,33 @@
 ## Base URL
 
 ```
-Development: http://localhost:3000/api
-Production: https://api.everytriv.com/api
+Development: http://localhost:3001
+Production: https://api.everytriv.com
 ```
 
 ## Authentication
 
-כל ה-endpoints (למעט auth ו-public) דורשים JWT token ב-header:
+כל ה-endpoints המוגנים דורשים JWT token ב-header:
 
 ```http
 Authorization: Bearer <jwt_token>
 ```
 
-## Endpoints
+## Public Endpoints (ללא אימות)
 
 ### Authentication
 
-#### POST /auth/login
-מתחבר עם Google OAuth
+#### POST /auth/register
+רישום משתמש חדש
 
 **Request:**
 ```json
 {
-  "googleToken": "string"
+  "username": "string",
+  "email": "string",
+  "password": "string",
+  "firstName": "string",
+  "lastName": "string"
 }
 ```
 
@@ -35,43 +39,161 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "accessToken": "string",
+  "refreshToken": "string",
   "user": {
     "id": "string",
+    "username": "string",
     "email": "string",
-    "name": "string",
-    "avatar": "string"
+    "firstName": "string",
+    "lastName": "string"
   }
 }
 ```
 
-#### POST /auth/refresh
-מרענן JWT token
+#### POST /auth/login
+התחברות משתמש
+
+**Request:**
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
 
 **Response:**
 ```json
 {
-  "accessToken": "string"
+  "accessToken": "string",
+  "refreshToken": "string",
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string",
+    "firstName": "string",
+    "lastName": "string"
+  }
 }
 ```
 
-### User Management
+#### GET /auth/google
+התחברות עם Google OAuth
 
-#### GET /user/profile
+#### GET /auth/google/callback
+Callback של Google OAuth
+
+### Game
+
+#### GET /game/trivia/:id
+מחזיר שאלת טריוויה לפי ID
+
+**Response:**
+```json
+{
+  "id": "string",
+  "question": "string",
+  "options": ["string"],
+  "correctAnswer": "number",
+  "explanation": "string",
+  "difficulty": "string",
+  "topic": "string"
+}
+```
+
+#### GET /game/:id
+מחזיר משחק לפי ID
+
+### Leaderboard
+
+#### GET /leaderboard/global
+מחזיר לוח תוצאות גלובלי
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "rank": "number",
+      "username": "string",
+      "points": "number",
+      "gamesPlayed": "number"
+    }
+  ],
+  "total": "number"
+}
+```
+
+#### GET /leaderboard/period/:period
+מחזיר לוח תוצאות לתקופה
+
+### Users
+
+#### GET /users/username/:username
+מחזיר פרופיל ציבורי לפי username
+
+#### GET /users/search
+חיפוש משתמשים
+
+### Subscription
+
+#### GET /subscription/plans
+מחזיר תוכניות מנוי זמינות
+
+### AI Providers
+
+#### GET /api/ai-providers/health
+מחזיר סטטוס בריאות של ספקי AI
+
+### Storage & Cache
+
+#### GET /storage/metrics
+מחזיר מדדי אחסון
+
+#### GET /cache/stats
+מחזיר סטטיסטיקות מטמון
+
+### System
+
+#### GET /
+נקודת קצה ראשית
+
+#### GET /health
+בדיקת בריאות המערכת
+
+#### GET /status
+בדיקת סטטוס המערכת
+
+## Protected Endpoints (דורש אימות)
+
+### Authentication
+
+#### GET /auth/me
+מחזיר משתמש נוכחי
+
+#### POST /auth/refresh
+מרענן JWT token
+
+#### POST /auth/logout
+התנתקות משתמש
+
+#### GET /auth/admin/users
+מחזיר רשימת משתמשים (מנהל)
+
+### Users
+
+#### GET /users/profile
 מחזיר פרופיל משתמש
 
 **Response:**
 ```json
 {
   "id": "string",
+  "username": "string",
   "email": "string",
-  "name": "string",
-  "avatar": "string",
+  "firstName": "string",
+  "lastName": "string",
   "points": "number",
   "credits": "number",
-  "subscription": {
-    "type": "free|premium",
-    "expiresAt": "string"
-  },
   "preferences": {
     "language": "string",
     "difficulty": "string",
@@ -80,51 +202,46 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### PUT /user/profile
+#### PUT /users/profile
 מעדכן פרופיל משתמש
 
-**Request:**
-```json
-{
-  "name": "string",
-  "avatar": "string",
-  "preferences": {
-    "language": "string",
-    "difficulty": "string",
-    "topics": ["string"]
-  }
-}
-```
+#### GET /users/credits
+מחזיר נקודות זכות משתמש
 
-### Game Management
+#### POST /users/credits
+מנכה נקודות זכות
 
-#### POST /game/create
-יוצר משחק חדש
+#### DELETE /users/account
+מוחק חשבון משתמש
 
-**Request:**
-```json
-{
-  "difficulty": "easy|medium|hard",
-  "topics": ["string"],
-  "questionCount": "number"
-}
-```
+#### PUT /users/preferences
+מעדכן העדפות משתמש
 
-**Response:**
-```json
-{
-  "gameId": "string",
-  "questions": [
-    {
-      "id": "string",
-      "question": "string",
-      "options": ["string"],
-      "correctAnswer": "number",
-      "explanation": "string"
-    }
-  ]
-}
-```
+#### PATCH /users/profile/:field
+מעדכן שדה ספציפי בפרופיל
+
+#### PATCH /users/preferences/:preference
+מעדכן העדפה יחידה
+
+#### GET /users/:id
+מחזיר משתמש לפי ID
+
+#### PUT /users/credits/:userId
+מעדכן נקודות זכות (מנהל)
+
+#### DELETE /users/:userId
+מוחק משתמש (מנהל)
+
+#### PATCH /users/:userId/status
+מעדכן סטטוס משתמש (מנהל)
+
+#### GET /users/admin/all
+מחזיר כל המשתמשים (מנהל)
+
+#### PUT /users/admin/:userId/status
+עדכון סטטוס משתמש (מנהל)
+
+### Game
 
 #### POST /game/answer
 שולח תשובה לשאלה
@@ -132,52 +249,56 @@ Authorization: Bearer <jwt_token>
 **Request:**
 ```json
 {
-  "gameId": "string",
   "questionId": "string",
   "answer": "number",
   "timeSpent": "number"
 }
 ```
 
-**Response:**
-```json
-{
-  "isCorrect": "boolean",
-  "correctAnswer": "number",
-  "explanation": "string",
-  "pointsEarned": "number"
-}
-```
+#### GET /game/history
+מחזיר היסטוריית משחקים
 
-#### POST /game/finish
-מסיים משחק
+#### POST /game/history
+יוצר היסטוריית משחק
 
-**Request:**
-```json
-{
-  "gameId": "string",
-  "answers": [
-    {
-      "questionId": "string",
-      "answer": "number",
-      "timeSpent": "number"
-    }
-  ]
-}
-```
+#### DELETE /game/history/:gameId
+מוחק היסטוריית משחק
 
-**Response:**
-```json
-{
-  "totalScore": "number",
-  "correctAnswers": "number",
-  "totalQuestions": "number",
-  "pointsEarned": "number",
-  "rank": "number"
-}
-```
+#### DELETE /game/history
+מנקה היסטוריית משחקים
 
-### Points System
+#### POST /game/validate-custom
+מאמת קושי מותאם אישית
+
+#### POST /game/validate-language
+מאמת שפה
+
+#### GET /game/admin/statistics
+מחזיר סטטיסטיקות משחק (מנהל)
+
+#### DELETE /game/admin/history/clear-all
+מנקה כל היסטוריית משחקים (מנהל)
+
+### Leaderboard
+
+#### GET /leaderboard/user/ranking
+מחזיר דירוג משתמש
+
+#### POST /leaderboard/user/update
+מעדכן דירוג משתמש
+
+#### GET /leaderboard/user/percentile
+מחזיר אחוזון משתמש
+
+### Payment
+
+#### GET /payment/history
+מחזיר היסטוריית תשלומים
+
+#### POST /payment/create
+יוצר תשלום
+
+### Points
 
 #### GET /points/balance
 מחזיר יתרת נקודות
@@ -198,151 +319,98 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### POST /points/spend
-מבזבז נקודות
+#### GET /points/packages
+מחזיר חבילות נקודות
 
-**Request:**
-```json
-{
-  "amount": "number",
-  "description": "string"
-}
-```
+#### GET /points/can-play
+בודק אם משתמש יכול לשחק
 
-### Analytics
+#### POST /points/deduct
+מנכה נקודות
 
-#### GET /analytics/stats
-מחזיר סטטיסטיקות משתמש
+#### GET /points/history
+מחזיר היסטוריית נקודות
 
-**Response:**
-```json
-{
-  "totalGames": "number",
-  "totalQuestions": "number",
-  "correctAnswers": "number",
-  "successRate": "number",
-  "averageScore": "number",
-  "bestStreak": "number",
-  "topics": [
-    {
-      "name": "string",
-      "gamesPlayed": "number",
-      "successRate": "number"
-    }
-  ]
-}
-```
+#### POST /points/purchase
+רוכש נקודות
 
-### Leaderboard
-
-#### GET /leaderboard/global
-מחזיר לוח תוצאות גלובלי
-
-**Query Parameters:**
-- `limit`: מספר תוצאות (default: 50)
-- `offset`: אופסט (default: 0)
-
-**Response:**
-```json
-{
-  "users": [
-    {
-      "rank": "number",
-      "name": "string",
-      "avatar": "string",
-      "points": "number",
-      "gamesPlayed": "number"
-    }
-  ],
-  "total": "number"
-}
-```
-
-#### GET /leaderboard/friends
-מחזיר לוח תוצאות חברים
-
-**Response:**
-```json
-{
-  "users": [
-    {
-      "rank": "number",
-      "name": "string",
-      "avatar": "string",
-      "points": "number",
-      "gamesPlayed": "number"
-    }
-  ]
-}
-```
-
-### Payment
-
-#### POST /payment/create-intent
-יוצר payment intent
-
-**Request:**
-```json
-{
-  "amount": "number",
-  "currency": "string",
-  "subscriptionType": "monthly|yearly"
-}
-```
-
-**Response:**
-```json
-{
-  "clientSecret": "string",
-  "amount": "number"
-}
-```
-
-#### POST /payment/confirm
-מאשר תשלום
-
-**Request:**
-```json
-{
-  "paymentIntentId": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "success": "boolean",
-  "subscription": {
-    "type": "premium",
-    "expiresAt": "string"
-  }
-}
-```
+#### POST /points/confirm-purchase
+מאשר רכישת נקודות
 
 ### Subscription
 
-#### GET /subscription/status
-מחזיר סטטוס מנוי
+#### GET /subscription/current
+מחזיר מנוי נוכחי
 
-**Response:**
-```json
-{
-  "type": "free|premium",
-  "expiresAt": "string",
-  "features": ["string"]
-}
-```
+#### POST /subscription/create
+יוצר מנוי
 
-#### POST /subscription/cancel
+#### DELETE /subscription/cancel
 מבטל מנוי
 
-**Response:**
-```json
-{
-  "success": "boolean",
-  "expiresAt": "string"
-}
-```
+### Analytics
+
+#### POST /analytics/track
+מעקב אירוע אנליטיקה
+
+#### GET /analytics/game/stats
+מחזיר סטטיסטיקות משחק
+
+#### GET /analytics/user/
+מחזיר אנליטיקת משתמש
+
+#### GET /analytics/topics/popular
+מחזיר נושאים פופולריים
+
+#### GET /analytics/difficulty/stats
+מחזיר סטטיסטיקות קושי
+
+### Cache
+
+#### DELETE /cache/clear
+מנקה כל המטמון
+
+#### GET /cache/exists/:key
+בודק אם מפתח קיים
+
+#### GET /cache/ttl/:key
+מחזיר TTL של מפתח
+
+### Storage
+
+#### POST /storage/metrics/reset
+מאפס מדדי אחסון
+
+#### GET /storage/keys
+מחזיר מפתחות אחסון
+
+#### GET /storage/item/:key
+מחזיר פריט אחסון
+
+#### DELETE /storage/clear
+מנקה אחסון
+
+### AI Providers
+
+#### GET /api/ai-providers/stats
+מחזיר סטטיסטיקות ספקים
+
+#### GET /api/ai-providers/count
+מחזיר מספר ספקים זמינים
+
+### Admin
+
+#### GET /admin/middleware-metrics
+מחזיר כל מדדי middleware
+
+#### GET /admin/middleware-metrics/:name
+מחזיר מדדי middleware לפי שם
+
+#### DELETE /admin/middleware-metrics/:name
+מאפס מדדי middleware
+
+#### DELETE /admin/middleware-metrics
+מאפס כל מדדי middleware
 
 ## Error Responses
 

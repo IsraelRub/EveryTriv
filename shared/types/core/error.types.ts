@@ -20,21 +20,18 @@ export type NestExceptionName = typeof import('../../constants/core/error.consta
  * @description Axios-like error structure for network requests
  */
 export interface AxiosErrorLike extends Error {
-	code?: 'ECONNABORTED' | 'ENOTFOUND' | 'ECONNREFUSED' | string;
+	code?: 'ECONNABORTED' | 'ENOTFOUND' | 'ECONNREFUSED' | 'ECONNRESET' | 'ETIMEDOUT' | string;
 	response?: {
 		status?: number;
+		statusText?: string;
 		data?: {
 			message?: string;
+			error?: string;
 		};
 	};
-}
-
-/**
- * Generic error-like object interface
- * @interface ErrorLike
- * @description Generic object that might contain error information
- */
-export interface ErrorLike {
-	message?: string;
-	error?: string;
+	config?: {
+		url?: string;
+		method?: string;
+		timeout?: number;
+	};
 }

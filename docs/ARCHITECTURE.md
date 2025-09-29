@@ -37,7 +37,6 @@ EveryTriv/
 ├── client/                    # React Frontend
 │   ├── src/
 │   │   ├── views/            # דפי האפליקציה
-│   │   │   ├── admin/        # דף מנהל
 │   │   │   ├── analytics/    # דף אנליטיקה
 │   │   │   ├── gameHistory/  # היסטוריית משחקים
 │   │   │   ├── home/         # דף הבית והמשחק
@@ -123,12 +122,17 @@ EveryTriv/
 │   │   ├── ui.types.ts       # טיפוסי UI
 │   │   ├── payment.types.ts  # טיפוסי תשלומים
 │   │   ├── points.types.ts   # טיפוסי נקודות
-│   │   └── ...               # ועוד קבצים נוספים
+│   │   ├── subscription.types.ts # טיפוסי מנוי
+│   │   └── language.types.ts # טיפוסי שפה
 │   ├── constants/            # קבועים משותפים
+│   │   ├── business/         # קבועי עסק
+│   │   ├── core/            # קבועי ליבה
+│   │   ├── infrastructure/  # קבועי תשתית
+│   │   └── navigation/      # קבועי ניווט
 │   ├── utils/                # פונקציות עזר משותפות
 │   ├── validation/           # ולידציה משותפת
 │   ├── services/             # שירותים משותפים
-│   └── hooks/                # hooks משותפים
+│   └── package.json
 └── docs/                     # תיעוד
 ```
 
@@ -232,6 +236,14 @@ features/game/
 │   └── triviaGeneration.service.ts
 ├── dtos/            # Data Transfer Objects
 └── game.module.ts   # הגדרת המודול
+```
+
+#### מודול AI Providers
+```typescript
+features/game/logic/providers/management/
+├── providers.controller.ts  # API לניהול ספקים
+├── providers.service.ts     # שירות ניהול ספקים
+└── index.ts
 ```
 
 ### שירותים משותפים

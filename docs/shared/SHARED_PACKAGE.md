@@ -12,39 +12,89 @@
 shared/
 ├── types/                # טיפוסי TypeScript משותפים
 │   ├── core/            # טיפוסי ליבה
+│   │   ├── data.types.ts
+│   │   ├── error.types.ts
+│   │   ├── response.types.ts
+│   │   ├── metadata.types.ts
+│   │   └── index.ts
 │   ├── domain/          # טיפוסי דומיין
+│   │   ├── user/        # טיפוסי משתמש
+│   │   ├── game/        # טיפוסי משחק
+│   │   ├── ai/          # טיפוסי AI
+│   │   ├── analytics/   # טיפוסי אנליטיקה
+│   │   ├── auth/        # טיפוסי אימות
+│   │   ├── cache/       # טיפוסי מטמון
+│   │   ├── component/   # טיפוסי רכיבים
+│   │   ├── logging/     # טיפוסי לוגים
+│   │   ├── storage/     # טיפוסי אחסון
+│   │   ├── typeorm/     # טיפוסי TypeORM
+│   │   └── index.ts
 │   ├── infrastructure/  # טיפוסי תשתית
-│   ├── ui.types.ts      # טיפוסי UI
+│   │   ├── api.types.ts
+│   │   ├── cache.types.ts
+│   │   ├── http.types.ts
+│   │   ├── nest.types.ts
+│   │   ├── payment.types.ts
+│   │   ├── storage.types.ts
+│   │   ├── trivia.types.ts
+│   │   ├── typeorm-compatibility.types.ts
+│   │   └── index.ts
+│   ├── language.types.ts # טיפוסי שפה
 │   ├── payment.types.ts # טיפוסי תשלום
 │   ├── points.types.ts  # טיפוסי נקודות
 │   ├── subscription.types.ts # טיפוסי מנוי
-│   └── language.types.ts # טיפוסי שפה
+│   ├── ui.types.ts      # טיפוסי UI
+│   └── index.ts
 ├── constants/           # קבועים משותפים
 │   ├── business/        # קבועי עסק
+│   │   ├── game.constants.ts
+│   │   ├── info.constants.ts
+│   │   ├── payment.constants.ts
+│   │   ├── points.constants.ts
+│   │   └── social.constants.ts
 │   ├── core/           # קבועי ליבה
+│   │   ├── api.constants.ts
+│   │   ├── error.constants.ts
+│   │   ├── game.constants.ts
+│   │   ├── info.constants.ts
+│   │   ├── language.constants.ts
+│   │   ├── logging.constants.ts
+│   │   └── validation.constants.ts
 │   ├── infrastructure/ # קבועי תשתית
-│   └── navigation/     # קבועי ניווט
+│   │   ├── http.constants.ts
+│   │   └── infrastructure.constants.ts
+│   ├── navigation/     # קבועי ניווט
+│   │   ├── routes.constants.ts
+│   │   └── ui.constants.ts
+│   └── index.ts
 ├── validation/         # ולידציה משותפת
-│   ├── schemas.ts      # סכמות ולידציה
-│   ├── validation.utils.ts # פונקציות עזר
-│   ├── difficulty.validation.ts # ולידציית קושי
-│   ├── payment.validation.ts # ולידציית תשלום
-│   ├── points.validation.ts # ולידציית נקודות
-│   └── trivia.validation.ts # ולידציית טריוויה
+│   ├── difficulty.validation.ts
+│   ├── index.ts
+│   ├── payment.validation.ts
+│   ├── points.validation.ts
+│   ├── schemas.ts
+│   ├── trivia.validation.ts
+│   └── validation.utils.ts
 ├── services/           # שירותים משותפים
+│   ├── auth/           # שירותי אימות
+│   ├── cache/          # שירותי מטמון
 │   ├── logging/        # שירותי לוגים
 │   ├── points/         # שירותי נקודות
-│   └── storage/        # שירותי אחסון
+│   ├── storage/        # שירותי אחסון
+│   └── index.ts
 ├── utils/              # פונקציות עזר
-│   ├── data.utils.ts   # פונקציות נתונים
-│   ├── date.utils.ts   # פונקציות תאריך
-│   ├── format.utils.ts # פונקציות פורמט
-│   ├── id.utils.ts     # פונקציות ID
-│   ├── payment.utils.ts # פונקציות תשלום
-│   ├── preferences.utils.ts # פונקציות העדפות
-│   ├── sanitization.utils.ts # פונקציות ניקוי
-│   ├── storage.utils.ts # פונקציות אחסון
-│   └── time.utils.ts   # פונקציות זמן
+│   ├── data.utils.ts
+│   ├── date.utils.ts
+│   ├── error.utils.ts
+│   ├── format.utils.ts
+│   ├── id.utils.ts
+│   ├── index.ts
+│   ├── payment.utils.ts
+│   ├── points.utils.ts
+│   ├── preferences.utils.ts
+│   ├── sanitization.utils.ts
+│   ├── storage.utils.ts
+│   └── time.utils.ts
 └── package.json        # הגדרות החבילה
 ```
 

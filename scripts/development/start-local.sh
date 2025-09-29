@@ -26,9 +26,9 @@ npm run start:local &
 CLIENT_PID=$!
 
 echo "✅ EveryTriv is running in LOCAL mode!"
-echo "📊 Server: http://localhost:3003"
-echo "🌐 Client: http://localhost:3000"
-echo "🗄️  Database Admin: http://localhost:8080"
+echo "📊 Server: http://localhost:3001"
+echo "🌐 Client: http://localhost:5173"
+echo "🗄️ Database Admin: http://localhost:8080"
 echo "📊 Redis Admin: http://localhost:8081"
 echo ""
 echo "Press Ctrl+C to stop all services..."

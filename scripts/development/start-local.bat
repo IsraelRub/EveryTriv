@@ -23,8 +23,8 @@ cd ..\client
 start "EveryTriv Client" cmd /k "npm run start:local"
 
 echo ✅ EveryTriv is running in LOCAL mode!
-echo 📊 Server: http://localhost:3003
-echo 🌐 Client: http://localhost:3000
+echo 📊 Server: http://localhost:3001
+echo 🌐 Client: http://localhost:5173
 echo 🗄️  Database Admin: http://localhost:8080
 echo 📊 Redis Admin: http://localhost:8081
 echo.

@@ -1,14 +1,14 @@
 {
   "info": {
     "name": "EveryTriv API Endpoints",
-    "description": "Complete API endpoints collection for EveryTriv application\n\n🔐 AUTHENTICATION REQUIREMENTS:\n\n📝 USER REGISTRATION:\n- Username: 3-50 characters, only letters, numbers, underscores, and hyphens\n- Email: Valid email format, max 255 characters\n- Password: 6-128 characters, must contain:\n  * At least one lowercase letter (a-z)\n  * At least one uppercase letter (A-Z)\n  * At least one number (0-9)\n- First Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n- Last Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n\n🔑 LOGIN:\n- Username: Same as registration requirements\n- Password: Same as registration requirements\n\n📊 EXAMPLE VALID DATA:\n- Username: 'israelrub'\n- Email: 'israel@example.com'\n- Password: 'Pass123'\n- First Name: 'Israel'\n- Last Name: 'Rub'\n\n🔒 AUTHENTICATION REQUIREMENTS:\n\n🔓 PUBLIC ENDPOINTS (No Auth Required):\n- POST /auth/register - User registration\n- POST /auth/login - User login\n- GET /auth/google - Google OAuth login\n- GET /auth/google/callback - Google OAuth callback\n- GET /users/username/:username - Get user by username (public profile)\n- GET /users/search - Search users\n- GET /game/trivia/:id - Get trivia question by ID\n- GET /game/:id - Get game by ID\n- GET /leaderboard/global - Get global leaderboard\n- GET /leaderboard/period/:period - Get period leaderboard\n\n🔐 PROTECTED ENDPOINTS (Bearer Token Required):\n- GET /auth/me - Get current user\n- POST /auth/refresh - Refresh token\n- POST /auth/logout - Logout user\n- GET /users/profile - Get user profile\n- PUT /users/profile - Update user profile\n- GET /users/credits - Get user credits\n- POST /users/credits - Deduct user credits\n- DELETE /users/account - Delete user account\n- PUT /users/preferences - Update user preferences\n- PATCH /users/profile/:field - Update specific profile field\n- PATCH /users/preferences/:preference - Update single preference\n- POST /game/answer - Submit game answer\n- GET /game/history - Get user game history\n- POST /game/history - Create game history\n- GET /payment/history - Get payment history\n- POST /payment/create - Create payment\n- GET /leaderboard/user/ranking - Get user ranking\n- POST /leaderboard/user/update - Update user ranking\n- GET /leaderboard/user/percentile - Get user percentile\n\n💡 HOW TO USE:\n1. First register/login to get access token\n2. Copy the 'access_token' from response\n3. Set it in the 'accessToken' variable\n4. Use protected endpoints with Bearer token",
+    "description": "Complete API endpoints collection for EveryTriv application\n\n🔐 AUTHENTICATION REQUIREMENTS:\n\n📝 USER REGISTRATION:\n- Username: 3-50 characters, only letters, numbers, underscores, and hyphens\n- Email: Valid email format, max 255 characters\n- Password: 6-128 characters, must contain:\n  * At least one lowercase letter (a-z)\n  * At least one uppercase letter (A-Z)\n  * At least one number (0-9)\n- First Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n- Last Name: Optional, max 50 characters, only letters, spaces, apostrophes, and hyphens\n\n🔑 LOGIN:\n- Username: Same as registration requirements\n- Password: Same as registration requirements\n\n📊 EXAMPLE VALID DATA:\n- Username: 'israelrub'\n- Email: 'israel@example.com'\n- Password: 'Pass123'\n- First Name: 'Israel'\n- Last Name: 'Rub'\n\n🔒 AUTHENTICATION REQUIREMENTS:\n\n🔓 PUBLIC ENDPOINTS (No Auth Required):\n- POST /auth/register - User registration\n- POST /auth/login - User login\n- GET /auth/google - Google OAuth login\n- GET /auth/google/callback - Google OAuth callback\n- GET /users/username/:username - Get user by username (public profile)\n- GET /users/search - Search users\n- GET /game/trivia/:id - Get trivia question by ID\n- GET /game/:id - Get game by ID\n- GET /leaderboard/global - Get global leaderboard\n- GET /leaderboard/period/:period - Get period leaderboard\n- GET /subscription/plans - Get available subscription plans\n- GET /api/ai-providers/health - Get AI providers health status\n- GET /storage/metrics - Get storage metrics\n- GET /cache/stats - Get cache statistics\n- GET / - Root endpoint\n- GET /health - Health check\n- GET /status - Status check\n\n🔐 PROTECTED ENDPOINTS (Bearer Token Required):\n- GET /auth/me - Get current user\n- POST /auth/refresh - Refresh token\n- POST /auth/logout - Logout user\n- GET /auth/admin/users - Get admin users list\n- GET /users/profile - Get user profile\n- PUT /users/profile - Update user profile\n- GET /users/credits - Get user credits\n- POST /users/credits - Deduct user credits\n- DELETE /users/account - Delete user account\n- PUT /users/preferences - Update user preferences\n- PATCH /users/profile/:field - Update specific profile field\n- PATCH /users/preferences/:preference - Update single preference\n- GET /users/:id - Get user by ID\n- PUT /users/credits/:userId - Update user credits (admin)\n- DELETE /users/:userId - Delete user (admin)\n- PATCH /users/:userId/status - Update user status (admin)\n- GET /users/admin/all - Get all users (admin)\n- PUT /users/admin/:userId/status - Admin update user status\n- POST /game/answer - Submit game answer\n- GET /game/history - Get user game history\n- POST /game/history - Create game history\n- DELETE /game/history/:gameId - Delete game history\n- DELETE /game/history - Clear game history\n- POST /game/validate-custom - Validate custom difficulty\n- POST /game/validate-language - Validate language\n- GET /game/admin/statistics - Get game statistics (admin)\n- DELETE /game/admin/history/clear-all - Clear all game history (admin)\n- GET /leaderboard/user/ranking - Get user ranking\n- POST /leaderboard/user/update - Update user ranking\n- GET /leaderboard/user/percentile - Get user percentile\n- GET /payment/history - Get payment history\n- POST /payment/create - Create payment\n- GET /points/balance - Get point balance\n- GET /points/packages - Get point packages\n- GET /points/can-play - Check if user can play\n- POST /points/deduct - Deduct points\n- GET /points/history - Get point history\n- POST /points/purchase - Purchase points\n- POST /points/confirm-purchase - Confirm point purchase\n- GET /subscription/current - Get current subscription\n- POST /subscription/create - Create subscription\n- DELETE /subscription/cancel - Cancel subscription\n- POST /analytics/track - Track analytics event\n- GET /analytics/game/stats - Get game statistics\n- GET /analytics/user/ - Get user analytics\n- GET /analytics/topics/popular - Get popular topics\n- GET /analytics/difficulty/stats - Get difficulty statistics\n- DELETE /cache/clear - Clear all cache\n- GET /cache/exists/:key - Check if key exists\n- GET /cache/ttl/:key - Get key TTL\n- POST /storage/metrics/reset - Reset storage metrics\n- GET /storage/keys - Get storage keys\n- GET /storage/item/:key - Get storage item\n- DELETE /storage/clear - Clear storage\n- GET /api/ai-providers/stats - Get provider statistics\n- GET /api/ai-providers/count - Get available providers count\n- GET /admin/middleware-metrics - Get all middleware metrics\n- GET /admin/middleware-metrics/:name - Get middleware metrics by name\n- DELETE /admin/middleware-metrics/:name - Reset middleware metrics\n- DELETE /admin/middleware-metrics - Reset all middleware metrics\n\n💡 HOW TO USE:\n1. First register/login to get access token\n2. Copy the 'access_token' from response\n3. Set it in the 'accessToken' variable\n4. Use protected endpoints with Bearer token",
     "version": "1.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3003",
+      "value": "http://localhost:3001",
       "type": "string"
     },
     {
@@ -168,6 +168,18 @@
               "path": ["auth", "logout"]
             }
           }
+        },
+        {
+          "name": "Get Admin Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "admin", "users"]
+            }
+          }
         }
       ]
     },
@@ -320,6 +332,114 @@
               "path": ["users", "preferences"]
             }
           }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "123"]
+            }
+          }
+        },
+        {
+          "name": "Update User Credits (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "credits": 1000,
+                "reason": "Admin credit adjustment"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/credits/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "credits", "123"]
+            }
+          }
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "123"]
+            }
+          }
+        },
+        {
+          "name": "Update User Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "status": "active",
+                "reason": "Status update"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/123/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "123", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "all"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "status": "suspended",
+                "reason": "Policy violation"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/123/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "123", "status"]
+            }
+          }
         }
       ]
     },
@@ -399,6 +519,144 @@
               "path": ["game", "trivia"]
             }
           }
+        },
+        {
+          "name": "Get Game History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Create Game History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "gameId": "123",
+                "score": 85,
+                "timeSpent": 120,
+                "questionsAnswered": 10,
+                "correctAnswers": 8
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Delete Game History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/history/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history", "123"]
+            }
+          }
+        },
+        {
+          "name": "Clear Game History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Validate Custom Difficulty",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "difficulty": "custom",
+                "customSettings": {
+                  "timeLimit": 30,
+                  "hintsAllowed": true
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-custom",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-custom"]
+            }
+          }
+        },
+        {
+          "name": "Validate Language",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "language": "he",
+                "text": "טקסט לדוגמה"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-language",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-language"]
+            }
+          }
+        },
+        {
+          "name": "Get Game Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "statistics"]
+            }
+          }
+        },
+        {
+          "name": "Clear All Game History (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/history/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "history", "clear-all"]
+            }
+          }
         }
       ]
     },
@@ -426,6 +684,42 @@
               "raw": "{{baseUrl}}/leaderboard/user/ranking",
               "host": ["{{baseUrl}}"],
               "path": ["leaderboard", "user", "ranking"]
+            }
+          }
+        },
+        {
+          "name": "Update User Ranking",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "update"]
+            }
+          }
+        },
+        {
+          "name": "Get Period Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/period/weekly",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "period", "weekly"]
+            }
+          }
+        },
+        {
+          "name": "Get User Percentile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/percentile",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "percentile"]
             }
           }
         }
@@ -499,14 +793,544 @@
               "path": ["points", "packages"]
             }
           }
+        },
+        {
+          "name": "Check Can Play",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/points/can-play?gameType=trivia",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "can-play"],
+              "query": [
+                {
+                  "key": "gameType",
+                  "value": "trivia",
+                  "description": "Type of game to check"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deduct Points",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "amount": 10,
+                "reason": "Game play",
+                "gameType": "trivia"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/points/deduct",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "deduct"]
+            }
+          }
+        },
+        {
+          "name": "Get Point History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/points/history?limit=20&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "history"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of records to return"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Number of records to skip"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Purchase Points",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "packageId": "premium_1000",
+                "paymentMethod": "credit_card"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/points/purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "purchase"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Point Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "transactionId": "tx_123456",
+                "paymentId": "pay_789012"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/points/confirm-purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["points", "confirm-purchase"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscription",
+      "item": [
+        {
+          "name": "Get Available Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "plans"]
+            }
+          }
+        },
+        {
+          "name": "Get Current Subscription",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "current"]
+            }
+          }
+        },
+        {
+          "name": "Create Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "planId": "premium_monthly",
+                "paymentMethod": "credit_card"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "create"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Track Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": {
+                "eventType": "game_started",
+                "eventData": {
+                  "gameType": "trivia",
+                  "difficulty": "medium"
+                },
+                "timestamp": "2024-01-01T00:00:00Z"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analytics/track",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "track"]
+            }
+          }
+        },
+        {
+          "name": "Get Game Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/game/stats?period=week",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "game", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "week",
+                  "description": "Time period for statistics"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Popular Topics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/topics/popular?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "topics", "popular"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Number of topics to return"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Difficulty Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/difficulty/stats?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "difficulty", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Time period for statistics"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cache Management",
+      "item": [
+        {
+          "name": "Get Cache Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cache/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Clear All Cache",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cache/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "clear"]
+            }
+          }
+        },
+        {
+          "name": "Check Key Exists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cache/exists/user:123",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "exists", "user:123"]
+            }
+          }
+        },
+        {
+          "name": "Get Key TTL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cache/ttl/user:123",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "ttl", "user:123"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "item": [
+        {
+          "name": "Get Storage Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Reset Storage Metrics",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/metrics/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "metrics", "reset"]
+            }
+          }
+        },
+        {
+          "name": "Get Storage Keys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "keys"]
+            }
+          }
+        },
+        {
+          "name": "Get Storage Item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/item/user:123",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "item", "user:123"]
+            }
+          }
+        },
+        {
+          "name": "Clear Storage",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "clear"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Providers",
+      "item": [
+        {
+          "name": "Get Provider Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai-providers/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai-providers", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Providers Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai-providers/count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai-providers", "count"]
+            }
+          }
+        },
+        {
+          "name": "Get Health Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai-providers/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai-providers", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Middleware Metrics",
+      "item": [
+        {
+          "name": "Get All Middleware Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics"]
+            }
+          }
+        },
+        {
+          "name": "Get Middleware Metrics by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics/auth",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics", "auth"]
+            }
+          }
+        },
+        {
+          "name": "Reset Middleware Metrics",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics/auth",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics", "auth"]
+            }
+          }
+        },
+        {
+          "name": "Reset All Middleware Metrics",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "App Controller",
+      "item": [
+        {
+          "name": "Get Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Status Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            }
+          }
         }
       ]
     }
   ]
 }
-
-
-
-
-
-

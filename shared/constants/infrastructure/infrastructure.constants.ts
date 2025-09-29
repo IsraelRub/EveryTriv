@@ -14,8 +14,8 @@
  * @used_by server/src/main.ts, client/vite.config.ts
  */
 export const DEFAULT_PORTS = {
-	SERVER: 3003,
-	CLIENT: 3000,
+	SERVER: 3001,
+	CLIENT: 5173,
 	DATABASE: 5432,
 	REDIS: 6379,
 } as const;
@@ -28,5 +28,4 @@ export const DEFAULT_PORTS = {
 export const DEFAULT_URLS = {
 	DEV_SERVER: `http://localhost:${DEFAULT_PORTS.SERVER}`,
 	DEV_CLIENT: `http://localhost:${DEFAULT_PORTS.CLIENT}`,
-	PROD_DOMAIN: 'everytrivia.com',
 } as const;

@@ -9,7 +9,7 @@
 
 // API base URL configuration
 export const API_BASE_URL = {
-	DEVELOPMENT: 'http://localhost:3003',
+	DEVELOPMENT: 'http://localhost:3001',
 	PRODUCTION: 'https://everytrivia.com',
 } as const;
 

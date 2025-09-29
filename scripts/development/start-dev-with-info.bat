@@ -7,7 +7,7 @@ echo.
 echo Starting EveryTriv in DEVELOPMENT mode...
 
 echo.
-echo 🖥️  Starting server (local, port 3003)...
+echo 🖥️  Starting server (local, port 3001)...
 cd server
 start "EveryTriv Server (Dev)" cmd /k "pnpm run start:dev"
 
@@ -23,12 +23,12 @@ echo.
 echo ========================================
 echo ✅ EveryTriv is running in DEVELOPMENT mode!
 echo.
-echo 🌐 Frontend: http://localhost:3000
-echo 📊 Backend:  http://localhost:3003 (Local)
+echo 🌐 Frontend: http://localhost:5173
+echo 📊 Backend:  http://localhost:3001 (Local)
 echo.
 echo MODE: Development (Local processes)
-echo SERVER PORT: 3003 (local development)
-echo CLIENT PORT: 3000
+echo SERVER PORT: 3001 (local development)
+echo CLIENT PORT: 5173
 echo ========================================
 
 echo.

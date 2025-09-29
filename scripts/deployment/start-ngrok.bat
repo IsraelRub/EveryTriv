@@ -7,12 +7,12 @@ echo.
 echo Starting ngrok tunnels...
 echo.
 
-echo Starting tunnel for Backend (port 3003)...
-start "ngrok-backend" cmd /k "ngrok http 3003"
+echo Starting tunnel for Backend (port 3001)...
+start "ngrok-backend" cmd /k "ngrok http 3001"
 
 echo.
-echo Starting tunnel for Frontend (port 3000)...
-start "ngrok-frontend" cmd /k "ngrok http 3000"
+echo Starting tunnel for Frontend (port 5173)...
+start "ngrok-frontend" cmd /k "ngrok http 5173"
 
 echo.
 echo ========================================
