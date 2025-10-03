@@ -629,7 +629,7 @@ import { GameTimerProps, UserState, GameMode } from '../../types';
 // ייבוא מקבצים ספציפיים (למקרים ספציפיים)
 import { GameTimerProps } from '../../types/component.types';
 import { UserState } from '../../types/redux.types';
-import { GameMode } from '../../shared/types/game.types';
+import { GameMode } from '../../../shared/types/game.types';
 ```
 
 #### Props של רכיבים
@@ -700,7 +700,7 @@ const userSlice = createSlice({
 #### ייבוא קבועים משותפים
 ```typescript
 // בצד הלקוח
-import { VALIDATION_RULES, API_ENDPOINTS } from '../../../../shared/constants';
+import { VALIDATION_RULES, API_ENDPOINTS } from '../../../shared/constants';
 
 // בצד השרת
 import { VALIDATION_RULES, API_ENDPOINTS } from '../../../shared/constants';

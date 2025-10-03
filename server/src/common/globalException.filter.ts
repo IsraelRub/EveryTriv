@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage, getErrorStack } from '@shared';
+import { serverLogger as logger, getErrorMessage, getErrorStack, getErrorType } from '@shared';
 import { NestRequest, NestResponse } from 'src/internal/types';
 
 @Catch()
@@ -10,9 +10,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		const request = ctx.getRequest<NestRequest>();
 
 		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-
-		const message =
-			exception instanceof HttpException ? exception.getResponse() : getErrorMessage(exception);
+		const errorMessage = getErrorMessage(exception);
+		const errorType = getErrorType(exception);
 
 		// Handle validation errors specifically
 		if (exception instanceof HttpException && status === HttpStatus.BAD_REQUEST) {
@@ -28,34 +27,31 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 			}
 		}
 
-		// Log the error with essential context only
-		logger.systemError(`Global Exception: ${getErrorMessage(exception)}`, {
+		// Log the error with enhanced context (stack trace only in logs, not in response)
+		logger.systemError(`Global Exception: ${errorMessage}`, {
 			status,
 			path: request.url || 'unknown',
+			method: request.method || 'unknown',
+			userAgent: request.headers?.['user-agent'] || 'unknown',
+			ip: request.ip || 'unknown',
+			errorType,
 			stack: getErrorStack(exception),
+			timestamp: new Date().toISOString(),
 		});
 
-		// Send error response with essential information only
-		const standardError = {
-			message: getErrorMessage(exception),
-			stack: getErrorStack(exception),
-			context: {
-				status,
-				path: request.url || 'unknown',
-			}
-		};
-		
-		const errorResponse: {
-			statusCode: number;
-			path: string;
-			message: string;
-		} = {
+		// Send sanitized error response (no stack traces or sensitive info)
+		const errorResponse = {
 			statusCode: status,
 			path: request.url || 'unknown',
-			message: getErrorMessage(message) || standardError.message,
+			message: errorMessage,
+			timestamp: new Date().toISOString(),
 		};
 
-		// Send the error response
+		// Add error type only for client errors (4xx), not server errors (5xx)
+		if (status >= 400 && status < 500) {
+			(errorResponse as any).errorType = errorType;
+		}
+
 		response.status(status).json(errorResponse);
 	}
 }

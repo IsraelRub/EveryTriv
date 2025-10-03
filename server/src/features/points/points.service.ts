@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse, getErrorMessage  } from '@shared';
+import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse, ensureErrorObject  } from '@shared';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
@@ -65,7 +65,7 @@ export class PointsService extends BasePointsService {
 				1800
 			);
 		} catch (error) {
-			logger.errorWithStack(error instanceof Error ? error : new Error(getErrorMessage(error)), 'Failed to get point balance', {
+			logger.databaseError(ensureErrorObject(error), 'Failed to get point balance', {
 				userId,
 			});
 			throw error;
@@ -96,7 +96,7 @@ export class PointsService extends BasePointsService {
 				3600
 			);
 		} catch (error) {
-			logger.errorWithStack(error instanceof Error ? error : new Error(getErrorMessage(error)), 'Failed to get point packages');
+			logger.databaseError(ensureErrorObject(error), 'Failed to get point packages');
 			throw error;
 		}
 	}
@@ -131,8 +131,8 @@ export class PointsService extends BasePointsService {
 				reason: `Insufficient points. You have ${totalAvailable} points available but need ${questionCount} points.`,
 			};
 		} catch (error) {
-			logger.errorWithStack(
-				error instanceof Error ? error : new Error(getErrorMessage(error)),
+			logger.databaseError(
+				ensureErrorObject(error),
 				'Failed to check if user can play',
 				{ userId, questionCount }
 			);
@@ -237,11 +237,10 @@ export class PointsService extends BasePointsService {
 
 			return balance;
 		} catch (error) {
-			logger.databaseError('Failed to deduct points', {
+			logger.databaseError(ensureErrorObject(error), 'Failed to deduct points', {
 				userId,
 				questionCount,
 				gameMode,
-				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -271,10 +270,9 @@ export class PointsService extends BasePointsService {
 			logger.databaseInfo('Point history retrieved', { userId, count: transactions.length });
 			return transactions;
 		} catch (error) {
-			logger.databaseError('Failed to get point history', {
+			logger.databaseError(ensureErrorObject(error), 'Failed to get point history', {
 				userId,
 				limit,
-				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -334,10 +332,9 @@ export class PointsService extends BasePointsService {
 				paymentUrl: `/payment/process/${paymentResult.paymentId}`,
 			};
 		} catch (error) {
-			logger.databaseError('Failed to purchase points', {
+			logger.databaseError(ensureErrorObject(error), 'Failed to purchase points', {
 				userId,
 				packageId,
-				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -414,11 +411,10 @@ export class PointsService extends BasePointsService {
 
 			return balance;
 		} catch (error) {
-			logger.databaseError('Failed to confirm point purchase', {
+			logger.databaseError(ensureErrorObject(error), 'Failed to confirm point purchase', {
 				userId,
 				paymentIntentId,
 				points,
-				error: getErrorMessage(error),
 			});
 			throw error;
 		}
@@ -451,9 +447,7 @@ export class PointsService extends BasePointsService {
 				}
 			}
 		} catch (error) {
-			logger.databaseError('Failed to reset daily free questions', {
-				error: getErrorMessage(error),
-			});
+			logger.databaseError(ensureErrorObject(error), 'Failed to reset daily free questions');
 			throw error;
 		}
 	}

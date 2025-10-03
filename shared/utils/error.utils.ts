@@ -5,9 +5,10 @@
  * @description Centralized error handling utilities for consistent error processing
  * @used_by server/src/features, client/src/services, shared/services
  */
-import { BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import type { AxiosErrorLike, NestExceptionName } from '../types/core/error.types';
 import { NEST_EXCEPTION_NAMES } from '../constants/core/error.constants';
+import { BasicValue } from '../types';
 
 /**
  * Enhanced error message extraction with specific error type handling
@@ -62,6 +63,11 @@ export function getErrorMessage(error: unknown): string {
       return 'Database operation failed. Please try again later.';
     }
 
+    // Handle Redis/cache errors
+    if (errorName === 'RedisError' || error.message?.includes('redis') || error.message?.includes('cache')) {
+      return 'Cache operation failed. Please try again.';
+    }
+
     // Handle timeout errors (check message content)
     if (error.message?.includes('timeout')) {
       return 'Operation timed out. Please try again.';
@@ -70,6 +76,21 @@ export function getErrorMessage(error: unknown): string {
     // Handle rate limiting errors (check message content)
     if (error.message?.includes('rate limit') || error.message?.includes('too many requests')) {
       return 'Too many requests. Please wait a moment and try again.';
+    }
+
+    // Handle memory/resource errors
+    if (error.message?.includes('memory') || error.message?.includes('out of memory')) {
+      return 'Insufficient resources. Please try again later.';
+    }
+
+    // Handle file system errors
+    if (error.message?.includes('ENOENT') || error.message?.includes('file not found')) {
+      return 'Required file not found. Please contact support.';
+    }
+
+    // Handle permission errors
+    if (error.message?.includes('EACCES') || error.message?.includes('permission denied')) {
+      return 'Permission denied. Please contact support.';
     }
 
     // Handle NestJS exceptions
@@ -132,12 +153,21 @@ export function getErrorType(error: unknown): string {
 }
 
 /**
+ * Ensure error is an Error object for logging with stack traces
+ * @param error - The error to normalize
+ * @returns Error object suitable for errorWithStack logging
+ */
+export function ensureErrorObject(error: unknown): Error {
+  return error instanceof Error ? error : new Error(getErrorMessage(error));
+}
+
+/**
  * Create validation error for field type validation
  * @param field - The field name
  * @param expectedType - The expected type (string, number, boolean)
  * @returns BadRequestException with validation message
  */
-export function createValidationError(field: string, expectedType: 'string' | 'number' | 'boolean'): BadRequestException {
+export function createValidationError(field: string, expectedType: BasicValue): BadRequestException {
   return new BadRequestException(`${field} must be a ${expectedType}`);
 }
 
@@ -189,4 +219,44 @@ export function createServerError(operation: string, originalError: unknown): In
  */
 export function createNotFoundError(resource: string): NotFoundException {
   return new NotFoundException(`${resource} not found`);
+}
+
+/**
+ * Create cache operation error
+ * @param operation - The cache operation that failed
+ * @param originalError - The original error (optional)
+ * @returns InternalServerErrorException with cache error message
+ */
+export function createCacheError(operation: string, originalError?: unknown): InternalServerErrorException {
+  const message = originalError ? `Failed to ${operation}: ${getErrorMessage(originalError)}` : `Failed to ${operation}`;
+  return new InternalServerErrorException(message);
+}
+
+/**
+ * Create timeout error
+ * @param operation - The operation that timed out
+ * @param timeoutMs - Timeout duration in milliseconds
+ * @returns InternalServerErrorException with timeout message
+ */
+export function createTimeoutError(operation: string, timeoutMs?: number): InternalServerErrorException {
+  const timeoutText = timeoutMs ? ` after ${timeoutMs}ms` : '';
+  return new InternalServerErrorException(`Operation '${operation}' timed out${timeoutText}. Please try again.`);
+}
+
+/**
+ * Create authentication error
+ * @param reason - The reason for authentication failure
+ * @returns UnauthorizedException with authentication message
+ */
+export function createAuthError(reason: string = 'Authentication failed'): UnauthorizedException {
+  return new UnauthorizedException(reason);
+}
+
+/**
+ * Create permission error
+ * @param resource - The resource that access was denied to
+ * @returns ForbiddenException with permission message
+ */
+export function createPermissionError(resource: string = 'resource'): ForbiddenException {
+  return new ForbiddenException(`Access denied to ${resource}`);
 }

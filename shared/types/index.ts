@@ -152,3 +152,21 @@ export type {
 	LanguageValidationResult,
 	SupportedLanguage,
 } from './language.types';
+
+/**
+ * Authentication types
+ * @description Authentication and user validation type definitions
+ */
+export type {
+	CurrentUserData,
+} from './infrastructure/auth.types';
+
+/**
+ * Middleware metrics types
+ * @description Middleware metrics and monitoring type definitions
+ */
+export type {
+	MiddlewareMetricsSummary,
+	AllMiddlewareMetricsResponse,
+	MiddlewareMetricsResponse,
+} from './infrastructure/api.types';

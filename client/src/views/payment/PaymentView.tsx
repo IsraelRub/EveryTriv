@@ -4,7 +4,7 @@ import type {
   SubscriptionPlans as SubscriptionPlansType,
   UrlResponse,
 } from '@shared';
-import { clientLogger,CONTACT_INFO, formatCurrency , PAYMENT_CONTENT, PAYMENT_FEATURES, VALID_GAME_MODES  } from '@shared';
+import { clientLogger,CONTACT_INFO, formatCurrency , PAYMENT_CONTENT, PAYMENT_FEATURES, VALID_GAME_MODES, getErrorMessage  } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo,useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -97,7 +97,7 @@ export default function PaymentView() {
           setCurrentSubscription(storedSubscription.data as SubscriptionData | null);
         }
       } catch (err) {
-        clientLogger.error('Failed to fetch current subscription status', { error: err });
+        clientLogger.error('Failed to fetch current subscription status', { error: getErrorMessage(err) });
       }
     };
 
@@ -109,7 +109,7 @@ export default function PaymentView() {
           setSubscriptionPlans(plans.data as SubscriptionPlansType);
         }
       } catch (err) {
-        clientLogger.error('Failed to fetch subscription plans', { error: err });
+        clientLogger.error('Failed to fetch subscription plans', { error: getErrorMessage(err) });
       } finally {
         setSubscriptionPlansLoading(false);
       }
@@ -215,25 +215,27 @@ export default function PaymentView() {
         onError: (err: Error) => {
           setPurchaseStatus('invalid');
           audioService.play(AudioKey.ERROR);
+          const errorMessage = getErrorMessage(err);
           clientLogger.payment('Purchase failed', {
-            error: err.message,
+            error: errorMessage,
             packageId: selectedPackage,
           });
           const duration = performance.now() - startTime;
           clientLogger.performance('point_purchase', duration, {
             success: false,
-            error: err.message,
+            error: errorMessage,
           });
-          clientLogger.userError('Purchase failed', { error: err.message });
+          clientLogger.userError('Purchase failed', { error: errorMessage });
           setPurchasing(false);
         },
       });
     } catch (err: unknown) {
       setPurchaseStatus('invalid');
       audioService.play(AudioKey.ERROR);
+      const errorMessage = getErrorMessage(err);
       clientLogger.paymentFailed(
         'payment_intent',
-        err instanceof Error ? err.message : String(err),
+        errorMessage,
         {
           packageId: selectedPackage,
         }
@@ -241,10 +243,10 @@ export default function PaymentView() {
       const duration = performance.now() - startTime;
       clientLogger.performance('point_purchase', duration, {
         success: false,
-        error: err instanceof Error ? err.message : 'Purchase failed',
+        error: errorMessage,
       });
       clientLogger.userError('Purchase failed', {
-        error: err instanceof Error ? err.message : 'Purchase failed',
+        error: errorMessage,
       });
       setPurchasing(false);
     }

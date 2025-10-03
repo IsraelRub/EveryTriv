@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_TTL, GAME_ERROR_MESSAGES, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger, getErrorMessage, createServerError, createNotFoundError  } from '@shared';
+import { CACHE_TTL, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger, getErrorMessage, createServerError, createNotFoundError, createValidationError  } from '@shared';
 import { AnswerResult, UserAnalytics,UserScoreData  } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
@@ -102,9 +102,7 @@ export class GameService {
 				fromCache: false,
 			};
 		} catch (error) {
-			throw new Error(
-				`Failed to generate trivia questions: ${getErrorMessage(error)}`
-			);
+			throw createServerError('generate trivia questions', error);
 		}
 	}
 
@@ -120,14 +118,12 @@ export class GameService {
 			});
 
 			if (!question) {
-				throw new Error(GAME_ERROR_MESSAGES.QUESTION_NOT_FOUND);
+				throw createNotFoundError('Question');
 			}
 
 			return question;
 		} catch (error) {
-			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_QUESTION}: ${getErrorMessage(error)}`
-			);
+			throw createServerError('get question', error);
 		}
 	}
 
@@ -143,7 +139,7 @@ export class GameService {
 		try {
 			const question = await this.getQuestionById(questionId);
 			if (!question) {
-				throw new Error(GAME_ERROR_MESSAGES.QUESTION_NOT_FOUND);
+				throw createNotFoundError('Question');
 			}
 
 			const isCorrect = this.checkAnswer(question, answer);
@@ -192,9 +188,7 @@ export class GameService {
 				feedback: isCorrect ? 'Correct answer!' : 'Wrong answer. Try again!',
 			};
 		} catch (error) {
-			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_SUBMIT_ANSWER}: ${getErrorMessage(error)}`
-			);
+			throw createServerError('submit answer', error);
 		}
 	}
 
@@ -207,9 +201,7 @@ export class GameService {
 		try {
 			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
-			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${getErrorMessage(error)}`
-			);
+			throw createServerError('get user analytics', error);
 		}
 	}
 
@@ -483,9 +475,7 @@ export class GameService {
 		try {
 			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
-			throw new Error(
-				`${GAME_ERROR_MESSAGES.FAILED_TO_GET_ANALYTICS}: ${getErrorMessage(error)}`
-			);
+			throw createServerError('get user analytics', error);
 		}
 	}
 
@@ -639,7 +629,7 @@ export class GameService {
 
 			const currentPoints = user.credits || 0;
 			if (currentPoints < points) {
-				throw new Error('Insufficient points');
+				throw createValidationError('points', 'number');
 			}
 
 			const newPoints = currentPoints - points;
@@ -701,7 +691,7 @@ export class GameService {
 					userId,
 					error: result.error || 'Unknown error',
 				});
-				throw new Error('Failed to save game configuration');
+				throw createServerError('save game configuration', new Error('Failed to save game configuration'));
 			}
 
 			return {
@@ -780,7 +770,7 @@ export class GameService {
 			});
 
 			if (!gameHistory) {
-				throw new Error('Game history not found or access denied');
+				throw createNotFoundError('Game history');
 			}
 
 			await this.gameHistoryRepository.remove(gameHistory);

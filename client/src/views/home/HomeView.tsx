@@ -1,4 +1,4 @@
-import { clientLogger,DifficultyLevel, GameMode  } from '@shared';
+import { clientLogger,DifficultyLevel, GameMode, getErrorMessage  } from '@shared';
 import { motion } from 'framer-motion';
 import {
   createContext,
@@ -499,7 +499,7 @@ export default function HomeView() {
       audioService.play(AudioKey.GAME_START);
       audioService.play(AudioKey.GAME_MUSIC);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      const errorMessage = getErrorMessage(err);
       updateGameState({
         error: errorMessage,
         loading: false,
@@ -586,7 +586,7 @@ export default function HomeView() {
       });
     } catch (err: unknown) {
       updateGameState({
-        error: err instanceof Error ? err.message : 'An error occurred',
+        error: getErrorMessage(err),
         loading: false,
       });
     }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { serverLogger as logger, getErrorMessage, createNotFoundError } from '@shared';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
@@ -67,7 +67,7 @@ export class UserStatsService {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const userStats = this.userStatsRepository.create({

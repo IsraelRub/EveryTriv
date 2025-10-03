@@ -14,6 +14,8 @@ import {
 	roundToDecimals,
  serverLogger as logger,
  getErrorMessage,
+ createServerError,
+ ensureErrorObject,
  TriviaQuestion } from '@shared';
 
 import {
@@ -99,7 +101,7 @@ export class AiProvidersService {
 		| (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)
 		| null {
 		if (this.llmProviders.length === 0) {
-			throw new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE);
+			throw createServerError('get AI provider', new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE));
 		}
 
 		const provider = this.llmProviders[this.currentProviderIndex];
@@ -131,7 +133,7 @@ export class AiProvidersService {
 				try {
 					const provider = this.getNextProvider();
 					if (!provider) {
-						throw new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE);
+						throw createServerError('get AI provider', new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE));
 					}
 					const providerName = provider.name;
 					const providerStartTime = Date.now();
@@ -162,7 +164,7 @@ export class AiProvidersService {
 					return question;
 				} catch (error) {
 					const providerName = (this.llmProviders[this.currentProviderIndex - 1] || {}).name || 'unknown';
-					lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
+					lastError = ensureErrorObject(error);
 
 					this.updateProviderStats(providerName, 'failure');
 
@@ -179,7 +181,7 @@ export class AiProvidersService {
 				}
 			}
 
-			throw lastError || new Error('Failed to generate question after all retries');
+			throw lastError || createServerError('generate question after all retries', new Error('All providers failed'));
 		} catch (error) {
 			logger.providerError('all', getErrorMessage(error), {
 				context: 'AiProvidersService',

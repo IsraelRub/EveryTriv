@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger,TriviaAnswer, getErrorMessage  } from '@shared';
+import { serverLogger as logger,TriviaAnswer, getErrorMessage, createServerError, createNotFoundError, createValidationError  } from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { DeepPartial, Repository } from 'typeorm';
 
@@ -51,7 +51,7 @@ export class TriviaGenerationService {
 			}
 
 			// If AI generation fails, throw an error instead of using mock
-			throw new Error('Failed to generate question with AI providers');
+			throw createServerError('generate question with AI providers', new Error('AI providers failed'));
 		} catch (error) {
 			logger.gameError('Failed to generate trivia question', {
 				error: getErrorMessage(error),
@@ -61,9 +61,7 @@ export class TriviaGenerationService {
 			});
 
 			// Re-throw the error instead of falling back to mock
-			throw new Error(
-				`Failed to generate trivia question: ${getErrorMessage(error)}`
-			);
+			throw createServerError('generate trivia question', error);
 		}
 	}
 
@@ -126,7 +124,7 @@ export class TriviaGenerationService {
 
 			const question = await this.triviaRepository.findOne({ where: { id: questionId } });
 			if (!question) {
-				throw new Error('Question not found');
+				throw createNotFoundError('Question');
 			}
 
 			return {
@@ -262,7 +260,7 @@ export class TriviaGenerationService {
 				error: getErrorMessage(error),
 				aiQuestion: JSON.stringify(aiQuestion),
 			});
-			throw new Error('Invalid AI question format');
+			throw createValidationError('AI question format', 'string');
 		}
 	}
 

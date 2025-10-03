@@ -105,11 +105,8 @@ export class GameController {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				success: true,
-				data: result,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return result;
 		} catch (error) {
 			logger.apiReadError('game_history', getErrorMessage(error), {
 				userId: userId,
@@ -154,11 +151,8 @@ export class GameController {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				success: true,
-				data: result,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return result;
 		} catch (error) {
 			logger.apiUpdateError('game_history_save', getErrorMessage(error), {
 				userId: userId,
@@ -202,11 +196,8 @@ export class GameController {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				success: true,
-				data: result,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return result;
 		} catch (error) {
 			logger.apiDeleteError('game_history', getErrorMessage(error), {
 				userId: userId,
@@ -246,11 +237,8 @@ export class GameController {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				success: true,
-				data: result,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return result;
 		} catch (error) {
 			logger.apiDeleteError('game_history_all', getErrorMessage(error), {
 				userId: userId,
@@ -326,10 +314,11 @@ export class GameController {
 				difficultyBreakdown: {},
 			};
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
+				success: true,
 				message: 'Game statistics retrieved successfully',
 				statistics: statistics,
-				success: true,
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
@@ -358,9 +347,10 @@ export class GameController {
 			// This would call a service method to clear all game history
 			// await this.gameService.clearAllGameHistory();
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				message: 'All game history cleared successfully',
 				success: true,
+				message: 'All game history cleared successfully',
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {

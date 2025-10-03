@@ -35,7 +35,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	 * @param next - Call handler
 	 * @returns Observable with performance monitoring
 	 */
-	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const request = context.switchToHttp().getRequest();
 		const startTime = Date.now();
 		const startMemory = process.memoryUsage();

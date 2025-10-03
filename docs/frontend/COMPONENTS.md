@@ -8,24 +8,25 @@
 
 האפליקציה משתמשת ב-React עם TypeScript ו-Tailwind CSS. הרכיבים מאורגנים בהיררכיה ברורה:
 
-- **Base Components**: רכיבי UI בסיסיים
+- **UI Components**: רכיבי UI בסיסיים
 - **Feature Components**: רכיבים ספציפיים לתכונות
 - **Layout Components**: רכיבי פריסה
-- **Page Components**: דפי האפליקציה
+- **Views**: דפי האפליקציה
 
-## Base Components
+## UI Components
 
 ### Button
 
-רכיב כפתור בסיסי עם וריאציות שונות.
+רכיב כפתור מתקדם עם אנימציות וצלילים.
 
 ```typescript
 interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'accent' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
-  loading?: boolean;
-  onClick?: () => void;
+  isGlassy?: boolean;
+  withGlow?: boolean;
+  withAnimation?: boolean;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   children: React.ReactNode;
   className?: string;
 }
@@ -36,8 +37,10 @@ interface ButtonProps {
 <Button 
   variant="primary" 
   size="md" 
+  isGlassy={true}
+  withGlow={true}
+  withAnimation={true}
   onClick={handleClick}
-  loading={isLoading}
 >
   שמור
 </Button>
@@ -45,63 +48,92 @@ interface ButtonProps {
 
 ### Card
 
-רכיב כרטיס עם תוכן.
+רכיב כרטיס מתקדם עם אפקטי זכוכית.
 
 ```typescript
 interface CardProps {
-  title?: string;
-  subtitle?: string;
+  isGlassy?: boolean;
+  withGlow?: boolean;
   children: React.ReactNode;
   className?: string;
-  onClick?: () => void;
+}
+
+interface CardHeaderProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface CardTitleProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface CardContentProps {
+  children: React.ReactNode;
+  className?: string;
 }
 ```
 
 **דוגמת שימוש:**
 ```tsx
-<Card title="סטטיסטיקות" subtitle="הביצועים שלך">
-  <div>תוכן הכרטיס</div>
+<Card isGlassy={true} withGlow={true}>
+  <CardHeader>
+    <CardTitle>סטטיסטיקות</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div>תוכן הכרטיס</div>
+  </CardContent>
 </Card>
 ```
 
 ### Modal
 
-רכיב חלון קופץ.
+רכיב חלון קופץ מתקדם עם אפקטי זכוכית.
 
 ```typescript
 interface ModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  title?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
+  isGlassy?: boolean;
+  disableEscapeKeyDown?: boolean;
+  disableBackdropClick?: boolean;
+  className?: string;
 }
 ```
 
 **דוגמת שימוש:**
 ```tsx
 <Modal 
-  isOpen={isModalOpen} 
+  open={isModalOpen} 
   onClose={() => setIsModalOpen(false)}
-  title="אישור פעולה"
+  size="md"
+  isGlassy={true}
 >
-  <p>האם אתה בטוח?</p>
+  <div className="p-6">
+    <h2 className="text-xl font-bold mb-4">אישור פעולה</h2>
+    <p>האם אתה בטוח?</p>
+  </div>
 </Modal>
 ```
 
 ### Input
 
-רכיב שדה קלט עם ולידציה.
+רכיב שדה קלט מתקדם עם אנימציות ואפקטי זכוכית.
 
 ```typescript
-interface InputProps {
+interface UIInputProps {
   type?: 'text' | 'email' | 'password' | 'number';
   placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   error?: string;
   disabled?: boolean;
   required?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  isGlassy?: boolean;
+  withAnimation?: boolean;
   className?: string;
 }
 ```
@@ -112,24 +144,34 @@ interface InputProps {
   type="email"
   placeholder="כתובת אימייל"
   value={email}
-  onChange={setEmail}
+  onChange={handleEmailChange}
   error={emailError}
+  size="md"
+  isGlassy={true}
+  withAnimation={true}
   required
 />
 ```
 
 ### Select
 
-רכיב בחירה מרשימה.
+רכיב בחירה מרשימה מתקדם עם אפקטי זכוכית.
 
 ```typescript
-interface SelectProps {
-  options: Array<{ value: string; label: string }>;
+interface SelectOption {
   value: string;
-  onChange: (value: string) => void;
+  label: string;
+}
+
+interface UISelectProps {
+  options: SelectOption[];
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLSelectElement>) => void;
   placeholder?: string;
   error?: string;
   disabled?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  isGlassy?: boolean;
   className?: string;
 }
 ```
@@ -143,22 +185,32 @@ interface SelectProps {
     { value: 'hard', label: 'קשה' }
   ]}
   value={difficulty}
-  onChange={setDifficulty}
+  onChange={handleDifficultyChange}
+  size="md"
+  isGlassy={true}
   placeholder="בחר קושי"
 />
 ```
 
 ### Avatar
 
-רכיב תמונת פרופיל.
+רכיב תמונת פרופיל מתקדם עם מערכת fallback ו-retry.
 
 ```typescript
 interface AvatarProps {
   src?: string;
-  alt?: string;
+  username?: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  fallback?: string;
+  customSize?: number;
   className?: string;
+  alt?: string;
+  showLoading?: boolean;
+  lazy?: boolean;
+  onClick?: () => void;
+  clickable?: boolean;
 }
 ```
 
@@ -166,9 +218,13 @@ interface AvatarProps {
 ```tsx
 <Avatar 
   src={user.avatar} 
-  alt={user.name}
+  username={user.username}
+  fullName={user.fullName}
   size="md"
-  fallback={user.name.charAt(0)}
+  showLoading={true}
+  lazy={true}
+  clickable={true}
+  onClick={handleAvatarClick}
 />
 ```
 

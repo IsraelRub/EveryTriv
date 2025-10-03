@@ -39,7 +39,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 	 * @param next - Call handler
 	 * @returns Observable with cached or fresh data
 	 */
-	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
 		const handler = context.getHandler();
 		const className = context.getClass().name;
 		const methodName = handler.name;
@@ -76,7 +76,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 		cacheMetadata: CacheMetadata,
 		className: string,
 		methodName: string
-	): Promise<Observable<any>> {
+	): Promise<Observable<unknown>> {
 		const args = _context.getArgs();
 		const cacheKey = this.generateRepositoryCacheKey(className, methodName, args, cacheMetadata.key);
 
@@ -146,7 +146,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 		auditMetadata: { action: string },
 		className: string,
 		methodName: string
-	): Observable<any> {
+	): Observable<unknown> {
 		const args = _context.getArgs();
 		const startTime = Date.now();
 
@@ -191,7 +191,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 		rateLimitMetadata: { limit: number; window: number },
 		className: string,
 		methodName: string
-	): Observable<any> {
+	): Observable<unknown> {
 		// For now, just log the rate limit attempt
 		// In a full implementation, you would check against a rate limiter
 		logger.performance('repository.rate_limit_check', 0, {
@@ -213,7 +213,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 		next: CallHandler,
 		className: string,
 		methodName: string
-	): Observable<any> {
+	): Observable<unknown> {
 		const startTime = Date.now();
 
 		return next.handle().pipe(

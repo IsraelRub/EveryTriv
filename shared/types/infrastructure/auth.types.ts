@@ -4,15 +4,22 @@
  * @description Authentication and authorization related types
  */
 
+// Current User Data
+export interface CurrentUserData {
+	id: string;
+	username: string;
+	email: string;
+	firstName?: string;
+	lastName?: string;
+	role: string;
+	avatar?: string;
+	createdAt: Date;
+}
+
 // Authentication Result
 export interface AuthenticationResult {
 	success: boolean;
-	user?: {
-		id: string;
-		username: string;
-		email: string;
-		role: string;
-	};
+	user?: Pick<CurrentUserData, 'id' | 'username' | 'email' | 'role'>;
 	accessToken?: string;
 	refreshToken?: string;
 	message?: string;

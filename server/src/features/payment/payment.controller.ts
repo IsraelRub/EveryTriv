@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
-import { PaymentData , serverLogger as logger, getErrorMessage } from '@shared';
+import { PaymentData , serverLogger as logger } from '@shared';
 
 import {
 	AuditLog,
@@ -64,16 +64,12 @@ export class PaymentController {
 				success: result.success,
 			});
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: result.success,
 				paymentId: result.paymentId,
 				message: 'Payment session created successfully',
 			};
 		} catch (error) {
-			logger.apiCreateError('payment', getErrorMessage(error), {
-				userId: userId,
-				planType: paymentData.planType,
-			});
 			throw error;
 		}
 	}
@@ -94,9 +90,6 @@ export class PaymentController {
 
 			return result;
 		} catch (error) {
-			logger.apiReadError('payment_history', getErrorMessage(error), {
-				userId: userId,
-			});
 			throw error;
 		}
 	}

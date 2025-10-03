@@ -261,3 +261,25 @@ export interface GameStatisticsResponse {
 	success: boolean;
 	timestamp: string;
 }
+
+// Middleware Metrics Summary
+export interface MiddlewareMetricsSummary {
+	totalMiddlewares: number;
+	totalRequests: number;
+	averagePerformance: number;
+	slowestMiddleware: string;
+	mostUsedMiddleware: string;
+}
+
+// All Middleware Metrics Response
+export interface AllMiddlewareMetricsResponse {
+	summary: MiddlewareMetricsSummary;
+	metrics: Record<string, unknown> | unknown;
+	storageMetrics: unknown;
+}
+
+// Import MiddlewareMetrics from metrics types
+import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
+
+// Middleware Metrics Response
+export type MiddlewareMetricsResponse = MiddlewareMetrics | Record<string, MiddlewareMetrics>;

@@ -1,4 +1,4 @@
-import { clientLogger,isToday, isYesterday  } from '@shared';
+import { clientLogger,isToday, isYesterday, getErrorMessage  } from '@shared';
 import { motion } from 'framer-motion';
 import { memo, useCallback,useEffect, useMemo, useState } from 'react';
 
@@ -25,7 +25,7 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
       setError('');
     } catch (err) {
       clientLogger.analyticsError('Failed to fetch leaderboard', {
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       });
       setError('Failed to load leaderboard');
       setEntries([]);

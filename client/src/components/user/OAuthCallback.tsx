@@ -1,4 +1,4 @@
-import { clientLogger } from '@shared';
+import { clientLogger, getErrorMessage } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -73,10 +73,10 @@ export default function OAuthCallback() {
             }
           } catch (error) {
             clientLogger.authError('Failed to get current user', {
-              error: error instanceof Error ? error.message : String(error),
+              error: getErrorMessage(error),
             });
             clientLogger.authError('Failed to handle OAuth callback', {
-              error: error instanceof Error ? error.message : String(error),
+              error: getErrorMessage(error),
             });
             setError('Error receiving user details');
             setTimeout(() => {
@@ -93,10 +93,10 @@ export default function OAuthCallback() {
         }
       } catch (error) {
         clientLogger.authError('Unexpected error in OAuth callback', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         });
         clientLogger.authError('Unexpected error in OAuth callback details', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         });
         setError('Unexpected error');
         setTimeout(() => {

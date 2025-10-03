@@ -6,7 +6,7 @@
  * @used_by server/src/features/game/logic/providers
  */
 import { DIFFICULTY_MULTIPLIERS, DifficultyLevel } from '@shared';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { serverLogger as logger, getErrorMessage, createAuthError } from '@shared';
 import {
 	AI_PROVIDER_ERROR_TYPES,
 	ERROR_CONTEXT_MESSAGES,
@@ -80,7 +80,7 @@ export abstract class BaseTriviaProvider {
 	// API call method with timeout and performance optimization
 	protected async makeApiCall(_prompt: string): Promise<LLMApiResponse> {
 		if (!this.apiKey) {
-			throw new Error(PROVIDER_ERROR_MESSAGES.API_KEY_NOT_CONFIGURED);
+			throw createAuthError(PROVIDER_ERROR_MESSAGES.API_KEY_NOT_CONFIGURED);
 		}
 
 		const timeout = 30000; // 30 seconds timeout
@@ -146,7 +146,7 @@ export abstract class BaseTriviaProvider {
 				data = this.parseResponse(response);
 			} catch (err) {
 				logger.providerError(this.name, ERROR_CONTEXT_MESSAGES.INVALID_RESPONSE, {
-					error: err instanceof Error ? err.message : 'Unknown error',
+					error: getErrorMessage(err),
 					topic,
 					difficulty,
 				});

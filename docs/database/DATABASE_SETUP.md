@@ -20,7 +20,7 @@ docker run -d \
   --name everytriv-postgres \
   -e POSTGRES_DB=everytriv \
   -e POSTGRES_USER=everytriv_user \
-  -e POSTGRES_PASSWORD=EvTr!v_DB_P@ssw0rd_2025_S3cur3! \
+  -e POSTGRES_PASSWORD=test123 \
   -p 5432:5432 \
   -v postgres_data:/var/lib/postgresql/data \
   postgres:15-alpine
@@ -46,7 +46,7 @@ brew services start postgresql
 psql -U postgres
 
 -- יצירת משתמש
-CREATE USER everytriv_user WITH PASSWORD 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!';
+CREATE USER everytriv_user WITH PASSWORD 'test123';
 
 -- יצירת מסד נתונים
 CREATE DATABASE everytriv OWNER everytriv_user;
@@ -69,7 +69,7 @@ docker run -d \
   --name everytriv-redis \
   -p 6379:6379 \
   -v redis_data:/data \
-  redis:7-alpine redis-server --appendonly yes --requirepass EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
+  redis:7-alpine redis-server --appendonly yes
 ```
 
 ### התקנה מקומית
@@ -91,11 +91,7 @@ brew services start redis
 # התחברות ל-Redis
 redis-cli
 
-# הגדרת סיסמה
-CONFIG SET requirepass "EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!"
-
-# בדיקת חיבור
-AUTH EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3!
+# בדיקת חיבור (ללא סיסמה)
 PING
 ```
 
@@ -110,7 +106,7 @@ const dataSource = new DataSource({
   host: 'localhost',
   port: 5432,
   username: 'everytriv_user',
-  password: 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!',
+  password: 'test123',
   database: 'everytriv',
   synchronize: false,
   logging: true,
@@ -126,7 +122,7 @@ const dataSource = new DataSource({
   host: 'localhost',
   port: 5432,
   username: 'everytriv_user',
-  password: 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!',
+  password: 'test123',
   database: 'everytriv',
   extra: {
     max: 20, // מספר חיבורים מקסימלי
@@ -150,7 +146,7 @@ const dataSource = new DataSource({
   host: 'your-production-host',
   port: 5432,
   username: 'everytriv_user',
-  password: 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!',
+  password: 'test123',
   database: 'everytriv',
   ssl: {
     rejectUnauthorized: false,
@@ -166,223 +162,763 @@ const dataSource = new DataSource({
 ### data-source.ts
 ```typescript
 import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 
-export const createDataSource = (configService: ConfigService): DataSource => {
-  return new DataSource({
+import { AppConfig } from './app.config';
+
+/**
+ * TypeORM DataSource for migrations
+ *
+ * This DataSource is used specifically for running migrations.
+ * It should NEVER have synchronize: true to ensure migrations are the only way
+ * to modify the database schema.
+ *
+ * Usage:
+ * - pnpm migration:generate src/migrations/MigrationName
+ * - pnpm migration:run
+ * - pnpm migration:revert
+ * - pnpm migration:show
+ */
+export const AppDataSource = new DataSource({
     type: 'postgres',
-    host: configService.get('DATABASE_HOST'),
-    port: configService.get('DATABASE_PORT'),
-    username: configService.get('DATABASE_USERNAME'),
-    password: configService.get('DATABASE_PASSWORD'),
-    database: configService.get('DATABASE_NAME'),
-    entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  host: AppConfig.database.host,
+  port: AppConfig.database.port,
+  username: AppConfig.database.username,
+  password: AppConfig.database.password,
+  database: AppConfig.database.name,
+  schema: AppConfig.database.schema,
+  entities: [
+    __dirname + '/../internal/entities/user.entity.ts',
+    __dirname + '/../internal/entities/userStats.entity.ts',
+    __dirname + '/../internal/entities/gameHistory.entity.ts',
+    __dirname + '/../internal/entities/trivia.entity.ts',
+    __dirname + '/../internal/entities/subscription.entity.ts',
+    __dirname + '/../internal/entities/paymentHistory.entity.ts',
+    __dirname + '/../internal/entities/pointTransaction.entity.ts',
+    __dirname + '/../internal/entities/leaderboard.entity.ts',
+  ],
     migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-    synchronize: false, // false בייצור
-    logging: configService.get('NODE_ENV') === 'development',
-    ssl: configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+  synchronize: AppConfig.database.synchronize,
+  logging: AppConfig.database.logging,
+  ssl: AppConfig.database.ssl,
     extra: {
-      max: 20, // מספר חיבורים מקסימלי
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 30000,
+    max: AppConfig.database.pool.max,
+    min: AppConfig.database.pool.min,
+    acquire: AppConfig.database.pool.acquire,
+    idle: AppConfig.database.pool.idle,
     },
   });
-};
 ```
 
 ### database.config.ts
 ```typescript
-import { registerAs } from '@nestjs/config';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-export default registerAs('database', () => ({
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT, 10) || 5432,
-  username: process.env.DATABASE_USERNAME || 'everytriv_user',
-  password: process.env.DATABASE_PASSWORD || 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!',
-  database: process.env.DATABASE_NAME || 'everytriv',
-  schema: process.env.DATABASE_SCHEMA || 'public',
-  ssl: process.env.DATABASE_SSL === 'true',
-}));
+import { AppConfig } from './app.config';
+
+export const DatabaseConfig: TypeOrmModuleOptions = {
+  type: 'postgres',
+  host: AppConfig.database.host,
+  port: AppConfig.database.port,
+  username: AppConfig.database.username,
+  password: AppConfig.database.password,
+  database: AppConfig.database.name,
+  schema: AppConfig.database.schema,
+  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  synchronize: AppConfig.database.synchronize,
+  logging: AppConfig.database.logging,
+  ssl: AppConfig.database.ssl,
+  autoLoadEntities: true,
+  extra: {
+    max: AppConfig.database.pool.max,
+    min: AppConfig.database.pool.min,
+    acquire: AppConfig.database.pool.acquire,
+    idle: AppConfig.database.pool.idle,
+  },
+};
+```
+
+## תרשים ERD - Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    USERS {
+        uuid id PK
+        string username UK
+        string email UK
+        string password_hash
+        string google_id
+        string full_name
+        string first_name
+        string last_name
+        string phone
+        date date_of_birth
+        string avatar
+        int score
+        int credits
+        int points
+        int purchased_points
+        int daily_free_questions
+        int remaining_free_questions
+        date last_credit_refill
+        date last_free_questions_reset
+        boolean is_active
+        string role
+        string reset_password_token
+        timestamp reset_password_expires
+        jsonb preferences
+        jsonb address
+        string additional_info
+        boolean agree_to_newsletter
+        string current_subscription_id
+        jsonb achievements
+        jsonb stats
+        timestamp created_at
+        timestamp updated_at
+        tsvector search_vector
+    }
+
+    TRIVIA {
+        uuid id PK
+        string topic
+        string difficulty
+        string question
+        jsonb answers
+        int correct_answer_index
+        string user_id FK
+        boolean is_correct
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+        tsvector search_vector
+    }
+
+    GAME_HISTORY {
+        uuid id PK
+        string user_id FK
+        int score
+        int total_questions
+        int correct_answers
+        string difficulty
+        string topic
+        string game_mode
+        int time_spent
+        int credits_used
+        jsonb questions_data
+        timestamp created_at
+    }
+
+    USER_STATS {
+        uuid id PK
+        string user_id FK
+        int total_games_played
+        int total_questions_answered
+        int correct_answers
+        int total_score
+        decimal average_score
+        int best_score
+        int current_streak
+        int longest_streak
+        timestamp last_played
+        jsonb difficulty_stats
+        jsonb topic_stats
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PAYMENT_HISTORY {
+        uuid id PK
+        string user_id FK
+        string payment_id UK
+        decimal amount
+        string currency
+        string payment_method
+        string payment_status
+        string plan_type
+        string subscription_id
+        jsonb metadata
+        timestamp created_at
+    }
+
+    SUBSCRIPTIONS {
+        uuid id PK
+        string user_id FK
+        string subscription_id UK
+        string plan_type
+        string status
+        timestamp current_period_start
+        timestamp current_period_end
+        boolean cancel_at_period_end
+        timestamp canceled_at
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    POINT_TRANSACTIONS {
+        uuid id PK
+        string user_id FK
+        string transaction_type
+        int points_amount
+        int balance_after
+        string description
+        string reference_id
+        string reference_type
+        jsonb metadata
+        timestamp created_at
+    }
+
+    LEADERBOARD {
+        uuid id PK
+        string user_id FK
+        string period_type
+        date period_start
+        date period_end
+        int score
+        int rank
+        int games_played
+        int correct_answers
+        int total_questions
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% Relationships
+    USERS ||--o{ TRIVIA : "creates"
+    USERS ||--o{ GAME_HISTORY : "plays"
+    USERS ||--o{ USER_STATS : "has"
+    USERS ||--o{ PAYMENT_HISTORY : "makes"
+    USERS ||--o{ SUBSCRIPTIONS : "subscribes"
+    USERS ||--o{ POINT_TRANSACTIONS : "transacts"
+    USERS ||--o{ LEADERBOARD : "ranks"
 ```
 
 ## ישויות מסד הנתונים
 
 ### UserEntity
 ```typescript
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
-import { GameHistoryEntity } from './game-history.entity';
-import { PaymentHistoryEntity } from './payment-history.entity';
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+import { DEFAULT_USER_PREFERENCES, ServerUserPreferences, UserAddress } from '../types/typeorm-compatibility.types';
+import type { BasicValue } from '@shared/types/core/data.types';
+import { GameHistoryEntity } from './gameHistory.entity';
+import { TriviaEntity } from './trivia.entity';
 
 @Entity('users')
-@Index(['email'], { unique: true })
-@Index(['username'], { unique: true })
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  email: string;
-
-  @Column({ unique: true })
+  @Column()
+  @Index({ unique: true })
   username: string;
 
   @Column()
-  passwordHash: string;
+  @Index({ unique: true })
+  email: string;
 
-  @Column({ default: 0 })
-  points: number;
+  @Column({ name: 'password_hash', nullable: true })
+  passwordHash?: string;
 
-  @Column({ default: 0 })
-  gamesPlayed: number;
+  @Column({ name: 'google_id', nullable: true })
+  googleId?: string;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
-  averageScore: number;
+  @Column({ name: 'full_name', nullable: true })
+  fullName?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
-  preferences: {
-    theme: 'light' | 'dark';
-    soundEnabled: boolean;
-    musicEnabled: boolean;
-    notifications: boolean;
-  };
+  @Column({ name: 'first_name', nullable: true })
+  firstName?: string;
 
-  @Column({ type: 'enum', enum: ['user', 'admin'], default: 'user' })
-  role: string;
+  @Column({ name: 'last_name', nullable: true })
+  lastName?: string;
 
   @Column({ nullable: true })
-  avatar: string;
+  phone?: string;
 
-  @Column({ default: false })
-  isVerified: boolean;
+  @Column({ name: 'date_of_birth', type: 'date', nullable: true })
+  dateOfBirth?: Date;
 
   @Column({ nullable: true })
-  lastLoginAt: Date;
+  avatar?: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @Column('int', { default: 0 })
+  score: number = 0;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @Column('int', { default: 100 })
+  credits: number = 100;
 
-  @OneToMany(() => GameHistoryEntity, game => game.user)
+  @Column('int', { default: 0 })
+  points: number = 0;
+
+  @Column({ name: 'purchased_points', type: 'int', default: 0 })
+  purchasedPoints: number = 0;
+
+  @Column({ name: 'daily_free_questions', type: 'int', default: 20 })
+  dailyFreeQuestions: number = 20;
+
+  @Column({ name: 'remaining_free_questions', type: 'int', default: 20 })
+  remainingFreeQuestions: number = 20;
+
+  @Column({ name: 'last_credit_refill', type: 'date', nullable: true })
+  lastCreditRefill?: Date;
+
+  @Column({ name: 'last_free_questions_reset', type: 'date', nullable: true })
+  lastFreeQuestionsReset?: Date;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean = true;
+
+  @Column({ default: 'user' })
+  role: 'admin' | 'user' | 'guest' = 'user';
+
+  @Column({ name: 'reset_password_token', nullable: true })
+  resetPasswordToken?: string;
+
+  @Column({ name: 'reset_password_expires', type: 'timestamp', nullable: true })
+  resetPasswordExpires?: Date;
+
+  @Column('jsonb', { default: {} })
+  preferences: ServerUserPreferences = DEFAULT_USER_PREFERENCES;
+
+  @Column('jsonb', { default: {} })
+  address: UserAddress = {};
+
+  @Column({ name: 'additional_info', nullable: true })
+  additionalInfo?: string;
+
+  @Column({ name: 'agree_to_newsletter', default: false })
+  agreeToNewsletter: boolean = false;
+
+  @Column({ name: 'current_subscription_id', nullable: true })
+  currentSubscriptionId?: string;
+
+  @Column('jsonb', { default: [] })
+  achievements: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    unlockedAt: Date;
+  }>;
+
+  @Column('jsonb', { default: {} })
+  stats: Record<string, BasicValue> = {};
+
+  @OneToMany(() => TriviaEntity, trivia => trivia.user)
+  triviaHistory: TriviaEntity[];
+
+  @OneToMany(() => GameHistoryEntity, gameHistory => gameHistory.user)
   gameHistory: GameHistoryEntity[];
 
-  @OneToMany(() => PaymentHistoryEntity, payment => payment.user)
-  paymentHistory: PaymentHistoryEntity[];
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
+
+  @Column('tsvector', { name: 'search_vector', select: false })
+  @Index()
+  searchVector: string = '';
 }
 ```
 
 ### TriviaEntity
 ```typescript
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity('trivia_questions')
-@Index(['topic', 'difficulty'])
-@Index(['createdAt'])
+import { UserEntity } from './user.entity';
+
+@Entity('trivia')
 export class TriviaEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string = '';
 
   @Column()
-  topic: string;
+  @Index()
+  topic: string = '';
 
   @Column()
-  difficulty: string;
+  difficulty: string = '';
 
-  @Column('text')
-  question: string;
+  @Column()
+  @Index()
+  question: string = '';
 
-  @Column('jsonb')
+  @Column('jsonb', { default: [] })
   answers: Array<{
     text: string;
     isCorrect: boolean;
-  }>;
+  }> = [];
 
-  @Column()
-  correctAnswerIndex: number;
+  @Column({ name: 'correct_answer_index', type: 'int' })
+  correctAnswerIndex: number = 0;
 
-  @Column('text', { nullable: true })
-  explanation: string;
+  @Column({ name: 'user_id', nullable: true })
+  userId: string = '';
 
-  @Column({ type: 'jsonb', nullable: true })
+  @ManyToOne(() => UserEntity, { nullable: true })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'is_correct', type: 'boolean', default: false })
+  isCorrect: boolean = false;
+
+  @Column('jsonb', { nullable: true })
   metadata: {
-    actualDifficulty?: string;
-    questionCount?: number;
-    customDifficultyMultiplier?: number;
-    aiProvider?: string;
-    generationTime?: number;
-  };
+    category?: string;
+    tags?: string[];
+    source?: string;
+    difficulty_score?: number;
+    custom_difficulty_description?: string;
+  } = {};
 
-  @Column({ default: 0 })
-  timesAsked: number;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
 
-  @Column({ default: 0 })
-  correctAnswers: number;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
-  successRate: number;
-
-  @Column({ default: 'he' })
-  language: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
+  @Column({ name: 'search_vector', type: 'tsvector', select: false })
+  searchVector: string = '';
 }
 ```
 
 ### GameHistoryEntity
 ```typescript
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+// import { GameMode } from '../../../../shared/types'; // Removed as GameMode is a type, not an enum value
 import { UserEntity } from './user.entity';
 
 @Entity('game_history')
-@Index(['userId', 'createdAt'])
-@Index(['topic', 'difficulty'])
 export class GameHistoryEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string = '';
 
-  @Column()
-  userId: string;
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
 
   @ManyToOne(() => UserEntity, user => user.gameHistory)
-  @JoinColumn({ name: 'userId' })
-  user: UserEntity;
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column('int')
+  score: number = 0;
+
+  @Column({ name: 'total_questions', type: 'int' })
+  totalQuestions: number = 0;
+
+  @Column({ name: 'correct_answers', type: 'int' })
+  correctAnswers: number = 0;
 
   @Column()
-  score: number;
+  difficulty: string = '';
 
-  @Column()
-  totalQuestions: number;
+  @Column({ nullable: true })
+  topic?: string;
 
-  @Column()
-  correctAnswers: number;
+  @Column({
+    name: 'game_mode',
+    type: 'varchar',
+    default: 'classic',
+  })
+  gameMode: string = 'classic';
 
-  @Column()
-  topic: string;
+  @Column({ name: 'time_spent', type: 'int', nullable: true })
+  timeSpent?: number; // in seconds
 
-  @Column()
-  difficulty: string;
+  @Column({ name: 'credits_used', type: 'int' })
+  creditsUsed: number = 0;
 
-  @Column()
-  gameMode: string;
-
-  @Column()
-  timeSpent: number;
-
-  @Column({ default: 0 })
-  creditsUsed: number;
-
-  @Column({ type: 'jsonb', nullable: true })
-  questions: Array<{
-    questionId: string;
+  @Column({ name: 'questions_data', type: 'jsonb', default: [] })
+  questionsData: Array<{
+    question: string;
     userAnswer: string;
+    correctAnswer: string;
     isCorrect: boolean;
-    timeSpent: number;
-  }>;
+    timeSpent?: number;
+  }> = [];
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+}
+```
+
+### UserStatsEntity
+```typescript
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+import { UserEntity } from './user.entity';
+
+@Entity('user_stats')
+export class UserStatsEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string = '';
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
+
+  @ManyToOne(() => UserEntity, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'total_games_played', type: 'int', default: 0 })
+  totalGamesPlayed: number = 0;
+
+  @Column({ name: 'total_questions_answered', type: 'int', default: 0 })
+  totalQuestionsAnswered: number = 0;
+
+  @Column({ name: 'correct_answers', type: 'int', default: 0 })
+  correctAnswers: number = 0;
+
+  @Column({ name: 'total_score', type: 'int', default: 0 })
+  totalScore: number = 0;
+
+  @Column({ name: 'average_score', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  averageScore: number = 0;
+
+  @Column({ name: 'best_score', type: 'int', default: 0 })
+  bestScore: number = 0;
+
+  @Column({ name: 'current_streak', type: 'int', default: 0 })
+  currentStreak: number = 0;
+
+  @Column({ name: 'longest_streak', type: 'int', default: 0 })
+  longestStreak: number = 0;
+
+  @Column({ name: 'last_played', type: 'timestamp', nullable: true })
+  lastPlayed?: Date;
+
+  @Column('jsonb', { default: {} })
+  difficultyStats: Record<string, {
+    gamesPlayed: number;
+    correctAnswers: number;
+  totalQuestions: number;
+    averageScore: number;
+  }> = {};
+
+  @Column('jsonb', { default: {} })
+  topicStats: Record<string, {
+    gamesPlayed: number;
+  correctAnswers: number;
+    totalQuestions: number;
+    averageScore: number;
+  }> = {};
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
+}
+```
+
+### PaymentHistoryEntity
+```typescript
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { UserEntity } from './user.entity';
+
+@Entity('payment_history')
+export class PaymentHistoryEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string = '';
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
+
+  @ManyToOne(() => UserEntity, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'payment_id', unique: true })
+  paymentId: string = '';
+
+  @Column({ name: 'amount', type: 'decimal', precision: 10, scale: 2 })
+  amount: number = 0;
+
+  @Column()
+  currency: string = 'USD';
+
+  @Column({ name: 'payment_method' })
+  paymentMethod: string = '';
+
+  @Column({ name: 'payment_status' })
+  paymentStatus: string = '';
+
+  @Column({ name: 'plan_type', nullable: true })
+  planType?: string;
+
+  @Column({ name: 'subscription_id', nullable: true })
+  subscriptionId?: string;
+
+  @Column('jsonb', { default: {} })
+  metadata: Record<string, any> = {};
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+}
+```
+
+### SubscriptionEntity
+```typescript
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+import { UserEntity } from './user.entity';
+
+@Entity('subscriptions')
+export class SubscriptionEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string = '';
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
+
+  @ManyToOne(() => UserEntity, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'subscription_id', unique: true })
+  subscriptionId: string = '';
+
+  @Column({ name: 'plan_type' })
+  planType: string = '';
+
+  @Column({ name: 'status' })
+  status: string = '';
+
+  @Column({ name: 'current_period_start', type: 'timestamp' })
+  currentPeriodStart: Date = new Date();
+
+  @Column({ name: 'current_period_end', type: 'timestamp' })
+  currentPeriodEnd: Date = new Date();
+
+  @Column({ name: 'cancel_at_period_end', type: 'boolean', default: false })
+  cancelAtPeriodEnd: boolean = false;
+
+  @Column({ name: 'canceled_at', type: 'timestamp', nullable: true })
+  canceledAt?: Date;
+
+  @Column('jsonb', { default: {} })
+  metadata: Record<string, any> = {};
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
+}
+```
+
+### PointTransactionEntity
+```typescript
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { UserEntity } from './user.entity';
+
+@Entity('point_transactions')
+export class PointTransactionEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string = '';
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
+
+  @ManyToOne(() => UserEntity, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'transaction_type' })
+  transactionType: string = ''; // 'earned', 'spent', 'purchased', 'bonus'
+
+  @Column({ name: 'points_amount', type: 'int' })
+  pointsAmount: number = 0;
+
+  @Column({ name: 'balance_after', type: 'int' })
+  balanceAfter: number = 0;
+
+  @Column({ name: 'description', nullable: true })
+  description?: string;
+
+  @Column({ name: 'reference_id', nullable: true })
+  referenceId?: string; // Game ID, Payment ID, etc.
+
+  @Column({ name: 'reference_type', nullable: true })
+  referenceType?: string; // 'game', 'payment', 'bonus', etc.
+
+  @Column('jsonb', { default: {} })
+  metadata: Record<string, any> = {};
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+}
+```
+
+### LeaderboardEntity
+```typescript
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+import { UserEntity } from './user.entity';
+
+@Entity('leaderboard')
+export class LeaderboardEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string = '';
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  userId: string = '';
+
+  @ManyToOne(() => UserEntity, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
+
+  @Column({ name: 'period_type' })
+  @Index()
+  periodType: string = ''; // 'daily', 'weekly', 'monthly', 'all_time'
+
+  @Column({ name: 'period_start', type: 'date' })
+  @Index()
+  periodStart: Date = new Date();
+
+  @Column({ name: 'period_end', type: 'date' })
+  periodEnd: Date = new Date();
+
+  @Column({ name: 'score', type: 'int', default: 0 })
+  @Index()
+  score: number = 0;
+
+  @Column({ name: 'rank', type: 'int', nullable: true })
+  rank?: number;
+
+  @Column({ name: 'games_played', type: 'int', default: 0 })
+  gamesPlayed: number = 0;
+
+  @Column({ name: 'correct_answers', type: 'int', default: 0 })
+  correctAnswers: number = 0;
+
+  @Column({ name: 'total_questions', type: 'int', default: 0 })
+  totalQuestions: number = 0;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 }
 ```
 
@@ -402,69 +938,112 @@ pnpm run migration:revert
 
 ### דוגמה למיגרציה
 ```typescript
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+import { getErrorMessage } from '@shared';
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateInitialTables1690000000000 implements MigrationInterface {
+  name = 'CreateInitialTables1690000000000';
+
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // יצירת טבלת משתמשים
-    await queryRunner.createTable(
-      new Table({
-        name: 'users',
-        columns: [
-          {
-            name: 'id',
-            type: 'uuid',
-            isPrimary: true,
-            default: 'uuid_generate_v4()',
-          },
-          {
-            name: 'email',
-            type: 'varchar',
-            isUnique: true,
-          },
-          {
-            name: 'username',
-            type: 'varchar',
-            isUnique: true,
-          },
-          {
-            name: 'passwordHash',
-            type: 'varchar',
-          },
-          {
-            name: 'points',
-            type: 'integer',
-            default: 0,
-          },
-          {
-            name: 'createdAt',
-            type: 'timestamp',
-            default: 'CURRENT_TIMESTAMP',
-          },
-          {
-            name: 'updatedAt',
-            type: 'timestamp',
-            default: 'CURRENT_TIMESTAMP',
-          },
-        ],
-      }),
-      true
-    );
-
-    // יצירת אינדקסים
-    await queryRunner.createIndex('users', {
-      name: 'IDX_USERS_EMAIL',
-      columnNames: ['email'],
+    console.log('Starting migration: CreateInitialTables', {
+      migrationName: this.name,
+      operation: 'up',
     });
 
-    await queryRunner.createIndex('users', {
-      name: 'IDX_USERS_USERNAME',
-      columnNames: ['username'],
-    });
+    try {
+      // Enable uuid-ossp extension
+      console.log('Enabling uuid-ossp extension');
+      await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
+      // Create users table
+      console.log('Creating users table');
+      await queryRunner.query(`
+        CREATE TABLE "users" (
+          "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+          "username" character varying NOT NULL,
+          "email" character varying NOT NULL,
+          "password_hash" character varying,
+          "google_id" character varying,
+          "full_name" character varying,
+          "first_name" character varying,
+          "last_name" character varying,
+          "phone" character varying,
+          "date_of_birth" date,
+          "avatar" character varying,
+          "score" integer NOT NULL DEFAULT '0',
+          "credits" integer NOT NULL DEFAULT '100',
+          "purchased_points" integer NOT NULL DEFAULT '0',
+          "daily_free_questions" integer NOT NULL DEFAULT '20',
+          "remaining_free_questions" integer NOT NULL DEFAULT '20',
+          "last_credit_refill" date,
+          "last_free_questions_reset" date,
+          "is_active" boolean NOT NULL DEFAULT true,
+          "role" character varying NOT NULL DEFAULT 'user',
+          "reset_password_token" character varying,
+          "reset_password_expires" TIMESTAMP,
+          "preferences" jsonb NOT NULL DEFAULT '{}',
+          "address" jsonb NOT NULL DEFAULT '{}',
+          "additional_info" character varying,
+          "agree_to_newsletter" boolean NOT NULL DEFAULT false,
+          "current_subscription_id" character varying,
+          "stats" jsonb NOT NULL DEFAULT '{"topicsPlayed": {}, "difficultyStats": {}, "totalQuestions": 0, "correctAnswers": 0, "lastPlayed": null, "streaks": {"current": 0, "longest": 0, "lastPlayDate": null}, "pointsHistory": []}',
+          "achievements" jsonb NOT NULL DEFAULT '[]',
+          "search_vector" tsvector,
+          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+          CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username"),
+          CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"),
+          CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Create indexes for users table
+      console.log('Creating indexes for users table');
+      await queryRunner.query(`CREATE INDEX "IDX_users_email" ON "users" ("email")`);
+      await queryRunner.query(`CREATE INDEX "IDX_users_username" ON "users" ("username")`);
+      await queryRunner.query(`CREATE INDEX "IDX_users_google_id" ON "users" ("google_id")`);
+      await queryRunner.query(`CREATE INDEX "IDX_users_score" ON "users" ("score" DESC)`);
+      await queryRunner.query(`CREATE INDEX "IDX_users_created_at" ON "users" ("created_at")`);
+
+      console.log('Migration completed successfully: CreateInitialTables', {
+        migrationName: this.name,
+        operation: 'up',
+        tablesCreated: ['users'],
+        indexesCreated: 5,
+      });
+    } catch (error) {
+      console.error('Migration failed: CreateInitialTables', {
+        migrationName: this.name,
+        operation: 'up',
+        error: getErrorMessage(error),
+      });
+      throw error;
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropTable('users');
+    console.log('Starting migration rollback: CreateInitialTables', {
+      migrationName: this.name,
+      operation: 'down',
+    });
+
+    try {
+      console.log('Dropping users table');
+      await queryRunner.query(`DROP TABLE "users"`);
+
+      console.log('Migration rollback completed: CreateInitialTables', {
+        migrationName: this.name,
+        operation: 'down',
+        tablesDropped: ['users'],
+      });
+    } catch (error) {
+      console.error('Migration rollback failed: CreateInitialTables', {
+        migrationName: this.name,
+        operation: 'down',
+        error: getErrorMessage(error),
+      });
+      throw error;
+    }
   }
 }
 ```
@@ -568,7 +1147,7 @@ psql -U everytriv_user -d everytriv_restored < backup.sql
 ### גיבוי Redis
 ```bash
 # גיבוי Redis
-docker exec everytriv-redis redis-cli -a EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3! BGSAVE
+docker exec everytriv-redis redis-cli BGSAVE
 
 # העתקת קובץ הגיבוי
 docker cp everytriv-redis:/data/dump.rdb ./redis_backup_$(date +%Y%m%d_%H%M%S).rdb
@@ -622,18 +1201,15 @@ appendfsync everysec
 
 ## בדיקת חיבור
 
-### Health Check Service
+### בדיקת חיבור ידנית
 ```typescript
-import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-@Injectable()
-export class DatabaseHealthService {
-  constructor(private dataSource: DataSource) {}
-
-  async checkConnection(): Promise<boolean> {
-    try {
-      await this.dataSource.query('SELECT 1');
+// בדיקת חיבור בסיסית
+async function checkDatabaseConnection(dataSource: DataSource): Promise<boolean> {
+  try {
+    await dataSource.query('SELECT 1');
+    console.log('Database connection successful');
       return true;
     } catch (error) {
       console.error('Database connection failed:', error);
@@ -641,21 +1217,23 @@ export class DatabaseHealthService {
     }
   }
 
-  async getConnectionInfo() {
-    const isConnected = await this.checkConnection();
+// קבלת מידע על החיבור
+async function getConnectionInfo(dataSource: DataSource) {
+  const isConnected = await checkDatabaseConnection(dataSource);
     
     return {
       isConnected,
-      host: this.dataSource.options.host,
-      port: this.dataSource.options.port,
-      database: this.dataSource.options.database,
-      driver: this.dataSource.options.type,
+    host: dataSource.options.host,
+    port: dataSource.options.port,
+    database: dataSource.options.database,
+    driver: dataSource.options.type,
       timestamp: new Date().toISOString(),
     };
   }
 
-  async getConnectionStats() {
-    const queryRunner = this.dataSource.createQueryRunner();
+// בדיקת סטטיסטיקות חיבור
+async function getConnectionStats(dataSource: DataSource) {
+  const queryRunner = dataSource.createQueryRunner();
     
     try {
       const result = await queryRunner.query(`
@@ -670,40 +1248,27 @@ export class DatabaseHealthService {
       return result[0];
     } finally {
       await queryRunner.release();
-    }
   }
 }
 ```
 
-### Health Check Controller
+### Health Check Endpoints הקיימים
+הפרויקט כולל את ה-endpoints הבאים לבדיקת בריאות המערכת:
+
 ```typescript
-import { Controller, Get } from '@nestjs/common';
-import { DatabaseHealthService } from './database-health.service';
+// GET /health - בדיקת בריאות כללית
+{
+  "status": "ok",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "version": "v1"
+}
 
-@Controller('health')
-export class HealthController {
-  constructor(private databaseHealthService: DatabaseHealthService) {}
-
-  @Get('database')
-  async checkDatabase() {
-    const isHealthy = await this.databaseHealthService.checkConnection();
-    
-    return {
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      timestamp: new Date().toISOString(),
-      service: 'database',
-    };
-  }
-
-  @Get('database/info')
-  async getDatabaseInfo() {
-    return this.databaseHealthService.getConnectionInfo();
-  }
-
-  @Get('database/stats')
-  async getDatabaseStats() {
-    return this.databaseHealthService.getConnectionStats();
-  }
+// GET /api/ai-providers/health - בדיקת בריאות AI providers
+{
+  "status": "healthy",
+  "availableProviders": 4,
+  "totalProviders": 5,
+  "timestamp": "2024-01-01T00:00:00.000Z"
 }
 ```
 
@@ -729,7 +1294,7 @@ sudo cat /etc/postgresql/15/main/pg_hba.conf | grep -v '^#'
 SELECT usename, usesysid FROM pg_user;
 
 -- יצירת משתמש מחדש
-CREATE USER everytriv_user WITH PASSWORD 'EvTr!v_DB_P@ssw0rd_2025_S3cur3!';
+CREATE USER everytriv_user WITH PASSWORD 'test123';
 
 -- הרשאות
 GRANT ALL PRIVILEGES ON DATABASE everytriv TO everytriv_user;
@@ -759,22 +1324,15 @@ const dataSource = new DataSource({
 
 ## Monitoring ו-Logging
 
-### Health Checks
+### בדיקת בריאות ידנית
 ```typescript
-import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { RedisService } from './redis.service';
 
-@Injectable()
-export class HealthService {
-  constructor(
-    private dataSource: DataSource,
-    private redisService: RedisService,
-  ) {}
-
-  async checkDatabase(): Promise<boolean> {
-    try {
-      await this.dataSource.query('SELECT 1');
+// בדיקת בריאות מסד נתונים
+async function checkDatabaseHealth(dataSource: DataSource): Promise<boolean> {
+  try {
+    await dataSource.query('SELECT 1');
+    console.log('Database health check passed');
       return true;
     } catch (error) {
       console.error('Database health check failed:', error);
@@ -782,9 +1340,11 @@ export class HealthService {
     }
   }
 
-  async checkRedis(): Promise<boolean> {
+// בדיקת בריאות Redis
+async function checkRedisHealth(redisService: any): Promise<boolean> {
     try {
-      await this.redisService.get('health_check');
+    await redisService.get('health_check');
+    console.log('Redis health check passed');
       return true;
     } catch (error) {
       console.error('Redis health check failed:', error);
@@ -792,9 +1352,10 @@ export class HealthService {
     }
   }
 
-  async getHealthStatus() {
-    const dbHealthy = await this.checkDatabase();
-    const redisHealthy = await this.checkRedis();
+// בדיקת בריאות כללית
+async function getOverallHealthStatus(dataSource: DataSource, redisService: any) {
+  const dbHealthy = await checkDatabaseHealth(dataSource);
+  const redisHealthy = await checkRedisHealth(redisService);
 
     return {
       status: dbHealthy && redisHealthy ? 'healthy' : 'unhealthy',
@@ -804,28 +1365,23 @@ export class HealthService {
         redis: redisHealthy ? 'up' : 'down',
       },
     };
-  }
 }
 ```
 
-### Metrics
+### מטריקות מסד נתונים
 ```typescript
-import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-@Injectable()
-export class MetricsService {
-  constructor(private dataSource: DataSource) {}
-
-  async getDatabaseMetrics() {
+// קבלת מטריקות בסיסיות
+async function getDatabaseMetrics(dataSource: DataSource) {
     const [
       userCount,
       questionCount,
       gameCount,
     ] = await Promise.all([
-      this.dataSource.query('SELECT COUNT(*) FROM users'),
-      this.dataSource.query('SELECT COUNT(*) FROM trivia_questions'),
-      this.dataSource.query('SELECT COUNT(*) FROM game_history'),
+    dataSource.query('SELECT COUNT(*) FROM users'),
+    dataSource.query('SELECT COUNT(*) FROM trivia'),
+    dataSource.query('SELECT COUNT(*) FROM game_history'),
     ]);
 
     return {
@@ -835,8 +1391,9 @@ export class MetricsService {
     };
   }
 
-  async getPerformanceMetrics() {
-    const result = await this.dataSource.query(`
+// מטריקות ביצועים
+async function getPerformanceMetrics(dataSource: DataSource) {
+  const result = await dataSource.query(`
       SELECT 
         schemaname,
         tablename,
@@ -849,7 +1406,6 @@ export class MetricsService {
     `);
 
     return result;
-  }
 }
 ```
 
@@ -872,13 +1428,13 @@ sudo tail -f /var/log/postgresql/postgresql-15-main.log
 #### 2. בעיות Redis
 ```bash
 # בדיקת חיבור
-redis-cli -a EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3! ping
+redis-cli ping
 
 # בדיקת זיכרון
-redis-cli -a EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3! info memory
+redis-cli info memory
 
 # ניקוי מטמון
-redis-cli -a EvTr!v_R3d!s_P@ssw0rd_2025_S3cur3! flushall
+redis-cli flushall
 ```
 
 #### 3. בעיות ביצועים

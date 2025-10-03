@@ -1,4 +1,4 @@
-import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
+import { createValidationError, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared';
 
 import { BaseTriviaProvider } from './base.provider';
 
@@ -70,7 +70,7 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 			!Array.isArray(response.data.content) ||
 			response.data.content.length === 0
 		) {
-			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_ANTHROPIC_RESPONSE);
+			throw createValidationError('Anthropic response format', 'string');
 		}
 		const content = response.data.content[0].text;
 		return JSON.parse(content);

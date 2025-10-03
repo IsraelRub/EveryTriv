@@ -7,7 +7,7 @@
  */
 import { Roles } from '@common';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
-import { MetricsService , serverLogger as logger, getErrorMessage } from '@shared';
+import { MetricsService , serverLogger as logger, getErrorMessage, AllMiddlewareMetricsResponse, MiddlewareMetricsResponse } from '@shared';
 
 // MiddlewareMetrics type is used implicitly
 
@@ -23,7 +23,7 @@ export class MiddlewareMetricsController {
 	 */
 	@Get()
 	@Roles('admin', 'super-admin')
-	async getAllMetrics(): Promise<any> {
+	async getAllMetrics(): Promise<AllMiddlewareMetricsResponse | MiddlewareMetricsResponse | { success: false; message: string; timestamp: string } | { success: false; message: string; error: string; timestamp: string }> {
 		try {
 			const allMetrics = this.metricsService.getMetrics();
 			const middlewareMetrics = this.metricsService.getMiddlewareMetrics();
@@ -40,11 +40,8 @@ export class MiddlewareMetricsController {
 			// Type guard to ensure we have the correct type
 			if (typeof middlewareMetrics === 'object' && 'requestCount' in middlewareMetrics) {
 				// Single middleware metrics
-				return {
-					success: true,
-					data: middlewareMetrics,
-					timestamp: new Date().toISOString(),
-				};
+				// Return only the data - ResponseFormattingInterceptor will handle the response structure
+				return middlewareMetrics;
 			}
 
 			// Multiple middleware metrics
@@ -90,14 +87,11 @@ export class MiddlewareMetricsController {
 				totalRequests: summary.totalRequests,
 			});
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
-				data: {
-					summary,
-					metrics: middlewareMetrics,
-					storageMetrics: allMetrics,
-				},
-				timestamp: new Date().toISOString(),
+				summary,
+				metrics: middlewareMetrics,
+				storageMetrics: allMetrics,
 			};
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
@@ -118,7 +112,7 @@ export class MiddlewareMetricsController {
 	 */
 	@Get(':middlewareName')
 	@Roles('admin', 'super-admin')
-	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<any> {
+	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MiddlewareMetricsResponse | { success: false; message: string; timestamp: string } | { success: false; message: string; error: string; timestamp: string }> {
 		try {
 			const metrics = this.metricsService.getMiddlewareMetrics(middlewareName);
 
@@ -135,11 +129,8 @@ export class MiddlewareMetricsController {
 				requestCount: metrics.requestCount,
 			});
 
-			return {
-				success: true,
-				data: metrics,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return metrics;
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
 				middleware: middlewareName,
@@ -168,10 +159,9 @@ export class MiddlewareMetricsController {
 				middleware: middlewareName,
 			});
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
 				message: `Metrics reset for middleware: ${middlewareName}`,
-				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			logger.systemError('Failed to reset middleware metrics', {
@@ -199,10 +189,9 @@ export class MiddlewareMetricsController {
 
 			logger.system('All middleware metrics reset', {});
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
 				message: 'All middleware metrics have been reset',
-				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			logger.systemError('Failed to reset all middleware metrics', {

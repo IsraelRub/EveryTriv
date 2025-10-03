@@ -12,7 +12,7 @@ import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
-import type { CacheConfig, NestRequest } from '../../internal/types';
+import type { CacheConfig, NestRequest, NestResponse } from '../../internal/types';
 
 /**
  * Cache Interceptor
@@ -39,7 +39,7 @@ export class CacheInterceptor implements NestInterceptor {
 	 * @param next - Call handler
 	 * @returns Observable with cached or fresh data
 	 */
-	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
 		const request = context.switchToHttp().getRequest();
 		const cacheMetadata =
 			this.reflector.get<CacheConfig>('cache', context.getHandler()) || request.decoratorMetadata?.cache;
@@ -80,7 +80,7 @@ export class CacheInterceptor implements NestInterceptor {
 				tap(async result => {
 					try {
 						// Check cache condition if provided
-						if (cacheMetadata.condition && !cacheMetadata.condition(request, result)) {
+						if (cacheMetadata.condition && !cacheMetadata.condition(request, result as NestResponse)) {
 							logger.cacheInfo('Cache condition failed - not caching', {
 								key: cacheMetadata.key,
 								method: request.method,

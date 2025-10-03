@@ -11,14 +11,49 @@
 ```
 server/src/internal/
 ├── constants/       # קבועים פנימיים
+│   ├── app/         # קבועי אפליקציה
+│   ├── auth/        # קבועי אימות
+│   ├── database/    # קבועי מסד נתונים
+│   ├── game/        # קבועי משחק
+│   └── points/      # קבועי נקודות
 ├── controllers/     # controllers פנימיים
+│   ├── client-logs.controller.ts
+│   └── middleware-metrics.controller.ts
 ├── entities/        # ישויות TypeORM
+│   ├── gameHistory.entity.ts
+│   ├── leaderboard.entity.ts
+│   ├── paymentHistory.entity.ts
+│   ├── pointTransaction.entity.ts
+│   ├── subscription.entity.ts
+│   ├── trivia.entity.ts
+│   ├── user.entity.ts
+│   └── userStats.entity.ts
 ├── middleware/      # middleware
+│   ├── auth.middleware.ts
+│   ├── bulkOperations.middleware.ts
+│   ├── country-check.middleware.ts
+│   ├── decorator-aware.middleware.ts
+│   └── rateLimit.middleware.ts
 ├── modules/         # מודולים פנימיים
+│   ├── cache/       # מודול מטמון
+│   ├── redis.module.ts
+│   └── storage/     # מודול אחסון
 ├── repositories/    # repositories
-├── services/        # שירותים פנימיים
+│   ├── base.repository.ts
+│   ├── game-history.repository.ts
+│   ├── trivia.repository.ts
+│   └── user.repository.ts
 ├── types/           # טיפוסים פנימיים
+│   ├── exports/
+│   ├── metadata.types.ts
+│   ├── nest.types.ts
+│   ├── payment.types.ts
+│   ├── trivia.types.ts
+│   ├── typeorm-compatibility.types.ts
+│   └── user.types.ts
 └── utils/           # כלים פנימיים
+    ├── interceptors.utils.ts
+    └── retry.utils.ts
 ```
 
 ## תיקיות עיקריות
@@ -63,8 +98,8 @@ server/src/internal/
 - **תיאור**: מודולים פנימיים
 - **קבצים**:
   - `redis.module.ts` - מודול Redis
-  - `cache/` - מודול מטמון
-  - `storage/` - מודול אחסון
+  - `cache/` - מודול מטמון עם controller ו-service
+  - `storage/` - מודול אחסון עם controller ו-service
 
 ### Repositories
 - **תיאור**: repositories משותפים
@@ -74,12 +109,10 @@ server/src/internal/
   - `trivia.repository.ts` - repository טריוויה
   - `game-history.repository.ts` - repository היסטוריית משחקים
 
-### Services
-- **תיאור**: שירותים פנימיים משותפים
-
 ### Types
 - **תיאור**: טיפוסים פנימיים
 - **קבצים**:
+  - `exports/config.types.ts` - טיפוסי קונפיגורציה
   - `metadata.types.ts` - טיפוסי metadata
   - `nest.types.ts` - טיפוסי NestJS
   - `payment.types.ts` - טיפוסי תשלום

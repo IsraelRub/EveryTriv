@@ -943,7 +943,7 @@ export class UserService {
 					// Apply the update using Object.assign
 					Object.assign(user, updateData);
 				} else {
-					throw new Error(`Invalid field '${field}' for user update`);
+					throw createValidationError(field, 'string');
 				}
 			}
 			const updatedUser = await this.userRepository.save(user);

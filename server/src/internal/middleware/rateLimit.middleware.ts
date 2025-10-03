@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@nestjs/common';
-import { metricsService,RATE_LIMIT_DEFAULTS , serverLogger as logger  } from '@shared';
+import { metricsService,RATE_LIMIT_DEFAULTS , serverLogger as logger, ensureErrorObject  } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
 
@@ -106,8 +106,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 					throw err;
 				}
 
-				logger.systemError('Decorator rate limit middleware error', {
-					error: err instanceof Error ? err.message : String(err),
+				logger.systemError(ensureErrorObject(err), 'Decorator rate limit middleware error', {
 					ip,
 					path: req.path,
 				});
@@ -234,8 +233,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 				throw err;
 			}
 
-			logger.systemError('Rate limit middleware error', {
-				error: err instanceof Error ? err.message : String(err),
+			logger.systemError(ensureErrorObject(err), 'Rate limit middleware error', {
 				ip,
 				path: req.path,
 			});

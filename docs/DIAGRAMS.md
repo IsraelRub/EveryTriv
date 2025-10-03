@@ -23,9 +23,16 @@
 | **Game Module** | ממומש במלואו | `server/src/features/game/` | כולל trivia, AI providers, game logic | ✅ תואם |
 | **Analytics Module** | ממומש במלואו | `server/src/features/analytics/` | מודול נפרד לאנליטיקה | ✅ תואם |
 | **Leaderboard Module** | ממומש במלואו | `server/src/features/leaderboard/` | מודול נפרד ללוח תוצאות | ✅ תואם |
+| **User Module** | ממומש במלואו | `server/src/features/user/` | כולל userStats.service.ts | ✅ תואם |
+| **Points Module** | ממומש במלואו | `server/src/features/points/` | מודול נפרד לנקודות | ✅ תואם |
+| **Payment Module** | ממומש במלואו | `server/src/features/payment/` | מודול נפרד לתשלומים | ✅ תואם |
+| **Subscription Module** | ממומש במלואו | `server/src/features/subscription/` | מודול נפרד למנויים | ✅ תואם |
+| **Auth Module** | ממומש במלואו | `server/src/features/auth/` | כולל Google OAuth | ✅ תואם |
 | **Logger Service** | שירות משותף | `shared/services/logging/` | משמש בכל שכבות | ✅ תואם |
 | **Validation Module** | ממומש במלואו | `server/src/common/validation/` | תואם תרשים | ✅ תואם |
 | **Client Logs Controller** | ממומש במלואו | `server/src/internal/controllers/client-logs.controller.ts` | ✅ תואם |
+| **Cache Module** | ממומש במלואו | `server/src/internal/modules/cache/` | מודול פנימי למטמון | ✅ תואם |
+| **Storage Module** | ממומש במלואו | `server/src/internal/modules/storage/` | מודול פנימי לאחסון | ✅ תואם |
 
 ### קריטריונים לפיצול עתידי
 - קו שירות > 800 שורות קוד נטו
@@ -43,11 +50,17 @@
 graph LR
     A[AppModule]
     B[Auth]
-    C[Trivia]
-    D[Game History]
-    E[Logger]
-    F[AI]
-    G[Validation]
+    C[User]
+    D[Game]
+    E[Points]
+    F[Payment]
+    G[Subscription]
+    H[Analytics]
+    I[Leaderboard]
+    J[Logger]
+    K[Validation]
+    L[Cache]
+    M[Storage]
 
     A --> B
     A --> C
@@ -55,10 +68,16 @@ graph LR
     A --> E
     A --> F
     A --> G
+    A --> H
+    A --> I
+    A --> J
+    A --> K
+    A --> L
+    A --> M
 
     %% מקווקווים = מאוחד בפועל
     classDef conceptual stroke-dasharray:5 3,stroke:#555;
-    class C,D,E,F conceptual;
+    class D,J,K,L,M conceptual;
 ```
 
 ### קישורים רלוונטיים
@@ -2367,18 +2386,20 @@ graph TB
             DA[USERS Table]
             DB[TRIVIA Table]
             DC[GAME_HISTORY Table]
-            DD[POINT_TRANSACTIONS Table]
-            DE[PAYMENT_HISTORY Table]
-            DF[SUBSCRIPTIONS Table]
+            DD[USER_STATS Table]
+            DE[POINT_TRANSACTIONS Table]
+            DF[PAYMENT_HISTORY Table]
+            DG[SUBSCRIPTIONS Table]
+            DH[LEADERBOARD Table]
         end
         
         subgraph "⚡ Redis Cache"
-            DG[User Stats Cache]
-            DH[Question Cache]
-            DI[Session Cache]
-            DJ[Rate Limit Cache]
-            DK[Point Balance Cache]
-            DL[Leaderboard Cache]
+            DI[User Stats Cache]
+            DJ[Question Cache]
+            DK[Session Cache]
+            DL[Rate Limit Cache]
+            DM[Point Balance Cache]
+            DN[Leaderboard Cache]
         end
     end
 

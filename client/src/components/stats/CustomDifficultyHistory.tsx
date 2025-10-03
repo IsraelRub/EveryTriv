@@ -1,4 +1,4 @@
-import { clientLogger,formatRelativeTime, formatTopic  } from '@shared';
+import { clientLogger,formatRelativeTime, formatTopic, getErrorMessage  } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
@@ -41,7 +41,7 @@ export default function CustomDifficultyHistory({
       setHistory(historyItems);
     } catch (error) {
       clientLogger.storageError('Failed to load custom difficulty history', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
     } finally {
       setLoading(false);

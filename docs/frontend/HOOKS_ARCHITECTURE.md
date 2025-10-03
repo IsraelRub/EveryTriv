@@ -12,574 +12,540 @@ client/src/hooks/
 │   ├── useAuth.ts         # אימות משתמשים
 │   ├── useTrivia.ts       # שאלות טריוויה
 │   ├── usePoints.ts       # מערכת נקודות
-│   └── useUser.ts         # ניהול משתמשים
-├── contexts/              # שכבת Context
-│   ├── AudioContext.tsx   # ניהול אודיו
-│   └── PerformanceContext.tsx # ניהול ביצועים
+│   ├── useUser.ts         # ניהול משתמשים
+│   ├── useAnalyticsDashboard.ts # דשבורד אנליטיקס
+│   ├── useLeaderboardFeatures.ts # תכונות לוח מובילים
+│   ├── useSubscriptionManagement.ts # ניהול מנויים
+│   ├── useUserPreferences.ts # העדפות משתמש
+│   ├── useAccountManagement.ts # ניהול חשבון
+│   └── useLanguageValidation.ts # אימות שפה
 └── layers/                # שכבות לוגיות
-    ├── audio/             # שכבת אודיו
-    │   ├── useScoreAchievementSounds.ts
-    │   └── useUISounds.ts
-    ├── business/          # שכבת עסקים
-    │   ├── useGameLogic.ts
-    │   ├── usePoints.ts
-    │   └── useTriviaValidation.ts
     ├── ui/                # שכבת UI
-    │   └── useOptimizedAnimations.ts
+    │   └── useCustomAnimations.ts
     └── utils/             # שכבת כלים
-        ├── useAsync.ts
         ├── useDebounce.ts
-        ├── useLocalStorage.ts
         ├── usePrevious.ts
-        ├── useTimeout.ts
-        └── useWindowSize.ts
+        └── useRedux.ts
+```
+
+## Context Hooks
+
+Context hooks ממוקמים ב-`App.tsx` ו-`HomeView.tsx`:
+
+```
+client/src/
+├── App.tsx                # AudioContext
+└── views/home/HomeView.tsx # GameContext
 ```
 
 ## שכבת API
 
-### useAuth Hook
+### useAuth Hooks (useLogin, useRegister, useCurrentUser)
 ```typescript
-import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { authService } from '../services/auth.service';
-import { setUser, clearUser } from '../redux/features/authSlice';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
+import { setAuthenticated, setUser } from '../../redux/slices/userSlice';
+import { authService } from '../../services';
+import type { UserLoginRequest, UserRegisterRequest } from '../../types';
+import { useAppDispatch } from '../layers/utils';
 
-export const useAuth = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const dispatch = useDispatch();
+// Query keys
+export const authKeys = {
+  all: ['auth'] as const,
+  currentUser: () => [...authKeys.all, 'current-user'] as const,
+};
 
-  const login = async (credentials: LoginCredentials) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await authService.login(credentials);
-      dispatch(setUser(response.user));
-      
-      return response;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה בהתחברות');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+// Hooks
+export const useCurrentUser = () => {
+  const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
-  const logout = async () => {
-    try {
-      await authService.logout();
-      dispatch(clearUser());
-    } catch (err) {
-      console.error('שגיאה בהתנתקות:', err);
-    }
-  };
+  return useQuery({
+    queryKey: authKeys.currentUser(),
+    queryFn: () => authService.getCurrentUser(),
+    staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+    enabled: isAuthenticated, // Only run if authenticated
+  });
+};
 
-  const register = async (userData: RegisterData) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await authService.register(userData);
-      dispatch(setUser(response.user));
-      
-      return response;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה ברישום');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+// Mutations
+export const useLogin = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    // בדיקת אימות ראשונית
-    const checkAuth = async () => {
-      try {
-        const user = await authService.getCurrentUser();
-        if (user) {
-          dispatch(setUser(user));
-        }
-      } catch (err) {
-        console.error('שגיאה בבדיקת אימות:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  return useMutation({
+    mutationFn: (credentials: UserLoginRequest) =>
+      authService.login({
+        username: credentials.email, // Use email as username
+        email: credentials.email,
+        password: credentials.password,
+      }),
+    onSuccess: data => {
+      // Update Redux state for HOCs consistency
+      dispatch(setAuthenticated(true));
+      // Create full User object from partial data with dynamic defaults
+      const fullUser: User = {
+        ...data.user,
+        role: data.user.role as UserRole,
+        ...USER_DEFAULT_VALUES,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      dispatch(setUser(fullUser));
 
-    checkAuth();
-  }, [dispatch]);
+      // Invalidate auth-related queries
+      queryClient.invalidateQueries({ queryKey: authKeys.all });
+      // Clear any cached data that might be user-specific
+      queryClient.clear();
+    },
+  });
+};
 
-  return {
-    login,
-    logout,
-    register,
-    isLoading,
-    error,
-  };
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: () => authService.logout(),
+    onSuccess: () => {
+      // Update Redux state for HOCs consistency
+      dispatch(setAuthenticated(false));
+      dispatch(setUser(null));
+
+      // Clear all cached data on logout
+      queryClient.clear();
+      clientLogger.securityLogout('User logged out, cache cleared');
+    },
+  });
+};
+
+export const useRegister = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: (credentials: UserRegisterRequest) => authService.register(credentials),
+    onSuccess: data => {
+      // Update Redux state for HOCs consistency
+      dispatch(setAuthenticated(true));
+      // Create full User object from partial data with dynamic defaults
+      const fullUser: User = {
+        ...data.user,
+        role: data.user.role as UserRole,
+        ...USER_DEFAULT_VALUES,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      dispatch(setUser(fullUser));
+
+      // Invalidate auth-related queries
+      queryClient.invalidateQueries({ queryKey: authKeys.all });
+      // Clear any cached data that might be user-specific
+      queryClient.clear();
+    },
+  });
 };
 ```
 
-### useTrivia Hook
+### useTrivia Hooks (useTriviaQuestion, useGameHistory, useLeaderboard)
 ```typescript
-import { useState, useCallback } from 'react';
-import { triviaService } from '../services/trivia.service';
-import { Question, CreateQuestionParams } from '../types/game.types';
+import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
+import { clientLogger, getErrorMessage } from '@shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-export const useTrivia = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+import { selectLeaderboard } from '../../redux/selectors';
+import { apiService, gameHistoryService, storageService } from '../../services';
+import { useAppSelector } from '../layers/utils';
 
-  const createQuestion = useCallback(async (params: CreateQuestionParams): Promise<Question> => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const question = await triviaService.createQuestion(params);
-      return question;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'שגיאה ביצירת שאלה';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+// Query keys
+export const triviaKeys = {
+  all: ['trivia'] as const,
+  lists: () => [...triviaKeys.all, 'list'] as const,
+  list: (filters: string) => [...triviaKeys.lists(), { filters }] as const,
+  details: () => [...triviaKeys.all, 'detail'] as const,
+  detail: (id: number) => [...triviaKeys.details(), id] as const,
+  history: () => [...triviaKeys.all, 'history'] as const,
+  question: (request: TriviaRequest) => [...triviaKeys.all, 'question', request] as const,
+  score: (userId: string) => [...triviaKeys.all, 'score', userId] as const,
+  leaderboard: (limit: number) => [...triviaKeys.all, 'leaderboard', limit] as const,
+  difficultyStats: (userId?: string) => [...triviaKeys.all, 'difficulty-stats', userId] as const,
+} as const;
 
-  const submitAnswer = useCallback(async (questionId: string, answer: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const result = await triviaService.submitAnswer(questionId, answer);
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'שגיאה בשליחת תשובה';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+// Custom difficulty hooks
+export const useCustomDifficulties = () => {
+  const getRecentDifficulties = () => storageService.getRecentCustomDifficulties();
 
-  const getHistory = useCallback(async (filters?: HistoryFilters) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const history = await triviaService.getHistory(filters);
-      return history;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'שגיאה בטעינת היסטוריה';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  return useQuery({
+    queryKey: ['custom-difficulties'],
+    queryFn: getRecentDifficulties,
+    staleTime: 0, // Always fetch from localStorage
+  });
+};
+
+// Game History hooks
+export const useGameHistory = (limit: number = 20, offset: number = 0) => {
+  return useQuery({
+    queryKey: ['game-history', limit, offset],
+    queryFn: () => gameHistoryService.getUserGameHistory(limit, offset),
+    staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+  });
+};
+
+export const useLeaderboard = () => {
+  const leaderboard = useAppSelector(selectLeaderboard);
 
   return {
-    createQuestion,
-    submitAnswer,
-    getHistory,
-    isLoading,
-    error,
+    data: leaderboard,
+    isLoading: false,
+    error: null,
+    refetch: () => {}, // No need to refetch from API
   };
+};
+
+// Hooks
+export const useTriviaQuestion = (request: TriviaRequest) => {
+  return useQuery({
+    queryKey: triviaKeys.question(request),
+    queryFn: () => apiService.getTrivia(request),
+    staleTime: 0, // Always fetch fresh questions
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    retry: false, // Don't retry trivia questions
+  });
+};
+
+// Specialized hook for game scenarios that returns a function to fetch trivia
+export const useTriviaQuestionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: TriviaRequest) => apiService.getTrivia(request),
+    onSuccess: (data, request) => {
+      // Cache the result for potential reuse
+      queryClient.setQueryData(triviaKeys.question(request), data);
+    },
+  });
+};
+
+export const useUserScore = (userId: string) => {
+  return useQuery({
+    queryKey: triviaKeys.score(userId),
+    queryFn: () => apiService.getUserScore(),
+    staleTime: 30 * 1000, // Consider stale after 30 seconds
+    enabled: !!userId,
+  });
+};
+
+// Validation hook
+export const useValidateCustomDifficulty = () => {
+  return (customText: string) => apiService.validateCustomDifficulty(customText);
 };
 ```
 
 ## שכבת Context
 
-### AudioContext
+### AudioContext (ב-App.tsx)
 ```typescript
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext } from 'react';
+import { audioService } from './services';
 
-interface AudioContextType {
-  isEnabled: boolean;
-  volume: number;
-  toggleAudio: () => void;
-  setVolume: (volume: number) => void;
-  playSound: (soundType: SoundType) => void;
-}
+const AudioContext = createContext(audioService);
 
-const AudioContext = createContext<AudioContextType | undefined>(undefined);
+export const useAudio = () => useContext(AudioContext);
 
-export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isEnabled, setIsEnabled] = useState(true);
-  const [volume, setVolumeState] = useState(0.7);
-  const [audioElements, setAudioElements] = useState<Map<SoundType, HTMLAudioElement>>(new Map());
-
-  useEffect(() => {
-    // טעינת אלמנטי אודיו
-    const sounds: Record<SoundType, string> = {
-      correct: '/sounds/correct.mp3',
-      incorrect: '/sounds/incorrect.mp3',
-      click: '/sounds/click.mp3',
-      achievement: '/sounds/achievement.mp3',
-    };
-
-    const elements = new Map<SoundType, HTMLAudioElement>();
-    
-    Object.entries(sounds).forEach(([type, src]) => {
-      const audio = new Audio(src);
-      audio.preload = 'auto';
-      elements.set(type as SoundType, audio);
-    });
-
-    setAudioElements(elements);
-  }, []);
-
-  const toggleAudio = () => {
-    setIsEnabled(prev => !prev);
-  };
-
-  const setVolume = (newVolume: number) => {
-    setVolumeState(newVolume);
-    audioElements.forEach(audio => {
-      audio.volume = newVolume;
-    });
-  };
-
-  const playSound = (soundType: SoundType) => {
-    if (!isEnabled) return;
-
-    const audio = audioElements.get(soundType);
-    if (audio) {
-      audio.currentTime = 0;
-      audio.volume = volume;
-      audio.play().catch(err => {
-        console.error('שגיאה בהשמעת אודיו:', err);
-      });
-    }
-  };
-
-  return (
-    <AudioContext.Provider value={{
-      isEnabled,
-      volume,
-      toggleAudio,
-      setVolume,
-      playSound,
-    }}>
-      {children}
+// שימוש ב-App.tsx:
+<AudioContext.Provider value={audioService}>
+  <AnimatedBackground>
+    <AppRoutes />
+  </AnimatedBackground>
     </AudioContext.Provider>
-  );
-};
-
-export const useAudio = () => {
-  const context = useContext(AudioContext);
-  if (context === undefined) {
-    throw new Error('useAudio must be used within an AudioProvider');
-  }
-  return context;
-};
 ```
 
-### PerformanceContext
+### GameContext (ב-HomeView.tsx)
 ```typescript
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext } from 'react';
+import { GameState } from '../../types';
 
-interface PerformanceContextType {
-  isLowPerformance: boolean;
-  setPerformanceMode: (mode: 'low' | 'normal') => void;
-  shouldReduceAnimations: boolean;
-  shouldReduceParticles: boolean;
-}
+const GameContext = createContext<{
+  gameState: GameState;
+  updateGameState: (updates: Partial<GameState> | ((prev: GameState) => GameState)) => void;
+  handleAnswer: (i: number) => Promise<void>;
+  loadNextQuestion: () => Promise<void>;
+  handleGameEnd: () => void;
+} | null>(null);
 
-const PerformanceContext = createContext<PerformanceContextType | undefined>(undefined);
-
-export const PerformanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLowPerformance, setIsLowPerformance] = useState(false);
-
-  const setPerformanceMode = useCallback((mode: 'low' | 'normal') => {
-    setIsLowPerformance(mode === 'low');
-  }, []);
-
-  const shouldReduceAnimations = isLowPerformance;
-  const shouldReduceParticles = isLowPerformance;
-
-  return (
-    <PerformanceContext.Provider value={{
-      isLowPerformance,
-      setPerformanceMode,
-      shouldReduceAnimations,
-      shouldReduceParticles,
-    }}>
-      {children}
-    </PerformanceContext.Provider>
-  );
-};
-
-export const usePerformance = () => {
-  const context = useContext(PerformanceContext);
-  if (context === undefined) {
-    throw new Error('usePerformance must be used within a PerformanceProvider');
+export const useGame = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGame must be used within a GameProvider');
   }
   return context;
 };
+
+// שימוש ב-HomeView.tsx:
+<GameContext.Provider value={gameContextValue}>
+  {/* Game components */}
+</GameContext.Provider>
 ```
 
 ## שכבת עסקים
 
-### useGameLogic Hook
+הלוגיקה העסקית ממוקמת ב-`HomeView.tsx` באמצעות `GameContext` ולא ב-hooks נפרדים.
+
+### Game Logic (ב-HomeView.tsx)
 ```typescript
-import { useState, useCallback, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useTrivia } from '../api/useTrivia';
-import { useAudio } from '../contexts/AudioContext';
-import { 
-  setQuestion, 
-  updateScore, 
-  setGameState,
-  addToHistory 
-} from '../redux/features/gameSlice';
-import { RootState } from '../redux/store';
-import { GameState, Question, GameResult } from '../types/game.types';
-
-export const useGameLogic = () => {
-  const dispatch = useDispatch();
-  const { createQuestion, submitAnswer } = useTrivia();
-  const { playSound } = useAudio();
-  
-  const gameState = useSelector((state: RootState) => state.game);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-
-  const startGame = useCallback(async (topic: string, difficulty: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      dispatch(setGameState({ isPlaying: true, topic, difficulty }));
-      startTimeRef.current = Date.now();
-      
-      const question = await createQuestion({ topic, difficulty });
-      dispatch(setQuestion(question));
-      
-      // התחלת טיימר
-      if (gameState.gameMode.timeLimit) {
-        timerRef.current = setTimeout(() => {
-          endGame();
-        }, gameState.gameMode.timeLimit * 1000);
-      }
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה בהתחלת משחק');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [createQuestion, dispatch, gameState.gameMode.timeLimit]);
-
-  const submitAnswer = useCallback(async (answer: string) => {
-    if (!gameState.currentQuestion) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const result = await submitAnswer(gameState.currentQuestion.id, answer);
-      
-      if (result.isCorrect) {
-        playSound('correct');
-        dispatch(updateScore(result.points));
-      } else {
-        playSound('incorrect');
-      }
-      
-      // שמירת תוצאה
-      const gameResult: GameResult = {
-        questionId: gameState.currentQuestion.id,
-        userAnswer: answer,
-        isCorrect: result.isCorrect,
-        points: result.points,
-        timeSpent: startTimeRef.current ? Date.now() - startTimeRef.current : 0,
-      };
-      
-      dispatch(addToHistory(gameResult));
-      
-      return result;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה בשליחת תשובה');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [gameState.currentQuestion, submitAnswer, playSound, dispatch]);
-
-  const endGame = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    dispatch(setGameState({ isPlaying: false }));
-    startTimeRef.current = null;
-  }, [dispatch]);
-
-  const resetGame = useCallback(() => {
-    endGame();
-    dispatch(setQuestion(null));
-    dispatch(updateScore(0));
-  }, [endGame, dispatch]);
-
-  return {
-    startGame,
-    submitAnswer,
-    endGame,
-    resetGame,
-    isLoading,
-    error,
-    gameState,
-  };
+// הלוגיקה העסקית ממוקמת ב-HomeView.tsx
+const handleAnswer = async (i: number) => {
+  // לוגיקת מענה על שאלה
 };
-```
 
-### usePoints Hook
-```typescript
-import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { updateUserPoints, addPointsTransaction } from '../redux/features/userSlice';
-import { RootState } from '../redux/store';
-import { PointsTransaction } from '../types/user.types';
+const loadNextQuestion = async () => {
+  // לוגיקת טעינת שאלה הבאה
+};
 
-export const usePoints = () => {
-  const dispatch = useDispatch();
-  const userPoints = useSelector((state: RootState) => state.user.points);
-
-  const calculatePoints = useCallback((difficulty: string, timeSpent: number, isCorrect: boolean) => {
-    if (!isCorrect) return 0;
-
-    const basePoints = {
-      easy: 10,
-      medium: 20,
-      hard: 30,
-    }[difficulty] || 10;
-
-    // בונוס זמן - ככל שעונים מהר יותר, מקבלים יותר נקודות
-    const timeBonus = Math.max(0, 30 - timeSpent) * 0.5;
-    
-    return Math.round(basePoints + timeBonus);
-  }, []);
-
-  const addPoints = useCallback((points: number, reason: string) => {
-    dispatch(updateUserPoints(points));
-    
-    const transaction: PointsTransaction = {
-      id: Date.now().toString(),
-      amount: points,
-      reason,
-      timestamp: new Date().toISOString(),
-    };
-    
-    dispatch(addPointsTransaction(transaction));
-  }, [dispatch]);
-
-  const getPointsHistory = useCallback(() => {
-    // לוגיקה לקבלת היסטוריית נקודות
-  }, []);
-
-  return {
-    userPoints,
-    calculatePoints,
-    addPoints,
-    getPointsHistory,
-  };
+const handleGameEnd = () => {
+  // לוגיקת סיום משחק
 };
 ```
 
 ## שכבת UI
 
-### useOptimizedAnimations Hook
+### useCustomAnimations Hook
 ```typescript
-import { useState, useEffect, useCallback } from 'react';
-import { usePerformance } from '../contexts/PerformanceContext';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ACCESSIBILITY_CONFIG,
+  ANIMATION_CONFIG,
+  PERFORMANCE_CONFIG,
+} from '../../../constants/ui/animation.constants';
 
-export const useOptimizedAnimations = () => {
-  const { shouldReduceAnimations } = usePerformance();
+export function useCustomAnimations() {
+  const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const animationRef = useRef<number>();
+  const lastUpdateRef = useRef<number>(0);
 
-  const animateWithReducedMotion = useCallback((animationFn: () => void) => {
-    if (shouldReduceAnimations) {
-      // הפעלת אנימציה פשוטה יותר
-      animationFn();
-    } else {
-      // הפעלת אנימציה מלאה
-      setIsAnimating(true);
-      animationFn();
-      setTimeout(() => setIsAnimating(false), 1000);
-    }
-  }, [shouldReduceAnimations]);
+  // Check for reduced motion preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setIsReducedMotion(mediaQuery.matches);
 
-  const shouldShowParticles = useCallback(() => {
-    return !shouldReduceAnimations;
-  }, [shouldReduceAnimations]);
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsReducedMotion(e.matches);
+    };
 
-  const getAnimationDuration = useCallback(() => {
-    return shouldReduceAnimations ? 300 : 1000;
-  }, [shouldReduceAnimations]);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Optimized animation loop
+  const createAnimationLoop = useCallback(
+    (
+      callback: (timestamp: number) => void,
+      options: {
+        fps?: number;
+        enabled?: boolean;
+      } = {}
+    ) => {
+      const { fps = PERFORMANCE_CONFIG.FPS.TARGET, enabled = true } = options;
+      const interval = 1000 / fps;
+
+      if (!enabled || isReducedMotion) {
+        return () => {
+          // No-op function when animations are disabled
+        };
+      }
+
+      const animate = (timestamp: number) => {
+        if (timestamp - lastUpdateRef.current >= interval) {
+          callback(timestamp);
+          lastUpdateRef.current = timestamp;
+        }
+        animationRef.current = requestAnimationFrame(animate);
+      };
+
+      animationRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    },
+    [isReducedMotion]
+  );
+
+  // Stagger animation utility
+  const createStaggerAnimation = useCallback(
+    (
+      items: unknown[],
+      baseDelay: number = ANIMATION_CONFIG.STAGGER.NORMAL,
+      options: {
+        direction?: 'forward' | 'reverse' | 'center';
+        easing?: string;
+      } = {}
+    ) => {
+      const { direction = 'forward', easing = 'ease-out' } = options;
+
+      return items.map((_, index) => {
+        let delay: number;
+
+        switch (direction) {
+          case 'reverse':
+            delay = (items.length - 1 - index) * baseDelay;
+            break;
+          case 'center':
+            const centerIndex = Math.floor(items.length / 2);
+            delay = Math.abs(index - centerIndex) * baseDelay;
+            break;
+          default:
+            delay = index * baseDelay;
+        }
 
   return {
-    isAnimating,
-    animateWithReducedMotion,
-    shouldShowParticles,
-    getAnimationDuration,
-    shouldReduceAnimations,
-  };
-};
+          delay,
+          easing,
+          index,
+        };
+      });
+    },
+    []
+  );
+
+  // Parallax effect utility
+  const createParallaxEffect = useCallback(
+    (
+      speed: number = 0.5,
+      options: {
+        enabled?: boolean;
+        threshold?: number;
+      } = {}
+    ) => {
+      const { enabled = true } = options;
+
+      if (!enabled || isReducedMotion) {
+        return { x: 0, y: 0 };
+      }
+
+      const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+      useEffect(() => {
+        const handleScroll = () => {
+          const scrolled = window.pageYOffset;
+          const rate = scrolled * speed;
+          setOffset({ x: rate * 0.5, y: rate });
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+      }, [speed]);
+
+      return offset;
+    },
+    [isReducedMotion]
+  );
+
+  // Intersection Observer utility for scroll-triggered animations
+  const useIntersectionAnimation = useCallback(
+    (
+      options: {
+        threshold?: number;
+        rootMargin?: string;
+        triggerOnce?: boolean;
+      } = {}
+    ) => {
+      const { threshold = 0.1, rootMargin = '0px', triggerOnce = true } = options;
+      const [isVisible, setIsVisible] = useState(false);
+      const [hasTriggered, setHasTriggered] = useState(false);
+      const elementRef = useRef<HTMLElement>(null);
+
+      useEffect(() => {
+        const observer = new IntersectionObserver(
+          ([entry]) => {
+            if (entry.isIntersecting && (!triggerOnce || !hasTriggered)) {
+              setIsVisible(true);
+              if (triggerOnce) setHasTriggered(true);
+            } else if (!triggerOnce) {
+              setIsVisible(false);
+            }
+          },
+          { threshold, rootMargin }
+        );
+
+        if (elementRef.current) {
+          observer.observe(elementRef.current);
+        }
+
+        return () => observer.disconnect();
+      }, [threshold, rootMargin, triggerOnce, hasTriggered]);
+
+      return { elementRef, isVisible };
+    },
+    []
+  );
+
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    setIsAnimating(false);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
+
+  // Memoized return values
+  const returnValue = useMemo(
+    () => ({
+      // State
+      isReducedMotion,
+      isAnimating,
+
+      // Utilities
+      createAnimationLoop,
+      createStaggerAnimation,
+      createParallaxEffect,
+      useIntersectionAnimation,
+
+      // Cleanup
+      cleanup,
+
+      // Configuration
+      config: {
+        performance: PERFORMANCE_CONFIG,
+        animation: ANIMATION_CONFIG,
+        accessibility: ACCESSIBILITY_CONFIG,
+      },
+    }),
+    [
+      isReducedMotion,
+      isAnimating,
+      createAnimationLoop,
+      createStaggerAnimation,
+      createParallaxEffect,
+      useIntersectionAnimation,
+      cleanup,
+    ]
+  );
+
+  return returnValue;
+}
 ```
 
 ## שכבת כלים
 
-### useAsync Hook
-```typescript
-import { useState, useCallback } from 'react';
-
-interface AsyncState<T> {
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-}
-
-export const useAsync = <T>() => {
-  const [state, setState] = useState<AsyncState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  });
-
-  const execute = useCallback(async (asyncFunction: () => Promise<T>) => {
-    try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      const result = await asyncFunction();
-      setState({ data: result, loading: false, error: null });
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'שגיאה לא ידועה';
-      setState({ data: null, loading: false, error: errorMessage });
-      throw error;
-    }
-  }, []);
-
-  const reset = useCallback(() => {
-    setState({ data: null, loading: false, error: null });
-  }, []);
-
-  return {
-    ...state,
-    execute,
-    reset,
-  };
-};
-```
-
 ### useDebounce Hook
 ```typescript
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const useDebounce = <T>(value: T, delay: number): T => {
+/**
+ * Hook to debounce a value
+ * @param value The value to debounce
+ * @param delay The delay in milliseconds
+ * @returns The debounced value
+ */
+export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
@@ -593,36 +559,186 @@ export const useDebounce = <T>(value: T, delay: number): T => {
   }, [value, delay]);
 
   return debouncedValue;
-};
+}
+
+/**
+ * Hook to debounce a function with enhanced functionality
+ * @param func The function to debounce
+ * @param delay The delay in milliseconds
+ * @param options Additional options for debouncing
+ * @returns Object with debounced function and control methods
+ */
+export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
+  func: T,
+  delay: number,
+  options: {
+    leading?: boolean;
+    trailing?: boolean;
+    maxWait?: number;
+  } = {}
+): {
+  debounced: T;
+  cancel: () => void;
+  flush: () => void;
+  isPending: boolean;
+} {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const lastCallTimeRef = useRef<number>(0);
+  const [isPending, setIsPending] = useState(false);
+
+  const { leading = false, trailing = true, maxWait } = options;
+
+  const cancel = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = undefined;
+    }
+    setIsPending(false);
+  }, []);
+
+  const flush = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = undefined;
+    }
+    setIsPending(false);
+    func();
+  }, [func]);
+
+  const debounced = useCallback(
+    ((...args: never[]) => {
+      const now = Date.now();
+      const timeSinceLastCall = now - lastCallTimeRef.current;
+
+      // Leading edge execution
+      if (leading && !timeoutRef.current) {
+        lastCallTimeRef.current = now;
+        setIsPending(true);
+        func(...args);
+        return;
+      }
+
+      // Cancel existing timeout
+      cancel();
+
+      // Check if maxWait has been exceeded
+      if (maxWait && timeSinceLastCall >= maxWait) {
+        lastCallTimeRef.current = now;
+        setIsPending(true);
+        func(...args);
+        return;
+      }
+
+      // Set new timeout for trailing execution
+      if (trailing) {
+        setIsPending(true);
+        timeoutRef.current = setTimeout(() => {
+          lastCallTimeRef.current = Date.now();
+          setIsPending(false);
+          func(...args);
+        }, delay);
+      }
+    }) as T,
+    [func, delay, leading, trailing, maxWait, cancel]
+  );
+
+  return {
+    debounced,
+    cancel,
+    flush,
+    isPending,
+  };
+}
 ```
 
-### useLocalStorage Hook
+### usePrevious Hook
 ```typescript
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
-export const useLocalStorage = <T>(key: string, initialValue: T) => {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error('שגיאה בקריאה מ-localStorage:', error);
-      return initialValue;
-    }
-  });
+/**
+ * Hook to track the previous value of a state or prop
+ * @param value The current value to track
+ * @returns The previous value
+ */
+export function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
 
-  const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error('שגיאה בכתיבה ל-localStorage:', error);
-    }
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return ref.current;
+}
+
+/**
+ * Hook to track multiple previous values with enhanced functionality
+ * @param value The current value to track
+ * @param count Number of previous values to keep
+ * @returns Object with values array and utility functions
+ */
+export function usePreviousValues<T>(
+  value: T,
+  count: number = 5
+): {
+  values: T[];
+  getPrevious: (index: number) => T | undefined;
+  getAverage: () => number;
+  hasChanged: boolean;
+} {
+  const ref = useRef<T[]>([]);
+  const previousLength = ref.current.length;
+
+  useEffect(() => {
+    ref.current = [value, ...ref.current.slice(0, count - 1)];
+  }, [value, count]);
+
+  const getPrevious = useCallback((index: number) => {
+    return ref.current[index] || undefined;
+  }, []);
+
+  const getAverage = useCallback(() => {
+    if (ref.current.length === 0) return 0;
+    const numericValues = ref.current.filter(v => typeof v === 'number') as number[];
+    if (numericValues.length === 0) return 0;
+    return numericValues.reduce((sum, val) => sum + val, 0) / numericValues.length;
+  }, []);
+
+  return {
+    values: ref.current,
+    getPrevious,
+    getAverage,
+    hasChanged: ref.current.length !== previousLength,
   };
+}
 
-  return [storedValue, setValue] as const;
-};
+/**
+ * Hook to track if a value has changed
+ * @param value The value to track
+ * @returns Object with current, previous, and hasChanged boolean
+ */
+export function useValueChange<T>(value: T): {
+  current: T;
+  previous: T | undefined;
+  hasChanged: boolean;
+} {
+  const previous = usePrevious(value);
+
+  return {
+    current: value,
+    previous,
+    hasChanged: previous !== undefined && previous !== value,
+  };
+}
+```
+
+### useRedux Hook
+```typescript
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from '../../redux/store';
+
+// Use throughout your app instead of plain `useDispatch` and `useSelector`
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
 ```
 
 ## שימוש משולב
@@ -630,30 +746,31 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
 ### דוגמה לשימוש בשכבות
 ```typescript
 import React from 'react';
-import { useGameLogic } from '../hooks/layers/business/useGameLogic';
-import { useAudio } from '../hooks/contexts/AudioContext';
-import { useOptimizedAnimations } from '../hooks/layers/ui/useOptimizedAnimations';
+import { useGame } from '../views/home/HomeView';
+import { useAudio } from '../App';
+import { useCustomAnimations } from '../hooks/layers/ui/useCustomAnimations';
+import { useTriviaQuestionMutation } from '../hooks/api/useTrivia';
 
 export const GameComponent: React.FC = () => {
-  const { startGame, submitAnswer, gameState, isLoading } = useGameLogic();
-  const { playSound } = useAudio();
-  const { animateWithReducedMotion } = useOptimizedAnimations();
+  const { gameState, handleAnswer, loadNextQuestion } = useGame();
+  const audioService = useAudio();
+  const { createAnimationLoop } = useCustomAnimations();
+  const triviaMutation = useTriviaQuestionMutation();
 
   const handleStartGame = async () => {
-    await startGame('היסטוריה', 'בינוני');
-    playSound('click');
-    animateWithReducedMotion(() => {
+    audioService.play('click');
+    createAnimationLoop((timestamp) => {
       // אנימציית התחלת משחק
     });
   };
 
-  const handleAnswer = async (answer: string) => {
-    const result = await submitAnswer(answer);
+  const handleAnswerSubmit = async (answer: string) => {
+    await handleAnswer(parseInt(answer));
     
-    if (result.isCorrect) {
-      playSound('correct');
+    if (gameState.isCorrect) {
+      audioService.play('correct');
     } else {
-      playSound('incorrect');
+      audioService.play('incorrect');
     }
   };
 
@@ -675,52 +792,40 @@ export const GameComponent: React.FC = () => {
 ### 2. נוח לתחזוקה
 - קוד מאורגן ומובנה
 - קל למצוא ולשנות פונקציונליות
-# ארכיטקטורת Hooks - EveryTriv
+- שימוש ב-React Query לניהול מצב שרת
+- שימוש ב-Redux לניהול מצב מקומי
 
-עקרונות מתקדמים בלבד. פירוט שכבות ודוגמאות בסיס מפורטים ב-`./STATE.md` ו-`../ARCHITECTURE.md#ארכיטקטורת-frontend`.
+### 3. ביצועים
+- אופטימיזציה של אנימציות
+- ניהול זיכרון יעיל
+- Cache חכם עם React Query
 
-## מטרות
-- הפרדת אחריות (API / Business / UI / Utils / Context).
-- הפחתת חזרות בלוגיקה עסקית בתוך רכיבים.
-- קלות בדיקה (Unit + Integration) דרך פונקציות טהורות והחזרי מצב מפורשים.
+## הנחיות שימוש
 
-## דפוסים מתקדמים
-| דפוס | תיאור | שימוש |
-|------|-------|-------|
-| useComposableResource | Wrapper גנרי לטעינה / cache / שגיאה | איחוד קריאות ל-API דומות |
-| useLayeredAsync | Pipeline של steps ממומשים כ-hooks פנימיים | Game Flow מורכב |
-| useStabilizedCallback | מונע שינוי reference ע"י hash תלויים | אופטימיזציית rerender |
-| useEventChannel | EventEmitter קל משקל בחזית | סינכרון בין רכיבי Game |
+### שמות Hooks
+- `useLogin`, `useRegister`, `useCurrentUser` - קריאות API לאימות
+- `useTriviaQuestion`, `useGameHistory`, `useLeaderboard` - קריאות API למשחק
+- `usePointBalance`, `useCanPlay`, `usePurchasePoints` - קריאות API לנקודות
+- `useCustomAnimations` - UI hooks
+- `useDebounce`, `usePrevious` - Utility hooks
 
-### דוגמה תמציתית: useComposableResource
-```typescript
-export function useComposableResource<T>(key: string, loader: () => Promise<T>) {
-  const [state, set] = useState<{data?:T; error?:string; loading:boolean}>({loading:true});
-  useEffect(() => {
-    let active = true;
-    loader()
-      .then(data => active && set({ loading:false, data }))
-      .catch(e => active && set({ loading:false, error: e.message }));
-    return () => { active = false; };
-  }, [key]);
-  return state;
-}
-```
+### החזרת ערכים
+- החזרת אובייקט מפורש ולא מערך
+- שימוש ב-React Query לניהול מצב async
+- שימוש ב-Redux לניהול מצב גלובלי
 
-## הנחיות
-- שמות hooks: `useDomainAction` (לוגיקה עסקית), `useUiSomething` (UI), `useApiX` (קריאות שרת).
-- החזרת אובייקט מפורש ולא מערך (Self-documenting).
-- הימנעות מאחסון refs לעומק אם ניתן לגזור ערך.
-- Hooks Business לא קוראים DOM.
+### Context Usage
+- AudioContext ב-App.tsx לניהול אודיו גלובלי
+- GameContext ב-HomeView.tsx לניהול מצב משחק
 
 ## בדיקות
-- בדיקת Hooks טהורים עם React Testing Library + act.
-- מדידת stable references (expect(fn1).toBe(fn2)).
+- בדיקת Hooks טהורים עם React Testing Library
+- בדיקת Context providers
+- בדיקת אינטגרציה עם React Query
 
 ## הפניות
 - מבנה שכבות מלא: `../ARCHITECTURE.md#ארכיטקטורת-frontend`
 - ניהול State: `./STATE.md`
-
----
+- API Reference: `../backend/API_REFERENCE.md`
  
 

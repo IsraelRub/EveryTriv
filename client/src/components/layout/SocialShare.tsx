@@ -1,4 +1,4 @@
-import { calculatePercentage , clientLogger,DifficultyLevel  } from '@shared';
+import { calculatePercentage , clientLogger,DifficultyLevel, getErrorMessage  } from '@shared';
 import { AnimatePresence , motion } from 'framer-motion';
 import { useState } from 'react';
 
@@ -58,7 +58,7 @@ export default function SocialShare({
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       clientLogger.userError('Failed to copy link to clipboard', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
     }
   };

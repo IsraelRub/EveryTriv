@@ -6,6 +6,9 @@ import { storageService } from '../../services';
 import { fadeInUp, scaleIn } from '../animations';
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  private retryCount: number = 0;
+  private maxRetries: number = 3;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -30,8 +33,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       ),
       errorType: getErrorType(error),
       errorCode: (error as Error & { code?: string }).code || 'UNKNOWN',
-      retryCount: 0,
-      lastErrorTime: null,
+      retryCount: this.retryCount,
+      lastErrorTime: new Date().toISOString(),
     };
 
     clientLogger.navigationComponentError('ErrorBoundary', getErrorMessage(error), errorDetails);
@@ -53,6 +56,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       errorInfo,
     });
   }
+
+  private handleRetry = () => {
+    if (this.retryCount < this.maxRetries) {
+      this.retryCount++;
+      this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -91,12 +101,21 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 animate='visible'
                 transition={{ delay: 0.4 }}
               >
-                <button
-                  onClick={() => window.location.reload()}
-                  className='bg-white text-red-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors'
-                >
-                  Refresh Page
-                </button>
+                <div className='space-x-4'>
+                  <button
+                    onClick={this.handleRetry}
+                    disabled={this.retryCount >= this.maxRetries}
+                    className='bg-white text-red-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    {this.retryCount >= this.maxRetries ? 'Max Retries Reached' : `Retry (${this.retryCount}/${this.maxRetries})`}
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className='bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors'
+                  >
+                    Refresh Page
+                  </button>
+                </div>
               </motion.div>
               {import.meta.env.DEV && this.state.error && (
                 <motion.div

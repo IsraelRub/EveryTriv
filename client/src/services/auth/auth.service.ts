@@ -7,7 +7,7 @@
  * @used_by client/hooks/api/useAuth.ts, client/views/registration/RegistrationView.tsx, client/components/user/OAuthCallback.tsx
  */
 import { AuthCredentials, AuthResponse, User } from '@shared';
-import { clientLogger } from '@shared';
+import { clientLogger, ensureErrorObject } from '@shared';
 
 import { CLIENT_STORAGE_KEYS } from '../../constants';
 import { apiService } from '../api';
@@ -62,8 +62,8 @@ class AuthService {
       clientLogger.authRegister('User registered successfully', { userId: response.user.id });
       return response;
     } catch (error) {
-      clientLogger.errorWithStack(
-        error instanceof Error ? error : new Error(String(error)),
+      clientLogger.authError(
+        ensureErrorObject(error),
         'Registration failed',
         {
           username: credentials.username,
@@ -89,7 +89,7 @@ class AuthService {
 
       clientLogger.authLogout('User logged out successfully');
     } catch (error) {
-      clientLogger.authError('Logout failed', { error });
+      clientLogger.authError(ensureErrorObject(error), 'Logout failed');
       // Clear local data even if API call fails
       await this.clearAuthData();
     }
@@ -110,8 +110,8 @@ class AuthService {
         role: user.role || 'user', // Provide default role if not set
       };
     } catch (error) {
-      clientLogger.errorWithStack(
-        error instanceof Error ? error : new Error(String(error)),
+      clientLogger.authError(
+        ensureErrorObject(error),
         'Failed to get current user'
       );
       throw error;
@@ -133,8 +133,8 @@ class AuthService {
       clientLogger.authTokenRefresh('Token refreshed successfully');
       return response;
     } catch (error) {
-      clientLogger.errorWithStack(
-        error instanceof Error ? error : new Error(String(error)),
+      clientLogger.authError(
+        ensureErrorObject(error),
         'Token refresh failed'
       );
       await this.clearAuthData();

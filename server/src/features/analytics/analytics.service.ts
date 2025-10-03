@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-	ANALYTICS_ERROR_MESSAGES,
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
@@ -17,6 +16,7 @@ import {
 	UserAnalyticsStats,
 	getErrorMessage,
 	BasicValue,
+	createNotFoundError,
 } from '@shared';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
@@ -119,7 +119,7 @@ export class AnalyticsService implements OnModuleInit {
 
 			const user = await this.userRepo.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error(ANALYTICS_ERROR_MESSAGES.USER_NOT_FOUND);
+				throw createNotFoundError('User');
 			}
 
 			const stats = await this.calculateUserStats(userId);
@@ -1022,7 +1022,7 @@ export class AnalyticsService implements OnModuleInit {
 				async () => {
 					const user = await this.userRepo.findOne({ where: { id: userId } });
 					if (!user) {
-						throw new Error('User not found');
+						throw createNotFoundError('User');
 					}
 
 					const gameAnalytics = await this.getUserStats(userId);

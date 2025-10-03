@@ -4,7 +4,7 @@
 
 EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI עם ארכיטקטורה מודרנית של Frontend ו-Backend נפרדים. המערכת משלבת טכנולוגיות מתקדמות ליצירת חוויית משחק מרתקת ואינטראקטיבית.
 
-> **הערת סנכרון תרשימים**: חלק מהמודולים המופיעים בדיאגרמות מוצגים כגבולות נפרדים לצרכי הבהרה אך ממומשים ממוזגים בפועל. לפרטים מלאים ראו: [סנכרון תרשימים ↔ קוד](../DIAGRAMS.md#diagram-sync-status), [זרימת ליבת NestJS](../DIAGRAMS.md#nestjs-core-flow), [מפת תלות Shared](../DIAGRAMS.md#shared-deps-map).
+> **הערת סנכרון תרשימים**: חלק מהמודולים המופיעים בדיאגרמות מוצגים כגבולות נפרדים לצרכי הבהרה אך ממומשים ממוזגים בפועל. לפרטים מלאים ראו: [סנכרון תרשימים ↔ קוד](./DIAGRAMS.md#diagram-sync-status), [זרימת ליבת NestJS](./DIAGRAMS.md#nestjs-core-flow), [מפת תלות Shared](./DIAGRAMS.md#shared-deps-map).
 
 ## Stack טכנולוגי
 
@@ -37,6 +37,7 @@ EveryTriv/
 ├── client/                    # React Frontend
 │   ├── src/
 │   │   ├── views/            # דפי האפליקציה
+│   │   │   ├── admin/        # דף מנהל
 │   │   │   ├── analytics/    # דף אנליטיקה
 │   │   │   ├── gameHistory/  # היסטוריית משחקים
 │   │   │   ├── home/         # דף הבית והמשחק
@@ -47,10 +48,10 @@ EveryTriv/
 │   │   │   ├── unauthorized/ # דף לא מורשה
 │   │   │   └── user/         # פרופיל משתמש
 │   │   ├── components/       # רכיבי UI
-│   │   │   ├── analytics/    # רכיבי אנליטיקה
 │   │   │   ├── animations/   # אנימציות
 │   │   │   ├── audio/        # בקרת אודיו
 │   │   │   ├── auth/         # רכיבי אימות
+│   │   │   ├── error/        # רכיבי שגיאות
 │   │   │   ├── forms/        # רכיבי טפסים
 │   │   │   ├── game/         # רכיבי משחק
 │   │   │   ├── gameMode/     # בחירת מצב משחק
@@ -58,7 +59,6 @@ EveryTriv/
 │   │   │   ├── icons/        # ספריית אייקונים
 │   │   │   ├── layout/       # רכיבי פריסה
 │   │   │   ├── leaderboard/  # רכיבי לוח תוצאות
-│   │   │   ├── monitoring/   # רכיבי ניטור
 │   │   │   ├── navigation/   # רכיבי ניווט
 │   │   │   ├── points/       # רכיבי נקודות
 │   │   │   ├── stats/        # רכיבי סטטיסטיקות
@@ -94,7 +94,6 @@ EveryTriv/
 │   │   │   ├── middleware/   # middleware
 │   │   │   ├── modules/      # מודולים פנימיים
 │   │   │   ├── repositories/ # repositories
-│   │   │   ├── services/     # שירותים פנימיים
 │   │   │   ├── types/        # טיפוסים פנימיים
 │   │   │   └── utils/        # כלים פנימיים
 │   │   ├── common/           # קוד משותף גלובלי
@@ -105,10 +104,6 @@ EveryTriv/
 │   │   │   ├── pipes/        # pipes
 │   │   │   └── validation/   # ולידציה
 │   │   ├── config/           # קונפיגורציה
-│   │   │   ├── app.config.ts
-│   │   │   ├── database.config.ts
-│   │   │   ├── dataSource.ts
-│   │   │   └── redis.config.ts
 │   │   ├── migrations/       # מיגרציות מסד נתונים
 │   │   ├── app.controller.ts
 │   │   ├── app.module.ts

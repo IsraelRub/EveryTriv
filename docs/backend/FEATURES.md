@@ -14,10 +14,6 @@
 | Analytics | /analytics | מדדים, איסוף שימוש, דוחות | Game, Points |
 | Payment | /payment | תשלומים, טרנזקציות | Subscription, User |
 | Subscription | /subscription | ניהול מנויים והרשאות פרימיום | Payment, User |
-| AI Providers | /api/ai-providers | ניהול ספקי AI, סטטיסטיקות | Game, Cache |
-| Cache | /cache | ניהול מטמון Redis | - |
-| Storage | /storage | ניהול אחסון נתונים | - |
-| Admin | /admin | כלי ניהול ומדדים | - |
 
 ## עקרון שכבות
 
@@ -119,32 +115,13 @@ export class CreateItemDto {
 - ביטול מנוי קיים.
 - בדיקת סטטוס מנוי נוכחי.
 
-## מודול AI Providers (feature-ai-providers)
+## מודול Game - AI Providers
 
 - ניהול ספקי AI (OpenAI, Anthropic, Google, Mistral).
 - בדיקת סטטוס בריאות של ספקים.
 - סטטיסטיקות שימוש בספקים.
 - ניהול מפתחות API.
-
-## מודול Cache (internal-cache)
-
-- ניהול מטמון Redis.
-- בדיקת קיום מפתחות.
-- ניהול TTL.
-- ניקוי מטמון.
-
-## מודול Storage (internal-storage)
-
-- ניהול אחסון נתונים.
-- מדדי אחסון.
-- ניהול מפתחות.
-- ניקוי אחסון.
-
-## מודול Admin (internal-admin)
-
-- מדדי middleware.
-- סטטיסטיקות מערכת.
-- כלי ניהול מתקדמים.
+- מיקום: `features/game/logic/providers/`
 
 ## תלות בשכבת Shared
 

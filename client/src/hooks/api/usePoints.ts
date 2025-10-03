@@ -1,4 +1,4 @@
-import { clientLogger } from '@shared';
+import { clientLogger, getErrorMessage } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectCanPlayFree,selectUserPointBalance } from '../../redux/selectors';
@@ -64,7 +64,7 @@ export const useDeductPoints = () => {
         // Ignore errors when canceling queries
         // Use logger at a low level to avoid noise
         clientLogger.apiDebug('Error canceling queries', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         });
       }
 

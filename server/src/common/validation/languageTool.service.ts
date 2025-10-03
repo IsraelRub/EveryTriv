@@ -7,7 +7,8 @@ import {
  serverLogger as logger,	SupportedLanguage,
 	VALIDATION_ERROR_MESSAGES,
 	getErrorMessage,
-	getErrorStack } from '@shared';
+	getErrorStack, 
+	createServerError} from '@shared';
 
 // import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
@@ -84,7 +85,7 @@ export class LanguageToolService {
 				logger.languageToolApiError(response.status, response.statusText, {
 					url: url.replace(this.config.apiKey || '', '[REDACTED]'),
 				});
-				throw new Error(errorMessage);
+				throw createServerError('validate text with LanguageTool', new Error(errorMessage));
 			}
 
 			const result: LanguageToolResponse = await response.json();
@@ -146,7 +147,7 @@ export class LanguageToolService {
 			if (!response.ok) {
 				const errorMessage = `${VALIDATION_ERROR_MESSAGES.FAILED_TO_FETCH_LANGUAGES}: ${response.status}`;
 				logger.languageToolApiError(response.status, response.statusText);
-				throw new Error(errorMessage);
+				throw createServerError('validate text with LanguageTool', new Error(errorMessage));
 			}
 
 			const languages = await response.json();

@@ -5,7 +5,7 @@
  * @description OpenAI API integration for trivia question generation
  * @used_by server/src/features/game/logic (AiProvidersService.initializeProviders)
  */
-import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
+import { createValidationError, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
@@ -81,7 +81,7 @@ export class OpenAITriviaProvider extends BaseTriviaProvider {
 	protected parseResponse(response: LLMResponse): LLMTriviaResponse {
 		const data = response.data;
 		if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_OPENAI_RESPONSE);
+			throw createValidationError('OpenAI response format', 'string');
 		}
 		const content = data.choices[0].message.content;
 		return JSON.parse(content);

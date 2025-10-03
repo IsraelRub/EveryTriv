@@ -5,7 +5,7 @@
  * @description Authentication controller with login, register, and user management endpoints
  */
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { serverLogger as logger , UsersListResponse, getErrorMessage } from '@shared';
+import { serverLogger as logger , getErrorMessage } from '@shared';
 
 import {
 	ApiResponse,
@@ -167,7 +167,7 @@ export class AuthController {
 	@Get('admin/users')
 	@UseGuards(AuthGuard, RolesGuard)
 	@Roles('admin', 'super-admin')
-	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }): Promise<UsersListResponse> {
+	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }) {
 		try {
 			logger.apiRead('admin_get_all_users', {
 				adminId: user.id,
@@ -184,8 +184,6 @@ export class AuthController {
 					createdAt: new Date().toISOString(),
 				},
 				users: [],
-				success: true,
-				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			logger.userError('Failed to get all users', {

@@ -39,7 +39,8 @@ export class ClientLogsController {
 			}
 		}
 
-		return { success: true, processed: logs.length };
+		// Return only the data - ResponseFormattingInterceptor will handle the response structure
+		return { processed: logs.length };
 	}
 
 	/**

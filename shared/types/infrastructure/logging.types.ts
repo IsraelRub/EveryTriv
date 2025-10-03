@@ -95,6 +95,7 @@ export interface UserLogger {
 
 export interface DatabaseLogger {
 	databaseError(message: string, meta?: LogMeta): void;
+	databaseError(error: Error, message?: string, meta?: LogMeta): void;
 	databaseInfo(message: string, meta?: LogMeta): void;
 	databaseWarn(message: string, meta?: LogMeta): void;
 	databaseDebug(message: string, meta?: LogMeta): void;
@@ -173,6 +174,7 @@ export interface SystemLogger {
 	appStartup(meta?: LogMeta): void;
 	appShutdown(meta?: LogMeta): void;
 	systemError(error: string, meta?: LogMeta): void;
+	systemError(error: Error, message?: string, meta?: LogMeta): void;
 	system(message: string, meta?: LogMeta): void;
 }
 
@@ -204,6 +206,7 @@ export interface AuthLogger {
 	authTokenRefresh(message: string, meta?: LogMeta): void;
 	authProfileUpdate(message: string, meta?: LogMeta): void;
 	authError(message: string, meta?: LogMeta): void;
+	authError(error: Error, message?: string, meta?: LogMeta): void;
 	authDebug(message: string, meta?: LogMeta): void;
 	authInfo(message: string, meta?: LogMeta): void;
 }
@@ -323,9 +326,6 @@ export interface Logger
 		NavigationLogger,
 		MediaLogger,
 		EnhancedLogger {
-	// Additional utility methods
-	errorWithStack(error: Error, message?: string, meta?: LogMeta): void;
-
 	// Log retrieval methods (for debugging/analytics)
 	getLogs(): EnhancedLogEntry[];
 	clearLogs(): void;

@@ -1,4 +1,4 @@
-import { LLMResponse, LLMTriviaResponse, PROVIDER_ERROR_MESSAGES, ProviderConfig } from '@shared';
+import { createValidationError, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 
@@ -73,7 +73,7 @@ export class GoogleTriviaProvider extends BaseTriviaProvider {
 			!Array.isArray(response.data.candidates) ||
 			response.data.candidates.length === 0
 		) {
-			throw new Error(PROVIDER_ERROR_MESSAGES.INVALID_GOOGLE_RESPONSE);
+			throw createValidationError('Google response format', 'string');
 		}
 		const content = response.data.candidates[0].content.parts[0].text;
 		return JSON.parse(content);

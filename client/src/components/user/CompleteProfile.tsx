@@ -1,4 +1,4 @@
-import { clientLogger,COUNTRIES  } from '@shared';
+import { clientLogger,COUNTRIES, getErrorMessage  } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
 import { FormEvent, memo, useCallback,useMemo, useState } from 'react';
@@ -167,7 +167,7 @@ const CompleteProfile = memo(function CompleteProfile() {
         setError('Failed to update profile. Please try again.');
         setValidationStatus('invalid');
         clientLogger.userError('Profile completion error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         });
       } finally {
         setLoading(false);

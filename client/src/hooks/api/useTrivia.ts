@@ -1,5 +1,5 @@
 import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
-import { clientLogger } from '@shared';
+import { clientLogger, getErrorMessage } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';
@@ -79,7 +79,7 @@ export const useSaveHistory = () => {
       } catch (error) {
         // Ignore errors when canceling queries
         clientLogger.apiDebug('Error canceling queries', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         });
       }
 

@@ -64,6 +64,13 @@ export abstract class BaseLoggerService implements Logger {
 		this.logDebug(message, this.buildMeta(meta));
 	}
 
+	protected errorWithStack(error: Error, message?: string, meta?: LogMeta): void {
+		this.error(MESSAGE_FORMATTERS.validation.error(`${message || 'Error'}: ${error.message}`), {
+			...meta,
+			stack: error.stack,
+		});
+	}
+
 	getSessionId(): string {
 		return this.sessionId;
 	}
@@ -124,8 +131,15 @@ export abstract class BaseLoggerService implements Logger {
 	}
 
 	// DatabaseLogger implementation
-	databaseError(message: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.databaseConnection.error(message), meta);
+	databaseError(message: string, meta?: LogMeta): void;
+	databaseError(error: Error, message?: string, meta?: LogMeta): void;
+	databaseError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+		if (messageOrError instanceof Error) {
+			const errorMessage = messageOrMeta as string || 'Database error';
+			this.errorWithStack(messageOrError, errorMessage, meta);
+		} else {
+			this.error(MESSAGE_FORMATTERS.databaseConnection.error(messageOrError), messageOrMeta as LogMeta);
+		}
 	}
 
 	databaseInfo(message: string, meta?: LogMeta): void {
@@ -354,8 +368,15 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.system.appShutdown(), meta);
 	}
 
-	systemError(error: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.system.error(error), meta);
+	systemError(error: string, meta?: LogMeta): void;
+	systemError(error: Error, message?: string, meta?: LogMeta): void;
+	systemError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+		if (messageOrError instanceof Error) {
+			const errorMessage = messageOrMeta as string || 'System error';
+			this.errorWithStack(messageOrError, errorMessage, meta);
+		} else {
+			this.error(MESSAGE_FORMATTERS.system.error(messageOrError), messageOrMeta as LogMeta);
+		}
 	}
 
 	system(message: string, meta?: LogMeta): void {
@@ -430,8 +451,15 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.auth.profileUpdate(message), meta);
 	}
 
-	authError(message: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.auth.error(message), meta);
+	authError(message: string, meta?: LogMeta): void;
+	authError(error: Error, message?: string, meta?: LogMeta): void;
+	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+		if (messageOrError instanceof Error) {
+			const errorMessage = messageOrMeta as string || 'Authentication error';
+			this.errorWithStack(messageOrError, errorMessage, meta);
+		} else {
+			this.error(MESSAGE_FORMATTERS.auth.error(messageOrError), messageOrMeta as LogMeta);
+		}
 	}
 
 	authDebug(message: string, meta?: LogMeta): void {
@@ -606,21 +634,13 @@ export abstract class BaseLoggerService implements Logger {
 		this.warn(MESSAGE_FORMATTERS.media.audioFallback(key), meta);
 	}
 
-	// Additional utility methods
-	errorWithStack(error: Error, message?: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.validation.error(`${message || 'Error'}: ${error.message}`), {
-			...meta,
-			stack: error.stack,
-		});
-	}
-
 	// Log retrieval methods (for debugging/analytics)
 	getLogs(): EnhancedLogEntry[] {
 		return [];
 	}
 
 	// Function for automatic logger cleanup
-	public clearLogs(): void {
+	clearLogs(): void {
 		// Clear session and trace IDs
 		this.sessionId = generateSessionId();
 		this.traceId = generateTraceId();

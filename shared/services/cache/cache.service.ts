@@ -5,6 +5,7 @@
  * @description caching strategy for consistent cache behavior across the system
  * @author EveryTriv Team
  */
+import { getErrorMessage } from '../../utils';
 import type { StorageService, StorageOperationResult } from '../../types';
 
 /**
@@ -114,7 +115,7 @@ export class CacheStrategyService {
 			return {
 				success: false,
 				data: null,
-				error: err instanceof Error ? err.message : 'Unknown error',
+				error: getErrorMessage(err),
 				duration: Date.now() - startTime,
 				storageType: 'cache',
 				timestamp: new Date(),
@@ -188,7 +189,7 @@ export class CacheStrategyService {
 		} catch (err) {
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Unknown error',
+				error: getErrorMessage(err),
 				duration: Date.now() - startTime,
 				storageType: 'cache',
 				timestamp: new Date(),
@@ -230,7 +231,7 @@ export class CacheStrategyService {
 		} catch (err) {
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Unknown error',
+				error: getErrorMessage(err),
 				duration: Date.now() - startTime,
 				timestamp: new Date(),
 			};

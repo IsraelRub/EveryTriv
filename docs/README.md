@@ -115,10 +115,10 @@ EveryTriv/
 │   │   │   ├── unauthorized/ # דף לא מורשה
 │   │   │   └── user/         # פרופיל משתמש
 │   │   ├── components/       # רכיבי UI
-│   │   │   ├── analytics/    # רכיבי אנליטיקה
 │   │   │   ├── animations/   # אנימציות
 │   │   │   ├── audio/        # בקרת אודיו
 │   │   │   ├── auth/         # רכיבי אימות
+│   │   │   ├── error/        # רכיבי שגיאות
 │   │   │   ├── forms/        # רכיבי טפסים
 │   │   │   ├── game/         # רכיבי משחק
 │   │   │   ├── gameMode/     # בחירת מצב משחק
@@ -126,7 +126,6 @@ EveryTriv/
 │   │   │   ├── icons/        # ספריית אייקונים
 │   │   │   ├── layout/       # רכיבי פריסה
 │   │   │   ├── leaderboard/  # רכיבי לוח תוצאות
-│   │   │   ├── monitoring/   # רכיבי ניטור
 │   │   │   ├── navigation/   # רכיבי ניווט
 │   │   │   ├── points/       # רכיבי נקודות
 │   │   │   ├── stats/        # רכיבי סטטיסטיקות
@@ -161,7 +160,6 @@ EveryTriv/
 │   │   │   ├── middleware/   # middleware
 │   │   │   ├── modules/      # מודולים פנימיים
 │   │   │   ├── repositories/ # repositories
-│   │   │   ├── services/     # שירותים פנימיים
 │   │   │   ├── types/        # טיפוסים פנימיים
 │   │   │   └── utils/        # כלים פנימיים
 │   │   ├── common/           # קוד משותף גלובלי
@@ -185,16 +183,14 @@ EveryTriv/
 │   ├── constants/            # קבועים משותפים
 │   ├── validation/           # ולידציה משותפת
 │   ├── services/             # שירותים משותפים
-│   ├── utils/                # פונקציות עזר משותפות
-│   └── hooks/                # hooks משותפים
+│   └── utils/                # פונקציות עזר משותפות
 ├── docs/                     # תיעוד
 │   ├── ARCHITECTURE.md       # מסמכי ארכיטקטורה
 │   ├── backend/              # תיעוד Backend
 │   ├── frontend/             # תיעוד Frontend
 │   ├── shared/               # תיעוד Shared
 │   ├── database/             # מסמכי מסד נתונים
-│   ├── tools/                # כלי פיתוח
-│   ├── DEVELOPMENT.md  # מדריך פיתוח מקיף
+│   ├── DEVELOPMENT.md        # מדריך פיתוח מקיף
 │   ├── DEPLOYMENT.md         # מדריך פריסה
 │   ├── DIAGRAMS.md           # תרשימים מפורטים
 │   └── README.md             # אינדקס ראשי

@@ -87,6 +87,23 @@ export const STORAGE_ERROR_MESSAGES = {
 	FAILED_TO_CLEAR_STORAGE: 'Failed to clear storage',
 } as const;
 
+// Cache error messages
+export const CACHE_ERROR_MESSAGES = {
+	FAILED_TO_GET: 'Failed to get from cache',
+	FAILED_TO_SET: 'Failed to set cache',
+	FAILED_TO_DELETE: 'Failed to delete from cache',
+	FAILED_TO_CLEAR: 'Failed to clear cache',
+	CONNECTION_FAILED: 'Cache connection failed',
+} as const;
+
+// Timeout error messages
+export const TIMEOUT_ERROR_MESSAGES = {
+	OPERATION_TIMEOUT: 'Operation timed out',
+	REQUEST_TIMEOUT: 'Request timed out',
+	DATABASE_TIMEOUT: 'Database operation timed out',
+	CACHE_TIMEOUT: 'Cache operation timed out',
+} as const;
+
 // Provider error messages
 export const PROVIDER_ERROR_MESSAGES = {
 	INVALID_ANTHROPIC_RESPONSE: 'Invalid Anthropic response format',

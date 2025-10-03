@@ -26,7 +26,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
-import { AiProvidersService } from './logic/providers/management';
+import { AiProvidersController, AiProvidersService } from './logic/providers/management';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 
@@ -40,7 +40,7 @@ import { PointCalculationService } from '../../../../shared/services/points/poin
 		ValidationModule,
 		UserModule,
 	],
-	controllers: [GameController],
+	controllers: [GameController, AiProvidersController],
 	providers: [
 		GameService,
 		TriviaGenerationService,

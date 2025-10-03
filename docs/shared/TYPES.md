@@ -5,13 +5,30 @@
 ## ארגון
 ```
 shared/types/
-  core/            # טיפוסים בסיסיים (Ids, Pagination, Base Responses)
-  domain/          # ישויות לוגיות (Game, Trivia, User, Points)
-  infrastructure/  # חוזים טכניים (Cache, Logger, External Providers)
+  core/            # טיפוסים בסיסיים
+  │   ├── data.types.ts
+  │   ├── error.types.ts
+  │   ├── response.types.ts
+  │   └── utility.types.ts
+  domain/          # ישויות לוגיות
+  │   ├── ai/      # טיפוסי AI
+  │   ├── analytics/ # טיפוסי אנליטיקה
+  │   ├── game/    # טיפוסי משחק
+  │   ├── user/    # טיפוסי משתמש
+  │   └── validation/ # טיפוסי ולידציה
+  infrastructure/  # חוזים טכניים
+  │   ├── api.types.ts
+  │   ├── auth.types.ts
+  │   ├── cache.types.ts
+  │   ├── config.types.ts
+  │   ├── http.types.ts
+  │   ├── logging.types.ts
+  │   ├── redis.types.ts
+  │   └── storage.types.ts
+  language.types.ts
   payment.types.ts
   points.types.ts
   subscription.types.ts
-  language.types.ts
   ui.types.ts
 ```
 
@@ -22,9 +39,9 @@ shared/types/
 
 ## Response Wrapper בסיסי
 ```typescript
-export interface ApiSuccess<T> { success: true; data: T; }
+export interface SuccessResponse<T> { success: true; data: T; }
 export interface ApiError { success: false; error: string; code?: string; }
-export type ApiResponse<T> = ApiSuccess<T> | ApiError;
+export type ApiResponse<T> = SuccessResponse<T> | ApiError;
 ```
 
 ## Entity לדוגמה
@@ -43,7 +60,7 @@ export interface TriviaQuestion {
 
 ## דוגמת Points
 ```typescript
-export interface PointsTransaction {
+export interface PointTransaction {
   id: string;
   userId: string;
   delta: number;

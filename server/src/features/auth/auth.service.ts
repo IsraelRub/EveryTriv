@@ -10,6 +10,7 @@ import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
 import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
+import { CurrentUserData, UserData } from '@shared';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -135,7 +136,7 @@ export class AuthService {
 	/**
 	 * Get current user
 	 */
-	async getCurrentUser(userId: string): Promise<any> {
+	async getCurrentUser(userId: string): Promise<CurrentUserData> {
 		const user = await this.userRepository.findOne({
 			where: { id: userId, isActive: true },
 			select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
@@ -164,7 +165,7 @@ export class AuthService {
 	/**
 	 * Validate user credentials
 	 */
-	async validateUser(username: string, password: string): Promise<any> {
+	async validateUser(username: string, password: string): Promise<Omit<UserData, 'passwordHash'> | null> {
 		const user = await this.userRepository.findOne({
 			where: { username, isActive: true },
 		});

@@ -17,7 +17,10 @@ import {
 	PointPurchaseOption,
  serverLogger as logger,	SubscriptionData,
 	SubscriptionPlans,
-	getErrorMessage } from '@shared';
+	getErrorMessage,
+	createServerError,
+	createNotFoundError,
+	createValidationError } from '@shared';
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
@@ -124,7 +127,7 @@ export class PaymentService {
 			logger.paymentFailed('unknown', 'Failed to get pricing plans', {
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PRICING_PLANS);
+			throw createServerError('retrieve pricing plans', error);
 		}
 	}
 
@@ -148,7 +151,7 @@ export class PaymentService {
 			logger.paymentFailed('unknown', 'Failed to get point purchase options', {
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_POINT_OPTIONS);
+			throw createServerError('retrieve point options', error);
 		}
 	}
 
@@ -163,7 +166,7 @@ export class PaymentService {
 			logger.payment('Processing payment', { userId, paymentType: paymentData.planType || 'unknown' });
 
 			if (!paymentData.amount || paymentData.amount <= 0) {
-				throw new Error(PAYMENT_ERROR_MESSAGES.INVALID_PAYMENT_AMOUNT);
+				throw createValidationError('payment amount', 'number');
 			}
 
 			const paymentHistory = this.paymentHistoryRepository.create({
@@ -233,7 +236,7 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.PAYMENT_PROCESSING_FAILED);
+			throw createServerError('process payment', new Error(PAYMENT_ERROR_MESSAGES.PAYMENT_PROCESSING_FAILED));
 		}
 	}
 
@@ -261,7 +264,7 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY);
+			throw createServerError('retrieve payment history', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY));
 		}
 	}
 
@@ -305,7 +308,7 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION);
+			throw createServerError('retrieve subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION));
 		}
 	}
 
@@ -323,7 +326,7 @@ export class PaymentService {
 			const selectedOption = options.find(opt => opt.id === optionId);
 
 			if (!selectedOption) {
-				throw new Error(PAYMENT_ERROR_MESSAGES.INVALID_POINT_OPTION);
+				throw createValidationError('point option', 'string');
 			}
 
 			// Process payment
@@ -339,13 +342,13 @@ export class PaymentService {
 			});
 
 			if (!paymentResult.success) {
-				throw new Error('Payment failed');
+				throw createServerError('process payment', new Error('Payment failed'));
 			}
 
 			// Update user points
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new Error(PAYMENT_ERROR_MESSAGES.USER_NOT_FOUND);
+				throw createNotFoundError('User');
 			}
 
 			const totalPoints = selectedOption.points + (selectedOption.bonus || 0);
@@ -374,7 +377,7 @@ export class PaymentService {
 				optionId,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_POINTS);
+			throw createServerError('purchase points', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_POINTS));
 		}
 	}
 
@@ -391,7 +394,7 @@ export class PaymentService {
 
 			// Validate plan type
 			if (!PRICING_PLANS[planType as keyof SubscriptionPlans]) {
-				throw new Error(PAYMENT_ERROR_MESSAGES.INVALID_PLAN_TYPE);
+				throw createValidationError('plan type', 'string');
 			}
 
 			// Process payment
@@ -402,7 +405,7 @@ export class PaymentService {
 			});
 
 			if (!paymentResult.success) {
-				throw new Error('Payment failed');
+				throw createServerError('process payment', new Error('Payment failed'));
 			}
 
 			// Create subscription
@@ -460,7 +463,7 @@ export class PaymentService {
 				planType,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CREATE_SUBSCRIPTION);
+			throw createServerError('create subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CREATE_SUBSCRIPTION));
 		}
 	}
 
@@ -478,7 +481,7 @@ export class PaymentService {
 			});
 
 			if (!subscription) {
-				throw new Error(PAYMENT_ERROR_MESSAGES.NO_ACTIVE_SUBSCRIPTION);
+				throw createNotFoundError('Active subscription');
 			}
 
 			subscription.status = SubscriptionStatus.CANCELLED;
@@ -494,7 +497,7 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CANCEL_SUBSCRIPTION);
+			throw createServerError('cancel subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CANCEL_SUBSCRIPTION));
 		}
 	}
 

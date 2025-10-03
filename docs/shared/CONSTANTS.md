@@ -5,29 +5,45 @@
 ## מבנה
 ```
 shared/constants/
-  core/         # ערכים טכניים (זמנים, פורמטים)
-  business/     # ערכים דומייניים (Scoring, Limits)
+  business/     # ערכים דומייניים
+  │   ├── info.constants.ts
+  │   ├── language.constants.ts
+  │   ├── payment.constants.ts
+  │   └── social.constants.ts
+  core/         # ערכים טכניים
+  │   ├── api.constants.ts
+  │   ├── auth.constants.ts
+  │   ├── error.constants.ts
+  │   ├── game-server.constants.ts
+  │   ├── game.constants.ts
+  │   └── validation.constants.ts
   infrastructure/ # שמות Channels, Cache Keys
+  │   ├── http.constants.ts
+  │   ├── infrastructure.constants.ts
+  │   ├── logging.constants.ts
+  │   └── storage.constants.ts
   navigation/   # מסלולי UI / מזהי תפריטים
+  │   └── navigation.constants.ts
   index.ts      # יצוא מרוכז
 ```
 
 ## דוגמאות
 ```typescript
-// business/scoring.constants.ts
-export const BASE_POINTS = { easy: 10, medium: 20, hard: 30 } as const;
+// business/payment.constants.ts
+export const POINTS_PRICING_TIERS = [
+  { points: 100, price: 5.99 },
+  { points: 500, price: 24.99 },
+  { points: 1000, price: 44.99 }
+] as const;
 
-// core/time.constants.ts
-export const ONE_MINUTE_MS = 60_000;
-
-// infrastructure/cache.constants.ts
-export const CACHE_KEYS = {
-  QUESTION: (id: string) => `q:${id}`,
-  USER_STATS: (id: string) => `us:${id}`,
+// infrastructure/storage.constants.ts
+export const CACHE_TTL = {
+  QUESTION: 5 * 60 * 1000, // 5 minutes
+  USER_STATS: 10 * 60 * 1000, // 10 minutes
 } as const;
 
-// navigation/routes.constants.ts
-export const ROUTES = {
+// navigation/navigation.constants.ts
+export const ROUTE_PATHS = {
   HOME: '/',
   GAME: '/game',
   LEADERBOARD: '/leaderboard',

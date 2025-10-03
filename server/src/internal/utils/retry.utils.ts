@@ -1,4 +1,4 @@
-import { ApiError , AxiosErrorWithConfig, ExtendedAxiosRequestConfig,HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES , serverLogger  } from '@shared';
+import { ApiError , AxiosErrorWithConfig, ExtendedAxiosRequestConfig,HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES , serverLogger, createServerError  } from '@shared';
 import { AxiosResponse } from 'axios';
 
 /**
@@ -77,7 +77,7 @@ export class RetryUtils {
 		if (lastError) {
 			throw this.formatError(lastError);
 		}
-		throw new Error('Retry failed with no error information');
+		throw createServerError('retry request', new Error('Retry failed with no error information'));
 	}
 
 	/**

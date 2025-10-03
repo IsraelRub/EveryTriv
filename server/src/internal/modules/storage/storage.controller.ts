@@ -24,9 +24,9 @@ export class StorageController {
 	async getMetrics() {
 		try {
 			const metrics = this.storageService.getMetrics();
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
-				data: metrics,
+				metrics: metrics,
 				message: 'Storage metrics retrieved successfully',
 			};
 		} catch (error) {
@@ -51,8 +51,8 @@ export class StorageController {
 	async resetMetrics() {
 		try {
 			this.storageService.resetMetrics();
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
 				message: 'Storage metrics reset successfully',
 			};
 		} catch (error) {
@@ -82,9 +82,9 @@ export class StorageController {
 				throw createStorageError('get keys', result.error);
 			}
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
-				data: result.data,
+				keys: result.data,
 				message: 'Storage keys retrieved successfully',
 			};
 		} catch (error) {
@@ -115,9 +115,9 @@ export class StorageController {
 				throw createStorageError('get item', result.error);
 			}
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
-				data: result.data,
+				item: result.data,
 				message: 'Storage item retrieved successfully',
 			};
 		} catch (error) {
@@ -146,8 +146,8 @@ export class StorageController {
 				throw createStorageError('clear storage', result.error);
 			}
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
-				success: true,
 				message: 'Storage cleared successfully',
 			};
 		} catch (error) {

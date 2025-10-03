@@ -12,7 +12,7 @@ import {
 	Query,
 	UsePipes,
 } from '@nestjs/common';
-import { AdminUserData, serverLogger,UserFieldUpdate, UserProfileResponse, UsersListResponse, getErrorMessage } from '@shared';
+import { AdminUserData, serverLogger,UserFieldUpdate, getErrorMessage } from '@shared';
 
 import {
 	AuditLog,
@@ -51,21 +51,18 @@ export class UserController {
 	@Cache(300)
 	async getUserProfile(
 		@CurrentUser() user: { id: string; username: string; email: string; role: string }
-	): Promise<UserProfileResponse> {
+	) {
 		try {
 			const result = await this.userService.getUserProfile(user.id);
 			return {
-				data: {
-					id: result.id,
-					username: result.username,
-					email: result.email,
-					role: user.role,
-					firstName: result.firstName,
-					lastName: result.last_name,
-					createdAt: result.created_at?.toISOString(),
-					preferences: result.preferences as Record<string, unknown>,
-				},
-				timestamp: new Date().toISOString(),
+				id: result.id,
+				username: result.username,
+				email: result.email,
+				role: user.role,
+				firstName: result.firstName,
+				lastName: result.last_name,
+				createdAt: result.created_at?.toISOString(),
+				preferences: result.preferences as Record<string, unknown>,
 			};
 		} catch (error) {
 			serverLogger.userError('Error getting user profile', {
@@ -83,11 +80,8 @@ export class UserController {
 	async getUserCredits(@CurrentUserId() userId: string) {
 		try {
 			const credits = await this.userService.getUserCredits(userId);
-			return {
-				success: true,
-				data: { credits },
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return { credits };
 		} catch (error) {
 			serverLogger.userError('Error getting user credits', {
 				error: getErrorMessage(error),
@@ -104,11 +98,8 @@ export class UserController {
 		try {
 
 			const result = await this.userService.deductCredits(userId, body.amount, body.reason || 'Game play');
-			return {
-				success: true,
-				data: result,
-				timestamp: new Date().toISOString(),
-			};
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			return result;
 		} catch (error) {
 			serverLogger.userError('Error deducting credits', {
 				error: getErrorMessage(error),
@@ -435,7 +426,7 @@ export class UserController {
 	 */
 	@Get('admin/all')
 	@Roles('admin', 'super-admin')
-	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string; email: string }): Promise<UsersListResponse> {
+	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string; email: string }) {
 		try {
 			serverLogger.apiRead('admin_get_all_users', {
 				adminId: user.id,
@@ -445,6 +436,7 @@ export class UserController {
 			// This would call a service method to get all users
 			const users: AdminUserData[] = [];
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
 				message: 'Admin access granted',
 				adminUser: {
@@ -455,8 +447,6 @@ export class UserController {
 					createdAt: new Date().toISOString(),
 				},
 				users: users,
-				success: true,
-				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			serverLogger.userError('Failed to get all users', {
@@ -476,7 +466,7 @@ export class UserController {
 		@CurrentUser() adminUser: { id: string; role: string; username: string },
 		@Param('userId') userId: string,
 		@Body() statusData: UpdateUserStatusDto
-	): Promise<{ message: string; success: boolean; timestamp: string }> {
+	) {
 		try {
 			serverLogger.apiUpdate('admin_update_user_status', {
 				adminId: adminUser.id,
@@ -486,10 +476,9 @@ export class UserController {
 
 			// await this.userService.updateUserStatus(userId, statusData.status);
 
+			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
 				message: 'User status updated successfully',
-				success: true,
-				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			serverLogger.userError('Failed to update user status', {
