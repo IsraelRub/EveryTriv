@@ -1,4 +1,4 @@
-import { DifficultyLevel } from '@shared';
+import { clientLogger as logger, DifficultyLevel } from '@shared';
 import type { LucideProps } from 'lucide-react';
 import {
   // Navigation & UI
@@ -168,9 +168,7 @@ export const Icon: FC<IconProps> = ({
   const IconComponent = iconMap[name.toLowerCase()];
 
   if (!IconComponent) {
-    import('@shared').then(({ clientLogger }) => {
-      clientLogger.userWarn('Icon not found in icon library', { name });
-    });
+    logger.userWarn('Icon not found in icon library', { name });
     return null;
   }
 

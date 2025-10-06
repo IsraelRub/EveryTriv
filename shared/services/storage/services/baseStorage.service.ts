@@ -9,8 +9,6 @@
 import {
 	CacheData,
 	CacheStorage,
-	getErrorMessage,
-	formatTime,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageConfigFactory,
@@ -18,10 +16,12 @@ import {
 	StorageMetrics,
 	StorageMetricsTracker,
 	StorageOperationResult,
+	StorageService,
 	StorageStats,
 	StorageUtils,
-	StorageService,
 	UserProgressData,
+	formatTime,
+	getErrorMessage,
 } from '../index';
 
 /**
@@ -77,7 +77,7 @@ export abstract class BaseStorageService implements StorageService {
 		startTime?: number,
 		storageType?: 'persistent' | 'cache' | 'hybrid'
 	): StorageOperationResult<T> {
-		return StorageUtils.createTimedResult(success, data, error, startTime, storageType || this.config.type);
+		return StorageUtils.createTimedResult(success, data, error, startTime, storageType ?? this.config.type);
 	}
 
 	/**
@@ -115,14 +115,14 @@ export abstract class BaseStorageService implements StorageService {
 		const now = new Date();
 		const existing = this.metadata.get(key);
 		this.metadata.set(key, {
-			created_at: existing?.created_at || now,
+			created_at: existing?.created_at ?? now,
 			updated_at: now,
 			lastAccessed: now,
 			size,
 			ttl,
 			isExpired: false,
 			storageType: this.config.type,
-			accessCount: (existing?.accessCount || 0) + 1,
+			accessCount: (existing?.accessCount ?? 0) + 1,
 			// Enhanced metadata tracking
 			// lastModified: getCurrentTimestamp(),
 			// compressionRatio: this.config.enableCompression ? this.calculateCompressionRatio(size) : 1,
@@ -204,9 +204,7 @@ export abstract class BaseStorageService implements StorageService {
 
 			return this.createSuccessResult<void>();
 		} catch (error) {
-			return this.createErrorResult<void>(
-				`Failed to invalidate keys: ${getErrorMessage(error)}`
-			);
+			return this.createErrorResult<void>(`Failed to invalidate keys: ${getErrorMessage(error)}`);
 		}
 	}
 
@@ -221,7 +219,7 @@ export abstract class BaseStorageService implements StorageService {
 	 */
 	async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
 		const result = await this.get<T>(key);
-		if (result.success && result.data !== null) {
+		if (result.success && result.data) {
 			return result.data as T;
 		}
 
@@ -243,7 +241,7 @@ export abstract class BaseStorageService implements StorageService {
 				return this.createErrorResult<StorageStats>('Failed to get keys for statistics');
 			}
 
-			const keys = keysResult.data || [];
+			const keys = keysResult.data ?? [];
 			const totalItems = keys.length;
 			let totalSize = 0;
 			let expiredItems = 0;
@@ -251,7 +249,7 @@ export abstract class BaseStorageService implements StorageService {
 			for (const key of keys) {
 				const metadata = this.metadata.get(key);
 				if (metadata) {
-					totalSize += metadata.size || 0;
+					totalSize += metadata.size ?? 0;
 					if (metadata.isExpired) {
 						expiredItems++;
 					}
@@ -277,9 +275,7 @@ export abstract class BaseStorageService implements StorageService {
 				},
 			});
 		} catch (error) {
-			return this.createErrorResult<StorageStats>(
-				`Failed to get stats: ${getErrorMessage(error)}`
-			);
+			return this.createErrorResult<StorageStats>(`Failed to get stats: ${getErrorMessage(error)}`);
 		}
 	}
 
@@ -297,7 +293,7 @@ export abstract class BaseStorageService implements StorageService {
 				return this.createErrorResult<void>('Failed to get keys for cleanup');
 			}
 
-			const keys = keysResult.data || [];
+			const keys = keysResult.data ?? [];
 			const now = new Date();
 
 			for (const key of keys) {
@@ -316,7 +312,7 @@ export abstract class BaseStorageService implements StorageService {
 						}
 					}
 
-					if (options.maxSize && (metadata.size || 0) > options.maxSize) {
+					if (options.maxSize && (metadata.size ?? 0) > options.maxSize) {
 						shouldRemove = true;
 					}
 
@@ -332,9 +328,7 @@ export abstract class BaseStorageService implements StorageService {
 
 			return this.createSuccessResult<void>();
 		} catch (error) {
-			return this.createErrorResult<void>(
-				`Failed to cleanup: ${getErrorMessage(error)}`
-			);
+			return this.createErrorResult<void>(`Failed to cleanup: ${getErrorMessage(error)}`);
 		}
 	}
 
@@ -374,7 +368,7 @@ export type {
 	StorageConfig,
 	StorageItemMetadata,
 	StorageOperationResult,
-	StorageStats,
 	StorageService,
+	StorageStats,
 	UserProgressData,
 };

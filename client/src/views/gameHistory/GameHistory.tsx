@@ -1,7 +1,16 @@
 import type { GameHistoryEntry } from '@shared';
-import { calculatePercentage, clientLogger,DifficultyLevel, formatScore, isToday, isYesterday, unique , VALID_GAME_MODES  } from '@shared';
+import {
+  calculatePercentage,
+  clientLogger as logger,
+  DifficultyLevel,
+  formatScore,
+  isToday,
+  isYesterday,
+  unique,
+  VALID_GAME_MODES,
+} from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo,useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   createStaggerContainer,
@@ -11,9 +20,9 @@ import {
 } from '../../components/animations';
 import { Container, GridLayout, Section } from '../../components/layout';
 import { Button } from '../../components/ui';
-import { AudioKey , CLIENT_STORAGE_KEYS } from '../../constants';
+import { AudioKey, CLIENT_STORAGE_KEYS } from '../../constants';
 import { useGameHistory } from '../../hooks';
-import { useClearGameHistory,useDeleteGameHistory } from '../../hooks/api/useTrivia';
+import { useClearGameHistory, useDeleteGameHistory } from '../../hooks/api/useTrivia';
 import { audioService, storageService } from '../../services';
 
 export default function GameHistory() {
@@ -100,7 +109,7 @@ export default function GameHistory() {
 
     // Log and save statistics when they change
     if (gameStatistics.totalGames > 0) {
-      clientLogger.gameStatistics('Game history statistics calculated', {
+      logger.gameStatistics('Game history statistics calculated', {
         totalGames: gameStatistics.totalGames,
         totalScore: gameStatistics.totalScore,
         averageScore: gameStatistics.averageScore,

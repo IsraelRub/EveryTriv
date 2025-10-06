@@ -1,4 +1,4 @@
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ export const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    clientLogger.navigationNotFound(location.pathname, {
+    logger.navigationNotFound(location.pathname, {
       referrer: document.referrer,
       userAgent: navigator.userAgent,
       timestamp: new Date().toISOString(),

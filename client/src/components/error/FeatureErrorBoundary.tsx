@@ -1,4 +1,4 @@
-import { clientLogger, getErrorMessage, getErrorStack, getErrorType } from '@shared';
+import { clientLogger as logger, getErrorMessage, getErrorStack, getErrorType } from '@shared';
 import { motion } from 'framer-motion';
 import { Component, ErrorInfo, ReactNode } from 'react';
 
@@ -49,7 +49,11 @@ class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, FeatureE
       retryCount: this.retryCount,
     };
 
-    clientLogger.navigationComponentError(`FeatureErrorBoundary-${this.props.featureName}`, getErrorMessage(error), errorDetails);
+    logger.navigationComponentError(
+      `FeatureErrorBoundary-${this.props.featureName}`,
+      getErrorMessage(error),
+      errorDetails
+    );
 
     // Store error in storage for debugging
     try {
@@ -113,7 +117,9 @@ class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, FeatureE
               animate='visible'
               transition={{ delay: 0.3 }}
             >
-              <p className='text-lg mb-4'>Something went wrong in the {this.props.featureName} feature</p>
+              <p className='text-lg mb-4'>
+                Something went wrong in the {this.props.featureName} feature
+              </p>
             </motion.div>
             <motion.div
               variants={scaleIn}
@@ -127,7 +133,9 @@ class FeatureErrorBoundary extends Component<FeatureErrorBoundaryProps, FeatureE
                   disabled={this.retryCount >= this.maxRetries}
                   className='bg-white text-orange-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
-                  {this.retryCount >= this.maxRetries ? 'Max Retries' : `Retry (${this.retryCount}/${this.maxRetries})`}
+                  {this.retryCount >= this.maxRetries
+                    ? 'Max Retries'
+                    : `Retry (${this.retryCount}/${this.maxRetries})`}
                 </button>
                 <button
                   onClick={this.handleReload}

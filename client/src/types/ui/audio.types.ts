@@ -16,14 +16,14 @@ export interface WindowWithWebkitAudio extends Window {
  * @description Core interface for audio management throughout the application
  */
 export interface AudioServiceInterface {
-	isEnabled: boolean;
-	volume: number;
-	toggleAudio: () => void;
-	setVolume: (volume: number) => void;
-	playSound: (soundName: string) => void;
-	preloadAudio: (audioKey: string, path: string) => Promise<void>;
-	stopSound: (soundName: string) => void;
-	stopAllSounds: () => void;
+  isEnabled: boolean;
+  volume: number;
+  toggleAudio: () => void;
+  setVolume: (volume: number) => void;
+  playSound: (soundName: string) => void;
+  preloadAudio: (audioKey: string, path: string) => Promise<void>;
+  stopSound: (soundName: string) => void;
+  stopAllSounds: () => void;
 }
 
 /**
@@ -32,10 +32,10 @@ export interface AudioServiceInterface {
  * @description Props for the main audio controls component
  */
 export interface AudioControlsProps {
-	audioService?: AudioServiceInterface;
-	className?: string;
-	showVolumeSlider?: boolean;
-	showCategoryControls?: boolean;
+  audioService?: AudioServiceInterface;
+  className?: string;
+  showVolumeSlider?: boolean;
+  showCategoryControls?: boolean;
 }
 
 /**
@@ -44,10 +44,10 @@ export interface AudioControlsProps {
  * @description Props for individual audio category volume controls
  */
 export interface CategoryVolumeControlProps {
-	category: AudioCategory;
-	volume: number;
-	onVolumeChange: (category: AudioCategory, volume: number) => void;
-	className?: string;
+  category: AudioCategory;
+  volume: number;
+  onVolumeChange: (category: AudioCategory, volume: number) => void;
+  className?: string;
 }
 
 /**
@@ -56,7 +56,7 @@ export interface CategoryVolumeControlProps {
  * @description Props for countdown sound toggle component
  */
 export interface CountdownSoundsProps {
-	enabled: boolean;
-	onToggle: (enabled: boolean) => void;
-	className?: string;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+  className?: string;
 }

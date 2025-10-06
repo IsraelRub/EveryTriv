@@ -1,4 +1,4 @@
-import { clientLogger, User, UserRole } from '@shared';
+import { clientLogger as logger, User, UserRole } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
@@ -78,14 +78,14 @@ export const useLogout = () => {
 
       // Clear all cached data on logout
       queryClient.clear();
-      clientLogger.securityLogout('User logged out, cache cleared');
+      logger.securityLogout('User logged out, cache cleared');
     },
     onError: error => {
       // Even if logout fails, clear the cache for security
       dispatch(setAuthenticated(false));
       dispatch(setUser(null));
       queryClient.clear();
-      clientLogger.securityLogout('Logout failed, but cache cleared for security', { error });
+      logger.securityLogout('Logout failed, but cache cleared for security', { error });
     },
   });
 };

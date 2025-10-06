@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
+
+import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
 import { Cache, ClientIP, CurrentUserId, UserAgent } from '../../common';
 import { AnalyticsService } from './analytics.service';
@@ -22,20 +23,34 @@ export class AnalyticsController {
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string
 	) {
-		// Log analytics tracking with IP and User Agent
-		logger.logUserActivity(userId, 'Analytics event tracked', {
-			eventType: eventData.eventType,
-			ip,
-			userAgent,
-		});
+		try {
+			if (!eventData.eventType) {
+				throw new HttpException('Event type is required', HttpStatus.BAD_REQUEST);
+			}
 
-		// Convert DTO to service format
-		const analyticsEventData = {
-			...eventData,
-			timestamp: eventData.timestamp || new Date(),
-		};
-		await this.analyticsService.trackEvent(userId, analyticsEventData);
-		return { message: 'Analytics event tracked successfully' };
+			// Convert DTO to service format
+			const analyticsEventData = {
+				...eventData,
+				timestamp: eventData.timestamp || new Date(),
+			};
+			await this.analyticsService.trackEvent(userId, analyticsEventData);
+
+			logger.apiCreate('analytics_event_track', {
+				userId,
+				eventType: eventData.eventType,
+				ip,
+				userAgent,
+			});
+
+			return { tracked: true };
+		} catch (error) {
+			logger.analyticsError('Error tracking analytics event', {
+				error: getErrorMessage(error),
+				userId,
+				eventType: eventData.eventType,
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -44,7 +59,21 @@ export class AnalyticsController {
 	@Get('game/stats')
 	@Cache(900) // Cache for 15 minutes
 	async getGameStats(@Query() query: GameAnalyticsQueryDto) {
-		return await this.analyticsService.getGameStats(query);
+		try {
+			const result = await this.analyticsService.getGameStats(query);
+
+			logger.apiRead('analytics_game_stats', {
+				query: Object.keys(query),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting game stats', {
+				error: getErrorMessage(error),
+				query: Object.keys(query),
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -53,8 +82,21 @@ export class AnalyticsController {
 	@Get('user/')
 	@Cache(600) // Cache for 10 minutes
 	async getUserAnalytics(@CurrentUserId() userId: string) {
-		const result = await this.analyticsService.getUserAnalytics(userId);
-		return result;
+		try {
+			const result = await this.analyticsService.getUserAnalytics(userId);
+
+			logger.apiRead('analytics_user', {
+				userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user analytics', {
+				error: getErrorMessage(error),
+				userId,
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -63,8 +105,21 @@ export class AnalyticsController {
 	@Get('topics/popular')
 	@Cache(1800) // Cache for 30 minutes
 	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
-		const result = await this.analyticsService.getTopicStats(query);
-		return result;
+		try {
+			const result = await this.analyticsService.getTopicStats(query);
+
+			logger.apiRead('analytics_popular_topics', {
+				query: Object.keys(query),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting popular topics', {
+				error: getErrorMessage(error),
+				query: Object.keys(query),
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -73,7 +128,20 @@ export class AnalyticsController {
 	@Get('difficulty/stats')
 	@Cache(1800) // Cache for 30 minutes
 	async getDifficultyStats(@Query() query: DifficultyAnalyticsQueryDto) {
-		const result = await this.analyticsService.getDifficultyStats(query);
-		return result;
+		try {
+			const result = await this.analyticsService.getDifficultyStats(query);
+
+			logger.apiRead('analytics_difficulty_stats', {
+				query: Object.keys(query),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting difficulty stats', {
+				error: getErrorMessage(error),
+				query: Object.keys(query),
+			});
+			throw error;
+		}
 	}
 }

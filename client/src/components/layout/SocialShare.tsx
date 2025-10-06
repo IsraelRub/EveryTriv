@@ -1,10 +1,15 @@
-import { calculatePercentage , clientLogger,DifficultyLevel, getErrorMessage  } from '@shared';
-import { AnimatePresence , motion } from 'framer-motion';
+import {
+  calculatePercentage,
+  clientLogger as logger,
+  DifficultyLevel,
+  getErrorMessage,
+} from '@shared';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 
 import { SHARE_PLATFORMS } from '../../constants';
 import { SocialShareProps } from '../../types';
-import { createStaggerContainer,fadeInUp, hoverScale, scaleIn } from '../animations';
+import { createStaggerContainer, fadeInUp, hoverScale, scaleIn } from '../animations';
 import { Icon } from '../icons';
 import { ResponsiveGrid } from './GridLayout';
 
@@ -57,7 +62,7 @@ export default function SocialShare({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      clientLogger.userError('Failed to copy link to clipboard', {
+      logger.userError('Failed to copy link to clipboard', {
         error: getErrorMessage(error),
       });
     }

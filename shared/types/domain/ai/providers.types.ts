@@ -5,7 +5,6 @@
  * @description Type definitions for AI providers and their configurations
  */
 
-
 /**
  * AI provider configuration interface (extended)
  * @interface AIProviderConfigExtended
@@ -40,7 +39,6 @@ export interface AIProviderConfigExtended {
 	};
 }
 
-
 /**
  * AI provider health interface (extended)
  * @interface AIProviderHealthExtended
@@ -64,7 +62,6 @@ export interface AIProviderHealthExtended {
 	};
 }
 
-
 /**
  * AI provider metrics interface (extended)
  * @interface AIProviderMetricsExtended
@@ -81,7 +78,6 @@ export interface AIProviderMetricsExtended {
 	lastUsed?: string;
 	status: 'available' | 'unavailable' | 'error';
 }
-
 
 /**
  * AI provider capabilities interface (extended)

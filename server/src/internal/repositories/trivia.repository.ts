@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
+
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { RepositoryAudit, RepositoryCache } from '../../common';
 import { BaseRepository } from './base.repository';

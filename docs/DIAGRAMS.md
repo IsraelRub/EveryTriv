@@ -883,8 +883,8 @@ graph TB
     
     %% Logging services breakdown
     C51 --> C511[baseLogger.service.ts]
-    C51 --> C512[clientLogger.service.ts]
-    C51 --> C513[serverLogger.service.ts]
+    C51 --> C512[logger.service.ts]
+    C51 --> C513[logger.service.ts]
     
     %% Points services breakdown
     C52 --> C521[basePoints.service.ts]

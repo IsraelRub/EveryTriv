@@ -4,8 +4,8 @@
  * @module UseUserPreferences
  * @description React Query hooks for user preferences management
  */
-import { mergeWithDefaults,UserPreferencesUpdate } from '@shared';
-import { clientLogger } from '@shared';
+import { mergeWithDefaults, UserPreferencesUpdate } from '@shared';
+import { clientLogger as logger } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
@@ -30,10 +30,10 @@ export const useUserPreferences = () => {
   return useQuery({
     queryKey: ['userPreferences'],
     queryFn: async () => {
-      clientLogger.userInfo('Fetching user preferences');
+      logger.userInfo('Fetching user preferences');
       // Since there's no getUserPreferences endpoint, return default preferences
       const defaultPreferences = mergeWithDefaults(null);
-      clientLogger.userInfo('User preferences fetched successfully', {
+      logger.userInfo('User preferences fetched successfully', {
         hasPreferences: !!defaultPreferences,
       });
       return defaultPreferences;
@@ -54,7 +54,7 @@ export const useUpdateUserPreferences = () => {
 
   return useMutation({
     mutationFn: async (preferences: UserPreferencesUpdate) => {
-      clientLogger.userInfo('Updating user preferences', { preferences });
+      logger.userInfo('Updating user preferences', { preferences });
       return apiService.updateUserPreferences(preferences);
     },
     onSuccess: () => {
@@ -66,10 +66,10 @@ export const useUpdateUserPreferences = () => {
 
       // Invalidate queries with consistent keys
       invalidateUserQueries(queryClient);
-      clientLogger.userInfo('User preferences updated successfully');
+      logger.userInfo('User preferences updated successfully');
     },
     onError: error => {
-      clientLogger.userError('Failed to update user preferences', { error });
+      logger.userError('Failed to update user preferences', { error });
     },
   });
 };

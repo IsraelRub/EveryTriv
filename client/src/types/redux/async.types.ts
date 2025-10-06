@@ -3,8 +3,9 @@
  * @module AsyncTypes
  * @description Async operation types for Redux
  */
-import type { PointBalance } from '../points.types';
 import type { BasicValue } from '@shared/types/core/data.types';
+
+import type { PointBalance } from '../points.types';
 
 /**
  * Base state interface for all Redux slices

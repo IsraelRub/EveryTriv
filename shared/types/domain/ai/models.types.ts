@@ -5,7 +5,6 @@
  * @description Type definitions for AI models and their configurations
  */
 
-
 /**
  * AI model configuration interface
  * @interface AIModelConfig

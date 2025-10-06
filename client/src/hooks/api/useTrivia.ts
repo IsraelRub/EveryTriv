@@ -1,5 +1,5 @@
 import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';
@@ -78,7 +78,7 @@ export const useSaveHistory = () => {
         await queryClient.cancelQueries({ queryKey: ['game-history'] });
       } catch (error) {
         // Ignore errors when canceling queries
-        clientLogger.apiDebug('Error canceling queries', {
+        logger.apiDebug('Error canceling queries', {
           error: getErrorMessage(error),
         });
       }
@@ -159,10 +159,10 @@ export const useDeleteGameHistory = () => {
       queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
 
       // Show success message
-      clientLogger.userInfo('Game history deleted successfully', { message: data.message });
+      logger.userInfo('Game history deleted successfully', { message: data.message });
     },
     onError: error => {
-      clientLogger.userError('Failed to delete game history', { error });
+      logger.userError('Failed to delete game history', { error });
     },
   });
 };
@@ -178,12 +178,12 @@ export const useClearGameHistory = () => {
       queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
 
       // Show success message
-      clientLogger.userInfo('All game history cleared successfully', {
+      logger.userInfo('All game history cleared successfully', {
         deletedCount: data.deletedCount,
       });
     },
     onError: error => {
-      clientLogger.userError('Failed to clear game history', { error });
+      logger.userError('Failed to clear game history', { error });
     },
   });
 };

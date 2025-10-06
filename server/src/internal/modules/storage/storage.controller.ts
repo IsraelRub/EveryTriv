@@ -4,11 +4,12 @@
  * @module storage.controller
  * @description Controller for storage service management and monitoring
  */
+import { createStorageError, getErrorMessage, serverLogger as logger } from '@shared';
+
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 
 import { Cache, Public, RateLimit, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
-import { getErrorMessage, createStorageError } from '@shared';
 
 @Controller('storage')
 export class StorageController {
@@ -20,24 +21,23 @@ export class StorageController {
 	 */
 	@Get('metrics')
 	@Public()
-	@Cache(60) // Cache for 1 minute
+	@Cache(300) // Cache for 5 minutes - metrics don't change frequently
 	async getMetrics() {
 		try {
 			const metrics = this.storageService.getMetrics();
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				metrics: metrics,
-				message: 'Storage metrics retrieved successfully',
-			};
+
+			logger.apiRead('storage_metrics', {
+				totalOps: metrics.totalOps,
+				totalErrors: metrics.totalErrors,
+				avgResponseTime: metrics.performance.avgResponseTime,
+			});
+
+			return metrics;
 		} catch (error) {
-			throw new HttpException(
-				{
-					success: false,
-					error: 'Failed to get storage metrics',
-					message: getErrorMessage(error),
-				},
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+			logger.storageError('Error getting storage metrics', {
+				error: getErrorMessage(error),
+			});
+			throw createStorageError('get storage metrics', error);
 		}
 	}
 
@@ -46,24 +46,20 @@ export class StorageController {
 	 * @returns Reset result
 	 */
 	@Post('metrics/reset')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
 	@RateLimit(5, 60) // 5 requests per minute
 	async resetMetrics() {
 		try {
 			this.storageService.resetMetrics();
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				message: 'Storage metrics reset successfully',
-			};
+
+			logger.apiUpdate('storage_metrics_reset', {});
+
+			return { reset: true };
 		} catch (error) {
-			throw new HttpException(
-				{
-					success: false,
-					error: 'Failed to reset storage metrics',
-					message: getErrorMessage(error),
-				},
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+			logger.storageError('Error resetting storage metrics', {
+				error: getErrorMessage(error),
+			});
+			throw createStorageError('reset storage metrics', error);
 		}
 	}
 
@@ -72,7 +68,7 @@ export class StorageController {
 	 * @returns Storage keys
 	 */
 	@Get('keys')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
 	@RateLimit(10, 60) // 10 requests per minute
 	@Cache(30) // Cache for 30 seconds
 	async getKeys() {
@@ -82,20 +78,16 @@ export class StorageController {
 				throw createStorageError('get keys', result.error);
 			}
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				keys: result.data,
-				message: 'Storage keys retrieved successfully',
-			};
+			logger.apiRead('storage_keys', {
+				keysCount: result.data?.length || 0,
+			});
+
+			return result.data;
 		} catch (error) {
-			throw new HttpException(
-				{
-					success: false,
-					error: 'Failed to get storage keys',
-					message: getErrorMessage(error),
-				},
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+			logger.storageError('Error getting storage keys', {
+				error: getErrorMessage(error),
+			});
+			throw createStorageError('get storage keys', error);
 		}
 	}
 
@@ -105,30 +97,32 @@ export class StorageController {
 	 * @returns Storage item
 	 */
 	@Get('item/:key')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
 	@RateLimit(20, 60) // 20 requests per minute
 	@Cache(60) // Cache for 1 minute
 	async getItem(@Param('key') key: string) {
 		try {
+			if (!key) {
+				throw new HttpException('Key is required', HttpStatus.BAD_REQUEST);
+			}
+
 			const result = await this.storageService.get(key);
 			if (!result.success) {
 				throw createStorageError('get item', result.error);
 			}
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				item: result.data,
-				message: 'Storage item retrieved successfully',
-			};
+			logger.apiRead('storage_item_get', {
+				key,
+				hasData: !!result.data,
+			});
+
+			return result.data;
 		} catch (error) {
-			throw new HttpException(
-				{
-					success: false,
-					error: 'Failed to get storage item',
-					message: getErrorMessage(error),
-				},
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+			logger.storageError('Error getting storage item', {
+				error: getErrorMessage(error),
+				key,
+			});
+			throw createStorageError('get storage item', error);
 		}
 	}
 
@@ -137,7 +131,7 @@ export class StorageController {
 	 * @returns Clear result
 	 */
 	@Delete('clear')
-	@Roles('super-admin')
+	@Roles('admin')
 	@RateLimit(2, 60) // 2 requests per minute - dangerous operation
 	async clear() {
 		try {
@@ -146,19 +140,14 @@ export class StorageController {
 				throw createStorageError('clear storage', result.error);
 			}
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				message: 'Storage cleared successfully',
-			};
+			logger.apiDelete('storage_clear', {});
+
+			return { cleared: true };
 		} catch (error) {
-			throw new HttpException(
-				{
-					success: false,
-					error: 'Failed to clear storage',
-					message: getErrorMessage(error),
-				},
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+			logger.storageError('Error clearing storage', {
+				error: getErrorMessage(error),
+			});
+			throw createStorageError('clear storage', error);
 		}
 	}
 }

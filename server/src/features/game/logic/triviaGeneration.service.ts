@@ -1,8 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger,TriviaAnswer, getErrorMessage, createServerError, createNotFoundError, createValidationError  } from '@shared';
+import {
+	TriviaAnswer,
+	createNotFoundError,
+	createServerError,
+	createValidationError,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
 import { TriviaEntity } from 'src/internal/entities';
 import { DeepPartial, Repository } from 'typeorm';
+
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { AiProvidersService } from './providers/management';
 

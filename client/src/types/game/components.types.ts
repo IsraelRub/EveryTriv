@@ -3,11 +3,11 @@
  * @module GameComponentTypes
  * @description Game component prop types and interfaces
  */
-import { BasicValue,GameMode, GameModeConfig } from '@shared';
+import { BasicValue, GameMode, GameModeConfig } from '@shared';
 import { FormEvent } from 'react';
 
 import { Achievement } from './achievements.types';
-import { GameConfig, GameSessionStats,GameState, GameTimerState } from './config.types';
+import { GameConfig, GameSessionStats, GameState, GameTimerState } from './config.types';
 
 /**
  * @interface CurrentQuestionMetadata

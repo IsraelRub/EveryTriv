@@ -5,14 +5,15 @@
  * @description authentication module with login, register, guards, and OAuth
  * @used_by server/src/app, server/src/controllers
  */
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AUTH_CONSTANTS } from '@shared';
 import { AuthenticationManager, JwtTokenService, PasswordService } from 'src/common/auth';
 import { AuthGuard, RolesGuard } from 'src/common/guards';
 import { UserEntity } from 'src/internal/entities';
+
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';

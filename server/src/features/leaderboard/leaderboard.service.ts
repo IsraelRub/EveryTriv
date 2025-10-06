@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger, getErrorMessage, createNotFoundError } from '@shared';
-import { GameHistoryEntity, LeaderboardEntity, UserEntity } from 'src/internal/entities';
+import { createNotFoundError, getErrorMessage, serverLogger as logger } from '@shared';
+import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
+
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 /**
  * Leaderboard Service
@@ -21,6 +22,8 @@ export class LeaderboardService {
 		private readonly userRepository: Repository<UserEntity>,
 		@InjectRepository(GameHistoryEntity)
 		private readonly gameHistoryRepository: Repository<GameHistoryEntity>,
+		@InjectRepository(UserStatsEntity)
+		private readonly userStatsRepository: Repository<UserStatsEntity>,
 		private readonly cacheService: CacheService
 	) {}
 
@@ -39,28 +42,43 @@ export class LeaderboardService {
 				throw createNotFoundError('User');
 			}
 
-			// Get game history for calculations
-			const gameHistory = await this.gameHistoryRepository.find({
-				where: { userId },
-				order: { createdAt: 'DESC' },
+		// Get game history for calculations
+		const gameHistory = await this.gameHistoryRepository.find({
+			where: { userId },
+			order: { createdAt: 'DESC' },
+		});
+
+		// Get or create user stats
+		let userStats = await this.userStatsRepository.findOne({
+			where: { userId },
+		});
+
+		if (!userStats) {
+			userStats = this.userStatsRepository.create({
+				userId,
 			});
+		}
 
-			// Calculate user statistics
-			const userStats = this.calculateUserStats(gameHistory, user);
+		// Calculate user statistics
+		const calculatedStats = this.calculateUserStats(gameHistory, user);
+		Object.assign(userStats, calculatedStats);
+		await this.userStatsRepository.save(userStats);
 
-			// Get or create leaderboard entry
-			let leaderboardEntry = await this.leaderboardRepository.findOne({
-				where: { userId },
+		// Get or create leaderboard entry
+		let leaderboardEntry = await this.leaderboardRepository.findOne({
+			where: { userId },
+		});
+
+		if (!leaderboardEntry) {
+			leaderboardEntry = this.leaderboardRepository.create({
+				userId,
+				userStatsId: userStats.id,
+				score: calculatedStats.score,
 			});
-
-			if (!leaderboardEntry) {
-				leaderboardEntry = this.leaderboardRepository.create({
-					userId,
-					...userStats,
-				});
-			} else {
-				Object.assign(leaderboardEntry, userStats);
-			}
+		} else {
+			leaderboardEntry.userStatsId = userStats.id;
+			leaderboardEntry.score = calculatedStats.score;
+		}
 
 			// Save the entry
 			const savedEntry = await this.leaderboardRepository.save(leaderboardEntry);
@@ -96,7 +114,7 @@ export class LeaderboardService {
 				async () => {
 					const ranking = await this.leaderboardRepository.findOne({
 						where: { userId },
-						relations: ['user'],
+						relations: ['user', 'userStats'],
 					});
 
 					return ranking;
@@ -126,8 +144,8 @@ export class LeaderboardService {
 				cacheKey,
 				async () => {
 					const leaderboard = await this.leaderboardRepository.find({
-						relations: ['user'],
-						order: { rank: 'ASC' },
+						relations: ['user', 'userStats'],
+						order: { score: 'DESC' },
 						take: limit,
 						skip: offset,
 					});
@@ -160,12 +178,13 @@ export class LeaderboardService {
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					const scoreField = `${period}Score` as keyof LeaderboardEntity;
+					const scoreField = `${period}Score` as keyof UserStatsEntity;
 
 					const leaderboard = await this.leaderboardRepository
 						.createQueryBuilder('leaderboard')
 						.leftJoinAndSelect('leaderboard.user', 'user')
-						.orderBy(`leaderboard.${scoreField}`, 'DESC')
+						.leftJoinAndSelect('leaderboard.userStats', 'userStats')
+						.orderBy(`userStats.${scoreField}`, 'DESC')
 						.limit(limit)
 						.getMany();
 
@@ -236,20 +255,20 @@ export class LeaderboardService {
 		const totalScore = this.calculateTotalScore(user, gameHistory, successRate, streakData);
 
 		return {
-			score: totalScore,
 			totalGames,
 			totalQuestions,
 			correctAnswers,
-			successRate,
-			streakDays: streakData.current,
-			bestStreak: streakData.best,
+			incorrectAnswers: totalQuestions - correctAnswers,
+			overallSuccessRate: successRate,
+			currentStreak: streakData.current,
+			longestStreak: streakData.best,
+			lastPlayDate: gameHistory[0]?.createdAt,
 			weeklyScore: timeScores.weekly,
 			monthlyScore: timeScores.monthly,
 			yearlyScore: timeScores.yearly,
 			topicStats,
 			difficultyStats,
-			lastGameDate: gameHistory[0]?.createdAt,
-			lastRankUpdate: new Date(),
+			score: totalScore,
 		};
 	}
 
@@ -428,6 +447,7 @@ export class LeaderboardService {
 				entries[i].rank = i + 1;
 				entries[i].totalUsers = entries.length;
 				entries[i].percentile = Math.round(((entries.length - i) / entries.length) * 100);
+				entries[i].lastRankUpdate = new Date();
 			}
 
 			// Save all updates

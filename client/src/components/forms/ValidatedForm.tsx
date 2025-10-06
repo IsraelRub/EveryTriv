@@ -8,15 +8,15 @@
 
 import type { DifficultyLevel } from '@shared';
 import {
-  clientLogger,
-  VALIDATION_LIMITS,
+  clientLogger as logger,
   validateCustomDifficulty,
   validateEmail,
   validatePassword,
   validateTopic,
   validateUsername,
+  VALIDATION_LIMITS,
 } from '@shared';
-import { ChangeEvent, FormEvent, useCallback, useMemo, useRef,useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useMemo, useRef, useState } from 'react';
 
 import { VALID_DIFFICULTIES, VALID_QUESTION_COUNTS } from '../../constants';
 import type { ValidatedFormProps } from '../../types';
@@ -79,14 +79,17 @@ export function ValidatedForm({
               },
               questionCount: () => {
                 const count = parseInt(value);
-                const isValid = count >= VALIDATION_LIMITS.QUESTION_COUNT.MIN && 
-                               count <= VALIDATION_LIMITS.QUESTION_COUNT.MAX &&
-                               VALID_QUESTION_COUNTS.includes(count as (typeof VALID_QUESTION_COUNTS)[number]);
+                const isValid =
+                  count >= VALIDATION_LIMITS.QUESTION_COUNT.MIN &&
+                  count <= VALIDATION_LIMITS.QUESTION_COUNT.MAX &&
+                  VALID_QUESTION_COUNTS.includes(count as (typeof VALID_QUESTION_COUNTS)[number]);
                 return {
                   isValid,
                   errors: isValid
                     ? []
-                    : [`Question count must be between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX}`],
+                    : [
+                        `Question count must be between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX}`,
+                      ],
                 };
               },
             };
@@ -181,7 +184,7 @@ export function ValidatedForm({
       e.preventDefault();
 
       // Log form submission attempt
-      clientLogger.logUserActivity('form_submit', 'validated_form', {
+      logger.logUserActivity('form_submit', 'validated_form', {
         fieldCount: fields.length,
         hasErrors: !isValid,
       });
@@ -190,7 +193,7 @@ export function ValidatedForm({
       const startTime = performance.now();
       const formIsValid = validateAll();
       const duration = performance.now() - startTime;
-      clientLogger.performance('form_validation', duration);
+      logger.performance('form_validation', duration);
 
       onSubmit(valuesRef.current, formIsValid);
     },

@@ -5,9 +5,10 @@
  * @description Guard that checks user roles and permissions
  * @author EveryTriv Team
  */
+import { UserRole, serverLogger as logger } from '@shared';
+
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger , UserRole } from '@shared';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -15,10 +16,7 @@ export class RolesGuard implements CanActivate {
 
 	canActivate(context: ExecutionContext): boolean {
 		// Check if endpoint is marked as public
-		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
-			context.getHandler(),
-			context.getClass(),
-		]);
+		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [context.getHandler(), context.getClass()]);
 
 		const request = context.switchToHttp().getRequest();
 
@@ -26,15 +24,8 @@ export class RolesGuard implements CanActivate {
 		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
 
 		// Hardcoded public endpoints as fallback
-		const publicEndpoints = [
-			'/leaderboard/global',
-			'/leaderboard/period',
-			'/health',
-			'/status',
-		];
-		const isHardcodedPublic = publicEndpoints.some(endpoint => 
-			request.path?.includes(endpoint) || false
-		);
+		const publicEndpoints = ['/leaderboard/global', '/leaderboard/period', '/health', '/status'];
+		const isHardcodedPublic = publicEndpoints.some(endpoint => request.path?.includes(endpoint) || false);
 
 		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
 			logger.authDebug('Public endpoint - skipping role check');

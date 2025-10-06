@@ -1,4 +1,9 @@
-import { clientLogger,CUSTOM_DIFFICULTY_KEYWORDS, CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel  } from '@shared';
+import {
+  clientLogger as logger,
+  CUSTOM_DIFFICULTY_KEYWORDS,
+  CUSTOM_DIFFICULTY_PREFIX,
+  DifficultyLevel,
+} from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
@@ -96,7 +101,7 @@ export default function TriviaForm({
 
   useEffect(() => {
     if (debouncedTopic && debouncedTopic !== topic) {
-      clientLogger.userDebug(`Topic search: ${debouncedTopic}`);
+      logger.userDebug(`Topic search: ${debouncedTopic}`);
     }
   }, [debouncedTopic, topic]);
 

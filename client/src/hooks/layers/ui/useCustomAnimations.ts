@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo,useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ACCESSIBILITY_CONFIG,
@@ -85,15 +85,18 @@ export function useCustomAnimations() {
         let delay: number;
 
         switch (direction) {
-          case 'reverse':
+          case 'reverse': {
             delay = (items.length - 1 - index) * baseDelay;
             break;
-          case 'center':
+          }
+          case 'center': {
             const centerIndex = Math.floor(items.length / 2);
             delay = Math.abs(index - centerIndex) * baseDelay;
             break;
-          default:
+          }
+          default: {
             delay = index * baseDelay;
+          }
         }
 
         return {

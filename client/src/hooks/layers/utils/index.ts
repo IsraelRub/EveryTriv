@@ -6,7 +6,6 @@
  * @used_by client/components, client/src/views, client/src/hooks
  */
 
-
 /**
  * Previous value hook
  * @description Hook for tracking previous values

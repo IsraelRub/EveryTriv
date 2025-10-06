@@ -101,7 +101,6 @@ export interface AIProviderHealth {
 	};
 }
 
-
 /**
  * AI provider capabilities interface
  * @interface AIProviderCapabilities
@@ -819,7 +818,6 @@ export interface ProviderStats {
 	updated_at: Date;
 }
 
-
 /**
  * Anthropic response interface
  * @interface AnthropicResponse
@@ -930,13 +928,11 @@ export interface AiProviderStatus {
  * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
 
-// LLM Provider Interface
-export interface LLMProvider {
-	name: string;
+// LLM Provider Interface with Management Fields
+export interface LLMProviderWithManagement extends LLMProvider {
 	type: string;
 	isActive: boolean;
 	priority: number;
-	config: ProviderConfig;
 }
 
 // LLM Response Parsing

@@ -5,9 +5,9 @@
  * @description Pipe for validating user profile data input with comprehensive validation
  * @used_by server/src/features/user, server/src/controllers
  */
+import { UserProfileUpdateData, ValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
+
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import type { UserProfileUpdateData, ValidationResult } from '@shared';
-import { serverLogger as logger , UserDataValidationResult, getErrorMessage } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -15,19 +15,23 @@ import { ValidationService } from '../validation/validation.service';
 export class UserDataPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: UserProfileUpdateData): Promise<UserDataValidationResult> {
+	async transform(value: UserProfileUpdateData): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
 			logger.validationDebug('user_data', '[REDACTED]', 'validation_start');
 
 			const errors: string[] = [];
+			const suggestions: string[] = [];
 
 			// Validate username if provided
 			if (value.username) {
 				const usernameValidation: ValidationResult = await this.validationService.validateUsername(value.username);
 				if (!usernameValidation.isValid) {
 					errors.push(...usernameValidation.errors);
+					if (usernameValidation.suggestion) {
+						suggestions.push(usernameValidation.suggestion);
+					}
 				}
 			}
 
@@ -36,6 +40,9 @@ export class UserDataPipe implements PipeTransform {
 				const emailValidation: ValidationResult = await this.validationService.validateEmail(value.email);
 				if (!emailValidation.isValid) {
 					errors.push(...emailValidation.errors);
+					if (emailValidation.suggestion) {
+						suggestions.push(emailValidation.suggestion);
+					}
 				}
 			}
 
@@ -80,8 +87,7 @@ export class UserDataPipe implements PipeTransform {
 			return {
 				isValid,
 				errors,
-				success: true,
-				timestamp: new Date().toISOString(),
+				suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
 			};
 		} catch (error) {
 			logger.validationError('user_data', '[REDACTED]', 'validation_error', {

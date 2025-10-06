@@ -1,19 +1,19 @@
-import { clientLogger, CompleteUserAnalytics } from '@shared';
+import { clientLogger as logger, CompleteUserAnalytics } from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { Button } from '../../components/ui';
 import { Icon } from '../../components/icons';
+import { Button } from '../../components/ui';
 import { USER_DEFAULT_VALUES } from '../../constants';
-import { useDifficultyStats, usePopularTopics,useUserAnalytics } from '../../hooks/api';
-import { useAnalyticsExport,useRealTimeAnalytics } from '../../hooks/api/useAnalyticsDashboard';
+import { useDifficultyStats, usePopularTopics, useUserAnalytics } from '../../hooks/api';
+import { useAnalyticsExport, useRealTimeAnalytics } from '../../hooks/api/useAnalyticsDashboard';
 
 /**
  * Analytics Dashboard View Component
- * 
+ *
  * Displays comprehensive user analytics including performance metrics,
  * game statistics, and comparison data with visual charts and real-time updates.
- * 
+ *
  * @returns JSX element containing the analytics dashboard
  */
 export function AnalyticsView() {
@@ -29,7 +29,7 @@ export function AnalyticsView() {
   const { refetch: exportAnalytics } = useAnalyticsExport('json');
 
   useEffect(() => {
-    clientLogger.info('Analytics view loaded');
+    logger.info('Analytics view loaded');
   }, [timeFilter]);
 
   if (analyticsLoading) {
@@ -101,7 +101,7 @@ export function AnalyticsView() {
     },
   };
 
-  const analyticsData = analytics || defaultAnalytics;
+  const analyticsData = analytics ?? defaultAnalytics;
 
   return (
     <motion.div
@@ -182,19 +182,19 @@ export function AnalyticsView() {
               <div className='flex justify-between items-center'>
                 <span className='text-sm text-gray-600'>Consistency</span>
                 <span className='font-semibold text-gray-900'>
-                  {analyticsData.performance.consistencyScore || 0}%
+                  {analyticsData.performance.consistencyScore ?? 0}%
                 </span>
               </div>
               <div className='flex justify-between items-center'>
                 <span className='text-sm text-gray-600'>Learning curve</span>
                 <span className='font-semibold text-gray-900'>
-                  {analyticsData.performance.learningCurve || 0}%
+                  {analyticsData.performance.learningCurve ?? 0}%
                 </span>
               </div>
               <div className='flex justify-between items-center'>
                 <span className='text-sm text-gray-600'>Average game time</span>
                 <span className='font-semibold text-gray-900'>
-                  {analyticsData.performance.averageGameTime || 0} min
+                  {analyticsData.performance.averageGameTime ?? 0} min
                 </span>
               </div>
             </div>
@@ -291,19 +291,19 @@ export function AnalyticsView() {
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div className='text-center p-4 bg-green-50 rounded-lg'>
                 <div className='text-2xl font-bold text-green-600'>
-                  {realTimeAnalytics.game?.totalGames || 0}
+                  {realTimeAnalytics.game?.totalGames ?? 0}
                 </div>
                 <div className='text-sm text-green-700'>Games today</div>
               </div>
               <div className='text-center p-4 bg-blue-50 rounded-lg'>
                 <div className='text-2xl font-bold text-blue-600'>
-                  {realTimeAnalytics.game?.correctAnswers || 0}
+                  {realTimeAnalytics.game?.correctAnswers ?? 0}
                 </div>
                 <div className='text-sm text-blue-700'>Correct answers</div>
               </div>
               <div className='text-center p-4 bg-purple-50 rounded-lg'>
                 <div className='text-2xl font-bold text-purple-600'>
-                  {realTimeAnalytics.performance?.streakDays || 0}
+                  {realTimeAnalytics.performance?.streakDays ?? 0}
                 </div>
                 <div className='text-sm text-purple-700'>Day streak</div>
               </div>
@@ -331,14 +331,14 @@ export function AnalyticsView() {
             />
             <ComparisonCard
               title='Average game time'
-              userValue={analyticsData.performance.averageGameTime || 0}
+              userValue={analyticsData.performance.averageGameTime ?? 0}
               averageValue={8}
               unit='min'
               higherIsBetter={false}
             />
             <ComparisonCard
               title='Consistency'
-              userValue={analyticsData.performance.consistencyScore || 0}
+              userValue={analyticsData.performance.consistencyScore ?? 0}
               averageValue={65}
               unit='%'
               higherIsBetter={true}
@@ -356,14 +356,14 @@ export function AnalyticsView() {
   );
 }
 
-import { MetricCardProps } from '../../types';
+import { ComparisonCardProps, MetricCardProps } from '../../types';
 
 /**
  * Metric Card Component
- * 
+ *
  * Displays a single metric with title, value, subtitle, icon, and trend indicator.
  * Used in the analytics dashboard to show key performance indicators.
- * 
+ *
  * @param title - The metric title
  * @param value - The metric value to display
  * @param subtitle - Additional context text
@@ -372,7 +372,14 @@ import { MetricCardProps } from '../../types';
  * @param trend - Trend direction (up, down, neutral)
  * @returns JSX element containing the metric card
  */
-function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: MetricCardProps & { icon: string }) {
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  color,
+  trend = 'neutral',
+}: MetricCardProps & { icon: string }) {
   const colorClasses = {
     yellow: 'from-yellow-400 to-orange-500',
     blue: 'from-blue-400 to-indigo-600',
@@ -410,9 +417,7 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
           <p className='text-2xl font-bold text-gray-900'>{value}</p>
           <p className='text-xs text-gray-500'>{subtitle}</p>
         </div>
-        <div
-          className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} text-white`}
-        >
+        <div className={`p-3 rounded-full bg-gradient-to-r ${colorClasses[color]} text-white`}>
           <Icon name={icon} size='xl' color='white' />
         </div>
       </div>
@@ -420,14 +425,12 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
   );
 }
 
-import { ComparisonCardProps } from '../../types';
-
 /**
  * Comparison Card Component
- * 
+ *
  * Displays a comparison between user value and average value with visual indicators.
  * Shows percentage difference and trend direction for performance metrics.
- * 
+ *
  * @param title - The metric title
  * @param userValue - User's value for the metric
  * @param averageValue - Average value for comparison
@@ -494,10 +497,10 @@ function ComparisonCard({
 
 /**
  * Topics Chart Component
- * 
+ *
  * Displays a horizontal bar chart showing the most played topics.
  * Shows top 5 topics with animated progress bars.
- * 
+ *
  * @param topicsPlayed - Object mapping topic names to play counts
  * @returns JSX element containing the topics chart
  */
@@ -540,10 +543,10 @@ function TopicsChart({ topicsPlayed }: { topicsPlayed: Record<string, number> })
 
 /**
  * Difficulty Chart Component
- * 
+ *
  * Displays success rates by difficulty level with color-coded progress bars.
  * Shows correct/total ratios and percentage success rates.
- * 
+ *
  * @param difficultyBreakdown - Object mapping difficulty levels to correct/total stats
  * @returns JSX element containing the difficulty chart
  */
@@ -602,10 +605,10 @@ function DifficultyChart({
 
 /**
  * Recent Activity Component
- * 
+ *
  * Displays recent user activity including last game, streak, and performance metrics.
  * Shows additional performance indicators when available.
- * 
+ *
  * @param analyticsData - Complete user analytics data
  * @returns JSX element containing the recent activity section
  */
@@ -655,9 +658,7 @@ function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytic
         <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
           <div>
             <p className='font-medium text-gray-900'>Average game time</p>
-            <p className='text-sm text-gray-600'>
-              {analyticsData.performance.averageGameTime} min
-            </p>
+            <p className='text-sm text-gray-600'>{analyticsData.performance.averageGameTime} min</p>
           </div>
           <div className='text-blue-500'>
             <Icon name='clock' size='md' color='info' />

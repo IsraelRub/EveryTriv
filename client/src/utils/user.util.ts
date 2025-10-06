@@ -5,8 +5,7 @@
  * @description Utility functions for user management and operations
  * @used_by client/src/components/user, client/src/hooks/layers/business
  */
-import { clientLogger } from '@shared';
-import { generateUserId } from '@shared';
+import { clientLogger as logger, generateUserId } from '@shared';
 
 import { STORAGE_KEYS } from '../constants';
 import { storageService } from '../services';
@@ -25,9 +24,9 @@ export async function getOrCreateClientUserId(): Promise<string> {
       await storageService.set(STORAGE_KEYS.USER_ID, userId);
     }
 
-    return userId!;
+    return userId;
   } catch (error) {
-    clientLogger.storageWarn('Storage not available, generating temporary user ID');
+    logger.storageWarn('Storage not available, generating temporary user ID');
     return generateUserId();
   }
 }

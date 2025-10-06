@@ -4,9 +4,17 @@ import type {
   SubscriptionPlans as SubscriptionPlansType,
   UrlResponse,
 } from '@shared';
-import { clientLogger,CONTACT_INFO, formatCurrency , PAYMENT_CONTENT, PAYMENT_FEATURES, VALID_GAME_MODES, getErrorMessage  } from '@shared';
+import {
+  clientLogger as logger,
+  CONTACT_INFO,
+  formatCurrency,
+  getErrorMessage,
+  PAYMENT_CONTENT,
+  PAYMENT_FEATURES,
+  VALID_GAME_MODES,
+} from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo,useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -28,7 +36,7 @@ import {
   usePointPackages,
   usePurchasePoints,
 } from '../../hooks';
-import { useCancelSubscription,useCreateSubscription } from '../../hooks/api';
+import { useCancelSubscription, useCreateSubscription } from '../../hooks/api';
 import { useAppDispatch, useAppSelector } from '../../hooks/layers/utils';
 import { selectUserPointBalance } from '../../redux/selectors';
 import { setPointBalance } from '../../redux/slices';
@@ -67,7 +75,7 @@ export default function PaymentView() {
     audioService.play(AudioKey.BUTTON_CLICK);
     debouncedPackageSelect.debounced(packageId);
 
-    clientLogger.gameTarget('Package selected', {
+    logger.gameTarget('Package selected', {
       packageId,
       gameModes: VALID_GAME_MODES,
       timestamp: new Date().toISOString(),
@@ -97,7 +105,9 @@ export default function PaymentView() {
           setCurrentSubscription(storedSubscription.data as SubscriptionData | null);
         }
       } catch (err) {
-        clientLogger.error('Failed to fetch current subscription status', { error: getErrorMessage(err) });
+        logger.error('Failed to fetch current subscription status', {
+          error: getErrorMessage(err),
+        });
       }
     };
 
@@ -109,7 +119,7 @@ export default function PaymentView() {
           setSubscriptionPlans(plans.data as SubscriptionPlansType);
         }
       } catch (err) {
-        clientLogger.error('Failed to fetch subscription plans', { error: getErrorMessage(err) });
+        logger.error('Failed to fetch subscription plans', { error: getErrorMessage(err) });
       } finally {
         setSubscriptionPlansLoading(false);
       }
@@ -196,7 +206,7 @@ export default function PaymentView() {
             setPurchaseStatus('valid');
             audioService.play(AudioKey.GAME_START);
 
-            clientLogger.payment('Payment intent created successfully', {
+            logger.payment('Payment intent created successfully', {
               packageId: selectedPackage,
               gameModes: VALID_GAME_MODES,
               timestamp: new Date().toISOString(),
@@ -208,7 +218,7 @@ export default function PaymentView() {
               setPurchasing(false);
               audioService.play(AudioKey.SUCCESS);
               const duration = performance.now() - startTime;
-              clientLogger.performance('point_purchase', duration, { success: true });
+              logger.performance('point_purchase', duration, { success: true });
             }, 2000);
           }
         },
@@ -216,16 +226,16 @@ export default function PaymentView() {
           setPurchaseStatus('invalid');
           audioService.play(AudioKey.ERROR);
           const errorMessage = getErrorMessage(err);
-          clientLogger.payment('Purchase failed', {
+          logger.payment('Purchase failed', {
             error: errorMessage,
             packageId: selectedPackage,
           });
           const duration = performance.now() - startTime;
-          clientLogger.performance('point_purchase', duration, {
+          logger.performance('point_purchase', duration, {
             success: false,
             error: errorMessage,
           });
-          clientLogger.userError('Purchase failed', { error: errorMessage });
+          logger.userError('Purchase failed', { error: errorMessage });
           setPurchasing(false);
         },
       });
@@ -233,19 +243,15 @@ export default function PaymentView() {
       setPurchaseStatus('invalid');
       audioService.play(AudioKey.ERROR);
       const errorMessage = getErrorMessage(err);
-      clientLogger.paymentFailed(
-        'payment_intent',
-        errorMessage,
-        {
-          packageId: selectedPackage,
-        }
-      );
+      logger.paymentFailed('payment_intent', errorMessage, {
+        packageId: selectedPackage,
+      });
       const duration = performance.now() - startTime;
-      clientLogger.performance('point_purchase', duration, {
+      logger.performance('point_purchase', duration, {
         success: false,
         error: errorMessage,
       });
-      clientLogger.userError('Purchase failed', {
+      logger.userError('Purchase failed', {
         error: errorMessage,
       });
       setPurchasing(false);

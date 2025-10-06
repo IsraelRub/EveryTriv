@@ -5,7 +5,7 @@
 // Import and re-export shared enums
 import { AuthHeader, TokenType } from '@shared';
 
-export { AuthHeader,TokenType };
+export { AuthHeader, TokenType };
 
 // Auth constants
 export const AUTH_CONSTANTS = {

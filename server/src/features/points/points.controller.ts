@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
+
+import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
 import { Cache, ClientIP, CurrentUserId, RateLimit, UserAgent } from '../../common';
 import { CanPlayDto, ConfirmPointPurchaseDto, DeductPointsDto, GetPointHistoryDto, PurchasePointsDto } from './dtos';
@@ -9,44 +10,85 @@ import { PointsService } from './points.service';
 export class PointsController {
 	constructor(private readonly pointsService: PointsService) {}
 
+	/**
+	 * Get user point balance
+	 */
 	@Get('balance')
 	@Cache(60) // Cache for 1 minute
 	async getPointBalance(@CurrentUserId() userId: string) {
-		const result = this.pointsService.getPointBalance(userId);
+		try {
+			const result = this.pointsService.getPointBalance(userId);
 
-		// Log API call for balance check
-		logger.apiRead('points_balance', {
-			userId: userId,
-		});
+			// Log API call for balance check
+			logger.apiRead('points_balance', {
+				userId,
+			});
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.userError('Error getting point balance', {
+				error: getErrorMessage(error),
+				userId,
+			});
+			throw error;
+		}
 	}
 
+	/**
+	 * Get available point packages
+	 */
 	@Get('packages')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(3600) // Cache for 1 hour - point packages rarely change
 	async getPointPackages() {
-		const result = this.pointsService.getPointPackages();
+		try {
+			const result = this.pointsService.getPointPackages();
 
-		// Log API call for packages request
-		logger.apiRead('points_packages', {});
+			// Log API call for packages request
+			logger.apiRead('points_packages', {});
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.userError('Error getting point packages', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
 	}
 
+	/**
+	 * Check if user can play with given question count
+	 */
 	@Get('can-play')
 	@Cache(30) // Cache for 30 seconds
 	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
-		const result = this.pointsService.canPlay(userId, query.questionCount);
+		try {
+			if (!query.questionCount || query.questionCount <= 0) {
+				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
+			}
 
-		// Log API call for can-play check
-		logger.apiRead('can_play', {
-			userId: userId,
-			questionCount: query.questionCount,
-		});
+			const result = await this.pointsService.canPlay(userId, query.questionCount);
 
-		return result;
+			// Log API call for can-play check
+			logger.apiRead('points_can_play', {
+				userId,
+				questionCount: query.questionCount,
+				canPlay: result.canPlay,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Error checking can play', {
+				error: getErrorMessage(error),
+				userId,
+				questionCount: query.questionCount,
+			});
+			throw error;
+		}
 	}
 
+	/**
+	 * Deduct points from user
+	 */
 	@Post('deduct')
 	@RateLimit(20, 60) // 20 deductions per minute
 	async deductPoints(
@@ -56,12 +98,15 @@ export class PointsController {
 		@UserAgent() userAgent: string
 	) {
 		try {
-			// DTO validation is handled automatically by NestJS
+			if (!body.questionCount || body.questionCount <= 0) {
+				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
+			}
+
 			const result = await this.pointsService.deductPoints(userId, body.questionCount, body.gameMode);
 
 			// Log API call for points deduction with IP and User Agent
-			logger.apiUpdate('points', {
-				userId: userId,
+			logger.apiUpdate('points_deduct', {
+				userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
 				remainingPoints: result.total_points,
@@ -71,8 +116,9 @@ export class PointsController {
 
 			return result;
 		} catch (error) {
-			logger.apiUpdateError('points', getErrorMessage(error), {
-				userId: userId,
+			logger.userError('Error deducting points', {
+				error: getErrorMessage(error),
+				userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
 			});
@@ -80,57 +126,96 @@ export class PointsController {
 		}
 	}
 
+	/**
+	 * Get user point transaction history
+	 */
 	@Get('history')
 	@Cache(120) // Cache for 2 minutes
 	async getPointHistory(@CurrentUserId() userId: string, @Query() query: GetPointHistoryDto) {
-		const result = await this.pointsService.getPointHistory(userId, query.limit);
+		try {
+			const limit = query.limit || 50;
+			if (limit > 100) {
+				throw new HttpException('Limit cannot exceed 100', HttpStatus.BAD_REQUEST);
+			}
 
-		// Log API call for points history request
-		logger.apiRead('points_history', {
-			userId: userId,
-			limit: query.limit,
-			transactionsCount: result.length,
-		});
+			const result = await this.pointsService.getPointHistory(userId, limit);
 
-		return result;
+			// Log API call for points history request
+			logger.apiRead('points_history', {
+				userId,
+				limit,
+				transactionsCount: result.length,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Error getting point history', {
+				error: getErrorMessage(error),
+				userId,
+				limit: query.limit,
+			});
+			throw error;
+		}
 	}
 
+	/**
+	 * Purchase points package
+	 */
 	@Post('purchase')
 	@RateLimit(5, 60) // 5 purchases per minute
 	async purchasePoints(@CurrentUserId() userId: string, @Body() body: PurchasePointsDto) {
 		try {
-			// DTO validation is handled automatically by NestJS
+			if (!body.packageId) {
+				throw new HttpException('Package ID is required', HttpStatus.BAD_REQUEST);
+			}
+
 			const result = await this.pointsService.purchasePoints(userId, body.packageId);
 
 			// Log API call for points purchase
 			logger.apiCreate('points_purchase', {
-				userId: userId,
+				userId,
 				packageId: body.packageId,
 			});
 
 			return result;
 		} catch (error) {
-			logger.apiCreateError('points_purchase', getErrorMessage(error), {
-				userId: userId,
+			logger.userError('Error purchasing points', {
+				error: getErrorMessage(error),
+				userId,
 				packageId: body.packageId,
 			});
 			throw error;
 		}
 	}
 
+	/**
+	 * Confirm point purchase
+	 */
 	@Post('confirm-purchase')
 	@RateLimit(10, 60) // 10 confirmations per minute
 	async confirmPointPurchase(@CurrentUserId() userId: string, @Body() body: ConfirmPointPurchaseDto) {
-		// DTO validation is handled automatically by NestJS
-		const result = this.pointsService.confirmPointPurchase(userId, body.paymentIntentId, body.points);
+		try {
+			if (!body.paymentIntentId || !body.points) {
+				throw new HttpException('Payment intent ID and points are required', HttpStatus.BAD_REQUEST);
+			}
 
-		// Log API call for purchase confirmation
-		logger.apiUpdate('points_purchase', {
-			userId: userId,
-			paymentIntentId: body.paymentIntentId,
-			points: body.points,
-		});
+			const result = this.pointsService.confirmPointPurchase(userId, body.paymentIntentId, body.points);
 
-		return result;
+			// Log API call for purchase confirmation
+			logger.apiUpdate('points_purchase_confirm', {
+				userId,
+				paymentIntentId: body.paymentIntentId,
+				points: body.points,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Error confirming point purchase', {
+				error: getErrorMessage(error),
+				userId,
+				paymentIntentId: body.paymentIntentId,
+			});
+			throw error;
+		}
 	}
 }

@@ -351,7 +351,7 @@ export interface LoggerConfig {
 
 /**
  * Logger Configuration Update
- * @used_by shared/services/logging/base-logger.service.ts, shared/services/logging/serverLogger.service.ts, shared/services/logging/clientLogger.service.ts
+ * @used_by shared/services/logging/base-logger.service.ts, shared/services/logging/logger.service.ts, shared/services/logging/logger.service.ts
  */
 export interface LoggerConfigUpdate {
 	level?: LogLevel;

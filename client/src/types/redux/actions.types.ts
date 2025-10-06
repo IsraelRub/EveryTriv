@@ -3,7 +3,7 @@
  * @module ReduxActionTypes
  * @description Redux action payload types
  */
-import { ErrorPayload,LoadingPayload } from './async.types';
+import { ErrorPayload, LoadingPayload } from './async.types';
 
 // Common Action Types
 export interface CommonActionPayloads {

@@ -5,11 +5,12 @@
  * @description Interceptor that handles repository method decorators and caching
  * @author EveryTriv Team
  */
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 import { Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
 import type { CacheMetadata } from '../../internal/types/metadata.types';
@@ -17,14 +18,6 @@ import type { CacheMetadata } from '../../internal/types/metadata.types';
 /**
  * Repository Interceptor
  * @description Intercepts repository method calls and implements decorator functionality
- * @example
- * ```typescript
- * @RepositoryCache(300, 'user_by_email')
- * @RepositoryAudit('user_lookup')
- * async findByEmail(email: string): Promise<UserEntity | null> {
- *   // Repository method logic
- * }
- * ```
  */
 @Injectable()
 export class RepositoryInterceptor implements NestInterceptor {
@@ -84,7 +77,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 			// Check cache first
 			const cachedResult = await this.cacheService.get(cacheKey);
 
-			if (cachedResult.success && cachedResult.data !== null) {
+			if (cachedResult.success && cachedResult.data) {
 				logger.cacheHit(cacheKey, {
 					context: 'REPOSITORY',
 					className,
@@ -279,7 +272,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 	 */
 	private sanitizeArgs(args: unknown[]): unknown[] {
 		return args.map(arg => {
-			if (typeof arg === 'object' && arg !== null) {
+			if (typeof arg === 'object' && arg) {
 				// Remove sensitive fields
 				const sanitized = { ...arg };
 				if ('password' in sanitized) delete sanitized.password;
@@ -294,7 +287,7 @@ export class RepositoryInterceptor implements NestInterceptor {
 	 * Sanitize result for logging
 	 */
 	private sanitizeResult(result: unknown): unknown {
-		if (typeof result === 'object' && result !== null) {
+		if (typeof result === 'object' && result) {
 			// Remove sensitive fields
 			const sanitized = { ...result };
 			if ('password' in sanitized) delete sanitized.password;

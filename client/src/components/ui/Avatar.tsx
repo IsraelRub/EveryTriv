@@ -7,9 +7,9 @@
  */
 
 import { motion } from 'framer-motion';
-import { memo,useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 
-import { AVATAR_BACKGROUND_COLORS, AVATAR_CONFIG,AVATAR_SIZES } from '../../constants/ui';
+import { AVATAR_BACKGROUND_COLORS, AVATAR_CONFIG, AVATAR_SIZES } from '../../constants/ui';
 import { AvatarProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 
@@ -79,11 +79,11 @@ export const Avatar = memo(function Avatar({
   const shouldShowImage = src && !imageError && retryCount <= AVATAR_CONFIG.MAX_RETRIES;
   const shouldShowInitials = !shouldShowImage || imageError;
 
-  const avatarSize = customSize || AVATAR_SIZES[size].pixels;
+  const avatarSize = customSize ?? AVATAR_SIZES[size].pixels;
   const sizeClass = customSize ? '' : AVATAR_SIZES[size].classes;
 
   const gravatarUrl = useMemo(() => {
-    if (!username && !fullName) return null;
+    if (!username?.trim() && !fullName?.trim()) return null;
 
     const email = username
       ? `${username}@example.com`
@@ -122,7 +122,7 @@ export const Avatar = memo(function Avatar({
       {shouldShowImage && (
         <img
           src={src}
-          alt={alt || `Avatar for ${username || fullName || 'user'}`}
+          alt={alt ?? `Avatar for ${username ?? fullName ?? 'user'}`}
           className='w-full h-full object-cover'
           loading={lazy ? 'lazy' : 'eager'}
           onLoad={handleImageLoad}
@@ -135,7 +135,7 @@ export const Avatar = memo(function Avatar({
       {shouldShowInitials && gravatarUrl && retryCount === 0 && (
         <img
           src={gravatarUrl}
-          alt={alt || `Gravatar for ${username || fullName || 'user'}`}
+          alt={alt ?? `Gravatar for ${username ?? fullName ?? 'user'}`}
           className='w-full h-full object-cover'
           loading={lazy ? 'lazy' : 'eager'}
           onError={() => setImageError(true)}

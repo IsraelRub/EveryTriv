@@ -1,4 +1,4 @@
-import { clientLogger,escapeHtml, truncateText  } from '@shared';
+import { clientLogger as logger, escapeHtml, truncateText } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
@@ -54,14 +54,14 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
   const staggerVariants = createStaggerContainer(0.1);
 
   const handleAnswerClick = (index: number) => {
-    if (selected !== null) return;
+    if (selected) return;
 
-    clientLogger.user(`🎯 Answer selected`, {
+    logger.user(`🎯 Answer selected`, {
       questionText: truncateText(escapeHtml(trivia.question), 100),
       answerIndex: index,
       answerText: truncateText(escapeHtml(trivia.answers[index].text), 50),
-      difficulty: ((trivia as Record<string, unknown>).difficulty as string) || 'unknown',
-      topic: ((trivia as Record<string, unknown>).topic as string) || 'unknown',
+      difficulty: ((trivia as Record<string, unknown>).difficulty as string) ?? 'unknown',
+      topic: ((trivia as Record<string, unknown>).topic as string) ?? 'unknown',
       isCorrect: trivia.answers[index].isCorrect,
       timestamp: new Date().toISOString(),
     });
@@ -70,7 +70,7 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
   };
 
   useEffect(() => {
-    if (selected !== null && selected !== undefined && trivia.answers[selected]?.isCorrect) {
+    if (selected && trivia.answers[selected]?.isCorrect) {
       for (let i = 0; i < 10; i++) {
         setTimeout(() => {
           addParticle(Math.random() * window.innerWidth, Math.random() * window.innerHeight, {
@@ -134,7 +134,7 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
                     <motion.div variants={hoverScale} initial='initial' whileHover='hover'>
                       <button
                         className={`w-full p-3 text-lg rounded transition-colors ${
-                          selected !== null
+                          selected
                             ? a.isCorrect
                               ? 'bg-green-600 text-white'
                               : selected === i
@@ -143,7 +143,7 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
                             : 'bg-white text-gray-900 hover:bg-gray-100'
                         }`}
                         onClick={() => handleAnswerClick(i)}
-                        disabled={selected !== null}
+                        disabled={selected !== null && selected !== undefined}
                         title={
                           selected === null
                             ? 'Click to select your answer'
@@ -160,7 +160,7 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
                   <motion.div variants={hoverScale} initial='initial' whileHover='hover'>
                     <button
                       className={`w-full p-3 text-lg rounded transition-colors ${
-                        selected !== null
+                        selected
                           ? a.isCorrect
                             ? 'bg-green-600 text-white'
                             : selected === i
@@ -169,7 +169,7 @@ export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGamePro
                           : 'bg-white text-gray-900 hover:bg-gray-100'
                       }`}
                       onClick={() => handleAnswerClick(i)}
-                      disabled={selected !== null}
+                      disabled={!!selected}
                       title={
                         selected === null
                           ? 'Click to select your answer'

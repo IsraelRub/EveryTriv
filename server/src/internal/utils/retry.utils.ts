@@ -1,4 +1,13 @@
-import { ApiError , AxiosErrorWithConfig, ExtendedAxiosRequestConfig,HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES , serverLogger, createServerError  } from '@shared';
+import {
+	ApiError,
+	AxiosErrorWithConfig,
+	ExtendedAxiosRequestConfig,
+	HTTP_ERROR_CODES,
+	HTTP_ERROR_MESSAGES,
+	HTTP_LOG_MESSAGES,
+	createServerError,
+	serverLogger as logger,
+} from '@shared';
 import { AxiosResponse } from 'axios';
 
 /**
@@ -55,7 +64,7 @@ export class RetryUtils {
 					await this.sleep(delay + jitter);
 				}
 
-				serverLogger.httpSuccess(`${HTTP_LOG_MESSAGES.RETRY_ATTEMPT} ${attempt}/${this.retryAttempts}`, {
+				logger.httpSuccess(`${HTTP_LOG_MESSAGES.RETRY_ATTEMPT} ${attempt}/${this.retryAttempts}`, {
 					url: config.url || 'unknown',
 					method: config.method || 'UNKNOWN',
 					attempt,
@@ -65,7 +74,7 @@ export class RetryUtils {
 				return await requestFn(config);
 			} catch (error) {
 				lastError = error as AxiosErrorWithConfig;
-				serverLogger.httpClientError(`${HTTP_LOG_MESSAGES.RETRY_FAILED} ${attempt} failed`, {
+				logger.httpClientError(`${HTTP_LOG_MESSAGES.RETRY_FAILED} ${attempt} failed`, {
 					url: config.url || 'unknown',
 					message: (error as AxiosErrorWithConfig).message,
 					attempt,

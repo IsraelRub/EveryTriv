@@ -3,8 +3,7 @@
  * @module ReduxStateTypes
  * @description Redux state management types
  */
-import { GameMode } from '@shared';
-import { GameHistoryEntry, LeaderboardEntry, User } from '@shared';
+import { GameMode, GameHistoryEntry, LeaderboardEntry, User } from '@shared';
 import type { BasicValue } from '@shared/types/core/data.types';
 
 import type {
@@ -35,7 +34,6 @@ export interface UserStatsResponse {
     points: number;
   }>;
 }
-
 
 export interface UserState extends BaseReduxState {
   currentUser: User | null;

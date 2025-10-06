@@ -5,10 +5,11 @@
  * @description Guard that validates JWT tokens and extracts user information
  * @author EveryTriv Team
  */
+import { AUTH_CONSTANTS, TokenExtractionService, getErrorMessage, serverLogger as logger } from '@shared';
+
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONSTANTS, serverLogger as logger, TokenExtractionService, getErrorMessage } from '@shared';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -27,19 +28,12 @@ export class AuthGuard implements CanActivate {
 		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
 
 		// Hardcoded public endpoints as fallback
-		const publicEndpoints = [
-			'/leaderboard/global',
-			'/leaderboard/period',
-			'/health',
-			'/status',
-		];
-		const isHardcodedPublic = publicEndpoints.some(endpoint => 
-			request.path?.includes(endpoint) || false
-		);
+		const publicEndpoints = ['/leaderboard/global', '/leaderboard/period', '/health', '/status'];
+		const isHardcodedPublic = publicEndpoints.some(endpoint => request.path?.includes(endpoint) || false);
 
 		// Additional check for leaderboard endpoints
-		const isLeaderboardGlobal = request.path === '/leaderboard/global' || 
-			request.path?.startsWith('/leaderboard/global?') || false;
+		const isLeaderboardGlobal =
+			request.path === '/leaderboard/global' || request.path?.startsWith('/leaderboard/global?') || false;
 
 		// Debug logging
 		logger.authDebug('AuthGuard check', {
@@ -85,5 +79,4 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Invalid authentication token');
 		}
 	}
-
 }

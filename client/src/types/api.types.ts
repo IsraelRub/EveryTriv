@@ -7,6 +7,7 @@
 import type {
   AuthCredentials,
   AuthResponse,
+  CompleteUserAnalytics,
   CreateGameHistoryDto,
   DifficultyStatsData,
   LeaderboardEntry,
@@ -15,7 +16,6 @@ import type {
   TopicStatsData,
   TriviaQuestion,
   TriviaRequest,
-  CompleteUserAnalytics,
   UrlResponse,
   User,
   UserAnalyticsQuery,
@@ -32,7 +32,6 @@ import type {
 import type { PointBalance, PointPurchaseOption, PointTransaction } from './points.types';
 
 export type { ApiResponse } from '@shared/types/infrastructure/api.types';
-
 
 export interface ClientApiService {
   // HTTP methods

@@ -5,13 +5,20 @@
  * @description password hashing and validation service
  * @author EveryTriv Team
  */
-import { Injectable } from '@nestjs/common';
-import { PasswordConfig, PasswordValidationResult,serverLogger as logger, getErrorMessage, createServerError  } from '@shared';
+import {
+	PasswordConfig,
+	PasswordValidationResult,
+	createServerError,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
 import * as bcrypt from 'bcrypt';
+
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class PasswordService {
-	private readonly defaultConfig: PasswordConfig = {
+	private readonly defaultConfig: Required<PasswordConfig> = {
 		saltRounds: 12,
 		minLength: 8,
 		maxLength: 128,
@@ -72,13 +79,13 @@ export class PasswordService {
 		let score = 0;
 
 		// Length validation
-		if (password.length < validationConfig.minLength!) {
+		if (password.length < validationConfig.minLength) {
 			errors.push(`Password must be at least ${validationConfig.minLength} characters long`);
 		} else {
 			score += 1;
 		}
 
-		if (password.length > validationConfig.maxLength!) {
+		if (password.length > validationConfig.maxLength) {
 			errors.push(`Password must not exceed ${validationConfig.maxLength} characters`);
 		}
 
@@ -156,7 +163,7 @@ export class PasswordService {
 			strength,
 			score,
 			checks: {
-				hasMinLength: password.length >= validationConfig.minLength!,
+				hasMinLength: password.length >= validationConfig.minLength,
 				hasUppercase: /[A-Z]/.test(password),
 				hasLowercase: /[a-z]/.test(password),
 				hasNumber: /\d/.test(password),

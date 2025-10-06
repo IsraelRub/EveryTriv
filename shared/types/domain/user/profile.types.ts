@@ -155,4 +155,3 @@ export interface UserProfileSearchResult {
 	hasNextPage: boolean;
 	hasPreviousPage: boolean;
 }
-

@@ -4,7 +4,7 @@
  * @module UseLeaderboardFeatures
  * @description React Query hooks for leaderboard features functionality
  */
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';
@@ -19,9 +19,9 @@ export const useUserRanking = () => {
   return useQuery({
     queryKey: ['userRanking'],
     queryFn: async () => {
-      clientLogger.userInfo('Fetching user ranking');
+      logger.userInfo('Fetching user ranking');
       const result = await apiService.getUserRanking();
-      clientLogger.userInfo('User ranking fetched successfully', {
+      logger.userInfo('User ranking fetched successfully', {
         rank: result.rank,
         score: result.score,
       });
@@ -40,17 +40,17 @@ export const useUpdateUserRanking = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      clientLogger.userInfo('Updating user ranking');
+      logger.userInfo('Updating user ranking');
       return apiService.updateUserRanking();
     },
     onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['userRanking'] });
       queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
-      clientLogger.userInfo('User ranking updated successfully', { message: data.message });
+      logger.userInfo('User ranking updated successfully', { message: data.message });
     },
     onError: error => {
-      clientLogger.userError('Failed to update user ranking', { error });
+      logger.userError('Failed to update user ranking', { error });
     },
   });
 };
@@ -85,9 +85,9 @@ export const useLeaderboardByPeriod = (
   return useQuery({
     queryKey: ['leaderboardByPeriod', period, limit],
     queryFn: async () => {
-      clientLogger.userInfo('Fetching leaderboard by period', { period, limit });
+      logger.userInfo('Fetching leaderboard by period', { period, limit });
       const result = await apiService.getLeaderboardByPeriod(period, limit);
-      clientLogger.userInfo('Leaderboard by period fetched successfully', {
+      logger.userInfo('Leaderboard by period fetched successfully', {
         period,
         count: result.length,
       });

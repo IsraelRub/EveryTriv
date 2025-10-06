@@ -13,10 +13,10 @@ import {
 	StorageMetrics,
 	StorageMetricsTracker,
 	StorageOperationResult,
+	StorageService,
 	StorageStats,
 	StorageSyncOptions,
 	StorageUtils,
-	StorageService,
 } from '../index';
 
 /**
@@ -30,11 +30,7 @@ export class StorageManagerService {
 	private cacheStrategy: CacheStrategyService;
 	private config: StorageConfig;
 
-	constructor(
-		persistentStorage: StorageService,
-		cacheStorage: StorageService,
-		config: Partial<StorageConfig> = {}
-	) {
+	constructor(persistentStorage: StorageService, cacheStorage: StorageService, config: Partial<StorageConfig> = {}) {
 		this.persistentStorage = persistentStorage;
 		this.cacheStorage = cacheStorage;
 		this.cacheStrategy = new CacheStrategyService(cacheStorage, persistentStorage);
@@ -158,7 +154,7 @@ export class StorageManagerService {
 		try {
 			// Try to get from cache first
 			const cached = await this.get<T>(key, 'cache-first');
-			if (cached.success && cached.data !== null && cached.data !== undefined) {
+			if (cached.success && cached.data && cached.data !== undefined) {
 				return cached.data;
 			}
 
@@ -239,7 +235,7 @@ export class StorageManagerService {
 
 					for (const key of keysToSync) {
 						const value = await this.persistentStorage.get(key);
-						if (value.success && value.data !== null && value.data !== undefined) {
+						if (value.success && value.data && value.data !== undefined) {
 							await this.cacheStorage.set(key, value.data, 300); // 5 min cache
 						}
 					}
@@ -254,7 +250,7 @@ export class StorageManagerService {
 
 					for (const key of keysToSync) {
 						const value = await this.cacheStorage.get(key);
-						if (value.success && value.data !== null && value.data !== undefined) {
+						if (value.success && value.data && value.data !== undefined) {
 							await this.persistentStorage.set(key, value.data);
 						}
 					}

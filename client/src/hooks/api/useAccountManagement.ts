@@ -4,7 +4,7 @@
  * @module UseAccountManagement
  * @description React Query hooks for account management functionality
  */
-import { clientLogger, UserWithSubscription } from '@shared';
+import { clientLogger as logger, UserWithSubscription } from '@shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
@@ -31,7 +31,7 @@ export const useDeleteUserAccount = () => {
 
   return useMutation({
     mutationFn: async () => {
-      clientLogger.userInfo('Deleting user account');
+      logger.userInfo('Deleting user account');
       return apiService.deleteUserAccount();
     },
     onSuccess: data => {
@@ -41,13 +41,13 @@ export const useDeleteUserAccount = () => {
 
       // Clear all user-related queries
       queryClient.clear();
-      clientLogger.userInfo('User account deleted successfully', {
+      logger.userInfo('User account deleted successfully', {
         success: data.success,
         message: data.message,
       });
     },
     onError: error => {
-      clientLogger.userError('Failed to delete user account', { error });
+      logger.userError('Failed to delete user account', { error });
     },
   });
 };
@@ -63,7 +63,7 @@ export const useUpdateUserField = () => {
 
   return useMutation({
     mutationFn: async ({ field, value }: { field: string; value: unknown }) => {
-      clientLogger.userInfo('Updating user field', { field });
+      logger.userInfo('Updating user field', { field });
       return apiService.updateUserField(field, value);
     },
     onSuccess: (data, { field, value }) => {
@@ -80,10 +80,10 @@ export const useUpdateUserField = () => {
 
       // Invalidate user profile queries with consistent keys
       invalidateUserQueries(queryClient);
-      clientLogger.userInfo('User field updated successfully', { field });
+      logger.userInfo('User field updated successfully', { field });
     },
     onError: (error, { field }) => {
-      clientLogger.userError('Failed to update user field', { error, field });
+      logger.userError('Failed to update user field', { error, field });
     },
   });
 };
@@ -99,7 +99,7 @@ export const useUpdateSinglePreference = () => {
 
   return useMutation({
     mutationFn: async ({ preference, value }: { preference: string; value: unknown }) => {
-      clientLogger.userInfo('Updating user preference', { preference });
+      logger.userInfo('Updating user preference', { preference });
       return apiService.updateSinglePreference(preference, value);
     },
     onSuccess: (data, { preference, value }) => {
@@ -116,10 +116,10 @@ export const useUpdateSinglePreference = () => {
 
       // Invalidate user profile queries with consistent keys
       invalidateUserQueries(queryClient);
-      clientLogger.userInfo('User preference updated successfully', { preference });
+      logger.userInfo('User preference updated successfully', { preference });
     },
     onError: (error, { preference }) => {
-      clientLogger.userError('Failed to update user preference', { error, preference });
+      logger.userError('Failed to update user preference', { error, preference });
     },
   });
 };
@@ -131,15 +131,15 @@ export const useUpdateSinglePreference = () => {
 export const useGoogleOAuth = () => {
   return useMutation({
     mutationFn: async () => {
-      clientLogger.userInfo('Initiating Google OAuth login');
+      logger.userInfo('Initiating Google OAuth login');
       // Redirect to Google OAuth endpoint
       window.location.href = '/api/auth/google';
     },
     onSuccess: () => {
-      clientLogger.userInfo('Google OAuth redirect initiated');
+      logger.userInfo('Google OAuth redirect initiated');
     },
     onError: error => {
-      clientLogger.userError('Failed to initiate Google OAuth', { error });
+      logger.userError('Failed to initiate Google OAuth', { error });
     },
   });
 };
@@ -154,7 +154,7 @@ export const useGoogleOAuthCallback = () => {
 
   return useMutation({
     mutationFn: async (code: string) => {
-      clientLogger.userInfo('Processing Google OAuth callback', { code });
+      logger.userInfo('Processing Google OAuth callback', { code });
       // This would call the callback endpoint with the code
       return apiService.get(`/auth/google/callback?code=${code}`);
     },
@@ -169,10 +169,10 @@ export const useGoogleOAuthCallback = () => {
       // Invalidate auth queries with consistent keys
       queryClient.invalidateQueries({ queryKey: authKeys.all });
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
-      clientLogger.userInfo('Google OAuth callback processed successfully');
+      logger.userInfo('Google OAuth callback processed successfully');
     },
     onError: error => {
-      clientLogger.userError('Failed to process Google OAuth callback', { error });
+      logger.userError('Failed to process Google OAuth callback', { error });
     },
   });
 };
@@ -196,7 +196,7 @@ export const useUpdateUserCredits = () => {
       amount: number;
       reason: string;
     }) => {
-      clientLogger.userInfo('Admin updating user credits', { userId, amount, reason });
+      logger.userInfo('Admin updating user credits', { userId, amount, reason });
       return apiService.updateUserCredits(userId, amount, reason);
     },
     onSuccess: (data, { userId }) => {
@@ -217,10 +217,10 @@ export const useUpdateUserCredits = () => {
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      clientLogger.userInfo('User credits updated successfully', { userId });
+      logger.userInfo('User credits updated successfully', { userId });
     },
     onError: (error, { userId }) => {
-      clientLogger.userError('Failed to update user credits', { error, userId });
+      logger.userError('Failed to update user credits', { error, userId });
     },
   });
 };
@@ -242,7 +242,7 @@ export const useUpdateUserStatus = () => {
       userId: string;
       status: 'active' | 'suspended' | 'banned';
     }) => {
-      clientLogger.userInfo('Admin updating user status', { userId, status });
+      logger.userInfo('Admin updating user status', { userId, status });
       return apiService.updateUserStatus(userId, status);
     },
     onSuccess: (data, { userId }) => {
@@ -263,10 +263,10 @@ export const useUpdateUserStatus = () => {
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      clientLogger.userInfo('User status updated successfully', { userId });
+      logger.userInfo('User status updated successfully', { userId });
     },
     onError: (error, { userId }) => {
-      clientLogger.userError('Failed to update user status', { error, userId });
+      logger.userError('Failed to update user status', { error, userId });
     },
   });
 };
@@ -282,12 +282,12 @@ export const useDeleteUser = () => {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      clientLogger.userInfo('Admin deleting user', { userId });
+      logger.userInfo('Admin deleting user', { userId });
       return apiService.deleteUser(userId);
     },
     onSuccess: (_, userId) => {
       // Update Redux state if deleting current user
-      if (user && user.id === userId) {
+      if (user?.id === userId) {
         dispatch(setAuthenticated(false));
         dispatch(setUser(null));
       }
@@ -297,10 +297,10 @@ export const useDeleteUser = () => {
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
       queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
-      clientLogger.userInfo('User deleted successfully', { userId });
+      logger.userInfo('User deleted successfully', { userId });
     },
     onError: (error, userId) => {
-      clientLogger.userError('Failed to delete user', { error, userId });
+      logger.userError('Failed to delete user', { error, userId });
     },
   });
 };
@@ -312,14 +312,14 @@ export const useDeleteUser = () => {
 export const useGetUserById = () => {
   return useMutation({
     mutationFn: async (userId: string) => {
-      clientLogger.userInfo('Admin fetching user by ID', { userId });
+      logger.userInfo('Admin fetching user by ID', { userId });
       return apiService.getUserById(userId);
     },
     onSuccess: (_, userId) => {
-      clientLogger.userInfo('User fetched successfully', { userId });
+      logger.userInfo('User fetched successfully', { userId });
     },
     onError: (error, userId) => {
-      clientLogger.userError('Failed to fetch user', { error, userId });
+      logger.userError('Failed to fetch user', { error, userId });
     },
   });
 };

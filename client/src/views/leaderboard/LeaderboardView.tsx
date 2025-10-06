@@ -1,10 +1,10 @@
-import { clientLogger, type LeaderboardEntry } from '@shared';
+import { clientLogger as logger, type LeaderboardEntry } from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Icon } from '../../components/icons';
 import { Button } from '../../components/ui';
-import { useGlobalLeaderboard, useLeaderboardByPeriod,useUserRanking } from '../../hooks/api';
+import { useGlobalLeaderboard, useLeaderboardByPeriod, useUserRanking } from '../../hooks/api';
 
 export function LeaderboardView() {
   const [timeFilter, setTimeFilter] = useState<'global' | 'weekly' | 'monthly' | 'yearly'>(
@@ -22,7 +22,7 @@ export function LeaderboardView() {
   );
 
   useEffect(() => {
-    clientLogger.info('Leaderboard view loaded', {
+    logger.info('Leaderboard view loaded', {
       timeFilter,
     });
   }, [timeFilter]);

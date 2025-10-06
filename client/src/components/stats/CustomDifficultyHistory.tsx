@@ -1,11 +1,11 @@
-import { clientLogger,formatRelativeTime, formatTopic, getErrorMessage  } from '@shared';
+import { clientLogger as logger, formatRelativeTime, formatTopic, getErrorMessage } from '@shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 import { storageService } from '../../services';
 import { CustomDifficultyHistoryProps, HistoryItem } from '../../types';
 import { getDifficultyDisplayText, getDifficultyIcon } from '../../utils/customDifficulty.utils';
-import { createStaggerContainer,fadeInLeft, hoverScale } from '../animations';
+import { createStaggerContainer, fadeInLeft, hoverScale } from '../animations';
 import { Icon } from '../icons';
 import { Button, Modal } from '../ui';
 
@@ -40,7 +40,7 @@ export default function CustomDifficultyHistory({
       });
       setHistory(historyItems);
     } catch (error) {
-      clientLogger.storageError('Failed to load custom difficulty history', {
+      logger.storageError('Failed to load custom difficulty history', {
         error: getErrorMessage(error),
       });
     } finally {

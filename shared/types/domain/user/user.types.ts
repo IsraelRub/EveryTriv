@@ -42,7 +42,9 @@ export interface UserProfileUpdateData {
  * @interface UserFieldUpdate
  * @description Data for updating specific user fields
  */
-export type UserFieldUpdate = Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'achievements' | 'badges' | 'friends' | 'notifications'>>;
+export type UserFieldUpdate = Partial<
+	Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'achievements' | 'badges' | 'friends' | 'notifications'>
+>;
 
 /**
  * User preferences interface
@@ -93,7 +95,23 @@ export interface UserGamePreferences {
  * @interface ServerUserPreferences
  * @description Server-specific user preferences
  */
-export interface ServerUserPreferences extends Required<Pick<UserPreferences, 'theme' | 'language' | 'timezone' | 'emailNotifications' | 'pushNotifications' | 'soundEnabled' | 'musicEnabled' | 'animationsEnabled' | 'autoSaveEnabled' | 'privacy' | 'game'>> {}
+export interface ServerUserPreferences
+	extends Required<
+		Pick<
+			UserPreferences,
+			| 'theme'
+			| 'language'
+			| 'timezone'
+			| 'emailNotifications'
+			| 'pushNotifications'
+			| 'soundEnabled'
+			| 'musicEnabled'
+			| 'animationsEnabled'
+			| 'autoSaveEnabled'
+			| 'privacy'
+			| 'game'
+		>
+	> {}
 
 /**
  * Authentication provider types
@@ -137,6 +155,7 @@ export interface User extends BaseUser {
 	credits: number;
 	purchasedPoints: number;
 	totalPoints: number;
+	score: number;
 	createdAt: Date;
 	subscriptionStatus?: string;
 	subscriptionExpiry?: Date;
@@ -254,7 +273,6 @@ export interface UserNotification {
 	};
 }
 
-
 /**
  * User address interface
  * @interface UserAddress
@@ -319,7 +337,25 @@ export interface UserSettings {
  * @description Data for updating user profile
  * @used_by server: server/src/features/user/user.service.ts (updateUserProfile method)
  */
-export interface UpdateUserProfileData extends Partial<Pick<User, 'username' | 'email' | 'firstName' | 'lastName' | 'bio' | 'website' | 'avatar' | 'dateOfBirth' | 'country' | 'timezone' | 'language' | 'preferences' | 'address'>> {
+export interface UpdateUserProfileData
+	extends Partial<
+		Pick<
+			User,
+			| 'username'
+			| 'email'
+			| 'firstName'
+			| 'lastName'
+			| 'bio'
+			| 'website'
+			| 'avatar'
+			| 'dateOfBirth'
+			| 'country'
+			| 'timezone'
+			| 'language'
+			| 'preferences'
+			| 'address'
+		>
+	> {
 	additional_info?: string;
 }
 
@@ -329,7 +365,25 @@ export interface UpdateUserProfileData extends Partial<Pick<User, 'username' | '
  * @description User profile data
  * @used_by server: server/src/features/user/user.service.ts (getUserProfile method)
  */
-export interface UserProfile extends Pick<User, 'username' | 'email' | 'firstName' | 'lastName' | 'bio' | 'website' | 'avatar' | 'dateOfBirth' | 'country' | 'timezone' | 'language' | 'preferences' | 'address' | 'createdAt' | 'updatedAt'> {
+export interface UserProfile
+	extends Pick<
+		User,
+		| 'username'
+		| 'email'
+		| 'firstName'
+		| 'lastName'
+		| 'bio'
+		| 'website'
+		| 'avatar'
+		| 'dateOfBirth'
+		| 'country'
+		| 'timezone'
+		| 'language'
+		| 'preferences'
+		| 'address'
+		| 'createdAt'
+		| 'updatedAt'
+	> {
 	userId: string;
 }
 
@@ -339,22 +393,31 @@ export interface UserProfile extends Pick<User, 'username' | 'email' | 'firstNam
  * @description User statistics
  * @used_by server: server/src/features/user/user.service.ts (getUserStats method)
  */
-export interface UserStats extends Pick<UserStatistics, 'totalGames' | 'totalQuestions' | 'totalCorrectAnswers' | 'successRate' | 'averageScore' | 'bestScore' | 'totalPlayTime' | 'currentStreak' | 'bestStreak' | 'favoriteTopic' | 'lastPlayed'> {
+export interface UserStats
+	extends Pick<
+		UserStatistics,
+		| 'totalGames'
+		| 'totalQuestions'
+		| 'totalCorrectAnswers'
+		| 'successRate'
+		| 'averageScore'
+		| 'bestScore'
+		| 'totalPlayTime'
+		| 'currentStreak'
+		| 'bestStreak'
+		| 'favoriteTopic'
+		| 'lastPlayed'
+	> {
 	userId: string;
 }
 
 /**
- * Server user preferences interface
- * @interface ServerUserPreferences
- * @description Server-side user preferences
+ * Server user preferences interface with full configuration
+ * @interface ServerUserPreferencesWithConfig
+ * @description Complete server-side user preferences including all optional settings
  * @used_by server: server/src/features/user/entities/user.entity.ts (User entity)
  */
-export interface ServerUserPreferences {
-	theme: 'light' | 'dark' | 'auto';
-	language: string;
-	timezone: string;
-	emailNotifications: boolean;
-	pushNotifications: boolean;
+export interface ServerUserPreferencesWithConfig extends ServerUserPreferences {
 	soundEnabled: boolean;
 	musicEnabled: boolean;
 	animationsEnabled: boolean;

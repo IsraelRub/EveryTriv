@@ -6,8 +6,8 @@
  * @description Client-side subscription management service
  * @used_by client/src/views/payment, client/src/components/subscription
  */
-import { SubscriptionData,SubscriptionPlans } from '@shared';
-import { clientLogger } from '@shared';
+import { SubscriptionData, SubscriptionPlans } from '@shared';
+import { clientLogger as logger } from '@shared';
 
 import { apiService } from '../api';
 
@@ -24,12 +24,12 @@ class ClientSubscriptionService {
    */
   async getSubscriptionPlans(): Promise<SubscriptionPlans> {
     try {
-      clientLogger.userInfo('Getting subscription plans');
+      logger.userInfo('Getting subscription plans');
       const plans = await apiService.getSubscriptionPlans();
-      clientLogger.userInfo('Subscription plans retrieved successfully');
+      logger.userInfo('Subscription plans retrieved successfully');
       return plans;
     } catch (error) {
-      clientLogger.userError('Failed to get subscription plans', { error });
+      logger.userError('Failed to get subscription plans', { error });
       throw error;
     }
   }
@@ -40,12 +40,12 @@ class ClientSubscriptionService {
    */
   async getCurrentSubscription(): Promise<SubscriptionData> {
     try {
-      clientLogger.userInfo('Getting current subscription');
+      logger.userInfo('Getting current subscription');
       const subscription = await apiService.getCurrentSubscription();
-      clientLogger.userInfo('Current subscription retrieved successfully');
+      logger.userInfo('Current subscription retrieved successfully');
       return subscription;
     } catch (error) {
-      clientLogger.userError('Failed to get current subscription', { error });
+      logger.userError('Failed to get current subscription', { error });
       throw error;
     }
   }
@@ -61,12 +61,12 @@ class ClientSubscriptionService {
     billingCycle: string = 'monthly'
   ): Promise<SubscriptionData> {
     try {
-      clientLogger.userInfo('Creating subscription', { plan, billingCycle });
+      logger.userInfo('Creating subscription', { plan, billingCycle });
       const subscription = await apiService.createSubscription(plan, billingCycle);
-      clientLogger.userInfo('Subscription created successfully', { plan, billingCycle });
+      logger.userInfo('Subscription created successfully', { plan, billingCycle });
       return subscription;
     } catch (error) {
-      clientLogger.userError('Failed to create subscription', { error, plan, billingCycle });
+      logger.userError('Failed to create subscription', { error, plan, billingCycle });
       throw error;
     }
   }
@@ -77,12 +77,12 @@ class ClientSubscriptionService {
    */
   async cancelSubscription(): Promise<{ success: boolean; message: string }> {
     try {
-      clientLogger.userInfo('Cancelling subscription');
+      logger.userInfo('Cancelling subscription');
       const result = await apiService.cancelSubscription();
-      clientLogger.userInfo('Subscription cancelled successfully');
+      logger.userInfo('Subscription cancelled successfully');
       return result;
     } catch (error) {
-      clientLogger.userError('Failed to cancel subscription', { error });
+      logger.userError('Failed to cancel subscription', { error });
       throw error;
     }
   }

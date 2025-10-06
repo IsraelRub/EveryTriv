@@ -2,8 +2,7 @@
  * Prompt templates for trivia question generation
  * Centralized prompt management for all LLM providers
  */
-import { DifficultyLevel } from '@shared';
-import { PromptParams } from '@shared';
+import { DifficultyLevel, PromptParams } from '@shared';
 
 export class PromptTemplates {
 	/**

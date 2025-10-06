@@ -6,9 +6,10 @@
  * @description API response structures and HTTP communication interfaces
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
-import type { ApiRequestBody } from '../core/data.types';
-import type { BaseData } from '../core/data.types';
-import type { BaseApiResponse, BasePagination , PaginatedResponse, SuccessResponse } from '../core/response.types';
+import type { ApiRequestBody, BaseData } from '../core/data.types';
+import type { BaseApiResponse, BasePagination, PaginatedResponse, SuccessResponse } from '../core/response.types';
+// Import MiddlewareMetrics from metrics types
+import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
 
 /**
  * Standard API response wrapper interface
@@ -69,7 +70,6 @@ export interface ApiError {
 	path?: string;
 }
 
-
 /**
  * HTTP status codes enum
  * @enum HttpStatusCode
@@ -104,7 +104,6 @@ export interface AmountDto {
  * @used_by client/src/services/api.service.ts (deductCredits), client/src/services/auth/user.service.ts (deductCredits)
  */
 export type DeductCreditsDto = AmountDto;
-
 
 /**
  * Base DTO for purchase operations with identifier
@@ -277,9 +276,6 @@ export interface AllMiddlewareMetricsResponse {
 	metrics: Record<string, unknown> | unknown;
 	storageMetrics: unknown;
 }
-
-// Import MiddlewareMetrics from metrics types
-import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
 
 // Middleware Metrics Response
 export type MiddlewareMetricsResponse = MiddlewareMetrics | Record<string, MiddlewareMetrics>;

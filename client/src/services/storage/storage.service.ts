@@ -13,8 +13,8 @@ import {
   StorageCleanupOptions,
   StorageConfig,
   StorageOperationResult,
-  StorageStats,
   StorageService,
+  StorageStats,
 } from '@shared/types/infrastructure/storage.types';
 
 export class ClientStorageService extends BaseStorageService implements StorageService {
@@ -61,7 +61,7 @@ export class ClientStorageService extends BaseStorageService implements StorageS
       const prefixedKey = this.getPrefixedKey(key);
       const item = localStorage.getItem(prefixedKey);
 
-      if (item === null) {
+      if (!item) {
         this.trackOperationWithTiming('get', startTime, true, 'persistent');
         return this.createSuccessResult<T | null>(null);
       }
@@ -106,10 +106,10 @@ export class ClientStorageService extends BaseStorageService implements StorageS
     const startTime = Date.now();
     try {
       const prefixedKey = this.getPrefixedKey(key);
-      const exists = localStorage.getItem(prefixedKey) !== null;
+      const exists = localStorage.getItem(prefixedKey);
 
       this.trackOperationWithTiming('exists', startTime, true, 'persistent');
-      return this.createSuccessResult<boolean>(exists);
+      return this.createSuccessResult<boolean>(exists !== null);
     } catch (error) {
       this.trackOperationWithTiming('exists', startTime, false, 'persistent');
       return this.createErrorResult<boolean>(
@@ -186,7 +186,7 @@ export class ClientStorageService extends BaseStorageService implements StorageS
   async getSession<T>(key: string): Promise<T | null> {
     const prefixedKey = this.getPrefixedKey(key);
     const item = sessionStorage.getItem(prefixedKey);
-    if (item === null) return null;
+    if (!item) return null;
     try {
       return JSON.parse(item);
     } catch {

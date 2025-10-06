@@ -4,7 +4,6 @@
  * @module SubscriptionDTOs
  * @description Data Transfer Objects for subscription management
  */
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
@@ -19,6 +18,8 @@ import {
 	Min,
 	MinLength,
 } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSubscriptionDto {
 	@ApiProperty({

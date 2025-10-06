@@ -5,22 +5,15 @@
  * @description Interceptor that tracks request performance metrics and identifies bottlenecks
  * @author EveryTriv Team
  */
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { metricsService , PERFORMANCE_THRESHOLDS,serverLogger as logger, getErrorMessage  } from '@shared';
+import { PERFORMANCE_THRESHOLDS, getErrorMessage, serverLogger as logger, metricsService } from '@shared';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 
 /**
  * Performance Monitoring Interceptor
  * @description Tracks request duration, memory usage, and performance metrics
- * @example
- * ```typescript
- * // Automatically tracks:
- * // - Request duration
- * // - Memory usage
- * // - Performance thresholds
- * // - Slow request alerts
- * ```
  */
 @Injectable()
 export class PerformanceMonitoringInterceptor implements NestInterceptor {

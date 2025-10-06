@@ -1,4 +1,3 @@
-import { getErrorMessage } from '@shared';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPointTransactionSystem1710000000000 implements MigrationInterface {
@@ -75,7 +74,7 @@ export class AddPointTransactionSystem1710000000000 implements MigrationInterfac
 			console.error('Migration failed: AddPointTransactionSystem', {
 				migrationName: this.name,
 				operation: 'up',
-				error: getErrorMessage(error),
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -118,7 +117,7 @@ export class AddPointTransactionSystem1710000000000 implements MigrationInterfac
 			console.error('Migration rollback failed: AddPointTransactionSystem', {
 				migrationName: this.name,
 				operation: 'down',
-				error: getErrorMessage(error),
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}

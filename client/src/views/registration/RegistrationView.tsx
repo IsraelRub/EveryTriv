@@ -5,7 +5,7 @@
  * @description User registration page with validation using ValidatedForm
  */
 
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -39,13 +39,13 @@ export default function RegistrationView() {
     // Authentication redirect is handled by PublicRoute HOC
     // No need for local authentication check
 
-    clientLogger.game('Registration page viewed', {
+    logger.game('Registration page viewed', {
       page: 'registration',
     });
   }, []);
 
   const handleGoogleSignUp = () => {
-    clientLogger.game('Google sign-up initiated', {
+    logger.game('Google sign-up initiated', {
       provider: 'google',
     });
 
@@ -55,7 +55,7 @@ export default function RegistrationView() {
     try {
       authService.initiateGoogleLogin();
     } catch (error) {
-      clientLogger.gameError('Google signup failed', {
+      logger.gameError('Google signup failed', {
         error: getErrorMessage(error),
       });
       audioService.play(AudioKey.ERROR);
@@ -64,16 +64,16 @@ export default function RegistrationView() {
 
   // Removed topic toggle logic
 
-  const handleFormSubmit = async (values: Record<string, any>, isValid: boolean) => {
+  const handleFormSubmit = async (values: Record<string, unknown>, isValid: boolean) => {
     if (!isValid) {
-      clientLogger.gameError('Registration form validation failed');
+      logger.gameError('Registration form validation failed');
       audioService.play(AudioKey.ERROR);
       return;
     }
 
     // Additional password confirmation validation
     if (values.password !== values.confirmPassword) {
-      clientLogger.gameError('Password confirmation mismatch');
+      logger.gameError('Password confirmation mismatch');
       audioService.play(AudioKey.ERROR);
       return;
     }
@@ -81,7 +81,7 @@ export default function RegistrationView() {
     setIsSubmitting(true);
 
     try {
-      clientLogger.game('Manual registration form submitted', {
+      logger.game('Manual registration form submitted', {
         username: values.username,
         email: values.email,
       });
@@ -112,7 +112,7 @@ export default function RegistrationView() {
         setStep('confirmation');
       }
     } catch (error) {
-      clientLogger.gameError('Registration failed', {
+      logger.gameError('Registration failed', {
         error: getErrorMessage(error),
       });
       audioService.play(AudioKey.ERROR);

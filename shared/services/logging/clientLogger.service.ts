@@ -5,7 +5,7 @@
  * @description Client-specific logger implementation with browser console logging
  * @used_by client/src/services
  */
-import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
+import { LogMeta, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
 import { BaseLoggerService } from './baseLogger.service';
 
 /**
@@ -82,26 +82,23 @@ export class ClientLogger extends BaseLoggerService {
 		}
 	}
 
-	// Override methods to use colored logging
-	error(message: string, meta?: LogMeta): void {
+	// Override methods to use colored logging - these should be public
+	public error(message: string, meta?: LogMeta): void {
 		this.logWithColor('ERROR', message, meta);
 	}
 
-	warn(message: string, meta?: LogMeta): void {
+	public warn(message: string, meta?: LogMeta): void {
 		this.logWithColor('WARN', message, meta);
 	}
 
-	info(message: string, meta?: LogMeta): void {
+	public info(message: string, meta?: LogMeta): void {
 		this.logWithColor('INFO', message, meta);
 	}
 
-	debug(message: string, meta?: LogMeta): void {
+	public debug(message: string, meta?: LogMeta): void {
 		this.logWithColor('DEBUG', message, meta);
 	}
 }
 
 // Export singleton instance
 export const clientLogger = new ClientLogger();
-
-// Export factory function for custom configurations
-export const createClientLogger = (config?: LoggerConfigUpdate) => new ClientLogger(config);

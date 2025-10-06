@@ -5,8 +5,18 @@
  * @description authentication service that consolidates all authentication logic
  * @author EveryTriv Team
  */
+import {
+	AuthenticationConfig,
+	AuthenticationRequest,
+	AuthenticationResult,
+	LoginCredentials,
+	TokenPayload,
+	UserData,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
+
 import { Injectable } from '@nestjs/common';
-import { AuthenticationConfig, AuthenticationRequest, AuthenticationResult, LoginCredentials, serverLogger as logger , TokenPayload , UserData, getErrorMessage } from '@shared';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';

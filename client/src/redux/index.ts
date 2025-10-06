@@ -5,9 +5,7 @@
  */
 
 export type { RootState } from '../types/redux/state.types';
+export * from './selectors';
+export * from './slices';
 export type { AppDispatch } from './store';
 export { store } from './store';
-
-export * from './slices';
-
-export * from './selectors';

@@ -13,12 +13,12 @@ import { BasicValue, RequestData } from '../../core/data.types';
  * @description Configuration for validation middleware
  */
 export interface ValidationConfig {
-	validateBody?: boolean;
-	validateQuery?: boolean;
-	validateParams?: boolean;
-	customRules?: Record<string, BasicValue>;
-	body?: ValidationRule[];
-	stopOnFirstError?: boolean;
+	readonly validateBody?: boolean;
+	readonly validateQuery?: boolean;
+	readonly validateParams?: boolean;
+	readonly customRules?: Record<string, BasicValue>;
+	readonly body?: ValidationRule[];
+	readonly stopOnFirstError?: boolean;
 }
 
 /**
@@ -32,11 +32,21 @@ export interface Position {
 }
 
 /**
- * Base validation result interface
+ * Simple validation result
+ * @interface SimpleValidationResult
+ * @description Base validation result structure
  */
-export interface BaseValidationResult {
+export interface SimpleValidationResult {
 	isValid: boolean;
 	errors: string[];
+}
+
+/**
+ * Base validation result interface
+ * @interface BaseValidationResult
+ * @description Extended validation result with optional warnings
+ */
+export interface BaseValidationResult extends SimpleValidationResult {
 	warnings?: string[];
 }
 
@@ -72,12 +82,12 @@ export interface PasswordValidationResult extends BaseValidationResult {
 /**
  * Validation result interface for form and data validation
  * @interface ValidationResult
- * @description Represents the result of data validation operations
- * @used_by server: server/src/common/validation/input-validation.service.ts (validateInput), client: client/src/components/user/CompleteProfile.tsx (form validation), shared/validation/validation.utils.ts (validateInputWithLanguageTool)
+ * @description Validation result with additional context
  */
-export interface ValidationResult extends BaseValidationResult {
+export interface ValidationResult extends SimpleValidationResult {
 	suggestion?: string;
 	position?: Position;
+	warnings?: string[];
 }
 
 /**
@@ -163,50 +173,51 @@ export type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid' | 'wa
 export type RequestDataType = 'body' | 'query' | 'params';
 
 /**
- * Validation options for decorators and interceptors
+ * Unified validation options interface
+ * @interface ValidationOptions
+ * @description Options for validation decorators, interceptors, and middleware
  */
 export interface ValidationOptions {
+	// Schema options
 	schema?: string;
+
+	// Transformation options
 	transform?: boolean;
 	stripUnknown?: boolean;
+
+	// Error handling
 	errorMessage?: string;
+	logFailures?: boolean;
+
+	// Validation behavior
 	sanitizeInputs?: boolean;
 	validateInputs?: boolean;
-	logFailures?: boolean;
 	excludeFields?: string[];
+
+	// Custom rules
 	customRules?: Record<string, ValidationFunction>;
+
+	// Additional options
 	[key: string]: unknown;
 }
 
 /**
- * Validation options interface for decorators
- * @interface ValidationOptions
- * @description Options for validation decorators with error handling and transformation settings
+ * @deprecated Use ValidationOptions instead
  */
-export interface ValidationDecoratorOptions {
-	errorMessage?: string;
-	stripUnknown?: boolean;
-	transform?: boolean;
-}
+export type ValidationDecoratorOptions = Pick<ValidationOptions, 'errorMessage' | 'stripUnknown' | 'transform'>;
 
 /**
- * Validation interceptor options
+ * @deprecated Use ValidationOptions instead
  */
-export interface ValidationInterceptorOptions {
-	sanitizeInputs?: boolean;
-	validateInputs?: boolean;
-	logFailures?: boolean;
-	excludeFields?: string[];
-	customRules?: Record<string, ValidationFunction>;
-}
+export type ValidationInterceptorOptions = Pick<
+	ValidationOptions,
+	'sanitizeInputs' | 'validateInputs' | 'logFailures' | 'excludeFields' | 'customRules'
+>;
 
 /**
  * Validation result for interceptor
  */
-export interface ValidationInterceptorResult {
-	isValid: boolean;
-	error?: string;
-	warnings?: string[];
+export interface ValidationInterceptorResult extends ValidationResultWithWarnings {
 	field?: string;
 	dataType?: RequestDataType;
 }
@@ -223,57 +234,32 @@ export interface ValidationMiddlewareConfig {
 }
 
 /**
- * Custom difficulty validation response interface
- * @interface CustomDifficultyValidationResponse
- * @description Response for custom difficulty validation
- * @used_by client/src/services/api.service.ts (validateCustomDifficulty)
- */
-export interface CustomDifficultyValidationResponse {
-	isValid: boolean;
-	errors?: string[];
-}
-
-/**
  * Custom difficulty validation request interface
  * @interface ValidateCustomDifficultyRequest
  * @description Request payload for custom difficulty validation
  * @used_by client/src/services/api.service.ts (validateCustomDifficulty)
  */
-export interface ValidateCustomDifficultyRequest extends Record<string, BasicValue> {
+export interface CustomDifficultyRequest {
 	customText: string;
 }
-
-// ============================================================================
-// DOMAIN-SPECIFIC VALIDATION TYPES
-// ============================================================================
 
 /**
  * Interface for difficulty validation results
  * @interface DifficultyValidation
- * @description Structure for difficulty validation results including detected level
- * @used_by shared/validation/difficulty.validation.ts (validateCustomDifficultyText)
+ * @description Difficulty validation results with detected level
  */
-export interface DifficultyValidation {
-	isValid: boolean;
-	error?: string;
+export interface DifficultyValidation extends SimpleValidationResult {
 	detectedLevel?: 'elementary' | 'high_school' | 'university' | 'expert';
 }
 
 /**
  * Interface for trivia input validation results
  * @interface SharedTriviaInputValidation
- * @description Structure for validation results across topic, difficulty, and overall validation
- * @used_by shared/validation/trivia.validation.ts (validateTriviaInputQuick)
+ * @description Validation results across topic, difficulty, and overall validation
  */
 export interface SharedTriviaInputValidation {
-	topic: {
-		isValid: boolean;
-		errors: string[];
-	};
-	difficulty: {
-		isValid: boolean;
-		errors: string[];
-	};
+	topic: SimpleValidationResult;
+	difficulty: SimpleValidationResult;
 	overall: {
 		isValid: boolean;
 		canProceed: boolean;
@@ -281,32 +267,22 @@ export interface SharedTriviaInputValidation {
 }
 
 /**
- * Extended validation result for payment validation with warnings
- * @interface PaymentValidationResult
- * @description Payment validation result that includes warnings in addition to errors
- * @used_by shared/validation/payment.validation.ts (validatePaymentAmount)
+ * Extended validation result with warnings
+ * @interface ExtendedValidationResult
+ * @description Validation result with warnings
  */
-export interface PaymentValidationResult {
-	isValid: boolean;
-	errors: string[];
+export interface ValidationResultWithWarnings extends SimpleValidationResult {
 	warnings?: string[];
 }
 
 /**
- * Extended validation result for points validation with warnings
- * @interface PointsValidationResult
- * @description Points validation result that includes warnings in addition to errors
- * @used_by shared/validation/points.validation.ts (validatePointBalance, validatePointPurchase, etc.)
+ * Extended pipe validation result with additional data
+ * @interface ExtendedPipeValidationResult
+ * @description Pipe validation result with additional context
  */
-export interface PointsValidationResult {
-	isValid: boolean;
-	errors: string[];
-	warnings?: string[];
+export interface PipeValidationWithSuggestion extends SimpleValidationResult {
+	suggestion?: string;
 }
-
-// ============================================================================
-// PIPE VALIDATION TYPES
-// ============================================================================
 
 /**
  * Trivia Question Data
@@ -322,18 +298,6 @@ export interface TriviaQuestionData {
 }
 
 /**
- * Trivia Question Validation Result
- * @interface TriviaQuestionValidationResult
- * @description Result of trivia question validation
- */
-export interface TriviaQuestionValidationResult {
-	isValid: boolean;
-	errors: string[];
-	success: boolean;
-	timestamp: string;
-}
-
-/**
  * Game Answer Data
  * @interface GameAnswerData
  * @description Data structure for game answer validation
@@ -342,18 +306,6 @@ export interface GameAnswerData {
 	questionId: string;
 	answer: string;
 	timeSpent: number;
-}
-
-/**
- * Game Answer Validation Result
- * @interface GameAnswerValidationResult
- * @description Result of game answer validation
- */
-export interface GameAnswerValidationResult {
-	isValid: boolean;
-	errors: string[];
-	success: boolean;
-	timestamp: string;
 }
 
 /**
@@ -369,50 +321,6 @@ export interface LanguageValidationData {
 }
 
 /**
- * Language Validation Result - imported from language.types.ts
- * @interface LanguageValidationResult
- * @description Result of language validation
- */
-export type { LanguageValidationResult } from '../../language.types';
-
-/**
- * Custom Difficulty Validation Result
- * @interface CustomDifficultyValidationResult
- * @description Result of custom difficulty validation
- */
-export interface CustomDifficultyValidationResult {
-	isValid: boolean;
-	errors: string[];
-	suggestion?: string;
-	success: boolean;
-	timestamp: string;
-}
-
-/**
- * Payment Data Validation Result
- * @interface PaymentDataValidationResult
- * @description Result of payment data validation
- */
-export interface PaymentDataValidationResult {
-	isValid: boolean;
-	errors: string[];
-	success: boolean;
-	timestamp: string;
-}
-
-/**
- * User Data Validation Result
- * @interface UserDataValidationResult
- * @description Result of user data validation
- */
-export interface UserDataValidationResult {
-	isValid: boolean;
-	errors: string[];
-	success: boolean;
-	timestamp: string;
-}
-
-/**
  * Trivia Request Data
  * @interface TriviaRequestData
  * @description Data structure for trivia request validation
@@ -424,13 +332,16 @@ export interface TriviaRequestData {
 }
 
 /**
- * Trivia Request Validation Result
- * @interface TriviaRequestValidationResult
- * @description Result of trivia request validation
+ * Language Validation Result - imported from language.types.ts
+ * @interface LanguageValidationResult
+ * @description Result of language validation
  */
-export interface TriviaRequestValidationResult {
-	isValid: boolean;
-	errors: string[];
+export type { LanguageValidationResult } from '../../language.types';
+
+/**
+ * @deprecated Use SimpleValidationResult instead (remove success/timestamp)
+ */
+export interface TriviaRequestValidationResult extends SimpleValidationResult {
 	success: boolean;
 	timestamp: string;
 }

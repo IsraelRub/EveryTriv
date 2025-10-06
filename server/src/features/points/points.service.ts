@@ -1,14 +1,22 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { formatCurrency,PointBalance, PointPurchaseOption, POINTS_PRICING_TIERS, serverLogger as logger,UrlResponse, ensureErrorObject  } from '@shared';
+import {
+	POINTS_PRICING_TIERS,
+	PointBalance,
+	PointPurchaseOption,
+	ensureErrorObject,
+	formatCurrency,
+	serverLogger as logger,
+} from '@shared';
+import { BasePointsService } from '@shared/services/points/basePoints.service';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
 
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+
 import { ValidationService } from '../../common/validation/validation.service';
 import { PointSource, PointTransactionType } from '../../internal/constants';
 import { PaymentService } from '../payment';
-import { BasePointsService } from '@shared/services/points/basePoints.service';
 
 @Injectable()
 export class PointsService extends BasePointsService {
@@ -131,11 +139,7 @@ export class PointsService extends BasePointsService {
 				reason: `Insufficient points. You have ${totalAvailable} points available but need ${questionCount} points.`,
 			};
 		} catch (error) {
-			logger.databaseError(
-				ensureErrorObject(error),
-				'Failed to check if user can play',
-				{ userId, questionCount }
-			);
+			logger.databaseError(ensureErrorObject(error), 'Failed to check if user can play', { userId, questionCount });
 			throw error;
 		}
 	}
@@ -171,7 +175,7 @@ export class PointsService extends BasePointsService {
 
 			// Use deduction logic
 			const currentBalance: PointBalance = {
-				total_points: user.credits + user.purchasedPoints + (user.remainingFreeQuestions * 0.1),
+				total_points: user.credits + user.purchasedPoints + user.remainingFreeQuestions * 0.1,
 				purchased_points: user.purchasedPoints,
 				free_questions: user.remainingFreeQuestions,
 				can_play_free: user.remainingFreeQuestions > 0,
@@ -180,11 +184,14 @@ export class PointsService extends BasePointsService {
 			};
 
 			const deductionResult = this.calculateNewBalance(currentBalance, questionCount, gameMode);
-			
+
 			// Update user with new balance
 			user.remainingFreeQuestions = deductionResult.newBalance.free_questions;
 			user.purchasedPoints = deductionResult.newBalance.purchased_points;
-			user.credits = deductionResult.newBalance.total_points - deductionResult.newBalance.purchased_points - (deductionResult.newBalance.free_questions * 0.1);
+			user.credits =
+				deductionResult.newBalance.total_points -
+				deductionResult.newBalance.purchased_points -
+				deductionResult.newBalance.free_questions * 0.1;
 
 			await this.userRepository.save(user);
 
@@ -281,7 +288,7 @@ export class PointsService extends BasePointsService {
 	/**
 	 * Purchase points package
 	 */
-	async purchasePoints(userId: string, packageId: string): Promise<UrlResponse & { paymentUrl?: string }> {
+	async purchasePoints(userId: string, packageId: string): Promise<{ paymentUrl?: string }> {
 		try {
 			// Validate purchase request
 			const purchaseValidation = await this.validationService.validatePointsPurchase(userId, packageId);
@@ -328,7 +335,6 @@ export class PointsService extends BasePointsService {
 			});
 
 			return {
-				success: true,
 				paymentUrl: `/payment/process/${paymentResult.paymentId}`,
 			};
 		} catch (error) {

@@ -38,7 +38,7 @@ export * from './game';
  * Shared game constants
  * @description Re-exported shared game constants
  */
-export { DifficultyLevel,GameMode } from '@shared';
+export { DifficultyLevel, GameMode } from '@shared';
 
 /**
  * UI component types
@@ -161,4 +161,4 @@ export type {
  * @description Authentication route components and auth-related types
  * @exports {Object} Authentication-related type definitions
  */
-export type { AuthRouteState,ProtectedRouteProps, PublicRouteProps } from './auth';
+export type { AuthRouteState, ProtectedRouteProps, PublicRouteProps } from './auth';

@@ -1,4 +1,4 @@
-import { ChangeEvent, memo, useCallback,useEffect, useState } from 'react';
+import { ChangeEvent, memo, useCallback, useEffect, useState } from 'react';
 
 import { useAudio } from '../../App';
 import { CLIENT_STORAGE_KEYS } from '../../constants';
@@ -25,11 +25,7 @@ const AudioControls = memo(function AudioControls({ className }: AudioControlsPr
 
       // Load volume from storage
       const storedVolume = await storageService.get<number>(CLIENT_STORAGE_KEYS.AUDIO_VOLUME);
-      if (
-        storedVolume.success &&
-        storedVolume.data !== null &&
-        typeof storedVolume.data === 'number'
-      ) {
+      if (storedVolume.success && storedVolume.data && typeof storedVolume.data === 'number') {
         setVolume(storedVolume.data);
         audioService.setVolume(storedVolume.data);
       }

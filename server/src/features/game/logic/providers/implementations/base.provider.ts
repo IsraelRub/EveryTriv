@@ -5,25 +5,26 @@
  * @description Abstract base class for all trivia question providers
  * @used_by server/src/features/game/logic/providers
  */
-import { DIFFICULTY_MULTIPLIERS, DifficultyLevel } from '@shared';
-import { serverLogger as logger, getErrorMessage, createAuthError } from '@shared';
 import {
 	AI_PROVIDER_ERROR_TYPES,
+	AnalyticsMetadata,
+	DIFFICULTY_MULTIPLIERS,
+	DifficultyLevel,
 	ERROR_CONTEXT_MESSAGES,
 	FALLBACK_QUESTION_ANSWERS,
-	LLMResponse,
-	PROVIDER_ERROR_MESSAGES,
-} from '@shared';
-import {
-	AnalyticsMetadata,
-	clamp,
-	isCustomDifficulty,
 	LLMApiResponse,
+	LLMResponse,
 	LLMTriviaResponse,
+	PROVIDER_ERROR_MESSAGES,
 	ProviderConfig,
 	QuestionCacheMap,
-	shuffle,
 	TriviaQuestion,
+	clamp,
+	createAuthError,
+	getErrorMessage,
+	isCustomDifficulty,
+	serverLogger as logger,
+	shuffle,
 } from '@shared';
 
 import { PromptTemplates } from '../prompts';

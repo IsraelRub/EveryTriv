@@ -17,7 +17,10 @@ export class TokenExtractionService {
 	 * @param cookies - Request cookies object
 	 * @returns Extracted token or null
 	 */
-	static extractToken(authHeader: string | string[] | undefined, cookies: Record<string, string> | undefined): string | null {
+	static extractToken(
+		authHeader: string | string[] | undefined,
+		cookies: Record<string, string> | undefined
+	): string | null {
 		let token: string | null = null;
 
 		// Convert authHeader to string if it's an array
@@ -47,7 +50,7 @@ export class TokenExtractionService {
 	static extractTokenFromRequest(request: any): string | null {
 		const authHeader = request.headers[AUTH_CONSTANTS.AUTH_HEADER.toLowerCase()];
 		const cookies = request.cookies;
-		
+
 		return this.extractToken(authHeader, cookies);
 	}
 

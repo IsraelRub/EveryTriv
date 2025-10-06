@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FC, useCallback, useEffect, useMemo,useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { EFFECT_COLORS } from '../../constants/ui/animation.constants';
 import { AnimatedBackgroundProps, Orb, Particle } from '../../types';

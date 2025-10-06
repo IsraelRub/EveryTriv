@@ -4,13 +4,14 @@
  * @module AuthService
  * @description Authentication service with login, register, and token management
  */
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { CurrentUserData, UserData } from '@shared';
 import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
 import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
-import { CurrentUserData, UserData } from '@shared';
+
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -61,20 +62,16 @@ export class AuthService {
 		});
 
 		return {
-			success: true,
-			data: {
-				access_token: tokenPair.accessToken,
-				refresh_token: tokenPair.refreshToken,
-				user: {
-					id: savedUser.id,
-					username: savedUser.username,
-					email: savedUser.email,
-					firstName: savedUser.firstName,
-					lastName: savedUser.lastName,
-					role: savedUser.role,
-				},
+			access_token: tokenPair.accessToken,
+			refresh_token: tokenPair.refreshToken,
+			user: {
+				id: savedUser.id,
+				username: savedUser.username,
+				email: savedUser.email,
+				firstName: savedUser.firstName,
+				lastName: savedUser.lastName,
+				role: savedUser.role,
 			},
-			timestamp: new Date().toISOString(),
 		};
 	}
 
@@ -104,14 +101,15 @@ export class AuthService {
 			throw new UnauthorizedException(authResult.error || 'Invalid credentials');
 		}
 
+		// Type guard: we know these exist when success is true
+		if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
+			throw new UnauthorizedException('Authentication result incomplete');
+		}
+
 		return {
-			success: true,
-			data: {
-				access_token: authResult.accessToken!,
-				refresh_token: authResult.refreshToken!,
-				user: authResult.user!,
-			},
-			timestamp: new Date().toISOString(),
+			access_token: authResult.accessToken,
+			refresh_token: authResult.refreshToken,
+			user: authResult.user,
 		};
 	}
 
@@ -126,10 +124,13 @@ export class AuthService {
 			throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
 		}
 
+		// Type guard: we know accessToken exists when success is true
+		if (!authResult.accessToken) {
+			throw new UnauthorizedException('Authentication result incomplete');
+		}
+
 		return {
-			success: true,
-			data: { access_token: authResult.accessToken! },
-			timestamp: new Date().toISOString(),
+			access_token: authResult.accessToken,
 		};
 	}
 
@@ -152,12 +153,11 @@ export class AuthService {
 	/**
 	 * Logout user (invalidate tokens)
 	 */
-	async logout(userId: string, username: string): Promise<{ success: boolean; message: string }> {
+	async logout(userId: string, username: string): Promise<{ message: string }> {
 		// Use AuthenticationManager for logout
 		await this.authenticationManager.logout(userId, username);
 
 		return {
-			success: true,
 			message: 'Logged out successfully',
 		};
 	}
@@ -173,7 +173,7 @@ export class AuthService {
 		if (user && user.passwordHash) {
 			const isPasswordValid = await this.passwordService.comparePassword(password, user.passwordHash);
 			if (isPasswordValid) {
-				const { passwordHash: passwordHashToExclude, ...result } = user;
+				const { passwordHash, ...result } = user;
 				return result;
 			}
 		}

@@ -38,7 +38,7 @@
 async findByEmail(email: string): Promise<UserEntity | null>
 
 @RepositoryCache(600, 'users_by_role')
-@RepositoryRoles('admin', 'super-admin')
+@RepositoryRoles('admin')
 @RepositoryAudit('user_lookup_by_role')
 async findByRole(role: string): Promise<UserEntity[]>
 ```
@@ -61,7 +61,7 @@ async findByDifficulty(difficulty: string): Promise<TriviaEntity[]>
 async findByUserId(userId: string): Promise<GameHistoryEntity[]>
 
 @RepositoryCache(3600, 'game_history_stats')
-@RepositoryRoles('admin', 'super-admin')
+@RepositoryRoles('admin')
 @RepositoryAudit('game_history_stats_lookup')
 async getGameStats(): Promise<GameStats>
 ```

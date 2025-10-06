@@ -7,10 +7,11 @@
  * @global
  * @provides REDIS_CLIENT
  */
-import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { serverLogger as logger } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
 import Redis from 'ioredis';
+
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 
 import { redisConfig } from '../../config/redis.config';
 

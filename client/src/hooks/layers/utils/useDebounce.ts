@@ -43,7 +43,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   flush: () => void;
   isPending: boolean;
 } {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCallTimeRef = useRef<number>(0);
   const [isPending, setIsPending] = useState(false);
 
@@ -52,7 +52,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   const cancel = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }
     setIsPending(false);
   }, []);
@@ -60,7 +60,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   const flush = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }
     setIsPending(false);
     func();

@@ -22,6 +22,7 @@ export const USER_DEFAULT_VALUES = {
   credits: 0,
   purchasedPoints: 0,
   totalPoints: 0,
+  score: 0,
 } as const;
 
 /**

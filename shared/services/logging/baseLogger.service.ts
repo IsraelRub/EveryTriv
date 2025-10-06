@@ -7,9 +7,9 @@
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
 import type { EnhancedLogEntry, Logger } from '../../types';
-import { LoggerConfig, LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
-import { generateSessionId, generateTraceId, sanitizeLogMessage, getErrorMessage } from '../../utils';
 import type { BasicValue } from '../../types/core/data.types';
+import { LogMeta, LoggerConfig, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
+import { generateSessionId, generateTraceId, getErrorMessage, sanitizeLogMessage } from '../../utils';
 
 /**
  * Abstract Base Logger Service implementing all modular interfaces
@@ -19,15 +19,20 @@ export abstract class BaseLoggerService implements Logger {
 	protected traceId: string;
 	protected config: LoggerConfig;
 	protected performanceThresholds?: Record<string, number>;
-	protected performanceStats?: Map<string, {
-		totalOperations: number;
-		averageDuration: number;
-		minDuration: number;
-		maxDuration: number;
-		slowOperations: number;
-		errorCount: number;
-		lastUpdated: Date;
-	}> | Record<string, BasicValue>;
+	protected performanceStats?:
+		| Map<
+				string,
+				{
+					totalOperations: number;
+					averageDuration: number;
+					minDuration: number;
+					maxDuration: number;
+					slowOperations: number;
+					errorCount: number;
+					lastUpdated: Date;
+				}
+		  >
+		| Record<string, BasicValue>;
 
 	constructor(config: LoggerConfigUpdate = {}) {
 		this.sessionId = generateSessionId();
@@ -46,7 +51,7 @@ export abstract class BaseLoggerService implements Logger {
 	protected abstract logInfo(message: string, meta?: LogMeta): void;
 	protected abstract logDebug(message: string, meta?: LogMeta): void;
 
-	// BaseLogger implementation
+	// BaseLogger implementation - internal methods should be protected
 	protected error(message: string, meta?: LogMeta): void {
 		const sanitizedMessage = sanitizeLogMessage(message);
 		this.logError(sanitizedMessage, this.buildMeta(meta));
@@ -64,28 +69,28 @@ export abstract class BaseLoggerService implements Logger {
 		this.logDebug(message, this.buildMeta(meta));
 	}
 
-	protected errorWithStack(error: Error, message?: string, meta?: LogMeta): void {
+	private errorWithStack(error: Error, message?: string, meta?: LogMeta): void {
 		this.error(MESSAGE_FORMATTERS.validation.error(`${message || 'Error'}: ${error.message}`), {
 			...meta,
 			stack: error.stack,
 		});
 	}
 
-	getSessionId(): string {
+	public getSessionId(): string {
 		return this.sessionId;
 	}
 
-	getTraceId(): string {
+	public getTraceId(): string {
 		return this.traceId;
 	}
 
-	newTrace(): string {
+	public newTrace(): string {
 		this.traceId = generateTraceId();
 		return this.traceId;
 	}
 
-	// Configuration management
-	updateConfig(newConfig: LoggerConfigUpdate): void {
+	// Configuration management - internal methods should be protected
+	protected updateConfig(newConfig: LoggerConfigUpdate): void {
 		this.config = {
 			...this.config,
 			...newConfig,
@@ -105,7 +110,7 @@ export abstract class BaseLoggerService implements Logger {
 		}
 	}
 
-	getConfig(): LoggerConfig {
+	protected getConfig(): LoggerConfig {
 		return { ...this.config };
 	}
 
@@ -131,11 +136,9 @@ export abstract class BaseLoggerService implements Logger {
 	}
 
 	// DatabaseLogger implementation
-	databaseError(message: string, meta?: LogMeta): void;
-	databaseError(error: Error, message?: string, meta?: LogMeta): void;
 	databaseError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage = messageOrMeta as string || 'Database error';
+			const errorMessage = (messageOrMeta as string) || 'Database error';
 			this.errorWithStack(messageOrError, errorMessage, meta);
 		} else {
 			this.error(MESSAGE_FORMATTERS.databaseConnection.error(messageOrError), messageOrMeta as LogMeta);
@@ -368,11 +371,10 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.system.appShutdown(), meta);
 	}
 
-	systemError(error: string, meta?: LogMeta): void;
-	systemError(error: Error, message?: string, meta?: LogMeta): void;
+	systemError(error: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void;
 	systemError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage = messageOrMeta as string || 'System error';
+			const errorMessage = (messageOrMeta as string) || 'System error';
 			this.errorWithStack(messageOrError, errorMessage, meta);
 		} else {
 			this.error(MESSAGE_FORMATTERS.system.error(messageOrError), messageOrMeta as LogMeta);
@@ -451,11 +453,10 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.auth.profileUpdate(message), meta);
 	}
 
-	authError(message: string, meta?: LogMeta): void;
-	authError(error: Error, message?: string, meta?: LogMeta): void;
+	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void;
 	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage = messageOrMeta as string || 'Authentication error';
+			const errorMessage = (messageOrMeta as string) || 'Authentication error';
 			this.errorWithStack(messageOrError, errorMessage, meta);
 		} else {
 			this.error(MESSAGE_FORMATTERS.auth.error(messageOrError), messageOrMeta as LogMeta);

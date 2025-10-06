@@ -5,9 +5,10 @@
  * @description Smart middleware that analyzes request patterns and prepares metadata structure
  * @author EveryTriv Team
  */
+import { getErrorMessage, serverLogger as logger } from '@shared';
+
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -155,9 +156,9 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		// Smart role detection based on path
 		let requiredRoles: string[] = [];
 		if (path.includes('/admin')) {
-			requiredRoles = ['admin', 'super-admin'];
+			requiredRoles = ['admin'];
 		} else if (path.includes('/user') || path.includes('/profile')) {
-			requiredRoles = ['user', 'admin', 'super-admin'];
+			requiredRoles = ['user', 'admin'];
 		}
 
 		// Smart rate limiting suggestions

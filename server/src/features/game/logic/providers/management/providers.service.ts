@@ -5,18 +5,20 @@
  * @description Service for managing multiple AI providers with load balancing and fallback
  * @used_by server/src/features/game/logic
  */
-import { Injectable } from '@nestjs/common';
 import {
 	PROVIDER_ERROR_MESSAGES,
 	ProviderHealth,
 	ProviderMetrics,
 	ProviderStats,
+	TriviaQuestion,
+	createServerError,
+	ensureErrorObject,
+	getErrorMessage,
+	serverLogger as logger,
 	roundToDecimals,
- serverLogger as logger,
- getErrorMessage,
- createServerError,
- ensureErrorObject,
- TriviaQuestion } from '@shared';
+} from '@shared';
+
+import { Injectable } from '@nestjs/common';
 
 import {
 	AnthropicTriviaProvider,

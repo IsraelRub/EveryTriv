@@ -35,12 +35,6 @@ export { StorageManagerService } from './services/storageManager.service';
 // ============================================================================
 
 /**
- * Logger service imports
- * @description Client logging service for storage operations
- */
-export { clientLogger } from '../logging/clientLogger.service';
-
-/**
  * Utility function imports
  * @description Time formatting and timestamp utilities
  */
@@ -66,8 +60,8 @@ export type {
 	StorageConfig,
 	StorageItemMetadata,
 	StorageOperationResult,
-	StorageStats,
 	StorageService as StorageService,
+	StorageStats,
 	UserProgressData,
 } from '../../types';
 

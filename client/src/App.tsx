@@ -1,6 +1,6 @@
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createContext, useContext,useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { PersistGate } from 'redux-persist/integration/react';
 
 import AppRoutes from './AppRoutes';
@@ -27,11 +27,11 @@ function App() {
     const initializeApp = async () => {
       try {
         await prefetchCommonQueries();
-        clientLogger.appStartup();
+        logger.appStartup();
 
         audioService.play(AudioKey.BACKGROUND_MUSIC);
       } catch (error) {
-        clientLogger.systemError('Failed to initialize app', {
+        logger.systemError('Failed to initialize app', {
           error: getErrorMessage(error),
         });
       }

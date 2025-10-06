@@ -1,7 +1,8 @@
-import { Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 
-import { CurrentUserId } from '../../common';
+import { Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+
+import { Cache, CurrentUserId } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
 import { GetLeaderboardDto } from './dtos';
 import { LeaderboardService } from './leaderboard.service';
@@ -23,6 +24,7 @@ export class LeaderboardController {
 	 * @returns User ranking data
 	 */
 	@Get('user/ranking')
+	@Cache(300) // Cache for 5 minutes
 	async getUserRanking(@CurrentUserId() userId: string) {
 		try {
 			const ranking = await this.leaderboardService.getUserRanking(userId);
@@ -30,16 +32,26 @@ export class LeaderboardController {
 			if (!ranking) {
 				// Create initial ranking if doesn't exist
 				const newRanking = await this.leaderboardService.updateUserRanking(userId);
+
+				logger.apiCreate('leaderboard_user_ranking_created', {
+					userId,
+				});
+
 				return newRanking;
 			}
 
+			logger.apiRead('leaderboard_user_ranking', {
+				userId,
+				rank: ranking.rank,
+			});
+
 			return ranking;
 		} catch (error) {
-			logger.analyticsError('getUserRanking', {
+			logger.userError('Error getting user ranking', {
 				error: getErrorMessage(error),
-				userId: userId,
+				userId,
 			});
-			throw new HttpException('Failed to get user ranking', HttpStatus.INTERNAL_SERVER_ERROR);
+			throw error;
 		}
 	}
 
@@ -53,19 +65,19 @@ export class LeaderboardController {
 		try {
 			const ranking = await this.leaderboardService.updateUserRanking(userId);
 
-			logger.analyticsTrack('User ranking updated', {
-				userId: userId,
+			logger.apiUpdate('leaderboard_user_ranking_update', {
+				userId,
 				rank: ranking.rank,
 				score: ranking.score,
 			});
 
 			return ranking;
 		} catch (error) {
-			logger.analyticsError('updateUserRanking', {
+			logger.userError('Error updating user ranking', {
 				error: getErrorMessage(error),
-				userId: userId,
+				userId,
 			});
-			throw new HttpException('Failed to update user ranking', HttpStatus.INTERNAL_SERVER_ERROR);
+			throw error;
 		}
 	}
 
@@ -77,6 +89,7 @@ export class LeaderboardController {
 	 */
 	@Get('global')
 	@Public()
+	@Cache(600) // Cache for 10 minutes
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
@@ -88,6 +101,12 @@ export class LeaderboardController {
 
 			const leaderboard = await this.leaderboardService.getGlobalLeaderboard(limitNum, offsetNum);
 
+			logger.apiRead('leaderboard_global', {
+				limit: limitNum,
+				offset: offsetNum,
+				resultsCount: leaderboard.length,
+			});
+
 			return {
 				leaderboard,
 				pagination: {
@@ -97,10 +116,12 @@ export class LeaderboardController {
 				},
 			};
 		} catch (error) {
-			logger.analyticsError('getGlobalLeaderboard', {
+			logger.userError('Error getting global leaderboard', {
 				error: getErrorMessage(error),
+				limit: query.limit,
+				offset: query.offset,
 			});
-			throw new HttpException('Failed to get global leaderboard', HttpStatus.INTERNAL_SERVER_ERROR);
+			throw error;
 		}
 	}
 
@@ -112,11 +133,13 @@ export class LeaderboardController {
 	 */
 	@Get('period/:period')
 	@Public()
+	@Cache(900) // Cache for 15 minutes
 	async getLeaderboardByPeriod(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
+			const period = query.type || 'weekly';
 
-			if (!['weekly', 'monthly', 'yearly'].includes(query.type || 'weekly')) {
+			if (!['weekly', 'monthly', 'yearly'].includes(period)) {
 				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
 			}
 
@@ -124,13 +147,18 @@ export class LeaderboardController {
 				throw new HttpException('Limit cannot exceed 1000', HttpStatus.BAD_REQUEST);
 			}
 
-			const period = query.type === 'topic' ? 'weekly' : query.type || 'weekly';
 			// Ensure period is one of the allowed values for getLeaderboardByPeriod
-			const validPeriod = period === 'global' ? 'weekly' : (period as 'weekly' | 'monthly' | 'yearly');
+			const validPeriod = period as 'weekly' | 'monthly' | 'yearly';
 			const leaderboard = await this.leaderboardService.getLeaderboardByPeriod(validPeriod, limitNum);
 
+			logger.apiRead('leaderboard_period', {
+				period,
+				limit: limitNum,
+				resultsCount: leaderboard.length,
+			});
+
 			return {
-				period: query.type || 'weekly',
+				period,
 				leaderboard,
 				pagination: {
 					limit: limitNum,
@@ -138,11 +166,12 @@ export class LeaderboardController {
 				},
 			};
 		} catch (error) {
-			logger.analyticsError('getLeaderboardByPeriod', {
+			logger.userError('Error getting period leaderboard', {
 				error: getErrorMessage(error),
 				period: query.type || 'weekly',
+				limit: query.limit,
 			});
-			throw new HttpException('Failed to get period leaderboard', HttpStatus.INTERNAL_SERVER_ERROR);
+			throw error;
 		}
 	}
 
@@ -152,20 +181,26 @@ export class LeaderboardController {
 	 * @returns User percentile
 	 */
 	@Get('user/percentile')
+	@Cache(600) // Cache for 10 minutes
 	async getUserPercentile(@CurrentUserId() userId: string) {
 		try {
 			const percentile = await this.leaderboardService.getUserPercentile(userId);
 
+			logger.apiRead('leaderboard_user_percentile', {
+				userId,
+				percentile,
+			});
+
 			return {
-				userId: userId,
+				userId,
 				percentile,
 			};
 		} catch (error) {
-			logger.analyticsError('getUserPercentile', {
+			logger.userError('Error getting user percentile', {
 				error: getErrorMessage(error),
-				userId: userId,
+				userId,
 			});
-			throw new HttpException('Failed to get user percentile', HttpStatus.INTERNAL_SERVER_ERROR);
+			throw error;
 		}
 	}
 }

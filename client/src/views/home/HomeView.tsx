@@ -1,4 +1,4 @@
-import { clientLogger,DifficultyLevel, GameMode, getErrorMessage  } from '@shared';
+import { clientLogger as logger, DifficultyLevel, GameMode, getErrorMessage } from '@shared';
 import { motion } from 'framer-motion';
 import {
   createContext,
@@ -25,8 +25,13 @@ import { SocialShare } from '../../components/layout';
 import { Leaderboard } from '../../components/leaderboard';
 import { CustomDifficultyHistory, ScoringSystem } from '../../components/stats';
 import { FavoriteTopics } from '../../components/user';
-import { APP_DESCRIPTION, CLIENT_STORAGE_KEYS,POPULAR_TOPICS  } from '../../constants';
-import { DEFAULT_GAME_STATE, GAME_STATE_UPDATES } from '../../constants';
+import {
+  APP_DESCRIPTION,
+  CLIENT_STORAGE_KEYS,
+  DEFAULT_GAME_STATE,
+  GAME_STATE_UPDATES,
+  POPULAR_TOPICS,
+} from '../../constants';
 import { AudioKey } from '../../constants/audio/audio.constants';
 import { useUserProfile } from '../../hooks/api';
 import {
@@ -42,14 +47,14 @@ import {
   selectCurrentTopic,
 } from '../../redux/selectors';
 import { resetGame } from '../../redux/slices/gameSlice';
-import { audioService,storageService  } from '../../services';
+import { audioService, storageService } from '../../services';
 import { GameState, getOrCreateClientUserId, QuestionCountOption } from '../../types';
 import type { GameConfig, GameSessionData } from '../../types/game/config.types';
 import { isCustomDifficulty } from '../../utils';
 
 /**
  * Game Context for sharing game state between components
- * 
+ *
  * Provides game state management and handlers to child components
  * in the trivia game interface.
  */
@@ -63,10 +68,10 @@ const GameContext = createContext<{
 
 /**
  * Custom hook to use game context
- * 
+ *
  * Provides access to the game context with proper error handling.
  * Must be used within a GameProvider component.
- * 
+ *
  * @returns Game context with state and handlers
  * @throws Error if used outside of GameProvider
  */
@@ -80,11 +85,11 @@ export const useGame = () => {
 
 /**
  * Home View Component
- * 
+ *
  * Main trivia game interface that provides game state management,
  * user preferences, and game mode selection. Handles game flow,
  * scoring, and analytics tracking.
- * 
+ *
  * @returns JSX element containing the home view interface
  */
 export default function HomeView() {
@@ -154,7 +159,7 @@ export default function HomeView() {
   const scoreChange = useValueChange(gameState.score);
 
   const addParticleBurst = (x: number, y: number, type: string) => {
-    clientLogger.logUserActivity('particleBurst', `x: ${x}, y: ${y}, type: ${type}`);
+    logger.logUserActivity('particleBurst', `x: ${x}, y: ${y}, type: ${type}`);
   };
 
   const triviaMutation = useTriviaQuestionMutation();
@@ -166,11 +171,11 @@ export default function HomeView() {
   const isValidating = false;
 
   const setHookGameMode = (config: GameConfig) => {
-    clientLogger.logUserActivity('gameModeChanged', JSON.stringify(config));
+    logger.logUserActivity('gameModeChanged', JSON.stringify(config));
   };
 
   const updateSessionData = (data: GameSessionData) => {
-    clientLogger.logUserActivity('sessionUpdated', JSON.stringify(data));
+    logger.logUserActivity('sessionUpdated', JSON.stringify(data));
   };
 
   useEffect(() => {
@@ -206,24 +211,24 @@ export default function HomeView() {
   }, []);
 
   useEffect(() => {
-    clientLogger.navigationPage('home');
+    logger.navigationPage('home');
     return () => {
-      clientLogger.navigationPage('home-exit');
+      logger.navigationPage('home-exit');
     };
   }, []);
 
   useEffect(() => {
     const handleScoreChange = async () => {
       if (scoreChange.hasChanged && previousScore !== undefined) {
-        clientLogger.game('Score changed', {
+        logger.game('Score changed', {
           previousScore,
           newScore: gameState.score,
-          change: (gameState.score || 0) - previousScore,
+          change: (gameState.score ?? 0) - previousScore,
         });
 
         audioService.playAchievementSound(
-          gameState.score || 0,
-          gameState.total || 0,
+          gameState.score ?? 0,
+          gameState.total ?? 0,
           previousScore
         );
 
@@ -234,9 +239,9 @@ export default function HomeView() {
           timestamp: Date.now(),
         });
 
-        if ((gameState.score || 0) > previousScore) {
+        if ((gameState.score ?? 0) > previousScore) {
           audioService.play(AudioKey.POINT_EARNED);
-        } else if ((gameState.score || 0) < previousScore) {
+        } else if ((gameState.score ?? 0) < previousScore) {
           audioService.play(AudioKey.ERROR);
         }
       }
@@ -259,7 +264,7 @@ export default function HomeView() {
     (i: number) => {
       updateGameState(prev => ({
         ...prev,
-        favorites: (prev.favorites || []).filter((_, index) => index !== i),
+        favorites: (prev.favorites ?? []).filter((_, index) => index !== i),
       }));
     },
     [updateGameState]
@@ -277,21 +282,21 @@ export default function HomeView() {
 
   const updateStats = useCallback(
     (topic: string, difficulty: string, isCorrect: boolean, currentStats?: GameState['stats']) => {
-      const stats = currentStats || gameState.stats;
+      const stats = currentStats ?? gameState.stats;
       const statsDifficulty = isCustomDifficulty(difficulty) ? 'custom' : difficulty;
 
       return {
         topicsPlayed: {
-          ...(stats?.topicsPlayed || {}),
-          [topic]: ((stats?.topicsPlayed || {})[topic] || 0) + 1,
+          ...(stats?.topicsPlayed ?? {}),
+          [topic]: ((stats?.topicsPlayed ?? {})[topic] ?? 0) + 1,
         },
         successRateByDifficulty: {
-          ...(stats?.successRateByDifficulty || {}),
+          ...(stats?.successRateByDifficulty ?? {}),
           [statsDifficulty]: {
             correct:
-              ((stats?.successRateByDifficulty || {})[statsDifficulty]?.correct || 0) +
+              ((stats?.successRateByDifficulty ?? {})[statsDifficulty]?.correct ?? 0) +
               (isCorrect ? 1 : 0),
-            total: ((stats?.successRateByDifficulty || {})[statsDifficulty]?.total || 0) + 1,
+            total: ((stats?.successRateByDifficulty ?? {})[statsDifficulty]?.total ?? 0) + 1,
           },
         },
       };
@@ -319,45 +324,45 @@ export default function HomeView() {
 
       updateGameState({
         selected: i,
-        total: (gameState.total || 0) + 1,
-        score: (gameState.score || 0) + (isCorrect ? 1 : 0),
+        total: (gameState.total ?? 0) + 1,
+        score: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
         stats: {
-          currentScore: (gameState.score || 0) + (isCorrect ? 1 : 0),
-          maxScore: gameState.total || 0,
+          currentScore: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
+          maxScore: gameState.total ?? 0,
           successRate:
-            (((gameState.score || 0) + (isCorrect ? 1 : 0)) / ((gameState.total || 0) + 1)) * 100,
+            (((gameState.score ?? 0) + (isCorrect ? 1 : 0)) / ((gameState.total ?? 0) + 1)) * 100,
           averageTimePerQuestion: 0,
-          correctStreak: isCorrect ? (gameState.stats?.correctStreak || 0) + 1 : 0,
+          correctStreak: isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0,
           maxStreak: Math.max(
-            gameState.stats?.maxStreak || 0,
-            isCorrect ? (gameState.stats?.correctStreak || 0) + 1 : 0
+            gameState.stats?.maxStreak ?? 0,
+            isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0
           ),
-          questionsAnswered: (gameState.stats?.questionsAnswered || 0) + 1,
-          correctAnswers: (gameState.stats?.correctAnswers || 0) + (isCorrect ? 1 : 0),
-          score: (gameState.score || 0) + (isCorrect ? 1 : 0),
-          totalGames: gameState.stats?.totalGames || 0,
+          questionsAnswered: (gameState.stats?.questionsAnswered ?? 0) + 1,
+          correctAnswers: (gameState.stats?.correctAnswers ?? 0) + (isCorrect ? 1 : 0),
+          score: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
+          totalGames: gameState.stats?.totalGames ?? 0,
           ...newStats,
         },
       });
 
       await saveHistoryMutation.mutateAsync({
         userId,
-        score: (gameState.score || 0) + (isCorrect ? 1 : 0),
+        score: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
         totalQuestions: 1,
         correctAnswers: isCorrect ? 1 : 0,
         difficulty: gameState.trivia.difficulty,
         topic: gameState.trivia.topic,
         gameMode: 'single',
-        timeSpent: gameState.gameMode?.timer?.timeElapsed || 0,
+        timeSpent: gameState.gameMode?.timer?.timeElapsed ?? 0,
         creditsUsed: 1,
         questionsData: [
           {
             question: gameState.trivia.question,
-            userAnswer: gameState.trivia.answers[i]?.text || '',
+            userAnswer: gameState.trivia.answers[i]?.text ?? '',
             correctAnswer:
-              gameState.trivia.answers[gameState.trivia.correctAnswerIndex]?.text || '',
+              gameState.trivia.answers[gameState.trivia.correctAnswerIndex]?.text ?? '',
             isCorrect,
-            timeSpent: gameState.gameMode?.timer?.timeElapsed || 0,
+            timeSpent: gameState.gameMode?.timer?.timeElapsed ?? 0,
           },
         ],
       });
@@ -366,25 +371,25 @@ export default function HomeView() {
         sessionId: '',
         startTime: new Date(),
         stats: {
-          currentScore: (gameState.score || 0) + (isCorrect ? 1 : 0),
-          maxScore: gameState.total || 0,
+          currentScore: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
+          maxScore: gameState.total ?? 0,
           successRate:
-            (((gameState.score || 0) + (isCorrect ? 1 : 0)) / ((gameState.total || 0) + 1)) * 100,
+            (((gameState.score ?? 0) + (isCorrect ? 1 : 0)) / ((gameState.total ?? 0) + 1)) * 100,
           averageTimePerQuestion: 1000,
-          correctStreak: isCorrect ? (gameState.stats?.correctStreak || 0) + 1 : 0,
+          correctStreak: isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0,
           maxStreak: Math.max(
-            gameState.stats?.maxStreak || 0,
-            isCorrect ? (gameState.stats?.correctStreak || 0) + 1 : 0
+            gameState.stats?.maxStreak ?? 0,
+            isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0
           ),
-          questionsAnswered: (gameState.stats?.questionsAnswered || 0) + 1,
-          correctAnswers: (gameState.stats?.correctAnswers || 0) + (isCorrect ? 1 : 0),
-          score: (gameState.score || 0) + (isCorrect ? 1 : 0),
-          totalGames: gameState.stats?.totalGames || 0,
+          questionsAnswered: (gameState.stats?.questionsAnswered ?? 0) + 1,
+          correctAnswers: (gameState.stats?.correctAnswers ?? 0) + (isCorrect ? 1 : 0),
+          score: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
+          totalGames: gameState.stats?.totalGames ?? 0,
         },
-        lastGameMode: gameState.gameMode?.mode || null,
+        lastGameMode: gameState.gameMode?.mode ?? null,
         sessionCount: 1,
-        lastScore: (gameState.score || 0) + (isCorrect ? 1 : 0),
-        lastTimeElapsed: gameState.gameMode?.timer?.timeElapsed || 0,
+        lastScore: (gameState.score ?? 0) + (isCorrect ? 1 : 0),
+        lastTimeElapsed: gameState.gameMode?.timer?.timeElapsed ?? 0,
       });
 
       if (
@@ -444,7 +449,7 @@ export default function HomeView() {
     updateGameState({
       gameMode: {
         ...gameState.gameMode,
-        mode: gameState.gameMode?.mode || GameMode.UNLIMITED,
+        mode: gameState.gameMode?.mode ?? GameMode.UNLIMITED,
         isGameOver: gameState.gameMode?.isGameOver || false,
         timeLimit: config.timeLimit,
         questionLimit: config.questionLimit,
@@ -491,7 +496,7 @@ export default function HomeView() {
             ...gameState.gameMode?.timer,
             isRunning: true,
             startTime: gameState.gameMode?.timer?.startTime || Date.now(),
-            timeElapsed: gameState.gameMode?.timer?.timeElapsed || 0,
+            timeElapsed: gameState.gameMode?.timer?.timeElapsed ?? 0,
           },
         },
       });
@@ -514,7 +519,7 @@ export default function HomeView() {
 
     audioService.play(AudioKey.BUTTON_CLICK);
 
-    clientLogger.gameForm('Trivia form submitted', {
+    logger.gameForm('Trivia form submitted', {
       topic: topic.substring(0, 50) + (topic.length > 50 ? '...' : ''),
       difficulty,
       questionCount,
@@ -524,7 +529,7 @@ export default function HomeView() {
     });
 
     if (!isGameActive) {
-      clientLogger.gameGamepad('Game mode selector opened', {
+      logger.gameGamepad('Game mode selector opened', {
         reason: 'new_game_start',
       });
       audioService.play(AudioKey.MENU_OPEN);
@@ -540,13 +545,13 @@ export default function HomeView() {
     updateGameState({
       gameMode: {
         ...gameState.gameMode,
-        mode: gameState.gameMode?.mode || GameMode.UNLIMITED,
+        mode: gameState.gameMode?.mode ?? GameMode.UNLIMITED,
         isGameOver: gameState.gameMode?.isGameOver || false,
         timer: {
           ...gameState.gameMode?.timer,
           isRunning: false,
           startTime: gameState.gameMode?.timer?.startTime || null,
-          timeElapsed: gameState.gameMode?.timer?.timeElapsed || 0,
+          timeElapsed: gameState.gameMode?.timer?.timeElapsed ?? 0,
         },
       },
     });
@@ -832,11 +837,11 @@ export default function HomeView() {
               className='flex-1'
             >
               <ScoringSystem
-                currentScore={gameState.score || 0}
-                maxScore={gameState.total || 0}
+                currentScore={gameState.score ?? 0}
+                maxScore={gameState.total ?? 0}
                 successRate={gameState.stats?.successRate || 0}
-                currentStreak={gameState.stats?.correctStreak || 0}
-                maxStreak={gameState.stats?.maxStreak || 0}
+                currentStreak={gameState.stats?.correctStreak ?? 0}
+                maxStreak={gameState.stats?.maxStreak ?? 0}
                 stats={gameState.stats}
                 score={gameState.score}
                 total={gameState.total}
@@ -847,7 +852,7 @@ export default function HomeView() {
             </motion.div>
 
             {/* Social Share Component */}
-            {(gameState.total || 0) > 0 && (
+            {(gameState.total ?? 0) > 0 && (
               <motion.div
                 variants={fadeInRight}
                 initial='hidden'
@@ -878,7 +883,7 @@ export default function HomeView() {
         <GameModeComponent
           isVisible={showGameModeSelector}
           onSelectMode={handleGameModeSelect}
-          onModeSelect={(mode: string) => clientLogger.game('Game mode selected', { mode })}
+          onModeSelect={(mode: string) => logger.game('Game mode selected', { mode })}
           onCancel={() => setShowGameModeSelector(false)}
         />
       </div>

@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import type { PointBalance, PointPurchaseOption, PointTransaction } from '../types';
-import type { PointsValidationResult } from '../types/domain/validation/validation.types';
+import type { ValidationResultWithWarnings } from '../types/domain/validation/validation.types';
 import { validatePaymentAmount } from './payment.validation';
 
 /**
@@ -14,7 +14,7 @@ import { validatePaymentAmount } from './payment.validation';
  * @param balance - Point balance to validate
  * @returns Validation result with errors and warnings
  */
-export function validatePointBalance(balance: PointBalance): PointsValidationResult {
+export function validatePointBalance(balance: PointBalance): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -66,7 +66,7 @@ export function validatePointPurchase(
 	packageToPurchase: PointPurchaseOption,
 	_currentBalance: PointBalance,
 	availablePackages: PointPurchaseOption[]
-): PointsValidationResult {
+): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -123,7 +123,7 @@ export function validatePointPurchase(
 export function validatePointTransaction(
 	transaction: PointTransaction,
 	previousBalance: PointBalance
-): PointsValidationResult {
+): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -198,7 +198,7 @@ export function validatePointTransfer(
 	toUserId: string,
 	amount: number,
 	fromBalance: PointBalance
-): PointsValidationResult {
+): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -249,7 +249,7 @@ export function validatePointRefund(
 	refundAmount: number,
 	originalTransaction: PointTransaction,
 	currentBalance: PointBalance
-): PointsValidationResult {
+): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -337,7 +337,7 @@ export function validatePointExpiration(
  * @param packages - Array of point packages to validate
  * @returns Validation result with errors and warnings
  */
-export function validatePointPackages(packages: PointPurchaseOption[]): PointsValidationResult {
+export function validatePointPackages(packages: PointPurchaseOption[]): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 

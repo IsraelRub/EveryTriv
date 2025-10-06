@@ -7,7 +7,6 @@
  * @used_by client/src/components, client/src/services, client/src/hooks
  */
 
-
 /**
  * UI constants
  * @description Theme configuration, styling constants, and UI-related settings

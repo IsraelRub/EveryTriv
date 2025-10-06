@@ -1,9 +1,11 @@
 import {
 	CUSTOM_DIFFICULTY_PREFIX,
 	DifficultyLevel,
- isCustomDifficulty,	VALID_DIFFICULTIES,
+	VALIDATION_LIMITS,
+	VALID_DIFFICULTIES,
 	VALID_QUESTION_COUNTS,
-	VALIDATION_LIMITS } from '@shared';
+	isCustomDifficulty,
+} from '@shared';
 import { IsIn, IsNumber, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 export class TriviaRequestDto {

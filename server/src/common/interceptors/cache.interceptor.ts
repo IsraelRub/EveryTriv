@@ -5,11 +5,12 @@
  * @description Interceptor that implements caching based on @Cache decorator metadata
  * @author EveryTriv Team
  */
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
+
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
 import type { CacheConfig, NestRequest, NestResponse } from '../../internal/types';
@@ -17,14 +18,6 @@ import type { CacheConfig, NestRequest, NestResponse } from '../../internal/type
 /**
  * Cache Interceptor
  * @description Intercepts HTTP requests and implements caching based on @Cache decorator
- * @example
- * ```typescript
- * @Get('users')
- * @Cache(300, 'users_list') // Cache for 5 minutes with custom key
- * async getUsers() {
- *   return this.userService.getAllUsers();
- * }
- * ```
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
@@ -55,7 +48,7 @@ export class CacheInterceptor implements NestInterceptor {
 			// Check cache first
 			const cachedResult = await this.cacheService.get(cacheKey);
 
-			if (cachedResult.success && cachedResult.data !== null) {
+			if (cachedResult.success && cachedResult.data) {
 				logger.cacheHit(cacheKey, {
 					ttl: cacheMetadata.ttl,
 					key: cacheMetadata.key,
@@ -142,8 +135,8 @@ export class CacheInterceptor implements NestInterceptor {
 		}
 
 		// Generate key from request details
-		const method = request.method?.toLowerCase() || 'get';
-		const url = request.originalUrl || request.url || '/';
+		const method = request.method?.toLowerCase() ?? 'get';
+		const url = request.originalUrl ?? request.url ?? '/';
 		const query = request.query ? JSON.stringify(request.query) : '';
 		const params = request.params ? JSON.stringify(request.params) : '';
 

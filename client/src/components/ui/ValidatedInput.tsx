@@ -6,7 +6,7 @@
  * @used_by client/src/components/forms, client/src/views
  */
 
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import {
   validateCustomDifficulty,
   validateEmail,
@@ -27,7 +27,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
     {
       validationType,
       initialValue = '',
-      validationOptions = {},
+      validationOptions: _validationOptions = {},
       onChange,
       showValidationIcon = true,
       showErrors = true,
@@ -80,7 +80,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
       const value = e.target.value;
 
       // Log user activity
-      clientLogger.logUserActivity('input_change', validationType, {
+      logger.logUserActivity('input_change', validationType, {
         valueLength: value.length,
       });
 
@@ -88,7 +88,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
       const startTime = performance.now();
       validateValue(value);
       const duration = performance.now() - startTime;
-      clientLogger.performance(`validation_${validationType}`, duration);
+      logger.performance(`validation_${validationType}`, duration);
 
       // Play input sound
       audioService.play(AudioKey.INPUT);

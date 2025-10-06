@@ -5,9 +5,10 @@
  * @description Pipe for validating custom difficulty text input with comprehensive validation
  * @used_by server/src/features/game, server/src/controllers
  */
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { ValidationOptions } from '@shared';
-import { CustomDifficultyValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
+import { PipeValidationWithSuggestion, getErrorMessage, serverLogger as logger } from '@shared';
+
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -15,7 +16,7 @@ import { ValidationService } from '../validation/validation.service';
 export class CustomDifficultyPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: { customText: string }): Promise<CustomDifficultyValidationResult> {
+	async transform(value: { customText: string }): Promise<PipeValidationWithSuggestion> {
 		const startTime = Date.now();
 
 		try {
@@ -35,9 +36,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 			return {
 				isValid: validationResult.isValid,
 				errors: validationResult.errors,
-				suggestion: validationResult.suggestion,
-				success: true,
-				timestamp: new Date().toISOString(),
+				suggestion: validationResult.suggestion || undefined,
 			};
 		} catch (error) {
 			logger.apiUpdateError('customDifficulty_validation', getErrorMessage(error));

@@ -19,9 +19,7 @@ export type { IconAnimation, IconColor, IconProps, IconSize } from '../../types'
  * @description Icon components, utility functions, and icon management
  * @used_by client/src/components, client/src/views
  */
-export {
-  Icon,
-} from './IconLibrary';
+export { Icon } from './IconLibrary';
 
 /**
  * Individual icon exports

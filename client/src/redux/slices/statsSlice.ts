@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { LeaderboardEntry, StatsState } from '../../types';
-import { ErrorPayload,LoadingPayload } from '../../types/redux';
+import { ErrorPayload, LoadingPayload } from '../../types/redux';
 import { UserStatsResponse } from '../../types/redux/state.types';
 
 const initialState: StatsState = {

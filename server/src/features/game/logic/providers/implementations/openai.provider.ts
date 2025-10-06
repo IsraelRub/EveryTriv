@@ -5,7 +5,7 @@
  * @description OpenAI API integration for trivia question generation
  * @used_by server/src/features/game/logic (AiProvidersService.initializeProviders)
  */
-import { createValidationError, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared';
+import { LLMResponse, LLMTriviaResponse, ProviderConfig, createValidationError } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';

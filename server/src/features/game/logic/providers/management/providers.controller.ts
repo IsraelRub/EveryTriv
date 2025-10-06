@@ -1,7 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 
-import { Public, Roles } from '../../../../../common';
+import { Controller, Get } from '@nestjs/common';
+
+import { Cache, Public, Roles } from '../../../../../common';
 import { AiProvidersService } from './providers.service';
 
 /**
@@ -17,12 +18,16 @@ export class AiProvidersController {
 	 * @returns Promise<ProviderStats> Provider statistics
 	 */
 	@Get('stats')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
+	@Cache(300) // Cache for 5 minutes
 	async getProviderStats() {
 		try {
-			logger.providerStats('ai_providers', {});
-
 			const stats = this.aiProvidersService.getProviderStats();
+
+			logger.providerStats('ai_providers', {
+				totalProviders: stats.totalProviders,
+				activeProviders: Object.keys(stats.providerDetails).length,
+			});
 
 			return {
 				...stats,
@@ -41,12 +46,15 @@ export class AiProvidersController {
 	 * @returns Promise<number> Number of available providers
 	 */
 	@Get('count')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
+	@Cache(300) // Cache for 5 minutes
 	async getAvailableProvidersCount() {
 		try {
-			logger.providerStats('ai_providers', {});
-
 			const count = this.aiProvidersService.getAvailableProvidersCount();
+
+			logger.providerStats('ai_providers', {
+				availableProviders: count,
+			});
 
 			return {
 				availableProviders: count,
@@ -71,13 +79,21 @@ export class AiProvidersController {
 	 */
 	@Get('health')
 	@Public()
+	@Cache(60) // Cache for 1 minute
 	async getHealthStatus() {
 		try {
 			const count = this.aiProvidersService.getAvailableProvidersCount();
 			const stats = this.aiProvidersService.getProviderStats();
+			const status = count > 0 ? 'healthy' : 'unhealthy';
+
+			logger.providerStats('ai_providers_health', {
+				status,
+				availableProviders: count,
+				totalProviders: stats.totalProviders,
+			});
 
 			return {
-				status: count > 0 ? 'healthy' : 'unhealthy',
+				status,
 				availableProviders: count,
 				totalProviders: stats.totalProviders,
 				timestamp: new Date().toISOString(),

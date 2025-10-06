@@ -1,11 +1,11 @@
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { selectCanPlayFree,selectUserPointBalance } from '../../redux/selectors';
+import { selectCanPlayFree, selectUserPointBalance } from '../../redux/selectors';
 import { deductPoints } from '../../redux/slices';
 import { pointsService } from '../../services';
 import type { PointBalance } from '../../types';
-import { useAppDispatch,useAppSelector } from '../layers/utils';
+import { useAppDispatch, useAppSelector } from '../layers/utils';
 
 // Query keys
 export const pointsKeys = {
@@ -63,7 +63,7 @@ export const useDeductPoints = () => {
       } catch (error) {
         // Ignore errors when canceling queries
         // Use logger at a low level to avoid noise
-        clientLogger.apiDebug('Error canceling queries', {
+        logger.apiDebug('Error canceling queries', {
           error: getErrorMessage(error),
         });
       }

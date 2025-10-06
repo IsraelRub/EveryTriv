@@ -5,7 +5,6 @@
  * @description Validation rule definitions and schema types
  */
 
-
 /**
  * Validation rule definition (extended)
  */
@@ -28,4 +27,3 @@ export interface ValidationSchema {
 	fields: Record<string, ValidationRuleExtended[]>;
 	crossFieldValidations?: ValidationRuleExtended[];
 }
-

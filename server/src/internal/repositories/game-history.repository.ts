@@ -1,7 +1,8 @@
+import { GameHistoryCreationData, getErrorMessage, serverLogger as logger } from '@shared';
+import { Repository } from 'typeorm';
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { GameHistoryCreationData, serverLogger as logger, getErrorMessage } from '@shared';
-import { Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
 import { GameHistoryEntity } from '../entities';
@@ -69,7 +70,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 	}
 
 	@RepositoryCache(3600, 'game_history_stats')
-	@RepositoryRoles('admin', 'super-admin')
+	@RepositoryRoles('admin')
 	@RepositoryAudit('game_history_stats_lookup')
 	async getGameStats(): Promise<{ totalGames: number; averageScore: number; topScore: number }> {
 		try {

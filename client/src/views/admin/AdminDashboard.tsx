@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const getUserById = useGetUserById();
 
   const handleUpdateCredits = () => {
-    if (!selectedUserId || creditsAmount <= 0) return;
+    if (selectedUserId === '' || creditsAmount <= 0) return;
 
     updateUserCredits.mutate({
       userId: selectedUserId,
@@ -165,7 +165,9 @@ export default function AdminDashboard() {
                           variant='secondary'
                           onClick={handleUpdateCredits}
                           disabled={
-                            !selectedUserId || creditsAmount <= 0 || updateUserCredits.isPending
+                            selectedUserId === '' ||
+                            creditsAmount <= 0 ||
+                            updateUserCredits.isPending
                           }
                           className='w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-400/30'
                         >

@@ -1,7 +1,7 @@
-import { clientLogger,COUNTRIES, getErrorMessage  } from '@shared';
+import { clientLogger as logger, COUNTRIES, getErrorMessage } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
-import { FormEvent, memo, useCallback,useMemo, useState } from 'react';
+import { FormEvent, memo, useCallback, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +11,7 @@ import { authService } from '@/services/auth';
 import { USER_DEFAULT_VALUES } from '../../constants';
 import type { RootState } from '../../types/redux/state.types';
 import { fadeInUp, hoverScale } from '../animations';
-import { Avatar,Button, ValidatedInput, ValidationMessage } from '../ui';
+import { Avatar, Button, ValidatedInput, ValidationMessage } from '../ui';
 
 const CompleteProfile = memo(function CompleteProfile() {
   const navigate = useNavigate();
@@ -166,7 +166,7 @@ const CompleteProfile = memo(function CompleteProfile() {
       } catch (error) {
         setError('Failed to update profile. Please try again.');
         setValidationStatus('invalid');
-        clientLogger.userError('Profile completion error', {
+        logger.userError('Profile completion error', {
           error: getErrorMessage(error),
         });
       } finally {

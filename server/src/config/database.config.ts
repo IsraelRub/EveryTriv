@@ -26,7 +26,7 @@ export const DatabaseConfig: TypeOrmModuleOptions = {
 
 // Debug: Log database configuration
 // Note: This will be logged when LoggerService is injected
-// serverLogger.databaseInfo('Database configuration loaded', {
+// logger.databaseInfo('Database configuration loaded', {
 // 	host: AppConfig.database.host,
 // 	port: AppConfig.database.port,
 // 	username: AppConfig.database.username,
@@ -40,7 +40,7 @@ export const DatabaseConfig: TypeOrmModuleOptions = {
 
 // Debug: Log TypeORM configuration
 // Note: This will be logged when LoggerService is injected
-// serverLogger.databaseInfo('TypeORM configuration loaded', {
+// logger.databaseInfo('TypeORM configuration loaded', {
 // 	type: DatabaseConfig.type || 'postgres',
 // 	host: DatabaseConfig.host || 'localhost',
 // 	port: DatabaseConfig.port || 5432,
@@ -55,6 +55,6 @@ export const DatabaseConfig: TypeOrmModuleOptions = {
 
 // Debug: Log actual connection attempt
 // Note: This will be logged when LoggerService is injected
-// serverLogger.databaseInfo('Attempting to connect to database', {
+// logger.databaseInfo('Attempting to connect to database', {
 // 	connectionString: `postgresql://${DatabaseConfig.username}:***@${DatabaseConfig.host}:${DatabaseConfig.port}/${DatabaseConfig.database}`,
 // });

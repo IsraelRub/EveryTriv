@@ -1,6 +1,6 @@
 import { Variants } from 'framer-motion';
 
-import { ACCESSIBILITY_CONFIG,ANIMATION_CONFIG } from '../../constants/ui/animation.constants';
+import { ACCESSIBILITY_CONFIG, ANIMATION_CONFIG } from '../../constants/ui/animation.constants';
 
 /**
  * Animation Library

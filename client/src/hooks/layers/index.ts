@@ -6,7 +6,6 @@
  * @used_by client/src/components, client/src/views, client/src/hooks
  */
 
-
 /**
  * Utils layer hooks
  * @description General utility hooks for common functionality

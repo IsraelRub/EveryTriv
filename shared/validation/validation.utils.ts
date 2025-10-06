@@ -23,19 +23,10 @@ import { LanguageValidationOptions, LanguageValidationResult } from '../types/la
 
 /**
  * Validates input content for security and content filtering
- * @param input - The input string to validate
+ * @param input The input string to validate
  * @returns Promise resolving to validation result with position information and suggestions
- * @description Performs comprehensive content validation including length checks, 
+ * Performs comprehensive content validation including length checks,
  * harmful content detection, and security filtering to prevent XSS attacks
- * @example
- * ```typescript
- * const result = await validateInputContent("Hello world");
- * if (result.isValid) {
- *   // Process input
- * } else {
- *   // Show errors: result.errors
- * }
- * ```
  */
 export async function validateInputContent(input: string): Promise<ValidationResult> {
 	const minLength = 1;
@@ -89,9 +80,9 @@ export async function validateInputContent(input: string): Promise<ValidationRes
 
 /**
  * Validates email format and length constraints
- * @param email - The email address to validate
+ * @param email The email address to validate
  * @returns Validation result with position information and suggestions
- * @description Checks email format using RFC-compliant regex pattern and validates 
+ * Checks email format using RFC-compliant regex pattern and validates
  * against maximum length constraints to prevent abuse
  */
 export function validateEmail(email: string): ValidationResult {
@@ -125,9 +116,9 @@ export function validateEmail(email: string): ValidationResult {
 
 /**
  * Validates username format and constraints
- * @param username - The username string to validate
+ * @param username The username string to validate
  * @returns Validation result with position information and suggestions
- * @description Checks username length, character restrictions, and format requirements.
+ * Checks username length, character restrictions, and format requirements.
  * Only allows letters, numbers, underscores, and hyphens
  */
 export function validateUsername(username: string): ValidationResult {
@@ -178,9 +169,9 @@ export function validateUsername(username: string): ValidationResult {
 
 /**
  * Validates password strength and security requirements
- * @param password - The password string to validate
+ * @param password The password string to validate
  * @returns Password validation result with strength analysis and security checks
- * @description Performs comprehensive password validation including length, character types, 
+ * Performs comprehensive password validation including length, character types,
  * and strength scoring. Requires uppercase, lowercase, numbers, and special characters
  */
 export function validatePassword(password: string): PasswordValidationResult {
@@ -245,9 +236,9 @@ export function validatePassword(password: string): PasswordValidationResult {
 
 /**
  * Validate topic length and format
- * @param topic - The topic string to validate
+ * @param topic The topic string to validate
  * @returns Validation result with position information and suggestions
- * @description Validates topic length constraints and format requirements for trivia topics
+ * Validates topic length constraints and format requirements for trivia topics
  */
 export function validateTopicLength(topic: string): ValidationResult {
 	if (!topic || topic.trim().length < VALIDATION_LIMITS.TOPIC.MIN_LENGTH) {
@@ -278,10 +269,10 @@ export function validateTopicLength(topic: string): ValidationResult {
 
 /**
  * Validates input using language tools for spell checking and grammar validation
- * @param input - The input string to validate
- * @param options - Language validation configuration options
+ * @param input The input string to validate
+ * @param options Language validation configuration options
  * @returns Promise resolving to language validation result with errors and suggestions
- * @description Performs local language validation as fallback when external API is unavailable.
+ * Performs local language validation as fallback when external API is unavailable.
  * Includes spell checking, grammar validation, and language detection
  */
 export async function validateInputWithLanguageTool(
@@ -321,10 +312,10 @@ export async function validateInputWithLanguageTool(
 
 /**
  * Performs local language validation as fallback when external API is unavailable
- * @param input - The input string to validate
- * @param options - Language validation configuration options
+ * @param input The input string to validate
+ * @param options Language validation configuration options
  * @returns Language validation result with errors and suggestions
- * @description Provides basic spell checking, grammar validation, and language detection
+ * Provides basic spell checking, grammar validation, and language detection
  * using built-in patterns and dictionaries
  */
 function performLocalLanguageValidation(
@@ -398,7 +389,7 @@ function performLocalLanguageValidation(
  * Performs local text quality checks to complement external API validation
  * @param input - The input string to check
  * @returns Object containing errors and suggestions for text quality improvements
- * @description Checks for repeated words, excessive punctuation, capitalization issues, 
+ * Checks for repeated words, excessive punctuation, capitalization issues,
  * and word length problems to improve text quality
  */
 function performLocalChecks(input: string): { errors: string[]; suggestions: string[] } {

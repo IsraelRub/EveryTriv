@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { selectCurrentUser, selectUserPointBalance } from '../../redux/selectors';
 import { updateUserProfile } from '../../redux/slices';
 import { userService } from '../../services';
-import { useAppDispatch,useAppSelector } from '../layers/utils';
+import { useAppDispatch, useAppSelector } from '../layers/utils';
 
 export const useDeductCredits = () => {
   const queryClient = useQueryClient();

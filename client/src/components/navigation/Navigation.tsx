@@ -1,11 +1,11 @@
 import { formatScore, formatUsername } from '@shared';
-import { AnimatePresence , motion } from 'framer-motion';
-import { createContext, memo, useCallback, useContext,useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { createContext, memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAudio } from '../../App';
-import { APP_NAME, AudioKey , NAVIGATION_LINKS } from '../../constants';
+import { APP_NAME, AudioKey, NAVIGATION_LINKS } from '../../constants';
 import { usePointBalance } from '../../hooks';
 import { logout } from '../../redux/slices';
 import { authService } from '../../services';
@@ -14,7 +14,7 @@ import { combineClassNames } from '../../utils/combineClassNames';
 import { fadeInDown, fadeInLeft, hoverScale } from '../animations';
 import { AudioControls } from '../audio';
 import { Icon } from '../icons';
-import { Avatar,Button } from '../ui';
+import { Avatar, Button } from '../ui';
 
 // Navigation Context for sharing navigation state
 const NavigationContext = createContext<{
@@ -58,7 +58,7 @@ const Navigation = memo(function Navigation() {
   const userDisplayData = useMemo(() => {
     if (!user) return null;
     return {
-      username: formatUsername(user.username || ''),
+      username: formatUsername(user.username ?? ''),
       fullName: user.fullName,
       avatar: user.avatar,
       firstName: user.firstName,
@@ -190,7 +190,7 @@ const Navigation = memo(function Navigation() {
                   <div className='flex items-center space-x-3 bg-gradient-to-r from-slate-800/60 to-slate-700/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-lg'>
                     <Icon name='zap' size='sm' className='text-yellow-400' />
                     <span className='text-white font-semibold text-sm'>
-                      {pointsData?.total_points || 0}
+                      {pointsData?.total_points ?? 0}
                     </span>
                     <span className='text-slate-300 text-xs'>Points</span>
                   </div>

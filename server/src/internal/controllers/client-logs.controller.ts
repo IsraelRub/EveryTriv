@@ -1,5 +1,6 @@
+import { ClientLogsRequest, LogLevel, LogMeta, MESSAGE_FORMATTERS, serverLogger as logger } from '@shared';
+
 import { Body, Controller, Post } from '@nestjs/common';
-import { ClientLogsRequest, LogLevel, LogMeta, MESSAGE_FORMATTERS, serverLogger } from '@shared';
 
 @Controller('client-logs')
 export class ClientLogsController {
@@ -23,23 +24,22 @@ export class ClientLogsController {
 
 			switch (logLevel) {
 				case LogLevel.ERROR:
-					serverLogger.apiError(MESSAGE_FORMATTERS.client.error(logEntry.message), meta);
+					logger.apiError(MESSAGE_FORMATTERS.client.error(logEntry.message), meta);
 					break;
 				case LogLevel.WARN:
-					serverLogger.apiWarn(MESSAGE_FORMATTERS.client.warn(logEntry.message), meta);
+					logger.apiWarn(MESSAGE_FORMATTERS.client.warn(logEntry.message), meta);
 					break;
 				case LogLevel.INFO:
-					serverLogger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
+					logger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
 					break;
 				case LogLevel.DEBUG:
-					serverLogger.apiDebug(MESSAGE_FORMATTERS.client.debug(logEntry.message), meta);
+					logger.apiDebug(MESSAGE_FORMATTERS.client.debug(logEntry.message), meta);
 					break;
 				default:
-					serverLogger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
+					logger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
 			}
 		}
 
-		// Return only the data - ResponseFormattingInterceptor will handle the response structure
 		return { processed: logs.length };
 	}
 

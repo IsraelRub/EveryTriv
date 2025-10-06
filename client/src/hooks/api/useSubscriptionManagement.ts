@@ -4,7 +4,7 @@
  * @module UseSubscriptionManagement
  * @description React Query hooks for subscription management functionality
  */
-import { clientLogger, UserWithSubscription } from '@shared';
+import { clientLogger as logger, UserWithSubscription } from '@shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
@@ -32,7 +32,7 @@ export const useCreateSubscription = () => {
 
   return useMutation({
     mutationFn: async ({ plan, billingCycle }: { plan: string; billingCycle?: string }) => {
-      clientLogger.userInfo('Creating subscription', { plan, billingCycle });
+      logger.userInfo('Creating subscription', { plan, billingCycle });
       return apiService.createSubscription(plan, billingCycle);
     },
     onSuccess: data => {
@@ -50,13 +50,13 @@ export const useCreateSubscription = () => {
 
       // Invalidate queries with consistent keys
       invalidateSubscriptionQueries(queryClient);
-      clientLogger.userInfo('Subscription created successfully', {
+      logger.userInfo('Subscription created successfully', {
         plan: data.plan,
         status: data.status,
       });
     },
     onError: error => {
-      clientLogger.userError('Failed to create subscription', { error });
+      logger.userError('Failed to create subscription', { error });
     },
   });
 };
@@ -72,7 +72,7 @@ export const useCancelSubscription = () => {
 
   return useMutation({
     mutationFn: async () => {
-      clientLogger.userInfo('Canceling subscription');
+      logger.userInfo('Canceling subscription');
       return apiService.cancelSubscription();
     },
     onSuccess: data => {
@@ -90,13 +90,13 @@ export const useCancelSubscription = () => {
 
       // Invalidate queries with consistent keys
       invalidateSubscriptionQueries(queryClient);
-      clientLogger.userInfo('Subscription canceled successfully', {
+      logger.userInfo('Subscription canceled successfully', {
         success: data.success,
         message: data.message,
       });
     },
     onError: error => {
-      clientLogger.userError('Failed to cancel subscription', { error });
+      logger.userError('Failed to cancel subscription', { error });
     },
   });
 };

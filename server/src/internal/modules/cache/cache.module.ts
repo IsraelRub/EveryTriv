@@ -6,8 +6,9 @@
  * @used_by server/src/features, server/src/controllers, server/src/services
  * @dependencies RedisModule
  */
-import { Module, OnModuleInit } from '@nestjs/common';
 import { serverLogger as logger } from '@shared';
+
+import { Module, OnModuleInit } from '@nestjs/common';
 
 import { RedisModule } from '../redis.module';
 import { CacheController } from './cache.controller';

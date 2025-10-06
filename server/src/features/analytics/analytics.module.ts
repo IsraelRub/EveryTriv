@@ -8,8 +8,6 @@
  * @provides AnalyticsService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity, PaymentHistoryEntity
  */
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import {
 	GameHistoryEntity,
 	PaymentHistoryEntity,
@@ -18,6 +16,9 @@ import {
 	UserStatsEntity,
 } from 'src/internal/entities';
 import { CacheModule } from 'src/internal/modules';
+
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ValidationModule } from '../../common';
 import { AuthModule } from '../auth/auth.module';

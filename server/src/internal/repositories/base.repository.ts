@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage } from '@shared';
+import { getErrorMessage, serverLogger as logger } from '@shared';
 import { DeepPartial, FindManyOptions, FindOptionsWhere, ObjectLiteral, Repository } from 'typeorm';
+
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 /**
  * Base repository class providing common database operations
@@ -216,7 +217,7 @@ export class BaseRepository<T extends ObjectLiteral> {
 	async exists(id: string | number): Promise<boolean> {
 		try {
 			const entity = await this.findById(id);
-			return entity !== null;
+			return !!entity;
 		} catch (error) {
 			logger.databaseError(`Failed to check entity existence: ${this.repository.metadata.name}`, {
 				context: 'REPOSITORY',

@@ -1,4 +1,4 @@
-import { createValidationError, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared';
+import { LLMResponse, LLMTriviaResponse, ProviderConfig, createValidationError } from '@shared';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';

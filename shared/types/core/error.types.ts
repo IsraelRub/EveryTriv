@@ -11,8 +11,7 @@
  * @type NestExceptionName
  * @description Type derived from NEST_EXCEPTION_NAMES constant
  */
-export type NestExceptionName = typeof import('../../constants/core/error.constants').NEST_EXCEPTION_NAMES[number];
-
+export type NestExceptionName = (typeof import('../../constants/core/error.constants').NEST_EXCEPTION_NAMES)[number];
 
 /**
  * Axios error interface

@@ -1,4 +1,10 @@
-import { AxiosErrorWithConfig, ExtendedAxiosRequestConfig , generateId,HTTP_LOG_MESSAGES , serverLogger  } from '@shared';
+import {
+	AxiosErrorWithConfig,
+	ExtendedAxiosRequestConfig,
+	HTTP_LOG_MESSAGES,
+	generateId,
+	serverLogger as logger,
+} from '@shared';
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 import { RetryUtils } from './retry.utils';
@@ -30,7 +36,7 @@ export class InterceptorsUtils {
 				const startTime = Date.now();
 				const requestId = this.generateRequestId();
 
-				serverLogger.httpSuccess(HTTP_LOG_MESSAGES.REQUEST, {
+				logger.httpSuccess(HTTP_LOG_MESSAGES.REQUEST, {
 					method: config.method?.toUpperCase() || 'UNKNOWN',
 					url: config.url || 'unknown',
 					startTime: startTime.toString(),
@@ -45,7 +51,7 @@ export class InterceptorsUtils {
 				return config;
 			},
 			(error: AxiosErrorWithConfig) => {
-				serverLogger.httpClientError('HTTP Client Error', {
+				logger.httpClientError('HTTP Client Error', {
 					message: error.message,
 				});
 				return Promise.reject(error);
@@ -59,7 +65,7 @@ export class InterceptorsUtils {
 				const startTime = (response.config as ExtendedAxiosRequestConfig).startTime || endTime;
 				const duration = endTime - startTime;
 
-				serverLogger.httpSuccess(HTTP_LOG_MESSAGES.RESPONSE, {
+				logger.httpSuccess(HTTP_LOG_MESSAGES.RESPONSE, {
 					method: response.config.method?.toUpperCase() || 'UNKNOWN',
 					url: response.config.url || 'unknown',
 					status: response.status.toString(),
@@ -73,7 +79,7 @@ export class InterceptorsUtils {
 				const startTime = (error.config as ExtendedAxiosRequestConfig)?.startTime || endTime;
 				const duration = endTime - startTime;
 
-				serverLogger.httpClientError('HTTP Client Error', {
+				logger.httpClientError('HTTP Client Error', {
 					method: error.config?.method?.toUpperCase() || 'UNKNOWN',
 					url: error.config?.url || 'unknown',
 					status: error.response?.status?.toString() || '0',

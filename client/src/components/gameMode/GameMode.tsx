@@ -1,8 +1,8 @@
-import { GameMode as GameModeEnum,VALID_GAME_MODES  } from '@shared';
+import { GameMode as GameModeEnum, VALID_GAME_MODES } from '@shared';
 import { motion } from 'framer-motion';
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { DEFAULT_GAME_MODE,getGameModeDefaults } from '../../constants/gameModeDefaults';
+import { DEFAULT_GAME_MODE, getGameModeDefaults } from '../../constants/gameModeDefaults';
 import { GameModeUIProps } from '../../types';
 import { fadeInUp, scaleIn } from '../animations';
 import { Icon } from '../icons';

@@ -7,7 +7,7 @@
  * @used_by client/hooks/api/useAuth.ts, client/views/registration/RegistrationView.tsx, client/components/user/OAuthCallback.tsx
  */
 import { AuthCredentials, AuthResponse, User } from '@shared';
-import { clientLogger, ensureErrorObject } from '@shared';
+import { clientLogger as logger, ensureErrorObject } from '@shared';
 
 import { CLIENT_STORAGE_KEYS } from '../../constants';
 import { apiService } from '../api';
@@ -30,17 +30,17 @@ class AuthService {
    */
   async login(credentials: AuthCredentials): Promise<AuthResponse> {
     try {
-      clientLogger.securityLogin('Attempting to login user', { username: credentials.username });
+      logger.securityLogin('Attempting to login user', { username: credentials.username });
 
       const response = await apiService.login(credentials);
 
       // Store auth data
       await this.setAuthData(response);
 
-      clientLogger.logUserActivity(response.user.id, 'login', { username: credentials.username });
+      logger.logUserActivity(response.user.id, 'login', { username: credentials.username });
       return response;
     } catch (error) {
-      clientLogger.securityDenied('Login failed', { error, username: credentials.username });
+      logger.securityDenied('Login failed', { error, username: credentials.username });
       throw error;
     }
   }
@@ -52,23 +52,19 @@ class AuthService {
    */
   async register(credentials: AuthCredentials & { email: string }): Promise<AuthResponse> {
     try {
-      clientLogger.authRegister('Attempting to register user', { username: credentials.username });
+      logger.authRegister('Attempting to register user', { username: credentials.username });
 
       const response = await apiService.register(credentials);
 
       // Store auth data
       await this.setAuthData(response);
 
-      clientLogger.authRegister('User registered successfully', { userId: response.user.id });
+      logger.authRegister('User registered successfully', { userId: response.user.id });
       return response;
     } catch (error) {
-      clientLogger.authError(
-        ensureErrorObject(error),
-        'Registration failed',
-        {
-          username: credentials.username,
-        }
-      );
+      logger.authError(ensureErrorObject(error), 'Registration failed', {
+        username: credentials.username,
+      });
       throw error;
     }
   }
@@ -79,7 +75,7 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      clientLogger.authLogout('Logging out user');
+      logger.authLogout('Logging out user');
 
       // Clear auth data
       await this.clearAuthData();
@@ -87,9 +83,9 @@ class AuthService {
       // Call API logout
       await apiService.logout();
 
-      clientLogger.authLogout('User logged out successfully');
+      logger.authLogout('User logged out successfully');
     } catch (error) {
-      clientLogger.authError(ensureErrorObject(error), 'Logout failed');
+      logger.authError(ensureErrorObject(error), 'Logout failed');
       // Clear local data even if API call fails
       await this.clearAuthData();
     }
@@ -110,10 +106,7 @@ class AuthService {
         role: user.role || 'user', // Provide default role if not set
       };
     } catch (error) {
-      clientLogger.authError(
-        ensureErrorObject(error),
-        'Failed to get current user'
-      );
+      logger.authError(ensureErrorObject(error), 'Failed to get current user');
       throw error;
     }
   }
@@ -123,20 +116,17 @@ class AuthService {
    */
   async refreshToken(): Promise<AuthResponse> {
     try {
-      clientLogger.authTokenRefresh('Refreshing auth token');
+      logger.authTokenRefresh('Refreshing auth token');
 
       const response = (await apiService.refreshToken()) as AuthResponse;
 
       // Update auth data
       await this.setAuthData(response);
 
-      clientLogger.authTokenRefresh('Token refreshed successfully');
+      logger.authTokenRefresh('Token refreshed successfully');
       return response;
     } catch (error) {
-      clientLogger.authError(
-        ensureErrorObject(error),
-        'Token refresh failed'
-      );
+      logger.authError(ensureErrorObject(error), 'Token refresh failed');
       await this.clearAuthData();
       throw error;
     }
@@ -197,13 +187,13 @@ class AuthService {
    */
   async initiateGoogleLogin(): Promise<void> {
     try {
-      clientLogger.securityLogin('Initiating Google OAuth login');
+      logger.securityLogin('Initiating Google OAuth login');
 
       // Redirect to Google OAuth endpoint
       const googleAuthUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}/auth/google`;
       window.location.href = googleAuthUrl;
     } catch (error) {
-      clientLogger.securityDenied('Google login initiation failed', { error });
+      logger.securityDenied('Google login initiation failed', { error });
       throw error;
     }
   }
@@ -224,7 +214,7 @@ class AuthService {
     };
   }): Promise<AuthResponse['user']> {
     try {
-      clientLogger.authProfileUpdate('Completing user profile');
+      logger.authProfileUpdate('Completing user profile');
 
       // Split fullName into firstName and lastName
       const nameParts = profileData.fullName.split(' ');
@@ -239,14 +229,14 @@ class AuthService {
       // Update stored user data
       await storageService.set(this.USER_KEY, updatedUser);
 
-      clientLogger.authProfileUpdate('Profile completed successfully', { userId: updatedUser.id });
+      logger.authProfileUpdate('Profile completed successfully', { userId: updatedUser.id });
       // Add role property to match AuthResponse user type
       return {
         ...updatedUser,
         role: 'user',
       };
     } catch (error) {
-      clientLogger.authError('Profile completion failed', { error });
+      logger.authError('Profile completion failed', { error });
       throw error;
     }
   }
@@ -261,21 +251,21 @@ class AuthService {
     email?: string;
   }): Promise<AuthResponse['user']> {
     try {
-      clientLogger.authProfileUpdate('Updating user profile');
+      logger.authProfileUpdate('Updating user profile');
 
       const updatedUser = (await apiService.updateUserProfile(profileData)) as User;
 
       // Update stored user data
       await storageService.set(this.USER_KEY, updatedUser);
 
-      clientLogger.authProfileUpdate('Profile updated successfully', { userId: updatedUser.id });
+      logger.authProfileUpdate('Profile updated successfully', { userId: updatedUser.id });
       // Add role property to match AuthResponse user type
       return {
         ...updatedUser,
         role: 'user',
       };
     } catch (error) {
-      clientLogger.authError('Profile update failed', { error });
+      logger.authError('Profile update failed', { error });
       throw error;
     }
   }

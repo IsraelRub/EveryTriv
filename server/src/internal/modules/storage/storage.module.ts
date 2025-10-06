@@ -5,9 +5,10 @@
  * @description Module for persistent storage operations using Redis
  * @note This module is for PERSISTENT storage only. For caching, use CacheModule instead.
  */
-import { Module, BadRequestException } from '@nestjs/common';
 import { MetricsService } from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
+
+import { BadRequestException, Module } from '@nestjs/common';
 
 import { RedisModule } from '../redis.module';
 import { StorageController } from './storage.controller';

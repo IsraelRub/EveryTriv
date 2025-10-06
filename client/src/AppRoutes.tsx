@@ -1,4 +1,4 @@
-import { clientLogger, mergeWithDefaults } from '@shared';
+import { clientLogger as logger, mergeWithDefaults } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { Navigation } from './components/navigation';
 import { CompleteProfile, OAuthCallback } from './components/user';
 import { USER_DEFAULT_VALUES } from './constants';
 import { useAppDispatch } from './hooks/layers/utils';
-import { fetchUserData,setAuthenticated, setUser } from './redux/slices/userSlice';
+import { fetchUserData, setAuthenticated, setUser } from './redux/slices/userSlice';
 import { audioService } from './services';
 import { authService } from './services/auth';
 import { prefetchAuthenticatedQueries } from './services/utils/queryClient.service';
@@ -32,14 +32,14 @@ function NavigationTracker() {
   const location = useLocation();
 
   useEffect(() => {
-    clientLogger.navigationPage(location.pathname, {
+    logger.navigationPage(location.pathname, {
       search: location.search,
       timestamp: new Date().toISOString(),
       type: 'spa_navigation',
     });
 
     if (location.pathname === '/auth/google') {
-      clientLogger.navigationOAuth('Google', {
+      logger.navigationOAuth('Google', {
         path: location.pathname,
         timestamp: new Date().toISOString(),
       });
@@ -60,7 +60,7 @@ function NavigationTracker() {
       '/analytics',
     ];
     if (!validRoutes.includes(location.pathname) && !location.pathname.startsWith('/auth/')) {
-      clientLogger.navigationUnknownRoute(location.pathname, {
+      logger.navigationUnknownRoute(location.pathname, {
         referrer: document.referrer,
         timestamp: new Date().toISOString(),
         type: 'unknown_route',
@@ -110,7 +110,7 @@ export default function AppRoutes() {
             try {
               await prefetchAuthenticatedQueries();
             } catch (error) {
-              clientLogger.apiError('Failed to prefetch authenticated queries', { error });
+              logger.apiError('Failed to prefetch authenticated queries', { error });
             }
           }
         } catch (error) {

@@ -1,16 +1,26 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_TTL, GameMode , SERVER_GAME_CONSTANTS,serverLogger as logger, getErrorMessage, createServerError, createNotFoundError, createValidationError  } from '@shared';
-import { AnswerResult, UserAnalytics,UserScoreData  } from '@shared/types';
+import {
+	CACHE_TTL,
+	GameMode,
+	SERVER_GAME_CONSTANTS,
+	createNotFoundError,
+	createServerError,
+	createValidationError,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
+import { AnswerResult, UserAnalytics, UserScoreData } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
 import { MoreThan, Repository } from 'typeorm';
 
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 import { ValidationService } from '../../common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
-import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 
 /**
  * Service for managing trivia games, game history, and user points
@@ -74,7 +84,7 @@ export class GameService {
 								const timeoutId = setTimeout(() => {
 									reject(new Error('Question generation timeout'));
 								}, generationTimeout);
-								
+
 								// Clean up timeout if promise resolves
 								setTimeout(() => clearTimeout(timeoutId), 0);
 							}),
@@ -313,7 +323,6 @@ export class GameService {
 		}
 	}
 
-
 	/**
 	 * Save game history
 	 * @param userId User ID
@@ -389,7 +398,6 @@ export class GameService {
 				userId,
 				score: gameData.score,
 			});
-
 
 			return {
 				id: savedHistory.id,
@@ -541,7 +549,6 @@ export class GameService {
 			throw error;
 		}
 	}
-
 
 	/**
 	 * Get user point balance
@@ -695,7 +702,6 @@ export class GameService {
 			}
 
 			return {
-				success: true,
 				message: 'Game configuration saved successfully',
 				config,
 			};
@@ -724,7 +730,6 @@ export class GameService {
 
 			if (result.success && result.data) {
 				return {
-					success: true,
 					config: result.data,
 				};
 			}
@@ -739,7 +744,6 @@ export class GameService {
 			};
 
 			return {
-				success: true,
 				config: defaultConfig,
 			};
 		} catch (error) {
@@ -751,14 +755,13 @@ export class GameService {
 		}
 	}
 
-
 	/**
 	 * Delete specific game from history
 	 * @param userId User ID
 	 * @param gameId Game ID to delete
 	 * @returns Deletion result
 	 */
-	async deleteGameHistory(userId: string, gameId: string): Promise<{ success: boolean; message: string }> {
+	async deleteGameHistory(userId: string, gameId: string): Promise<{ message: string }> {
 		try {
 			logger.game('Deleting game history', {
 				userId,
@@ -784,7 +787,6 @@ export class GameService {
 			await this.cacheService.delete(`game_history:${userId}`);
 
 			return {
-				success: true,
 				message: 'Game history deleted successfully',
 			};
 		} catch (error) {
@@ -802,7 +804,7 @@ export class GameService {
 	 * @param userId User ID
 	 * @returns Clear result
 	 */
-	async clearUserGameHistory(userId: string): Promise<{ success: boolean; message: string; deletedCount: number }> {
+	async clearUserGameHistory(userId: string): Promise<{ message: string; deletedCount: number }> {
 		try {
 			logger.game('Clearing all game history', {
 				userId,
@@ -825,7 +827,6 @@ export class GameService {
 			await this.cacheService.delete(`game_history:${userId}`);
 
 			return {
-				success: true,
 				message: 'All game history cleared successfully',
 				deletedCount: count,
 			};

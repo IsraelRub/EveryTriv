@@ -9,9 +9,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { BasicValue, StatsValue } from '../../types/core/data.types';
-import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
-import { BaseLoggerService } from './baseLogger.service';
+import { LogMeta, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
 import { getErrorMessage, getErrorStack } from '../../utils';
+import { BaseLoggerService } from './baseLogger.service';
 
 /**
  * Server Logger Implementation
@@ -268,16 +268,15 @@ export class ServerLogger extends BaseLoggerService {
 	 * Get session ID
 	 */
 	public getSessionId(): string {
-		return this.sessionId;
+		return super.getSessionId();
 	}
 
 	/**
 	 * Get trace ID
 	 */
 	public getTraceId(): string {
-		return this.traceId;
+		return super.getTraceId();
 	}
-
 
 	/**
 	 * Log user activity with enhanced context
@@ -483,7 +482,7 @@ export class ServerLogger extends BaseLoggerService {
 	 */
 	public updateLoggingConfig(newConfig: Partial<typeof this.loggingConfig>): void {
 		Object.assign(this.loggingConfig, newConfig);
-		this.logInfo('Logging configuration updated', { config: this.loggingConfig });
+		this.info('Logging configuration updated', { config: this.loggingConfig });
 	}
 
 	/**
@@ -503,7 +502,6 @@ export class ServerLogger extends BaseLoggerService {
 
 		return requestedLevelIndex >= currentLevelIndex;
 	}
-
 
 	/**
 	 * Track performance with enhanced metrics
@@ -706,7 +704,6 @@ export class ServerLogger extends BaseLoggerService {
 		this.logInfo(`Enhanced performance data cleared for operation: ${operation}`);
 	}
 
-
 	/**
 	 * Initialize performance thresholds
 	 */
@@ -791,5 +788,3 @@ export class ServerLogger extends BaseLoggerService {
 }
 
 export const serverLogger = new ServerLogger();
-
-export const createServerLogger = (config?: LoggerConfigUpdate) => new ServerLogger(config);

@@ -30,7 +30,7 @@ function walk(dir, files = []) {
   return files;
 }
 
-function extractLinks(content, filePath) {
+function extractLinks(content) {
   const mdLink = /\[[^\]]+\]\(([^)]+)\)/g;
   const results = [];
   let m;

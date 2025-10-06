@@ -4,8 +4,9 @@
  * @module AuthDTOs
  * @description Data Transfer Objects for authentication
  */
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
 	@ApiProperty({
@@ -98,32 +99,28 @@ export class RegisterDto {
 
 export class AuthResponseDto {
 	@ApiProperty({
-		description: 'Indicates if the authentication was successful',
-		example: true,
+		description: 'Access token',
+		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
-	success: boolean;
+	access_token: string;
+
+	@ApiPropertyOptional({
+		description: 'Refresh token',
+		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+	})
+	refresh_token?: string;
 
 	@ApiProperty({
-		description: 'Response data containing auth information',
+		description: 'User information',
 	})
-	data: {
-		access_token: string;
-		refresh_token?: string;
-		user: {
-			id: string;
-			username: string;
-			email: string;
-			firstName?: string;
-			lastName?: string;
-			role: string;
-		};
+	user: {
+		id: string;
+		username: string;
+		email: string;
+		firstName?: string;
+		lastName?: string;
+		role: string;
 	};
-
-	@ApiProperty({
-		description: 'Response timestamp',
-		example: '2024-01-01T00:00:00.000Z',
-	})
-	timestamp: string;
 }
 
 export class RefreshTokenDto {
@@ -138,21 +135,8 @@ export class RefreshTokenDto {
 
 export class RefreshTokenResponseDto {
 	@ApiProperty({
-		description: 'Indicates if the refresh was successful',
-		example: true,
+		description: 'New access token',
+		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
-	success: boolean;
-
-	@ApiProperty({
-		description: 'Response data containing new access token',
-	})
-	data: {
-		access_token: string;
-	};
-
-	@ApiProperty({
-		description: 'Response timestamp',
-		example: '2024-01-01T00:00:00.000Z',
-	})
-	timestamp: string;
+	access_token: string;
 }

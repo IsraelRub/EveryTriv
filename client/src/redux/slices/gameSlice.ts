@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { calculateScore } from '../../services/game';
 import { ScoreUpdatePayload, TriviaQuestion } from '../../types';
-import { ErrorPayload,LoadingPayload } from '../../types/redux';
+import { ErrorPayload, LoadingPayload } from '../../types/redux';
 import { GameSliceState } from '../../types/redux/state.types';
 
 const initialState: GameSliceState = {
@@ -68,9 +68,9 @@ const gameStateSlice = createSlice({
       }
 
       if (action.payload.correct) {
-        const totalTime = action.payload.totalTime || 30;
-        const timeSpent = action.payload.timeSpent || 0;
-        const streak = state.stats?.correctStreak || 0;
+        const totalTime = action.payload.totalTime ?? 30;
+        const timeSpent = action.payload.timeSpent ?? 0;
+        const streak = state.stats?.correctStreak ?? 0;
         const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
 
         state.data.score += pointsEarned;

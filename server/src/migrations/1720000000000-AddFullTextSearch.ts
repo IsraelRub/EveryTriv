@@ -1,5 +1,4 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getErrorMessage } from '@shared';
 
 export class AddFullTextSearch1720000000000 implements MigrationInterface {
 	name = 'AddFullTextSearch1720000000000';
@@ -78,7 +77,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 				ALTER TABLE "game_history" ADD CONSTRAINT "FK_game_history_user" 
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
-			
+
 			await queryRunner.query(`
 				ALTER TABLE "trivia" ADD CONSTRAINT "FK_trivia_user" 
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
@@ -95,7 +94,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			console.error('Migration failed: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'up',
-				error: getErrorMessage(error),
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -142,7 +141,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			console.error('Migration rollback failed: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'down',
-				error: getErrorMessage(error),
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}

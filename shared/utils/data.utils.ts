@@ -27,7 +27,7 @@ export function shuffle<T>(array: T[]): T[] {
  * @returns Deep cloned object
  */
 export function deepClone<T>(obj: T): T {
-	if (obj === null || typeof obj !== 'object') return obj;
+	if (!obj || typeof obj !== 'object') return obj;
 	if (obj instanceof Date) return new Date(obj.getTime()) as T;
 	if (obj instanceof Array) return obj.map(item => deepClone(item)) as T;
 	if (typeof obj === 'object') {

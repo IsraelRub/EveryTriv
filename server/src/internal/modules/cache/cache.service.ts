@@ -1,6 +1,19 @@
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { StorageValue, StorageCleanupOptions, StorageConfig, StorageOperationResult, StorageStats, StorageService, createTimedResult, formatStorageError, trackOperationWithTiming, serverLogger as logger, getErrorMessage } from '@shared';
+import {
+	StorageCleanupOptions,
+	StorageConfig,
+	StorageOperationResult,
+	StorageService,
+	StorageStats,
+	StorageValue,
+	createTimedResult,
+	formatStorageError,
+	getErrorMessage,
+	serverLogger as logger,
+	trackOperationWithTiming,
+} from '@shared';
 import type { RedisClient } from '@shared/types/infrastructure/redis.types';
+
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 
 /**
  * Service for managing application caching
@@ -88,7 +101,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				value = this.getMemory<T>(prefixedKey);
 			}
 
-			if (value !== null) {
+			if (value) {
 				logger.cacheHit(key, {
 					storage: this.useRedis ? 'redis' : 'memory',
 				});
@@ -121,7 +134,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
 		try {
 			const cached = await this.get<T>(key);
-			if (cached.success && cached.data !== null) {
+			if (cached.success && cached.data) {
 				return cached.data!;
 			}
 
@@ -443,7 +456,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	async cleanup(options?: StorageCleanupOptions): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		try {
-			const cleanupOptions = options || {};
+			const cleanupOptions = options ?? {};
 			const { removeExpired = true, maxAge, maxSize, dryRun = false, types = ['cache'] } = cleanupOptions;
 
 			// Skip if cache type not in cleanup types
@@ -614,17 +627,17 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		}
 
 		return {
-			totalItems: this.memoryCache.size,
+			totalItems: validEntries,
 			totalSize,
 			expiredItems: expiredEntries,
 			hitRate: 0, // Would need to track hits/misses
-			averageItemSize: this.memoryCache.size > 0 ? totalSize / this.memoryCache.size : 0,
+			averageItemSize: validEntries > 0 ? totalSize / validEntries : 0,
 			utilization: 0, // Would need to track max size
 			opsPerSecond: 0, // Would need to track operations over time
 			avgResponseTime: 0, // Would need to track response times
 			typeBreakdown: {
 				persistent: { items: 0, size: 0 },
-				cache: { items: this.memoryCache.size, size: totalSize },
+				cache: { items: validEntries, size: totalSize },
 				hybrid: { items: 0, size: 0 },
 			},
 		};
@@ -656,7 +669,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	private incrementMemory(key: string, amount: number): number {
-		const current = this.getMemory<number>(key) || 0;
+		const current = this.getMemory<number>(key) ?? 0;
 		const newValue = current + amount;
 		this.setMemory(key, newValue);
 		return newValue;

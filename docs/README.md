@@ -41,6 +41,7 @@ EveryTriv: פלטפורמת טריוויה חכמה (React + NestJS + Shared). �
 - **[Common Structure](./backend/COMMON_STRUCTURE.md)** - מבנה משותף של השרת
 - **[API Reference](./backend/API_REFERENCE.md)** - תיעוד מלא של API endpoints
 - **[Auth](./backend/feature-auth.md)** - מערכת אימות והרשאות
+- **[Authorization](./backend/AUTHORIZATION.md)** - מערכת הרשאות מפורטת
 - **[Game](./backend/feature-game.md)** - לוגיקת משחק ו-trivia
 - **[Points](./backend/feature-points.md)** - מערכת נקודות
 - **[Leaderboard](./backend/feature-leaderboard.md)** - לוח תוצאות

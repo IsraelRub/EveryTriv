@@ -3,7 +3,6 @@
  * Server-only constants and configuration
  */
 
-
 // Re-export constants from centralized location
 export const APP_DESCRIPTION = 'EveryTriv - AI-Powered Trivia Game';
 export const APP_NAME = 'EveryTriv';

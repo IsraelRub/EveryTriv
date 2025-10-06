@@ -4,30 +4,35 @@
  * @module validation.service
  * @description Service for server-side validation using shared validation functions
  */
-import { Injectable } from '@nestjs/common';
 import type {
 	AnalyticsEventData,
 	LanguageValidationOptions,
 	LanguageValidationResult,
 	PersonalPaymentData,
- UserFieldUpdate,	UserProfileUpdateData,
+	UserFieldUpdate,
+	UserProfileUpdateData,
 	ValidationOptions,
-	ValidationResult } from '@shared';
+	ValidationResult,
+} from '@shared';
 import {
+	createStringLengthValidationError,
+	createValidationError,
+	getErrorMessage,
+	serverLogger as logger,
 	sanitizeCardNumber,
 	sanitizeEmail,
 	sanitizeInput,
- serverLogger as logger,	validateCustomDifficultyText,
-	getErrorMessage,
-	createValidationError,
-	createStringLengthValidationError,
+	validateCustomDifficultyText,
 	validateEmail,
 	validateInputContent,
 	validateInputWithLanguageTool,
 	validatePassword,
 	validateTopicLength,
-	validateUsername } from '@shared';
+	validateUsername,
+} from '@shared';
 import { UserEntity } from 'src/internal/entities';
+
+import { Injectable } from '@nestjs/common';
 
 import { LanguageToolService } from './languageTool.service';
 

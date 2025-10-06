@@ -4,7 +4,6 @@
  * @module UserDTOs
  * @description Data Transfer Objects for user management
  */
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DifficultyLevel, PreferenceValue, UserAddress, UserPreferences } from '@shared';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -25,6 +24,8 @@ import {
 	MinLength,
 	ValidateNested,
 } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({

@@ -5,28 +5,16 @@
  * @description Interceptor that standardizes API response format across all endpoints
  * @author EveryTriv Team
  */
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { serverLogger as logger } from '@shared';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 
 import type { NestRequest } from '../../internal/types';
 
 /**
  * Response Formatting Interceptor
  * @description Automatically formats all API responses with consistent structure
- * @example
- * ```typescript
- * // Before: Manual formatting in each controller
- * return {
- *   success: true,
- *   data: result,
- *   timestamp: new Date().toISOString(),
- * };
- *
- * // After: Automatic formatting by interceptor
- * return result; // Interceptor handles the rest
- * ```
  */
 @Injectable()
 export class ResponseFormattingInterceptor implements NestInterceptor {
@@ -48,15 +36,6 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 				if (this.shouldSkipFormatting(data, request)) {
 					return data;
 				}
-
-				// Log successful response formatting
-				logger.apiInfo('Response formatted', {
-					method: request.method,
-					path: request.path,
-					duration,
-					hasData: !!data,
-					dataType: typeof data,
-				});
 
 				// Standard response format
 				return {
@@ -80,28 +59,17 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 	 * @returns True if formatting should be skipped
 	 */
 	private shouldSkipFormatting(data: unknown, request: NestRequest): boolean {
-		// Skip formatting for:
-		// 1. Already formatted responses
-		if (data && typeof data === 'object' && 'success' in data) {
-			return true;
+		if (data && typeof data === 'object') {
+			const skipFields = ['success', 'isValid', 'timestamp', 'data', 'pipe', 'url'];
+			return skipFields.some(field => field in data);
 		}
 
-		// 2. File downloads and streams
-		if (data && typeof data === 'object' && 'pipe' in data) {
-			return true;
-		}
-
-		// 3. Redirect responses
-		if (data && typeof data === 'object' && 'url' in data) {
-			return true;
-		}
-
-		// 4. Static file serving
+		// 7. Static file serving
 		if (request.path.includes('/static/') || request.path.includes('/assets/')) {
 			return true;
 		}
 
-		// 5. Health check endpoints
+		// 8. Health check endpoints
 		if (request.path === '/health' || request.path === '/status') {
 			return true;
 		}

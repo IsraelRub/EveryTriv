@@ -6,6 +6,7 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
+
 import type { PointBalance, PointPurchaseOption } from '../../types';
 
 /**

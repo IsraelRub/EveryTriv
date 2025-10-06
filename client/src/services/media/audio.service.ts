@@ -1,4 +1,4 @@
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import type { ServerUserPreferences } from '@shared/types/domain/user/user.types';
 
 import {
@@ -72,12 +72,12 @@ export class AudioService implements AudioServiceInterface {
       const path = AUDIO_PATHS[key];
       if (path) {
         const category = AUDIO_CATEGORIES[key];
-        const defaultVolume = this.categoryVolumes.get(category) || 0.7;
-        const config = AUDIO_CONFIG[key] || {};
+        const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
+        const config = AUDIO_CONFIG[key] ?? {};
 
         this.preloadAudioInternal(key, path, {
-          volume: config.volume || defaultVolume,
-          loop: config.loop || false,
+          volume: config.volume ?? defaultVolume,
+          loop: config.loop ?? false,
         });
       }
     });
@@ -92,17 +92,17 @@ export class AudioService implements AudioServiceInterface {
     config: { volume?: number; loop?: boolean }
   ): void {
     const audio = new Audio();
-    audio.volume = this.isMuted ? 0 : config.volume || 0.7;
-    audio.loop = config.loop || false;
+    audio.volume = this.isMuted ? 0 : (config.volume ?? 0.7);
+    audio.loop = config.loop ?? false;
 
     audio.preload = 'metadata';
 
-    audio.addEventListener('error', e => {
-      clientLogger.mediaError(`Failed to load audio file: ${key} (${src})`, { error: e, key, src });
+    audio.addEventListener('error', err => {
+      logger.mediaError(`Failed to load audio file: ${key} (${src})`, { error: err, key, src });
     });
 
     this.audioElements.set(key, audio);
-    this.volumes.set(key, config.volume || 0.7);
+    this.volumes.set(key, config.volume ?? 0.7);
 
     // Set src and load after everything is set up
     audio.src = src;
@@ -119,12 +119,12 @@ export class AudioService implements AudioServiceInterface {
       const path = AUDIO_PATHS[key];
       if (path) {
         const category = AUDIO_CATEGORIES[key];
-        const defaultVolume = this.categoryVolumes.get(category) || 0.7;
-        const config = AUDIO_CONFIG[key] || {};
+        const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
+        const config = AUDIO_CONFIG[key] ?? {};
 
         this.preloadAudioInternal(key, path, {
-          volume: config.volume || defaultVolume,
-          loop: config.loop || false,
+          volume: config.volume ?? defaultVolume,
+          loop: config.loop ?? false,
         });
         audio = this.audioElements.get(key);
       }
@@ -138,7 +138,7 @@ export class AudioService implements AudioServiceInterface {
    */
   public setUserPreferences(preferences: ServerUserPreferences | null): void {
     this.userPreferences = preferences;
-    clientLogger.userDebug('Audio preferences updated', {
+    logger.userDebug('Audio preferences updated', {
       soundEnabled: preferences?.soundEnabled,
       musicEnabled: preferences?.musicEnabled,
     });
@@ -150,7 +150,7 @@ export class AudioService implements AudioServiceInterface {
   public play(key: AudioKey): void {
     const audio = this.ensureAudioLoaded(key);
     if (!audio) {
-      clientLogger.mediaWarn(`Audio not found: ${key}`, {
+      logger.mediaWarn(`Audio not found: ${key}`, {
         key,
         availableKeys: Array.from(this.audioElements.keys()),
       });
@@ -186,12 +186,12 @@ export class AudioService implements AudioServiceInterface {
       audio.play().catch(err => {
         // Handle autoplay restrictions gracefully
         if (err.name === 'NotAllowedError') {
-          clientLogger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
+          logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
             key,
             error: err,
           });
         } else {
-          clientLogger.audioError(key, err.message, { key, error: err });
+          logger.audioError(key, err.message, { key, error: err });
         }
       });
       return;
@@ -203,12 +203,12 @@ export class AudioService implements AudioServiceInterface {
     clone.play().catch(err => {
       // Handle autoplay restrictions gracefully
       if (err.name === 'NotAllowedError') {
-        clientLogger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
+        logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
           key,
           error: err,
         });
       } else {
-        clientLogger.audioError(key, err.message, { key, error: err });
+        logger.audioError(key, err.message, { key, error: err });
       }
     });
 

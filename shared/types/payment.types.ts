@@ -85,7 +85,6 @@ export interface PaymentData {
 
 // Payment result (shared between client and server)
 export interface PaymentResult {
-	success: boolean;
 	paymentId?: string;
 	transactionId?: string;
 	status?: string;

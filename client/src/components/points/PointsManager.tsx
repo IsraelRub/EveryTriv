@@ -4,8 +4,7 @@
  * @module PointsManager
  * @description Component for managing points - purchasing and viewing balance
  */
-import { PointBalance, PointPurchaseOption } from '@shared';
-import { clientLogger } from '@shared';
+import { PointBalance, PointPurchaseOption, clientLogger as logger } from '@shared';
 import { useQuery } from '@tanstack/react-query';
 import React, { useState } from 'react';
 
@@ -32,15 +31,15 @@ export const PointsManager: React.FC<PointsManagerProps> = ({ onClose }) => {
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
-      clientLogger.userError('No package selected');
+      logger.userError('No package selected');
       return;
     }
 
     try {
       await purchasePointsMutation.mutateAsync(selectedPackage);
-      clientLogger.userInfo('Points purchased successfully');
+      logger.userInfo('Points purchased successfully');
     } catch (error) {
-      clientLogger.userError('Failed to purchase points', { error });
+      logger.userError('Failed to purchase points', { error });
     }
   };
 

@@ -7,7 +7,7 @@ import { fadeInDown, fadeInUp } from '../../components/animations';
 import { Container, GridLayout, Section } from '../../components/layout';
 import { Button } from '../../components/ui';
 import { useAppDispatch, useAppSelector, useUpdateUserProfile, useUserProfile } from '../../hooks';
-import { useDeleteUserAccount,useUpdateUserPreferences } from '../../hooks/api';
+import { useDeleteUserAccount, useUpdateUserPreferences } from '../../hooks/api';
 import {
   useUpdateSinglePreference,
   useUpdateUserField,

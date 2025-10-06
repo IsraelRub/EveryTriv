@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { BaseStorageService, metricsService ,
+import {
+	BaseStorageService,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
-	StorageStats,
 	StorageService,
+	StorageStats,
+	metricsService,
 } from '@shared';
 import { RedisClient } from '@shared/types/infrastructure/redis.types';
+
+import { Injectable } from '@nestjs/common';
 
 /**
  * Server-side persistent storage service using Redis
@@ -61,7 +64,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
 			const serialized = this.serialize(value);
-			await this.redisClient.setex(prefixedKey, ttl || this.config.defaultTtl || 3600, serialized);
+			await this.redisClient.setex(prefixedKey, ttl ?? this.config.defaultTtl ?? 3600, serialized);
 
 			this.updateMetadata(key, serialized.length, ttl);
 			this.trackOperationWithTiming('set', startTime, true, 'persistent', serialized.length);
@@ -81,7 +84,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 			const prefixedKey = this.getPrefixedKey(key);
 			const value = await this.redisClient.get(prefixedKey);
 
-			if (value === null) {
+			if (!value) {
 				this.trackOperationWithTiming('get', startTime, true, 'persistent');
 				return this.createSuccessResult<T | null>(null);
 			}

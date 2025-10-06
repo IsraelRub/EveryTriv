@@ -91,7 +91,7 @@ export function calculateDuration(startTime: number): number {
  * @param key Storage key to validate
  * @returns Whether key is valid
  */
-export function isValidStorageKey(key: string): boolean {
+export function isValidStorageKey(key: unknown): key is string {
 	return typeof key === 'string' && key.length > 0 && key.length <= 1024;
 }
 

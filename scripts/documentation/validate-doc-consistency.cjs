@@ -1,5 +1,5 @@
 const { readdirSync, readFileSync, statSync } = require('fs');
-const { join, dirname, resolve, relative } = require('path');
+const { join, resolve, relative } = require('path');
 
 const DOC_ROOT = resolve(process.cwd(), 'docs');
 const CLIENT_ROOT = resolve(process.cwd(), 'client/src');

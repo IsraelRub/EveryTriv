@@ -13,16 +13,16 @@
 export { BaseLoggerService } from './baseLogger.service';
 
 /**
- * Client logger implementations
- * @description Client-side logger services and factory functions
+ * Server logger implementations
+ * @description Server-side logger services
  */
-export { ClientLogger, clientLogger, createClientLogger } from './clientLogger.service';
+export { serverLogger } from './serverLogger.service';
 
 /**
- * Server logger implementations
- * @description Server-side logger services and factory functions
+ * Client logger implementations
+ * @description Client-side logger services
  */
-export { createServerLogger,ServerLogger, serverLogger } from './serverLogger.service';
+export { clientLogger } from './clientLogger.service';
 
 /**
  * Logger type definitions

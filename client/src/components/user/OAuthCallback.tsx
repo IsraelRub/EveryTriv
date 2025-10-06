@@ -1,4 +1,4 @@
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import type { UserRole } from '@shared/types/domain/user/user.types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -19,23 +19,23 @@ export default function OAuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    clientLogger.authLogin('OAuthCallback component mounted');
+    logger.authLogin('OAuthCallback component mounted');
     const handleCallback = async () => {
       try {
         const success = searchParams.get('success');
         const error = searchParams.get('error');
 
-        clientLogger.authLogin('OAuth callback received', {
+        logger.authLogin('OAuth callback received', {
           success: success || 'No success',
           error: error || 'No error',
         });
-        clientLogger.authDebug('Search params', {
+        logger.authDebug('Search params', {
           params: Object.fromEntries(searchParams.entries()) as Record<string, string>,
         });
 
         if (error) {
-          clientLogger.authError('OAuth error received', { error: error || 'Unknown error' });
-          clientLogger.authError('OAuth error details', { error: error || 'Unknown error' });
+          logger.authError('OAuth error received', { error: error || 'Unknown error' });
+          logger.authError('OAuth error details', { error: error || 'Unknown error' });
           setError(error);
           setTimeout(() => {
             navigate('/login?error=oauth_failed');
@@ -44,13 +44,13 @@ export default function OAuthCallback() {
         }
 
         if (success === 'true') {
-          clientLogger.authLogin('OAuth success confirmed, proceeding with user authentication...');
+          logger.authLogin('OAuth success confirmed, proceeding with user authentication...');
           try {
             // Get user data (token is already set in cookie by server)
-            clientLogger.authDebug('Attempting to get current user...');
+            logger.authDebug('Attempting to get current user...');
             const user = await authService.getCurrentUser();
-            clientLogger.authDebug('User data received', { user });
-            clientLogger.authDebug('Setting user in Redux store...');
+            logger.authDebug('User data received', { user });
+            logger.authDebug('Setting user in Redux store...');
             dispatch(
               setUser({
                 ...user,
@@ -65,17 +65,17 @@ export default function OAuthCallback() {
 
             // Navigate to home or profile completion
             if (!user?.username) {
-              clientLogger.authLogin('User has no fullName, navigating to complete-profile');
+              logger.authLogin('User has no fullName, navigating to complete-profile');
               navigate('/complete-profile');
             } else {
-              clientLogger.authLogin('User has fullName, navigating to home');
+              logger.authLogin('User has fullName, navigating to home');
               navigate('/');
             }
           } catch (error) {
-            clientLogger.authError('Failed to get current user', {
+            logger.authError('Failed to get current user', {
               error: getErrorMessage(error),
             });
-            clientLogger.authError('Failed to handle OAuth callback', {
+            logger.authError('Failed to handle OAuth callback', {
               error: getErrorMessage(error),
             });
             setError('Error receiving user details');
@@ -84,18 +84,18 @@ export default function OAuthCallback() {
             }, 3000);
           }
         } else {
-          clientLogger.authError('OAuth callback without success parameter');
-          clientLogger.authError('OAuth callback without success parameter');
+          logger.authError('OAuth callback without success parameter');
+          logger.authError('OAuth callback without success parameter');
           setError('No approval received from server');
           setTimeout(() => {
             navigate('/login?error=no_token');
           }, 3000);
         }
       } catch (error) {
-        clientLogger.authError('Unexpected error in OAuth callback', {
+        logger.authError('Unexpected error in OAuth callback', {
           error: getErrorMessage(error),
         });
-        clientLogger.authError('Unexpected error in OAuth callback details', {
+        logger.authError('Unexpected error in OAuth callback details', {
           error: getErrorMessage(error),
         });
         setError('Unexpected error');
@@ -108,10 +108,10 @@ export default function OAuthCallback() {
     handleCallback();
   }, [searchParams, navigate, dispatch]);
 
-  clientLogger.authDebug('OAuthCallback render - error state', { error: error || 'No error' });
+  logger.authDebug('OAuthCallback render - error state', { error: error || 'No error' });
 
   if (error) {
-    clientLogger.authDebug('Rendering error state', { error: error || 'No error' });
+    logger.authDebug('Rendering error state', { error: error || 'No error' });
     return (
       <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-red-700'>
         <motion.div variants={scaleIn} initial='hidden' animate='visible' className='text-center'>

@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { FavoritePayload, FavoritesState } from '../../types';
-import { ErrorPayload,LoadingPayload } from '../../types/redux';
+import { ErrorPayload, LoadingPayload } from '../../types/redux';
 
 const initialState: FavoritesState = {
   topics: [],

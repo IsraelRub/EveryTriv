@@ -1,27 +1,28 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import {
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
+	BasicValue,
+	CompleteUserAnalytics,
 	DifficultyStatsData,
 	GameAnalyticsQuery,
 	PerformanceMetrics,
 	SecurityMetrics,
-	serverLogger as logger,
 	SystemInsights,
 	TopicStatsData,
 	UserAnalytics,
-	CompleteUserAnalytics,
 	UserAnalyticsStats,
-	getErrorMessage,
-	BasicValue,
 	createNotFoundError,
+	getErrorMessage,
+	serverLogger as logger,
 } from '@shared';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
 
@@ -472,7 +473,7 @@ export class AnalyticsService implements OnModuleInit {
 				return;
 			}
 
-			const stats = user.stats as Record<string, unknown> || {};
+			const stats = (user.stats as Record<string, unknown>) || {};
 
 			stats.totalQuestions = ((stats.totalQuestions as number) || 0) + 1;
 			stats.correctAnswers = ((stats.correctAnswers as number) || 0) + (answerData.isCorrect ? 1 : 0);

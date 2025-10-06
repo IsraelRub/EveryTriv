@@ -1,4 +1,4 @@
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import { formatTimeDisplay } from '@shared/utils';
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
@@ -40,8 +40,8 @@ export default function Game({
     loadNextQuestion: contextLoadNextQuestion,
     handleGameEnd: contextHandleGameEnd,
   } = useGame();
-  const [timeElapsed, setTimeElapsed] = useState(gameMode?.timer?.timeElapsed || 0);
-  const [timeRemaining, setTimeRemaining] = useState(gameMode?.timeLimit || 0);
+  const [timeElapsed, setTimeElapsed] = useState(gameMode?.timer?.timeElapsed ?? 0);
+  const [timeRemaining, setTimeRemaining] = useState(gameMode?.timeLimit ?? 0);
   const [isGameOver, setIsGameOver] = useState(gameMode?.isGameOver || false);
 
   const scoreChange = useValueChange(score);
@@ -51,7 +51,7 @@ export default function Game({
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const startTime = gameMode?.timer?.startTime || now;
+      const startTime = gameMode?.timer?.startTime ?? now;
       const elapsed = now - startTime;
 
       setTimeElapsed(elapsed);
@@ -80,7 +80,7 @@ export default function Game({
   useEffect(() => {
     if (
       gameMode?.mode === GameMode.QUESTION_LIMITED &&
-      gameMode?.questionLimit !== undefined &&
+      gameMode?.questionLimit &&
       gameMode?.questionLimit <= 0
     ) {
       setIsGameOver(true);
@@ -100,8 +100,8 @@ export default function Game({
         await onAnswer?.(index);
       }
 
-      if (scoreChange.hasChanged && (score || 0) > (scoreChange.previous || 0)) {
-        clientLogger.userDebug('Score increased! Animation triggered');
+      if (scoreChange.hasChanged && (score ?? 0) > (scoreChange.previous ?? 0)) {
+        logger.userDebug('Score increased! Animation triggered');
       }
 
       if (
@@ -243,28 +243,23 @@ export default function Game({
             ...gameMode.timer,
             timeRemaining,
             isPaused: false,
-            startTime: gameMode.timer.startTime || 0,
+            startTime: gameMode.timer.startTime ?? 0,
           }}
           onTimeUpdate={(timeRemaining: number) => {
             setTimeRemaining(timeRemaining);
           }}
           onLowTimeWarning={() => {
-            clientLogger.userDebug('Low time warning triggered');
+            logger.userDebug('Low time warning triggered');
           }}
-          onTimeUp={
-            contextHandleGameEnd ||
-            onGameEnd ||
-            (() => {
-            })
-          }
+          onTimeUp={contextHandleGameEnd ?? onGameEnd ?? (() => {})}
           isRunning={gameMode.timer.isRunning}
           timeElapsed={timeElapsed}
-          timeRemaining={timeRemaining || 0}
+          timeRemaining={timeRemaining ?? 0}
           isGameOver={isGameOver}
           mode={{
-            name: gameMode.mode || 'unlimited',
-            timeLimit: gameMode.timeLimit || 0,
-            questionLimit: gameMode.questionLimit || 0,
+            name: gameMode.mode ?? 'unlimited',
+            timeLimit: gameMode.timeLimit ?? 0,
+            questionLimit: gameMode.questionLimit ?? 0,
           }}
         />
       )}
@@ -280,7 +275,7 @@ export default function Game({
           {trivia && <TriviaGame trivia={trivia} selected={selected} onAnswer={handleAnswer} />}
 
           {/* Next Question Button for Unlimited Mode */}
-          {selected !== null && gameMode?.mode === GameMode.UNLIMITED && (
+          {selected && gameMode?.mode === GameMode.UNLIMITED && (
             <motion.div
               variants={fadeInUp}
               initial='hidden'

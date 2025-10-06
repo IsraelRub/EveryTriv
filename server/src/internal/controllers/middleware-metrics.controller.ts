@@ -6,8 +6,15 @@
  * @author EveryTriv Team
  */
 import { Roles } from '@common';
-import { Controller, Delete, Get, Param } from '@nestjs/common';
-import { MetricsService , serverLogger as logger, getErrorMessage, AllMiddlewareMetricsResponse, MiddlewareMetricsResponse } from '@shared';
+import {
+	AllMiddlewareMetricsResponse,
+	MetricsService,
+	MiddlewareMetricsResponse,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
+
+import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
 
 // MiddlewareMetrics type is used implicitly
 
@@ -22,19 +29,15 @@ export class MiddlewareMetricsController {
 	 * Get all middleware metrics
 	 */
 	@Get()
-	@Roles('admin', 'super-admin')
-	async getAllMetrics(): Promise<AllMiddlewareMetricsResponse | MiddlewareMetricsResponse | { success: false; message: string; timestamp: string } | { success: false; message: string; error: string; timestamp: string }> {
+	@Roles('admin')
+	async getAllMetrics(): Promise<AllMiddlewareMetricsResponse | MiddlewareMetricsResponse> {
 		try {
 			const allMetrics = this.metricsService.getMetrics();
 			const middlewareMetrics = this.metricsService.getMiddlewareMetrics();
 
 			// Create summary from middleware metrics
 			if (!middlewareMetrics) {
-				return {
-					success: false,
-					message: 'No middleware metrics available',
-					timestamp: new Date().toISOString(),
-				};
+				throw new NotFoundException('No middleware metrics available');
 			}
 
 			// Type guard to ensure we have the correct type
@@ -98,12 +101,7 @@ export class MiddlewareMetricsController {
 				error: getErrorMessage(error),
 			});
 
-			return {
-				success: false,
-				message: 'Failed to retrieve middleware metrics',
-				error: getErrorMessage(error),
-				timestamp: new Date().toISOString(),
-			};
+			throw error;
 		}
 	}
 
@@ -111,17 +109,13 @@ export class MiddlewareMetricsController {
 	 * Get metrics for specific middleware
 	 */
 	@Get(':middlewareName')
-	@Roles('admin', 'super-admin')
-	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MiddlewareMetricsResponse | { success: false; message: string; timestamp: string } | { success: false; message: string; error: string; timestamp: string }> {
+	@Roles('admin')
+	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MiddlewareMetricsResponse> {
 		try {
 			const metrics = this.metricsService.getMiddlewareMetrics(middlewareName);
 
 			if (!metrics) {
-				return {
-					success: false,
-					message: `No metrics found for middleware: ${middlewareName}`,
-					timestamp: new Date().toISOString(),
-				};
+				throw new NotFoundException(`No metrics found for middleware: ${middlewareName}`);
 			}
 
 			logger.system('Middleware metrics accessed', {
@@ -137,12 +131,7 @@ export class MiddlewareMetricsController {
 				error: getErrorMessage(error),
 			});
 
-			return {
-				success: false,
-				message: `Failed to retrieve metrics for middleware: ${middlewareName}`,
-				error: getErrorMessage(error),
-				timestamp: new Date().toISOString(),
-			};
+			throw error;
 		}
 	}
 
@@ -150,7 +139,7 @@ export class MiddlewareMetricsController {
 	 * Reset metrics for specific middleware
 	 */
 	@Delete(':middlewareName')
-	@Roles('super-admin')
+	@Roles('admin')
 	async resetMiddlewareMetrics(@Param('middlewareName') middlewareName: string) {
 		try {
 			this.metricsService.resetMiddlewareMetrics(middlewareName);
@@ -169,12 +158,7 @@ export class MiddlewareMetricsController {
 				error: getErrorMessage(error),
 			});
 
-			return {
-				success: false,
-				message: `Failed to reset metrics for middleware: ${middlewareName}`,
-				error: getErrorMessage(error),
-				timestamp: new Date().toISOString(),
-			};
+			throw error;
 		}
 	}
 
@@ -182,7 +166,7 @@ export class MiddlewareMetricsController {
 	 * Reset all middleware metrics
 	 */
 	@Delete()
-	@Roles('super-admin')
+	@Roles('admin')
 	async resetAllMetrics() {
 		try {
 			this.metricsService.resetMiddlewareMetrics();
@@ -190,20 +174,13 @@ export class MiddlewareMetricsController {
 			logger.system('All middleware metrics reset', {});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				message: 'All middleware metrics have been reset',
-			};
+			return { reset: true };
 		} catch (error) {
 			logger.systemError('Failed to reset all middleware metrics', {
 				error: getErrorMessage(error),
 			});
 
-			return {
-				success: false,
-				message: 'Failed to reset all middleware metrics',
-				error: getErrorMessage(error),
-				timestamp: new Date().toISOString(),
-			};
+			throw error;
 		}
 	}
 }

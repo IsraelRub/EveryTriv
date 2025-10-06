@@ -5,8 +5,8 @@
  * @description caching strategy for consistent cache behavior across the system
  * @author EveryTriv Team
  */
+import type { StorageOperationResult, StorageService } from '../../types';
 import { getErrorMessage } from '../../utils';
-import type { StorageService, StorageOperationResult } from '../../types';
 
 /**
  * cache service that provides consistent caching behavior
@@ -41,13 +41,13 @@ export class CacheStrategyService {
 				case 'cache-first': {
 					// Try cache first, then persistent
 					const cacheResult = await this.cacheStorage.get<T>(key);
-					if (cacheResult.success && cacheResult.data !== null && cacheResult.data !== undefined) {
+					if (cacheResult.success && cacheResult.data && cacheResult.data !== undefined) {
 						data = cacheResult.data;
 						success = true;
 						storageType = 'cache';
 					} else {
 						const persistentResult = await this.persistentStorage.get<T>(key);
-						if (persistentResult.success && persistentResult.data !== null && persistentResult.data !== undefined) {
+						if (persistentResult.success && persistentResult.data && persistentResult.data !== undefined) {
 							data = persistentResult.data;
 							success = true;
 							storageType = 'persistent';
@@ -61,13 +61,13 @@ export class CacheStrategyService {
 				case 'persistent-first': {
 					// Try persistent first, then cache
 					const persistentResult = await this.persistentStorage.get<T>(key);
-					if (persistentResult.success && persistentResult.data !== null && persistentResult.data !== undefined) {
+					if (persistentResult.success && persistentResult.data && persistentResult.data !== undefined) {
 						data = persistentResult.data;
 						success = true;
 						storageType = 'persistent';
 					} else {
 						const cacheResult = await this.cacheStorage.get<T>(key);
-						if (cacheResult.success && cacheResult.data !== null && cacheResult.data !== undefined) {
+						if (cacheResult.success && cacheResult.data && cacheResult.data !== undefined) {
 							data = cacheResult.data;
 							success = true;
 							storageType = 'cache';
@@ -84,17 +84,21 @@ export class CacheStrategyService {
 					]);
 
 					// Prefer cache if available
-					if (cacheResult.status === 'fulfilled' && 
-						cacheResult.value.success && 
-						cacheResult.value.data !== null && 
-						cacheResult.value.data !== undefined) {
+					if (
+						cacheResult.status === 'fulfilled' &&
+						cacheResult.value.success &&
+						cacheResult.value.data &&
+						cacheResult.value.data !== undefined
+					) {
 						data = cacheResult.value.data;
 						success = true;
 						storageType = 'cache';
-					} else if (persistentResult.status === 'fulfilled' && 
-							   persistentResult.value.success && 
-							   persistentResult.value.data !== null && 
-							   persistentResult.value.data !== undefined) {
+					} else if (
+						persistentResult.status === 'fulfilled' &&
+						persistentResult.value.success &&
+						persistentResult.value.data &&
+						persistentResult.value.data !== undefined
+					) {
 						data = persistentResult.value.data;
 						success = true;
 						storageType = 'persistent';
@@ -168,9 +172,10 @@ export class CacheStrategyService {
 					]);
 
 					// Consider successful if at least one succeeds
-					success = (cacheResult.status === 'fulfilled' && cacheResult.value.success) ||
-							  (persistentResult.status === 'fulfilled' && persistentResult.value.success);
-					
+					success =
+						(cacheResult.status === 'fulfilled' && cacheResult.value.success) ||
+						(persistentResult.status === 'fulfilled' && persistentResult.value.success);
+
 					if (!success) {
 						error = 'Failed to store in both cache and persistent storage';
 					}
@@ -215,8 +220,9 @@ export class CacheStrategyService {
 			]);
 
 			// Consider successful if at least one succeeds
-			success = (cacheResult.status === 'fulfilled' && cacheResult.value.success) ||
-					  (persistentResult.status === 'fulfilled' && persistentResult.value.success);
+			success =
+				(cacheResult.status === 'fulfilled' && cacheResult.value.success) ||
+				(persistentResult.status === 'fulfilled' && persistentResult.value.success);
 
 			if (!success) {
 				error = 'Failed to delete from both cache and persistent storage';

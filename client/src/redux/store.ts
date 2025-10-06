@@ -6,7 +6,7 @@
  * @used_by client/src/App.tsx, client/src/hooks, client/src/services
  */
 import { configureStore } from '@reduxjs/toolkit';
-import { persistReducer,persistStore } from 'redux-persist';
+import { persistReducer, persistStore } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
 import favoritesReducer from './slices/favoritesSlice';

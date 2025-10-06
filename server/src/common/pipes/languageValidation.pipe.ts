@@ -5,9 +5,10 @@
  * @description Pipe for validating text with language tool
  * @used_by server/src/features/game, server/src/controllers
  */
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { LanguageValidationOptions } from '@shared';
-import { LanguageValidationData, LanguageValidationResult,serverLogger as logger, getErrorMessage  } from '@shared';
+import { LanguageValidationData, LanguageValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
+
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ValidationService } from '../validation/validation.service';
 

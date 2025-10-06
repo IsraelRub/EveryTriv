@@ -5,21 +5,15 @@
  * @description Middleware that optimizes bulk operations by batching requests and reducing database calls
  * @author EveryTriv Team
  */
+import { getErrorMessage, serverLogger as logger } from '@shared';
+
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { serverLogger as logger, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
 /**
  * Bulk Operations Middleware
  * @description Optimizes bulk operations by batching and queuing requests
- * @example
- * ```typescript
- * // Automatically detects bulk operations and optimizes them:
- * // - Batches database operations
- * // - Queues non-critical operations
- * // - Optimizes memory usage for large datasets
- * ```
  */
 @Injectable()
 export class BulkOperationsMiddleware implements NestMiddleware {

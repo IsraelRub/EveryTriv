@@ -4,10 +4,11 @@
  * @module GoogleStrategy
  * @description Google OAuth authentication strategy
  */
+import { getErrorMessage, serverLogger as logger } from '@shared';
+import { Strategy } from 'passport-google-oauth20';
+
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { serverLogger as logger, getErrorMessage } from '@shared';
-import { Strategy } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {

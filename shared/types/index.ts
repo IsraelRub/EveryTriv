@@ -65,15 +65,12 @@ export type {
 export type {
 	AsyncValidationFunction,
 	BaseValidationResult,
-	CustomDifficultyValidationResponse,
 	DifficultyValidation,
 	FieldValidationResult,
 	PasswordValidationResult,
-	PaymentValidationResult,
-	PointsValidationResult,
 	RequestDataType,
 	SharedTriviaInputValidation,
-	ValidateCustomDifficultyRequest,
+	CustomDifficultyRequest as ValidateCustomDifficultyRequest,
 	ValidationContext,
 	ValidationDecoratorOptions,
 	ValidationError,
@@ -135,8 +132,8 @@ export type {
 	StorageCleanupOptions as StorageCleanupOptionsType,
 	StorageConfig,
 	StorageOperationResult,
-	StorageStats,
 	StorageService as StorageService,
+	StorageStats,
 } from './infrastructure/storage.types';
 
 /**
@@ -157,16 +154,14 @@ export type {
  * Authentication types
  * @description Authentication and user validation type definitions
  */
-export type {
-	CurrentUserData,
-} from './infrastructure/auth.types';
+export type { CurrentUserData } from './infrastructure/auth.types';
 
 /**
  * Middleware metrics types
  * @description Middleware metrics and monitoring type definitions
  */
 export type {
-	MiddlewareMetricsSummary,
 	AllMiddlewareMetricsResponse,
 	MiddlewareMetricsResponse,
+	MiddlewareMetricsSummary,
 } from './infrastructure/api.types';

@@ -5,9 +5,20 @@
  * @description JWT token generation and validation service
  * @author EveryTriv Team
  */
+import {
+	AUTH_CONSTANTS,
+	AuthenticationRequest,
+	JWTDecodedToken,
+	TokenPair,
+	TokenPayload,
+	TokenValidationResult,
+	createServerError,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
+
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONSTANTS , AuthenticationRequest, JWTDecodedToken, serverLogger as logger , TokenPair, TokenPayload,TokenValidationResult, getErrorMessage, createServerError  } from '@shared';
 
 @Injectable()
 export class JwtTokenService {

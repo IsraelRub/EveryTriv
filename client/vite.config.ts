@@ -1,8 +1,9 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { DEFAULT_PORTS, DEFAULT_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
 import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
+
+import { DEFAULT_PORTS, DEFAULT_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
 
 
 export default defineConfig({

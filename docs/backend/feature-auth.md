@@ -77,12 +77,28 @@ export class AuthService {
 - Log פנימי כולל מזהה בקשה (Request Id) ללא חשיפת נתוני סיסמה
 
 ## נקודות קצה טיפוסיות
-| שיטה | נתיב | תיאור | מאומת |
-|------|------|-------|-------|
-| POST | /auth/register | רישום משתמש חדש | לא |
-| POST | /auth/login | התחברות | לא |
-| POST | /auth/refresh | חידוש טוקן | כן (Refresh) |
-| GET | /auth/me | אחזור פרופיל נוכחי | כן |
+| שיטה | נתיב | תיאור | מאומת | הרשאות |
+|------|------|-------|-------|---------|
+| POST | /auth/register | רישום משתמש חדש | לא | ציבורי |
+| POST | /auth/login | התחברות | לא | ציבורי |
+| POST | /auth/refresh | חידוש טוקן | כן (Refresh) | ציבורי |
+| GET | /auth/me | אחזור פרופיל נוכחי | כן | משתמש מאומת |
+| GET | /auth/admin/users | רשימת כל המשתמשים | כן | admin בלבד |
+
+## הרשאות מנהל
+
+נקודות הקצה המנהליות דורשות תפקיד `admin`:
+
+```typescript
+@Get('admin/users')
+@UseGuards(AuthGuard, RolesGuard)
+@Roles('admin')
+async getAllUsers() {
+  // גישה למנהלים בלבד
+}
+```
+
+למידע מפורט על מערכת ההרשאות, ראו [AUTHORIZATION.md](./AUTHORIZATION.md).
 
 ## ולידציה
 - כל DTO עובר class-validator

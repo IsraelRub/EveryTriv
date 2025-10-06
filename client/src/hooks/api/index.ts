@@ -66,25 +66,21 @@ export {
  * @description Analytics and statistics hooks
  * @exports {Function} Analytics-related React hooks
  */
-export {
-  useDifficultyStats,
-  usePopularTopics,
-  useUserAnalytics,
-} from './useAnalyticsDashboard';
+export { useDifficultyStats, usePopularTopics, useUserAnalytics } from './useAnalyticsDashboard';
 
 /**
  * Subscription management hooks
  * @description Subscription create and cancel hooks
  * @exports {Function} Subscription-related React hooks
  */
-export { useCancelSubscription,useCreateSubscription } from './useSubscriptionManagement';
+export { useCancelSubscription, useCreateSubscription } from './useSubscriptionManagement';
 
 /**
  * User preferences hooks
  * @description User preferences management hooks
  * @exports {Function} User preferences-related React hooks
  */
-export { useUpdateUserPreferences,useUserPreferences } from './useUserPreferences';
+export { useUpdateUserPreferences, useUserPreferences } from './useUserPreferences';
 
 /**
  * Account management hooks

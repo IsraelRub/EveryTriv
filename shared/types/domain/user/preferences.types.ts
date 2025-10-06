@@ -5,7 +5,6 @@
  * @description Type definitions for user preferences and settings management
  */
 
-
 /**
  * User preferences interface (extended)
  * @interface UserPreferencesExtended
@@ -35,7 +34,6 @@ export interface UserPreferencesExtended {
 		questionLimit: number;
 	};
 }
-
 
 /**
  * User preferences update interface (extended)

@@ -9,4 +9,4 @@
 import type { BaseUser, User, UserAddress } from '@shared';
 
 // Re-export shared types
-export type { BaseUser,User, UserAddress };
+export type { BaseUser, User, UserAddress };

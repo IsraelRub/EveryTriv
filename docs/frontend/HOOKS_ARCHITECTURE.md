@@ -113,7 +113,7 @@ export const useLogout = () => {
 
       // Clear all cached data on logout
       queryClient.clear();
-      clientLogger.securityLogout('User logged out, cache cleared');
+      logger.securityLogout('User logged out, cache cleared');
     },
   });
 };
@@ -149,7 +149,7 @@ export const useRegister = () => {
 ### useTrivia Hooks (useTriviaQuestion, useGameHistory, useLeaderboard)
 ```typescript
 import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
-import { clientLogger, getErrorMessage } from '@shared';
+import { clientLogger as logger, getErrorMessage } from '@shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';
@@ -582,7 +582,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   flush: () => void;
   isPending: boolean;
 } {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCallTimeRef = useRef<number>(0);
   const [isPending, setIsPending] = useState(false);
 
@@ -591,7 +591,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   const cancel = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }
     setIsPending(false);
   }, []);
@@ -599,7 +599,7 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   const flush = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }
     setIsPending(false);
     func();
@@ -726,7 +726,7 @@ export function useValueChange<T>(value: T): {
   return {
     current: value,
     previous,
-    hasChanged: previous !== undefined && previous !== value,
+    hasChanged: previous && previous !== value,
   };
 }
 ```
@@ -817,6 +817,11 @@ export const GameComponent: React.FC = () => {
 ### Context Usage
 - AudioContext ב-App.tsx לניהול אודיו גלובלי
 - GameContext ב-HomeView.tsx לניהול מצב משחק
+
+### TypeScript Best Practices
+- שימוש ב-`null` במקום `undefined` עבור refs (כמו `useRef<ReturnType<typeof setTimeout> | null>(null)`)
+- שימוש ב-`error?: string` עבור שדות אופציונליים ב-Redux state
+- בדיקות מפורשות: `if (timeoutRef.current)` במקום `if (timeoutRef.current)`
 
 ## בדיקות
 - בדיקת Hooks טהורים עם React Testing Library

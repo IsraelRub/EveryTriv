@@ -1,6 +1,7 @@
+import { UserEntity } from 'src/internal/entities';
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from 'src/internal/entities';
 
 import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment';

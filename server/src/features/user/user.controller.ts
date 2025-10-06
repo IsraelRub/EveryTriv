@@ -1,3 +1,5 @@
+import { AdminUserData, UserFieldUpdate, getErrorMessage, serverLogger as logger } from '@shared';
+
 import {
 	Body,
 	Controller,
@@ -12,7 +14,6 @@ import {
 	Query,
 	UsePipes,
 } from '@nestjs/common';
-import { AdminUserData, serverLogger,UserFieldUpdate, getErrorMessage } from '@shared';
 
 import {
 	AuditLog,
@@ -49,24 +50,20 @@ export class UserController {
 	 */
 	@Get('profile')
 	@Cache(300)
-	async getUserProfile(
-		@CurrentUser() user: { id: string; username: string; email: string; role: string }
-	) {
+	async getUserProfile(@CurrentUser() user: { id: string; username: string; email: string; role: string }) {
 		try {
 			const result = await this.userService.getUserProfile(user.id);
-			return {
-				id: result.id,
-				username: result.username,
-				email: result.email,
-				role: user.role,
-				firstName: result.firstName,
-				lastName: result.last_name,
-				createdAt: result.created_at?.toISOString(),
-				preferences: result.preferences as Record<string, unknown>,
-			};
+
+			// Log API call
+			logger.apiRead('user_profile', {
+				userId: user.id,
+			});
+
+			return result;
 		} catch (error) {
-			serverLogger.userError('Error getting user profile', {
+			logger.userError('Error getting user profile', {
 				error: getErrorMessage(error),
+				userId: user.id,
 			});
 			throw error;
 		}
@@ -80,11 +77,17 @@ export class UserController {
 	async getUserCredits(@CurrentUserId() userId: string) {
 		try {
 			const credits = await this.userService.getUserCredits(userId);
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+
+			// Log API call
+			logger.apiRead('user_credits', {
+				userId,
+			});
+
 			return { credits };
 		} catch (error) {
-			serverLogger.userError('Error getting user credits', {
+			logger.userError('Error getting user credits', {
 				error: getErrorMessage(error),
+				userId,
 			});
 			throw error;
 		}
@@ -96,13 +99,21 @@ export class UserController {
 	@Post('credits')
 	async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCreditsDto) {
 		try {
-
 			const result = await this.userService.deductCredits(userId, body.amount, body.reason || 'Game play');
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+
+			// Log API call
+			logger.apiUpdate('user_credits_deduct', {
+				userId,
+				amount: body.amount,
+				reason: body.reason || 'Game play',
+			});
+
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error deducting credits', {
+			logger.userError('Error deducting credits', {
 				error: getErrorMessage(error),
+				userId,
+				amount: body.amount,
 			});
 			throw error;
 		}
@@ -125,12 +136,11 @@ export class UserController {
 		@UserAgent() userAgent: string
 	) {
 		try {
-
 			const result = await this.userService.updateUserProfile(userId, profileData);
 
 			// Log API call for profile update
-			serverLogger.apiUpdate('user_profile', {
-				userId: userId,
+			logger.apiUpdate('user_profile', {
+				userId,
 				fields: Object.keys(profileData),
 				ip,
 				userAgent,
@@ -138,8 +148,10 @@ export class UserController {
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating user profile', {
+			logger.userError('Error updating user profile', {
 				error: getErrorMessage(error),
+				userId,
+				fields: Object.keys(profileData),
 			});
 			throw error;
 		}
@@ -149,13 +161,13 @@ export class UserController {
 	 * Search users
 	 */
 	@Get('search')
+	@Cache(300) // Cache search results for 5 minutes
 	async searchUsers(@Query() query: SearchUsersDto) {
 		try {
-
 			const result = await this.userService.searchUsers(query.query, query.limit || 10);
 
 			// Log API call for user search
-			serverLogger.apiRead('user_search', {
+			logger.apiRead('user_search', {
 				query: query.query,
 				limit: query.limit || 10,
 				resultsCount: result.totalResults,
@@ -163,8 +175,10 @@ export class UserController {
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error searching users', {
+			logger.userError('Error searching users', {
 				error: getErrorMessage(error),
+				query: query.query,
+				limit: query.limit || 10,
 			});
 			throw error;
 		}
@@ -174,6 +188,7 @@ export class UserController {
 	 * Get user by username
 	 */
 	@Get('username/:username')
+	@Cache(600) // Cache for 10 minutes
 	async getUserByUsername(@Param('username') username: string) {
 		try {
 			if (!username) {
@@ -183,14 +198,15 @@ export class UserController {
 			const result = await this.userService.getUserByUsername(username);
 
 			// Log API call for user by username
-			serverLogger.apiRead('user_by_username', {
+			logger.apiRead('user_by_username', {
 				username,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error getting user by username', {
+			logger.userError('Error getting user by username', {
 				error: getErrorMessage(error),
+				username,
 			});
 			throw error;
 		}
@@ -200,19 +216,22 @@ export class UserController {
 	 * Delete user account
 	 */
 	@Delete('account')
+	@AuditLog('user:delete-account')
+	@UserActivityLog('user:account-deletion')
 	async deleteUserAccount(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.userService.deleteUserAccount(userId);
 
 			// Log API call for account deletion
-			serverLogger.apiDelete('user_account', {
-				userId: userId,
+			logger.apiDelete('user_account', {
+				userId,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error deleting user account', {
+			logger.userError('Error deleting user account', {
 				error: getErrorMessage(error),
+				userId,
 			});
 			throw error;
 		}
@@ -222,20 +241,23 @@ export class UserController {
 	 * Update user preferences
 	 */
 	@Put('preferences')
+	@UserActivityLog('user:preferences-update')
 	async updateUserPreferences(@CurrentUserId() userId: string, @Body() preferences: UpdateUserPreferencesDto) {
 		try {
 			const result = await this.userService.updateUserPreferences(userId, preferences as Record<string, unknown>);
 
 			// Log API call for preferences update
-			serverLogger.apiUpdate('user_preferences', {
-				userId: userId,
+			logger.apiUpdate('user_preferences', {
+				userId,
 				fields: Object.keys(preferences),
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating user preferences', {
+			logger.userError('Error updating user preferences', {
 				error: getErrorMessage(error),
+				userId,
+				fields: Object.keys(preferences),
 			});
 			throw error;
 		}
@@ -245,6 +267,7 @@ export class UserController {
 	 * Update specific user field
 	 */
 	@Patch('profile/:field')
+	@UserActivityLog('user:field-update')
 	async updateUserField(
 		@CurrentUserId() userId: string,
 		@Param('field') field: string,
@@ -258,15 +281,17 @@ export class UserController {
 			const result = await this.userService.updateUserField(userId, field as keyof UserFieldUpdate, body.value);
 
 			// Log API call for field update
-			serverLogger.apiUpdate('user_field', {
-				userId: userId,
+			logger.apiUpdate('user_field', {
+				userId,
 				field,
+				value: typeof body.value === 'string' ? body.value.substring(0, 50) : body.value,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating user field', {
+			logger.userError('Error updating user field', {
 				error: getErrorMessage(error),
+				userId,
 				field,
 			});
 			throw error;
@@ -277,6 +302,7 @@ export class UserController {
 	 * Update single preference
 	 */
 	@Patch('preferences/:preference')
+	@UserActivityLog('user:single-preference-update')
 	async updateSinglePreference(
 		@CurrentUserId() userId: string,
 		@Param('preference') preference: string,
@@ -290,15 +316,17 @@ export class UserController {
 			const result = await this.userService.updateSinglePreference(userId, preference, body.value);
 
 			// Log API call for single preference update
-			serverLogger.apiUpdate('user_single_preference', {
-				userId: userId,
+			logger.apiUpdate('user_single_preference', {
+				userId,
 				preference,
+				value: typeof body.value === 'string' ? body.value.substring(0, 50) : body.value,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating single preference', {
+			logger.userError('Error updating single preference', {
 				error: getErrorMessage(error),
+				userId,
 				preference,
 			});
 			throw error;
@@ -309,6 +337,7 @@ export class UserController {
 	 * Get user by ID (for admins)
 	 */
 	@Get(':id')
+	@Cache(300) // Cache for 5 minutes
 	async getUserById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -318,13 +347,13 @@ export class UserController {
 			const result = await this.userService.getUserById(id);
 
 			// Log API call for user by ID
-			serverLogger.apiRead('user_by_id', {
+			logger.apiRead('user_by_id', {
 				userId: id,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error getting user by ID', {
+			logger.userError('Error getting user by ID', {
 				error: getErrorMessage(error),
 				userId: id,
 			});
@@ -336,6 +365,8 @@ export class UserController {
 	 * Update user credits (for admins)
 	 */
 	@Put('credits/:userId')
+	@Roles('admin')
+	@AuditLog('admin:update-user-credits')
 	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
@@ -345,7 +376,7 @@ export class UserController {
 			const result = await this.userService.updateUserCredits(userId, creditsData.amount, creditsData.reason);
 
 			// Log API call for credits update
-			serverLogger.apiUpdate('user_credits', {
+			logger.apiUpdate('user_credits_admin', {
 				userId,
 				amount: creditsData.amount,
 				reason: creditsData.reason,
@@ -353,9 +384,10 @@ export class UserController {
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating user credits', {
+			logger.userError('Error updating user credits', {
 				error: getErrorMessage(error),
 				userId,
+				amount: creditsData.amount,
 			});
 			throw error;
 		}
@@ -365,6 +397,8 @@ export class UserController {
 	 * Delete user (for admins)
 	 */
 	@Delete(':userId')
+	@Roles('admin')
+	@AuditLog('admin:delete-user')
 	async deleteUser(@Param('userId') userId: string) {
 		try {
 			if (!userId) {
@@ -374,13 +408,13 @@ export class UserController {
 			const result = await this.userService.deleteUserAccount(userId);
 
 			// Log API call for user deletion
-			serverLogger.apiDelete('user_admin_delete', {
+			logger.apiDelete('user_admin_delete', {
 				userId,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error deleting user', {
+			logger.userError('Error deleting user', {
 				error: getErrorMessage(error),
 				userId,
 			});
@@ -392,6 +426,8 @@ export class UserController {
 	 * Update user status (for admins)
 	 */
 	@Patch(':userId/status')
+	@Roles('admin')
+	@AuditLog('admin:update-user-status')
 	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
@@ -406,16 +442,17 @@ export class UserController {
 			const result = await this.userService.updateUserStatus(userId, statusData.status);
 
 			// Log API call for status update
-			serverLogger.apiUpdate('user_status', {
+			logger.apiUpdate('user_status_admin', {
 				userId,
 				status: statusData.status,
 			});
 
 			return result;
 		} catch (error) {
-			serverLogger.userError('Error updating user status', {
+			logger.userError('Error updating user status', {
 				error: getErrorMessage(error),
 				userId,
+				status: statusData.status,
 			});
 			throw error;
 		}
@@ -425,20 +462,21 @@ export class UserController {
 	 * Admin endpoint - get all users (admin only)
 	 */
 	@Get('admin/all')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
+	@Cache(60) // Cache for 1 minute
 	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string; email: string }) {
 		try {
-			serverLogger.apiRead('admin_get_all_users', {
-				adminId: user.id,
-				adminRole: user.role,
-			});
-
 			// This would call a service method to get all users
 			const users: AdminUserData[] = [];
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
+			// Log API call
+			logger.apiRead('admin_get_all_users', {
+				adminId: user.id,
+				adminRole: user.role,
+				usersCount: users.length,
+			});
+
 			return {
-				message: 'Admin access granted',
 				adminUser: {
 					id: user.id,
 					username: user.username,
@@ -449,9 +487,10 @@ export class UserController {
 				users: users,
 			};
 		} catch (error) {
-			serverLogger.userError('Failed to get all users', {
+			logger.userError('Failed to get all users', {
 				error: getErrorMessage(error),
 				adminId: user.id,
+				adminRole: user.role,
 			});
 			throw error;
 		}
@@ -461,30 +500,39 @@ export class UserController {
 	 * Admin endpoint - update user status (admin only)
 	 */
 	@Put('admin/:userId/status')
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
+	@AuditLog('admin:update-user-status')
 	async adminUpdateUserStatus(
 		@CurrentUser() adminUser: { id: string; role: string; username: string },
 		@Param('userId') userId: string,
 		@Body() statusData: UpdateUserStatusDto
 	) {
 		try {
-			serverLogger.apiUpdate('admin_update_user_status', {
+			if (!userId || !statusData.status) {
+				throw new HttpException('User ID and status are required', HttpStatus.BAD_REQUEST);
+			}
+
+			const validStatuses = ['active', 'suspended', 'banned'];
+			if (!validStatuses.includes(statusData.status)) {
+				throw new HttpException('Invalid status. Must be: active, suspended, or banned', HttpStatus.BAD_REQUEST);
+			}
+
+			// await this.userService.updateUserStatus(userId, statusData.status);
+
+			// Log API call
+			logger.apiUpdate('admin_update_user_status', {
 				adminId: adminUser.id,
 				targetUserId: userId,
 				newStatus: statusData.status,
 			});
 
-			// await this.userService.updateUserStatus(userId, statusData.status);
-
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				message: 'User status updated successfully',
-			};
+			return { updated: true };
 		} catch (error) {
-			serverLogger.userError('Failed to update user status', {
+			logger.userError('Failed to update user status', {
 				error: getErrorMessage(error),
 				adminId: adminUser.id,
 				targetUserId: userId,
+				status: statusData.status,
 			});
 			throw error;
 		}

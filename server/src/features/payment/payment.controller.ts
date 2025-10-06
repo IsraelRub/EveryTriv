@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
-import { PaymentData , serverLogger as logger } from '@shared';
+import { PaymentData, getErrorMessage, serverLogger as logger } from '@shared';
+
+import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
 
 import {
 	AuditLog,
 	BusinessLog,
+	Cache,
 	ClientIP,
 	CurrentUserId,
 	PerformanceThreshold,
@@ -35,13 +37,9 @@ export class PaymentController {
 	) {
 		try {
 			// DTO validation is handled automatically by NestJS
-
-			// Log payment attempt with IP and User Agent
-			logger.logUserActivity(userId, 'Payment creation attempt', {
-				paymentType: paymentData.planType,
-				ip,
-				userAgent,
-			});
+			if (!paymentData.planType) {
+				throw new HttpException('Plan type is required', HttpStatus.BAD_REQUEST);
+			}
 
 			// Create payment
 			const paymentDataForService: PaymentData = {
@@ -58,18 +56,23 @@ export class PaymentController {
 			const result = await this.paymentService.processPayment(userId, paymentDataForService);
 
 			// Log API call for payment creation
-			logger.apiCreate('payment', {
-				userId: userId,
+			logger.apiCreate('payment_create', {
+				userId,
 				planType: paymentData.planType,
-				success: result.success,
+				paymentId: result.paymentId,
+				status: result.status,
+				ip,
+				userAgent,
 			});
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
-			return {
-				paymentId: result.paymentId,
-				message: 'Payment session created successfully',
-			};
+			return result;
 		} catch (error) {
+			logger.paymentFailed('unknown', 'Payment creation failed', {
+				error: getErrorMessage(error),
+				userId,
+				planType: paymentData.planType,
+				ip,
+			});
 			throw error;
 		}
 	}
@@ -78,18 +81,23 @@ export class PaymentController {
 	 * Get payment history for user
 	 */
 	@Get('history')
+	@Cache(300) // Cache for 5 minutes
 	async getPaymentHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.paymentService.getPaymentHistory(userId);
 
 			// Log API call for payment history request
 			logger.apiRead('payment_history', {
-				userId: userId,
+				userId,
 				paymentsCount: result.length,
 			});
 
 			return result;
 		} catch (error) {
+			logger.paymentFailed('unknown', 'Error getting payment history', {
+				error: getErrorMessage(error),
+				userId,
+			});
 			throw error;
 		}
 	}

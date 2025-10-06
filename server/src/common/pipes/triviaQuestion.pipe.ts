@@ -5,9 +5,9 @@
  * @description Pipe for validating trivia question data input with comprehensive validation
  * @used_by server/src/features/game, server/src/controllers
  */
+import { TriviaQuestionData, ValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
+
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import type { ValidationResult } from '@shared';
-import { serverLogger as logger , TriviaQuestionData, TriviaQuestionValidationResult, getErrorMessage } from '@shared';
 
 import { ValidationService } from '../validation/validation.service';
 
@@ -15,21 +15,25 @@ import { ValidationService } from '../validation/validation.service';
 export class TriviaQuestionPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: TriviaQuestionData): Promise<TriviaQuestionValidationResult> {
+	async transform(value: TriviaQuestionData): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
 			logger.validationDebug('trivia_question', '[REDACTED]', 'validation_start');
 
 			const errors: string[] = [];
+			const suggestions: string[] = [];
 
 			// Validate question text
 			if (!value.question || value.question.trim().length === 0) {
 				errors.push('Question text is required');
+				suggestions.push('Enter a clear, specific question that players can understand');
 			} else if (value.question.length > 1000) {
 				errors.push('Question text is too long (max 1000 characters)');
+				suggestions.push('Shorten your question to 1000 characters or less for better readability');
 			} else if (value.question.length < 10) {
 				errors.push('Question text must be at least 10 characters long');
+				suggestions.push('Make your question more detailed (at least 10 characters)');
 			} else {
 				const questionValidation: ValidationResult = await this.validationService.validateInputContent(
 					value.question,
@@ -37,21 +41,28 @@ export class TriviaQuestionPipe implements PipeTransform {
 				);
 				if (!questionValidation.isValid) {
 					errors.push(...questionValidation.errors);
+					if (questionValidation.suggestion) {
+						suggestions.push(questionValidation.suggestion);
+					}
 				}
 			}
 
 			// Validate options
 			if (!value.options || !Array.isArray(value.options) || value.options.length < 2) {
 				errors.push('At least 2 options are required');
+				suggestions.push('Provide 2-6 answer options for your question');
 			} else if (value.options.length > 6) {
 				errors.push('Maximum 6 options allowed');
+				suggestions.push('Limit your options to 6 or fewer for better user experience');
 			} else {
 				for (let i = 0; i < value.options.length; i++) {
 					const option = value.options[i];
 					if (!option || option.trim().length === 0) {
 						errors.push(`Option ${i + 1} cannot be empty`);
+						suggestions.push(`Provide text for option ${i + 1}`);
 					} else if (option.length > 200) {
 						errors.push(`Option ${i + 1} is too long (max 200 characters)`);
+						suggestions.push(`Shorten option ${i + 1} to 200 characters or less`);
 					}
 				}
 			}
@@ -59,8 +70,10 @@ export class TriviaQuestionPipe implements PipeTransform {
 			// Validate correct answer
 			if (!value.correctAnswer || value.correctAnswer.trim().length === 0) {
 				errors.push('Correct answer is required');
+				suggestions.push('Select which option is the correct answer');
 			} else if (!value.options || !value.options.includes(value.correctAnswer)) {
 				errors.push('Correct answer must match one of the provided options');
+				suggestions.push('Make sure the correct answer exactly matches one of your options');
 			}
 
 			// Validate difficulty if provided
@@ -100,8 +113,7 @@ export class TriviaQuestionPipe implements PipeTransform {
 			return {
 				isValid,
 				errors,
-				success: true,
-				timestamp: new Date().toISOString(),
+				suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
 			};
 		} catch (error) {
 			logger.validationError('trivia_question', '[REDACTED]', 'validation_error', {

@@ -1,11 +1,11 @@
-import { clientLogger,isToday, isYesterday, getErrorMessage  } from '@shared';
+import { clientLogger as logger, getErrorMessage, isToday, isYesterday } from '@shared';
 import { motion } from 'framer-motion';
-import { memo, useCallback,useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { gameHistoryService } from '@/services/game';
 import { LeaderboardEntry, LeaderboardProps } from '@/types';
 
-import { createStaggerContainer,fadeInLeft, fadeInUp } from '../animations';
+import { createStaggerContainer, fadeInLeft, fadeInUp } from '../animations';
 import { Icon } from '../icons';
 import { Avatar } from '../ui';
 
@@ -24,7 +24,7 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
       setEntries(leaderboardData);
       setError('');
     } catch (err) {
-      clientLogger.analyticsError('Failed to fetch leaderboard', {
+      logger.analyticsError('Failed to fetch leaderboard', {
         error: getErrorMessage(err),
       });
       setError('Failed to load leaderboard');

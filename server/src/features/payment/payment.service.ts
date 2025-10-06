@@ -5,26 +5,29 @@
  * @description Service for handling payment operations and subscription management
  * @used_by server/src/features/payment/payment.controller.ts
  */
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import {
-	formatCurrency,
-	generatePaymentIntentId,
 	PAYMENT_ERROR_MESSAGES,
 	PaymentData,
 	PaymentResult,
 	PointBalance,
 	PointPurchaseOption,
- serverLogger as logger,	SubscriptionData,
+	SubscriptionData,
 	SubscriptionPlans,
-	getErrorMessage,
-	createServerError,
 	createNotFoundError,
-	createValidationError } from '@shared';
+	createServerError,
+	createValidationError,
+	formatCurrency,
+	generatePaymentIntentId,
+	getErrorMessage,
+	serverLogger as logger,
+} from '@shared';
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
 import { Repository } from 'typeorm';
+
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 /**
  * Pricing plans configuration
@@ -204,7 +207,6 @@ export class PaymentService {
 				});
 
 				return {
-					success: true,
 					transactionId: paymentHistory.transactionId,
 					status: 'completed',
 					message: 'Payment processed successfully',
@@ -223,7 +225,6 @@ export class PaymentService {
 				});
 
 				return {
-					success: false,
 					transactionId: paymentHistory.transactionId,
 					status: 'failed',
 					message: 'Payment processing failed',
@@ -264,7 +265,10 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw createServerError('retrieve payment history', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY));
+			throw createServerError(
+				'retrieve payment history',
+				new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY)
+			);
 		}
 	}
 
@@ -308,7 +312,10 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw createServerError('retrieve subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION));
+			throw createServerError(
+				'retrieve subscription',
+				new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION)
+			);
 		}
 	}
 
@@ -341,7 +348,7 @@ export class PaymentService {
 				},
 			});
 
-			if (!paymentResult.success) {
+			if (paymentResult.status !== 'completed') {
 				throw createServerError('process payment', new Error('Payment failed'));
 			}
 
@@ -404,7 +411,7 @@ export class PaymentService {
 				metadata: { planType },
 			});
 
-			if (!paymentResult.success) {
+			if (paymentResult.status !== 'completed') {
 				throw createServerError('process payment', new Error('Payment failed'));
 			}
 

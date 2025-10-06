@@ -1,5 +1,6 @@
+import { TokenExtractionService, getErrorMessage, serverLogger as logger } from '@shared';
+
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { serverLogger as logger, TokenExtractionService, getErrorMessage } from '@shared';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 

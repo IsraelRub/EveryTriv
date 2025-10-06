@@ -1,4 +1,13 @@
-import { clientLogger,ErrorBoundaryProps, ErrorBoundaryState , formatTime, getCurrentTimestamp, getErrorMessage, getErrorStack, getErrorType  } from '@shared';
+import {
+  clientLogger as logger,
+  ErrorBoundaryProps,
+  ErrorBoundaryState,
+  formatTime,
+  getCurrentTimestamp,
+  getErrorMessage,
+  getErrorStack,
+  getErrorType,
+} from '@shared';
 import { motion } from 'framer-motion';
 import { Component, ErrorInfo } from 'react';
 
@@ -37,7 +46,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       lastErrorTime: new Date().toISOString(),
     };
 
-    clientLogger.navigationComponentError('ErrorBoundary', getErrorMessage(error), errorDetails);
+    logger.navigationComponentError('ErrorBoundary', getErrorMessage(error), errorDetails);
 
     // Store error in storage for debugging
     try {
@@ -107,7 +116,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                     disabled={this.retryCount >= this.maxRetries}
                     className='bg-white text-red-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                   >
-                    {this.retryCount >= this.maxRetries ? 'Max Retries Reached' : `Retry (${this.retryCount}/${this.maxRetries})`}
+                    {this.retryCount >= this.maxRetries
+                      ? 'Max Retries Reached'
+                      : `Retry (${this.retryCount}/${this.maxRetries})`}
                   </button>
                   <button
                     onClick={() => window.location.reload()}

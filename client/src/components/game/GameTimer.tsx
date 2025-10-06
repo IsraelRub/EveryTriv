@@ -27,7 +27,7 @@ export default function GameTimer({
   mode,
   className,
 }: GameTimerProps) {
-  const [displayTime, setDisplayTime] = useState(timeElapsed || 0);
+  const [displayTime, setDisplayTime] = useState(timeElapsed ?? 0);
 
   useEffect(() => {
     if (!isRunning || isGameOver) return;
@@ -40,12 +40,11 @@ export default function GameTimer({
   }, [isRunning, isGameOver]);
 
   const getTimerDisplay = () => {
-    const formattedElapsed = formatTimeDisplay(displayTime || 0);
+    const formattedElapsed = formatTimeDisplay(displayTime ?? 0);
 
     if (mode?.name === 'time-limited') {
-      const formattedRemaining =
-        timeRemaining !== undefined ? formatTimeDisplay(timeRemaining) : '0:00';
-      const isTimeRunningOut = timeRemaining !== undefined && timeRemaining < 30000; // Less than 30 seconds
+      const formattedRemaining = timeRemaining ? formatTimeDisplay(timeRemaining) : '0:00';
+      const isTimeRunningOut = timeRemaining && timeRemaining < 30000; // Less than 30 seconds
 
       return (
         <div className='flex justify-between items-center'>

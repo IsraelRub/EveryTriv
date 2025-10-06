@@ -1,19 +1,22 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import {
 	DEFAULT_USER_PREFERENCES,
-	normalizeText,
 	PreferenceValue,
- serverLogger as logger,	UserAddress,
+	UserAddress,
 	UserFieldUpdate,
 	UserPreferences,
-	getErrorMessage,
 	createServerError,
-	createValidationError } from '@shared';
+	createValidationError,
+	getErrorMessage,
+	serverLogger as logger,
+	normalizeText,
+} from '@shared';
 import { UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
 import { DeepPartial, Repository } from 'typeorm';
+
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { AuthenticationManager } from '../../common/auth/authentication.manager';
 import { PasswordService } from '../../common/auth/password.service';
@@ -64,7 +67,12 @@ export class UserService {
 			);
 
 			if (!authResult.success) {
-				throw new UnauthorizedException(authResult.error || 'Invalid credentials');
+				throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
+			}
+
+			// Type guard: we know these exist when success is true
+			if (!authResult.accessToken || !authResult.refreshToken) {
+				throw new UnauthorizedException('Authentication result incomplete');
 			}
 
 			const sessionKey = `user_session:${user.id}`;
@@ -73,7 +81,7 @@ export class UserService {
 				{
 					userId: user.id,
 					lastLogin: new Date().toISOString(),
-					accessToken: authResult.accessToken!.substring(0, 20) + '...',
+					accessToken: authResult.accessToken.substring(0, 20) + '...',
 				},
 				86400
 			);
@@ -82,7 +90,7 @@ export class UserService {
 				logger.userWarn('Failed to store user session data', {
 					context: 'UserService',
 					userId: user.id,
-					error: result.error || 'Unknown error',
+					error: result.error ?? 'Unknown error',
 				});
 			}
 
@@ -97,8 +105,8 @@ export class UserService {
 					avatar: user.avatar,
 					role: user.role,
 				},
-				accessToken: authResult.accessToken!,
-				refreshToken: authResult.refreshToken!,
+				accessToken: authResult.accessToken,
+				refreshToken: authResult.refreshToken,
 				message: 'Login successful',
 			};
 		} catch (error) {
@@ -152,7 +160,6 @@ export class UserService {
 			});
 
 			return {
-				success: true,
 				user: {
 					id: user.id,
 					username: user.username,
@@ -310,7 +317,7 @@ export class UserService {
 						credits: user.credits,
 						purchasedPoints: user.purchasedPoints,
 						totalPoints: user.credits + user.purchasedPoints,
-						stats: user.stats || {},
+						stats: user.stats ?? {},
 						created_at: user.createdAt,
 						accountAge: user.createdAt
 							? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
@@ -451,7 +458,6 @@ export class UserService {
 			await this.cacheService.delete(`user:credits:${userId}`);
 
 			return {
-				success: true,
 				message: 'Account deleted successfully',
 			};
 		} catch (error) {
@@ -493,9 +499,8 @@ export class UserService {
 			await this.cacheService.delete(`user:profile:${userId}`);
 
 			return {
-				success: true,
-				preferences: user.preferences,
 				message: 'Preferences updated successfully',
+				preferences: user.preferences,
 			};
 		} catch (error) {
 			logger.userError('Failed to update user preferences', {
@@ -666,7 +671,7 @@ export class UserService {
 				passwordHash: userData.passwordHash,
 				firstName: userData.firstName,
 				lastName: userData.lastName,
-				role: userData.role || 'user',
+				role: userData.role ?? 'user',
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -768,8 +773,8 @@ export class UserService {
 				action,
 				details,
 				timestamp: new Date().toISOString(),
-				ip: details.ip || 'unknown',
-				userAgent: details.userAgent || 'unknown',
+				ip: details.ip ?? 'unknown',
+				userAgent: details.userAgent ?? 'unknown',
 			};
 
 			// Store audit log in persistent storage (survives cache invalidation)
@@ -783,7 +788,7 @@ export class UserService {
 				logger.userWarn('Failed to store audit log', {
 					userId,
 					action,
-					error: result.error || 'Unknown error',
+					error: result.error ?? 'Unknown error',
 				});
 			}
 
@@ -840,7 +845,6 @@ export class UserService {
 			}
 
 			return {
-				success: true,
 				logs: auditLogs,
 				total: auditLogs.length,
 			};
@@ -907,7 +911,7 @@ export class UserService {
 					throw createValidationError('role', 'string');
 				}
 			} else if (field === 'currentSubscriptionId') {
-				if (typeof value === 'string' || value === null) {
+				if (typeof value === 'string' || !value) {
 					user.currentSubscriptionId = value as string | undefined;
 				} else {
 					throw createValidationError('currentSubscriptionId', 'string');
@@ -1029,7 +1033,7 @@ export class UserService {
 			}
 
 			// Update credits
-			user.credits = (user.credits || 0) + amount;
+			user.credits = (user.credits ?? 0) + amount;
 
 			// Ensure credits don't go below 0
 			if (user.credits < 0) {
@@ -1046,7 +1050,7 @@ export class UserService {
 			logger.userInfo('User credits updated', {
 				context: 'UserService',
 				userId,
-				oldCredits: (user.credits || 0) - amount,
+				oldCredits: (user.credits ?? 0) - amount,
 				newCredits: updatedUser.credits,
 				change: amount,
 				reason,
@@ -1138,7 +1142,7 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			return user.credits || 0;
+			return user.credits ?? 0;
 		} catch (error) {
 			logger.userError('Failed to get user credits', {
 				context: 'UserService',
@@ -1167,7 +1171,7 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			const currentCredits = user.credits || 0;
+			const currentCredits = user.credits ?? 0;
 			if (currentCredits < amount) {
 				throw new BadRequestException('Insufficient credits');
 			}

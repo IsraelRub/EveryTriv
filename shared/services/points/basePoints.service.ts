@@ -95,7 +95,8 @@ export abstract class BasePointsService {
 	} {
 		let newPurchasedPoints = currentBalance.purchased_points;
 		let newFreeQuestions = currentBalance.free_questions;
-		let newCredits = currentBalance.total_points - currentBalance.purchased_points - (currentBalance.free_questions * 0.1);
+		let newCredits =
+			currentBalance.total_points - currentBalance.purchased_points - currentBalance.free_questions * 0.1;
 
 		let freeQuestionsUsed = 0;
 		let purchasedPointsUsed = 0;

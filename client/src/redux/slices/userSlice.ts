@@ -1,10 +1,10 @@
-import { createAsyncThunk,createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User } from '@shared';
 
 import { POINT_BALANCE_DEFAULT_VALUES } from '../../constants';
 import { authService } from '../../services/auth';
 import { PointBalancePayload, UserState } from '../../types';
-import { ErrorPayload,LoadingPayload } from '../../types/redux';
+import { ErrorPayload, LoadingPayload } from '../../types/redux';
 
 export const fetchUserData = createAsyncThunk(
   'user/fetchUserData',
@@ -69,7 +69,7 @@ const userStateSlice = createSlice({
         state.user = action.payload;
         state.currentUser = action.payload;
         state.username = action.payload.username;
-        state.avatar = action.payload.avatar || '';
+        state.avatar = action.payload.avatar ?? '';
         state.isAuthenticated = true;
       } else {
         state.user = null;
@@ -81,8 +81,9 @@ const userStateSlice = createSlice({
       state.isLoading = false;
       state.error = null;
     },
-    updateScore: (state, _action: PayloadAction<number>) => {
+    updateScore: (state, action: PayloadAction<number>) => {
       if (state.user) {
+        state.user.score = action.payload;
       }
     },
     setPointBalance: (state, action: PayloadAction<PointBalancePayload>) => {
@@ -90,9 +91,9 @@ const userStateSlice = createSlice({
         total_points: action.payload.balance,
         free_questions: action.payload.balance - action.payload.purchasedPoints,
         purchased_points: action.payload.purchasedPoints,
-        daily_limit: state.pointBalance?.daily_limit || 20,
+        daily_limit: state.pointBalance?.daily_limit ?? 20,
         can_play_free: action.payload.balance - action.payload.purchasedPoints > 0,
-        next_reset_time: state.pointBalance?.next_reset_time || null,
+        next_reset_time: state.pointBalance?.next_reset_time ?? null,
       };
     },
     deductPoints: (state, action: PayloadAction<number>) => {

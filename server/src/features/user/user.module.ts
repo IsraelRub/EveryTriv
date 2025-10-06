@@ -9,12 +9,13 @@
  * @entities UserEntity
  */
 import { AuthModule } from '@features/auth';
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthenticationManager, PasswordService } from 'src/common/auth';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheModule, StorageModule } from 'src/internal/modules';
+
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserDataPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';

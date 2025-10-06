@@ -8,7 +8,7 @@
  */
 import { PointPurchaseOption } from '@shared';
 import { formatTimeUntilReset } from '@shared';
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 
 import { PointBalance, PointTransaction } from '../../types';
 import { apiService } from '../api';
@@ -27,17 +27,17 @@ class ClientPointsService {
    */
   async getPointBalance(): Promise<PointBalance> {
     try {
-      clientLogger.userInfo('Getting point balance');
+      logger.userInfo('Getting point balance');
 
       const balance = (await apiService.getPointBalance()) as PointBalance;
 
-      clientLogger.userInfo('Point balance retrieved successfully', {
+      logger.userInfo('Point balance retrieved successfully', {
         totalPoints: balance.total_points,
         purchasedPoints: balance.purchased_points,
       });
       return balance;
     } catch (error) {
-      clientLogger.userError('Failed to get point balance', { error });
+      logger.userError('Failed to get point balance', { error });
       throw error;
     }
   }
@@ -47,16 +47,16 @@ class ClientPointsService {
    */
   async getPointPackages(): Promise<PointPurchaseOption[]> {
     try {
-      clientLogger.userInfo('Getting point packages');
+      logger.userInfo('Getting point packages');
 
       const packages = (await apiService.getPointPackages()) as PointPurchaseOption[];
 
-      clientLogger.userInfo('Point packages retrieved successfully', {
+      logger.userInfo('Point packages retrieved successfully', {
         count: packages.length,
       });
       return packages;
     } catch (error) {
-      clientLogger.userError('Failed to get point packages', { error });
+      logger.userError('Failed to get point packages', { error });
       throw error;
     }
   }
@@ -66,11 +66,11 @@ class ClientPointsService {
    */
   async canPlay(questionCount: number): Promise<{ canPlay: boolean; reason?: string }> {
     try {
-      clientLogger.userInfo('Checking if user can play', { questionCount });
+      logger.userInfo('Checking if user can play', { questionCount });
 
       const result = await apiService.canPlay(questionCount);
 
-      clientLogger.userInfo('Can play check completed', {
+      logger.userInfo('Can play check completed', {
         canPlay: result.allowed,
         reason: result.reason,
       });
@@ -79,7 +79,7 @@ class ClientPointsService {
         reason: result.reason,
       };
     } catch (error) {
-      clientLogger.userError('Failed to check if user can play', { error, questionCount });
+      logger.userError('Failed to check if user can play', { error, questionCount });
       throw error;
     }
   }
@@ -89,17 +89,17 @@ class ClientPointsService {
    */
   async deductPoints(questionCount: number, gameMode: string): Promise<PointBalance> {
     try {
-      clientLogger.userInfo('Deducting points', { questionCount, gameMode });
+      logger.userInfo('Deducting points', { questionCount, gameMode });
 
       const newBalance = await apiService.deductPoints(questionCount, gameMode);
 
-      clientLogger.userInfo('Points deducted successfully', {
+      logger.userInfo('Points deducted successfully', {
         newTotalPoints: newBalance.total_points,
         newPurchasedPoints: newBalance.purchased_points,
       });
       return newBalance;
     } catch (error) {
-      clientLogger.userError('Failed to deduct points', { error, questionCount, gameMode });
+      logger.userError('Failed to deduct points', { error, questionCount, gameMode });
       throw error;
     }
   }
@@ -109,16 +109,16 @@ class ClientPointsService {
    */
   async getPointHistory(limit: number = 20): Promise<PointTransaction[]> {
     try {
-      clientLogger.userInfo('Getting point history', { limit });
+      logger.userInfo('Getting point history', { limit });
 
       const history = await apiService.getPointHistory(limit);
 
-      clientLogger.userInfo('Point history retrieved successfully', {
+      logger.userInfo('Point history retrieved successfully', {
         count: history.length,
       });
       return history;
     } catch (error) {
-      clientLogger.userError('Failed to get point history', { error, limit });
+      logger.userError('Failed to get point history', { error, limit });
       throw error;
     }
   }
@@ -128,17 +128,17 @@ class ClientPointsService {
    */
   async purchasePoints(packageId: string): Promise<{ success: boolean; paymentUrl?: string }> {
     try {
-      clientLogger.userInfo('Purchasing points package', { packageId });
+      logger.userInfo('Purchasing points package', { packageId });
 
       const result = await apiService.purchasePoints(packageId);
 
-      clientLogger.userInfo('Points purchase initiated', { packageId, success: result.success });
+      logger.userInfo('Points purchase initiated', { packageId, success: result.success });
       return {
         success: result.success,
         paymentUrl: result.url,
       };
     } catch (error) {
-      clientLogger.userError('Failed to purchase points', { error, packageId });
+      logger.userError('Failed to purchase points', { error, packageId });
       throw error;
     }
   }
@@ -148,16 +148,16 @@ class ClientPointsService {
    */
   async confirmPointPurchase(paymentIntentId: string): Promise<PointBalance> {
     try {
-      clientLogger.userInfo('Confirming point purchase', { paymentIntentId });
+      logger.userInfo('Confirming point purchase', { paymentIntentId });
 
       const newBalance = await apiService.confirmPointPurchase(paymentIntentId);
 
-      clientLogger.userInfo('Point purchase confirmed successfully', {
+      logger.userInfo('Point purchase confirmed successfully', {
         newCredits: newBalance.total_points,
       });
       return newBalance;
     } catch (error) {
-      clientLogger.userError('Failed to confirm point purchase', { error, paymentIntentId });
+      logger.userError('Failed to confirm point purchase', { error, paymentIntentId });
       throw error;
     }
   }

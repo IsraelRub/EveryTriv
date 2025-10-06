@@ -5,7 +5,7 @@
  * @description Shared validation functions for payment processing and transaction validation
  * @author EveryTriv Team
  */
-import type { PaymentValidationResult } from '../types/domain/validation/validation.types';
+import type { ValidationResultWithWarnings } from '../types/domain/validation/validation.types';
 
 /**
  * Validates payment amount and currency constraints
@@ -15,7 +15,7 @@ import type { PaymentValidationResult } from '../types/domain/validation/validat
  * @returns PaymentValidationResult Validation result with errors and warnings
  * @description Checks payment amount limits, currency-specific rules, and provides warnings for large amounts
  */
-export function validatePaymentAmount(amount: number, currency: string = 'USD'): PaymentValidationResult {
+export function validatePaymentAmount(amount: number, currency: string = 'USD'): ValidationResultWithWarnings {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 

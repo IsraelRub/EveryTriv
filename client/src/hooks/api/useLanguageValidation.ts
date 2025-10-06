@@ -4,7 +4,7 @@
  * @module UseLanguageValidation
  * @description React Query hooks for language validation functionality
  */
-import { clientLogger } from '@shared';
+import { clientLogger as logger } from '@shared';
 import { useMutation } from '@tanstack/react-query';
 
 import { apiService } from '../../services/api';
@@ -26,18 +26,18 @@ export const useValidateLanguage = () => {
         enableGrammarCheck?: boolean;
       };
     }) => {
-      clientLogger.userInfo('Validating language', { text: text.substring(0, 50), options });
+      logger.userInfo('Validating language', { text: text.substring(0, 50), options });
       return apiService.validateLanguage(text, options);
     },
     onSuccess: data => {
-      clientLogger.userInfo('Language validation completed', {
+      logger.userInfo('Language validation completed', {
         isValid: data.isValid,
         errorsCount: data.errors.length,
         suggestionsCount: data.suggestions.length,
       });
     },
     onError: error => {
-      clientLogger.userError('Failed to validate language', { error });
+      logger.userError('Failed to validate language', { error });
     },
   });
 };

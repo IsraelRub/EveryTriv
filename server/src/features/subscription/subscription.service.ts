@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger , SubscriptionData, getErrorMessage } from '@shared';
+import { SubscriptionData, getErrorMessage, serverLogger as logger } from '@shared';
 import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
+
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { PaymentService } from '../payment';
 
@@ -150,13 +151,13 @@ export class SubscriptionService {
 
 			const defaultSubscription = this.getDefaultSubscription();
 			defaultSubscription.status = 'cancelled';
-			(defaultSubscription as any).cancelledAt = new Date().toISOString();
+			(defaultSubscription as Record<string, unknown>).cancelledAt = new Date().toISOString();
 
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: undefined,
 			});
 
-			return { success: true, message: 'Subscription cancelled successfully' };
+			return { message: 'Subscription cancelled successfully' };
 		} catch (error) {
 			logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
 				error: getErrorMessage(error),

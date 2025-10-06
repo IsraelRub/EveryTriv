@@ -11,8 +11,10 @@ import {
   AuthResponse,
   BasicValue,
   CanPlayResponse,
+  CompleteUserAnalytics,
   CreateGameHistoryDto,
   DifficultyStatsData,
+  getErrorMessage,
   LeaderboardEntry,
   PointPurchaseOption,
   StorageValue,
@@ -21,13 +23,11 @@ import {
   TopicStatsData,
   TriviaQuestion,
   TriviaRequest,
-  CompleteUserAnalytics,
   UrlResponse,
   User,
   UserAnalyticsQuery,
   UserRankData,
   UserStatsData,
-  getErrorMessage,
 } from '@shared';
 import {
   API_BASE_URL,
@@ -37,8 +37,8 @@ import {
 import { UserPreferencesUpdate } from '@shared/types/domain/user/profile.types';
 import { UserProfileUpdateData } from '@shared/types/domain/user/user.types';
 import {
-  CustomDifficultyValidationResponse,
-  ValidateCustomDifficultyRequest,
+  CustomDifficultyRequest,
+  SimpleValidationResult,
 } from '@shared/types/domain/validation/validation.types';
 
 import { CLIENT_STORAGE_KEYS } from '../../constants';
@@ -52,7 +52,7 @@ class ApiService implements ClientApiService {
   private retryDelay: number = 1000;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || API_BASE_URL;
+    this.baseURL = import.meta.env.VITE_API_URL ?? API_BASE_URL;
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
@@ -100,7 +100,9 @@ class ApiService implements ClientApiService {
           errorData = { message: getErrorMessage(parseError) };
         }
       } else {
-        errorData = { message: await response.text().catch((textError) => getErrorMessage(textError)) };
+        errorData = {
+          message: await response.text().catch(textError => getErrorMessage(textError)),
+        };
       }
 
       const isServerError =
@@ -111,7 +113,9 @@ class ApiService implements ClientApiService {
         response.status < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
 
       // Enhanced error message with more context
-      const errorMessage = getErrorMessage(errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      const errorMessage = getErrorMessage(
+        errorData.message ?? errorData.error ?? `HTTP ${response.status}: ${response.statusText}`
+      );
 
       throw {
         message: errorMessage,
@@ -370,7 +374,7 @@ class ApiService implements ClientApiService {
   // Game methods
   async saveGameHistory(data: CreateGameHistoryDto): Promise<void> {
     // Validate game history data
-    if (!data || !data.userId || !data.score) {
+    if (!data || !data.userId || data.score == null) {
       throw new Error('Game history data is incomplete');
     }
 
@@ -420,7 +424,7 @@ class ApiService implements ClientApiService {
       totalGames: analytics.game.totalGames,
       averageScore: analytics.game.successRate,
       bestScore: 0,
-      totalPlayTime: analytics.game.totalPlayTime || 0,
+      totalPlayTime: analytics.game.totalPlayTime ?? 0,
       favoriteTopic: '',
       currentStreak: 0,
       bestStreak: 0,
@@ -487,7 +491,7 @@ class ApiService implements ClientApiService {
   async createSubscription(plan: string, billingCycle?: string): Promise<SubscriptionData> {
     const response = await this.post<SubscriptionData>('/subscription/create', {
       plan,
-      billingCycle: billingCycle || '',
+      billingCycle: billingCycle ?? '',
     });
     return response.data;
   }
@@ -502,7 +506,7 @@ class ApiService implements ClientApiService {
   // Trivia methods
   async getTrivia(request: TriviaRequest): Promise<TriviaQuestion> {
     // Validate trivia request
-    if (!request || !request.topic || !request.difficulty) {
+    if (!request || !request.topic.trim() || !request.difficulty.trim()) {
       throw new Error('Trivia request is incomplete');
     }
     if (
@@ -530,10 +534,10 @@ class ApiService implements ClientApiService {
   async getUserScore(): Promise<number> {
     // Use leaderboard ranking to get user score
     const response = await this.get<UserRankData>(`/leaderboard/user/ranking`);
-    return response.data?.score || 0;
+    return response.data?.score ?? 0;
   }
 
-  async validateCustomDifficulty(customText: string): Promise<CustomDifficultyValidationResponse> {
+  async validateCustomDifficulty(customText: string): Promise<SimpleValidationResult> {
     // Validate input
     if (!customText || customText.trim().length === 0) {
       throw new Error('Custom difficulty text is required');
@@ -542,11 +546,8 @@ class ApiService implements ClientApiService {
       throw new Error('Custom difficulty text is too long (max 500 characters)');
     }
 
-    const request: ValidateCustomDifficultyRequest = { customText };
-    const response = await this.post<CustomDifficultyValidationResponse>(
-      '/game/validate-custom',
-      request
-    );
+    const request: CustomDifficultyRequest = { customText };
+    const response = await this.post<SimpleValidationResult>('/game/validate-custom', request);
     return response.data;
   }
 
@@ -598,7 +599,7 @@ class ApiService implements ClientApiService {
   ): Promise<{ query: string; results: User[]; totalResults: number }> {
     const response = await this.post<{ query: string; results: User[]; totalResults: number }>(
       '/users/search',
-      { query, limit: limit || 0 }
+      { query, limit: limit ?? 0 }
     );
     return response.data;
   }
@@ -873,7 +874,7 @@ class ApiService implements ClientApiService {
     if (!field || field.trim().length === 0) {
       throw new Error('Field name is required');
     }
-    if (value === undefined || value === null) {
+    if (!value) {
       throw new Error('Value is required');
     }
 
@@ -885,7 +886,7 @@ class ApiService implements ClientApiService {
     if (!preference || preference.trim().length === 0) {
       throw new Error('Preference name is required');
     }
-    if (value === undefined || value === null) {
+    if (!value) {
       throw new Error('Value is required');
     }
 

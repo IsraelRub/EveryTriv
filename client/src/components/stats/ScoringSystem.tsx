@@ -25,9 +25,9 @@ export default function ScoringSystem({
       { min: 70, grade: 'C', color: 'bg-blue-600' },
       { min: 60, grade: 'D', color: 'bg-yellow-500' },
       { min: 0, grade: 'F', color: 'bg-red-500' },
-    ];
+    ] as const;
 
-    const percentage = total === 0 ? 0 : ((score || 0) / (total || 1)) * 100;
+    const percentage = total === 0 ? 0 : ((score ?? 0) / (total ?? 1)) * 100;
 
     return gradeRanges.reduce<ScoreStats>(
       (acc, range) => {
@@ -49,7 +49,7 @@ export default function ScoringSystem({
     return Object.entries(topicsPlayed)
       .reduce(
         (acc, [topic, count]) => {
-          acc.push({ topic, count: Number(count) || 0 });
+          acc.push({ topic, count: Number(count) ?? 0 });
           return acc;
         },
         [] as Array<{ topic: string; count: number }>
@@ -101,7 +101,7 @@ export default function ScoringSystem({
             >
               {stats.grade}
             </div>
-            <div className='text-white/70 text-sm'>{stats.percentage?.toFixed(1) || '0.0'}%</div>
+            <div className='text-white/70 text-sm'>{stats.percentage?.toFixed(1) ?? '0.0'}%</div>
           </div>
           <div>
             <div className='text-2xl font-bold text-white mb-1'>{total}</div>
@@ -127,7 +127,7 @@ export default function ScoringSystem({
               <GridLayout variant='stats' gap='sm' className='text-xs'>
                 <div className='text-center'>
                   <span className='text-blue-400 font-medium'>
-                    {currentQuestionMetadata.actualDifficulty || 'Standard'}
+                    {currentQuestionMetadata.actualDifficulty ?? 'Standard'}
                   </span>
                   <div className='text-white/60'>Difficulty</div>
                 </div>
@@ -141,7 +141,7 @@ export default function ScoringSystem({
                 )}
                 <div className='text-center'>
                   <span className='text-green-400 font-medium'>
-                    {currentQuestionMetadata.questionCount || 1}
+                    {currentQuestionMetadata.questionCount ?? 1}
                   </span>
                   <div className='text-white/60'>Questions</div>
                 </div>
@@ -155,7 +155,7 @@ export default function ScoringSystem({
       <div className='glass rounded-lg p-6'>
         <h4 className='text-white font-semibold mb-4'>Performance by Difficulty</h4>
         <GridLayout variant='content' gap='md'>
-          {Object.entries(difficultyStats || {}).map(([diff, stats]) => (
+          {Object.entries(difficultyStats ?? {}).map(([diff, stats]) => (
             <div key={diff} className='text-center'>
               <div className='text-lg font-bold text-white mb-1'>{stats.correct}</div>
               <div className='text-white/70 text-sm'>{diff}</div>
@@ -176,7 +176,7 @@ export default function ScoringSystem({
               <Icon name='book' size='sm' className='mr-1' /> Top Topics
             </h4>
             <span className='bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-sm'>
-              {Object.keys(topicsPlayed || {}).length}
+              {Object.keys(topicsPlayed ?? {}).length}
             </span>
           </div>
           {topTopics.length > 0 ? (
@@ -201,7 +201,7 @@ export default function ScoringSystem({
             <Icon name='target' size='sm' className='mr-1' /> Success Rates
           </h4>
           <div className='space-y-3'>
-            {Object.entries(difficultyStats || {}).map(([diff, stats]) => {
+            {Object.entries(difficultyStats ?? {}).map(([diff, stats]) => {
               const percentage = stats.total > 0 ? (stats.correct / stats.total) * 100 : 0;
               return (
                 <div key={diff} className='flex items-center justify-between'>

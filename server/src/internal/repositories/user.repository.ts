@@ -5,10 +5,11 @@
  * @description Repository for user entities with enhanced functionality
  * @author EveryTriv Team
  */
+import { getErrorMessage, serverLogger as logger } from '@shared';
+import { FindManyOptions, Repository } from 'typeorm';
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger, getErrorMessage } from '@shared';
-import { FindManyOptions, Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
 import { UserEntity } from '../entities';
@@ -31,7 +32,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * Find user by email
 	 * @param email User email address
 	 * @returns Promise<UserEntity | null> Found user or null
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	@RepositoryCache(300, 'user_by_email')
 	@RepositoryAudit('user_lookup_by_email')
@@ -70,7 +71,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * Find user by username
 	 * @param username User username
 	 * @returns Promise<UserEntity | null> Found user or null
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	@RepositoryCache(300, 'user_by_username')
 	@RepositoryAudit('user_lookup_by_username')
@@ -109,10 +110,10 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * Find users by role
 	 * @param role User role
 	 * @returns Promise<UserEntity[]> Array of users with the role
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	@RepositoryCache(600, 'users_by_role')
-	@RepositoryRoles('admin', 'super-admin')
+	@RepositoryRoles('admin')
 	@RepositoryAudit('user_lookup_by_role')
 	async findByRole(role: string): Promise<UserEntity[]> {
 		try {
@@ -142,7 +143,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * Find users by status
 	 * @param status User status
 	 * @returns Promise<UserEntity[]> Array of users with the status
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	async findByStatus(status: string): Promise<UserEntity[]> {
 		try {
@@ -174,7 +175,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * @param query Search query
 	 * @param options Additional find options
 	 * @returns Promise<UserEntity[]> Array of matching users
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	async searchUsers(query: string, options?: FindManyOptions<UserEntity>): Promise<UserEntity[]> {
 		try {
@@ -207,7 +208,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * Update user last login
 	 * @param userId User ID
 	 * @returns Promise<UserEntity> Updated user entity
-	 * @throws Error - When database query fails
+	 * @throws Error When database query fails
 	 */
 	@RepositoryAudit('user_last_login_update')
 	async updateLastLogin(userId: string): Promise<UserEntity> {

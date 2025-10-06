@@ -7,7 +7,6 @@ import { calculateAnswerPoints } from '@shared/utils';
 
 import { TriviaQuestion } from '../../types';
 
-
 /**
  * Calculate total score for a correct answer using ALGORITHM
  */

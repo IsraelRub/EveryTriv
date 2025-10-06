@@ -4,8 +4,9 @@
  * @module AuthController
  * @description Authentication controller with login, register, and user management endpoints
  */
+import { getErrorMessage, serverLogger as logger } from '@shared';
+
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { serverLogger as logger , getErrorMessage } from '@shared';
 
 import {
 	ApiResponse,
@@ -39,23 +40,33 @@ export class AuthController {
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string
 	): Promise<AuthResponseDto> {
-		logger.authRegister('User registration attempt', {
-			username: registerDto.username,
-			email: registerDto.email,
-			ip,
-			userAgent,
-		});
+		try {
+			logger.authRegister('User registration attempt', {
+				username: registerDto.username,
+				email: registerDto.email,
+				ip,
+				userAgent,
+			});
 
-		const result = await this.authService.register(registerDto);
+			const result = await this.authService.register(registerDto);
 
-		logger.authRegister('User registered successfully', {
-			userId: result.data.user.id,
-			username: result.data.user.username,
-			ip,
-			userAgent,
-		});
+			logger.authRegister('User registered successfully', {
+				userId: result.user.id,
+				username: result.user.username,
+				ip,
+				userAgent,
+			});
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.authError('User registration failed', {
+				error: getErrorMessage(error),
+				username: registerDto.username,
+				email: registerDto.email,
+				ip,
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -70,19 +81,31 @@ export class AuthController {
 		@ClientIP() ip: string,
 		@UserAgent() userAgent: string
 	): Promise<AuthResponseDto> {
-		logger.securityLogin('User login attempt', {
-			username: loginDto.username,
-			ip,
-			userAgent,
-		});
+		try {
+			logger.securityLogin('User login attempt', {
+				username: loginDto.username,
+				ip,
+				userAgent,
+			});
 
-		const result = await this.authService.login(loginDto);
+			const result = await this.authService.login(loginDto);
 
-		logger.logUserActivity(result.data.user.id, 'login', {
-			username: loginDto.username,
-		});
+			logger.securityLogin('User logged in successfully', {
+				userId: result.user.id,
+				username: result.user.username,
+				ip,
+				userAgent,
+			});
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.authError('User login failed', {
+				error: getErrorMessage(error),
+				username: loginDto.username,
+				ip,
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -92,13 +115,21 @@ export class AuthController {
 	@Public()
 	@RateLimit(10, 60) // 10 refresh attempts per minute
 	async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
-		logger.authTokenRefresh('Token refresh attempt');
+		try {
+			logger.authTokenRefresh('Token refresh attempt');
 
-		const result = await this.authService.refreshToken(refreshTokenDto);
+			const result = await this.authService.refreshToken(refreshTokenDto);
 
-		logger.authTokenRefresh('Token refreshed successfully');
+			logger.authTokenRefresh('Token refreshed successfully');
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.authError('Token refresh failed', {
+				error: getErrorMessage(error),
+				tokenId: refreshTokenDto.refreshToken?.substring(0, 10) + '...',
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -110,55 +141,85 @@ export class AuthController {
 	async getCurrentUser(
 		@CurrentUser() user: { id: string; username: string; email: string }
 	): Promise<{ id: string; username: string; email: string }> {
-		logger.apiRead('user_profile', {
-			userId: user.id,
-		});
+		try {
+			logger.authInfo('Current user accessed', {
+				userId: user.id,
+			});
 
-		return user;
+			return user;
+		} catch (error) {
+			logger.authError('Error getting current user', {
+				error: getErrorMessage(error),
+				userId: user.id,
+			});
+			throw error;
+		}
 	}
 
 	/**
 	 * Logout user
 	 */
 	@Post('logout')
-	async logout(@CurrentUserId() userId: string): Promise<{ success: boolean; message: string }> {
-		const result = await this.authService.logout(userId, 'manual');
+	async logout(@CurrentUserId() userId: string): Promise<{ message: string }> {
+		try {
+			const result = await this.authService.logout(userId, 'manual');
 
-		logger.authLogout('User logged out', {
-			userId,
-		});
+			logger.authLogout('User logged out', {
+				userId,
+			});
 
-		return result;
+			return result;
+		} catch (error) {
+			logger.authError('User logout failed', {
+				error: getErrorMessage(error),
+				userId,
+			});
+			throw error;
+		}
 	}
 
 	/**
 	 * Google OAuth login
 	 */
 	@Get('google')
-	async googleLogin(): Promise<{ message: string; status: string; timestamp: string }> {
-		logger.apiInfo('Google OAuth login requested');
+	@Public()
+	async googleLogin() {
+		try {
+			logger.authInfo('Google OAuth login requested');
 
-		// This would redirect to Google OAuth
-		return {
-			message: 'Google OAuth login not implemented yet',
-			status: 'not_implemented',
-			timestamp: new Date().toISOString(),
-		};
+			// This would redirect to Google OAuth
+			return {
+				status: 'not_implemented',
+				reason: 'Google OAuth login not implemented yet',
+			};
+		} catch (error) {
+			logger.authError('Google OAuth login error', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
 	}
 
 	/**
 	 * Google OAuth callback
 	 */
 	@Get('google/callback')
-	async googleCallback(): Promise<{ message: string; status: string; timestamp: string }> {
-		logger.apiInfo('Google OAuth callback requested');
+	@Public()
+	async googleCallback(): Promise<{ message: string; status: string }> {
+		try {
+			logger.authInfo('Google OAuth callback requested');
 
-		// This would handle Google OAuth callback
-		return {
-			message: 'Google OAuth callback not implemented yet',
-			status: 'not_implemented',
-			timestamp: new Date().toISOString(),
-		};
+			// This would handle Google OAuth callback
+			return {
+				message: 'Google OAuth callback not implemented yet',
+				status: 'not_implemented',
+			};
+		} catch (error) {
+			logger.authError('Google OAuth callback error', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -166,10 +227,11 @@ export class AuthController {
 	 */
 	@Get('admin/users')
 	@UseGuards(AuthGuard, RolesGuard)
-	@Roles('admin', 'super-admin')
+	@Roles('admin')
+	@Cache(60) // Cache for 1 minute
 	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }) {
 		try {
-			logger.apiRead('admin_get_all_users', {
+			logger.authInfo('Admin accessed all users', {
 				adminId: user.id,
 				adminRole: user.role,
 			});
@@ -186,9 +248,10 @@ export class AuthController {
 				users: [],
 			};
 		} catch (error) {
-			logger.userError('Failed to get all users', {
+			logger.authError('Failed to get all users', {
 				error: getErrorMessage(error),
 				adminId: user.id,
+				adminRole: user.role,
 			});
 			throw error;
 		}

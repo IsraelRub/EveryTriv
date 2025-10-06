@@ -1,9 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { DifficultyLevel } from '@shared';
 
-import { DEFAULT_GAME_MODE,getGameModeDefaults } from '../../constants/gameModeDefaults';
+import { DEFAULT_GAME_MODE, getGameModeDefaults } from '../../constants/gameModeDefaults';
 import { GameModeConfigPayload, GameModeState } from '../../types';
-import { ErrorPayload,LoadingPayload } from '../../types/redux';
+import { ErrorPayload, LoadingPayload } from '../../types/redux';
 import type { RootState } from '../../types/redux/state.types';
 
 const initialState: GameModeState = {

@@ -1,7 +1,7 @@
 import {
-	CachedQuestionDto as ICachedQuestionDto,
 	CacheQuestionsQueryDto as ICacheQuestionsQueryDto,
 	CacheQuestionsResponseDto as ICacheQuestionsResponseDto,
+	CachedQuestionDto as ICachedQuestionDto,
 } from '@shared';
 import { IsArray, IsOptional, IsString } from 'class-validator';
 
