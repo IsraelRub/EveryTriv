@@ -17,7 +17,8 @@ import type {
 	UserAnalytics,
 	UserAnalyticsStats,
 } from '@shared/types';
-import { createNotFoundError, getErrorMessage } from '@shared/utils';
+import { createNotFoundError } from '@internal/utils';
+import { getErrorMessage } from '@shared/utils';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { serverLogger as logger } from '@shared/services';
-import { createNotFoundError, getErrorMessage } from '@shared/utils';
+import { createNotFoundError } from '@internal/utils';
+import { getErrorMessage } from '@shared/utils';
 import { CACHE_DURATION } from '@shared/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';

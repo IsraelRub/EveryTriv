@@ -5,14 +5,12 @@
  * @description Advanced point calculation and mathematical operations
  * @author EveryTriv Team
  */
-import { Injectable } from '@nestjs/common';
 
 import type { PointBalance, PointPurchaseOption } from '../../types';
 
 /**
  * Service for advanced point calculations and mathematical operations
  */
-@Injectable()
 export class PointCalculationService {
 	/**
 	 * Calculate points for a correct answer (ALGORITHM)

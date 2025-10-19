@@ -8,7 +8,8 @@ import type {
 	UserFieldUpdate,
 	UserPreferences,
 } from '@shared/types';
-import { createServerError, createValidationError, getErrorMessage, normalizeText } from '@shared/utils';
+import { createServerError, createValidationError } from '@internal/utils';
+import { getErrorMessage, normalizeText } from '@shared/utils';
 import { UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';

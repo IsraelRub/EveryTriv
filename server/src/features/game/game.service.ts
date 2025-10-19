@@ -2,11 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CACHE_TTL, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
 import { PointCalculationService,serverLogger as logger } from '@shared/services';
+import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 import type { AnswerResult, QuestionData, UserAnalytics, UserScoreData } from '@shared/types';
 import {
-	createNotFoundError,
-	createServerError,
-	createValidationError,
 	getErrorMessage,
 } from '@shared/utils';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';

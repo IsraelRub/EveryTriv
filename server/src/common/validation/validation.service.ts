@@ -6,6 +6,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { serverLogger as logger } from '@shared/services';
+import { createStringLengthValidationError, createValidationError } from '@internal/utils';
 import type {
 	AnalyticsEventData,
 	LanguageValidationOptions,
@@ -17,8 +18,6 @@ import type {
 	ValidationResult,
 } from '@shared/types';
 import {
-	createStringLengthValidationError,
-	createValidationError,
 	getErrorMessage,
 	sanitizeCardNumber,
 	sanitizeEmail,

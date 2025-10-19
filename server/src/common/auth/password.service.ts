@@ -8,7 +8,8 @@
 import { Injectable } from '@nestjs/common';
 import { serverLogger as logger } from '@shared/services';
 import type { PasswordConfig, PasswordValidationResult } from '@shared/types';
-import { createServerError, getErrorMessage } from '@shared/utils';
+import { createServerError } from '@internal/utils';
+import { getErrorMessage } from '@shared/utils';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()

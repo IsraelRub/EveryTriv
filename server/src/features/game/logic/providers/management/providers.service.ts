@@ -14,7 +14,8 @@ import type {
 	ProviderStats,
 	TriviaQuestion,
 } from '@shared/types';
-import { createServerError, ensureErrorObject, getErrorMessage, roundToDecimals } from '@shared/utils';
+import { createServerError } from '@internal/utils';
+import { ensureErrorObject, getErrorMessage, roundToDecimals } from '@shared/utils';
 
 import {
 	AnthropicTriviaProvider,

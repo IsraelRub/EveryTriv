@@ -25,3 +25,10 @@ export { RetryUtils } from './retry.utils';
  * @description Functions for trivia game logic and validation
  * @used_by server/features/game, server/controllers, server/services
  */
+
+/**
+ * Server error utilities
+ * @description Functions for server error handling
+ * @used_by server/features, server/controllers, server/services
+ */
+export * from './error.utils';

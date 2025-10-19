@@ -16,7 +16,8 @@ import type {
 	QuestionCacheMap,
 	TriviaQuestion,
 } from '@shared/types';
-import { clamp, createAuthError, getErrorMessage, isCustomDifficulty, shuffle } from '@shared/utils';
+import { createAuthError } from '@internal/utils';
+import { clamp, getErrorMessage, isCustomDifficulty, shuffle } from '@shared/utils';
 
 import { PromptTemplates } from '../prompts';
 

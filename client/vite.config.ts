@@ -11,6 +11,15 @@ export default defineConfig({
 	build: {
 		outDir: 'dist',
 		emptyOutDir: true,
+		rollupOptions: {
+			external: (id) => {
+				// Externalize Node.js modules for browser compatibility
+				if (id.includes('fs') || id.includes('path') || id.includes('util') || id.includes('stream')) {
+					return true;
+				}
+				return false;
+			},
+		},
 	},
 	test: {
 		globals: true,

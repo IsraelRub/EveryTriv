@@ -10,9 +10,9 @@ import { JwtService } from '@nestjs/jwt';
 import { AUTH_CONSTANTS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { BasicUser } from '@shared/types';
+import { createServerError } from '@internal/utils';
 import {
 	AuthenticationRequest,
-	createServerError,
 	getErrorMessage,
 	JWTDecodedToken,
 	TokenPair,

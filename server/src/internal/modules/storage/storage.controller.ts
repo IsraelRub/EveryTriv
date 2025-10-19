@@ -6,7 +6,8 @@
  */
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 import { serverLogger as logger } from '@shared/services';
-import { createStorageError, getErrorMessage } from '@shared/utils';
+import { createStorageError } from '@internal/utils';
+import { getErrorMessage } from '@shared/utils';
 import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
 import { Cache, Public, RateLimit, Roles } from '../../../common';

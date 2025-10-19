@@ -5,8 +5,19 @@
  * @description Server-specific logger implementation with file logging
  * @used_by server/src/features
  */
-import * as fs from 'fs';
-import * as path from 'path';
+// Conditional imports for Node.js modules
+let fs: typeof import('fs') | undefined;
+let path: typeof import('path') | undefined;
+
+// Only import Node.js modules in Node.js environment
+if (typeof process !== 'undefined' && process.versions?.node) {
+	try {
+		fs = require('fs');
+		path = require('path');
+	} catch (error) {
+		// Ignore import errors in browser environment
+	}
+}
 
 import type { BasicValue, StatsValue, SlowOperation } from '../../types/core/data.types';
 import { LoggerConfigUpdate, LogMeta, PerfOperationDetails,PerfOperationSummary } from '../../types/infrastructure/logging.types';
@@ -66,7 +77,7 @@ export class ServerLogger extends BaseLoggerService {
 		this.initializePerformanceThresholds();
 
 		// Guard: avoid Node-only APIs when bundled in browser accidentally
-		if (typeof process === 'undefined' || typeof path?.join !== 'function') {
+		if (typeof process === 'undefined' || !path || typeof path.join !== 'function') {
 			this.logDir = '';
 			this.logFile = '';
 			return;
@@ -104,7 +115,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private ensureLogDirectory(): void {
-		if (typeof fs === 'undefined') return;
+		if (!fs) return;
 
 		if (!fs.existsSync(this.logDir)) {
 			fs.mkdirSync(this.logDir, { recursive: true });
@@ -112,7 +123,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private clearLogFile(): void {
-		if (typeof fs === 'undefined') return;
+		if (!fs) return;
 
 		try {
 			fs.writeFileSync(this.logFile, '', 'utf8');
@@ -122,7 +133,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	public clearLogFileManually(): void {
-		if (typeof fs === 'undefined') return;
+		if (!fs) return;
 
 		try {
 			fs.writeFileSync(this.logFile, '', 'utf8');
@@ -140,7 +151,7 @@ export class ServerLogger extends BaseLoggerService {
 	}
 
 	private writeToFile(level: string, message: string, meta?: LogMeta): void {
-		if (typeof fs === 'undefined') return;
+		if (!fs) return;
 
 		try {
 			const now = new Date();

@@ -1,7 +1,8 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { serverLogger as logger } from '@shared/services';
-import { createCacheError, getErrorMessage } from '@shared/utils';
+import { createCacheError } from '@internal/utils';
+import { getErrorMessage } from '@shared/utils';
 import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
 import { Cache, RateLimit, Roles } from '../../../common';

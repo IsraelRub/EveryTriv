@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { LANGUAGE_TOOL_CONSTANTS, VALIDATION_ERROR_MESSAGES } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions, SupportedLanguage } from '@shared/types';
-import { createServerError, getErrorMessage, getErrorStack } from '@shared/utils';
+import { createServerError } from '@internal/utils';
+import { getErrorMessage, getErrorStack } from '@shared/utils';
 import { URLSearchParams } from 'url';
 
 // import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use

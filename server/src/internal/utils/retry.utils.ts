@@ -1,7 +1,7 @@
 import { serverLogger as logger } from '@shared/services';
 import type { ApiError, AxiosErrorWithConfig, ExtendedAxiosRequestConfig } from '@shared/types';
 import { HTTP_ERROR_CODES, HTTP_ERROR_MESSAGES, HTTP_LOG_MESSAGES } from '@shared/constants';
-import { createServerError } from '@shared/utils';
+import { createServerError } from './error.utils';
 import { AxiosResponse } from 'axios';
 
 /**

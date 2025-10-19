@@ -1,6 +1,6 @@
 import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
 import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
-import { createValidationError } from '@shared/utils';
+import { createValidationError } from '@internal/utils';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
