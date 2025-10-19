@@ -7,7 +7,7 @@
  * @used_by client/src/views/gameHistory
  */
 
-import { calculatePercentage, formatDuration, formatTimeDisplay, getTimeElapsed } from '@shared';
+import { calculatePercentage, formatDuration, formatTimeDisplay, getTimeElapsed } from '@shared/utils';
 import { motion } from 'framer-motion';
 
 import { GameSessionStatsProps } from '../../types';

@@ -12,7 +12,12 @@
  */
 export { BasePointsService } from './basePoints.service';
 
-// Note: PointCalculationService is server-only (depends on NestJS). Do not export here to keep client bundle browser-safe.
+/**
+ * Point calculation service
+ * @description Server-only service for calculating points based on game performance
+ * @note This service is server-only and depends on NestJS
+ */
+export { PointCalculationService } from './pointCalculation.service';
 
 /**
  * Point validation functions

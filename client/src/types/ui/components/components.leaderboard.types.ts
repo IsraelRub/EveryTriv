@@ -3,7 +3,7 @@
  * @module LeaderboardComponentTypes
  * @description UI component prop types for leaderboard and ranking components
  */
-import { LeaderboardEntry } from '@shared';
+import type { LeaderboardEntry } from '@shared/types';
 import { ReactNode } from 'react';
 
 /**

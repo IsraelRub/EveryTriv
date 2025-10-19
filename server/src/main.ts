@@ -11,9 +11,10 @@ import * as dotenv from 'dotenv';
 // prettier-ignore
 dotenv.config();
 
-import { MESSAGE_FORMATTERS, getErrorMessage, getErrorStack } from '@shared';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { LOCALHOST_URLS,MESSAGE_FORMATTERS } from '@shared/constants';
+import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
@@ -71,7 +72,7 @@ async function bootstrap() {
 		console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
 
 		app.enableCors({
-			origin: process.env.CLIENT_URL || 'http://localhost:3000',
+			origin: process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT_DEV,
 			credentials: true,
 			methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 			allowedHeaders: ['Content-Type', AUTH_CONSTANTS.AUTH_HEADER, 'X-Requested-With'],

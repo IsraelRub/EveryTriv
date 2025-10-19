@@ -112,7 +112,7 @@ export function sanitizeStorageKey(key: string): string {
 export function calculateDataSize(data: unknown): number {
 	try {
 		const serialized = JSON.stringify(data);
-		return new Blob([serialized]).size;
+		return Buffer.byteLength(serialized, 'utf8');
 	} catch {
 		return 0;
 	}

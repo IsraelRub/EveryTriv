@@ -118,7 +118,10 @@ export class MetricsService {
 		if (!this.operationTimes.has(operation)) {
 			this.operationTimes.set(operation, []);
 		}
-		this.operationTimes.get(operation)!.push(duration);
+		const times = this.operationTimes.get(operation);
+		if (times) {
+			times.push(duration);
+		}
 
 		// Update performance metrics
 		this.updatePerformanceMetrics();

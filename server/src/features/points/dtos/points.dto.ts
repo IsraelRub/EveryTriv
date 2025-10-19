@@ -4,10 +4,9 @@
  * @module PointsDTOs
  * @description Data Transfer Objects for points management
  */
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class DeductPointsDto {
 	@ApiProperty({

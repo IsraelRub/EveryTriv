@@ -7,11 +7,9 @@
  * @global
  * @provides REDIS_CLIENT
  */
-import { serverLogger as logger } from '@shared';
-import type { RedisClient } from '@shared/types/infrastructure/redis.types';
-import Redis from 'ioredis';
-
 import { Global, Module, OnModuleInit } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import Redis from 'ioredis';
 
 import { redisConfig } from '../../config/redis.config';
 
@@ -20,7 +18,7 @@ import { redisConfig } from '../../config/redis.config';
 	providers: [
 		{
 			provide: 'REDIS_CLIENT',
-			useFactory: (): RedisClient | null => {
+			useFactory: (): Redis | null => {
 				// Only create Redis client if Redis is configured
 				if (!redisConfig.host || redisConfig.host === '') {
 					logger.systemError('Redis not configured - using null client');
@@ -61,7 +59,7 @@ import { redisConfig } from '../../config/redis.config';
 					});
 				});
 
-				return redisClient as RedisClient;
+				return redisClient as Redis;
 			},
 		},
 	],

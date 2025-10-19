@@ -1,14 +1,13 @@
-import type { GameHistoryEntry } from '@shared';
+import { DifficultyLevel, VALID_GAME_MODES } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import type { GameHistoryEntry } from '@shared/types';
 import {
   calculatePercentage,
-  clientLogger as logger,
-  DifficultyLevel,
   formatScore,
   isToday,
   isYesterday,
   unique,
-  VALID_GAME_MODES,
-} from '@shared';
+} from '@shared/utils';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 

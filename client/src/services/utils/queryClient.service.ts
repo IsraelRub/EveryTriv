@@ -5,7 +5,7 @@
  * @description React Query client setup and utility functions for data fetching
  * @used_by client/src/hooks, client/src/components, client/src/views
  */
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { QueryClient } from '@tanstack/react-query';
 
 export const prefetchCommonQueries = async () => {

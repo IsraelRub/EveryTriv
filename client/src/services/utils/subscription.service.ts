@@ -6,8 +6,8 @@
  * @description Client-side subscription management service
  * @used_by client/src/views/payment, client/src/components/subscription
  */
-import { SubscriptionData, SubscriptionPlans } from '@shared';
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { SubscriptionData, SubscriptionPlans } from '@shared/types';
 
 import { apiService } from '../api';
 

@@ -6,7 +6,7 @@
  * @used_by shared/services/logging
  */
 import { LogLevel } from '../../constants';
-import { BasicValue } from '../core';
+import { BasicValue, SlowOperation } from '../core';
 import type { ValidationContext } from '../domain/validation/validation.types';
 
 export { LogLevel };
@@ -18,6 +18,11 @@ export interface LogEntry {
 	message: string;
 	meta?: Record<string, unknown>;
 }
+
+// Re-export performance types from core
+export type { 
+	PerformanceOperationDetails as PerfOperationDetails, 
+	PerformanceOperationSummary as PerfOperationSummary } from '../core/performance.types';
 
 // Enhanced log entry with context
 export interface EnhancedLogEntry extends LogEntry {
@@ -290,7 +295,7 @@ export interface EnhancedLogger {
 	trackSyncEnhanced<T>(operation: string, fn: () => T, context?: Record<string, unknown>): T;
 	getPerformanceStatsEnhanced(operation?: string): Record<string, unknown>;
 	getAllPerformanceStatsEnhanced(): Record<string, unknown>;
-	getSlowOperationsEnhanced(threshold?: number): Array<Record<string, unknown>>;
+	getSlowOperationsEnhanced(threshold?: number): SlowOperation[];
 	setPerformanceThreshold(operation: string, threshold: number): void;
 	getPerformanceThreshold(operation: string): number;
 	exceedsPerformanceThreshold(operation: string, duration: number): boolean;
@@ -351,7 +356,7 @@ export interface LoggerConfig {
 
 /**
  * Logger Configuration Update
- * @used_by shared/services/logging/base-logger.service.ts, shared/services/logging/logger.service.ts, shared/services/logging/logger.service.ts
+ * @used_by shared/services/logging/base-logger.service.ts, shared/services/logging
  */
 export interface LoggerConfigUpdate {
 	level?: LogLevel;

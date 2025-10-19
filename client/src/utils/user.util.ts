@@ -5,7 +5,8 @@
  * @description Utility functions for user management and operations
  * @used_by client/src/components/user, client/src/hooks/layers/business
  */
-import { clientLogger as logger, generateUserId } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { generateUserId } from '@shared/utils/id.utils';
 
 import { STORAGE_KEYS } from '../constants';
 import { storageService } from '../services';

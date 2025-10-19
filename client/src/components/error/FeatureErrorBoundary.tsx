@@ -1,4 +1,5 @@
-import { clientLogger as logger, getErrorMessage, getErrorStack, getErrorType } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils/error.utils';
 import { motion } from 'framer-motion';
 import { Component, ErrorInfo, ReactNode } from 'react';
 

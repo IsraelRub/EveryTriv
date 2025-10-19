@@ -6,7 +6,7 @@
  * @description Game state configuration and default values
  * @used_by client/src/views/home/HomeView.tsx, client/src/components/game/**
  */
-import { VALIDATION_DEBOUNCE_DELAYS } from '@shared';
+import { VALIDATION_DEBOUNCE_DELAYS } from '@shared/constants';
 import { GAME_STATE_DEFAULTS, GameMode } from '@shared/constants/core/game.constants';
 
 import { GameState } from '../../types';

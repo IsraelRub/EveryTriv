@@ -4,7 +4,7 @@
  * @used_by client/src/redux/features, client/src/components/gameMode
  */
 
-import { GameMode } from '@shared';
+import { GameMode } from '@shared/constants';
 
 import { GameModeDefaults } from '../types/game/config.types';
 

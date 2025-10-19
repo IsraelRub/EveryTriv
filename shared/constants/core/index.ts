@@ -41,3 +41,9 @@ export * from './auth.constants';
  * @description Server-only game configuration and limits
  */
 export * from './game-server.constants';
+
+/**
+ * Performance constants
+ * @description Cache durations, rate limits, and performance thresholds
+ */
+export * from './performance.constants';

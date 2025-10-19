@@ -1,16 +1,10 @@
-import {
-	TriviaAnswer,
-	createNotFoundError,
-	createServerError,
-	createValidationError,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-import { TriviaEntity } from 'src/internal/entities';
-import { DeepPartial, Repository } from 'typeorm';
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import type { TriviaAnswer } from '@shared/types';
+import { createNotFoundError, createServerError, createValidationError, getErrorMessage } from '@shared/utils';
+import { TriviaEntity } from 'src/internal/entities';
+import { DeepPartial, Repository } from 'typeorm';
 
 import { AiProvidersService } from './providers/management';
 

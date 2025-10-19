@@ -5,7 +5,7 @@
  * @description Predefined form field configurations for consistent form layouts
  * @used_by client/src/views/registration, client/src/components/forms
  */
-import { COUNTRIES, DifficultyLevel } from '@shared';
+import { COUNTRIES, DifficultyLevel } from '@shared/constants';
 import {
   FORM_FIELD_TYPES,
   FORM_VALIDATION_TYPES,

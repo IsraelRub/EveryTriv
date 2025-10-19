@@ -1,4 +1,6 @@
-import { LLMResponse, LLMTriviaResponse, ProviderConfig, createValidationError } from '@shared';
+import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
+import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+import { createValidationError } from '@shared/utils';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
@@ -41,9 +43,9 @@ export class MistralTriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'mistral',
 			apiKey: this.apiKey,
-			baseUrl: 'https://api.mistral.ai/v1/chat/completions',
-			timeout: 30000,
-			maxRetries: 3,
+		baseUrl: 'https://api.mistral.ai/v1/chat/completions',
+		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 3,
 			headers: {

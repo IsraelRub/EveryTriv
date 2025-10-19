@@ -8,17 +8,14 @@
 import { UserRole, UserStatus } from '../../../constants/business/info.constants';
 import type { BaseEntity, BasicValue } from '../../core/data.types';
 
-// RequiredFields and OptionalFields are not used in this file
-
-// Re-export enums for external use
-export { UserRole, UserStatus };
 
 /**
- * Primitive value types for user preferences
- * @type PreferenceValue
- * @description Union type for all possible preference values
+ * Basic User (subset of User for authentication)
+ * @type BasicUser
+ * @description Subset of User interface for authentication purposes
  */
-export type PreferenceValue = BasicValue;
+export type BasicUser = Pick<User, 'id' | 'username' | 'email' | 'role'>;
+
 
 /**
  * User profile update data interface

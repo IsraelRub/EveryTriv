@@ -4,9 +4,10 @@
  * @module storage.controller
  * @description Controller for storage service management and monitoring
  */
-import { createStorageError, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { createStorageError, getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
 import { Cache, Public, RateLimit, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
@@ -21,7 +22,7 @@ export class StorageController {
 	 */
 	@Get('metrics')
 	@Public()
-	@Cache(300) // Cache for 5 minutes - metrics don't change frequently
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - metrics don't change frequently
 	async getMetrics() {
 		try {
 			const metrics = this.storageService.getMetrics();
@@ -46,8 +47,8 @@ export class StorageController {
 	 * @returns Reset result
 	 */
 	@Post('metrics/reset')
-	@Roles('admin')
-	@RateLimit(5, 60) // 5 requests per minute
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.METRICS_RESET.limit, RATE_LIMITS.METRICS_RESET.window) // 5 requests per minute
 	async resetMetrics() {
 		try {
 			this.storageService.resetMetrics();
@@ -68,9 +69,9 @@ export class StorageController {
 	 * @returns Storage keys
 	 */
 	@Get('keys')
-	@Roles('admin')
-	@RateLimit(10, 60) // 10 requests per minute
-	@Cache(30) // Cache for 30 seconds
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.STORAGE_READ.limit, RATE_LIMITS.STORAGE_READ.window) // 10 requests per minute
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async getKeys() {
 		try {
 			const result = await this.storageService.getKeys();
@@ -97,9 +98,9 @@ export class StorageController {
 	 * @returns Storage item
 	 */
 	@Get('item/:key')
-	@Roles('admin')
-	@RateLimit(20, 60) // 20 requests per minute
-	@Cache(60) // Cache for 1 minute
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.STORAGE_READ.limit, RATE_LIMITS.STORAGE_READ.window) // 20 requests per minute
+	@Cache(CACHE_DURATION.VERY_SHORT) // Cache for 30 seconds
 	async getItem(@Param('key') key: string) {
 		try {
 			if (!key) {
@@ -131,8 +132,8 @@ export class StorageController {
 	 * @returns Clear result
 	 */
 	@Delete('clear')
-	@Roles('admin')
-	@RateLimit(2, 60) // 2 requests per minute - dangerous operation
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.STORAGE_DELETE.limit, RATE_LIMITS.STORAGE_DELETE.window) // 2 requests per minute - dangerous operation
 	async clear() {
 		try {
 			const result = await this.storageService.clear();

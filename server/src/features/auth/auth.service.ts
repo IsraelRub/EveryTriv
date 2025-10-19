@@ -4,14 +4,14 @@
  * @module AuthService
  * @description Authentication service with login, register, and token management
  */
-import { CurrentUserData, UserData } from '@shared';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { UserData } from '@shared/types';
+import { UserRole } from '@shared/constants';
 import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
 import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
-
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -47,7 +47,7 @@ export class AuthService {
 			passwordHash: hashedPassword,
 			firstName: registerDto.firstName,
 			lastName: registerDto.lastName,
-			role: 'user',
+			role: UserRole.USER,
 			isActive: true,
 		});
 
@@ -97,11 +97,11 @@ export class AuthService {
 			isActive: user.isActive,
 		});
 
-		if (!authResult.success) {
+		if (authResult.error) {
 			throw new UnauthorizedException(authResult.error || 'Invalid credentials');
 		}
 
-		// Type guard: we know these exist when success is true
+		// Type guard: we know these exist when there's no error
 		if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
 			throw new UnauthorizedException('Authentication result incomplete');
 		}
@@ -120,11 +120,11 @@ export class AuthService {
 		// Use AuthenticationManager for token refresh
 		const authResult = await this.authenticationManager.refreshAccessToken(refreshTokenDto.refreshToken);
 
-		if (!authResult.success) {
+		if (authResult.error) {
 			throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
 		}
 
-		// Type guard: we know accessToken exists when success is true
+		// Type guard: we know accessToken exists when there's no error
 		if (!authResult.accessToken) {
 			throw new UnauthorizedException('Authentication result incomplete');
 		}
@@ -137,7 +137,7 @@ export class AuthService {
 	/**
 	 * Get current user
 	 */
-	async getCurrentUser(userId: string): Promise<CurrentUserData> {
+	async getCurrentUser(userId: string): Promise<Omit<UserData, 'passwordHash'> & { passwordHash?: string }> {
 		const user = await this.userRepository.findOne({
 			where: { id: userId, isActive: true },
 			select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
@@ -173,7 +173,7 @@ export class AuthService {
 		if (user && user.passwordHash) {
 			const isPasswordValid = await this.passwordService.comparePassword(password, user.passwordHash);
 			if (isPasswordValid) {
-				const { passwordHash, ...result } = user;
+				const { passwordHash: _passwordHash, ...result } = user;
 				return result;
 			}
 		}

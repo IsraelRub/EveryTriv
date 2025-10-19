@@ -9,6 +9,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
+import type { RankHistoryEntry } from '@shared/types';
 import { UserEntity } from './user.entity';
 import { UserStatsEntity } from './userStats.entity';
 
@@ -85,12 +86,7 @@ export class LeaderboardEntity {
 
 	// Ranking history (for trend analysis)
 	@Column('jsonb', { name: 'rank_history', default: [] })
-	rankHistory: Array<{
-		rank: number;
-		score: number;
-		date: Date;
-		period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-	}> = [];
+	rankHistory: RankHistoryEntry[] = [];
 
 	@CreateDateColumn({ name: 'created_at' })
 	createdAt: Date = new Date();

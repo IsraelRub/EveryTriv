@@ -9,6 +9,17 @@ import type { StorageValue } from '../core/data.types';
 import type { QuestionCacheEntry } from '../domain/analytics/analytics.types';
 
 /**
+ * Cache entry interface
+ * @interface CacheEntry
+ * @description Common structure for cache entries with optional TTL
+ */
+export interface CacheEntry<T = unknown> {
+	key: string;
+	value: T;
+	ttl?: number;
+}
+
+/**
  * Cache statistics interface
  * @interface CacheStats
  * @description Comprehensive cache performance and usage statistics

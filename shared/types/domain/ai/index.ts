@@ -1,15 +1,12 @@
 /**
- * AI Types Index
+ * AI Domain Types Index
  *
- * @module AITypesIndex
- * @description Central export point for all AI-related types
+ * @module AITypes
+ * @description AI-related type definitions including providers, models, and responses
+ * @author EveryTriv Team
+ * @used_by server/src/features/game, client/src/services
  */
 
-// Core AI types
 export * from './ai.types';
-
-// AI providers types
-export * from './providers.types';
-
-// AI models types
 export * from './models.types';
+export * from './providers.types';

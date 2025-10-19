@@ -5,7 +5,8 @@
  * @description Custom parameter decorators for extracting request data
  * @author EveryTriv Team
  */
-import { ExecutionContext, UnauthorizedException, createParamDecorator } from '@nestjs/common';
+import { createParamDecorator,ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { UserRole as UserRoleEnum } from '@shared/constants';
 
 /**
  * Get request IP address
@@ -53,7 +54,7 @@ export const User = createParamDecorator((data: string, ctx: ExecutionContext) =
  */
 export const UserRole = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
 	const request = ctx.switchToHttp().getRequest();
-	return request.userRole || 'guest';
+	return request.userRole || UserRoleEnum.GUEST;
 });
 
 /**

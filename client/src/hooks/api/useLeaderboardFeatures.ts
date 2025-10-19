@@ -4,7 +4,7 @@
  * @module UseLeaderboardFeatures
  * @description React Query hooks for leaderboard features functionality
  */
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';

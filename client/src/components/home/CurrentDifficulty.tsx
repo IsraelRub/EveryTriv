@@ -4,7 +4,7 @@
  * @module CurrentDifficulty
  * @used_by client/src/views/home
  */
-import { formatTopic } from '@shared';
+import { formatTopic } from '@shared/utils';
 import { motion } from 'framer-motion';
 
 import type { CurrentDifficultyProps } from '../../types';

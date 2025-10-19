@@ -6,11 +6,14 @@
  * @description Client-side authentication service with token management
  * @used_by client/hooks/api/useAuth.ts, client/views/registration/RegistrationView.tsx, client/components/user/OAuthCallback.tsx
  */
-import { AuthCredentials, AuthResponse, User } from '@shared';
-import { clientLogger as logger, ensureErrorObject } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { AuthCredentials, User, AuthenticationResult } from '@shared/types';
+import { ensureErrorObject } from '@shared/utils/error.utils';
+import { UserRole } from '@shared/constants';
 
 import { CLIENT_STORAGE_KEYS } from '../../constants';
 import { apiService } from '../api';
+import { ClientApiConfigService } from '../api-config/client-api-config.service';
 import { storageService } from '../storage';
 
 /**
@@ -28,7 +31,7 @@ class AuthService {
    * @returns Authentication response with token and user data
    * @throws When authentication fails
    */
-  async login(credentials: AuthCredentials): Promise<AuthResponse> {
+  async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
     try {
       logger.securityLogin('Attempting to login user', { username: credentials.username });
 
@@ -37,7 +40,9 @@ class AuthService {
       // Store auth data
       await this.setAuthData(response);
 
-      logger.logUserActivity(response.user.id, 'login', { username: credentials.username });
+      if (response.user) {
+        logger.logUserActivity(response.user.id, 'login', { username: credentials.username });
+      }
       return response;
     } catch (error) {
       logger.securityDenied('Login failed', { error, username: credentials.username });
@@ -50,7 +55,7 @@ class AuthService {
    * @returns Authentication response after successful registration
    * @throws When registration fails
    */
-  async register(credentials: AuthCredentials & { email: string }): Promise<AuthResponse> {
+  async register(credentials: AuthCredentials & { email: string }): Promise<AuthenticationResult> {
     try {
       logger.authRegister('Attempting to register user', { username: credentials.username });
 
@@ -59,7 +64,9 @@ class AuthService {
       // Store auth data
       await this.setAuthData(response);
 
-      logger.authRegister('User registered successfully', { userId: response.user.id });
+      if (response.user) {
+        logger.authRegister('User registered successfully', { userId: response.user.id });
+      }
       return response;
     } catch (error) {
       logger.authError(ensureErrorObject(error), 'Registration failed', {
@@ -94,7 +101,7 @@ class AuthService {
   /**
    * Get user info
    */
-  async getCurrentUser(): Promise<AuthResponse['user']> {
+  async getCurrentUser(): Promise<User> {
     try {
       const user = (await apiService.getCurrentUser()) as User;
 
@@ -103,7 +110,7 @@ class AuthService {
 
       return {
         ...user,
-        role: user.role || 'user', // Provide default role if not set
+        role: user.role || UserRole.USER, // Provide default role if not set
       };
     } catch (error) {
       logger.authError(ensureErrorObject(error), 'Failed to get current user');
@@ -114,17 +121,29 @@ class AuthService {
   /**
    * Refresh authentication token
    */
-  async refreshToken(): Promise<AuthResponse> {
+  async refreshToken(): Promise<AuthenticationResult> {
     try {
       logger.authTokenRefresh('Refreshing auth token');
 
-      const response = (await apiService.refreshToken()) as AuthResponse;
+      const response = await apiService.refreshToken();
+      
+      // Get current user data to construct full response
+      const user = await this.getStoredUser();
+      if (!user) {
+        throw new Error('No user data found');
+      }
+
+      const fullResponse: AuthenticationResult = {
+        user,
+        accessToken: response.accessToken,
+        refreshToken: response.accessToken, // Use accessToken as refreshToken for now
+      };
 
       // Update auth data
-      await this.setAuthData(response);
+      await this.setAuthData(fullResponse);
 
       logger.authTokenRefresh('Token refreshed successfully');
-      return response;
+      return fullResponse;
     } catch (error) {
       logger.authError(ensureErrorObject(error), 'Token refresh failed');
       await this.clearAuthData();
@@ -149,8 +168,8 @@ class AuthService {
   /**
    * Get user from storage
    */
-  async getStoredUser(): Promise<AuthResponse['user'] | null> {
-    const result = await storageService.get<AuthResponse['user']>(this.USER_KEY);
+  async getStoredUser(): Promise<User | null> {
+    const result = await storageService.get<User>(this.USER_KEY);
     return result.success && result.data ? result.data : null;
   }
 
@@ -159,7 +178,7 @@ class AuthService {
    */
   async getAuthState(): Promise<{
     isAuthenticated: boolean;
-    user: AuthResponse['user'] | null;
+    user: User | null;
     token: string | null;
   }> {
     const token = await this.getToken();
@@ -176,10 +195,12 @@ class AuthService {
    * Store authentication data
    * Note: Token is already stored by apiService.login(), only store user data here
    */
-  private async setAuthData(authResponse: AuthResponse): Promise<void> {
+  private async setAuthData(authResponse: AuthenticationResult): Promise<void> {
     // Token is already stored by apiService.login() with 'access_token' key
     // Only store user data here to avoid duplication
-    await storageService.set(this.USER_KEY, authResponse.user);
+    if (authResponse.user) {
+      await storageService.set(this.USER_KEY, authResponse.user);
+    }
   }
 
   /**
@@ -190,7 +211,7 @@ class AuthService {
       logger.securityLogin('Initiating Google OAuth login');
 
       // Redirect to Google OAuth endpoint
-      const googleAuthUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}/auth/google`;
+      const googleAuthUrl = ClientApiConfigService.getGoogleAuthUrl();
       window.location.href = googleAuthUrl;
     } catch (error) {
       logger.securityDenied('Google login initiation failed', { error });
@@ -212,7 +233,7 @@ class AuthService {
       zipCode?: string;
       apartment?: string;
     };
-  }): Promise<AuthResponse['user']> {
+  }): Promise<User> {
     try {
       logger.authProfileUpdate('Completing user profile');
 
@@ -233,7 +254,7 @@ class AuthService {
       // Add role property to match AuthResponse user type
       return {
         ...updatedUser,
-        role: 'user',
+        role: UserRole.USER,
       };
     } catch (error) {
       logger.authError('Profile completion failed', { error });
@@ -249,7 +270,7 @@ class AuthService {
     lastName?: string;
     avatar?: string;
     email?: string;
-  }): Promise<AuthResponse['user']> {
+  }): Promise<User> {
     try {
       logger.authProfileUpdate('Updating user profile');
 
@@ -262,7 +283,7 @@ class AuthService {
       // Add role property to match AuthResponse user type
       return {
         ...updatedUser,
-        role: 'user',
+        role: UserRole.USER,
       };
     } catch (error) {
       logger.authError('Profile update failed', { error });

@@ -59,26 +59,29 @@ const baseConfig = {
 		'@typescript-eslint/no-non-null-assertion': 'warn',
 
 		// Import rules
-		'import/order': 'off',
+		'import/order': 'error',
 		'import/no-duplicates': 'error',
-		'import/no-unresolved': 'off',
-		'import/named': 'off',
-		'import/namespace': 'off',
-		'import/default': 'off',
-		'import/no-named-as-default-member': 'off',
+		'import/no-unresolved': 'error',
+		'import/named': 'error',
+		'import/namespace': 'error',
+		'import/default': 'error',
+		'import/no-named-as-default-member': 'error',
 
 		// Simple import sort
 		'simple-import-sort/imports': 'error',
 		'simple-import-sort/exports': 'error',
 	},
-	settings: {
-		'import/resolver': {
-			typescript: {
-				alwaysTryTypes: true,
-				project: './tsconfig.json',
-			},
-		},
-	},
+    settings: {
+        'import/resolver': {
+            typescript: {
+                alwaysTryTypes: true,
+                project: './tsconfig.json',
+            },
+            node: {
+                extensions: ['.js', '.jsx', '.ts', '.tsx'],
+            },
+        },
+    },
 };
 
 const reactConfig = {
@@ -123,6 +126,7 @@ const reactConfig = {
 			URLSearchParams: 'readonly',
 			Blob: 'readonly',
 			File: 'readonly',
+			Buffer: 'readonly',
 			Window: 'readonly',
 			MouseEvent: 'readonly',
 			btoa: 'readonly',
@@ -159,8 +163,22 @@ const reactConfig = {
 					'@redux/*': ['./client/src/redux/*'],
 					'@views/*': ['./client/src/views/*'],
 					'@shared': ['./shared'],
-					'@shared/*': ['./shared/*']
+					'@shared/*': ['./shared/*'],
+					'@shared/constants': ['./shared/constants'],
+					'@shared/constants/*': ['./shared/constants/*'],
+					'@shared/services': ['./shared/services'],
+					'@shared/services/*': ['./shared/services/*'],
+					'@shared/types': ['./shared/types'],
+					'@shared/types/*': ['./shared/types/*'],
+					'@shared/utils': ['./shared/utils'],
+					'@shared/utils/*': ['./shared/utils/*'],
+					'@shared/validation': ['./shared/validation'],
+					'@shared/validation/*': ['./shared/validation/*']
 				},
+			},
+			node: {
+				extensions: ['.js', '.jsx', '.ts', '.tsx'],
+				moduleDirectory: ['node_modules', 'src/'],
 			},
 		},
 	},
@@ -213,6 +231,9 @@ module.exports = [
 			'**/dist/**',
 			'**/build/**',
 			'**/node_modules/**',
+			'**/dist-temp/**',
+			'**/logs/**',
+			'scripts/documentation/**/*.cjs',
 		],
 	},
 	
@@ -236,12 +257,16 @@ module.exports = [
 					paths: {
 						'@modules/*': ['./server/src/modules/*'],
 						'@infrastructure/*': ['./server/src/infrastructure/*'],
-						'@shared': ['./shared'],
-						'@shared/*': ['./shared/*'],
-						'@shared/modules': ['./shared/modules'],
-						'@shared/types': ['./shared/types'],
-						'@shared/entities': ['./shared/entities'],
 						'@shared/constants': ['./shared/constants'],
+						'@shared/constants/*': ['./shared/constants/*'],
+						'@shared/services': ['./shared/services'],
+						'@shared/services/*': ['./shared/services/*'],
+						'@shared/types': ['./shared/types'],
+						'@shared/types/*': ['./shared/types/*'],
+						'@shared/utils': ['./shared/utils'],
+						'@shared/utils/*': ['./shared/utils/*'],
+						'@shared/validation': ['./shared/validation'],
+						'@shared/validation/*': ['./shared/validation/*'],
 						'@internal/*': ['./server/src/internal/*'],
 						'@internal/constants': ['./server/src/internal/constants'],
 						'@internal/types': ['./server/src/internal/types'],
@@ -256,6 +281,9 @@ module.exports = [
 						'src/internal/*': ['./server/src/internal/*'],
 						'src/modules/*': ['./server/src/modules/*']
 					},
+				},
+				node: {
+					extensions: ['.js', '.jsx', '.ts', '.tsx'],
 				},
 			},
 		},
@@ -278,6 +306,11 @@ module.exports = [
 		languageOptions: {
 			...baseConfig.languageOptions,
 			parser: tsparser,
+			globals: {
+				...baseConfig.languageOptions.globals,
+				File: 'readonly',
+				Buffer: 'readonly',
+			},
 		},
 		settings: {
 			...baseConfig.settings,
@@ -286,9 +319,22 @@ module.exports = [
 					alwaysTryTypes: true,
 					project: './shared/tsconfig.json',
 					paths: {
-						'@shared/*': ['./shared/*'],
 						'@shared': ['./shared'],
+						'@shared/*': ['./shared/*'],
+						'@shared/constants': ['./shared/constants'],
+						'@shared/constants/*': ['./shared/constants/*'],
+						'@shared/services': ['./shared/services'],
+						'@shared/services/*': ['./shared/services/*'],
+						'@shared/types': ['./shared/types'],
+						'@shared/types/*': ['./shared/types/*'],
+						'@shared/utils': ['./shared/utils'],
+						'@shared/utils/*': ['./shared/utils/*'],
+						'@shared/validation': ['./shared/validation'],
+						'@shared/validation/*': ['./shared/validation/*'],
 					},
+				},
+				node: {
+					extensions: ['.js', '.jsx', '.ts', '.tsx'],
 				},
 			},
 		},

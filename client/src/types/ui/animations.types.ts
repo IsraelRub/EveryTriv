@@ -87,16 +87,16 @@ export interface PerformanceContextType {
   clearAllOperations: () => void;
   updateSettings: (settings: PerformanceSettingsUpdate) => void;
   isOperationSlow: (id: string) => boolean;
-  getOperationMetrics: (id: string) => PerformanceOperation | undefined;
+  getOperationMetrics: (id: string) => AnimationPerformanceOperation | undefined;
 }
 
 export interface PerformanceState {
-  operations: Map<string, PerformanceOperation>;
+  operations: Map<string, AnimationPerformanceOperation>;
   metrics: PerformanceMetrics;
   settings: PerformanceSettings;
 }
 
-export interface PerformanceOperation {
+export interface AnimationPerformanceOperation {
   startTime: number;
   duration: number | null;
   status: 'pending' | 'completed' | 'error';

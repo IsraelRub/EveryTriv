@@ -5,7 +5,7 @@
  * @description Utility functions for handling custom difficulty levels
  * @used_by client/src/components/game, client/src/hooks, client/src/services
  */
-import { DifficultyLevel } from '@shared';
+import { DifficultyLevel } from '@shared/constants';
 import {
   extractCustomDifficultyText,
   getDifficultyDisplayText as sharedGetDifficultyDisplayText,

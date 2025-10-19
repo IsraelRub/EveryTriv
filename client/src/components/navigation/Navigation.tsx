@@ -1,4 +1,4 @@
-import { formatScore, formatUsername } from '@shared';
+import { formatScore, formatUsername } from '@shared/utils/format.utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createContext, memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';

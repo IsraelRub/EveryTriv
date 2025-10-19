@@ -1,8 +1,10 @@
-import { GameHistoryCreationData, getErrorMessage, serverLogger as logger } from '@shared';
-import { Repository } from 'typeorm';
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import type { GameHistoryCreationData } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { Repository } from 'typeorm';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
 import { GameHistoryEntity } from '../entities';
@@ -17,7 +19,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		super(gameHistoryRepository);
 	}
 
-	@RepositoryCache(600, 'game_history_by_user')
+	@RepositoryCache(CACHE_DURATION.LONG, 'game_history_by_user')
 	@RepositoryAudit('game_history_lookup_by_user')
 	async findByUserId(userId: string): Promise<GameHistoryEntity[]> {
 		try {
@@ -43,7 +45,7 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		}
 	}
 
-	@RepositoryCache(1800, 'game_history_by_topic')
+	@RepositoryCache(CACHE_DURATION.VERY_LONG, 'game_history_by_topic')
 	@RepositoryAudit('game_history_lookup_by_topic')
 	async findByTopic(topic: string): Promise<GameHistoryEntity[]> {
 		try {
@@ -69,8 +71,8 @@ export class GameHistoryRepository extends BaseRepository<GameHistoryEntity> {
 		}
 	}
 
-	@RepositoryCache(3600, 'game_history_stats')
-	@RepositoryRoles('admin')
+	@RepositoryCache(CACHE_DURATION.VERY_LONG, 'game_history_stats')
+	@RepositoryRoles(UserRole.ADMIN)
 	@RepositoryAudit('game_history_stats_lookup')
 	async getGameStats(): Promise<{ totalGames: number; averageScore: number; topScore: number }> {
 		try {

@@ -30,7 +30,7 @@ export interface StorageService {
  * Storage configuration interface
  * @interface StorageConfig
  * @description Configuration settings for storage services
- * @used_by shared/services/storage.service.ts (BaseStorageService), server/src/shared/modules/storage/storage.service.ts (ServerStorageService)
+ * @used_by shared/services/storage (BaseStorageService), server/src/internal/modules/storage/storage.service.ts (ServerStorageService)
  */
 export interface StorageConfig {
 	prefix: string;
@@ -46,7 +46,7 @@ export interface StorageConfig {
  * Storage operation result interface
  * @interface StorageOperationResult
  * @description Result of storage operations
- * @used_by shared/services/storage.service.ts (BaseStorageService)
+ * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageOperationResult<T = StorageItemMetadata> {
 	success: boolean;
@@ -61,7 +61,7 @@ export interface StorageOperationResult<T = StorageItemMetadata> {
  * Storage item metadata interface
  * @interface StorageItemMetadata
  * @description Metadata for stored items
- * @used_by shared/services/storage.service.ts (BaseStorageService)
+ * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageItemMetadata {
 	created_at: Date;
@@ -86,7 +86,7 @@ export interface StorageItemMetadata {
  * Storage statistics interface
  * @interface StorageStats
  * @description Storage service statistics
- * @used_by shared/services/storage.service.ts (BaseStorageService)
+ * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageStats {
 	totalItems: number;
@@ -108,7 +108,7 @@ export interface StorageStats {
  * Storage cleanup options interface
  * @interface StorageCleanupOptions
  * @description Options for storage cleanup operations
- * @used_by shared/services/storage.service.ts (BaseStorageService)
+ * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageCleanupOptions {
 	removeExpired?: boolean;
@@ -122,7 +122,7 @@ export interface StorageCleanupOptions {
  * Storage migration options interface
  * @interface StorageMigrationOptions
  * @description Options for storage migration operations
- * @used_by shared/services/storage.service.ts (BaseStorageService)
+ * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageMigrationOptions {
 	source: StorageConfig;
@@ -136,7 +136,7 @@ export interface StorageMigrationOptions {
  * Storage sync options interface
  * @interface StorageSyncOptions
  * @description Options for storage synchronization
- * @used_by shared/services/storage-sync.service.ts
+ * @used_by shared/services/storage
  */
 export interface StorageSyncOptions {
 	syncToClient?: boolean;
@@ -150,7 +150,7 @@ export interface StorageSyncOptions {
  * Storage metrics interface
  * @interface StorageMetrics
  * @description metrics for storage operations
- * @used_by shared/services/metrics.service.ts
+ * @used_by shared/services/storage
  */
 export interface StorageMetrics {
 	operations: {

@@ -1,4 +1,6 @@
-import { clientLogger as logger, DifficultyLevel, GameMode, getErrorMessage } from '@shared';
+import { DifficultyLevel, GameMode } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { motion } from 'framer-motion';
 import {
   createContext,
@@ -715,7 +717,7 @@ export default function HomeView() {
             transition={{ delay: 0.8 }}
           >
             <FavoriteTopics
-              favorites={gameState.favorites || []}
+              favorites={gameState.favorites ?? []}
               onRemove={removeFavorite}
               onSelect={selectFavorite}
             />

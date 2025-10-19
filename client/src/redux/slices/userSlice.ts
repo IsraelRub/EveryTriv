@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { User } from '@shared';
+import { User } from '@shared/types/domain/user';
+import { UserRole } from '@shared/constants';
 
 import { POINT_BALANCE_DEFAULT_VALUES } from '../../constants';
 import { authService } from '../../services/auth';
@@ -32,7 +33,7 @@ export const updateUserProfile = createAsyncThunk(
 const initialState: UserState = {
   id: '',
   email: '',
-  role: 'user',
+  role: UserRole.USER,
   currentUser: null,
   user: null,
   username: '',

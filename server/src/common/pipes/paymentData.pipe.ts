@@ -6,10 +6,10 @@
  * @used_by server/src/features/payment, server/src/controllers
  */
 // ValidationManager removed - using direct validation
-import type { PersonalPaymentData } from '@shared';
-import { ValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { PersonalPaymentData } from '@shared/types';
+import { getErrorMessage,ValidationResult } from '@shared/utils';
 
 @Injectable()
 export class PaymentDataPipe implements PipeTransform {

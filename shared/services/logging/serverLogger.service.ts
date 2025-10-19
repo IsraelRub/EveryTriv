@@ -8,8 +8,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import type { BasicValue, StatsValue } from '../../types/core/data.types';
-import { LogMeta, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
+import type { BasicValue, StatsValue, SlowOperation } from '../../types/core/data.types';
+import { LoggerConfigUpdate, LogMeta, PerfOperationDetails,PerfOperationSummary } from '../../types/infrastructure/logging.types';
 import { getErrorMessage, getErrorStack } from '../../utils';
 import { BaseLoggerService } from './baseLogger.service';
 
@@ -72,15 +72,15 @@ export class ServerLogger extends BaseLoggerService {
 			return;
 		}
 
-		this.logDir = process.env.LOG_DIR || 'logs';
+		this.logDir = process.env.LOG_DIR ?? 'logs';
 		this.logFile = path.join(this.logDir, 'server.log');
 		this.ensureLogDirectory();
 		this.clearLogFile();
 	}
 
 	protected logError(message: string, meta?: LogMeta): void {
-		const errorType = (meta?.errorType as string) || 'unknown';
-		this.errorCounts.set(errorType, (this.errorCounts.get(errorType) || 0) + 1);
+		const errorType = (meta?.errorType as string) ?? 'unknown';
+		this.errorCounts.set(errorType, (this.errorCounts.get(errorType) ?? 0) + 1);
 
 		console.error(message, meta);
 		this.writeToFile('ERROR', message, meta);
@@ -158,7 +158,7 @@ export class ServerLogger extends BaseLoggerService {
 				timestamp: now.toISOString(),
 				level,
 				message,
-				meta: meta || {},
+				meta: meta ?? {},
 				sessionId: this.getSessionId(),
 				traceId: this.getTraceId(),
 			};
@@ -219,7 +219,7 @@ export class ServerLogger extends BaseLoggerService {
 	 */
 	public trackApiRequest(endpoint: string, method: string, statusCode: number, duration?: number): void {
 		const key = `${method}:${endpoint}`;
-		this.requestCounts.set(key, (this.requestCounts.get(key) || 0) + 1);
+		this.requestCounts.set(key, (this.requestCounts.get(key) ?? 0) + 1);
 
 		this.logInfo('API Request tracked', {
 			endpoint,
@@ -234,7 +234,7 @@ export class ServerLogger extends BaseLoggerService {
 	 * Get performance metrics summary
 	 */
 	public getPerformanceMetrics(): {
-		operations: Array<{ id: string; duration: number; startTime: number; endTime: number }>;
+		operations: PerfOperationDetails[];
 		requestCounts: Record<string, number>;
 		errorCounts: Record<string, number>;
 	} {
@@ -242,9 +242,9 @@ export class ServerLogger extends BaseLoggerService {
 			.filter(([_, metric]) => metric.duration !== undefined)
 			.map(([id, metric]) => ({
 				id,
-				duration: metric.duration!,
+				duration: metric.duration ?? 0,
 				startTime: metric.startTime,
-				endTime: metric.endTime!,
+				endTime: metric.endTime ?? Date.now(),
 			}));
 
 		return {
@@ -497,7 +497,7 @@ export class ServerLogger extends BaseLoggerService {
 	 */
 	public isLoggingLevelEnabled(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
 		const levels = ['debug', 'info', 'warn', 'error'];
-		const currentLevelIndex = levels.indexOf(this.loggingConfig.logLevel || 'info');
+		const currentLevelIndex = levels.indexOf(this.loggingConfig.logLevel ?? 'info');
 		const requestedLevelIndex = levels.indexOf(level);
 
 		return requestedLevelIndex >= currentLevelIndex;
@@ -594,19 +594,9 @@ export class ServerLogger extends BaseLoggerService {
 	/**
 	 * Get slow operations
 	 */
-	public getSlowOperationsEnhanced(threshold?: number): Array<{
-		operation: string;
-		duration: number;
-		timestamp: Date;
-		metadata?: Record<string, BasicValue>;
-	}> {
-		const slowThreshold = threshold || 1000;
-		const slowOperations: Array<{
-			operation: string;
-			duration: number;
-			timestamp: Date;
-			metadata?: Record<string, BasicValue>;
-		}> = [];
+	public getSlowOperationsEnhanced(threshold?: number): SlowOperation[] {
+		const slowThreshold = threshold ?? 1000;
+		const slowOperations: SlowOperation[] = [];
 
 		for (const [operation, stats] of this.performanceStats) {
 			if (stats.averageDuration > slowThreshold) {
@@ -614,6 +604,10 @@ export class ServerLogger extends BaseLoggerService {
 					operation,
 					duration: stats.averageDuration,
 					timestamp: stats.lastUpdated,
+					metadata: {
+						threshold: slowThreshold,
+						lastUpdated: stats.lastUpdated.toISOString(),
+					},
 				});
 			}
 		}
@@ -633,7 +627,7 @@ export class ServerLogger extends BaseLoggerService {
 	 * Get performance threshold for an operation
 	 */
 	public getPerformanceThreshold(operation: string): number {
-		return this.performanceThresholds[operation] || 1000;
+		return this.performanceThresholds[operation] ?? 1000;
 	}
 
 	/**
@@ -654,13 +648,13 @@ export class ServerLogger extends BaseLoggerService {
 		averageDuration: number;
 		slowOperations: number;
 		errorCount: number;
-		topSlowOperations: Array<{ operation: string; averageDuration: number }>;
+		topSlowOperations: PerfOperationSummary[];
 	} {
 		let totalOperations = 0;
 		let totalDuration = 0;
 		let slowOperations = 0;
 		let errorCount = 0;
-		const operationAverages: Array<{ operation: string; averageDuration: number }> = [];
+		const operationAverages: PerfOperationSummary[] = [];
 
 		for (const [operation, stats] of this.performanceStats) {
 			totalOperations += stats.totalOperations;
@@ -756,7 +750,8 @@ export class ServerLogger extends BaseLoggerService {
 			});
 		}
 
-		const stats = this.performanceStats.get(operation)!;
+		const stats = this.performanceStats.get(operation);
+		if (!stats) return;
 		stats.totalOperations++;
 		stats.averageDuration = (stats.averageDuration * (stats.totalOperations - 1) + duration) / stats.totalOperations;
 		stats.minDuration = Math.min(stats.minDuration, duration);

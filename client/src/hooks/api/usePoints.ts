@@ -1,4 +1,5 @@
-import { clientLogger as logger, getErrorMessage } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectCanPlayFree, selectUserPointBalance } from '../../redux/selectors';

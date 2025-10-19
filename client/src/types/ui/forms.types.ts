@@ -3,7 +3,7 @@
  * @module FormTypes
  * @description Form-related types and interfaces
  */
-import type { ValidationHookOptions, ValidationType } from '@shared';
+import type { ValidationHookOptions, ValidationType } from '@shared/types';
 import type { InputHTMLAttributes, SelectHTMLAttributes } from 'react';
 
 /**

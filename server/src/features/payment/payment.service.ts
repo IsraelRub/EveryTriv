@@ -5,29 +5,30 @@
  * @description Service for handling payment operations and subscription management
  * @used_by server/src/features/payment/payment.controller.ts
  */
-import {
-	PAYMENT_ERROR_MESSAGES,
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PAYMENT_ERROR_MESSAGES, CACHE_DURATION } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type {
 	PaymentData,
 	PaymentResult,
 	PointBalance,
 	PointPurchaseOption,
 	SubscriptionData,
 	SubscriptionPlans,
+} from '@shared/types';
+import {
 	createNotFoundError,
 	createServerError,
 	createValidationError,
 	formatCurrency,
 	generatePaymentIntentId,
 	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
+} from '@shared/utils';
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
 import { Repository } from 'typeorm';
-
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 /**
  * Pricing plans configuration
@@ -123,7 +124,7 @@ export class PaymentService {
 				return cachedPlans.data;
 			}
 
-			await this.cacheService.set('pricing_plans', PRICING_PLANS, 3600);
+			await this.cacheService.set('pricing_plans', PRICING_PLANS, CACHE_DURATION.VERY_LONG);
 
 			return PRICING_PLANS;
 		} catch (error) {
@@ -147,7 +148,7 @@ export class PaymentService {
 				return cachedOptions.data;
 			}
 
-			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_OPTIONS, 3600);
+			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_OPTIONS, CACHE_DURATION.VERY_LONG);
 
 			return POINT_PURCHASE_OPTIONS;
 		} catch (error) {

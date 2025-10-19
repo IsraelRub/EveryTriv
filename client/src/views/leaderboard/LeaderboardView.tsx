@@ -1,10 +1,12 @@
-import { clientLogger as logger, type LeaderboardEntry } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { LeaderboardEntry } from '@shared/types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 import { Icon } from '../../components/icons';
 import { Button } from '../../components/ui';
 import { useGlobalLeaderboard, useLeaderboardByPeriod, useUserRanking } from '../../hooks/api';
+import type { LeaderboardEntryProps,RankingCardProps } from '../../types';
 
 export function LeaderboardView() {
   const [timeFilter, setTimeFilter] = useState<'global' | 'weekly' | 'monthly' | 'yearly'>(
@@ -132,7 +134,7 @@ export function LeaderboardView() {
               <RankingCard
                 title='Global Rank'
                 value={userRanking.rank?.toString() || 'N/A'}
-                subtitle={`Out of ${userRanking.totalUsers || 0} users`}
+                subtitle={`Out of ${userRanking.totalUsers ?? 0} users`}
                 icon={<Icon name='trophy' size='lg' color='warning' />}
                 color='yellow'
               />
@@ -213,7 +215,6 @@ export function LeaderboardView() {
 }
 
 // Ranking Card Component
-import { RankingCardProps } from '../../types';
 
 function RankingCard({ title, value, subtitle, icon, color }: RankingCardProps) {
   const colorClasses = {
@@ -241,7 +242,6 @@ function RankingCard({ title, value, subtitle, icon, color }: RankingCardProps) 
 }
 
 // Leaderboard Entry Component
-import { LeaderboardEntryProps } from '../../types';
 
 function LeaderboardEntry({ entry, index, isCurrentUser }: LeaderboardEntryProps) {
   const getRankIcon = (rank: number) => {
@@ -288,7 +288,7 @@ function LeaderboardEntry({ entry, index, isCurrentUser }: LeaderboardEntryProps
             )}
           </h3>
           <p className='text-sm text-gray-600'>
-            {entry.gamesPlayed || 0} games • {entry.successRate.toFixed(1)}% success
+            {entry.gamesPlayed ?? 0} games • {entry.successRate.toFixed(1)}% success
           </p>
         </div>
       </div>

@@ -17,7 +17,7 @@ export {
   POPULAR_TOPICS,
   SHARE_PLATFORMS,
   SOCIAL_LINKS,
-} from '@shared';
+} from '@shared/constants';
 
 export const CLIENT_APP_CONFIG = {
   VERSION: '2.0.0',

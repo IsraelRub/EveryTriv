@@ -4,7 +4,8 @@
  * @module AnalyticsDTOs
  * @description Data Transfer Objects for analytics tracking and queries
  */
-import { BasicValue } from '@shared';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BasicValue } from '@shared/types';
 import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
@@ -18,8 +19,6 @@ import {
 	MaxLength,
 	MinLength,
 } from 'class-validator';
-
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TrackEventDto {
 	@ApiProperty({

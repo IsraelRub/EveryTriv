@@ -5,7 +5,7 @@
  * @module ValidationTypes
  * @description Validation interfaces and data structures with enhanced type safety
  */
-import { BasicValue, RequestData } from '../../core/data.types';
+import { BasicValue, BaseData } from '../../core/data.types';
 
 /**
  * Validation configuration interface
@@ -109,11 +109,11 @@ export interface ValidationError {
  */
 export interface ValidationContext {
 	userId?: string;
-	session?: RequestData;
+	session?: BaseData;
 	options?: {
 		strict?: boolean;
 		includeWarnings?: boolean;
-		customRules?: RequestData;
+		customRules?: BaseData;
 	};
 }
 

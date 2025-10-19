@@ -16,7 +16,7 @@ export { ServerStorageService } from './storage.service';
 /**
  * Storage controller
  * @description Controller for storage service management and monitoring
- * @used_by server/src/shared/modules/storage/storage.module.ts
+ * @used_by server/src/internal/modules/storage/storage.module.ts
  */
 export { StorageController } from './storage.controller';
 

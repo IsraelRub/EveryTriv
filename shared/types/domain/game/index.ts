@@ -1,14 +1,11 @@
 /**
  * Game Types Index
  *
- * @module GameTypesIndex
- * @description Central export point for all game-related types
+ * @module GameTypes
+ * @description Game-related type definitions including trivia, sessions, and configuration
+ * @author EveryTriv Team
+ * @used_by client: game components, server: game controllers
  */
 
-// Core game types
 export * from './game.types';
-
-// Trivia types
 export * from './trivia.types';
-
-// Note: Metadata types moved to client-side since they're only used there

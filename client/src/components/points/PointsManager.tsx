@@ -4,7 +4,8 @@
  * @module PointsManager
  * @description Component for managing points - purchasing and viewing balance
  */
-import { PointBalance, PointPurchaseOption, clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { PointBalance, PointPurchaseOption } from '@shared/types';
 import { useQuery } from '@tanstack/react-query';
 import React, { useState } from 'react';
 

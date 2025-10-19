@@ -1,8 +1,7 @@
-import { TokenExtractionService, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Injectable, NestMiddleware } from '@nestjs/common';
-
-import { NestNextFunction, NestRequest, NestResponse } from '../types';
+import { serverLogger as logger , TokenExtractionService } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { NestRequest, NestResponse, NestNextFunction } from '../types';
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {

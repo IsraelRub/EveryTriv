@@ -3,13 +3,12 @@
  * @module GameConfigTypes
  * @description Game configuration and setup types
  */
-import {
-  DifficultyLevel,
-  GameMode,
-  TriviaQuestion,
+import { DifficultyLevel, GameMode } from '@shared/constants';
+import type {
   GameModeConfig as SharedGameModeConfig,
   TriviaAnswer,
-} from '@shared';
+  TriviaQuestion,
+} from '@shared/types';
 
 /**
  * Game configuration interface

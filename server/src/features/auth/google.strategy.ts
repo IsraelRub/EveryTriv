@@ -4,11 +4,13 @@
  * @module GoogleStrategy
  * @description Google OAuth authentication strategy
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-import { Strategy } from 'passport-google-oauth20';
-
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { LOCALHOST_URLS } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { Profile } from 'passport-google-oauth20';
+import { getErrorMessage } from '@shared/utils';
+import { Strategy } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -16,17 +18,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		super({
 			clientID: process.env.GOOGLE_CLIENT_ID || '',
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-			callbackURL: `${process.env.SERVER_URL || 'http://localhost:3001'}/auth/google/callback`,
+			callbackURL: `${process.env.SERVER_URL || LOCALHOST_URLS.API_BASE}/auth/google/callback`,
 			scope: ['email', 'profile'],
 		});
 	}
 
-	async validate(profile: {
-		id: string;
-		emails?: Array<{ value: string }>;
-		displayName?: string;
-		photos?: Array<{ value: string }>;
-	}) {
+	async validate(profile: Profile) {
 		try {
 			// Use enhanced logging
 			logger.logAuthenticationEnhanced('login', 'google_user', profile.id, {

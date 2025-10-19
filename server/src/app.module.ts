@@ -5,6 +5,10 @@
  * @description Main NestJS application module with all features and middleware
  * @used_by server/main, server/config
  */
+import { BadRequestException, MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientLogsController, MiddlewareMetricsController } from 'src/internal/controllers';
 import {
 	AuthMiddleware,
@@ -14,11 +18,6 @@ import {
 	RateLimitMiddleware,
 } from 'src/internal/middleware';
 import { StorageModule } from 'src/internal/modules';
-
-import { BadRequestException, MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './app.controller';
 import { GlobalExceptionFilter } from './common/globalException.filter';

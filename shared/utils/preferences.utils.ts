@@ -4,7 +4,8 @@
  * @module PreferencesUtils
  * @description Centralized utilities for user preferences management
  */
-import { PreferenceValue, ServerUserPreferences, UserPreferences } from '../types/domain/user/user.types';
+import { BasicValue } from '../types/core/data.types';
+import { ServerUserPreferences, UserPreferences } from '../types/domain/user/user.types';
 
 /**
  * Default user preferences
@@ -78,7 +79,7 @@ export function mergeWithDefaults(
 export function updateNestedPreference(
 	preferences: ServerUserPreferences,
 	path: string,
-	value: PreferenceValue
+	value: BasicValue
 ): ServerUserPreferences {
 	const keys = path.split('.');
 	const result = { ...preferences };
@@ -94,9 +95,9 @@ export function updateNestedPreference(
 		// Nested property update (e.g., privacy.showOnlineStatus)
 		const [parentKey, childKey] = keys;
 		if (parentKey === 'privacy' && result.privacy) {
-			(result.privacy as Record<string, PreferenceValue>)[childKey] = value;
+			(result.privacy as Record<string, BasicValue>)[childKey] = value;
 		} else if (parentKey === 'game' && result.game) {
-			(result.game as Record<string, PreferenceValue>)[childKey] = value;
+			(result.game as Record<string, BasicValue>)[childKey] = value;
 		}
 	}
 

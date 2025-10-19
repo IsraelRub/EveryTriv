@@ -5,16 +5,11 @@
  * @description password hashing and validation service
  * @author EveryTriv Team
  */
-import {
-	PasswordConfig,
-	PasswordValidationResult,
-	createServerError,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-import * as bcrypt from 'bcrypt';
-
 import { Injectable } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { PasswordConfig, PasswordValidationResult } from '@shared/types';
+import { createServerError, getErrorMessage } from '@shared/utils';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class PasswordService {

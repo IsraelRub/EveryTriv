@@ -1,6 +1,7 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import { Cache, ClientIP, CurrentUserId, RateLimit, UserAgent } from '../../common';
 import { CanPlayDto, ConfirmPointPurchaseDto, DeductPointsDto, GetPointHistoryDto, PurchasePointsDto } from './dtos';
@@ -14,7 +15,7 @@ export class PointsController {
 	 * Get user point balance
 	 */
 	@Get('balance')
-	@Cache(60) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async getPointBalance(@CurrentUserId() userId: string) {
 		try {
 			const result = this.pointsService.getPointBalance(userId);
@@ -38,7 +39,7 @@ export class PointsController {
 	 * Get available point packages
 	 */
 	@Get('packages')
-	@Cache(3600) // Cache for 1 hour - point packages rarely change
+	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 1 hour - point packages rarely change
 	async getPointPackages() {
 		try {
 			const result = this.pointsService.getPointPackages();
@@ -59,7 +60,7 @@ export class PointsController {
 	 * Check if user can play with given question count
 	 */
 	@Get('can-play')
-	@Cache(30) // Cache for 30 seconds
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
 		try {
 			if (!query.questionCount || query.questionCount <= 0) {
@@ -130,7 +131,7 @@ export class PointsController {
 	 * Get user point transaction history
 	 */
 	@Get('history')
-	@Cache(120) // Cache for 2 minutes
+	@Cache(CACHE_DURATION.SHORT + 90) // Cache for 2 minutes
 	async getPointHistory(@CurrentUserId() userId: string, @Query() query: GetPointHistoryDto) {
 		try {
 			const limit = query.limit || 50;

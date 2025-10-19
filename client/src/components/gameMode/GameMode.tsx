@@ -1,4 +1,4 @@
-import { GameMode as GameModeEnum, VALID_GAME_MODES } from '@shared';
+import { GameMode as GameModeEnum, VALID_GAME_MODES } from '@shared/constants';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 

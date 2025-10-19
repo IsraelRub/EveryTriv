@@ -1,3 +1,4 @@
+/* eslint-env node */
 const { readdirSync, readFileSync, statSync } = require('fs');
 const { join, dirname, resolve, relative } = require('path');
 

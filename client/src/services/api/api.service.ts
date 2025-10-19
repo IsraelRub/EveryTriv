@@ -5,54 +5,58 @@
  * @used_by client/src/hooks/api/**, client/src/views/**
  */
 import {
+  HTTP_CLIENT_CONFIG,
+  HTTP_STATUS_CODES,
+} from '@shared/constants/infrastructure/http.constants';
+import {
   ApiError,
   ApiResponse,
   AuthCredentials,
-  AuthResponse,
+  AuthenticationResult,
   BasicValue,
   CanPlayResponse,
   CompleteUserAnalytics,
   CreateGameHistoryDto,
   DifficultyStatsData,
-  getErrorMessage,
+  // HttpHeaders removed - not needed
   LeaderboardEntry,
+  // PaymentRecord removed - not needed
   PointPurchaseOption,
+  ProviderIssue,
+  StatisticsItem,
   StorageValue,
   SubscriptionData,
   SubscriptionPlans,
   TopicStatsData,
   TriviaQuestion,
   TriviaRequest,
+  UnavailableProvider,
   UrlResponse,
   User,
   UserAnalyticsQuery,
   UserRankData,
   UserStatsData,
-} from '@shared';
-import {
-  API_BASE_URL,
-  HTTP_CLIENT_CONFIG,
-  HTTP_STATUS_CODES,
-} from '@shared/constants/infrastructure/http.constants';
-import { UserPreferencesUpdate } from '@shared/types/domain/user/profile.types';
-import { UserProfileUpdateData } from '@shared/types/domain/user/user.types';
+} from '@shared/types';
+import { UserPreferencesUpdate, UserProfileUpdateData } from '@shared/types/domain/user';
 import {
   CustomDifficultyRequest,
   SimpleValidationResult,
-} from '@shared/types/domain/validation/validation.types';
+} from '@shared/types/domain/validation';
+import { getErrorMessage } from '@shared/utils/error.utils';
 
 import { CLIENT_STORAGE_KEYS } from '../../constants';
 import type { ClientApiService } from '../../types';
 import { PointBalance, PointTransaction } from '../../types';
+import { ClientApiConfigService } from '../api-config/client-api-config.service';
 import { storageService } from '../storage';
 
 class ApiService implements ClientApiService {
   private baseURL: string;
-  private retryAttempts: number = 3;
-  private retryDelay: number = 1000;
+  private retryAttempts: number = HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS;
+  private retryDelay: number = HTTP_CLIENT_CONFIG.RETRY_DELAY;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL ?? API_BASE_URL;
+    this.baseURL = ClientApiConfigService.getBaseUrl();
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
@@ -262,8 +266,8 @@ class ApiService implements ClientApiService {
   }
 
   // Auth methods
-  async login(credentials: AuthCredentials): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/auth/login', credentials);
+  async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
+    const response = await this.post<AuthenticationResult>('/auth/login', credentials);
 
     // Store tokens securely using centralized constants
     if (response.data.accessToken) {
@@ -272,15 +276,15 @@ class ApiService implements ClientApiService {
     if ((response.data as { refresh_token?: string }).refresh_token) {
       await storageService.set(
         CLIENT_STORAGE_KEYS.REFRESH_TOKEN,
-        (response.data as { refresh_token?: string }).refresh_token!
+        (response.data as { refresh_token?: string }).refresh_token ?? ''
       );
     }
 
     return response.data;
   }
 
-  async register(credentials: AuthCredentials): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/auth/register', credentials);
+  async register(credentials: AuthCredentials): Promise<AuthenticationResult> {
+    const response = await this.post<AuthenticationResult>('/auth/register', credentials);
 
     // Store tokens securely using centralized constants
     if (response.data.accessToken) {
@@ -289,7 +293,7 @@ class ApiService implements ClientApiService {
     if ((response.data as { refresh_token?: string }).refresh_token) {
       await storageService.set(
         CLIENT_STORAGE_KEYS.REFRESH_TOKEN,
-        (response.data as { refresh_token?: string }).refresh_token!
+        (response.data as { refresh_token?: string }).refresh_token ?? ''
       );
     }
 
@@ -644,21 +648,13 @@ class ApiService implements ClientApiService {
   async getAvailableProvidersCount(): Promise<{
     availableProviders: number;
     totalProviders: number;
-    unavailableProviders: Array<{
-      name: string;
-      reason: string;
-      lastChecked: string;
-    }>;
+    unavailableProviders: UnavailableProvider[];
     timestamp: string;
   }> {
     const response = await this.get<{
       availableProviders: number;
       totalProviders: number;
-      unavailableProviders: Array<{
-        name: string;
-        reason: string;
-        lastChecked: string;
-      }>;
+      unavailableProviders: UnavailableProvider[];
       timestamp: string;
     }>('/api/ai-providers/count');
     return response.data;
@@ -669,11 +665,7 @@ class ApiService implements ClientApiService {
     availableProviders?: number;
     totalProviders?: number;
     lastChecked?: string;
-    issues?: Array<{
-      provider: string;
-      issue: string;
-      severity: 'low' | 'medium' | 'high' | 'critical';
-    }>;
+    issues?: ProviderIssue[];
     error?: string;
     timestamp: string;
   }> {
@@ -682,11 +674,7 @@ class ApiService implements ClientApiService {
       availableProviders?: number;
       totalProviders?: number;
       lastChecked?: string;
-      issues?: Array<{
-        provider: string;
-        issue: string;
-        severity: 'low' | 'medium' | 'high' | 'critical';
-      }>;
+      issues?: ProviderIssue[];
       error?: string;
       timestamp: string;
     }>('/api/ai-providers/health');
@@ -728,8 +716,8 @@ class ApiService implements ClientApiService {
     correctAnswers: number;
     wrongAnswers: number;
     accuracy: number;
-    topics: Array<{ topic: string; count: number; averageScore: number }>;
-    difficulties: Array<{ difficulty: string; count: number; averageScore: number }>;
+    topics: StatisticsItem[];
+    difficulties: StatisticsItem[];
   }> {
     const params = query
       ? `?${new URLSearchParams(query as Record<string, string>).toString()}`
@@ -744,8 +732,8 @@ class ApiService implements ClientApiService {
       correctAnswers: number;
       wrongAnswers: number;
       accuracy: number;
-      topics: Array<{ topic: string; count: number; averageScore: number }>;
-      difficulties: Array<{ difficulty: string; count: number; averageScore: number }>;
+      topics: StatisticsItem[];
+      difficulties: StatisticsItem[];
     }>(`/analytics/game/stats${params}`);
     return response.data;
   }
@@ -807,15 +795,7 @@ class ApiService implements ClientApiService {
     limit?: number,
     offset?: number
   ): Promise<{
-    payments: Array<{
-      id: string;
-      amount: number;
-      currency: string;
-      status: string;
-      description?: string;
-      createdAt: string;
-      updatedAt: string;
-    }>;
+    payments: Array<{ id: string; amount: number; status: string; createdAt: string }>;
     total: number;
     limit: number;
     offset: number;
@@ -836,15 +816,7 @@ class ApiService implements ClientApiService {
     const url = queryString ? `/payment/history?${queryString}` : '/payment/history';
 
     const response = await this.get<{
-      payments: Array<{
-        id: string;
-        amount: number;
-        currency: string;
-        status: string;
-        description?: string;
-        createdAt: string;
-        updatedAt: string;
-      }>;
+      payments: Array<{ id: string; amount: number; status: string; createdAt: string }>;
       total: number;
       limit: number;
       offset: number;

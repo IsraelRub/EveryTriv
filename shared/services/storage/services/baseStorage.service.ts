@@ -9,6 +9,8 @@
 import {
 	CacheData,
 	CacheStorage,
+	formatTime,
+	getErrorMessage,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageConfigFactory,
@@ -20,16 +22,14 @@ import {
 	StorageStats,
 	StorageUtils,
 	UserProgressData,
-	formatTime,
-	getErrorMessage,
 } from '../index';
 
 /**
  * Base storage service class
  * @abstract BaseStorageService
  * @description Abstract base class for persistent storage implementations (not caching)
- * @note This is for PERSISTENT storage only. For caching, use CacheService instead.
- * @used_by server: server/src/shared/modules/storage/storage.service.ts (ServerStorageService extends), client: client/src/services/storage/storage.service.ts (ClientStorageService extends)
+
+ * @used_by server: server/src/internal/modules/storage/storage.service.ts (ServerStorageService extends), client: client/src/services/storage/storage.service.ts (ClientStorageService extends)
  */
 export abstract class BaseStorageService implements StorageService {
 	protected config: StorageConfig;
@@ -366,7 +366,6 @@ export type {
 	CacheStorage,
 	StorageCleanupOptions,
 	StorageConfig,
-	StorageItemMetadata,
 	StorageOperationResult,
 	StorageService,
 	StorageStats,

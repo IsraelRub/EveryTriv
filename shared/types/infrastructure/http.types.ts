@@ -4,9 +4,9 @@
  *
  * @module HttpTypes
  * @description HTTP client and request type definitions
- * @used_by server: server/src/shared/services/http-client.ts (HttpClient), client: client/src/services/http-client.ts (ClientHttpClient), shared/services/logging.service.ts (HTTP logging)
+ * @used_by server: server/src/internal/utils/interceptors.utils.ts (HttpClient), client: client/src/services/api.service.ts (ClientHttpClient), shared/services/logging (HTTP logging)
  */
-import type { ApiRequestBody, StorageValue } from '../core/data.types';
+import type { BaseData, StorageValue } from '../core/data.types';
 import type { HttpLogData, HttpLogger } from './logging.types';
 
 // Re-export for external usage
@@ -24,7 +24,7 @@ export interface BaseRequestConfig {
 	baseURL?: string;
 	headers?: Record<string, string>;
 	data?: StorageValue;
-	params?: ApiRequestBody;
+	params?: BaseData;
 	timeout?: number;
 	withCredentials?: boolean;
 	maxRedirects?: number;

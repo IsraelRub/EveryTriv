@@ -4,7 +4,7 @@
  * @module AuthRouteTypes
  * @description Type definitions for authentication-related route components
  */
-import type { User } from '@shared';
+import type { User } from '@shared/types';
 import { ReactNode } from 'react';
 
 /**

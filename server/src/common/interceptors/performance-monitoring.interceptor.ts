@@ -5,11 +5,12 @@
  * @description Interceptor that tracks request performance metrics and identifies bottlenecks
  * @author EveryTriv Team
  */
-import { PERFORMANCE_THRESHOLDS, getErrorMessage, serverLogger as logger, metricsService } from '@shared';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
+import { metricsService,serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 
 /**
  * Performance Monitoring Interceptor

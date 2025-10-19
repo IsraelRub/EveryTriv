@@ -6,15 +6,15 @@
  * @author EveryTriv Team
  */
 import { Roles } from '@common';
+import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
+import { MetricsService } from '@shared/services';
+import { UserRole } from '@shared/constants';
 import {
 	AllMiddlewareMetricsResponse,
-	MetricsService,
-	MiddlewareMetricsResponse,
 	getErrorMessage,
+	MiddlewareMetricsResponse,
 	serverLogger as logger,
-} from '@shared';
-
-import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
+} from '@shared/utils';
 
 // MiddlewareMetrics type is used implicitly
 
@@ -29,7 +29,7 @@ export class MiddlewareMetricsController {
 	 * Get all middleware metrics
 	 */
 	@Get()
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	async getAllMetrics(): Promise<AllMiddlewareMetricsResponse | MiddlewareMetricsResponse> {
 		try {
 			const allMetrics = this.metricsService.getMetrics();
@@ -109,7 +109,7 @@ export class MiddlewareMetricsController {
 	 * Get metrics for specific middleware
 	 */
 	@Get(':middlewareName')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MiddlewareMetricsResponse> {
 		try {
 			const metrics = this.metricsService.getMiddlewareMetrics(middlewareName);
@@ -139,7 +139,7 @@ export class MiddlewareMetricsController {
 	 * Reset metrics for specific middleware
 	 */
 	@Delete(':middlewareName')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	async resetMiddlewareMetrics(@Param('middlewareName') middlewareName: string) {
 		try {
 			this.metricsService.resetMiddlewareMetrics(middlewareName);
@@ -166,7 +166,7 @@ export class MiddlewareMetricsController {
 	 * Reset all middleware metrics
 	 */
 	@Delete()
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	async resetAllMetrics() {
 		try {
 			this.metricsService.resetMiddlewareMetrics();

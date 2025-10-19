@@ -4,7 +4,7 @@
  * @module UseLanguageValidation
  * @description React Query hooks for language validation functionality
  */
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { useMutation } from '@tanstack/react-query';
 
 import { apiService } from '../../services/api';

@@ -1,4 +1,4 @@
-import type { UserRole } from '@shared';
+import type { UserRole } from '@shared/constants';
 import { NextFunction, Request, Response } from 'express';
 
 import type { BulkMetadata } from './metadata.types';

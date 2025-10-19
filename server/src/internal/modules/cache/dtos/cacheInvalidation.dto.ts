@@ -1,4 +1,4 @@
-import { CacheInvalidationDto as ICacheInvalidationDto } from '@shared';
+import { CacheInvalidationDto as ICacheInvalidationDto } from '@shared/types';
 import { IsOptional, IsString } from 'class-validator';
 
 /**

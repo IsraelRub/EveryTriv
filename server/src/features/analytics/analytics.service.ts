@@ -1,4 +1,7 @@
-import {
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import type {
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
@@ -6,25 +9,21 @@ import {
 	CompleteUserAnalytics,
 	DifficultyStatsData,
 	GameAnalyticsQuery,
-	PerformanceMetrics,
+	AnalyticsPerformanceMetrics,
 	SecurityMetrics,
 	SystemInsights,
+	TopicStats,
 	TopicStatsData,
 	UserAnalytics,
 	UserAnalyticsStats,
-	createNotFoundError,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
+} from '@shared/types';
+import { createNotFoundError, getErrorMessage } from '@shared/utils';
 import * as os from 'os';
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { LeaderboardService } from '../leaderboard/leaderboard.service';
+import { LeaderboardService } from '../leaderboard';
 
 /**
  * Service for trivia analytics and metrics
@@ -36,7 +35,7 @@ import { LeaderboardService } from '../leaderboard/leaderboard.service';
  */
 @Injectable()
 export class AnalyticsService implements OnModuleInit {
-	private performanceData: PerformanceMetrics = {
+	private performanceData: AnalyticsPerformanceMetrics = {
 		responseTime: 0,
 		memoryUsage: 0,
 		cpuUsage: 0,
@@ -194,12 +193,7 @@ export class AnalyticsService implements OnModuleInit {
 
 			return {
 				data: {
-					topics: topics as Array<{
-						name: string;
-						totalGames: number;
-						averageCorrectAnswers: number;
-						averageTimeSpent: number;
-					}>,
+					topics: topics,
 					totalTopics: topics.length,
 				},
 				timestamp: new Date().toISOString(),
@@ -272,7 +266,7 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Get performance metrics
 	 */
-	async getPerformanceMetrics(): Promise<PerformanceMetrics> {
+	async getPerformanceMetrics(): Promise<AnalyticsPerformanceMetrics> {
 		try {
 			await this.updatePerformanceMetrics();
 
@@ -708,9 +702,9 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Get topics from database with real statistics
 	 * @param query Query parameters for filtering
-	 * @returns Promise<Record<string, unknown>[]>
+	 * @returns Promise<TopicStats[]>
 	 */
-	private async getTopicsFromDatabase(query?: GameAnalyticsQuery): Promise<Record<string, unknown>[]> {
+	private async getTopicsFromDatabase(query?: GameAnalyticsQuery): Promise<TopicStats[]> {
 		try {
 			const cacheKey = `analytics:topics:stats:${JSON.stringify(query || {})}`;
 

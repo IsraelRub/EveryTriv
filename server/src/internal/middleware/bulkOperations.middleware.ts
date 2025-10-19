@@ -5,9 +5,11 @@
  * @description Middleware that optimizes bulk operations by batching requests and reducing database calls
  * @author EveryTriv Team
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Injectable, NestMiddleware } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { CacheEntry } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -21,7 +23,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	// private readonly MAX_QUEUE_SIZE = 100; // Reserved for future use
 	private readonly BATCH_TIMEOUT = 1000; // 1 second
 
-	private operationQueue: Map<string, Array<Record<string, unknown>>> = new Map();
+	private operationQueue: Map<string, CacheEntry[]> = new Map();
 	private batchTimers: Map<string, NodeJS.Timeout> = new Map();
 
 	constructor() {}
@@ -86,7 +88,8 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 			this.operationQueue.set(operationKey, []);
 		}
 
-		const queue = this.operationQueue.get(operationKey)!;
+		const queue = this.operationQueue.get(operationKey);
+		if (!queue) return;
 		queue.push(...operations);
 
 		// Log bulk operation detection
@@ -121,7 +124,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	 * @param req - Request object
 	 * @returns Array of operations
 	 */
-	private extractOperations(req: NestRequest): Array<Record<string, unknown>> {
+	private extractOperations(req: NestRequest): CacheEntry[] {
 		if (req.body && Array.isArray(req.body)) {
 			return req.body;
 		}
@@ -129,7 +132,11 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		// Extract from query parameters for GET requests
 		if (req.method === 'GET' && req.query.ids) {
 			const ids = Array.isArray(req.query.ids) ? req.query.ids : [req.query.ids];
-			return ids.map(id => ({ id }));
+			return ids.map(id => ({ 
+				key: `bulk_${id}`, 
+				value: { id },
+				ttl: CACHE_DURATION.MEDIUM // 5 minutes default TTL
+			}));
 		}
 
 		return [];
@@ -191,8 +198,9 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	 */
 	private setBatchTimer(operationKey: string): void {
 		// Clear existing timer
-		if (this.batchTimers.has(operationKey)) {
-			clearTimeout(this.batchTimers.get(operationKey)!);
+		const existingTimer = this.batchTimers.get(operationKey);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
 		}
 
 		// Set new timer
@@ -214,8 +222,9 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		}
 
 		// Clear timer
-		if (this.batchTimers.has(operationKey)) {
-			clearTimeout(this.batchTimers.get(operationKey)!);
+		const timer = this.batchTimers.get(operationKey);
+		if (timer) {
+			clearTimeout(timer);
 			this.batchTimers.delete(operationKey);
 		}
 

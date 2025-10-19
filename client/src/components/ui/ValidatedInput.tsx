@@ -6,7 +6,7 @@
  * @used_by client/src/components/forms, client/src/views
  */
 
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import {
   validateCustomDifficulty,
   validateEmail,

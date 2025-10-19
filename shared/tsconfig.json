@@ -19,7 +19,19 @@
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./*"],
-			"*": ["./*"]
+			"*": ["./*"],
+			"@shared": ["."],
+			"@shared/*": ["./*"],
+			"@shared/constants": ["./constants"],
+			"@shared/constants/*": ["./constants/*"],
+			"@shared/services": ["./services"],
+			"@shared/services/*": ["./services/*"],
+			"@shared/types": ["./types"],
+			"@shared/types/*": ["./types/*"],
+			"@shared/utils": ["./utils"],
+			"@shared/utils/*": ["./utils/*"],
+			"@shared/validation": ["./validation"],
+			"@shared/validation/*": ["./validation/*"]
 		}
 	},
 	"include": ["**/*.ts"],

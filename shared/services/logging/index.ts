@@ -2,7 +2,7 @@
  * Logger Module
  *
  * @module Logger
- * @description Complete logger module with all implementations and utilities
+ * @description Complete logging module with all implementations and utilities
  * @author EveryTriv Team
  */
 
@@ -29,27 +29,10 @@ export { clientLogger } from './clientLogger.service';
  * @description Comprehensive set of logger interface and type definitions
  */
 export type {
-	ApiLogger,
-	BaseLogger,
-	BusinessLogger,
-	CacheLogger,
-	ClientLogEntry,
 	ClientLogsRequest,
-	DatabaseLogger,
 	EnhancedLogEntry,
-	GameLogger,
-	HttpLogData,
-	HttpLogger,
 	Logger as ILogger,
-	LogContext,
-	LogEntry,
 	LogMeta,
-	PaymentLogger,
-	PerformanceLogger,
-	SecurityLogger,
-	SystemLogger,
-	UserLogger,
-	ValidationLogger,
 } from '../../types';
 
 /**

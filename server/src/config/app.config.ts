@@ -5,7 +5,7 @@
  * @description Central configuration class for application settings
  * @used_by server/src/app, server/src/main, server/src/config
  */
-import { DEFAULT_PORTS } from '../../../shared';
+import { DEFAULT_PORTS, LOCALHOST_URLS } from '@shared/constants';
 
 /**
  * Application configuration class
@@ -30,7 +30,7 @@ export class AppConfig {
 	}
 
 	static get corsOrigin() {
-		return process.env.CORS_ORIGIN || 'http://localhost:3000';
+		return process.env.CORS_ORIGIN || LOCALHOST_URLS.CLIENT_DEV;
 	}
 
 	static get cookieSecret() {

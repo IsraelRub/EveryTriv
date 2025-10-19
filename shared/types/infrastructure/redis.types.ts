@@ -6,7 +6,6 @@
  * @description Redis cache, client, and configuration type definitions
  * @used_by server/src/internal/modules/cache
  */
-import type { Redis as IORedis } from 'ioredis';
 
 import type { StorageValue } from '../core/data.types';
 
@@ -65,12 +64,6 @@ export interface RedisStats {
 	evictedKeys: number;
 }
 
-/**
- * Redis client type - alias for ioredis Redis
- * @type RedisClient
- * @description Redis client type that matches ioredis Redis class
- */
-export type RedisClient = IORedis;
 
 /**
  * Redis logger interface

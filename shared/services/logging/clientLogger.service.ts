@@ -5,7 +5,7 @@
  * @description Client-specific logger implementation with browser console logging
  * @used_by client/src/services
  */
-import { LogMeta, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
+import { LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { BaseLoggerService } from './baseLogger.service';
 
 /**

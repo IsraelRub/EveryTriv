@@ -1,5 +1,7 @@
-import { clientLogger as logger, COUNTRIES, getErrorMessage } from '@shared';
-import type { UserRole } from '@shared/types/domain/user/user.types';
+import { COUNTRIES } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import type { UserRole } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { motion } from 'framer-motion';
 import { FormEvent, memo, useCallback, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';

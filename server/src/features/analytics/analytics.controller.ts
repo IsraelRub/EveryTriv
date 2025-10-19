@@ -1,6 +1,7 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import { Cache, ClientIP, CurrentUserId, UserAgent } from '../../common';
 import { AnalyticsService } from './analytics.service';
@@ -57,7 +58,7 @@ export class AnalyticsController {
 	 * Get game statistics
 	 */
 	@Get('game/stats')
-	@Cache(900) // Cache for 15 minutes
+	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
 	async getGameStats(@Query() query: GameAnalyticsQueryDto) {
 		try {
 			const result = await this.analyticsService.getGameStats(query);
@@ -80,7 +81,7 @@ export class AnalyticsController {
 	 * Get user analytics
 	 */
 	@Get('user/')
-	@Cache(600) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getUserAnalytics(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.analyticsService.getUserAnalytics(userId);
@@ -103,7 +104,7 @@ export class AnalyticsController {
 	 * Get popular topics
 	 */
 	@Get('topics/popular')
-	@Cache(1800) // Cache for 30 minutes
+	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
 	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
 		try {
 			const result = await this.analyticsService.getTopicStats(query);
@@ -126,7 +127,7 @@ export class AnalyticsController {
 	 * Get difficulty statistics
 	 */
 	@Get('difficulty/stats')
-	@Cache(1800) // Cache for 30 minutes
+	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
 	async getDifficultyStats(@Query() query: DifficultyAnalyticsQueryDto) {
 		try {
 			const result = await this.analyticsService.getDifficultyStats(query);

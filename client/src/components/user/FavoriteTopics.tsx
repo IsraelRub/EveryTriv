@@ -1,5 +1,5 @@
 import { animated, useSpring } from '@react-spring/web';
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
 import { useDrag } from '@use-gesture/react';
 import { motion } from 'framer-motion';
 

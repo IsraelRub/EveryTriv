@@ -4,7 +4,9 @@
  * @module UserDTOs
  * @description Data Transfer Objects for user management
  */
-import { DifficultyLevel, PreferenceValue, UserAddress, UserPreferences } from '@shared';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DifficultyLevel, UserStatus } from '@shared/constants';
+import { BasicValue, UserAddress, UserPreferences, CustomDifficulty } from '@shared/types';
 import { Transform, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -24,8 +26,6 @@ import {
 	MinLength,
 	ValidateNested,
 } from 'class-validator';
-
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -199,7 +199,7 @@ export class UpdateUserFieldDto {
 		example: 'New Value',
 	})
 	@IsNotEmpty({ message: 'Value is required' })
-	value: PreferenceValue;
+	value: BasicValue;
 }
 
 export class UpdateUserPreferencesDto {
@@ -253,11 +253,7 @@ export class UpdateUserPreferencesDto {
 	})
 	@IsOptional()
 	@IsArray({ message: 'Custom difficulties must be an array' })
-	customDifficulties?: Array<{
-		description: string;
-		usageCount: number;
-		lastUsed: Date;
-	}>;
+	customDifficulties?: CustomDifficulty[];
 
 	@ApiPropertyOptional({
 		description: 'Sound enabled preference',
@@ -306,7 +302,7 @@ export class UpdateSinglePreferenceDto {
 		example: 'dark',
 	})
 	@IsNotEmpty({ message: 'Value is required' })
-	value: PreferenceValue;
+	value: BasicValue;
 }
 
 export class UpdateUserCreditsDto {
@@ -335,6 +331,6 @@ export class UpdateUserStatusDto {
 		example: 'active',
 		enum: ['active', 'suspended', 'banned'],
 	})
-	@IsIn(['active', 'suspended', 'banned'], { message: 'Status must be active, suspended, or banned' })
-	status: 'active' | 'suspended' | 'banned';
+	@IsIn(Object.values(UserStatus), { message: 'Status must be a valid user status' })
+	status: UserStatus;
 }

@@ -3,7 +3,7 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
-import { DEFAULT_PORTS, DEFAULT_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
+import { DEFAULT_PORTS, DEFAULT_URLS, LOCALHOST_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
 
 
 export default defineConfig({
@@ -125,7 +125,7 @@ export default defineConfig({
 	},
 	define: {
 		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-		'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:3001'),
+		'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || LOCALHOST_URLS.API_BASE),
 		'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || 'EveryTriv'),
 	},
 });

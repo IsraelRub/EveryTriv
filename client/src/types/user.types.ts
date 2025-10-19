@@ -3,6 +3,7 @@
  * @module ClientUserTypes
  * @used_by client/src/views/user, client/src/services/auth, client/src/hooks/api
  */
+import { DifficultyLevel } from '@shared/constants';
 import type {
   AuthCredentials,
   User,
@@ -10,8 +11,7 @@ import type {
   UserPreferencesUpdate,
   UserProfile,
   UserProfileUpdateData,
-} from '@shared';
-import { DifficultyLevel } from '@shared';
+} from '@shared/types';
 
 /**
  * Extended user profile update request
@@ -97,7 +97,7 @@ export interface UserLoginRequest {
  * User preferences
  * @used_by client/src/views/user/UserProfile.tsx, client/src/services/auth
  */
-export type { UserPreferences } from '@shared/types/domain/user/user.types';
+export type { UserPreferences } from '@shared/types/domain/user';
 
 /**
  * User profile complete request

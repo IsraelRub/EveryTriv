@@ -1,7 +1,8 @@
-import { createCacheError, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Controller, Delete, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { serverLogger as logger } from '@shared/services';
+import { createCacheError, getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
 import { Cache, RateLimit, Roles } from '../../../common';
 import { CacheService } from './cache.service';
@@ -20,19 +21,21 @@ export class CacheController {
 	 * Get cache statistics
 	 */
 	@Get('stats')
-	@Roles('admin')
-	@Cache(300) // Cache for 5 minutes - stats don't change frequently
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - stats don't change frequently
 	@ApiOperation({ summary: 'Get cache statistics' })
 	@ApiResponse({ status: 200, description: 'Cache statistics retrieved successfully', type: CacheStatsDto })
 	async getStats() {
 		try {
 			const result = await this.cacheService.getStats();
 
-			logger.apiRead('cache_stats', {
-				hits: (result as unknown as Record<string, unknown>).hits || 0,
-				misses: (result as unknown as Record<string, unknown>).misses || 0,
-				keys: (result as unknown as Record<string, unknown>).keys || 0,
-			});
+			if (result.success && result.data) {
+				logger.apiRead('cache_stats', {
+					totalItems: result.data.totalItems,
+					hitRate: result.data.hitRate,
+					avgResponseTime: result.data.avgResponseTime,
+				});
+			}
 
 			return result;
 		} catch (error) {
@@ -47,8 +50,8 @@ export class CacheController {
 	 * Clear all cache
 	 */
 	@Delete('clear')
-	@Roles('admin')
-	@RateLimit(2, 60) // 2 requests per minute - dangerous operation
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.CACHE_CLEAR.limit, RATE_LIMITS.CACHE_CLEAR.window) // 2 requests per minute - dangerous operation
 	@ApiOperation({ summary: 'Clear all cache entries' })
 	@ApiResponse({ status: 200, description: 'Cache cleared successfully' })
 	async clearCache() {
@@ -70,9 +73,9 @@ export class CacheController {
 	 * Check if a key exists in cache
 	 */
 	@Get('exists/:key')
-	@Roles('admin')
-	@RateLimit(20, 60) // 20 requests per minute
-	@Cache(30) // Cache for 30 seconds
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.CACHE_STATS.limit, RATE_LIMITS.CACHE_STATS.window) // 20 requests per minute
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	@ApiOperation({ summary: 'Check if a key exists in cache' })
 	@ApiResponse({ status: 200, description: 'Key existence checked successfully' })
 	async checkKeyExists(@Param('key') key: string) {
@@ -107,9 +110,9 @@ export class CacheController {
 	 * Get TTL for a key
 	 */
 	@Get('ttl/:key')
-	@Roles('admin')
-	@RateLimit(20, 60) // 20 requests per minute
-	@Cache(30) // Cache for 30 seconds
+	@Roles(UserRole.ADMIN)
+	@RateLimit(RATE_LIMITS.CACHE_STATS.limit, RATE_LIMITS.CACHE_STATS.window) // 20 requests per minute
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	@ApiOperation({ summary: 'Get TTL for a cache key' })
 	@ApiResponse({ status: 200, description: 'TTL retrieved successfully' })
 	async getKeyTTL(@Param('key') key: string) {

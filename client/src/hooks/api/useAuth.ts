@@ -1,4 +1,6 @@
-import { clientLogger as logger, User, UserRole } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { User } from '@shared/types';
+import type { UserRole } from '@shared/constants';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
@@ -48,6 +50,9 @@ export const useLogin = () => {
       // Update Redux state for HOCs consistency
       dispatch(setAuthenticated(true));
       // Create full User object from partial data with dynamic defaults
+      if (!data.user) {
+        throw new Error('User data not found in authentication response');
+      }
       const fullUser: User = {
         ...data.user,
         role: data.user.role as UserRole,
@@ -112,6 +117,9 @@ export const useRegister = () => {
       // Update Redux state for HOCs consistency
       dispatch(setAuthenticated(true));
       // Create full User object from partial data with dynamic defaults
+      if (!data.user) {
+        throw new Error('User data not found in authentication response');
+      }
       const fullUser: User = {
         ...data.user,
         role: data.user.role as UserRole,

@@ -1,4 +1,5 @@
-import { clientLogger as logger, DifficultyLevel } from '@shared';
+import { DifficultyLevel } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
 import type { LucideProps } from 'lucide-react';
 import {
   // Navigation & UI

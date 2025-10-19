@@ -6,6 +6,7 @@
  * @used_by client/src/components/navigation, client/src/views/user, client/src/components/leaderboard
  */
 
+import { HTTP_CLIENT_CONFIG } from '@shared/constants';
 import { motion } from 'framer-motion';
 import { memo, useCallback, useMemo, useState } from 'react';
 
@@ -69,7 +70,7 @@ export const Avatar = memo(function Avatar({
       setImageLoading(true);
       setTimeout(() => {
         setImageError(false);
-      }, AVATAR_CONFIG.RETRY_DELAY * retryCount);
+      }, HTTP_CLIENT_CONFIG.RETRY_DELAY * retryCount);
     } else {
       setImageError(true);
       setImageLoading(false);

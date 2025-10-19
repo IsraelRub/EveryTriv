@@ -37,4 +37,4 @@ export type CacheTTL = number;
  * @description Constants for cache operations
  * @used_by server/features/cache
  */
-export { CACHE_TTL } from '@shared';
+export { CACHE_TTL } from '@shared/constants';

@@ -7,8 +7,8 @@
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '../../constants';
 import type { EnhancedLogEntry, Logger } from '../../types';
-import type { BasicValue } from '../../types/core/data.types';
-import { LogMeta, LoggerConfig, LoggerConfigUpdate } from '../../types/infrastructure/logging.types';
+import type { BasicValue, SlowOperation } from '../../types/core/data.types';
+import { LoggerConfig, LoggerConfigUpdate,LogMeta } from '../../types/infrastructure/logging.types';
 import { generateSessionId, generateTraceId, getErrorMessage, sanitizeLogMessage } from '../../utils';
 
 /**
@@ -31,7 +31,7 @@ export abstract class BaseLoggerService implements Logger {
 					errorCount: number;
 					lastUpdated: Date;
 				}
-		  >
+		>
 		| Record<string, BasicValue>;
 
 	constructor(config: LoggerConfigUpdate = {}) {
@@ -210,11 +210,11 @@ export abstract class BaseLoggerService implements Logger {
 	performance(operation: string, duration: number, meta?: LogMeta): void {
 		const message = `${operation} (${duration}ms)`;
 
-		if (duration > PERFORMANCE_THRESHOLDS.CRITICAL) {
+		if (duration > PERFORMANCE_THRESHOLDS.VERY_SLOW) {
 			this.error(MESSAGE_FORMATTERS.performance.critical(message), meta);
 		} else if (duration > PERFORMANCE_THRESHOLDS.SLOW) {
 			this.warn(MESSAGE_FORMATTERS.performance.slow(message), meta);
-		} else if (duration > PERFORMANCE_THRESHOLDS.NORMAL) {
+		} else if (duration > PERFORMANCE_THRESHOLDS.ACCEPTABLE) {
 			this.info(MESSAGE_FORMATTERS.performance.normal(message), meta);
 		} else {
 			this.debug(MESSAGE_FORMATTERS.performance.fast(message), meta);
@@ -371,7 +371,6 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.system.appShutdown(), meta);
 	}
 
-	systemError(error: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void;
 	systemError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
 			const errorMessage = (messageOrMeta as string) || 'System error';
@@ -453,7 +452,6 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.auth.profileUpdate(message), meta);
 	}
 
-	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void;
 	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
 			const errorMessage = (messageOrMeta as string) || 'Authentication error';
@@ -774,8 +772,16 @@ export abstract class BaseLoggerService implements Logger {
 		return { message: 'Performance stats not implemented in base logger' };
 	}
 
-	getSlowOperationsEnhanced(threshold?: number): Array<Record<string, unknown>> {
-		return [{ message: 'Slow operations not implemented in base logger', threshold }];
+	getSlowOperationsEnhanced(threshold?: number): SlowOperation[] {
+		return [{ 
+			operation: 'base_logger', 
+			duration: 0,
+			timestamp: new Date(),
+			metadata: { 
+				message: 'Slow operations not implemented in base logger', 
+				threshold: threshold ?? 0 
+			}
+		}];
 	}
 
 	setPerformanceThreshold(operation: string, threshold: number): void {

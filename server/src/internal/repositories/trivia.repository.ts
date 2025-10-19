@@ -1,9 +1,10 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-import { TriviaEntity } from 'src/internal/entities';
-import { Repository } from 'typeorm';
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
+import { TriviaEntity } from 'src/internal/entities';
+import { Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache } from '../../common';
 import { BaseRepository } from './base.repository';
@@ -27,7 +28,7 @@ export class TriviaRepository extends BaseRepository<TriviaEntity> {
 	 * @returns Promise<TriviaEntity[]> Array of trivia questions for the topic
 	 * @throws Error - When database query fails
 	 */
-	@RepositoryCache(1800, 'trivia_by_topic')
+	@RepositoryCache(CACHE_DURATION.VERY_LONG, 'trivia_by_topic')
 	@RepositoryAudit('trivia_lookup_by_topic')
 	async findByTopic(topic: string): Promise<TriviaEntity[]> {
 		try {
@@ -58,7 +59,7 @@ export class TriviaRepository extends BaseRepository<TriviaEntity> {
 	 * @returns Promise<TriviaEntity[]> Array of trivia questions for the difficulty
 	 * @throws Error - When database query fails
 	 */
-	@RepositoryCache(1800, 'trivia_by_difficulty')
+	@RepositoryCache(CACHE_DURATION.VERY_LONG, 'trivia_by_difficulty')
 	@RepositoryAudit('trivia_lookup_by_difficulty')
 	async findByDifficulty(difficulty: string): Promise<TriviaEntity[]> {
 		try {

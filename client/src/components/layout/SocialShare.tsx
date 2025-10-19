@@ -1,9 +1,7 @@
-import {
-  calculatePercentage,
-  clientLogger as logger,
-  DifficultyLevel,
-  getErrorMessage,
-} from '@shared';
+import { DifficultyLevel } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import { calculatePercentage } from '@shared/utils';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 

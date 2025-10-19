@@ -7,7 +7,7 @@
  * @used_by client/src/hooks/api/useAuth.ts, client/src/components/user/CompleteProfile.tsx, client/src/views/registration/RegistrationView.tsx
  */
 
-import { UserStatus } from '@shared';
+import { UserStatus } from '@shared/constants';
 
 /**
  * Default user values for new user creation

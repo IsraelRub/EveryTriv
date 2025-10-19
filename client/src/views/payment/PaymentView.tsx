@@ -1,18 +1,18 @@
+import {
+  CONTACT_INFO,
+  PAYMENT_CONTENT,
+  PAYMENT_FEATURES,
+  VALID_GAME_MODES,
+} from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
 import type {
   PointPurchaseOption,
   SubscriptionData,
   SubscriptionPlans as SubscriptionPlansType,
   UrlResponse,
-} from '@shared';
-import {
-  clientLogger as logger,
-  CONTACT_INFO,
-  formatCurrency,
-  getErrorMessage,
-  PAYMENT_CONTENT,
-  PAYMENT_FEATURES,
-  VALID_GAME_MODES,
-} from '@shared';
+} from '@shared/types';
+import { getErrorMessage } from '@shared/utils/error.utils';
+import { formatCurrency } from '@shared/utils/format.utils';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

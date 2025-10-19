@@ -1,10 +1,11 @@
-import { createNotFoundError, getErrorMessage, serverLogger as logger } from '@shared';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import { createNotFoundError, getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
-
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 /**
  * User Stats Service
@@ -48,7 +49,7 @@ export class UserStatsService {
 
 					return userStats;
 				},
-				3600 // Cache for 1 hour - user stats don't change frequently
+				CACHE_DURATION.VERY_LONG // Cache for 1 hour - user stats don't change frequently
 			);
 		} catch (error) {
 			logger.analyticsError('getUserStats', {

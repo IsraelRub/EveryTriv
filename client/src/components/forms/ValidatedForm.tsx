@@ -6,16 +6,16 @@
  * @used_by client/src/views/registration, client/src/views/user, client/src/components/game
  */
 
-import type { DifficultyLevel } from '@shared';
+import type { DifficultyLevel } from '@shared/constants';
+import { VALIDATION_LIMITS } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
 import {
-  clientLogger as logger,
   validateCustomDifficulty,
   validateEmail,
   validatePassword,
   validateTopic,
   validateUsername,
-  VALIDATION_LIMITS,
-} from '@shared';
+} from '@shared/validation';
 import { ChangeEvent, FormEvent, useCallback, useMemo, useRef, useState } from 'react';
 
 import { VALID_DIFFICULTIES, VALID_QUESTION_COUNTS } from '../../constants';
@@ -210,7 +210,7 @@ export function ValidatedForm({
   const renderField = (field: FormField) => {
     const fieldName = field.name;
     const value = values[fieldName] || '';
-    const fieldErrors = errors[fieldName] || [];
+    const fieldErrors = errors[fieldName] ?? [];
 
     const baseInputProps = {
       value: String(value),

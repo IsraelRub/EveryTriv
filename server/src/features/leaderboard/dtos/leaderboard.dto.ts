@@ -4,6 +4,7 @@
  * @module LeaderboardDTOs
  * @description Data Transfer Objects for leaderboard management
  */
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
 	IsDateString,
@@ -17,8 +18,6 @@ import {
 	Min,
 	MinLength,
 } from 'class-validator';
-
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GetLeaderboardDto {
 	@ApiPropertyOptional({

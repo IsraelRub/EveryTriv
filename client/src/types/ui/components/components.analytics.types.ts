@@ -3,7 +3,7 @@
  * @module AnalyticsComponentTypes
  * @description UI component prop types for analytics and metrics components
  */
-import { UserAnalytics } from '@shared';
+import type { UserAnalytics } from '@shared/types';
 
 /**
  * Metric Card Component Props

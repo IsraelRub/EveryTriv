@@ -4,8 +4,8 @@
  * @module UseAnalyticsDashboard
  * @description React Query hooks for analytics dashboard functionality
  */
-import { CompleteUserAnalytics, UserAnalyticsQuery } from '@shared';
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { CompleteUserAnalytics, UserAnalyticsQuery } from '@shared/types';
 import { useQuery } from '@tanstack/react-query';
 
 import { apiService } from '../../services/api';

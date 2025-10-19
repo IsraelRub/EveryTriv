@@ -39,44 +39,15 @@ export interface BaseEntity {
 }
 
 /**
- * Authentication request interface
- * @interface AuthRequest
- * @description Request interface with user authentication data
+ * Slow operation interface
+ * @interface SlowOperation
+ * @description Common structure for slow operations tracking
  */
-export interface AuthRequest {
-	user: {
-		id: string;
-		role: string;
-		email: string;
-		username: string;
-	};
-}
-
-/**
- * Authentication credentials interface
- * @interface AuthCredentials
- * @description User login credentials
- */
-export interface AuthCredentials {
-	email: string;
-	username: string;
-	password: string;
-}
-
-/**
- * Authentication response interface
- * @interface AuthResponse
- * @description Response from authentication service
- */
-export interface AuthResponse {
-	accessToken: string;
-	refreshToken?: string;
-	user: {
-		id: string;
-		username: string;
-		email: string;
-		role: string;
-	};
+export interface SlowOperation {
+	operation: string;
+	duration: number;
+	timestamp: Date;
+	metadata?: Record<string, BasicValue>;
 }
 
 /**
@@ -87,71 +58,3 @@ export interface AuthResponse {
 export interface BaseData
 	extends Record<string, number | boolean | string | string[] | BaseData | BaseData[] | Date | undefined> {}
 
-/**
- * Form data interface
- * @interface FormData
- * @description Generic form data structure
- */
-export type FormData = BaseData;
-
-/**
- * API request body interface
- * @type ApiRequestBody
- * @description Generic API request body structure
- */
-export type ApiRequestBody = BaseData;
-
-/**
- * Request data interface
- * @type RequestData
- * @description Generic request data structure
- */
-export type RequestData = BaseData;
-
-/**
- * Sanitized request data interface
- * @type SanitizedRequestData
- * @description Generic sanitized request data structure
- */
-export type SanitizedRequestData = BaseData;
-
-/**
- * TypeORM specific types for database operations
- * @module TypeORMTypes
- * @description Type definitions for TypeORM operations and queries
- */
-
-/**
- * Type for TypeORM update operations
- * Handles partial updates with proper type safety
- */
-export type TypeORMUpdateData<T> = Partial<T>;
-
-/**
- * Type for TypeORM where conditions
- * Ensures proper typing for find operations
- */
-export type TypeORMWhereCondition<T> = Partial<T>;
-
-/**
- * Type for TypeORM find options
- * Provides type safety for repository find operations
- */
-export interface TypeORMFindOptions<T> {
-	where?: TypeORMWhereCondition<T>;
-	select?: Array<keyof T>;
-	relations?: Array<string>;
-	order?: Partial<Record<keyof T, 'ASC' | 'DESC'>>;
-	skip?: number;
-	take?: number;
-}
-
-/**
- * Type for TypeORM save operations
- * Handles both create and update operations
- */
-export interface TypeORMSaveData extends Record<string, unknown> {
-	id?: string | number;
-}
-
-// LogMeta is now defined in logging.types.ts to avoid conflicts

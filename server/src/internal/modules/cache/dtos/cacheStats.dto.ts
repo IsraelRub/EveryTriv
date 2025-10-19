@@ -1,4 +1,4 @@
-import { CacheStats as ICacheStatsDto } from '@shared';
+import { CacheStats as ICacheStatsDto } from '@shared/types';
 import { IsNumber } from 'class-validator';
 
 /**

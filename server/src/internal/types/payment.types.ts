@@ -4,7 +4,7 @@
  *
  * @module ServerPaymentTypes
  * @description Server-specific payment metadata and internal types
- * @used_by server/src/shared/entities/paymentHistory.entity.ts, server/src/shared/entities/subscription.entity.ts, server/src/features/payment/dtos/
+ * @used_by server/src/internal/entities/paymentHistory.entity.ts, server/src/internal/entities/subscription.entity.ts, server/src/features/payment/dtos/
  */
 
 // Note: Payment metadata is handled by shared/types/payment.types.ts

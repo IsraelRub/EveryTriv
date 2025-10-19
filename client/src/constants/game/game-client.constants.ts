@@ -16,7 +16,7 @@ export {
   GameMode,
   VALID_DIFFICULTIES,
   VALID_QUESTION_COUNTS,
-} from '@shared';
+} from '@shared/constants';
 
 export enum AnswerCount {
   THREE = 3,

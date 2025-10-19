@@ -8,6 +8,30 @@
 import { BasicValue } from '../../core/data.types';
 
 /**
+ * Statistics item interface
+ * @interface StatisticsItem
+ * @description Common structure for statistics items with count and average
+ */
+export interface StatisticsItem {
+	topic?: string;
+	difficulty?: string;
+	count: number;
+	averageScore: number;
+}
+
+/**
+ * Topic stats interface
+ * @interface TopicStats
+ * @description Common structure for topic statistics
+ */
+export interface TopicStats {
+	name: string;
+	totalGames: number;
+	averageCorrectAnswers: number;
+	averageTimeSpent: number;
+}
+
+/**
  * Question cache entry interface
  * @interface QuestionCacheEntry
  * @description Cache entry for trivia questions

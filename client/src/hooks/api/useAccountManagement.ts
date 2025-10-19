@@ -4,7 +4,8 @@
  * @module UseAccountManagement
  * @description React Query hooks for account management functionality
  */
-import { clientLogger as logger, UserWithSubscription } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { UserWithSubscription } from '@shared/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 

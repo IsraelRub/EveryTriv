@@ -1,13 +1,12 @@
+import { clientLogger as logger } from '@shared/services';
+import type { ErrorBoundaryProps, ErrorBoundaryState } from '@shared/types';
 import {
-  clientLogger as logger,
-  ErrorBoundaryProps,
-  ErrorBoundaryState,
   formatTime,
   getCurrentTimestamp,
   getErrorMessage,
   getErrorStack,
   getErrorType,
-} from '@shared';
+} from '@shared/utils';
 import { motion } from 'framer-motion';
 import { Component, ErrorInfo } from 'react';
 

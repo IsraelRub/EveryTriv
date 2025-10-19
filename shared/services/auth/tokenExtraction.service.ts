@@ -6,6 +6,7 @@
  * @author EveryTriv Team
  */
 import { AUTH_CONSTANTS, COOKIE_NAMES } from '../../constants';
+import type { AuthenticationRequest } from '../../types/infrastructure/auth.types';
 
 /**
  * Service for extracting authentication tokens from various sources
@@ -47,11 +48,26 @@ export class TokenExtractionService {
 	 * @param request - HTTP request object
 	 * @returns Extracted token or null
 	 */
-	static extractTokenFromRequest(request: any): string | null {
-		const authHeader = request.headers[AUTH_CONSTANTS.AUTH_HEADER.toLowerCase()];
-		const cookies = request.cookies;
+	static extractTokenFromRequest(request: AuthenticationRequest): string | null {
+		const authHeader = request.headers?.[AUTH_CONSTANTS.AUTH_HEADER.toLowerCase()];
+		const cookies = request.cookies ? this.filterUndefinedValues(request.cookies) : undefined;
 
 		return this.extractToken(authHeader, cookies);
+	}
+
+	/**
+	 * Filter undefined values from cookies object
+	 * @param cookies - Cookies object with potentially undefined values
+	 * @returns Clean cookies object with only string values
+	 */
+	private static filterUndefinedValues(cookies: Record<string, string | undefined>): Record<string, string> {
+		const filtered: Record<string, string> = {};
+		for (const [key, value] of Object.entries(cookies)) {
+			if (value !== undefined) {
+				filtered[key] = value;
+			}
+		}
+		return filtered;
 	}
 
 	/**

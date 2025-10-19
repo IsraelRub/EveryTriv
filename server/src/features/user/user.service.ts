@@ -1,22 +1,18 @@
-import {
-	DEFAULT_USER_PREFERENCES,
-	PreferenceValue,
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DEFAULT_USER_PREFERENCES, UserRole, UserStatus, CACHE_DURATION } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type {
+  BasicValue,
 	UserAddress,
 	UserFieldUpdate,
 	UserPreferences,
-	createServerError,
-	createValidationError,
-	getErrorMessage,
-	serverLogger as logger,
-	normalizeText,
-} from '@shared';
+} from '@shared/types';
+import { createServerError, createValidationError, getErrorMessage, normalizeText } from '@shared/utils';
 import { UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
 import { DeepPartial, Repository } from 'typeorm';
-
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 import { AuthenticationManager } from '../../common/auth/authentication.manager';
 import { PasswordService } from '../../common/auth/password.service';
@@ -66,14 +62,14 @@ export class UserService {
 				}
 			);
 
-			if (!authResult.success) {
-				throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
-			}
+		if (authResult.error) {
+			throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
+		}
 
-			// Type guard: we know these exist when success is true
-			if (!authResult.accessToken || !authResult.refreshToken) {
-				throw new UnauthorizedException('Authentication result incomplete');
-			}
+		// Type guard: we know these exist when there's no error
+		if (!authResult.accessToken || !authResult.refreshToken) {
+			throw new UnauthorizedException('Authentication result incomplete');
+		}
 
 			const sessionKey = `user_session:${user.id}`;
 			const result = await this.storageService.setItem(
@@ -95,7 +91,6 @@ export class UserService {
 			}
 
 			return {
-				success: true,
 				user: {
 					id: user.id,
 					username: user.username,
@@ -324,7 +319,7 @@ export class UserService {
 							: 0,
 					};
 				},
-				1800 // Cache for 30 minutes - user stats don't change frequently
+				CACHE_DURATION.VERY_LONG // Cache for 30 minutes - user stats don't change frequently
 			);
 		} catch (error) {
 			logger.userError('Failed to get user stats', {
@@ -384,7 +379,7 @@ export class UserService {
 						totalResults: users.length,
 					};
 				},
-				300 // Cache for 5 minutes - search results can change frequently
+				CACHE_DURATION.MEDIUM // Cache for 5 minutes - search results can change frequently
 			);
 		} catch (error) {
 			logger.userError('Failed to search users', {
@@ -657,7 +652,7 @@ export class UserService {
 		passwordHash: string;
 		firstName?: string;
 		lastName?: string;
-		role?: 'user' | 'admin' | 'guest';
+		role?: UserRole;
 	}) {
 		try {
 			logger.userInfo('Creating new user', {
@@ -671,7 +666,7 @@ export class UserService {
 				passwordHash: userData.passwordHash,
 				firstName: userData.firstName,
 				lastName: userData.lastName,
-				role: userData.role ?? 'user',
+				role: userData.role ?? UserRole.USER,
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -711,7 +706,7 @@ export class UserService {
 				fullName: userData.fullName,
 				username: userData.username,
 				avatar: userData.avatar,
-				role: 'user',
+				role: UserRole.USER,
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -867,7 +862,7 @@ export class UserService {
 	async updateUserField(
 		userId: string,
 		field: keyof UserFieldUpdate | 'role' | 'currentSubscriptionId' | 'status',
-		value: PreferenceValue
+		value: BasicValue
 	): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user field', {
@@ -905,8 +900,8 @@ export class UserService {
 
 			// Handle special fields that are not in UserFieldUpdate
 			if (field === 'role') {
-				if (value === 'admin' || value === 'user' || value === 'guest') {
-					user.role = value;
+				if (Object.values(UserRole).includes(value as UserRole)) {
+					user.role = value as UserRole;
 				} else {
 					throw createValidationError('role', 'string');
 				}
@@ -971,7 +966,7 @@ export class UserService {
 	 * @param value New value
 	 * @returns Updated user
 	 */
-	async updateSinglePreference(userId: string, preference: string, value: PreferenceValue): Promise<UserEntity> {
+	async updateSinglePreference(userId: string, preference: string, value: BasicValue): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating single preference', {
 				context: 'UserService',
@@ -1074,7 +1069,7 @@ export class UserService {
 	 * @param status New status
 	 * @returns Updated user
 	 */
-	async updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<UserEntity> {
+	async updateUserStatus(userId: string, status: UserStatus): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user status', {
 				context: 'UserService',
@@ -1088,9 +1083,9 @@ export class UserService {
 			}
 
 			// Update status by mapping to isActive field or storing in additionalInfo
-			if (status === 'active') {
+			if (status === UserStatus.ACTIVE) {
 				user.isActive = true;
-			} else if (status === 'suspended' || status === 'banned') {
+			} else if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
 				user.isActive = false;
 			}
 

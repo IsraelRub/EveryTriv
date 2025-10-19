@@ -2,7 +2,7 @@
  * Storage Module Index
  *
  * @module StorageModule
- * @description storage module with metrics, management, and utilities
+ * @description Storage module with metrics, management, and utilities
  * @author EveryTriv Team
  */
 

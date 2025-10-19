@@ -5,7 +5,7 @@
  * @description Higher Order Component for protecting routes that require authentication
  * @used_by client/src/AppRoutes.tsx for protecting sensitive routes
  */
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { memo } from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';

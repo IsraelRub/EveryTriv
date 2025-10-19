@@ -4,7 +4,7 @@
  * @module UnauthorizedView
  * @description Page shown when user doesn't have required permissions
  */
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 

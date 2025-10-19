@@ -7,10 +7,13 @@
  * @used_by client/src/services, shared/services
  */
 
+import { ENV_FALLBACKS, ENV_VAR_NAMES, LOCALHOST_URLS } from './localhost.constants';
+
 // API base URL configuration
 export const API_BASE_URL = {
-	DEVELOPMENT: 'http://localhost:3001',
-	PRODUCTION: 'https://everytrivia.com',
+	DEVELOPMENT: LOCALHOST_URLS.API_BASE,
+	PRODUCTION: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
+	STAGING: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
 } as const;
 
 // HTTP client configuration
@@ -22,6 +25,14 @@ export const HTTP_CLIENT_CONFIG = {
 		'Content-Type': 'application/json',
 		Accept: 'application/json',
 	},
+} as const;
+
+// HTTP timeout constants
+export const HTTP_TIMEOUTS = {
+	DEFAULT: 30000, // 30 seconds
+	QUESTION_GENERATION: 30000, // 30 seconds
+	AI_PROVIDER: 30000, // 30 seconds
+	UPLOAD: 60000, // 60 seconds
 } as const;
 
 // HTTP status codes
@@ -72,21 +83,3 @@ export const HTTP_LOG_MESSAGES = {
 	RETRY_FAILED: 'HTTP Retry Failed',
 } as const;
 
-/**
- * HTTP Status Code Enum
- * @description HTTP status codes as enum for type safety
- */
-export enum HttpStatusCode {
-	OK = 200,
-	CREATED = 201,
-	NO_CONTENT = 204,
-	BAD_REQUEST = 400,
-	UNAUTHORIZED = 401,
-	FORBIDDEN = 403,
-	NOT_FOUND = 404,
-	CONFLICT = 409,
-	UNPROCESSABLE_ENTITY = 422,
-	INTERNAL_SERVER_ERROR = 500,
-	BAD_GATEWAY = 502,
-	SERVICE_UNAVAILABLE = 503,
-}

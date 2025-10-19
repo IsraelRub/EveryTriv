@@ -5,8 +5,9 @@
  * @description User registration page with validation using ValidatedForm
  */
 
-import { clientLogger as logger, getErrorMessage } from '@shared';
-import type { UserRole } from '@shared/types/domain/user/user.types';
+import { clientLogger as logger } from '@shared/services';
+import type { UserRole } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';

@@ -5,18 +5,18 @@
  * @description authentication service that consolidates all authentication logic
  * @author EveryTriv Team
  */
+import { Injectable } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { UserRole } from '@shared/constants';
 import {
 	AuthenticationConfig,
 	AuthenticationRequest,
 	AuthenticationResult,
+	getErrorMessage,
 	LoginCredentials,
 	TokenPayload,
 	UserData,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-
-import { Injectable } from '@nestjs/common';
+} from '@shared/utils';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';
@@ -53,7 +53,6 @@ export class AuthenticationManager {
 					userId: userData.id,
 				});
 				return {
-					success: false,
 					error: 'Account is inactive',
 				};
 			}
@@ -67,7 +66,6 @@ export class AuthenticationManager {
 					userId: userData.id,
 				});
 				return {
-					success: false,
 					error: 'Invalid credentials',
 				};
 			}
@@ -89,7 +87,6 @@ export class AuthenticationManager {
 			});
 
 			return {
-				success: true,
 				user: {
 					id: userData.id,
 					username: userData.username,
@@ -106,7 +103,6 @@ export class AuthenticationManager {
 				error: getErrorMessage(error),
 			});
 			return {
-				success: false,
 				error: 'Authentication failed',
 			};
 		}
@@ -124,7 +120,6 @@ export class AuthenticationManager {
 			if (!tokenResult.isValid || !tokenResult.payload) {
 				logger.securityDenied('Invalid refresh token');
 				return {
-					success: false,
 					error: 'Invalid refresh token',
 				};
 			}
@@ -146,7 +141,6 @@ export class AuthenticationManager {
 			});
 
 			return {
-				success: true,
 				user: {
 					id: payload.sub,
 					username: payload.username,
@@ -161,7 +155,6 @@ export class AuthenticationManager {
 				error: getErrorMessage(error),
 			});
 			return {
-				success: false,
 				error: 'Token refresh failed',
 			};
 		}
@@ -175,14 +168,12 @@ export class AuthenticationManager {
 			const tokenResult = await this.jwtTokenService.verifyToken(token);
 			if (!tokenResult.isValid || !tokenResult.payload) {
 				return {
-					success: false,
 					error: 'Invalid token',
 				};
 			}
 
 			const payload = tokenResult.payload;
 			return {
-				success: true,
 				user: {
 					id: payload.sub,
 					username: payload.username,
@@ -196,7 +187,6 @@ export class AuthenticationManager {
 				error: getErrorMessage(error),
 			});
 			return {
-				success: false,
 				error: 'Token validation failed',
 			};
 		}
@@ -247,7 +237,7 @@ export class AuthenticationManager {
 		id: string;
 		username: string;
 		email: string;
-		role: string;
+		role: UserRole;
 	}): Promise<{ accessToken: string; refreshToken: string }> {
 		return await this.jwtTokenService.generateTokenForUser(user);
 	}
@@ -256,21 +246,21 @@ export class AuthenticationManager {
 	 * Check if user has required role
 	 */
 	hasRole(user: TokenPayload, requiredRole: string): boolean {
-		return user.role === requiredRole || user.role === 'admin';
+		return user.role === requiredRole || user.role === UserRole.ADMIN;
 	}
 
 	/**
 	 * Check if user has any of the required roles
 	 */
 	hasAnyRole(user: TokenPayload, requiredRoles: string[]): boolean {
-		return requiredRoles.includes(user.role) || user.role === 'admin';
+		return requiredRoles.includes(user.role) || user.role === UserRole.ADMIN;
 	}
 
 	/**
 	 * Check if user is admin
 	 */
 	isAdmin(user: TokenPayload): boolean {
-		return user.role === 'admin';
+		return user.role === UserRole.ADMIN;
 	}
 
 	/**

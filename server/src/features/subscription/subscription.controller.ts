@@ -1,6 +1,7 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import { Cache, CurrentUserId } from '../../common';
 import { AuthGuard } from '../../common/guards';
@@ -15,7 +16,7 @@ export class SubscriptionController {
 	 * Get available subscription plans
 	 */
 	@Get('plans')
-	@Cache(7200) // Cache for 2 hours - subscription plans rarely change
+	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 2 hours - subscription plans rarely change
 	async getAvailablePlans() {
 		try {
 			const result = await this.subscriptionService.getAvailablePlans();
@@ -38,7 +39,7 @@ export class SubscriptionController {
 	 */
 	@Get('current')
 	@UseGuards(AuthGuard)
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getCurrentSubscription(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.subscriptionService.getCurrentSubscription(userId);

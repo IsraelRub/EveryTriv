@@ -4,27 +4,18 @@
  * @description Authentication and authorization related types
  */
 
-// Current User Data
-export interface CurrentUserData {
-	id: string;
-	username: string;
-	email: string;
-	firstName?: string;
-	lastName?: string;
-	role: string;
-	avatar?: string;
-	createdAt: Date;
-}
+// Import BasicUser from domain
+import type { BasicUser } from '../domain/user/user.types';
 
 // Authentication Result
 export interface AuthenticationResult {
-	success: boolean;
-	user?: Pick<CurrentUserData, 'id' | 'username' | 'email' | 'role'>;
+	user?: BasicUser;
 	accessToken?: string;
 	refreshToken?: string;
 	message?: string;
 	error?: string;
 }
+
 
 // Login Credentials
 export interface LoginCredentials {
@@ -32,13 +23,22 @@ export interface LoginCredentials {
 	password: string;
 }
 
+// Authentication Credentials (alias for LoginCredentials with email)
+export interface AuthCredentials {
+	email: string;
+	username: string;
+	password: string;
+}
+
+import { UserRole } from '../../constants/business/info.constants';
+
 // User Data
 export interface UserData {
 	id: string;
 	username: string;
 	email: string;
 	passwordHash: string;
-	role: string;
+	role: UserRole;
 	isActive: boolean;
 }
 
@@ -56,7 +56,7 @@ export interface TokenPayload {
 	sub: string;
 	email: string;
 	username: string;
-	role: string;
+	role: UserRole;
 	iat?: number;
 	exp?: number;
 }
@@ -90,13 +90,14 @@ export interface PasswordConfig {
 
 // Request Types for Authentication
 export interface AuthenticationRequest {
-	headers?: {
-		authorization?: string;
-	} & Record<string, string | undefined>;
-	cookies?: {
-		auth_token?: string;
-	} & Record<string, string | undefined>;
+	headers?: Record<string, string | string[] | undefined>;
+	cookies?: Record<string, string | undefined>;
 	authToken?: string;
+}
+
+// Auth Request (for authenticated endpoints)
+export interface AuthRequest {
+	user: BasicUser;
 }
 
 // JWT Decoded Token
@@ -104,7 +105,7 @@ export interface JWTDecodedToken extends Record<string, unknown> {
 	sub: string;
 	email: string;
 	username: string;
-	role: string;
+	role: UserRole;
 	iat?: number;
 	exp?: number;
 }

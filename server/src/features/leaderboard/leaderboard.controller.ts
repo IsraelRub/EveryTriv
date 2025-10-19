@@ -1,6 +1,7 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import { Cache, CurrentUserId } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
@@ -24,7 +25,7 @@ export class LeaderboardController {
 	 * @returns User ranking data
 	 */
 	@Get('user/ranking')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserRanking(@CurrentUserId() userId: string) {
 		try {
 			const ranking = await this.leaderboardService.getUserRanking(userId);
@@ -89,7 +90,7 @@ export class LeaderboardController {
 	 */
 	@Get('global')
 	@Public()
-	@Cache(600) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
@@ -133,7 +134,7 @@ export class LeaderboardController {
 	 */
 	@Get('period/:period')
 	@Public()
-	@Cache(900) // Cache for 15 minutes
+	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
 	async getLeaderboardByPeriod(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
@@ -181,7 +182,7 @@ export class LeaderboardController {
 	 * @returns User percentile
 	 */
 	@Get('user/percentile')
-	@Cache(600) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getUserPercentile(@CurrentUserId() userId: string) {
 		try {
 			const percentile = await this.leaderboardService.getUserPercentile(userId);

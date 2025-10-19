@@ -3,7 +3,7 @@
  * Server-only authentication configuration
  */
 // Import and re-export shared enums
-import { AuthHeader, TokenType } from '@shared';
+import { AuthHeader, TokenType } from '@shared/constants';
 
 export { AuthHeader, TokenType };
 

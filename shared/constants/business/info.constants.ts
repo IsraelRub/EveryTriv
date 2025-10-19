@@ -11,7 +11,7 @@
  * Application name constant
  * @constant
  * @description Main application name used across the platform
- * @used_by server/src/config/app.config.ts, client/src/components/layout/Footer.tsx, shared/constants/index.ts
+ * @used_by server/src/config/app.config.ts, client/src/components/layout/Footer.tsx
  */
 export const APP_NAME = 'EveryTriv';
 

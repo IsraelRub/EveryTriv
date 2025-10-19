@@ -1,9 +1,9 @@
 import {
-  clientLogger as logger,
   CUSTOM_DIFFICULTY_KEYWORDS,
   CUSTOM_DIFFICULTY_PREFIX,
   DifficultyLevel,
-} from '@shared';
+} from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 

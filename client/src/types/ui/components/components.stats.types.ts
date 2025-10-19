@@ -58,7 +58,7 @@ export interface UserStatsCardProps {
  * @used_by client/src/components/subscription/SubscriptionPlans.tsx
  */
 export interface SubscriptionPlansProps {
-  plans: import('@shared').SubscriptionPlans;
+  plans: import('@shared/types').SubscriptionPlans;
   onPlanSelect?: (plan: string) => void;
   className?: string;
 }

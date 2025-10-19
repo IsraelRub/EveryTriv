@@ -1,6 +1,7 @@
-import { ClientLogsRequest, LogLevel, LogMeta, MESSAGE_FORMATTERS, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Post } from '@nestjs/common';
+import { MESSAGE_FORMATTERS } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import { ClientLogsRequest, LogLevel, LogMeta } from '@shared/types';
 
 @Controller('client-logs')
 export class ClientLogsController {

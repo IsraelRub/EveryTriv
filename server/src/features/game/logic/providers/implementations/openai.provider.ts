@@ -5,7 +5,9 @@
  * @description OpenAI API integration for trivia question generation
  * @used_by server/src/features/game/logic (AiProvidersService.initializeProviders)
  */
-import { LLMResponse, LLMTriviaResponse, ProviderConfig, createValidationError } from '@shared';
+import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
+import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+import { createValidationError } from '@shared/utils';
 
 import { BaseTriviaProvider } from '../implementations';
 import { PromptTemplates } from '../prompts';
@@ -54,9 +56,9 @@ export class OpenAITriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'openai',
 			apiKey: this.apiKey,
-			baseUrl: 'https://api.openai.com/v1/chat/completions',
-			timeout: 30000,
-			maxRetries: 3,
+		baseUrl: 'https://api.openai.com/v1/chat/completions',
+		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 4,
 			headers: {

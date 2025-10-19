@@ -1,25 +1,21 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { CACHE_TTL, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
+import { PointCalculationService,serverLogger as logger } from '@shared/services';
+import type { AnswerResult, QuestionData, UserAnalytics, UserScoreData } from '@shared/types';
 import {
-	CACHE_TTL,
-	GameMode,
-	SERVER_GAME_CONSTANTS,
 	createNotFoundError,
 	createServerError,
 	createValidationError,
 	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-import { AnswerResult, UserAnalytics, UserScoreData } from '@shared/types';
+} from '@shared/utils';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { ServerStorageService } from 'src/internal/modules/storage';
 import { MoreThan, Repository } from 'typeorm';
 
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 import { ValidationService } from '../../common';
-import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsService } from '../analytics';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 
 /**
@@ -75,7 +71,7 @@ export class GameService {
 				cacheKey,
 				async () => {
 					const generatedQuestions = [];
-					const generationTimeout = SERVER_GAME_CONSTANTS.QUESTION_GENERATION_TIMEOUT;
+					const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
 
 					for (let i = 0; i < actualQuestionCount; i++) {
 						const question = await Promise.race([
@@ -340,13 +336,7 @@ export class GameService {
 			gameMode: string;
 			timeSpent?: number;
 			creditsUsed: number;
-			questionsData: Array<{
-				question: string;
-				userAnswer: string;
-				correctAnswer: string;
-				isCorrect: boolean;
-				timeSpent?: number;
-			}>;
+			questionsData: QuestionData[];
 		}
 	) {
 		const sessionKey = `active_game:${userId}`;

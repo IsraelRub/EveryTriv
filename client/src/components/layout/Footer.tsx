@@ -1,4 +1,4 @@
-import type { SocialLinkItem } from '@shared';
+import type { SocialLinkItem } from '@shared/types';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 

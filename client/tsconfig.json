@@ -39,7 +39,17 @@
       "@redux/*": ["./src/redux/*"],
       "@views/*": ["./src/views/*"],
       "@shared": ["../shared"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "@shared/constants": ["../shared/constants"],
+      "@shared/constants/*": ["../shared/constants/*"],
+      "@shared/services": ["../shared/services"],
+      "@shared/services/*": ["../shared/services/*"],
+      "@shared/types": ["../shared/types"],
+      "@shared/types/*": ["../shared/types/*"],
+      "@shared/utils": ["../shared/utils"],
+      "@shared/utils/*": ["../shared/utils/*"],
+      "@shared/validation": ["../shared/validation"],
+      "@shared/validation/*": ["../shared/validation/*"]
     },
     "types": ["@testing-library/jest-dom", "react", "react-dom"]
   },

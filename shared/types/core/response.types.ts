@@ -5,7 +5,7 @@
  * @module ResponseTypes
  * @description Basic response structures and wrappers
  */
-import type { ApiRequestBody, StorageValue } from './data.types';
+import type { BaseData, StorageValue } from './data.types';
 
 /**
  * Base API response interface
@@ -44,7 +44,7 @@ export interface UrlResponse extends BaseResponse {
  * @interface DataResponse
  * @description Response that may include data
  */
-export interface DataResponse<T = ApiRequestBody> extends BaseResponse {
+export interface DataResponse<T = BaseData> extends BaseResponse {
 	data?: T;
 }
 

@@ -22,12 +22,6 @@ export interface BaseSubscriptionData {
 	cancelledAt?: string;
 }
 
-/**
- * Subscription data interface for UserEntity
- * @interface UserEntitySubscription
- * @description Subscription data structure as stored in UserEntity
- */
-export type UserEntitySubscription = BaseSubscriptionData;
 
 /**
  * Subscription data interface with nullable fields
@@ -62,7 +56,7 @@ export interface UserStatsWithSubscription {
 	totalQuestions: number;
 	correctAnswers: number;
 	lastPlayed: Date;
-	subscription?: UserEntitySubscription;
+	subscription?: BaseSubscriptionData;
 }
 
 /**

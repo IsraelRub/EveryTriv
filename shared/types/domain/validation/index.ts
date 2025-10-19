@@ -1,15 +1,12 @@
 /**
- * Validation Types Index
+ * Validation Domain Types Index
  *
- * @module ValidationTypesIndex
- * @description Central export point for all validation-related types
+ * @module ValidationTypes
+ * @description Validation-related type definitions including forms, rules, and validation results
+ * @author EveryTriv Team
+ * @used_by server/src/common/validation, client/src/components/forms
  */
 
-// Core validation types
-export * from './validation.types';
-
-// Form validation types
 export * from './forms.types';
-
-// Validation rules and schemas types
 export * from './rules.types';
+export * from './validation.types';

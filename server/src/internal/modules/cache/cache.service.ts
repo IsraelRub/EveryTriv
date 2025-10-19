@@ -1,19 +1,22 @@
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import {
+	createTimedResult,
+	formatStorageError,
+	getErrorMessage,
+	trackOperationWithTiming,
+} from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type {
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
 	StorageValue,
-	createTimedResult,
-	formatStorageError,
-	getErrorMessage,
-	serverLogger as logger,
-	trackOperationWithTiming,
-} from '@shared';
-import type { RedisClient } from '@shared/types/infrastructure/redis.types';
-
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
+	CacheEntry,
+} from '@shared/types';
+import type { Redis } from 'ioredis';
 
 /**
  * Service for managing application caching
@@ -29,11 +32,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	private useRedis: boolean = false;
 	private config: StorageConfig;
 
-	constructor(@Inject('REDIS_CLIENT') private readonly redisClient: RedisClient | null) {
+	constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis | null) {
 		this.useRedis = !!this.redisClient;
 		this.config = {
 			prefix: 'everytriv_cache_',
-			defaultTtl: 3600,
+			defaultTtl: CACHE_DURATION.VERY_LONG,
 			enableCompression: false,
 			maxSize: 100 * 1024 * 1024, // 100MB for cache
 			type: 'cache',
@@ -135,7 +138,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		try {
 			const cached = await this.get<T>(key);
 			if (cached.success && cached.data) {
-				return cached.data!;
+				return cached.data;
 			}
 
 			const value = await factory();
@@ -153,10 +156,10 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	 * Gets multiple values from cache
 	 *
 	 * @param keys - Array of cache keys to retrieve
-	 * @returns Promise<Array<T | null>> Array of cached values with null for missing keys
+	 * @returns Promise<(T | null)[]> Array of cached values with null for missing keys
 	 * @description Retrieves multiple values efficiently using batch operations
 	 */
-	async mget<T = StorageValue>(keys: string[]): Promise<Array<T | null>> {
+	async mget<T = StorageValue>(keys: string[]): Promise<(T | null)[]> {
 		try {
 			if (this.useRedis && this.redisClient) {
 				return await this.mgetRedis<T>(keys);
@@ -178,7 +181,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	 * @returns Promise<void> Operation completion
 	 * @description Stores multiple values efficiently using batch operations
 	 */
-	async mset(keyValues: Array<{ key: string; value: StorageValue; ttl?: number }>): Promise<void> {
+	async mset(keyValues: CacheEntry<StorageValue>[]): Promise<void> {
 		try {
 			if (this.useRedis && this.redisClient) {
 				await this.msetRedis(keyValues);
@@ -658,11 +661,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	// Memory cache batch operations
-	private mgetMemory<T = StorageValue>(keys: string[]): Array<T | null> {
+	private mgetMemory<T = StorageValue>(keys: string[]): (T | null)[] {
 		return keys.map(key => this.getMemory<T>(key));
 	}
 
-	private msetMemory(keyValues: Array<{ key: string; value: StorageValue; ttl?: number }>): void {
+	private msetMemory(keyValues: CacheEntry<StorageValue>[]): void {
 		keyValues.forEach(({ key, value, ttl }) => {
 			this.setMemory(key, value, ttl);
 		});
@@ -679,48 +682,70 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	private async setRedis(key: string, value: StorageValue, ttl?: number): Promise<void> {
 		const serialized = JSON.stringify(value);
 		if (ttl) {
-			await this.redisClient!.setex(key, ttl, serialized);
+			await this.redisClient?.setex(key, ttl, serialized);
 		} else {
-			await this.redisClient!.set(key, serialized);
+			await this.redisClient?.set(key, serialized);
 		}
 	}
 
 	private async getRedis<T>(key: string): Promise<T | null> {
-		const data = await this.redisClient!.get(key);
+		if (!this.redisClient) return null;
+		const data = await this.redisClient.get(key);
 		return data ? JSON.parse(data) : null;
 	}
 
 	private async deleteRedis(key: string): Promise<boolean> {
-		const result = await this.redisClient!.del(key);
+		if (!this.redisClient) return false;
+		const result = await this.redisClient.del(key);
 		return result === 1;
 	}
 
 	private async existsRedis(key: string): Promise<boolean> {
-		const result = await this.redisClient!.exists(key);
+		if (!this.redisClient) return false;
+		const result = await this.redisClient.exists(key);
 		return result === 1;
 	}
 
 	private async setTTLRedis(key: string, ttl: number): Promise<boolean> {
-		const result = await this.redisClient!.expire(key, ttl);
+		if (!this.redisClient) return false;
+		const result = await this.redisClient.expire(key, ttl);
 		return result === 1;
 	}
 
 	private async getTTLRedis(key: string): Promise<number> {
-		return await this.redisClient!.ttl(key);
+		if (!this.redisClient) return -2;
+		return await this.redisClient.ttl(key);
 	}
 
 	private async clearRedis(): Promise<void> {
-		await this.redisClient!.flushdb();
+		if (!this.redisClient) return;
+		await this.redisClient.flushdb();
 	}
 
 	private async getKeysRedis(): Promise<string[]> {
-		const keys = await this.redisClient!.keys(`${this.config.prefix}*`);
+		if (!this.redisClient) return [];
+		const keys = await this.redisClient.keys(`${this.config.prefix}*`);
 		return keys.map(key => key.replace(this.config.prefix, ''));
 	}
 
 	private async getStatsRedis(): Promise<StorageStats> {
-		// const info = await this.redisClient!.info('memory');
-		const keys = await this.redisClient!.keys(`${this.config.prefix}*`);
+		if (!this.redisClient) return {
+			totalItems: 0,
+			totalSize: 0,
+			expiredItems: 0,
+			hitRate: 0,
+			averageItemSize: 0,
+			utilization: 0,
+			opsPerSecond: 0,
+			avgResponseTime: 0,
+			typeBreakdown: {
+				persistent: { items: 0, size: 0 },
+				cache: { items: 0, size: 0 },
+				hybrid: { items: 0, size: 0 },
+			},
+		};
+		// const info = await this.redisClient.info('memory');
+		const keys = await this.redisClient.keys(`${this.config.prefix}*`);
 		const totalSize = keys.length * 100; // Approximate size
 
 		return {
@@ -741,23 +766,26 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	private async invalidatePatternRedis(pattern: string): Promise<number> {
-		const keys = await this.redisClient!.keys(pattern);
+		if (!this.redisClient) return 0;
+		const keys = await this.redisClient.keys(pattern);
 		if (keys.length > 0) {
 			for (const key of keys) {
-				await this.redisClient!.del(key);
+				await this.redisClient.del(key);
 			}
 		}
 		return keys.length;
 	}
 
 	// Redis cache batch operations
-	private async mgetRedis<T = StorageValue>(keys: string[]): Promise<Array<T | null>> {
-		const values = await this.redisClient!.mget(keys);
+	private async mgetRedis<T = StorageValue>(keys: string[]): Promise<(T | null)[]> {
+		if (!this.redisClient) return keys.map(() => null);
+		const values = await this.redisClient.mget(keys);
 		return values.map(value => (value ? JSON.parse(value) : null));
 	}
 
-	private async msetRedis(keyValues: Array<{ key: string; value: StorageValue; ttl?: number }>): Promise<void> {
-		const pipeline = this.redisClient!.pipeline();
+	private async msetRedis(keyValues: CacheEntry<StorageValue>[]): Promise<void> {
+		if (!this.redisClient) return;
+		const pipeline = this.redisClient.pipeline();
 
 		keyValues.forEach(({ key, value, ttl }) => {
 			const serialized = JSON.stringify(value);
@@ -772,7 +800,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	private async incrementRedis(key: string, amount: number): Promise<number> {
-		return await this.redisClient!.incrby(key, amount);
+		if (!this.redisClient) return 0;
+		return await this.redisClient.incrby(key, amount);
 	}
 
 	/**

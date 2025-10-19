@@ -6,8 +6,8 @@
  * @description Component for displaying and selecting subscription plans
  * @used_by client/src/views/payment
  */
-import { formatCurrency } from '@shared';
 import { SubscriptionPlanDetails } from '@shared/types/subscription.types';
+import { formatCurrency } from '@shared/utils';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
@@ -51,7 +51,7 @@ export default function SubscriptionPlans({
   };
 
   const getPlanFeatures = (plan: SubscriptionPlanDetails) => {
-    const baseFeatures = plan.features || [];
+    const baseFeatures = plan.features ?? [];
     const pointBonus = plan.pointBonus ? [`${plan.pointBonus} bonus points`] : [];
     const questionLimit =
       plan.questionLimit === -1

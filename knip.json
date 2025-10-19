@@ -2,8 +2,7 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "entry": [
     "server/src/main.ts",
-    "client/src/main.tsx",
-    "shared/index.ts"
+    "client/src/main.tsx"
   ],
   "project": [
     "server/src/**/*.ts",

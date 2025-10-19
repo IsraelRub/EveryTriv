@@ -4,7 +4,7 @@
  * @module ConstantsIndex
  * @description Centralized export of all application constants organized by domain
  * @author EveryTriv Team
- * @used_by server/src/shared/constants, client/src/shared/constants
+ * @used_by server/src/features, client/src/constants
  */
 
 // ============================================================================
@@ -46,3 +46,14 @@ export * from './business';
  * @description Navigation links, routes, and configuration
  */
 export * from './navigation';
+
+// ============================================================================
+// UTILITY CONSTANTS
+// ============================================================================
+
+/**
+ * Utility constants
+ * @description Constants from utility functions that should be in constants
+ */
+export { DEFAULT_USER_PREFERENCES } from '../utils/preferences.utils';
+export { isCustomDifficulty } from '../validation/difficulty.validation';

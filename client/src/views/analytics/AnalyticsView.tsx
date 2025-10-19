@@ -1,4 +1,5 @@
-import { clientLogger as logger, CompleteUserAnalytics } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { CompleteUserAnalytics } from '@shared/types';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 

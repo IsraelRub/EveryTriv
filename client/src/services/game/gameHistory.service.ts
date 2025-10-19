@@ -6,14 +6,14 @@
  * @description Client-side game history and leaderboard management
  * @used_by client/views/game-history, client/components/stats, client/hooks
  */
-import {
+import { clientLogger as logger } from '@shared/services';
+import type {
   GameHistoryEntry,
   GameHistoryRequest,
   LeaderboardEntry,
   UserRankData,
   UserStatsData,
-} from '@shared';
-import { clientLogger as logger } from '@shared';
+} from '@shared/types';
 
 import { apiService } from '../api';
 
@@ -43,7 +43,7 @@ class ClientGameHistoryService {
         topic: gameData.topic || 'General Knowledge',
         timeSpent: gameData.timeSpent || 0,
         creditsUsed: gameData.creditsUsed || 0,
-        questionsData: gameData.questionsData || [],
+        questionsData: gameData.questionsData ?? [],
       };
       await apiService.saveGameHistory(gameHistoryDto);
 
@@ -61,7 +61,7 @@ class ClientGameHistoryService {
         correctAnswers: gameData.correctAnswers,
         timeSpent: gameData.timeSpent || 0,
         creditsUsed: gameData.creditsUsed || 0,
-        questionsData: (gameData.questionsData || []).map(q => ({
+        questionsData: (gameData.questionsData ?? []).map(q => ({
           question: q.question,
           userAnswer: q.userAnswer,
           correctAnswer: q.correctAnswer,

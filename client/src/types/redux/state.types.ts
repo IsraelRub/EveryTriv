@@ -3,7 +3,8 @@
  * @module ReduxStateTypes
  * @description Redux state management types
  */
-import { GameMode, GameHistoryEntry, LeaderboardEntry, User } from '@shared';
+import { GameMode } from '@shared/constants';
+import type { GameHistoryEntry, LeaderboardEntry, User } from '@shared/types';
 import type { BasicValue } from '@shared/types/core/data.types';
 
 import type {

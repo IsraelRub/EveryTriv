@@ -1,10 +1,7 @@
-import {
-	AxiosErrorWithConfig,
-	ExtendedAxiosRequestConfig,
-	HTTP_LOG_MESSAGES,
-	generateId,
-	serverLogger as logger,
-} from '@shared';
+import { serverLogger as logger } from '@shared/services';
+import type { AxiosErrorWithConfig, ExtendedAxiosRequestConfig } from '@shared/types';
+import { HTTP_LOG_MESSAGES } from '@shared/constants';
+import { generateId } from '@shared/utils';
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 import { RetryUtils } from './retry.utils';

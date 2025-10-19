@@ -4,14 +4,14 @@
  * @module SharedUtils
  * @description Central export point for all shared utility functions and helpers
  * @author EveryTriv Team
- * @used_by client/src/utils/cn.ts, server/src/shared/utils/interceptors.utils.ts, shared/services/storage.service.ts
+ * @used_by client/src/utils/cn.ts, server/src/internal/utils/interceptors.utils.ts, shared/services/storage
  */
 
 /**
  * Validation utilities
  * @description Functions for custom difficulty validation and text extraction
  * @exports {Function} Validation utility functions
- * @used_by client/src/utils/cn.ts, server/src/shared/utils/interceptors.utils.ts, shared/validation/validation.utils.ts
+ * @used_by client/src/utils/cn.ts, server/src/internal/utils/interceptors.utils.ts, shared/validation/validation.utils.ts
  */
 export { extractCustomDifficultyText, isCustomDifficulty } from '../validation';
 
@@ -19,7 +19,7 @@ export { extractCustomDifficultyText, isCustomDifficulty } from '../validation';
  * Data manipulation utilities
  * @description Functions for data transformation, manipulation, and processing
  * @exports {Function} Data manipulation utility functions
- * @used_by client/src/services/api.service.ts, server/src/features/game/game.service.ts, shared/services/storage.service.ts
+ * @used_by client/src/services/api.service.ts, server/src/features/game/game.service.ts, shared/services/storage
  */
 export * from './data.utils';
 
@@ -35,7 +35,7 @@ export * from './format.utils';
  * ID generation utilities
  * @description Functions for generating unique identifiers and IDs
  * @exports {Function} ID generation utility functions
- * @used_by client/src/services/auth.service.ts, server/src/shared/entities/user.entity.ts, shared/services/logging
+ * @used_by client/src/services/auth.service.ts, server/src/internal/entities/user.entity.ts, shared/services/logging
  */
 export * from './id.utils';
 
@@ -86,6 +86,90 @@ export * from './preferences.utils';
  * @used_by server/src/features, client/src/services, shared/services/logging
  */
 export * from './error.utils';
+
+/**
+ * Re-export functions that should be available from utils
+ * @description Functions that are commonly used as utility functions
+ */
+export {
+	validateCustomDifficultyText,
+	validateEmail,
+	validateInputContent,
+	validateInputWithLanguageTool,
+	validatePassword,
+	validateTopicLength,
+	validateUsername
+} from '../validation';
+
+// Re-export sanitization utilities
+export { escapeHtml, truncateText } from './sanitization.utils';
+
+// Re-export additional types and functions that are commonly used
+export type {
+	GameAnswerData,
+	LanguageValidationData,
+	LanguageValidationResult,
+	PipeValidationWithSuggestion,
+	TriviaQuestionData,
+	TriviaRequestData,
+	ValidationResult} from '../types';
+export type {
+	AuthenticationConfig,
+	AuthenticationRequest,
+	AuthenticationResult,
+	JWTDecodedToken,
+	LoginCredentials,
+	TokenPair,
+	TokenPayload,
+	TokenValidationResult,
+	UserData} from '../types';
+export type {
+	PaymentData,
+	PaymentResult
+} from '../types';
+export type {
+	StorageCleanupOptions,
+	StorageConfig,
+	StorageOperationResult,
+	StorageService,
+	StorageStats
+} from '../types';
+export type {
+	AnalyticsEventData,
+	AnalyticsResponse,
+	CompleteUserAnalytics,
+	DifficultyStatsData,
+	GameAnalyticsQuery,
+	TopicStatsData,
+	UserAnalyticsStats
+} from '../types';
+export type {
+	ClientLogsRequest,
+	EnhancedLogEntry,
+	Logger,
+	LogMeta
+} from '../types';
+export type {
+	CachedQuestionDto,
+	CacheInvalidationDto,
+	CacheQuestionsQueryDto,
+	CacheQuestionsResponseDto,
+	CacheStats,
+	CacheStorage,
+	UserProgressData
+} from '../types';
+export type {
+	BaseUser,
+	User
+} from '../types';
+export type {
+	AllMiddlewareMetricsResponse,
+	MiddlewareMetricsResponse,
+	MiddlewareMetricsSummary
+} from '../types';
+
+// Re-export server logger
+export { serverLogger } from '../services';
 
 /**
  * Points calculation utilities (pure, shared by client and server)

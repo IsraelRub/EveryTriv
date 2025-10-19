@@ -4,8 +4,9 @@
  * @module UseUserPreferences
  * @description React Query hooks for user preferences management
  */
-import { mergeWithDefaults, UserPreferencesUpdate } from '@shared';
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { UserPreferencesUpdate } from '@shared/types';
+import { mergeWithDefaults } from '@shared/utils/preferences.utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 

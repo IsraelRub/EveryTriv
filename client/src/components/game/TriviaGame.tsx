@@ -1,9 +1,11 @@
-import { clientLogger as logger, escapeHtml, truncateText } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { escapeHtml, truncateText } from '@shared/utils';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 import { TriviaGameProps } from '../../types';
 import { createStaggerContainer, fadeInDown, fadeInUp, hoverScale, scaleIn } from '../animations';
+import type { Particle } from '../../types/ui/animations.types';
 import { GridLayout } from '../layout';
 
 /**
@@ -18,31 +20,28 @@ import { GridLayout } from '../layout';
  */
 export default function TriviaGame({ trivia, selected, onAnswer }: TriviaGameProps) {
   // Simple particle state for animations
-  const [particles, setParticles] = useState<
-    Array<{
-      id: number;
-      x: number;
-      y: number;
-      type: string;
-      color: string;
-      size: number;
-      life: number;
-    }>
-  >([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   const addParticle = (
     x: number,
     y: number,
     config: { color: string; size: number; life: { min: number; max: number } }
   ) => {
-    const newParticle = {
+    const newParticle: Particle = {
       id: Date.now(),
       x,
       y,
-      type: 'particle',
-      color: config.color,
+      vx: 0,
+      vy: 0,
       size: config.size,
+      color: config.color,
+      opacity: 1,
       life: config.life.min,
+      maxLife: config.life.max,
+      created_at: Date.now(),
+      velocity: { x: 0, y: 0 },
+      rotation: 0,
+      scale: 1,
     };
     setParticles(prev => [...prev, newParticle]);
     // Remove particle after animation

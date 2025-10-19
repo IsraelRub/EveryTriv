@@ -6,7 +6,7 @@
  * @description Server-specific user metadata and internal types
  * @used_by server/src/features/user/dtos, server/src/internal/entities
  */
-import type { BaseUser, User, UserAddress } from '@shared';
+import type { BaseUser, User, UserAddress } from '@shared/types';
 
 // Re-export shared types
 export type { BaseUser, User, UserAddress };

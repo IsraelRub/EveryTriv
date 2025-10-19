@@ -6,9 +6,9 @@
  * @description Client-side points management and balance tracking
  * @used_by client/src/components/payment, client/src/views/user, client/src/hooks
  */
-import { PointPurchaseOption } from '@shared';
-import { formatTimeUntilReset } from '@shared';
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { PointPurchaseOption } from '@shared/types';
+import { formatTimeUntilReset } from '@shared/utils';
 
 import { PointBalance, PointTransaction } from '../../types';
 import { apiService } from '../api';

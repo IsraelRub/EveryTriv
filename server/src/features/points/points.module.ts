@@ -8,14 +8,13 @@
  * @provides PointsService
  * @entities PointTransactionEntity, UserEntity
  */
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheModule } from 'src/internal/modules';
 
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
 import { ValidationModule } from '../../common/validation/validation.module';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../auth';
 import { PaymentModule } from '../payment';
 import { PointsController } from './points.controller';
 import { PointsService } from './points.service';

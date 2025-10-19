@@ -3,7 +3,7 @@
  * @module ValidationTypes
  * @description Validation-related types and interfaces
  */
-import { ValidationStatus } from '@shared/types/domain/validation/validation.types';
+import { ValidationStatus } from '@shared/types/domain/validation';
 
 /**
  * Validation message component props

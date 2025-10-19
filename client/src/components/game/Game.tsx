@@ -1,4 +1,4 @@
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
 import { formatTimeDisplay } from '@shared/utils';
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';

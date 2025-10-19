@@ -9,6 +9,55 @@ import { DifficultyLevel, GameMode } from '../../../constants/core/game.constant
 import type { BaseEntity } from '../../core/data.types';
 
 /**
+ * Question data interface
+ * @interface QuestionData
+ * @description Common structure for question data in game history
+ */
+export interface QuestionData {
+	question: string;
+	userAnswer: string;
+	correctAnswer: string;
+	isCorrect: boolean;
+	timeSpent?: number;
+}
+
+/**
+ * Achievement interface
+ * @interface Achievement
+ * @description Common structure for user achievements
+ */
+export interface Achievement {
+	id: string;
+	title: string;
+	description: string;
+	icon: string;
+	unlockedAt: Date;
+}
+
+/**
+ * Rank history entry interface
+ * @interface RankHistoryEntry
+ * @description Common structure for rank history entries
+ */
+export interface RankHistoryEntry {
+	rank: number;
+	score: number;
+	date: Date;
+	period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+}
+
+/**
+ * Custom difficulty interface
+ * @interface CustomDifficulty
+ * @description Common structure for custom difficulty settings
+ */
+export interface CustomDifficulty {
+	description: string;
+	usageCount: number;
+	lastUsed: Date;
+}
+
+/**
  * Game status types
  */
 export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';

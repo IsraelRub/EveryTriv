@@ -38,7 +38,7 @@ export * from './game';
  * Shared game constants
  * @description Re-exported shared game constants
  */
-export { DifficultyLevel, GameMode } from '@shared';
+export { DifficultyLevel, GameMode } from '@shared/constants';
 
 /**
  * UI component types
@@ -96,12 +96,12 @@ export type { ApiResponse, ClientApiService } from './api.types';
  */
 export type {
   AuthCredentials,
-  AuthResponse,
+  // AuthResponse removed - not needed
   CreateGameHistoryDto,
   LeaderboardEntry,
   TriviaQuestion,
   TriviaRequest,
-} from '@shared';
+} from '@shared/types';
 
 // Question count option type
 export interface QuestionCountOption {

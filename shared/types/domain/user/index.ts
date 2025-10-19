@@ -1,15 +1,12 @@
 /**
- * User Types Index
+ * User Domain Types Index
  *
- * @module UserTypesIndex
- * @description Central export point for all user-related types
+ * @module UserTypes
+ * @description User-related type definitions including profiles, preferences, and addresses
+ * @author EveryTriv Team
+ * @used_by server/src/features/user, client/src/components/user, client/src/views/user
  */
 
-// Core user types
-export * from './user.types';
-
-// User profile types
-export * from './profile.types';
-
-// User preferences types
 export * from './preferences.types';
+export * from './profile.types';
+export * from './user.types';

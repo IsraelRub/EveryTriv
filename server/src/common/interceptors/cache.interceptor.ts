@@ -5,12 +5,12 @@
  * @description Interceptor that implements caching based on @Cache decorator metadata
  * @author EveryTriv Team
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { Observable, of } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 import { CacheService } from '../../internal/modules/cache/cache.service';
 import type { CacheConfig, NestRequest, NestResponse } from '../../internal/types';

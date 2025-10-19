@@ -6,8 +6,7 @@
  * @description UI configuration constants
  * @used_by client/components, client/src/hooks, client/services
  */
-import { DifficultyLevel } from '@shared';
-import { UI_THEME_VARIANTS } from '@shared';
+import { DifficultyLevel, UI_THEME_VARIANTS } from '@shared/constants';
 
 export const Theme = UI_THEME_VARIANTS;
 

@@ -5,11 +5,12 @@
  * @description Guard that validates JWT tokens and extracts user information
  * @author EveryTriv Team
  */
-import { AUTH_CONSTANTS, TokenExtractionService, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { AUTH_CONSTANTS } from '@shared/constants';
+import { serverLogger as logger, TokenExtractionService } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

@@ -5,10 +5,11 @@
  * @description Smart middleware that analyzes request patterns and prepares metadata structure
  * @author EveryTriv Team
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import { NestNextFunction, NestRequest, NestResponse } from '../types';
 
@@ -35,10 +36,10 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 				isPublic: decoratorMetadata.isPublic ?? requestAnalysis.isLikelyPublic,
 				requireAuth: decoratorMetadata.requireAuth ?? !requestAnalysis.isLikelyPublic,
 				roles: decoratorMetadata.roles.length > 0 ? decoratorMetadata.roles : requestAnalysis.requiredRoles,
-				permissions: decoratorMetadata.permissions || [],
+				permissions: decoratorMetadata.permissions ?? [],
 				rateLimit: decoratorMetadata.rateLimit ?? requestAnalysis.suggestedRateLimit,
 				cache: decoratorMetadata.cache ?? requestAnalysis.suggestedCache,
-				cacheTags: decoratorMetadata.cacheTags || [],
+				cacheTags: decoratorMetadata.cacheTags ?? [],
 				apiResponse: decoratorMetadata.apiResponse || undefined,
 				apiResponses: decoratorMetadata.apiResponses || undefined,
 				validationSchema: decoratorMetadata.validationSchema || undefined,
@@ -119,11 +120,11 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		return {
 			isPublic: isPublic || false,
 			requireAuth: requireAuth || false,
-			roles: roles || [],
-			permissions: permissions || [],
-			rateLimit: rateLimit || null,
-			cache: cache || null,
-			cacheTags: cacheTags || [],
+			roles: roles ?? [],
+			permissions: permissions ?? [],
+			rateLimit: rateLimit ?? null,
+			cache: cache ?? null,
+			cacheTags: cacheTags ?? [],
 			apiResponse: apiResponse || undefined,
 			apiResponses: apiResponses || undefined,
 			validationSchema: validationSchema || undefined,
@@ -156,9 +157,9 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		// Smart role detection based on path
 		let requiredRoles: string[] = [];
 		if (path.includes('/admin')) {
-			requiredRoles = ['admin'];
+			requiredRoles = [UserRole.ADMIN];
 		} else if (path.includes('/user') || path.includes('/profile')) {
-			requiredRoles = ['user', 'admin'];
+			requiredRoles = [UserRole.USER, UserRole.ADMIN];
 		}
 
 		// Smart rate limiting suggestions
@@ -174,7 +175,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		// Smart cache suggestions
 		let suggestedCache: { ttl: number; key?: string } | null = null;
 		if (method === 'GET' && !path.includes('/auth') && !path.includes('/admin')) {
-			suggestedCache = { ttl: 300 }; // 5 minutes cache for GET requests
+			suggestedCache = { ttl: CACHE_DURATION.MEDIUM }; // 5 minutes cache for GET requests
 		}
 
 		return {

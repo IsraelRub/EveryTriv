@@ -4,164 +4,94 @@
  * @module SharedTypes
  * @description Central export point for all shared TypeScript types and interfaces
  * @author EveryTriv Team
- * @used_by client/src/types, server/src/shared/types
+ * @used_by client/src/types, server/src/features
  */
 
-/**
- * Base type definitions
- * @description Fundamental type definitions used across the application
- * @exports {Object} Base type definitions
- */
-// Base types are distributed to specific files
+// =============================================================================
+// CORE TYPES - Basic data structures, utilities, errors, and responses
+// =============================================================================
 
 /**
  * Core type definitions
  * @description Core type definitions used across the application
- * @exports {Object} Core type definitions
  */
-// Core types
 export * from './core';
-// Domain types
-export * from './domain';
-// Infrastructure types
+
+// =============================================================================
+// DOMAIN TYPES - Business logic and domain-specific types
+// =============================================================================
+
+/**
+ * AI Domain Types
+ * @description AI-related type definitions including providers, models, and responses
+ */
+export * from './domain/ai';
+
+/**
+ * Analytics Domain Types
+ * @description Analytics and metrics type definitions (excluding conflicting types)
+ */
+export * from './domain/analytics';
+
+/**
+ * Game Domain Types
+ * @description Game-related type definitions including trivia, sessions, and configuration (excluding conflicting types)
+ */
+export * from './domain/game';
+
+/**
+ * User Domain Types
+ * @description User-related type definitions including profiles, preferences, and addresses
+ */
+export * from './domain/user';
+
+/**
+ * Validation Domain Types
+ * @description Validation-related type definitions including forms, rules, and validation results
+ */
+export * from './domain/validation';
+
+// =============================================================================
+// INFRASTRUCTURE TYPES - Technical and infrastructure-related types
+// =============================================================================
+
+/**
+ * Infrastructure Types
+ * @description Technical types for API, auth, cache, config, HTTP, logging, Redis, and storage
+ */
 export * from './infrastructure';
-// Payment types
-export * from './payment.types';
-// Single file types
+
+// =============================================================================
+// SPECIALIZED TYPES - Specific feature and utility types
+// =============================================================================
+
+/**
+ * Language types
+ * @description Types for language detection, validation, and tool integration
+ */
 export * from './language.types';
+
+/**
+ * Points types
+ * @description Types for points management, calculations, and balances
+ */
 export * from './points.types';
+
+/**
+ * Subscription types
+ * @description Types for subscription management, plans, and data
+ */
 export * from './subscription.types';
+
+/**
+ * UI types
+ * @description Types for user interface components, forms, and validation
+ */
 export * from './ui.types';
 
 /**
- * Cache types
- * @description Cache management, storage, and invalidation type definitions
- * @exports {Object} Cache-related type definitions
+ * Payment types
+ * @description Types for payment processing and data
  */
-export type {
-	CachedQuestionDto,
-	CacheHealthStatus,
-	CacheInvalidationDto,
-	CacheQuestionsQueryDto,
-	CacheQuestionsResponseDto,
-	CacheStats,
-	CacheStorage,
-	QuestionCacheMap,
-	UserProgressData,
-} from './infrastructure/cache.types';
+export * from './payment.types';
 
-/**
- * Component types
- * @description React component prop and state type definitions
- * @exports {Object} Component-related type definitions
- */
-// Component types moved to ui.types
-
-/**
- * Validation types
- * @description Form validation, field validation, and validation result types
- * @exports {Object} Validation-related type definitions
- */
-export type {
-	AsyncValidationFunction,
-	BaseValidationResult,
-	DifficultyValidation,
-	FieldValidationResult,
-	PasswordValidationResult,
-	RequestDataType,
-	SharedTriviaInputValidation,
-	CustomDifficultyRequest as ValidateCustomDifficultyRequest,
-	ValidationContext,
-	ValidationDecoratorOptions,
-	ValidationError,
-	ValidationFunction,
-	ValidationInterceptorOptions,
-	ValidationInterceptorResult,
-	ValidationMiddlewareConfig,
-	ValidationOptions,
-	ValidationResult,
-	ValidationRule,
-	ValidationStatus,
-	ValidationType,
-} from './domain/validation/validation.types';
-
-/**
- * Analytics types
- * @description Analytics, metrics, and performance tracking type definitions
- * @exports {Object} Analytics-related type definitions
- */
-export type {
-	AnalyticsEventData,
-	AnalyticsMetadata,
-	AnalyticsResponse,
-	DifficultyStats,
-	DifficultyStatsData,
-	GameAnalyticsQuery,
-	GameStatsData,
-	QuestionAnalytics,
-	SystemStats,
-	TopicAnalytics,
-	TopicStatsData,
-	UserAnalytics,
-	UserAnalyticsQuery,
-	UserAnalyticsStats,
-} from './domain/analytics/analytics.types';
-
-/**
- * Logging types
- * @description Logging system, log entries, and logger interface types
- * @exports {Object} Logging-related type definitions
- */
-export type {
-	ClientLogEntry,
-	ClientLogsRequest,
-	EnhancedLogEntry,
-	HttpLogData,
-	HttpLogger,
-	Logger as ILogger,
-	LogContext,
-	LogEntry,
-} from './infrastructure/logging.types';
-
-/**
- * Storage types
- * @description Storage configuration, operations, and service interface types
- * @exports {Object} Storage-related type definitions
- */
-export type {
-	StorageCleanupOptions as StorageCleanupOptionsType,
-	StorageConfig,
-	StorageOperationResult,
-	StorageService as StorageService,
-	StorageStats,
-} from './infrastructure/storage.types';
-
-/**
- * Language validation types
- * @description Language detection, validation, and tool integration types
- * @exports {Object} Language validation type definitions
- */
-export type {
-	LanguageToolConfig,
-	LanguageToolError,
-	LanguageToolResponse,
-	LanguageValidationOptions,
-	LanguageValidationResult,
-	SupportedLanguage,
-} from './language.types';
-
-/**
- * Authentication types
- * @description Authentication and user validation type definitions
- */
-export type { CurrentUserData } from './infrastructure/auth.types';
-
-/**
- * Middleware metrics types
- * @description Middleware metrics and monitoring type definitions
- */
-export type {
-	AllMiddlewareMetricsResponse,
-	MiddlewareMetricsResponse,
-	MiddlewareMetricsSummary,
-} from './infrastructure/api.types';

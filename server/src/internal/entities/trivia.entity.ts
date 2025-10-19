@@ -9,6 +9,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
+import type { TriviaAnswer } from '@shared/types';
 import { UserEntity } from './user.entity';
 
 @Entity('trivia')
@@ -28,10 +29,7 @@ export class TriviaEntity {
 	question: string = '';
 
 	@Column('jsonb', { default: [] })
-	answers: Array<{
-		text: string;
-		isCorrect: boolean;
-	}> = [];
+	answers: TriviaAnswer[] = [];
 
 	@Column({ name: 'correct_answer_index', type: 'int' })
 	correctAnswerIndex: number = 0;

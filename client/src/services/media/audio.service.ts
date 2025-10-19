@@ -1,5 +1,5 @@
-import { clientLogger as logger } from '@shared';
-import type { ServerUserPreferences } from '@shared/types/domain/user/user.types';
+import { clientLogger as logger } from '@shared/services';
+import type { ServerUserPreferences } from '@shared/types/domain/user';
 
 import {
   AUDIO_CATEGORIES,

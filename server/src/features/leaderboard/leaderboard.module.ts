@@ -8,13 +8,12 @@
  * @provides LeaderboardService
  * @entities LeaderboardEntity, UserEntity, GameHistoryEntity
  */
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheModule } from 'src/internal/modules';
 
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../auth';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 

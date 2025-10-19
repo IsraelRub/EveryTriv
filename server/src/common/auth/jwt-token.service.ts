@@ -5,20 +5,20 @@
  * @description JWT token generation and validation service
  * @author EveryTriv Team
  */
+import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { AUTH_CONSTANTS, UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { BasicUser } from '@shared/types';
 import {
-	AUTH_CONSTANTS,
 	AuthenticationRequest,
+	createServerError,
+	getErrorMessage,
 	JWTDecodedToken,
 	TokenPair,
 	TokenPayload,
 	TokenValidationResult,
-	createServerError,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-
-import { Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+} from '@shared/utils';
 
 @Injectable()
 export class JwtTokenService {
@@ -31,7 +31,7 @@ export class JwtTokenService {
 		userId: string,
 		username: string,
 		email: string,
-		role: string,
+		role: UserRole,
 		expiresIn: string = '1h'
 	): Promise<string> {
 		try {
@@ -72,7 +72,7 @@ export class JwtTokenService {
 		userId: string,
 		username: string,
 		email: string,
-		role: string,
+		role: UserRole,
 		expiresIn: string = '7d'
 	): Promise<string> {
 		try {
@@ -113,7 +113,7 @@ export class JwtTokenService {
 		userId: string,
 		username: string,
 		email: string,
-		role: string,
+		role: UserRole,
 		accessExpiresIn: string = '1h',
 		refreshExpiresIn: string = '7d'
 	): Promise<TokenPair> {
@@ -180,7 +180,7 @@ export class JwtTokenService {
 		try {
 			// Check Authorization header
 			const authHeader = request.headers?.authorization;
-			if (authHeader && authHeader.startsWith('Bearer ')) {
+			if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
 				return authHeader.substring(7);
 			}
 
@@ -254,7 +254,7 @@ export class JwtTokenService {
 	/**
 	 * Generate token for specific user data
 	 */
-	async generateTokenForUser(user: { id: string; username: string; email: string; role: string }): Promise<TokenPair> {
+	async generateTokenForUser(user: BasicUser): Promise<TokenPair> {
 		return this.generateTokenPair(user.id, user.username, user.email, user.role);
 	}
 }

@@ -1,4 +1,6 @@
-import { clientLogger as logger, getErrorMessage, isToday, isYesterday } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { isToday, isYesterday } from '@shared/utils/date.utils';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { motion } from 'framer-motion';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -81,7 +83,7 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
         ...entry,
         rank,
         isCurrentUser: entry.userId === userId,
-        formattedScore: entry.score?.toLocaleString() || '0',
+        formattedScore: entry.score?.toLocaleString() ?? '0',
         rankInfo,
       };
     });
@@ -155,16 +157,16 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
                         username={entry.username}
                         fullName={entry.fullName}
                         size='sm'
-                        alt={entry.username || entry.userId}
+                        alt={entry.username ?? entry.userId}
                       />
                       <div
                         className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${entry.rankInfo.backgroundColor}`}
                       >
                         {entry.rankInfo.showMedal ? (
                           <Icon
-                            name={entry.rankInfo.medalIcon!}
+                            name={entry.rankInfo.medalIcon ?? 'medal'}
                             size='xs'
-                            color={entry.rankInfo.medalColor!}
+                            color={entry.rankInfo.medalColor ?? 'warning'}
                           />
                         ) : (
                           entry.rank
@@ -178,7 +180,7 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
                             <Icon name='user' size='sm' className='mr-1' /> You
                           </>
                         ) : (
-                          entry.username || entry.userId
+                          entry.username ?? entry.userId
                         )}
                       </div>
                       {entry.userId === userId && (

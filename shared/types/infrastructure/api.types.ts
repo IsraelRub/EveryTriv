@@ -6,7 +6,7 @@
  * @description API response structures and HTTP communication interfaces
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
-import type { ApiRequestBody, BaseData } from '../core/data.types';
+import type { BaseData } from '../core/data.types';
 import type { BaseApiResponse, BasePagination, PaginatedResponse, SuccessResponse } from '../core/response.types';
 // Import MiddlewareMetrics from metrics types
 import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
@@ -16,9 +16,9 @@ import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
  * @interface ApiResponse
  * @description Generic wrapper for all API responses
  * @template T The type of the response data
- * @used_by server: server/src/features/game/game.controller.ts (getTrivia response), client: client/src/services/api.service.ts (ApiService methods), shared/services/http-client.ts (HttpClient responses))
+ * @used_by server: server/src/features/game/game.controller.ts (getTrivia response), client: client/src/services/api.service.ts (ApiService methods), shared/services/logging (HttpClient responses))
  */
-export interface ApiResponse<T = ApiRequestBody> extends BaseApiResponse<T> {
+export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
 	metadata?: ApiMetadata;
 }
 
@@ -28,7 +28,7 @@ export interface ApiResponse<T = ApiRequestBody> extends BaseApiResponse<T> {
  * @description Simple response with success status and optional data
  * @template T The type of the response data
  */
-export interface SimpleSuccessResponse<T = ApiRequestBody> extends SuccessResponse<T> {
+export interface SimpleSuccessResponse<T = BaseData> extends SuccessResponse<T> {
 	// Inherits from SuccessResponse
 }
 
@@ -59,7 +59,7 @@ export interface ApiMetadata extends Partial<BasePagination> {
  * API error response interface
  * @interface ApiError
  * @description Standard error response structure
- * @used_by server: server/src/common/filters/http-exception.filter.ts (error responses), client: client/src/services/api.service.ts (error handling), shared/services/http-client.ts (error handling)
+ * @used_by server: server/src/common/globalException.filter.ts (error responses), client: client/src/services/api.service.ts (error handling), shared/services/logging (error handling)
  */
 export interface ApiError {
 	message: string;
@@ -97,13 +97,6 @@ export interface AmountDto {
 	amount: number;
 }
 
-/**
- * DTO for deducting user credits
- * @interface DeductCreditsDto
- * @description Request payload for deducting credits from user account
- * @used_by client/src/services/api.service.ts (deductCredits), client/src/services/auth/user.service.ts (deductCredits)
- */
-export type DeductCreditsDto = AmountDto;
 
 /**
  * Base DTO for purchase operations with identifier
@@ -115,29 +108,6 @@ export interface PurchaseDto {
 	paymentMethodId: string;
 }
 
-/**
- * DTO for purchasing points
- * @interface PurchasePointsDto
- * @description Request payload for point purchase operations
- * @used_by client/src/services/utils/points.service.ts (purchasePoints)
- */
-export type PurchasePointsDto = PurchaseDto;
-
-/**
- * DTO for purchasing packages
- * @interface PurchasePackageDto
- * @description Request payload for package purchase operations
- * @used_by client/src/services/utils/points.service.ts (purchasePoints)
- */
-export type PurchasePackageDto = PurchaseDto;
-
-/**
- * DTO for creating subscriptions
- * @interface CreateSubscriptionDto
- * @description Request payload for subscription creation
- * @used_by client/src/services/utils/points.service.ts (purchasePoints)
- */
-export type CreateSubscriptionDto = PurchaseDto;
 
 /**
  * DTO for confirming point purchase
@@ -187,7 +157,7 @@ export interface DeductPointsRequest extends Record<string, unknown> {
  * @interface QuestionData
  * @description Represents a single question's data in game history
  */
-export interface QuestionData {
+export interface ApiQuestionData {
 	question: string;
 	userAnswer: string;
 	correctAnswer: string;
@@ -211,15 +181,17 @@ export interface CreateGameHistoryDto {
 	gameMode: string;
 	timeSpent: number;
 	creditsUsed: number;
-	questionsData: QuestionData[];
+	questionsData: ApiQuestionData[];
 }
+
+import { UserRole } from '../../constants/business/info.constants';
 
 // Admin User Data
 export interface AdminUserData {
 	id: string;
 	username: string;
 	email: string;
-	role: string;
+	role: UserRole;
 	createdAt: string;
 	lastLogin?: string;
 }

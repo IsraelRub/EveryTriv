@@ -1,15 +1,15 @@
+import { Injectable } from '@nestjs/common';
 import {
 	BaseStorageService,
+	metricsService,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
-	metricsService,
-} from '@shared';
-import { RedisClient } from '@shared/types/infrastructure/redis.types';
-
-import { Injectable } from '@nestjs/common';
+} from '@shared/services';
+import { CACHE_DURATION } from '@shared/constants';
+import Redis from 'ioredis';
 
 /**
  * Server-side persistent storage service using Redis
@@ -34,9 +34,9 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class ServerStorageService extends BaseStorageService implements StorageService {
-	private redisClient: RedisClient;
+	private redisClient: Redis;
 
-	constructor(redisClient: RedisClient, config: Partial<StorageConfig> = {}) {
+	constructor(redisClient: Redis, config: Partial<StorageConfig> = {}) {
 		super({
 			...config,
 			type: 'persistent',
@@ -64,7 +64,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
 			const serialized = this.serialize(value);
-			await this.redisClient.setex(prefixedKey, ttl ?? this.config.defaultTtl ?? 3600, serialized);
+			await this.redisClient.setex(prefixedKey, ttl ?? this.config.defaultTtl ?? CACHE_DURATION.VERY_LONG, serialized);
 
 			this.updateMetadata(key, serialized.length, ttl);
 			this.trackOperationWithTiming('set', startTime, true, 'persistent', serialized.length);

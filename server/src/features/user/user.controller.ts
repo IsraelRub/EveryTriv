@@ -1,5 +1,3 @@
-import { AdminUserData, UserFieldUpdate, getErrorMessage, serverLogger as logger } from '@shared';
-
 import {
 	Body,
 	Controller,
@@ -14,6 +12,10 @@ import {
 	Query,
 	UsePipes,
 } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { AdminUserData, UserFieldUpdate, BasicUser } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { UserRole, UserStatus, CACHE_DURATION, PERFORMANCE_THRESHOLDS, STRING_LIMITS, PAGINATION_LIMITS, VALIDATION_ERRORS } from '@shared/constants';
 
 import {
 	AuditLog,
@@ -49,8 +51,8 @@ export class UserController {
 	 * Get user profile
 	 */
 	@Get('profile')
-	@Cache(300)
-	async getUserProfile(@CurrentUser() user: { id: string; username: string; email: string; role: string }) {
+	@Cache(CACHE_DURATION.MEDIUM)
+	async getUserProfile(@CurrentUser() user: BasicUser) {
 		try {
 			const result = await this.userService.getUserProfile(user.id);
 
@@ -73,7 +75,7 @@ export class UserController {
 	 * Get user credits
 	 */
 	@Get('credits')
-	@Cache(60)
+	@Cache(CACHE_DURATION.VERY_SHORT)
 	async getUserCredits(@CurrentUserId() userId: string) {
 		try {
 			const credits = await this.userService.getUserCredits(userId);
@@ -126,7 +128,7 @@ export class UserController {
 	@UsePipes(UserDataPipe)
 	@RequireEmailVerified()
 	@RequireUserStatus('active')
-	@PerformanceThreshold(1000)
+	@PerformanceThreshold(PERFORMANCE_THRESHOLDS.SLOW)
 	@AuditLog('user:update-profile')
 	@UserActivityLog('user:profile-update')
 	async updateUserProfile(
@@ -161,15 +163,15 @@ export class UserController {
 	 * Search users
 	 */
 	@Get('search')
-	@Cache(300) // Cache search results for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache search results for 5 minutes
 	async searchUsers(@Query() query: SearchUsersDto) {
 		try {
-			const result = await this.userService.searchUsers(query.query, query.limit || 10);
+			const result = await this.userService.searchUsers(query.query, query.limit || PAGINATION_LIMITS.DEFAULT);
 
 			// Log API call for user search
 			logger.apiRead('user_search', {
 				query: query.query,
-				limit: query.limit || 10,
+				limit: query.limit || PAGINATION_LIMITS.DEFAULT,
 				resultsCount: result.totalResults,
 			});
 
@@ -178,7 +180,7 @@ export class UserController {
 			logger.userError('Error searching users', {
 				error: getErrorMessage(error),
 				query: query.query,
-				limit: query.limit || 10,
+				limit: query.limit || PAGINATION_LIMITS.DEFAULT,
 			});
 			throw error;
 		}
@@ -188,11 +190,11 @@ export class UserController {
 	 * Get user by username
 	 */
 	@Get('username/:username')
-	@Cache(600) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getUserByUsername(@Param('username') username: string) {
 		try {
 			if (!username) {
-				throw new HttpException('Username is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USERNAME, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.getUserByUsername(username);
@@ -275,7 +277,7 @@ export class UserController {
 	) {
 		try {
 			if (!field || !body.value) {
-				throw new HttpException('Field and value are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserField(userId, field as keyof UserFieldUpdate, body.value);
@@ -284,7 +286,7 @@ export class UserController {
 			logger.apiUpdate('user_field', {
 				userId,
 				field,
-				value: typeof body.value === 'string' ? body.value.substring(0, 50) : body.value,
+				value: typeof body.value === 'string' ? body.value.substring(0, STRING_LIMITS.SHORT) : body.value,
 			});
 
 			return result;
@@ -310,7 +312,7 @@ export class UserController {
 	) {
 		try {
 			if (!preference || body.value === undefined) {
-				throw new HttpException('Preference and value are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateSinglePreference(userId, preference, body.value);
@@ -337,11 +339,11 @@ export class UserController {
 	 * Get user by ID (for admins)
 	 */
 	@Get(':id')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException('User ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.getUserById(id);
@@ -365,12 +367,12 @@ export class UserController {
 	 * Update user credits (for admins)
 	 */
 	@Put('credits/:userId')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	@AuditLog('admin:update-user-credits')
 	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
-				throw new HttpException('User ID, amount, and reason are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_AMOUNT_AND_REASON, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserCredits(userId, creditsData.amount, creditsData.reason);
@@ -397,12 +399,12 @@ export class UserController {
 	 * Delete user (for admins)
 	 */
 	@Delete(':userId')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	@AuditLog('admin:delete-user')
 	async deleteUser(@Param('userId') userId: string) {
 		try {
 			if (!userId) {
-				throw new HttpException('User ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.deleteUserAccount(userId);
@@ -426,17 +428,17 @@ export class UserController {
 	 * Update user status (for admins)
 	 */
 	@Patch(':userId/status')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	@AuditLog('admin:update-user-status')
 	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException('User ID and status are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-			const validStatuses = ['active', 'suspended', 'banned'];
+		const validStatuses = Object.values(UserStatus);
 			if (!validStatuses.includes(statusData.status)) {
-				throw new HttpException('Invalid status. Must be: active, suspended, or banned', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserStatus(userId, statusData.status);
@@ -462,9 +464,9 @@ export class UserController {
 	 * Admin endpoint - get all users (admin only)
 	 */
 	@Get('admin/all')
-	@Roles('admin')
-	@Cache(60) // Cache for 1 minute
-	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string; email: string }) {
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getAllUsers(@CurrentUser() user: BasicUser) {
 		try {
 			// This would call a service method to get all users
 			const users: AdminUserData[] = [];
@@ -500,21 +502,21 @@ export class UserController {
 	 * Admin endpoint - update user status (admin only)
 	 */
 	@Put('admin/:userId/status')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	@AuditLog('admin:update-user-status')
 	async adminUpdateUserStatus(
-		@CurrentUser() adminUser: { id: string; role: string; username: string },
+		@CurrentUser() adminUser: BasicUser,
 		@Param('userId') userId: string,
 		@Body() statusData: UpdateUserStatusDto
 	) {
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException('User ID and status are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-			const validStatuses = ['active', 'suspended', 'banned'];
+			const validStatuses = Object.values(UserStatus);
 			if (!validStatuses.includes(statusData.status)) {
-				throw new HttpException('Invalid status. Must be: active, suspended, or banned', HttpStatus.BAD_REQUEST);
+				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			// await this.userService.updateUserStatus(userId, statusData.status);

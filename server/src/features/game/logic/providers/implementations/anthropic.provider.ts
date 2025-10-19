@@ -1,4 +1,6 @@
-import { LLMResponse, LLMTriviaResponse, ProviderConfig, createValidationError } from '@shared';
+import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
+import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+import { createValidationError } from '@shared/utils';
 
 import { BaseTriviaProvider } from './base.provider';
 
@@ -40,9 +42,9 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'anthropic',
 			apiKey: this.apiKey,
-			baseUrl: 'https://api.anthropic.com/v1/messages',
-			timeout: 30000,
-			maxRetries: 3,
+		baseUrl: 'https://api.anthropic.com/v1/messages',
+		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 1,
 			headers: {

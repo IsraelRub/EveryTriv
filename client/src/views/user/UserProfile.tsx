@@ -1,5 +1,7 @@
-// import { DifficultyLevel } from '@shared';
-import { formatNumber, getCurrentTimestamp, mergeWithDefaults } from '@shared';
+// import { DifficultyLevel } from '@shared/constants';
+import { getCurrentTimestamp } from '@shared/utils';
+import { formatNumber } from '@shared/utils/format.utils';
+import { mergeWithDefaults } from '@shared/utils/preferences.utils';
 import { motion } from 'framer-motion';
 import { MouseEvent, useEffect, useState } from 'react';
 

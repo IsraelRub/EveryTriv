@@ -1,8 +1,9 @@
-import { RATE_LIMIT_DEFAULTS, ensureErrorObject, serverLogger as logger, metricsService } from '@shared';
-import type { RedisClient } from '@shared/types/infrastructure/redis.types';
-import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
-
 import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@nestjs/common';
+import { RATE_LIMIT_DEFAULTS, CACHE_DURATION } from '@shared/constants';
+import { metricsService,serverLogger as logger } from '@shared/services';
+import type { Redis } from 'ioredis';
+import { ensureErrorObject } from '@shared/utils';
+import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -10,7 +11,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 	private readonly MAX_REQUESTS_PER_WINDOW = RATE_LIMIT_DEFAULTS.MAX_REQUESTS_PER_WINDOW;
 	private readonly BURST_LIMIT = RATE_LIMIT_DEFAULTS.BURST_LIMIT;
 
-	constructor(@Inject('REDIS_CLIENT') private readonly redis: RedisClient | null) {}
+	constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {}
 
 	async use(req: NestRequest, res: NestResponse, next: NestNextFunction) {
 		const startTime = Date.now();
@@ -131,7 +132,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 			// Check burst limit first (first second)
 			const burstCount = await this.redis.incr(burstKey);
 			if (burstCount === 1) {
-				await this.redis.expire(burstKey, 60); // 1 minute burst window
+				await this.redis.expire(burstKey, CACHE_DURATION.VERY_SHORT); // 1 minute burst window
 			}
 
 			if (burstCount > burstLimit) {

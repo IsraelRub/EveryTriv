@@ -1,15 +1,12 @@
 /**
- * Analytics Types Index
+ * Analytics Domain Types Index
  *
- * @module AnalyticsTypesIndex
- * @description Central export point for all analytics-related types
+ * @module AnalyticsTypes
+ * @description Analytics and metrics type definitions
+ * @author EveryTriv Team
+ * @used_by server/src/features/analytics, client/src/views/analytics
  */
 
-// Core analytics types
 export * from './analytics.types';
-
-// Performance metrics types
-export * from './metrics.types';
-
-// Insights and recommendations types
 export * from './insights.types';
+export * from './metrics.types';

@@ -1,5 +1,6 @@
-import { clientLogger as logger, mergeWithDefaults } from '@shared';
-import type { UserRole } from '@shared/types/domain/user/user.types';
+import { clientLogger as logger } from '@shared/services';
+import type { UserRole } from '@shared/constants';
+import { mergeWithDefaults } from '@shared/utils/preferences.utils';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 

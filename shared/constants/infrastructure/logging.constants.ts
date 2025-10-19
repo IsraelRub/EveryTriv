@@ -104,13 +104,8 @@ export const LOG_LEVEL_PROPERTIES = {
 	},
 } as const;
 
-// Performance thresholds for logging
-export const PERFORMANCE_THRESHOLDS = {
-	NORMAL: 100, // 100ms
-	SLOW: 1000, // 1 second
-	VERY_SLOW: 3000, // 3 seconds
-	CRITICAL: 5000, // 5 seconds
-} as const;
+// Performance thresholds for logging (re-exported from core performance constants)
+export { PERFORMANCE_THRESHOLDS } from '../core/performance.constants';
 
 // Domain definitions - define each domain only once
 export const LOG_DOMAINS = {

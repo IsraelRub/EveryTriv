@@ -1,5 +1,6 @@
-import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared';
-import { clientLogger as logger, getErrorMessage } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { CreateGameHistoryDto, GameHistoryEntry, TriviaRequest } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { selectLeaderboard } from '../../redux/selectors';

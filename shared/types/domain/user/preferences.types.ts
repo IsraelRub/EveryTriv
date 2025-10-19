@@ -119,7 +119,7 @@ export interface UserPreferencesExport {
  * @used_by client/src/hooks/api/useUserPreferences.ts
  */
 export interface UserPreferencesImport {
-	file: File;
+	file: File | Buffer;
 	format: 'json' | 'yaml' | 'xml';
 	options: {
 		overwrite?: boolean;

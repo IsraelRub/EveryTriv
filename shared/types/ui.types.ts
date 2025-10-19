@@ -37,7 +37,7 @@ export interface ErrorBoundaryState {
  * @description Error details with position information for UI highlighting and user feedback
  * @used_by client/src/services/triviaValidation.ts (highlightErrors function)
  */
-export interface ValidationError {
+export interface UIValidationError {
 	position: { start: number; end: number };
 	message: string;
 }

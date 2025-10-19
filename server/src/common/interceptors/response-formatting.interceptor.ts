@@ -5,10 +5,9 @@
  * @description Interceptor that standardizes API response format across all endpoints
  * @author EveryTriv Team
  */
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 
 import type { NestRequest } from '../../internal/types';
 
@@ -60,7 +59,12 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 	 */
 	private shouldSkipFormatting(data: unknown, request: NestRequest): boolean {
 		if (data && typeof data === 'object') {
-			const skipFields = ['success', 'isValid', 'timestamp', 'data', 'pipe', 'url'];
+			// Skip formatting if response already has a success field (like AuthenticationResult)
+			if ('success' in data) {
+				return true;
+			}
+			
+			const skipFields = ['isValid', 'timestamp', 'data', 'pipe', 'url'];
 			return skipFields.some(field => field in data);
 		}
 

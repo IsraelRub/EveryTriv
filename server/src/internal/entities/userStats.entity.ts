@@ -9,6 +9,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
+import type { Achievement } from '@shared/types';
 import { UserEntity } from './user.entity';
 
 /**
@@ -123,13 +124,7 @@ export class UserStatsEntity {
 
 	// Achievement Tracking
 	@Column('jsonb', { name: 'unlocked_achievements', default: [] })
-	unlockedAchievements: Array<{
-		id: string;
-		title: string;
-		description: string;
-		icon: string;
-		unlockedAt: Date;
-	}> = [];
+	unlockedAchievements: Achievement[] = [];
 
 	@Column('int', { name: 'total_achievements', default: 0 })
 	totalAchievements: number = 0;

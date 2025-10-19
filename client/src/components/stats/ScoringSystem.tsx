@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { SCORING_DEFAULTS } from '@/constants';
 
 import { ScoreStats, ScoringSystemProps } from '../../types';
+import type { StatisticsItem } from '@shared/types';
 import type { CurrentQuestionMetadata } from '../../types/game/components.types';
 import { Icon } from '../icons';
 import { GridLayout } from '../layout';
@@ -52,7 +53,7 @@ export default function ScoringSystem({
           acc.push({ topic, count: Number(count) ?? 0 });
           return acc;
         },
-        [] as Array<{ topic: string; count: number }>
+        [] as Pick<StatisticsItem, 'topic' | 'count'>[]
       )
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);

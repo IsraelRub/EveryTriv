@@ -5,11 +5,12 @@
  * @description Repository for user entities with enhanced functionality
  * @author EveryTriv Team
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-import { FindManyOptions, Repository } from 'typeorm';
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils';
+import { FindManyOptions, Repository } from 'typeorm';
 
 import { RepositoryAudit, RepositoryCache, RepositoryRoles } from '../../common';
 import { UserEntity } from '../entities';
@@ -34,7 +35,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * @returns Promise<UserEntity | null> Found user or null
 	 * @throws Error When database query fails
 	 */
-	@RepositoryCache(300, 'user_by_email')
+	@RepositoryCache(CACHE_DURATION.MEDIUM, 'user_by_email')
 	@RepositoryAudit('user_lookup_by_email')
 	async findByEmail(email: string): Promise<UserEntity | null> {
 		try {
@@ -73,7 +74,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * @returns Promise<UserEntity | null> Found user or null
 	 * @throws Error When database query fails
 	 */
-	@RepositoryCache(300, 'user_by_username')
+	@RepositoryCache(CACHE_DURATION.MEDIUM, 'user_by_username')
 	@RepositoryAudit('user_lookup_by_username')
 	async findByUsername(username: string): Promise<UserEntity | null> {
 		try {
@@ -112,15 +113,15 @@ export class UserRepository extends BaseRepository<UserEntity> {
 	 * @returns Promise<UserEntity[]> Array of users with the role
 	 * @throws Error When database query fails
 	 */
-	@RepositoryCache(600, 'users_by_role')
-	@RepositoryRoles('admin')
+	@RepositoryCache(CACHE_DURATION.LONG, 'users_by_role')
+	@RepositoryRoles(UserRole.ADMIN)
 	@RepositoryAudit('user_lookup_by_role')
 	async findByRole(role: string): Promise<UserEntity[]> {
 		try {
 			logger.databaseDebug(`Finding users by role: ${role}`, { context: 'REPOSITORY' });
 
 			const users = await this.userRepository.find({
-				where: { role: role as 'user' | 'admin' | 'guest' },
+				where: { role: role as UserRole },
 				order: { createdAt: 'DESC' },
 			});
 

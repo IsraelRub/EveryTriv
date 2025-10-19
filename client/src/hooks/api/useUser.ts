@@ -1,4 +1,4 @@
-import { UpdateUserProfileData } from '@shared';
+import type { UpdateUserProfileData } from '@shared/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { selectCurrentUser, selectUserPointBalance } from '../../redux/selectors';

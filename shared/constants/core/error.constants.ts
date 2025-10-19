@@ -15,6 +15,22 @@ export const AI_PROVIDER_ERROR_TYPES = {
 	UNKNOWN_ERROR: 'An unexpected error occurred while generating the question',
 } as const;
 
+// Common validation error messages
+export const VALIDATION_ERRORS = {
+	REQUIRED_FIELD: 'Field is required',
+	REQUIRED_USER_ID: 'User ID is required',
+	REQUIRED_USERNAME: 'Username is required',
+	REQUIRED_EMAIL: 'Email is required',
+	REQUIRED_PASSWORD: 'Password is required',
+	REQUIRED_FIELD_AND_VALUE: 'Field and value are required',
+	REQUIRED_PREFERENCE_AND_VALUE: 'Preference and value are required',
+	REQUIRED_AMOUNT_AND_REASON: 'Amount and reason are required',
+	REQUIRED_STATUS: 'Status is required',
+	REQUIRED_USER_ID_AND_STATUS: 'User ID and status are required',
+	INVALID_STATUS: 'Invalid status. Must be a valid user status',
+	INVALID_ROLE: 'Invalid role. Must be a valid user role',
+} as const;
+
 // Fallback question answers
 export const FALLBACK_QUESTION_ANSWERS = [
 	{ text: 'Try again', isCorrect: true },

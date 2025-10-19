@@ -10,8 +10,7 @@
  * @exports {Object} Configuration-related type definitions
  */
 export type { RateLimitConfig } from '../nest.types';
-export type { AppConfigInterface, DatabaseConfigType, JwtConfig } from '@shared';
-export type { RedisConfig } from '@shared';
+export type { AppConfigInterface, DatabaseConfigType, JwtConfig, RedisConfig } from '@shared/types';
 
 /**
  * NestJS types

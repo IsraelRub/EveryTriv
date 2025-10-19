@@ -5,11 +5,11 @@
  * @description Pipe for validating game answer submission data
  * @used_by server/src/features/game, server/src/controllers
  */
-import { GameAnswerData, ValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { GameAnswerData, getErrorMessage,ValidationResult } from '@shared/utils';
 
-import { ValidationService } from '../validation/validation.service';
+import { ValidationService } from '../validation';
 
 @Injectable()
 export class GameAnswerPipe implements PipeTransform {

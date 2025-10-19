@@ -1,4 +1,6 @@
-import { clientLogger as logger, formatRelativeTime, formatTopic, getErrorMessage } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils/error.utils';
+import { formatRelativeTime, formatTopic } from '@shared/utils/format.utils';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 

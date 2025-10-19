@@ -3,8 +3,9 @@
  * Extends shared types with server-specific functionality
  */
 // Import core shared types from workspace root
-import type { GameMode, TriviaAnswer, TriviaHistoryRequest, TriviaQuestion, TriviaRequest } from '@shared';
-import { DifficultyLevel } from '@shared';
+import { DifficultyLevel } from '@shared/constants';
+import type { TriviaAnswer, TriviaHistoryRequest, TriviaQuestion, TriviaRequest } from '@shared/types';
+import { GameMode } from '@shared/constants';
 
 // Re-export shared types
 export type { GameMode, TriviaAnswer, TriviaHistoryRequest, TriviaQuestion, TriviaRequest };

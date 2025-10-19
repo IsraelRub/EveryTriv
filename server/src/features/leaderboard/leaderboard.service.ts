@@ -1,10 +1,11 @@
-import { createNotFoundError, getErrorMessage, serverLogger as logger } from '@shared';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { serverLogger as logger } from '@shared/services';
+import { createNotFoundError, getErrorMessage } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
-
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 /**
  * Leaderboard Service
@@ -119,7 +120,7 @@ export class LeaderboardService {
 
 					return ranking;
 				},
-				300 // Cache for 5 minutes
+				CACHE_DURATION.MEDIUM // Cache for 5 minutes
 			);
 		} catch (error) {
 			logger.analyticsError('getUserRanking', {
@@ -152,7 +153,7 @@ export class LeaderboardService {
 
 					return leaderboard;
 				},
-				600 // Cache for 10 minutes
+				CACHE_DURATION.LONG // Cache for 10 minutes
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
@@ -190,7 +191,7 @@ export class LeaderboardService {
 
 					return leaderboard;
 				},
-				600 // Cache for 10 minutes
+				CACHE_DURATION.LONG // Cache for 10 minutes
 			);
 		} catch (error) {
 			logger.analyticsError('getLeaderboardByPeriod', {

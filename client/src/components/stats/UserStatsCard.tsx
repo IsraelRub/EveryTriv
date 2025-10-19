@@ -7,7 +7,7 @@
  * @used_by client/src/views/user
  */
 
-import { calculateAge, formatDate, formatDateShort, isToday, isYesterday } from '@shared';
+import { calculateAge, formatDate, formatDateShort, isToday, isYesterday } from '@shared/utils';
 import { motion } from 'framer-motion';
 
 import { UserStatsCardProps } from '../../types';

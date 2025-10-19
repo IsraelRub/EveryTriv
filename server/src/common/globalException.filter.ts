@@ -1,7 +1,7 @@
-import { getErrorMessage, getErrorStack, getErrorType, serverLogger as logger } from '@shared';
-import { NestRequest, NestResponse } from 'src/internal/types';
-
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
+import { NestRequest, NestResponse } from 'src/internal/types';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {

@@ -1,6 +1,7 @@
-import { PaymentData, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage,PaymentData } from '@shared/utils';
+import { CACHE_DURATION } from '@shared/constants';
 
 import {
 	AuditLog,
@@ -81,7 +82,7 @@ export class PaymentController {
 	 * Get payment history for user
 	 */
 	@Get('history')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getPaymentHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.paymentService.getPaymentHistory(userId);

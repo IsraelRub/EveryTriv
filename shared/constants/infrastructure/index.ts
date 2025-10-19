@@ -13,6 +13,12 @@
 export * from './http.constants';
 
 /**
+ * Localhost constants
+ * @description Centralized localhost URLs and ports configuration
+ */
+export * from './localhost.constants';
+
+/**
  * Storage constants
  * @description Storage configuration, cache TTL, and storage keys
  */

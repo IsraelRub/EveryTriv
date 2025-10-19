@@ -1,4 +1,5 @@
-import { clientLogger as logger, getErrorMessage } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils/error.utils';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createContext, useContext, useEffect } from 'react';
 import { PersistGate } from 'redux-persist/integration/react';

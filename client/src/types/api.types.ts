@@ -6,7 +6,7 @@
  */
 import type {
   AuthCredentials,
-  AuthResponse,
+  AuthenticationResult,
   CompleteUserAnalytics,
   CreateGameHistoryDto,
   DifficultyStatsData,
@@ -22,7 +22,7 @@ import type {
   UserPreferencesUpdate,
   UserProfileUpdateData,
   UserRankData,
-} from '@shared';
+} from '@shared/types';
 import type { ApiResponse } from '@shared/types/infrastructure/api.types';
 import type {
   LanguageValidationOptions,
@@ -41,8 +41,8 @@ export interface ClientApiService {
   delete<T>(url: string, config?: RequestInit): Promise<ApiResponse<T>>;
 
   // Auth methods
-  login(credentials: AuthCredentials): Promise<AuthResponse>;
-  register(credentials: AuthCredentials): Promise<AuthResponse>;
+  login(credentials: AuthCredentials): Promise<AuthenticationResult>;
+  register(credentials: AuthCredentials): Promise<AuthenticationResult>;
   logout(): Promise<void>;
   refreshToken(): Promise<{ accessToken: string }>;
 

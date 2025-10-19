@@ -1,8 +1,10 @@
 /**
- * Infrastructure types for EveryTriv
+ * Infrastructure Types Index
  *
  * @module InfrastructureTypes
- * @description API, HTTP, cache, storage, and logging infrastructure types
+ * @description Technical and infrastructure-related type definitions
+ * @author EveryTriv Team
+ * @used_by server/src/features, client/src/services
  */
 
 export * from './api.types';

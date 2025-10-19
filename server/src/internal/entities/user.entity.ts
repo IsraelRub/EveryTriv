@@ -1,4 +1,6 @@
 import type { BasicValue } from '@shared/types/core/data.types';
+import type { Achievement } from '@shared/types';
+import { UserRole } from '@shared/constants';
 import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 import { DEFAULT_USER_PREFERENCES, ServerUserPreferences, UserAddress } from '../types/typeorm-compatibility.types';
@@ -69,8 +71,8 @@ export class UserEntity {
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean = true;
 
-	@Column({ default: 'user' })
-	role: 'admin' | 'user' | 'guest' = 'user';
+	@Column({ default: UserRole.USER })
+	role: UserRole = UserRole.USER;
 
 	@Column({ name: 'reset_password_token', nullable: true })
 	resetPasswordToken?: string;
@@ -94,13 +96,7 @@ export class UserEntity {
 	currentSubscriptionId?: string;
 
 	@Column('jsonb', { default: [] })
-	achievements: Array<{
-		id: string;
-		title: string;
-		description: string;
-		icon: string;
-		unlockedAt: Date;
-	}>;
+	achievements: Achievement[];
 
 	@Column('jsonb', { default: {} })
 	stats: Record<string, BasicValue> = {};

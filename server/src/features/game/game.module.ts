@@ -8,13 +8,12 @@
  * @provides GameService, AiProvidersService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity
  */
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PointCalculationService } from '@shared/services';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
 import { CacheModule, StorageModule } from 'src/internal/modules';
 
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { PointCalculationService } from '../../../../shared/services/points/pointCalculation.service';
 import {
 	CustomDifficultyPipe,
 	GameAnswerPipe,
@@ -23,9 +22,9 @@ import {
 	TriviaRequestPipe,
 } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
-import { AnalyticsModule } from '../analytics/analytics.module';
-import { AuthModule } from '../auth/auth.module';
-import { UserModule } from '../user/user.module';
+import { AnalyticsModule } from '../analytics';
+import { AuthModule } from '../auth';
+import { UserModule } from '../user';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { AiProvidersController, AiProvidersService } from './logic/providers/management';

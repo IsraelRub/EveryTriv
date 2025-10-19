@@ -1,6 +1,7 @@
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Controller, Get } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import { Cache, Public, Roles } from '../../../../../common';
 import { AiProvidersService } from './providers.service';
@@ -18,8 +19,8 @@ export class AiProvidersController {
 	 * @returns Promise<ProviderStats> Provider statistics
 	 */
 	@Get('stats')
-	@Roles('admin')
-	@Cache(300) // Cache for 5 minutes
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getProviderStats() {
 		try {
 			const stats = this.aiProvidersService.getProviderStats();
@@ -46,8 +47,8 @@ export class AiProvidersController {
 	 * @returns Promise<number> Number of available providers
 	 */
 	@Get('count')
-	@Roles('admin')
-	@Cache(300) // Cache for 5 minutes
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getAvailableProvidersCount() {
 		try {
 			const count = this.aiProvidersService.getAvailableProvidersCount();
@@ -79,7 +80,7 @@ export class AiProvidersController {
 	 */
 	@Get('health')
 	@Public()
-	@Cache(60) // Cache for 1 minute
+	@Cache(CACHE_DURATION.VERY_SHORT) // Cache for 30 seconds
 	async getHealthStatus() {
 		try {
 			const count = this.aiProvidersService.getAvailableProvidersCount();

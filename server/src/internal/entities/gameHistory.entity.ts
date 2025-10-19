@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
-// import { GameMode } from '../../../../shared/types'; // Removed as GameMode is a type, not an enum value
+import type { ApiQuestionData } from '@shared/types';
 import { UserEntity } from './user.entity';
 
 @Entity('game_history')
@@ -45,13 +45,7 @@ export class GameHistoryEntity {
 	creditsUsed: number = 0;
 
 	@Column({ name: 'questions_data', type: 'jsonb', default: [] })
-	questionsData: Array<{
-		question: string;
-		userAnswer: string;
-		correctAnswer: string;
-		isCorrect: boolean;
-		timeSpent?: number;
-	}> = [];
+	questionsData: ApiQuestionData[] = [];
 
 	@CreateDateColumn({ name: 'created_at' })
 	createdAt: Date = new Date();

@@ -4,9 +4,11 @@
  * @module AuthController
  * @description Authentication controller with login, register, and user management endpoints
  */
-import { getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { BasicUser } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import {
 	ApiResponse,
@@ -136,11 +138,11 @@ export class AuthController {
 	 * Get current user profile
 	 */
 	@Get('me')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	@ApiResponse(200, 'User profile retrieved successfully')
 	async getCurrentUser(
-		@CurrentUser() user: { id: string; username: string; email: string }
-	): Promise<{ id: string; username: string; email: string }> {
+		@CurrentUser() user: BasicUser
+	): Promise<BasicUser> {
 		try {
 			logger.authInfo('Current user accessed', {
 				userId: user.id,
@@ -227,9 +229,9 @@ export class AuthController {
 	 */
 	@Get('admin/users')
 	@UseGuards(AuthGuard, RolesGuard)
-	@Roles('admin')
-	@Cache(60) // Cache for 1 minute
-	async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }) {
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getAllUsers(@CurrentUser() user: BasicUser) {
 		try {
 			logger.authInfo('Admin accessed all users', {
 				adminId: user.id,

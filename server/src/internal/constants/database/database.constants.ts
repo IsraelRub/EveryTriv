@@ -2,6 +2,7 @@
  * Server-specific database constants for EveryTriv
  * Server-only database configuration
  */
+import { CACHE_DURATION } from '@shared/constants';
 
 // Database table names enum
 export enum DatabaseTable {
@@ -48,9 +49,9 @@ export const REDIS_CONSTANTS = {
 	 * Default TTL values in seconds
 	 */
 	TTL: {
-		SESSION: 86400, // 24 hours
-		CACHE_SHORT: 300, // 5 minutes
-		CACHE_MEDIUM: 3600, // 1 hour
-		CACHE_LONG: 86400, // 24 hours
+		CACHE_SHORT: CACHE_DURATION.MEDIUM, // 5 minutes
+		CACHE_MEDIUM: CACHE_DURATION.VERY_LONG, // 1 hour
+		CACHE_LONG: CACHE_DURATION.EXTREME, // 24 hours
+		SESSION: CACHE_DURATION.EXTREME, // 24 hours
 	},
 };

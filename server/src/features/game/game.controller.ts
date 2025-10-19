@@ -1,6 +1,8 @@
-import { CreateGameHistoryDto, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { CreateGameHistoryDto, BasicUser } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import {
 	AuditLog,
@@ -28,7 +30,7 @@ export class GameController {
 	 * Get trivia question by ID
 	 */
 	@Get('trivia/:id')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getQuestionById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -55,7 +57,7 @@ export class GameController {
 	 * Get game by ID (for client compatibility)
 	 */
 	@Get(':id')
-	@Cache(300) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getGameById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -163,7 +165,7 @@ export class GameController {
 	 * Get game history
 	 */
 	@Get('history')
-	@Cache(600) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getGameHistory(@CurrentUserId() userId: string) {
 		const startTime = Date.now();
 
@@ -341,9 +343,9 @@ export class GameController {
 	 * Admin endpoint - get game statistics (admin only)
 	 */
 	@Get('admin/statistics')
-	@Roles('admin')
-	@Cache(300) // Cache for 5 minutes
-	async getGameStatistics(@CurrentUser() user: { id: string; role: string; username: string }) {
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getGameStatistics(@CurrentUser() user: BasicUser) {
 		try {
 			// This would call a service method to get game statistics
 			const statistics = {
@@ -378,9 +380,9 @@ export class GameController {
 	 * Admin endpoint - delete all game history (admin only)
 	 */
 	@Delete('admin/history/clear-all')
-	@Roles('admin')
+	@Roles(UserRole.ADMIN)
 	@AuditLog('admin:clear-all-game-history')
-	async clearAllGameHistory(@CurrentUser() user: { id: string; role: string; username: string }) {
+	async clearAllGameHistory(@CurrentUser() user: BasicUser) {
 		try {
 			// This would call a service method to clear all game history
 			// await this.gameService.clearAllGameHistory();

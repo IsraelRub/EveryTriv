@@ -28,7 +28,7 @@ export interface MiddlewareMetrics {
  * Question statistics interface
  * @interface QuestionStats
  * @description Comprehensive statistics for trivia questions
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
 export interface QuestionStats {
 	totalQuestions: number;
@@ -43,9 +43,9 @@ export interface QuestionStats {
  * Performance metrics interface
  * @interface PerformanceMetrics
  * @description System performance and monitoring metrics
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
-export interface PerformanceMetrics {
+export interface AnalyticsPerformanceMetrics {
 	responseTime: number;
 	memoryUsage: number;
 	cpuUsage: number;
@@ -59,9 +59,9 @@ export interface PerformanceMetrics {
  * Cache statistics interface
  * @interface CacheStats
  * @description Statistics for question cache
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
-export interface CacheStats {
+export interface AnalyticsCacheStats {
 	size: number;
 	hitRate: number;
 	mostAccessed: Array<Record<string, BasicValue>>;
@@ -71,7 +71,7 @@ export interface CacheStats {
  * Answer balance analysis interface
  * @interface AnswerBalanceAnalysis
  * @description Analysis of answer distribution and balance
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
 export interface AnswerBalanceAnalysis {
 	isBalanced: boolean;
@@ -83,7 +83,7 @@ export interface AnswerBalanceAnalysis {
  * Question complexity analysis interface
  * @interface QuestionComplexityAnalysis
  * @description Analysis of question complexity
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
 export interface QuestionComplexityAnalysis {
 	complexityScore: number;
@@ -99,7 +99,7 @@ export interface QuestionComplexityAnalysis {
  * Answer position statistics interface
  * @interface AnswerPositionStats
  * @description Statistics about correct answer positions
- * @used_by server/src/shared/utils/trivia.utils.ts
+ * @used_by server/src/features/analytics
  */
 export interface AnswerPositionStats {
 	positionCounts: Record<number, number>;

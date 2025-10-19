@@ -14,7 +14,7 @@ import type { ValidationMessageProps } from '../../types';
 import { combineClassNames } from '../../utils/combineClassNames';
 import { Icon } from '../icons/IconLibrary';
 
-export type { ValidationStatus } from '@shared/types/domain/validation/validation.types';
+export type { ValidationStatus } from '@shared/types/domain/validation';
 
 export const ValidationMessage: FC<ValidationMessageProps> = ({
   status,

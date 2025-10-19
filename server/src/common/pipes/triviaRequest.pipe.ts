@@ -5,17 +5,16 @@
  * @description Pipe for validating trivia request data
  * @used_by server/src/features/game, server/src/controllers
  */
-import {
-	TriviaRequestData,
-	VALIDATION_LIMITS,
-	ValidationResult,
-	getErrorMessage,
-	serverLogger as logger,
-} from '@shared';
-
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { VALIDATION_LIMITS } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import {
+	getErrorMessage,
+	TriviaRequestData,
+	ValidationResult,
+} from '@shared/utils';
 
-import { ValidationService } from '../validation/validation.service';
+import { ValidationService } from '../validation';
 
 @Injectable()
 export class TriviaRequestPipe implements PipeTransform {

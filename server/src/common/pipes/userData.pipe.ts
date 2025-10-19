@@ -5,11 +5,12 @@
  * @description Pipe for validating user profile data input with comprehensive validation
  * @used_by server/src/features/user, server/src/controllers
  */
-import { UserProfileUpdateData, ValidationResult, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { UserProfileUpdateData, ValidationResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
-import { ValidationService } from '../validation/validation.service';
+import { ValidationService } from '../validation';
 
 @Injectable()
 export class UserDataPipe implements PipeTransform {

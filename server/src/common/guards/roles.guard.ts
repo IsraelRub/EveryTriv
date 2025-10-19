@@ -5,10 +5,10 @@
  * @description Guard that checks user roles and permissions
  * @author EveryTriv Team
  */
-import { UserRole, serverLogger as logger } from '@shared';
-
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { serverLogger as logger } from '@shared/services';
+import { UserRole } from '@shared/constants';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -33,7 +33,7 @@ export class RolesGuard implements CanActivate {
 		}
 
 		// Get required roles from decorator
-		const requiredRoles = this.reflector.getAllAndOverride<string[]>('roles', [
+		const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>('roles', [
 			context.getHandler(),
 			context.getClass(),
 		]);

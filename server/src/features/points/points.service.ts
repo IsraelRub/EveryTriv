@@ -1,20 +1,14 @@
-import {
-	POINTS_PRICING_TIERS,
-	PointBalance,
-	PointPurchaseOption,
-	ensureErrorObject,
-	formatCurrency,
-	serverLogger as logger,
-} from '@shared';
-import { BasePointsService } from '@shared/services/points/basePoints.service';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { POINTS_PRICING_TIERS } from '@shared/constants';
+import { BasePointsService , serverLogger as logger } from '@shared/services';
+import type { PointBalance, PointPurchaseOption } from '@shared/types';
+import { ensureErrorObject, formatCurrency } from '@shared/utils';
 import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
 import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { ValidationService } from '../../common/validation/validation.service';
+import { ValidationService } from '../../common';
 import { PointSource, PointTransactionType } from '../../internal/constants';
 import { PaymentService } from '../payment';
 

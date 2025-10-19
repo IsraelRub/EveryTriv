@@ -3,7 +3,8 @@
  * @module GameComponentTypes
  * @description Game component prop types and interfaces
  */
-import { BasicValue, GameMode, GameModeConfig } from '@shared';
+import { GameMode } from '@shared/constants';
+import type { BasicValue, GameModeConfig } from '@shared/types';
 import { FormEvent } from 'react';
 
 import { Achievement } from './achievements.types';

@@ -6,8 +6,8 @@
  * @description Client-side user profile and preferences management
  * @used_by client/src/views/user, client/src/components/user, client/src/hooks
  */
-import { UpdateUserProfileData, User } from '@shared';
-import { clientLogger as logger } from '@shared';
+import { clientLogger as logger } from '@shared/services';
+import type { UpdateUserProfileData, User } from '@shared/types';
 
 import { apiService } from '../api';
 

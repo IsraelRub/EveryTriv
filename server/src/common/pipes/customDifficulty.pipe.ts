@@ -5,12 +5,12 @@
  * @description Pipe for validating custom difficulty text input with comprehensive validation
  * @used_by server/src/features/game, server/src/controllers
  */
-import type { ValidationOptions } from '@shared';
-import { PipeValidationWithSuggestion, getErrorMessage, serverLogger as logger } from '@shared';
-
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { serverLogger as logger } from '@shared/services';
+import type { ValidationOptions } from '@shared/types';
+import { getErrorMessage,PipeValidationWithSuggestion } from '@shared/utils';
 
-import { ValidationService } from '../validation/validation.service';
+import { ValidationService } from '../validation';
 
 @Injectable()
 export class CustomDifficultyPipe implements PipeTransform {

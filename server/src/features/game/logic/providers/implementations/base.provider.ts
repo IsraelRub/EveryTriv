@@ -5,27 +5,18 @@
  * @description Abstract base class for all trivia question providers
  * @used_by server/src/features/game/logic/providers
  */
-import {
-	AI_PROVIDER_ERROR_TYPES,
+import { AI_PROVIDER_ERROR_TYPES, DIFFICULTY_MULTIPLIERS, DifficultyLevel, ERROR_CONTEXT_MESSAGES, FALLBACK_QUESTION_ANSWERS, HTTP_TIMEOUTS, PROVIDER_ERROR_MESSAGES } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type {
 	AnalyticsMetadata,
-	DIFFICULTY_MULTIPLIERS,
-	DifficultyLevel,
-	ERROR_CONTEXT_MESSAGES,
-	FALLBACK_QUESTION_ANSWERS,
 	LLMApiResponse,
 	LLMResponse,
 	LLMTriviaResponse,
-	PROVIDER_ERROR_MESSAGES,
 	ProviderConfig,
 	QuestionCacheMap,
 	TriviaQuestion,
-	clamp,
-	createAuthError,
-	getErrorMessage,
-	isCustomDifficulty,
-	serverLogger as logger,
-	shuffle,
-} from '@shared';
+} from '@shared/types';
+import { clamp, createAuthError, getErrorMessage, isCustomDifficulty, shuffle } from '@shared/utils';
 
 import { PromptTemplates } from '../prompts';
 
@@ -84,7 +75,7 @@ export abstract class BaseTriviaProvider {
 			throw createAuthError(PROVIDER_ERROR_MESSAGES.API_KEY_NOT_CONFIGURED);
 		}
 
-		const timeout = 30000; // 30 seconds timeout
+		const timeout = HTTP_TIMEOUTS.QUESTION_GENERATION; // 30 seconds timeout
 
 		// Create a promise that rejects after timeout
 		const timeoutPromise = new Promise<never>((_, reject) => {
