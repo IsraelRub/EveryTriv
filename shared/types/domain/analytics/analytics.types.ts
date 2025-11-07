@@ -5,7 +5,57 @@
  * @description Type definitions for analytics and metrics data structures
  * @used_by server/src/features/analytics/analytics.service.ts
  */
-import { BasicValue } from '../../core/data.types';
+import type { ActivityEntry, BasicValue, DifficultyStats } from '../../core/data.types';
+import type { BaseGameStatistics, UserRankData } from '../game/game.types';
+
+/**
+ * Raw query result interfaces for TypeORM
+ * @description Type definitions for raw query results from database
+ */
+
+/**
+ * Topic statistics raw result interface (raw from database)
+ * @interface TopicStatRaw
+ * @description Raw result from topic statistics query
+ */
+export interface TopicStatRaw {
+	topic: string;
+	count: number;
+	avgCorrect?: number | null;
+	avgTime?: number | null;
+}
+
+/**
+ * Difficulty statistics raw result interface (raw from database)
+ * @interface DifficultyStatRaw
+ * @description Raw result from difficulty statistics query
+ */
+export interface DifficultyStatRaw {
+	difficulty: string;
+	total: number;
+	correct: number;
+	averageTime?: number | null;
+}
+
+/**
+ * Difficulty statistics interface
+ * @interface DifficultyStat
+ * @description Processed difficulty statistics with numeric values
+ * Extends DifficultyStats from core/types with additional averageTime field
+ */
+export interface DifficultyStat extends DifficultyStats {
+	averageTime: number;
+}
+
+/**
+ * Time statistics raw result interface (raw from database)
+ * @interface TimeStat
+ * @description Raw result from time statistics query
+ */
+export interface TimeStat {
+	averageTime: number | null;
+	medianTime: number | null;
+}
 
 /**
  * Statistics item interface
@@ -29,24 +79,6 @@ export interface TopicStats {
 	totalGames: number;
 	averageCorrectAnswers: number;
 	averageTimeSpent: number;
-}
-
-/**
- * Question cache entry interface
- * @interface QuestionCacheEntry
- * @description Cache entry for trivia questions
- */
-export interface QuestionCacheEntry {
-	question: {
-		question: string;
-		answers: string[];
-		correctAnswerIndex: number;
-		difficulty: string;
-		topic: string;
-	};
-	created_at: Date;
-	accessCount: number;
-	lastAccessed: Date;
 }
 
 /**
@@ -85,17 +117,17 @@ export interface AnalyticsMetadata {
 	utmMedium?: string;
 	utmCampaign?: string;
 	// Provider-specific analytics fields
-	questions?: Array<{
+	questions?: {
 		id: string;
 		topic: string;
 		difficulty: string;
 		responseTime: number;
 		timestamp: Date;
-	}>;
-	errors?: Array<{
+	}[];
+	errors?: {
 		timestamp: Date;
 		provider: string;
-	}>;
+	}[];
 }
 
 /**
@@ -128,12 +160,10 @@ export interface QuestionAnalytics {
 export interface TopicAnalytics {
 	topic: string;
 	totalQuestions: number;
-	averageSuccessRate: number;
 	successRate: number;
 	correctAnswers: number;
 	mostDifficultQuestion: string;
 	easiestQuestion: string;
-	averageTimeToAnswer: number;
 	averageTime: number;
 	difficultyBreakdown: Record<string, number>;
 }
@@ -143,52 +173,30 @@ export interface TopicAnalytics {
  * @interface UserAnalytics
  * @description Analytics data for users
  */
-export interface UserAnalytics {
+export interface UserAnalytics extends BaseGameStatistics {
 	userId: string;
-	totalQuestionsAnswered: number;
-	totalQuestions: number;
-	totalCorrectAnswers: number;
 	correctAnswers: number;
-	overallSuccessRate: number;
-	successRate: number;
 	favoriteTopic: string;
 	averageTimePerQuestion: number;
-	averageResponseTime: number;
 	totalPoints: number;
 	topicsPlayed: Record<string, number>;
-	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
-	recentActivity: Array<{
-		date: Date;
-		action: string;
-		detail?: string;
-		topic?: string;
-		durationSeconds?: number;
-	}>;
-	totalPlayTime: number;
+	difficultyBreakdown: Record<string, DifficultyStats>;
+	recentActivity: ActivityEntry[];
 }
 
 /**
  * User analytics stats interface for database queries
  * @interface UserAnalyticsStats
- * @description Raw analytics data from database queries
+ * @description Raw analytics data from database queries - UserAnalytics without userId
  */
-export interface UserAnalyticsStats {
-	totalQuestions: number;
+export interface UserAnalyticsStats extends BaseGameStatistics {
 	correctAnswers: number;
-	successRate: number;
 	favoriteTopic: string;
-	averageTime: number;
+	averageTimePerQuestion: number;
 	totalPoints: number;
 	topicsPlayed: Record<string, number>;
-	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
-	recentActivity: Array<{
-		date: Date;
-		action: string;
-		detail?: string;
-		topic?: string;
-		durationSeconds?: number;
-	}>;
-	totalPlayTime: number;
+	difficultyBreakdown: Record<string, DifficultyStats>;
+	recentActivity: ActivityEntry[];
 }
 
 /**
@@ -257,10 +265,26 @@ export interface GameStatsData {
 	averageScore: number;
 	popularTopics: string[];
 	difficultyDistribution: Record<string, number>;
-	timeStats: {
-		averageTime: number;
-		medianTime: number;
-	};
+	timeStats: TimeStat;
+}
+
+/**
+ * Detailed game statistics interface
+ * @interface GameStatistics
+ * @description Detailed game statistics for client-side display with breakdown by topics and difficulties
+ */
+export interface GameStatistics {
+	totalGames: number;
+	averageScore: number;
+	bestScore: number;
+	worstScore: number;
+	totalTimeSpent: number;
+	averageTimePerGame: number;
+	correctAnswers: number;
+	wrongAnswers: number;
+	accuracy: number;
+	topics: StatisticsItem[];
+	difficulties: StatisticsItem[];
 }
 
 /**
@@ -269,12 +293,7 @@ export interface GameStatsData {
  * @description Data structure for topic statistics analytics
  */
 export interface TopicStatsData {
-	topics: Array<{
-		name: string;
-		totalGames: number;
-		averageCorrectAnswers: number;
-		averageTimeSpent: number;
-	}>;
+	topics: TopicStats[];
 	totalTopics: number;
 }
 
@@ -282,45 +301,11 @@ export interface TopicStatsData {
  * Difficulty statistics data interface
  * @interface DifficultyStatsData
  * @description Data structure for difficulty statistics analytics
+ * Uses DifficultyStat (extends DifficultyStats) for analytics-specific fields
  */
 export interface DifficultyStatsData {
-	difficulties: Record<
-		string,
-		{
-			total: number;
-			correct: number;
-			averageTime: number;
-		}
-	>;
+	difficulties: Record<string, DifficultyStat>;
 	totalQuestions: number;
-}
-
-/**
- * Difficulty statistics interface
- * @interface DifficultyStats
- * @description Statistics for different difficulty levels
- * @used_by client/src/services/api.service.ts (getDifficultyStats), server/src/features/analytics/analytics.service.ts
- */
-export interface DifficultyStats {
-	[difficulty: string]: {
-		correct: number;
-		total: number;
-	};
-}
-
-/**
- * User score data interface
- * @interface UserScoreData
- * @description User score data for leaderboards
- */
-export interface UserScoreData {
-	userId: string;
-	username: string;
-	score: number;
-	rank: number;
-	totalPoints: number;
-	gamesPlayed: number;
-	successRate: number;
 }
 
 /**
@@ -353,54 +338,68 @@ export interface UserAnalyticsQuery {
 }
 
 /**
+ * User basic information interface
+ * @interface UserBasicInfo
+ * @description Basic user information for analytics
+ */
+export interface UserBasicInfo {
+	userId: string;
+	username: string;
+	credits: number;
+	purchasedPoints: number;
+	totalPoints: number;
+	createdAt: Date;
+	accountAge: number;
+}
+
+/**
+ * User game analytics interface
+ * @interface UserGameAnalytics
+ * @description Game analytics data for users - analytics metrics without user identification and financial data
+ */
+export interface UserGameAnalytics extends BaseGameStatistics {
+	correctAnswers: number;
+	averageTimePerQuestion: number;
+	topicsPlayed: Record<string, number>;
+	difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
+	recentActivity: ActivityEntry[];
+}
+
+/**
+ * User performance metrics interface
+ * @interface UserPerformanceMetrics
+ * @description Performance metrics for user analytics
+ */
+export interface UserPerformanceMetrics {
+	lastPlayed: Date;
+	streakDays: number;
+	bestStreak: number;
+	improvementRate: number;
+	weakestTopic: string;
+	strongestTopic: string;
+	averageGameTime?: number;
+	consistencyScore?: number;
+	learningCurve?: number;
+}
+
+/**
+ * User ranking data interface (without userId)
+ * @type UserRankingData
+ * @description User ranking information without userId - alias for UserRankData without userId
+ * @deprecated Use UserRankData from game.types.ts instead
+ */
+export type UserRankingData = Omit<UserRankData, 'userId'>;
+
+/**
  * User Analytics Data Interface
  * @interface CompleteUserAnalytics
  * @description Complete user analytics data combining basic user info with game analytics
  */
 export interface CompleteUserAnalytics {
-	basic: {
-		userId: string;
-		username: string;
-		credits: number;
-		purchasedPoints: number;
-		totalPoints: number;
-		created_at: Date;
-		accountAge: number;
-	};
-	game: {
-		totalGames: number;
-		totalQuestions: number;
-		correctAnswers: number;
-		successRate: number;
-		averageTimePerQuestion: number;
-		topicsPlayed: Record<string, number>;
-		difficultyBreakdown: Record<string, { total: number; correct: number; successRate: number }>;
-		recentActivity: Array<{
-			date: Date;
-			action: string;
-			detail?: string;
-			topic?: string;
-			durationSeconds?: number;
-		}>;
-		totalPlayTime: number;
-	};
-	performance: {
-		lastPlayed: Date;
-		streakDays: number;
-		bestStreak: number;
-		improvementRate: number;
-		weakestTopic: string;
-		strongestTopic: string;
-		averageGameTime?: number;
-		consistencyScore?: number;
-		learningCurve?: number;
-	};
-	ranking: {
-		rank: number;
-		score: number;
-		percentile: number;
-		totalUsers: number;
-	};
+	basic: UserBasicInfo;
+	game: UserGameAnalytics;
+	performance: UserPerformanceMetrics;
+	ranking: UserRankingData;
 }
 
 /**
@@ -415,4 +414,85 @@ export interface AnalyticsAnswerData {
 	difficulty?: string;
 	selectedAnswer?: string;
 	correctAnswer?: string;
+}
+
+/**
+ * System insights interface
+ * @interface SystemInsights
+ * @description System insights data structure for analytics service
+ * @used_by server/src/features/analytics/analytics.service.ts
+ */
+export interface SystemInsights {
+	performanceInsights: string[];
+	securityInsights: string[];
+	userBehaviorInsights: string[];
+	systemHealthInsights: string[];
+	status: string;
+	trends: string[];
+	timestamp: Date;
+}
+
+/**
+ * Business metrics revenue interface
+ * @interface BusinessMetricsRevenue
+ * @description Revenue metrics for business analytics
+ */
+export interface BusinessMetricsRevenue {
+	total: number;
+	mrr: number;
+	arpu: number;
+}
+
+/**
+ * Business metrics users interface
+ * @interface BusinessMetricsUsers
+ * @description User metrics for business analytics
+ */
+export interface BusinessMetricsUsers {
+	total: number;
+	active: number;
+	newThisMonth: number;
+	churnRate: number;
+}
+
+/**
+ * Business metrics engagement interface
+ * @interface BusinessMetricsEngagement
+ * @description Engagement metrics for business analytics
+ */
+export interface BusinessMetricsEngagement {
+	dau: number;
+	wau: number;
+	mau: number;
+	avgSessionDuration: number;
+}
+
+/**
+ * Business metrics interface
+ * @interface BusinessMetrics
+ * @description Business metrics data structure for analytics service
+ * @used_by server/src/features/analytics/analytics.service.ts
+ */
+export interface BusinessMetrics {
+	revenue: BusinessMetricsRevenue;
+	users: BusinessMetricsUsers;
+	engagement: BusinessMetricsEngagement;
+}
+
+/**
+ * System recommendation interface
+ * @interface SystemRecommendation
+ * @description System recommendation data structure for analytics service
+ * @used_by server/src/features/analytics/analytics.service.ts
+ */
+export interface SystemRecommendation {
+	id: string;
+	type: string;
+	title: string;
+	description: string;
+	message: string;
+	action: string;
+	priority: string;
+	estimatedImpact: string;
+	implementationEffort: string;
 }

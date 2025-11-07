@@ -3,7 +3,8 @@
  * @module PaymentInterfaces
  * @description Payment-related interfaces and types
  */
-import type { UserAddress } from './domain/user/user.types';
+import { PlanType } from '../constants';
+import type { UserAddress } from './domain';
 
 /**
  * Payment metadata interface
@@ -28,8 +29,8 @@ export interface PaymentMetadata {
 	points?: number;
 	bonus?: number;
 	// Optional metadata fields
-	created_at?: Date;
-	updated_at?: Date;
+	createdAt?: Date;
+	updatedAt?: Date;
 	version?: string;
 	source?: string;
 	tags?: string[];
@@ -48,11 +49,11 @@ export interface PaymentMetadata {
 // Personal payment data interface for payment forms
 export interface PersonalPaymentData {
 	// Personal Information
-	first_name: string;
-	last_name: string;
+	firstName: string;
+	lastName: string;
 	email: string;
 	phone: string;
-	date_of_birth: string;
+	dateOfBirth: string;
 
 	// Address Information
 	address: UserAddress;
@@ -64,11 +65,11 @@ export interface PersonalPaymentData {
 	cardHolderName: string;
 
 	// Plan Information
-	planType: 'basic' | 'premium' | 'pro' | 'points';
+	planType: PlanType;
 	numberOfPayments: number;
 
 	// Additional
-	additional_info?: string;
+	additionalInfo?: string;
 	agreeToTerms: boolean;
 }
 

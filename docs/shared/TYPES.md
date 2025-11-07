@@ -69,6 +69,20 @@ export interface PointTransaction {
 }
 ```
 
+## UserPreferences
+```typescript
+export interface UserPreferences {
+  language?: string;
+  timezone?: string;
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
+  soundEnabled?: boolean;
+  animationsEnabled?: boolean;
+}
+```
+
+**הערה:** האפליקציה משתמשת בערכת צבעים קבועה ללא תמיכה ב-light/dark mode toggle
+
 ## עקרונות
 - אין הזרקת לוגיקה בקבצי טיפוסים
 - איסור תלות מעגלית (core לא תלוי ב-domain)

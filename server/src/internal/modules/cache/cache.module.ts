@@ -7,6 +7,7 @@
  * @dependencies RedisModule
  */
 import { Module, OnModuleInit } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
 
 import { RedisModule } from '../redis.module';
@@ -21,7 +22,7 @@ import { CacheService } from './cache.service';
 })
 export class CacheModule implements OnModuleInit {
 	onModuleInit() {
-		logger.system('Cache module initialized', {
+		logger.systemInfo('Cache module initialized', {
 			module: 'CacheModule',
 			dependencies: ['RedisModule'],
 		});

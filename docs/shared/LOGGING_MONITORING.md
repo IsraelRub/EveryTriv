@@ -10,7 +10,51 @@
 - מדדי בריאות/ביצועים בסיסיים.
 - פלט עקבי בין Client / Server עם טיפוסים משותפים.
 
-## עקרונות ארכיטקטורה
+## היררכיה של מתודות לוגר
+
+### רמות גישה
+- **Public**: מתודות ספציפיות לקטגוריות (userError, apiError, gameInfo וכו')
+- **Protected**: מתודות בסיסיות (error, warn, info, debug) - לשימוש פנימי בלבד
+- **Private**: מתודות קונפיגורציה (updateConfig, getConfig)
+
+### מתי להשתמש במתודה ספציפית?
+
+| הקשר | מתודה נכונה | מתודות שגויות |
+|------|-------------|----------------|
+| שגיאות משתמש (פרופיל, העדפות) | `userError`, `userWarn` | `error`, `apiError` |
+| פעולות API (CRUD) | `apiCreate/Read/Update/Delete`, `apiError` | `error`, `info` |
+| שגיאות משחק | `gameError`, `gameInfo` | `error`, `apiError` |
+| אבטחה והרשאות | `securityError`, `securityDenied`, `authError` | `error`, `userError` |
+| מסד נתונים | `databaseError`, `databaseInfo` | `error`, `systemError` |
+| Cache | `cacheHit/Miss/Error`, `cacheInfo` | `info`, `error` |
+| ניווט | `navigationError`, `navigationRoute` | `error`, `info` |
+| אחסון | `storageError`, `storageInfo` | `error`, `systemError` |
+| תשלומים | `paymentSuccess/Failed`, `payment` | `info`, `error` |
+| ביצועים | `performance`, `trackPerformanceEnhanced` | `info`, `debug` |
+| אנליטיקה | `analyticsError`, `analyticsTrack` | `error`, `info` |
+| וולידציה | `validationError/Success` | `error`, `userError` |
+| מערכת כללי | `systemError`, `appStartup/Shutdown` | `error` |
+
+### דוגמאות שימוש נכון
+
+```typescript
+// ✅ נכון - ספציפי ומדויק
+logger.userError('Failed to update user preferences', { userId, preferences });
+logger.navigationPage('analytics', { timeFilter });
+logger.paymentSuccess(paymentId, amount, { userId, method });
+
+// ❌ שגוי - גנרי מדי
+logger.error('Failed to update user preferences');
+logger.info('Analytics view loaded');
+logger.info('Payment completed');
+```
+
+### שימוש ב-console
+- **מותר**: migrations, main.ts, ErrorBoundary components
+- **אסור**: כל שאר הקוד - השתמש בלוגר במקום
+- **ESLint**: אוכף כלל `no-console` עם חריגות לקבצים ספציפיים
+
+### ארכיטקטורה
 | עיקרון | הסבר |
 |--------|------|
 | מקור אמת יחיד | מימוש לוגר משותף בשכבת shared/services |

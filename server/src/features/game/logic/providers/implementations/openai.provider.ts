@@ -6,7 +6,8 @@
  * @used_by server/src/features/game/logic (AiProvidersService.initializeProviders)
  */
 import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
-import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+import type { AIProviderInstance, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+
 import { createValidationError } from '@internal/utils';
 
 import { BaseTriviaProvider } from '../implementations';
@@ -23,7 +24,7 @@ export class OpenAITriviaProvider extends BaseTriviaProvider {
 	name = 'OpenAI';
 	protected apiKey: string;
 
-	provider = {
+	provider: AIProviderInstance = {
 		name: 'OpenAI',
 		config: {
 			providerName: 'OpenAI',
@@ -36,7 +37,6 @@ export class OpenAITriviaProvider extends BaseTriviaProvider {
 			},
 			costPerToken: 0.000002,
 			maxTokens: 4096,
-			supportedLanguages: ['en', 'he'],
 			lastUpdated: new Date(),
 		},
 		isAvailable: true,
@@ -56,9 +56,9 @@ export class OpenAITriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'openai',
 			apiKey: this.apiKey,
-		baseUrl: 'https://api.openai.com/v1/chat/completions',
-		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
-		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
+			baseUrl: 'https://api.openai.com/v1/chat/completions',
+			timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 4,
 			headers: {

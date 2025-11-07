@@ -7,42 +7,20 @@
  * @used_by server/src/features, server/src/controllers, server/src/services
  */
 
-// ============================================================================
-// DATABASE CONSTANTS
-// ============================================================================
-
 /**
  * Database constants
  * @description Database tables, Redis configuration, and connection settings
  */
 export * from './database';
 
-// ============================================================================
-// POINTS CONSTANTS
-// ============================================================================
+/**
+ * Auth constants
+ * @description Authentication-related constants for server-side use
+ */
+export * from './auth';
 
 /**
- * Points constants
- * @description Points management, transaction types, and pricing
+ * Public endpoints constants
+ * @description Public endpoints that don't require authentication
  */
-export * from './points';
-
-// ============================================================================
-// APP CONSTANTS
-// ============================================================================
-
-/**
- * App constants
- * @description Server-specific application constants and configuration
- */
-export * from './app';
-
-// ============================================================================
-// SHARED CONSTANTS RE-EXPORTS
-// ============================================================================
-
-/**
- * Shared constants
- * @description General application configuration constants
- */
-// export * from '@shared'; // Commented out for TypeORM CLI compatibility
+export * from './public-endpoints.constants';

@@ -4,175 +4,110 @@
  * @module ClientApiTypes
  * @description Client-specific API service interface and response types
  */
+import { BillingCycle, GameMode, PlanType } from '@shared/constants';
 import type {
-  AuthCredentials,
-  AuthenticationResult,
-  CompleteUserAnalytics,
-  CreateGameHistoryDto,
-  DifficultyStatsData,
-  LeaderboardEntry,
-  StorageValue,
-  SubscriptionData,
-  TopicStatsData,
-  TriviaQuestion,
-  TriviaRequest,
-  UrlResponse,
-  User,
-  UserAnalyticsQuery,
-  UserPreferencesUpdate,
-  UserProfileUpdateData,
-  UserRankData,
+	ApiResponse,
+	AuthCredentials,
+	AuthenticationResult,
+	BasicUser,
+	BasicValue,
+	CanPlayResponse,
+	CompleteUserAnalytics,
+	DifficultyStatsData,
+	GameData,
+	GameHistoryEntry,
+	LanguageValidationOptions,
+	LanguageValidationResult,
+	LeaderboardEntry,
+	PointBalance,
+	PointPurchaseOption,
+	PointTransaction,
+	RequestData,
+	SimpleValidationResult,
+	SubscriptionData,
+	TopicStatsData,
+	TriviaQuestion,
+	TriviaRequest,
+	UpdateUserProfileData,
+	UrlResponse,
+	UserAnalyticsQuery,
+	UserPreferences,
+	UserProfileResponseType,
+	UserRankData,
+	UserStatsData,
 } from '@shared/types';
-import type { ApiResponse } from '@shared/types/infrastructure/api.types';
-import type {
-  LanguageValidationOptions,
-  LanguageValidationResult,
-} from '@shared/types/language.types';
 
-import type { PointBalance, PointPurchaseOption, PointTransaction } from './points.types';
-
-export type { ApiResponse } from '@shared/types/infrastructure/api.types';
+import type { EnhancedRequestConfig } from './interceptors.types';
 
 export interface ClientApiService {
-  // HTTP methods
-  get<T>(url: string, config?: RequestInit): Promise<ApiResponse<T>>;
-  post<T>(url: string, data?: StorageValue, config?: RequestInit): Promise<ApiResponse<T>>;
-  put<T>(url: string, data?: StorageValue, config?: RequestInit): Promise<ApiResponse<T>>;
-  delete<T>(url: string, config?: RequestInit): Promise<ApiResponse<T>>;
+	// HTTP methods
+	get<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>>;
+	post<T>(url: string, data?: RequestData, config?: EnhancedRequestConfig): Promise<ApiResponse<T>>;
+	put<T>(url: string, data?: RequestData, config?: EnhancedRequestConfig): Promise<ApiResponse<T>>;
+	delete<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>>;
 
-  // Auth methods
-  login(credentials: AuthCredentials): Promise<AuthenticationResult>;
-  register(credentials: AuthCredentials): Promise<AuthenticationResult>;
-  logout(): Promise<void>;
-  refreshToken(): Promise<{ accessToken: string }>;
+	// Auth methods
+	login(credentials: AuthCredentials): Promise<AuthenticationResult>;
+	register(credentials: AuthCredentials): Promise<AuthenticationResult>;
+	logout(): Promise<void>;
+	refreshToken(): Promise<{ accessToken: string }>;
 
-  // User methods
-  getCurrentUser(): Promise<unknown>;
-  getUserProfile(): Promise<unknown>;
-  updateUserProfile(data: UserProfileUpdateData): Promise<unknown>;
-  getUserCredits(): Promise<unknown>;
-  deductCredits(amount: number): Promise<unknown>;
+	// User methods
+	getCurrentUser(): Promise<BasicUser>;
+	getUserProfile(): Promise<UserProfileResponseType>;
+	updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType>;
+	getUserCredits(): Promise<number>;
+	deductCredits(amount: number): Promise<{ success: boolean; credits: number }>;
 
-  // Game history methods
-  saveGameHistory(data: CreateGameHistoryDto): Promise<unknown>;
-  getUserGameHistory(limit?: number, offset?: number): Promise<unknown>;
+	// Game history methods
+	saveGameHistory(data: GameData): Promise<void>;
+	getUserGameHistory(limit?: number, offset?: number): Promise<GameHistoryEntry[]>;
 
-  // Leaderboard methods
-  getLeaderboardEntries(limit?: number): Promise<LeaderboardEntry[]>;
-  getUserRank(): Promise<unknown>;
-  getUserStats(): Promise<unknown>;
+	// Leaderboard methods
+	getLeaderboardEntries(limit?: number): Promise<LeaderboardEntry[]>;
+	getUserRank(): Promise<UserRankData>;
+	getUserStats(): Promise<UserStatsData>;
 
-  // Game methods
-  getGameById(gameId: string): Promise<TriviaQuestion>;
+	// Points methods
+	getPointBalance(): Promise<PointBalance>;
+	getPointPackages(): Promise<PointPurchaseOption[]>;
+	canPlay(questionCount: number): Promise<CanPlayResponse>;
+	deductPoints(questionCount: number, gameMode: GameMode): Promise<PointBalance>;
+	getPointHistory(limit?: number): Promise<PointTransaction[]>;
+	confirmPointPurchase(paymentIntentId: string): Promise<PointBalance>;
 
-  // Points methods
-  getPointBalance(): Promise<PointBalance>;
-  getPointPackages(): Promise<PointPurchaseOption[]>;
-  canPlay(questionCount: number): Promise<{ allowed: boolean; reason?: string }>;
-  deductPoints(questionCount: number, gameMode: string): Promise<PointBalance>;
-  getPointHistory(limit?: number): Promise<PointTransaction[]>;
-  confirmPointPurchase(paymentIntentId: string): Promise<PointBalance>;
+	// Trivia methods
+	getTrivia(request: TriviaRequest): Promise<TriviaQuestion>;
 
-  // Trivia methods
-  getTrivia(request: TriviaRequest): Promise<TriviaQuestion>;
-  saveHistory(data: CreateGameHistoryDto): Promise<unknown>;
+	// Validation methods
+	validateCustomDifficulty(customText: string): Promise<SimpleValidationResult>;
+	validateLanguage(text: string, options?: LanguageValidationOptions): Promise<LanguageValidationResult>;
 
-  // Stats methods
-  getDifficultyStats(query?: UserAnalyticsQuery): Promise<DifficultyStatsData>;
-  getLeaderboard(limit?: number): Promise<LeaderboardEntry[]>;
-  getUserScore(): Promise<number>;
+	// User preferences methods
+	updateUserPreferences(preferences: Partial<UserPreferences>): Promise<void>;
 
-  // Validation methods
-  validateCustomDifficulty(customText: string): Promise<{ isValid: boolean; errors?: string[] }>;
-  validateLanguage(
-    text: string,
-    options: LanguageValidationOptions
-  ): Promise<LanguageValidationResult>;
+	// Account management methods
+	deleteUserAccount(): Promise<{ success: boolean; message: string }>;
 
-  // User preferences methods
-  updateUserPreferences(preferences: UserPreferencesUpdate): Promise<void>;
+	// Analytics dashboard methods
+	getUserAnalytics(): Promise<CompleteUserAnalytics>;
+	getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData>;
+	getDifficultyStats(query?: UserAnalyticsQuery): Promise<DifficultyStatsData>;
 
-  // User search methods
-  searchUsers(
-    query: string,
-    limit?: number
-  ): Promise<{ query: string; results: User[]; totalResults: number }>;
+	// New game history management methods
+	deleteGameHistory(gameId: string): Promise<{ success: boolean; message: string }>;
+	clearGameHistory(): Promise<{ success: boolean; message: string; deletedCount: number }>;
 
-  // Account management methods
-  deleteUserAccount(): Promise<{ success: boolean; message: string }>;
+	// New user management methods
+	updateUserField(field: string, value: BasicValue): Promise<unknown>;
+	updateSinglePreference(preference: string, value: BasicValue): Promise<unknown>;
+	getUserById(userId: string): Promise<unknown>;
+	updateUserCredits(userId: string, amount: number, reason: string): Promise<unknown>;
+	deleteUser(userId: string): Promise<unknown>;
+	updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<unknown>;
+	purchasePoints(packageId: string): Promise<UrlResponse>;
 
-  // AI Providers monitoring methods
-  getAiProviderStats(): Promise<{
-    totalProviders: number;
-    currentProviderIndex: number;
-    providers: string[];
-    providerDetails: Record<string, unknown>;
-    timestamp: string;
-  }>;
-  getAvailableProvidersCount(): Promise<{
-    availableProviders: number;
-    timestamp: string;
-  }>;
-  getAiProvidersHealth(): Promise<{
-    status: 'healthy' | 'degraded' | 'unhealthy' | 'error';
-    availableProviders?: number;
-    totalProviders?: number;
-    error?: string;
-    timestamp: string;
-  }>;
-
-  // Language validation methods
-  validateLanguage(
-    text: string,
-    options?: {
-      language?: string;
-      enableSpellCheck?: boolean;
-      enableGrammarCheck?: boolean;
-    }
-  ): Promise<{
-    isValid: boolean;
-    errors: string[];
-    suggestions: string[];
-    language?: string;
-  }>;
-
-  // Analytics dashboard methods
-  getUserAnalytics(): Promise<CompleteUserAnalytics>;
-  getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData>;
-  getDifficultyStats(query?: UserAnalyticsQuery): Promise<DifficultyStatsData>;
-
-  // Leaderboard features methods
-  getUserRanking(): Promise<UserRankData>;
-  updateUserRanking(): Promise<{ success: boolean; message: string }>;
-  getGlobalLeaderboard(
-    limit?: number,
-    offset?: number
-  ): Promise<{
-    leaderboard: LeaderboardEntry[];
-    pagination: { total: number; limit: number; offset: number };
-  }>;
-  getLeaderboardByPeriod(
-    period: 'weekly' | 'monthly' | 'yearly',
-    limit?: number
-  ): Promise<LeaderboardEntry[]>;
-
-  // Points system methods
-  deductPoints(questionCount: number, gameMode: string): Promise<PointBalance>;
-
-  // New game history management methods
-  deleteGameHistory(gameId: string): Promise<{ success: boolean; message: string }>;
-  clearGameHistory(): Promise<{ success: boolean; message: string; deletedCount: number }>;
-
-  // New user management methods
-  updateUserField(field: string, value: unknown): Promise<unknown>;
-  updateSinglePreference(preference: string, value: unknown): Promise<unknown>;
-  getUserById(userId: string): Promise<unknown>;
-  updateUserCredits(userId: string, amount: number, reason: string): Promise<unknown>;
-  deleteUser(userId: string): Promise<unknown>;
-  updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<unknown>;
-  purchasePoints(packageId: string): Promise<UrlResponse>;
-
-  // Subscription management methods
-  createSubscription(plan: string, billingCycle?: string): Promise<SubscriptionData>;
-  cancelSubscription(): Promise<{ success: boolean; message: string }>;
+	// Subscription management methods
+	createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionData>;
+	cancelSubscription(): Promise<{ success: boolean; message: string }>;
 }

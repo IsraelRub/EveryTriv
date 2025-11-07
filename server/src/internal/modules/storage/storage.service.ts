@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import {
-	BaseStorageService,
-	metricsService,
+import Redis from 'ioredis';
+
+import { CACHE_DURATION } from '@shared/constants';
+import { BaseStorageService, metricsService } from '@shared/services';
+import type {
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
-} from '@shared/services';
-import { CACHE_DURATION } from '@shared/constants';
-import Redis from 'ioredis';
+} from '@shared/types';
 
 /**
  * Server-side persistent storage service using Redis

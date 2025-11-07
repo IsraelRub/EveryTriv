@@ -7,24 +7,18 @@
  */
 
 /**
- * Authentication shared module
- * @description Shared authentication functionality moved to features/auth
- * @used_by server/src/features/auth, server/middleware
- */
-
-/**
- * Cache module
+ * Caching module
  * @description Caching functionality
  * @used_by server/src/features, server/src/controllers
  */
-export { CacheModule } from './cache/cache.module';
+export * from './cache';
 
 /**
- * Storage module
- * @description Storage functionality
+ * Persistent storage module
+ * @description Persistent storage functionality
  * @used_by server/src/features, server/src/controllers
  */
-export { StorageModule } from './storage/storage.module';
+export * from './storage';
 
 /**
  * Redis module

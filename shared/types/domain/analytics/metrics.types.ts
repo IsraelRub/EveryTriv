@@ -5,7 +5,6 @@
  * @description Type definitions for performance metrics and monitoring
  * @used_by server/src/features/analytics/analytics.service.ts
  */
-import type { BasicValue } from '../../core/data.types';
 
 /**
  * Middleware metrics interface
@@ -25,27 +24,12 @@ export interface MiddlewareMetrics {
 }
 
 /**
- * Question statistics interface
- * @interface QuestionStats
- * @description Comprehensive statistics for trivia questions
+ * System performance metrics interface
+ * @interface SystemPerformanceMetrics
+ * @description System-wide performance and monitoring metrics (server/analytics)
  * @used_by server/src/features/analytics
  */
-export interface QuestionStats {
-	totalQuestions: number;
-	byTopic: Record<string, number>;
-	byDifficulty: Record<string, number>;
-	averageAnswerCount: number;
-	questionQualityScore: number;
-	duplicateRate: number;
-}
-
-/**
- * Performance metrics interface
- * @interface PerformanceMetrics
- * @description System performance and monitoring metrics
- * @used_by server/src/features/analytics
- */
-export interface AnalyticsPerformanceMetrics {
+export interface SystemPerformanceMetrics {
 	responseTime: number;
 	memoryUsage: number;
 	cpuUsage: number;
@@ -54,73 +38,6 @@ export interface AnalyticsPerformanceMetrics {
 	uptime: number;
 	activeConnections: number;
 }
-
-/**
- * Cache statistics interface
- * @interface CacheStats
- * @description Statistics for question cache
- * @used_by server/src/features/analytics
- */
-export interface AnalyticsCacheStats {
-	size: number;
-	hitRate: number;
-	mostAccessed: Array<Record<string, BasicValue>>;
-}
-
-/**
- * Answer balance analysis interface
- * @interface AnswerBalanceAnalysis
- * @description Analysis of answer distribution and balance
- * @used_by server/src/features/analytics
- */
-export interface AnswerBalanceAnalysis {
-	isBalanced: boolean;
-	balanceScore?: number;
-	issues?: string[];
-}
-
-/**
- * Question complexity analysis interface
- * @interface QuestionComplexityAnalysis
- * @description Analysis of question complexity
- * @used_by server/src/features/analytics
- */
-export interface QuestionComplexityAnalysis {
-	complexityScore: number;
-	factors: {
-		questionLength: number;
-		answerCount: number;
-		answerVariance: number;
-	};
-	level: 'low' | 'medium' | 'high';
-}
-
-/**
- * Answer position statistics interface
- * @interface AnswerPositionStats
- * @description Statistics about correct answer positions
- * @used_by server/src/features/analytics
- */
-export interface AnswerPositionStats {
-	positionCounts: Record<number, number>;
-	totalQuestions: number;
-	biasScore: number;
-	isBalanced: boolean;
-}
-
-/**
- * Provider metrics interface
- * @interface ProviderMetrics
- * @description Metrics for AI providers
- * @extends BaseMetadata
- */
-
-/**
- * Provider health interface
- * @interface ProviderHealth
- * @description Health status for AI providers
- * @extends BaseMetadata
- */
 
 /**
  * Security metrics interface

@@ -1,47 +1,26 @@
 {
-  "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": [
-    "server/src/main.ts",
-    "client/src/main.tsx"
-  ],
-  "project": [
-    "server/src/**/*.ts",
-    "server/test/**/*.ts",
-    "client/src/**/*.{ts,tsx}",
-    "shared/**/*.ts"
-  ],
-  "ignoreDependencies": [
-    "@types/*",
-    "typescript",
-    "eslint*",
-    "prettier*",
-    "jest*",
-    "vitest",
-    "@testing-library/*",
-    "jsdom",
-    "ts-jest",
-    "ts-node",
-    "tsconfig-paths",
-    "source-map-support",
-    "rimraf",
-    "ts-loader",
-    "supertest",
-    "autoprefixer",
-    "postcss"
-  ],
-  "ignoreBinaries": [
-    "tsc",
-    "nest",
-    "jest",
-    "vite",
-    "vitest"
-  ],
-  "rules": {
-    "exports": "warn",
-    "files": "warn",
-    "dependencies": "warn",
-    "devDependencies": "warn",
-    "unlisted": "warn",
-    "binaries": "warn"
+  "$schema": "https://knip.dev/schema.json",
+  "aliases": {
+    "@shared": "./shared",
+    "@shared/*": "./shared/*",
+    "@services/*": "./client/src/services/*",
+    "@types/*": "./client/src/types/*",
+    "@utils/*": "./client/src/utils/*",
+    "@constants/*": "./client/src/constants/*"
+  },
+  "workspaces": {
+    ".": {
+      "entry": [
+        "client/src/**/*.{ts,tsx}",
+        "server/src/**/*.ts",
+        "shared/**/*.ts"
+      ],
+      "project": [
+        "client/src/**/*.{ts,tsx}",
+        "server/src/**/*.ts",
+        "shared/**/*.ts"
+      ]
+    }
   }
 }
+

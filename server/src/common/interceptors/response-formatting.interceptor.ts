@@ -9,7 +9,9 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import type { NestRequest } from '../../internal/types';
+import { isRecord } from '@shared/utils';
+
+import type { NestRequest } from '@internal/types';
 
 /**
  * Response Formatting Interceptor
@@ -43,8 +45,8 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 					timestamp: new Date().toISOString(),
 					meta: {
 						duration,
-						endpoint: request.path,
-						method: request.method,
+						endpoint: request.path || 'unknown',
+						method: request.method || 'unknown',
 					},
 				};
 			})
@@ -58,12 +60,12 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 	 * @returns True if formatting should be skipped
 	 */
 	private shouldSkipFormatting(data: unknown, request: NestRequest): boolean {
-		if (data && typeof data === 'object') {
+		if (isRecord(data)) {
 			// Skip formatting if response already has a success field (like AuthenticationResult)
 			if ('success' in data) {
 				return true;
 			}
-			
+
 			const skipFields = ['isValid', 'timestamp', 'data', 'pipe', 'url'];
 			return skipFields.some(field => field in data);
 		}

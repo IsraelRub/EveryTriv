@@ -7,8 +7,11 @@
  */
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared/services';
+
 import { UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+
+import { isPublicEndpoint } from '@internal/utils';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -23,9 +26,8 @@ export class RolesGuard implements CanActivate {
 		// Fallback: also honor decorator-aware middleware metadata if present
 		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
 
-		// Hardcoded public endpoints as fallback
-		const publicEndpoints = ['/leaderboard/global', '/leaderboard/period', '/health', '/status'];
-		const isHardcodedPublic = publicEndpoints.some(endpoint => request.path?.includes(endpoint) || false);
+		// Check if endpoint is public using centralized function
+		const isHardcodedPublic = isPublicEndpoint(request.path || '');
 
 		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
 			logger.authDebug('Public endpoint - skipping role check');
@@ -58,7 +60,7 @@ export class RolesGuard implements CanActivate {
 		if (!hasRole) {
 			logger.securityDenied('Insufficient role for endpoint', {
 				userId: user.sub,
-				userRole,
+				role: userRole,
 				requiredRoles,
 			});
 			throw new ForbiddenException({

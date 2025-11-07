@@ -5,12 +5,14 @@
  * @description Controller for storage service management and monitoring
  */
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
-import { createStorageError } from '@internal/utils';
-import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
-import { Cache, Public, RateLimit, Roles } from '../../../common';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+
+import { createStorageError } from '@internal/utils';
+
+import { Cache, Public, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
 
 @Controller('storage')
@@ -49,7 +51,6 @@ export class StorageController {
 	 */
 	@Post('metrics/reset')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.METRICS_RESET.limit, RATE_LIMITS.METRICS_RESET.window) // 5 requests per minute
 	async resetMetrics() {
 		try {
 			this.storageService.resetMetrics();
@@ -71,7 +72,6 @@ export class StorageController {
 	 */
 	@Get('keys')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.STORAGE_READ.limit, RATE_LIMITS.STORAGE_READ.window) // 10 requests per minute
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async getKeys() {
 		try {
@@ -81,7 +81,7 @@ export class StorageController {
 			}
 
 			logger.apiRead('storage_keys', {
-				keysCount: result.data?.length || 0,
+				keysCount: result.data?.length ?? 0,
 			});
 
 			return result.data;
@@ -100,7 +100,6 @@ export class StorageController {
 	 */
 	@Get('item/:key')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.STORAGE_READ.limit, RATE_LIMITS.STORAGE_READ.window) // 20 requests per minute
 	@Cache(CACHE_DURATION.VERY_SHORT) // Cache for 30 seconds
 	async getItem(@Param('key') key: string) {
 		try {
@@ -134,7 +133,6 @@ export class StorageController {
 	 */
 	@Delete('clear')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.STORAGE_DELETE.limit, RATE_LIMITS.STORAGE_DELETE.window) // 2 requests per minute - dangerous operation
 	async clear() {
 		try {
 			const result = await this.storageService.clear();

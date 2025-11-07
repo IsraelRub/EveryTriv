@@ -3,15 +3,16 @@
  *
  * @module DecoratorAwareMiddleware
  * @description Smart middleware that analyzes request patterns and prepares metadata structure
- * @author EveryTriv Team
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { NextFunction, Response } from 'express';
+
+import { CACHE_DURATION, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION } from '@shared/constants';
 
-import { NestNextFunction, NestRequest, NestResponse } from '../types';
+import { NestRequest } from '../types';
 
 /**
  * Smart decorator-aware middleware that analyzes request patterns
@@ -21,7 +22,7 @@ import { NestNextFunction, NestRequest, NestResponse } from '../types';
 export class DecoratorAwareMiddleware implements NestMiddleware {
 	constructor(private readonly reflector: Reflector) {}
 
-	use(req: NestRequest, _res: NestResponse, next: NestNextFunction) {
+	use(req: NestRequest, _res: Response, next: NextFunction) {
 		const startTime = Date.now();
 
 		try {
@@ -51,7 +52,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 			logger.performance('middleware.decorator-aware', duration, {
 				path: req.path,
 				method: req.method,
-				analysis: requestAnalysis,
+				analysis: JSON.stringify(requestAnalysis),
 			});
 
 			next();

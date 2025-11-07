@@ -54,10 +54,3 @@ export * from './auth';
  * @used_by server/src/features, server/src/controllers
  */
 export * from './guards';
-
-/**
- * Server utilities
- * @description Server-specific utility functions and error handling
- * @used_by server/src/features, server/src/controllers
- */
-export * from './utils';

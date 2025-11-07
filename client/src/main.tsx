@@ -7,15 +7,16 @@
 
 import './index.css';
 
-import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 
+import { QueryClientProvider } from '@tanstack/react-query';
+
 import App from './App';
 import { store } from './redux/store';
-import { queryClient } from './services/utils/queryClient.service';
+import { queryClient } from './services';
 
 /**
  * Initialize and render the React application
@@ -24,22 +25,22 @@ import { queryClient } from './services/utils/queryClient.service';
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-  throw new Error('Root element not found');
+	throw new Error('Root element not found');
 }
 
-ReactDOM.createRoot(rootElement).render(
-  <StrictMode>
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
-    </Provider>
-  </StrictMode>
+createRoot(rootElement).render(
+	<StrictMode>
+		<Provider store={store}>
+			<QueryClientProvider client={queryClient}>
+				<BrowserRouter
+					future={{
+						v7_startTransition: true,
+						v7_relativeSplatPath: true,
+					}}
+				>
+					<App />
+				</BrowserRouter>
+			</QueryClientProvider>
+		</Provider>
+	</StrictMode>
 );

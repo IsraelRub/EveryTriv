@@ -12,11 +12,10 @@ export const LOCALHOST_URLS = {
 	// API URLs
 	API_BASE: 'http://localhost:3001',
 	API_HEALTH: 'http://localhost:3001/health',
-	
-	// Client URLs  
-	CLIENT_BASE: 'http://localhost:5173',
-	CLIENT_DEV: 'http://localhost:3000',
-	
+
+	// Client URLs
+	CLIENT: 'http://localhost:5173',
+
 	// Admin interfaces
 	PGADMIN_URL: 'http://localhost:8080',
 	REDIS_COMMANDER_URL: 'http://localhost:8081',
@@ -27,7 +26,6 @@ export const LOCALHOST_URLS = {
 export const LOCALHOST_PORTS = {
 	SERVER: 3001,
 	CLIENT: 5173,
-	CLIENT_DEV: 3000,
 	DATABASE: 5432,
 	REDIS: 6379,
 	PGADMIN: 8080,
@@ -57,11 +55,11 @@ export const ENV_VAR_NAMES = {
 // Fallback values for environment variables
 export const ENV_FALLBACKS = {
 	API_BASE_URL: LOCALHOST_URLS.API_BASE,
-	CLIENT_URL: LOCALHOST_URLS.CLIENT_BASE,
+	CLIENT_URL: LOCALHOST_URLS.CLIENT,
 	SERVER_URL: LOCALHOST_URLS.API_BASE,
 	DATABASE_HOST: LOCALHOST_HOSTS.DATABASE,
 	DATABASE_PORT: LOCALHOST_PORTS.DATABASE,
 	REDIS_HOST: LOCALHOST_HOSTS.REDIS,
 	REDIS_PORT: LOCALHOST_PORTS.REDIS,
-	CORS_ORIGIN: LOCALHOST_URLS.CLIENT_DEV,
+	CORS_ORIGIN: LOCALHOST_URLS.CLIENT,
 } as const;

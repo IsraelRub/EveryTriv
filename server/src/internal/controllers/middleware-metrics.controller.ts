@@ -3,18 +3,22 @@
  *
  * @module MiddlewareMetricsController
  * @description Controller for accessing middleware performance metrics
- * @author EveryTriv Team
  */
-import { Roles } from '@common';
 import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
-import { MetricsService } from '@shared/services';
+
 import { UserRole } from '@shared/constants';
-import {
-	AllMiddlewareMetricsResponse,
-	getErrorMessage,
-	MiddlewareMetricsResponse,
-	serverLogger as logger,
-} from '@shared/utils';
+import { serverLogger as logger, MetricsService } from '@shared/services';
+import { AllMiddlewareMetricsResponse, MiddlewareMetricsResponse } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
+
+import { Roles } from '@common';
+
+/**
+ * Type guard to check if metrics is a single middleware metrics object
+ */
+function isMiddlewareMetrics(metrics: unknown): metrics is { requestCount: number } {
+	return isRecord(metrics) && typeof metrics.requestCount === 'number';
+}
 
 // MiddlewareMetrics type is used implicitly
 
@@ -41,7 +45,7 @@ export class MiddlewareMetricsController {
 			}
 
 			// Type guard to ensure we have the correct type
-			if (typeof middlewareMetrics === 'object' && 'requestCount' in middlewareMetrics) {
+			if (isMiddlewareMetrics(middlewareMetrics)) {
 				// Single middleware metrics
 				// Return only the data - ResponseFormattingInterceptor will handle the response structure
 				return middlewareMetrics;
@@ -85,7 +89,7 @@ export class MiddlewareMetricsController {
 				mostUsedMiddleware,
 			};
 
-			logger.system('Middleware metrics accessed', {
+			logger.systemInfo('Middleware metrics accessed', {
 				totalMiddlewares: summary.totalMiddlewares,
 				totalRequests: summary.totalRequests,
 			});
@@ -118,9 +122,11 @@ export class MiddlewareMetricsController {
 				throw new NotFoundException(`No metrics found for middleware: ${middlewareName}`);
 			}
 
-			logger.system('Middleware metrics accessed', {
+			const requestCount = isMiddlewareMetrics(metrics) ? metrics.requestCount : 0;
+
+			logger.systemInfo('Middleware metrics accessed', {
 				middleware: middlewareName,
-				requestCount: metrics.requestCount,
+				requestCount,
 			});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
@@ -144,7 +150,7 @@ export class MiddlewareMetricsController {
 		try {
 			this.metricsService.resetMiddlewareMetrics(middlewareName);
 
-			logger.system('Middleware metrics reset', {
+			logger.systemInfo('Middleware metrics reset', {
 				middleware: middlewareName,
 			});
 
@@ -171,7 +177,7 @@ export class MiddlewareMetricsController {
 		try {
 			this.metricsService.resetMiddlewareMetrics();
 
-			logger.system('All middleware metrics reset', {});
+			logger.systemInfo('All middleware metrics reset', {});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return { reset: true };

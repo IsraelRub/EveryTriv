@@ -6,8 +6,10 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage,TriviaQuestionData, ValidationResult } from '@shared/utils';
+import { TriviaQuestionPayload, ValidationResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
 
@@ -15,7 +17,7 @@ import { ValidationService } from '../validation';
 export class TriviaQuestionPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: TriviaQuestionData): Promise<ValidationResult> {
+	async transform(value: TriviaQuestionPayload): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -47,33 +49,33 @@ export class TriviaQuestionPipe implements PipeTransform {
 				}
 			}
 
-			// Validate options
-			if (!value.options || !Array.isArray(value.options) || value.options.length < 2) {
-				errors.push('At least 2 options are required');
+			// Validate answers
+			if (!value.answers || !Array.isArray(value.answers) || value.answers.length < 2) {
+				errors.push('At least 2 answers are required');
 				suggestions.push('Provide 2-6 answer options for your question');
-			} else if (value.options.length > 6) {
-				errors.push('Maximum 6 options allowed');
-				suggestions.push('Limit your options to 6 or fewer for better user experience');
+			} else if (value.answers.length > 6) {
+				errors.push('Maximum 6 answers allowed');
+				suggestions.push('Limit your answers to 6 or fewer for better user experience');
 			} else {
-				for (let i = 0; i < value.options.length; i++) {
-					const option = value.options[i];
-					if (!option || option.trim().length === 0) {
-						errors.push(`Option ${i + 1} cannot be empty`);
-						suggestions.push(`Provide text for option ${i + 1}`);
-					} else if (option.length > 200) {
-						errors.push(`Option ${i + 1} is too long (max 200 characters)`);
-						suggestions.push(`Shorten option ${i + 1} to 200 characters or less`);
+				for (let i = 0; i < value.answers.length; i++) {
+					const answer = value.answers[i];
+					if (!answer || answer.trim().length === 0) {
+						errors.push(`Answer ${i + 1} cannot be empty`);
+						suggestions.push(`Provide text for answer ${i + 1}`);
+					} else if (answer.length > 200) {
+						errors.push(`Answer ${i + 1} is too long (max 200 characters)`);
+						suggestions.push(`Shorten answer ${i + 1} to 200 characters or less`);
 					}
 				}
 			}
 
-			// Validate correct answer
-			if (!value.correctAnswer || value.correctAnswer.trim().length === 0) {
-				errors.push('Correct answer is required');
-				suggestions.push('Select which option is the correct answer');
-			} else if (!value.options || !value.options.includes(value.correctAnswer)) {
-				errors.push('Correct answer must match one of the provided options');
-				suggestions.push('Make sure the correct answer exactly matches one of your options');
+			// Validate correct answer index
+			if (typeof value.correctAnswerIndex !== 'number' || isNaN(value.correctAnswerIndex)) {
+				errors.push('Correct answer index is required and must be a number');
+				suggestions.push('Provide the index of the correct answer (0-based index)');
+			} else if (value.correctAnswerIndex < 0 || value.correctAnswerIndex >= (value.answers?.length ?? 0)) {
+				errors.push('Correct answer index must be within the range of available answers');
+				suggestions.push(`Correct answer index must be between 0 and ${(value.answers?.length ?? 0) - 1}`);
 			}
 
 			// Validate difficulty if provided

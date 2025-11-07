@@ -6,16 +6,13 @@
  * @used_by server/src/features/game/logic
  */
 import { Injectable } from '@nestjs/common';
+
 import { PROVIDER_ERROR_MESSAGES } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type {
-	ProviderHealth,
-	ProviderMetrics,
-	ProviderStats,
-	TriviaQuestion,
-} from '@shared/types';
+import type { GameDifficulty, ProviderStats, TriviaQuestion } from '@shared/types';
+import { ensureErrorObject, getErrorMessage } from '@shared/utils';
+
 import { createServerError } from '@internal/utils';
-import { ensureErrorObject, getErrorMessage, roundToDecimals } from '@shared/utils';
 
 import {
 	AnthropicTriviaProvider,
@@ -85,8 +82,8 @@ export class AiProvidersService {
 				status: 'available',
 				successRate: 0,
 				errorRate: 0,
-				created_at: new Date(),
-				updated_at: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
 			});
 		});
 	}
@@ -112,10 +109,9 @@ export class AiProvidersService {
 	 * Generate a new trivia question using AI providers with retry logic and performance optimization
 	 * @param topic The topic for the trivia question
 	 * @param difficulty The difficulty level
-	 * @param language The language for the question
 	 * @returns Promise<TriviaQuestion> The generated question
 	 */
-	async generateQuestion(topic: string, difficulty: string, language: string = 'he'): Promise<TriviaQuestion> {
+	async generateQuestion(topic: string, difficulty: GameDifficulty): Promise<TriviaQuestion> {
 		const startTime = Date.now();
 		const maxRetries = 2;
 		let lastError: Error | null = null;
@@ -125,7 +121,6 @@ export class AiProvidersService {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
-				language,
 			});
 
 			for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -153,7 +148,6 @@ export class AiProvidersService {
 						context: 'AiProvidersService',
 						topic,
 						difficulty,
-						language,
 						duration,
 						providerDuration,
 						attempt: attempt + 1,
@@ -186,7 +180,6 @@ export class AiProvidersService {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
-				language,
 			});
 			throw error;
 		}
@@ -211,27 +204,8 @@ export class AiProvidersService {
 	 * Get provider performance metrics
 	 * @returns Performance metrics for all providers
 	 */
-	getPerformanceMetrics(): Record<string, ProviderMetrics> {
-		const metrics: Record<string, ProviderMetrics> = {};
-
-		this.providerStats.forEach((stats, providerName) => {
-			const successRate = stats.requests > 0 ? (stats.successes / stats.requests) * 100 : 0;
-			metrics[providerName] = {
-				providerName,
-				totalRequests: stats.requests,
-				successfulRequests: stats.successes,
-				failedRequests: stats.failures,
-				averageResponseTime: stats.averageResponseTime,
-				successRate: roundToDecimals(successRate, 2),
-				errorRate: stats.requests > 0 ? (stats.failures / stats.requests) * 100 : 0,
-				lastUsed: stats.lastUsed?.toISOString() || new Date(),
-				status: stats.status,
-				created_at: new Date(),
-				updated_at: new Date(),
-			};
-		});
-
-		return metrics;
+	getPerformanceMetrics(): Record<string, ProviderStats> {
+		return Object.fromEntries(this.providerStats);
 	}
 
 	/**
@@ -317,8 +291,8 @@ export class AiProvidersService {
 				status: 'available',
 				successRate: 0,
 				errorRate: 0,
-				created_at: new Date(),
-				updated_at: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
 			});
 		});
 
@@ -329,26 +303,8 @@ export class AiProvidersService {
 	 * Get provider health status
 	 * @returns Health status for all providers
 	 */
-	getProviderHealth(): Record<string, ProviderHealth> {
-		const health: Record<string, ProviderHealth> = {};
-
-		this.providerStats.forEach((stats, providerName) => {
-			const successRate = stats.requests > 0 ? (stats.successes / stats.requests) * 100 : 0;
-			const isHealthy = successRate >= 80 && stats.status === 'available';
-
-			health[providerName] = {
-				providerName,
-				status: isHealthy ? 'healthy' : 'unhealthy',
-				responseTime: stats.averageResponseTime,
-				errorCount: stats.failures,
-				successCount: stats.successes,
-				lastCheck: new Date().toISOString(),
-				created_at: new Date(),
-				updated_at: new Date(),
-			};
-		});
-
-		return health;
+	getProviderHealth(): Record<string, ProviderStats> {
+		return Object.fromEntries(this.providerStats);
 	}
 
 	/**

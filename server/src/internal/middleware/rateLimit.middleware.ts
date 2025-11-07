@@ -1,9 +1,12 @@
 import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@nestjs/common';
-import { RATE_LIMIT_DEFAULTS, CACHE_DURATION } from '@shared/constants';
-import { metricsService,serverLogger as logger } from '@shared/services';
+import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
+
+import { CACHE_DURATION, RATE_LIMIT_DEFAULTS } from '@shared/constants';
+import { serverLogger as logger, metricsService } from '@shared/services';
 import { ensureErrorObject } from '@shared/utils';
-import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
+
+import { NestRequest } from '@internal/types';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -13,7 +16,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 	constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {}
 
-	async use(req: NestRequest, res: NestResponse, next: NestNextFunction) {
+	async use(req: NestRequest, res: Response, next: NextFunction) {
 		const startTime = Date.now();
 		const ip = req.ip || req.connection?.remoteAddress || 'unknown';
 

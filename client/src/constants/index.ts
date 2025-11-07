@@ -3,8 +3,6 @@
  *
  * @module ClientConstants
  * @description Central export point for all client-side constants and configuration
- * @author EveryTriv Team
- * @used_by client/src/components, client/src/services, client/src/hooks
  */
 
 /**
@@ -13,15 +11,11 @@
  */
 export * from './ui';
 
-// AUDIO CONSTANTS
-
 /**
  * Audio constants
  * @description Audio settings, sound effects, and audio management configuration
  */
-export * from './audio';
-
-// GAME CONSTANTS
+export * from './audio.constants';
 
 /**
  * Game constants
@@ -29,41 +23,18 @@ export * from './audio';
  */
 export * from './game';
 
-// APP CONSTANTS
-
-/**
- * App constants
- * @description Core application configuration constants
- */
-export * from './app';
-
-// USER CONSTANTS
-
 /**
  * User constants
  * @description User-related constants, default values, and user configuration
  */
-export * from './user';
-
-// SHARED CONSTANTS RE-EXPORTS
-
-/**
- * Navigation constants
- * @description Routing paths, navigation links, and navigation configuration
- */
-export {
-  NAVIGATION_CONFIG,
-  NAVIGATION_LINKS,
-  ROUTE_PATHS,
-} from '@shared/constants/navigation/navigation.constants';
+export * from './user-defaults.constants';
 
 /**
  * Storage constants
  * @description Local storage keys, cache configuration, and storage settings
  */
-export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage/storage.constants';
-export {
-  CACHE_TTL,
-  STORAGE_CONFIG,
-  STORAGE_KEYS,
-} from '@shared/constants/infrastructure/storage.constants';
+export * from './storage.constants';
+export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';
+
+// Game mode defaults moved to ./game/game-mode.constants.ts
+// Payment constants moved to ./ui/payment-ui.constants.ts

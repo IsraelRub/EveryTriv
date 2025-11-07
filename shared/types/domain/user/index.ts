@@ -7,6 +7,5 @@
  * @used_by server/src/features/user, client/src/components/user, client/src/views/user
  */
 
-export * from './preferences.types';
-export * from './profile.types';
 export * from './user.types';
+export * from './userOperations.types';

@@ -4,16 +4,6 @@
  */
 import { CACHE_DURATION } from '@shared/constants';
 
-// Database table names enum
-export enum DatabaseTable {
-	USERS = 'users',
-	TRIVIA = 'trivia',
-	USER_STATS = 'user_stats',
-	ACHIEVEMENTS = 'achievements',
-	USER_ACHIEVEMENTS = 'user_achievements',
-	FAVORITES = 'favorites',
-}
-
 // Redis key prefixes enum
 export enum RedisKeyPrefix {
 	SESSION = 'session:',

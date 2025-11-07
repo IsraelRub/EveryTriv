@@ -1,11 +1,32 @@
-import type { UserRole } from '@shared/constants';
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 
-import type { BulkMetadata } from './metadata.types';
+import type { UserRole } from '@shared/constants';
 
 /**
- * NestJS-specific types for the server
+ * NestJS types
+ * @description NestJS types used across the server
+ * @exports {Object} Nest types
  */
+
+export interface CacheConfig {
+	ttl: number;
+	key?: string;
+	tags?: string[];
+	disabled?: boolean;
+	condition?: (request: NestRequest, response: Response) => boolean;
+}
+
+/**
+ * Bulk operation metadata interface
+ * @interface BulkMetadata
+ * @description Metadata for bulk operations and batch processing
+ */
+export interface BulkMetadata {
+	isBulk: boolean;
+	batchSize?: number;
+	operationType?: string;
+	optimization?: 'none' | 'basic' | 'aggressive';
+}
 
 // NestJS request/response types
 export type NestRequest = Request & {
@@ -18,8 +39,6 @@ export type NestRequest = Request & {
 	timestamp?: Date;
 	requestId?: string;
 };
-export type NestResponse = Response;
-export type NestNextFunction = NextFunction;
 
 // Decorator metadata types
 export interface DecoratorMetadata {
@@ -39,32 +58,15 @@ export interface DecoratorMetadata {
 export interface RateLimitConfig {
 	limit: number;
 	window: number;
-	keyGenerator?: (request: NestRequest) => string;
-	skipSuccessfulRequests?: boolean;
-	skipFailedRequests?: boolean;
-	message?: string;
-	statusCode?: number;
-}
-
-export interface CacheConfig {
-	ttl: number;
-	key?: string;
-	tags?: string[];
-	invalidateOn?: string[];
-	disabled?: boolean;
-	condition?: (request: NestRequest, response: NestResponse) => boolean;
 }
 
 export interface ApiResponseConfig {
 	status: number;
-	description: string;
-	example?: unknown;
-	schema?: Record<string, unknown>;
-	headers?: Record<string, string>;
+	description?: string;
 }
 
 // User payload types
-export interface UserPayload extends Record<string, unknown> {
+export interface UserPayload {
 	sub: string;
 	username: string;
 	email: string;
@@ -72,17 +74,3 @@ export interface UserPayload extends Record<string, unknown> {
 	iat: number;
 	exp: number;
 }
-
-// Request context interface (simplified)
-export interface RequestContext {
-	requestId: string;
-	userId?: string;
-	timestamp: Date;
-	ipAddress: string;
-	userAgent: string;
-	method: string;
-	url: string;
-}
-
-// Re-export metadata types from shared
-export type { BulkMetadata, CacheMetadata } from './metadata.types';

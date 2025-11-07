@@ -5,8 +5,9 @@
  * @description Centralized error handling utilities for consistent error processing
  * @used_by server/src/features, client/src/services, shared/services
  */
-import { NEST_EXCEPTION_NAMES } from '../constants/core/error.constants';
-import type { AxiosErrorLike, NestExceptionName } from '../types/core/error.types';
+import { NEST_EXCEPTION_NAMES } from '../constants';
+import type { HttpError, NestExceptionName } from '../types';
+import { isRecord } from './core/data.utils';
 
 /**
  * Enhanced error message extraction with specific error type handling
@@ -18,30 +19,29 @@ export function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
 		const errorName = error.constructor.name;
 
-		// Handle Axios errors specifically
-		if (errorName === 'AxiosError') {
-			const axiosError = error as AxiosErrorLike;
-
+		// Handle HTTP errors with network-specific properties
+		const httpError = error as HttpError;
+		if (httpError.code || httpError.response) {
 			// Handle specific error codes
-			if (['ECONNABORTED', 'ETIMEDOUT'].includes(axiosError.code ?? '')) {
+			if (['ECONNABORTED', 'ETIMEDOUT'].includes(httpError.code ?? '')) {
 				return 'Request timed out. Please check your connection and try again.';
 			}
-			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(axiosError.code ?? '')) {
+			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(httpError.code ?? '')) {
 				return 'Unable to connect to server. Please check your connection.';
 			}
 
 			// Handle response errors
-			if (axiosError.response?.data?.message) {
-				return axiosError.response.data.message;
+			if (httpError.response?.data?.message) {
+				return httpError.response.data.message;
 			}
-			if (axiosError.response?.data?.error) {
-				return axiosError.response.data.error;
+			if (httpError.response?.data?.error) {
+				return httpError.response.data.error;
 			}
-			if (axiosError.response?.statusText) {
-				return axiosError.response.statusText;
+			if (httpError.response?.statusText) {
+				return httpError.response.statusText;
 			}
-			if (axiosError.response?.status) {
-				return `Server error (${axiosError.response.status}). Please try again later.`;
+			if (httpError.response?.status) {
+				return `Server error (${httpError.response.status}). Please try again later.`;
 			}
 
 			return error.message ?? 'Network request failed.';
@@ -111,17 +111,15 @@ export function getErrorMessage(error: unknown): string {
 	}
 
 	// Handle objects with error-like properties
-	if (typeof error === 'object' && error) {
-		const errorObj = error as Record<string, unknown>;
-
+	if (isRecord(error)) {
 		// Check for message property
-		if (typeof errorObj.message === 'string') {
-			return errorObj.message;
+		if (typeof error.message === 'string') {
+			return error.message;
 		}
 
 		// Check for error property
-		if (typeof errorObj.error === 'string') {
-			return errorObj.error;
+		if (typeof error.error === 'string') {
+			return error.error;
 		}
 	}
 
@@ -158,4 +156,3 @@ export function getErrorType(error: unknown): string {
 export function ensureErrorObject(error: unknown): Error {
 	return error instanceof Error ? error : new Error(getErrorMessage(error));
 }
-

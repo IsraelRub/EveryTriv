@@ -6,11 +6,11 @@
  */
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { Profile, Strategy } from 'passport-google-oauth20';
+
 import { LOCALHOST_URLS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { Profile } from 'passport-google-oauth20';
 import { getErrorMessage } from '@shared/utils';
-import { Strategy } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -53,7 +53,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Use enhanced security logging
 			logger.logSecurityEventEnhanced('Google OAuth validation failed', 'error', {
 				error: getErrorMessage(error),
-				profileId: profile.id,
+				id: profile.id,
 				provider: 'google',
 				context: 'GoogleStrategy',
 			});

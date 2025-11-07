@@ -1,3 +1,3 @@
 declare module './date' {
-  export function getCurrentTimestamp(): string;
+	export function getCurrentTimestamp(): string;
 }

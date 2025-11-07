@@ -1,6 +1,6 @@
 # Shared Validation
 
-תיעוד שכבת הולידציה.
+תיעוד שכבת הולידציה (מודל מיושר שרת/לקוח + LanguageTool).
 
 ## מטרות
 - אחידות כללי אימות בין שרת ללקוח
@@ -15,7 +15,7 @@ shared/validation/
   payment.validation.ts
   trivia.validation.ts
   schemas.ts          # סכמות כלליות / Primitive Builders
-  validation.utils.ts
+  validation.utils.ts # פונקציות טהורות בלבד, ללא IO
 ```
 
 ## עקרון סכמות
@@ -46,6 +46,23 @@ if (!r.valid) setFormError('difficulty', 'ערך לא חוקי');
 - שמות שגיאה בקונבנציית UPPER_SNAKE
 - החזרת מבנה אחיד (valid + errors?)
 - ללא זריקת חריגים בספריית shared (Return Object בלבד)
+
+---
+
+## LanguageTool – מדיניות שימוש
+
+- Client → Server בלבד: הלקוח אינו מתקשר ישירות ל‑LanguageTool; הוא קורא ל־`POST /game/validate-language`.
+- Server Runtime: שימוש ב־`LanguageToolService` לקריאת API חיצוני; Masking בלוגים, Timeout/Retry.
+- Fallback: כאשר השירות החיצוני לא זמין → שימוש בפונקציה טהורה מ־shared: `performLocalLanguageValidation`.
+- Cache קצר־טווח בשרת לקריאות זהות (TTL ~30s) להפחתת Latency ועלויות.
+- Debounce בלקוח לפני קריאה ל־endpoint כדי לצמצם עומס.
+
+### שמות פונקציות
+- Shared: `performLocalLanguageValidation` / `performLocalLanguageValidationAsync` (טהור, ללא IO)
+- Server: `ValidationService.validateInputWithLanguageTool` (מחליט בין External API ↔ Local)
+
+### טיפוסים
+- `LanguageValidationOptions`, `LanguageValidationResult` תחת `shared/types/domain/validation` כמקור אמת.
 
 ---
  

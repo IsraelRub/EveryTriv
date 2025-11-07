@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared/services';
-import { createNotFoundError } from '@internal/utils';
-import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
-import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
+
+import { CACHE_DURATION } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage, groupBy } from '@shared/utils';
+
+import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
+import { CacheService } from '@internal/modules';
+import { createNotFoundError } from '@internal/utils';
 
 /**
  * Leaderboard Service
@@ -44,43 +46,43 @@ export class LeaderboardService {
 				throw createNotFoundError('User');
 			}
 
-		// Get game history for calculations
-		const gameHistory = await this.gameHistoryRepository.find({
-			where: { userId },
-			order: { createdAt: 'DESC' },
-		});
-
-		// Get or create user stats
-		let userStats = await this.userStatsRepository.findOne({
-			where: { userId },
-		});
-
-		if (!userStats) {
-			userStats = this.userStatsRepository.create({
-				userId,
+			// Get game history for calculations
+			const gameHistory = await this.gameHistoryRepository.find({
+				where: { userId },
+				order: { createdAt: 'DESC' },
 			});
-		}
 
-		// Calculate user statistics
-		const calculatedStats = this.calculateUserStats(gameHistory, user);
-		Object.assign(userStats, calculatedStats);
-		await this.userStatsRepository.save(userStats);
-
-		// Get or create leaderboard entry
-		let leaderboardEntry = await this.leaderboardRepository.findOne({
-			where: { userId },
-		});
-
-		if (!leaderboardEntry) {
-			leaderboardEntry = this.leaderboardRepository.create({
-				userId,
-				userStatsId: userStats.id,
-				score: calculatedStats.score,
+			// Get or create user stats
+			let userStats = await this.userStatsRepository.findOne({
+				where: { userId },
 			});
-		} else {
-			leaderboardEntry.userStatsId = userStats.id;
-			leaderboardEntry.score = calculatedStats.score;
-		}
+
+			if (!userStats) {
+				userStats = this.userStatsRepository.create({
+					userId,
+				});
+			}
+
+			// Calculate user statistics
+			const calculatedStats = this.calculateUserStats(gameHistory, user);
+			Object.assign(userStats, calculatedStats);
+			await this.userStatsRepository.save(userStats);
+
+			// Get or create leaderboard entry
+			let leaderboardEntry = await this.leaderboardRepository.findOne({
+				where: { userId },
+			});
+
+			if (!leaderboardEntry) {
+				leaderboardEntry = this.leaderboardRepository.create({
+					userId,
+					userStatsId: userStats.id,
+					score: calculatedStats.score,
+				});
+			} else {
+				leaderboardEntry.userStatsId = userStats.id;
+				leaderboardEntry.score = calculatedStats.score;
+			}
 
 			// Save the entry
 			const savedEntry = await this.leaderboardRepository.save(leaderboardEntry);
@@ -180,7 +182,17 @@ export class LeaderboardService {
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					const scoreField = `${period}Score` as keyof UserStatsEntity;
+					// Type-safe mapping for period to score field
+					const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
+						weekly: 'weeklyScore',
+						monthly: 'monthlyScore',
+						yearly: 'yearlyScore',
+					};
+
+					const scoreField = scoreFieldMap[period];
+					if (!scoreField) {
+						throw new Error(`Invalid period: ${period}. Valid periods are: weekly, monthly, yearly`);
+					}
 
 					const leaderboard = await this.leaderboardRepository
 						.createQueryBuilder('leaderboard')
@@ -347,25 +359,23 @@ export class LeaderboardService {
 	 * @returns Topic statistics
 	 */
 	private calculateTopicStats(gameHistory: GameHistoryEntity[]) {
+		const groupedByTopic = groupBy(gameHistory, 'topic');
 		const topicStats: Record<
 			string,
 			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
 		> = {};
 
-		gameHistory.forEach(game => {
-			const topic = game.topic || 'Unknown';
-			if (!topicStats[topic]) {
-				topicStats[topic] = { totalQuestions: 0, correctAnswers: 0, successRate: 0, score: 0 };
-			}
-			topicStats[topic].totalQuestions += game.totalQuestions;
-			topicStats[topic].correctAnswers += game.correctAnswers;
-			topicStats[topic].score += game.score;
-		});
+		Object.entries(groupedByTopic).forEach(([topic, games]) => {
+			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
+			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
+			const score = games.reduce((sum, game) => sum + game.score, 0);
 
-		// Calculate success rates
-		Object.keys(topicStats).forEach(topic => {
-			const stats = topicStats[topic];
-			stats.successRate = stats.totalQuestions > 0 ? (stats.correctAnswers / stats.totalQuestions) * 100 : 0;
+			topicStats[topic] = {
+				totalQuestions,
+				correctAnswers,
+				score,
+				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+			};
 		});
 
 		return topicStats;
@@ -377,25 +387,23 @@ export class LeaderboardService {
 	 * @returns Difficulty statistics
 	 */
 	private calculateDifficultyStats(gameHistory: GameHistoryEntity[]) {
+		const groupedByDifficulty = groupBy(gameHistory, 'difficulty');
 		const difficultyStats: Record<
 			string,
 			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
 		> = {};
 
-		gameHistory.forEach(game => {
-			const difficulty = game.difficulty || 'Unknown';
-			if (!difficultyStats[difficulty]) {
-				difficultyStats[difficulty] = { totalQuestions: 0, correctAnswers: 0, successRate: 0, score: 0 };
-			}
-			difficultyStats[difficulty].totalQuestions += game.totalQuestions;
-			difficultyStats[difficulty].correctAnswers += game.correctAnswers;
-			difficultyStats[difficulty].score += game.score;
-		});
+		Object.entries(groupedByDifficulty).forEach(([difficulty, games]) => {
+			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
+			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
+			const score = games.reduce((sum, game) => sum + game.score, 0);
 
-		// Calculate success rates
-		Object.keys(difficultyStats).forEach(difficulty => {
-			const stats = difficultyStats[difficulty];
-			stats.successRate = stats.totalQuestions > 0 ? (stats.correctAnswers / stats.totalQuestions) * 100 : 0;
+			difficultyStats[difficulty] = {
+				totalQuestions,
+				correctAnswers,
+				score,
+				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+			};
 		});
 
 		return difficultyStats;

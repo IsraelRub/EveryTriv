@@ -8,7 +8,6 @@ shared/constants/
   business/     # ערכים דומייניים
   │   ├── info.constants.ts
   │   ├── language.constants.ts
-  │   ├── payment.constants.ts
   │   └── social.constants.ts
   core/         # ערכים טכניים
   │   ├── api.constants.ts
@@ -16,10 +15,12 @@ shared/constants/
   │   ├── error.constants.ts
   │   ├── game-server.constants.ts
   │   ├── game.constants.ts
+  │   ├── performance.constants.ts
   │   └── validation.constants.ts
   infrastructure/ # שמות Channels, Cache Keys
   │   ├── http.constants.ts
   │   ├── infrastructure.constants.ts
+  │   ├── localhost.constants.ts
   │   ├── logging.constants.ts
   │   └── storage.constants.ts
   navigation/   # מסלולי UI / מזהי תפריטים
@@ -29,17 +30,23 @@ shared/constants/
 
 ## דוגמאות
 ```typescript
-// business/payment.constants.ts
-export const POINTS_PRICING_TIERS = [
-  { points: 100, price: 5.99 },
-  { points: 500, price: 24.99 },
-  { points: 1000, price: 44.99 }
-] as const;
+// core/game.constants.ts
+export const DIFFICULTY_MULTIPLIERS = {
+  easy: 1,
+  medium: 1.5,
+  hard: 2,
+  CUSTOM_DEFAULT: 1.3,
+  BONUS_MULTIPLIER: 1.2,
+} as const;
 
 // infrastructure/storage.constants.ts
 export const CACHE_TTL = {
-  QUESTION: 5 * 60 * 1000, // 5 minutes
-  USER_STATS: 10 * 60 * 1000, // 10 minutes
+  SHORT: 300, // 5 minutes
+  MEDIUM: 1800, // 30 minutes
+  LONG: 3600, // 1 hour
+  TRIVIA_QUESTIONS: 3600, // 1 hour
+  USER_PROFILE: 1800, // 30 minutes
+  LEADERBOARD: 300, // 5 minutes
 } as const;
 
 // navigation/navigation.constants.ts
@@ -47,6 +54,18 @@ export const ROUTE_PATHS = {
   HOME: '/',
   GAME: '/game',
   LEADERBOARD: '/leaderboard',
+  PAYMENT: '/payment',
+  HISTORY: '/history',
+  PROFILE: '/profile',
+} as const;
+
+// core/performance.constants.ts
+export const CACHE_DURATION = {
+  VERY_SHORT: 30, // 30 seconds
+  SHORT: 60, // 1 minute
+  MEDIUM: 300, // 5 minutes
+  LONG: 600, // 10 minutes
+  VERY_LONG: 3600, // 1 hour
 } as const;
 ```
 

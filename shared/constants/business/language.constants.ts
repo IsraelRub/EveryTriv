@@ -18,12 +18,7 @@ export const LANGUAGE_TOOL_CONSTANTS = {
 		TYPOS: 'TYPOS',
 	},
 	LANGUAGES: {
-		AUTO: 'auto',
 		ENGLISH: 'en',
-		HEBREW: 'he',
-		SPANISH: 'es',
-		FRENCH: 'fr',
-		GERMAN: 'de',
 	},
 	CONFIDENCE: {
 		HIGH: 0.95,
@@ -35,29 +30,22 @@ export const LANGUAGE_TOOL_CONSTANTS = {
 } as const;
 
 export const COMMON_MISSPELLINGS = {
-	en: {
-		recieve: ['receive'],
-		seperate: ['separate'],
-		occured: ['occurred'],
-		begining: ['beginning'],
-		beleive: ['believe'],
-		definately: ['definitely'],
-		enviroment: ['environment'],
-		goverment: ['government'],
-		neccessary: ['necessary'],
-		occassion: ['occasion'],
-		priviledge: ['privilege'],
-		probaly: ['probably'],
-		rember: ['remember'],
-		sucess: ['success'],
-		untill: ['until'],
-		wierd: ['weird'],
-	},
-	he: {
-		שלום: ['שלום'],
-		תודה: ['תודה'],
-		אנחנו: ['אנחנו'],
-	},
+	recieve: ['receive'],
+	seperate: ['separate'],
+	occured: ['occurred'],
+	begining: ['beginning'],
+	beleive: ['believe'],
+	definately: ['definitely'],
+	enviroment: ['environment'],
+	goverment: ['government'],
+	neccessary: ['necessary'],
+	occassion: ['occasion'],
+	priviledge: ['privilege'],
+	probaly: ['probably'],
+	rember: ['remember'],
+	sucess: ['success'],
+	untill: ['until'],
+	wierd: ['weird'],
 } as const;
 
 export const GRAMMAR_PATTERNS = [
@@ -69,6 +57,5 @@ export const GRAMMAR_PATTERNS = [
 ] as const;
 
 export const LANGUAGE_DETECTION = {
-	HEBREW_CHARS: /[\u0590-\u05FF]/,
 	ENGLISH_CHARS: /[a-zA-Z]/,
 } as const;

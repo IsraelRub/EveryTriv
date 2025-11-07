@@ -104,9 +104,6 @@ export const LOG_LEVEL_PROPERTIES = {
 	},
 } as const;
 
-// Performance thresholds for logging (re-exported from core performance constants)
-export { PERFORMANCE_THRESHOLDS } from '../core/performance.constants';
-
 // Domain definitions - define each domain only once
 export const LOG_DOMAINS = {
 	OAUTH: 'OAUTH',

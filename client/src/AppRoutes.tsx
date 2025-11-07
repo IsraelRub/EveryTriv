@@ -1,24 +1,35 @@
-import { clientLogger as logger } from '@shared/services';
-import type { UserRole } from '@shared/constants';
-import { mergeWithDefaults } from '@shared/utils/preferences.utils';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 
-import { ProtectedRoute, PublicRoute } from './components/auth';
-import { Footer, NotFound } from './components/layout';
-import { Navigation } from './components/navigation';
-import { CompleteProfile, OAuthCallback } from './components/user';
-import { USER_DEFAULT_VALUES } from './constants';
-import { useAppDispatch } from './hooks/layers/utils';
-import { fetchUserData, setAuthenticated, setUser } from './redux/slices/userSlice';
-import { audioService } from './services';
-import { authService } from './services/auth';
-import { prefetchAuthenticatedQueries } from './services/utils/queryClient.service';
-import { GameHistory } from './views/gameHistory';
-import HomeView from './views/home';
+import { UserRole } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import { getErrorMessage, mergeUserPreferences } from '@shared/utils';
+
+import {
+	CompleteProfile,
+	Footer,
+	Navigation,
+	NotFound,
+	OAuthCallback,
+	ProtectedRoute,
+	PublicRoute,
+} from './components';
+import { useAppDispatch } from './hooks';
+import { fetchUserData, setAuthenticated, setUser } from './redux/slices';
+import { audioService, authService, prefetchAuthenticatedQueries } from './services';
+import AdminDashboard from './views/admin/AdminDashboard';
+import { AnalyticsView } from './views/analytics/AnalyticsView';
+import CustomDifficultyView from './views/game/CustomDifficultyView';
+import GameSessionView from './views/game/GameSessionView';
+import GameSummaryView from './views/game/GameSummaryView';
+import GameHistory from './views/gameHistory/GameHistory';
+import HomeView from './views/home/HomeView';
 import { LeaderboardView } from './views/leaderboard';
+import LoginView from './views/login/LoginView';
 import PaymentView from './views/payment';
+import PointsView from './views/points/PointsView';
 import { RegistrationView } from './views/registration';
+import SettingsView from './views/settings/SettingsView';
 import UnauthorizedView from './views/unauthorized/UnauthorizedView';
 import UserProfile from './views/user';
 
@@ -30,46 +41,53 @@ import UserProfile from './views/user';
  * @returns null Renders nothing, only handles side effects
  */
 function NavigationTracker() {
-  const location = useLocation();
+	const location = useLocation();
 
-  useEffect(() => {
-    logger.navigationPage(location.pathname, {
-      search: location.search,
-      timestamp: new Date().toISOString(),
-      type: 'spa_navigation',
-    });
+	useEffect(() => {
+		logger.navigationPage(location.pathname, {
+			search: location.search,
+			timestamp: new Date().toISOString(),
+			type: 'spa_navigation',
+		});
 
-    if (location.pathname === '/auth/google') {
-      logger.navigationOAuth('Google', {
-        path: location.pathname,
-        timestamp: new Date().toISOString(),
-      });
-    }
+		if (location.pathname === '/auth/google') {
+			logger.navigationOAuth('Google', {
+				path: location.pathname,
+				timestamp: new Date().toISOString(),
+			});
+		}
 
-    const validRoutes = [
-      '/',
-      '/game',
-      '/play',
-      '/start',
-      '/profile',
-      '/history',
-      '/leaderboard',
-      '/payment',
-      '/register',
-      '/auth/callback',
-      '/complete-profile',
-      '/analytics',
-    ];
-    if (!validRoutes.includes(location.pathname) && !location.pathname.startsWith('/auth/')) {
-      logger.navigationUnknownRoute(location.pathname, {
-        referrer: document.referrer,
-        timestamp: new Date().toISOString(),
-        type: 'unknown_route',
-      });
-    }
-  }, [location]);
+		const validRoutes = [
+			'/',
+			'/game',
+			'/game/play',
+			'/game/summary',
+			'/game/custom',
+			'/play',
+			'/start',
+			'/profile',
+			'/history',
+			'/leaderboard',
+			'/payment',
+			'/points',
+			'/settings',
+			'/register',
+			'/login',
+			'/admin',
+			'/auth/callback',
+			'/complete-profile',
+			'/analytics',
+		];
+		if (!validRoutes.includes(location.pathname) && !location.pathname.startsWith('/auth/')) {
+			logger.navigationUnknownRoute(location.pathname, {
+				referrer: document.referrer,
+				timestamp: new Date().toISOString(),
+				type: 'unknown_route',
+			});
+		}
+	}, [location]);
 
-  return null;
+	return null;
 }
 
 /**
@@ -80,117 +98,157 @@ function NavigationTracker() {
  * @returns JSX.Element The rendered application with routing and navigation
  */
 export default function AppRoutes() {
-  const dispatch = useAppDispatch();
+	const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const initAuth = async () => {
-      if (await authService.isAuthenticated()) {
-        try {
-          // Use the async thunk instead of manual API call
-          const result = await dispatch(fetchUserData());
-          if (fetchUserData.fulfilled.match(result)) {
-            const user = result.payload;
-            dispatch(
-              setUser({
-                ...user,
-                ...USER_DEFAULT_VALUES,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                role: user.role as UserRole,
-              })
-            );
-            dispatch(setAuthenticated(true));
+	useEffect(() => {
+		const initAuth = async () => {
+			if (await authService.isAuthenticated()) {
+				try {
+					// Use the async thunk instead of manual API call
+					const result = await dispatch(fetchUserData());
+					if (fetchUserData.fulfilled.match(result)) {
+						const user = result.payload;
+						dispatch(setUser(user));
+						dispatch(setAuthenticated(true));
 
-            // Set user preferences for audio service (if available)
-            if ('preferences' in user && user.preferences) {
-              const mergedPreferences = mergeWithDefaults(user.preferences);
-              audioService.setUserPreferences(mergedPreferences);
-            }
+						// Set user preferences for audio service (if available)
+						if ('preferences' in user && user.preferences) {
+							const mergedPreferences = mergeUserPreferences(null, user.preferences);
+							audioService.setUserPreferences(mergedPreferences);
+						}
 
-            // Prefetch authenticated-only data
-            try {
-              await prefetchAuthenticatedQueries();
-            } catch (error) {
-              logger.apiError('Failed to prefetch authenticated queries', { error });
-            }
-          }
-        } catch (error) {
-          authService.logout();
-        }
-      }
-    };
+						// Prefetch authenticated-only data
+						try {
+							await prefetchAuthenticatedQueries();
+						} catch (error) {
+							logger.apiError('Failed to prefetch authenticated queries', { error: getErrorMessage(error) });
+						}
+					}
+				} catch (error) {
+					logger.authError('Authentication initialization failed', {
+						error: getErrorMessage(error),
+					});
+					authService.logout();
+				}
+			}
+		};
 
-    initAuth();
-  }, [dispatch]);
+		initAuth();
+	}, [dispatch]);
 
-  return (
-    <div className='flex flex-col min-h-screen'>
-      <NavigationTracker />
-      <Navigation />
-      <main className='flex-grow'>
-        <Routes>
-          {/* Public routes */}
-          <Route path='/' element={<HomeView />} />
-          <Route path='/game' element={<HomeView />} />
-          <Route path='/play' element={<HomeView />} />
-          <Route path='/start' element={<HomeView />} />
-          <Route path='/leaderboard' element={<LeaderboardView />} />
+	return (
+		<div className='flex flex-col min-h-screen'>
+			<NavigationTracker />
+			<Navigation />
+			<main className='flex-grow'>
+				<Routes>
+					{/* Public routes */}
+					<Route path='/' element={<HomeView />} />
+					<Route path='/game' element={<HomeView />} />
+					<Route path='/play' element={<HomeView />} />
+					<Route path='/start' element={<HomeView />} />
+					<Route path='/leaderboard' element={<LeaderboardView />} />
 
-          {/* Protected routes - require authentication */}
-          <Route
-            path='/profile'
-            element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path='/history'
-            element={
-              <ProtectedRoute>
-                <GameHistory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path='/payment'
-            element={
-              <ProtectedRoute>
-                <PaymentView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path='/complete-profile'
-            element={
-              <ProtectedRoute>
-                <CompleteProfile />
-              </ProtectedRoute>
-            }
-          />
+					{/* Game routes */}
+					<Route path='/game/play' element={<GameSessionView />} />
+					<Route path='/game/summary' element={<GameSummaryView />} />
+					<Route path='/game/custom' element={<CustomDifficultyView />} />
 
-          {/* Public routes - redirect if authenticated */}
-          <Route
-            path='/register'
-            element={
-              <PublicRoute>
-                <RegistrationView />
-              </PublicRoute>
-            }
-          />
+					{/* Protected routes - require authentication */}
+					<Route
+						path='/profile'
+						element={
+							<ProtectedRoute>
+								<UserProfile />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/history'
+						element={
+							<ProtectedRoute>
+								<GameHistory />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/payment'
+						element={
+							<ProtectedRoute>
+								<PaymentView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/points'
+						element={
+							<ProtectedRoute>
+								<PointsView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/complete-profile'
+						element={
+							<ProtectedRoute>
+								<CompleteProfile />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/analytics'
+						element={
+							<ProtectedRoute>
+								<AnalyticsView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/settings'
+						element={
+							<ProtectedRoute>
+								<SettingsView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/admin'
+						element={
+							<ProtectedRoute requiredRole={UserRole.ADMIN}>
+								<AdminDashboard />
+							</ProtectedRoute>
+						}
+					/>
 
-          {/* OAuth callback - no protection needed */}
-          <Route path='/auth/callback' element={<OAuthCallback />} />
+					{/* Public routes - redirect if authenticated */}
+					<Route
+						path='/login'
+						element={
+							<PublicRoute>
+								<LoginView />
+							</PublicRoute>
+						}
+					/>
+					<Route
+						path='/register'
+						element={
+							<PublicRoute>
+								<RegistrationView />
+							</PublicRoute>
+						}
+					/>
 
-          {/* Unauthorized page */}
-          <Route path='/unauthorized' element={<UnauthorizedView />} />
+					{/* OAuth callback - no protection needed */}
+					<Route path='/auth/callback' element={<OAuthCallback />} />
 
-          {/* 404 */}
-          <Route path='*' element={<NotFound />} />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
-  );
+					{/* Unauthorized page */}
+					<Route path='/unauthorized' element={<UnauthorizedView />} />
+
+					{/* 404 */}
+					<Route path='*' element={<NotFound />} />
+				</Routes>
+			</main>
+			<Footer />
+		</div>
+	);
 }

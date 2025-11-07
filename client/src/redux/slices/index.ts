@@ -26,6 +26,7 @@ export { default as gameModeSlice } from './gameModeSlice';
  * @used_by client/src/components/game, client/src/views
  */
 export { default as gameSlice } from './gameSlice';
+export { resetGame, updateScore } from './gameSlice';
 
 /**
  * Stats slice
@@ -47,13 +48,14 @@ export { default as userSlice } from './userSlice';
  * @used_by client/src/components, client/src/views
  */
 export {
-  deductPoints,
-  fetchUserData,
-  logout,
-  setAvatar,
-  setPointBalance,
-  setUsername,
-  updateUserProfile,
+	deductPoints,
+	fetchUserData,
+	setAvatar,
+	setAuthenticated,
+	setPointBalance,
+	setUser,
+	setUsername,
+	updateUserProfile,
 } from './userSlice';
 
 /**

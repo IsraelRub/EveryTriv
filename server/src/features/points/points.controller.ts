@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+
+import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import { Cache, ClientIP, CurrentUserId, RateLimit, UserAgent } from '../../common';
+import { Cache, CurrentUserId, NoCache } from '../../common';
 import { CanPlayDto, ConfirmPointPurchaseDto, DeductPointsDto, GetPointHistoryDto, PurchasePointsDto } from './dtos';
 import { PointsService } from './points.service';
 
@@ -15,7 +16,7 @@ export class PointsController {
 	 * Get user point balance
 	 */
 	@Get('balance')
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@NoCache()
 	async getPointBalance(@CurrentUserId() userId: string) {
 		try {
 			const result = this.pointsService.getPointBalance(userId);
@@ -91,13 +92,7 @@ export class PointsController {
 	 * Deduct points from user
 	 */
 	@Post('deduct')
-	@RateLimit(20, 60) // 20 deductions per minute
-	async deductPoints(
-		@CurrentUserId() userId: string,
-		@Body() body: DeductPointsDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	) {
+	async deductPoints(@CurrentUserId() userId: string, @Body() body: DeductPointsDto) {
 		try {
 			if (!body.questionCount || body.questionCount <= 0) {
 				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
@@ -110,9 +105,7 @@ export class PointsController {
 				userId,
 				questionCount: body.questionCount,
 				gameMode: body.gameMode,
-				remainingPoints: result.total_points,
-				ip,
-				userAgent,
+				remainingPoints: result.totalPoints,
 			});
 
 			return result;
@@ -163,7 +156,6 @@ export class PointsController {
 	 * Purchase points package
 	 */
 	@Post('purchase')
-	@RateLimit(5, 60) // 5 purchases per minute
 	async purchasePoints(@CurrentUserId() userId: string, @Body() body: PurchasePointsDto) {
 		try {
 			if (!body.packageId) {
@@ -175,7 +167,7 @@ export class PointsController {
 			// Log API call for points purchase
 			logger.apiCreate('points_purchase', {
 				userId,
-				packageId: body.packageId,
+				id: body.packageId,
 			});
 
 			return result;
@@ -183,7 +175,7 @@ export class PointsController {
 			logger.userError('Error purchasing points', {
 				error: getErrorMessage(error),
 				userId,
-				packageId: body.packageId,
+				id: body.packageId,
 			});
 			throw error;
 		}
@@ -193,7 +185,6 @@ export class PointsController {
 	 * Confirm point purchase
 	 */
 	@Post('confirm-purchase')
-	@RateLimit(10, 60) // 10 confirmations per minute
 	async confirmPointPurchase(@CurrentUserId() userId: string, @Body() body: ConfirmPointPurchaseDto) {
 		try {
 			if (!body.paymentIntentId || !body.points) {
@@ -205,7 +196,7 @@ export class PointsController {
 			// Log API call for purchase confirmation
 			logger.apiUpdate('points_purchase_confirm', {
 				userId,
-				paymentIntentId: body.paymentIntentId,
+				id: body.paymentIntentId,
 				points: body.points,
 			});
 
@@ -214,7 +205,7 @@ export class PointsController {
 			logger.userError('Error confirming point purchase', {
 				error: getErrorMessage(error),
 				userId,
-				paymentIntentId: body.paymentIntentId,
+				id: body.paymentIntentId,
 			});
 			throw error;
 		}

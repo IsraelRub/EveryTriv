@@ -15,6 +15,90 @@
 
 ## UI Components
 
+### Modals
+
+#### AlertModal
+רכיב modal להצגת הודעות למשתמש.
+
+```typescript
+interface AlertModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  variant?: 'success' | 'error' | 'info';
+  buttonText?: string;
+}
+```
+
+**דוגמת שימוש:**
+```tsx
+<AlertModal
+  open={showAlert}
+  onClose={() => setShowAlert(false)}
+  title="שגיאה"
+  message="אירעה שגיאה בעת שמירת הנתונים"
+  variant="error"
+  buttonText="אישור"
+/>
+```
+
+#### ConfirmModal
+רכיב modal לאישור פעולות.
+
+```typescript
+interface ConfirmModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'danger' | 'warning' | 'info';
+  isLoading?: boolean;
+}
+```
+
+**דוגמת שימוש:**
+```tsx
+<ConfirmModal
+  open={showConfirm}
+  onClose={() => setShowConfirm(false)}
+  onConfirm={handleDelete}
+  title="מחיקת פריט"
+  message="האם אתה בטוח שברצונך למחוק את הפריט?"
+  confirmText="מחק"
+  cancelText="ביטול"
+  variant="danger"
+  isLoading={isDeleting}
+/>
+```
+
+### Validation
+
+#### ValidationIcon
+רכיב אייקון המציג סטטוס ולידציה של שדה.
+
+```typescript
+interface ValidationIconProps {
+  isValid: boolean;
+  isInvalid: boolean;
+  isValidating: boolean;
+  className?: string;
+}
+```
+
+**דוגמת שימוש:**
+```tsx
+<ValidationIcon
+  isValid={isValid}
+  isInvalid={isInvalid}
+  isValidating={isValidating}
+  className="ml-2"
+/>
+```
+
 ### Button
 
 רכיב כפתור מתקדם עם אנימציות וצלילים.
@@ -714,9 +798,52 @@ function useAnalytics(userId?: string) {
 }
 ```
 
+### Animations
+
+#### StaggerContainer
+אנימציית stagger לרשימות עם אפקט הדרגתי.
+
+```typescript
+// יצירת stagger container
+const staggerContainer = createStaggerContainer(0.05); // 50ms delay
+
+// שימוש ברכיב
+<motion.div 
+  variants={staggerContainer} 
+  initial="hidden" 
+  animate="visible"
+>
+  {items.map((item) => (
+    <motion.div key={item.id} variants={fadeInUp}>
+      <ItemComponent item={item} />
+    </motion.div>
+  ))}
+</motion.div>
+```
+
+**דוגמאות שימוש:**
+- `LeaderboardView` - אנימציית רשימת מובילים
+- `PointsView` - אנימציית היסטוריית עסקאות
+- `AdminDashboard` - אנימציית כרטיסי סטטיסטיקות
+
+#### Animation Variants
+```typescript
+// fadeInUp - אנימציית כניסה מלמטה
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
+// scaleIn - אנימציית כניסה עם scale
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { opacity: 1, scale: 1 }
+};
+```
+
 ### Theme
 
-האפליקציה משתמשת ב-theme מותאם:
+האפליקציה משתמשת בערכת צבעים קבועה (ללא light/dark mode toggle):
 
 ```typescript
 // theme.ts

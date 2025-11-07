@@ -1,22 +1,20 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DEFAULT_USER_PREFERENCES, UserRole, UserStatus, CACHE_DURATION } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type {
-  BasicValue,
-	UserAddress,
-	UserFieldUpdate,
-	UserPreferences,
-} from '@shared/types';
-import { createServerError, createValidationError } from '@internal/utils';
-import { getErrorMessage, normalizeText } from '@shared/utils';
-import { UserEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
-import { ServerStorageService } from 'src/internal/modules/storage';
+import * as bcrypt from 'bcrypt';
 import { DeepPartial, Repository } from 'typeorm';
+
+import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, UserRole, UserStatus } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { BasicValue, UpdateUserProfileData, UserPreferences } from '@shared/types';
+import { getErrorMessage, mergeUserPreferences, normalizeText } from '@shared/utils';
+
+import { UserEntity } from '@internal/entities';
+import { CacheService, ServerStorageService } from '@internal/modules';
+import { createServerError, createValidationError } from '@internal/utils';
 
 import { AuthenticationManager } from '../../common/auth/authentication.manager';
 import { PasswordService } from '../../common/auth/password.service';
+import { ValidationService } from '../../common/validation/validation.service';
 
 /**
  * Service for managing user data, profiles, and authentication
@@ -30,7 +28,8 @@ export class UserService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: ServerStorageService,
 		private readonly authenticationManager: AuthenticationManager,
-		private readonly passwordService: PasswordService
+		private readonly passwordService: PasswordService,
+		private readonly validationService: ValidationService
 	) {}
 
 	/**
@@ -63,14 +62,14 @@ export class UserService {
 				}
 			);
 
-		if (authResult.error) {
-			throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
-		}
+			if (authResult.error) {
+				throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
+			}
 
-		// Type guard: we know these exist when there's no error
-		if (!authResult.accessToken || !authResult.refreshToken) {
-			throw new UnauthorizedException('Authentication result incomplete');
-		}
+			// Type guard: we know these exist when there's no error
+			if (!authResult.accessToken || !authResult.refreshToken) {
+				throw new UnauthorizedException('Authentication result incomplete');
+			}
 
 			const sessionKey = `user_session:${user.id}`;
 			const result = await this.storageService.setItem(
@@ -200,12 +199,14 @@ export class UserService {
 				id: user.id,
 				username: user.username,
 				email: user.email,
+				role: user.role,
 				firstName: user.firstName,
-				last_name: user.lastName,
+				lastName: user.lastName,
 				avatar: user.avatar,
+				bio: user.bio,
 				preferences: user.preferences,
-				stats: user.stats,
-				created_at: user.createdAt,
+				createdAt: user.createdAt,
+				updatedAt: user.updatedAt,
 			};
 		} catch (error) {
 			logger.userError('Failed to get user profile', {
@@ -223,17 +224,7 @@ export class UserService {
 	 * @param profileData Profile data to update
 	 * @returns Updated user profile
 	 */
-	async updateUserProfile(
-		userId: string,
-		profileData: {
-			username?: string;
-			first_name?: string;
-			last_name?: string;
-			avatar?: string;
-			preferences?: UserPreferences;
-			address?: UserAddress;
-		}
-	) {
+	async updateUserProfile(userId: string, profileData: UpdateUserProfileData) {
 		try {
 			logger.userInfo('Updating user profile', {
 				context: 'UserService',
@@ -257,7 +248,13 @@ export class UserService {
 			}
 
 			// Update user fields
-			Object.assign(user, profileData);
+			if (profileData.username !== undefined) user.username = profileData.username;
+			if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
+			if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
+			if (profileData.bio !== undefined) user.bio = profileData.bio;
+			if (profileData.avatar !== undefined) user.avatar = profileData.avatar;
+			if (profileData.preferences !== undefined)
+				user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
 
 			// Save updated user
 			const updatedUser = await this.userRepository.save(user);
@@ -269,11 +266,15 @@ export class UserService {
 			return {
 				id: updatedUser.id,
 				username: updatedUser.username,
-				first_name: updatedUser.firstName,
-				last_name: updatedUser.lastName,
+				email: updatedUser.email,
+				role: updatedUser.role,
+				firstName: updatedUser.firstName,
+				lastName: updatedUser.lastName,
 				avatar: updatedUser.avatar,
+				bio: updatedUser.bio,
 				preferences: updatedUser.preferences,
-				message: 'Profile updated successfully',
+				createdAt: updatedUser.createdAt,
+				updatedAt: updatedUser.updatedAt,
 			};
 		} catch (error) {
 			logger.userError('Failed to update user profile', {
@@ -467,12 +468,63 @@ export class UserService {
 	}
 
 	/**
+	 * Change user password
+	 * @param userId User ID
+	 * @param currentPassword Current password
+	 * @param newPassword New password
+	 * @returns Change result
+	 */
+	async changePassword(userId: string, currentPassword: string, newPassword: string) {
+		try {
+			logger.userInfo('Changing user password', {
+				context: 'UserService',
+				userId,
+			});
+
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new NotFoundException('User not found');
+			}
+
+			// Verify current password
+			if (!user.passwordHash) {
+				throw new BadRequestException('Password not set');
+			}
+			const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+			if (!isCurrentPasswordValid) {
+				throw new UnauthorizedException('Current password is incorrect');
+			}
+
+			// Hash new password
+			const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+			// Update password
+			user.passwordHash = newPasswordHash;
+			await this.userRepository.save(user);
+
+			// Clear user cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+
+			return {
+				message: 'Password changed successfully',
+			};
+		} catch (error) {
+			logger.userError('Failed to change password', {
+				context: 'UserService',
+				error: getErrorMessage(error),
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Update user preferences
 	 * @param userId User ID
 	 * @param preferences User preferences
 	 * @returns Updated preferences
 	 */
-	async updateUserPreferences(userId: string, preferences: Record<string, unknown>) {
+	async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>) {
 		try {
 			logger.userInfo('Updating user preferences', {
 				context: 'UserService',
@@ -484,11 +536,8 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Merge existing preferences with new ones
-			user.preferences = {
-				...user.preferences,
-				...preferences,
-			};
+			// Merge existing preferences with new ones (deep merge for privacy and game)
+			user.preferences = mergeUserPreferences(user.preferences, preferences);
 			await this.userRepository.save(user);
 
 			// Invalidate user profile cache
@@ -761,13 +810,12 @@ export class UserService {
 	 * @param details Additional details
 	 * @returns Log result
 	 */
-	async logUserActivity(userId: string, action: string, details: Record<string, unknown> = {}) {
+	async logUserActivity(userId: string, action: string, details: { ip?: string; userAgent?: string } = {}) {
 		try {
 			const auditKey = `audit_log:${userId}:${Date.now()}`;
 			const auditEntry = {
 				userId,
 				action,
-				details,
 				timestamp: new Date().toISOString(),
 				ip: details.ip ?? 'unknown',
 				userAgent: details.userAgent ?? 'unknown',
@@ -824,12 +872,11 @@ export class UserService {
 				throw createServerError('get audit keys', keysResult.error);
 			}
 
-			const auditKeys =
-				keysResult.data
-					?.filter((key: string) => key.startsWith(`audit_log:${userId}:`))
-					.sort()
-					.reverse()
-					.slice(0, limit) || [];
+			const auditKeys = (keysResult.data ?? [])
+				.filter((key: string) => key.startsWith(`audit_log:${userId}:`))
+				.sort()
+				.reverse()
+				.slice(0, limit);
 
 			// Get audit entries
 			const auditLogs = [];
@@ -860,11 +907,7 @@ export class UserService {
 	 * @param value New value
 	 * @returns Updated user
 	 */
-	async updateUserField(
-		userId: string,
-		field: keyof UserFieldUpdate | 'role' | 'currentSubscriptionId' | 'status',
-		value: BasicValue
-	): Promise<UserEntity> {
+	async updateUserField(userId: string, field: string, value: BasicValue): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user field', {
 				context: 'UserService',
@@ -887,8 +930,7 @@ export class UserService {
 				lastName: { type: 'string' },
 				phone: { type: 'string' },
 				avatar: { type: 'string' },
-				bio: { type: 'string', fieldName: 'additionalInfo', maxLength: 500 },
-				additionalInfo: { type: 'string', maxLength: 500 },
+				bio: { type: 'string', maxLength: 500 },
 				isActive: { type: 'boolean' },
 				agreeToNewsletter: { type: 'boolean' },
 				score: { type: 'number' },
@@ -899,49 +941,55 @@ export class UserService {
 				remainingFreeQuestions: { type: 'number' },
 			};
 
-			// Handle special fields that are not in UserFieldUpdate
+			// Handle special fields
 			if (field === 'role') {
-				if (Object.values(UserRole).includes(value as UserRole)) {
-					user.role = value as UserRole;
+				const validRole = Object.values(UserRole).find(role => role === value);
+				if (validRole) {
+					user.role = validRole;
 				} else {
 					throw createValidationError('role', 'string');
 				}
 			} else if (field === 'currentSubscriptionId') {
-				if (typeof value === 'string' || !value) {
-					user.currentSubscriptionId = value as string | undefined;
+				if (typeof value === 'string' || value === null || value === undefined) {
+					user.currentSubscriptionId = typeof value === 'string' ? value : undefined;
 				} else {
 					throw createValidationError('currentSubscriptionId', 'string');
 				}
 			} else if (field === 'status') {
-				const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
-				user.additionalInfo = JSON.stringify({
-					...currentAdditionalInfo,
+				const currentMetadata = user.metadata ?? {};
+				user.metadata = {
+					...currentMetadata,
 					status: value,
 					statusUpdatedAt: new Date().toISOString(),
-				});
+				};
 			} else {
-				// Use field type mapping for standard fields in UserFieldUpdate
+				// Use field type mapping for standard fields
 				if (fieldTypeMap[field]) {
 					const fieldConfig = fieldTypeMap[field];
-					const targetField = fieldConfig.fieldName || field; // Use fieldName if specified, otherwise use field key
 
-					// Create update object with proper typing
-					const updateData: Partial<UserEntity> = {};
+					// Get target field name
+					const targetField = fieldConfig.fieldName || field;
 
+					// Use ValidationService to validate and set field based on type
 					switch (fieldConfig.type) {
 						case 'string':
-							updateData[targetField as keyof UserEntity] = value as never;
+							this.validationService.validateAndSetStringField(
+								user,
+								targetField,
+								value,
+								fieldConfig.minLength,
+								fieldConfig.maxLength
+							);
 							break;
 						case 'number':
-							updateData[targetField as keyof UserEntity] = Number(value) as never;
+							this.validationService.validateAndSetNumberField(user, targetField, value);
 							break;
 						case 'boolean':
-							updateData[field as keyof UserEntity] = Boolean(value) as never;
+							this.validationService.validateAndSetBooleanField(user, targetField, value);
 							break;
+						default:
+							throw createValidationError(field, fieldConfig.type);
 					}
-
-					// Apply the update using Object.assign
-					Object.assign(user, updateData);
 				} else {
 					throw createValidationError(field, 'string');
 				}
@@ -1083,20 +1131,20 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Update status by mapping to isActive field or storing in additionalInfo
+			// Update status by mapping to isActive field or storing in metadata
 			if (status === UserStatus.ACTIVE) {
 				user.isActive = true;
 			} else if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
 				user.isActive = false;
 			}
 
-			// Store detailed status in additionalInfo
-			const currentAdditionalInfo = user.additionalInfo ? JSON.parse(user.additionalInfo) : {};
-			user.additionalInfo = JSON.stringify({
-				...currentAdditionalInfo,
+			// Store detailed status in metadata
+			const currentMetadata = user.metadata ?? {};
+			user.metadata = {
+				...currentMetadata,
 				status: status,
 				statusUpdatedAt: new Date().toISOString(),
-			});
+			};
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user cache

@@ -10,8 +10,9 @@
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
-import { CacheModule } from 'src/internal/modules';
+
+import { PointTransactionEntity, UserEntity } from '@internal/entities';
+import { CacheModule } from '@internal/modules';
 
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AuthModule } from '../auth';

@@ -45,6 +45,45 @@ client/src/views/
 - **תיאור**: לוח תוצאות גלובלי
 - **תכונות**: דירוגים, פילטרים, סטטיסטיקות
 
+### Points View
+- **קובץ**: `points/PointsView.tsx`
+- **תיאור**: תצוגת נקודות המשתמש והיסטוריית עסקאות
+- **תכונות**: 
+  - הצגת יתרת נקודות בזמן אמת
+  - היסטוריית עסקאות עם אנימציית stagger
+  - סינון לפי סוג עסקה
+  - חיפוש בהיסטוריה
+- **רכיבים**: PointsBalance, TransactionHistory, FilterControls
+
+### Game Session View
+- **קובץ**: `game/GameSessionView.tsx`
+- **תיאור**: זרימת משחק מלאה עם שאלות טריוויה
+- **תכונות**:
+  - טיימר שאלה
+  - הצגת שאלה ותשובות
+  - מעקב נקודות
+  - מעבר בין שאלות
+- **רכיבים**: TriviaGame, QuestionTimer, ScoreDisplay
+
+### Game Summary View
+- **קובץ**: `game/GameSummaryView.tsx`
+- **תיאור**: מסך סיכום משחק עם תוצאות
+- **תכונות**:
+  - הצגת תוצאה סופית
+  - פירוט תשובות נכונות/שגויות
+  - אפשרות לשחק שוב
+  - שמירת תוצאות
+- **רכיבים**: ScoreSummary, AnswerReview, ActionButtons
+
+### Custom Difficulty View
+- **קובץ**: `game/CustomDifficultyView.tsx`
+- **תיאור**: יצירת קושי מותאם אישית
+- **תכונות**:
+  - יצירת קושי חדש
+  - ולידציה של תיאור קושי
+  - שמירת קשיים מותאמים
+- **רכיבים**: DifficultyForm, ValidationInput, SaveButton
+
 ### Admin Dashboard
 - **קובץ**: `admin/AdminDashboard.tsx`
 - **תיאור**: דף ניהול מערכת למנהלים

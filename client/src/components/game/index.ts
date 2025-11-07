@@ -15,13 +15,6 @@
 export { default as Game } from './Game';
 
 /**
- * Game timer component
- * @description Timer display, countdown functionality, and time management
- * @used_by client/components/game, client/views
- */
-export { default as GameTimer } from './GameTimer';
-
-/**
  * Trivia form component
  * @description Form for trivia question input, configuration, and submission
  * @used_by client/components/game, client/views

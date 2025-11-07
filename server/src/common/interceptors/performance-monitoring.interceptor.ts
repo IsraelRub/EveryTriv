@@ -3,14 +3,14 @@
  *
  * @module PerformanceMonitoringInterceptor
  * @description Interceptor that tracks request performance metrics and identifies bottlenecks
- * @author EveryTriv Team
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
-import { metricsService,serverLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+
+import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
+import { serverLogger as logger, metricsService } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
 
 /**
  * Performance Monitoring Interceptor
@@ -20,8 +20,6 @@ import { catchError, tap } from 'rxjs/operators';
 export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	private readonly SLOW_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.SLOW;
 	private readonly VERY_SLOW_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.VERY_SLOW;
-
-	constructor() {}
 
 	/**
 	 * Intercept requests and monitor performance
@@ -37,7 +35,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 		// Extract request metadata
 		const endpoint = request.path;
 		const method = request.method;
-		const userId = request.user?.id || 'anonymous';
+		const userId = request.user?.sub || 'anonymous';
 		const userAgent = request.get('user-agent') || 'unknown';
 
 		return next.handle().pipe(

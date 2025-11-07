@@ -33,14 +33,54 @@ export enum UserRole {
 ### Guards
 
 #### AuthGuard
-- **תפקיד**: אימות JWT token
+- **תפקיד**: אימות JWT token ובדיקת נתיבים ציבוריים
 - **מיקום**: `server/src/common/guards/auth.guard.ts`
 - **שימוש**: כל נקודת קצה שדורשת אימות
+- **פעולות**:
+  - מאמת JWT tokens באמצעות `JwtService`
+  - בודק נתיבים ציבוריים באמצעות `isPublicEndpoint()` שקוראת מרשימה מוגדרת
+  - בודק אם נתיב מסומן כציבורי באמצעות decorator `@Public()`
+  - מחלץ מידע משתמש (`TokenPayload`) ומצרף לבקשה
+  - משתמש ב-`sub` claim כמזהה משתמש (תקן JWT)
 
 #### RolesGuard
 - **תפקיד**: בדיקת הרשאות על בסיס תפקיד
 - **מיקום**: `server/src/common/guards/roles.guard.ts`
 - **שימוש**: נקודות קצה שדורשות תפקיד ספציפי
+- **פעולות**:
+  - בודק תפקידים נדרשים מה-decorator `@Roles()`
+  - מדלג על בדיקה לנתיבים ציבוריים
+  - מאפשר למנהלים (`admin`) גישה לכל הנתיבים
+  - מחזיר `403 Forbidden` כאשר אין הרשאה
+
+### נתיבים ציבוריים
+
+#### רשימת נתיבים ציבוריים
+נתיבים ציבוריים מוגדרים במרכז ב-`server/src/internal/constants/public-endpoints.constants.ts`:
+
+```typescript
+export const PUBLIC_ENDPOINTS = [
+  '/leaderboard/global',
+  '/leaderboard/period',
+  '/health',
+  '/status',
+] as const;
+```
+
+#### בדיקת נתיבים ציבוריים
+הפונקציה `isPublicEndpoint()` ב-`server/src/internal/utils/guards.utils.ts` בודקת אם נתיב הוא ציבורי:
+
+```typescript
+export function isPublicEndpoint(path: string): boolean {
+  return PUBLIC_ENDPOINTS.some(endpoint => 
+    path === endpoint || 
+    path?.startsWith(endpoint + '?') || 
+    path?.startsWith(endpoint + '/')
+  );
+}
+```
+
+הפונקציה בודקת התאמה מדויקת או התחלת נתיב (עם query params או sub-paths).
 
 ### Decorators
 
@@ -58,7 +98,7 @@ async getAllUsers() {
 @Get('leaderboard')
 @Public()
 async getLeaderboard() {
-  // גישה ציבורית
+  // גישה ציבורית - מדלג על אימות
 }
 ```
 
@@ -89,8 +129,9 @@ export class AuthController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('admin')
   @Cache(60)
-  async getAllUsers(@CurrentUser() user: { id: string; role: string; username: string }) {
+  async getAllUsers(@CurrentUser() user: TokenPayload) {
     // לוגיקה למנהלים בלבד
+    // גישה למזהה משתמש: user.sub
   }
 }
 ```
@@ -108,18 +149,47 @@ export class UserController {
 }
 ```
 
-## Middleware אוטומטי
+## מבנה JWT Token
 
-מערכת ה-middleware מזהה אוטומטית את סוג הנתיב ומציעה הרשאות מתאימות:
+### TokenPayload
+אובייקט המשתמש שמוחזר מהאימות:
 
 ```typescript
-// ב-decorator-aware.middleware.ts
-let requiredRoles: string[] = [];
-if (path.includes('/admin')) {
-  requiredRoles = ['admin'];
-} else if (path.includes('/user') || path.includes('/profile')) {
-  requiredRoles = ['user', 'admin'];
+interface TokenPayload {
+  sub: string;        // מזהה משתמש (JWT standard)
+  email: string;      // דוא"ל משתמש
+  username: string;   // שם משתמש
+  role: UserRole;     // תפקיד משתמש
+  iat?: number;       // זמן הנפקה
+  exp?: number;       // זמן תפוגה
 }
+```
+
+**שימוש ב-`sub` claim**: המערכת משתמשת ב-`sub` (subject) כמזהה משתמש, בהתאם לתקן JWT. זה מאפשר תאימות עם מערכות חיצוניות ושמירה על best practices.
+
+## זרימת אימות
+
+### תהליך אימות בקשה
+1. **בקשה נכנסת** - הבקשה מגיעה ל-controller
+2. **AuthGuard** - בודק אם הנתיב ציבורי או דורש אימות
+   - אם ציבורי: מאשר את הבקשה
+   - אם דורש אימות: מאמת JWT token
+   - מחלץ `TokenPayload` ומצרף לבקשה
+3. **RolesGuard** - בודק תפקידים נדרשים (אם מוגדרים)
+   - מדלג על נתיבים ציבוריים
+   - בודק אם למשתמש יש תפקיד מתאים
+   - מאפשר למנהלים גישה לכל הנתיבים
+4. **Controller Method** - מבצע את הלוגיקה העסקית
+
+### דיאגרמת זרימה
+```
+Request → AuthGuard → RolesGuard → Controller
+            ↓           ↓
+         @Public?   @Roles?
+            ↓           ↓
+       JWT Valid?  Role OK?
+            ↓           ↓
+      Attach User   Allow/Deny
 ```
 
 ## אבטחה
@@ -127,8 +197,9 @@ if (path.includes('/admin')) {
 ### עקרונות
 
 1. **Least Privilege**: כל משתמש מקבל רק את ההרשאות המינימליות הנדרשות
-2. **Defense in Depth**: מספר שכבות הגנה (Guards, Decorators, Middleware)
-3. **Audit Logging**: כל פעולת מנהל מתועדת
+2. **Defense in Depth**: שכבות הגנה מרובות (Guards, Decorators)
+3. **Centralized Configuration**: רשימת נתיבים ציבוריים מנוהלת במרכז אחד
+4. **JWT Standard**: שימוש ב-`sub` claim לפי תקן JWT
 
 ### בדיקות אבטחה
 

@@ -1,5 +1,6 @@
 import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
 import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+
 import { createValidationError } from '@internal/utils';
 
 import { BaseTriviaProvider } from '../implementations';
@@ -22,7 +23,6 @@ export class GoogleTriviaProvider extends BaseTriviaProvider {
 			},
 			costPerToken: 0.000001,
 			maxTokens: 8192,
-			supportedLanguages: ['en', 'he'],
 			lastUpdated: new Date(),
 		},
 		isAvailable: true,
@@ -42,9 +42,9 @@ export class GoogleTriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'google',
 			apiKey: this.apiKey,
-		baseUrl: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
-		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
-		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
+			baseUrl: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
+			timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 2,
 			headers: {

@@ -6,9 +6,10 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import type { ValidationOptions } from '@shared/types';
-import { getErrorMessage,PipeValidationWithSuggestion } from '@shared/utils';
+import type { PipeValidationWithSuggestion, ValidationOptions } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
 

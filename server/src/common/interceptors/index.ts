@@ -26,10 +26,3 @@ export * from './response-formatting.interceptor';
  * @used_by server/src/app, server/src/controllers
  */
 export * from './performance-monitoring.interceptor';
-
-/**
- * Repository interceptor
- * @description Interceptor that handles repository method decorators and caching
- * @used_by server/repositories
- */
-export * from './repository.interceptor';

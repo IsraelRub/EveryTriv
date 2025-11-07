@@ -1,23 +1,14 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { PaymentMetadata, PaymentMethod, PaymentStatus } from '../types/typeorm-compatibility.types';
+import { PaymentMethod, PaymentStatus } from '@shared/constants';
+import { PaymentMetadata } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { SubscriptionEntity } from './subscription.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('payment_history')
-export class PaymentHistoryEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
+export class PaymentHistoryEntity extends BaseEntity {
 	@Column({ name: 'user_id' })
 	@Index()
 	userId: string;
@@ -79,10 +70,4 @@ export class PaymentHistoryEntity {
 
 	@Column('jsonb', { default: {} })
 	metadata: PaymentMetadata;
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date;
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date;
 }

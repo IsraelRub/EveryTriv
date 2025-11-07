@@ -154,7 +154,7 @@ export const Card: React.FC<CardProps> = ({
 
 ### Modal Component
 ```typescript
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../utils/cn';
 import { IconX } from './icons/IconX';
@@ -521,7 +521,7 @@ export const useReducedMotion = () => {
 
 ### Performance Optimized Components
 ```typescript
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 interface AnimatedCardProps {

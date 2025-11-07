@@ -6,11 +6,13 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+
 import { serverLogger as logger } from '@shared/services';
 import type { PasswordConfig, PasswordValidationResult } from '@shared/types';
-import { createServerError } from '@internal/utils';
 import { getErrorMessage } from '@shared/utils';
-import * as bcrypt from 'bcrypt';
+
+import { createServerError } from '@internal/utils';
 
 @Injectable()
 export class PasswordService {

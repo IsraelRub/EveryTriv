@@ -6,30 +6,21 @@
  * @description API response structures and HTTP communication interfaces
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
-import type { BaseData } from '../core/data.types';
-import type { BaseApiResponse, BasePagination, PaginatedResponse, SuccessResponse } from '../core/response.types';
-// Import MiddlewareMetrics from metrics types
-import type { MiddlewareMetrics } from '../domain/analytics/metrics.types';
+import { GameMode } from '../../constants';
+import type { BaseApiResponse, BaseData, BasePagination } from '../core';
+import type { BasicUser, GameDifficulty, MiddlewareMetrics } from '../domain';
 
 /**
  * Standard API response wrapper interface
  * @interface ApiResponse
- * @description Generic wrapper for all API responses
+ * @description Generic wrapper for all API responses with optional metadata
+ * Use SuccessResponse<T> for simple success responses without metadata
+ * Use ApiResponse<T> for responses that may include metadata (pagination, processing time, etc.)
  * @template T The type of the response data
  * @used_by server: server/src/features/game/game.controller.ts (getTrivia response), client: client/src/services/api.service.ts (ApiService methods), shared/services/logging (HttpClient responses))
  */
 export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
 	metadata?: ApiMetadata;
-}
-
-/**
- * Simple success response interface
- * @interface SimpleSuccessResponse
- * @description Simple response with success status and optional data
- * @template T The type of the response data
- */
-export interface SimpleSuccessResponse<T = BaseData> extends SuccessResponse<T> {
-	// Inherits from SuccessResponse
 }
 
 /**
@@ -67,7 +58,17 @@ export interface ApiError {
 	statusCode: number;
 	timestamp?: string;
 	details?: BaseData;
-	path?: string;
+}
+
+/**
+ * Error response data interface
+ * @interface ErrorResponseData
+ * @description Error data structure from API error responses
+ * @used_by client/src/services/api.service.ts
+ */
+export interface ErrorResponseData {
+	message?: string;
+	error?: string;
 }
 
 /**
@@ -78,17 +79,6 @@ export interface ApiError {
  */
 
 /**
- * Paginated response interface using metadata
- * @interface ApiPaginatedResponse
- * @description Standard structure for paginated API responses
- * @template T The type of items in the paginated response
- * @used_by server: server/src/features/gameHistory/gameHistory.controller.ts (getUserGameHistory), client: client/src/services/api.service.ts (getUserGameHistory)
- */
-export interface ApiPaginatedResponse<T> extends PaginatedResponse<T> {
-	// Inherits from PaginatedResponse
-}
-
-/**
  * Base DTO for amount-based operations
  * @interface AmountDto
  * @description Base interface for operations involving amounts
@@ -96,7 +86,6 @@ export interface ApiPaginatedResponse<T> extends PaginatedResponse<T> {
 export interface AmountDto {
 	amount: number;
 }
-
 
 /**
  * Base DTO for purchase operations with identifier
@@ -108,7 +97,6 @@ export interface PurchaseDto {
 	paymentMethodId: string;
 }
 
-
 /**
  * DTO for confirming point purchase
  * @interface ConfirmPointPurchaseDto
@@ -117,17 +105,6 @@ export interface PurchaseDto {
  */
 export interface ConfirmPointPurchaseDto {
 	paymentIntentId: string;
-}
-
-/**
- * Can play response interface
- * @interface CanPlayResponse
- * @description Response for checking if user can play
- * @used_by client/src/services/api.service.ts (canPlay), client/src/services/utils/points.service.ts (canPlay)
- */
-export interface CanPlayResponse {
-	allowed: boolean;
-	reason?: string;
 }
 
 /**
@@ -147,9 +124,9 @@ export interface PurchaseResponse {
  * @description Request payload for deducting points
  * @used_by client/src/services/api.service.ts (deductPoints), client/src/services/utils/points.service.ts (deductPoints)
  */
-export interface DeductPointsRequest extends Record<string, unknown> {
+export interface DeductPointsRequest {
 	questionCount: number;
-	gameMode: string;
+	gameMode: GameMode;
 }
 
 /**
@@ -157,7 +134,7 @@ export interface DeductPointsRequest extends Record<string, unknown> {
  * @interface QuestionData
  * @description Represents a single question's data in game history
  */
-export interface ApiQuestionData {
+export interface QuestionData {
 	question: string;
 	userAnswer: string;
 	correctAnswer: string;
@@ -171,40 +148,23 @@ export interface ApiQuestionData {
  * @description Complete game session data for history storage
  * @used_by client/src/services/api.service.ts (saveHistory, saveGameHistory)
  */
-export interface CreateGameHistoryDto {
+export interface GameData {
 	userId: string;
 	score: number;
 	totalQuestions: number;
 	correctAnswers: number;
-	difficulty: string;
+	difficulty: GameDifficulty;
 	topic: string;
-	gameMode: string;
+	gameMode: GameMode;
 	timeSpent: number;
 	creditsUsed: number;
-	questionsData: ApiQuestionData[];
+	questionsData: QuestionData[];
 }
-
-import { UserRole } from '../../constants/business/info.constants';
 
 // Admin User Data
-export interface AdminUserData {
-	id: string;
-	username: string;
-	email: string;
-	role: UserRole;
+export interface AdminUserData extends BasicUser {
 	createdAt: string;
 	lastLogin?: string;
-}
-
-// User Profile Response
-export interface UserProfileResponse {
-	data: Pick<AdminUserData, 'id' | 'username' | 'email' | 'role' | 'createdAt'> & {
-		firstName?: string;
-		lastName?: string;
-		updatedAt?: string;
-		preferences?: Record<string, unknown>;
-	};
-	timestamp: string;
 }
 
 // Users List Response
@@ -212,23 +172,6 @@ export interface UsersListResponse {
 	message: string;
 	adminUser: AdminUserData;
 	users: AdminUserData[];
-	success: boolean;
-	timestamp: string;
-}
-
-// Game Statistics Response
-export interface GameStatisticsResponse {
-	message: string;
-	statistics: {
-		totalGames: number;
-		averageScore: number;
-		bestScore: number;
-		totalQuestionsAnswered: number;
-		correctAnswers: number;
-		accuracy: number;
-		favoriteTopics: string[];
-		difficultyBreakdown: Record<string, number>;
-	};
 	success: boolean;
 	timestamp: string;
 }
@@ -245,7 +188,7 @@ export interface MiddlewareMetricsSummary {
 // All Middleware Metrics Response
 export interface AllMiddlewareMetricsResponse {
 	summary: MiddlewareMetricsSummary;
-	metrics: Record<string, unknown> | unknown;
+	metrics: Record<string, MiddlewareMetrics> | MiddlewareMetrics;
 	storageMetrics: unknown;
 }
 

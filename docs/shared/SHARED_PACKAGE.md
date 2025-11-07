@@ -14,30 +14,41 @@ shared/
 │   ├── core/            # טיפוסי ליבה
 │   │   ├── data.types.ts
 │   │   ├── error.types.ts
+│   │   ├── performance.types.ts
 │   │   ├── response.types.ts
-│   │   ├── metadata.types.ts
+│   │   ├── utility.types.ts
 │   │   └── index.ts
 │   ├── domain/          # טיפוסי דומיין
-│   │   ├── user/        # טיפוסי משתמש
-│   │   ├── game/        # טיפוסי משחק
-│   │   ├── ai/          # טיפוסי AI
+│   │   ├── ai.types.ts
 │   │   ├── analytics/   # טיפוסי אנליטיקה
-│   │   ├── auth/        # טיפוסי אימות
-│   │   ├── cache/       # טיפוסי מטמון
-│   │   ├── component/   # טיפוסי רכיבים
-│   │   ├── logging/     # טיפוסי לוגים
-│   │   ├── storage/     # טיפוסי אחסון
-│   │   ├── typeorm/     # טיפוסי TypeORM
+│   │   │   ├── analytics.types.ts
+│   │   │   ├── metrics.types.ts
+│   │   │   └── index.ts
+│   │   ├── game/        # טיפוסי משחק
+│   │   │   ├── achievements.types.ts
+│   │   │   ├── game.types.ts
+│   │   │   ├── trivia.types.ts
+│   │   │   └── index.ts
+│   │   ├── user/        # טיפוסי משתמש
+│   │   │   ├── preferences.types.ts
+│   │   │   ├── profile.types.ts
+│   │   │   ├── user.types.ts
+│   │   │   └── index.ts
+│   │   ├── validation/  # טיפוסי ולידציה
+│   │   │   ├── forms.types.ts
+│   │   │   ├── rules.types.ts
+│   │   │   ├── validation.types.ts
+│   │   │   └── index.ts
 │   │   └── index.ts
 │   ├── infrastructure/  # טיפוסי תשתית
 │   │   ├── api.types.ts
+│   │   ├── auth.types.ts
 │   │   ├── cache.types.ts
+│   │   ├── config.types.ts
 │   │   ├── http.types.ts
-│   │   ├── nest.types.ts
-│   │   ├── payment.types.ts
+│   │   ├── logging.types.ts
+│   │   ├── redis.types.ts
 │   │   ├── storage.types.ts
-│   │   ├── trivia.types.ts
-│   │   ├── typeorm-compatibility.types.ts
 │   │   └── index.ts
 │   ├── language.types.ts # טיפוסי שפה
 │   ├── payment.types.ts # טיפוסי תשלום
@@ -104,20 +115,20 @@ shared/
 
 #### Base Types
 ```typescript
-// shared/types/core/base.types.ts
+// shared/types/core/data.types.ts
 export interface BaseEntity {
   id: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface ApiResponse<T> {
+export interface BaseApiResponse<T> {
   data: T;
   success: boolean;
   message?: string;
 }
 
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+export interface PaginatedResponse<T> extends BaseApiResponse<T[]> {
   pagination: {
     page: number;
     limit: number;
@@ -149,7 +160,7 @@ export interface ValidationError {
 
 #### Game Types
 ```typescript
-// shared/types/domain/game.types.ts
+// shared/types/domain/game/game.types.ts
 export interface Game {
   id: string;
   userId: string;
@@ -173,27 +184,22 @@ export interface Question {
   topic: string;
 }
 
+export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';
+
 export enum Difficulty {
   EASY = 'easy',
   MEDIUM = 'medium',
   HARD = 'hard'
 }
-
-export enum GameStatus {
-  CREATED = 'created',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  ABANDONED = 'abandoned'
-}
 ```
 
 #### User Types
 ```typescript
-// shared/types/domain/user.types.ts
+// shared/types/domain/user/user.types.ts
 export interface User {
   id: string;
   email: string;
-  name: string;
+  username: string;
   avatar?: string;
   points: number;
   credits: number;

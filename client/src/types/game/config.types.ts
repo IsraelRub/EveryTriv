@@ -5,10 +5,25 @@
  */
 import { DifficultyLevel, GameMode } from '@shared/constants';
 import type {
-  GameModeConfig as SharedGameModeConfig,
-  TriviaAnswer,
-  TriviaQuestion,
+	DifficultyBreakdown,
+	FavoriteTopic,
+	GameDifficulty,
+	GameModeConfig,
+	TopicsPlayed,
+	TriviaAnswer,
+	TriviaQuestion,
 } from '@shared/types';
+
+/**
+ * Game UI settings interface
+ * @interface GameUISettings
+ * @description UI-specific settings for game display and interaction
+ */
+export interface GameUISettings {
+	showTimer?: boolean;
+	showProgress?: boolean;
+	allowBackNavigation?: boolean;
+}
 
 /**
  * Game configuration interface
@@ -16,15 +31,10 @@ import type {
  * @description Game configuration and setup
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game-mode/GameMode.tsx
  */
-export interface GameConfig
-  extends Pick<SharedGameModeConfig, 'mode' | 'timeLimit' | 'questionLimit'> {
-  topic: string;
-  difficulty: DifficultyLevel;
-  settings?: {
-    showTimer?: boolean;
-    showProgress?: boolean;
-    allowBackNavigation?: boolean;
-  };
+export interface GameConfig extends Pick<GameModeConfig, 'mode' | 'timeLimit' | 'questionLimit'> {
+	topic: string;
+	difficulty: GameDifficulty;
+	settings?: GameUISettings;
 }
 
 /**
@@ -34,28 +44,22 @@ export interface GameConfig
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game/Game.tsx
  */
 export interface GameData {
-  questions: TriviaQuestion[];
-  answers: TriviaAnswer[];
-  score: number;
-  currentQuestionIndex: number;
-  startTime: Date;
-  endTime?: Date;
+	questions: TriviaQuestion[];
+	answers: TriviaAnswer[];
+	score: number;
+	currentQuestionIndex: number;
+	startTime: Date;
+	endTime?: Date;
 }
 
 /**
  * Game mode configuration payload interface
  * @interface GameModeConfigPayload
- * @description Game mode configuration payload for Redux
+ * @description Game mode configuration payload for Redux - alias for GameConfig
  * @used_by client/src/redux/features/gameModeSlice.ts
+ * @deprecated Use GameConfig instead
  */
-export interface GameModeConfigPayload {
-  mode: GameMode;
-  topic: string;
-  difficulty: DifficultyLevel;
-  timeLimit?: number;
-  questionLimit?: number;
-  config?: Record<string, unknown>;
-}
+export type GameModeConfigPayload = GameConfig;
 
 /**
  * Game mode state interface
@@ -64,91 +68,66 @@ export interface GameModeConfigPayload {
  * @used_by client/src/redux/features/gameModeSlice.ts
  */
 export interface GameModeState {
-  currentMode: GameMode;
-  currentTopic: string;
-  currentDifficulty: DifficultyLevel;
-  currentSettings: GameModeConfigPayload;
-  isLoading: boolean;
-  error?: string;
-}
-
-/**
- * Game navigation state interface
- * @interface GameNavigationState
- * @description Game navigation state
- * @used_by client/src/components/game/Game.tsx, client/src/views/game/GameView.tsx
- */
-export interface GameNavigationState {
-  currentQuestion: number;
-  totalQuestions: number;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  isGameComplete: boolean;
+	currentMode: GameMode;
+	currentTopic: string;
+	currentDifficulty: DifficultyLevel;
+	currentSettings: GameConfig;
+	isLoading: boolean;
+	error?: string;
 }
 
 /**
  * Game state interface
- * @interface GameState
+ * @interface ClientGameState
  * @description Game state for Redux and hooks
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/redux/features/gameSlice.ts
  */
-export interface GameState {
-  status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
-  isPlaying?: boolean;
-  currentQuestion?: number;
-  totalQuestions?: number;
-  timeRemaining?: number;
-  difficulty?: string;
-  topic?: string;
-  questions?: TriviaQuestion[];
-  answers?: number[];
-  data?: GameData;
-  config?: GameConfig;
-  navigation?: GameNavigationState;
-  timer?: GameTimerState;
-  stats?: GameSessionStats;
-  error?: string;
-  score?: number;
-  total?: number;
-  trivia?: TriviaQuestion;
-  selected?: number | null;
-  loading?: boolean;
-  favorites?: Array<{ topic: string; difficulty: string }>;
-  gameMode?: SharedGameModeConfig;
-  streak?: number;
+export interface ClientGameState {
+	status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
+	isPlaying?: boolean;
+	currentQuestion?: number;
+	totalQuestions?: number;
+	canGoBack?: boolean;
+	canGoForward?: boolean;
+	isGameComplete?: boolean;
+	questions?: TriviaQuestion[];
+	answers?: number[];
+	data?: GameData;
+	config?: GameConfig;
+	stats?: GameSessionStats;
+	error?: string;
+	trivia?: TriviaQuestion;
+	selected?: number | null;
+	loading?: boolean;
+	favorites?: FavoriteTopic[];
+	gameMode?: GameModeConfig;
+	streak?: number;
 }
 
 /**
  * Game timer state
  * @used_by client/src/components/game/GameTimer.tsx, client/src/hooks/layers/business/useGameLogic.ts
+ * @deprecated Use GameModeConfig.timer instead
  */
-export interface GameTimerState {
-  timeRemaining: number;
-  startTime: number;
-  endTime?: number;
-  isRunning: boolean;
-  isPaused: boolean;
-  lowTimeWarning?: boolean;
-}
+export type GameTimerState = NonNullable<GameModeConfig['timer']>;
 
 /**
  * Game session statistics
  * @used_by client/src/components/stats/ScoringSystem.tsx
  */
 export interface GameSessionStats {
-  currentScore: number;
-  maxScore: number;
-  successRate: number;
-  averageTimePerQuestion: number;
-  correctStreak: number;
-  maxStreak: number;
-  topicsPlayed?: Record<string, number>;
-  successRateByDifficulty?: Record<string, { correct: number; total: number }>;
-  questionsAnswered: number;
-  correctAnswers: number;
-  score: number;
-  totalGames: number;
-  timeElapsed?: number;
+	currentScore: number;
+	maxScore: number;
+	successRate: number;
+	averageTimePerQuestion: number;
+	correctStreak: number;
+	maxStreak: number;
+	topicsPlayed?: TopicsPlayed;
+	successRateByDifficulty?: DifficultyBreakdown;
+	questionsAnswered: number;
+	correctAnswers: number;
+	totalGames: number;
+	timeElapsed?: number;
 }
 
 /**
@@ -156,51 +135,16 @@ export interface GameSessionStats {
  * @used_by client/src/hooks/layers/business/useGameLogic.ts
  */
 export interface GameSessionData {
-  sessionId?: string;
-  startTime?: Date;
-  endTime?: Date;
-  duration?: number;
-  stats?: GameSessionStats;
-  results?: TriviaAnswer[];
-  lastGameMode: string | null;
-  sessionCount: number;
-  lastScore?: number;
-  lastTimeElapsed?: number;
-}
-
-/**
- * Game statistics update
- * @used_by client/src/hooks/layers/business/useGameLogic.ts
- */
-export interface GameStatsUpdate {
-  score: number;
-  timeSpent: number;
-  isCorrect: boolean;
-  responseTime: number;
-}
-
-/**
- * Game session update
- * @used_by client/src/hooks/layers/business/useGameLogic.ts
- */
-export interface GameSessionUpdate {
-  sessionId: string;
-  statsUpdate: GameStatsUpdate;
-  timestamp: Date;
-  lastScore: number;
-  lastTimeElapsed?: number;
-}
-
-/**
- * Extended game mode configuration
- * @used_by client/src/components/game-mode/GameMode.tsx
- */
-export interface GameModeConfig extends SharedGameModeConfig {
-  additionalSettings?: {
-    showHints?: boolean;
-    allowSkip?: boolean;
-    showExplanations?: boolean;
-  };
+	sessionId?: string;
+	startTime?: Date;
+	endTime?: Date;
+	duration?: number;
+	stats?: GameSessionStats;
+	results?: TriviaAnswer[];
+	lastGameMode: GameMode | null;
+	sessionCount: number;
+	lastScore?: number;
+	lastTimeElapsed?: number;
 }
 
 /**
@@ -208,6 +152,42 @@ export interface GameModeConfig extends SharedGameModeConfig {
  * @used_by client/src/constants/gameModeDefaults.ts, client/src/redux/features/gameModeSlice.ts
  */
 export interface GameModeDefaults {
-  timeLimit: number;
-  questionLimit: number;
+	timeLimit: number;
+	questionLimit: number;
+}
+
+/**
+ * Question count option type
+ * @interface QuestionCountOption
+ * @description Option for selecting number of questions
+ */
+export interface QuestionCountOption {
+	value: number;
+	label: string;
+}
+
+/**
+ * History item type
+ * @interface HistoryItem
+ * @description Game history entry for display
+ */
+export interface HistoryItem {
+	topic: string;
+	difficulty: string;
+	score: number;
+	date: string;
+	timestamp?: number;
+}
+
+/**
+ * Score stats type
+ * @interface ScoreStats
+ * @description Score statistics for display
+ */
+export interface ScoreStats {
+	correct: number;
+	total: number;
+	grade?: string;
+	color?: string;
+	percentage?: number;
 }

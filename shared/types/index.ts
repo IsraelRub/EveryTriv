@@ -22,34 +22,10 @@ export * from './core';
 // =============================================================================
 
 /**
- * AI Domain Types
- * @description AI-related type definitions including providers, models, and responses
+ * Domain Types
+ * @description Business logic and domain-specific types
  */
-export * from './domain/ai';
-
-/**
- * Analytics Domain Types
- * @description Analytics and metrics type definitions (excluding conflicting types)
- */
-export * from './domain/analytics';
-
-/**
- * Game Domain Types
- * @description Game-related type definitions including trivia, sessions, and configuration (excluding conflicting types)
- */
-export * from './domain/game';
-
-/**
- * User Domain Types
- * @description User-related type definitions including profiles, preferences, and addresses
- */
-export * from './domain/user';
-
-/**
- * Validation Domain Types
- * @description Validation-related type definitions including forms, rules, and validation results
- */
-export * from './domain/validation';
+export * from './domain';
 
 // =============================================================================
 // INFRASTRUCTURE TYPES - Technical and infrastructure-related types
@@ -84,14 +60,7 @@ export * from './points.types';
 export * from './subscription.types';
 
 /**
- * UI types
- * @description Types for user interface components, forms, and validation
- */
-export * from './ui.types';
-
-/**
  * Payment types
  * @description Types for payment processing and data
  */
 export * from './payment.types';
-

@@ -1,180 +1,160 @@
 import { FC } from 'react';
 
-import {
-  CardGridProps,
-  ContainerProps,
-  GridLayoutProps,
-  ResponsiveGridProps,
-  SectionProps,
-} from '../../types';
-import { combineClassNames } from '../../utils/combineClassNames';
+import { ContainerSize, Spacing } from '../../constants';
+import type { CardGridProps, ContainerProps, GridLayoutProps, ResponsiveGridProps } from '../../types';
+import { combineClassNames } from '../../utils';
 
 export const CardGrid: FC<CardGridProps> = ({
-  children,
-  className,
-  columns = 'auto',
-  gap = 'lg',
+	children,
+	className,
+	columns = 'auto',
+	gap = Spacing.LG,
+	as = 'article',
 }) => {
-  const cardGridClasses = combineClassNames(
-    'grid',
-    {
-      'grid-cols-1': columns === 1,
-      'grid-cols-1 md:grid-cols-2': columns === 2,
-      'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3,
-      'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': columns === 4,
-      'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5':
-        columns === 'auto',
-    },
-    {
-      'gap-4': gap === 'sm',
-      'gap-6': gap === 'md',
-      'gap-8': gap === 'lg',
-      'gap-12': gap === 'xl',
-    },
-    className
-  );
+	const cardGridClasses = combineClassNames(
+		'grid',
+		{
+			'grid-cols-1': columns === 1,
+			'grid-cols-1 md:grid-cols-2': columns === 2,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': columns === 4,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5': columns === 'auto',
+		},
+		{
+			'gap-2': gap === Spacing.SM,
+			'gap-4': gap === Spacing.MD,
+			'gap-6': gap === Spacing.LG,
+			'gap-8': gap === Spacing.XL,
+			'gap-12': gap === Spacing.XXL,
+		},
+		className
+	);
 
-  return <div className={cardGridClasses}>{children}</div>;
+	const Component = as;
+	return <Component className={cardGridClasses}>{children}</Component>;
 };
 
 export const GridLayout: FC<GridLayoutProps> = ({
-  children,
-  className,
-  variant = 'content',
-  gap = 'lg',
-  align = 'start',
-  justify = 'start',
+	children,
+	className,
+	variant = 'content',
+	gap = Spacing.LG,
+	align = 'start',
+	justify = 'start',
+	as = 'section',
 }) => {
-  const gridClasses = combineClassNames(
-    // Base grid classes
-    'grid',
+	const gridClasses = combineClassNames(
+		// Base grid classes
+		'grid',
 
-    // Variant-specific classes
-    {
-      'grid-layout': variant === 'layout',
-      'grid-content': variant === 'content',
-      'grid-cards': variant === 'cards',
-      'grid-stats': variant === 'stats',
-      'grid-form': variant === 'form',
-      'grid-game': variant === 'game',
-    },
+		// Variant-specific classes (simplified to 8 most used)
+		{
+			'grid-content': variant === 'content',
+			'grid-cards': variant === 'cards',
+			'grid-stats': variant === 'stats',
+			'grid-form': variant === 'form',
+			'grid-game': variant === 'game',
+			'grid-balanced': variant === 'balanced',
+			'grid-compact': variant === 'compact',
+			'grid-auto-fit': variant === 'auto-fit',
+		},
 
-    // Gap classes
-    {
-      'gap-2': gap === 'sm',
-      'gap-4': gap === 'md',
-      'gap-6': gap === 'lg',
-      'gap-8': gap === 'xl',
-    },
+		// Gap classes
+		{
+			'gap-2': gap === Spacing.SM,
+			'gap-4': gap === Spacing.MD,
+			'gap-6': gap === Spacing.LG,
+			'gap-8': gap === Spacing.XL,
+			'gap-12': gap === Spacing.XXL,
+		},
 
-    // Alignment classes
-    {
-      'items-start': align === 'start',
-      'items-center': align === 'center',
-      'items-end': align === 'end',
-      'items-stretch': align === 'stretch',
-    },
+		// Alignment classes
+		{
+			'items-start': align === 'start',
+			'items-center': align === 'center',
+			'items-end': align === 'end',
+			'items-stretch': align === 'stretch',
+		},
 
-    // Justify classes
-    {
-      'justify-start': justify === 'start',
-      'justify-center': justify === 'center',
-      'justify-end': justify === 'end',
-      'justify-between': justify === 'between',
-      'justify-around': justify === 'around',
-    },
+		// Justify classes
+		{
+			'justify-start': justify === 'start',
+			'justify-center': justify === 'center',
+			'justify-end': justify === 'end',
+			'justify-between': justify === 'between',
+			'justify-around': justify === 'around',
+		},
 
-    className
-  );
+		className
+	);
 
-  return <div className={gridClasses}>{children}</div>;
+	const Component = as;
+	return <Component className={gridClasses}>{children}</Component>;
 };
 
 export const LayoutContainer: FC<ContainerProps> = ({
-  children,
-  className,
-  size = 'lg',
-  centered = true,
+	children,
+	className,
+	size = ContainerSize.LG,
+	centered = true,
 }) => {
-  const containerClasses = combineClassNames(
-    'w-full',
-    {
-      'max-w-sm': size === 'sm',
-      'max-w-md': size === 'md',
-      'max-w-lg': size === 'lg',
-      'max-w-xl': size === 'xl',
-      'max-w-full': size === 'full',
-    },
-    {
-      'mx-auto': centered,
-    },
-    'px-4 sm:px-6 lg:px-8',
-    className
-  );
+	const containerClasses = combineClassNames(
+		'w-full',
+		{
+			'max-w-sm': size === ContainerSize.SM,
+			'max-w-md': size === ContainerSize.MD,
+			'max-w-lg': size === ContainerSize.LG,
+			'max-w-xl': size === ContainerSize.XL,
+			'max-w-2xl': size === ContainerSize.XXL,
+			'max-w-full': size === ContainerSize.FULL,
+		},
+		{
+			'mx-auto': centered,
+		},
+		'px-4 sm:px-6 lg:px-8',
+		className
+	);
 
-  return <div className={containerClasses}>{children}</div>;
-};
-
-export const LayoutSection: FC<SectionProps> = ({
-  children,
-  className,
-  padding = 'lg',
-  background = 'none',
-}) => {
-  const sectionClasses = combineClassNames(
-    'w-full',
-    {
-      'p-0': padding === 'none',
-      'p-4': padding === 'sm',
-      'p-6': padding === 'md',
-      'p-8': padding === 'lg',
-      'p-12': padding === 'xl',
-    },
-    {
-      glass: background === 'glass',
-      'glass-strong': background === 'glass-strong',
-    },
-    className
-  );
-
-  return <section className={sectionClasses}>{children}</section>;
+	return <div className={containerClasses}>{children}</div>;
 };
 
 export const ResponsiveGrid: FC<ResponsiveGridProps> = ({
-  children,
-  className,
-  minWidth = '300px',
-  gap = 'lg',
+	children,
+	className,
+	minWidth = '300px',
+	gap = Spacing.LG,
+	columns,
+	as = 'div',
 }) => {
-  const responsiveGridClasses = combineClassNames(
-    'grid',
-    `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`,
-    {
-      'gap-4': gap === 'sm',
-      'gap-6': gap === 'md',
-      'gap-8': gap === 'lg',
-      'gap-12': gap === 'xl',
-    },
-    className
-  );
+	const responsiveGridClasses = combineClassNames(
+		'grid',
+		{
+			'grid-cols-1': columns === 1,
+			'grid-cols-1 md:grid-cols-2': columns === 2,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': columns === 4 || !columns,
+			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5': columns === 5,
+		},
+		{
+			'gap-2': gap === Spacing.SM,
+			'gap-4': gap === Spacing.MD,
+			'gap-6': gap === Spacing.LG,
+			'gap-8': gap === Spacing.XL,
+			'gap-12': gap === Spacing.XXL,
+		},
+		className
+	);
 
-  return (
-    <div
-      className={responsiveGridClasses}
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))`,
-      }}
-    >
-      {children}
-    </div>
-  );
-};
+	const gridStyle = columns
+		? {}
+		: {
+				gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))`,
+			};
 
-// Export all layout components
-export default {
-  GridLayout,
-  LayoutContainer,
-  LayoutSection,
-  CardGrid,
-  ResponsiveGrid,
+	const Component = as;
+	return (
+		<Component className={responsiveGridClasses} style={gridStyle}>
+			{children}
+		</Component>
+	);
 };

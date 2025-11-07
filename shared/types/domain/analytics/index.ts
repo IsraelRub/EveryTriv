@@ -8,5 +8,4 @@
  */
 
 export * from './analytics.types';
-export * from './insights.types';
 export * from './metrics.types';

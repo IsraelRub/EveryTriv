@@ -1,16 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CACHE_TTL, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
-import { PointCalculationService,serverLogger as logger } from '@shared/services';
+import { Repository } from 'typeorm';
+
+import { CACHE_TTL, DEFAULT_USER_PREFERENCES, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
+import { serverLogger as logger, PointCalculationService } from '@shared/services';
+import type { AnswerResult, GameDifficulty, QuestionData, UserAnalytics } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { toDifficultyLevel } from '@shared/validation';
+
+import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
+import { CacheService, ServerStorageService } from '@internal/modules';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-import type { AnswerResult, QuestionData, UserAnalytics, UserScoreData } from '@shared/types';
-import {
-	getErrorMessage,
-} from '@shared/utils';
-import { GameHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
-import { ServerStorageService } from 'src/internal/modules/storage';
-import { MoreThan, Repository } from 'typeorm';
 
 import { ValidationService } from '../../common';
 import { AnalyticsService } from '../analytics';
@@ -45,7 +45,7 @@ export class GameService {
 	 * @param userId User ID for personalization
 	 * @returns Trivia question
 	 */
-	async getTriviaQuestion(topic: string, difficulty: string, questionCount: number = 1, userId?: string) {
+	async getTriviaQuestion(topic: string, difficulty: GameDifficulty, questionCount: number = 1, userId?: string) {
 		const validation = await this.validationService.validateTriviaRequest(topic, difficulty, questionCount);
 		if (!validation.isValid) {
 			throw new BadRequestException(validation.errors.join(', '));
@@ -148,7 +148,12 @@ export class GameService {
 
 			const isCorrect = this.checkAnswer(question, answer);
 
-			const score = this.pointCalculationService.calculateAnswerPoints(question.difficulty, timeSpent, 0, isCorrect);
+			const score = this.pointCalculationService.calculateAnswerPoints(
+				toDifficultyLevel(question.difficulty),
+				timeSpent,
+				0,
+				isCorrect
+			);
 
 			await this.saveGameHistory(userId, {
 				score,
@@ -156,7 +161,7 @@ export class GameService {
 				correctAnswers: isCorrect ? 1 : 0,
 				difficulty: question.difficulty,
 				topic: question.topic,
-				gameMode: 'CLASSIC',
+				gameMode: GameMode.QUESTION_LIMITED,
 				timeSpent,
 				creditsUsed: 0,
 				questionsData: [
@@ -193,48 +198,6 @@ export class GameService {
 			};
 		} catch (error) {
 			throw createServerError('submit answer', error);
-		}
-	}
-
-	/**
-	 * Get user analytics - delegates to AnalyticsService
-	 * @param userId User ID
-	 * @returns User analytics
-	 */
-	async getUserAnalytics(userId: string) {
-		try {
-			return await this.analyticsService.getUserStats(userId);
-		} catch (error) {
-			throw createServerError('get user analytics', error);
-		}
-	}
-
-	/**
-	 * Private helper functions for internal game operations
-	 */
-
-	/**
-	 * Get user rank
-	 * @param userId User ID
-	 * @returns User rank
-	 */
-	private async getUserRank(userId: string): Promise<number> {
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				return 0;
-			}
-
-			const rank = await this.userRepository.count({
-				where: {
-					isActive: true,
-					score: MoreThan(user.score),
-				},
-			});
-
-			return rank + 1;
-		} catch (error) {
-			return 0;
 		}
 	}
 
@@ -281,43 +244,6 @@ export class GameService {
 	}
 
 	/**
-	 * Get user score data
-	 * @param userId User ID
-	 * @returns User score data
-	 */
-	async getUserScoreData(userId: string): Promise<UserScoreData> {
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
-
-			const gameHistory = await this.gameHistoryRepository.find({
-				where: { userId },
-				select: ['score', 'correctAnswers', 'totalQuestions'],
-			});
-
-			const totalPoints = gameHistory.reduce((sum, game) => sum + (game.score || 0), 0);
-			const gamesPlayed = gameHistory.length;
-			const totalCorrectAnswers = gameHistory.reduce((sum, game) => sum + (game.correctAnswers || 0), 0);
-			const totalQuestions = gameHistory.reduce((sum, game) => sum + (game.totalQuestions || 0), 0);
-			const successRate = totalQuestions > 0 ? (totalCorrectAnswers / totalQuestions) * 100 : 0;
-
-			return {
-				userId: user.id,
-				username: user.username,
-				score: user.score,
-				rank: await this.getUserRank(userId),
-				totalPoints,
-				gamesPlayed,
-				successRate: Math.round(successRate * 100) / 100,
-			};
-		} catch (error) {
-			throw createServerError('get user score data', error);
-		}
-	}
-
-	/**
 	 * Save game history
 	 * @param userId User ID
 	 * @param gameData Game data to save
@@ -329,9 +255,9 @@ export class GameService {
 			score: number;
 			totalQuestions: number;
 			correctAnswers: number;
-			difficulty: string;
+			difficulty: GameDifficulty;
 			topic?: string;
-			gameMode: string;
+			gameMode: GameMode;
 			timeSpent?: number;
 			creditsUsed: number;
 			questionsData: QuestionData[];
@@ -355,7 +281,7 @@ export class GameService {
 			});
 		}
 		try {
-			logger.game('Saving game history', {
+			logger.gameInfo('Saving game history', {
 				userId,
 				score: gameData.score,
 				correctAnswers: gameData.correctAnswers,
@@ -374,15 +300,15 @@ export class GameService {
 				correctAnswers: gameData.correctAnswers,
 				difficulty: gameData.difficulty,
 				topic: gameData.topic,
-				gameMode: gameData.gameMode as GameMode,
+				gameMode: gameData.gameMode,
 				timeSpent: gameData.timeSpent,
 				creditsUsed: gameData.creditsUsed,
 				questionsData: gameData.questionsData,
 			});
 
-			const savedHistory = (await this.gameHistoryRepository.save(gameHistory)) as GameHistoryEntity;
+			const savedHistory = await this.gameHistoryRepository.save(gameHistory);
 			logger.databaseCreate('game_history', {
-				historyId: savedHistory.id,
+				id: savedHistory.id,
 				userId,
 				score: gameData.score,
 			});
@@ -419,7 +345,7 @@ export class GameService {
 	 */
 	async getUserGameHistory(userId: string, limit: number = 20) {
 		try {
-			logger.game('Getting user game history', {
+			logger.gameInfo('Getting user game history', {
 				userId,
 				limit,
 			});
@@ -481,7 +407,7 @@ export class GameService {
 	 */
 	async getGlobalGameStats() {
 		try {
-			logger.game('Getting global game stats', {
+			logger.gameInfo('Getting global game stats', {
 				timeframe: 'all_time',
 			});
 
@@ -502,8 +428,8 @@ export class GameService {
 	 */
 	async getGameById(gameId: string) {
 		try {
-			logger.game('Getting game by ID', {
-				gameId,
+			logger.gameInfo('Getting game by ID', {
+				id: gameId,
 			});
 
 			const game = await this.gameHistoryRepository.findOne({
@@ -532,7 +458,7 @@ export class GameService {
 		} catch (error) {
 			logger.gameError('Failed to get game by ID', {
 				error: getErrorMessage(error),
-				gameId,
+				id: gameId,
 			});
 			throw error;
 		}
@@ -553,7 +479,7 @@ export class GameService {
 			return {
 				userId: user.id,
 				username: user.username,
-				points: user.credits || 0,
+				points: user.credits ?? 0,
 			};
 		} catch (error) {
 			logger.gameError('Failed to get user point balance', {
@@ -572,7 +498,7 @@ export class GameService {
 	 */
 	async addPoints(userId: string, points: number) {
 		try {
-			logger.game('Adding points to user', {
+			logger.gameInfo('Adding points to user', {
 				userId,
 				points,
 				reason: 'Game completion',
@@ -583,13 +509,13 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
-			const newPoints = (user.credits || 0) + points;
+			const newPoints = (user.credits ?? 0) + points;
 			await this.userRepository.update(userId, { credits: newPoints });
 
 			return {
 				userId: user.id,
 				username: user.username,
-				previousPoints: user.credits || 0,
+				previousPoints: user.credits ?? 0,
 				addedPoints: points,
 				newPoints,
 			};
@@ -611,7 +537,7 @@ export class GameService {
 	 */
 	async deductPoints(userId: string, points: number) {
 		try {
-			logger.game('Deducting points from user', {
+			logger.gameInfo('Deducting points from user', {
 				userId,
 				points,
 				reason: 'Game loss',
@@ -622,7 +548,7 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
-			const currentPoints = user.credits || 0;
+			const currentPoints = user.credits ?? 0;
 			if (currentPoints < points) {
 				throw createValidationError('points', 'number');
 			}
@@ -665,9 +591,9 @@ export class GameService {
 		}
 	) {
 		try {
-			logger.game('Saving game configuration', {
+			logger.gameInfo('Saving game configuration', {
 				userId,
-				config,
+				config: JSON.stringify(config),
 			});
 
 			const configKey = `game_config:${userId}`;
@@ -709,7 +635,7 @@ export class GameService {
 	 */
 	async getGameConfiguration(userId: string) {
 		try {
-			logger.game('Getting game configuration', {
+			logger.gameInfo('Getting game configuration', {
 				userId,
 			});
 
@@ -723,12 +649,11 @@ export class GameService {
 			}
 
 			const defaultConfig = {
-				defaultDifficulty: 'medium',
-				defaultTopic: 'general',
-				questionCount: 5,
-				timeLimit: 30,
-				soundEnabled: true,
-				notifications: true,
+				defaultDifficulty: DEFAULT_USER_PREFERENCES.game?.defaultDifficulty ?? 'medium',
+				defaultTopic: DEFAULT_USER_PREFERENCES.game?.defaultTopic ?? 'general',
+				questionCount: DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5,
+				timeLimit: DEFAULT_USER_PREFERENCES.game?.timeLimit ?? 30,
+				soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
 			};
 
 			return {
@@ -751,9 +676,9 @@ export class GameService {
 	 */
 	async deleteGameHistory(userId: string, gameId: string): Promise<{ message: string }> {
 		try {
-			logger.game('Deleting game history', {
+			logger.gameInfo('Deleting game history', {
 				userId,
-				gameId,
+				id: gameId,
 			});
 
 			const gameHistory = await this.gameHistoryRepository.findOne({
@@ -766,8 +691,8 @@ export class GameService {
 
 			await this.gameHistoryRepository.remove(gameHistory);
 
-			logger.game('Game history deleted', {
-				gameId,
+			logger.gameInfo('Game history deleted', {
+				id: gameId,
 				userId,
 			});
 
@@ -781,7 +706,7 @@ export class GameService {
 			logger.gameError('Failed to delete game history', {
 				error: getErrorMessage(error),
 				userId,
-				gameId,
+				id: gameId,
 			});
 			throw error;
 		}
@@ -794,7 +719,7 @@ export class GameService {
 	 */
 	async clearUserGameHistory(userId: string): Promise<{ message: string; deletedCount: number }> {
 		try {
-			logger.game('Clearing all game history', {
+			logger.gameInfo('Clearing all game history', {
 				userId,
 			});
 
@@ -806,7 +731,7 @@ export class GameService {
 			// Delete all game history records for user
 			await this.gameHistoryRepository.delete({ userId });
 
-			logger.game('All game history deleted', {
+			logger.gameInfo('All game history deleted', {
 				userId,
 				deletedCount: count,
 			});

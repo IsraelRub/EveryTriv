@@ -30,7 +30,7 @@ export class AppConfig {
 	}
 
 	static get corsOrigin() {
-		return process.env.CORS_ORIGIN || LOCALHOST_URLS.CLIENT_DEV;
+		return process.env.CORS_ORIGIN || LOCALHOST_URLS.CLIENT;
 	}
 
 	static get cookieSecret() {

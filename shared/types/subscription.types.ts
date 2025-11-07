@@ -4,24 +4,7 @@
  * @module SubscriptionTypes
  * @description Type definitions for subscription and billing data structures
  */
-
-/**
- * Base subscription data interface
- * @interface BaseSubscriptionData
- * @description Core subscription data structure
- */
-export interface BaseSubscriptionData {
-	subscriptionId: string;
-	plan: string;
-	status: string;
-	startDate: string;
-	endDate: string;
-	price: number;
-	billingCycle: string;
-	features: string[];
-	cancelledAt?: string;
-}
-
+import { PlanType, SUBSCRIPTION_PLANS } from '@shared/constants';
 
 /**
  * Subscription data interface with nullable fields
@@ -30,34 +13,19 @@ export interface BaseSubscriptionData {
  */
 export type SubscriptionData = {
 	subscriptionId: string | null;
-	endDate: string | null;
+	endDate: Date | null;
 	billingCycle: string | null;
-	plan: 'free' | 'basic' | 'premium' | 'pro';
-	planType?: string;
+	planType: PlanType;
 	status: string;
 	id?: string;
 	planDetails?: SubscriptionPlanDetails;
 	autoRenew?: boolean;
 	nextBillingDate?: Date;
-	startDate: string;
+	startDate: Date;
 	price: number;
 	features: string[];
-	cancelledAt?: string;
+	cancelledAt?: Date;
 };
-
-/**
- * User stats with subscription interface
- * @interface UserStatsWithSubscription
- * @description User statistics including subscription data
- */
-export interface UserStatsWithSubscription {
-	topicsPlayed: Record<string, number>;
-	difficultyStats: Record<string, { correct: number; total: number }>;
-	totalQuestions: number;
-	correctAnswers: number;
-	lastPlayed: Date;
-	subscription?: BaseSubscriptionData;
-}
 
 /**
  * Subscription plan details interface
@@ -69,17 +37,14 @@ export interface SubscriptionPlanDetails {
 	price: number;
 	currency?: string;
 	interval?: string;
-	features: string[];
+	features: string[] | readonly string[];
 	pointBonus?: number;
 	questionLimit?: number;
 }
 
 /**
  * Available subscription plans
+ * @type SubscriptionPlans
+ * @description Type derived from SUBSCRIPTION_PLANS constant
  */
-export interface SubscriptionPlans {
-	basic: SubscriptionPlanDetails;
-	premium: SubscriptionPlanDetails;
-	pro: SubscriptionPlanDetails;
-	enterprise: SubscriptionPlanDetails;
-}
+export type SubscriptionPlans = typeof SUBSCRIPTION_PLANS;

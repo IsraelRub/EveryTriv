@@ -632,7 +632,7 @@ export class GameHistoryEntity {
     type: 'varchar',
     default: 'classic',
   })
-  gameMode: string = 'classic';
+  gameMode: GameMode = 'classic';
 
   @Column({ name: 'time_spent', type: 'int', nullable: true })
   timeSpent?: number; // in seconds

@@ -6,9 +6,10 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import type { LanguageValidationOptions } from '@shared/types';
-import { getErrorMessage,LanguageValidationData, LanguageValidationResult } from '@shared/utils';
+import type { LanguageValidationOptions, LanguageValidationResult, ValidateLanguageRequest } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
 
@@ -16,7 +17,7 @@ import { ValidationService } from '../validation';
 export class LanguageValidationPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: LanguageValidationData): Promise<LanguageValidationResult> {
+	async transform(value: ValidateLanguageRequest): Promise<LanguageValidationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -30,17 +31,15 @@ export class LanguageValidationPipe implements PipeTransform {
 			}
 
 			const languageValidation = await this.validationService.validateInputWithLanguageTool(value.text, {
-				language: value.language,
-				enableSpellCheck: value.enableSpellCheck ?? true,
-				enableGrammarCheck: value.enableGrammarCheck ?? true,
-				enableLanguageDetection: true,
+				enableSpellCheck: value.options?.enableSpellCheck ?? true,
+				enableGrammarCheck: value.options?.enableGrammarCheck ?? true,
+				useExternalAPI: value.options?.useExternalAPI,
 			} as LanguageValidationOptions);
 
 			// Log API call for language validation
 			logger.apiUpdate('language_validation', {
 				isValid: languageValidation.isValid,
 				errorsCount: languageValidation.errors.length,
-				language: value.language || 'auto',
 				duration: Date.now() - startTime,
 			});
 
@@ -48,7 +47,6 @@ export class LanguageValidationPipe implements PipeTransform {
 				isValid: languageValidation.isValid,
 				errors: languageValidation.errors,
 				suggestions: languageValidation.suggestion ? [languageValidation.suggestion] : [],
-				language: languageValidation.suggestion ? 'detected' : undefined,
 			};
 		} catch (error) {
 			logger.apiUpdateError('languageValidation', getErrorMessage(error));

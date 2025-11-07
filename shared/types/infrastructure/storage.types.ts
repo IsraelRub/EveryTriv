@@ -58,14 +58,25 @@ export interface StorageOperationResult<T = StorageItemMetadata> {
 }
 
 /**
+ * Storage statistics result interface
+ * @interface StorageStatsResult
+ * @description Result of storage statistics operations
+ * @used_by shared/services/storage (StorageManagerService)
+ */
+export interface StorageStatsResult {
+	persistent: StorageStats | null;
+	cache: StorageStats | null;
+}
+
+/**
  * Storage item metadata interface
  * @interface StorageItemMetadata
  * @description Metadata for stored items
  * @used_by shared/services/storage (BaseStorageService)
  */
 export interface StorageItemMetadata {
-	created_at: Date;
-	updated_at: Date;
+	createdAt: Date;
+	updatedAt: Date;
 	lastAccessed: Date;
 	size: number;
 	ttl?: number;

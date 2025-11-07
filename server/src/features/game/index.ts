@@ -11,7 +11,6 @@
  * @description Data transfer objects for game operations
  * @used_by server/features/game, server/controllers
  */
-export * from './dtos';
 
 /**
  * Game controller

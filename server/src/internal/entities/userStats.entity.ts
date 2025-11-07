@@ -1,15 +1,8 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import type { Achievement } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
 /**
@@ -20,10 +13,7 @@ import { UserEntity } from './user.entity';
  * @used_by server/src/features/analytics, server/src/features/game
  */
 @Entity('user_stats')
-export class UserStatsEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string = '';
-
+export class UserStatsEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index({ unique: true })
 	userId: string = '';
@@ -128,10 +118,4 @@ export class UserStatsEntity {
 
 	@Column('int', { name: 'total_achievements', default: 0 })
 	totalAchievements: number = 0;
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date = new Date();
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date = new Date();
 }

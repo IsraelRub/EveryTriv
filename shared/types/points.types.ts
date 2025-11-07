@@ -9,12 +9,12 @@
 import type { BaseEntity } from './core/data.types';
 
 export interface PointBalance {
-	total_points: number;
-	free_questions: number;
-	purchased_points: number;
-	daily_limit: number;
-	can_play_free: boolean;
-	next_reset_time: string | null;
+	totalPoints: number;
+	freeQuestions: number;
+	purchasedPoints: number;
+	dailyLimit: number;
+	canPlayFree: boolean;
+	nextResetTime: string | null;
 	userId?: string;
 	balance?: number;
 	lastModified?: Date;
@@ -24,8 +24,8 @@ export interface PointPurchaseOption {
 	id: string;
 	points: number;
 	price: number;
-	price_display: string;
-	price_per_point: number;
+	priceDisplay: string;
+	pricePerPoint: number;
 	description?: string;
 	currency?: string;
 	bonus?: number;
@@ -46,25 +46,43 @@ export interface BasePointsEntity extends BaseEntity {
 	description?: string;
 }
 
+/**
+ * Point transaction entity interface
+ * @interface PointTransaction
+ * @description Entity for point transactions
+ * @used_by server/src/internal/entities/pointTransaction.entity.ts
+ */
 export interface PointTransaction extends BasePointsEntity {
-	user_id: string;
-	balance_after: number;
-	free_questions_after: number;
-	purchased_points_after: number;
+	freeQuestionsAfter: number;
+	purchasedPointsAfter: number;
 	metadata: {
 		difficulty?: string;
 		topic?: string;
-		question_count?: number;
-		package_id?: string;
+		questionCount?: number;
+		packageId?: string;
 	};
-	id: string;
-	createdAt: Date;
-	modifiedAt: Date;
 }
 
+/**
+ * Transfer result interface
+ * @interface TransferResult
+ * @description Result of a points transfer operation
+ * @used_by server/src/features/points/points.service.ts (transferPoints)
+ */
 export interface TransferResult {
 	success: boolean;
-	from_balance: PointBalance;
-	to_balance: PointBalance;
+	fromBalance: PointBalance;
+	toBalance: PointBalance;
 	amount: number;
+}
+
+/**
+ * Can play response interface
+ * @interface CanPlayResponse
+ * @description Response for checking if user can play
+ * @used_by client/src/services/api.service.ts (canPlay), client/src/services/utils/points.service.ts (canPlay)
+ */
+export interface CanPlayResponse {
+	canPlay: boolean;
+	reason?: string;
 }

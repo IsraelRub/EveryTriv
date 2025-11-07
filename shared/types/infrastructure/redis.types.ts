@@ -6,8 +6,7 @@
  * @description Redis cache, client, and configuration type definitions
  * @used_by server/src/internal/modules/cache
  */
-
-import type { StorageValue } from '../core/data.types';
+import type { LogMeta } from './logging.types';
 
 /**
  * Redis configuration interface
@@ -32,13 +31,6 @@ export interface RedisConfig {
  * @interface RedisCacheEntry
  * @description Structure for cached data entries
  */
-export interface RedisCacheEntry {
-	key: string;
-	value: StorageValue;
-	ttl?: number;
-	createdAt: Date;
-	expiresAt?: Date;
-}
 
 /**
  * Redis statistics interface
@@ -64,16 +56,15 @@ export interface RedisStats {
 	evictedKeys: number;
 }
 
-
 /**
  * Redis logger interface
  * @interface RedisLogger
  * @description Redis logging operations
  */
 export interface RedisLogger {
-	log(level: string, message: string, data?: Record<string, unknown>): void;
-	error(message: string, error?: Error, data?: Record<string, unknown>): void;
-	warn(message: string, data?: Record<string, unknown>): void;
-	info(message: string, data?: Record<string, unknown>): void;
-	debug(message: string, data?: Record<string, unknown>): void;
+	log(level: string, message: string, data?: LogMeta): void;
+	error(message: string, error?: Error, data?: LogMeta): void;
+	warn(message: string, data?: LogMeta): void;
+	info(message: string, data?: LogMeta): void;
+	debug(message: string, data?: LogMeta): void;
 }

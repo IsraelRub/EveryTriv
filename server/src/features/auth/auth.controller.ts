@@ -5,24 +5,13 @@
  * @description Authentication controller with login, register, and user management endpoints
  */
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
-import type { BasicUser } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION } from '@shared/constants';
 
-import {
-	ApiResponse,
-	AuthGuard,
-	Cache,
-	ClientIP,
-	CurrentUser,
-	CurrentUserId,
-	Public,
-	RateLimit,
-	Roles,
-	RolesGuard,
-	UserAgent,
-} from '../../common';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { TokenPayload } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { AuthGuard, Cache, CurrentUser, CurrentUserId, NoCache, Public, Roles, RolesGuard } from '../../common';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -35,19 +24,11 @@ export class AuthController {
 	 */
 	@Post('register')
 	@Public()
-	@RateLimit(3, 300) // 3 registrations per 5 minutes
-	@ApiResponse(201, 'User registered successfully')
-	async register(
-		@Body() registerDto: RegisterDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	): Promise<AuthResponseDto> {
+	async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
 		try {
 			logger.authRegister('User registration attempt', {
 				username: registerDto.username,
 				email: registerDto.email,
-				ip,
-				userAgent,
 			});
 
 			const result = await this.authService.register(registerDto);
@@ -55,8 +36,6 @@ export class AuthController {
 			logger.authRegister('User registered successfully', {
 				userId: result.user.id,
 				username: result.user.username,
-				ip,
-				userAgent,
 			});
 
 			return result;
@@ -65,7 +44,6 @@ export class AuthController {
 				error: getErrorMessage(error),
 				username: registerDto.username,
 				email: registerDto.email,
-				ip,
 			});
 			throw error;
 		}
@@ -76,18 +54,10 @@ export class AuthController {
 	 */
 	@Post('login')
 	@Public()
-	@RateLimit(5, 60) // 5 login attempts per minute
-	@ApiResponse(200, 'User logged in successfully')
-	async login(
-		@Body() loginDto: LoginDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	): Promise<AuthResponseDto> {
+	async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
 		try {
 			logger.securityLogin('User login attempt', {
 				username: loginDto.username,
-				ip,
-				userAgent,
 			});
 
 			const result = await this.authService.login(loginDto);
@@ -95,8 +65,6 @@ export class AuthController {
 			logger.securityLogin('User logged in successfully', {
 				userId: result.user.id,
 				username: result.user.username,
-				ip,
-				userAgent,
 			});
 
 			return result;
@@ -104,7 +72,6 @@ export class AuthController {
 			logger.authError('User login failed', {
 				error: getErrorMessage(error),
 				username: loginDto.username,
-				ip,
 			});
 			throw error;
 		}
@@ -115,7 +82,6 @@ export class AuthController {
 	 */
 	@Post('refresh')
 	@Public()
-	@RateLimit(10, 60) // 10 refresh attempts per minute
 	async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
 		try {
 			logger.authTokenRefresh('Token refresh attempt');
@@ -128,7 +94,7 @@ export class AuthController {
 		} catch (error) {
 			logger.authError('Token refresh failed', {
 				error: getErrorMessage(error),
-				tokenId: refreshTokenDto.refreshToken?.substring(0, 10) + '...',
+				id: refreshTokenDto.refreshToken?.substring(0, 10) + '...',
 			});
 			throw error;
 		}
@@ -138,21 +104,18 @@ export class AuthController {
 	 * Get current user profile
 	 */
 	@Get('me')
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	@ApiResponse(200, 'User profile retrieved successfully')
-	async getCurrentUser(
-		@CurrentUser() user: BasicUser
-	): Promise<BasicUser> {
+	@NoCache()
+	async getCurrentUser(@CurrentUser() user: TokenPayload): Promise<TokenPayload> {
 		try {
 			logger.authInfo('Current user accessed', {
-				userId: user.id,
+				userId: user.sub,
 			});
 
 			return user;
 		} catch (error) {
 			logger.authError('Error getting current user', {
 				error: getErrorMessage(error),
-				userId: user.id,
+				userId: user.sub,
 			});
 			throw error;
 		}
@@ -231,17 +194,17 @@ export class AuthController {
 	@UseGuards(AuthGuard, RolesGuard)
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getAllUsers(@CurrentUser() user: BasicUser) {
+	async getAllUsers(@CurrentUser() user: TokenPayload) {
 		try {
 			logger.authInfo('Admin accessed all users', {
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 
 			return {
 				message: 'Admin access granted',
 				adminUser: {
-					id: user.id,
+					id: user.sub,
 					username: user.username,
 					email: user.username + '@example.com', // Default email
 					role: user.role,
@@ -252,8 +215,8 @@ export class AuthController {
 		} catch (error) {
 			logger.authError('Failed to get all users', {
 				error: getErrorMessage(error),
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}

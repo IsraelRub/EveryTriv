@@ -452,7 +452,7 @@ function processData(data: unknown): string {
 
 #### מבנה רכיב מומלץ
 ```typescript
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 interface ComponentProps {
@@ -1297,5 +1297,3 @@ node --prof-process isolate-*.log > processed.txt
 4. **כתיבת בדיקות** - Frontend ו-Backend
 5. **אופטימיזציה** - ביצועים, caching, code splitting
 6. **debugging** - כלים מתקדמים לזיהוי בעיות
-
-לשאלות נוספות, עיין בתיעוד הספציפי לכל רכיב או פנה לצוות הפיתוח.

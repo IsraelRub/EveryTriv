@@ -6,8 +6,9 @@
  * @note This module is for PERSISTENT storage only. For caching, use CacheModule instead.
  */
 import { BadRequestException, Module } from '@nestjs/common';
-import { MetricsService } from '@shared/services';
 import type { Redis } from 'ioredis';
+
+import { MetricsService } from '@shared/services';
 
 import { RedisModule } from '../redis.module';
 import { StorageController } from './storage.controller';

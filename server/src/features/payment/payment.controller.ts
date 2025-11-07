@@ -1,18 +1,11 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage,PaymentData } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import {
-	AuditLog,
-	BusinessLog,
-	Cache,
-	ClientIP,
-	CurrentUserId,
-	PerformanceThreshold,
-	SecurityLog,
-	UserAgent,
-} from '../../common';
+import { CACHE_DURATION } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import { PaymentData } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { Cache, CurrentUserId } from '../../common';
 import { PaymentDataPipe } from '../../common/pipes';
 import { CreatePaymentDto } from './dtos';
 import { PaymentService } from './payment.service';
@@ -26,16 +19,7 @@ export class PaymentController {
 	 */
 	@Post('create')
 	@UsePipes(PaymentDataPipe)
-	@SecurityLog('critical')
-	@AuditLog('payment:create')
-	@BusinessLog('payment')
-	@PerformanceThreshold(2000)
-	async createPayment(
-		@CurrentUserId() userId: string,
-		@Body() paymentData: CreatePaymentDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	) {
+	async createPayment(@CurrentUserId() userId: string, @Body() paymentData: CreatePaymentDto) {
 		try {
 			// DTO validation is handled automatically by NestJS
 			if (!paymentData.planType) {
@@ -62,8 +46,6 @@ export class PaymentController {
 				planType: paymentData.planType,
 				paymentId: result.paymentId,
 				status: result.status,
-				ip,
-				userAgent,
 			});
 
 			return result;
@@ -72,7 +54,6 @@ export class PaymentController {
 				error: getErrorMessage(error),
 				userId,
 				planType: paymentData.planType,
-				ip,
 			});
 			throw error;
 		}

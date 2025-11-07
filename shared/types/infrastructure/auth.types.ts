@@ -3,9 +3,9 @@
  * @module AuthTypes
  * @description Authentication and authorization related types
  */
-
 // Import BasicUser from domain
-import type { BasicUser } from '../domain/user/user.types';
+import { UserRole } from '../../constants';
+import type { BasicUser } from '../domain/user';
 
 // Authentication Result
 export interface AuthenticationResult {
@@ -15,7 +15,6 @@ export interface AuthenticationResult {
 	message?: string;
 	error?: string;
 }
-
 
 // Login Credentials
 export interface LoginCredentials {
@@ -29,8 +28,6 @@ export interface AuthCredentials {
 	username: string;
 	password: string;
 }
-
-import { UserRole } from '../../constants/business/info.constants';
 
 // User Data
 export interface UserData {
@@ -70,12 +67,12 @@ export interface TokenPair {
 // Token Validation Result
 export interface TokenValidationResult {
 	isValid: boolean;
-	payload?: TokenPayload;
 	error?: string;
+	payload?: TokenPayload;
 }
 
 // Password Validation Result - imported from validation.types.ts
-export type { PasswordValidationResult } from '../domain/validation/validation.types';
+export type { PasswordValidationResult } from '../domain';
 
 // Password Config
 export interface PasswordConfig {
@@ -101,7 +98,7 @@ export interface AuthRequest {
 }
 
 // JWT Decoded Token
-export interface JWTDecodedToken extends Record<string, unknown> {
+export interface JWTDecodedToken {
 	sub: string;
 	email: string;
 	username: string;

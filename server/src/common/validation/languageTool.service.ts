@@ -1,16 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { LANGUAGE_TOOL_CONSTANTS, VALIDATION_ERROR_MESSAGES } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions, SupportedLanguage } from '@shared/types';
-import { createServerError } from '@internal/utils';
-import { getErrorMessage, getErrorStack } from '@shared/utils';
 import { URLSearchParams } from 'url';
+
+import { Injectable } from '@nestjs/common';
+
+import { CACHE_TTL, LANGUAGE_TOOL_CONSTANTS, VALIDATION_ERROR_MESSAGES } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
+import { getErrorMessage, getErrorStack } from '@shared/utils';
+
+import { createServerError } from '@internal/utils';
 
 // import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
 @Injectable()
 export class LanguageToolService {
 	private readonly config: LanguageToolConfig;
+	private readonly cache: Map<string, { expiresAt: number; result: LanguageToolResponse }> = new Map();
+	private readonly cacheTtlMs: number = CACHE_TTL.LONG;
 
 	constructor() {
 		this.config = {
@@ -32,20 +37,21 @@ export class LanguageToolService {
 	 * Check text using LanguageTool API
 	 */
 	async checkText(text: string, options: LanguageValidationOptions = {}): Promise<LanguageToolResponse> {
-		const {
-			language = LANGUAGE_TOOL_CONSTANTS.LANGUAGES.AUTO,
-			enableSpellCheck = true,
-			enableGrammarCheck = true,
-			preferredVariants,
-		} = options;
+		const { enableSpellCheck = true, enableGrammarCheck = true } = options;
+
+		const language = 'en';
 
 		try {
+			const cacheKey = this.buildCacheKey(text, language, enableSpellCheck, enableGrammarCheck);
+			const cached = this.cache.get(cacheKey);
+			if (cached && cached.expiresAt > Date.now()) {
+				logger.languageToolDebug('Returning cached LanguageTool response', { textLength: text.length });
+				return cached.result;
+			}
 			logger.languageToolDebug(`Starting text validation`, {
 				textLength: text.length,
-				language,
 				enableSpellCheck,
 				enableGrammarCheck,
-				hasPreferredVariants: !!preferredVariants,
 			});
 
 			const params = new URLSearchParams({
@@ -53,10 +59,6 @@ export class LanguageToolService {
 				language: language,
 				enableOnly: this.buildEnableOnlyParam(enableSpellCheck, enableGrammarCheck),
 			});
-
-			if (preferredVariants) {
-				params.append('preferredVariants', preferredVariants);
-			}
 
 			const url = `${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK}?${params.toString()}`;
 			const headers: Record<string, string> = {
@@ -67,7 +69,7 @@ export class LanguageToolService {
 				headers['Authorization'] = `ApiKey ${this.config.apiKey}`;
 			}
 
-			logger.languageToolApiRequest(url.replace(this.config.apiKey || '', '[REDACTED]'), language, {
+			logger.languageToolApiRequest(url.replace(this.config.apiKey || '', '[REDACTED]'), 'en', {
 				headers: Object.keys(headers),
 			});
 
@@ -91,6 +93,8 @@ export class LanguageToolService {
 				enableGrammarCheck,
 			});
 
+			// cache
+			this.cache.set(cacheKey, { expiresAt: Date.now() + this.cacheTtlMs, result });
 			return result;
 		} catch (error) {
 			const errorMessage = `LanguageTool API error: ${getErrorMessage(error)}`;
@@ -101,6 +105,15 @@ export class LanguageToolService {
 			});
 			throw error;
 		}
+	}
+
+	private buildCacheKey(
+		text: string,
+		language: string,
+		enableSpellCheck: boolean,
+		enableGrammarCheck: boolean
+	): string {
+		return [language, enableSpellCheck ? 's1' : 's0', enableGrammarCheck ? 'g1' : 'g0', text].join('|').slice(0, 2048);
 	}
 
 	/**
@@ -129,55 +142,6 @@ export class LanguageToolService {
 		});
 
 		return rules.join(',');
-	}
-
-	/**
-	 * Get supported languages from LanguageTool
-	 */
-	async getSupportedLanguages(): Promise<SupportedLanguage[]> {
-		try {
-			logger.languageToolInfo('Fetching supported languages');
-
-			const response = await fetch(`${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.LANGUAGES}`);
-
-			if (!response.ok) {
-				const errorMessage = `${VALIDATION_ERROR_MESSAGES.FAILED_TO_FETCH_LANGUAGES}: ${response.status}`;
-				logger.languageToolApiError(response.status, response.statusText);
-				throw createServerError('validate text with LanguageTool', new Error(errorMessage));
-			}
-
-			const languages = await response.json();
-			const supportedLanguages = languages.map((lang: { name: string; longCode?: string; code: string }) => ({
-				name: lang.name,
-				code: lang.longCode || lang.code,
-			}));
-
-			logger.languageToolLanguagesFetched(supportedLanguages.length, {
-				languages: supportedLanguages.map((lang: SupportedLanguage) => lang.name),
-			});
-
-			return supportedLanguages;
-		} catch (error) {
-			const errorMessage = `Failed to get supported languages: ${getErrorMessage(error)}`;
-			logger.languageToolError(errorMessage, {
-				error: getErrorStack(error),
-			});
-
-			// Return basic languages as fallback
-			const fallbackLanguages = [
-				{ name: 'English', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH },
-				{ name: 'Hebrew', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.HEBREW },
-				{ name: 'Spanish', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.SPANISH },
-				{ name: 'French', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.FRENCH },
-				{ name: 'German', code: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.GERMAN },
-			];
-
-			logger.languageToolFallbackLanguages(fallbackLanguages.length, {
-				languages: fallbackLanguages.map((lang: SupportedLanguage) => lang.name),
-			});
-
-			return fallbackLanguages;
-		}
 	}
 
 	/**

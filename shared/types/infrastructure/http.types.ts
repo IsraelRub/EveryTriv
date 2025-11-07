@@ -4,19 +4,16 @@
  *
  * @module HttpTypes
  * @description HTTP client and request type definitions
- * @used_by server: server/src/internal/utils/interceptors.utils.ts (HttpClient), client: client/src/services/api.service.ts (ClientHttpClient), shared/services/logging (HTTP logging)
  */
 import type { BaseData, StorageValue } from '../core/data.types';
-import type { HttpLogData, HttpLogger } from './logging.types';
+import type { HttpError } from '../core/error.types';
+import type { Logger } from './logging.types';
 
-// Re-export for external usage
-export type { HttpLogData, HttpLogger };
-
-// Define our own base request config to avoid axios dependency
+// Define our own base request config for HTTP requests
 /**
  * Base request configuration interface
- * @description Generic HTTP request config without axios-specific dependencies
- * @used_by ExtendedAxiosRequestConfig, AxiosErrorWithConfig
+ * @description Generic HTTP request config for fetch-based requests
+ * @used_by ExtendedRequestConfig, HttpErrorWithConfig
  */
 export interface BaseRequestConfig {
 	url?: string;
@@ -33,40 +30,42 @@ export interface BaseRequestConfig {
 
 // HTTP-specific types for shared usage
 /**
- * Extended request configuration with axios-specific fields
- * @description Extends BaseRequestConfig with axios-specific properties for interceptors and retry logic
+ * Extended request configuration with additional fields
+ * @description Extends BaseRequestConfig with properties for interceptors and retry logic
  * @extends BaseRequestConfig
  * @used_by server interceptors, retry logic
  */
-export interface ExtendedAxiosRequestConfig extends BaseRequestConfig {
+export interface ExtendedRequestConfig extends BaseRequestConfig {
 	startTime?: number;
 	requestId?: string;
 	_retry?: boolean;
 }
 
 /**
- * Axios error interface with configuration
- * @description Error interface that includes request config and response data for error handling
- * @extends Error
+ * HTTP error interface with configuration
+ * @description Extended HTTP error that includes request config and response data for error handling
+ * Extends HttpError from core/error.types with additional BaseRequestConfig
+ *
+ * Usage:
+ * - HttpError: Basic network errors (timeouts, connection failures)
+ * - HttpErrorWithConfig: HTTP errors with full request/response context (for interceptors, retry logic)
+ * - ApiError: API response errors (structured error responses from server)
+ *
+ * @extends HttpError
  * @used_by error interceptors, retry logic, error formatting
  */
-export interface AxiosErrorWithConfig extends Error {
-	config?: BaseRequestConfig;
-	response?: {
-		status: number;
-		statusText: string;
-		data?: {
-			message?: string;
-			code?: string;
-		};
-	};
+export interface HttpErrorWithConfig extends HttpError {
 	/**
-	 * XMLHttpRequest object when request was made but no response received
+	 * Request configuration (overrides HttpError.config with more specific type)
+	 */
+	config?: BaseRequestConfig;
+	/**
+	 * Request object when request was made but no response received
 	 * @description Used to detect network errors vs server errors
 	 */
 	request?: StorageValue;
 }
 
 export interface WindowWithLogger {
-	logger?: HttpLogger;
+	logger?: Logger;
 }

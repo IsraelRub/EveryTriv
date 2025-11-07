@@ -13,7 +13,7 @@
 - פיתוח (Workflow וכלים): `docs/DEVELOPMENT.md`
 - פריסה: `docs/DEPLOYMENT.md`
 - מסד נתונים: `docs/database/DATABASE_SETUP.md`
-- ספרייה משותפת (Shared): `shared/README.md`
+- ספרייה משותפת (Shared): `docs/shared/SHARED_PACKAGE.md`
 
 תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
 
@@ -60,14 +60,14 @@ pnpm run lint          # בדיקות ESLint
 pnpm run format        # עיצוב קוד
 ```
 
-סקריפטים מפורטים נוספים: ראה תיקיית `scripts/` ותיעוד ייעודי ב-`docs/tools/DEVELOPMENT_TOOLS.md`.
+סקריפטים מפורטים נוספים: ראה תיקיית `scripts/` ותיעוד ייעודי ב-`docs/DEVELOPMENT.md`.
 
 ## � סביבת Docker בסיסית
 
 ```bash
 docker-compose up -d
 ```
-תצורות מלאות ופרופילי פיתוח מורחבים: `docs/deployment/DOCKER_SETUP.md`.
+תצורות מלאות ופרופילי פיתוח מורחבים: `docs/DEPLOYMENT.md`.
 
 ## � מסד נתונים
 
@@ -76,7 +76,7 @@ docker-compose up -d
 ## 🔐 אבטחה
 
 JWT + Refresh Flow, בקרות תפקידים, ולידציה בכל שכבת כניסה (DTO + Pipes), Rate Limiting, Cache Layer.
-פרטים: `docs/architecture/SERVER_ARCHITECTURE.md` ו-`docs/backend/feature-auth.md`.
+פרטים: `docs/ARCHITECTURE.md` ו-`docs/backend/feature-auth.md`.
 
 ## 🧩 מודולריות (Backend)
 
@@ -88,15 +88,14 @@ JWT + Refresh Flow, בקרות תפקידים, ולידציה בכל שכבת כ
 
 ## 🎨 UI ו-Hooks
 
-Frontend Hooks בשכבות (API / Business / UI / Utils): ראה `docs/architecture/HOOKS_ARCHITECTURE.md` + פירוט שכבות ב-`docs/frontend/STATE.md`.
+Frontend Hooks בשכבות (API / Business / UI / Utils): ראה `docs/frontend/HOOKS_ARCHITECTURE.md` + פירוט שכבות ב-`docs/frontend/STATE.md`.
 
 ## 📚 קונסיסטנטיות טיפוסים
 
-כל שימוש בנתונים בין לקוח ושרת עובר דרך טיפוסים משותפים ב-`shared/types`. ראה `docs/shared/types.md`.
+כל שימוש בנתונים בין לקוח ושרת עובר דרך טיפוסים משותפים ב-`shared/types`. ראה `docs/shared/TYPES.md`.
 
 ## 🤝 תרומה
 
-מדריך תרומה מפורט: `docs/development/contributing.md`.
 קוד חדש נדרש: בדיקות טיפוסים, Lint נקי, תאימות לשכבת Shared.
 
 ## 📄 רישיון

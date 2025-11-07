@@ -100,24 +100,6 @@ export const useLogin = () => {
   });
 };
 
-export const useLogout = () => {
-  const queryClient = useQueryClient();
-  const dispatch = useAppDispatch();
-
-  return useMutation({
-    mutationFn: () => authService.logout(),
-    onSuccess: () => {
-      // Update Redux state for HOCs consistency
-      dispatch(setAuthenticated(false));
-      dispatch(setUser(null));
-
-      // Clear all cached data on logout
-      queryClient.clear();
-      logger.securityLogout('User logged out, cache cleared');
-    },
-  });
-};
-
 export const useRegister = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();

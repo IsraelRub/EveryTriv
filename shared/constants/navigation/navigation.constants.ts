@@ -17,7 +17,9 @@ export const NAVIGATION_LINKS = {
 	authenticated: [
 		{ label: 'Game History', path: '/history' },
 		{ label: 'Profile', path: '/profile' },
+		{ label: 'Analytics', path: '/analytics' },
 	],
+	admin: [{ label: 'Admin Dashboard', path: '/admin' }],
 	footer: {
 		quick: [
 			{ label: 'Start Game', path: '/' },
@@ -25,9 +27,26 @@ export const NAVIGATION_LINKS = {
 			{ label: 'Leaderboard', path: '/leaderboard' },
 			{ label: 'Profile', path: '/profile' },
 			{ label: 'Premium', path: '/payment' },
+			{ label: 'Analytics', path: '/analytics' },
 		],
 	},
 } as const;
+
+// Type for navigation link
+export type NavigationLink = {
+	label: string;
+	path: string;
+};
+
+// Type for all navigation links
+export type NavigationLinks = {
+	main: readonly NavigationLink[];
+	authenticated: readonly NavigationLink[];
+	admin: readonly NavigationLink[];
+	footer: {
+		quick: readonly NavigationLink[];
+	};
+};
 
 // Route paths
 export const ROUTE_PATHS = {

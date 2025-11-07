@@ -1,9 +1,11 @@
-import react from '@vitejs/plugin-react';
 import path from 'path';
+
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
-import { DEFAULT_PORTS, DEFAULT_URLS, LOCALHOST_URLS } from '../shared/constants/infrastructure/infrastructure.constants';
+import { DEFAULT_PORTS, DEFAULT_URLS, LOCALHOST_URLS } from '../shared/constants';
+import type { ViteProxyConfig } from '../shared/types';
 
 
 export default defineConfig({
@@ -13,11 +15,8 @@ export default defineConfig({
 		emptyOutDir: true,
 		rollupOptions: {
 			external: (id) => {
-				// Externalize Node.js modules for browser compatibility
-				if (id.includes('fs') || id.includes('path') || id.includes('util') || id.includes('stream')) {
-					return true;
-				}
-				return false;
+				const nodeModules = ['fs', 'path', 'util', 'stream'];
+				return nodeModules.some(module => id.includes(module));
 			},
 		},
 	},
@@ -60,53 +59,18 @@ export default defineConfig({
 	},
 	server: {
 		port: DEFAULT_PORTS.CLIENT,
-		proxy: {
-			'/v1': {
+		proxy: (() => {
+			const proxyPaths = ['/v1', '/auth', '/api', '/game', '/leaderboard', '/users', '/analytics', '/points', '/payment'];
+			const proxyConfig: ViteProxyConfig = {
 				target: DEFAULT_URLS.DEV_SERVER,
 				changeOrigin: true,
 				secure: false,
-			},
-			'/auth': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/api': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/game': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/leaderboard': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/users': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/analytics': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/points': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-			'/payment': {
-				target: DEFAULT_URLS.DEV_SERVER,
-				changeOrigin: true,
-				secure: false,
-			},
-		},
+			};
+			return proxyPaths.reduce((acc, path) => {
+				acc[path] = proxyConfig;
+				return acc;
+			}, {} as Record<string, ViteProxyConfig>);
+		})(),
 		// Add these settings to prevent extension communication issues
 		hmr: {
 			overlay: false, // Disable error overlay that can interfere with extensions

@@ -5,28 +5,62 @@
  * @description Type definitions for trivia questions, answers, and trivia-related entities
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
-import type { BaseEntity, BasicValue } from '../../core/data.types';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
+
+import type { BaseEntity } from '../../core/data.types';
+import type { SimpleValidationResult } from '../validation.types';
 
 /**
- * Trivia question interface
- * @interface TriviaQuestion
- * @description Trivia question with answers and metadata
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
+ * Custom difficulty string type
+ * @type CustomDifficultyString
+ * @description String that represents a custom difficulty with the custom: prefix
  */
-export interface TriviaQuestion extends BaseEntity {
-	question: string;
-	answers: TriviaAnswer[];
-	correctAnswerIndex: number;
-	difficulty: string;
-	topic: string;
+export type CustomDifficultyString = `${typeof CUSTOM_DIFFICULTY_PREFIX}${string}`;
+
+/**
+ * Game difficulty type union
+ * @type GameDifficulty
+ * @description Union type for both standard difficulty levels and custom difficulties
+ * @used_by server/src/features/game/logic, client/src/components/game, shared/validation
+ */
+export type GameDifficulty = DifficultyLevel | CustomDifficultyString;
+
+/**
+ * Acceptable sources for trivia questions
+ */
+export type TriviaQuestionSource = 'ai' | 'user' | 'imported' | 'seeded' | 'system';
+
+/**
+ * Review state for curated trivia questions
+ */
+export type TriviaQuestionReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+
+/**
+ * Structured metadata describing trivia question provenance and quality signals
+ */
+export interface TriviaQuestionDetailsMetadata {
 	category?: string;
-	explanation?: string;
-	source?: string;
 	tags?: string[];
-	rating?: number;
-	timesAnswered?: number;
-	successRate?: number;
-	metadata?: Record<string, BasicValue>;
+	source?: TriviaQuestionSource;
+	providerName?: string;
+	difficulty?: GameDifficulty;
+	difficultyScore?: number;
+	customDifficultyDescription?: string;
+	generatedAt?: string;
+	importedAt?: string;
+	lastReviewedAt?: string;
+	reviewStatus?: TriviaQuestionReviewStatus;
+	language?: string;
+	explanation?: string;
+	referenceUrls?: string[];
+	hints?: string[];
+	usageCount?: number;
+	correctAnswerCount?: number;
+	aiConfidenceScore?: number;
+	safeContentScore?: number;
+	flaggedReasons?: string[];
+	popularityScore?: number;
+	averageAnswerTimeMs?: number;
 }
 
 /**
@@ -44,21 +78,95 @@ export interface TriviaAnswer {
 }
 
 /**
+ * Trivia question interface
+ * @interface TriviaQuestion
+ * @description Trivia question with answers and metadata
+ * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
+ */
+/**
+ * Core trivia question structure used across input and payload types
+ */
+export interface TriviaQuestionCore<TDifficulty = GameDifficulty> {
+	question: string;
+	answers: string[];
+	correctAnswerIndex: number;
+	topic: string;
+	difficulty: TDifficulty;
+	metadata?: TriviaQuestionDetailsMetadata;
+}
+
+/**
+ * Trivia question interface
+ * @interface TriviaQuestion
+ * @description Trivia question with answers and metadata
+ * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
+ */
+export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionCore, 'answers'> {
+	answers: TriviaAnswer[];
+	category?: string;
+	explanation?: string;
+	source?: string;
+	tags?: string[];
+	rating?: number;
+	timesAnswered?: number;
+	successRate?: number;
+}
+
+/**
+ * Trivia question payload interface for validation and submission flows
+ * @description Allows partial metadata while enforcing essential fields
+ */
+export type TriviaQuestionInput<TDifficulty = GameDifficulty> = TriviaQuestionCore<TDifficulty>;
+
+export type TriviaQuestionPayload = Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'> &
+	Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>>;
+
+/**
+ * Base answer payload shared across submission and result structures
+ */
+export interface BaseAnswerPayload {
+	questionId: string;
+	timeSpent: number;
+}
+
+/**
  * Trivia request interface
  * @interface TriviaRequest
  * @description Request payload for trivia questions
  * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaRequest {
-	question_count: number;
+	questionCount: number;
 	topic: string;
-	difficulty: string;
+	difficulty: GameDifficulty;
 	category?: string;
-	language?: string;
 	userId?: string;
 	gameMode?: string;
 	timeLimit?: number;
 	questionLimit?: number;
+}
+
+/**
+ * Game answer submission data
+ * @interface GameAnswerSubmission
+ * @description Payload for submitting an answer during gameplay
+ */
+export interface GameAnswerSubmission extends BaseAnswerPayload {
+	answer: string;
+}
+
+/**
+ * Trivia input validation result
+ * @interface TriviaInputValidationResult
+ * @description Aggregated validation results for trivia topic and difficulty inputs
+ */
+export interface TriviaInputValidationResult {
+	topic: SimpleValidationResult;
+	difficulty: SimpleValidationResult;
+	overall: {
+		isValid: boolean;
+		canProceed: boolean;
+	};
 }
 
 /**
@@ -85,12 +193,10 @@ export interface TriviaResponse {
  * @description Result of answering a trivia question
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx, server/src/features/game/game.service.ts
  */
-export interface AnswerResult {
-	questionId: string;
+export interface AnswerResult extends BaseAnswerPayload {
 	userAnswer: string;
 	correctAnswer: string;
 	isCorrect: boolean;
-	timeSpent: number;
 	pointsEarned: number;
 	totalScore: number;
 	explanation?: string;
@@ -115,92 +221,4 @@ export interface TriviaSession {
 	score: number;
 	timeLimit?: number;
 	questionLimit?: number;
-}
-
-/**
- * Trivia category interface
- * @interface TriviaCategory
- * @description Trivia question category
- * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
- */
-export interface TriviaCategory {
-	id: string;
-	name: string;
-	description?: string;
-	icon?: string;
-	questionCount: number;
-	color?: string;
-	order: number;
-	isActive: boolean;
-}
-
-/**
- * Trivia difficulty interface
- * @interface TriviaDifficulty
- * @description Trivia difficulty level
- * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
- */
-export interface TriviaDifficulty {
-	id: string;
-	name: string;
-	description?: string;
-	level: number;
-	color?: string;
-	questionCount: number;
-	isActive: boolean;
-}
-
-/**
- * Trivia topic interface
- * @interface TriviaTopic
- * @description Trivia question topic
- * @used_by client/src/components/gameMode/GameMode.tsx, client/src/hooks/api/useTrivia.ts
- */
-export interface TriviaTopic {
-	id: string;
-	name: string;
-	description?: string;
-	icon?: string;
-	questionCount: number;
-	color?: string;
-	order: number;
-	isActive: boolean;
-	category?: string;
-}
-
-/**
- * Trivia statistics interface
- * @interface TriviaStatistics
- * @description Trivia statistics data
- * @used_by client/src/views/leaderboard/LeaderboardView.tsx, client/src/hooks/api/useTrivia.ts
- */
-export interface TriviaStatistics {
-	totalQuestions: number;
-	totalCorrectAnswers: number;
-	successRate: number;
-	averageTimePerQuestion: number;
-	bestStreak: number;
-	currentStreak: number;
-	favoriteTopic: string;
-	favoriteDifficulty: string;
-	totalPlayTime: number;
-	lastPlayed: Date;
-}
-
-/**
- * Trivia leaderboard entry interface
- * @interface TriviaLeaderboardEntry
- * @description Trivia leaderboard entry
- * @used_by client/src/views/leaderboard/LeaderboardView.tsx, client/src/hooks/api/useTrivia.ts
- */
-export interface TriviaLeaderboardEntry {
-	userId: string;
-	username: string;
-	score: number;
-	rank: number;
-	gamesPlayed: number;
-	successRate: number;
-	bestStreak: number;
-	totalPlayTime: number;
-	lastPlayed: Date;
 }

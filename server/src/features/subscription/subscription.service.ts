@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { BillingCycle, PlanType } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { SubscriptionData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { UserEntity } from 'src/internal/entities';
-import { Repository } from 'typeorm';
+
+import { UserEntity } from '@internal/entities';
 
 import { PaymentService } from '../payment';
 
@@ -41,7 +44,7 @@ export class SubscriptionService {
 			return {
 				userId: user.id,
 				subscriptionId: user.currentSubscriptionId || defaultSubscription.subscriptionId,
-				plan: defaultSubscription.plan,
+				planType: defaultSubscription.planType,
 				status: defaultSubscription.status,
 				startDate: defaultSubscription.startDate,
 				endDate: defaultSubscription.endDate,
@@ -65,11 +68,11 @@ export class SubscriptionService {
 	 * @param billingCycle Billing cycle
 	 * @returns Created subscription
 	 */
-	async createSubscription(userId: string, plan: string, billingCycle: string = 'monthly') {
+	async createSubscription(userId: string, plan: PlanType, billingCycle: BillingCycle = BillingCycle.MONTHLY) {
 		try {
 			logger.payment('Creating subscription', {
 				userId,
-				planId: plan,
+				planType: plan,
 				paymentMethodId: billingCycle,
 			});
 
@@ -81,15 +84,15 @@ export class SubscriptionService {
 			const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 			const startDate = new Date();
 			const endDate = new Date();
-			endDate.setMonth(endDate.getMonth() + (billingCycle === 'yearly' ? 12 : 1));
+			endDate.setMonth(endDate.getMonth() + (billingCycle === BillingCycle.YEARLY ? 12 : 1));
 
 			const planDetails = this.getPlanDetails(plan);
-			const subscriptionData = {
+			const subscriptionData: SubscriptionData = {
 				subscriptionId,
-				plan,
+				planType: plan,
 				status: 'active',
-				startDate: startDate.toISOString(),
-				endDate: endDate.toISOString(),
+				startDate: startDate,
+				endDate: endDate,
 				price: planDetails.price,
 				billingCycle,
 				features: planDetails.features,
@@ -99,8 +102,8 @@ export class SubscriptionService {
 				amount: planDetails.price,
 				currency: 'USD',
 				description: `Subscription to ${plan} plan`,
-				planType: plan as 'basic' | 'premium' | 'pro',
-				numberOfPayments: billingCycle === 'yearly' ? 12 : 1,
+				planType: plan,
+				numberOfPayments: billingCycle === BillingCycle.YEARLY ? 12 : 1,
 				metadata: {
 					subscriptionId,
 					plan,
@@ -115,8 +118,7 @@ export class SubscriptionService {
 
 			logger.payment('Subscription created successfully', {
 				userId,
-				subscriptionId: subscriptionId,
-				planId: plan,
+				id: subscriptionId,
 			});
 
 			return {
@@ -127,7 +129,7 @@ export class SubscriptionService {
 			logger.paymentFailed('subscription-create', 'Failed to create subscription', {
 				error: getErrorMessage(error),
 				userId,
-				planId: plan,
+				id: plan,
 			});
 			throw error;
 		}
@@ -142,7 +144,7 @@ export class SubscriptionService {
 		try {
 			logger.payment('Canceling subscription', {
 				userId,
-				subscriptionId: userId,
+				id: userId,
 			});
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -152,7 +154,7 @@ export class SubscriptionService {
 
 			const defaultSubscription = this.getDefaultSubscription();
 			defaultSubscription.status = 'cancelled';
-			(defaultSubscription as Record<string, unknown>).cancelledAt = new Date().toISOString();
+			defaultSubscription.cancelledAt = new Date();
 
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: undefined,
@@ -163,7 +165,7 @@ export class SubscriptionService {
 			logger.paymentFailed('subscription-cancel', 'Failed to cancel subscription', {
 				error: getErrorMessage(error),
 				userId,
-				subscriptionId: userId,
+				id: userId,
 			});
 			throw error;
 		}
@@ -197,9 +199,9 @@ export class SubscriptionService {
 	private getDefaultSubscription(): SubscriptionData {
 		return {
 			subscriptionId: null,
-			plan: 'free',
+			planType: PlanType.BASIC,
 			status: 'active',
-			startDate: new Date().toISOString(),
+			startDate: new Date(),
 			endDate: null,
 			price: 0,
 			billingCycle: null,
@@ -209,10 +211,10 @@ export class SubscriptionService {
 
 	/**
 	 * Get plan details by plan name
-	 * @param plan Plan name
+	 * @param plan Plan type
 	 * @returns Plan details
 	 */
-	private getPlanDetails(plan: string) {
+	private getPlanDetails(plan: PlanType) {
 		const plans = {
 			basic: {
 				price: 9.99,
@@ -235,6 +237,6 @@ export class SubscriptionService {
 			},
 		};
 
-		return plans[plan as keyof typeof plans] || plans.basic;
+		return plans[plan] || plans.basic;
 	}
 }

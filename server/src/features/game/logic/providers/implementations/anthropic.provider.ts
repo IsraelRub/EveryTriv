@@ -1,5 +1,6 @@
 import { HTTP_CLIENT_CONFIG, HTTP_TIMEOUTS } from '@shared/constants';
-import type { LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+import type { AIProviderInstance, LLMResponse, LLMTriviaResponse, ProviderConfig } from '@shared/types';
+
 import { createValidationError } from '@internal/utils';
 
 import { BaseTriviaProvider } from './base.provider';
@@ -9,7 +10,7 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 	protected apiKey: string;
 
 	// Provider instance for AIProviderWithTrivia interface
-	provider = {
+	provider: AIProviderInstance = {
 		name: 'Anthropic',
 		config: {
 			providerName: 'Anthropic',
@@ -22,7 +23,6 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 			},
 			costPerToken: 0.000003,
 			maxTokens: 4096,
-			supportedLanguages: ['en', 'he'],
 			lastUpdated: new Date(),
 		},
 		isAvailable: true,
@@ -42,9 +42,9 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 		return {
 			name: 'anthropic',
 			apiKey: this.apiKey,
-		baseUrl: 'https://api.anthropic.com/v1/messages',
-		timeout: HTTP_TIMEOUTS.AI_PROVIDER,
-		maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
+			baseUrl: 'https://api.anthropic.com/v1/messages',
+			timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: 1,
 			headers: {

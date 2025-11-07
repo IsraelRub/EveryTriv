@@ -1,28 +1,23 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import type { TriviaAnswer } from '@shared/types';
+import { DifficultyLevel } from '@shared/constants';
+import type { TriviaAnswer, TriviaQuestionDetailsMetadata } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('trivia')
-export class TriviaEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string = '';
-
+export class TriviaEntity extends BaseEntity {
 	@Column()
 	@Index()
 	topic: string = '';
 
-	@Column()
-	difficulty: string = '';
+	@Column({
+		type: 'enum',
+		enum: DifficultyLevel,
+		default: DifficultyLevel.EASY,
+	})
+	difficulty: DifficultyLevel = DifficultyLevel.EASY;
 
 	@Column()
 	@Index()
@@ -45,19 +40,7 @@ export class TriviaEntity {
 	isCorrect: boolean = false;
 
 	@Column('jsonb', { nullable: true })
-	metadata: {
-		category?: string;
-		tags?: string[];
-		source?: string;
-		difficulty_score?: number;
-		custom_difficulty_description?: string;
-	} = {};
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date = new Date();
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date = new Date();
+	metadata: TriviaQuestionDetailsMetadata = {};
 
 	@Column({ name: 'search_vector', type: 'tsvector', select: false })
 	searchVector: string = '';

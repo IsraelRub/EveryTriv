@@ -25,7 +25,7 @@ export * from './auth';
  * @description Caching and performance optimization
  * @used_by server/src/app, server/src/features, server/src/controllers
  */
-export * from 'src/internal/modules/cache';
+export * from '../internal/modules/cache';
 
 /**
  * Game feature

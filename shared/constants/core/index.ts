@@ -13,12 +13,6 @@
 export * from './api.constants';
 
 /**
- * Game constants
- * @description Game mechanics, difficulty levels, scoring, and game modes
- */
-export * from './game.constants';
-
-/**
  * Validation constants
  * @description Data validation rules, thresholds, and configuration
  */

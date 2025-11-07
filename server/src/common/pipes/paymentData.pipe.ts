@@ -5,11 +5,11 @@
  * @description Pipe for validating payment data input with comprehensive validation
  * @used_by server/src/features/payment, server/src/controllers
  */
-// ValidationManager removed - using direct validation
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import type { PersonalPaymentData } from '@shared/types';
-import { getErrorMessage,ValidationResult } from '@shared/utils';
+import type { PersonalPaymentData, ValidationResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 @Injectable()
 export class PaymentDataPipe implements PipeTransform {

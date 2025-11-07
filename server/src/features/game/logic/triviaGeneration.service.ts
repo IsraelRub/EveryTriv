@@ -1,13 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { serverLogger as logger } from '@shared/services';
-import type { TriviaAnswer } from '@shared/types';
-import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-import { getErrorMessage } from '@shared/utils';
-import { TriviaEntity } from 'src/internal/entities';
 import { DeepPartial, Repository } from 'typeorm';
 
+import { DifficultyLevel } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type {
+	GameDifficulty,
+	TriviaAnswer,
+	TriviaQuestionDetailsMetadata,
+	TriviaQuestionReviewStatus,
+	TriviaQuestionSource,
+} from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { toDifficultyLevel } from '@shared/validation';
+
+import { TriviaEntity } from '@internal/entities';
+import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
+
+import type { ServerTriviaQuestionInput } from '@features/game/types';
+
 import { AiProvidersService } from './providers/management';
+
+const ALLOWED_TRIVIA_SOURCES: TriviaQuestionSource[] = ['ai', 'user', 'imported', 'seeded', 'system'];
+const ALLOWED_REVIEW_STATUSES: TriviaQuestionReviewStatus[] = ['pending', 'approved', 'rejected', 'flagged'];
+
+const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+
+const normalizeStringArray = (value?: unknown): string[] | undefined => {
+	if (!Array.isArray(value)) {
+		return undefined;
+	}
+	const normalized = value.filter(isNonEmptyString);
+	return normalized.length > 0 ? normalized : undefined;
+};
 
 /**
  * Service for generating trivia questions using AI
@@ -28,7 +53,7 @@ export class TriviaGenerationService {
 	 * @param userId User ID for personalization
 	 * @returns Generated trivia question
 	 */
-	async generateQuestion(topic: string, difficulty: string, userId?: string): Promise<TriviaEntity> {
+	async generateQuestion(topic: string, difficulty: GameDifficulty, userId?: string): Promise<TriviaEntity> {
 		try {
 			logger.gameTarget('Generating trivia question', {
 				topic,
@@ -37,7 +62,8 @@ export class TriviaGenerationService {
 			});
 
 			// Try to generate question using AI
-			const question = await this.generateAIQuestion(topic, difficulty);
+			const aiQuestion = await this.aiProvidersService.generateQuestion(topic, difficulty);
+			const question = this.convertAIQuestionToFormat(aiQuestion, topic, toDifficultyLevel(difficulty));
 
 			if (question) {
 				// Save to database
@@ -76,7 +102,7 @@ export class TriviaGenerationService {
 	 * @param userId User ID (optional)
 	 * @returns Array of generated questions
 	 */
-	async generateQuestions(topic: string, difficulty: string, count: number, userId?: string) {
+	async generateQuestions(topic: string, difficulty: GameDifficulty, count: number, userId?: string) {
 		try {
 			logger.gameTarget('Generating multiple trivia questions', {
 				topic,
@@ -156,7 +182,7 @@ export class TriviaGenerationService {
 	 * @param count Number of questions
 	 * @returns Array of questions
 	 */
-	async getRandomQuestions(topic: string, difficulty: string, count: number) {
+	async getRandomQuestions(topic: string, difficulty: GameDifficulty, count: number) {
 		try {
 			logger.gameTarget('Getting random questions', {
 				topic,
@@ -194,41 +220,11 @@ export class TriviaGenerationService {
 	}
 
 	/**
-	 * Generate question using AI providers
-	 * @param topic Topic for the question
-	 * @param difficulty Difficulty level
-	 * @returns AI generated question
-	 */
-	private async generateAIQuestion(topic: string, difficulty: string) {
-		try {
-			// Generate question using AI providers service
-			const aiQuestion = await this.aiProvidersService.generateQuestion(topic, difficulty, 'he');
-
-			// Convert AI question to our format
-			const question = this.convertAIQuestionToFormat(aiQuestion, topic, difficulty);
-
-			logger.gameTarget('AI question generated successfully', {
-				topic,
-				difficulty,
-			});
-
-			return question;
-		} catch (error) {
-			logger.gameError('Failed to generate AI question', {
-				error: getErrorMessage(error),
-				topic,
-				difficulty,
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Convert AI question to our format
 	 * @param aiQuestion AI generated question
 	 * @param topic Topic
 	 * @param difficulty Difficulty
-	 * @returns Formatted question
+	 * @returns Formatted question data
 	 */
 	private convertAIQuestionToFormat(
 		aiQuestion: {
@@ -236,27 +232,21 @@ export class TriviaGenerationService {
 			answers: TriviaAnswer[];
 			correctAnswerIndex: number;
 			explanation?: string;
-			metadata?: Record<string, unknown>;
+			metadata?: Partial<TriviaQuestionDetailsMetadata>;
 		},
 		topic: string,
-		difficulty: string
-	) {
+		difficulty: DifficultyLevel
+	): ServerTriviaQuestionInput {
 		try {
-			// AI question already comes in the correct format from the providers
+			const metadata = this.normalizeMetadata(aiQuestion.metadata, topic, difficulty, aiQuestion.explanation);
+
 			return {
 				question: aiQuestion.question,
 				answers: aiQuestion.answers.map(answer => answer.text),
 				correctAnswerIndex: aiQuestion.correctAnswerIndex,
 				topic,
 				difficulty,
-				explanation: aiQuestion.explanation || '',
-				metadata: {
-					...aiQuestion.metadata,
-					category: topic,
-					difficulty,
-					source: 'ai',
-					generatedAt: new Date().toISOString(),
-				},
+				metadata,
 			};
 		} catch (error) {
 			logger.gameError('Failed to convert AI question format', {
@@ -268,22 +258,62 @@ export class TriviaGenerationService {
 	}
 
 	/**
+	 * Normalize metadata for AI-generated questions
+	 * @param metadataRaw Raw metadata from AI
+	 * @param topic Topic
+	 * @param difficulty Difficulty
+	 * @param explanation Explanation from AI
+	 * @returns Normalized metadata
+	 */
+	private normalizeMetadata(
+		metadataInput: Partial<TriviaQuestionDetailsMetadata> | undefined,
+		topic: string,
+		difficulty: DifficultyLevel,
+		explanation?: string
+	): TriviaQuestionDetailsMetadata {
+		const base = metadataInput ?? {};
+		const generatedAt = isNonEmptyString(base.generatedAt) ? base.generatedAt : new Date().toISOString();
+		const source: TriviaQuestionSource =
+			base.source && ALLOWED_TRIVIA_SOURCES.includes(base.source) ? base.source : 'ai';
+		const reviewStatus: TriviaQuestionReviewStatus | undefined =
+			base.reviewStatus && ALLOWED_REVIEW_STATUSES.includes(base.reviewStatus) ? base.reviewStatus : undefined;
+		const fallbackExplanation = isNonEmptyString(explanation) ? explanation : undefined;
+
+		return {
+			category: isNonEmptyString(base.category) ? base.category : topic,
+			tags: normalizeStringArray(base.tags),
+			source,
+			providerName: isNonEmptyString(base.providerName) ? base.providerName : undefined,
+			difficulty: base.difficulty ?? difficulty,
+			difficultyScore: typeof base.difficultyScore === 'number' ? base.difficultyScore : undefined,
+			customDifficultyDescription: isNonEmptyString(base.customDifficultyDescription)
+				? base.customDifficultyDescription
+				: undefined,
+			generatedAt,
+			importedAt: isNonEmptyString(base.importedAt) ? base.importedAt : undefined,
+			lastReviewedAt: isNonEmptyString(base.lastReviewedAt) ? base.lastReviewedAt : undefined,
+			reviewStatus,
+			language: isNonEmptyString(base.language) ? base.language : undefined,
+			explanation: isNonEmptyString(base.explanation) ? base.explanation : fallbackExplanation,
+			referenceUrls: normalizeStringArray(base.referenceUrls),
+			hints: normalizeStringArray(base.hints),
+			usageCount: typeof base.usageCount === 'number' ? base.usageCount : undefined,
+			correctAnswerCount: typeof base.correctAnswerCount === 'number' ? base.correctAnswerCount : undefined,
+			aiConfidenceScore: typeof base.aiConfidenceScore === 'number' ? base.aiConfidenceScore : undefined,
+			safeContentScore: typeof base.safeContentScore === 'number' ? base.safeContentScore : undefined,
+			flaggedReasons: normalizeStringArray(base.flaggedReasons),
+			popularityScore: typeof base.popularityScore === 'number' ? base.popularityScore : undefined,
+			averageAnswerTimeMs: typeof base.averageAnswerTimeMs === 'number' ? base.averageAnswerTimeMs : undefined,
+		};
+	}
+
+	/**
 	 * Convert question data to trivia entity
 	 * @param questionData Question data
 	 * @param userId User ID
 	 * @returns Trivia entity
 	 */
-	private convertQuestionToEntity(
-		questionData: {
-			question: string;
-			answers: string[];
-			correctAnswerIndex: number;
-			topic: string;
-			difficulty: string;
-			metadata?: Record<string, unknown>;
-		},
-		userId?: string
-	): DeepPartial<TriviaEntity> {
+	private convertQuestionToEntity(questionData: ServerTriviaQuestionInput, userId?: string): DeepPartial<TriviaEntity> {
 		return {
 			question: questionData.question,
 			answers: questionData.answers.map((answer, index) => ({

@@ -7,5 +7,6 @@
  * @used_by client: game components, server: game controllers
  */
 
+export * from './achievements.types';
 export * from './game.types';
 export * from './trivia.types';

@@ -1,19 +1,7 @@
 /**
  * Server-specific game constants for EveryTriv
- * Re-exports shared constants and adds server-only constants
+ * Server-only game configuration
  */
-
-// Re-export shared constants
-export {
-	CUSTOM_DIFFICULTY_PREFIX,
-	DIFFICULTY_MULTIPLIERS,
-	DifficultyLevel,
-	GameMode,
-	VALID_DIFFICULTIES,
-	VALID_GAME_MODES,
-	VALID_QUESTION_COUNTS,
-} from './game.constants';
-export { CreditOperation, VALID_CREDIT_OPERATIONS } from './game.constants';
 
 // Server-specific game constants
 export const SERVER_GAME_CONSTANTS = {

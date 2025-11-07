@@ -3,15 +3,16 @@
  *
  * @module BulkOperationsMiddleware
  * @description Middleware that optimizes bulk operations by batching requests and reducing database calls
- * @author EveryTriv Team
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Response } from 'express';
+
+import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { CacheEntry } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import { NestNextFunction, NestRequest, NestResponse } from '../types';
+import { NestRequest } from '../types';
 
 /**
  * Bulk Operations Middleware
@@ -26,9 +27,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	private operationQueue: Map<string, CacheEntry[]> = new Map();
 	private batchTimers: Map<string, NodeJS.Timeout> = new Map();
 
-	constructor() {}
-
-	use(req: NestRequest, _res: NestResponse, next: NestNextFunction): void {
+	use(req: NestRequest, _res: Response, next: NextFunction): void {
 		try {
 			// Check if this is a bulk operation
 			if (this.isBulkOperation(req)) {
@@ -93,7 +92,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		queue.push(...operations);
 
 		// Log bulk operation detection
-		logger.system('Bulk operation detected', {
+		logger.systemInfo('Bulk operation detected', {
 			operationKey,
 			operationCount: operations.length,
 			queueSize: queue.length,
@@ -132,10 +131,10 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		// Extract from query parameters for GET requests
 		if (req.method === 'GET' && req.query.ids) {
 			const ids = Array.isArray(req.query.ids) ? req.query.ids : [req.query.ids];
-			return ids.map(id => ({ 
-				key: `bulk_${id}`, 
+			return ids.map(id => ({
+				key: `bulk_${id}`,
 				value: { id },
-				ttl: CACHE_DURATION.MEDIUM // 5 minutes default TTL
+				ttl: CACHE_DURATION.MEDIUM, // 5 minutes default TTL
 			}));
 		}
 
@@ -163,14 +162,14 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		if (req.path.includes('create') || req.path.includes('add')) {
 			return 'create';
 		}
+		if (req.path.includes('get') || req.path.includes('fetch')) {
+			return 'read';
+		}
 		if (req.path.includes('update') || req.path.includes('edit')) {
 			return 'update';
 		}
 		if (req.path.includes('delete') || req.path.includes('remove')) {
 			return 'delete';
-		}
-		if (req.path.includes('get') || req.path.includes('fetch')) {
-			return 'read';
 		}
 		return 'unknown';
 	}
@@ -231,7 +230,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		// Process batch
 		const batch = queue.splice(0, this.MAX_BATCH_SIZE);
 
-		logger.system('Processing bulk operation batch', {
+		logger.systemInfo('Processing bulk operation batch', {
 			operationKey,
 			batchSize: batch.length,
 			remainingInQueue: queue.length,

@@ -6,12 +6,14 @@
  */
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserData } from '@shared/types';
-import { UserRole } from '@shared/constants';
 import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
-import { UserEntity } from 'src/internal/entities';
 import { Repository } from 'typeorm';
+
+import { UserRole } from '@shared/constants';
+import { UserData } from '@shared/types';
+
+import { UserEntity } from '@internal/entities';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -26,6 +28,9 @@ export class AuthService {
 
 	/**
 	 * Register a new user
+	 * @param registerDto User registration data
+	 * @returns Authentication response with tokens and user data
+	 * @throws BadRequestException if username or email already exists
 	 */
 	async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
 		// Check if username or email already exists
@@ -77,6 +82,9 @@ export class AuthService {
 
 	/**
 	 * Login user
+	 * @param loginDto User login credentials
+	 * @returns Authentication response with tokens and user data
+	 * @throws UnauthorizedException if credentials are invalid
 	 */
 	async login(loginDto: LoginDto): Promise<AuthResponseDto> {
 		const user = await this.userRepository.findOne({
@@ -115,6 +123,9 @@ export class AuthService {
 
 	/**
 	 * Refresh access token
+	 * @param refreshTokenDto Refresh token data
+	 * @returns New access token
+	 * @throws UnauthorizedException if refresh token is invalid
 	 */
 	async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
 		// Use AuthenticationManager for token refresh
@@ -136,6 +147,9 @@ export class AuthService {
 
 	/**
 	 * Get current user
+	 * @param userId User ID
+	 * @returns User data without password hash
+	 * @throws UnauthorizedException if user not found
 	 */
 	async getCurrentUser(userId: string): Promise<Omit<UserData, 'passwordHash'> & { passwordHash?: string }> {
 		const user = await this.userRepository.findOne({
@@ -152,6 +166,9 @@ export class AuthService {
 
 	/**
 	 * Logout user (invalidate tokens)
+	 * @param userId User ID
+	 * @param username Username
+	 * @returns Success message
 	 */
 	async logout(userId: string, username: string): Promise<{ message: string }> {
 		// Use AuthenticationManager for logout
@@ -164,6 +181,9 @@ export class AuthService {
 
 	/**
 	 * Validate user credentials
+	 * @param username Username
+	 * @param password Password
+	 * @returns User data if valid, null otherwise
 	 */
 	async validateUser(username: string, password: string): Promise<Omit<UserData, 'passwordHash'> | null> {
 		const user = await this.userRepository.findOne({

@@ -1,10 +1,10 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Post, UseGuards } from '@nestjs/common';
+
+import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import { Cache, CurrentUserId } from '../../common';
-import { AuthGuard } from '../../common/guards';
+import { AuthGuard, Cache, CurrentUserId } from '../../common';
 import { CreateSubscriptionDto } from './dtos';
 import { SubscriptionService } from './subscription.service';
 
@@ -46,7 +46,7 @@ export class SubscriptionController {
 
 			logger.apiRead('subscription_current', {
 				userId,
-				planType: result?.plan,
+				planType: result?.planType,
 				status: result?.status,
 			});
 
@@ -80,7 +80,7 @@ export class SubscriptionController {
 			// Log API call for subscription creation
 			logger.apiCreate('subscription_create', {
 				userId,
-				plan: body.planType,
+				planType: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
 			});
 
@@ -89,7 +89,7 @@ export class SubscriptionController {
 			logger.userError('Error creating subscription', {
 				error: getErrorMessage(error),
 				userId,
-				plan: body.planType,
+				planType: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
 			});
 			throw error;

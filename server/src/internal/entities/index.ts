@@ -7,6 +7,13 @@
  */
 
 /**
+ * Base entity class
+ * @description Abstract base class with common columns for all entities
+ * @used_by server/src/internal/entities/*
+ */
+export * from './base.entity';
+
+/**
  * Game history entity
  * @description Database entity for storing game history records
  * @used_by server/src/features/gameHistory, server/src/repositories

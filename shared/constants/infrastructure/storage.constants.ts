@@ -7,16 +7,7 @@
  * @used_by client/src/constants, server/src/internal/modules/storage
  */
 
-// Storage keys for client-side data
-export const STORAGE_KEYS = {
-	USER_ID: 'everytriv_user_id',
-	THEME: 'everytriv_theme',
-	AUDIO_SETTINGS: 'everytriv_audio_settings',
-	GAME_PREFERENCES: 'everytriv_game_preferences',
-	USER_PROGRESS: 'everytriv_user_progress',
-	GAME_SESSION: 'everytriv_game_session',
-	CACHE_DATA: 'everytriv_cache_data',
-} as const;
+// Storage keys moved to client/src/constants/storage/storage.constants.ts
 
 // Storage configuration
 export const STORAGE_CONFIG = {

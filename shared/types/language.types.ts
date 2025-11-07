@@ -5,10 +5,12 @@
  * @description TypeScript interfaces for language validation and LanguageTool API
  */
 
+import { SimpleValidationResult } from './domain';
+
 export interface LanguageToolError {
 	message: string;
 	shortMessage: string;
-	replacements: Array<{ value: string }>;
+	replacements: { value: string }[];
 	offset: number;
 	length: number;
 	rule: {
@@ -44,26 +46,15 @@ export interface LanguageToolResponse {
 	matches: LanguageToolError[];
 }
 
-export interface LanguageValidationOptions extends Record<string, unknown> {
-	language?: string;
+export interface LanguageValidationOptions {
 	enableSpellCheck?: boolean;
 	enableGrammarCheck?: boolean;
-	enableLanguageDetection?: boolean;
-	preferredVariants?: string;
 	useExternalAPI?: boolean;
 }
 
-export interface LanguageValidationResult {
-	isValid: boolean;
-	errors: string[];
+export interface LanguageValidationResult extends SimpleValidationResult {
 	suggestions: string[];
-	language?: string;
 	confidence?: number;
-}
-
-export interface SupportedLanguage {
-	name: string;
-	code: string;
 }
 
 export interface LanguageToolConfig {
@@ -79,7 +70,7 @@ export interface LanguageToolConfig {
  * @description Request payload for language validation
  * @used_by client/src/services/api.service.ts
  */
-export interface ValidateLanguageRequest extends Record<string, unknown> {
+export interface ValidateLanguageRequest {
 	text: string;
 	options?: LanguageValidationOptions;
 }

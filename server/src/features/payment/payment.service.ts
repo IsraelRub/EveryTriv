@@ -7,95 +7,33 @@
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PAYMENT_ERROR_MESSAGES, CACHE_DURATION } from '@shared/constants';
+import { Repository } from 'typeorm';
+
+import {
+	CACHE_DURATION,
+	PAYMENT_ERROR_MESSAGES,
+	PaymentMethod,
+	PaymentStatus,
+	PlanType,
+	POINT_PURCHASE_PACKAGES,
+	SUBSCRIPTION_PLANS,
+	SubscriptionStatus,
+} from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 import type {
 	PaymentData,
 	PaymentResult,
 	PointBalance,
 	PointPurchaseOption,
 	SubscriptionData,
+	SubscriptionPlanDetails,
 	SubscriptionPlans,
 } from '@shared/types';
-import {
-	formatCurrency,
-	generatePaymentIntentId,
-	getErrorMessage,
-} from '@shared/utils';
-import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
-import { PaymentMethod, PaymentStatus, SubscriptionStatus } from 'src/internal/types/typeorm-compatibility.types';
-import { Repository } from 'typeorm';
+import { generatePaymentIntentId, getErrorMessage } from '@shared/utils';
 
-/**
- * Pricing plans configuration
- */
-const PRICING_PLANS: SubscriptionPlans = {
-	basic: {
-		price: 9.99,
-		currency: 'USD',
-		interval: 'month',
-		features: ['Unlimited trivia questions', 'Basic analytics', 'Email support'],
-		pointBonus: 100,
-		questionLimit: 1000,
-	},
-	premium: {
-		price: 19.99,
-		currency: 'USD',
-		interval: 'month',
-		features: [
-			'Unlimited trivia questions',
-			'Advanced analytics',
-			'Priority support',
-			'Custom difficulty levels',
-			'Export functionality',
-		],
-		pointBonus: 250,
-		questionLimit: -1,
-	},
-	pro: {
-		name: 'Pro Plan',
-		price: 39.99,
-		currency: 'USD',
-		interval: 'month',
-		features: [
-			'Everything in Premium',
-			'API access',
-			'White-label options',
-			'Dedicated support',
-			'Custom integrations',
-		],
-		pointBonus: 500,
-		questionLimit: -1,
-	},
-	enterprise: {
-		name: 'Enterprise Plan',
-		price: 49.99,
-		currency: 'USD',
-		interval: 'month',
-		features: [
-			'Everything in Pro',
-			'Advanced API access',
-			'Custom integrations',
-			'Priority support',
-			'Custom branding',
-		],
-		pointBonus: 1000,
-		questionLimit: -1,
-	},
-};
-
-/**
- * Point purchase options
- */
-const POINT_PURCHASE_OPTIONS: PointPurchaseOption[] = [
-	{ id: 'points_100', points: 100, price: 4.99, price_display: formatCurrency(4.99), price_per_point: 0.0499 },
-	{ id: 'points_250', points: 250, price: 9.99, price_display: formatCurrency(9.99), price_per_point: 0.03996 },
-	{ id: 'points_500', points: 500, price: 18.99, price_display: formatCurrency(18.99), price_per_point: 0.03798 },
-	{ id: 'points_1000', points: 1000, price: 34.99, price_display: formatCurrency(34.99), price_per_point: 0.03499 },
-	{ id: 'points_2000', points: 2000, price: 64.99, price_display: formatCurrency(64.99), price_per_point: 0.032495 },
-];
+import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from '@internal/entities';
+import { CacheService } from '@internal/modules/cache';
+import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
 @Injectable()
 export class PaymentService {
@@ -122,9 +60,9 @@ export class PaymentService {
 				return cachedPlans.data;
 			}
 
-			await this.cacheService.set('pricing_plans', PRICING_PLANS, CACHE_DURATION.VERY_LONG);
+			await this.cacheService.set('pricing_plans', SUBSCRIPTION_PLANS, CACHE_DURATION.VERY_LONG);
 
-			return PRICING_PLANS;
+			return SUBSCRIPTION_PLANS;
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get pricing plans', {
 				error: getErrorMessage(error),
@@ -146,9 +84,9 @@ export class PaymentService {
 				return cachedOptions.data;
 			}
 
-			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_OPTIONS, CACHE_DURATION.VERY_LONG);
+			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_PACKAGES, CACHE_DURATION.VERY_LONG);
 
-			return POINT_PURCHASE_OPTIONS;
+			return [...POINT_PURCHASE_PACKAGES];
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to get point purchase options', {
 				error: getErrorMessage(error),
@@ -182,7 +120,7 @@ export class PaymentService {
 
 			await this.paymentHistoryRepository.save(paymentHistory);
 			logger.databaseCreate('payment_history', {
-				transactionId: paymentHistory.transactionId,
+				id: paymentHistory.transactionId,
 				userId,
 				amount: paymentData.amount,
 			});
@@ -201,7 +139,7 @@ export class PaymentService {
 
 				logger.payment('Payment processed successfully', {
 					userId,
-					transactionId: paymentHistory.transactionId,
+					id: paymentHistory.transactionId,
 					amount: paymentData.amount,
 				});
 
@@ -220,7 +158,7 @@ export class PaymentService {
 
 				logger.paymentFailed(paymentHistory.transactionId || 'unknown', 'Payment processing failed', {
 					userId,
-					transactionId: paymentHistory.transactionId,
+					id: paymentHistory.transactionId,
 				});
 
 				return {
@@ -289,20 +227,25 @@ export class PaymentService {
 				return null;
 			}
 
-			const planDetails = PRICING_PLANS[subscription.planType as keyof SubscriptionPlans];
+			const planDetailsRaw = SUBSCRIPTION_PLANS[subscription.planType];
+			const planDetails: SubscriptionPlanDetails | undefined = planDetailsRaw
+				? {
+						...planDetailsRaw,
+						features: [...planDetailsRaw.features],
+					}
+				: undefined;
 
 			return {
 				id: subscription.id,
 				subscriptionId: subscription.id,
 				planType: subscription.planType,
-				plan: subscription.planType as 'free' | 'basic' | 'premium' | 'pro',
 				planDetails,
 				status: subscription.status,
-				startDate: subscription.startDate.toISOString(),
-				endDate: subscription.endDate.toISOString(),
+				startDate: subscription.startDate,
+				endDate: subscription.endDate,
 				billingCycle: null,
-				price: planDetails?.price || 0,
-				features: planDetails?.features || [],
+				price: planDetails?.price ?? 0,
+				features: planDetails?.features ? [...planDetails.features] : [],
 				autoRenew: subscription.autoRenew,
 				nextBillingDate: subscription.nextBillingDate,
 			};
@@ -326,7 +269,7 @@ export class PaymentService {
 	 */
 	async purchasePoints(userId: string, optionId: string): Promise<PointBalance> {
 		try {
-			logger.payment('Purchasing points', { userId, optionId });
+			logger.payment('Purchasing points', { userId, id: optionId });
 
 			const options = await this.getPointPurchaseOptions();
 			const selectedOption = options.find(opt => opt.id === optionId);
@@ -343,7 +286,7 @@ export class PaymentService {
 				metadata: {
 					optionId,
 					points: selectedOption.points,
-					bonus: selectedOption.bonus || 0,
+					bonus: selectedOption.bonus ?? 0,
 				},
 			});
 
@@ -357,30 +300,30 @@ export class PaymentService {
 				throw createNotFoundError('User');
 			}
 
-			const totalPoints = selectedOption.points + (selectedOption.bonus || 0);
-			user.points = (user.points || 0) + totalPoints;
+			const totalPoints = selectedOption.points + (selectedOption.bonus ?? 0);
+			user.points = (user.points ?? 0) + totalPoints;
 			await this.userRepository.save(user);
 
 			logger.payment('Points purchased successfully', {
 				userId,
 				points: totalPoints,
-				transactionId: paymentResult.transactionId,
+				id: paymentResult.transactionId,
 			});
 
 			return {
-				total_points: user.points || 0,
-				free_questions: 0, // Default value since property doesn't exist
-				purchased_points: 0, // Default value since property doesn't exist
-				daily_limit: 10,
-				can_play_free: true, // Default value
-				next_reset_time: null,
+				totalPoints: user.points ?? 0,
+				freeQuestions: 0, // Default value since property doesn't exist
+				purchasedPoints: 0, // Default value since property doesn't exist
+				dailyLimit: 10,
+				canPlayFree: true, // Default value
+				nextResetTime: null,
 				userId,
 				balance: user.points,
 			};
 		} catch (error) {
 			logger.paymentFailed('unknown', 'Failed to purchase points', {
 				userId,
-				optionId,
+				id: optionId,
 				error: getErrorMessage(error),
 			});
 			throw createServerError('purchase points', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_POINTS));
@@ -394,12 +337,12 @@ export class PaymentService {
 	 * @param paymentData Payment data
 	 * @returns Subscription result
 	 */
-	async subscribeToPlan(userId: string, planType: string, paymentData: PaymentData): Promise<SubscriptionData> {
+	async subscribeToPlan(userId: string, planType: PlanType, paymentData: PaymentData): Promise<SubscriptionData> {
 		try {
 			logger.payment('Subscribing to plan', { userId, planType });
 
 			// Validate plan type
-			if (!PRICING_PLANS[planType as keyof SubscriptionPlans]) {
+			if (!SUBSCRIPTION_PLANS[planType]) {
 				throw createValidationError('plan type', 'string');
 			}
 
@@ -415,7 +358,13 @@ export class PaymentService {
 			}
 
 			// Create subscription
-			const planDetails = PRICING_PLANS[planType as keyof SubscriptionPlans];
+			const planDetailsRaw = SUBSCRIPTION_PLANS[planType];
+			const planDetails: SubscriptionPlanDetails | undefined = planDetailsRaw
+				? {
+						...planDetailsRaw,
+						features: [...planDetailsRaw.features],
+					}
+				: undefined;
 			const startDate = new Date();
 			const endDate = new Date();
 			endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
@@ -434,10 +383,10 @@ export class PaymentService {
 			await this.subscriptionRepository.save(subscription);
 
 			// Add bonus points if any
-			if (planDetails.pointBonus && planDetails.pointBonus > 0) {
+			if (planDetails?.pointBonus && planDetails.pointBonus > 0) {
 				const user = await this.userRepository.findOne({ where: { id: userId } });
 				if (user) {
-					user.points = (user.points || 0) + planDetails.pointBonus;
+					user.points = (user.points ?? 0) + planDetails.pointBonus;
 					await this.userRepository.save(user);
 				}
 			}
@@ -445,21 +394,20 @@ export class PaymentService {
 			logger.payment('Subscription created successfully', {
 				userId,
 				planType,
-				transactionId: paymentResult.transactionId,
+				id: paymentResult.transactionId,
 			});
 
 			return {
 				id: subscription.id,
 				subscriptionId: subscription.id,
 				planType: subscription.planType,
-				plan: subscription.planType as 'free' | 'basic' | 'premium' | 'pro',
 				planDetails,
 				status: subscription.status,
-				startDate: subscription.startDate.toISOString(),
-				endDate: subscription.endDate.toISOString(),
+				startDate: subscription.startDate,
+				endDate: subscription.endDate,
 				billingCycle: null,
-				price: planDetails?.price || 0,
-				features: planDetails?.features || [],
+				price: planDetails?.price ?? 0,
+				features: planDetails?.features ? [...planDetails.features] : [],
 				autoRenew: subscription.autoRenew,
 				nextBillingDate: subscription.nextBillingDate,
 			};

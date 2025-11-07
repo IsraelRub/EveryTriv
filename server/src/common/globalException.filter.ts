@@ -1,13 +1,23 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import type { Response } from 'express';
+
 import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
-import { NestRequest, NestResponse } from 'src/internal/types';
+import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
+
+import { NestRequest } from '@internal/types';
+
+/**
+ * Type guard to check if response is a validation error response
+ */
+function isValidationErrorResponse(response: unknown): response is { errors: unknown } {
+	return isRecord(response) && 'errors' in response;
+}
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
 	catch(exception: Error | HttpException, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
-		const response = ctx.getResponse<NestResponse>();
+		const response = ctx.getResponse<Response>();
 		const request = ctx.getRequest<NestRequest>();
 
 		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -17,13 +27,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		// Handle validation errors specifically
 		if (exception instanceof HttpException && status === HttpStatus.BAD_REQUEST) {
 			const exceptionResponse = exception.getResponse();
-			if (typeof exceptionResponse === 'object' && exceptionResponse && 'errors' in exceptionResponse) {
+			if (isValidationErrorResponse(exceptionResponse)) {
 				// This is a validation error with detailed error information
 				return response.status(status).json({
 					statusCode: status,
 					path: request.url ?? 'unknown',
 					message: 'Validation failed',
-					errors: (exceptionResponse as { errors: unknown }).errors,
+					errors: exceptionResponse.errors,
 				});
 			}
 		}
@@ -41,7 +51,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		});
 
 		// Send sanitized error response (no stack traces or sensitive info)
-		const errorResponse = {
+		interface ErrorResponse {
+			statusCode: number;
+			path: string;
+			message: string | string[];
+			timestamp: string;
+			errorType?: string;
+		}
+
+		const errorResponse: ErrorResponse = {
 			statusCode: status,
 			path: request.url ?? 'unknown',
 			message: errorMessage,
@@ -50,7 +68,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 		// Add error type only for client errors (4xx), not server errors (5xx)
 		if (status >= 400 && status < 500) {
-			(errorResponse as Record<string, unknown>).errorType = errorType;
+			errorResponse.errorType = errorType;
 		}
 
 		response.status(status).json(errorResponse);

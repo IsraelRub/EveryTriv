@@ -14,13 +14,6 @@
 export * from './validation.service';
 
 /**
- * Custom decorators
- * @description Custom decorators for enhanced controller functionality
- * @used_by server/src/features, server/src/controllers
- */
-export * from '../decorators/validation.decorator';
-
-/**
  * Validation module
  * @description Validation module configuration
  * @used_by server/src/app, server/src/features

@@ -3,14 +3,16 @@
  *
  * @module AuthGuard
  * @description Guard that validates JWT tokens and extracts user information
- * @author EveryTriv Team
  */
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+
 import { AUTH_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger, TokenExtractionService } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
+
+import { isPublicEndpoint } from '@internal/utils';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -28,13 +30,8 @@ export class AuthGuard implements CanActivate {
 		// Fallback: also honor decorator-aware middleware metadata if present
 		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
 
-		// Hardcoded public endpoints as fallback
-		const publicEndpoints = ['/leaderboard/global', '/leaderboard/period', '/health', '/status'];
-		const isHardcodedPublic = publicEndpoints.some(endpoint => request.path?.includes(endpoint) || false);
-
-		// Additional check for leaderboard endpoints
-		const isLeaderboardGlobal =
-			request.path === '/leaderboard/global' || request.path?.startsWith('/leaderboard/global?') || false;
+		// Check if endpoint is public using centralized function
+		const isHardcodedPublic = isPublicEndpoint(request.path || '');
 
 		// Debug logging
 		logger.authDebug('AuthGuard check', {
@@ -46,7 +43,7 @@ export class AuthGuard implements CanActivate {
 			hasDecoratorMetadata: !!request?.decoratorMetadata,
 		});
 
-		if (isPublic || middlewarePublicFlag || isHardcodedPublic || isLeaderboardGlobal) {
+		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
 			logger.authDebug('Public endpoint - skipping auth check');
 			return true;
 		}

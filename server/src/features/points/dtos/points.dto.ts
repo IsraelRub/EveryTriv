@@ -8,6 +8,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
+import { GameMode, VALID_GAME_MODES } from '@shared/constants';
+
 export class DeductPointsDto {
 	@ApiProperty({
 		description: 'Number of questions in the game',
@@ -22,15 +24,15 @@ export class DeductPointsDto {
 
 	@ApiProperty({
 		description: 'Game mode',
-		example: 'classic',
-		enum: ['classic', 'timed', 'survival', 'multiplayer'],
+		example: 'question-limited',
+		enum: VALID_GAME_MODES,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Game mode is required' })
-	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], {
-		message: 'Game mode must be one of: classic, timed, survival, multiplayer',
+	@IsIn(VALID_GAME_MODES, {
+		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
 	})
-	gameMode: string;
+	gameMode: GameMode;
 }
 
 export class PurchasePointsDto {

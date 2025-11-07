@@ -9,15 +9,15 @@ import { BadRequestException, MiddlewareConsumer, Module, NestModule, Validation
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ClientLogsController, MiddlewareMetricsController } from 'src/internal/controllers';
+
+import { ClientLogsController, MiddlewareMetricsController } from '@internal/controllers';
 import {
-	AuthMiddleware,
 	BulkOperationsMiddleware,
 	CountryCheckMiddleware,
 	DecoratorAwareMiddleware,
 	RateLimitMiddleware,
-} from 'src/internal/middleware';
-import { StorageModule } from 'src/internal/modules';
+} from '@internal/middleware';
+import { StorageModule } from '@internal/modules';
 
 import { AppController } from './app.controller';
 import { GlobalExceptionFilter } from './common/globalException.filter';
@@ -38,7 +38,7 @@ import {
 	SubscriptionModule,
 	UserModule,
 } from './features';
-import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
+import { AUTH_CONSTANTS } from './internal/constants';
 import { RedisModule } from './internal/modules/redis.module';
 
 @Module({
@@ -123,9 +123,6 @@ export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		// Apply middleware in the order specified in the architecture diagram
 
-		// Apply authentication middleware first
-		consumer.apply(AuthMiddleware).forRoutes('*');
-
 		// Apply decorator-aware middleware (reads @Public, @Roles, @RateLimit metadata)
 		consumer.apply(DecoratorAwareMiddleware).forRoutes('*');
 
@@ -134,8 +131,6 @@ export class AppModule implements NestModule {
 
 		// Apply country check middleware
 		consumer.apply(CountryCheckMiddleware).forRoutes('*');
-
-		// Note: AuthGuard and RolesGuard are applied globally via APP_GUARD
 
 		// Apply bulk operations middleware - optimizes bulk operations
 		consumer.apply(BulkOperationsMiddleware).forRoutes('*');

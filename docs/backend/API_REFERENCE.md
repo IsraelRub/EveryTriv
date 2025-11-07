@@ -514,7 +514,7 @@ class EveryTrivAPI:
 
 ### Postman Collection
 
-קובץ Postman collection זמין ב: `postman-endpoints.json`
+קובץ Postman collection זמין ב: `tools/api/postman-endpoints.json`
 
 ### Test Data
 

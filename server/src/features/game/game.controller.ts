@@ -1,25 +1,16 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
-import type { CreateGameHistoryDto, BasicUser } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION } from '@shared/constants';
 
-import {
-	AuditLog,
-	Cache,
-	ClientIP,
-	CurrentUser,
-	CurrentUserId,
-	GameCooldown,
-	GameDifficulty,
-	GameTopic,
-	PerformanceThreshold,
-	RequireGameSession,
-	Roles,
-	UserActivityLog,
-	UserAgent,
-} from '../../common';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { GameData, TokenPayload } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
 import { CustomDifficultyPipe, GameAnswerPipe, LanguageValidationPipe, TriviaRequestPipe } from '../../common/pipes';
+import { ValidateCustomDifficultyDto } from './dtos/customDifficulty.dto';
+import { ValidateLanguageDto } from './dtos/languageValidation.dto';
+import { SubmitAnswerDto } from './dtos/submitAnswer.dto';
+import { TriviaRequestDto } from './dtos/triviaRequest.dto';
 import { GameService } from './game.service';
 
 @Controller('game')
@@ -67,14 +58,14 @@ export class GameController {
 			const result = await this.gameService.getQuestionById(id);
 
 			logger.apiRead('game_by_id', {
-				gameId: id,
+				id,
 			});
 
 			return result;
 		} catch (error) {
 			logger.gameError('Error getting game by ID', {
 				error: getErrorMessage(error),
-				gameId: id,
+				id,
 			});
 			throw error;
 		}
@@ -85,16 +76,7 @@ export class GameController {
 	 */
 	@Post('answer')
 	@UsePipes(GameAnswerPipe)
-	@RequireGameSession(true)
-	@GameCooldown(1000)
-	@PerformanceThreshold(500)
-	@UserActivityLog('game:submit-answer')
-	async submitAnswer(
-		@CurrentUserId() userId: string,
-		@Body() body: { questionId: string; answer: string; timeSpent: number },
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	) {
+	async submitAnswer(@CurrentUserId() userId: string, @Body() body: SubmitAnswerDto) {
 		try {
 			if (!body.questionId || !body.answer) {
 				throw new HttpException('Question ID and answer are required', HttpStatus.BAD_REQUEST);
@@ -106,8 +88,6 @@ export class GameController {
 				userId,
 				questionId: body.questionId,
 				timeSpent: body.timeSpent,
-				ip,
-				userAgent,
 			});
 
 			return result;
@@ -125,16 +105,9 @@ export class GameController {
 	 * Get trivia questions
 	 */
 	@Post('trivia')
+	@NoCache()
 	@UsePipes(TriviaRequestPipe)
-	@GameTopic('general', 'science', 'history', 'sports', 'entertainment')
-	@GameDifficulty('easy', 'medium', 'hard')
-	@RequireGameSession(true)
-	@PerformanceThreshold(1000)
-	@UserActivityLog('game:get-trivia-questions')
-	async getTriviaQuestions(
-		@CurrentUserId() userId: string,
-		@Body() body: { topic: string; difficulty: string; questionCount: number }
-	) {
+	async getTriviaQuestions(@CurrentUserId() userId: string, @Body() body: TriviaRequestDto) {
 		try {
 			if (!body.topic || !body.difficulty || !body.questionCount) {
 				throw new HttpException('Topic, difficulty, and question count are required', HttpStatus.BAD_REQUEST);
@@ -195,8 +168,7 @@ export class GameController {
 	 * Save game history
 	 */
 	@Post('history')
-	@UserActivityLog('game:save-history')
-	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: CreateGameHistoryDto) {
+	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
 		try {
 			// Validate required fields
 			if (!body.userId || !body.score) {
@@ -226,7 +198,6 @@ export class GameController {
 	 * Delete specific game from history
 	 */
 	@Delete('history/:gameId')
-	@UserActivityLog('game:delete-history')
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
 		try {
 			if (!gameId || gameId.trim().length === 0) {
@@ -238,7 +209,7 @@ export class GameController {
 			// Log API call for game history deletion
 			logger.apiDelete('game_history_delete', {
 				userId,
-				gameId,
+				id: gameId,
 			});
 
 			return result;
@@ -246,7 +217,7 @@ export class GameController {
 			logger.gameError('Error deleting game history', {
 				error: getErrorMessage(error),
 				userId,
-				gameId,
+				id: gameId,
 			});
 			throw error;
 		}
@@ -256,7 +227,6 @@ export class GameController {
 	 * Clear all game history for user
 	 */
 	@Delete('history')
-	@UserActivityLog('game:clear-all-history')
 	async clearGameHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.gameService.clearUserGameHistory(userId);
@@ -281,10 +251,7 @@ export class GameController {
 	 */
 	@Post('validate-custom')
 	@UsePipes(CustomDifficultyPipe)
-	@GameDifficulty('custom')
-	@PerformanceThreshold(200)
-	@AuditLog('game:validate-custom-difficulty')
-	async validateCustomDifficulty(@Body() body: { customText: string }) {
+	async validateCustomDifficulty(@Body() body: ValidateCustomDifficultyDto) {
 		try {
 			if (!body.customText) {
 				throw new HttpException('Custom text is required', HttpStatus.BAD_REQUEST);
@@ -311,9 +278,7 @@ export class GameController {
 	 */
 	@Post('validate-language')
 	@UsePipes(LanguageValidationPipe)
-	async validateLanguage(
-		@Body() body: { text: string; language?: string; enableSpellCheck?: boolean; enableGrammarCheck?: boolean }
-	) {
+	async validateLanguage(@Body() body: ValidateLanguageDto) {
 		try {
 			if (!body.text) {
 				throw new HttpException('Text is required', HttpStatus.BAD_REQUEST);
@@ -323,17 +288,14 @@ export class GameController {
 			// This method simply returns the result from the pipe
 			logger.apiUpdate('game_validate_language', {
 				textLength: body.text.length,
-				language: body.language,
-				spellCheck: body.enableSpellCheck,
-				grammarCheck: body.enableGrammarCheck,
+				enableSpellCheck: body.enableSpellCheck,
+				enableGrammarCheck: body.enableGrammarCheck,
 			});
-
 			return body;
 		} catch (error) {
 			logger.gameError('Error validating language', {
 				error: getErrorMessage(error),
 				textLength: body.text?.length,
-				language: body.language,
 			});
 			throw error;
 		}
@@ -345,7 +307,7 @@ export class GameController {
 	@Get('admin/statistics')
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getGameStatistics(@CurrentUser() user: BasicUser) {
+	async getGameStatistics(@CurrentUser() user: TokenPayload) {
 		try {
 			// This would call a service method to get game statistics
 			const statistics = {
@@ -360,8 +322,8 @@ export class GameController {
 			};
 
 			logger.apiRead('game_admin_statistics', {
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 				totalGames: statistics.totalGames,
 			});
 
@@ -369,8 +331,8 @@ export class GameController {
 		} catch (error) {
 			logger.gameError('Failed to get game statistics', {
 				error: getErrorMessage(error),
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}
@@ -381,23 +343,22 @@ export class GameController {
 	 */
 	@Delete('admin/history/clear-all')
 	@Roles(UserRole.ADMIN)
-	@AuditLog('admin:clear-all-game-history')
-	async clearAllGameHistory(@CurrentUser() user: BasicUser) {
+	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
 		try {
 			// This would call a service method to clear all game history
 			// await this.gameService.clearAllGameHistory();
 
 			logger.apiDelete('game_admin_clear_all_history', {
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 
 			return { cleared: true };
 		} catch (error) {
 			logger.gameError('Failed to clear all game history', {
 				error: getErrorMessage(error),
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}

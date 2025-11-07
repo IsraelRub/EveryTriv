@@ -1,29 +1,24 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import {
-	createTimedResult,
-	formatStorageError,
-	getErrorMessage,
-	trackOperationWithTiming,
-} from '@shared/utils';
+import type { Redis } from 'ioredis';
+
 import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
+	CacheEntry,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
 	StorageValue,
-	CacheEntry,
 } from '@shared/types';
-import type { Redis } from 'ioredis';
+import { createTimedResult, formatStorageError, getErrorMessage } from '@shared/utils';
 
 /**
  * Service for managing application caching
  *
  * @module CacheService
  * @description Handles in-memory caching and Redis caching with TTL support
- * @author EveryTriv Team
  * @implements StorageService
  */
 @Injectable()
@@ -74,10 +69,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				ttl: ttl,
 			});
 
-			trackOperationWithTiming('set', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('set', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('set', key, {
 				error: getErrorMessage(error),
 			});
@@ -114,10 +107,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				});
 			}
 
-			trackOperationWithTiming('get', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<T | null>(true, value, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('get', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('get', key, {
 				error: getErrorMessage(error),
 			});
@@ -241,13 +232,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 
 			logger.cacheDelete(key, {
-				deleted,
+				deleted: deleted ? 1 : 0,
 			});
 
-			trackOperationWithTiming('delete', startTime, deleted, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<void>(deleted, undefined, deleted ? undefined : 'Key not found', startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('delete', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('delete', key, {
 				error: getErrorMessage(error),
 			});
@@ -272,10 +261,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				exists = this.existsMemory(prefixedKey);
 			}
 
-			trackOperationWithTiming('exists', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<boolean>(true, exists, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('exists', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('exists', key, {
 				error: getErrorMessage(error),
 			});
@@ -337,12 +324,10 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				this.clearMemory();
 			}
 
-			logger.system('Cache cleared', {});
+			logger.systemInfo('Cache cleared', {});
 
-			trackOperationWithTiming('clear', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('clear', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('clear', '', {
 				error: getErrorMessage(error),
 			});
@@ -365,10 +350,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				stats = this.getStatsMemory();
 			}
 
-			trackOperationWithTiming('getStats', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<StorageStats>(true, stats, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('getStats', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('getStats', '', {
 				error: getErrorMessage(error),
 			});
@@ -410,10 +393,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				this.invalidatePatternMemory(pattern);
 			}
 
-			trackOperationWithTiming('invalidate', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('invalidate', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('invalidatePattern', pattern, {
 				error: getErrorMessage(error),
 			});
@@ -438,10 +419,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				keys = this.getKeysMemory();
 			}
 
-			trackOperationWithTiming('getKeys', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<string[]>(true, keys, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('getKeys', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('getKeys', '', {
 				error: getErrorMessage(error),
 			});
@@ -516,10 +495,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				options: JSON.stringify(options),
 			});
 
-			trackOperationWithTiming('cleanup', startTime, true, 'cache', undefined, this.config.enableMetrics);
 			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
 		} catch (error) {
-			trackOperationWithTiming('cleanup', startTime, false, 'cache', undefined, this.config.enableMetrics);
 			logger.cacheError('cleanup', '', {
 				error: getErrorMessage(error),
 				options: options ? JSON.stringify(options) : 'none',
@@ -729,21 +706,23 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	private async getStatsRedis(): Promise<StorageStats> {
-		if (!this.redisClient) return {
-			totalItems: 0,
-			totalSize: 0,
-			expiredItems: 0,
-			hitRate: 0,
-			averageItemSize: 0,
-			utilization: 0,
-			opsPerSecond: 0,
-			avgResponseTime: 0,
-			typeBreakdown: {
-				persistent: { items: 0, size: 0 },
-				cache: { items: 0, size: 0 },
-				hybrid: { items: 0, size: 0 },
-			},
-		};
+		if (!this.redisClient) {
+			return {
+				totalItems: 0,
+				totalSize: 0,
+				expiredItems: 0,
+				hitRate: 0,
+				averageItemSize: 0,
+				utilization: 0,
+				opsPerSecond: 0,
+				avgResponseTime: 0,
+				typeBreakdown: {
+					persistent: { items: 0, size: 0 },
+					cache: { items: 0, size: 0 },
+					hybrid: { items: 0, size: 0 },
+				},
+			};
+		}
 		// const info = await this.redisClient.info('memory');
 		const keys = await this.redisClient.keys(`${this.config.prefix}*`);
 		const totalSize = keys.length * 100; // Approximate size
@@ -827,7 +806,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	onModuleDestroy() {
 		try {
 			this.clearMemory();
-			logger.system('Cache service destroyed', {});
+			logger.systemInfo('Cache service destroyed', {});
 		} catch (error) {
 			logger.systemError('Failed to destroy cache service', {
 				error: getErrorMessage(error),

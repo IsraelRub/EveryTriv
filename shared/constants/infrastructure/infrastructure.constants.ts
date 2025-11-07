@@ -6,7 +6,6 @@
  * @description Infrastructure configuration constants
  * @used_by server/src/main.ts, client/vite.config.ts
  */
-
 import { LOCALHOST_PORTS, LOCALHOST_URLS } from './localhost.constants';
 
 /**
@@ -29,8 +28,5 @@ export const DEFAULT_PORTS = {
  */
 export const DEFAULT_URLS = {
 	DEV_SERVER: LOCALHOST_URLS.API_BASE,
-	DEV_CLIENT: LOCALHOST_URLS.CLIENT_BASE,
+	DEV_CLIENT: LOCALHOST_URLS.CLIENT,
 } as const;
-
-// Re-export localhost constants for convenience
-export { LOCALHOST_PORTS,LOCALHOST_URLS } from './localhost.constants';

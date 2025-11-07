@@ -1,0 +1,85 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "$comment": "Shared files are ignored because they are used via TypeScript path aliases (@shared/*) which knip doesn't fully detect. All shared/**/*.ts files are actively used in the codebase.",
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": []
+    },
+    "client": {
+      "entry": ["src/main.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "server": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    }
+  },
+  "ignore": [
+    "**/*.d.ts",
+    "**/node_modules/**",
+    "server/src/migrations/**",
+    "**/index.ts",
+    "shared/**/*.ts",
+    "client/src/components/ui/index.ts",
+    "client/src/components/index.ts",
+    "client/src/hooks/index.ts",
+    "client/src/redux/slices/index.ts",
+    "client/src/types/user/index.ts",
+    "client/src/views/leaderboard/index.ts",
+    "server/src/features/**/index.ts",
+    "server/src/internal/modules/**/index.ts",
+    "server/src/internal/modules/cache/dtos/**/*.ts",
+    "tools/eslint.config.js",
+    "tools/.prettierrc"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "typescript",
+    "eslint*",
+    "prettier*",
+    "@ianvs/prettier-plugin-sort-imports",
+    "jest*",
+    "vitest",
+    "@testing-library/*",
+    "jsdom",
+    "ts-jest",
+    "ts-node",
+    "tsconfig-paths",
+    "source-map-support",
+    "rimraf",
+    "ts-loader",
+    "supertest",
+    "autoprefixer",
+    "postcss",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "eslint-import-resolver-typescript",
+    "eslint-plugin-import",
+    "eslint-plugin-react"
+  ],
+  "ignoreBinaries": [
+    "tsc",
+    "nest",
+    "jest",
+    "vite",
+    "vitest",
+    "rimraf",
+    "copy",
+    "webdb",
+    "docker-compose"
+  ],
+  "tsconfig": {
+    "client": "./client/tsconfig.json",
+    "server": "./server/tsconfig.json",
+    ".": "./shared/tsconfig.json"
+  },
+  "rules": {
+    "exports": "warn",
+    "files": "warn",
+    "dependencies": "warn",
+    "devDependencies": "warn",
+    "unlisted": "warn",
+    "binaries": "warn"
+  }
+}

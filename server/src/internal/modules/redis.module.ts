@@ -8,8 +8,9 @@
  * @provides REDIS_CLIENT
  */
 import { Global, Module, OnModuleInit } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
 import Redis from 'ioredis';
+
+import { serverLogger as logger } from '@shared/services';
 
 import { redisConfig } from '../../config/redis.config';
 
@@ -53,7 +54,7 @@ import { redisConfig } from '../../config/redis.config';
 				});
 
 				redisClient.on('end', () => {
-					logger.system('Redis client connection closed', {
+					logger.systemInfo('Redis client connection closed', {
 						host: redisConfig.host,
 						port: redisConfig.port,
 					});
@@ -66,10 +67,8 @@ import { redisConfig } from '../../config/redis.config';
 	exports: ['REDIS_CLIENT'],
 })
 export class RedisModule implements OnModuleInit {
-	constructor() {}
-
 	onModuleInit() {
-		logger.system('Redis module initialized', {
+		logger.systemInfo('Redis module initialized', {
 			host: redisConfig.host,
 			port: redisConfig.port,
 			password: redisConfig.password ? '***' : 'not set',

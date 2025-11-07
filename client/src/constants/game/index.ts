@@ -17,3 +17,9 @@ export * from './game-state.constants';
  * @description Client-specific game configuration and scoring constants
  */
 export * from './game-client.constants';
+
+/**
+ * Game mode constants
+ * @description Game mode defaults and configuration
+ */
+export * from './game-mode.constants';

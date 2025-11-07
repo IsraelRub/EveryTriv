@@ -3,22 +3,23 @@
  *
  * @module JwtTokenService
  * @description JWT token generation and validation service
- * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+
 import { AUTH_CONSTANTS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { BasicUser } from '@shared/types';
-import { createServerError } from '@internal/utils';
-import {
+import type {
 	AuthenticationRequest,
-	getErrorMessage,
+	BasicUser,
 	JWTDecodedToken,
 	TokenPair,
 	TokenPayload,
 	TokenValidationResult,
-} from '@shared/utils';
+} from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { createServerError } from '@internal/utils';
 
 @Injectable()
 export class JwtTokenService {
@@ -148,7 +149,7 @@ export class JwtTokenService {
 	 */
 	async verifyToken(token: string): Promise<TokenValidationResult> {
 		try {
-			const payload = await this.jwtService.verifyAsync(token, {
+			const payload: TokenPayload = await this.jwtService.verifyAsync<TokenPayload>(token, {
 				secret: AUTH_CONSTANTS.JWT_SECRET,
 			});
 
@@ -159,7 +160,7 @@ export class JwtTokenService {
 
 			return {
 				isValid: true,
-				payload: payload as TokenPayload,
+				payload: payload,
 			};
 		} catch (error) {
 			logger.securityDenied('Token verification failed', {
@@ -217,7 +218,7 @@ export class JwtTokenService {
 	 */
 	isTokenExpired(token: string): boolean {
 		try {
-			const decoded = this.jwtService.decode(token) as JWTDecodedToken;
+			const decoded: JWTDecodedToken | null = this.jwtService.decode<JWTDecodedToken>(token);
 			if (!decoded || !decoded.exp) {
 				return true;
 			}
@@ -237,7 +238,7 @@ export class JwtTokenService {
 	 */
 	getTokenExpiration(token: string): Date | null {
 		try {
-			const decoded = this.jwtService.decode(token) as JWTDecodedToken;
+			const decoded: JWTDecodedToken | null = this.jwtService.decode<JWTDecodedToken>(token);
 			if (!decoded || !decoded.exp) {
 				return null;
 			}

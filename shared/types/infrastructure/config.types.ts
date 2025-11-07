@@ -33,6 +33,13 @@ export interface JwtConfig {
 // Redis Configuration - imported from redis.types.ts
 export type { RedisConfig } from './redis.types';
 
+// Vite Proxy Configuration
+export interface ViteProxyConfig {
+	target: string;
+	changeOrigin: boolean;
+	secure: boolean;
+}
+
 // Application Configuration Interface
 export interface AppConfigInterface {
 	port: number;

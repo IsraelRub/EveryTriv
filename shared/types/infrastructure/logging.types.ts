@@ -5,24 +5,20 @@
  * @description Logging system type definitions with modular interfaces
  * @used_by shared/services/logging
  */
-import { LogLevel } from '../../constants';
-import { BasicValue, SlowOperation } from '../core';
-import type { ValidationContext } from '../domain/validation/validation.types';
-
-export { LogLevel };
+import { GameData } from '..';
+import { BillingCycle, GameMode, LogLevel, PlanType, UserRole, UserStatus } from '../../constants';
+import { BasicValue } from '../core';
+import type { GameDifficulty } from '../domain/game/trivia.types';
+import { User, UserPreferences } from '../domain/user/user.types';
+import type { ValidationContext } from '../domain/validation.types';
 
 // Base log entry interface
 export interface LogEntry {
 	timestamp: string;
 	level: LogLevel;
 	message: string;
-	meta?: Record<string, unknown>;
+	meta?: LogMeta;
 }
-
-// Re-export performance types from core
-export type { 
-	PerformanceOperationDetails as PerfOperationDetails, 
-	PerformanceOperationSummary as PerfOperationSummary } from '../core/performance.types';
 
 // Enhanced log entry with context
 export interface EnhancedLogEntry extends LogEntry {
@@ -43,7 +39,10 @@ export interface HttpLogData {
 }
 
 // Client log entry
-export interface ClientLogEntry extends Omit<LogEntry, 'meta'> {
+export interface ClientLogEntry {
+	timestamp: string;
+	level: LogLevel;
+	message: string;
 	meta?: HttpLogData;
 }
 
@@ -66,8 +65,6 @@ export type LogContext =
 	| 'SYSTEM'
 	| 'HTTP'
 	| 'GAME'
-	| 'REPOSITORY_GUARD'
-	| 'PerformanceMonitoringInterceptor'
 	| 'PAYMENT'
 	| 'TRIVIA'
 	| 'CACHE'
@@ -77,9 +74,11 @@ export type LogContext =
 	| 'STORAGE'
 	| 'NAVIGATION'
 	| 'LANGUAGE_TOOL'
+	| 'PerformanceMonitoringInterceptor'
 	| 'UserService'
 	| 'AiProvidersService'
-	| 'LoggingMiddleware';
+	| 'AuthenticationManager'
+	| 'GoogleStrategy';
 
 // Base logging interface - core functionality
 export interface BaseLogger {
@@ -115,44 +114,28 @@ export interface ApiLogger {
 	apiRead(resource: string, meta?: LogMeta): void;
 	apiUpdate(resource: string, meta?: LogMeta): void;
 	apiDelete(resource: string, meta?: LogMeta): void;
-	apiCreateError(resource: string, error: string, meta?: LogMeta): void;
-	apiReadError(resource: string, error: string, meta?: LogMeta): void;
 	apiUpdateError(resource: string, error: string, meta?: LogMeta): void;
-	apiDeleteError(resource: string, error: string, meta?: LogMeta): void;
 }
 
 export interface PerformanceLogger {
 	performance(operation: string, duration: number, meta?: LogMeta): void;
 }
 
-export interface HttpLogger {
-	http(method: string, url: string, statusCode: number, duration?: number, meta?: LogMeta): void;
-	httpSuccess(message: string, meta?: LogMeta): void;
-	httpClientError(message: string, meta?: LogMeta): void;
-	httpServerError(message: string, meta?: LogMeta): void;
-}
-
 export interface CacheLogger {
 	cacheSet(key: string, meta?: LogMeta): void;
-	cacheGet(key: string, meta?: LogMeta): void;
 	cacheHit(key: string, meta?: LogMeta): void;
 	cacheMiss(key: string, meta?: LogMeta): void;
 	cacheError(operation: string, key: string, meta?: LogMeta): void;
 	cacheInfo(message: string, meta?: LogMeta): void;
-	cacheClear(): void;
 }
 
 export interface StorageLogger {
 	storageError(message: string, meta?: LogMeta): void;
-	storageInfo(message: string, meta?: LogMeta): void;
 	storageWarn(message: string, meta?: LogMeta): void;
-	storageDebug(message: string, meta?: LogMeta): void;
 }
 
 export interface PaymentLogger {
-	paymentSuccess(paymentId: string, amount: number, meta?: LogMeta): void;
 	paymentFailed(paymentId: string, error: string, meta?: LogMeta): void;
-	paymentProcessing(paymentId: string, meta?: LogMeta): void;
 	payment(message: string, meta?: LogMeta): void;
 }
 
@@ -161,10 +144,8 @@ export interface SecurityLogger {
 	securityLogout(message: string, meta?: LogMeta): void;
 	securityDenied(message: string, meta?: LogMeta): void;
 	security(type: string, message: string, meta?: LogMeta): void;
-	securityInfo(message: string, meta?: LogMeta): void;
 	securityWarn(message: string, meta?: LogMeta): void;
 	securityError(message: string, meta?: LogMeta): void;
-	audit(action: string, meta?: LogMeta): void;
 }
 
 export interface ValidationLogger {
@@ -177,14 +158,9 @@ export interface ValidationLogger {
 
 export interface SystemLogger {
 	appStartup(meta?: LogMeta): void;
-	appShutdown(meta?: LogMeta): void;
 	systemError(error: string, meta?: LogMeta): void;
 	systemError(error: Error, message?: string, meta?: LogMeta): void;
-	system(message: string, meta?: LogMeta): void;
-}
-
-export interface BusinessLogger {
-	businessInfo(message: string, meta?: LogMeta): void;
+	systemInfo(message: string, meta?: LogMeta): void;
 }
 
 export interface AnalyticsLogger {
@@ -223,19 +199,11 @@ export interface LanguageToolLogger {
 	languageToolApiError(status: number, statusText: string, meta?: LogMeta): void;
 	languageToolValidation(textLength: number, language: string, matchesCount: number, meta?: LogMeta): void;
 	languageToolError(errorMessage: string, meta?: LogMeta): void;
-	languageToolInfo(message: string, meta?: LogMeta): void;
-	languageToolLanguagesFetched(languagesCount: number, meta?: LogMeta): void;
-	languageToolFallbackLanguages(languagesCount: number, meta?: LogMeta): void;
 	languageToolAvailabilityCheck(isAvailable: boolean, status: number, meta?: LogMeta): void;
 }
 
 export interface DatabaseExtendedLogger {
 	databaseCreate(resource: string, meta?: LogMeta): void;
-}
-
-export interface HttpExtendedLogger {
-	logHttpRequest(method: string, url: string, statusCode: number, duration: number, meta?: LogMeta): void;
-	logHttpResponse(method: string, url: string, statusCode: number, duration: number, meta?: LogMeta): void;
 }
 
 export interface CacheExtendedLogger {
@@ -247,31 +215,24 @@ export interface NavigationLogger {
 	navigationRoute(route: string, meta?: LogMeta): void;
 	navigationOAuth(provider: string, meta?: LogMeta): void;
 	navigationRedirect(from: string, to: string, meta?: LogMeta): void;
-	navigationError(path: string, error: string, meta?: LogMeta): void;
 	navigationNotFound(path: string, meta?: LogMeta): void;
 	navigationUnknownRoute(path: string, meta?: LogMeta): void;
 	navigationComponentError(component: string, error: string, meta?: LogMeta): void;
 }
 
 export interface GameLogger {
-	game(event: string, meta?: LogMeta): void;
+	gameInfo(event: string, meta?: LogMeta): void;
 	gameError(message: string, meta?: LogMeta): void;
 	gameStatistics(message: string, meta?: LogMeta): void;
 	gameTarget(message: string, meta?: LogMeta): void;
 	gameForm(message: string, meta?: LogMeta): void;
 	gameGamepad(message: string, meta?: LogMeta): void;
-	user(message: string, meta?: LogMeta): void;
 }
 
 export interface MediaLogger {
-	mediaDebug(message: string, meta?: LogMeta): void;
 	mediaWarn(message: string, meta?: LogMeta): void;
 	mediaError(message: string, meta?: LogMeta): void;
-	mediaInfo(message: string, meta?: LogMeta): void;
-	audioLoad(key: string, meta?: LogMeta): void;
-	audioPlay(key: string, meta?: LogMeta): void;
 	audioError(key: string, error: string, meta?: LogMeta): void;
-	audioFallback(key: string, meta?: LogMeta): void;
 }
 
 /**
@@ -279,40 +240,17 @@ export interface MediaLogger {
  */
 export interface EnhancedLogger {
 	// Enhanced logging methods
-	logUserActivityEnhanced(action: string, userId: string, context?: Record<string, unknown>): void;
-	logSecurityEventEnhanced(message: string, level: 'info' | 'warn' | 'error', context?: Record<string, unknown>): void;
-	logAuthenticationEnhanced(action: string, userId: string, username: string, context?: Record<string, unknown>): void;
-	logAuthorizationEnhanced(action: string, userId: string, resource: string, context?: Record<string, unknown>): void;
-	logBusinessEventEnhanced(event: string, userId: string, context?: Record<string, unknown>): void;
-	logValidationEnhanced(type: string, data: unknown, context?: Record<string, unknown>): void;
-	logCacheEventEnhanced(event: 'hit' | 'miss' | 'error', key: string, context?: Record<string, unknown>): void;
-	logDatabaseEventEnhanced(operation: string, table: string, context?: Record<string, unknown>): void;
-	logErrorEnhanced(error: Error, context?: Record<string, unknown>): void;
-
-	// Enhanced performance methods
-	trackPerformanceEnhanced(operation: string, duration: number, context?: Record<string, unknown>): void;
-	trackAsyncEnhanced<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>): Promise<T>;
-	trackSyncEnhanced<T>(operation: string, fn: () => T, context?: Record<string, unknown>): T;
-	getPerformanceStatsEnhanced(operation?: string): Record<string, unknown>;
-	getAllPerformanceStatsEnhanced(): Record<string, unknown>;
-	getSlowOperationsEnhanced(threshold?: number): SlowOperation[];
-	setPerformanceThreshold(operation: string, threshold: number): void;
-	getPerformanceThreshold(operation: string): number;
-	exceedsPerformanceThreshold(operation: string, duration: number): boolean;
-	getPerformanceSummaryEnhanced(): Record<string, unknown>;
-	clearPerformanceDataEnhanced(): void;
-	clearOperationPerformanceDataEnhanced(operation: string): void;
+	logSecurityEventEnhanced(message: string, level: 'info' | 'warn' | 'error', context?: LogMeta): void;
+	logAuthenticationEnhanced(action: string, userId: string, username: string, context?: LogMeta): void;
 }
 
-// Complete logger interface - combines all modules
-
+// Complete logger interface - combines all basic modules
 export interface Logger
 	extends BaseLogger,
 		UserLogger,
 		DatabaseLogger,
 		ApiLogger,
 		PerformanceLogger,
-		HttpLogger,
 		CacheLogger,
 		StorageLogger,
 		PaymentLogger,
@@ -320,29 +258,259 @@ export interface Logger
 		SecurityLogger,
 		ValidationLogger,
 		SystemLogger,
-		BusinessLogger,
 		AnalyticsLogger,
 		ProviderLogger,
 		AuthLogger,
 		LanguageToolLogger,
 		DatabaseExtendedLogger,
-		HttpExtendedLogger,
 		CacheExtendedLogger,
 		NavigationLogger,
-		MediaLogger,
-		EnhancedLogger {
+		MediaLogger {
 	// Log retrieval methods (for debugging/analytics)
 	getLogs(): EnhancedLogEntry[];
 	clearLogs(): void;
 }
 
+// Enhanced logger interface - for server-side only
+export interface EnhancedLoggerInterface extends Logger, EnhancedLogger {
+	// Combines all logger interfaces with enhanced capabilities
+}
+
 // Log metadata type
-export type LogMeta = Record<string, unknown> & {
-	userId?: string;
-	sessionId?: string;
-	traceId?: string;
+export interface LogMeta {
+	accessTokenExpiry?: string;
+	action?: string;
+	activeProviders?: number;
+	actualCount?: number;
+	aiQuestion?: string;
+	amount?: number;
+	analysis?: string;
+	attempt?: number;
+	authorized?: boolean;
+	availableKeys?: string[];
+	availableProviders?: number;
+	avatar?: string;
+	averageAccuracy?: number;
+	averageScore?: number;
+	avgResponseTime?: number;
+	baseUrl?: string;
+	batchSize?: number;
+	bestStreak?: number;
+	billingCycle?: BillingCycle;
+	bio?: string;
+	burstCount?: number;
+	canPlay?: boolean;
+	canPlayFree?: boolean;
+	change?: number;
+	cleanedCount?: number;
+	commandTimeout?: number;
+	component?: string;
+	componentStack?: string;
+	confidence?: number;
+	config?: string;
+	connectTimeout?: number;
 	context?: LogContext | ValidationContext;
-};
+	correctAnswer?: number;
+	correctAnswers?: number;
+	count?: number;
+	countryCode?: string;
+	credits?: number;
+	customText?: string;
+	data?: Record<string, unknown>;
+	db?: number;
+	delay?: number;
+	deleted?: number;
+	deletedCount?: number;
+	dependencies?: string[];
+	difficulty?: GameDifficulty;
+	dryRun?: boolean;
+	duration?: number;
+	email?: string;
+	enableGrammarCheck?: boolean;
+	enableRefreshTokens?: boolean;
+	enableSpellCheck?: boolean;
+	endpoint?: string;
+	endTime?: number;
+	entries?: number;
+	error?: string;
+	errorCode?: string;
+	errors?: string[];
+	errorsCount?: number;
+	errorType?: string;
+	eventType?: string;
+	exists?: boolean | number;
+	expiresIn?: string;
+	explanation?: string;
+	externalService?: string;
+	failedLogins?: number;
+	feature?: string;
+	field?: string;
+	fieldCount?: number;
+	fields?: string[];
+	format?: string;
+	formValid?: boolean;
+	freeQuestions?: number;
+	gameData?: GameData;
+	gameMode?: GameMode;
+	gameModes?: string[];
+	googleId?: string;
+	hasApiKey?: boolean;
+	hasData?: boolean;
+	hasDecoratorMetadata?: boolean;
+	hasErrors?: boolean;
+	headers?: string[];
+	hitRate?: number;
+	host?: string;
+	id?: string;
+	interceptorError?: string;
+	ip?: string;
+	isAuthenticated?: boolean;
+	isCorrect?: boolean;
+	isGameActive?: boolean;
+	isHardcodedPublic?: boolean;
+	isPublic?: boolean;
+	isValid?: boolean;
+	key?: string;
+	keyPrefix?: string;
+	keysCount?: number;
+	language?: string;
+	lastErrorTime?: string;
+	limit?: number;
+	location?: string;
+	maxQuestions?: number;
+	maxRetries?: number;
+	memoryDelta?: number;
+	memoryUsage?: number;
+	message?: string;
+	method?: string;
+	middleware?: string;
+	middlewarePublicFlag?: boolean;
+	mode?: string;
+	module?: string;
+	musicEnabled?: boolean;
+	name?: string;
+	newCredits?: number;
+	newFreeQuestions?: number;
+	newPurchasedPoints?: number;
+	newScore?: number;
+	newStatus?: UserStatus;
+	newTotalPoints?: number;
+	offset?: number;
+	oldCredits?: number;
+	operationCount?: number;
+	operationId?: string;
+	operationKey?: string;
+	options?: string;
+	page?: string;
+	params?: Record<string, string>;
+	password?: string;
+	path?: string;
+	pattern?: string;
+	paymentId?: string;
+	paymentMethodId?: string;
+	paymentsCount?: number;
+	paymentType?: string;
+	percentile?: number;
+	period?: string;
+	plansCount?: number;
+	planType?: PlanType;
+	points?: number;
+	port?: number;
+	preference?: string;
+	preferences?: UserPreferences | Partial<UserPreferences>;
+	previousCredits?: number;
+	previousScore?: number;
+	price?: number;
+	promptBuildTime?: number;
+	provider?: string;
+	providerDuration?: number;
+	purchasedPoints?: number;
+	query?: string | string[];
+	questionCount?: number;
+	questionId?: string;
+	queueSize?: number;
+	rank?: number;
+	reason?: string;
+	recommendationsCount?: number;
+	redirectTo?: string;
+	referrer?: string;
+	refreshTokenExpiry?: string;
+	remaining?: number;
+	remainingInQueue?: number;
+	remainingPoints?: number;
+	requestCount?: number;
+	requestedCount?: number;
+	requests?: number;
+	requiredRoles?: UserRole[];
+	requireEmailVerification?: boolean;
+	requirePhoneVerification?: boolean;
+	responseTime?: number;
+	resultsCount?: number;
+	retryCount?: number;
+	role?: UserRole;
+	rules?: string[];
+	rulesCount?: number;
+	saltRounds?: number;
+	score?: number;
+	search?: string;
+	selectedAnswer?: string;
+	sessionId?: string;
+	severity?: string;
+	soundEnabled?: boolean;
+	src?: string;
+	stack?: string;
+	startTime?: number;
+	status?: string | number;
+	statusCode?: number;
+	statusText?: string;
+	storage?: string;
+	strength?: string;
+	success?: boolean;
+	successRate?: number;
+	suggestions?: string[];
+	tags?: string[];
+	targetUserId?: string;
+	textLength?: number;
+	threshold?: number;
+	timeFilter?: string;
+	timeframe?: string;
+	timeout?: number;
+	timeRemaining?: number;
+	timeSincePageLoad?: string;
+	timeSpent?: number;
+	timestamp?: string;
+	token?: string;
+	topic?: string;
+	totalDifficulties?: number;
+	totalErrors?: number;
+	totalGames?: number;
+	totalItems?: number;
+	totalMiddlewares?: number;
+	totalOps?: number;
+	totalPoints?: number;
+	totalProviders?: number;
+	totalQuestions?: number;
+	totalRequests?: number;
+	totalScore?: number;
+	totalSize?: number;
+	totalTopics?: number;
+	totalUsers?: number;
+	traceId?: string;
+	transactionsCount?: number;
+	ttl?: number;
+	type?: string;
+	uptime?: number;
+	url?: string;
+	user?: User;
+	userAgent?: string;
+	userId?: string;
+	username?: string;
+	usersCount?: number;
+	value?: BasicValue;
+	valueLength?: number;
+	version?: string;
+	window?: number;
+}
 
 /**
  * Logger Configuration
@@ -352,6 +520,11 @@ export interface LoggerConfig {
 	level: LogLevel;
 	enableConsole: boolean;
 	enableColors: boolean;
+	// Server-specific options
+	enableFile?: boolean;
+	enablePerformanceLogging?: boolean;
+	enableSecurityLogging?: boolean;
+	enableUserActivityLogging?: boolean;
 }
 
 /**
@@ -362,4 +535,9 @@ export interface LoggerConfigUpdate {
 	level?: LogLevel;
 	enableConsole?: boolean;
 	enableColors?: boolean;
+	// Server-specific options
+	enableFile?: boolean;
+	enablePerformanceLogging?: boolean;
+	enableSecurityLogging?: boolean;
+	enableUserActivityLogging?: boolean;
 }

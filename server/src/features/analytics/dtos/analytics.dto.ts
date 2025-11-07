@@ -5,7 +5,6 @@
  * @description Data Transfer Objects for analytics tracking and queries
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BasicValue } from '@shared/types';
 import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
@@ -19,6 +18,18 @@ import {
 	MaxLength,
 	MinLength,
 } from 'class-validator';
+
+import {
+	EventResult,
+	SortOrder,
+	TimePeriod,
+	VALID_DIFFICULTIES,
+	VALID_EVENT_RESULTS,
+	VALID_GAME_MODES,
+	VALID_SORT_ORDERS,
+	VALID_TIME_PERIODS,
+} from '@shared/constants';
+import { BasicValue } from '@shared/types';
 
 export class TrackEventDto {
 	@ApiProperty({
@@ -82,13 +93,13 @@ export class TrackEventDto {
 	@ApiPropertyOptional({
 		description: 'Result of the action',
 		example: 'success',
-		enum: ['success', 'failure', 'error'],
+		enum: VALID_EVENT_RESULTS,
 	})
 	@IsOptional()
-	@IsIn(['success', 'failure', 'error'], {
-		message: 'Result must be one of: success, failure, error',
+	@IsIn(VALID_EVENT_RESULTS, {
+		message: `Result must be one of: ${VALID_EVENT_RESULTS.join(', ')}`,
 	})
-	result?: 'success' | 'failure' | 'error';
+	result?: EventResult;
 
 	@ApiPropertyOptional({
 		description: 'Duration of the action in milliseconds',
@@ -116,48 +127,6 @@ export class TrackEventDto {
 	@IsOptional()
 	@IsObject()
 	properties?: Record<string, BasicValue>;
-}
-
-export class UserAnalyticsQueryDto {
-	@ApiPropertyOptional({
-		description: 'Start date for analytics query',
-		example: '2024-01-01',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'End date for analytics query',
-		example: '2024-01-31',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'Include game history in results',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Include game history must be a boolean value' })
-	includeGameHistory?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Include performance metrics in results',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Include performance must be a boolean value' })
-	includePerformance?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Include topic breakdown in results',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Include topic breakdown must be a boolean value' })
-	includeTopicBreakdown?: boolean;
 }
 
 export class GameAnalyticsQueryDto {
@@ -190,24 +159,24 @@ export class GameAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Filter by difficulty level',
 		example: 'medium',
-		enum: ['easy', 'medium', 'hard', 'expert'],
+		enum: VALID_DIFFICULTIES,
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['easy', 'medium', 'hard', 'expert'], {
-		message: 'Difficulty must be one of: easy, medium, hard, expert',
+	@IsIn(VALID_DIFFICULTIES, {
+		message: `Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`,
 	})
 	difficulty?: string;
 
 	@ApiPropertyOptional({
 		description: 'Filter by game mode',
-		example: 'classic',
-		enum: ['classic', 'timed', 'survival', 'multiplayer'],
+		example: 'question-limited',
+		enum: VALID_GAME_MODES,
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['classic', 'timed', 'survival', 'multiplayer'], {
-		message: 'Game mode must be one of: classic, timed, survival, multiplayer',
+	@IsIn(VALID_GAME_MODES, {
+		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
 	})
 	gameMode?: string;
 
@@ -254,14 +223,14 @@ export class TopicAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Sort order for topics',
 		example: 'desc',
-		enum: ['asc', 'desc'],
+		enum: VALID_SORT_ORDERS,
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['asc', 'desc'], {
-		message: 'Order must be either asc or desc',
+	@IsIn(VALID_SORT_ORDERS, {
+		message: `Order must be one of: ${VALID_SORT_ORDERS.join(', ')}`,
 	})
-	order?: 'asc' | 'desc';
+	order?: SortOrder;
 }
 
 export class DifficultyAnalyticsQueryDto {
@@ -292,12 +261,12 @@ export class DifficultyAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Group results by time period',
 		example: 'daily',
-		enum: ['hourly', 'daily', 'weekly', 'monthly'],
+		enum: VALID_TIME_PERIODS,
 	})
 	@IsOptional()
 	@IsString()
-	@IsIn(['hourly', 'daily', 'weekly', 'monthly'], {
-		message: 'Group by must be one of: hourly, daily, weekly, monthly',
+	@IsIn(VALID_TIME_PERIODS, {
+		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
 	})
-	groupBy?: string;
+	groupBy?: TimePeriod;
 }

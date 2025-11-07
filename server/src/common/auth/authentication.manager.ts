@@ -6,17 +6,19 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
+
 import { UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
 import {
 	AuthenticationConfig,
 	AuthenticationRequest,
 	AuthenticationResult,
-	getErrorMessage,
 	LoginCredentials,
+	SimpleValidationResult,
 	TokenPayload,
 	UserData,
-} from '@shared/utils';
+} from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';
@@ -221,7 +223,7 @@ export class AuthenticationManager {
 	/**
 	 * Validate password strength
 	 */
-	validateUserPassword(password: string): { isValid: boolean; errors: string[]; strength?: string } {
+	validateUserPassword(password: string): SimpleValidationResult & { strength?: string } {
 		const result = this.passwordService.validatePasswordStrength(password);
 		return {
 			isValid: result.isValid,
@@ -295,7 +297,11 @@ export class AuthenticationManager {
 	updateConfig(newConfig: Partial<AuthenticationConfig>): void {
 		Object.assign(this.config, newConfig);
 		logger.securityLogin('Authentication configuration updated', {
-			config: this.config,
+			enableRefreshTokens: this.config.enableRefreshTokens,
+			accessTokenExpiry: this.config.accessTokenExpiry,
+			refreshTokenExpiry: this.config.refreshTokenExpiry,
+			requireEmailVerification: this.config.requireEmailVerification,
+			requirePhoneVerification: this.config.requirePhoneVerification,
 		});
 	}
 }

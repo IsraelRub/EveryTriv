@@ -6,7 +6,6 @@
  * @description HTTP configuration and status code constants
  * @used_by client/src/services, shared/services
  */
-
 import { ENV_FALLBACKS, ENV_VAR_NAMES, LOCALHOST_URLS } from './localhost.constants';
 
 // API base URL configuration
@@ -82,4 +81,3 @@ export const HTTP_LOG_MESSAGES = {
 	RETRY_ATTEMPT: 'HTTP Retry Attempt',
 	RETRY_FAILED: 'HTTP Retry Failed',
 } as const;
-

@@ -3,108 +3,68 @@
  * @module ReduxStateTypes
  * @description Redux state management types
  */
-import { GameMode } from '@shared/constants';
-import type { GameHistoryEntry, LeaderboardEntry, User } from '@shared/types';
-import type { BasicValue } from '@shared/types/core/data.types';
-
 import type {
-  GameConfig,
-  GameData,
-  GameNavigationState,
-  GameSessionStats,
-  GameTimerState,
-} from '../game/config.types';
-import type { PointBalance } from '../points.types';
+	Achievement,
+	BasicUser,
+	DifficultyBreakdown,
+	GameHistoryEntry,
+	LeaderboardEntry,
+	PointBalance,
+	TopicsPlayed,
+} from '@shared/types';
+
+import type { ClientGameState, GameModeState } from '../game';
 import { BaseReduxState } from './async.types';
 
+/**
+ * User stats response for Redux state
+ * @interface UserStatsResponse
+ * @description User statistics response containing game metrics and achievements
+ */
 export interface UserStatsResponse {
-  totalGames: number;
-  totalScore: number;
-  averageScore: number;
-  topicsPlayed: Record<string, number>;
-  difficultyStats: Record<string, { correct: number; total: number }>;
-  achievements: Array<{
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    unlockedAt?: string;
-    progress?: number;
-    maxProgress?: number;
-    category: string;
-    points: number;
-  }>;
+	totalGames: number;
+	averageScore: number;
+	totalScore: number;
+	topicsPlayed: TopicsPlayed;
+	difficultyStats: DifficultyBreakdown;
+	achievements: Achievement[];
 }
 
 export interface UserState extends BaseReduxState {
-  currentUser: User | null;
-  isAuthenticated: boolean;
-  stats: UserStatsResponse | null;
-  user: User | null;
-  username: string;
-  avatar: string;
-  pointBalance: PointBalance | null;
+	currentUser: BasicUser | null;
+	isAuthenticated: boolean;
+	username: string;
+	avatar: string;
+	pointBalance: PointBalance | null;
 }
 
 // Game Slice State
 export interface GameSliceState extends BaseReduxState {
-  status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
-  data: GameData | null;
-  config: GameConfig | null;
-  navigation: GameNavigationState | null;
-  timer: GameTimerState | null;
-  stats: GameSessionStats | null;
-  gameHistory: GameHistoryEntry[];
-  leaderboard: LeaderboardEntry[];
-}
-
-// Game Mode Slice State
-export interface GameModeSliceState extends BaseReduxState {
-  currentMode: GameMode;
-  currentTopic: string;
-  currentDifficulty: string;
-  currentSettings: GameConfig | null;
-  timeRemaining?: number;
-  availableModes?: GameMode[];
+	state: ClientGameState;
+	gameHistory: GameHistoryEntry[];
+	leaderboard: LeaderboardEntry[];
 }
 
 // Stats State
 export interface StatsState extends BaseReduxState {
-  userStats: UserStatsResponse | null;
-  globalStats: UserStatsResponse | null;
-  stats: UserStatsResponse | null;
-  leaderboard: LeaderboardEntry[];
+	stats: UserStatsResponse | null;
+	globalStats: UserStatsResponse | null;
+	leaderboard: LeaderboardEntry[];
 }
 
 // Favorites State
 export interface FavoritesState extends BaseReduxState {
-  topics: string[];
-  difficulties: string[];
-  games: string[];
-  favoriteTopics: string[];
+	topics: string[];
+	difficulties: string[];
+	games: string[];
+	favoriteTopics: string[];
 }
 
 // Root State
 export interface RootState {
-  user: UserState;
-  game: GameSliceState;
-  gameMode: GameModeSliceState;
-  stats: StatsState;
-  favorites: FavoritesState;
-}
-
-// User State
-export interface UserState {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  firstName?: string;
-  lastName?: string;
-  preferences?: Record<string, BasicValue>;
-  subscription?: {
-    type: string;
-    status: string;
-    expiresAt?: string;
-  };
+	user: UserState;
+	game: GameSliceState;
+	gameMode: GameModeState;
+	stats: StatsState;
+	favorites: FavoritesState;
 }

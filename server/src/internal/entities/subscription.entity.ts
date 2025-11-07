@@ -1,22 +1,13 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { PaymentMethod, SubscriptionData, SubscriptionStatus } from '../types/typeorm-compatibility.types';
+import { PaymentMethod, PlanType, SubscriptionStatus } from '@shared/constants';
+import { SubscriptionData } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('subscriptions')
-export class SubscriptionEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
+export class SubscriptionEntity extends BaseEntity {
 	@Column({ name: 'user_id' })
 	@Index()
 	userId: string;
@@ -64,8 +55,13 @@ export class SubscriptionEntity {
 	@Column({ name: 'stripe_customer_id', nullable: true })
 	stripeCustomerId?: string;
 
-	@Column({ name: 'plan_type' })
-	planType: string;
+	@Column({
+		name: 'plan_type',
+		type: 'enum',
+		enum: PlanType,
+		default: PlanType.BASIC,
+	})
+	planType: PlanType;
 
 	@Column({ name: 'auto_renew', default: true })
 	autoRenew: boolean = true;
@@ -81,10 +77,4 @@ export class SubscriptionEntity {
 
 	@Column('jsonb', { default: {} })
 	metadata: SubscriptionData;
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date;
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date;
 }

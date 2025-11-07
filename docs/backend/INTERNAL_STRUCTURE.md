@@ -66,6 +66,7 @@ server/src/internal/
   - `database/` - קבועי מסד נתונים
   - `game/` - קבועי משחק
   - `points/` - קבועי נקודות
+  - `public-endpoints.constants.ts` - רשימת נתיבים ציבוריים שלא דורשים אימות
 
 ### Controllers
 - **תיאור**: controllers פנימיים
@@ -88,11 +89,12 @@ server/src/internal/
 ### Middleware
 - **תיאור**: middleware משותף
 - **קבצים**:
-  - `auth.middleware.ts` - אימות
   - `bulkOperations.middleware.ts` - פעולות bulk
   - `country-check.middleware.ts` - בדיקת מדינה
-  - `decorator-aware.middleware.ts` - מודע לדקורטורים
-  - `rateLimit.middleware.ts` - הגבלת קצב
+  - `decorator-aware.middleware.ts` - מודע לדקורטורים, מחלץ metadata מ-decorators
+  - `rateLimit.middleware.ts` - הגבלת קצב בקשות
+
+**הערה**: `auth.middleware.ts` הוסר - האימות מתבצע ב-`AuthGuard` בלבד למניעת כפילות.
 
 ### Modules
 - **תיאור**: מודולים פנימיים
@@ -125,6 +127,7 @@ server/src/internal/
 - **קבצים**:
   - `interceptors.utils.ts` - כלי interceptors
   - `retry.utils.ts` - כלי retry
+  - `guards.utils.ts` - פונקציות עזר ל-Guards, כולל `isPublicEndpoint()` לבדיקת נתיבים ציבוריים
 
 ## עקרונות עיצוב
 

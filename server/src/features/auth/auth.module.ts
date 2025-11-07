@@ -9,10 +9,12 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AUTH_CONSTANTS } from '@shared/constants';
 import { AuthenticationManager, JwtTokenService, PasswordService } from 'src/common/auth';
 import { AuthGuard, RolesGuard } from 'src/common/guards';
-import { UserEntity } from 'src/internal/entities';
+
+import { AUTH_CONSTANTS } from '@shared/constants';
+
+import { UserEntity } from '@internal/entities';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';

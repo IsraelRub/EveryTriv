@@ -1,13 +1,13 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import type { ApiQuestionData } from '@shared/types';
+import { GameMode } from '@shared/constants';
+import type { QuestionData } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('game_history')
-export class GameHistoryEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string = '';
-
+export class GameHistoryEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index()
 	userId: string = '';
@@ -34,9 +34,9 @@ export class GameHistoryEntity {
 	@Column({
 		name: 'game_mode',
 		type: 'varchar',
-		default: 'classic',
+		default: GameMode.QUESTION_LIMITED,
 	})
-	gameMode: string = 'classic';
+	gameMode: GameMode = GameMode.QUESTION_LIMITED;
 
 	@Column({ name: 'time_spent', type: 'int', nullable: true })
 	timeSpent?: number; // in seconds
@@ -45,8 +45,5 @@ export class GameHistoryEntity {
 	creditsUsed: number = 0;
 
 	@Column({ name: 'questions_data', type: 'jsonb', default: [] })
-	questionsData: ApiQuestionData[] = [];
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date = new Date();
+	questionsData: QuestionData[] = [];
 }

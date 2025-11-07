@@ -1,9 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+
+import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import { Cache, CurrentUserId } from '../../common';
+import { Cache, NoCache } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
 import { GetLeaderboardDto } from './dtos';
 import { LeaderboardService } from './leaderboard.service';
@@ -25,8 +26,8 @@ export class LeaderboardController {
 	 * @returns User ranking data
 	 */
 	@Get('user/ranking')
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getUserRanking(@CurrentUserId() userId: string) {
+	@NoCache()
+	async getUserRanking(@Param('userId') userId: string) {
 		try {
 			const ranking = await this.leaderboardService.getUserRanking(userId);
 
@@ -62,7 +63,7 @@ export class LeaderboardController {
 	 * @returns Updated ranking data
 	 */
 	@Post('user/update')
-	async updateUserRanking(@CurrentUserId() userId: string) {
+	async updateUserRanking(@Param('userId') userId: string) {
 		try {
 			const ranking = await this.leaderboardService.updateUserRanking(userId);
 
@@ -94,7 +95,7 @@ export class LeaderboardController {
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
-			const offsetNum = query.offset || 0;
+			const offsetNum = query.offset ?? 0;
 
 			if (limitNum > 1000) {
 				throw new HttpException('Limit cannot exceed 1000', HttpStatus.BAD_REQUEST);
@@ -183,7 +184,7 @@ export class LeaderboardController {
 	 */
 	@Get('user/percentile')
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getUserPercentile(@CurrentUserId() userId: string) {
+	async getUserPercentile(@Param('userId') userId: string) {
 		try {
 			const percentile = await this.leaderboardService.getUserPercentile(userId);
 

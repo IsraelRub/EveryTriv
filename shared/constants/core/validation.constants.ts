@@ -127,18 +127,6 @@ export const UI_SIZE_VARIANTS = {
 } as const;
 
 /**
- * UI theme variants
- * @constant
- * @description Theme variants used across UI components
- * @used_by client/src/constants/ui.constants.ts, client/src/components/ui/Button.tsx
- */
-export const UI_THEME_VARIANTS = {
-	LIGHT: 'light',
-	DARK: 'dark',
-	AUTO: 'auto',
-} as const;
-
-/**
  * Audio categories
  * @constant
  * @description Audio categories used across the application

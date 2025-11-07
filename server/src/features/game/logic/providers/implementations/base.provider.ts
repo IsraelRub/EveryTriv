@@ -5,19 +5,31 @@
  * @description Abstract base class for all trivia question providers
  * @used_by server/src/features/game/logic/providers
  */
-import { AI_PROVIDER_ERROR_TYPES, DIFFICULTY_MULTIPLIERS, DifficultyLevel, ERROR_CONTEXT_MESSAGES, FALLBACK_QUESTION_ANSWERS, HTTP_TIMEOUTS, PROVIDER_ERROR_MESSAGES } from '@shared/constants';
+import {
+	AI_PROVIDER_ERROR_TYPES,
+	DIFFICULTY_MULTIPLIERS,
+	DifficultyLevel,
+	ERROR_CONTEXT_MESSAGES,
+	FALLBACK_QUESTION_ANSWERS,
+	HTTP_CLIENT_CONFIG,
+	PROVIDER_ERROR_MESSAGES,
+} from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
+	AIProviderInstance,
 	AnalyticsMetadata,
-	LLMApiResponse,
+	GameDifficulty,
 	LLMResponse,
 	LLMTriviaResponse,
 	ProviderConfig,
-	QuestionCacheMap,
 	TriviaQuestion,
 } from '@shared/types';
+import { clamp, getErrorMessage, shuffle } from '@shared/utils';
+import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
+
 import { createAuthError } from '@internal/utils';
-import { clamp, getErrorMessage, isCustomDifficulty, shuffle } from '@shared/utils';
+
+import type { QuestionCacheMap, TriviaQuestionMetadata } from '@features/game/types';
 
 import { PromptTemplates } from '../prompts';
 
@@ -30,7 +42,7 @@ export abstract class BaseTriviaProvider {
 	public abstract name: string;
 
 	// Helper method to extract metadata from trivia question
-	protected extractMetadata(triviaQuestion: TriviaQuestion): Record<string, unknown> {
+	protected extractMetadata(triviaQuestion: TriviaQuestion): TriviaQuestionMetadata {
 		return {
 			actualDifficulty: triviaQuestion.difficulty,
 			questionCount: 1,
@@ -43,52 +55,124 @@ export abstract class BaseTriviaProvider {
 	protected analytics: Partial<AnalyticsMetadata> = {};
 
 	// Provider instance for AIProviderWithTrivia interface
-	abstract provider: {
-		name: string;
-		config: {
-			providerName: string;
-			model: string;
-			version: string;
-			capabilities: string[];
-			rateLimit: {
-				requestsPerMinute: number;
-				tokensPerMinute: number;
-			};
-			costPerToken: number;
-			maxTokens: number;
-			supportedLanguages: string[];
-			lastUpdated: Date;
-		};
-		isAvailable: boolean;
-		lastCheck: Date;
-		errorCount: number;
-		successCount: number;
-		averageResponseTime: number;
-		currentLoad: number;
-	};
+	abstract provider: AIProviderInstance;
 
 	// Updated abstract method - questionCount is not needed since it's in the prompt
 	protected abstract getProviderConfig(prompt: string): ProviderConfig;
 
-	// API call method with timeout and performance optimization
-	protected async makeApiCall(_prompt: string): Promise<LLMApiResponse> {
+	// API call method with timeout, retry, and error handling
+	protected async makeApiCall(prompt: string): Promise<LLMResponse> {
 		if (!this.apiKey) {
 			throw createAuthError(PROVIDER_ERROR_MESSAGES.API_KEY_NOT_CONFIGURED);
 		}
 
-		const timeout = HTTP_TIMEOUTS.QUESTION_GENERATION; // 30 seconds timeout
+		const config = this.getProviderConfig(prompt);
+		let lastError: Error | null = null;
 
-		// Create a promise that rejects after timeout
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			setTimeout(() => reject(new Error(`${this.name} API call timed out after ${timeout}ms`)), timeout);
+		// Log initial request
+		logger.providerStats(this.name, {
+			eventType: 'api_call_start',
+			baseUrl: config.baseUrl.replace(config.apiKey || '', '[REDACTED]'),
+			timeout: config.timeout,
+			maxRetries: config.maxRetries,
 		});
 
-		// For now, just reject with timeout since HTTP client is not available
-		return timeoutPromise;
+		// Retry logic
+		for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+			try {
+				// Create AbortController for timeout
+				const abortController = new AbortController();
+				const timeoutId = setTimeout(() => {
+					abortController.abort();
+				}, config.timeout);
+
+				// Log request attempt
+				if (attempt > 0) {
+					logger.providerStats(this.name, {
+						eventType: 'retry_attempt',
+						attempt: attempt,
+						maxRetries: config.maxRetries,
+					});
+				}
+
+				// Make the API call
+				const response = await globalThis.fetch(config.baseUrl, {
+					method: 'POST',
+					headers: config.headers ?? {},
+					body: JSON.stringify(config.body),
+					signal: abortController.signal,
+				});
+
+				clearTimeout(timeoutId);
+
+				// Check if response is OK
+				if (!response.ok) {
+					const errorText = await response.text().catch(() => 'Unknown error');
+					throw new Error(`${this.name} API returned ${response.status} ${response.statusText}: ${errorText}`);
+				}
+
+				// Parse response JSON
+				const responseData = await response.json();
+
+				// Convert to LLMResponse format
+				const llmResponse: LLMResponse = {
+					content: '',
+					data: responseData,
+					metadata: {
+						provider: this.name,
+						statusCode: response.status,
+					},
+				};
+
+				logger.providerStats(this.name, {
+					eventType: 'api_call_success',
+					attempt: attempt + 1,
+					statusCode: response.status,
+				});
+
+				return llmResponse;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				// Check if it's an abort error (timeout)
+				if (lastError.name === 'AbortError' || lastError.message.includes('aborted')) {
+					lastError = new Error(`${this.name} API call timed out after ${config.timeout}ms`);
+				}
+
+				// Log error (only log as error on final attempt, otherwise as warning)
+				if (attempt === config.maxRetries) {
+					logger.providerError(this.name, ERROR_CONTEXT_MESSAGES.AI_GENERATION_FAILED, {
+						error: getErrorMessage(lastError),
+						attempt: attempt + 1,
+						maxRetries: config.maxRetries,
+						timeout: config.timeout,
+					});
+				} else {
+					logger.providerStats(this.name, {
+						eventType: 'api_call_retry',
+						error: getErrorMessage(lastError),
+						attempt: attempt + 1,
+						maxRetries: config.maxRetries,
+					});
+				}
+
+				// If this was the last attempt, throw the error
+				if (attempt === config.maxRetries) {
+					break;
+				}
+
+				// Wait before retrying (exponential backoff)
+				const delay = HTTP_CLIENT_CONFIG.RETRY_DELAY * Math.pow(2, attempt);
+				await new Promise(resolve => setTimeout(resolve, delay));
+			}
+		}
+
+		// If we get here, all retries failed
+		throw lastError || new Error(`${this.name} API call failed after ${config.maxRetries} retries`);
 	}
 
 	// Implement the required generateQuestion method from LLMProvider interface
-	async generateQuestion(topic: string, difficulty: string, _language: string = 'en'): Promise<LLMTriviaResponse> {
+	async generateQuestion(topic: string, difficulty: GameDifficulty): Promise<LLMTriviaResponse> {
 		const question = await this.generateTriviaQuestionInternal(topic, difficulty, 5);
 		return {
 			questions: [question],
@@ -99,7 +183,7 @@ export abstract class BaseTriviaProvider {
 	}
 
 	// Implement the required generateTriviaQuestion method from LLMProvider interface
-	async generateTriviaQuestion(topic: string, difficulty: string): Promise<TriviaQuestion> {
+	async generateTriviaQuestion(topic: string, difficulty: GameDifficulty): Promise<TriviaQuestion> {
 		return this.generateTriviaQuestionInternal(topic, difficulty, 5);
 	}
 
@@ -110,7 +194,7 @@ export abstract class BaseTriviaProvider {
 
 	async generateTriviaQuestionInternal(
 		topic: string,
-		difficulty: string,
+		difficulty: GameDifficulty,
 		questionCount: number = 5
 	): Promise<TriviaQuestion> {
 		const startTime = Date.now();
@@ -197,7 +281,7 @@ export abstract class BaseTriviaProvider {
 			}));
 
 			// Shuffle answers to prevent position bias
-			question.answers = this.shuffleArray(question.answers);
+			question.answers = shuffle(question.answers);
 			logger.providerSuccess(this.name, {
 				topic,
 				difficulty,
@@ -242,7 +326,7 @@ export abstract class BaseTriviaProvider {
 		}
 	}
 
-	protected buildPrompt(topic: string, difficulty: string, questionCount: number): string {
+	protected buildPrompt(topic: string, difficulty: GameDifficulty, questionCount: number): string {
 		// Use the advanced prompt generation with full quality guidelines
 		return PromptTemplates.generateTriviaQuestion({
 			topic,
@@ -280,10 +364,10 @@ export abstract class BaseTriviaProvider {
 				question: question.question,
 				answers: question.answers.map(a => a.text),
 				correctAnswerIndex: question.correctAnswerIndex,
-				difficulty: question.difficulty,
+				difficulty: toDifficultyLevel(question.difficulty),
 				topic: question.topic,
 			},
-			created_at: question.createdAt,
+			createdAt: question.createdAt,
 			accessCount: 0,
 			lastAccessed: new Date(),
 		};
@@ -312,16 +396,12 @@ export abstract class BaseTriviaProvider {
 		});
 	}
 
-	protected shuffleArray<T>(array: T[]): T[] {
-		return shuffle(array);
-	}
-
 	/**
 	 * Create a fallback question when AI generation fails
 	 */
 	protected createFallbackQuestion(
 		topic: string,
-		difficulty: string,
+		difficulty: GameDifficulty,
 		errorType: keyof typeof AI_PROVIDER_ERROR_TYPES
 	): TriviaQuestion {
 		return {

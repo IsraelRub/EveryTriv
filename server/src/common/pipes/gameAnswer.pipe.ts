@@ -6,8 +6,10 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import { GameAnswerData, getErrorMessage,ValidationResult } from '@shared/utils';
+import { GameAnswerSubmission, ValidationResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
 
@@ -15,7 +17,7 @@ import { ValidationService } from '../validation';
 export class GameAnswerPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: GameAnswerData): Promise<ValidationResult> {
+	async transform(value: GameAnswerSubmission): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -24,23 +26,7 @@ export class GameAnswerPipe implements PipeTransform {
 			const errors: string[] = [];
 			const suggestions: string[] = [];
 
-			// Enhanced input validation
-			if (!value.questionId || value.questionId.trim().length === 0) {
-				errors.push('Question ID is required');
-				suggestions.push('Please provide a valid question ID');
-			}
-
-			if (!value.answer || value.answer.trim().length === 0) {
-				errors.push('Answer is required');
-				suggestions.push('Please select an answer option');
-			}
-
-			if (value.timeSpent < 0) {
-				errors.push('Time spent cannot be negative');
-				suggestions.push('Time spent should be 0 or positive');
-			}
-
-			// Validate answer content if answer exists
+			// Validate answer content (semantic/content rules)
 			if (value.answer && value.answer.trim().length > 0) {
 				const answerValidation = await this.validationService.validateInputContent(value.answer);
 				if (!answerValidation.isValid) {

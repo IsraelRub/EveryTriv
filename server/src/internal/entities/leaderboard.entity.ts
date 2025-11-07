@@ -1,15 +1,8 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import type { RankHistoryEntry } from '@shared/types';
+import type { GameHistoryEntry } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 import { UserStatsEntity } from './userStats.entity';
 
@@ -22,10 +15,7 @@ import { UserStatsEntity } from './userStats.entity';
  * @used_by server/src/features/leaderboard/leaderboard.service.ts
  */
 @Entity('leaderboard')
-export class LeaderboardEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string = '';
-
+export class LeaderboardEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index({ unique: true })
 	userId: string = '';
@@ -86,11 +76,5 @@ export class LeaderboardEntity {
 
 	// Ranking history (for trend analysis)
 	@Column('jsonb', { name: 'rank_history', default: [] })
-	rankHistory: RankHistoryEntry[] = [];
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date = new Date();
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date = new Date();
+	rankHistory: GameHistoryEntry[] = [];
 }

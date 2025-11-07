@@ -1,7 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
+
+import { CACHE_DURATION, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION } from '@shared/constants';
 
 import { Cache, Public, Roles } from '../../../../../common';
 import { AiProvidersService } from './providers.service';

@@ -5,32 +5,36 @@
  * @description Service for server-side validation using shared validation functions
  */
 import { Injectable } from '@nestjs/common';
+
+import { VALID_DIFFICULTIES, VALID_PLAN_TYPES } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { createStringLengthValidationError, createValidationError } from '@internal/utils';
 import type {
 	AnalyticsEventData,
+	GameDifficulty,
 	LanguageValidationOptions,
 	LanguageValidationResult,
 	PersonalPaymentData,
-	UserFieldUpdate,
-	UserProfileUpdateData,
+	UpdateUserProfileData,
 	ValidationOptions,
 	ValidationResult,
 } from '@shared/types';
 import {
 	getErrorMessage,
+	isRecord,
+	performLocalLanguageValidationAsync,
 	sanitizeCardNumber,
 	sanitizeEmail,
 	sanitizeInput,
-	validateCustomDifficultyText,
 	validateEmail,
 	validateInputContent,
-	validateInputWithLanguageTool,
 	validatePassword,
 	validateTopicLength,
 	validateUsername,
 } from '@shared/utils';
-import { UserEntity } from 'src/internal/entities';
+import { isCustomDifficulty, validateCustomDifficultyText } from '@shared/validation';
+
+import { UserEntity } from '@internal/entities';
+import { createStringLengthValidationError, createValidationError } from '@internal/utils';
 
 import { LanguageToolService } from './languageTool.service';
 
@@ -45,7 +49,7 @@ export class ValidationService {
 	 */
 	async validateUsername(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('username', value, 'validation_start', options);
+			logger.validationDebug('username', value, 'validation_start');
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -55,7 +59,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('username', value, 'validation_success', options);
+				logger.validationInfo('username', value, 'validation_success');
 			} else {
 				logger.validationWarn('username', value, 'validation_failed', {
 					...options,
@@ -81,7 +85,7 @@ export class ValidationService {
 	 */
 	async validateEmail(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('email', value, 'validation_start', options);
+			logger.validationDebug('email', value, 'validation_start');
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -94,7 +98,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('email', value, 'validation_success', options);
+				logger.validationInfo('email', value, 'validation_success');
 			} else {
 				logger.validationWarn('email', value, 'validation_failed', {
 					...options,
@@ -120,7 +124,7 @@ export class ValidationService {
 	 */
 	async validatePassword(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('password', '[REDACTED]', 'validation_start', options);
+			logger.validationDebug('password', '[REDACTED]', 'validation_start');
 
 			// Use shared validation function
 			const result = validatePassword(value);
@@ -159,7 +163,7 @@ export class ValidationService {
 	 */
 	async validateInputContent(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('input_content', value, 'validation_start', options);
+			logger.validationDebug('input_content', value, 'validation_start');
 
 			// Sanitize input first (already removes HTML tags)
 			const sanitizedValue = sanitizeInput(value);
@@ -169,7 +173,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('input_content', value, 'validation_success', options);
+				logger.validationInfo('input_content', value, 'validation_success');
 			} else {
 				logger.validationWarn('input_content', value, 'validation_failed', {
 					...options,
@@ -195,27 +199,27 @@ export class ValidationService {
 	 */
 	async validateCustomDifficultyText(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('customDifficulty', value, 'validation_start', options);
+			logger.validationDebug('customDifficulty', value, 'validation_start');
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
 
 			// Use shared validation function
-			const result = validateCustomDifficultyText(sanitizedValue);
+			const result = await validateCustomDifficultyText(sanitizedValue);
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('customDifficulty', value, 'validation_success', options);
+				logger.validationInfo('customDifficulty', value, 'validation_success');
 			} else {
 				logger.validationWarn('customDifficulty', value, 'validation_failed', {
 					...options,
-					errors: result.error ? [result.error] : ['Invalid custom difficulty'],
+					errors: result.errors,
 				});
 			}
 
 			return {
 				isValid: result.isValid,
-				errors: result.isValid ? [] : [result.error || 'Invalid custom difficulty'],
+				errors: result.errors,
 			};
 		} catch (error) {
 			logger.validationError('customDifficulty', value, 'validation_error', {
@@ -234,7 +238,7 @@ export class ValidationService {
 	 */
 	async validateTopicLength(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('topic_length', value, 'validation_start', options);
+			logger.validationDebug('topic_length', value, 'validation_start');
 
 			// Sanitize input first
 			const sanitizedValue = sanitizeInput(value);
@@ -244,7 +248,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('topic_length', value, 'validation_success', options);
+				logger.validationInfo('topic_length', value, 'validation_success');
 			} else {
 				logger.validationWarn('topic_length', value, 'validation_failed', {
 					...options,
@@ -272,7 +276,7 @@ export class ValidationService {
 	 * @param count Number of questions
 	 * @returns Validation result
 	 */
-	async validateTriviaRequest(topic: string, difficulty: string, count: number): Promise<ValidationResult> {
+	async validateTriviaRequest(topic: string, difficulty: GameDifficulty, count: number): Promise<ValidationResult> {
 		try {
 			logger.validationDebug('trivia_request', `${topic} (${difficulty})`, 'validation_start', {
 				topic,
@@ -289,8 +293,22 @@ export class ValidationService {
 			}
 
 			// Validate difficulty
-			if (!difficulty || !['easy', 'medium', 'hard'].includes(difficulty)) {
-				errors.push('Difficulty must be one of: easy, medium, hard');
+			if (!difficulty) {
+				errors.push('Difficulty is required');
+			} else if (isCustomDifficulty(difficulty)) {
+				// Validate custom difficulty
+				const customText = difficulty.substring('custom:'.length);
+				if (customText.length < 3) {
+					errors.push('Custom difficulty must be at least 3 characters long');
+				}
+			} else {
+				const normalizedDifficulty = difficulty.toLowerCase();
+				const isValidDifficulty = VALID_DIFFICULTIES.some(
+					validDiff => validDiff.toLowerCase() === normalizedDifficulty
+				);
+				if (!isValidDifficulty) {
+					errors.push(`Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`);
+				}
 			}
 
 			// Validate count
@@ -397,7 +415,7 @@ export class ValidationService {
 	 */
 	async validatePhone(phone: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('phone', phone, 'validation_start', options);
+			logger.validationDebug('phone', phone, 'validation_start');
 
 			// Remove non-digit characters
 			const digitsOnly = phone.replace(/\D/g, '');
@@ -417,7 +435,7 @@ export class ValidationService {
 				};
 			}
 
-			logger.validationInfo('phone', phone, 'validation_success', options);
+			logger.validationInfo('phone', phone, 'validation_success');
 			return {
 				isValid: true,
 				errors: [],
@@ -459,11 +477,11 @@ export class ValidationService {
 				}
 			}
 
-			if (!paymentData.first_name || paymentData.first_name.trim().length === 0) {
+			if (!paymentData.firstName || paymentData.firstName.trim().length === 0) {
 				errors.push('First name is required');
 			}
 
-			if (!paymentData.last_name || paymentData.last_name.trim().length === 0) {
+			if (!paymentData.lastName || paymentData.lastName.trim().length === 0) {
 				errors.push('Last name is required');
 			}
 
@@ -533,7 +551,7 @@ export class ValidationService {
 			}
 
 			// Validate properties if present
-			if (eventData.properties && typeof eventData.properties !== 'object') {
+			if (eventData.properties && !isRecord(eventData.properties)) {
 				errors.push('Properties must be an object');
 			}
 
@@ -571,7 +589,7 @@ export class ValidationService {
 	 */
 	async validateGameAnswer(answer: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('game_answer', answer, 'validation_start', options);
+			logger.validationDebug('game_answer', answer, 'validation_start');
 
 			const errors: string[] = [];
 
@@ -609,7 +627,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('game_answer', answer, 'validation_success', options);
+				logger.validationInfo('game_answer', answer, 'validation_success');
 			} else {
 				logger.validationWarn('game_answer', answer, 'validation_failed', {
 					...options,
@@ -637,62 +655,46 @@ export class ValidationService {
 	 * @returns Validation result
 	 */
 	async validateUserProfile(
-		profileData: UserProfileUpdateData,
+		profileData: UpdateUserProfileData,
 		options: ValidationOptions = {}
 	): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('user_profile', '[REDACTED]', 'validation_start', options);
+			logger.validationDebug('user_profile', '[REDACTED]', 'validation_start');
 
 			const errors: string[] = [];
 
 			// Validate username if provided
-			if (profileData.username && typeof profileData.username === 'string') {
+			if (profileData.username) {
 				const usernameValidation = await this.validateUsername(profileData.username);
 				if (!usernameValidation.isValid) {
 					errors.push(...usernameValidation.errors);
 				}
 			}
 
-			// Validate email if provided
-			if (profileData.email && typeof profileData.email === 'string') {
-				const emailValidation = await this.validateEmail(profileData.email);
-				if (!emailValidation.isValid) {
-					errors.push(...emailValidation.errors);
-				}
-			}
-
 			// Validate first name
-			if (profileData.first_name && typeof profileData.first_name === 'string') {
-				if (profileData.first_name.length > 50) {
+			if (profileData.firstName) {
+				if (profileData.firstName.length > 50) {
 					errors.push('First name cannot exceed 50 characters');
 				}
-				if (!/^[a-zA-Z\s'-]+$/.test(profileData.first_name)) {
+				if (!/^[a-zA-Z\s'-]+$/.test(profileData.firstName)) {
 					errors.push('First name can only contain letters, spaces, apostrophes, and hyphens');
 				}
 			}
 
 			// Validate last name
-			if (profileData.last_name && typeof profileData.last_name === 'string') {
-				if (profileData.last_name.length > 50) {
+			if (profileData.lastName) {
+				if (profileData.lastName.length > 50) {
 					errors.push('Last name cannot exceed 50 characters');
 				}
-				if (!/^[a-zA-Z\s'-]+$/.test(profileData.last_name)) {
+				if (!/^[a-zA-Z\s'-]+$/.test(profileData.lastName)) {
 					errors.push('Last name can only contain letters, spaces, apostrophes, and hyphens');
 				}
 			}
 
 			// Validate bio
-			if (profileData.bio && typeof profileData.bio === 'string') {
+			if (profileData.bio) {
 				if (profileData.bio.length > 500) {
 					errors.push('Bio cannot exceed 500 characters');
-				}
-			}
-
-			// Validate website URL
-			if (profileData.website && typeof profileData.website === 'string') {
-				const urlPattern = /^https?:\/\/.+\..+/;
-				if (!urlPattern.test(profileData.website)) {
-					errors.push('Website must be a valid URL starting with http:// or https://');
 				}
 			}
 
@@ -703,7 +705,7 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('user_profile', '[REDACTED]', 'validation_success', options);
+				logger.validationInfo('user_profile', '[REDACTED]', 'validation_success');
 			} else {
 				logger.validationWarn('user_profile', '[REDACTED]', 'validation_failed', {
 					...options,
@@ -732,19 +734,19 @@ export class ValidationService {
 	 */
 	async validateSubscriptionPlan(plan: string, options: ValidationOptions = {}): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('subscription_plan', plan, 'validation_start', options);
+			logger.validationDebug('subscription_plan', plan, 'validation_start');
 
-			const validPlans = ['basic', 'premium', 'pro', 'enterprise'];
-			const isValid = validPlans.includes(plan.toLowerCase());
+			const normalizedPlan = plan.toLowerCase();
+			const isValid = VALID_PLAN_TYPES.some(type => type === normalizedPlan);
 
 			const result = {
 				isValid,
-				errors: isValid ? [] : [`Invalid plan. Must be one of: ${validPlans.join(', ')}`],
+				errors: isValid ? [] : [`Invalid plan. Must be one of: ${VALID_PLAN_TYPES.join(', ')}`],
 			};
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('subscription_plan', plan, 'validation_success', options);
+				logger.validationInfo('subscription_plan', plan, 'validation_success');
 			} else {
 				logger.validationWarn('subscription_plan', plan, 'validation_failed', {
 					...options,
@@ -771,9 +773,9 @@ export class ValidationService {
 	 * @param options Validation options
 	 * @returns Validation result
 	 */
-	async validatePointsAmount(amount: number, options: ValidationOptions = {}): Promise<ValidationResult> {
+	async validatePointsAmount(amount: number): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('points_amount', amount.toString(), 'validation_start', options);
+			logger.validationDebug('points_amount', amount.toString(), 'validation_start');
 
 			const errors: string[] = [];
 
@@ -796,10 +798,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('points_amount', amount.toString(), 'validation_success', options);
+				logger.validationInfo('points_amount', amount.toString(), 'validation_success');
 			} else {
 				logger.validationWarn('points_amount', amount.toString(), 'validation_failed', {
-					...options,
 					errors: result.errors,
 				});
 			}
@@ -807,7 +808,6 @@ export class ValidationService {
 			return result;
 		} catch (error) {
 			logger.validationError('points_amount', amount.toString(), 'validation_error', {
-				...options,
 				error: getErrorMessage(error),
 			});
 			return {
@@ -828,7 +828,7 @@ export class ValidationService {
 		options: LanguageValidationOptions = {}
 	): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('language_validation', value, 'validation_start', options);
+			logger.validationDebug('language_validation', value, 'validation_start');
 
 			// Check if LanguageTool service is available
 			const isAvailable = await this.languageToolService.isAvailable();
@@ -838,10 +838,8 @@ export class ValidationService {
 				logger.validationDebug('language_validation', value, 'using_external_api');
 
 				const languageToolResult = await this.languageToolService.checkText(value, {
-					language: options.language || 'auto',
 					enableSpellCheck: options.enableSpellCheck ?? true,
 					enableGrammarCheck: options.enableGrammarCheck ?? true,
-					enableLanguageDetection: options.enableLanguageDetection ?? true,
 				});
 
 				// Process LanguageTool results
@@ -871,18 +869,12 @@ export class ValidationService {
 				// Log validation result
 				if (isValid) {
 					logger.validationInfo('language_validation', value, 'validation_success_external', {
-						...options,
-						language: languageToolResult.language?.detectedLanguage?.code || options.language,
 						confidence: 0.95,
-						externalService: 'LanguageTool',
 					});
 				} else {
 					logger.validationWarn('language_validation', value, 'validation_failed_external', {
-						...options,
 						errors,
 						suggestions,
-						language: languageToolResult.language?.detectedLanguage?.code || options.language,
-						externalService: 'LanguageTool',
 					});
 				}
 
@@ -895,7 +887,7 @@ export class ValidationService {
 				// Fall back to shared validation function
 				logger.validationDebug('language_validation', value, 'using_local_validation');
 
-				const result: LanguageValidationResult = await validateInputWithLanguageTool(value, {
+				const result: LanguageValidationResult = await performLocalLanguageValidationAsync(value, {
 					...options,
 					useExternalAPI: false, // Force local validation
 				});
@@ -903,18 +895,12 @@ export class ValidationService {
 				// Log validation result
 				if (result.isValid) {
 					logger.validationInfo('language_validation', value, 'validation_success_local', {
-						...options,
-						language: result.language,
 						confidence: result.confidence,
-						externalService: 'Local',
 					});
 				} else {
 					logger.validationWarn('language_validation', value, 'validation_failed_local', {
-						...options,
 						errors: result.errors,
 						suggestions: result.suggestions,
-						language: result.language,
-						externalService: 'Local',
 					});
 				}
 
@@ -982,7 +968,7 @@ export class ValidationService {
 	 * @param field Field name
 	 * @param value Value to set
 	 */
-	validateAndSetBooleanField(user: UserEntity, field: keyof UserFieldUpdate, value: unknown): void {
+	validateAndSetBooleanField(user: UserEntity, field: string, value: unknown): void {
 		if (typeof value !== 'boolean') {
 			throw createValidationError(field, 'boolean');
 		}

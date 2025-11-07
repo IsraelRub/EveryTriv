@@ -1,15 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { POINTS_PRICING_TIERS } from '@shared/constants';
-import { BasePointsService , serverLogger as logger } from '@shared/services';
-import type { PointBalance, PointPurchaseOption } from '@shared/types';
-import { ensureErrorObject, formatCurrency } from '@shared/utils';
-import { PointTransactionEntity, UserEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
 import { Repository } from 'typeorm';
 
+import { GameMode, POINT_PURCHASE_PACKAGES, PointSource, PointTransactionType } from '@shared/constants';
+import { BasePointsService, serverLogger as logger } from '@shared/services';
+import type { CanPlayResponse, PointBalance, PointPurchaseOption } from '@shared/types';
+import { ensureErrorObject } from '@shared/utils';
+
+import { PointTransactionEntity, UserEntity } from '@internal/entities';
+import { CacheService } from '@internal/modules';
+
 import { ValidationService } from '../../common';
-import { PointSource, PointTransactionType } from '../../internal/constants';
 import { PaymentService } from '../payment';
 
 @Injectable()
@@ -47,20 +48,20 @@ export class PointsService extends BasePointsService {
 					}
 
 					const balance: PointBalance = {
-						total_points: user.credits,
-						purchased_points: user.purchasedPoints,
-						free_questions: user.remainingFreeQuestions,
-						daily_limit: user.dailyFreeQuestions,
-						can_play_free: user.remainingFreeQuestions > 0,
-						next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
+						totalPoints: user.credits,
+						purchasedPoints: user.purchasedPoints,
+						freeQuestions: user.remainingFreeQuestions,
+						dailyLimit: user.dailyFreeQuestions,
+						canPlayFree: user.remainingFreeQuestions > 0,
+						nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 					};
 
 					logger.databaseInfo('Point balance retrieved', {
 						userId,
-						total_points: balance.total_points,
-						purchased_points: balance.purchased_points,
-						free_questions: balance.free_questions,
-						can_play_free: balance.can_play_free,
+						totalPoints: balance.totalPoints,
+						purchasedPoints: balance.purchasedPoints,
+						freeQuestions: balance.freeQuestions,
+						canPlayFree: balance.canPlayFree,
 					});
 					return balance;
 				},
@@ -84,12 +85,12 @@ export class PointsService extends BasePointsService {
 			return await this.cacheService.getOrSet(
 				cacheKey,
 				async () => {
-					const packages: PointPurchaseOption[] = POINTS_PRICING_TIERS.map(tier => ({
-						id: `package_${tier.points}`,
-						points: tier.points,
-						price: tier.price,
-						price_display: formatCurrency(tier.price),
-						price_per_point: tier.pricePerPoint,
+					const packages: PointPurchaseOption[] = POINT_PURCHASE_PACKAGES.map(pkg => ({
+						id: pkg.id,
+						points: pkg.points,
+						price: pkg.price,
+						priceDisplay: pkg.priceDisplay,
+						pricePerPoint: pkg.pricePerPoint,
 					}));
 
 					logger.databaseInfo('Point packages retrieved', { count: packages.length });
@@ -106,7 +107,7 @@ export class PointsService extends BasePointsService {
 	/**
 	 * Check if user can play with current points
 	 */
-	async canPlay(userId: string, questionCount: number): Promise<{ canPlay: boolean; reason?: string }> {
+	async canPlay(userId: string, questionCount: number): Promise<CanPlayResponse> {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
@@ -141,7 +142,11 @@ export class PointsService extends BasePointsService {
 	/**
 	 * Deduct points from user's balance
 	 */
-	async deductPoints(userId: string, questionCount: number, gameMode: string = 'standard'): Promise<PointBalance> {
+	async deductPoints(
+		userId: string,
+		questionCount: number,
+		gameMode: GameMode = GameMode.QUESTION_LIMITED
+	): Promise<PointBalance> {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
@@ -169,23 +174,23 @@ export class PointsService extends BasePointsService {
 
 			// Use deduction logic
 			const currentBalance: PointBalance = {
-				total_points: user.credits + user.purchasedPoints + user.remainingFreeQuestions * 0.1,
-				purchased_points: user.purchasedPoints,
-				free_questions: user.remainingFreeQuestions,
-				can_play_free: user.remainingFreeQuestions > 0,
-				daily_limit: 10,
-				next_reset_time: null,
+				totalPoints: user.credits + user.purchasedPoints + user.remainingFreeQuestions * 0.1,
+				purchasedPoints: user.purchasedPoints,
+				freeQuestions: user.remainingFreeQuestions,
+				canPlayFree: user.remainingFreeQuestions > 0,
+				dailyLimit: 10,
+				nextResetTime: null,
 			};
 
 			const deductionResult = this.calculateNewBalance(currentBalance, questionCount, gameMode);
 
 			// Update user with new balance
-			user.remainingFreeQuestions = deductionResult.newBalance.free_questions;
-			user.purchasedPoints = deductionResult.newBalance.purchased_points;
+			user.remainingFreeQuestions = deductionResult.newBalance.freeQuestions;
+			user.purchasedPoints = deductionResult.newBalance.purchasedPoints;
 			user.credits =
-				deductionResult.newBalance.total_points -
-				deductionResult.newBalance.purchased_points -
-				deductionResult.newBalance.free_questions * 0.1;
+				deductionResult.newBalance.totalPoints -
+				deductionResult.newBalance.purchasedPoints -
+				deductionResult.newBalance.freeQuestions * 0.1;
 
 			await this.userRepository.save(user);
 
@@ -212,28 +217,28 @@ export class PointsService extends BasePointsService {
 
 			await this.pointTransactionRepository.save(transaction);
 			logger.databaseCreate('point_transaction', {
-				transactionId: transaction.id,
+				id: transaction.id,
 				userId,
 				type: PointTransactionType.DEDUCTION,
 				amount: -questionCount,
 			});
 
 			const balance: PointBalance = {
-				total_points: user.credits,
-				purchased_points: user.purchasedPoints,
-				free_questions: user.remainingFreeQuestions,
-				daily_limit: user.dailyFreeQuestions,
-				can_play_free: user.remainingFreeQuestions > 0,
-				next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
+				totalPoints: user.credits,
+				purchasedPoints: user.purchasedPoints,
+				freeQuestions: user.remainingFreeQuestions,
+				dailyLimit: user.dailyFreeQuestions,
+				canPlayFree: user.remainingFreeQuestions > 0,
+				nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 			};
 
 			logger.databaseInfo('Points deducted successfully', {
 				userId,
 				questionCount,
 				gameMode,
-				total_points: balance.total_points,
-				purchased_points: balance.purchased_points,
-				free_questions: balance.free_questions,
+				totalPoints: balance.totalPoints,
+				purchasedPoints: balance.purchasedPoints,
+				freeQuestions: balance.freeQuestions,
 			});
 
 			return balance;
@@ -300,7 +305,7 @@ export class PointsService extends BasePointsService {
 			}
 
 			const points = parseInt(pointsMatch[1]);
-			const packageInfo = POINTS_PRICING_TIERS.find(tier => tier.points === points);
+			const packageInfo = POINT_PURCHASE_PACKAGES.find(pkg => pkg.points === points);
 
 			if (!packageInfo) {
 				throw new BadRequestException('Invalid points package');
@@ -322,7 +327,7 @@ export class PointsService extends BasePointsService {
 
 			logger.databaseInfo('Points purchase initiated', {
 				userId,
-				packageId,
+				id: packageId,
 				points,
 				price: packageInfo.price,
 				paymentId: paymentResult.paymentId,
@@ -334,7 +339,7 @@ export class PointsService extends BasePointsService {
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to purchase points', {
 				userId,
-				packageId,
+				id: packageId,
 			});
 			throw error;
 		}
@@ -392,28 +397,28 @@ export class PointsService extends BasePointsService {
 			await this.cacheService.delete(`points:balance:${userId}`);
 
 			const balance: PointBalance = {
-				total_points: user.credits,
-				purchased_points: user.purchasedPoints,
-				free_questions: user.remainingFreeQuestions,
-				daily_limit: user.dailyFreeQuestions,
-				can_play_free: user.remainingFreeQuestions > 0,
-				next_reset_time: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
+				totalPoints: user.credits,
+				purchasedPoints: user.purchasedPoints,
+				freeQuestions: user.remainingFreeQuestions,
+				dailyLimit: user.dailyFreeQuestions,
+				canPlayFree: user.remainingFreeQuestions > 0,
+				nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 			};
 
 			logger.databaseInfo('Point purchase confirmed', {
 				userId,
-				paymentIntentId,
+				id: paymentIntentId,
 				points,
-				total_points: balance.total_points,
-				purchased_points: balance.purchased_points,
-				free_questions: balance.free_questions,
+				totalPoints: balance.totalPoints,
+				purchasedPoints: balance.purchasedPoints,
+				freeQuestions: balance.freeQuestions,
 			});
 
 			return balance;
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to confirm point purchase', {
 				userId,
-				paymentIntentId,
+				id: paymentIntentId,
 				points,
 			});
 			throw error;

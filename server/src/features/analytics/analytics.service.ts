@@ -1,28 +1,38 @@
+import * as os from 'os';
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+
 import { serverLogger as logger } from '@shared/services';
 import type {
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
 	BasicValue,
+	BusinessMetrics,
 	CompleteUserAnalytics,
+	DifficultyStat,
+	DifficultyStatRaw,
 	DifficultyStatsData,
 	GameAnalyticsQuery,
-	AnalyticsPerformanceMetrics,
+	GameStatsData,
 	SecurityMetrics,
 	SystemInsights,
+	SystemPerformanceMetrics,
+	SystemRecommendation,
+	TimeStat,
+	TopicStatRaw,
 	TopicStats,
 	TopicStatsData,
 	UserAnalytics,
 	UserAnalyticsStats,
 } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
+
+import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
+import { CacheService } from '@internal/modules';
 import { createNotFoundError } from '@internal/utils';
-import { getErrorMessage } from '@shared/utils';
-import * as os from 'os';
-import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from 'src/internal/entities';
-import { CacheService } from 'src/internal/modules/cache';
-import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { LeaderboardService } from '../leaderboard';
 
@@ -36,7 +46,7 @@ import { LeaderboardService } from '../leaderboard';
  */
 @Injectable()
 export class AnalyticsService implements OnModuleInit {
-	private performanceData: AnalyticsPerformanceMetrics = {
+	private performanceData: SystemPerformanceMetrics = {
 		responseTime: 0,
 		memoryUsage: 0,
 		cpuUsage: 0,
@@ -127,20 +137,19 @@ export class AnalyticsService implements OnModuleInit {
 
 			return {
 				userId,
-				totalQuestionsAnswered: stats.totalQuestions,
+				totalGames: stats.totalGames,
 				totalQuestions: stats.totalQuestions,
-				totalCorrectAnswers: stats.correctAnswers,
-				correctAnswers: stats.correctAnswers,
-				overallSuccessRate: stats.successRate,
 				successRate: stats.successRate,
+				averageScore: stats.averageScore,
+				bestScore: stats.bestScore,
+				totalPlayTime: stats.totalPlayTime,
+				correctAnswers: stats.correctAnswers,
 				favoriteTopic: stats.favoriteTopic,
-				averageTimePerQuestion: stats.averageTime,
-				averageResponseTime: stats.averageTime,
+				averageTimePerQuestion: stats.averageTimePerQuestion ?? 0,
 				totalPoints: stats.totalPoints,
 				topicsPlayed: stats.topicsPlayed,
 				difficultyBreakdown: stats.difficultyBreakdown,
 				recentActivity: stats.recentActivity,
-				totalPlayTime: stats.totalPlayTime,
 			};
 		} catch (error) {
 			logger.analyticsError('getUserStats', {
@@ -156,21 +165,14 @@ export class AnalyticsService implements OnModuleInit {
 	 * @param query Query parameters
 	 * @returns Promise<AnalyticsResponse<GameStatsData>>
 	 */
-	async getGameStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<Record<string, unknown>>> {
+	async getGameStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<GameStatsData>> {
 		try {
 			logger.analyticsStats('game', {});
 
 			const stats = await this.calculateGameStats(query);
 
 			return {
-				data: {
-					totalGames: stats.totalGames as number,
-					totalQuestions: stats.totalQuestions as number,
-					averageScore: stats.averageScore as number,
-					popularTopics: stats.popularTopics as string[],
-					difficultyDistribution: stats.difficultyDistribution as Record<string, number>,
-					timeStats: stats.timeStats as { averageTime: number; medianTime: number },
-				},
+				data: stats,
 				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
@@ -218,13 +220,21 @@ export class AnalyticsService implements OnModuleInit {
 
 			const stats = await this.calculateDifficultyStats(query);
 
+			function isDifficultyStats(diff: unknown): diff is { total: number } {
+				return isRecord(diff) && typeof diff.total === 'number';
+			}
+
+			const totalQuestions = Object.values(stats).reduce((sum: number, diff) => {
+				if (isDifficultyStats(diff)) {
+					return sum + diff.total;
+				}
+				return sum;
+			}, 0);
+
 			return {
 				data: {
-					difficulties: stats as Record<string, { total: number; correct: number; averageTime: number }>,
-					totalQuestions: Object.values(stats).reduce(
-						(sum: number, diff) => sum + (diff as { total: number }).total,
-						0
-					),
+					difficulties: stats,
+					totalQuestions,
 				},
 				timestamp: new Date().toISOString(),
 			};
@@ -267,7 +277,7 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Get performance metrics
 	 */
-	async getPerformanceMetrics(): Promise<AnalyticsPerformanceMetrics> {
+	async getPerformanceMetrics(): Promise<SystemPerformanceMetrics> {
 		try {
 			await this.updatePerformanceMetrics();
 
@@ -288,7 +298,7 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Get business metrics
 	 */
-	async getBusinessMetrics(): Promise<Record<string, unknown>> {
+	async getBusinessMetrics(): Promise<BusinessMetrics> {
 		try {
 			const businessMetrics = await this.calculateBusinessMetrics();
 
@@ -324,9 +334,9 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Get system recommendations
 	 */
-	async getSystemRecommendations(): Promise<Record<string, unknown>[]> {
+	async getSystemRecommendations(): Promise<SystemRecommendation[]> {
 		try {
-			const recommendations: Record<string, unknown>[] = [];
+			const recommendations: SystemRecommendation[] = [];
 
 			if (this.performanceData.responseTime > 2000) {
 				recommendations.push({
@@ -468,28 +478,31 @@ export class AnalyticsService implements OnModuleInit {
 				return;
 			}
 
-			const stats = (user.stats as Record<string, unknown>) || {};
+			const stats = user.stats ?? {};
 
-			stats.totalQuestions = ((stats.totalQuestions as number) || 0) + 1;
-			stats.correctAnswers = ((stats.correctAnswers as number) || 0) + (answerData.isCorrect ? 1 : 0);
+			const totalQuestions = typeof stats.totalQuestions === 'number' ? stats.totalQuestions : 0;
+			const correctAnswers = typeof stats.correctAnswers === 'number' ? stats.correctAnswers : 0;
 
-			if (!stats.topicsPlayed) {
-				stats.topicsPlayed = {};
-			}
-			if (answerData.topic) {
-				const topicsPlayed = stats.topicsPlayed as Record<string, number>;
-				if (!topicsPlayed[answerData.topic]) {
-					topicsPlayed[answerData.topic] = 0;
+			// Build final stats with only BasicValue types
+			// Note: topicsPlayed is calculated from gameHistory in calculateUserStats, not stored in user.stats
+			const finalStats: Record<string, BasicValue> = {
+				...stats,
+				totalQuestions: totalQuestions + 1,
+				correctAnswers: correctAnswers + (answerData.isCorrect ? 1 : 0),
+			};
+
+			for (const [key, value] of Object.entries(finalStats)) {
+				if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+					delete finalStats[key];
 				}
-				topicsPlayed[answerData.topic]++;
 			}
 
-			user.stats = stats as Record<string, BasicValue>;
+			user.stats = finalStats;
 			await this.userRepo.save(user);
 
 			logger.userDebug('User statistics updated', {
 				userId,
-				totalQuestions: stats.totalQuestions,
+				totalQuestions: typeof finalStats.totalQuestions === 'number' ? finalStats.totalQuestions : undefined,
 			});
 		} catch (error) {
 			logger.userError('Failed to update user stats', {
@@ -558,14 +571,18 @@ export class AnalyticsService implements OnModuleInit {
 				order: { createdAt: 'DESC' },
 			});
 
-			const totalQuestions = gameHistory.length;
+			const totalGames = gameHistory.length;
+			const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
 			const correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const successRate = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+			const totalScores = gameHistory.reduce((sum, game) => sum + game.score, 0);
+			const averageScore = totalGames > 0 ? totalScores / totalGames : 0;
+			const bestScore = gameHistory.length > 0 ? Math.max(...gameHistory.map(game => game.score)) : 0;
 
 			const topicCounts: Record<string, number> = {};
 			gameHistory.forEach(game => {
 				if (game.topic) {
-					topicCounts[game.topic] = (topicCounts[game.topic] || 0) + 1;
+					topicCounts[game.topic] = (topicCounts[game.topic] ?? 0) + 1;
 				}
 			});
 
@@ -574,7 +591,7 @@ export class AnalyticsService implements OnModuleInit {
 					? Object.keys(topicCounts).reduce((a, b) => (topicCounts[a] > topicCounts[b] ? a : b))
 					: 'None';
 
-			const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
+			const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent ?? 0), 0);
 			const averageTime = totalQuestions > 0 ? totalTime / totalQuestions : 0;
 
 			const totalPoints = gameHistory.reduce((sum, game) => sum + game.score, 0);
@@ -601,16 +618,19 @@ export class AnalyticsService implements OnModuleInit {
 			}));
 
 			return {
+				totalGames,
 				totalQuestions,
-				correctAnswers,
 				successRate,
+				averageScore,
+				bestScore,
+				totalPlayTime: totalTime,
+				correctAnswers,
 				favoriteTopic,
-				averageTime,
+				averageTimePerQuestion: averageTime,
 				totalPoints,
 				topicsPlayed: topicCounts,
 				difficultyBreakdown,
 				recentActivity,
-				totalPlayTime: totalTime,
 			};
 		} catch (error) {
 			logger.analyticsError('calculateUserStats', {
@@ -624,9 +644,9 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Calculate game statistics from real data
 	 * @param query Query parameters for filtering
-	 * @returns Promise<Record<string, unknown>>
+	 * @returns Promise<GameStatsData>
 	 */
-	private async calculateGameStats(query?: GameAnalyticsQuery): Promise<Record<string, unknown>> {
+	private async calculateGameStats(query?: GameAnalyticsQuery): Promise<GameStatsData> {
 		try {
 			const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
 
@@ -648,38 +668,41 @@ export class AnalyticsService implements OnModuleInit {
 			const totalGames = await queryBuilder.getCount();
 			const totalQuestions = await this.triviaRepo.count();
 
-			const totalCorrectAnswers = await queryBuilder.select('SUM(game.correctAnswers)', 'total').getRawOne();
-			const totalQuestionsAsked = await queryBuilder.select('SUM(game.totalQuestions)', 'total').getRawOne();
-
-			const correctAnswers = parseInt(totalCorrectAnswers?.total || '0');
-			const questionsAsked = parseInt(totalQuestionsAsked?.total || '0');
-			const averageScore = questionsAsked > 0 ? (correctAnswers / questionsAsked) * 100 : 0;
-
-			const topicStats = await queryBuilder
+			const totalCorrectAnswersRaw = await queryBuilder
+				.select('CAST(SUM(game.correctAnswers) AS INTEGER)', 'total')
+				.getRawOne<{ total: number }>();
+			const totalQuestionsAskedRaw = await queryBuilder
+				.select('CAST(SUM(game.totalQuestions) AS INTEGER)', 'total')
+				.getRawOne<{ total: number }>();
+			const topicStatsRaw = await queryBuilder
 				.select('game.topic', 'topic')
-				.addSelect('COUNT(*)', 'count')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
 				.groupBy('game.topic')
 				.orderBy('count', 'DESC')
 				.limit(5)
-				.getRawMany();
-
-			const popularTopics = topicStats.map(stat => stat.topic);
-
-			const difficultyStats = await queryBuilder
+				.getRawMany<TopicStatRaw>();
+			const difficultyStatsRaw = await queryBuilder
 				.select('game.difficulty', 'difficulty')
-				.addSelect('COUNT(*)', 'count')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
 				.groupBy('game.difficulty')
-				.getRawMany();
+				.getRawMany<{ difficulty: string; count: number }>();
+			const timeStatsRaw = await queryBuilder
+				.select('CAST(AVG(game.timeSpent) AS DOUBLE PRECISION)', 'averageTime')
+				.addSelect('CAST(AVG(game.timeSpent) AS DOUBLE PRECISION)', 'medianTime')
+				.getRawOne<TimeStat>();
+
+			const correctAnswers = totalCorrectAnswersRaw?.total ?? 0;
+			const questionsAsked = totalQuestionsAskedRaw?.total ?? 0;
+			const averageScore = questionsAsked > 0 ? (correctAnswers / questionsAsked) * 100 : 0;
+
+			const popularTopics = topicStatsRaw.map(stat => stat?.topic ?? '').filter(topic => topic !== '');
 
 			const difficultyDistribution: Record<string, number> = {};
-			difficultyStats.forEach(stat => {
-				difficultyDistribution[stat.difficulty] = parseInt(stat.count);
+			difficultyStatsRaw.forEach(stat => {
+				if (stat?.difficulty && stat?.count !== undefined) {
+					difficultyDistribution[stat.difficulty] = stat.count;
+				}
 			});
-
-			const timeStats = await queryBuilder
-				.select('AVG(game.timeSpent)', 'averageTime')
-				.addSelect('AVG(game.timeSpent)', 'medianTime')
-				.getRawOne();
 
 			return {
 				totalGames,
@@ -688,8 +711,8 @@ export class AnalyticsService implements OnModuleInit {
 				popularTopics,
 				difficultyDistribution,
 				timeStats: {
-					averageTime: parseFloat(timeStats?.averageTime || '0'),
-					medianTime: parseFloat(timeStats?.medianTime || '0'),
+					averageTime: timeStatsRaw?.averageTime ?? null,
+					medianTime: timeStatsRaw?.medianTime ?? null,
 				},
 			};
 		} catch (error) {
@@ -707,7 +730,7 @@ export class AnalyticsService implements OnModuleInit {
 	 */
 	private async getTopicsFromDatabase(query?: GameAnalyticsQuery): Promise<TopicStats[]> {
 		try {
-			const cacheKey = `analytics:topics:stats:${JSON.stringify(query || {})}`;
+			const cacheKey = `analytics:topics:stats:${JSON.stringify(query ?? {})}`;
 
 			return await this.cacheService.getOrSet(
 				cacheKey,
@@ -729,21 +752,26 @@ export class AnalyticsService implements OnModuleInit {
 						queryBuilder.andWhere('game.difficulty = :difficulty', { difficulty: query.difficulty });
 					}
 
-					const topicStats = await queryBuilder
+					const topicStatsRaw = await queryBuilder
 						.select('game.topic', 'topic')
-						.addSelect('COUNT(*)', 'count')
-						.addSelect('AVG(game.correctAnswers)', 'avgCorrect')
-						.addSelect('AVG(game.timeSpent)', 'avgTime')
+						.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
+						.addSelect('CAST(AVG(game.correctAnswers) AS DOUBLE PRECISION)', 'avgCorrect')
+						.addSelect('CAST(AVG(game.timeSpent) AS DOUBLE PRECISION)', 'avgTime')
 						.groupBy('game.topic')
 						.orderBy('count', 'DESC')
-						.getRawMany();
+						.getRawMany<TopicStatRaw>();
 
-					return topicStats.map(stat => ({
-						name: stat.topic,
-						totalGames: parseInt(stat.count),
-						averageCorrectAnswers: parseFloat(stat.avgCorrect || '0'),
-						averageTimeSpent: parseFloat(stat.avgTime || '0'),
-					}));
+					return topicStatsRaw
+						.map(stat => {
+							if (!stat?.topic || stat?.count === undefined || stat?.count === null) return null;
+							return {
+								name: stat.topic,
+								totalGames: stat.count,
+								averageCorrectAnswers: stat.avgCorrect ?? 0,
+								averageTimeSpent: stat.avgTime ?? 0,
+							};
+						})
+						.filter((stat): stat is TopicStats => stat !== null);
 				},
 				300
 			);
@@ -758,13 +786,11 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Calculate difficulty statistics from real data
 	 * @param query Query parameters for filtering
-	 * @returns Promise<Record<string, { total: number; correct: number; averageTime: number }>>
+	 * @returns
 	 */
-	private async calculateDifficultyStats(
-		query?: GameAnalyticsQuery
-	): Promise<Record<string, { total: number; correct: number; averageTime: number }>> {
+	private async calculateDifficultyStats(query?: GameAnalyticsQuery): Promise<Record<string, DifficultyStat>> {
 		try {
-			const cacheKey = `analytics:difficulty:stats:${JSON.stringify(query || {})}`;
+			const cacheKey = `analytics:difficulty:stats:${JSON.stringify(query ?? {})}`;
 
 			return await this.cacheService.getOrSet(
 				cacheKey,
@@ -788,20 +814,22 @@ export class AnalyticsService implements OnModuleInit {
 
 					const difficultyStats = await queryBuilder
 						.select('game.difficulty', 'difficulty')
-						.addSelect('COUNT(*)', 'total')
-						.addSelect('COUNT(CASE WHEN game.isCorrect THEN 1 END)', 'correct')
-						.addSelect('AVG(game.timeSpent)', 'averageTime')
+						.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
+						.addSelect('CAST(COUNT(CASE WHEN game.isCorrect THEN 1 END) AS INTEGER)', 'correct')
+						.addSelect('CAST(AVG(game.timeSpent) AS DOUBLE PRECISION)', 'averageTime')
 						.where('game.difficulty IS NOT NULL')
 						.groupBy('game.difficulty')
-						.getRawMany();
+						.getRawMany<DifficultyStatRaw>();
 
-					const result: Record<string, { total: number; correct: number; averageTime: number }> = {};
+					const result: Record<string, DifficultyStat> = {};
 					difficultyStats.forEach(stat => {
-						result[stat.difficulty] = {
-							total: parseInt(stat.total),
-							correct: parseInt(stat.correct),
-							averageTime: parseFloat(stat.averageTime || '0'),
-						};
+						if (stat?.difficulty && stat?.total !== undefined && stat?.correct !== undefined) {
+							result[stat.difficulty] = {
+								total: stat.total,
+								correct: stat.correct,
+								averageTime: stat.averageTime ?? 0,
+							};
+						}
 					});
 
 					return result;
@@ -812,7 +840,7 @@ export class AnalyticsService implements OnModuleInit {
 			logger.analyticsError('calculateDifficultyStats', {
 				error: getErrorMessage(error),
 			});
-			return {} as Record<string, { total: number; correct: number; averageTime: number }>;
+			return {};
 		}
 	}
 
@@ -831,9 +859,9 @@ export class AnalyticsService implements OnModuleInit {
 		let totalTick = 0;
 
 		cpus.forEach(cpu => {
-			for (const type in cpu.times) {
-				totalTick += cpu.times[type as keyof typeof cpu.times];
-			}
+			// Calculate total tick from all CPU time values using Object.values
+			const timeValues = Object.values(cpu.times);
+			totalTick += timeValues.reduce((sum, value) => sum + value, 0);
 			totalIdle += cpu.times.idle;
 		});
 
@@ -845,7 +873,7 @@ export class AnalyticsService implements OnModuleInit {
 	/**
 	 * Calculate business metrics with real data
 	 */
-	private async calculateBusinessMetrics(): Promise<Record<string, unknown>> {
+	private async calculateBusinessMetrics(): Promise<BusinessMetrics> {
 		try {
 			const cacheKey = 'analytics:business:metrics';
 
@@ -866,34 +894,39 @@ export class AnalyticsService implements OnModuleInit {
 						},
 					});
 
-					const totalRevenue = await this.paymentRepository
+					const totalRevenueRaw = await this.paymentRepository
 						.createQueryBuilder('payment')
-						.select('SUM(payment.amount)', 'total')
+						.select('CAST(SUM(payment.amount) AS DOUBLE PRECISION)', 'total')
 						.where('payment.status = :status', { status: 'completed' })
-						.getRawOne();
+						.getRawOne<{ total: number }>();
 
-					const monthlyRevenue = await this.paymentRepository
+					const monthlyRevenueRaw = await this.paymentRepository
 						.createQueryBuilder('payment')
-						.select('SUM(payment.amount)', 'total')
+						.select('CAST(SUM(payment.amount) AS DOUBLE PRECISION)', 'total')
 						.where('payment.status = :status', { status: 'completed' })
 						.andWhere('payment.createdAt >= :date', { date: thirtyDaysAgo })
-						.getRawOne();
+						.getRawOne<{ total: number }>();
 
-					const dailyActiveUsers = await this.gameHistoryRepo
+					const dailyActiveUsersRaw = await this.gameHistoryRepo
 						.createQueryBuilder('game')
-						.select('COUNT(DISTINCT game.userId)', 'count')
+						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count')
 						.where('game.createdAt >= :date', {
 							date: new Date(Date.now() - 24 * 60 * 60 * 1000),
 						})
-						.getRawOne();
+						.getRawOne<{ count: number }>();
 
-					const weeklyActiveUsers = await this.gameHistoryRepo
+					const weeklyActiveUsersRaw = await this.gameHistoryRepo
 						.createQueryBuilder('game')
-						.select('COUNT(DISTINCT game.userId)', 'count')
+						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count')
 						.where('game.createdAt >= :date', {
 							date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
 						})
-						.getRawOne();
+						.getRawOne<{ count: number }>();
+
+					const totalRevenueValue = totalRevenueRaw?.total ?? 0;
+					const monthlyRevenueValue = monthlyRevenueRaw?.total ?? 0;
+					const dailyActiveUsersValue = dailyActiveUsersRaw?.count ?? 0;
+					const weeklyActiveUsersValue = weeklyActiveUsersRaw?.count ?? 0;
 
 					const lastMonthUsers = await this.userRepo.count({
 						where: {
@@ -912,9 +945,9 @@ export class AnalyticsService implements OnModuleInit {
 
 					return {
 						revenue: {
-							total: totalRevenue?.total || 0,
-							mrr: monthlyRevenue?.total || 0,
-							arpu: totalUsers > 0 ? (totalRevenue?.total || 0) / totalUsers : 0,
+							total: totalRevenueValue,
+							mrr: monthlyRevenueValue,
+							arpu: totalUsers > 0 ? totalRevenueValue / totalUsers : 0,
 						},
 						users: {
 							total: totalUsers,
@@ -923,8 +956,8 @@ export class AnalyticsService implements OnModuleInit {
 							churnRate: churnRate,
 						},
 						engagement: {
-							dau: parseInt(dailyActiveUsers?.count || '0'),
-							wau: parseInt(weeklyActiveUsers?.count || '0'),
+							dau: dailyActiveUsersValue,
+							wau: weeklyActiveUsersValue,
 							mau: activeUsers,
 							avgSessionDuration: 1800,
 						},
@@ -936,7 +969,7 @@ export class AnalyticsService implements OnModuleInit {
 			logger.analyticsError('calculateBusinessMetrics', {
 				error: getErrorMessage(error),
 			});
-			return {};
+			throw error;
 		}
 	}
 
@@ -1023,6 +1056,8 @@ export class AnalyticsService implements OnModuleInit {
 
 					const gameAnalytics = await this.getUserStats(userId);
 
+					const totalGames = await this.gameHistoryRepo.count({ where: { userId } });
+
 					const gameHistory = await this.gameHistoryRepo.find({
 						where: { userId },
 						order: { createdAt: 'DESC' },
@@ -1053,21 +1088,32 @@ export class AnalyticsService implements OnModuleInit {
 							credits: user.credits,
 							purchasedPoints: user.purchasedPoints,
 							totalPoints: user.credits + user.purchasedPoints,
-							created_at: user.createdAt,
+							createdAt: user.createdAt,
 							accountAge: user.createdAt
 								? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
 								: 0,
 						},
 						game: {
-							totalGames: gameAnalytics.totalQuestions || 0,
-							totalQuestions: gameAnalytics.totalQuestions || 0,
-							correctAnswers: gameAnalytics.correctAnswers || 0,
-							successRate: gameAnalytics.overallSuccessRate || 0,
-							averageTimePerQuestion: gameAnalytics.averageTimePerQuestion || 0,
-							topicsPlayed: gameAnalytics.topicsPlayed || {},
-							difficultyBreakdown: gameAnalytics.difficultyBreakdown || {},
-							recentActivity: gameAnalytics.recentActivity || [],
-							totalPlayTime: gameAnalytics.totalPlayTime || 0,
+							totalGames: gameAnalytics.totalGames ?? totalGames,
+							totalQuestions: gameAnalytics.totalQuestions ?? 0,
+							successRate: gameAnalytics.successRate ?? 0,
+							averageScore: gameAnalytics.averageScore ?? 0,
+							bestScore: gameAnalytics.bestScore ?? 0,
+							totalPlayTime: gameAnalytics.totalPlayTime ?? 0,
+							correctAnswers: gameAnalytics.correctAnswers ?? 0,
+							averageTimePerQuestion: gameAnalytics.averageTimePerQuestion ?? 0,
+							topicsPlayed: gameAnalytics.topicsPlayed ?? {},
+							difficultyBreakdown: Object.fromEntries(
+								Object.entries(gameAnalytics.difficultyBreakdown ?? {}).map(([key, value]) => [
+									key,
+									{
+										total: value.total,
+										correct: value.correct,
+										successRate: value.successRate ?? 0,
+									},
+								])
+							),
+							recentActivity: gameAnalytics.recentActivity ?? [],
 						},
 						performance: performanceMetrics,
 						ranking: rankingData,
@@ -1149,8 +1195,8 @@ export class AnalyticsService implements OnModuleInit {
 	private calculateSuccessRate(games: GameHistoryEntity[]): number {
 		if (games.length === 0) return 0;
 
-		const totalQuestions = games.reduce((sum, game) => sum + (game.totalQuestions || 0), 0);
-		const correctAnswers = games.reduce((sum, game) => sum + (game.correctAnswers || 0), 0);
+		const totalQuestions = games.reduce((sum, game) => sum + (game.totalQuestions ?? 0), 0);
+		const correctAnswers = games.reduce((sum, game) => sum + (game.correctAnswers ?? 0), 0);
 
 		return totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 	}
@@ -1168,8 +1214,8 @@ export class AnalyticsService implements OnModuleInit {
 			if (!topicStats[topic]) {
 				topicStats[topic] = { total: 0, correct: 0 };
 			}
-			topicStats[topic].total += game.totalQuestions || 0;
-			topicStats[topic].correct += game.correctAnswers || 0;
+			topicStats[topic].total += game.totalQuestions ?? 0;
+			topicStats[topic].correct += game.correctAnswers ?? 0;
 		});
 
 		const topicPerformance: Record<string, number> = {};
@@ -1281,7 +1327,7 @@ export class AnalyticsService implements OnModuleInit {
 	private calculateAverageGameTime(gameHistory: GameHistoryEntity[]) {
 		if (gameHistory.length === 0) return 0;
 
-		const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
+		const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent ?? 0), 0);
 		return Math.round(totalTime / gameHistory.length / 60); // Convert to minutes
 	}
 

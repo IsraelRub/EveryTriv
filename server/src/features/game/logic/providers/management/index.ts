@@ -11,6 +11,3 @@ export { AiProvidersService } from './providers.service';
 
 // Provider controller
 export { AiProvidersController } from './providers.controller';
-
-// Provider module
-export { AiProvidersModule } from './providers.module';

@@ -12,26 +12,31 @@ import {
 	Query,
 	UsePipes,
 } from '@nestjs/common';
-import { serverLogger as logger } from '@shared/services';
-import type { AdminUserData, UserFieldUpdate, BasicUser } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-import { UserRole, UserStatus, CACHE_DURATION, PERFORMANCE_THRESHOLDS, STRING_LIMITS, PAGINATION_LIMITS, VALIDATION_ERRORS } from '@shared/constants';
 
 import {
-	AuditLog,
+	CACHE_DURATION,
+	PAGINATION_LIMITS,
+	STRING_LIMITS,
+	UserRole,
+	UserStatus,
+	VALIDATION_ERRORS,
+} from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import type { AdminUserData, BasicUser, TokenPayload } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import {
 	Cache,
-	ClientIP,
 	CurrentUser,
 	CurrentUserId,
-	PerformanceThreshold,
+	NoCache,
 	RequireEmailVerified,
 	RequireUserStatus,
 	Roles,
-	UserActivityLog,
-	UserAgent,
 } from '../../common';
 import { UserDataPipe } from '../../common/pipes';
 import {
+	ChangePasswordDto,
 	DeductCreditsDto,
 	SearchUsersDto,
 	UpdateSinglePreferenceDto,
@@ -51,21 +56,21 @@ export class UserController {
 	 * Get user profile
 	 */
 	@Get('profile')
-	@Cache(CACHE_DURATION.MEDIUM)
-	async getUserProfile(@CurrentUser() user: BasicUser) {
+	@NoCache()
+	async getUserProfile(@CurrentUser() user: TokenPayload) {
 		try {
-			const result = await this.userService.getUserProfile(user.id);
+			const result = await this.userService.getUserProfile(user.sub);
 
 			// Log API call
 			logger.apiRead('user_profile', {
-				userId: user.id,
+				userId: user.sub,
 			});
 
 			return result;
 		} catch (error) {
 			logger.userError('Error getting user profile', {
 				error: getErrorMessage(error),
-				userId: user.id,
+				userId: user.sub,
 			});
 			throw error;
 		}
@@ -75,7 +80,7 @@ export class UserController {
 	 * Get user credits
 	 */
 	@Get('credits')
-	@Cache(CACHE_DURATION.VERY_SHORT)
+	@NoCache()
 	async getUserCredits(@CurrentUserId() userId: string) {
 		try {
 			const credits = await this.userService.getUserCredits(userId);
@@ -128,15 +133,7 @@ export class UserController {
 	@UsePipes(UserDataPipe)
 	@RequireEmailVerified()
 	@RequireUserStatus('active')
-	@PerformanceThreshold(PERFORMANCE_THRESHOLDS.SLOW)
-	@AuditLog('user:update-profile')
-	@UserActivityLog('user:profile-update')
-	async updateUserProfile(
-		@CurrentUserId() userId: string,
-		@Body() profileData: UpdateUserProfileDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	) {
+	async updateUserProfile(@CurrentUserId() userId: string, @Body() profileData: UpdateUserProfileDto) {
 		try {
 			const result = await this.userService.updateUserProfile(userId, profileData);
 
@@ -144,8 +141,6 @@ export class UserController {
 			logger.apiUpdate('user_profile', {
 				userId,
 				fields: Object.keys(profileData),
-				ip,
-				userAgent,
 			});
 
 			return result;
@@ -218,8 +213,6 @@ export class UserController {
 	 * Delete user account
 	 */
 	@Delete('account')
-	@AuditLog('user:delete-account')
-	@UserActivityLog('user:account-deletion')
 	async deleteUserAccount(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.userService.deleteUserAccount(userId);
@@ -240,13 +233,43 @@ export class UserController {
 	}
 
 	/**
+	 * Change user password
+	 */
+	@Put('change-password')
+	async changePassword(@CurrentUserId() userId: string, @Body() passwordData: ChangePasswordDto) {
+		try {
+			if (!passwordData.currentPassword || !passwordData.newPassword) {
+				throw new HttpException('Current password and new password are required', HttpStatus.BAD_REQUEST);
+			}
+
+			const result = await this.userService.changePassword(
+				userId,
+				passwordData.currentPassword,
+				passwordData.newPassword
+			);
+
+			// Log API call for password change
+			logger.apiUpdate('user_password_change', {
+				userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Error changing password', {
+				error: getErrorMessage(error),
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Update user preferences
 	 */
 	@Put('preferences')
-	@UserActivityLog('user:preferences-update')
 	async updateUserPreferences(@CurrentUserId() userId: string, @Body() preferences: UpdateUserPreferencesDto) {
 		try {
-			const result = await this.userService.updateUserPreferences(userId, preferences as Record<string, unknown>);
+			const result = await this.userService.updateUserPreferences(userId, preferences);
 
 			// Log API call for preferences update
 			logger.apiUpdate('user_preferences', {
@@ -269,7 +292,6 @@ export class UserController {
 	 * Update specific user field
 	 */
 	@Patch('profile/:field')
-	@UserActivityLog('user:field-update')
 	async updateUserField(
 		@CurrentUserId() userId: string,
 		@Param('field') field: string,
@@ -280,7 +302,33 @@ export class UserController {
 				throw new HttpException(VALIDATION_ERRORS.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.userService.updateUserField(userId, field as keyof UserFieldUpdate, body.value);
+			// Validate field name before type cast
+			const validFields: string[] = [
+				'username',
+				'email',
+				'firstName',
+				'lastName',
+				'phone',
+				'avatar',
+				'bio',
+				'isActive',
+				'agreeToNewsletter',
+				'score',
+				'credits',
+				'points',
+				'purchasedPoints',
+				'dailyFreeQuestions',
+				'remainingFreeQuestions',
+				'role',
+				'currentSubscriptionId',
+				'status',
+			];
+
+			if (!validFields.includes(field)) {
+				throw new HttpException(`Invalid field: ${field}`, HttpStatus.BAD_REQUEST);
+			}
+
+			const result = await this.userService.updateUserField(userId, field, body.value);
 
 			// Log API call for field update
 			logger.apiUpdate('user_field', {
@@ -304,7 +352,6 @@ export class UserController {
 	 * Update single preference
 	 */
 	@Patch('preferences/:preference')
-	@UserActivityLog('user:single-preference-update')
 	async updateSinglePreference(
 		@CurrentUserId() userId: string,
 		@Param('preference') preference: string,
@@ -368,7 +415,6 @@ export class UserController {
 	 */
 	@Put('credits/:userId')
 	@Roles(UserRole.ADMIN)
-	@AuditLog('admin:update-user-credits')
 	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
@@ -400,7 +446,6 @@ export class UserController {
 	 */
 	@Delete(':userId')
 	@Roles(UserRole.ADMIN)
-	@AuditLog('admin:delete-user')
 	async deleteUser(@Param('userId') userId: string) {
 		try {
 			if (!userId) {
@@ -429,14 +474,13 @@ export class UserController {
 	 */
 	@Patch(':userId/status')
 	@Roles(UserRole.ADMIN)
-	@AuditLog('admin:update-user-status')
 	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
 				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-		const validStatuses = Object.values(UserStatus);
+			const validStatuses = Object.values(UserStatus);
 			if (!validStatuses.includes(statusData.status)) {
 				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
@@ -466,21 +510,21 @@ export class UserController {
 	@Get('admin/all')
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getAllUsers(@CurrentUser() user: BasicUser) {
+	async getAllUsers(@CurrentUser() user: TokenPayload) {
 		try {
 			// This would call a service method to get all users
 			const users: AdminUserData[] = [];
 
 			// Log API call
 			logger.apiRead('admin_get_all_users', {
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 				usersCount: users.length,
 			});
 
 			return {
 				adminUser: {
-					id: user.id,
+					id: user.sub,
 					username: user.username,
 					email: user.email,
 					role: user.role,
@@ -491,8 +535,8 @@ export class UserController {
 		} catch (error) {
 			logger.userError('Failed to get all users', {
 				error: getErrorMessage(error),
-				adminId: user.id,
-				adminRole: user.role,
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}
@@ -503,7 +547,6 @@ export class UserController {
 	 */
 	@Put('admin/:userId/status')
 	@Roles(UserRole.ADMIN)
-	@AuditLog('admin:update-user-status')
 	async adminUpdateUserStatus(
 		@CurrentUser() adminUser: BasicUser,
 		@Param('userId') userId: string,
@@ -523,7 +566,7 @@ export class UserController {
 
 			// Log API call
 			logger.apiUpdate('admin_update_user_status', {
-				adminId: adminUser.id,
+				id: adminUser.id,
 				targetUserId: userId,
 				newStatus: statusData.status,
 			});
@@ -532,7 +575,7 @@ export class UserController {
 		} catch (error) {
 			logger.userError('Failed to update user status', {
 				error: getErrorMessage(error),
-				adminId: adminUser.id,
+				id: adminUser.id,
 				targetUserId: userId,
 				status: statusData.status,
 			});

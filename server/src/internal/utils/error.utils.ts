@@ -7,21 +7,18 @@
  */
 import {
 	BadRequestException,
-	ForbiddenException,
 	InternalServerErrorException,
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
 
-import { BasicValue } from '@shared/types';
-
 /**
  * Create validation error for field type validation
  * @param field - The field name
- * @param expectedType - The expected type (string, number, boolean)
+ * @param expectedType - The expected type name as string (e.g., 'string', 'number', 'boolean')
  * @returns BadRequestException with validation message
  */
-export function createValidationError(field: string, expectedType: BasicValue): BadRequestException {
+export function createValidationError(field: string, expectedType: string): BadRequestException {
 	return new BadRequestException(`${field} must be a ${expectedType}`);
 }
 
@@ -98,30 +95,10 @@ export function createCacheError(operation: string, originalError?: unknown): In
 }
 
 /**
- * Create timeout error
- * @param operation - The operation that timed out
- * @param timeoutMs - Timeout duration in milliseconds
- * @returns InternalServerErrorException with timeout message
- */
-export function createTimeoutError(operation: string, timeoutMs?: number): InternalServerErrorException {
-	const timeoutText = timeoutMs ? ` after ${timeoutMs}ms` : '';
-	return new InternalServerErrorException(`Operation '${operation}' timed out${timeoutText}. Please try again.`);
-}
-
-/**
  * Create authentication error
  * @param reason - The reason for authentication failure
  * @returns UnauthorizedException with authentication message
  */
 export function createAuthError(reason: string = 'Authentication failed'): UnauthorizedException {
 	return new UnauthorizedException(reason);
-}
-
-/**
- * Create permission error
- * @param resource - The resource that access was denied to
- * @returns ForbiddenException with permission message
- */
-export function createPermissionError(resource: string = 'resource'): ForbiddenException {
-	return new ForbiddenException(`Access denied to ${resource}`);
 }

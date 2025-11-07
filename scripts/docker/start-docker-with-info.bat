@@ -15,7 +15,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Building and starting Docker containers...
-docker-compose up --build -d
+docker-compose -f tools/docker/docker-compose.yaml up --build -d
 
 echo.
 echo Waiting for services to be ready...
@@ -23,7 +23,7 @@ timeout /t 15 /nobreak >nul
 
 echo.
 echo Checking service status...
-docker-compose ps
+docker-compose -f tools/docker/docker-compose.yaml ps
 
 echo.
 echo ========================================
@@ -51,4 +51,4 @@ pause >nul
 
 echo.
 echo Showing live logs (Ctrl+C to exit):
-docker-compose logs -f
+docker-compose -f tools/docker/docker-compose.yaml logs -f

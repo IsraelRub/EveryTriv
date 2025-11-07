@@ -4,23 +4,23 @@
  * @module ServerMain
  * @description Main entry point for the NestJS server application
  */
+// eslint-disable-next-line simple-import-sort/imports
+// prettier-ignore
 import * as dotenv from 'dotenv';
-// IMPORTANT: Load environment variables before importing anything else
-// DO NOT MOVE OR REFORMAT - This must stay before other imports
-// eslint-disable-next-line
+
+// eslint-disable-next-line simple-import-sort/imports
 // prettier-ignore
 dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { LOCALHOST_URLS,MESSAGE_FORMATTERS } from '@shared/constants';
+
+import { LOCALHOST_URLS, MESSAGE_FORMATTERS } from '@shared/constants';
 import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
-import { AUTH_CONSTANTS } from './internal/constants/auth/auth.constants';
-
-
+import { AUTH_CONSTANTS } from './internal/constants';
 
 // Environment configuration
 const environment = process.env.NODE_ENV || 'development';
@@ -34,7 +34,6 @@ async function bootstrap() {
 	const startTime = Date.now();
 
 	try {
-		// Note: Using console.log for bootstrap since logger is not yet available
 		console.log(MESSAGE_FORMATTERS.system.startup());
 		console.log(MESSAGE_FORMATTERS.system.config(), {
 			DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
@@ -72,7 +71,7 @@ async function bootstrap() {
 		console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
 
 		app.enableCors({
-			origin: process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT_DEV,
+			origin: process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT,
 			credentials: true,
 			methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 			allowedHeaders: ['Content-Type', AUTH_CONSTANTS.AUTH_HEADER, 'X-Requested-With'],
@@ -84,7 +83,6 @@ async function bootstrap() {
 
 		const bootDuration = Date.now() - startTime;
 
-		// Note: Using console.log for bootstrap since logger is not yet available
 		console.log('Server startup:', {
 			bootTime: `${bootDuration}ms`,
 			environment: environment,
@@ -118,7 +116,10 @@ async function bootstrap() {
 				bootAttemptDuration: `${Date.now() - startTime}ms`,
 			});
 		} catch (shutdownError) {
-			console.error('Shutdown: Failed to start server', error);
+			console.error('Shutdown: Failed to start server', {
+				originalError: getErrorMessage(error),
+				shutdownError: getErrorMessage(shutdownError),
+			});
 		}
 		process.exit(1);
 	}

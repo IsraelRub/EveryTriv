@@ -5,8 +5,6 @@
  * @description Data Transfer Objects for user management
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DifficultyLevel, UserStatus } from '@shared/constants';
-import { BasicValue, UserAddress, UserPreferences, CustomDifficulty } from '@shared/types';
 import { Transform, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -26,6 +24,9 @@ import {
 	MinLength,
 	ValidateNested,
 } from 'class-validator';
+
+import { UserStatus } from '@shared/constants';
+import { BasicValue, CustomDifficultyItem, UserAddress, UserPreferences } from '@shared/types';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -134,7 +135,7 @@ export class UpdateUserProfileDto {
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => Object)
-	preferences?: UserPreferences;
+	preferences?: Partial<UserPreferences>;
 
 	@ApiPropertyOptional({
 		description: 'User address',
@@ -204,56 +205,12 @@ export class UpdateUserFieldDto {
 
 export class UpdateUserPreferencesDto {
 	@ApiPropertyOptional({
-		description: 'Theme preference',
-		example: 'dark',
-		enum: ['light', 'dark'],
-	})
-	@IsOptional()
-	@IsIn(['light', 'dark'], { message: 'Theme must be either light or dark' })
-	theme?: 'light' | 'dark';
-
-	@ApiPropertyOptional({
-		description: 'Language preference',
-		example: 'en',
-		maxLength: 10,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(10, { message: 'Language cannot exceed 10 characters' })
-	language?: string;
-
-	@ApiPropertyOptional({
-		description: 'Notification settings',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Notifications must be a boolean value' })
-	notifications?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Favorite topics',
-		example: ['science', 'history', 'sports'],
-	})
-	@IsOptional()
-	@IsArray({ message: 'Favorite topics must be an array' })
-	@IsString({ each: true, message: 'Each favorite topic must be a string' })
-	favoriteTopics?: string[];
-
-	@ApiPropertyOptional({
-		description: 'Default difficulty level',
-		example: 'medium',
-	})
-	@IsOptional()
-	@IsString()
-	difficulty?: DifficultyLevel;
-
-	@ApiPropertyOptional({
 		description: 'Custom difficulties',
 		example: [{ description: 'Custom Difficulty', usageCount: 5, lastUsed: '2024-01-01T00:00:00.000Z' }],
 	})
 	@IsOptional()
 	@IsArray({ message: 'Custom difficulties must be an array' })
-	customDifficulties?: CustomDifficulty[];
+	customDifficulties?: CustomDifficultyItem[];
 
 	@ApiPropertyOptional({
 		description: 'Sound enabled preference',
@@ -278,28 +235,11 @@ export class UpdateUserPreferencesDto {
 	@IsOptional()
 	@IsBoolean({ message: 'Animations enabled must be a boolean value' })
 	animationsEnabled?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Profile public preference',
-		example: false,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Profile public must be a boolean value' })
-	profilePublic?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Show stats preference',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Show stats must be a boolean value' })
-	showStats?: boolean;
 }
 
 export class UpdateSinglePreferenceDto {
 	@ApiProperty({
 		description: 'Preference value',
-		example: 'dark',
 	})
 	@IsNotEmpty({ message: 'Value is required' })
 	value: BasicValue;
@@ -333,4 +273,18 @@ export class UpdateUserStatusDto {
 	})
 	@IsIn(Object.values(UserStatus), { message: 'Status must be a valid user status' })
 	status: UserStatus;
+}
+
+export class ChangePasswordDto {
+	@ApiProperty({ description: 'Current password', minLength: 6, maxLength: 200 })
+	@IsString()
+	@MinLength(6, { message: 'Current password must be at least 6 characters long' })
+	@MaxLength(200, { message: 'Current password cannot exceed 200 characters' })
+	currentPassword!: string;
+
+	@ApiProperty({ description: 'New password', minLength: 8, maxLength: 200 })
+	@IsString()
+	@MinLength(8, { message: 'New password must be at least 8 characters long' })
+	@MaxLength(200, { message: 'New password cannot exceed 200 characters' })
+	newPassword!: string;
 }

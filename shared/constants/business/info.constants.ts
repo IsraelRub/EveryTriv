@@ -38,7 +38,6 @@ export const CONTACT_INFO = {
 	metadata: {
 		version: '2.0.0',
 		releaseDate: '2024-01-01',
-		supportedLanguages: ['en', 'he'],
 		apiVersion: 'v1',
 		maintenanceWindow: 'Sundays 2-4 AM UTC',
 	},
@@ -86,30 +85,3 @@ export const POPULAR_TOPICS = [
 	'Mathematics',
 	'Philosophy',
 ] as const;
-
-/**
- * User roles enumeration
- * @enum {string} UserRole
- * @description Available user roles in the system
- * @used_by server/src/features/user/user.service.ts, server/src/features/auth/auth.service.ts
- */
-export enum UserRole {
-	ADMIN = 'admin',
-	GUEST = 'guest',
-	USER = 'user',
-	PREMIUM = 'premium',
-}
-
-/**
- * User status enumeration
- * @enum {string} UserStatus
- * @description Available user statuses in the system
- * @used_by server/src/features/user/user.service.ts, server/src/features/auth/auth.service.ts
- */
-export enum UserStatus {
-	ACTIVE = 'active',
-	INACTIVE = 'inactive',
-	SUSPENDED = 'suspended',
-	BANNED = 'banned',
-	PENDING_VERIFICATION = 'pending_verification',
-}

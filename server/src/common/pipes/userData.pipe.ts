@@ -6,8 +6,9 @@
  * @used_by server/src/features/user, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+
 import { serverLogger as logger } from '@shared/services';
-import type { UserProfileUpdateData, ValidationResult } from '@shared/types';
+import type { UpdateUserProfileData, ValidationResult } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
@@ -16,7 +17,7 @@ import { ValidationService } from '../validation';
 export class UserDataPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: UserProfileUpdateData): Promise<ValidationResult> {
+	async transform(value: UpdateUserProfileData): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -36,23 +37,12 @@ export class UserDataPipe implements PipeTransform {
 				}
 			}
 
-			// Validate email if provided
-			if (value.email) {
-				const emailValidation: ValidationResult = await this.validationService.validateEmail(value.email);
-				if (!emailValidation.isValid) {
-					errors.push(...emailValidation.errors);
-					if (emailValidation.suggestion) {
-						suggestions.push(emailValidation.suggestion);
-					}
-				}
-			}
-
 			// Password validation is handled separately in auth service
 
 			// Validate first name if provided
-			if (value.first_name) {
+			if (value.firstName) {
 				const firstNameValidation: ValidationResult = await this.validationService.validateInputContent(
-					value.first_name
+					value.firstName
 				);
 				if (!firstNameValidation.isValid) {
 					errors.push(...firstNameValidation.errors);
@@ -60,8 +50,8 @@ export class UserDataPipe implements PipeTransform {
 			}
 
 			// Validate last name if provided
-			if (value.last_name) {
-				const lastNameValidation: ValidationResult = await this.validationService.validateInputContent(value.last_name);
+			if (value.lastName) {
+				const lastNameValidation: ValidationResult = await this.validationService.validateInputContent(value.lastName);
 				if (!lastNameValidation.isValid) {
 					errors.push(...lastNameValidation.errors);
 				}

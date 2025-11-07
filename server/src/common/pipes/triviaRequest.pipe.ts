@@ -6,13 +6,10 @@
  * @used_by server/src/features/game, server/src/controllers
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { VALIDATION_LIMITS } from '@shared/constants';
+
 import { serverLogger as logger } from '@shared/services';
-import {
-	getErrorMessage,
-	TriviaRequestData,
-	ValidationResult,
-} from '@shared/utils';
+import { TriviaRequest, ValidationResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
 
@@ -20,7 +17,7 @@ import { ValidationService } from '../validation';
 export class TriviaRequestPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: TriviaRequestData): Promise<ValidationResult> {
+	async transform(value: TriviaRequest): Promise<ValidationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -29,43 +26,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			const errors: string[] = [];
 			const suggestions: string[] = [];
 
-			// Enhanced input validation
-			if (!value.topic || value.topic.trim().length === 0) {
-				errors.push('Topic is required');
-				suggestions.push('Please enter a topic for your trivia questions (e.g., "Science", "History", "Sports")');
-			} else if (value.topic.trim().length < 2) {
-				errors.push('Topic must be at least 2 characters long');
-				suggestions.push('Provide a more specific topic (e.g., "World History" instead of "Hi")');
-			} else if (value.topic.trim().length > 100) {
-				errors.push('Topic is too long (maximum 100 characters)');
-				suggestions.push('Shorten your topic to 100 characters or less');
-			}
-
-			if (!value.difficulty || value.difficulty.trim().length === 0) {
-				errors.push('Difficulty is required');
-				suggestions.push('Choose a difficulty level: easy, medium, hard, or expert');
-			} else {
-				const validDifficulties = ['easy', 'medium', 'hard', 'expert'];
-				if (!validDifficulties.includes(value.difficulty.toLowerCase())) {
-					errors.push('Invalid difficulty level');
-					suggestions.push('Use one of these difficulty levels: easy, medium, hard, expert');
-				}
-			}
-
-			if (
-				!value.questionCount ||
-				value.questionCount < VALIDATION_LIMITS.QUESTION_COUNT.MIN ||
-				value.questionCount > VALIDATION_LIMITS.QUESTION_COUNT.MAX
-			) {
-				errors.push(
-					`Question count must be between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX}`
-				);
-				suggestions.push(
-					`Choose between ${VALIDATION_LIMITS.QUESTION_COUNT.MIN} and ${VALIDATION_LIMITS.QUESTION_COUNT.MAX} questions for your trivia game`
-				);
-			}
-
-			// Validate trivia request using service if basic validation passes
+			// Validate trivia request using service (business rules)
 			if (errors.length === 0) {
 				const triviaValidation = await this.validationService.validateTriviaRequest(
 					value.topic,

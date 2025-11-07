@@ -10,9 +10,11 @@
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { PointCalculationService } from '@shared/services';
-import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
-import { CacheModule, StorageModule } from 'src/internal/modules';
+
+import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
+import { CacheModule, StorageModule } from '@internal/modules';
 
 import {
 	CustomDifficultyPipe,

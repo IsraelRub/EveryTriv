@@ -16,39 +16,43 @@ import statsReducer from './slices/statsSlice';
 import userReducer from './slices/userSlice';
 
 const userPersistConfig = {
-  key: 'user',
-  storage,
-  whitelist: ['user'],
+	key: 'user',
+	storage,
+	whitelist: ['user'],
 };
 
 const favoritesPersistConfig = {
-  key: 'favorites',
-  storage,
-  whitelist: ['favorites'],
+	key: 'favorites',
+	storage,
+	whitelist: ['favorites'],
 };
 
 const gameModePersistConfig = {
-  key: 'gameMode',
-  storage,
-  whitelist: ['currentSettings'],
+	key: 'gameMode',
+	storage,
+	whitelist: ['currentSettings'],
 };
 
+const persistedFavoritesReducer = persistReducer(favoritesPersistConfig, favoritesReducer);
+const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
+const persistedGameModeReducer = persistReducer(gameModePersistConfig, gameModeReducer);
+
 export const store = configureStore({
-  reducer: {
-    game: gameReducer,
-    stats: statsReducer,
-    favorites: persistReducer(favoritesPersistConfig, favoritesReducer) as never,
-    user: persistReducer(userPersistConfig, userReducer) as never,
-    gameMode: persistReducer(gameModePersistConfig, gameModeReducer) as never,
-  },
-  middleware: getDefaultMiddleware =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['stats/setStats', 'persist/PERSIST', 'persist/REHYDRATE'],
-        ignoredActionPaths: ['payload.created_at', 'payload.updated_at', 'payload.lastPlayed'],
-        ignoredPaths: ['stats.stats.lastPlayed', 'user.user.created_at', 'user.user.updated_at'],
-      },
-    }),
+	reducer: {
+		game: gameReducer,
+		stats: statsReducer,
+		favorites: persistedFavoritesReducer,
+		user: persistedUserReducer,
+		gameMode: persistedGameModeReducer,
+	},
+	middleware: getDefaultMiddleware =>
+		getDefaultMiddleware({
+			serializableCheck: {
+				ignoredActions: ['stats/setStats', 'persist/PERSIST', 'persist/REHYDRATE'],
+				ignoredActionPaths: ['payload.created_at', 'payload.updated_at', 'payload.lastPlayed'],
+				ignoredPaths: ['stats.stats.lastPlayed', 'user.user.created_at', 'user.user.updated_at'],
+			},
+		}),
 });
 
 /** Type for Redux dispatch function */

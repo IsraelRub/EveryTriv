@@ -1,13 +1,12 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { PointSource, PointTransactionType } from '../constants';
+import { PointSource, PointTransactionType } from '@shared/constants';
+
+import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('point_transactions')
-export class PointTransactionEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
+export class PointTransactionEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index()
 	userId: string;
@@ -62,9 +61,6 @@ export class PointTransactionEntity {
 		purchasedPointsUsed?: number;
 		creditsUsed?: number;
 	} = {};
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date;
 
 	@Index()
 	@Column({ name: 'transaction_date', type: 'date', default: () => 'CURRENT_DATE' })

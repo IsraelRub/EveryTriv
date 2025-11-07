@@ -12,7 +12,7 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./server/database/init:/docker-entrypoint-initdb.d
+      - ../../server/database/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U everytriv_user -d everytriv"]
       interval: 10s
@@ -42,7 +42,7 @@ services:
   # Backend Server
   server:
     build: 
-      context: .
+      context: ../..
       dockerfile: server/Dockerfile
       args:
         NODE_ENV: prod
@@ -90,7 +90,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./server/logs:/app/logs
+      - ../../server/logs:/app/logs
     networks:
       - everytriv-network
     healthcheck:
@@ -103,7 +103,7 @@ services:
   # Frontend Client
   client:
     build: 
-      context: .
+      context: ../..
       dockerfile: client/Dockerfile
     container_name: everytriv-client
     restart: unless-stopped

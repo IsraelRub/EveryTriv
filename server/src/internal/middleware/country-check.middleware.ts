@@ -1,16 +1,17 @@
 import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Response } from 'express';
+
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { NestNextFunction, NestRequest, NestResponse } from 'src/internal/types';
+
+import { NestRequest } from '@internal/types';
 
 @Injectable()
 export class CountryCheckMiddleware implements NestMiddleware {
 	private readonly BLOCKED_COUNTRIES = ['XX', 'YY']; // Add blocked country codes
 	private readonly RESTRICTED_ROUTES = ['/admin', '/payment']; // Routes that need country check
 
-	constructor() {}
-
-	use(req: NestRequest, _res: NestResponse, next: NestNextFunction) {
+	use(req: NestRequest, _res: Response, next: NextFunction) {
 		try {
 			// Get country from request headers or IP
 			const country = this.getCountryFromRequest(req);
@@ -63,9 +64,12 @@ export class CountryCheckMiddleware implements NestMiddleware {
 
 	private getCountryFromRequest(req: NestRequest): string {
 		// Priority: Header > IP-based geolocation > Default
-		const headerCountry = req.headers['x-country'] as string;
-		if (headerCountry) {
+		const headerCountry = req.headers['x-country'];
+		if (headerCountry && typeof headerCountry === 'string') {
 			return headerCountry.toUpperCase();
+		}
+		if (Array.isArray(headerCountry) && headerCountry.length > 0 && typeof headerCountry[0] === 'string') {
+			return headerCountry[0].toUpperCase();
 		}
 
 		// IP-based geolocation (simplified)

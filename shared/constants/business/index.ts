@@ -7,12 +7,6 @@
  */
 
 /**
- * Payment constants
- * @description Payment processing, features, and pricing
- */
-export * from './payment.constants';
-
-/**
  * Social constants
  * @description Social media platforms and sharing functionality
  */

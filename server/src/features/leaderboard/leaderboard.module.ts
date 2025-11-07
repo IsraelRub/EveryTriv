@@ -10,8 +10,9 @@
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from 'src/internal/entities';
-import { CacheModule } from 'src/internal/modules';
+
+import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
+import { CacheModule } from '@internal/modules';
 
 import { AuthModule } from '../auth';
 import { LeaderboardController } from './leaderboard.controller';

@@ -5,60 +5,13 @@
  */
 
 /**
- * Points Manager Component Props
- * @interface PointsManagerProps
- * @description Props for the PointsManager component
- * @used_by client/src/components/points
- */
-export interface PointsManagerProps {
-  onClose?: () => void;
-}
-
-/**
- * Game Session Statistics Component Props
- * @interface GameSessionStatsProps
- * @description Props for the GameSessionStats component
- * @used_by client/src/components/stats/GameSessionStats.tsx
- */
-export interface GameSessionStatsProps {
-  session: {
-    id: string;
-    startTime: number;
-    endTime?: number;
-    totalQuestions: number;
-    correctAnswers: number;
-    score: number;
-    difficulty: string;
-    topic: string;
-  };
-  className?: string;
-}
-
-/**
- * User Statistics Card Component Props
- * @interface UserStatsCardProps
- * @description Props for the UserStatsCard component
- * @used_by client/src/components/stats/UserStatsCard.tsx
- */
-export interface UserStatsCardProps {
-  user: {
-    username: string;
-    created_at: Date;
-    dateOfBirth?: Date;
-    lastLogin?: Date;
-    score: number;
-  };
-  className?: string;
-}
-
-/**
  * Subscription Plans Component Props
  * @interface SubscriptionPlansProps
  * @description Props for the SubscriptionPlans component
  * @used_by client/src/components/subscription/SubscriptionPlans.tsx
  */
 export interface SubscriptionPlansProps {
-  plans: import('@shared/types').SubscriptionPlans;
-  onPlanSelect?: (plan: string) => void;
-  className?: string;
+	plans: import('@shared/types').SubscriptionPlans;
+	onPlanSelect?: (plan: string) => void;
+	className?: string;
 }

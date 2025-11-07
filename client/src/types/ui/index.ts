@@ -6,5 +6,5 @@
 
 export * from './animations.types';
 export * from './audio.types';
+export * from './components';
 export * from './forms.types';
-export * from './validation.types';

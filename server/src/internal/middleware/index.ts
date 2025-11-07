@@ -7,19 +7,6 @@
  */
 
 /**
- * Authentication middleware
- * @description Middleware for user authentication and authorization
- * @used_by server/src/controllers, server/src/features/auth
- */
-export * from './auth.middleware';
-
-/**
- * Body validation middleware
- * @description Middleware for request body validation
- * @used_by server/controllers, server/features
- */
-
-/**
  * Country check middleware
  * @description Middleware for geographic access control
  * @used_by server/controllers, server/features

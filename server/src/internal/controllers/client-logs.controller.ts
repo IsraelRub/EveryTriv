@@ -1,7 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { MESSAGE_FORMATTERS } from '@shared/constants';
+
+import { LogLevel, MESSAGE_FORMATTERS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { ClientLogsRequest, LogLevel, LogMeta } from '@shared/types';
+import { ClientLogsRequest, LogMeta } from '@shared/types';
 
 @Controller('client-logs')
 export class ClientLogsController {
@@ -12,12 +13,10 @@ export class ClientLogsController {
 		// Process each log entry
 		for (const logEntry of logs) {
 			const meta: LogMeta = {
-				source: 'client',
-				userId: userId || 'anonymous',
-				sessionId: sessionId || 'no-session',
-				timestamp: new Date().toISOString(),
-				level: logEntry.meta?.level || 'info',
-				...logEntry.meta,
+				userId: userId || logEntry.meta?.userId || 'anonymous',
+				sessionId: sessionId || logEntry.meta?.sessionId || 'no-session',
+				timestamp:
+					logEntry.meta?.timestamp instanceof Date ? logEntry.meta.timestamp.toISOString() : new Date().toISOString(),
 			};
 
 			// Map client log level to shared LogLevel enum

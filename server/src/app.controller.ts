@@ -6,6 +6,7 @@
  * @used_by server/src/app, server/src/main
  */
 import { Controller, Get } from '@nestjs/common';
+
 import { API_VERSION, CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 

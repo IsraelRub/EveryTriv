@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+
+import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
-import { CACHE_DURATION } from '@shared/constants';
 
-import { Cache, ClientIP, CurrentUserId, UserAgent } from '../../common';
+import { Cache } from '../../common';
 import { AnalyticsService } from './analytics.service';
 import { DifficultyAnalyticsQueryDto, GameAnalyticsQueryDto, TopicAnalyticsQueryDto, TrackEventDto } from './dtos';
 
@@ -18,12 +19,7 @@ export class AnalyticsController {
 	 * Track analytics event
 	 */
 	@Post('track')
-	async trackEvent(
-		@CurrentUserId() userId: string,
-		@Body() eventData: TrackEventDto,
-		@ClientIP() ip: string,
-		@UserAgent() userAgent: string
-	) {
+	async trackEvent(@Body() eventData: TrackEventDto) {
 		try {
 			if (!eventData.eventType) {
 				throw new HttpException('Event type is required', HttpStatus.BAD_REQUEST);
@@ -34,20 +30,17 @@ export class AnalyticsController {
 				...eventData,
 				timestamp: eventData.timestamp || new Date(),
 			};
-			await this.analyticsService.trackEvent(userId, analyticsEventData);
+
+			await this.analyticsService.trackEvent(eventData.userId || '', analyticsEventData);
 
 			logger.apiCreate('analytics_event_track', {
-				userId,
 				eventType: eventData.eventType,
-				ip,
-				userAgent,
 			});
 
 			return { tracked: true };
 		} catch (error) {
 			logger.analyticsError('Error tracking analytics event', {
 				error: getErrorMessage(error),
-				userId,
 				eventType: eventData.eventType,
 			});
 			throw error;
@@ -82,7 +75,7 @@ export class AnalyticsController {
 	 */
 	@Get('user/')
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getUserAnalytics(@CurrentUserId() userId: string) {
+	async getUserAnalytics(@Param('userId') userId: string) {
 		try {
 			const result = await this.analyticsService.getUserAnalytics(userId);
 

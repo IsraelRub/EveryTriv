@@ -3,21 +3,21 @@
  * @module GameComponentTypes
  * @description Game component prop types and interfaces
  */
-import { GameMode } from '@shared/constants';
-import type { BasicValue, GameModeConfig } from '@shared/types';
 import { FormEvent } from 'react';
 
-import { Achievement } from './achievements.types';
-import { GameConfig, GameSessionStats, GameState, GameTimerState } from './config.types';
+import { GameMode } from '@shared/constants';
+import type { DifficultyBreakdown, FavoriteTopic, GameModeConfig, TriviaQuestion } from '@shared/types';
+
+import { ClientGameState, GameTimerState } from './config.types';
 
 /**
  * @interface CurrentQuestionMetadata
  * @description Metadata for the current question being displayed
  */
 export interface CurrentQuestionMetadata {
-  customDifficultyMultiplier?: number;
-  actualDifficulty?: string;
-  questionCount?: number;
+	customDifficultyMultiplier?: number;
+	actualDifficulty?: string;
+	questionCount?: number;
 }
 
 /**
@@ -27,62 +27,35 @@ export interface CurrentQuestionMetadata {
  * @used_by client/src/components/game/Game.tsx
  */
 export interface GameProps {
-  config: GameConfig;
-  state: GameState;
-  onStateChange: (newState: GameState) => void;
-  onGameComplete: (finalScore: number, timeSpent: number) => void;
-  onError: (error: string) => void;
-  className?: string;
-  trivia?: {
-    id: string;
-    question: string;
-    answers: Array<{ text: string; isCorrect: boolean }>;
-    correctAnswerIndex: number;
-    difficulty?: string;
-    topic?: string;
-  };
-  selected?: number | null;
-  score?: number;
-  gameMode?: GameModeConfig;
-  onAnswer?: (index: number) => Promise<void>;
-  onNewQuestion?: () => Promise<void>;
-  onGameEnd?: () => void;
+	state: ClientGameState;
+	onStateChange: (newState: ClientGameState) => void;
+	trivia?: TriviaQuestion;
+	selected?: number | null;
+	gameMode?: GameModeConfig;
+	onNewQuestion?: () => Promise<void>;
+	onGameEnd?: () => void;
+}
+
+/**
+ * Props for trivia game component
+ * @used_by client/src/components/game/TriviaGame.tsx
+ */
+export interface TriviaGameProps {
+	question: TriviaQuestion;
+	onComplete: (isCorrect: boolean, pointsEarned?: number) => void;
+	timeLimit?: number;
 }
 
 /**
  * Props for game timer component
  * @used_by client/src/components/game/GameTimer.tsx
+ * @description Props for the game timer component
+ * @remarks Timer updates, warnings, and game end logic are handled by useGameTimer hook
  */
 export interface GameTimerProps {
-  timer: GameTimerState;
-  onTimeUpdate: (timeRemaining: number) => void;
-  onLowTimeWarning: () => void;
-  onTimeUp: () => void;
-  className?: string;
-  isRunning?: boolean;
-  timeRemaining?: number;
-  timeElapsed?: number;
-  isGameOver?: boolean;
-  mode?: {
-    name: string;
-    timeLimit: number;
-    questionLimit: number;
-  };
-}
-
-/**
- * Props for trivia component
- * @used_by client/src/components/game/TriviaGame.tsx
- */
-export interface TriviaGameProps {
-  trivia: {
-    id: string;
-    question: string;
-    answers: Array<{ text: string; isCorrect: boolean }>;
-    correctAnswerIndex: number;
-  };
-  selected?: number | null;
-  onAnswer: (index: number) => void;
+	timer: GameTimerState;
+	gameMode?: GameModeConfig;
+	className?: string;
 }
 
 /**
@@ -90,21 +63,17 @@ export interface TriviaGameProps {
  * @used_by client/src/components/game/TriviaForm.tsx
  */
 export interface TriviaFormProps {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onChange: (field: string, value: BasicValue) => void;
-  values: Record<string, BasicValue>;
-  loading?: boolean;
-  className?: string;
-  topic?: string;
-  difficulty?: string;
-  questionCount?: number;
-  onTopicChange?: (topic: string) => void;
-  onDifficultyChange?: (difficulty: string) => void;
-  onQuestionCountChange?: (count: number) => void;
-  onClose?: () => void;
-  onGameModeSelect?: (mode: string) => void;
-  showGameModeSelector?: boolean;
-  onGameModeSelectorClose?: () => void;
+	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+	loading?: boolean;
+	topic?: string;
+	difficulty?: string;
+	questionCount?: number;
+	onTopicChange?: (topic: string) => void;
+	onDifficultyChange?: (difficulty: string) => void;
+	onQuestionCountChange?: (count: number) => void;
+	onGameModeSelect?: (mode: string) => void;
+	showGameModeSelector?: boolean;
+	onGameModeSelectorClose?: () => void;
 }
 
 /**
@@ -112,10 +81,10 @@ export interface TriviaFormProps {
  * @used_by client/src/components/user/FavoriteTopics.tsx
  */
 export interface FavoriteTopicsProps {
-  favorites: Array<{ topic: string; difficulty: string }>;
-  onRemove: (index: number) => void;
-  onSelect?: (favorite: { topic: string; difficulty: string }) => void;
-  className?: string;
+	favorites: FavoriteTopic[];
+	onRemove: (index: number) => void;
+	onSelect?: (favorite: FavoriteTopic) => void;
+	className?: string;
 }
 
 /**
@@ -123,25 +92,15 @@ export interface FavoriteTopicsProps {
  * @used_by client/src/components/gameMode/GameMode.tsx
  */
 export interface GameModeUIProps {
-  currentMode?: string;
-  onModeChange?: (mode: string) => void;
-  onTopicChange?: (topic: string) => void;
-  onDifficultyChange?: (difficulty: string) => void;
-  className?: string;
-  isVisible?: boolean;
-  onSelectMode?: (config: { mode: GameMode; timeLimit?: number; questionLimit?: number }) => void;
-  onModeSelect?: (mode: string) => void;
-  onCancel?: () => void;
-}
-
-/**
- * Props for achievements component
- * @used_by client/src/components/stats
- */
-export interface AchievementsProps {
-  achievements: Achievement[];
-  onAchievementClick?: (achievement: Achievement) => void;
-  className?: string;
+	currentMode?: string;
+	onModeChange?: (mode: string) => void;
+	onTopicChange?: (topic: string) => void;
+	onDifficultyChange?: (difficulty: string) => void;
+	className?: string;
+	isVisible?: boolean;
+	onSelectMode?: (config: { mode: GameMode; timeLimit?: number; questionLimit?: number }) => void;
+	onModeSelect?: (mode: string) => void;
+	onCancel?: () => void;
 }
 
 /**
@@ -149,18 +108,12 @@ export interface AchievementsProps {
  * @used_by client/src/components/stats/ScoringSystem.tsx
  */
 export interface ScoringSystemProps {
-  currentScore: number;
-  maxScore: number;
-  successRate: number;
-  currentStreak: number;
-  maxStreak: number;
-  className?: string;
-  stats?: GameSessionStats;
-  score?: number;
-  total?: number;
-  topicsPlayed?: string[];
-  difficultyStats?: Record<string, { correct: number; total: number }>;
-  currentQuestionMetadata?: CurrentQuestionMetadata;
+	currentStreak: number;
+	score?: number;
+	total?: number;
+	topicsPlayed?: string[];
+	difficultyStats?: DifficultyBreakdown;
+	currentQuestionMetadata?: CurrentQuestionMetadata;
 }
 
 /**
@@ -168,16 +121,16 @@ export interface ScoringSystemProps {
  * @used_by client/src/components/stats/CustomDifficultyHistory.tsx
  */
 export interface CustomDifficultyHistoryProps {
-  history?: Array<{
-    difficulty: string;
-    score: number;
-    date: string;
-  }>;
-  onItemClick?: (item: { id: string; name: string; value: number }) => void;
-  className?: string;
-  isVisible?: boolean;
-  onClose?: () => void;
-  onSelect?: (topic: string, difficulty: string) => void;
+	history?: {
+		difficulty: string;
+		score: number;
+		date: string;
+	}[];
+	onItemClick?: (item: { id: string; name: string; value: number }) => void;
+	className?: string;
+	isVisible?: boolean;
+	onClose?: () => void;
+	onSelect?: (topic: string, difficulty: string) => void;
 }
 
 /**
@@ -185,12 +138,12 @@ export interface CustomDifficultyHistoryProps {
  * @used_by client/src/components/home/CurrentDifficulty.tsx
  */
 export interface CurrentDifficultyProps {
-  difficulty: string;
-  onDifficultyChange: (difficulty: string) => void;
-  className?: string;
-  delay?: number;
-  topic?: string;
-  onShowHistory?: () => void;
+	difficulty: string;
+	onDifficultyChange: (difficulty: string) => void;
+	className?: string;
+	delay?: number;
+	topic?: string;
+	onShowHistory?: () => void;
 }
 
 /**
@@ -198,10 +151,10 @@ export interface CurrentDifficultyProps {
  * @used_by client/src/components/home/HomeTitle.tsx
  */
 export interface HomeTitleProps {
-  title: string;
-  subtitle?: string;
-  className?: string;
-  delay?: number;
+	title: string;
+	subtitle?: string;
+	className?: string;
+	delay?: number;
 }
 
 /**
@@ -209,11 +162,11 @@ export interface HomeTitleProps {
  * @used_by client/src/components/home/ErrorBanner.tsx
  */
 export interface ErrorBannerProps {
-  message: string;
-  type?: 'error' | 'warning' | 'info';
-  onClose?: () => void;
-  className?: string;
-  difficulty?: string;
+	message: string;
+	type?: 'error' | 'warning' | 'info';
+	onClose?: () => void;
+	className?: string;
+	difficulty?: string;
 }
 
 /**
@@ -221,14 +174,14 @@ export interface ErrorBannerProps {
  * @used_by client/src/components/layout/SocialShare.tsx
  */
 export interface SocialShareProps {
-  text?: string;
-  url?: string;
-  platforms?: string[];
-  className?: string;
-  score?: number;
-  total?: number;
-  topic?: string;
-  difficulty?: string;
+	text?: string;
+	url?: string;
+	platforms?: string[];
+	className?: string;
+	score?: number;
+	total?: number;
+	topic?: string;
+	difficulty?: string;
 }
 
 /**
@@ -236,13 +189,13 @@ export interface SocialShareProps {
  * @used_by client/src/components/leaderboard/Leaderboard.tsx
  */
 export interface LeaderboardProps {
-  entries?: Array<{
-    rank: number;
-    username: string;
-    score: number;
-    avatar?: string;
-  }>;
-  onEntryClick?: (entry: { id: string; username: string; score: number; rank: number }) => void;
-  className?: string;
-  userId?: string;
+	entries?: {
+		rank: number;
+		username: string;
+		score: number;
+		avatar?: string;
+	}[];
+	onEntryClick?: (entry: { id: string; username: string; score: number; rank: number }) => void;
+	className?: string;
+	userId?: string;
 }

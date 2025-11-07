@@ -13,9 +13,19 @@
 
 /**
  * Core constants
- * @description API, game, validation, and error constants
+ * @description API, validation, and error constants
  */
 export * from './core';
+
+// ============================================================================
+// DOMAIN CONSTANTS
+// ============================================================================
+
+/**
+ * Domain constants
+ * @description Game, user, payment, and points constants
+ */
+export * from './domain';
 
 // ============================================================================
 // INFRASTRUCTURE CONSTANTS
@@ -46,14 +56,3 @@ export * from './business';
  * @description Navigation links, routes, and configuration
  */
 export * from './navigation';
-
-// ============================================================================
-// UTILITY CONSTANTS
-// ============================================================================
-
-/**
- * Utility constants
- * @description Constants from utility functions that should be in constants
- */
-export { DEFAULT_USER_PREFERENCES } from '../utils/preferences.utils';
-export { isCustomDifficulty } from '../validation/difficulty.validation';

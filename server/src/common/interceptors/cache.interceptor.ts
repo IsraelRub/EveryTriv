@@ -6,14 +6,15 @@
  * @author EveryTriv Team
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
+import type { Response } from 'express';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-import { CacheService } from '../../internal/modules/cache/cache.service';
-import type { CacheConfig, NestRequest, NestResponse } from '../../internal/types';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+
+import { CacheService } from '@internal/modules/cache/cache.service';
+import type { NestRequest } from '@internal/types';
 
 /**
  * Cache Interceptor
@@ -21,10 +22,7 @@ import type { CacheConfig, NestRequest, NestResponse } from '../../internal/type
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
-	constructor(
-		private readonly cacheService: CacheService,
-		private readonly reflector: Reflector
-	) {}
+	constructor(private readonly cacheService: CacheService) {}
 
 	/**
 	 * Intercept HTTP requests and implement caching
@@ -34,8 +32,7 @@ export class CacheInterceptor implements NestInterceptor {
 	 */
 	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
 		const request = context.switchToHttp().getRequest();
-		const cacheMetadata =
-			this.reflector.get<CacheConfig>('cache', context.getHandler()) || request.decoratorMetadata?.cache;
+		const cacheMetadata = request.decoratorMetadata?.cache;
 
 		// If no cache metadata, proceed normally
 		if (!cacheMetadata || cacheMetadata.disabled) {
@@ -73,7 +70,7 @@ export class CacheInterceptor implements NestInterceptor {
 				tap(async result => {
 					try {
 						// Check cache condition if provided
-						if (cacheMetadata.condition && !cacheMetadata.condition(request, result as NestResponse)) {
+						if (cacheMetadata.condition && !cacheMetadata.condition(request, result as Response)) {
 							logger.cacheInfo('Cache condition failed - not caching', {
 								key: cacheMetadata.key,
 								method: request.method,

@@ -3,8 +3,23 @@
  * @module LeaderboardComponentTypes
  * @description UI component prop types for leaderboard and ranking components
  */
-import type { LeaderboardEntry } from '@shared/types';
 import { ReactNode } from 'react';
+
+import type { LeaderboardEntry } from '@shared/types';
+
+/**
+ * Card Metric Props Interface
+ * @interface CardMetricProps
+ * @description Common props for metric cards (ranking, analytics, etc.)
+ */
+export interface CardMetricProps {
+	title: string;
+	value: string;
+	subtitle: string;
+	icon: ReactNode | string;
+	color: 'yellow' | 'blue' | 'green' | 'purple' | 'red';
+	trend?: 'up' | 'down' | 'neutral';
+}
 
 /**
  * Ranking Card Component Props
@@ -12,13 +27,7 @@ import { ReactNode } from 'react';
  * @description Props for the RankingCard component used in leaderboard
  * @used_by client/src/views/leaderboard
  */
-export interface RankingCardProps {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: ReactNode;
-  color: string;
-}
+export interface RankingCardProps extends CardMetricProps {}
 
 /**
  * Leaderboard Entry Component Props
@@ -27,7 +36,6 @@ export interface RankingCardProps {
  * @used_by client/src/views/leaderboard
  */
 export interface LeaderboardEntryProps {
-  entry: LeaderboardEntry;
-  index: number;
-  isCurrentUser: boolean;
+	entry: LeaderboardEntry;
+	isCurrentUser: boolean;
 }

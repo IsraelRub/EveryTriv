@@ -1,17 +1,14 @@
-import type { BasicValue } from '@shared/types/core/data.types';
-import type { Achievement } from '@shared/types';
-import { UserRole } from '@shared/constants';
-import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, Index, OneToMany } from 'typeorm';
 
-import { DEFAULT_USER_PREFERENCES, ServerUserPreferences, UserAddress } from '../types/typeorm-compatibility.types';
+import { UserRole } from '@shared/constants';
+import type { Achievement, BasicValue, UserAddress, UserPreferences } from '@shared/types';
+
+import { BaseEntity } from './base.entity';
 import { GameHistoryEntity } from './gameHistory.entity';
 import { TriviaEntity } from './trivia.entity';
 
 @Entity('users')
-export class UserEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
+export class UserEntity extends BaseEntity {
 	@Column()
 	@Index({ unique: true })
 	username: string;
@@ -81,13 +78,13 @@ export class UserEntity {
 	resetPasswordExpires?: Date;
 
 	@Column('jsonb', { default: {} })
-	preferences: ServerUserPreferences = DEFAULT_USER_PREFERENCES;
+	preferences: Partial<UserPreferences> = {};
 
 	@Column('jsonb', { default: {} })
 	address: UserAddress = {};
 
 	@Column({ name: 'additional_info', nullable: true })
-	additionalInfo?: string;
+	bio?: string;
 
 	@Column({ name: 'agree_to_newsletter', default: false })
 	agreeToNewsletter: boolean = false;
@@ -101,17 +98,14 @@ export class UserEntity {
 	@Column('jsonb', { default: {} })
 	stats: Record<string, BasicValue> = {};
 
+	@Column('jsonb', { name: 'metadata', nullable: true, default: {} })
+	metadata?: Record<string, BasicValue>;
+
 	@OneToMany(() => TriviaEntity, trivia => trivia.user)
 	triviaHistory: TriviaEntity[];
 
 	@OneToMany(() => GameHistoryEntity, gameHistory => gameHistory.user)
 	gameHistory: GameHistoryEntity[];
-
-	@CreateDateColumn({ name: 'created_at' })
-	createdAt: Date = new Date();
-
-	@UpdateDateColumn({ name: 'updated_at' })
-	updatedAt: Date = new Date();
 
 	@Column('tsvector', { name: 'search_vector', select: false })
 	@Index()

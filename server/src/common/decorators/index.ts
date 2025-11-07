@@ -12,20 +12,5 @@ export * from './auth.decorator';
 // Cache decorators
 export * from './cache.decorator';
 
-// Validation decorators
-export * from './validation.decorator';
-
-// Parameter decorators (includes User decorator)
+// Param decorators
 export * from './param.decorator';
-
-// Repository decorators
-export * from './repository.decorator';
-
-// Performance decorators
-export * from './performance.decorator';
-
-// Logging decorators
-export * from './logging.decorator';
-
-// Game-specific decorators
-export * from './game.decorator';

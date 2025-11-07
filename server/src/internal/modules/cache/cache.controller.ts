@@ -1,13 +1,14 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { serverLogger as logger } from '@shared/services';
-import { createCacheError } from '@internal/utils';
-import { getErrorMessage } from '@shared/utils';
-import { UserRole, CACHE_DURATION, RATE_LIMITS } from '@shared/constants';
 
-import { Cache, RateLimit, Roles } from '../../../common';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
+import { getErrorMessage } from '@shared/utils';
+
+import { createCacheError } from '@internal/utils';
+
+import { Cache, Roles } from '../../../common';
 import { CacheService } from './cache.service';
-import { CacheStatsDto } from './dtos';
 
 /**
  * Controller for cache management and monitoring
@@ -25,7 +26,7 @@ export class CacheController {
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - stats don't change frequently
 	@ApiOperation({ summary: 'Get cache statistics' })
-	@ApiResponse({ status: 200, description: 'Cache statistics retrieved successfully', type: CacheStatsDto })
+	@ApiResponse({ status: 200, description: 'Cache statistics retrieved successfully' })
 	async getStats() {
 		try {
 			const result = await this.cacheService.getStats();
@@ -52,7 +53,6 @@ export class CacheController {
 	 */
 	@Delete('clear')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.CACHE_CLEAR.limit, RATE_LIMITS.CACHE_CLEAR.window) // 2 requests per minute - dangerous operation
 	@ApiOperation({ summary: 'Clear all cache entries' })
 	@ApiResponse({ status: 200, description: 'Cache cleared successfully' })
 	async clearCache() {
@@ -75,7 +75,6 @@ export class CacheController {
 	 */
 	@Get('exists/:key')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.CACHE_STATS.limit, RATE_LIMITS.CACHE_STATS.window) // 20 requests per minute
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	@ApiOperation({ summary: 'Check if a key exists in cache' })
 	@ApiResponse({ status: 200, description: 'Key existence checked successfully' })
@@ -85,7 +84,8 @@ export class CacheController {
 				throw new HttpException('Key is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const exists = await this.cacheService.exists(key);
+			const existsResult = await this.cacheService.exists(key);
+			const exists = existsResult.success && existsResult.data === true;
 			const ttl = exists ? await this.cacheService.getTTL(key) : -2;
 
 			logger.apiRead('cache_key_exists', {
@@ -112,7 +112,6 @@ export class CacheController {
 	 */
 	@Get('ttl/:key')
 	@Roles(UserRole.ADMIN)
-	@RateLimit(RATE_LIMITS.CACHE_STATS.limit, RATE_LIMITS.CACHE_STATS.window) // 20 requests per minute
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	@ApiOperation({ summary: 'Get TTL for a cache key' })
 	@ApiResponse({ status: 200, description: 'TTL retrieved successfully' })

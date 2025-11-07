@@ -5,7 +5,7 @@
  * @module ResponseTypes
  * @description Basic response structures and wrappers
  */
-import type { BaseData, StorageValue } from './data.types';
+import type { StorageValue } from './data.types';
 
 /**
  * Base API response interface
@@ -21,54 +21,14 @@ export interface BaseApiResponse<T = StorageValue> {
 }
 
 /**
- * Base response interface
- * @interface BaseResponse
- * @description Generic response structure with success status
- */
-export interface BaseResponse {
-	success: boolean;
-	message?: string;
-}
-
-/**
  * Response with optional URL
  * @interface UrlResponse
  * @description Response that may include a URL
  */
-export interface UrlResponse extends BaseResponse {
+export interface UrlResponse {
+	success: boolean;
+	message?: string;
 	url?: string;
-}
-
-/**
- * Response with optional data
- * @interface DataResponse
- * @description Response that may include data
- */
-export interface DataResponse<T = BaseData> extends BaseResponse {
-	data?: T;
-}
-
-/**
- * Success response interface
- * @interface SuccessResponse
- * @description Success response with guaranteed success status
- */
-export interface SuccessResponse<T = unknown> extends Omit<BaseApiResponse<T>, 'success'> {
-	success: true;
-}
-
-/**
- * Error response interface
- * @interface ErrorResponse
- * @description Error response with guaranteed failure status
- */
-export interface ErrorResponse extends Omit<BaseApiResponse<null>, 'success'> {
-	success: false;
-	error?: {
-		message: string;
-		code?: string;
-		details?: unknown;
-	};
 }
 
 /**
@@ -78,19 +38,6 @@ export interface ErrorResponse extends Omit<BaseApiResponse<null>, 'success'> {
  */
 export interface PaginatedResponse<T> extends BaseApiResponse<T[]> {
 	pagination: BasePagination;
-}
-
-/**
- * Metadata response interface
- * @interface MetadataResponse
- * @description Response with additional metadata
- */
-export interface MetadataResponse<T> extends BaseApiResponse<T> {
-	metadata?: {
-		processingTime?: number;
-		timestamp?: string;
-		context?: Record<string, unknown>;
-	};
 }
 
 /**
