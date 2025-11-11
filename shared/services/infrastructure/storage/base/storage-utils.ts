@@ -6,8 +6,8 @@
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage
  */
 import { STORAGE_ERROR_MESSAGES } from '@shared/constants';
-import { StorageOperationResult } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import type { StorageOperationResult, StorageValue, UserProgressData } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
 /**
  * Storage Utility Functions
@@ -139,5 +139,21 @@ export class StorageUtils {
 	 */
 	static calculateDuration(startTime: number): number {
 		return Date.now() - startTime;
+	}
+
+	static isUserProgressData(value: StorageValue): value is UserProgressData {
+		if (!isRecord(value)) {
+			return false;
+		}
+
+		return (
+			typeof value.userId === 'string' &&
+			typeof value.topic === 'string' &&
+			typeof value.correctAnswers === 'number' &&
+			typeof value.totalQuestions === 'number' &&
+			typeof value.averageResponseTime === 'number' &&
+			typeof value.lastPlayed === 'string' &&
+			typeof value.difficulty === 'string'
+		);
 	}
 }

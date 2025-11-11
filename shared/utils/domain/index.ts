@@ -8,3 +8,5 @@
 
 export * from './points.utils';
 export * from './user.utils';
+export * from './subscription.utils';
+export * from './entityGuards';

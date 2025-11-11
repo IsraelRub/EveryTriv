@@ -1,11 +1,14 @@
 import * as os from 'os';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 
+import { TimePeriod } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
+	Achievement,
+	ActivityEntry,
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
@@ -27,14 +30,47 @@ import type {
 	TopicStatsData,
 	UserAnalytics,
 	UserAnalyticsStats,
+	UserComparisonMetrics,
+	UserComparisonResult,
+	UserInsightsData,
+	UserPerformanceMetrics,
+	UserProgressAnalytics,
+	UserProgressTopic,
+	UserSummaryData,
+	UserTrendPoint,
 } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import {
+	getErrorMessage,
+	isBusinessMetricsData,
+	isCompleteUserAnalyticsData,
+	isDifficultyStatsRecord,
+	isTopicStatsArray,
+} from '@shared/utils';
 
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { createNotFoundError } from '@internal/utils';
 
 import { LeaderboardService } from '../leaderboard';
+
+type HistoryFilterOptions = {
+	startDate?: string;
+	endDate?: string;
+};
+
+type TrendQueryOptions = HistoryFilterOptions & {
+	groupBy?: TimePeriod;
+	limit?: number;
+};
+
+type ActivityQueryOptions = HistoryFilterOptions & {
+	limit?: number;
+};
+
+type ComparisonQueryOptions = HistoryFilterOptions & {
+	target?: 'global' | 'user';
+	targetUserId?: string;
+};
 
 /**
  * Service for trivia analytics and metrics
@@ -220,16 +256,7 @@ export class AnalyticsService implements OnModuleInit {
 
 			const stats = await this.calculateDifficultyStats(query);
 
-			function isDifficultyStats(diff: unknown): diff is { total: number } {
-				return isRecord(diff) && typeof diff.total === 'number';
-			}
-
-			const totalQuestions = Object.values(stats).reduce((sum: number, diff) => {
-				if (isDifficultyStats(diff)) {
-					return sum + diff.total;
-				}
-				return sum;
-			}, 0);
+			const totalQuestions = Object.values(stats).reduce((sum: number, diff) => sum + diff.total, 0);
 
 			return {
 				data: {
@@ -732,7 +759,7 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			const cacheKey = `analytics:topics:stats:${JSON.stringify(query ?? {})}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<TopicStats[]>(
 				cacheKey,
 				async () => {
 					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
@@ -773,7 +800,8 @@ export class AnalyticsService implements OnModuleInit {
 						})
 						.filter((stat): stat is TopicStats => stat !== null);
 				},
-				300
+				300,
+				isTopicStatsArray
 			);
 		} catch (error) {
 			logger.databaseError('Failed to get topics from database', {
@@ -792,7 +820,7 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			const cacheKey = `analytics:difficulty:stats:${JSON.stringify(query ?? {})}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<Record<string, DifficultyStat>>(
 				cacheKey,
 				async () => {
 					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
@@ -834,7 +862,8 @@ export class AnalyticsService implements OnModuleInit {
 
 					return result;
 				},
-				1800
+				1800,
+				isDifficultyStatsRecord
 			);
 		} catch (error) {
 			logger.analyticsError('calculateDifficultyStats', {
@@ -877,7 +906,7 @@ export class AnalyticsService implements OnModuleInit {
 		try {
 			const cacheKey = 'analytics:business:metrics';
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<BusinessMetrics>(
 				cacheKey,
 				async () => {
 					const totalUsers = await this.userRepo.count();
@@ -963,7 +992,8 @@ export class AnalyticsService implements OnModuleInit {
 						},
 					};
 				},
-				1800
+				1800,
+				isBusinessMetricsData
 			);
 		} catch (error) {
 			logger.analyticsError('calculateBusinessMetrics', {
@@ -1046,7 +1076,7 @@ export class AnalyticsService implements OnModuleInit {
 
 			const cacheKey = `:user:analytics:${userId}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<CompleteUserAnalytics>(
 				cacheKey,
 				async () => {
 					const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -1119,7 +1149,8 @@ export class AnalyticsService implements OnModuleInit {
 						ranking: rankingData,
 					};
 				},
-				900
+				900,
+				isCompleteUserAnalyticsData
 			);
 		} catch (error) {
 			logger.analyticsError('getUserAnalytics', {
@@ -1128,6 +1159,217 @@ export class AnalyticsService implements OnModuleInit {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Get detailed user statistics
+	 * @param userId User ID
+	 */
+	async getUserStatistics(userId: string): Promise<AnalyticsResponse<UserAnalytics>> {
+		const stats = await this.getUserStats(userId);
+		return {
+			data: stats,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get user performance metrics
+	 * @param userId User ID
+	 */
+	async getUserPerformance(userId: string): Promise<AnalyticsResponse<UserPerformanceMetrics>> {
+		const { history } = await this.fetchUserWithHistory(userId);
+		const performance = this.calculatePerformanceMetrics(history);
+		return {
+			data: performance,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get user progress analytics
+	 * @param userId User ID
+	 */
+	async getUserProgress(
+		userId: string,
+		query?: TrendQueryOptions
+	): Promise<AnalyticsResponse<UserProgressAnalytics>> {
+		const { history } = await this.fetchUserWithHistory(userId);
+		const filteredHistory = this.filterHistoryByDate(history, query);
+		const progress = this.buildUserProgressAnalytics(filteredHistory, query);
+		return {
+			data: progress,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get detailed user activity timeline
+	 * @param userId User ID
+	 */
+	async getUserActivity(
+		userId: string,
+		query?: ActivityQueryOptions
+	): Promise<AnalyticsResponse<ActivityEntry[]>> {
+		const { history } = await this.fetchUserWithHistory(userId);
+		const filteredHistory = this.filterHistoryByDate(history, query);
+		const entries = this.buildUserActivityEntries(filteredHistory, query?.limit);
+		return {
+			data: entries,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get insights for a specific user
+	 * @param userId User ID
+	 */
+	async getUserInsights(userId: string): Promise<AnalyticsResponse<UserInsightsData>> {
+		const stats = await this.getUserStats(userId);
+		const { history } = await this.fetchUserWithHistory(userId);
+		const performance = this.calculatePerformanceMetrics(history);
+		const progress = this.buildUserProgressAnalytics(history);
+		const insights = this.buildUserInsights(stats, performance, progress.topics);
+		return {
+			data: insights,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get personalized recommendations for a user
+	 * @param userId User ID
+	 */
+	async getUserRecommendations(userId: string): Promise<AnalyticsResponse<SystemRecommendation[]>> {
+		const stats = await this.getUserStats(userId);
+		const { history } = await this.fetchUserWithHistory(userId);
+		const performance = this.calculatePerformanceMetrics(history);
+		const progress = this.buildUserProgressAnalytics(history);
+		const recommendations = this.buildUserRecommendations(stats, performance, progress.topics);
+		const systemRecommendations = await this.getSystemRecommendations();
+		const combined = [...recommendations, ...systemRecommendations.slice(0, 2)];
+		return {
+			data: combined,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get user achievements
+	 * @param userId User ID
+	 */
+	async getUserAchievements(userId: string): Promise<AnalyticsResponse<Achievement[]>> {
+		const stats = await this.getUserStats(userId);
+		const { user, history } = await this.fetchUserWithHistory(userId);
+		const performance = this.calculatePerformanceMetrics(history);
+		const generated = this.buildUserAchievements(stats, performance, history);
+		const existing = Array.isArray(user.achievements) ? user.achievements : [];
+		const merged = new Map<string, Achievement>();
+		existing.forEach(achievement => {
+			if (achievement?.id) {
+				merged.set(achievement.id, achievement);
+			}
+		});
+		generated.forEach(achievement => {
+			if (achievement?.id && !merged.has(achievement.id)) {
+				merged.set(achievement.id, achievement);
+			}
+		});
+		const achievements = Array.from(merged.values()).sort((a, b) => {
+			const timeA = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
+			const timeB = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
+			return timeB - timeA;
+		});
+		return {
+			data: achievements,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get user trend timeline
+	 * @param userId User ID
+	 */
+	async getUserTrends(
+		userId: string,
+		query?: TrendQueryOptions
+	): Promise<AnalyticsResponse<UserTrendPoint[]>> {
+		const { history } = await this.fetchUserWithHistory(userId);
+		const filteredHistory = this.filterHistoryByDate(history, query);
+		const trends = this.buildUserTrends(filteredHistory, {
+			groupBy: query?.groupBy,
+			limit: query?.limit,
+		});
+		return {
+			data: trends,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Compare user metrics with another user or global averages
+	 * @param userId User ID
+	 * @param targetUserId Optional target user ID to compare against
+	 */
+	async compareUserPerformance(
+		userId: string,
+		query?: ComparisonQueryOptions
+	): Promise<AnalyticsResponse<UserComparisonResult>> {
+		const stats = await this.getUserStats(userId);
+		const { history } = await this.fetchUserWithHistory(userId);
+		const filteredHistory = this.filterHistoryByDate(history, query);
+		const performance = this.calculatePerformanceMetrics(filteredHistory);
+
+		const targetPreference = query?.target ?? (query?.targetUserId ? 'user' : 'global');
+		if (targetPreference === 'user' && !query?.targetUserId) {
+			throw new BadRequestException('targetUserId is required when target=user');
+		}
+
+		const result = await this.buildUserComparison(
+			userId,
+			stats,
+			performance,
+			filteredHistory,
+			targetPreference === 'user' ? query?.targetUserId : undefined,
+			query
+		);
+		return {
+			data: result,
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get user summary block
+	 * @param userId User ID
+	 */
+	async getUserSummary(
+		userId: string,
+		includeActivity: boolean
+	): Promise<AnalyticsResponse<UserSummaryData>> {
+		const stats = await this.getUserStats(userId);
+		const { user, history } = await this.fetchUserWithHistory(userId);
+		const performance = this.calculatePerformanceMetrics(history);
+		const achievements = this.buildUserAchievements(stats, performance, history);
+		const progress = this.buildUserProgressAnalytics(history);
+		const insights = this.buildUserInsights(stats, performance, progress.topics);
+		const summary = this.buildUserSummary(user, stats, performance, achievements, progress, insights);
+
+		if (includeActivity) {
+			const activityEntries = this.buildUserActivityEntries(history, 5);
+			const activityHighlights = activityEntries.map(entry => {
+				const detail = entry.detail ? ` - ${entry.detail}` : '';
+				return `${new Date(entry.date).toLocaleDateString('en-GB')}: ${entry.action.replace(/_/g, ' ')}${detail}`;
+			});
+			const insightsSet = new Set(summary.insights);
+			activityHighlights.forEach(highlight => insightsSet.add(highlight));
+			summary.insights = Array.from(insightsSet).slice(0, 10);
+		}
+
+		return {
+			data: summary,
+			timestamp: new Date().toISOString(),
+		};
 	}
 
 	/**
@@ -1184,6 +1426,633 @@ export class AnalyticsService implements OnModuleInit {
 			averageGameTime,
 			consistencyScore,
 			learningCurve,
+		};
+	}
+
+	/**
+	 * Fetch user entity with their full game history sorted by recency
+	 * @param userId User ID
+	 */
+	private async fetchUserWithHistory(userId: string): Promise<{
+		user: UserEntity;
+		history: GameHistoryEntity[];
+	}> {
+		const user = await this.userRepo.findOne({ where: { id: userId } });
+		if (!user) {
+			throw createNotFoundError('User');
+		}
+
+		const history = await this.gameHistoryRepo.find({
+			where: { userId },
+			order: { createdAt: 'DESC' },
+		});
+
+		return { user, history };
+	}
+
+	/**
+	 * Filter history records by optional date range
+	 */
+	private filterHistoryByDate(history: GameHistoryEntity[], options?: HistoryFilterOptions): GameHistoryEntity[] {
+		if (!options?.startDate && !options?.endDate) {
+			return history;
+		}
+
+		const start = options?.startDate ? new Date(options.startDate) : undefined;
+		const validStart = start && !Number.isNaN(start.getTime()) ? start : undefined;
+
+		const end = options?.endDate ? new Date(options.endDate) : undefined;
+		const validEnd = end && !Number.isNaN(end.getTime()) ? end : undefined;
+
+		return history.filter(game => {
+			const createdAt = game.createdAt ? new Date(game.createdAt) : undefined;
+			if (!createdAt) {
+				return false;
+			}
+
+			if (validStart && createdAt < validStart) {
+				return false;
+			}
+
+			if (validEnd) {
+				const endOfDay = new Date(validEnd);
+				endOfDay.setHours(23, 59, 59, 999);
+				if (createdAt > endOfDay) {
+					return false;
+				}
+			}
+
+			return true;
+		});
+	}
+
+	/**
+	 * Build activity entries from history
+	 */
+	private buildUserActivityEntries(
+		history: GameHistoryEntity[],
+		limit?: number
+	): ActivityEntry[] {
+		const effectiveLimit =
+			typeof limit === 'number' && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
+		const boundedHistory = history.slice(0, effectiveLimit);
+
+		return boundedHistory.map(game => ({
+			date: game.createdAt ?? new Date(),
+			action: 'game_completed',
+			detail: `Score ${game.score ?? 0} / ${game.totalQuestions ?? 0} (${game.correctAnswers ?? 0} correct)`,
+			topic: game.topic ?? undefined,
+			durationSeconds: game.timeSpent ?? undefined,
+		}));
+	}
+
+	private normalizeDateToPeriod(date: Date, period: TimePeriod): Date {
+		const normalized = new Date(date);
+		switch (period) {
+			case TimePeriod.HOURLY: {
+				normalized.setMinutes(0, 0, 0);
+				break;
+			}
+			case TimePeriod.WEEKLY: {
+				const day = normalized.getDay();
+				const diff = (day + 6) % 7; // Convert to Monday-based week
+				normalized.setDate(normalized.getDate() - diff);
+				normalized.setHours(0, 0, 0, 0);
+				break;
+			}
+			case TimePeriod.MONTHLY: {
+				normalized.setDate(1);
+				normalized.setHours(0, 0, 0, 0);
+				break;
+			}
+			case TimePeriod.DAILY:
+			default: {
+				normalized.setHours(0, 0, 0, 0);
+			}
+		}
+		return normalized;
+	}
+
+	private getWeekNumber(date: Date): number {
+		const target = new Date(date.valueOf());
+		target.setHours(0, 0, 0, 0);
+		// Thursday in current week decides the year.
+		target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+		const firstThursday = new Date(target.getFullYear(), 0, 4);
+		return (
+			1 +
+			Math.round(((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7)
+		);
+	}
+
+	private getPeriodKey(date: Date, period: TimePeriod): string {
+		const normalized = this.normalizeDateToPeriod(date, period);
+		switch (period) {
+			case TimePeriod.HOURLY:
+				return normalized.toISOString().substring(0, 13); // YYYY-MM-DDTHH
+			case TimePeriod.WEEKLY:
+				return `${normalized.getFullYear()}-W${String(this.getWeekNumber(normalized)).padStart(2, '0')}`;
+			case TimePeriod.MONTHLY:
+				return normalized.toISOString().substring(0, 7); // YYYY-MM
+			case TimePeriod.DAILY:
+			default:
+				return normalized.toISOString().substring(0, 10); // YYYY-MM-DD
+		}
+	}
+
+	private getTopKey(counter: Record<string, number>): string | undefined {
+		return Object.entries(counter).sort((a, b) => b[1] - a[1])[0]?.[0];
+	}
+
+	/**
+	 * Build progress analytics for a user's game history
+	 */
+	private buildUserProgressAnalytics(
+		gameHistory: GameHistoryEntity[],
+		trendOptions?: TrendQueryOptions
+	): UserProgressAnalytics {
+		const topicsMap = new Map<
+			string,
+			{
+				gamesPlayed: number;
+				totalQuestions: number;
+				correctAnswers: number;
+				totalTimeSpent: number;
+				lastPlayed: string | null;
+				difficultyBreakdown: Record<string, number>;
+			}
+		>();
+
+		let totalQuestions = 0;
+		let totalCorrect = 0;
+
+		gameHistory.forEach(game => {
+			const topic = game.topic || 'Unknown';
+			const entry =
+				topicsMap.get(topic) ??
+				{
+					gamesPlayed: 0,
+					totalQuestions: 0,
+					correctAnswers: 0,
+					totalTimeSpent: 0,
+					lastPlayed: null as string | null,
+					difficultyBreakdown: {},
+				};
+
+			entry.gamesPlayed += 1;
+			entry.totalQuestions += game.totalQuestions ?? 0;
+			entry.correctAnswers += game.correctAnswers ?? 0;
+			entry.totalTimeSpent += game.timeSpent ?? 0;
+
+			const playedAt = game.createdAt ? new Date(game.createdAt).toISOString() : null;
+			if (playedAt && (!entry.lastPlayed || playedAt > entry.lastPlayed)) {
+				entry.lastPlayed = playedAt;
+			}
+
+			const difficulty = game.difficulty || 'unknown';
+			entry.difficultyBreakdown[difficulty] = (entry.difficultyBreakdown[difficulty] ?? 0) + 1;
+
+			topicsMap.set(topic, entry);
+
+			totalQuestions += game.totalQuestions ?? 0;
+			totalCorrect += game.correctAnswers ?? 0;
+		});
+
+		const topics: UserProgressTopic[] = Array.from(topicsMap.entries())
+			.map(([topic, value]) => {
+				const successRate =
+					value.totalQuestions > 0 ? (value.correctAnswers / value.totalQuestions) * 100 : 0;
+				const averageResponseTime =
+					value.totalQuestions > 0 ? value.totalTimeSpent / value.totalQuestions : 0;
+
+				return {
+					topic,
+					gamesPlayed: value.gamesPlayed,
+					totalQuestions: value.totalQuestions,
+					correctAnswers: value.correctAnswers,
+					successRate,
+					averageResponseTime,
+					lastPlayed: value.lastPlayed,
+					difficultyBreakdown: value.difficultyBreakdown,
+				};
+			})
+			.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+
+		return {
+			topics,
+			timeline: this.buildUserTrends(gameHistory, {
+				groupBy: trendOptions?.groupBy,
+				limit: trendOptions?.limit,
+			}),
+			totals: {
+				gamesPlayed: gameHistory.length,
+				questionsAnswered: totalQuestions,
+				correctAnswers: totalCorrect,
+			},
+		};
+	}
+
+	/**
+	 * Build insights for a user based on stats and performance
+	 */
+	private buildUserInsights(
+		stats: UserAnalytics,
+		performance: UserPerformanceMetrics,
+		topics: UserProgressTopic[]
+	): UserInsightsData {
+		const strengths: string[] = [];
+		const improvements: string[] = [];
+		const recentHighlights: string[] = [];
+
+		topics.slice(0, 5).forEach(topic => {
+			if (topic.successRate >= 75) {
+				strengths.push(
+					`${topic.topic}: ${topic.successRate.toFixed(1)}% הצלחה (${topic.gamesPlayed} משחקים)`
+				);
+			} else if (topic.successRate <= 55 && topic.gamesPlayed >= 3) {
+				improvements.push(
+					`${topic.topic}: ${topic.successRate.toFixed(1)}% הצלחה – מומלץ להתאמן`
+				);
+			}
+		});
+
+		(stats.recentActivity ?? []).slice(0, 3).forEach(activity => {
+			const action = activity.action.replace(/_/g, ' ');
+			const detail = activity.detail ? ` (${activity.detail})` : '';
+			recentHighlights.push(
+				`${new Date(activity.date).toLocaleDateString('en-GB')} – ${action}${detail}`
+			);
+		});
+
+		if (performance.bestStreak && performance.bestStreak >= 5) {
+			strengths.unshift(`רצף שיא של ${performance.bestStreak} ימים רצופים במשחק`);
+		}
+
+		if (performance.weakestTopic) {
+			improvements.push(`נושא לשיפור: ${performance.weakestTopic}`);
+		}
+
+		if (recentHighlights.length === 0 && stats.totalGames > 0) {
+			recentHighlights.push('המשחק האחרון הושלם בהצלחה – המשך כך!');
+		}
+
+		return {
+			strengths,
+			improvements,
+			recentHighlights,
+		};
+	}
+
+	/**
+	 * Build personalized recommendations for a user
+	 */
+	private buildUserRecommendations(
+		stats: UserAnalytics,
+		performance: UserPerformanceMetrics,
+		topics: UserProgressTopic[]
+	): SystemRecommendation[] {
+		const recommendations: SystemRecommendation[] = [];
+
+		if (stats.successRate < 60) {
+			recommendations.push({
+				id: 'user-rec-success-rate',
+				type: 'performance',
+				title: 'דיוק נמוך במענה',
+				description: `שיעור ההצלחה הנוכחי שלך הוא ${stats.successRate.toFixed(1)}%.`,
+				message: 'נסה לפתור חידות ברמת קושי קלה יותר כדי לצבור ביטחון.',
+				action: 'התחל בסדרת משחקים בנושאים המועדפים עליך ברמת קל.',
+				priority: 'medium',
+				estimatedImpact: 'שיפור מדורג בדיוק התשובות',
+				implementationEffort: 'low',
+			});
+		}
+
+		const slowTopics = topics
+			.filter(topic => topic.averageResponseTime > 20)
+			.slice(0, 2)
+			.map(topic => topic.topic);
+
+		if (slowTopics.length > 0) {
+			recommendations.push({
+				id: 'user-rec-time-management',
+				type: 'performance',
+				title: 'תזמון המענה ארוך מהרגיל',
+				description: `זמן המענה הממוצע שלך גבוה במיוחד בנושאים: ${slowTopics.join(', ')}.`,
+				message: 'תרגל משחקים עם מגבלת זמן כדי לחדד את המהירות.',
+				action: 'שחק במצב "Time Attack" בנושאים אלו פעמיים ביום.',
+				priority: 'medium',
+				estimatedImpact: 'שיפור קצב פתרון החידות',
+				implementationEffort: 'medium',
+			});
+		}
+
+		if (performance.streakDays < 3 && stats.totalGames >= 3) {
+			recommendations.push({
+				id: 'user-rec-engagement',
+				type: 'engagement',
+				title: 'שמור על רצף משחקים',
+				description: 'רצף הימים הפעיל שלך קצר יחסית.',
+				message: 'כדי לשפר את הרצף, מומלץ לשחק לפחות משחק קצר אחד בכל יום.',
+				action: 'קבע תזכורת יומית למשחק קצר של חמש שאלות.',
+				priority: 'low',
+				estimatedImpact: 'הגברת המעורבות היומיומית',
+				implementationEffort: 'low',
+			});
+		}
+
+		return recommendations;
+	}
+
+	/**
+	 * Build user achievements from stats and history
+	 */
+	private buildUserAchievements(
+		stats: UserAnalytics,
+		performance: UserPerformanceMetrics,
+		gameHistory: GameHistoryEntity[]
+	): Achievement[] {
+		const achievements: Achievement[] = [];
+		const lastPlayed = gameHistory[0]?.createdAt
+			? new Date(gameHistory[0].createdAt).toISOString()
+			: undefined;
+
+		if (stats.totalGames >= 1) {
+			achievements.push({
+				id: 'ach-first-game',
+				name: 'משחק ראשון',
+				description: 'סיימת את המשחק הראשון שלך ב-EveryTriv',
+				icon: 'trophy',
+				unlockedAt: lastPlayed,
+				category: 'engagement',
+				points: 50,
+			});
+		}
+
+		if (stats.successRate >= 80 && stats.totalQuestions >= 20) {
+			achievements.push({
+				id: 'ach-accuracy-master',
+				name: 'אמן הדיוק',
+				description: `שיעור הצלחה של ${stats.successRate.toFixed(1)}% ב-${stats.totalQuestions} שאלות`,
+				icon: 'target',
+				unlockedAt: lastPlayed,
+				category: 'performance',
+				points: 150,
+			});
+		}
+
+		if (performance.bestStreak >= 5) {
+			achievements.push({
+				id: 'ach-streak-hero',
+				name: 'גיבור הרצף',
+				description: `רצף שיא של ${performance.bestStreak} ימים רצופים.`,
+				icon: 'fire',
+				unlockedAt: lastPlayed,
+				category: 'engagement',
+				points: 120,
+			});
+		}
+
+		const topTopic = Object.entries(stats.topicsPlayed ?? {}).sort((a, b) => b[1] - a[1])[0];
+		if (topTopic && topTopic[1] >= 5) {
+			achievements.push({
+				id: 'ach-topic-specialist',
+				name: 'מומחה נושא',
+				description: `שיחקת לפחות ${topTopic[1]} משחקים בנושא ${topTopic[0]}`,
+				icon: 'book',
+				unlockedAt: lastPlayed,
+				category: 'knowledge',
+				points: 100,
+			});
+		}
+
+		return achievements;
+	}
+
+	/**
+	 * Build user trend timeline
+	 */
+	private buildUserTrends(
+		gameHistory: GameHistoryEntity[],
+		options: { limit?: number; groupBy?: TimePeriod } = {}
+	): UserTrendPoint[] {
+		const limit = options.limit && options.limit > 0 ? Math.min(Math.floor(options.limit), 120) : 30;
+		const { groupBy } = options;
+
+		if (!groupBy) {
+			return gameHistory.slice(0, limit).map(game => {
+				const totalQuestions = game.totalQuestions ?? 0;
+				const correctAnswers = game.correctAnswers ?? 0;
+				const successRate = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+
+				return {
+					date: game.createdAt ? new Date(game.createdAt).toISOString() : new Date().toISOString(),
+					score: game.score ?? 0,
+					successRate,
+					totalQuestions,
+					correctAnswers,
+					topic: game.topic ?? undefined,
+					difficulty: game.difficulty ?? undefined,
+				};
+			});
+		}
+
+		const buckets = new Map<
+			string,
+			{
+				date: Date;
+				totalScore: number;
+				totalQuestions: number;
+				correctAnswers: number;
+				count: number;
+				topicCounter: Record<string, number>;
+				difficultyCounter: Record<string, number>;
+			}
+		>();
+
+		gameHistory.forEach(game => {
+			const createdAt = game.createdAt ? new Date(game.createdAt) : new Date();
+			const key = this.getPeriodKey(createdAt, groupBy);
+			const bucket =
+				buckets.get(key) ??
+				{
+					date: this.normalizeDateToPeriod(createdAt, groupBy),
+					totalScore: 0,
+					totalQuestions: 0,
+					correctAnswers: 0,
+					count: 0,
+					topicCounter: {},
+					difficultyCounter: {},
+				};
+
+			bucket.totalScore += game.score ?? 0;
+			bucket.totalQuestions += game.totalQuestions ?? 0;
+			bucket.correctAnswers += game.correctAnswers ?? 0;
+			bucket.count += 1;
+
+			if (game.topic) {
+				bucket.topicCounter[game.topic] = (bucket.topicCounter[game.topic] ?? 0) + 1;
+			}
+			if (game.difficulty) {
+				bucket.difficultyCounter[game.difficulty] = (bucket.difficultyCounter[game.difficulty] ?? 0) + 1;
+			}
+
+			buckets.set(key, bucket);
+		});
+
+		return Array.from(buckets.values())
+			.sort((a, b) => b.date.getTime() - a.date.getTime())
+			.slice(0, limit)
+			.map(bucket => {
+				const successRate =
+					bucket.totalQuestions > 0 ? (bucket.correctAnswers / bucket.totalQuestions) * 100 : 0;
+				return {
+					date: bucket.date.toISOString(),
+					score: bucket.count > 0 ? bucket.totalScore / bucket.count : 0,
+					successRate,
+					totalQuestions: bucket.totalQuestions,
+					correctAnswers: bucket.correctAnswers,
+					topic: this.getTopKey(bucket.topicCounter),
+					difficulty: this.getTopKey(bucket.difficultyCounter),
+			};
+		});
+	}
+
+	/**
+	 * Build comparison metrics and differences
+	 */
+	private async buildUserComparison(
+		userId: string,
+		stats: UserAnalytics,
+		performance: UserPerformanceMetrics,
+		history: GameHistoryEntity[],
+		targetUserId?: string,
+		query?: ComparisonQueryOptions
+	): Promise<UserComparisonResult> {
+		const userRanking = await this.leaderboardService.getUserRanking(userId);
+		const userMetrics: UserComparisonMetrics = {
+			successRate: stats.successRate ?? 0,
+			averageScore: stats.averageScore ?? 0,
+			totalGames: stats.totalGames ?? history.length,
+			rank: userRanking?.rank,
+			percentile: userRanking?.percentile,
+			bestStreak: performance.bestStreak,
+			streakDays: performance.streakDays,
+			improvementRate: performance.improvementRate,
+			consistencyScore: performance.consistencyScore,
+		};
+
+		let targetMetrics: UserComparisonMetrics;
+		let targetType: 'global' | 'user' = 'global';
+		let resolvedTargetUserId: string | undefined;
+
+		if (targetUserId && targetUserId !== userId) {
+			const targetStats = await this.getUserStats(targetUserId);
+			const { history: targetHistory } = await this.fetchUserWithHistory(targetUserId);
+			const filteredTargetHistory = this.filterHistoryByDate(targetHistory, query);
+			const targetPerformance = this.calculatePerformanceMetrics(filteredTargetHistory);
+			const targetRanking = await this.leaderboardService.getUserRanking(targetUserId);
+			targetMetrics = {
+				successRate: targetStats.successRate ?? 0,
+				averageScore: targetStats.averageScore ?? 0,
+				totalGames: targetStats.totalGames ?? filteredTargetHistory.length,
+				rank: targetRanking?.rank,
+				percentile: targetRanking?.percentile,
+				bestStreak: targetPerformance.bestStreak,
+				streakDays: targetPerformance.streakDays,
+				improvementRate: targetPerformance.improvementRate,
+				consistencyScore: targetPerformance.consistencyScore,
+			};
+			targetType = 'user';
+			resolvedTargetUserId = targetUserId;
+		} else {
+			const globalStats = await this.calculateGameStats();
+			targetMetrics = {
+				successRate: globalStats.averageScore,
+				averageScore: globalStats.averageScore,
+				totalGames: globalStats.totalGames,
+			};
+		}
+
+		const differences: UserComparisonMetrics = {
+			successRate: userMetrics.successRate - targetMetrics.successRate,
+			averageScore: userMetrics.averageScore - targetMetrics.averageScore,
+			totalGames: userMetrics.totalGames - targetMetrics.totalGames,
+			rank:
+				userMetrics.rank !== undefined && targetMetrics.rank !== undefined
+					? userMetrics.rank - targetMetrics.rank
+					: undefined,
+			percentile:
+				userMetrics.percentile !== undefined && targetMetrics.percentile !== undefined
+					? userMetrics.percentile - targetMetrics.percentile
+					: undefined,
+			bestStreak:
+				userMetrics.bestStreak !== undefined && targetMetrics.bestStreak !== undefined
+					? userMetrics.bestStreak - targetMetrics.bestStreak
+					: undefined,
+			streakDays:
+				userMetrics.streakDays !== undefined && targetMetrics.streakDays !== undefined
+					? userMetrics.streakDays - targetMetrics.streakDays
+					: undefined,
+			improvementRate:
+				userMetrics.improvementRate !== undefined && targetMetrics.improvementRate !== undefined
+					? userMetrics.improvementRate - targetMetrics.improvementRate
+					: undefined,
+			consistencyScore:
+				userMetrics.consistencyScore !== undefined && targetMetrics.consistencyScore !== undefined
+					? (userMetrics.consistencyScore ?? 0) - (targetMetrics.consistencyScore ?? 0)
+					: undefined,
+		};
+
+		return {
+			userId,
+			target: targetType,
+			targetUserId: resolvedTargetUserId,
+			userMetrics,
+			targetMetrics,
+			differences,
+		};
+	}
+
+	/**
+	 * Build user summary
+	 */
+	private buildUserSummary(
+		user: UserEntity,
+		stats: UserAnalytics,
+		performance: UserPerformanceMetrics,
+		achievements: Achievement[],
+		progress: UserProgressAnalytics,
+		insights: UserInsightsData
+	): UserSummaryData {
+		const basicInfo = {
+			userId: user.id,
+			username: user.username,
+			credits: user.credits,
+			purchasedPoints: user.purchasedPoints,
+			totalPoints: (user.credits ?? 0) + (user.purchasedPoints ?? 0),
+			createdAt: user.createdAt,
+			accountAge: user.createdAt
+				? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+				: 0,
+		};
+
+		const topTopics = progress.topics.slice(0, 3).map(topic => topic.topic);
+		const mergedInsights = [
+			...insights.strengths.slice(0, 2),
+			...insights.recentHighlights.slice(0, 1),
+			...insights.improvements.slice(0, 1),
+		].filter(Boolean);
+
+		return {
+			user: basicInfo,
+			highlights: {
+				totalGames: stats.totalGames,
+				bestScore: stats.bestScore,
+				topTopics,
+				achievementsUnlocked: achievements.length,
+			},
+			performance,
+			insights: mergedInsights,
 		};
 	}
 

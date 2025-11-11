@@ -3,11 +3,11 @@ import { Component, ErrorInfo } from 'react';
 import { motion } from 'framer-motion';
 
 import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
+import { getErrorMessage, getErrorStack, getErrorType, hasPropertyOfType } from '@shared/utils';
 
 import { storageService } from '../../services';
-import type { ErrorBoundaryProps, ErrorBoundaryState } from '../../types/ui';
-import { formatTime, getCurrentTimestamp } from '../../utils/datetime';
+import type { ErrorBoundaryProps, ErrorBoundaryState } from '../../types';
+import { formatTime, getCurrentTimestamp } from '../../utils';
 import { fadeInUp, scaleIn } from '../animations';
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -35,7 +35,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 			url: window.location.href,
 			timeSincePageLoad: formatTime(Math.floor((Date.now() - performance.timing.navigationStart) / 1000)),
 			errorType: getErrorType(error),
-			errorCode: (error as Error & { code?: string }).code || 'UNKNOWN',
+			errorCode: hasPropertyOfType(error, 'code', (value): value is string => typeof value === 'string')
+				? error.code
+				: 'UNKNOWN',
 			retryCount: this.retryCount,
 			lastErrorTime: new Date().toISOString(),
 		};

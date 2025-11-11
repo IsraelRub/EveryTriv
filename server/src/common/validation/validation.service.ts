@@ -131,17 +131,10 @@ export class ValidationService {
 
 			// Log validation result (without password)
 			if (result.isValid) {
-				logger.validationInfo('password', '[REDACTED]', 'validation_success', {
-					...options,
-					strength: result.strength,
-					score: result.score,
-				});
+				logger.validationInfo('password', '[REDACTED]', 'validation_success');
 			} else {
 				logger.validationWarn('password', '[REDACTED]', 'validation_failed', {
-					...options,
 					errors: result.errors,
-					strength: result.strength,
-					score: result.score,
 				});
 			}
 
@@ -666,6 +659,7 @@ export class ValidationService {
 			// Validate username if provided
 			if (profileData.username) {
 				const usernameValidation = await this.validateUsername(profileData.username);
+
 				if (!usernameValidation.isValid) {
 					errors.push(...usernameValidation.errors);
 				}

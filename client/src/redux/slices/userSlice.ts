@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import type { BasicUser } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { POINT_BALANCE_DEFAULT_VALUES } from '../../constants';
 import { authService } from '../../services';
@@ -11,7 +12,7 @@ export const fetchUserData = createAsyncThunk('user/fetchUserData', async (_, { 
 		const user = await authService.getCurrentUser();
 		return user;
 	} catch (error) {
-		return rejectWithValue((error as Error).message);
+		return rejectWithValue(getErrorMessage(error));
 	}
 });
 
@@ -21,7 +22,7 @@ export const updateUserProfile = createAsyncThunk(
 		try {
 			return userData;
 		} catch (error) {
-			return rejectWithValue((error as Error).message);
+			return rejectWithValue(getErrorMessage(error));
 		}
 	}
 );

@@ -235,10 +235,8 @@ export const useAudio = () => useContext(AudioContext);
 
 // שימוש ב-App.tsx:
 <AudioContext.Provider value={audioService}>
-  <AnimatedBackground>
-    <AppRoutes />
-  </AnimatedBackground>
-    </AudioContext.Provider>
+  <AppRoutes />
+</AudioContext.Provider>
 ```
 
 ### GameContext (ב-HomeView.tsx)

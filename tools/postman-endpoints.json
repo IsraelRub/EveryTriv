@@ -423,7 +423,7 @@
     },
     {
       "name": "👤 User Management",
-      "description": "👤 **USER MANAGEMENT ENDPOINTS** - User Profile & Account Management\n\n**Purpose:** Manage user profiles, preferences, credits, and account operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** User search, public profiles\n- 🔐 **Protected Endpoints:** Profile management, preferences, credits\n- 👑 **Admin Endpoints:** User administration, status management\n\n**Key Features:**\n- Complete profile management\n- User preferences (theme, language, notifications)\n- Credit system integration\n- User search functionality\n- Admin user management\n- Account deletion and status updates\n\n**Available Endpoints:**\n- Get User Profile (GET)\n- Update User Profile (PUT)\n- Update User Field (PATCH)\n- Get User Credits (GET)\n- Deduct User Credits (POST)\n- Search Users (GET)\n- Get User by Username (GET)\n- Get User by ID (GET)\n- Delete User Account (DELETE)\n- Update User Preferences (PUT)\n- Update Single Preference (PATCH)\n- Update User Credits (Admin) (PUT)\n- Delete User (Admin) (DELETE)\n- Update User Status (Admin) (PATCH)\n- Get All Users (Admin) (GET)\n- Admin Update User Status (PUT)\n\n**User Operations:**\n- Profile management\n- Preference settings\n- Credit management\n- Account operations\n- User search and discovery\n- Admin user administration",
+      "description": "👤 **USER MANAGEMENT ENDPOINTS** - User Profile & Account Management\n\n**Purpose:** Manage user profiles, preferences, credits, and account operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** User search, public profiles\n- 🔐 **Protected Endpoints:** Profile management, preferences, credits\n- 👑 **Admin Endpoints:** User administration, status management\n\n**Key Features:**\n- Complete profile management\n- User preferences (audio, animations, privacy)\n- Credit system integration\n- User search functionality\n- Admin user management\n- Account deletion and status updates\n\n**Available Endpoints:**\n- Get User Profile (GET)\n- Update User Profile (PUT)\n- Update User Field (PATCH)\n- Get User Credits (GET)\n- Deduct User Credits (POST)\n- Search Users (GET)\n- Get User by Username (GET)\n- Get User by ID (GET)\n- Delete User Account (DELETE)\n- Change Password (PUT)\n- Update User Preferences (PUT)\n- Update Single Preference (PATCH)\n- Update User Credits (Admin) (PUT)\n- Delete User (Admin) (DELETE)\n- Update User Status (Admin) (PATCH)\n- Get All Users (Admin) (GET)\n- Admin Update User Status (PUT)\n\n**User Operations:**\n- Profile management\n- Preference settings\n- Credit management\n- Account operations\n- User search and discovery\n- Admin user administration",
       "item": [
         {
           "name": "Get User Profile",
@@ -631,6 +631,31 @@
           }
         },
         {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"OldPass123!\",\n  \"newPassword\": \"NewPass456!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "change-password"]
+            }
+          }
+        },
+        {
           "name": "Update User Preferences",
           "request": {
             "method": "PUT",
@@ -646,7 +671,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"theme\": \"dark\",\n  \"language\": \"he\",\n  \"notifications\": true\n}"
+              "raw": "{\n  \"soundEnabled\": true,\n  \"musicEnabled\": false,\n  \"animationsEnabled\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users/preferences",
@@ -671,12 +696,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"value\": \"dark\"\n}"
+              "raw": "{\n  \"value\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/users/preferences/theme",
+              "raw": "{{baseUrl}}/users/preferences/soundEnabled",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "preferences", "theme"]
+              "path": ["users", "preferences", "soundEnabled"]
             }
           }
         },
@@ -1176,13 +1201,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/points/can-play?gameType=trivia",
+              "raw": "{{baseUrl}}/points/can-play?questionCount=5&gameMode=question-limited",
               "host": ["{{baseUrl}}"],
               "path": ["points", "can-play"],
               "query": [
                 {
-                  "key": "gameType",
-                  "value": "trivia"
+                  "key": "questionCount",
+                  "value": "5"
+                },
+                {
+                  "key": "gameMode",
+                  "value": "question-limited"
                 }
               ]
             }
@@ -1204,7 +1233,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 10,\n  \"reason\": \"Game play\",\n  \"gameType\": \"trivia\"\n}"
+              "raw": "{\n  \"questionCount\": 5,\n  \"gameMode\": \"question-limited\",\n  \"reason\": \"Game play\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/points/deduct",
@@ -1281,7 +1310,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionId\": \"tx_123456\",\n  \"paymentId\": \"pay_789012\"\n}"
+              "raw": "{\n  \"paymentIntentId\": \"pi_demo_123\",\n  \"points\": 120\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/points/confirm-purchase",
@@ -1312,7 +1341,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 29.99,\n  \"currency\": \"USD\",\n  \"paymentMethod\": \"credit_card\",\n  \"description\": \"Premium subscription\"\n}"
+              "raw": "{\n  \"planType\": \"premium\",\n  \"numberOfPayments\": 12,\n  \"agreeToTerms\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/create",

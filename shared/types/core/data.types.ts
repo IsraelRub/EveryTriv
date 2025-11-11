@@ -28,7 +28,7 @@ export type StatsValue = BasicValue | Date | Record<string, BasicValue | Date>;
  * @type StorageValue
  * @description Generic data value that can be stored in cache or transmitted
  */
-export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] | unknown[] | Date | null | undefined;
+export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] | unknown[] | Date | null | undefined | object;
 
 /**
  * Request data type for API requests

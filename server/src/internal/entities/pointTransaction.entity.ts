@@ -60,6 +60,7 @@ export class PointTransactionEntity extends BaseEntity {
 		freeQuestionsUsed?: number;
 		purchasedPointsUsed?: number;
 		creditsUsed?: number;
+		reason?: string | null;
 	} = {};
 
 	@Index()

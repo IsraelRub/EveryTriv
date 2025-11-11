@@ -177,7 +177,9 @@ export default function TriviaForm({
 							<textarea
 								placeholder='Describe the difficulty level in detail'
 								value={customDifficultyText}
-								onChange={e => handleCustomDifficultyChange((e.target as HTMLTextAreaElement).value)}
+								onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+									handleCustomDifficultyChange(event.target.value)
+								}
 								rows={3}
 								required
 								className={`w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-200 resize-y ${validationResult && !validationResult.isValid && validationResult.errors.length > 0 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-white/20 focus:border-blue-400/50'}`}

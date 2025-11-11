@@ -9,7 +9,6 @@ import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { createServerError } from '@internal/utils';
 
-// import type { LanguageToolServiceInterface } from '../types'; // Reserved for future use
 
 @Injectable()
 export class LanguageToolService {

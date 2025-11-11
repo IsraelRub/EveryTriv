@@ -2,7 +2,7 @@ import { forwardRef, memo, MouseEvent, useCallback } from 'react';
 
 import { motion } from 'framer-motion';
 
-import { useAudio } from '../../App';
+import { useAudio } from '../../hooks/useAudio';
 import { AudioKey, ButtonVariant, ComponentSize } from '../../constants';
 import { ButtonProps } from '../../types';
 import { combineClassNames } from '../../utils';
@@ -49,54 +49,37 @@ export const Button = memo(
 				<button
 					ref={ref}
 					className={combineClassNames(
-						// Base styles
-						'inline-flex items-center justify-center font-medium',
-						'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+						'inline-flex items-center justify-center font-medium rounded-md',
+						'transition-colors duration-150',
+						'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950',
 						'disabled:pointer-events-none disabled:opacity-50',
 
 						// Size variants
 						{
-							'px-3 py-1 text-sm': size === ComponentSize.SM,
-							'px-4 py-2 text-base': size === ComponentSize.MD,
-							'px-6 py-3 text-lg': size === ComponentSize.LG,
+							'px-3 py-1.5 text-sm': size === ComponentSize.SM,
+							'px-4 py-2 text-sm': size === ComponentSize.MD,
+							'px-5 py-3 text-base': size === ComponentSize.LG,
 						},
 
 						// Color variants
 						{
-							'bg-[#667eea] hover:bg-[#5a6ed4] text-white': variant === ButtonVariant.PRIMARY && !isGlassy,
-							'bg-[#f093fb] hover:bg-[#f083eb] text-white': variant === ButtonVariant.SECONDARY && !isGlassy,
-							'bg-[#4facfe] hover:bg-[#4facfe] text-white': variant === ButtonVariant.ACCENT && !isGlassy,
-							'hover:bg-white/10 text-white': variant === ButtonVariant.GHOST,
+							'bg-slate-100 text-slate-900 hover:bg-white': variant === ButtonVariant.PRIMARY && !isGlassy,
+							'bg-slate-800 text-slate-100 hover:bg-slate-700': variant === ButtonVariant.SECONDARY && !isGlassy,
+							'bg-blue-500 text-white hover:bg-blue-400': variant === ButtonVariant.ACCENT && !isGlassy,
+							'text-slate-300 hover:text-white hover:bg-slate-800/60': variant === ButtonVariant.GHOST,
 						},
 
 						// Glass effect
 						{
-							glass: isGlassy,
-							'cube-glow': withGlow,
-						},
-
-						// Custom gradient backgrounds for glassy variants
-						{
-							'hover:bg-gradient-to-r from-[#667eea]/30 to-[#764ba2]/30': variant === ButtonVariant.PRIMARY && isGlassy,
-							'hover:bg-gradient-to-r from-[#f093fb]/30 to-[#f5576c]/30':
-								variant === ButtonVariant.SECONDARY && isGlassy,
-							'hover:bg-gradient-to-r from-[#4facfe]/30 to-[#00f2fe]/30': variant === ButtonVariant.ACCENT && isGlassy,
+							'border border-slate-700 bg-slate-900/50 backdrop-blur-md text-slate-100': isGlassy,
+							'shadow-sm shadow-slate-900/40': withGlow,
 						},
 
 						className
 					)}
 					style={{
-						// Using fixed values for styling
-						borderRadius: '0.375rem',
 						fontFamily: 'system-ui, -apple-system, sans-serif',
-						fontWeight: '500',
-						boxShadow: withGlow ? '0 0 20px rgba(102, 126, 234, 0.5)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-						transitionDuration: '0.2s',
-						transitionTimingFunction: 'ease',
-						// Responsive design
-						...(window.innerWidth >= 768 && {
-							boxShadow: withGlow ? '0 0 20px rgba(102, 126, 234, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-						}),
+						fontWeight: 500,
 					}}
 					onClick={handleClick}
 					onMouseEnter={handleMouseEnter}

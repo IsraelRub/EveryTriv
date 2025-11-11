@@ -309,17 +309,7 @@ export class GameController {
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getGameStatistics(@CurrentUser() user: TokenPayload) {
 		try {
-			// This would call a service method to get game statistics
-			const statistics = {
-				totalGames: 0,
-				averageScore: 0,
-				bestScore: 0,
-				totalQuestionsAnswered: 0,
-				correctAnswers: 0,
-				accuracy: 0,
-				favoriteTopics: [],
-				difficultyBreakdown: {},
-			};
+			const statistics = await this.gameService.getAdminStatistics();
 
 			logger.apiRead('game_admin_statistics', {
 				id: user.sub,
@@ -345,15 +335,19 @@ export class GameController {
 	@Roles(UserRole.ADMIN)
 	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
 		try {
-			// This would call a service method to clear all game history
-			// await this.gameService.clearAllGameHistory();
+			const result = await this.gameService.clearAllGameHistory();
 
 			logger.apiDelete('game_admin_clear_all_history', {
 				id: user.sub,
 				role: user.role,
+				deletedCount: result.deletedCount,
 			});
 
-			return { cleared: true };
+			return {
+				cleared: true,
+				deletedCount: result.deletedCount,
+				message: result.message,
+			};
 		} catch (error) {
 			logger.gameError('Failed to clear all game history', {
 				error: getErrorMessage(error),

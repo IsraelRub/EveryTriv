@@ -118,8 +118,9 @@ export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionCore, 'an
  */
 export type TriviaQuestionInput<TDifficulty = GameDifficulty> = TriviaQuestionCore<TDifficulty>;
 
-export type TriviaQuestionPayload = Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'> &
-	Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>>;
+export interface TriviaQuestionPayload
+	extends Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>,
+		Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>> {}
 
 /**
  * Base answer payload shared across submission and result structures

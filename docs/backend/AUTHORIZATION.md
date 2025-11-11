@@ -204,13 +204,12 @@ Request → AuthGuard → RolesGuard → Controller
 ### בדיקות אבטחה
 
 ```typescript
-// בדיקת תפקיד ב-AuthenticationManager
-hasRole(user: TokenPayload, requiredRole: string): boolean {
-  return user.role === requiredRole || user.role === 'admin';
-}
-
-hasAnyRole(user: TokenPayload, requiredRoles: string[]): boolean {
-  return requiredRoles.includes(user.role) || user.role === 'admin';
+// RolesGuard.ts
+private userHasRequiredRole(user: BasicUser, requiredRoles: string[]): boolean {
+  if (requiredRoles.length === 0) {
+    return true;
+  }
+  return requiredRoles.includes(user.role);
 }
 ```
 

@@ -146,7 +146,7 @@ export class MetricsService {
 	 * @param success Whether execution was successful
 	 * @param error Error object if execution failed
 	 */
-	trackMiddlewareExecution(middlewareName: string, duration: number, success: boolean = true, _error?: Error): void {
+	trackMiddlewareExecution(middlewareName: string, duration: number, success: boolean = true, error?: Error): void {
 		const existing = this.middlewareMetrics.get(middlewareName);
 		const now = new Date();
 
@@ -166,6 +166,11 @@ export class MetricsService {
 
 			if (!success) {
 				existing.errorCount++;
+				if (error) {
+					existing.lastErrorMessage = error.message;
+					existing.lastErrorName = error.name;
+					existing.lastErrorTimestamp = now;
+				}
 			}
 		} else {
 			// Create new metrics entry
@@ -178,6 +183,9 @@ export class MetricsService {
 				slowOperations: duration > 1000 ? 1 : 0, // Consider operations > 1s as slow
 				errorCount: success ? 0 : 1,
 				lastExecuted: now,
+				lastErrorMessage: !success && error ? error.message : undefined,
+				lastErrorName: !success && error ? error.name : undefined,
+				lastErrorTimestamp: !success && error ? now : undefined,
 			});
 		}
 

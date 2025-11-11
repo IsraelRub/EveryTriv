@@ -77,10 +77,10 @@ Authorization: Bearer <jwt_token>
 ```
 
 #### GET /auth/google
-התחברות עם Google OAuth
+התחברות עם Google OAuth (מבצע הפניה ל-Google באמצעות Passport)
 
 #### GET /auth/google/callback
-Callback של Google OAuth
+Callback של Google OAuth – מחזיר הזוג אסימונים (access/refresh) ומידע על המשתמש
 
 ### Game
 
@@ -296,7 +296,24 @@ Callback של Google OAuth
 מחזיר היסטוריית תשלומים
 
 #### POST /payment/create
-יוצר תשלום
+יוצר תשלום (מנוי או חיוב חד-פעמי)  
+גוף לדוגמה עבור מנוי:
+```json
+{
+  "planType": "premium",
+  "numberOfPayments": 12,
+  "agreeToTerms": true
+}
+```
+גוף לדוגמה עבור תשלום מותאם:
+```json
+{
+  "amount": 29.99,
+  "currency": "USD",
+  "description": "Custom credit top-up",
+  "paymentMethod": "credit_card"
+}
+```
 
 ### Points
 
@@ -323,10 +340,21 @@ Callback של Google OAuth
 מחזיר חבילות נקודות
 
 #### GET /points/can-play
-בודק אם משתמש יכול לשחק
+בודק אם משתמש יכול לשחק עם המלאי הנוכחי  
+פרמטרים:
+- `questionCount` (query, חובה) – מספר השאלות המבוקש
+- `gameMode` (query, אופציונלי) – ברירת מחדל `question-limited`
 
 #### POST /points/deduct
-מנכה נקודות
+מנכה נקודות עבור משחק יחיד  
+גוף לדוגמה:
+```json
+{
+  "questionCount": 5,
+  "gameMode": "question-limited",
+  "reason": "Game play"
+}
+```
 
 #### GET /points/history
 מחזיר היסטוריית נקודות
@@ -335,7 +363,14 @@ Callback של Google OAuth
 רוכש נקודות
 
 #### POST /points/confirm-purchase
-מאשר רכישת נקודות
+מאשר רכישת נקודות לאחר תשלום מוצלח  
+גוף לדוגמה:
+```json
+{
+  "paymentIntentId": "pi_your_payment_intent_id",
+  "points": 120
+}
+```
 
 ### Subscription
 
@@ -356,14 +391,49 @@ Callback של Google OAuth
 #### GET /analytics/game/stats
 מחזיר סטטיסטיקות משחק
 
-#### GET /analytics/user/
-מחזיר אנליטיקת משתמש
+#### GET /analytics/user
+מחזיר אנליטיקת משתמש מחושב עבור המשתמש המחובר
+
+#### GET /analytics/user-stats/:userId
+מחזיר סטטיסטיקות משחק מפורטות עבור משתמש מוגדר
+
+#### GET /analytics/user-performance/:userId
+מחזיר מדדי ביצועים (רצפים, שיפור, עקביות) של משתמש
+
+#### GET /analytics/user-progress/:userId
+מחזיר התקדמות לפי נושאים וציר זמן של ביצועים
+- פרמטרים (query): `startDate`, `endDate`, `groupBy` (hourly/daily/weekly/monthly), `limit`
+
+#### GET /analytics/user-activity/:userId
+מחזיר פעילות אחרונה ואירועים בולטים של המשתמש
+- פרמטרים (query): `startDate`, `endDate`, `limit`
+
+#### GET /analytics/user-insights/:userId
+מחזיר תובנות והמלצות לשיפור
+
+#### GET /analytics/user-recommendations/:userId
+מחזיר המלצות פעולה מותאמות אישית
+
+#### GET /analytics/user-achievements/:userId
+מחזיר הישגים שנפתרו למשתמש
+
+#### GET /analytics/user-trends/:userId
+מחזיר מגמות וגרף ביצועים לאורך זמן
+- פרמטרים (query): `startDate`, `endDate`, `groupBy`, `limit`
+
+#### GET /analytics/user-comparison/:userId
+השוואת נתוני משתמש מול משתמש אחר או ממוצע גלובלי  
+- פרמטרים (query): `target` (global/user), `targetUserId` (חובה אם target=user), `startDate`, `endDate`
+
+#### GET /analytics/user-summary/:userId
+מחזיר תקציר מרוכז ל-dashboard (הישגים, תובנות, ביצועים)  
+- פרמטרים (query): `includeActivity` (ברירת מחדל false)
 
 #### GET /analytics/topics/popular
 מחזיר נושאים פופולריים
 
 #### GET /analytics/difficulty/stats
-מחזיר סטטיסטיקות קושי
+מחזיר סטטיסטיקות קושי לפי רמות
 
 ### Cache
 

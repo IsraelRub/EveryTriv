@@ -464,7 +464,6 @@ export interface LogMeta {
 	statusCode?: number;
 	statusText?: string;
 	storage?: string;
-	strength?: string;
 	success?: boolean;
 	successRate?: number;
 	suggestions?: string[];

@@ -100,18 +100,14 @@ export class RateLimitMiddleware implements NestMiddleware {
 			} catch (err) {
 				// Record error metrics
 				const duration = Date.now() - startTime;
-				metricsService.trackMiddlewareExecution(
-					'RateLimitMiddleware',
-					duration,
-					false,
-					err instanceof Error ? err : undefined
-				);
+				const normalizedError = ensureErrorObject(err);
+				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
 
 				if (err instanceof HttpException) {
 					throw err;
 				}
 
-				logger.systemError(ensureErrorObject(err), 'Decorator rate limit middleware error', {
+				logger.systemError(normalizedError, 'Decorator rate limit middleware error', {
 					ip,
 					path: req.path,
 				});
@@ -227,18 +223,14 @@ export class RateLimitMiddleware implements NestMiddleware {
 		} catch (err) {
 			// Record error metrics
 			const duration = Date.now() - startTime;
-			metricsService.trackMiddlewareExecution(
-				'RateLimitMiddleware',
-				duration,
-				false,
-				err instanceof Error ? err : undefined
-			);
+			const normalizedError = ensureErrorObject(err);
+			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
 
 			if (err instanceof HttpException) {
 				throw err;
 			}
 
-			logger.systemError(ensureErrorObject(err), 'Rate limit middleware error', {
+			logger.systemError(normalizedError, 'Rate limit middleware error', {
 				ip,
 				path: req.path,
 			});

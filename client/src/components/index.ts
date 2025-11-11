@@ -13,6 +13,7 @@ export * from './layout';
 export * from './stats';
 export * from './ui';
 export * from './user';
+export * from './navigation';
 
 // Direct component exports (moved from subdirectories)
 export { default as AudioControls } from './AudioControls';
@@ -22,5 +23,5 @@ export { ValidatedForm } from './ValidatedForm';
 export { default as GameMode } from './GameMode';
 export { Icon } from './IconLibrary';
 export { default as Leaderboard } from './Leaderboard';
-export { default as Navigation } from './Navigation';
+export { default as Navigation } from './navigation';
 export { default as SubscriptionPlans } from './SubscriptionPlans';

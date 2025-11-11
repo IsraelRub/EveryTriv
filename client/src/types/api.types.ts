@@ -39,6 +39,14 @@ import type {
 
 import type { EnhancedRequestConfig } from './interceptors.types';
 
+export interface SubscriptionCreationResponse {
+	subscriptionId?: string | null;
+	planType?: PlanType;
+	billingCycle?: BillingCycle;
+	status?: string;
+	paymentId?: string;
+}
+
 export interface ClientApiService {
 	// HTTP methods
 	get<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>>;

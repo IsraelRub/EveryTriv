@@ -384,7 +384,7 @@ export default function PaymentView() {
 						transition={{ delay: 0.2 }}
 						className='text-center mb-12'
 					>
-						<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>
+						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>
 							{PAYMENT_CONTENT.HEADER.title}
 						</h1>
 						<p className='text-xl text-slate-300'>{PAYMENT_CONTENT.HEADER.subtitle}</p>

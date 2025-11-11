@@ -30,11 +30,16 @@ export class LanguageValidationPipe implements PipeTransform {
 				throw new BadRequestException('Text is too long (max 2000 characters)');
 			}
 
-			const languageValidation = await this.validationService.validateInputWithLanguageTool(value.text, {
+			const languageOptions: LanguageValidationOptions = {
 				enableSpellCheck: value.options?.enableSpellCheck ?? true,
 				enableGrammarCheck: value.options?.enableGrammarCheck ?? true,
 				useExternalAPI: value.options?.useExternalAPI,
-			} as LanguageValidationOptions);
+			};
+
+			const languageValidation = await this.validationService.validateInputWithLanguageTool(
+				value.text,
+				languageOptions
+			);
 
 			// Log API call for language validation
 			logger.apiUpdate('language_validation', {

@@ -14,13 +14,14 @@ import {
 	Card,
 	ConfirmModal,
 	Container,
+	Icon,
 	createStaggerContainer,
 	fadeInUp,
 	FeatureErrorBoundary,
 	GridLayout,
 	scaleIn,
 } from '../../components';
-import { AlertVariant, ButtonVariant, CardVariant, ContainerSize, Spacing } from '../../constants';
+import { AlertVariant, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
 import { useDeleteUser, useGetUserById, useUpdateUserCredits, useUpdateUserStatus } from '../../hooks';
 
 export default function AdminDashboard() {
@@ -31,12 +32,19 @@ export default function AdminDashboard() {
 	);
 }
 
+type UserStatusOption = 'active' | 'suspended' | 'banned';
+const USER_STATUS_VALUES: UserStatusOption[] = ['active', 'suspended', 'banned'];
+
+const ADMIN_TABS: readonly ['users', 'analytics', 'settings'] = ['users', 'analytics', 'settings'];
+
+const isUserStatus = (value: string): value is UserStatusOption => USER_STATUS_VALUES.some(status => status === value);
+
 function AdminDashboardContent() {
 	const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'settings'>('users');
 	const [selectedUserId, setSelectedUserId] = useState('');
 	const [creditsAmount, setCreditsAmount] = useState(0);
 	const [creditsReason, setCreditsReason] = useState('');
-	const [userStatus, setUserStatus] = useState<'active' | 'suspended' | 'banned'>('active');
+	const [userStatus, setUserStatus] = useState<UserStatusOption>('active');
 	const [confirmModal, setConfirmModal] = useState<{
 		open: boolean;
 		userId: string;
@@ -97,7 +105,7 @@ function AdminDashboardContent() {
 						transition={{ delay: 0.2 }}
 						className='text-center mb-12'
 					>
-						<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Admin Dashboard</h1>
+						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Admin Dashboard</h1>
 						<p className='text-xl text-slate-300'>Manage users, content, and system settings</p>
 					</motion.header>
 
@@ -111,7 +119,7 @@ function AdminDashboardContent() {
 						aria-label='Admin Dashboard Navigation'
 					>
 						<div className='bg-slate-800/60 rounded-lg p-1 border border-white/10'>
-							{(['users', 'analytics', 'settings'] as const).map(tab => (
+							{ADMIN_TABS.map(tab => (
 								<button
 									key={tab}
 									onClick={() => setActiveTab(tab)}
@@ -211,7 +219,12 @@ function AdminDashboardContent() {
 												<div className='space-y-3'>
 													<select
 														value={userStatus}
-														onChange={e => setUserStatus(e.target.value as 'active' | 'suspended' | 'banned')}
+														onChange={event => {
+															const { value } = event.target;
+															if (isUserStatus(value)) {
+																setUserStatus(value);
+															}
+														}}
 														className='w-full p-2 bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
 													>
 														<option value='active'>Active</option>
@@ -329,19 +342,31 @@ function AdminDashboardContent() {
 										<GridLayout variant='balanced' gap={Spacing.MD}>
 											<div className='flex justify-between items-center'>
 												<span className='text-slate-300'>Database</span>
-												<span className='text-green-400'>✓ Healthy</span>
+												<span className='text-green-400 flex items-center gap-2'>
+													<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
+													Healthy
+												</span>
 											</div>
 											<div className='flex justify-between items-center'>
 												<span className='text-slate-300'>Redis Cache</span>
-												<span className='text-green-400'>✓ Healthy</span>
+												<span className='text-green-400 flex items-center gap-2'>
+													<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
+													Healthy
+												</span>
 											</div>
 											<div className='flex justify-between items-center'>
 												<span className='text-slate-300'>API Services</span>
-												<span className='text-green-400'>✓ Healthy</span>
+												<span className='text-green-400 flex items-center gap-2'>
+													<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
+													Healthy
+												</span>
 											</div>
 											<div className='flex justify-between items-center'>
 												<span className='text-slate-300'>File Storage</span>
-												<span className='text-green-400'>✓ Healthy</span>
+												<span className='text-green-400 flex items-center gap-2'>
+													<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
+													Healthy
+												</span>
 											</div>
 										</GridLayout>
 									</Card>

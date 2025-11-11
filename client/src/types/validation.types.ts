@@ -1,6 +1,18 @@
 import type { SimpleValidationResult } from '@shared/types';
 
-import type { ValidationHookOptions } from './ui/forms.types';
+/**
+ * Validation hook options interface
+ * @interface ValidationHookOptions
+ * @description Options for client-side validation hooks
+ */
+export interface ValidationHookOptions {
+	required?: boolean;
+	minLength?: number;
+	maxLength?: number;
+	pattern?: RegExp;
+	customValidator?: (value: string) => boolean;
+	errorMessage?: string;
+}
 
 /**
  * Client alias for convenience

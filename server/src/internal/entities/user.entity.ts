@@ -98,9 +98,6 @@ export class UserEntity extends BaseEntity {
 	@Column('jsonb', { default: {} })
 	stats: Record<string, BasicValue> = {};
 
-	@Column('jsonb', { name: 'metadata', nullable: true, default: {} })
-	metadata?: Record<string, BasicValue>;
-
 	@OneToMany(() => TriviaEntity, trivia => trivia.user)
 	triviaHistory: TriviaEntity[];
 

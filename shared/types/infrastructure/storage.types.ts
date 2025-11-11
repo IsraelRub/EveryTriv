@@ -5,7 +5,7 @@
  * @module StorageTypes
  * @description Storage interfaces and data structures
  */
-import { BasicValue } from '../core';
+import { BasicValue, StorageValue } from '../core/data.types';
 
 /**
  * storage service interface
@@ -14,8 +14,12 @@ import { BasicValue } from '../core';
  * @used_by client/src/services/storage/storage.service.ts
  */
 export interface StorageService {
-	set<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
-	get<T>(key: string): Promise<StorageOperationResult<T | null>>;
+	set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
+	get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
+	get<T extends StorageValue>(
+		key: string,
+		validator: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<T | null>>;
 	delete(key: string): Promise<StorageOperationResult<void>>;
 	exists(key: string): Promise<StorageOperationResult<boolean>>;
 	clear(): Promise<StorageOperationResult<void>>;
@@ -23,7 +27,18 @@ export interface StorageService {
 	getStats(): Promise<StorageOperationResult<StorageStats>>;
 	cleanup(options?: StorageCleanupOptions): Promise<StorageOperationResult<void>>;
 	invalidate(pattern: string): Promise<StorageOperationResult<void>>;
-	getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T>;
+	getOrSet<T extends StorageValue>(
+		key: string,
+		factory: () => Promise<T>,
+		ttl: number | undefined,
+		validator: (value: StorageValue) => value is T
+	): Promise<T>;
+	setItem?<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
+	getItem?<T extends StorageValue>(
+		key: string,
+		validator: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<T | null>>;
+	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
 
 /**
@@ -216,6 +231,9 @@ export interface StorageMetrics {
 			maxDuration: number;
 			errorCount: number;
 			lastExecuted: Date;
+			lastErrorMessage?: string;
+			lastErrorName?: string;
+			lastErrorTimestamp?: Date;
 		};
 	};
 }

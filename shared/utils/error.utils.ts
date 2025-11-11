@@ -9,6 +9,22 @@ import { NEST_EXCEPTION_NAMES } from '../constants';
 import type { HttpError, NestExceptionName } from '../types';
 import { isRecord } from './core/data.utils';
 
+const NEST_EXCEPTION_NAME_SET = new Set<string>(NEST_EXCEPTION_NAMES);
+
+const isNestExceptionName = (value: string): value is NestExceptionName => NEST_EXCEPTION_NAME_SET.has(value);
+
+const isHttpError = (error: Error): error is HttpError => {
+	if (!isRecord(error)) {
+		return false;
+	}
+
+	const hasResponse = isRecord(error.response);
+	const hasConfig = isRecord(error.config);
+	const hasCode = typeof error.code === 'string';
+
+	return hasResponse || hasConfig || hasCode;
+};
+
 /**
  * Enhanced error message extraction with specific error type handling
  * @param error - The error to extract message from
@@ -20,28 +36,27 @@ export function getErrorMessage(error: unknown): string {
 		const errorName = error.constructor.name;
 
 		// Handle HTTP errors with network-specific properties
-		const httpError = error as HttpError;
-		if (httpError.code || httpError.response) {
+		if (isHttpError(error) && (error.code || error.response)) {
 			// Handle specific error codes
-			if (['ECONNABORTED', 'ETIMEDOUT'].includes(httpError.code ?? '')) {
+			if (['ECONNABORTED', 'ETIMEDOUT'].includes(error.code ?? '')) {
 				return 'Request timed out. Please check your connection and try again.';
 			}
-			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(httpError.code ?? '')) {
+			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code ?? '')) {
 				return 'Unable to connect to server. Please check your connection.';
 			}
 
 			// Handle response errors
-			if (httpError.response?.data?.message) {
-				return httpError.response.data.message;
+			if (error.response?.data?.message) {
+				return error.response.data.message;
 			}
-			if (httpError.response?.data?.error) {
-				return httpError.response.data.error;
+			if (error.response?.data?.error) {
+				return error.response.data.error;
 			}
-			if (httpError.response?.statusText) {
-				return httpError.response.statusText;
+			if (error.response?.statusText) {
+				return error.response.statusText;
 			}
-			if (httpError.response?.status) {
-				return `Server error (${httpError.response.status}). Please try again later.`;
+			if (error.response?.status) {
+				return `Server error (${error.response.status}). Please try again later.`;
 			}
 
 			return error.message ?? 'Network request failed.';
@@ -92,7 +107,7 @@ export function getErrorMessage(error: unknown): string {
 		}
 
 		// Handle NestJS exceptions
-		if (NEST_EXCEPTION_NAMES.includes(errorName as NestExceptionName)) {
+		if (isNestExceptionName(errorName)) {
 			return error.message ?? 'Request failed. Please try again.';
 		}
 

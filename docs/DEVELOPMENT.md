@@ -679,7 +679,6 @@ const userSlice = createSlice({
 - `error.constants.ts` - קבועי שגיאות, הודעות שגיאה
 - `payment.constants.ts` - קבועי תשלומים, מחירים
 - `storage.constants.ts` - קבועי אחסון, מטמון
-- `navigation.constants.ts` - קבועי ניווט, נתיבים
 - `logging.constants.ts` - קבועי לוגים, רמות
 - `language.constants.ts` - קבועי שפה, תמיכה בשפות
 - `social.constants.ts` - קבועי רשתות חברתיות
@@ -688,6 +687,7 @@ const userSlice = createSlice({
 
 #### קבועים ספציפיים ל-Client
 - `audio.constants.ts` - קבועי אודיו
+- `ui/navigation.constants.ts` - קישורי ניווט, נתיבים וקונפיגורציה
 - קבועי UI עם עיצוב, קישורי ניווט, הגדרות אנימציה
 
 #### קבועים ספציפיים ל-Server

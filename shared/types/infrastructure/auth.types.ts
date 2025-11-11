@@ -39,15 +39,6 @@ export interface UserData {
 	isActive: boolean;
 }
 
-// Authentication Config
-export interface AuthenticationConfig {
-	enableRefreshTokens?: boolean;
-	accessTokenExpiry?: string;
-	refreshTokenExpiry?: string;
-	requireEmailVerification?: boolean;
-	requirePhoneVerification?: boolean;
-}
-
 // Token Payload
 export interface TokenPayload {
 	sub: string;
@@ -69,20 +60,6 @@ export interface TokenValidationResult {
 	isValid: boolean;
 	error?: string;
 	payload?: TokenPayload;
-}
-
-// Password Validation Result - imported from validation.types.ts
-export type { PasswordValidationResult } from '../domain';
-
-// Password Config
-export interface PasswordConfig {
-	saltRounds?: number;
-	minLength?: number;
-	maxLength?: number;
-	requireUppercase?: boolean;
-	requireLowercase?: boolean;
-	requireNumbers?: boolean;
-	requireSpecialChars?: boolean;
 }
 
 // Request Types for Authentication

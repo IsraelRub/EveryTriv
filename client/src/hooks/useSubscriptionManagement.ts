@@ -35,22 +35,14 @@ export const useCreateSubscription = () => {
 		onSuccess: data => {
 			// Invalidate queries with consistent keys
 			invalidateSubscriptionQueries(queryClient);
-			const response = data as Partial<{
-				plan: PlanType;
-				planType: PlanType;
-				billingCycle: BillingCycle;
-				status: string;
-			}>;
-			const responsePlan = response.planType ?? response.plan;
-			const normalizedPlan = responsePlan && Object.values(PlanType).includes(responsePlan) ? responsePlan : undefined;
-			const normalizedCycle =
-				response.billingCycle && Object.values(BillingCycle).includes(response.billingCycle)
-					? response.billingCycle
-					: undefined;
+			const normalizedPlan = data.planType && Object.values(PlanType).includes(data.planType) ? data.planType : undefined;
+			const normalizedCycle = data.billingCycle;
 			logger.userInfo('Subscription created successfully', {
+				id: data.subscriptionId ?? undefined,
 				planType: normalizedPlan,
 				billingCycle: normalizedCycle,
-				status: response.status,
+				status: data.status,
+				paymentId: data.paymentId,
 			});
 		},
 		onError: error => {

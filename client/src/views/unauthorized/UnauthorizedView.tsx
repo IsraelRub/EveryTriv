@@ -54,7 +54,7 @@ export default function UnauthorizedView() {
 					</motion.p>
 
 					{/* Actions */}
-					<motion.div variants={fadeInUp} className='flex flex-col sm:flex-row gap-4 justify-center'>
+					<motion.div variants={fadeInUp} className='flex flex-row gap-4 justify-center'>
 						<Button variant={ButtonVariant.SECONDARY} onClick={handleGoBack} className='flex items-center gap-2'>
 							<Icon name='ArrowLeft' className='w-4 h-4' />
 							Go Back

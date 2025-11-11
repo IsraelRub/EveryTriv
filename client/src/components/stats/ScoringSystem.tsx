@@ -4,7 +4,7 @@ import type { StatisticsItem } from '@shared/types';
 
 import { ComponentSize, SCORING_DEFAULTS, Spacing } from '@/constants';
 
-import type { CurrentQuestionMetadata, ScoreStats, ScoringSystemProps } from '../../types';
+import type { ScoreStats, ScoringSystemProps } from '../../types';
 import { Icon } from '../IconLibrary';
 import { GridLayout } from '../layout';
 
@@ -14,49 +14,44 @@ export default function ScoringSystem({
 	topicsPlayed,
 	difficultyStats,
 	currentStreak = SCORING_DEFAULTS.STREAK,
-	currentQuestionMetadata, // New prop for current question metadata
-}: ScoringSystemProps & {
-	currentQuestionMetadata?: CurrentQuestionMetadata;
-}) {
+	currentQuestionMetadata,
+}: ScoringSystemProps) {
 	const streak = currentStreak; // Use the renamed prop
 	const stats = useMemo(() => {
-		const gradeRanges = [
+		const gradeRanges: ScoreStats[] = [
 			{ min: 90, grade: 'A', color: 'bg-green-500' },
 			{ min: 80, grade: 'B', color: 'bg-blue-500' },
 			{ min: 70, grade: 'C', color: 'bg-blue-600' },
 			{ min: 60, grade: 'D', color: 'bg-yellow-500' },
 			{ min: 0, grade: 'F', color: 'bg-red-500' },
-		] as const;
+		];
 
-		const percentage = total === 0 ? 0 : ((score ?? 0) / (total ?? 1)) * 100;
+		const normalizedScore = typeof score === 'number' ? score : 0;
+		const normalizedTotal = typeof total === 'number' ? total : 0;
+		const percentage = normalizedTotal === 0 ? 0 : (normalizedScore / normalizedTotal) * 100;
 
-		return gradeRanges.reduce<ScoreStats>(
-			(acc, range) => {
-				if (percentage >= range.min && !acc.grade) {
+		const matchedRange = gradeRanges.find(range => percentage >= range.min) ?? gradeRanges[gradeRanges.length - 1];
+
 					return {
+			correct: normalizedScore,
+			total: normalizedTotal,
+			grade: matchedRange.grade,
+			color: matchedRange.color,
 						percentage,
-						grade: range.grade,
-						color: range.color,
-					} as ScoreStats;
-				}
-				return acc;
-			},
-			{ percentage: 0, grade: 'F', color: 'bg-red-500' } as ScoreStats
-		);
+		};
 	}, [score, total]);
 
 	const topTopics = useMemo(() => {
 		if (!topicsPlayed) return [];
-		return Object.entries(topicsPlayed)
-			.reduce(
-				(acc, [topic, count]) => {
-					acc.push({ topic, count: Number(count) ?? 0 });
-					return acc;
-				},
-				[] as Pick<StatisticsItem, 'topic' | 'count'>[]
-			)
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 5);
+
+		const topicEntries: Array<Pick<StatisticsItem, 'topic' | 'count'>> = Object.entries(topicsPlayed).map(
+			([topic, count]) => ({
+				topic,
+				count: Number(count) || 0,
+			})
+		);
+
+		return topicEntries.sort((a, b) => b.count - a.count).slice(0, 5);
 	}, [topicsPlayed]);
 
 	if (total === 0) {
@@ -128,8 +123,9 @@ export default function ScoringSystem({
 								</div>
 								{currentQuestionMetadata.customDifficultyMultiplier && (
 									<div className='text-center'>
-										<span className='text-purple-400 font-medium'>
-											×{currentQuestionMetadata.customDifficultyMultiplier}
+										<span className='text-purple-400 font-medium flex items-center justify-center gap-1'>
+											<Icon name='multiply' size={ComponentSize.SM} className='text-purple-400' />
+											{currentQuestionMetadata.customDifficultyMultiplier}
 										</span>
 										<div className='text-white/60'>Custom Multiplier</div>
 									</div>

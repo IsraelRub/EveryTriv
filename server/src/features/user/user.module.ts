@@ -8,7 +8,7 @@
  * @provides UserService
  * @entities UserEntity
  */
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthenticationManager, PasswordService } from 'src/common/auth';
@@ -27,7 +27,7 @@ import { UserStatsService } from './userStats.service';
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity]),
-		AuthModule,
+		forwardRef(() => AuthModule),
 		CacheModule,
 		StorageModule,
 		ValidationModule,

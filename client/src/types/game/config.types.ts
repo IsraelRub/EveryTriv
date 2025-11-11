@@ -185,9 +185,7 @@ export interface HistoryItem {
  * @description Score statistics for display
  */
 export interface ScoreStats {
-	correct: number;
-	total: number;
-	grade?: string;
-	color?: string;
-	percentage?: number;
+	min: number;
+	grade: string;
+	color: string;
 }

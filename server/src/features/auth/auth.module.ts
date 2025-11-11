@@ -5,7 +5,7 @@
  * @description authentication module with login, register, guards, and OAuth
  * @used_by server/src/app, server/src/controllers
  */
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -19,6 +19,7 @@ import { UserEntity } from '@internal/entities';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
+import { UserModule } from '../user';
 
 @Module({
 	imports: [
@@ -28,6 +29,7 @@ import { GoogleStrategy } from './google.strategy';
 			secret: AUTH_CONSTANTS.JWT_SECRET,
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
+		forwardRef(() => UserModule),
 	],
 	controllers: [AuthController],
 	providers: [

@@ -7,6 +7,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+	Max,
+	Min,
 	IsBoolean,
 	IsDateString,
 	IsIn,
@@ -270,3 +272,115 @@ export class DifficultyAnalyticsQueryDto {
 	})
 	groupBy?: TimePeriod;
 }
+
+export class UserIdParamDto {
+	@ApiProperty({
+		description: 'User ID',
+		example: 'f6e8b1a2-1234-4abd-9c1d-5e7f6b8a9c0d',
+	})
+	@IsString()
+	@IsNotEmpty({ message: 'User ID is required' })
+	userId!: string;
+}
+
+export class UserActivityQueryDto {
+	@ApiPropertyOptional({
+		description: 'Maximum number of activity entries to return',
+		example: 25,
+		minimum: 1,
+		maximum: 200,
+	})
+	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Limit must be a number' })
+	@Min(1, { message: 'Limit must be at least 1' })
+	@Max(200, { message: 'Limit cannot exceed 200' })
+	limit?: number;
+
+	@ApiPropertyOptional({
+		description: 'Start date for activity range filter',
+		example: '2024-01-01',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'Start date must be a valid date' })
+	startDate?: string;
+
+	@ApiPropertyOptional({
+		description: 'End date for activity range filter',
+		example: '2024-01-31',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'End date must be a valid date' })
+	endDate?: string;
+}
+
+export class UserTrendQueryDto {
+	@ApiPropertyOptional({
+		description: 'Start date for user trend analytics',
+		example: '2024-01-01',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'Start date must be a valid date' })
+	startDate?: string;
+
+	@ApiPropertyOptional({
+		description: 'End date for user trend analytics',
+		example: '2024-05-31',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'End date must be a valid date' })
+	endDate?: string;
+
+	@ApiPropertyOptional({
+		description: 'Group trend data by time period',
+		example: 'weekly',
+		enum: VALID_TIME_PERIODS,
+	})
+	@IsOptional()
+	@IsString()
+	@IsIn(VALID_TIME_PERIODS, {
+		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
+	})
+	groupBy?: TimePeriod;
+
+	@ApiPropertyOptional({
+		description: 'Maximum number of timeline points to return',
+		example: 30,
+		minimum: 1,
+		maximum: 200,
+	})
+	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Limit must be a number' })
+	limit?: number;
+}
+
+export class UserComparisonQueryDto {
+	@ApiPropertyOptional({
+		description: 'Comparison target: global averages or another user',
+		example: 'global',
+		enum: ['global', 'user'],
+	})
+	@IsOptional()
+	@IsIn(['global', 'user'], { message: 'Target must be either global or user' })
+	target?: 'global' | 'user';
+
+	@ApiPropertyOptional({
+		description: 'Target user ID when comparing two users',
+		example: 'a7c8b9d0-1234-4def-9abc-5e6f7d8c9b0a',
+	})
+	@IsOptional()
+	@IsString()
+	targetUserId?: string;
+}
+
+export class UserSummaryQueryDto {
+	@ApiPropertyOptional({
+		description: 'Include full activity history in the summary',
+		example: true,
+	})
+	@IsOptional()
+	@IsBoolean({ message: 'includeActivity must be a boolean value' })
+	includeActivity?: boolean;
+}
+

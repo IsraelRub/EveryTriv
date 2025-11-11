@@ -9,8 +9,9 @@
 import { BillingCycle, PlanType } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { BasicValue, UpdateUserProfileData, UserPreferences, UserProfileResponseType } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, hasPropertyOfType } from '@shared/utils';
 
+import type { SubscriptionCreationResponse } from '../types';
 import { apiService } from './api.service';
 
 /**
@@ -184,14 +185,32 @@ class ClientUserService {
 	/**
 	 * Create subscription
 	 */
-	async createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<unknown> {
+	async createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionCreationResponse> {
 		try {
 			logger.userInfo('Creating subscription', { planType: plan, billingCycle });
 
 			const response = await apiService.createSubscription(plan, billingCycle);
+			const normalizedBillingCycle = Object.values(BillingCycle).find(
+				cycle => cycle === response.billingCycle
+			);
+			const paymentId = hasPropertyOfType(response, 'paymentId', (value): value is string => typeof value === 'string')
+				? response.paymentId
+				: undefined;
 
-			logger.userInfo('Subscription created successfully', { planType: plan, billingCycle });
-			return response;
+			const subscriptionPayload: SubscriptionCreationResponse = {
+				subscriptionId: response.subscriptionId,
+				planType: response.planType,
+				billingCycle: normalizedBillingCycle,
+				status: response.status,
+				paymentId,
+			};
+
+			logger.userInfo('Subscription created successfully', {
+				id: subscriptionPayload.subscriptionId ?? undefined,
+				planType: subscriptionPayload.planType,
+				billingCycle: subscriptionPayload.billingCycle,
+			});
+			return subscriptionPayload;
 		} catch (error) {
 			logger.userError('Failed to create subscription', {
 				error: getErrorMessage(error),

@@ -39,7 +39,33 @@ export class AuthService {
 		});
 
 		if (existingUser) {
-			throw new BadRequestException('Username or email already exists');
+			const passwordMatches = existingUser.passwordHash
+				? await this.passwordService.comparePassword(registerDto.password, existingUser.passwordHash)
+				: false;
+
+			if (!passwordMatches) {
+				throw new BadRequestException('Username or email already exists');
+			}
+
+			const tokenPair = await this.authenticationManager.generateTokensForUser({
+				id: existingUser.id,
+				username: existingUser.username,
+				email: existingUser.email,
+				role: existingUser.role,
+			});
+
+			return {
+				access_token: tokenPair.accessToken,
+				refresh_token: tokenPair.refreshToken,
+				user: {
+					id: existingUser.id,
+					username: existingUser.username,
+					email: existingUser.email,
+					firstName: existingUser.firstName,
+					lastName: existingUser.lastName,
+					role: existingUser.role,
+				},
+			};
 		}
 
 		// Hash password using PasswordService
@@ -190,13 +216,134 @@ export class AuthService {
 			where: { username, isActive: true },
 		});
 
-		if (user && user.passwordHash) {
-			const isPasswordValid = await this.passwordService.comparePassword(password, user.passwordHash);
-			if (isPasswordValid) {
-				const { passwordHash: _passwordHash, ...result } = user;
-				return result;
+		if (!user) {
+			return null;
+		}
+
+		const { passwordHash, ...result } = user;
+
+		if (!passwordHash) {
+			return null;
+		}
+
+		const isPasswordValid = await this.passwordService.comparePassword(password, passwordHash);
+		if (isPasswordValid) {
+			return result;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Login or register user via Google OAuth profile
+	 * @param profile Google profile payload
+	 */
+	async loginWithGoogle(profile: {
+		googleId: string;
+		email?: string;
+		username?: string;
+		fullName?: string;
+		firstName?: string;
+		lastName?: string;
+		avatar?: string;
+	}): Promise<AuthResponseDto> {
+		if (!profile.googleId) {
+			throw new BadRequestException('Google profile is missing identifier');
+		}
+
+		const normalizedEmail = profile.email?.toLowerCase();
+		const baseUsername =
+			profile.username ||
+			normalizedEmail?.split('@')[0] ||
+			`google_${profile.googleId.substring(0, 8)}`;
+
+		const sanitizedBase = baseUsername.replace(/[^a-zA-Z0-9_-]/g, '') || `google_${Date.now()}`;
+
+		let user = await this.userRepository.findOne({
+			where: [
+				{ googleId: profile.googleId },
+				...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+			],
+		});
+
+		if (!user) {
+			// Ensure username uniqueness
+			let usernameCandidate = sanitizedBase;
+			let suffix = 1;
+			let usernameTaken = await this.userRepository.findOne({
+				where: { username: usernameCandidate },
+			});
+			while (usernameTaken) {
+				usernameCandidate = `${sanitizedBase}${suffix++}`;
+				usernameTaken = await this.userRepository.findOne({
+					where: { username: usernameCandidate },
+				});
+			}
+
+			const email = normalizedEmail ?? `${profile.googleId}@googleuser.everytriv`;
+			const [firstName, ...restName] =
+				profile.fullName?.split(' ') ?? profile.firstName
+					? [profile.firstName ?? '', profile.lastName ?? '']
+					: [usernameCandidate, ''];
+
+			user = this.userRepository.create({
+				username: usernameCandidate,
+				email,
+				googleId: profile.googleId,
+				fullName: profile.fullName,
+				firstName: profile.firstName ?? firstName ?? undefined,
+				lastName: profile.lastName ?? (restName.length ? restName.join(' ') : undefined),
+				avatar: profile.avatar,
+				role: UserRole.USER,
+				isActive: true,
+			});
+
+			await this.userRepository.save(user);
+		} else {
+			// Ensure googleId stored and update avatar/full name if missing
+			let shouldPersist = false;
+			if (!user.googleId) {
+				user.googleId = profile.googleId;
+				shouldPersist = true;
+			}
+			if (!user.avatar && profile.avatar) {
+				user.avatar = profile.avatar;
+				shouldPersist = true;
+			}
+			if (!user.firstName && profile.fullName) {
+				const [firstName, ...rest] = profile.fullName.split(' ');
+				user.firstName = firstName;
+				user.lastName = rest.join(' ') || user.lastName;
+				user.fullName = profile.fullName;
+				shouldPersist = true;
+			}
+			if (shouldPersist) {
+				await this.userRepository.save(user);
 			}
 		}
-		return null;
+
+		if (!user.isActive) {
+			throw new UnauthorizedException('User account is disabled');
+		}
+
+		const tokenPair = await this.authenticationManager.generateTokensForUser({
+			id: user.id,
+			username: user.username,
+			email: user.email,
+			role: user.role,
+		});
+
+		return {
+			access_token: tokenPair.accessToken,
+			refresh_token: tokenPair.refreshToken,
+			user: {
+				id: user.id,
+				username: user.username,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+		};
 	}
 }

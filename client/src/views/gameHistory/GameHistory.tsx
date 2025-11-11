@@ -146,7 +146,7 @@ export default function GameHistory() {
 						transition={{ delay: 0.2 }}
 						className='text-center mb-12'
 					>
-						<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Game History</h1>
+						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Game History</h1>
 						<p className='text-xl text-slate-300'>Review your past trivia sessions</p>
 
 						{/* Management Buttons */}

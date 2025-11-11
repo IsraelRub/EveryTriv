@@ -79,15 +79,15 @@ export function unique<T>(arr: T[]): T[] {
  * @returns Grouped array
  */
 export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
-	return arr.reduce(
-		(groups, item) => {
+	const grouped: Record<string, T[]> = {};
+
+	for (const item of arr) {
 			const groupKey = String(item[key]);
-			if (!groups[groupKey]) {
-				groups[groupKey] = [];
+		if (!grouped[groupKey]) {
+			grouped[groupKey] = [];
 			}
-			groups[groupKey].push(item);
-			return groups;
-		},
-		{} as Record<string, T[]>
-	);
+		grouped[groupKey].push(item);
+	}
+
+	return grouped;
 }

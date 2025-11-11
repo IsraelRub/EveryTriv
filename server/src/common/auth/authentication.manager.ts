@@ -9,15 +9,7 @@ import { Injectable } from '@nestjs/common';
 
 import { UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import {
-	AuthenticationConfig,
-	AuthenticationRequest,
-	AuthenticationResult,
-	LoginCredentials,
-	SimpleValidationResult,
-	TokenPayload,
-	UserData,
-} from '@shared/types';
+import type { AuthenticationResult, LoginCredentials, UserData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { JwtTokenService } from './jwt-token.service';
@@ -25,14 +17,6 @@ import { PasswordService } from './password.service';
 
 @Injectable()
 export class AuthenticationManager {
-	private readonly config: AuthenticationConfig = {
-		enableRefreshTokens: true,
-		accessTokenExpiry: '1h',
-		refreshTokenExpiry: '7d',
-		requireEmailVerification: false,
-		requirePhoneVerification: false,
-	};
-
 	constructor(
 		private readonly jwtTokenService: JwtTokenService,
 		private readonly passwordService: PasswordService
@@ -77,9 +61,7 @@ export class AuthenticationManager {
 				userData.id,
 				userData.username,
 				userData.email,
-				userData.role,
-				this.config.accessTokenExpiry,
-				this.config.refreshTokenExpiry
+				userData.role
 			);
 
 			logger.logAuthenticationEnhanced('login', userData.id, credentials.username, {
@@ -133,8 +115,7 @@ export class AuthenticationManager {
 				payload.sub,
 				payload.username,
 				payload.email,
-				payload.role,
-				this.config.accessTokenExpiry
+				payload.role
 			);
 
 			logger.securityLogin('Token refresh successful', {
@@ -163,76 +144,6 @@ export class AuthenticationManager {
 	}
 
 	/**
-	 * Validate token and get user
-	 */
-	async validateToken(token: string): Promise<AuthenticationResult> {
-		try {
-			const tokenResult = await this.jwtTokenService.verifyToken(token);
-			if (!tokenResult.isValid || !tokenResult.payload) {
-				return {
-					error: 'Invalid token',
-				};
-			}
-
-			const payload = tokenResult.payload;
-			return {
-				user: {
-					id: payload.sub,
-					username: payload.username,
-					email: payload.email,
-					role: payload.role,
-				},
-				message: 'Token is valid',
-			};
-		} catch (error) {
-			logger.securityError('Token validation failed', {
-				error: getErrorMessage(error),
-			});
-			return {
-				error: 'Token validation failed',
-			};
-		}
-	}
-
-	/**
-	 * Extract user from request
-	 */
-	async getUserFromRequest(request: AuthenticationRequest): Promise<TokenPayload | null> {
-		try {
-			const token = this.jwtTokenService.extractTokenFromRequest(request);
-			if (!token) {
-				return null;
-			}
-
-			return await this.jwtTokenService.getUserFromToken(token);
-		} catch (error) {
-			logger.securityError('Failed to extract user from request', {
-				error: getErrorMessage(error),
-			});
-			return null;
-		}
-	}
-
-	/**
-	 * Hash password for user
-	 */
-	async hashUserPassword(password: string): Promise<string> {
-		return await this.passwordService.hashPassword(password);
-	}
-
-	/**
-	 * Validate password strength
-	 */
-	validateUserPassword(password: string): SimpleValidationResult & { strength?: string } {
-		const result = this.passwordService.validatePasswordStrength(password);
-		return {
-			isValid: result.isValid,
-			errors: result.errors,
-			strength: result.strength,
-		};
-	}
-
-	/**
 	 * Generate tokens for user
 	 */
 	async generateTokensForUser(user: {
@@ -245,63 +156,12 @@ export class AuthenticationManager {
 	}
 
 	/**
-	 * Check if user has required role
-	 */
-	hasRole(user: TokenPayload, requiredRole: string): boolean {
-		return user.role === requiredRole || user.role === UserRole.ADMIN;
-	}
-
-	/**
-	 * Check if user has any of the required roles
-	 */
-	hasAnyRole(user: TokenPayload, requiredRoles: string[]): boolean {
-		return requiredRoles.includes(user.role) || user.role === UserRole.ADMIN;
-	}
-
-	/**
-	 * Check if user is admin
-	 */
-	isAdmin(user: TokenPayload): boolean {
-		return user.role === UserRole.ADMIN;
-	}
-
-	/**
-	 * Check if user is the owner of a resource
-	 */
-	isOwner(user: TokenPayload, resourceOwnerId: string): boolean {
-		return user.sub === resourceOwnerId;
-	}
-
-	/**
-	 * Check if user can access resource (owner or admin)
-	 */
-	canAccessResource(user: TokenPayload, resourceOwnerId: string): boolean {
-		return this.isOwner(user, resourceOwnerId) || this.isAdmin(user);
-	}
-
-	/**
 	 * Logout user (invalidate tokens)
 	 */
 	async logout(userId: string, username: string): Promise<void> {
 		logger.securityLogin('User logout', {
 			userId,
 			username,
-		});
-		// In a real implementation, you might want to blacklist tokens
-		// or store logout events in a database
-	}
-
-	/**
-	 * Update authentication configuration
-	 */
-	updateConfig(newConfig: Partial<AuthenticationConfig>): void {
-		Object.assign(this.config, newConfig);
-		logger.securityLogin('Authentication configuration updated', {
-			enableRefreshTokens: this.config.enableRefreshTokens,
-			accessTokenExpiry: this.config.accessTokenExpiry,
-			refreshTokenExpiry: this.config.refreshTokenExpiry,
-			requireEmailVerification: this.config.requireEmailVerification,
-			requirePhoneVerification: this.config.requirePhoneVerification,
 		});
 	}
 }

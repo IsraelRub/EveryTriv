@@ -9,6 +9,7 @@ import {
 	Box,
 	Brain,
 	Calendar,
+	Check,
 	CheckCircle,
 	ChevronDown,
 	ChevronLeft,
@@ -16,10 +17,14 @@ import {
 	ChevronUp,
 	Circle,
 	Clock,
+	Copyright,
 	Copy,
 	Database,
+	Dot,
+	Dumbbell,
 	Eye,
 	EyeOff,
+	Info,
 	Facebook,
 	FileText,
 	Flame,
@@ -40,6 +45,7 @@ import {
 	MessageSquare,
 	Music,
 	Palette,
+	PartyPopper,
 	Phone,
 	Play,
 	RefreshCw,
@@ -48,7 +54,10 @@ import {
 	Share,
 	Star,
 	Target,
+	TrendingDown,
+	TrendingUp,
 	Timer,
+	Trophy,
 	Trash,
 	Twitter,
 	User,
@@ -59,6 +68,8 @@ import {
 	X,
 	Youtube,
 	Zap,
+	XCircle,
+	Lightbulb,
 } from 'lucide-react';
 
 import { DifficultyLevel } from '@shared/constants';
@@ -71,6 +82,9 @@ import { IconColor, IconProps } from '../types';
 const iconMap: Record<string, ComponentType<LucideProps>> = {
 	// Navigation & UI
 	close: X,
+	x: X,
+	xcircle: XCircle,
+	check: Check,
 	home: Home,
 	chevronleft: ChevronLeft,
 	chevronright: ChevronRight,
@@ -81,7 +95,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 
 	// Game & Trivia
 	gamepad: Gamepad2,
-	trophy: Star, // Using Star instead of Trophy
+	trophy: Trophy,
 	medal: Medal,
 	star: Star,
 	target: Target,
@@ -104,7 +118,9 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 	// Status & Feedback
 	checkcircle: CheckCircle,
 	alerttriangle: AlertTriangle,
-	lightbulb: Star, // Using Star instead of Lightbulb
+	lightbulb: Lightbulb,
+	warning: AlertTriangle,
+	info: Info,
 
 	// Actions & Controls
 	trash: Trash,
@@ -113,6 +129,9 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 	volume: Volume2,
 	volumex: VolumeX,
 	refreshcw: RefreshCw,
+	multiply: X,
+	dot: Dot,
+	bullet: Dot,
 
 	// Data & Analytics
 	barchart: BarChart,
@@ -147,6 +166,8 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 
 	// Achievement Icons
 	flame: Flame,
+	partypopper: PartyPopper,
+	celebrate: PartyPopper,
 
 	// Additional Icons
 	infinity: Infinity,
@@ -156,6 +177,10 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 	server: Server,
 	box: Box,
 	database: Database,
+	copyright: Copyright,
+	trendingup: TrendingUp,
+	trendingdown: TrendingDown,
+	dumbbell: Dumbbell,
 };
 
 // Main Icon component
@@ -176,7 +201,7 @@ export const Icon: FC<IconProps> = ({
 	}
 
 	const iconSize = sizeMap[size];
-	const iconColor = colorMap[color as IconColor] || 'currentColor';
+	const iconColor = colorMap[color] ?? 'currentColor';
 	const animationClass =
 		typeof animation === 'string' ? animationStyles[animation] || '' : animationStyles[animation.type] || '';
 
@@ -213,6 +238,7 @@ const colorMap: Record<IconColor, string> = {
 	muted: '#94a3b8',
 	white: '#ffffff',
 	black: '#000000',
+	inherit: 'currentColor',
 };
 
 // Animation styles

@@ -2,7 +2,7 @@ import { createContext, FormEvent, useCallback, useContext, useEffect, useMemo, 
 
 import { motion } from 'framer-motion';
 
-import { DifficultyLevel, GameMode } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode, VALID_DIFFICULTIES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { FavoriteTopic, GameDifficulty } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -95,6 +95,9 @@ export const useGame = () => {
 	return context;
 };
 
+const isGameDifficulty = (value: string): value is GameDifficulty =>
+	VALID_DIFFICULTIES.some(difficulty => difficulty === value) || value.startsWith(CUSTOM_DIFFICULTY_PREFIX);
+
 /**
  * Home View Component
  *
@@ -186,6 +189,12 @@ export default function HomeView() {
 	const isFormValid = topic.trim().length > 0 && difficulty.trim().length > 0;
 	const validationErrors: string[] = [];
 	const isValidating = false;
+
+	const updateDifficultySelection = (nextDifficulty: string) => {
+		if (isGameDifficulty(nextDifficulty)) {
+			setDifficulty(nextDifficulty);
+		}
+	};
 
 	const setHookGameMode = (config: GameConfig) => {
 		logger.logUserActivity('gameModeChanged', JSON.stringify(config));
@@ -310,7 +319,9 @@ export default function HomeView() {
 
 	const selectFromHistory = useCallback((historyTopic: string, historyDifficulty: string) => {
 		setTopic(historyTopic);
-		setDifficulty(historyDifficulty as GameDifficulty);
+		if (isGameDifficulty(historyDifficulty)) {
+			setDifficulty(historyDifficulty);
+		}
 	}, []);
 
 	const updateStats = useCallback(
@@ -672,7 +683,7 @@ export default function HomeView() {
 						className='text-center mb-6'
 						topic={topic}
 						difficulty={difficulty}
-						onDifficultyChange={(difficulty: string) => setDifficulty(difficulty as GameDifficulty)}
+						onDifficultyChange={updateDifficultySelection}
 						onShowHistory={() => setShowHistory(true)}
 					/>
 
@@ -691,7 +702,7 @@ export default function HomeView() {
 							questionCount={questionCount.value}
 							loading={gameState.loading || isValidating}
 							onTopicChange={setTopic}
-							onDifficultyChange={(difficulty: string) => setDifficulty(difficulty as GameDifficulty)}
+							onDifficultyChange={updateDifficultySelection}
 							onQuestionCountChange={(count: number) => setQuestionCount({ value: count, label: `${count} Questions` })}
 							onSubmit={handleSubmit}
 							showGameModeSelector={showGameModeSelector}

@@ -510,27 +510,43 @@ export class UserController {
 	@Get('admin/all')
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getAllUsers(@CurrentUser() user: TokenPayload) {
+	async getAllUsers(
+		@CurrentUser() user: TokenPayload,
+		@Query('limit') limit?: number,
+		@Query('offset') offset?: number
+	) {
 		try {
-			// This would call a service method to get all users
-			const users: AdminUserData[] = [];
+			const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+			const parsedOffset = typeof offset === 'string' ? parseInt(offset, 10) : offset;
+			const result = await this.userService.getAllUsers(parsedLimit, parsedOffset);
 
-			// Log API call
 			logger.apiRead('admin_get_all_users', {
 				id: user.sub,
 				role: user.role,
-				usersCount: users.length,
+				usersCount: result.users.length,
+				totalUsers: result.total,
 			});
 
+			const adminInfo: AdminUserData = {
+				id: user.sub,
+				username: user.username,
+				email: user.email ?? `${user.username}@everytriv.com`,
+				role: user.role as UserRole,
+				createdAt: new Date().toISOString(),
+				lastLogin: undefined,
+			};
+
 			return {
-				adminUser: {
-					id: user.sub,
-					username: user.username,
-					email: user.email,
-					role: user.role,
-					createdAt: new Date().toISOString(),
+				message: 'Users retrieved successfully',
+				success: true,
+				adminUser: adminInfo,
+				users: result.users,
+				pagination: {
+					total: result.total,
+					limit: result.limit,
+					offset: result.offset,
 				},
-				users: users,
+				timestamp: new Date().toISOString(),
 			};
 		} catch (error) {
 			logger.userError('Failed to get all users', {
@@ -562,16 +578,20 @@ export class UserController {
 				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-			// await this.userService.updateUserStatus(userId, statusData.status);
+			const updated = await this.userService.updateUserStatus(userId, statusData.status);
 
-			// Log API call
 			logger.apiUpdate('admin_update_user_status', {
 				id: adminUser.id,
 				targetUserId: userId,
 				newStatus: statusData.status,
 			});
 
-			return { updated: true };
+			return {
+				userId: updated.id,
+				status: statusData.status,
+				isActive: updated.isActive,
+				updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
+			};
 		} catch (error) {
 			logger.userError('Failed to update user status', {
 				error: getErrorMessage(error),

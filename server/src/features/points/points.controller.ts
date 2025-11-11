@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION } from '@shared/constants';
+import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, GameMode } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
@@ -64,17 +64,21 @@ export class PointsController {
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
 		try {
-			if (!query.questionCount || query.questionCount <= 0) {
+			const questionCount =
+				query.questionCount ?? DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5;
+
+			if (!questionCount || questionCount <= 0) {
 				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.pointsService.canPlay(userId, query.questionCount);
+			const result = await this.pointsService.canPlay(userId, questionCount);
 
 			// Log API call for can-play check
 			logger.apiRead('points_can_play', {
 				userId,
-				questionCount: query.questionCount,
+				questionCount,
 				canPlay: result.canPlay,
+				gameMode: query.gameMode ?? GameMode.QUESTION_LIMITED,
 			});
 
 			return result;
@@ -94,17 +98,21 @@ export class PointsController {
 	@Post('deduct')
 	async deductPoints(@CurrentUserId() userId: string, @Body() body: DeductPointsDto) {
 		try {
-			if (!body.questionCount || body.questionCount <= 0) {
+			const questionCount = body.questionCount ?? body.amount;
+			if (!questionCount || questionCount <= 0) {
 				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.pointsService.deductPoints(userId, body.questionCount, body.gameMode);
+			const gameMode = body.gameMode ?? body.gameType ?? GameMode.QUESTION_LIMITED;
+
+			const result = await this.pointsService.deductPoints(userId, questionCount, gameMode, body.reason);
 
 			// Log API call for points deduction with IP and User Agent
 			logger.apiUpdate('points_deduct', {
 				userId,
-				questionCount: body.questionCount,
-				gameMode: body.gameMode,
+				questionCount,
+				gameMode,
+				reason: body.reason,
 				remainingPoints: result.totalPoints,
 			});
 
@@ -113,8 +121,9 @@ export class PointsController {
 			logger.userError('Error deducting points', {
 				error: getErrorMessage(error),
 				userId,
-				questionCount: body.questionCount,
-				gameMode: body.gameMode,
+				questionCount: body.questionCount ?? body.amount,
+				gameMode: body.gameMode ?? body.gameType,
+				reason: body.reason,
 			});
 			throw error;
 		}
@@ -187,16 +196,17 @@ export class PointsController {
 	@Post('confirm-purchase')
 	async confirmPointPurchase(@CurrentUserId() userId: string, @Body() body: ConfirmPointPurchaseDto) {
 		try {
-			if (!body.paymentIntentId || !body.points) {
+			const paymentIdentifier = body.paymentIntentId ?? body.transactionId ?? body.paymentId;
+			if (!paymentIdentifier || !body.points || body.points <= 0) {
 				throw new HttpException('Payment intent ID and points are required', HttpStatus.BAD_REQUEST);
 			}
 
-			const result = this.pointsService.confirmPointPurchase(userId, body.paymentIntentId, body.points);
+			const result = this.pointsService.confirmPointPurchase(userId, paymentIdentifier, body.points);
 
 			// Log API call for purchase confirmation
 			logger.apiUpdate('points_purchase_confirm', {
 				userId,
-				id: body.paymentIntentId,
+				id: paymentIdentifier,
 				points: body.points,
 			});
 
@@ -205,7 +215,7 @@ export class PointsController {
 			logger.userError('Error confirming point purchase', {
 				error: getErrorMessage(error),
 				userId,
-				id: body.paymentIntentId,
+				id: body.paymentIntentId ?? body.transactionId ?? body.paymentId,
 			});
 			throw error;
 		}

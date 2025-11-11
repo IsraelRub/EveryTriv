@@ -5,9 +5,9 @@
  * @description Data transformation and manipulation utilities for client-side use
  * @used_by client/src/components, client/src/views
  */
-import { PlanType } from '@shared/constants';
-import type { SubscriptionData, SubscriptionPlans } from '@shared/types';
 import { isRecord } from '@shared/utils';
+
+export { isSubscriptionData, isSubscriptionPlans, isPointPurchaseOptionArray } from '@shared/utils';
 
 /**
  * Generate a user ID for anonymous users
@@ -16,57 +16,6 @@ import { isRecord } from '@shared/utils';
  */
 export function generateUserId(): string {
 	return 'user_' + Math.random().toString(36).substring(2, 12);
-}
-
-/**
- * Type guard to check if value is SubscriptionData
- * @param value Value to check
- * @returns True if value is SubscriptionData
- */
-export function isSubscriptionData(value: unknown): value is SubscriptionData {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	// startDate can be Date (server) or string (API response after JSON serialization)
-	const isStartDateValid = value.startDate instanceof Date || typeof value.startDate === 'string';
-	// endDate can be Date (server) or string (API response), or null
-	const isEndDateValid = value.endDate === null || value.endDate instanceof Date || typeof value.endDate === 'string';
-
-	return (
-		typeof value.planType === 'string' &&
-		Object.values(PlanType).includes(value.planType as PlanType) &&
-		typeof value.status === 'string' &&
-		isStartDateValid &&
-		isEndDateValid &&
-		typeof value.price === 'number' &&
-		Array.isArray(value.features)
-	);
-}
-
-/**
- * Type guard to check if value is SubscriptionPlans
- * @param value Value to check
- * @returns True if value is SubscriptionPlans
- */
-export function isSubscriptionPlans(value: unknown): value is SubscriptionPlans {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	if (!value.basic || !value.premium || !value.pro) {
-		return false;
-	}
-
-	if (!isRecord(value.basic) || !isRecord(value.premium) || !isRecord(value.pro)) {
-		return false;
-	}
-
-	return (
-		typeof value.basic.price === 'number' &&
-		typeof value.premium.price === 'number' &&
-		typeof value.pro.price === 'number'
-	);
 }
 
 /**

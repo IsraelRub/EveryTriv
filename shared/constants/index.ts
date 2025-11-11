@@ -46,13 +46,3 @@ export * from './infrastructure';
  * @description Payment, social, language, and info constants
  */
 export * from './business';
-
-// ============================================================================
-// NAVIGATION CONSTANTS
-// ============================================================================
-
-/**
- * Navigation constants
- * @description Navigation links, routes, and configuration
- */
-export * from './navigation';

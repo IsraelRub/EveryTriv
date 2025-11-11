@@ -32,9 +32,7 @@
 ```
 client/src/
 ├── components/animations/
-│   ├── AnimationLibrary.tsx      # קומפוננטים ראשיים
-│   ├── AnimationEffects.tsx      # אפקטים מיוחדים
-│   ├── AnimatedBackground.tsx    # רקע מונפש
+│   ├── AnimationLibrary.tsx      # וריאנטים ו־helpers לאנימציות
 │   └── index.ts                  # ייצוא מאוחד
 ├── hooks/layers/ui/
 │   ├── useOptimizedAnimations.ts # Hook אנימציות מיטבי
@@ -168,18 +166,11 @@ export const PERFORMANCE_CONFIG = {
 ```typescript
 export const ANIMATION_CONFIG = {
   DURATION: {
-    FAST: 0.2,
     NORMAL: 0.6,
     SLOW: 1.0,
   },
   EASING: {
     EASE_OUT: [0.4, 0, 0.2, 1],
-    SPRING: { type: 'spring', stiffness: 300, damping: 15 },
-  },
-  STAGGER: {
-    FAST: 0.05,
-    NORMAL: 0.1,
-    SLOW: 0.2,
   },
 };
 ```

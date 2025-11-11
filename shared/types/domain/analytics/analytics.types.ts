@@ -403,6 +403,111 @@ export interface CompleteUserAnalytics {
 }
 
 /**
+ * User progress topic analytics
+ * @interface UserProgressTopic
+ * @description Aggregated analytics per topic for a specific user
+ */
+export interface UserProgressTopic {
+	topic: string;
+	gamesPlayed: number;
+	totalQuestions: number;
+	correctAnswers: number;
+	successRate: number;
+	averageResponseTime: number;
+	lastPlayed: string | null;
+	difficultyBreakdown: Record<string, number>;
+}
+
+/**
+ * User trend timeline point
+ * @interface UserTrendPoint
+ * @description Represents a single point in the user's performance timeline
+ */
+export interface UserTrendPoint {
+	date: string;
+	score: number;
+	successRate: number;
+	totalQuestions: number;
+	correctAnswers: number;
+	topic?: string;
+	difficulty?: string;
+}
+
+/**
+ * User progress analytics
+ * @interface UserProgressAnalytics
+ * @description Combined progress information for a specific user
+ */
+export interface UserProgressAnalytics {
+	topics: UserProgressTopic[];
+	timeline: UserTrendPoint[];
+	totals: {
+		gamesPlayed: number;
+		questionsAnswered: number;
+		correctAnswers: number;
+	};
+}
+
+/**
+ * User insights data
+ * @interface UserInsightsData
+ * @description Insights and highlights for a user
+ */
+export interface UserInsightsData {
+	strengths: string[];
+	improvements: string[];
+	recentHighlights: string[];
+}
+
+/**
+ * User comparison metrics
+ * @interface UserComparisonMetrics
+ * @description Metrics used when comparing users
+ */
+export interface UserComparisonMetrics {
+	successRate: number;
+	averageScore: number;
+	totalGames: number;
+	rank?: number;
+	percentile?: number;
+	streakDays?: number;
+	bestStreak?: number;
+	improvementRate?: number;
+	consistencyScore?: number;
+}
+
+/**
+ * User comparison result
+ * @interface UserComparisonResult
+ * @description Comparison between a user and another user or global aggregate
+ */
+export interface UserComparisonResult {
+	userId: string;
+	target: 'global' | 'user';
+	targetUserId?: string;
+	userMetrics: UserComparisonMetrics;
+	targetMetrics: UserComparisonMetrics;
+	differences: UserComparisonMetrics;
+}
+
+/**
+ * User summary data
+ * @interface UserSummaryData
+ * @description Summary block for user analytics dashboards
+ */
+export interface UserSummaryData {
+	user: UserBasicInfo;
+	highlights: {
+		totalGames: number;
+		bestScore: number;
+		topTopics: string[];
+		achievementsUnlocked: number;
+	};
+	performance: UserPerformanceMetrics;
+	insights: string[];
+}
+
+/**
  * Analytics Answer Data Interface
  * @interface AnalyticsAnswerData
  * @description Data structure for tracking user answers

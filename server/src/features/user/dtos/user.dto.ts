@@ -180,7 +180,7 @@ export class DeductCreditsDto {
 		minimum: 1,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
-	@MinLength(1, { message: 'Amount must be greater than 0' })
+	@Min(1, { message: 'Amount must be greater than 0' })
 	amount: number;
 
 	@ApiPropertyOptional({
@@ -251,7 +251,7 @@ export class UpdateUserCreditsDto {
 		example: 100,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
-	@MinLength(1, { message: 'Amount must be greater than 0' })
+	@Min(1, { message: 'Amount must be greater than 0' })
 	amount: number;
 
 	@ApiProperty({

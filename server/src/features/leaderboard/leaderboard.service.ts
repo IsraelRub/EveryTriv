@@ -4,11 +4,21 @@ import { Repository } from 'typeorm';
 
 import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage, groupBy } from '@shared/utils';
+import {
+	createArrayGuard,
+	createLeaderboardEntryGuard,
+	createNullableGuard,
+	getErrorMessage,
+	groupBy,
+} from '@shared/utils';
 
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { createNotFoundError } from '@internal/utils';
+
+const isLeaderboardEntry = createLeaderboardEntryGuard<LeaderboardEntity>();
+const isLeaderboardEntryOrNull = createNullableGuard(isLeaderboardEntry);
+const isLeaderboardArray = createArrayGuard(isLeaderboardEntry);
 
 /**
  * Leaderboard Service
@@ -113,7 +123,7 @@ export class LeaderboardService {
 		try {
 			const cacheKey = `leaderboard:user:${userId}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<LeaderboardEntity | null>(
 				cacheKey,
 				async () => {
 					const ranking = await this.leaderboardRepository.findOne({
@@ -123,7 +133,8 @@ export class LeaderboardService {
 
 					return ranking;
 				},
-				CACHE_DURATION.MEDIUM // Cache for 5 minutes
+				CACHE_DURATION.MEDIUM,
+				isLeaderboardEntryOrNull
 			);
 		} catch (error) {
 			logger.analyticsError('getUserRanking', {
@@ -144,7 +155,7 @@ export class LeaderboardService {
 		try {
 			const cacheKey = `leaderboard:global:${limit}:${offset}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<LeaderboardEntity[]>(
 				cacheKey,
 				async () => {
 					const leaderboard = await this.leaderboardRepository.find({
@@ -156,7 +167,8 @@ export class LeaderboardService {
 
 					return leaderboard;
 				},
-				CACHE_DURATION.LONG // Cache for 10 minutes
+				CACHE_DURATION.LONG,
+				isLeaderboardArray
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
@@ -179,7 +191,7 @@ export class LeaderboardService {
 		try {
 			const cacheKey = `leaderboard:${period}:${limit}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<LeaderboardEntity[]>(
 				cacheKey,
 				async () => {
 					// Type-safe mapping for period to score field
@@ -204,7 +216,8 @@ export class LeaderboardService {
 
 					return leaderboard;
 				},
-				CACHE_DURATION.LONG // Cache for 10 minutes
+				CACHE_DURATION.LONG,
+				isLeaderboardArray
 			);
 		} catch (error) {
 			logger.analyticsError('getLeaderboardByPeriod', {

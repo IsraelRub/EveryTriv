@@ -23,8 +23,6 @@ shared/constants/
   │   ├── localhost.constants.ts
   │   ├── logging.constants.ts
   │   └── storage.constants.ts
-  navigation/   # מסלולי UI / מזהי תפריטים
-  │   └── navigation.constants.ts
   index.ts      # יצוא מרוכז
 ```
 
@@ -49,7 +47,7 @@ export const CACHE_TTL = {
   LEADERBOARD: 300, // 5 minutes
 } as const;
 
-// navigation/navigation.constants.ts
+// client/src/constants/ui/navigation.constants.ts
 export const ROUTE_PATHS = {
   HOME: '/',
   GAME: '/game',

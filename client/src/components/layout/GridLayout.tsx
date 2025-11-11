@@ -15,10 +15,9 @@ export const CardGrid: FC<CardGridProps> = ({
 		'grid',
 		{
 			'grid-cols-1': columns === 1,
-			'grid-cols-1 md:grid-cols-2': columns === 2,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': columns === 4,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5': columns === 'auto',
+			'grid-cols-2': columns === 2,
+			'grid-cols-3': columns === 3,
+			'grid-cols-4': columns === 4,
 		},
 		{
 			'gap-2': gap === Spacing.SM,
@@ -31,7 +30,12 @@ export const CardGrid: FC<CardGridProps> = ({
 	);
 
 	const Component = as;
-	return <Component className={cardGridClasses}>{children}</Component>;
+	const autoColumnStyle = columns === 'auto' ? { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } : undefined;
+	return (
+		<Component className={cardGridClasses} style={autoColumnStyle}>
+			{children}
+		</Component>
+	);
 };
 
 export const GridLayout: FC<GridLayoutProps> = ({
@@ -92,26 +96,40 @@ export const GridLayout: FC<GridLayoutProps> = ({
 	return <Component className={gridClasses}>{children}</Component>;
 };
 
+const CONTAINER_SIZE_CLASSES: Record<ContainerSize, string> = {
+	[ContainerSize.SM]: 'max-w-screen-sm',
+	[ContainerSize.MD]: 'max-w-screen-md',
+	[ContainerSize.LG]: 'max-w-screen-lg',
+	[ContainerSize.XL]: 'max-w-screen-xl',
+	[ContainerSize.XXL]: 'max-w-screen-2xl',
+	[ContainerSize.FULL]: 'max-w-full',
+};
+
+const CONTAINER_PADDING_CLASSES: Record<Spacing, string> = {
+	[Spacing.NONE]: 'px-0',
+	[Spacing.SM]: 'px-4',
+	[Spacing.MD]: 'px-6',
+	[Spacing.LG]: 'px-8',
+	[Spacing.XL]: 'px-12',
+	[Spacing.XXL]: 'px-16',
+};
+
 export const LayoutContainer: FC<ContainerProps> = ({
 	children,
 	className,
 	size = ContainerSize.LG,
+	maxWidth,
+	padding = Spacing.XL,
+	center,
 	centered = true,
 }) => {
+	const effectiveSize = maxWidth ?? size;
+	const shouldCenter = center ?? centered;
 	const containerClasses = combineClassNames(
 		'w-full',
-		{
-			'max-w-sm': size === ContainerSize.SM,
-			'max-w-md': size === ContainerSize.MD,
-			'max-w-lg': size === ContainerSize.LG,
-			'max-w-xl': size === ContainerSize.XL,
-			'max-w-2xl': size === ContainerSize.XXL,
-			'max-w-full': size === ContainerSize.FULL,
-		},
-		{
-			'mx-auto': centered,
-		},
-		'px-4 sm:px-6 lg:px-8',
+		CONTAINER_SIZE_CLASSES[effectiveSize],
+		shouldCenter ? 'mx-auto' : undefined,
+		CONTAINER_PADDING_CLASSES[padding],
 		className
 	);
 
@@ -121,19 +139,20 @@ export const LayoutContainer: FC<ContainerProps> = ({
 export const ResponsiveGrid: FC<ResponsiveGridProps> = ({
 	children,
 	className,
-	minWidth = '300px',
+	minWidth: _minWidth = '300px',
 	gap = Spacing.LG,
 	columns,
 	as = 'div',
 }) => {
+	void _minWidth;
 	const responsiveGridClasses = combineClassNames(
 		'grid',
 		{
 			'grid-cols-1': columns === 1,
-			'grid-cols-1 md:grid-cols-2': columns === 2,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4': columns === 4 || !columns,
-			'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5': columns === 5,
+			'grid-cols-2': columns === 2,
+			'grid-cols-3': columns === 3,
+			'grid-cols-4': columns === 4 || !columns,
+			'grid-cols-5': columns === 5,
 		},
 		{
 			'gap-2': gap === Spacing.SM,
@@ -145,11 +164,12 @@ export const ResponsiveGrid: FC<ResponsiveGridProps> = ({
 		className
 	);
 
-	const gridStyle = columns
-		? {}
-		: {
-				gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))`,
-			};
+	const gridStyle =
+		columns === undefined
+			? {
+					gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+				}
+			: {};
 
 	const Component = as;
 	return (

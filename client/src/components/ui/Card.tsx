@@ -42,11 +42,7 @@ const CardComponent: ForwardRefRenderFunction<HTMLDivElement, CardProps> = (
 
 	// Default padding for glass variant via inline style if padding not specified
 	const defaultPaddingStyle =
-		effectiveVariant === CardVariant.GLASS && !padding
-			? window.innerWidth >= 768
-				? { padding: '2rem' }
-				: { padding: '1.5rem' }
-			: undefined;
+		effectiveVariant === CardVariant.GLASS && !padding ? { padding: '2rem' } : undefined;
 
 	return (
 		<div
@@ -69,11 +65,9 @@ const CardComponent: ForwardRefRenderFunction<HTMLDivElement, CardProps> = (
 						? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
 						: effectiveVariant === CardVariant.GRAY
 							? '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-							: effectiveVariant === CardVariant.GLASS
-								? window.innerWidth >= 768
-									? '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-									: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-								: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+						: effectiveVariant === CardVariant.GLASS
+							? '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+							: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
 				borderRadius:
 					effectiveVariant !== CardVariant.WHITE && effectiveVariant !== CardVariant.GRAY ? '0.5rem' : undefined,
 				...defaultPaddingStyle,
@@ -110,15 +104,11 @@ const CardTitleComponent: ForwardRefRenderFunction<HTMLHeadingElement, CardTitle
 			ref={ref}
 			className={combineClassNames('', className)}
 			style={{
-				fontSize: '1.5rem',
+				fontSize: '1.875rem',
 				fontWeight: '600',
 				fontFamily: 'system-ui, -apple-system, sans-serif',
 				lineHeight: '1.2',
 				letterSpacing: '-0.025em',
-				// Responsive typography
-				...(window.innerWidth >= 1024 && {
-					fontSize: '1.875rem',
-				}),
 			}}
 			{...props}
 		/>

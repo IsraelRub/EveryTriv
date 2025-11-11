@@ -166,7 +166,7 @@ const CompleteProfile = memo(function CompleteProfile() {
 	}, [navigate]);
 
 	return (
-		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700 py-12 px-4 sm:px-6 lg:px-8'>
+		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700 py-16 px-12'>
 			<motion.div variants={fadeInUp} initial='hidden' animate='visible' className='max-w-md w-full space-y-8'>
 				<div className='glass p-8 rounded-lg'>
 					<div className='text-center mb-8'>

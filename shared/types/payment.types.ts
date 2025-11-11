@@ -78,7 +78,7 @@ export interface PaymentData {
 	amount: number;
 	currency: string;
 	description: string;
-	planType?: string;
+	planType?: PlanType;
 	numberOfPayments?: number;
 	type?: string;
 	metadata?: PaymentMetadata;

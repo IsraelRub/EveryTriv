@@ -81,9 +81,7 @@ export const ProtectedRoute = memo(function ProtectedRoute({
  * @returns JSX.Element Public component or redirect
  */
 export const PublicRoute = memo(function PublicRoute({ children, redirectTo = '/' }: PublicRouteProps) {
-	const { isAuthenticated } = useSelector((state: RootState) => state.user) as {
-		isAuthenticated: boolean;
-	};
+	const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 	const location = useLocation();
 
 	logger.navigationRoute('public-route-access', {

@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 
 import { CACHE_TTL, DEFAULT_USER_PREFERENCES, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger, PointCalculationService } from '@shared/services';
-import type { AnswerResult, GameDifficulty, QuestionData, UserAnalytics } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import type { AnswerResult, GameDifficulty, QuestionData, TriviaQuestion, UserAnalytics } from '@shared/types';
+import { getErrorMessage, isSavedGameConfiguration, isTriviaQuestionArray } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
@@ -65,7 +65,7 @@ export class GameService {
 		try {
 			const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
 
-			const questions = await this.cacheService.getOrSet(
+			const questions = await this.cacheService.getOrSet<TriviaQuestion[]>(
 				cacheKey,
 				async () => {
 					const generatedQuestions = [];
@@ -88,7 +88,8 @@ export class GameService {
 
 					return generatedQuestions;
 				},
-				CACHE_TTL.TRIVIA_QUESTIONS
+				CACHE_TTL.TRIVIA_QUESTIONS,
+				isTriviaQuestionArray
 			);
 
 			if (userId) {
@@ -640,7 +641,7 @@ export class GameService {
 			});
 
 			const configKey = `game_config:${userId}`;
-			const result = await this.storageService.getItem(configKey);
+			const result = await this.storageService.getItem(configKey, isSavedGameConfiguration);
 
 			if (result.success && result.data) {
 				return {
@@ -747,6 +748,129 @@ export class GameService {
 			logger.gameError('Failed to clear game history', {
 				error: getErrorMessage(error),
 				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get aggregated statistics for admin dashboard
+	 */
+	async getAdminStatistics(): Promise<{
+		totalGames: number;
+		averageScore: number;
+		bestScore: number;
+		totalQuestionsAnswered: number;
+		correctAnswers: number;
+		accuracy: number;
+		activePlayers24h: number;
+		topics: Record<string, number>;
+		difficultyDistribution: Record<string, number>;
+		lastActivity: string | null;
+	}> {
+		try {
+			const totalsRaw = await this.gameHistoryRepository
+				.createQueryBuilder('game')
+				.select('CAST(COUNT(*) AS INTEGER)', 'totalGames')
+				.addSelect('CAST(AVG(game.score) AS DOUBLE PRECISION)', 'averageScore')
+				.addSelect('CAST(MAX(game.score) AS INTEGER)', 'bestScore')
+				.addSelect('CAST(SUM(game.totalQuestions) AS INTEGER)', 'totalQuestions')
+				.addSelect('CAST(SUM(game.correctAnswers) AS INTEGER)', 'correctAnswers')
+				.addSelect('MAX(game.createdAt)', 'lastActivity')
+				.getRawOne<{
+					totalGames: number;
+					averageScore: number;
+					bestScore: number;
+					totalQuestions: number;
+					correctAnswers: number;
+					lastActivity: Date;
+				}>();
+
+			const topicStatsRaw = await this.gameHistoryRepository
+				.createQueryBuilder('game')
+				.select('game.topic', 'topic')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
+				.where('game.topic IS NOT NULL')
+				.groupBy('game.topic')
+				.orderBy('count', 'DESC')
+				.getRawMany<{ topic: string; count: number }>();
+
+			const difficultyStatsRaw = await this.gameHistoryRepository
+				.createQueryBuilder('game')
+				.select('game.difficulty', 'difficulty')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
+				.where('game.difficulty IS NOT NULL')
+				.groupBy('game.difficulty')
+				.orderBy('count', 'DESC')
+				.getRawMany<{ difficulty: string; count: number }>();
+
+			const activePlayersRaw = await this.gameHistoryRepository
+				.createQueryBuilder('game')
+				.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count')
+				.where('game.createdAt >= :date', { date: new Date(Date.now() - 24 * 60 * 60 * 1000) })
+				.getRawOne<{ count: number }>();
+
+			const totalGames = totalsRaw?.totalGames ?? 0;
+			const totalQuestions = totalsRaw?.totalQuestions ?? 0;
+			const correctAnswers = totalsRaw?.correctAnswers ?? 0;
+			const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+
+			const topics: Record<string, number> = {};
+			topicStatsRaw.forEach(stat => {
+				if (stat.topic) {
+					topics[stat.topic] = stat.count;
+				}
+			});
+
+			const difficultyDistribution: Record<string, number> = {};
+			difficultyStatsRaw.forEach(stat => {
+				if (stat.difficulty) {
+					difficultyDistribution[stat.difficulty] = stat.count;
+				}
+			});
+
+			return {
+				totalGames,
+				averageScore: totalsRaw?.averageScore ?? 0,
+				bestScore: totalsRaw?.bestScore ?? 0,
+				totalQuestionsAnswered: totalQuestions,
+				correctAnswers,
+				accuracy,
+				activePlayers24h: activePlayersRaw?.count ?? 0,
+				topics,
+				difficultyDistribution,
+				lastActivity: totalsRaw?.lastActivity ? new Date(totalsRaw.lastActivity).toISOString() : null,
+			};
+		} catch (error) {
+			logger.gameError('Failed to collect admin game statistics', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Clear game history for all users (admin)
+	 */
+	async clearAllGameHistory(): Promise<{ message: string; deletedCount: number }> {
+		try {
+			logger.gameInfo('Clearing entire game history dataset', {});
+
+			const totalBefore = await this.gameHistoryRepository.count();
+			const deleteResult = await this.gameHistoryRepository.delete({});
+			const deletedCount = deleteResult.affected ?? totalBefore;
+
+			logger.gameInfo('All game history cleared by admin', {
+				deletedCount,
+			});
+
+			return {
+				message: 'All game history records removed successfully',
+				deletedCount,
+			};
+		} catch (error) {
+			logger.gameError('Failed to clear all game history', {
+				error: getErrorMessage(error),
 			});
 			throw error;
 		}

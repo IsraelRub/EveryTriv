@@ -55,7 +55,9 @@ export default function Game({
 					className='game-over p-6 glass rounded-lg text-center mb-6'
 					whileHover={{ scale: 1.02 }}
 				>
-					<div className='text-4xl mb-4'>🎉</div>
+					<div className='mb-4 flex justify-center'>
+						<Icon name='partypopper' size={ComponentSize.XL} className='text-purple-300' />
+					</div>
 					<h2 className='text-2xl font-bold text-white mb-4'>Game Complete!</h2>
 					<p className='text-lg text-white/80 mb-6'>
 						{currentGameMode?.mode === GameMode.TIME_LIMITED

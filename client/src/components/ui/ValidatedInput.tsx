@@ -13,7 +13,7 @@ import { clientLogger as logger } from '@shared/services';
 import { AudioKey, ComponentSize } from '../../constants';
 import { useValidation } from '../../hooks';
 import { audioService } from '../../services';
-import type { ClientValidationType, ValidatedInputProps } from '../../types';
+import type { ValidatedInputProps } from '../../types';
 import { combineClassNames } from '../../utils';
 import { Icon } from '../IconLibrary';
 import { ValidationStatusIndicator } from './ValidationIcon';
@@ -46,14 +46,15 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		const validateValue = async (value: string) => {
 			setIsValidating(true);
 
-			const result = await validate(validationType as ClientValidationType, value, validationOptions);
-			setIsValid(!!result.isValid);
-			setErrors(result.errors || []);
+			const result = await validate(validationType, value, validationOptions);
+			setIsValid(Boolean(result.isValid));
+			setErrors(result.errors ?? []);
 			setIsValidating(false);
+			return result;
 		};
 
 		// Handle input change
-		const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+		const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
 			const value = e.target.value;
 
 			// Log user activity
@@ -63,7 +64,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 
 			// Measure validation performance
 			const startTime = performance.now();
-			validateValue(value);
+			const result = await validateValue(value);
 			const duration = performance.now() - startTime;
 			logger.performance(`validation_${validationType}`, duration);
 
@@ -71,15 +72,16 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 			audioService.play(AudioKey.INPUT);
 
 			if (onChange) {
-				onChange(value, isValid);
+				onChange(value, Boolean(result.isValid));
 			}
 		};
 
 		// Call onChange on mount if initial value exists
 		useEffect(() => {
 			if (initialValue && onChange) {
-				validateValue(initialValue);
-				onChange(initialValue, isValid);
+				validateValue(initialValue).then(result => {
+					onChange(initialValue, Boolean(result.isValid));
+				});
 			}
 		}, []);
 

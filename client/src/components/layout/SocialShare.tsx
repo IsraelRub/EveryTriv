@@ -119,8 +119,12 @@ export default function SocialShare({
 										{score}/{total}
 									</div>
 									<div className='text-lg text-blue-300 mb-2'>{percentage}% Correct</div>
-									<div className='text-sm text-slate-300'>
-										{topic} • {difficulty} difficulty
+									<div className='text-sm text-slate-300 flex items-center justify-center gap-2'>
+										<span>{topic}</span>
+										<span aria-hidden='true' className='flex items-center text-slate-400'>
+											<Icon name='dot' size={ComponentSize.XS} />
+										</span>
+										<span>{difficulty} difficulty</span>
 									</div>
 								</div>
 							</div>

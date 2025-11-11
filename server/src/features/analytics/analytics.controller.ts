@@ -4,9 +4,19 @@ import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { Cache } from '../../common';
+import { Cache, CurrentUserId } from '../../common';
 import { AnalyticsService } from './analytics.service';
-import { DifficultyAnalyticsQueryDto, GameAnalyticsQueryDto, TopicAnalyticsQueryDto, TrackEventDto } from './dtos';
+import {
+	DifficultyAnalyticsQueryDto,
+	GameAnalyticsQueryDto,
+	TopicAnalyticsQueryDto,
+	TrackEventDto,
+	UserActivityQueryDto,
+	UserComparisonQueryDto,
+	UserIdParamDto,
+	UserSummaryQueryDto,
+	UserTrendQueryDto,
+} from './dtos';
 
 /**
  * Analytics controller for tracking user behavior and retrieving analytics data
@@ -71,11 +81,11 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user analytics
+	 * Get analytics for the authenticated user
 	 */
-	@Get('user/')
+	@Get('user')
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getUserAnalytics(@Param('userId') userId: string) {
+	async getAuthenticatedUserAnalytics(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.analyticsService.getUserAnalytics(userId);
 
@@ -88,6 +98,245 @@ export class AnalyticsController {
 			logger.analyticsError('Error getting user analytics', {
 				error: getErrorMessage(error),
 				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user statistics overview
+	 */
+	@Get('user-stats/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getUserStats(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.analyticsService.getUserStatistics(params.userId);
+
+			logger.apiRead('analytics_user_stats', {
+				userId: params.userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user stats', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user performance metrics
+	 */
+	@Get('user-performance/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getUserPerformance(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.analyticsService.getUserPerformance(params.userId);
+
+			logger.apiRead('analytics_user_performance', {
+				userId: params.userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user performance', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user progress analytics
+	 */
+	@Get('user-progress/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getUserProgress(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
+		try {
+			const result = await this.analyticsService.getUserProgress(params.userId, query);
+
+			logger.apiRead('analytics_user_progress', {
+				userId: params.userId,
+				query: Object.keys(query ?? {}),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user progress', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get detailed user activity
+	 */
+	@Get('user-activity/:userId')
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	async getUserActivity(@Param() params: UserIdParamDto, @Query() query: UserActivityQueryDto) {
+		try {
+			const result = await this.analyticsService.getUserActivity(params.userId, query);
+
+			logger.apiRead('analytics_user_activity', {
+				userId: params.userId,
+				query: Object.keys(query ?? {}),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user activity', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user insights
+	 */
+	@Get('user-insights/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getUserInsights(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.analyticsService.getUserInsights(params.userId);
+
+			logger.apiRead('analytics_user_insights', {
+				userId: params.userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user insights', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get personalized user recommendations
+	 */
+	@Get('user-recommendations/:userId')
+	@Cache(CACHE_DURATION.SHORT + 60) // Cache for 2 minutes
+	async getUserRecommendations(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.analyticsService.getUserRecommendations(params.userId);
+
+			logger.apiRead('analytics_user_recommendations', {
+				userId: params.userId,
+				count: result.data?.length ?? 0,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user recommendations', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user achievements
+	 */
+	@Get('user-achievements/:userId')
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	async getUserAchievements(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.analyticsService.getUserAchievements(params.userId);
+
+			logger.apiRead('analytics_user_achievements', {
+				userId: params.userId,
+				resultsCount: result.data?.length ?? 0,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user achievements', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user trend timeline
+	 */
+	@Get('user-trends/:userId')
+	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	async getUserTrends(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
+		try {
+			const result = await this.analyticsService.getUserTrends(params.userId, query);
+
+			logger.apiRead('analytics_user_trends', {
+				userId: params.userId,
+				query: Object.keys(query ?? {}),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user trends', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Compare user metrics with another user or global averages
+	 */
+	@Get('user-comparison/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async compareUser(@Param() params: UserIdParamDto, @Query() query: UserComparisonQueryDto) {
+		try {
+			const result = await this.analyticsService.compareUserPerformance(params.userId, query);
+
+			logger.apiRead('analytics_user_comparison', {
+				userId: params.userId,
+				targetUserId: query?.targetUserId,
+				type: query?.target ?? 'global',
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error comparing users', {
+				error: getErrorMessage(error),
+				userId: params.userId,
+				targetUserId: query?.targetUserId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user summary
+	 */
+	@Get('user-summary/:userId')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
+		try {
+			const result = await this.analyticsService.getUserSummary(params.userId, query?.includeActivity ?? false);
+
+			logger.apiRead('analytics_user_summary', {
+				userId: params.userId,
+				options: query?.includeActivity ? 'include_activity' : 'default',
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user summary', {
+				error: getErrorMessage(error),
+				userId: params.userId,
 			});
 			throw error;
 		}

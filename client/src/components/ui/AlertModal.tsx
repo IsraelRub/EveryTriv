@@ -7,8 +7,9 @@
 
 import { motion } from 'framer-motion';
 
-import { AlertVariant, ButtonVariant, ModalSize } from '../../constants';
+import { AlertVariant, ButtonVariant, ComponentSize, ModalSize } from '../../constants';
 import type { AlertModalProps } from '../../types';
+import { Icon } from '../IconLibrary';
 import { Button } from './Button';
 import { Modal } from './Modal';
 
@@ -25,23 +26,23 @@ export default function AlertModal({
 			case AlertVariant.SUCCESS:
 				return {
 					titleColor: 'text-green-400',
-					icon: '✅',
+					iconName: 'checkcircle',
 				};
 			case AlertVariant.ERROR:
 				return {
 					titleColor: 'text-red-400',
-					icon: '❌',
+					iconName: 'xcircle',
 				};
 			case AlertVariant.WARNING:
 				return {
 					titleColor: 'text-yellow-400',
-					icon: '⚠️',
+					iconName: 'warning',
 				};
 			case AlertVariant.INFO:
 			default:
 				return {
 					titleColor: 'text-blue-400',
-					icon: 'ℹ️',
+					iconName: 'info',
 				};
 		}
 	};
@@ -52,7 +53,7 @@ export default function AlertModal({
 		<Modal open={open} onClose={onClose} size={ModalSize.SM}>
 			<motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className='p-6'>
 				<div className='flex items-center mb-4'>
-					<span className='text-2xl mr-3'>{styles.icon}</span>
+					<Icon name={styles.iconName} size={ComponentSize.LG} className={`${styles.titleColor} mr-3`} />
 					<h3 className={`text-xl font-bold ${styles.titleColor}`}>{title}</h3>
 				</div>
 

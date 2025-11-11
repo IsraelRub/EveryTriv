@@ -7,9 +7,155 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { clientLogger as logger } from '@shared/services';
-import type { CompleteUserAnalytics, UserAnalyticsQuery } from '@shared/types';
+import type {
+	AnalyticsResponse,
+	Achievement,
+	ActivityEntry,
+	CompleteUserAnalytics,
+	SystemRecommendation,
+	UserAnalytics,
+	UserAnalyticsQuery,
+	UserComparisonResult,
+	UserInsightsData,
+	UserPerformanceMetrics,
+	UserProgressAnalytics,
+	UserSummaryData,
+	UserTrendPoint,
+} from '@shared/types';
 
 import { apiService } from '../services';
+
+export const useUserStatsById = (userId?: string) =>
+	useQuery<AnalyticsResponse<UserAnalytics>>({
+		queryKey: ['userStats', userId],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserStatisticsById(userId);
+		},
+	});
+
+export const useUserPerformanceById = (userId?: string) =>
+	useQuery<AnalyticsResponse<UserPerformanceMetrics>>({
+		queryKey: ['userPerformance', userId],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserPerformanceById(userId);
+		},
+	});
+
+export const useUserProgressById = (
+	userId: string | undefined,
+	params?: Parameters<typeof apiService.getUserProgressById>[1]
+) =>
+	useQuery<AnalyticsResponse<UserProgressAnalytics>>({
+		queryKey: ['userProgressById', userId, params ? JSON.stringify(params) : undefined],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserProgressById(userId, params);
+		},
+	});
+
+export const useUserActivityById = (
+	userId: string | undefined,
+	params?: Parameters<typeof apiService.getUserActivityById>[1]
+) =>
+	useQuery<AnalyticsResponse<ActivityEntry[]>>({
+		queryKey: ['userActivityById', userId, params ? JSON.stringify(params) : undefined],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserActivityById(userId, params);
+		},
+	});
+
+export const useUserInsightsById = (userId?: string) =>
+	useQuery<AnalyticsResponse<UserInsightsData>>({
+		queryKey: ['userInsightsById', userId],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserInsightsById(userId);
+		},
+	});
+
+export const useUserRecommendationsById = (userId?: string) =>
+	useQuery<AnalyticsResponse<SystemRecommendation[]>>({
+		queryKey: ['userRecommendationsById', userId],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserRecommendationsById(userId);
+		},
+	});
+
+export const useUserAchievementsById = (userId?: string) =>
+	useQuery<AnalyticsResponse<Achievement[]>>({
+		queryKey: ['userAchievementsById', userId],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserAchievementsById(userId);
+		},
+	});
+
+export const useUserTrendsById = (
+	userId: string | undefined,
+	params?: Parameters<typeof apiService.getUserTrendsById>[1]
+) =>
+	useQuery<AnalyticsResponse<UserTrendPoint[]>>({
+		queryKey: ['userTrendsById', userId, params ? JSON.stringify(params) : undefined],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserTrendsById(userId, params);
+		},
+	});
+
+export const useUserComparisonById = (
+	userId: string | undefined,
+	params?: Parameters<typeof apiService.compareUserPerformanceById>[1]
+) =>
+	useQuery<AnalyticsResponse<UserComparisonResult>>({
+		queryKey: ['userComparisonById', userId, params ? JSON.stringify(params) : undefined],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.compareUserPerformanceById(userId, params);
+		},
+	});
+
+export const useUserSummaryById = (userId: string | undefined, includeActivity = false) =>
+	useQuery<AnalyticsResponse<UserSummaryData>>({
+		queryKey: ['userSummaryById', userId, includeActivity],
+		enabled: Boolean(userId),
+		queryFn: async () => {
+			if (!userId) {
+				throw new Error('userId is required');
+			}
+			return apiService.getUserSummaryById(userId, includeActivity);
+		},
+	});
 
 /**
  * Hook for getting user analytics

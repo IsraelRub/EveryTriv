@@ -13,11 +13,13 @@ import { motion } from 'framer-motion';
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { Button, CardGrid, fadeInUp, hoverScale, Icon, scaleIn, ValidatedForm } from '../../components';
+import { Button, CardGrid, FeatureHighlightList, fadeInUp, hoverScale, Icon, scaleIn, ValidatedForm } from '../../components';
 import {
+	AUTH_VIEW_CLASSNAMES,
 	AudioKey,
 	ButtonVariant,
 	CLIENT_STORAGE_KEYS,
+	LOGIN_FEATURE_HIGHLIGHTS,
 	REGISTRATION_DEFAULT_VALUES,
 	REGISTRATION_FIELDS,
 	Spacing,
@@ -121,7 +123,7 @@ export default function RegistrationView() {
 				<p className='text-slate-300 text-lg'>Choose how you'd like to create your account</p>
 			</header>
 
-			<CardGrid columns={2} gap={Spacing.LG} className='max-w-4xl mx-auto'>
+			<CardGrid columns={2} gap={Spacing.LG} className='w-full'>
 				<motion.article
 					variants={hoverScale}
 					initial='initial'
@@ -160,7 +162,7 @@ export default function RegistrationView() {
 			<div className='text-center'>
 				<p className='text-slate-400'>
 					Already have an account?{' '}
-					<Link to='/login' className='text-blue-400 hover:text-blue-300 transition-colors'>
+					<Link to='/login' className={`${AUTH_VIEW_CLASSNAMES.linkPrimary} text-base transition-colors`}>
 						Sign in here
 					</Link>
 				</p>
@@ -177,7 +179,7 @@ export default function RegistrationView() {
 			whileHover={{ scale: 1.01 }}
 			aria-label='Registration Form'
 		>
-			<header className='text-center mb-8'>
+			<header className='text-left mb-8'>
 				<h2 className='text-3xl font-bold gradient-text mb-4'>Create Your Account</h2>
 				<p className='text-slate-300'>Fill in your details to get started</p>
 			</header>
@@ -202,21 +204,21 @@ export default function RegistrationView() {
 				/>
 			</div>
 
-			<div className='text-center'>
+			<div className='flex flex-col gap-4 text-left'>
 				<Button
 					variant={ButtonVariant.SECONDARY}
 					onClick={() => {
 						audioService.play(AudioKey.BUTTON_CLICK);
 						setStep('method');
 					}}
-					className='mr-4'
+					className='w-fit'
 				>
 					<Icon name='ArrowLeft' className='w-4 h-4 mr-2' />
 					Back to Options
 				</Button>
-				<p className='text-slate-400 mt-4'>
+				<p className='text-slate-400'>
 					Already have an account?{' '}
-					<Link to='/login' className='text-blue-400 hover:text-blue-300 transition-colors'>
+					<Link to='/login' className={`${AUTH_VIEW_CLASSNAMES.linkPrimary} text-base transition-colors`}>
 						Sign in here
 					</Link>
 				</p>
@@ -256,12 +258,36 @@ export default function RegistrationView() {
 	);
 
 	return (
-		<main role='main' aria-label='Registration' className='min-h-screen flex items-center justify-center p-4'>
-			<div className='w-full max-w-4xl'>
-				{step === 'method' && renderMethodSelection()}
-				{step === 'manual' && renderManualForm()}
-				{step === 'confirmation' && renderConfirmation()}
-			</div>
+		<main role='main' aria-label='Registration'>
+			<section className={AUTH_VIEW_CLASSNAMES.container}>
+				<div className={AUTH_VIEW_CLASSNAMES.card}>
+					<div className={AUTH_VIEW_CLASSNAMES.formColumn}>
+						{step === 'method' && renderMethodSelection()}
+						{step === 'manual' && renderManualForm()}
+						{step === 'confirmation' && renderConfirmation()}
+					</div>
+
+					<motion.aside
+						variants={fadeInUp}
+						initial='hidden'
+						animate='visible'
+						transition={{ delay: 0.5 }}
+						className={AUTH_VIEW_CLASSNAMES.featuresColumn}
+						aria-label='Registration Highlights'
+					>
+						<header className={AUTH_VIEW_CLASSNAMES.featuresHeader}>
+							<h2 className='text-2xl font-semibold text-white'>Why create an account?</h2>
+							<p className='text-sm text-slate-400'>
+								Unlock personalised analytics, cross-platform sync, and team invitations directly from the desktop experience.
+							</p>
+						</header>
+						<FeatureHighlightList items={LOGIN_FEATURE_HIGHLIGHTS} />
+						<p className='text-sm text-slate-400'>
+							Advanced leaderboards and premium tournaments are ready when you upgrade—no extra setup required.
+						</p>
+					</motion.aside>
+				</div>
+			</section>
 		</main>
 	);
 }

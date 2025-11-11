@@ -11,10 +11,38 @@ import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
+import type { StorageValue } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { CacheService } from '@internal/modules/cache/cache.service';
 import type { NestRequest } from '@internal/types';
+
+const isExpressResponse = (value: unknown): value is Response =>
+	isRecord(value) && typeof value.status === 'function' && typeof value.setHeader === 'function';
+
+const isCacheableValue = (value: unknown): value is StorageValue => {
+	if (value == null) {
+		return true;
+	}
+
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return true;
+	}
+
+	if (value instanceof Date) {
+		return true;
+	}
+
+	if (Array.isArray(value)) {
+		return value.every(isCacheableValue);
+	}
+
+	if (isRecord(value)) {
+		return Object.values(value).every(isCacheableValue);
+	}
+
+	return false;
+};
 
 /**
  * Cache Interceptor
@@ -70,8 +98,28 @@ export class CacheInterceptor implements NestInterceptor {
 				tap(async result => {
 					try {
 						// Check cache condition if provided
-						if (cacheMetadata.condition && !cacheMetadata.condition(request, result as Response)) {
+						if (cacheMetadata.condition) {
+							if (!isExpressResponse(result)) {
+								logger.cacheInfo('Cache condition skipped - result is not an Express response', {
+									key: cacheMetadata.key,
+									method: request.method,
+									url: request.originalUrl,
+								});
+								return;
+							}
+
+							if (!cacheMetadata.condition(request, result)) {
 							logger.cacheInfo('Cache condition failed - not caching', {
+									key: cacheMetadata.key,
+									method: request.method,
+									url: request.originalUrl,
+								});
+								return;
+							}
+						}
+
+						if (!isCacheableValue(result)) {
+							logger.cacheInfo('Cache skipped - result not serializable', {
 								key: cacheMetadata.key,
 								method: request.method,
 								url: request.originalUrl,

@@ -7,8 +7,9 @@
 
 import { motion } from 'framer-motion';
 
-import { AlertVariant, ButtonVariant, ModalSize } from '../../constants';
+import { AlertVariant, ButtonVariant, ComponentSize, ModalSize } from '../../constants';
 import type { ConfirmModalProps } from '../../types';
+import { Icon } from '../IconLibrary';
 import { Button } from './Button';
 import { Modal } from './Modal';
 
@@ -29,20 +30,20 @@ export default function ConfirmModal({
 				return {
 					titleColor: 'text-red-400',
 					confirmButton: 'bg-red-600 hover:bg-red-700 text-white',
-					icon: '⚠️',
+					iconName: 'alerttriangle',
 				};
 			case AlertVariant.WARNING:
 				return {
 					titleColor: 'text-yellow-400',
 					confirmButton: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-					icon: '⚠️',
+					iconName: 'warning',
 				};
 			case AlertVariant.INFO:
 			default:
 				return {
 					titleColor: 'text-blue-400',
 					confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white',
-					icon: 'ℹ️',
+					iconName: 'info',
 				};
 		}
 	};
@@ -53,7 +54,7 @@ export default function ConfirmModal({
 		<Modal open={open} onClose={onClose} size={ModalSize.MD}>
 			<motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className='p-6'>
 				<div className='flex items-center mb-4'>
-					<span className='text-2xl mr-3'>{styles.icon}</span>
+					<Icon name={styles.iconName} size={ComponentSize.LG} className={`${styles.titleColor} mr-3`} />
 					<h3 className={`text-xl font-bold ${styles.titleColor}`}>{title}</h3>
 				</div>
 

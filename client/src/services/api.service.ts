@@ -4,9 +4,11 @@
  * @module ClientApiService
  * @used_by client/src/hooks/api/**, client/src/views/**
  */
-import { BillingCycle, GameMode, HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, PlanType } from '@shared/constants';
+import { BillingCycle, GameMode, HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, PlanType, TimePeriod } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import {
+	Achievement,
+	ActivityEntry,
 	ApiError,
 	ApiResponse,
 	AuthCredentials,
@@ -19,6 +21,8 @@ import {
 	CustomDifficultyRequest,
 	DifficultyStatsData,
 	ErrorResponseData,
+	AnalyticsResponse,
+	UserAnalytics,
 	GameData,
 	GameHistoryEntry,
 	LanguageValidationResult,
@@ -40,6 +44,13 @@ import {
 	UserProfileResponseType,
 	UserRankData,
 	UserStatsData,
+	UserPerformanceMetrics,
+	UserProgressAnalytics,
+	UserInsightsData,
+	SystemRecommendation,
+	UserTrendPoint,
+	UserComparisonResult,
+	UserSummaryData,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, hasPropertyOfType, isRecord } from '@shared/utils';
 
@@ -47,6 +58,26 @@ import { CLIENT_STORAGE_KEYS } from '../constants';
 import type { ClientApiService, EnhancedRequestConfig, RequestTransformer, ResponseTransformer } from '../types';
 import { ErrorInterceptorManager, RequestInterceptorManager, ResponseInterceptorManager } from './interceptors';
 import { storageService } from './storage.service';
+
+type TrendQueryParams = {
+	startDate?: string;
+	endDate?: string;
+	groupBy?: TimePeriod;
+	limit?: number;
+};
+
+type ActivityQueryParams = {
+	startDate?: string;
+	endDate?: string;
+	limit?: number;
+};
+
+type ComparisonQueryParams = {
+	target?: 'global' | 'user';
+	targetUserId?: string;
+	startDate?: string;
+	endDate?: string;
+};
 
 /**
  * API Configuration Helper
@@ -123,6 +154,22 @@ class ApiService implements ClientApiService {
 		return requestId || `${method}:${url}`;
 	}
 
+	private buildQueryString(params?: Record<string, string | number | boolean | undefined>): string {
+		if (!params) {
+			return '';
+		}
+
+		const searchParams = new URLSearchParams();
+		Object.entries(params).forEach(([key, value]) => {
+			if (value === undefined || value === null) {
+				return;
+			}
+			searchParams.append(key, String(value));
+		});
+		const query = searchParams.toString();
+		return query ? `?${query}` : '';
+	}
+
 	/**
 	 * Execute request with all interceptors and features
 	 * @param url - Request URL
@@ -144,14 +191,16 @@ class ApiService implements ClientApiService {
 		if (!config.skipDeduplication && this.activeRequests.has(requestKey)) {
 			const existingRequest = this.activeRequests.get(requestKey);
 			if (existingRequest) {
-				return existingRequest.then(response => {
-					// Runtime validation ensures the response structure is correct
-					// The Map stores Promise<ApiResponse<unknown>> for deduplication, but the actual type is T
+				return new Promise<ApiResponse<T>>((resolve, reject) => {
+					existingRequest
+						.then(response => {
 					if (this.isValidApiResponse<T>(response)) {
-						return response;
+								resolve(response);
+								return;
 					}
-					// Fallback: return response as-is (type system will handle the generic)
-					return response as ApiResponse<T>;
+							reject(new Error('Invalid API response structure'));
+						})
+						.catch(reject);
 				});
 			}
 		}
@@ -455,27 +504,35 @@ class ApiService implements ClientApiService {
 
 		// Handle server response format: { success: true, data: T, timestamp: string }
 		if (isRecord(responseData) && hasProperty(responseData, 'success') && hasProperty(responseData, 'data')) {
-			// Runtime validation ensures the structure is correct
-			// The data field is validated by the isRecord and hasProperty checks
-			// TypeScript cannot infer the generic type T from unknown, but runtime validation ensures correctness
-			const apiResponse = {
+			const apiResponse: ApiResponse<unknown> = {
 				data: responseData.data,
 				success: Boolean(responseData.success),
 				statusCode: response.status,
-				timestamp: typeof responseData.timestamp === 'string' ? responseData.timestamp : new Date().toISOString(),
-			} as ApiResponse<T>;
+				timestamp:
+					typeof responseData.timestamp === 'string'
+						? responseData.timestamp
+						: new Date().toISOString(),
+			};
+
+			if (this.isValidApiResponse<T>(apiResponse)) {
 			return apiResponse;
+			}
+
+			throw new Error('Invalid API response structure.');
 		}
 
 		// Fallback for direct data responses
-		// Runtime validation ensures the data structure is correct
-		// TypeScript cannot infer the generic type T from unknown, but runtime validation ensures correctness
-		const fallbackResponse = {
+		const fallbackResponse: ApiResponse<unknown> = {
 			data: responseData,
 			success: true,
 			statusCode: response.status,
-		} as ApiResponse<T>;
+		};
+
+		if (this.isValidApiResponse<T>(fallbackResponse)) {
 		return fallbackResponse;
+		}
+
+		throw new Error('Invalid API fallback response structure.');
 	}
 
 	async get<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
@@ -780,6 +837,109 @@ class ApiService implements ClientApiService {
 	}
 
 	// Analytics dashboard methods
+	async getUserStatisticsById(userId: string): Promise<AnalyticsResponse<UserAnalytics>> {
+		const response = await this.get<AnalyticsResponse<UserAnalytics>>(`/analytics/user-stats/${userId}`);
+		return response.data;
+	}
+
+	async getUserPerformanceById(userId: string): Promise<AnalyticsResponse<UserPerformanceMetrics>> {
+		const response = await this.get<AnalyticsResponse<UserPerformanceMetrics>>(`/analytics/user-performance/${userId}`);
+		return response.data;
+	}
+
+	async getUserProgressById(
+		userId: string,
+		params?: TrendQueryParams
+	): Promise<AnalyticsResponse<UserProgressAnalytics>> {
+		const query = this.buildQueryString({
+			startDate: params?.startDate,
+			endDate: params?.endDate,
+			groupBy: params?.groupBy,
+			limit: params?.limit,
+		});
+		const response = await this.get<AnalyticsResponse<UserProgressAnalytics>>(
+			`/analytics/user-progress/${userId}${query}`
+		);
+		return response.data;
+	}
+
+	async getUserActivityById(
+		userId: string,
+		params?: ActivityQueryParams
+	): Promise<AnalyticsResponse<ActivityEntry[]>> {
+		const query = this.buildQueryString({
+			startDate: params?.startDate,
+			endDate: params?.endDate,
+			limit: params?.limit,
+		});
+		const response = await this.get<AnalyticsResponse<ActivityEntry[]>>(
+			`/analytics/user-activity/${userId}${query}`
+		);
+		return response.data;
+	}
+
+	async getUserInsightsById(userId: string): Promise<AnalyticsResponse<UserInsightsData>> {
+		const response = await this.get<AnalyticsResponse<UserInsightsData>>(`/analytics/user-insights/${userId}`);
+		return response.data;
+	}
+
+	async getUserRecommendationsById(userId: string): Promise<AnalyticsResponse<SystemRecommendation[]>> {
+		const response = await this.get<AnalyticsResponse<SystemRecommendation[]>>(
+			`/analytics/user-recommendations/${userId}`
+		);
+		return response.data;
+	}
+
+	async getUserAchievementsById(userId: string): Promise<AnalyticsResponse<Achievement[]>> {
+		const response = await this.get<AnalyticsResponse<Achievement[]>>(`/analytics/user-achievements/${userId}`);
+		return response.data;
+	}
+
+	async getUserTrendsById(
+		userId: string,
+		params?: TrendQueryParams
+	): Promise<AnalyticsResponse<UserTrendPoint[]>> {
+		const query = this.buildQueryString({
+			startDate: params?.startDate,
+			endDate: params?.endDate,
+			groupBy: params?.groupBy,
+			limit: params?.limit,
+		});
+		const response = await this.get<AnalyticsResponse<UserTrendPoint[]>>(
+			`/analytics/user-trends/${userId}${query}`
+		);
+		return response.data;
+	}
+
+	async compareUserPerformanceById(
+		userId: string,
+		params?: ComparisonQueryParams
+	): Promise<AnalyticsResponse<UserComparisonResult>> {
+		const query = this.buildQueryString({
+			target: params?.target,
+			targetUserId: params?.targetUserId,
+			startDate: params?.startDate,
+			endDate: params?.endDate,
+		});
+		const response = await this.get<AnalyticsResponse<UserComparisonResult>>(
+			`/analytics/user-comparison/${userId}${query}`
+		);
+		return response.data;
+	}
+
+	async getUserSummaryById(
+		userId: string,
+		includeActivity: boolean = false
+	): Promise<AnalyticsResponse<UserSummaryData>> {
+		const query = this.buildQueryString({
+			includeActivity,
+		});
+		const response = await this.get<AnalyticsResponse<UserSummaryData>>(
+			`/analytics/user-summary/${userId}${query}`
+		);
+		return response.data;
+	}
+
 	async getUserAnalytics(): Promise<CompleteUserAnalytics> {
 		const response = await this.get<CompleteUserAnalytics>('/analytics/user/');
 		return response.data;

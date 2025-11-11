@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
 
-import { CACHE_DURATION } from '@shared/constants';
+import { CACHE_DURATION, SUBSCRIPTION_PLANS, PlanType } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -21,21 +21,34 @@ export class PaymentController {
 	@UsePipes(PaymentDataPipe)
 	async createPayment(@CurrentUserId() userId: string, @Body() paymentData: CreatePaymentDto) {
 		try {
-			// DTO validation is handled automatically by NestJS
-			if (!paymentData.planType) {
-				throw new HttpException('Plan type is required', HttpStatus.BAD_REQUEST);
+			const isPlanPayment = !!paymentData.planType;
+			let amount = paymentData.amount;
+			let description = paymentData.description;
+			const planType: PlanType | undefined = paymentData.planType;
+
+			if (isPlanPayment) {
+				const planDetails = planType ? SUBSCRIPTION_PLANS[planType] : undefined;
+				if (!planDetails) {
+					throw new HttpException('Invalid subscription plan type', HttpStatus.BAD_REQUEST);
+				}
+				amount = amount ?? planDetails.price;
+				description = description ?? `${planType} subscription`;
 			}
 
-			// Create payment
+			if (!amount || amount <= 0) {
+				throw new HttpException('Payment amount is required', HttpStatus.BAD_REQUEST);
+			}
+
 			const paymentDataForService: PaymentData = {
-				amount: 0, // Will be calculated by service
-				currency: 'USD',
-				description: `${paymentData.planType} subscription`,
-				planType: paymentData.planType,
-				numberOfPayments: paymentData.numberOfPayments,
+				amount,
+				currency: paymentData.currency ?? 'USD',
+				description: description ?? 'EveryTriv payment',
+				planType,
+				numberOfPayments: paymentData.numberOfPayments ?? 1,
 				metadata: {
-					plan: paymentData.planType,
-					paymentMethod: 'credit_card',
+					plan: planType,
+					paymentMethod: paymentData.paymentMethod ?? 'credit_card',
+					tags: paymentData.additionalInfo ? [paymentData.additionalInfo] : undefined,
 				},
 			};
 			const result = await this.paymentService.processPayment(userId, paymentDataForService);
@@ -43,9 +56,10 @@ export class PaymentController {
 			// Log API call for payment creation
 			logger.apiCreate('payment_create', {
 				userId,
-				planType: paymentData.planType,
-				paymentId: result.paymentId,
+				planType,
+				paymentId: result.paymentId ?? result.transactionId,
 				status: result.status,
+				amount,
 			});
 
 			return result;

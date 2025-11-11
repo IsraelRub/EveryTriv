@@ -17,6 +17,9 @@ export * from './form.constants';
  * @description Animation configuration and performance settings
  */
 export * from './animation.constants';
+export * from './navigation.constants';
+export * from './footer.constants';
+export * from './auth.constants';
 
 /**
  * Avatar constants

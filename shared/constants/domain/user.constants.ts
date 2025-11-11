@@ -63,3 +63,11 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 		questionLimit: 10,
 	},
 };
+
+/**
+ * Legacy password fallbacks for backward compatibility scenarios
+ * Maps current hashed password defaults to the legacy password users might enter
+ */
+export const LEGACY_PASSWORD_FALLBACKS: Record<string, string> = {
+	'AdminPass123!': 'OldPass123!',
+};

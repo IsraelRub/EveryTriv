@@ -5,7 +5,7 @@
  * @description caching strategy for consistent cache behavior across the system
  * @author EveryTriv Team
  */
-import type { StorageOperationResult, StorageService } from '@shared/types';
+import type { StorageOperationResult, StorageService, StorageValue } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 /**
@@ -26,8 +26,9 @@ export class CacheStrategyService {
 	 * @param strategy - Cache strategy (cache-first, persistent-first, hybrid)
 	 * @returns Operation result
 	 */
-	async get<T>(
+	async get<T extends StorageValue>(
 		key: string,
+		validator: (value: StorageValue) => value is T,
 		strategy: 'cache-first' | 'persistent-first' | 'hybrid' = 'cache-first'
 	): Promise<StorageOperationResult<T | null>> {
 		const startTime = Date.now();
@@ -40,13 +41,13 @@ export class CacheStrategyService {
 			switch (strategy) {
 				case 'cache-first': {
 					// Try cache first, then persistent
-					const cacheResult = await this.cacheStorage.get<T>(key);
+					const cacheResult = await this.cacheStorage.get<T>(key, validator);
 					if (cacheResult.success && cacheResult.data && cacheResult.data !== undefined) {
 						data = cacheResult.data;
 						success = true;
 						storageType = 'cache';
 					} else {
-						const persistentResult = await this.persistentStorage.get<T>(key);
+						const persistentResult = await this.persistentStorage.get<T>(key, validator);
 						if (persistentResult.success && persistentResult.data && persistentResult.data !== undefined) {
 							data = persistentResult.data;
 							success = true;
@@ -60,13 +61,13 @@ export class CacheStrategyService {
 
 				case 'persistent-first': {
 					// Try persistent first, then cache
-					const persistentResult = await this.persistentStorage.get<T>(key);
+					const persistentResult = await this.persistentStorage.get<T>(key, validator);
 					if (persistentResult.success && persistentResult.data && persistentResult.data !== undefined) {
 						data = persistentResult.data;
 						success = true;
 						storageType = 'persistent';
 					} else {
-						const cacheResult = await this.cacheStorage.get<T>(key);
+						const cacheResult = await this.cacheStorage.get<T>(key, validator);
 						if (cacheResult.success && cacheResult.data && cacheResult.data !== undefined) {
 							data = cacheResult.data;
 							success = true;
@@ -79,8 +80,8 @@ export class CacheStrategyService {
 				case 'hybrid': {
 					// Try both simultaneously
 					const [persistentResult, cacheResult] = await Promise.allSettled([
-						this.persistentStorage.get<T>(key),
-						this.cacheStorage.get<T>(key),
+						this.persistentStorage.get<T>(key, validator),
+						this.cacheStorage.get<T>(key, validator),
 					]);
 
 					// Prefer cache if available
@@ -135,7 +136,7 @@ export class CacheStrategyService {
 	 * @param strategy - Storage strategy (cache, persistent, hybrid)
 	 * @returns Operation result
 	 */
-	async set<T>(
+	async set<T extends StorageValue>(
 		key: string,
 		value: T,
 		ttl?: number,
@@ -149,7 +150,7 @@ export class CacheStrategyService {
 		try {
 			switch (strategy) {
 				case 'cache': {
-					const result = await this.cacheStorage.set(key, value, ttl);
+					const result = await this.cacheStorage.set<T>(key, value, ttl);
 					success = result.success;
 					error = result.error;
 					storageType = 'cache';
@@ -157,7 +158,7 @@ export class CacheStrategyService {
 				}
 
 				case 'persistent': {
-					const result = await this.persistentStorage.set(key, value, ttl);
+					const result = await this.persistentStorage.set<T>(key, value, ttl);
 					success = result.success;
 					error = result.error;
 					storageType = 'persistent';
@@ -167,8 +168,8 @@ export class CacheStrategyService {
 				case 'hybrid': {
 					// Store in both cache and persistent storage
 					const [cacheResult, persistentResult] = await Promise.allSettled([
-						this.cacheStorage.set(key, value, ttl),
-						this.persistentStorage.set(key, value, ttl),
+						this.cacheStorage.set<T>(key, value, ttl),
+						this.persistentStorage.set<T>(key, value, ttl),
 					]);
 
 					// Consider successful if at least one succeeds

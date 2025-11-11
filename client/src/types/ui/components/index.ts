@@ -6,6 +6,8 @@
 
 export * from './components.analytics.types';
 export * from './components.base.types';
+export * from './components.featureHighlight.types';
+export * from './components.navigation.types';
 export * from './componentsError.types';
 export * from './components.leaderboard.types';
 export * from './componentsSocial.types';

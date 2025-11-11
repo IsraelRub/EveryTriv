@@ -12,8 +12,8 @@ import { motion } from 'framer-motion';
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { AlertModal, Button, Card, ConfirmModal, Container, fadeInUp, scaleIn } from '../../components';
-import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ContainerSize, Spacing } from '../../constants';
+import { AlertModal, Button, Card, ConfirmModal, Container, Icon, fadeInUp, scaleIn } from '../../components';
+import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
 import { useValidateCustomDifficulty } from '../../hooks';
 import { audioService } from '../../services';
 
@@ -108,7 +108,7 @@ export default function CustomDifficultyView() {
 			<Container size={ContainerSize.XL} className='min-h-screen py-8'>
 				{/* Header */}
 				<motion.header variants={fadeInUp} initial='hidden' animate='visible' className='text-center mb-12'>
-					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Custom Difficulty Levels</h1>
+					<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Custom Difficulty Levels</h1>
 					<p className='text-xl text-slate-300'>Create your own difficulty levels with custom descriptions</p>
 				</motion.header>
 
@@ -162,7 +162,9 @@ export default function CustomDifficultyView() {
 
 						{savedDifficulties.length === 0 ? (
 							<div className='text-center py-12'>
-								<div className='text-6xl mb-4'>🎯</div>
+								<div className='mb-4 flex justify-center'>
+									<Icon name='target' size={ComponentSize.XXL} className='text-blue-400' />
+								</div>
 								<p className='text-slate-400 text-lg'>No custom difficulty levels yet</p>
 								<p className='text-slate-500 text-sm mt-2'>Create your first custom level above</p>
 							</div>
@@ -214,12 +216,27 @@ export default function CustomDifficultyView() {
 					className='mt-8'
 				>
 					<Card variant={CardVariant.GLASS} padding={Spacing.MD} className='rounded-lg'>
-						<h3 className='text-lg font-semibold text-white mb-3'>💡 Tips</h3>
+						<h3 className='text-lg font-semibold text-white mb-3 flex items-center gap-2'>
+							<Icon name='lightbulb' size={ComponentSize.LG} className='text-amber-300' />
+							Tips
+						</h3>
 						<ul className='space-y-2 text-slate-300 text-sm'>
-							<li>• Be specific about the topic and difficulty level</li>
-							<li>• Use clear and descriptive language</li>
-							<li>• Examples: "Basic math for elementary school", "Advanced programming concepts"</li>
-							<li>• Your custom levels can be used in future games</li>
+							<li className='flex items-start gap-2'>
+								<Icon name='dot' size={ComponentSize.XS} className='mt-1 text-slate-500' />
+								<span>Be specific about the topic and difficulty level</span>
+							</li>
+							<li className='flex items-start gap-2'>
+								<Icon name='dot' size={ComponentSize.XS} className='mt-1 text-slate-500' />
+								<span>Use clear and descriptive language</span>
+							</li>
+							<li className='flex items-start gap-2'>
+								<Icon name='dot' size={ComponentSize.XS} className='mt-1 text-slate-500' />
+								<span>Examples: "Basic math for elementary school", "Advanced programming concepts"</span>
+							</li>
+							<li className='flex items-start gap-2'>
+								<Icon name='dot' size={ComponentSize.XS} className='mt-1 text-slate-500' />
+								<span>Your custom levels can be used in future games</span>
+							</li>
 						</ul>
 					</Card>
 				</motion.footer>

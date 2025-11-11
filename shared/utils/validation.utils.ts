@@ -11,14 +11,7 @@ import {
 	VALIDATION_LIMITS,
 	VALIDATION_THRESHOLDS,
 } from '../constants';
-import type {
-	LanguageValidationOptions,
-	LanguageValidationResult,
-	PasswordStrength,
-	PasswordValidationResult,
-	Position,
-	ValidationResult,
-} from '../types';
+import type { LanguageValidationOptions, LanguageValidationResult, PasswordValidationResult, Position, ValidationResult } from '../types';
 import { getErrorMessage } from './error.utils';
 
 /**
@@ -168,11 +161,10 @@ export function validateUsername(username: string): ValidationResult {
 }
 
 /**
- * Validates password strength and security requirements
+ * Validates password security requirements
  * @param password The password string to validate
- * @returns Password validation result with strength analysis and security checks
- * Performs comprehensive password validation including length, character types,
- * and strength scoring. Requires uppercase, lowercase, numbers, and special characters
+ * @returns Password validation result with detailed compliance checks
+ * Performs comprehensive password validation including length and character type requirements
  */
 export function validatePassword(password: string): PasswordValidationResult {
 	const hasUpperCase = /[A-Z]/.test(password);
@@ -189,17 +181,6 @@ export function validatePassword(password: string): PasswordValidationResult {
 		hasNumber: hasNumbers,
 		hasSpecialChar,
 	};
-
-	let score = 0;
-	if (hasMinLength) score += 20;
-	if (hasUpperCase) score += 20;
-	if (hasLowerCase) score += 20;
-	if (hasNumbers) score += 20;
-	if (hasSpecialChar) score += 20;
-
-	let strength: PasswordStrength = 'weak';
-	if (score >= 80) strength = 'strong';
-	else if (score >= 60) strength = 'medium';
 
 	if (!password || !hasMinLength) {
 		errors.push(`Password must be at least ${VALIDATION_LIMITS.PASSWORD.MIN_LENGTH} characters long`);
@@ -228,8 +209,6 @@ export function validatePassword(password: string): PasswordValidationResult {
 	return {
 		isValid: errors.length === 0,
 		errors,
-		strength,
-		score,
 		checks,
 	};
 }

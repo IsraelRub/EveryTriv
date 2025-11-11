@@ -29,7 +29,12 @@ import type {
 	SubscriptionPlanDetails,
 	SubscriptionPlans,
 } from '@shared/types';
-import { generatePaymentIntentId, getErrorMessage } from '@shared/utils';
+import {
+	generatePaymentIntentId,
+	getErrorMessage,
+	isPointPurchaseOptionArray,
+	isSubscriptionPlans,
+} from '@shared/utils';
 
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules/cache';
@@ -55,7 +60,7 @@ export class PaymentService {
 		try {
 			logger.payment('Getting pricing plans');
 
-			const cachedPlans = await this.cacheService.get<SubscriptionPlans>('pricing_plans');
+			const cachedPlans = await this.cacheService.get<SubscriptionPlans>('pricing_plans', isSubscriptionPlans);
 			if (cachedPlans.success && cachedPlans.data) {
 				return cachedPlans.data;
 			}
@@ -79,7 +84,10 @@ export class PaymentService {
 		try {
 			logger.payment('Getting point purchase options');
 
-			const cachedOptions = await this.cacheService.get<PointPurchaseOption[]>('point_purchase_options');
+			const cachedOptions = await this.cacheService.get<PointPurchaseOption[]>(
+				'point_purchase_options',
+				isPointPurchaseOptionArray
+			);
 			if (cachedOptions.success && cachedOptions.data) {
 				return cachedOptions.data;
 			}

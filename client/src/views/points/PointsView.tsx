@@ -42,7 +42,7 @@ export default function PointsView() {
 			<Container size={ContainerSize.XL} className='min-h-screen py-8'>
 				{/* Header */}
 				<motion.header variants={fadeInUp} initial='hidden' animate='visible' className='text-center mb-12'>
-					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Your Points</h1>
+					<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Your Points</h1>
 					<p className='text-xl text-slate-300'>Manage your points and view transaction history</p>
 				</motion.header>
 

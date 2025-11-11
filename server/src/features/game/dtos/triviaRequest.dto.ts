@@ -19,4 +19,5 @@ export class TriviaRequestDto {
 	@Min(1)
 	@Max(50)
 	questionCount!: number;
+
 }

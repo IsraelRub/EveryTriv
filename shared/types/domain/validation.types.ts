@@ -37,16 +37,9 @@ export interface BaseValidationResult extends SimpleValidationResult {
 }
 
 /**
- * Password strength levels
- */
-export type PasswordStrength = 'weak' | 'medium' | 'strong';
-
-/**
  * Password validation result interface
  */
 export interface PasswordValidationResult extends BaseValidationResult {
-	strength: PasswordStrength;
-	score: number;
 	checks: {
 		hasMinLength: boolean;
 		hasUppercase: boolean;

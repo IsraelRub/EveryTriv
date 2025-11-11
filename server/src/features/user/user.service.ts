@@ -5,16 +5,29 @@ import { DeepPartial, Repository } from 'typeorm';
 
 import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, UserRole, UserStatus } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { BasicValue, UpdateUserProfileData, UserPreferences } from '@shared/types';
-import { getErrorMessage, mergeUserPreferences, normalizeText } from '@shared/utils';
+import type {
+	AdminUserData,
+	AuditLogEntry,
+	BasicValue,
+	UpdateUserProfileData,
+	UserPreferences,
+	UserSearchCacheEntry,
+	UserStatsCacheEntry,
+} from '@shared/types';
+import {
+	getErrorMessage,
+	isAuditLogEntry,
+	isUserSearchCacheEntry,
+	isUserStatsCacheEntry,
+	mergeUserPreferences,
+	normalizeText,
+} from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
 import { createServerError, createValidationError } from '@internal/utils';
 
-import { AuthenticationManager } from '../../common/auth/authentication.manager';
-import { PasswordService } from '../../common/auth/password.service';
-import { ValidationService } from '../../common/validation/validation.service';
+import { AuthenticationManager, PasswordService, ValidationService } from '../../common';
 
 /**
  * Service for managing user data, profiles, and authentication
@@ -72,7 +85,7 @@ export class UserService {
 			}
 
 			const sessionKey = `user_session:${user.id}`;
-			const result = await this.storageService.setItem(
+			const result = await this.storageService.set(
 				sessionKey,
 				{
 					userId: user.id,
@@ -291,7 +304,7 @@ export class UserService {
 	 * @param userId User ID
 	 * @returns User statistics
 	 */
-	async getUserStats(userId: string) {
+	async getUserStats(userId: string): Promise<UserStatsCacheEntry> {
 		try {
 			logger.userInfo('Getting user stats', {
 				context: 'UserService',
@@ -300,7 +313,7 @@ export class UserService {
 
 			const cacheKey = `user:stats:${userId}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<UserStatsCacheEntry>(
 				cacheKey,
 				async () => {
 					const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -321,7 +334,8 @@ export class UserService {
 							: 0,
 					};
 				},
-				CACHE_DURATION.VERY_LONG // Cache for 30 minutes - user stats don't change frequently
+				CACHE_DURATION.VERY_LONG,
+				isUserStatsCacheEntry
 			);
 		} catch (error) {
 			logger.userError('Failed to get user stats', {
@@ -339,7 +353,7 @@ export class UserService {
 	 * @param limit Number of results to return
 	 * @returns Search results
 	 */
-	async searchUsers(query: string, limit: number = 10) {
+	async searchUsers(query: string, limit: number = 10): Promise<UserSearchCacheEntry> {
 		try {
 			logger.userInfo('Searching users', {
 				context: 'UserService',
@@ -355,7 +369,7 @@ export class UserService {
 
 			const cacheKey = `user:search:${normalizedQuery}:${limit}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<UserSearchCacheEntry>(
 				cacheKey,
 				async () => {
 					const users = await this.userRepository
@@ -373,15 +387,16 @@ export class UserService {
 						results: users.map(user => ({
 							id: user.id,
 							username: user.username,
-							firstName: user.firstName,
-							lastName: user.lastName,
-							avatar: user.avatar,
+							firstName: user.firstName ?? null,
+							lastName: user.lastName ?? null,
+							avatar: user.avatar ?? null,
 							displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
 						})),
 						totalResults: users.length,
 					};
 				},
-				CACHE_DURATION.MEDIUM // Cache for 5 minutes - search results can change frequently
+				CACHE_DURATION.MEDIUM,
+				isUserSearchCacheEntry
 			);
 		} catch (error) {
 			logger.userError('Failed to search users', {
@@ -822,7 +837,7 @@ export class UserService {
 			};
 
 			// Store audit log in persistent storage (survives cache invalidation)
-			const result = await this.storageService.setItem(
+			const result = await this.storageService.set(
 				auditKey,
 				auditEntry,
 				2592000 // 30 days TTL for audit logs
@@ -879,9 +894,9 @@ export class UserService {
 				.slice(0, limit);
 
 			// Get audit entries
-			const auditLogs = [];
+			const auditLogs: AuditLogEntry[] = [];
 			for (const key of auditKeys) {
-				const result = await this.storageService.getItem(key);
+				const result = await this.storageService.get(key, isAuditLogEntry);
 				if (result.success && result.data) {
 					auditLogs.push(result.data);
 				}
@@ -956,12 +971,14 @@ export class UserService {
 					throw createValidationError('currentSubscriptionId', 'string');
 				}
 			} else if (field === 'status') {
-				const currentMetadata = user.metadata ?? {};
-				user.metadata = {
-					...currentMetadata,
-					status: value,
-					statusUpdatedAt: new Date().toISOString(),
-				};
+				if (typeof value !== 'string') {
+					throw createValidationError('status', 'string');
+				}
+				const nextStatus = Object.values(UserStatus).find(statusOption => statusOption === value);
+				if (!nextStatus) {
+					throw createValidationError('status', 'string');
+				}
+				user.isActive = nextStatus === UserStatus.ACTIVE;
 			} else {
 				// Use field type mapping for standard fields
 				if (fieldTypeMap[field]) {
@@ -1131,20 +1148,18 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			// Update status by mapping to isActive field or storing in metadata
+			const userStats = { ...(user.stats ?? {}) };
+			userStats.status = status;
+
+			// Update status by mapping to isActive field
 			if (status === UserStatus.ACTIVE) {
 				user.isActive = true;
 			} else if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
 				user.isActive = false;
 			}
 
-			// Store detailed status in metadata
-			const currentMetadata = user.metadata ?? {};
-			user.metadata = {
-				...currentMetadata,
-				status: status,
-				statusUpdatedAt: new Date().toISOString(),
-			};
+			user.stats = userStats;
+
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user cache
@@ -1168,6 +1183,43 @@ export class UserService {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Get all users for admin view
+	 * @param limit Maximum number of users
+	 * @param offset Number of users to skip
+	 */
+	async getAllUsers(limit: number = 50, offset: number = 0): Promise<{
+		users: AdminUserData[];
+		total: number;
+		limit: number;
+		offset: number;
+	}> {
+		const safeLimit = Math.min(Math.max(limit, 1), 200);
+		const safeOffset = Math.max(offset, 0);
+
+		const [users, total] = await this.userRepository.findAndCount({
+			order: { createdAt: 'DESC' },
+			take: safeLimit,
+			skip: safeOffset,
+		});
+
+		const mapped: AdminUserData[] = users.map(user => ({
+			id: user.id,
+			username: user.username,
+			email: user.email,
+			role: user.role,
+			createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
+			lastLogin: user.updatedAt ? user.updatedAt.toISOString() : undefined,
+		}));
+
+		return {
+			users: mapped,
+			total,
+			limit: safeLimit,
+			offset: safeOffset,
+		};
 	}
 
 	/**

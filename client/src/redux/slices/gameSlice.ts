@@ -5,8 +5,7 @@ import { TriviaQuestion } from '@shared/types';
 import { calculateScore } from '../../services';
 import { ClientGameState, ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '../../types';
 
-const initialState: GameSliceState = {
-	state: {
+const initialGameState: ClientGameState = {
 		status: 'idle',
 		isPlaying: false,
 		currentQuestion: 0,
@@ -14,8 +13,10 @@ const initialState: GameSliceState = {
 		questions: [],
 		answers: [],
 		loading: false,
-		error: undefined,
-	} as ClientGameState,
+};
+
+const initialState: GameSliceState = {
+	state: initialGameState,
 	gameHistory: [],
 	leaderboard: [],
 	isLoading: false,

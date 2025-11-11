@@ -14,10 +14,18 @@ import { motion } from 'framer-motion';
 import { DifficultyLevel, GameMode } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { QuestionData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
-import { AlertModal, Button, Card, Container, fadeInUp, GridLayout, Icon, scaleIn } from '../../components';
-import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ContainerSize, Spacing } from '../../constants';
+import { AlertModal, Button, Card, Container, Icon, fadeInUp, GridLayout, scaleIn } from '../../components';
+import {
+	AlertVariant,
+	AudioKey,
+	ButtonVariant,
+	CardVariant,
+	ComponentSize,
+	ContainerSize,
+	Spacing,
+} from '../../constants';
 import { useSaveHistory, useUpdateUserRanking } from '../../hooks';
 import { audioService } from '../../services';
 import type { RootState } from '../../types';
@@ -50,7 +58,21 @@ export default function GameSummaryView() {
 		variant: AlertVariant.INFO,
 	});
 
-	const summaryData = location.state as GameSummaryState;
+	const isGameSummaryState = (value: unknown): value is GameSummaryState => {
+		if (!isRecord(value)) {
+			return false;
+		}
+
+		return (
+			typeof value.score === 'number' &&
+			typeof value.totalQuestions === 'number' &&
+			typeof value.correctAnswers === 'number' &&
+			typeof value.topic === 'string' &&
+			typeof value.difficulty === 'string'
+		);
+	};
+
+	const summaryData = isGameSummaryState(location.state) ? location.state : undefined;
 
 	useEffect(() => {
 		if (!summaryData) {
@@ -152,20 +174,19 @@ export default function GameSummaryView() {
 		}
 	};
 
+	const headerIcon = isPerfect ? 'trophy' : isGood ? 'partypopper' : 'dumbbell';
+	const headerIconClass = isPerfect ? 'text-yellow-400' : isGood ? 'text-purple-400' : 'text-emerald-400';
+
 	return (
 		<main role='main' aria-label='Game Summary'>
 			<Container size={ContainerSize.XL} className='min-h-screen py-8'>
 				{/* Header */}
 				<motion.header variants={scaleIn} initial='hidden' animate='visible' className='text-center mb-12'>
-					{isPerfect ? (
-						<div className='text-6xl mb-4'>🏆</div>
-					) : isGood ? (
-						<div className='text-6xl mb-4'>🎉</div>
-					) : (
-						<div className='text-6xl mb-4'>💪</div>
-					)}
+					<div className='mb-4 flex justify-center'>
+						<Icon name={headerIcon} size={ComponentSize.XXL} className={headerIconClass} />
+					</div>
 
-					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>
+					<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>
 						{isPerfect ? 'Perfect Score!' : isGood ? 'Great Job!' : 'Good Try!'}
 					</h1>
 					<p className='text-xl text-slate-300'>
@@ -183,7 +204,7 @@ export default function GameSummaryView() {
 					aria-label='Score Display'
 				>
 					<Card variant={CardVariant.GLASS} padding={Spacing.XL} className='rounded-lg text-center'>
-						<div className='text-7xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-4'>
+						<div className='text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-4'>
 							{score}
 						</div>
 						<p className='text-2xl text-slate-300'>Total Points</p>
@@ -277,7 +298,10 @@ export default function GameSummaryView() {
 					className='mt-8 text-center text-slate-400'
 				>
 					{isPerfect ? (
-						<p>🌟 Outstanding performance! You answered all questions correctly!</p>
+						<p className='flex items-center justify-center gap-2'>
+							<Icon name='star' size={ComponentSize.MD} className='text-yellow-400' />
+							<span>Outstanding performance! You answered all questions correctly!</span>
+						</p>
 					) : accuracy >= 80 ? (
 						<p>You're doing amazing! Just a few more to master!</p>
 					) : accuracy >= 60 ? (

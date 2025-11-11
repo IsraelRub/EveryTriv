@@ -453,10 +453,10 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
 		neutral: 'text-gray-400',
 	};
 
-	const trendIcon = {
-		up: '↗',
-		down: '↘',
-		neutral: '→',
+	const trendIconName = {
+		up: 'trendingup',
+		down: 'trendingdown',
+		neutral: 'arrowright',
 	};
 
 	return (
@@ -472,7 +472,7 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
 							<div className='flex items-center justify-between mb-1'>
 								<p className='text-sm font-medium text-gray-600'>{title}</p>
 								{trend !== 'neutral' && (
-									<span className={`text-sm font-medium ${trendClasses[trend]}`}>{trendIcon[trend]}</span>
+									<Icon name={trendIconName[trend]} size={ComponentSize.SM} className={trendClasses[trend]} />
 								)}
 							</div>
 							<p className='text-2xl font-bold text-gray-900'>{value}</p>
@@ -514,10 +514,10 @@ function ComparisonCard({ title, userValue, averageValue, unit, higherIsBetter }
 		return 'text-gray-600';
 	};
 
-	const getStatusIcon = () => {
-		if (isBetter) return '↗';
-		if (isWorse) return '↘';
-		return '→';
+	const getStatusIconName = () => {
+		if (isBetter) return 'trendingup';
+		if (isWorse) return 'trendingdown';
+		return 'arrowright';
 	};
 
 	return (
@@ -525,7 +525,7 @@ function ComparisonCard({ title, userValue, averageValue, unit, higherIsBetter }
 			<CardContent>
 				<div className='flex items-center justify-between mb-2'>
 					<h4 className='text-sm font-medium text-gray-700'>{title}</h4>
-					<span className={`text-sm font-medium ${getStatusColor()}`}>{getStatusIcon()}</span>
+					<Icon name={getStatusIconName()} size={ComponentSize.SM} className={getStatusColor()} />
 				</div>
 				<div className='space-y-1'>
 					<div className='flex justify-between items-center'>

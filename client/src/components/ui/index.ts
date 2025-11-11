@@ -18,3 +18,4 @@ export * from './Select';
 export { ValidatedInput } from './ValidatedInput';
 export { ValidationMessage } from './ValidationMessage';
 export { ValidationIcon, ValidationStatusIndicator } from './ValidationIcon';
+export * from './FeatureHighlight';

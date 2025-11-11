@@ -9,4 +9,3 @@ export * from './data.types';
 export * from './error.types';
 export * from './performance.types';
 export * from './response.types';
-export * from './utility.types';

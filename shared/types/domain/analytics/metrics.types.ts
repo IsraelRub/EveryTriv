@@ -21,6 +21,9 @@ export interface MiddlewareMetrics {
 	slowOperations: number;
 	errorCount: number;
 	lastExecuted: Date;
+	lastErrorMessage?: string;
+	lastErrorName?: string;
+	lastErrorTimestamp?: Date;
 }
 
 /**

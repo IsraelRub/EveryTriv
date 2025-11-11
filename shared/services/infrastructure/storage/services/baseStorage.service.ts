@@ -15,6 +15,7 @@ import {
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
+	StorageValue,
 	UserProgressData,
 } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -160,7 +161,7 @@ export abstract class BaseStorageService implements StorageService {
 
 	protected async loadUserProgress(userId: string): Promise<UserProgressData | null> {
 		const key = `user_progress_${userId}`;
-		const result = await this.get<UserProgressData>(key);
+		const result = await this.get(key, StorageUtils.isUserProgressData);
 		return result.success && result.data ? result.data : null;
 	}
 
@@ -178,8 +179,12 @@ export abstract class BaseStorageService implements StorageService {
 	}
 
 	// Abstract methods to be implemented by subclasses
-	abstract set<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
-	abstract get<T>(key: string): Promise<StorageOperationResult<T | null>>;
+	abstract set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
+	abstract get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
+	abstract get<T extends StorageValue>(
+		key: string,
+		validator: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<T | null>>;
 	abstract delete(key: string): Promise<StorageOperationResult<void>>;
 	abstract exists(key: string): Promise<StorageOperationResult<boolean>>;
 	abstract clear(): Promise<StorageOperationResult<void>>;
@@ -218,10 +223,15 @@ export abstract class BaseStorageService implements StorageService {
 	 * @returns Promise<T> The cached or newly generated value
 	 * @description Implements cache-aside pattern with automatic value generation
 	 */
-	async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
-		const result = await this.get<T>(key);
+	async getOrSet<T extends StorageValue>(
+		key: string,
+		factory: () => Promise<T>,
+		ttl: number | undefined,
+		validator: (value: StorageValue) => value is T
+	): Promise<T> {
+		const result = await this.get(key, validator);
 		if (result.success && result.data) {
-			return result.data as T;
+			return result.data;
 		}
 
 		const value = await factory();
@@ -340,15 +350,18 @@ export abstract class BaseStorageService implements StorageService {
 	/**
 	 * @deprecated Use set() instead
 	 */
-	async setItem<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
+	async setItem<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
 		return this.set(key, value, ttl);
 	}
 
 	/**
 	 * @deprecated Use get() instead
 	 */
-	async getItem<T>(key: string): Promise<StorageOperationResult<T | null>> {
-		return this.get(key);
+	async getItem<T extends StorageValue>(
+		key: string,
+		validator: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<T | null>> {
+		return this.get(key, validator);
 	}
 
 	/**

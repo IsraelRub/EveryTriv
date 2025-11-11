@@ -29,13 +29,15 @@ export class AudioService implements AudioServiceInterface {
 	private userPreferences: UserPreferences | null = null;
 
 	constructor() {
-		const entries: [AudioCategory, number][] = [];
-		for (const [key, value] of Object.entries(DEFAULT_CATEGORY_VOLUMES)) {
-			if (Object.values(AudioCategory).includes(key as AudioCategory)) {
-				entries.push([key as AudioCategory, value]);
+		const categoryEntries: [AudioCategory, number][] = [];
+		for (const category of Object.values(AudioCategory)) {
+			const defaultVolume = DEFAULT_CATEGORY_VOLUMES[category];
+			if (typeof defaultVolume === 'number') {
+				categoryEntries.push([category, defaultVolume]);
 			}
 		}
-		this.categoryVolumes = new Map<AudioCategory, number>(entries);
+
+		this.categoryVolumes = new Map<AudioCategory, number>(categoryEntries);
 
 		this.preloadEssentialAudio();
 

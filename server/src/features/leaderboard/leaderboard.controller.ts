@@ -20,6 +20,10 @@ import { LeaderboardService } from './leaderboard.service';
 export class LeaderboardController {
 	constructor(private readonly leaderboardService: LeaderboardService) {}
 
+	private isLeaderboardPeriod(value: string): value is 'weekly' | 'monthly' | 'yearly' {
+		return value === 'weekly' || value === 'monthly' || value === 'yearly';
+	}
+
 	/**
 	 * Get user ranking
 	 * @param userId Authenticated user ID
@@ -141,7 +145,7 @@ export class LeaderboardController {
 			const limitNum = query.limit || 100;
 			const period = query.type || 'weekly';
 
-			if (!['weekly', 'monthly', 'yearly'].includes(period)) {
+			if (!this.isLeaderboardPeriod(period)) {
 				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
 			}
 
@@ -150,8 +154,7 @@ export class LeaderboardController {
 			}
 
 			// Ensure period is one of the allowed values for getLeaderboardByPeriod
-			const validPeriod = period as 'weekly' | 'monthly' | 'yearly';
-			const leaderboard = await this.leaderboardService.getLeaderboardByPeriod(validPeriod, limitNum);
+			const leaderboard = await this.leaderboardService.getLeaderboardByPeriod(period, limitNum);
 
 			logger.apiRead('leaderboard_period', {
 				period,

@@ -12,6 +12,12 @@
 export { useCurrentUser, useLogin, useRegister } from './useAuth';
 
 /**
+ * Navigation hooks
+ * @description Navigation-related state and controller hooks
+ */
+export { useNavigationController } from './useNavigationController';
+
+/**
  * Points management hooks
  * @description Point balance, transactions, and purchase management hooks
  */
@@ -125,3 +131,9 @@ export { usePrevious, useValueChange } from './usePrevious';
  * @description Game timer management hook
  */
 export { useGameTimer } from './useGameTimer';
+
+/**
+ * Audio hooks
+ * @description Audio context and control hooks
+ */
+export { AudioProvider, useAudio } from './useAudio';

@@ -121,7 +121,7 @@ const FavoriteCard = ({
 						}}
 						title='Remove favorite'
 					>
-						×
+						<Icon name='close' size={ComponentSize.SM} className='text-current' />
 					</button>
 				</div>
 			</div>

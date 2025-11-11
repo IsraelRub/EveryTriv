@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { GameMode, POINT_PURCHASE_PACKAGES, PointSource, PointTransactionType } from '@shared/constants';
 import { BasePointsService, serverLogger as logger } from '@shared/services';
 import type { CanPlayResponse, PointBalance, PointPurchaseOption } from '@shared/types';
-import { ensureErrorObject } from '@shared/utils';
+import { ensureErrorObject, isPointBalanceCacheEntry, isPointPurchaseOptionArray } from '@shared/utils';
 
 import { PointTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
@@ -39,7 +39,7 @@ export class PointsService extends BasePointsService {
 
 			const cacheKey = `points:balance:${userId}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<PointBalance>(
 				cacheKey,
 				async () => {
 					const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -65,7 +65,8 @@ export class PointsService extends BasePointsService {
 					});
 					return balance;
 				},
-				1800
+				1800,
+				isPointBalanceCacheEntry
 			);
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to get point balance', {
@@ -82,7 +83,7 @@ export class PointsService extends BasePointsService {
 		try {
 			const cacheKey = 'points:packages:all';
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<PointPurchaseOption[]>(
 				cacheKey,
 				async () => {
 					const packages: PointPurchaseOption[] = POINT_PURCHASE_PACKAGES.map(pkg => ({
@@ -96,7 +97,8 @@ export class PointsService extends BasePointsService {
 					logger.databaseInfo('Point packages retrieved', { count: packages.length });
 					return packages;
 				},
-				3600
+				3600,
+				isPointPurchaseOptionArray
 			);
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to get point packages');
@@ -145,7 +147,8 @@ export class PointsService extends BasePointsService {
 	async deductPoints(
 		userId: string,
 		questionCount: number,
-		gameMode: GameMode = GameMode.QUESTION_LIMITED
+		gameMode: GameMode = GameMode.QUESTION_LIMITED,
+		reason?: string
 	): Promise<PointBalance> {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
@@ -206,12 +209,15 @@ export class PointsService extends BasePointsService {
 				balanceAfter: user.credits,
 				freeQuestionsAfter: user.remainingFreeQuestions,
 				purchasedPointsAfter: user.purchasedPoints,
-				description: `Points deducted for ${gameMode} game: ${questionCount} points`,
+				description: reason
+					? `Points deducted (${reason}): ${questionCount} points`
+					: `Points deducted for ${gameMode} game: ${questionCount} points`,
 				metadata: {
 					gameMode,
 					freeQuestionsUsed: deductionResult.deductionDetails.freeQuestionsUsed,
 					purchasedPointsUsed: deductionResult.deductionDetails.purchasedPointsUsed,
 					creditsUsed: deductionResult.deductionDetails.creditsUsed,
+					reason: reason ?? null,
 				},
 			});
 
@@ -221,6 +227,7 @@ export class PointsService extends BasePointsService {
 				userId,
 				type: PointTransactionType.DEDUCTION,
 				amount: -questionCount,
+				reason: reason ?? 'not_provided',
 			});
 
 			const balance: PointBalance = {
@@ -236,6 +243,7 @@ export class PointsService extends BasePointsService {
 				userId,
 				questionCount,
 				gameMode,
+				reason,
 				totalPoints: balance.totalPoints,
 				purchasedPoints: balance.purchasedPoints,
 				freeQuestions: balance.freeQuestions,
@@ -316,8 +324,8 @@ export class PointsService extends BasePointsService {
 				amount: packageInfo.price,
 				currency: 'USD',
 				description: `Points purchase: ${points} points`,
-				planType: 'points',
 				numberOfPayments: 1,
+				type: 'points_purchase',
 				metadata: {
 					packageId,
 					points,

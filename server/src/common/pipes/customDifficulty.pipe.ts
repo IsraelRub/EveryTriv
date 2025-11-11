@@ -22,9 +22,10 @@ export class CustomDifficultyPipe implements PipeTransform {
 
 		try {
 			// Use ValidationService for validation
+			const validationOptions: ValidationOptions = {};
 			const validationResult = await this.validationService.validateCustomDifficultyText(
 				value.customText,
-				{} as ValidationOptions
+				validationOptions
 			);
 
 			// Log API call for validation result

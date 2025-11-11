@@ -11,13 +11,13 @@ import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
-import { DEFAULT_USER_PREFERENCES, DifficultyLevel } from '@shared/constants';
+import { DEFAULT_USER_PREFERENCES, DifficultyLevel, VALID_DIFFICULTIES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { UpdateUserProfileData, UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AlertModal, Button, Card, Container, fadeInUp, GridLayout, scaleIn } from '../../components';
-import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ContainerSize, Spacing } from '../../constants';
+import { AlertModal, Button, Card, Container, Icon, fadeInUp, GridLayout, scaleIn } from '../../components';
+import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
 import { useChangePassword, useDeleteUserAccount, useUpdateUserProfile } from '../../hooks';
 import { audioService } from '../../services';
 import type { RootState } from '../../types';
@@ -53,21 +53,46 @@ export default function SettingsView() {
 
 	const [saving, setSaving] = useState(false);
 
-	const handleToggle = (key: string, value: boolean | string) => {
-		if (key === 'defaultDifficulty') {
+	type BooleanPreferenceKey = 'emailNotifications' | 'pushNotifications' | 'soundEnabled';
+
+	type ToggleAction =
+		| {
+				key: BooleanPreferenceKey;
+				value: boolean;
+		  }
+		| {
+				key: 'defaultDifficulty';
+				value: DifficultyLevel;
+		  };
+
+	const isDifficultyLevel = (value: string): value is DifficultyLevel =>
+		VALID_DIFFICULTIES.some(difficulty => difficulty === value);
+
+	const handleToggle = (action: ToggleAction) => {
+		if (action.key === 'defaultDifficulty') {
 			setSettings(prev => ({
 				...prev,
 				game: {
 					...prev.game,
-					defaultDifficulty: value as DifficultyLevel,
+					defaultDifficulty: action.value,
 				},
 			}));
-		} else {
+			return;
+		}
+
 			setSettings(prev => ({
 				...prev,
-				[key]: value,
+			[action.key]: action.value,
 			}));
+	};
+
+	const handleDifficultyChange = (value: string) => {
+		if (!isDifficultyLevel(value)) {
+			logger.validationWarn('defaultDifficulty', value, 'must be a valid difficulty option');
+			return;
 		}
+
+		handleToggle({ key: 'defaultDifficulty', value });
 	};
 
 	const handleSave = () => {
@@ -114,7 +139,7 @@ export default function SettingsView() {
 			<Container size={ContainerSize.XL} className='min-h-screen py-8'>
 				{/* Header */}
 				<motion.header variants={fadeInUp} initial='hidden' animate='visible' className='text-center mb-12'>
-					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 gradient-text'>Settings</h1>
+					<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Settings</h1>
 					<p className='text-xl text-slate-300'>Customize your trivia experience</p>
 				</motion.header>
 
@@ -137,7 +162,7 @@ export default function SettingsView() {
 									<input
 										type='checkbox'
 										checked={settings.emailNotifications}
-										onChange={e => handleToggle('emailNotifications', e.target.checked)}
+										onChange={e => handleToggle({ key: 'emailNotifications', value: e.target.checked })}
 										className='w-12 h-6 bg-slate-700 rounded-full relative appearance-none cursor-pointer checked:bg-blue-500 transition-colors'
 									/>
 								</label>
@@ -147,7 +172,7 @@ export default function SettingsView() {
 									<input
 										type='checkbox'
 										checked={settings.pushNotifications}
-										onChange={e => handleToggle('pushNotifications', e.target.checked)}
+										onChange={e => handleToggle({ key: 'pushNotifications', value: e.target.checked })}
 										className='w-12 h-6 bg-slate-700 rounded-full relative appearance-none cursor-pointer checked:bg-blue-500 transition-colors'
 									/>
 								</label>
@@ -171,7 +196,7 @@ export default function SettingsView() {
 									<label className='block text-white mb-2'>Default difficulty</label>
 									<select
 										value={settings.game?.defaultDifficulty ?? DEFAULT_USER_PREFERENCES.game.defaultDifficulty}
-										onChange={e => handleToggle('defaultDifficulty', e.target.value)}
+										onChange={e => handleDifficultyChange(e.target.value)}
 										className='w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
 									>
 										<option value='easy'>Easy</option>
@@ -185,7 +210,7 @@ export default function SettingsView() {
 									<input
 										type='checkbox'
 										checked={settings.soundEnabled}
-										onChange={e => handleToggle('soundEnabled', e.target.checked)}
+										onChange={e => handleToggle({ key: 'soundEnabled', value: e.target.checked })}
 										className='w-12 h-6 bg-slate-700 rounded-full relative appearance-none cursor-pointer checked:bg-blue-500 transition-colors'
 									/>
 								</label>
@@ -407,7 +432,10 @@ export default function SettingsView() {
 						animate={{ scale: 1, opacity: 1 }}
 						className='bg-slate-800 rounded-lg p-8 max-w-md w-full border-2 border-red-500'
 					>
-						<h3 className='text-2xl font-bold text-red-400 mb-4'>⚠️ Delete Account</h3>
+						<h3 className='text-2xl font-bold text-red-400 mb-4 flex items-center gap-2'>
+							<Icon name='warning' size={ComponentSize.LG} className='text-red-400' />
+							Delete Account
+						</h3>
 						<p className='text-white font-semibold mb-2'>This action cannot be undone!</p>
 						<p className='text-slate-300 mb-6'>
 							Deleting your account will permanently remove all your data, including:

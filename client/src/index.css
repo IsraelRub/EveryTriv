@@ -186,7 +186,7 @@ a:hover {
 /* Content Distribution */
 .content-distributed {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-xl);
   align-items: start;
   justify-content: center;
@@ -199,97 +199,6 @@ a:hover {
   margin: 0 auto;
   padding: 0 var(--space-lg);
   width: 100%;
-}
-
-/* ==========================================================================
-   RESPONSIVE DESIGN
-   ========================================================================== */
-
-@media (max-width: 1200px) {
-  .content-distributed {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-lg);
-  }
-}
-
-@media (max-width: 768px) {
-  body {
-    padding-top: 70px;
-  }
-  
-  .main-content,
-  .page-container {
-    padding: var(--space-md);
-  }
-  
-  .content-distributed {
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-  }
-}
-
-@media (max-width: 640px) {
-  body {
-    padding-top: 60px;
-  }
-  
-  h1 { font-size: 1.875rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.25rem; }
-  h4 { font-size: 1.125rem; }
-  
-  .grid-layout {
-    grid-template-columns: 1fr;
-  }
-  
-  .grid-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .main-content,
-  .page-container {
-    padding: var(--space-sm);
-  }
-  
-  .content-distributed {
-    padding: var(--space-sm);
-  }
-}
-
-@media (max-width: 480px) {
-  body {
-    padding-top: 60px;
-    font-size: 14px;
-  }
-  
-  h1 { font-size: 1.75rem; }
-  h2 { font-size: 1.375rem; }
-  h3 { font-size: 1.125rem; }
-  
-  .main-content,
-  .page-container {
-    padding: var(--space-xs);
-  }
-}
-
-/* High DPI and Retina Displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .glass {
-    backdrop-filter: blur(15px);
-  }
-}
-
-/* Large Screens Optimization */
-@media (min-width: 1920px) {
-  .content-distributed {
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    max-width: 1800px;
-    margin: 0 auto;
-  }
-  
-  .page-container {
-    max-width: 1600px;
-  }
 }
 
 /* ==========================================================================

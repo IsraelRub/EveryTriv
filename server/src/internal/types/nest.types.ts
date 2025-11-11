@@ -29,7 +29,7 @@ export interface BulkMetadata {
 }
 
 // NestJS request/response types
-export type NestRequest = Request & {
+export interface NestRequest extends Request {
 	authToken?: string;
 	country?: string;
 	userRole?: UserRole;
@@ -38,7 +38,7 @@ export type NestRequest = Request & {
 	bulkMetadata?: BulkMetadata;
 	timestamp?: Date;
 	requestId?: string;
-};
+}
 
 // Decorator metadata types
 export interface DecoratorMetadata {

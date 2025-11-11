@@ -6,18 +6,9 @@
 import { InputHTMLAttributes, ReactNode } from 'react';
 
 import type { LanguageValidationOptions, SelectOption, ValidationType } from '@shared/types';
+import type { ClientValidationType, ValidationHookOptions } from '../validation.types';
 
 import { InteractiveSize } from '../../constants';
-
-// Validation hook options interface
-export interface ValidationHookOptions {
-	required?: boolean;
-	minLength?: number;
-	maxLength?: number;
-	pattern?: RegExp;
-	customValidator?: (value: string) => boolean;
-	errorMessage?: string;
-}
 
 // Form-related types
 export interface FormField {
@@ -48,7 +39,7 @@ export interface ValidatedFormProps<T extends Record<string, string>> {
 
 // ValidatedInputProps interface
 export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size'> {
-	validationType: ValidationType;
+	validationType: ClientValidationType;
 	initialValue?: string;
 	validationOptions?:
 		| ValidationHookOptions

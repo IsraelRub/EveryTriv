@@ -15,8 +15,8 @@ import { clientLogger as logger } from '@shared/services';
 import type { QuestionData, TriviaQuestion } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
-import { AlertModal, Card, ConfirmModal, Container, fadeInUp, TriviaGame } from '../../components';
-import { AlertVariant, AudioKey, CardVariant, ContainerSize } from '../../constants';
+import { AlertModal, Card, ConfirmModal, Container, Icon, fadeInUp, TriviaGame } from '../../components';
+import { AlertVariant, AudioKey, CardVariant, ComponentSize, ContainerSize } from '../../constants';
 import { useAppSelector, useTriviaQuestionMutation } from '../../hooks';
 import { selectCurrentDifficulty, selectCurrentTopic } from '../../redux/selectors';
 import { audioService } from '../../services';
@@ -213,9 +213,9 @@ export default function GameSessionView() {
 					transition={{ delay: 0.1 }}
 					className='mb-6 text-center'
 				>
-					<div className='flex justify-center gap-4 text-sm text-slate-400'>
+					<div className='flex items-center justify-center gap-2 text-sm text-slate-400'>
 						<span>Topic: {currentTopic || 'General'}</span>
-						<span>•</span>
+						<Icon name='dot' size={ComponentSize.XS} className='text-slate-500' />
 						<span>Difficulty: {currentDifficulty || 'Medium'}</span>
 					</div>
 				</motion.div>

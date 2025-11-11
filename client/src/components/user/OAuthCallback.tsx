@@ -26,14 +26,16 @@ export default function OAuthCallback() {
 			try {
 				const success = searchParams.get('success');
 				const error = searchParams.get('error');
+				const params: Record<string, string> = {};
+				for (const [key, value] of searchParams.entries()) {
+					params[key] = value;
+				}
 
 				logger.authLogin('OAuth callback received', {
 					success: success ? true : false,
 					error: error || undefined,
 				});
-				logger.authDebug('Search params', {
-					params: Object.fromEntries(searchParams.entries()) as Record<string, string>,
-				});
+				logger.authDebug('Search params', { params });
 
 				if (error) {
 					logger.authError('OAuth error received', { error: error || 'Unknown error' });

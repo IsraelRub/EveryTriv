@@ -13,12 +13,16 @@ import type {
 	StorageService,
 	StorageStatsResult,
 	StorageSyncOptions,
+	StorageValue,
 } from '@shared/types';
 
 import { CacheStrategyService } from '../../cache/cache.service';
 import { StorageMetricsTracker } from '../base/metrics-tracker';
 import { StorageConfigFactory } from '../base/storage-config';
 import { StorageUtils } from '../base/storage-utils';
+
+type StorageSetStrategy = 'cache' | 'persistent' | 'hybrid';
+type StorageGetStrategy = 'cache-first' | 'persistent-first' | 'hybrid';
 
 /**
  * Storage Manager Service
@@ -77,11 +81,11 @@ export class StorageManagerService {
 	 * Set value with intelligent storage strategy
 	 * @returns Operation result
 	 */
-	async set<T>(
+	async set<T extends StorageValue>(
 		key: string,
 		value: T,
 		ttl?: number,
-		strategy: 'persistent' | 'cache' | 'hybrid' = 'hybrid'
+		strategy: StorageSetStrategy = 'hybrid'
 	): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		let success = false;
@@ -90,14 +94,14 @@ export class StorageManagerService {
 		try {
 			switch (strategy) {
 				case 'persistent': {
-					const persistentResult = await this.persistentStorage.set(key, value, ttl);
+					const persistentResult = await this.persistentStorage.set<T>(key, value, ttl);
 					success = persistentResult.success;
 					error = persistentResult.error;
 					break;
 				}
 
 				case 'cache': {
-					const cacheResult = await this.cacheStorage.set(key, value, ttl);
+					const cacheResult = await this.cacheStorage.set<T>(key, value, ttl);
 					success = cacheResult.success;
 					error = cacheResult.error;
 					break;
@@ -105,14 +109,21 @@ export class StorageManagerService {
 
 				case 'hybrid': {
 					// Store in both persistent and cache
-					const [persistentResult] = await Promise.allSettled([
-						this.persistentStorage.set(key, value, ttl),
-						this.cacheStorage.set(key, value, ttl),
+					const [persistentResult, cacheResult] = await Promise.allSettled([
+						this.persistentStorage.set<T>(key, value, ttl),
+						this.cacheStorage.set<T>(key, value, ttl),
 					]);
 
-					success = persistentResult.status === 'fulfilled' && persistentResult.value.success;
+					const persistentSuccess =
+						persistentResult.status === 'fulfilled' ? persistentResult.value.success : false;
+					const cacheSuccess = cacheResult.status === 'fulfilled' ? cacheResult.value.success : false;
+					success = persistentSuccess || cacheSuccess;
+
 					if (!success) {
-						error = persistentResult.status === 'rejected' ? persistentResult.reason : persistentResult.value.error;
+						const persistentError =
+							persistentResult.status === 'rejected' ? `${persistentResult.reason}` : persistentResult.value.error;
+						const cacheError = cacheResult.status === 'rejected' ? `${cacheResult.reason}` : cacheResult.value.error;
+						error = persistentError || cacheError || 'Failed to store in both persistent and cache storage';
 					}
 					break;
 				}
@@ -132,36 +143,42 @@ export class StorageManagerService {
 	 * Get value with intelligent fallback strategy
 	 * @returns Operation result
 	 */
-	async get<T>(
+	async get<T extends StorageValue>(
 		key: string,
-		strategy: 'cache-first' | 'persistent-first' | 'hybrid' = 'cache-first'
+		strategy: StorageGetStrategy = 'cache-first',
+		validator?: (value: StorageValue) => value is T
 	): Promise<StorageOperationResult<T | null>> {
-		// Use cache service for consistent behavior
-		return this.cacheStrategy.get<T>(key, strategy);
+		const guard: (value: StorageValue) => value is T =
+			validator ?? ((value: StorageValue): value is T => {
+				void value;
+				return true;
+			});
+		return this.cacheStrategy.get<T>(key, guard, strategy);
 	}
 
 	/**
 	 * Get or set value with factory function
 	 * @returns Value
 	 */
-	async getOrSet<T>(
+	async getOrSet<T extends StorageValue>(
 		key: string,
 		factory: () => Promise<T>,
 		ttl?: number,
-		strategy: 'cache' | 'hybrid' = 'hybrid'
+		strategy: Extract<StorageSetStrategy, 'cache' | 'hybrid'> = 'hybrid',
+		validator?: (value: StorageValue) => value is T
 	): Promise<T> {
 		const startTime = Date.now();
 
 		try {
 			// Try to get from cache first
-			const cached = await this.get<T>(key, 'cache-first');
+			const cached = await this.get<T>(key, 'cache-first', validator);
 			if (cached.success && cached.data && cached.data !== undefined) {
 				return cached.data;
 			}
 
 			// Generate new value
 			const value = await factory();
-			await this.set(key, value, ttl, strategy);
+			await this.set<T>(key, value, ttl, strategy);
 			return value;
 		} catch (err) {
 			this.trackOperationWithTiming('getOrSet', startTime, false, strategy);

@@ -301,8 +301,10 @@ function LeaderboardEntry({ entry, isCurrentUser }: LeaderboardEntryProps) {
 							</span>
 						)}
 					</h3>
-					<p className='text-sm text-white/70'>
-						{entry.gamesPlayed ?? 0} games • {entry.successRate.toFixed(1)}% success
+					<p className='text-sm text-white/70 flex items-center gap-2'>
+						<span>{entry.gamesPlayed ?? 0} games</span>
+						<Icon name='dot' size={ComponentSize.XS} className='text-white/40' />
+						<span>{entry.successRate.toFixed(1)}% success</span>
 					</p>
 				</div>
 			</div>

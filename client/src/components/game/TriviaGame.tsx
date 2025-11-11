@@ -12,13 +12,14 @@ import { motion } from 'framer-motion';
 import { clientLogger as logger } from '@shared/services';
 import type { TriviaAnswer } from '@shared/types';
 
-import { AudioKey, ButtonVariant } from '../../constants';
+import { AudioKey, ButtonVariant, ComponentSize } from '../../constants';
 import { useAppDispatch } from '../../hooks';
 import { updateScore } from '../../redux/slices';
 import { audioService } from '../../services';
 import type { TriviaGameProps } from '../../types';
 import { fadeInUp, scaleIn } from '../animations';
 import { Button } from '../ui';
+import { Icon } from '../IconLibrary';
 
 export default function TriviaGame({ question, onComplete, timeLimit = 30 }: TriviaGameProps) {
 	const dispatch = useAppDispatch();
@@ -155,7 +156,7 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 				transition={{ delay: 0.2 }}
 				className='bg-slate-800/50 backdrop-blur-sm rounded-lg p-8 mb-6 border-2 border-slate-700'
 			>
-				<p className='text-xl md:text-2xl text-white font-medium text-center'>{question.question}</p>
+				<p className='text-2xl text-white font-medium text-center'>{question.question}</p>
 			</motion.div>
 
 			{/* Answers */}
@@ -202,12 +203,18 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 			{answered && (
 				<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='mt-6 text-center'>
 					{selectedAnswer === question.correctAnswerIndex ? (
-						<div className='text-green-400 text-xl font-bold'>
-							✓ Correct! +{calculatePoints(question.difficulty, timer)} points
+						<div className='text-green-400 text-xl font-bold flex items-center justify-center gap-2'>
+							<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
+							<span>
+								Correct! +{calculatePoints(question.difficulty, timer)} points
+							</span>
 						</div>
 					) : (
-						<div className='text-red-400 text-xl font-bold'>
-							✗ Incorrect! The correct answer was {String.fromCharCode(65 + question.correctAnswerIndex)}
+						<div className='text-red-400 text-xl font-bold flex items-center justify-center gap-2'>
+							<Icon name='x' size={ComponentSize.SM} className='text-red-400' />
+							<span>
+								Incorrect! The correct answer was {String.fromCharCode(65 + question.correctAnswerIndex)}
+							</span>
 						</div>
 					)}
 				</motion.div>

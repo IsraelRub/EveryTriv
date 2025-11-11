@@ -188,8 +188,6 @@ EveryTriv/
 - **ErrorBoundary.tsx** - טיפול בשגיאות
 
 #### רכיבי אנימציה ואודיו
-- **AnimatedBackground.tsx** - רקע מונפש
-- **AnimationEffects.tsx** - אפקטי אנימציה
 - **AnimationLibrary.tsx** - ספריית אנימציות
 - **AudioControls.tsx** - בקרת אודיו
 

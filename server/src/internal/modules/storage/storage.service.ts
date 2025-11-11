@@ -9,6 +9,7 @@ import type {
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
+	StorageValue,
 } from '@shared/types';
 
 /**
@@ -59,7 +60,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		metricsService.resetMetrics();
 	}
 
-	async set<T>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
+	async set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
@@ -78,7 +79,15 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		}
 	}
 
-	async get<T>(key: string): Promise<StorageOperationResult<T | null>> {
+	async get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
+	async get<T extends StorageValue>(
+		key: string,
+		validator: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<T | null>>;
+	async get<T extends StorageValue>(
+		key: string,
+		validator?: (value: StorageValue) => value is T
+	): Promise<StorageOperationResult<StorageValue | null> | StorageOperationResult<T | null>> {
 		const startTime = Date.now();
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
@@ -86,15 +95,23 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 
 			if (!value) {
 				this.trackOperationWithTiming('get', startTime, true, 'persistent');
-				return this.createSuccessResult<T | null>(null);
+				return this.createSuccessResult<StorageValue | null>(null);
 			}
 
-			const deserialized = this.deserialize<T>(value);
+			const deserialized = this.deserialize<StorageValue>(value);
 			this.updateMetadata(key, value.length);
 
 			this.trackOperationWithTiming('get', startTime, true, 'persistent', value.length);
 
+			if (!validator) {
+				return this.createSuccessResult<StorageValue | null>(deserialized);
+			}
+
+			if (validator(deserialized)) {
 			return this.createSuccessResult<T | null>(deserialized);
+			}
+
+			return this.createErrorResult<T | null>('Stored value failed validation');
 		} catch (error) {
 			this.trackOperationWithTiming('get', startTime, false, 'persistent');
 			return this.createErrorResult<T | null>(`Failed to get item: ${this.formatError(error)}`);
@@ -180,7 +197,12 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		return super.invalidate(pattern);
 	}
 
-	async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
-		return super.getOrSet(key, factory, ttl);
+	async getOrSet<T extends StorageValue>(
+		key: string,
+		factory: () => Promise<T>,
+		ttl: number | undefined,
+		validator: (value: StorageValue) => value is T
+	): Promise<T> {
+		return super.getOrSet(key, factory, ttl, validator);
 	}
 }

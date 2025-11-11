@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
+import { createUserStatsEntityGuard, getErrorMessage } from '@shared/utils';
 
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules/cache';
@@ -17,6 +17,8 @@ import { createNotFoundError } from '@internal/utils';
  * @description Service for managing user game statistics and performance metrics
  * @used_by server/src/features/analytics, server/src/features/game, server/src/features/leaderboard
  */
+const userStatsEntityGuard = createUserStatsEntityGuard<UserStatsEntity>();
+
 @Injectable()
 export class UserStatsService {
 	constructor(
@@ -38,7 +40,7 @@ export class UserStatsService {
 		try {
 			const cacheKey = `user:stats:${userId}`;
 
-			return await this.cacheService.getOrSet(
+			return await this.cacheService.getOrSet<UserStatsEntity>(
 				cacheKey,
 				async () => {
 					let userStats = await this.userStatsRepository.findOne({
@@ -52,7 +54,8 @@ export class UserStatsService {
 
 					return userStats;
 				},
-				CACHE_DURATION.VERY_LONG // Cache for 1 hour - user stats don't change frequently
+				CACHE_DURATION.VERY_LONG,
+				userStatsEntityGuard
 			);
 		} catch (error) {
 			logger.analyticsError('getUserStats', {
