@@ -5,9 +5,19 @@
 ## Base URL
 
 ```
-Development: http://localhost:3001
-Production: https://api.everytriv.com
+Development: http://localhost:3002
+Production: https://api.your-domain.com
 ```
+
+הערה: כל ה-endpoints מתחילים ב-`/` ולא ב-`/api/`. הנתיבים הבסיסיים הם:
+- `/auth` - אימות
+- `/game` - משחק
+- `/users` - משתמשים
+- `/points` - נקודות
+- `/leaderboard` - לוח תוצאות
+- `/payment` - תשלומים
+- `/subscription` - מנויים
+- `/analytics` - אנליטיקה
 
 ## Authentication
 
@@ -38,14 +48,15 @@ Authorization: Bearer <jwt_token>
 **Response:**
 ```json
 {
-  "accessToken": "string",
-  "refreshToken": "string",
+  "access_token": "string",
+  "refresh_token": "string",
   "user": {
     "id": "string",
     "username": "string",
     "email": "string",
     "firstName": "string",
-    "lastName": "string"
+    "lastName": "string",
+    "role": "string"
   }
 }
 ```
@@ -64,23 +75,69 @@ Authorization: Bearer <jwt_token>
 **Response:**
 ```json
 {
-  "accessToken": "string",
-  "refreshToken": "string",
+  "access_token": "string",
+  "refresh_token": "string",
   "user": {
     "id": "string",
     "username": "string",
     "email": "string",
     "firstName": "string",
-    "lastName": "string"
+    "lastName": "string",
+    "role": "string"
   }
 }
 ```
 
 #### GET /auth/google
-התחברות עם Google OAuth (מבצע הפניה ל-Google באמצעות Passport)
+התחברות עם Google OAuth
 
 #### GET /auth/google/callback
-Callback של Google OAuth – מחזיר הזוג אסימונים (access/refresh) ומידע על המשתמש
+Callback של Google OAuth
+
+### Leaderboard
+
+#### GET /leaderboard/stats
+סטטיסטיקות leaderboard לפי תקופה
+
+**Query Parameters:**
+- `period` (optional): `weekly` | `monthly` | `yearly` (default: `weekly`)
+
+**Response:**
+```json
+{
+  "activeUsers": 150,
+  "averagePoints": 2500,
+  "averageGames": 12
+}
+```
+
+**Description:**
+מחזיר סטטיסטיקות כלליות של leaderboard לפי תקופה:
+- `activeUsers`: מספר משתמשים פעילים בתקופה
+- `averagePoints`: ממוצע נקודות בתקופה
+- `averageGames`: ממוצע משחקים למשתמש בתקופה
+
+### Analytics
+
+#### GET /analytics/global-stats
+סטטיסטיקות גלובליות להשוואה
+
+**Response:**
+```json
+{
+  "successRate": 75,
+  "averageGames": 25,
+  "averageGameTime": 8,
+  "consistency": 65
+}
+```
+
+**Description:**
+מחזיר ממוצעים גלובליים להשוואה עם ביצועי משתמש:
+- `successRate`: ממוצע שיעור הצלחה גלובלי (%)
+- `averageGames`: ממוצע משחקים למשתמש
+- `averageGameTime`: זמן משחק ממוצע בדקות
+- `consistency`: ציון עקביות גלובלי (%)
 
 ### Game
 
@@ -100,89 +157,129 @@ Callback של Google OAuth – מחזיר הזוג אסימונים (access/refr
 }
 ```
 
-#### GET /game/:id
-מחזיר משחק לפי ID
+## Protected Endpoints (דורשים אימות)
 
-### Leaderboard
+### Game
 
-#### GET /leaderboard/global
-מחזיר לוח תוצאות גלובלי
+#### POST /game/trivia
+יצירת שאלת טריוויה
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
+```json
+{
+  "topic": "string",
+  "difficulty": "string",
+  "questionCount": 1
+}
+```
 
 **Response:**
 ```json
 {
-  "users": [
+  "questions": [
     {
-      "rank": "number",
-      "username": "string",
-      "points": "number",
-      "gamesPlayed": "number"
+      "id": "string",
+      "question": "string",
+      "answers": [
+        {
+          "text": "string",
+          "isCorrect": true,
+          "explanation": "string",
+          "order": 0
+        }
+      ],
+      "correctAnswerIndex": 0,
+      "topic": "string",
+      "difficulty": "string",
+      "metadata": {},
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
     }
   ],
-  "total": "number"
+  "fromCache": false
 }
 ```
 
-#### GET /leaderboard/period/:period
-מחזיר לוח תוצאות לתקופה
+#### POST /game/answer
+שליחת תשובה
 
-### Users
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
 
-#### GET /users/username/:username
-מחזיר פרופיל ציבורי לפי username
+**Request:**
+```json
+{
+  "questionId": "string",
+  "answer": "string",
+  "timeSpent": 15000
+}
+```
 
-#### GET /users/search
-חיפוש משתמשים
+**Response:**
+```json
+{
+  "questionId": "string",
+  "userAnswer": "string",
+  "correctAnswer": "string",
+  "isCorrect": true,
+  "timeSpent": 15000,
+  "pointsEarned": 100,
+  "totalScore": 100,
+  "feedback": "Correct answer!"
+}
+```
 
-### Subscription
+#### GET /game/history
+היסטוריית משחקים
 
-#### GET /subscription/plans
-מחזיר תוכניות מנוי זמינות
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
 
-### AI Providers
-
-#### GET /api/ai-providers/health
-מחזיר סטטוס בריאות של ספקי AI
-
-### Storage & Cache
-
-#### GET /storage/metrics
-מחזיר מדדי אחסון
-
-#### GET /cache/stats
-מחזיר סטטיסטיקות מטמון
-
-### System
-
-#### GET /
-נקודת קצה ראשית
-
-#### GET /health
-בדיקת בריאות המערכת
-
-#### GET /status
-בדיקת סטטוס המערכת
-
-## Protected Endpoints (דורש אימות)
-
-### Authentication
-
-#### GET /auth/me
-מחזיר משתמש נוכחי
-
-#### POST /auth/refresh
-מרענן JWT token
-
-#### POST /auth/logout
-התנתקות משתמש
-
-#### GET /auth/admin/users
-מחזיר רשימת משתמשים (מנהל)
+**Response:**
+```json
+{
+  "games": [
+    {
+      "id": "string",
+      "userId": "string",
+      "score": 100,
+      "totalQuestions": 10,
+      "correctAnswers": 8,
+      "topic": "string",
+      "difficulty": "string",
+      "gameMode": "question-limited",
+      "timeSpent": 300,
+      "creditsUsed": 0,
+      "questionsData": [
+        {
+          "question": "string",
+          "userAnswer": "string",
+          "correctAnswer": "string",
+          "isCorrect": true,
+          "timeSpent": 30
+        }
+      ],
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "totalGames": 10
+}
+```
 
 ### Users
 
 #### GET /users/profile
-מחזיר פרופיל משתמש
+קבלת פרופיל משתמש
 
 **Response:**
 ```json
@@ -192,414 +289,258 @@ Callback של Google OAuth – מחזיר הזוג אסימונים (access/refr
   "email": "string",
   "firstName": "string",
   "lastName": "string",
-  "points": "number",
-  "credits": "number",
-  "preferences": {
-    "language": "string",
-    "difficulty": "string",
-    "topics": ["string"]
-  }
+  "credits": 100,
+  "points": 1000
 }
 ```
 
 #### PUT /users/profile
-מעדכן פרופיל משתמש
-
-#### GET /users/credits
-מחזיר נקודות זכות משתמש
-
-#### POST /users/credits
-מנכה נקודות זכות
-
-#### DELETE /users/account
-מוחק חשבון משתמש
-
-#### PUT /users/preferences
-מעדכן העדפות משתמש
-
-#### PATCH /users/profile/:field
-מעדכן שדה ספציפי בפרופיל
-
-#### PATCH /users/preferences/:preference
-מעדכן העדפה יחידה
-
-#### GET /users/:id
-מחזיר משתמש לפי ID
-
-#### PUT /users/credits/:userId
-מעדכן נקודות זכות (מנהל)
-
-#### DELETE /users/:userId
-מוחק משתמש (מנהל)
-
-#### PATCH /users/:userId/status
-מעדכן סטטוס משתמש (מנהל)
-
-#### GET /users/admin/all
-מחזיר כל המשתמשים (מנהל)
-
-#### PUT /users/admin/:userId/status
-עדכון סטטוס משתמש (מנהל)
-
-### Game
-
-#### POST /game/answer
-שולח תשובה לשאלה
+עדכון פרופיל משתמש
 
 **Request:**
 ```json
 {
-  "questionId": "string",
-  "answer": "number",
-  "timeSpent": "number"
+  "firstName": "string",
+  "lastName": "string",
+  "preferences": {}
 }
 ```
 
-#### GET /game/history
-מחזיר היסטוריית משחקים
+#### GET /users/stats
+קבלת סטטיסטיקות משתמש
 
-#### POST /game/history
-יוצר היסטוריית משחק
-
-#### DELETE /game/history/:gameId
-מוחק היסטוריית משחק
-
-#### DELETE /game/history
-מנקה היסטוריית משחקים
-
-#### POST /game/validate-custom
-מאמת קושי מותאם אישית
-
-#### POST /game/validate-language
-מאמת שפה
-
-#### GET /game/admin/statistics
-מחזיר סטטיסטיקות משחק (מנהל)
-
-#### DELETE /game/admin/history/clear-all
-מנקה כל היסטוריית משחקים (מנהל)
-
-### Leaderboard
-
-#### GET /leaderboard/user/ranking
-מחזיר דירוג משתמש
-
-#### POST /leaderboard/user/update
-מעדכן דירוג משתמש
-
-#### GET /leaderboard/user/percentile
-מחזיר אחוזון משתמש
-
-### Payment
-
-#### GET /payment/history
-מחזיר היסטוריית תשלומים
-
-#### POST /payment/create
-יוצר תשלום (מנוי או חיוב חד-פעמי)  
-גוף לדוגמה עבור מנוי:
+**Response:**
 ```json
 {
-  "planType": "premium",
-  "numberOfPayments": 12,
-  "agreeToTerms": true
-}
-```
-גוף לדוגמה עבור תשלום מותאם:
-```json
-{
-  "amount": 29.99,
-  "currency": "USD",
-  "description": "Custom credit top-up",
-  "paymentMethod": "credit_card"
+  "totalGamesPlayed": 100,
+  "totalQuestionsAnswered": 1000,
+  "correctAnswers": 800,
+  "averageScore": 85.5
 }
 ```
 
 ### Points
 
 #### GET /points/balance
-מחזיר יתרת נקודות
+קבלת מאזן נקודות
 
 **Response:**
 ```json
 {
-  "balance": "number",
+  "balance": 1000
+}
+```
+
+#### POST /points/purchase
+רכישת נקודות
+
+**Request:**
+```json
+{
+  "packageId": "string",
+  "paymentMethod": "string"
+}
+```
+
+#### GET /points/history
+היסטוריית נקודות
+
+**Response:**
+```json
+{
   "transactions": [
     {
       "id": "string",
-      "type": "earned|spent",
-      "amount": "number",
-      "description": "string",
-      "createdAt": "string"
+      "type": "earned",
+      "amount": 100,
+      "balanceAfter": 1100,
+      "createdAt": "2024-01-01T00:00:00Z"
     }
   ]
 }
 ```
 
-#### GET /points/packages
-מחזיר חבילות נקודות
+### Leaderboard
 
-#### GET /points/can-play
-בודק אם משתמש יכול לשחק עם המלאי הנוכחי  
-פרמטרים:
-- `questionCount` (query, חובה) – מספר השאלות המבוקש
-- `gameMode` (query, אופציונלי) – ברירת מחדל `question-limited`
+#### GET /leaderboard/user/ranking
+דירוג משתמש
 
-#### POST /points/deduct
-מנכה נקודות עבור משחק יחיד  
-גוף לדוגמה:
+**Response:**
 ```json
 {
-  "questionCount": 5,
-  "gameMode": "question-limited",
-  "reason": "Game play"
+  "rank": 10,
+  "score": 1000,
+  "periodType": "weekly"
 }
 ```
 
-#### GET /points/history
-מחזיר היסטוריית נקודות
+#### GET /leaderboard/daily
+לוח תוצאות יומי
 
-#### POST /points/purchase
-רוכש נקודות
-
-#### POST /points/confirm-purchase
-מאשר רכישת נקודות לאחר תשלום מוצלח  
-גוף לדוגמה:
+**Response:**
 ```json
 {
-  "paymentIntentId": "pi_your_payment_intent_id",
-  "points": 120
+  "leaderboard": [
+    {
+      "userId": "string",
+      "username": "string",
+      "rank": 1,
+      "score": 1000
+    }
+  ]
 }
 ```
+
+### Payment
+
+#### POST /payment/create
+יצירת תשלום
+
+**Request:**
+```json
+{
+  "amount": 10.00,
+  "currency": "USD",
+  "paymentMethod": "stripe",
+  "planType": "premium"
+}
+```
+
+**Response:**
+```json
+{
+  "sessionId": "string",
+  "url": "string"
+}
+```
+
+#### POST /payment/webhook
+Webhook של Stripe
 
 ### Subscription
 
+#### GET /subscription/plans
+קבלת תוכניות מנוי
+
+**Response:**
+```json
+{
+  "plans": [
+    {
+      "type": "premium",
+      "price": 9.99,
+      "features": []
+    }
+  ]
+}
+```
+
 #### GET /subscription/current
-מחזיר מנוי נוכחי
+קבלת מנוי נוכחי
 
-#### POST /subscription/create
-יוצר מנוי
-
-#### DELETE /subscription/cancel
-מבטל מנוי
+**Response:**
+```json
+{
+  "planType": "premium",
+  "status": "active",
+  "currentPeriodEnd": "2024-02-01T00:00:00Z"
+}
+```
 
 ### Analytics
 
 #### POST /analytics/track
-מעקב אירוע אנליטיקה
+מעקב אירוע
 
-#### GET /analytics/game/stats
-מחזיר סטטיסטיקות משחק
-
-#### GET /analytics/user
-מחזיר אנליטיקת משתמש מחושב עבור המשתמש המחובר
-
-#### GET /analytics/user-stats/:userId
-מחזיר סטטיסטיקות משחק מפורטות עבור משתמש מוגדר
-
-#### GET /analytics/user-performance/:userId
-מחזיר מדדי ביצועים (רצפים, שיפור, עקביות) של משתמש
-
-#### GET /analytics/user-progress/:userId
-מחזיר התקדמות לפי נושאים וציר זמן של ביצועים
-- פרמטרים (query): `startDate`, `endDate`, `groupBy` (hourly/daily/weekly/monthly), `limit`
-
-#### GET /analytics/user-activity/:userId
-מחזיר פעילות אחרונה ואירועים בולטים של המשתמש
-- פרמטרים (query): `startDate`, `endDate`, `limit`
-
-#### GET /analytics/user-insights/:userId
-מחזיר תובנות והמלצות לשיפור
-
-#### GET /analytics/user-recommendations/:userId
-מחזיר המלצות פעולה מותאמות אישית
-
-#### GET /analytics/user-achievements/:userId
-מחזיר הישגים שנפתרו למשתמש
-
-#### GET /analytics/user-trends/:userId
-מחזיר מגמות וגרף ביצועים לאורך זמן
-- פרמטרים (query): `startDate`, `endDate`, `groupBy`, `limit`
-
-#### GET /analytics/user-comparison/:userId
-השוואת נתוני משתמש מול משתמש אחר או ממוצע גלובלי  
-- פרמטרים (query): `target` (global/user), `targetUserId` (חובה אם target=user), `startDate`, `endDate`
-
-#### GET /analytics/user-summary/:userId
-מחזיר תקציר מרוכז ל-dashboard (הישגים, תובנות, ביצועים)  
-- פרמטרים (query): `includeActivity` (ברירת מחדל false)
-
-#### GET /analytics/topics/popular
-מחזיר נושאים פופולריים
-
-#### GET /analytics/difficulty/stats
-מחזיר סטטיסטיקות קושי לפי רמות
-
-### Cache
-
-#### DELETE /cache/clear
-מנקה כל המטמון
-
-#### GET /cache/exists/:key
-בודק אם מפתח קיים
-
-#### GET /cache/ttl/:key
-מחזיר TTL של מפתח
-
-### Storage
-
-#### POST /storage/metrics/reset
-מאפס מדדי אחסון
-
-#### GET /storage/keys
-מחזיר מפתחות אחסון
-
-#### GET /storage/item/:key
-מחזיר פריט אחסון
-
-#### DELETE /storage/clear
-מנקה אחסון
-
-### AI Providers
-
-#### GET /api/ai-providers/stats
-מחזיר סטטיסטיקות ספקים
-
-#### GET /api/ai-providers/count
-מחזיר מספר ספקים זמינים
-
-### Admin
-
-#### GET /admin/middleware-metrics
-מחזיר כל מדדי middleware
-
-#### GET /admin/middleware-metrics/:name
-מחזיר מדדי middleware לפי שם
-
-#### DELETE /admin/middleware-metrics/:name
-מאפס מדדי middleware
-
-#### DELETE /admin/middleware-metrics
-מאפס כל מדדי middleware
-
-## Error Responses
-
-כל ה-endpoints מחזירים שגיאות בפורמט אחיד:
-
+**Request:**
 ```json
 {
-  "statusCode": "number",
-  "message": "string",
-  "error": "string",
-  "timestamp": "string",
-  "path": "string"
+  "eventType": "game_started",
+  "userId": "string",
+  "metadata": {}
 }
 ```
 
-### Error Codes
+#### GET /analytics/user/:userId/summary
+סיכום משתמש
 
-| Code | Description |
-|------|-------------|
-| 400 | Bad Request - פרמטרים לא תקינים |
-| 401 | Unauthorized - לא מחובר או token לא תקין |
-| 403 | Forbidden - אין הרשאה |
-| 404 | Not Found - משאב לא נמצא |
-| 409 | Conflict - קונפליקט (למשל משתמש קיים) |
-| 422 | Unprocessable Entity - ולידציה נכשלה |
-| 429 | Too Many Requests - יותר מדי בקשות |
-| 500 | Internal Server Error - שגיאת שרת |
-
-## Rate Limiting
-
-- **Auth endpoints**: 5 בקשות לדקה
-- **Game endpoints**: 10 בקשות לדקה
-- **Other endpoints**: 100 בקשות לדקה
-
-## Webhooks
-
-### Stripe Webhooks
-
-המערכת מקבלת webhooks מ-Stripe עבור:
-
-- `payment_intent.succeeded`
-- `payment_intent.payment_failed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-**Endpoint:** `POST /webhooks/stripe`
-
-## SDK Examples
-
-### JavaScript/TypeScript
-
-```typescript
-import { EveryTrivAPI } from '@everytriv/api-client';
-
-const api = new EveryTrivAPI({
-  baseURL: 'https://api.everytriv.com/api',
-  token: 'your-jwt-token'
-});
-
-// Create game
-const game = await api.game.create({
-  difficulty: 'medium',
-  topics: ['science', 'history'],
-  questionCount: 10
-});
-
-// Submit answer
-const result = await api.game.answer({
-  gameId: game.gameId,
-  questionId: game.questions[0].id,
-  answer: 1,
-  timeSpent: 15
-});
-```
-
-### Python
-
-```python
-import requests
-
-class EveryTrivAPI:
-    def __init__(self, base_url, token):
-        self.base_url = base_url
-        self.headers = {'Authorization': f'Bearer {token}'}
-    
-    def create_game(self, difficulty, topics, question_count):
-        response = requests.post(
-            f'{self.base_url}/game/create',
-            json={
-                'difficulty': difficulty,
-                'topics': topics,
-                'questionCount': question_count
-            },
-            headers=self.headers
-        )
-        return response.json()
-```
-
-## Testing
-
-### Postman Collection
-
-קובץ Postman collection זמין ב: `tools/api/postman-endpoints.json`
-
-### Test Data
-
-לצורך בדיקות, ניתן להשתמש בנתונים הבאים:
-
+**Response:**
 ```json
 {
-  "testUser": {
-    "email": "test@everytriv.com",
-    "name": "Test User"
-  },
-  "testGame": {
-    "difficulty": "medium",
-    "topics": ["science"],
-    "questionCount": 5
-  }
+  "totalGames": 100,
+  "totalQuestions": 1000,
+  "averageScore": 85.5
 }
 ```
+
+#### GET /analytics/global-stats
+סטטיסטיקות גלובליות להשוואה (ציבורי)
+
+**Response:**
+```json
+{
+  "successRate": 75,
+  "averageGames": 25,
+  "averageGameTime": 8,
+  "consistency": 65
+}
+```
+
+**Description:**
+מחזיר ממוצעים גלובליים להשוואה עם ביצועי משתמש:
+- `successRate`: ממוצע שיעור הצלחה גלובלי (%)
+- `averageGames`: ממוצע משחקים למשתמש
+- `averageGameTime`: זמן משחק ממוצע בדקות
+- `consistency`: ציון עקביות גלובלי (%)
+
+## שגיאות
+
+### שגיאות נפוצות
+
+#### 400 Bad Request
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "errors": []
+}
+```
+
+#### 401 Unauthorized
+```json
+{
+  "statusCode": 401,
+  "message": "Authentication token required"
+}
+```
+
+#### 403 Forbidden
+```json
+{
+  "statusCode": 403,
+  "message": "Insufficient permissions"
+}
+```
+
+#### 404 Not Found
+```json
+{
+  "statusCode": 404,
+  "message": "Resource not found"
+}
+```
+
+#### 500 Internal Server Error
+```json
+{
+  "statusCode": 500,
+  "message": "Internal server error"
+}
+```
+
+## הפניות
+
+- [ארכיטקטורה כללית](../ARCHITECTURE.md)
+- [מודולי Backend](../README.md#backend)
+- [תיעוד מודולים](./features/AUTH.md)
+- [דיאגרמות](../DIAGRAMS.md)

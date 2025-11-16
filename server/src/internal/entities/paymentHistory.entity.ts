@@ -1,73 +1,154 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
-import { PaymentMetadata } from '@shared/types';
+import type { PaymentMetadata } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
-import { SubscriptionEntity } from './subscription.entity';
 import { UserEntity } from './user.entity';
+
+type PaymentHistoryMetadata = PaymentMetadata & {
+	completedAt?: string;
+	failedAt?: string;
+	subscriptionId?: string;
+	originalAmount?: number;
+	originalCurrency?: string;
+};
 
 @Entity('payment_history')
 export class PaymentHistoryEntity extends BaseEntity {
 	@Column({ name: 'user_id' })
 	@Index()
-	userId: string;
+	userId!: string;
 
 	@ManyToOne(() => UserEntity, user => user.id, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'user_id' })
-	user: UserEntity;
+	user!: UserEntity;
 
-	@Column({ name: 'subscription_id', nullable: true })
-	subscriptionId?: string;
+	@Column({ name: 'payment_id', type: 'varchar' })
+	private paymentIdInternal!: string;
 
-	@ManyToOne(() => SubscriptionEntity, subscription => subscription.id, {
-		onDelete: 'SET NULL',
-	})
-	@JoinColumn({ name: 'subscription_id' })
-	subscription?: SubscriptionEntity;
-
-	@Column('decimal', { precision: 10, scale: 2 })
-	amount: number;
+	@Column({ name: 'amount', type: 'int' })
+	amount: number = 0;
 
 	@Column({ default: 'USD' })
-	currency: string;
+	currency: string = 'USD';
 
-	@Column({
-		type: 'enum',
-		enum: PaymentStatus,
-		default: PaymentStatus.PENDING,
-	})
-	status: PaymentStatus;
+	@Column({ name: 'status', type: 'varchar', default: PaymentStatus.PENDING })
+	private statusInternal: PaymentStatus = PaymentStatus.PENDING;
 
-	@Column({
-		name: 'payment_method',
-		type: 'enum',
-		enum: PaymentMethod,
-		default: PaymentMethod.STRIPE,
-	})
-	paymentMethod: PaymentMethod;
-
-	@Column({ name: 'stripe_payment_intent_id', nullable: true })
-	stripePaymentIntentId?: string;
-
-	@Column({ name: 'stripe_charge_id', nullable: true })
-	stripeChargeId?: string;
-
-	@Column({ name: 'paypal_order_id', nullable: true })
-	paypalOrderId?: string;
-
-	@Column({ name: 'transaction_id', nullable: true })
-	transactionId?: string;
+	@Column({ name: 'payment_method', type: 'varchar', nullable: true })
+	private paymentMethodInternal?: PaymentMethod;
 
 	@Column({ nullable: true })
 	description?: string;
 
-	@Column({ name: 'completed_at', type: 'timestamp', nullable: true })
-	completedAt?: Date;
+	@Column('jsonb', { name: 'metadata', default: () => "'{}'::jsonb" })
+	private metadataInternal: PaymentHistoryMetadata = {};
 
-	@Column({ name: 'failed_at', type: 'timestamp', nullable: true })
-	failedAt?: Date;
+	get paymentId(): string {
+		return this.paymentIdInternal;
+	}
 
-	@Column('jsonb', { default: {} })
-	metadata: PaymentMetadata;
+	set paymentId(value: string) {
+		this.paymentIdInternal = value;
+	}
+
+	get transactionId(): string {
+		return this.paymentIdInternal;
+	}
+
+	set transactionId(value: string | undefined) {
+		if (value) {
+			this.paymentIdInternal = value;
+		}
+	}
+
+	get status(): PaymentStatus {
+		return this.statusInternal ?? PaymentStatus.PENDING;
+	}
+
+	set status(value: PaymentStatus) {
+		this.statusInternal = value;
+	}
+
+	get paymentMethod(): PaymentMethod | undefined {
+		return this.paymentMethodInternal;
+	}
+
+	set paymentMethod(value: PaymentMethod | undefined) {
+		this.paymentMethodInternal = value;
+	}
+
+	get metadata(): PaymentHistoryMetadata {
+		if (!this.metadataInternal) {
+			this.metadataInternal = {};
+		}
+		return this.metadataInternal;
+	}
+
+	set metadata(value: PaymentHistoryMetadata) {
+		this.metadataInternal = value ?? {};
+	}
+
+	get completedAt(): Date | undefined {
+		const value = this.metadata.completedAt;
+		return value ? new Date(value) : undefined;
+	}
+
+	set completedAt(value: Date | undefined) {
+		if (value) {
+			this.metadata.completedAt = value.toISOString();
+		} else {
+			delete this.metadata.completedAt;
+		}
+	}
+
+	get failedAt(): Date | undefined {
+		const value = this.metadata.failedAt;
+		return value ? new Date(value) : undefined;
+	}
+
+	set failedAt(value: Date | undefined) {
+		if (value) {
+			this.metadata.failedAt = value.toISOString();
+		} else {
+			delete this.metadata.failedAt;
+		}
+	}
+
+	get subscriptionId(): string | undefined {
+		return this.metadata.subscriptionId ?? undefined;
+	}
+
+	set subscriptionId(value: string | undefined) {
+		if (value) {
+			this.metadata.subscriptionId = value;
+		} else {
+			delete this.metadata.subscriptionId;
+		}
+	}
+
+	get originalAmount(): number | undefined {
+		return this.metadata.originalAmount;
+	}
+
+	set originalAmount(value: number | undefined) {
+		if (value === undefined || Number.isNaN(value)) {
+			delete this.metadata.originalAmount;
+		} else {
+			this.metadata.originalAmount = value;
+		}
+	}
+
+	get originalCurrency(): string | undefined {
+		return this.metadata.originalCurrency;
+	}
+
+	set originalCurrency(value: string | undefined) {
+		if (!value) {
+			delete this.metadata.originalCurrency;
+		} else {
+			this.metadata.originalCurrency = value;
+		}
+	}
 }

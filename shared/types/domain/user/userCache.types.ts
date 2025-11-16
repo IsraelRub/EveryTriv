@@ -4,7 +4,6 @@ export interface UserStatsCacheEntry extends Record<string, unknown> {
 	credits: number;
 	purchasedPoints: number;
 	totalPoints: number;
-	stats: Record<string, unknown>;
 	created_at: unknown;
 	accountAge: number;
 }
@@ -31,4 +30,3 @@ export interface AuditLogEntry extends Record<string, unknown> {
 	ip: string;
 	userAgent: string;
 }
-

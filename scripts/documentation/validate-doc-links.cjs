@@ -31,7 +31,7 @@ function walk(dir, files = []) {
   return files;
 }
 
-function extractLinks(content) {
+function extractLinks(content, filePath = '') {
   const mdLink = /\[[^\]]+\]\(([^)]+)\)/g;
   const results = [];
   let m;
@@ -54,17 +54,18 @@ function extractLinks(content) {
       continue;
     }
     
+    // Extract file path (remove anchor)
+    const linkPath = link.split('#')[0];
+    
     // Skip links with spaces (likely malformed)
-    if (link.includes(' ')) {
+    if (link.includes(' ') && linkPath) {
       console.warn(`Warning: Link with spaces in ${filePath}:${lineNumber} - "${link}"`);
       continue;
     }
     
-    // Extract file path (remove anchor)
-    const filePath = link.split('#')[0];
-    if (filePath) {
+    if (linkPath) {
       results.push({
-        path: filePath,
+        path: linkPath,
         line: lineNumber,
         original: link
       });
@@ -105,8 +106,8 @@ function validate() {
       continue;
     }
     
-    const links = extractLinks(content, file);
     const relativeFile = relative(DOC_ROOT, file);
+    const links = extractLinks(content, relativeFile);
     
     for (const link of links) {
       let target;

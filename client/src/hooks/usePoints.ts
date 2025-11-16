@@ -8,6 +8,7 @@ import { getErrorMessage } from '@shared/utils';
 import { selectCanPlayFree, selectUserPointBalance } from '../redux/selectors';
 import { deductPoints } from '../redux/slices';
 import { pointsService } from '../services';
+import type { PointsPurchaseRequest } from '../types';
 import { useAppDispatch, useAppSelector } from './useRedux';
 
 // Query keys
@@ -116,7 +117,7 @@ export const usePurchasePoints = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (packageId: string) => pointsService.purchasePoints(packageId),
+		mutationFn: (request: PointsPurchaseRequest) => pointsService.purchasePoints(request),
 		onSuccess: () => {
 			// Invalidate balance query
 			queryClient.invalidateQueries({ queryKey: pointsKeys.balance() });

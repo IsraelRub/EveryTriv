@@ -2,14 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { BillingCycle, PlanType } from '@shared/constants';
+import { BillingCycle, PaymentMethod, PaymentStatus, PlanType, SubscriptionStatus } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { SubscriptionData } from '@shared/types';
+import type { ManualPaymentDetails, SubscriptionData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
 
 import { PaymentService } from '../payment';
+import type { CreateSubscriptionDto } from './dtos';
 
 /**
  * Service for managing user subscriptions
@@ -64,16 +65,19 @@ export class SubscriptionService {
 	/**
 	 * Create subscription for user
 	 * @param userId User ID
-	 * @param plan Plan type
-	 * @param billingCycle Billing cycle
+	 * @param dto Subscription creation payload
 	 * @returns Created subscription
 	 */
-	async createSubscription(userId: string, plan: PlanType, billingCycle: BillingCycle = BillingCycle.MONTHLY) {
+	async createSubscription(userId: string, dto: CreateSubscriptionDto) {
+		const plan = dto.planType;
+		const billingCycle = dto.billingCycle || BillingCycle.MONTHLY;
+
 		try {
 			logger.payment('Creating subscription', {
 				userId,
 				planType: plan,
-				paymentMethodId: billingCycle,
+				billingCycle,
+				paymentMethod: dto.paymentMethod,
 			});
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -90,13 +94,17 @@ export class SubscriptionService {
 			const subscriptionData: SubscriptionData = {
 				subscriptionId,
 				planType: plan,
-				status: 'active',
+				status: SubscriptionStatus.ACTIVE,
 				startDate: startDate,
 				endDate: endDate,
 				price: planDetails.price,
 				billingCycle,
 				features: planDetails.features,
+				autoRenew: dto.autoRenewal ?? true,
 			};
+
+			const manualPayment =
+				dto.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.buildManualPaymentDetails(dto) : undefined;
 
 			const paymentResult = await this.paymentService.processPayment(userId, {
 				amount: planDetails.price,
@@ -110,7 +118,36 @@ export class SubscriptionService {
 					billingCycle,
 					price: planDetails.price,
 				},
+				method: dto.paymentMethod,
+				manualPayment,
+				paypalOrderId: dto.paymentMethod === PaymentMethod.PAYPAL ? dto.paypalOrderId : undefined,
+				paypalPaymentId: dto.paymentMethod === PaymentMethod.PAYPAL ? dto.paypalPaymentId : undefined,
 			});
+
+			if (paymentResult.status !== PaymentStatus.COMPLETED) {
+				return {
+					subscriptionId: null,
+					endDate: null,
+					billingCycle,
+					planType: plan,
+					status: SubscriptionStatus.PENDING,
+					startDate,
+					price: planDetails.price,
+					features: [...planDetails.features],
+					autoRenew: dto.autoRenewal ?? true,
+					nextBillingDate: undefined,
+					cancelledAt: undefined,
+					planDetails: {
+						...planDetails,
+						features: [...planDetails.features],
+					},
+					paymentMethod: dto.paymentMethod,
+					paypalTransactionId: paymentResult.paypalOrderId,
+					paypalOrderId: paymentResult.paypalOrderId,
+					manualCaptureReference: paymentResult.manualCaptureReference,
+					paymentId: paymentResult.transactionId,
+				};
+			}
 
 			await this.userRepository.update(userId, {
 				currentSubscriptionId: subscriptionId,
@@ -123,7 +160,11 @@ export class SubscriptionService {
 
 			return {
 				...subscriptionData,
-				paymentId: paymentResult.paymentId,
+				paymentId: paymentResult.paymentId ?? paymentResult.transactionId,
+				paymentMethod: dto.paymentMethod,
+				paypalTransactionId: paymentResult.paypalOrderId,
+				paypalOrderId: paymentResult.paypalOrderId,
+				manualCaptureReference: paymentResult.manualCaptureReference,
 			};
 		} catch (error) {
 			logger.paymentFailed('subscription-create', 'Failed to create subscription', {
@@ -200,7 +241,7 @@ export class SubscriptionService {
 		return {
 			subscriptionId: null,
 			planType: PlanType.BASIC,
-			status: 'active',
+			status: SubscriptionStatus.ACTIVE,
 			startDate: new Date(),
 			endDate: null,
 			price: 0,
@@ -238,5 +279,34 @@ export class SubscriptionService {
 		};
 
 		return plans[plan] || plans.basic;
+	}
+
+	private buildManualPaymentDetails(dto: CreateSubscriptionDto): ManualPaymentDetails {
+		const { month, year } = this.parseExpiryDate(dto.expiryDate);
+
+		return {
+			cardNumber: dto.cardNumber ?? '',
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: dto.cvv ?? '',
+			cardHolderName: dto.cardHolderName ?? '',
+			postalCode: dto.postalCode,
+			expiryDate: dto.expiryDate,
+		};
+	}
+
+	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
+		if (!expiryDate) {
+			return { month: 0, year: 0 };
+		}
+
+		const [monthPart, yearPart] = expiryDate.split('/');
+		const month = parseInt(monthPart ?? '0', 10);
+		const yearDigits = parseInt(yearPart ?? '0', 10);
+
+		return {
+			month,
+			year: 2000 + (Number.isNaN(yearDigits) ? 0 : yearDigits),
+		};
 	}
 }

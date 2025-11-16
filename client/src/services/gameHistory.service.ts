@@ -6,11 +6,11 @@
  * @description Client-side game history and leaderboard management
  * @used_by client/views/game-history, client/components/stats, client/hooks
  */
-import { VALID_DIFFICULTIES, VALID_GAME_MODES } from '@shared/constants';
+import { GAME_STATE_DEFAULTS, VALID_GAME_MODES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { GameData, GameHistoryEntry, LeaderboardEntry, UserRankData, UserStatsData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
+import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
 
 import { apiService } from './api.service';
 
@@ -35,10 +35,12 @@ class ClientGameHistoryService {
 				correctAnswers: gameData.correctAnswers,
 			});
 
-			// Validate types with type guards
-			const normalizedDifficulty = gameData.difficulty.toLowerCase();
-			const isValidStandard = VALID_DIFFICULTIES.some(validDiff => validDiff.toLowerCase() === normalizedDifficulty);
-			if (!isValidStandard && !isCustomDifficulty(gameData.difficulty)) {
+			if (!gameData.userId || gameData.userId.trim() === '') {
+				throw new Error('User ID is required to save game history');
+			}
+			const userId = gameData.userId;
+
+			if (!isValidDifficulty(gameData.difficulty)) {
 				throw new Error(`Invalid difficulty level: ${gameData.difficulty}`);
 			}
 			if (!VALID_GAME_MODES.includes(gameData.gameMode)) {
@@ -46,12 +48,12 @@ class ClientGameHistoryService {
 			}
 
 			const createGameHistoryDto: GameData = {
-				userId: gameData.userId,
+				userId,
 				score: gameData.score,
 				totalQuestions: gameData.totalQuestions,
 				correctAnswers: gameData.correctAnswers,
 				difficulty: gameData.difficulty,
-				topic: gameData.topic || 'General Knowledge',
+				topic: gameData.topic || GAME_STATE_DEFAULTS.TOPIC,
 				gameMode: gameData.gameMode,
 				timeSpent: gameData.timeSpent ?? 0,
 				creditsUsed: gameData.creditsUsed ?? 0,
@@ -64,7 +66,7 @@ class ClientGameHistoryService {
 				id: `game_${Date.now()}`,
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				topic: gameData.topic || 'General Knowledge',
+				topic: gameData.topic || GAME_STATE_DEFAULTS.TOPIC,
 				difficulty: toDifficultyLevel(gameData.difficulty),
 				gameMode: gameData.gameMode,
 				score: gameData.score,
@@ -73,7 +75,7 @@ class ClientGameHistoryService {
 				timeSpent: gameData.timeSpent ?? 0,
 				creditsUsed: gameData.creditsUsed ?? 0,
 				questionsData: gameData.questionsData ?? [],
-				userId: gameData.userId,
+				userId,
 			};
 
 			logger.gameStatistics('Game result saved successfully', { id: gameHistory.id });
@@ -167,12 +169,12 @@ class ClientGameHistoryService {
 		try {
 			logger.gameStatistics('Getting game by ID', { id: gameId });
 
-			const response = await apiService.get<GameHistoryEntry>(`/game-history/${gameId}`);
+			const game = await apiService.getGameById(gameId);
 
 			logger.gameStatistics('Game retrieved successfully', {
 				id: gameId,
 			});
-			return response.data;
+			return game;
 		} catch (error) {
 			logger.gameError('Failed to get game by ID', { error: getErrorMessage(error), id: gameId });
 			throw error;

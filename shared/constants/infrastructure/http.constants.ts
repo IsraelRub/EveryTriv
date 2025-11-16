@@ -19,7 +19,9 @@ export const API_BASE_URL = {
 export const HTTP_CLIENT_CONFIG = {
 	TIMEOUT: 30000, // 30 seconds
 	RETRY_ATTEMPTS: 3,
+	RETRY_ATTEMPTS_RATE_LIMIT: 5, // More attempts for rate limit errors
 	RETRY_DELAY: 1000, // 1 second
+	RETRY_DELAY_RATE_LIMIT: 5000, // 5 seconds minimum for rate limit errors
 	DEFAULT_HEADERS: {
 		'Content-Type': 'application/json',
 		Accept: 'application/json',

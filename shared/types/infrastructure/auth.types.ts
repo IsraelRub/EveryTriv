@@ -4,6 +4,8 @@
  * @description Authentication and authorization related types
  */
 // Import BasicUser from domain
+import type { Request } from 'express';
+
 import { UserRole } from '../../constants';
 import type { BasicUser } from '../domain/user';
 
@@ -72,6 +74,19 @@ export interface AuthenticationRequest {
 // Auth Request (for authenticated endpoints)
 export interface AuthRequest {
 	user: BasicUser;
+}
+
+export interface GoogleAuthPayload {
+	google_id: string;
+	email?: string;
+	username?: string;
+	firstName?: string;
+	lastName?: string;
+	avatar?: string;
+}
+
+export interface GoogleAuthRequest extends Request {
+	user?: GoogleAuthPayload;
 }
 
 // JWT Decoded Token

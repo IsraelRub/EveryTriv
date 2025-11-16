@@ -66,9 +66,14 @@ export interface ApiError {
  * @description Error data structure from API error responses
  * @used_by client/src/services/api.service.ts
  */
+export type ErrorDetail = string | string[] | Record<string, string | string[]>;
+
 export interface ErrorResponseData {
 	message?: string;
 	error?: string;
+	detail?: string;
+	description?: string;
+	errors?: ErrorDetail;
 }
 
 /**
@@ -149,7 +154,7 @@ export interface QuestionData {
  * @used_by client/src/services/api.service.ts (saveHistory, saveGameHistory)
  */
 export interface GameData {
-	userId: string;
+	userId?: string;
 	score: number;
 	totalQuestions: number;
 	correctAnswers: number;

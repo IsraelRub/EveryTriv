@@ -31,7 +31,6 @@ export interface BulkMetadata {
 // NestJS request/response types
 export interface NestRequest extends Request {
 	authToken?: string;
-	country?: string;
 	userRole?: UserRole;
 	user?: UserPayload;
 	decoratorMetadata?: DecoratorMetadata;

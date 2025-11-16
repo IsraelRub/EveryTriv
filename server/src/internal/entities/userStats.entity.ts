@@ -1,7 +1,5 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import type { Achievement } from '@shared/types';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
@@ -61,6 +59,7 @@ export class UserStatsEntity extends BaseEntity {
 			totalQuestions: number;
 			correctAnswers: number;
 			successRate: number;
+			score: number;
 			lastPlayed: Date;
 		}
 	> = {};
@@ -73,6 +72,7 @@ export class UserStatsEntity extends BaseEntity {
 			totalQuestions: number;
 			correctAnswers: number;
 			successRate: number;
+			score: number;
 			lastPlayed: Date;
 		}
 	> = {};
@@ -111,11 +111,4 @@ export class UserStatsEntity extends BaseEntity {
 
 	@Column('timestamp', { name: 'best_game_date', nullable: true })
 	bestGameDate?: Date;
-
-	// Achievement Tracking
-	@Column('jsonb', { name: 'unlocked_achievements', default: [] })
-	unlockedAchievements: Achievement[] = [];
-
-	@Column('int', { name: 'total_achievements', default: 0 })
-	totalAchievements: number = 0;
 }

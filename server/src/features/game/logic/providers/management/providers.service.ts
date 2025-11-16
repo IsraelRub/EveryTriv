@@ -7,7 +7,6 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { PROVIDER_ERROR_MESSAGES } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { GameDifficulty, ProviderStats, TriviaQuestion } from '@shared/types';
 import { ensureErrorObject, getErrorMessage } from '@shared/utils';
@@ -89,23 +88,6 @@ export class AiProvidersService {
 	}
 
 	/**
-	 * Get the next available AI provider in round-robin fashion
-	 * @returns LLMProvider The next provider to use
-	 * @throws Error - When no providers are available
-	 */
-	private getNextProvider():
-		| (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)
-		| null {
-		if (this.llmProviders.length === 0) {
-			throw createServerError('get AI provider', new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE));
-		}
-
-		const provider = this.llmProviders[this.currentProviderIndex];
-		this.currentProviderIndex = (this.currentProviderIndex + 1) % this.llmProviders.length;
-		return provider;
-	}
-
-	/**
 	 * Generate a new trivia question using AI providers with retry logic and performance optimization
 	 * @param topic The topic for the trivia question
 	 * @param difficulty The difficulty level
@@ -113,23 +95,62 @@ export class AiProvidersService {
 	 */
 	async generateQuestion(topic: string, difficulty: GameDifficulty): Promise<TriviaQuestion> {
 		const startTime = Date.now();
-		const maxRetries = 2;
+		const maxAttempts = this.llmProviders.length;
 		let lastError: Error | null = null;
+		const failedProviders = new Set<string>();
+		const attemptedProviders = new Set<string>();
 
 		try {
 			logger.providerStats('question_generation', {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
+				totalProviders: this.llmProviders.length,
 			});
 
-			for (let attempt = 0; attempt <= maxRetries; attempt++) {
-				try {
-					const provider = this.getNextProvider();
-					if (!provider) {
-						throw createServerError('get AI provider', new Error(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE));
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				let provider:
+					| (AnthropicTriviaProvider | GoogleTriviaProvider | MistralTriviaProvider | OpenAITriviaProvider)
+					| null = null;
+				let providerName = 'unknown';
+
+				// Find next available provider that hasn't failed with auth/rate limit errors
+				for (let i = 0; i < this.llmProviders.length; i++) {
+					const testProvider = this.llmProviders[this.currentProviderIndex];
+					const testProviderName = testProvider.name;
+
+					if (!failedProviders.has(testProviderName) && !attemptedProviders.has(testProviderName)) {
+						provider = testProvider;
+						providerName = testProviderName;
+						this.currentProviderIndex = (this.currentProviderIndex + 1) % this.llmProviders.length;
+						attemptedProviders.add(testProviderName);
+						break;
 					}
-					const providerName = provider.name;
+
+					this.currentProviderIndex = (this.currentProviderIndex + 1) % this.llmProviders.length;
+				}
+
+				// If no available provider found, try any provider that hasn't been attempted yet
+				if (!provider) {
+					for (let i = 0; i < this.llmProviders.length; i++) {
+						const testProvider = this.llmProviders[i];
+						const testProviderName = testProvider.name;
+
+						if (!attemptedProviders.has(testProviderName)) {
+							provider = testProvider;
+							providerName = testProviderName;
+							attemptedProviders.add(testProviderName);
+							break;
+						}
+					}
+				}
+
+				if (!provider) {
+					// All providers have been attempted
+					throw lastError || createServerError('generate question', new Error('All AI providers failed'));
+				}
+
+				try {
 					const providerStartTime = Date.now();
 
 					this.updateProviderStats(providerName, 'request');
@@ -156,19 +177,44 @@ export class AiProvidersService {
 
 					return question;
 				} catch (error) {
-					const providerName = (this.llmProviders[this.currentProviderIndex - 1] || {}).name || 'unknown';
 					lastError = ensureErrorObject(error);
+
+					// Check if it's an auth error (401) or rate limit error (429)
+					const errorObj = lastError as Error & {
+						isAuthError?: boolean;
+						isRateLimitError?: boolean;
+						statusCode?: number;
+					};
+
+					if (errorObj.isAuthError === true || errorObj.statusCode === 401) {
+						// Don't retry providers that failed with authentication errors
+						failedProviders.add(providerName);
+						logger.providerError(providerName, 'Authentication failed - skipping provider', {
+							context: 'AiProvidersService',
+							error: getErrorMessage(lastError),
+							attempt: attempt + 1,
+						});
+					} else if (errorObj.isRateLimitError === true || errorObj.statusCode === 429) {
+						// Don't retry providers that hit rate limits in this request cycle
+						failedProviders.add(providerName);
+						logger.providerError(providerName, 'Rate limit exceeded - skipping provider', {
+							context: 'AiProvidersService',
+							error: getErrorMessage(lastError),
+							attempt: attempt + 1,
+						});
+					} else {
+						// Other errors - can retry
+						logger.providerFallback(providerName, {
+							context: 'AiProvidersService',
+							error: getErrorMessage(lastError),
+							attempt: attempt + 1,
+						});
+					}
 
 					this.updateProviderStats(providerName, 'failure');
 
-					logger.providerFallback(providerName, {
-						context: 'AiProvidersService',
-						error: lastError.message,
-						attempt: attempt + 1,
-						maxRetries,
-					});
-
-					if (attempt === maxRetries) {
+					// If this was the last available provider, throw the error
+					if (failedProviders.size + attemptedProviders.size >= this.llmProviders.length) {
 						throw lastError;
 					}
 				}
@@ -180,6 +226,7 @@ export class AiProvidersService {
 				context: 'AiProvidersService',
 				topic,
 				difficulty,
+				totalProviders: this.llmProviders.length,
 			});
 			throw error;
 		}

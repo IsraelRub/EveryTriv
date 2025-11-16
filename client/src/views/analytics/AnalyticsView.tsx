@@ -20,6 +20,7 @@ import { ButtonVariant, CardVariant, ComponentSize, Spacing, USER_DEFAULT_VALUES
 import {
 	useAnalyticsExport,
 	useDifficultyStats,
+	useGlobalStats,
 	usePopularTopics,
 	useRealTimeAnalytics,
 	useUserAnalytics,
@@ -49,6 +50,7 @@ function AnalyticsViewContent() {
 	const { isLoading: topicsLoading } = usePopularTopics();
 	const { data: realTimeAnalytics } = useRealTimeAnalytics();
 	const { refetch: exportAnalytics } = useAnalyticsExport('json');
+	const { data: globalStats, isLoading: globalStatsLoading } = useGlobalStats();
 
 	useEffect(() => {
 		logger.navigationPage('analytics', { timeFilter });
@@ -134,6 +136,8 @@ function AnalyticsViewContent() {
 	};
 
 	const analyticsData = analytics ?? defaultAnalytics;
+	const topicsPlayedData: TopicsPlayed = analyticsData.game.topicsPlayed ?? {};
+	const difficultyBreakdownData: DifficultyBreakdown = analyticsData.game.difficultyBreakdown ?? {};
 
 	return (
 		<motion.main
@@ -254,9 +258,7 @@ function AnalyticsViewContent() {
 								)}
 								<div className='flex justify-between items-center'>
 									<span className='text-sm text-gray-600'>Topics played</span>
-									<span className='font-semibold text-gray-900'>
-										{Object.keys(analyticsData.game.topicsPlayed).length}
-									</span>
+									<span className='font-semibold text-gray-900'>{Object.keys(topicsPlayedData).length}</span>
 								</div>
 							</div>
 						</CardContent>
@@ -298,8 +300,8 @@ function AnalyticsViewContent() {
 								currentStreak={analyticsData.performance.streakDays ?? 0}
 								score={analyticsData.game.correctAnswers}
 								total={analyticsData.game.totalQuestions}
-								topicsPlayed={Object.keys(analyticsData.game.topicsPlayed)}
-								difficultyStats={analyticsData.game.difficultyBreakdown}
+								topicsPlayed={Object.keys(topicsPlayedData)}
+								difficultyStats={difficultyBreakdownData}
 							/>
 						</CardContent>
 					</Card>
@@ -320,7 +322,7 @@ function AnalyticsViewContent() {
 									<div className='h-4 bg-gray-300 rounded w-2/3'></div>
 								</div>
 							) : (
-								<TopicsChart topicsPlayed={analyticsData.game.topicsPlayed} />
+								<TopicsChart topicsPlayed={topicsPlayedData} />
 							)}
 						</CardContent>
 					</Card>
@@ -338,7 +340,7 @@ function AnalyticsViewContent() {
 									<div className='h-4 bg-gray-300 rounded w-2/3'></div>
 								</div>
 							) : (
-								<DifficultyChart difficultyBreakdown={analyticsData.game.difficultyBreakdown} />
+								<DifficultyChart difficultyBreakdown={difficultyBreakdownData} />
 							)}
 						</CardContent>
 					</Card>
@@ -377,36 +379,44 @@ function AnalyticsViewContent() {
 						<CardTitle className='text-xl font-bold text-gray-900'>Comparison with general average</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<GridLayout variant='balanced' gap={Spacing.MD}>
-							<ComparisonCard
-								title='Success rate'
-								userValue={analyticsData.game.successRate}
-								averageValue={75}
-								unit='%'
-								higherIsBetter={true}
-							/>
-							<ComparisonCard
-								title='Games played'
-								userValue={analyticsData.game.totalGames}
-								averageValue={25}
-								unit='games'
-								higherIsBetter={true}
-							/>
-							<ComparisonCard
-								title='Average game time'
-								userValue={analyticsData.performance.averageGameTime ?? 0}
-								averageValue={8}
-								unit='min'
-								higherIsBetter={false}
-							/>
-							<ComparisonCard
-								title='Consistency'
-								userValue={analyticsData.performance.consistencyScore ?? 0}
-								averageValue={65}
-								unit='%'
-								higherIsBetter={true}
-							/>
-						</GridLayout>
+						{globalStatsLoading ? (
+							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+								{[1, 2, 3, 4].map(i => (
+									<div key={i} className='h-24 bg-gray-200 rounded-lg animate-pulse'></div>
+								))}
+							</div>
+						) : (
+							<GridLayout variant='balanced' gap={Spacing.MD}>
+								<ComparisonCard
+									title='Success rate'
+									userValue={analyticsData.game.successRate}
+									averageValue={globalStats?.successRate ?? 0}
+									unit='%'
+									higherIsBetter={true}
+								/>
+								<ComparisonCard
+									title='Games played'
+									userValue={analyticsData.game.totalGames}
+									averageValue={globalStats?.averageGames ?? 0}
+									unit='games'
+									higherIsBetter={true}
+								/>
+								<ComparisonCard
+									title='Average game time'
+									userValue={analyticsData.performance.averageGameTime ?? 0}
+									averageValue={globalStats?.averageGameTime ?? 0}
+									unit='min'
+									higherIsBetter={false}
+								/>
+								<ComparisonCard
+									title='Consistency'
+									userValue={analyticsData.performance.consistencyScore ?? 0}
+									averageValue={globalStats?.consistency ?? 0}
+									unit='%'
+									higherIsBetter={true}
+								/>
+							</GridLayout>
+						)}
 					</CardContent>
 				</Card>
 

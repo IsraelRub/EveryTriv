@@ -1,173 +1,277 @@
-import { URLSearchParams } from 'url';
-
+/**
+ * LanguageTool Integration Service
+ *
+ * @module LanguageToolService
+ * @description Provides access to the external LanguageTool API with retries, timeouts, and structured logging
+ */
 import { Injectable } from '@nestjs/common';
 
-import { CACHE_TTL, LANGUAGE_TOOL_CONSTANTS, VALIDATION_ERROR_MESSAGES } from '@shared/constants';
+import { LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { LanguageToolConfig, LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
-import { getErrorMessage, getErrorStack } from '@shared/utils';
+import type { LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
-import { createServerError } from '@internal/utils';
+type HttpMethod = 'GET' | 'POST';
 
+interface LanguageToolCheckOptions extends LanguageValidationOptions {
+	language?: string;
+}
 
 @Injectable()
 export class LanguageToolService {
-	private readonly config: LanguageToolConfig;
-	private readonly cache: Map<string, { expiresAt: number; result: LanguageToolResponse }> = new Map();
-	private readonly cacheTtlMs: number = CACHE_TTL.LONG;
+	private readonly baseUrl: string;
+	private readonly apiKey?: string;
+	private readonly timeoutMs: number;
+	private readonly maxRetries: number;
+	private readonly defaultLanguage: string;
 
 	constructor() {
-		this.config = {
-			baseUrl: LANGUAGE_TOOL_CONSTANTS.BASE_URL,
-			apiKey: process.env.LANGUAGE_TOOL_API_KEY,
-			timeout: LANGUAGE_TOOL_CONSTANTS.TIMEOUT,
-			maxRetries: LANGUAGE_TOOL_CONSTANTS.MAX_RETRIES,
-		};
+		this.baseUrl = this.normalizeBaseUrl(
+			typeof process !== 'undefined' ? process.env.LANGUAGE_TOOL_BASE_URL : undefined
+		);
+		this.apiKey = this.normalizeOptionalValue(
+			typeof process !== 'undefined' ? process.env.LANGUAGE_TOOL_API_KEY : undefined
+		);
+		this.timeoutMs = this.normalizeNumber(
+			typeof process !== 'undefined' ? process.env.LANGUAGE_TOOL_TIMEOUT : undefined,
+			LANGUAGE_TOOL_CONSTANTS.TIMEOUT
+		);
+		this.maxRetries = this.normalizeNumber(
+			typeof process !== 'undefined' ? process.env.LANGUAGE_TOOL_MAX_RETRIES : undefined,
+			LANGUAGE_TOOL_CONSTANTS.MAX_RETRIES
+		);
+		this.defaultLanguage = LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH;
 
 		logger.languageToolServiceInit({
-			baseUrl: this.config.baseUrl,
-			hasApiKey: !!this.config.apiKey,
-			timeout: this.config.timeout ?? 5000,
-			maxRetries: this.config.maxRetries ?? 3,
+			baseUrl: this.baseUrl,
+			timeout: this.timeoutMs,
+			maxRetries: this.maxRetries,
+			hasApiKey: Boolean(this.apiKey),
 		});
 	}
 
-	/**
-	 * Check text using LanguageTool API
-	 */
-	async checkText(text: string, options: LanguageValidationOptions = {}): Promise<LanguageToolResponse> {
-		const { enableSpellCheck = true, enableGrammarCheck = true } = options;
-
-		const language = 'en';
+	async isAvailable(): Promise<boolean> {
+		const endpoint = LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.LANGUAGES;
 
 		try {
-			const cacheKey = this.buildCacheKey(text, language, enableSpellCheck, enableGrammarCheck);
-			const cached = this.cache.get(cacheKey);
-			if (cached && cached.expiresAt > Date.now()) {
-				logger.languageToolDebug('Returning cached LanguageTool response', { textLength: text.length });
-				return cached.result;
-			}
-			logger.languageToolDebug(`Starting text validation`, {
-				textLength: text.length,
-				enableSpellCheck,
-				enableGrammarCheck,
+			const response = await this.performRequest('GET', endpoint);
+			logger.languageToolAvailabilityCheck(response.ok, response.status, {
+				endpoint,
 			});
-
-			const params = new URLSearchParams({
-				text: text,
-				language: language,
-				enableOnly: this.buildEnableOnlyParam(enableSpellCheck, enableGrammarCheck),
-			});
-
-			const url = `${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK}?${params.toString()}`;
-			const headers: Record<string, string> = {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			};
-
-			if (this.config.apiKey) {
-				headers['Authorization'] = `ApiKey ${this.config.apiKey}`;
-			}
-
-			logger.languageToolApiRequest(url.replace(this.config.apiKey || '', '[REDACTED]'), 'en', {
-				headers: Object.keys(headers),
-			});
-
-			const response = await globalThis.fetch(url, {
-				method: 'POST',
-				headers,
-			});
-
-			if (!response.ok) {
-				const errorMessage = `${VALIDATION_ERROR_MESSAGES.LANGUAGETOOL_API_ERROR}: ${response.status} ${response.statusText}`;
-				logger.languageToolApiError(response.status, response.statusText, {
-					url: url.replace(this.config.apiKey || '', '[REDACTED]'),
-				});
-				throw createServerError('validate text with LanguageTool', new Error(errorMessage));
-			}
-
-			const result: LanguageToolResponse = await response.json();
-
-			logger.languageToolValidation(text.length, language, result.matches.length, {
-				enableSpellCheck,
-				enableGrammarCheck,
-			});
-
-			// cache
-			this.cache.set(cacheKey, { expiresAt: Date.now() + this.cacheTtlMs, result });
-			return result;
+			return response.ok;
 		} catch (error) {
-			const errorMessage = `LanguageTool API error: ${getErrorMessage(error)}`;
-			logger.languageToolError(errorMessage, {
-				language,
-				textLength: text.length,
-				error: getErrorStack(error),
+			logger.languageToolError(`Availability check failed: ${getErrorMessage(error)}`, {
+				endpoint,
+			});
+			logger.languageToolAvailabilityCheck(false, 0, {
+				endpoint,
+			});
+			return false;
+		}
+	}
+
+	async checkText(text: string, options: LanguageToolCheckOptions = {}): Promise<LanguageToolResponse> {
+		const trimmedText = text.trim();
+		if (trimmedText.length === 0) {
+			throw new Error('LanguageTool validation requires non-empty text');
+		}
+
+		const endpoint = LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK;
+		const params = this.buildCheckParams(text, options);
+
+		try {
+			const response = await this.performRequest('POST', endpoint, params);
+			const rawData = await response.json();
+
+			if (!this.isLanguageToolResponse(rawData)) {
+				throw new Error('LanguageTool returned an unexpected response format');
+			}
+
+			logger.languageToolValidation(
+				text.length,
+				params.get('language') ?? this.defaultLanguage,
+				rawData.matches.length,
+				{
+					endpoint,
+				}
+			);
+
+			return rawData;
+		} catch (error) {
+			logger.languageToolError(`LanguageTool validation failed: ${getErrorMessage(error)}`, {
+				endpoint,
 			});
 			throw error;
 		}
 	}
 
-	private buildCacheKey(
-		text: string,
-		language: string,
-		enableSpellCheck: boolean,
-		enableGrammarCheck: boolean
-	): string {
-		return [language, enableSpellCheck ? 's1' : 's0', enableGrammarCheck ? 'g1' : 'g0', text].join('|').slice(0, 2048);
-	}
+	private async performRequest(method: HttpMethod, endpoint: string, body?: URLSearchParams): Promise<Response> {
+		const url = `${this.baseUrl}${endpoint}`;
+		let attempt = 0;
+		let lastError: Error | null = null;
 
-	/**
-	 * Build enableOnly parameter for LanguageTool API
-	 */
-	private buildEnableOnlyParam(enableSpellCheck: boolean, enableGrammarCheck: boolean): string {
-		const rules: string[] = [];
+		while (attempt <= this.maxRetries) {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
-		if (enableSpellCheck) {
-			rules.push(LANGUAGE_TOOL_CONSTANTS.RULES.SPELLING);
+			try {
+				logger.languageToolApiRequest(url, method, {
+					attempt: attempt + 1,
+					maxRetries: this.maxRetries,
+				});
+
+				const response = await globalThis.fetch(url, {
+					method,
+					headers: this.buildHeaders(),
+					body,
+					signal: controller.signal,
+				});
+
+				clearTimeout(timeoutId);
+
+				if (!response.ok) {
+					logger.languageToolApiError(response.status, response.statusText, {
+						attempt: attempt + 1,
+						maxRetries: this.maxRetries,
+					});
+
+					if (attempt === this.maxRetries) {
+						throw new Error(`LanguageTool API error ${response.status} ${response.statusText} for ${url}`);
+					}
+
+					lastError = new Error(`LanguageTool API error ${response.status} ${response.statusText} for ${url}`);
+				} else {
+					return response;
+				}
+			} catch (error) {
+				clearTimeout(timeoutId);
+
+				const normalizedError = error instanceof Error ? error : new Error(String(error));
+
+				if (normalizedError.name === 'AbortError') {
+					lastError = new Error(`LanguageTool request timed out after ${this.timeoutMs}ms for ${url}`);
+				} else {
+					lastError = normalizedError;
+				}
+
+				logger.languageToolDebug(`LanguageTool request error: ${getErrorMessage(lastError)}`, {
+					attempt: attempt + 1,
+					maxRetries: this.maxRetries,
+				});
+			} finally {
+				clearTimeout(timeoutId);
+			}
+
+			attempt += 1;
 		}
 
-		if (enableGrammarCheck) {
-			rules.push(
-				LANGUAGE_TOOL_CONSTANTS.RULES.GRAMMAR,
-				LANGUAGE_TOOL_CONSTANTS.RULES.STYLE,
-				LANGUAGE_TOOL_CONSTANTS.RULES.TYPOS
-			);
-		}
-
-		logger.languageToolDebug(`Built enableOnly parameter`, {
-			enableSpellCheck,
-			enableGrammarCheck,
-			rulesCount: rules.length,
-			rules: rules,
-		});
-
-		return rules.join(',');
+		throw lastError ?? new Error(`LanguageTool request failed for ${url}`);
 	}
 
-	/**
-	 * Check if LanguageTool service is available
-	 */
-	async isAvailable(): Promise<boolean> {
-		try {
-			logger.languageToolDebug('Checking service availability');
+	private buildHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {
+			Accept: 'application/json',
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'User-Agent': 'EveryTriv-Server/1.0',
+		};
 
-			const response = await fetch(`${this.config.baseUrl}${LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK}`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: 'text=sample&language=en',
-			});
+		if (this.apiKey) {
+			headers.Authorization = `Bearer ${this.apiKey}`;
+		}
 
-			const isAvailable = response.ok;
+		return headers;
+	}
 
-			logger.languageToolAvailabilityCheck(isAvailable, response.status, {
-				statusText: response.statusText,
-			});
+	private buildCheckParams(text: string, options: LanguageToolCheckOptions): URLSearchParams {
+		const params = new URLSearchParams();
+		const language = options.language ?? this.defaultLanguage;
 
-			return isAvailable;
-		} catch (error) {
-			logger.languageToolError('Service availability check failed', {
-				error: getErrorMessage(error),
-			});
+		params.set('text', text);
+		params.set('language', language);
+		params.set('enabledOnly', 'false');
+
+		const disabledCategories: string[] = [];
+
+		if (options.enableGrammarCheck === false) {
+			disabledCategories.push(LANGUAGE_TOOL_CONSTANTS.RULES.GRAMMAR);
+		}
+
+		if (options.enableSpellCheck === false) {
+			disabledCategories.push(LANGUAGE_TOOL_CONSTANTS.RULES.TYPOS);
+		}
+
+		if (disabledCategories.length > 0) {
+			params.set('disabledCategories', disabledCategories.join(','));
+		}
+
+		if (this.apiKey) {
+			params.set('apiKey', this.apiKey);
+		}
+
+		return params;
+	}
+
+	private normalizeBaseUrl(value: string | undefined): string {
+		if (!value || value.trim().length === 0) {
+			return LANGUAGE_TOOL_CONSTANTS.BASE_URL;
+		}
+
+		const trimmed = value.trim();
+		return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+	}
+
+	private normalizeOptionalValue(value: string | undefined): string | undefined {
+		if (!value) {
+			return undefined;
+		}
+
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+
+	private normalizeNumber(value: string | undefined, defaultValue: number): number {
+		if (!value) {
+			return defaultValue;
+		}
+
+		const parsed = Number.parseInt(value, 10);
+		return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+	}
+
+	private isLanguageToolResponse(value: unknown): value is LanguageToolResponse {
+		if (!this.isRecord(value)) {
 			return false;
 		}
+
+		const matches = value.matches;
+		if (!Array.isArray(matches)) {
+			return false;
+		}
+
+		return matches.every(match => this.isLanguageToolMatch(match));
+	}
+
+	private isLanguageToolMatch(value: unknown): value is LanguageToolResponse['matches'][number] {
+		if (!this.isRecord(value)) {
+			return false;
+		}
+
+		const messageValid = typeof value.message === 'string' || typeof value.shortMessage === 'string';
+		const replacementsValid =
+			Array.isArray(value.replacements) && value.replacements.every(replacement => this.isReplacement(replacement));
+
+		return messageValid && replacementsValid;
+	}
+
+	private isReplacement(value: unknown): value is { value: string } {
+		if (!this.isRecord(value)) {
+			return false;
+		}
+
+		return typeof value.value === 'string';
+	}
+
+	private isRecord(value: unknown): value is Record<string, unknown> {
+		return typeof value === 'object' && value !== null;
 	}
 }

@@ -1,8 +1,8 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
 
-import { CACHE_DURATION, SUBSCRIPTION_PLANS, PlanType } from '@shared/constants';
+import { CACHE_DURATION, PaymentMethod, PlanType, SUBSCRIPTION_PLANS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import { PaymentData } from '@shared/types';
+import type { ManualPaymentDetails, PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { Cache, CurrentUserId } from '../../common';
@@ -39,6 +39,10 @@ export class PaymentController {
 				throw new HttpException('Payment amount is required', HttpStatus.BAD_REQUEST);
 			}
 
+			const manualPayment =
+				paymentData.paymentMethod === PaymentMethod.MANUAL_CREDIT
+					? this.buildManualPaymentDetails(paymentData)
+					: undefined;
 			const paymentDataForService: PaymentData = {
 				amount,
 				currency: paymentData.currency ?? 'USD',
@@ -47,9 +51,13 @@ export class PaymentController {
 				numberOfPayments: paymentData.numberOfPayments ?? 1,
 				metadata: {
 					plan: planType,
-					paymentMethod: paymentData.paymentMethod ?? 'credit_card',
+					paymentMethod: paymentData.paymentMethod,
 					tags: paymentData.additionalInfo ? [paymentData.additionalInfo] : undefined,
 				},
+				method: paymentData.paymentMethod,
+				manualPayment,
+				paypalOrderId: paymentData.paymentMethod === PaymentMethod.PAYPAL ? paymentData.paypalOrderId : undefined,
+				paypalPaymentId: paymentData.paymentMethod === PaymentMethod.PAYPAL ? paymentData.paypalPaymentId : undefined,
 			};
 			const result = await this.paymentService.processPayment(userId, paymentDataForService);
 
@@ -96,5 +104,30 @@ export class PaymentController {
 			});
 			throw error;
 		}
+	}
+
+	private buildManualPaymentDetails(dto: CreatePaymentDto): ManualPaymentDetails {
+		const { month, year } = this.parseExpiryDate(dto.expiryDate);
+		return {
+			cardNumber: dto.cardNumber ?? '',
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: dto.cvv ?? '',
+			cardHolderName: dto.cardHolderName ?? '',
+			postalCode: dto.postalCode,
+			expiryDate: dto.expiryDate,
+		};
+	}
+
+	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
+		if (!expiryDate) {
+			return { month: 0, year: 0 };
+		}
+
+		const [monthPart, yearPart] = expiryDate.split('/');
+		const month = parseInt(monthPart ?? '0', 10);
+		const year = 2000 + parseInt(yearPart ?? '0', 10);
+
+		return { month, year };
 	}
 }

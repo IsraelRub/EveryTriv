@@ -10,7 +10,7 @@ import { UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { AuthCredentials, AuthenticationResult, BasicUser, User, UserProfileResponseType } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { ensureErrorObject } from '@shared/utils/error.utils';
+import { ensureErrorObject } from '@shared/utils/core/error.utils';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
 import { isUser } from '../utils/data.utils';
@@ -134,10 +134,17 @@ class AuthService {
 				throw new Error('No user data found');
 			}
 
+			// Get existing refresh token from storage
+			const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+			const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
+			if (!refreshToken) {
+				throw new Error('No refresh token available');
+			}
+
 			const fullResponse: AuthenticationResult = {
 				user,
 				accessToken: response.accessToken,
-				refreshToken: response.accessToken, // Use accessToken as refreshToken for now
+				refreshToken,
 			};
 
 			// Update auth data
@@ -224,28 +231,17 @@ class AuthService {
 	 * Complete user profile after registration
 	 */
 	async completeProfile(profileData: {
-		fullName: string;
+		firstName: string;
+		lastName?: string;
 		avatar?: string;
-		address?: {
-			country?: string;
-			state?: string;
-			city?: string;
-			street?: string;
-			zipCode?: string;
-			apartment?: string;
-		};
 	}): Promise<UserProfileResponseType> {
 		try {
 			logger.authProfileUpdate('Completing user profile');
 
-			// Split fullName into firstName and lastName
-			const nameParts = profileData.fullName.split(' ');
-			const firstName = nameParts[0] || '';
-			const lastName = nameParts.slice(1).join(' ') || '';
-
 			const profileResponse = await apiService.updateUserProfile({
-				firstName: firstName,
-				lastName: lastName,
+				firstName: profileData.firstName,
+				lastName: profileData.lastName,
+				avatar: profileData.avatar,
 			});
 
 			logger.authProfileUpdate('Profile completed successfully');

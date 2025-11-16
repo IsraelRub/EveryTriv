@@ -1,4 +1,6 @@
-import type { SimpleValidationResult } from '@shared/types';
+import type { BaseValidationResult, ValidationStatus } from '@shared/types';
+
+import { ComponentSize } from '../constants';
 
 /**
  * Validation hook options interface
@@ -19,7 +21,7 @@ export interface ValidationHookOptions {
  * @type BasicValidationResult
  * @description Client-side alias for SimpleValidationResult from shared types
  */
-export type BasicValidationResult = SimpleValidationResult;
+export type BasicValidationResult = BaseValidationResult;
 
 export type ClientValidationType = 'username' | 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
 
@@ -30,3 +32,36 @@ export type UnifiedValidator = (
 ) => Promise<BasicValidationResult>;
 
 export type ValidatorsMap = Record<ClientValidationType, UnifiedValidator>;
+
+/**
+ * Validation component props
+ */
+export interface ValidationIconProps {
+	status: ValidationStatus;
+	size?: ComponentSize;
+	animated?: boolean;
+	className?: string;
+	iconName?: string;
+	tooltip?: string;
+	showTooltip?: boolean;
+}
+
+export interface ValidationStatusIndicatorProps {
+	status: ValidationStatus;
+	previousStatus?: ValidationStatus;
+	size?: ComponentSize;
+	showTransitions?: boolean;
+	className?: string;
+}
+
+export interface ValidationMessageProps {
+	status: ValidationStatus;
+	errors?: string[];
+	warnings?: string[];
+	successMessage?: string;
+	showIcon?: boolean;
+	showMessages?: boolean;
+	className?: string;
+	size?: ComponentSize;
+	animationDuration?: number;
+}

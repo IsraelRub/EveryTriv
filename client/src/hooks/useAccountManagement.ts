@@ -114,7 +114,7 @@ export const useUpdateSinglePreference = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async ({ preference, value }: { preference: string; value: import('@shared/types').BasicValue }) => {
+		mutationFn: async ({ preference, value }: { preference: string; value: BasicValue }) => {
 			logger.userInfo('Updating user preference', { preference });
 			return userService.updateSinglePreference(preference, value);
 		},

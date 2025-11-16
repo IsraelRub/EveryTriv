@@ -60,10 +60,10 @@ export default function OAuthCallback() {
 
 						// Navigate to home or profile completion
 						if (!user?.username) {
-							logger.authLogin('User has no fullName, navigating to complete-profile');
+							logger.authLogin('User has no username, navigating to complete-profile');
 							navigate('/complete-profile');
 						} else {
-							logger.authLogin('User has fullName, navigating to home');
+							logger.authLogin('User has username, navigating to home');
 							navigate('/');
 						}
 					} catch (error) {

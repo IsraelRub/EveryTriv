@@ -11,11 +11,12 @@ import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
+import { GAME_STATE_DEFAULTS } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { QuestionData, TriviaQuestion } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
-import { AlertModal, Card, ConfirmModal, Container, Icon, fadeInUp, TriviaGame } from '../../components';
+import { AlertModal, Card, ConfirmModal, Container, fadeInUp, Icon, TriviaGame } from '../../components';
 import { AlertVariant, AudioKey, CardVariant, ComponentSize, ContainerSize } from '../../constants';
 import { useAppSelector, useTriviaQuestionMutation } from '../../hooks';
 import { selectCurrentDifficulty, selectCurrentTopic } from '../../redux/selectors';
@@ -63,7 +64,7 @@ export default function GameSessionView() {
 			try {
 				setLoading(true);
 				const response = await triviaMutation.mutateAsync({
-					topic: currentTopic || 'General Knowledge',
+					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
 					difficulty: currentDifficulty || 'medium',
 					questionCount: totalQuestions,
 					userId: currentUser?.id || '',

@@ -10,7 +10,7 @@ import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
 import { selectLeaderboard } from '../redux/selectors';
-import { gameHistoryService } from '../services';
+import { apiService, gameHistoryService } from '../services';
 import { useAppSelector } from './useRedux';
 
 /**
@@ -43,7 +43,7 @@ export const useUpdateUserRanking = () => {
 	return useMutation({
 		mutationFn: async () => {
 			logger.userInfo('Updating user ranking');
-			return gameHistoryService.getUserRank();
+			return apiService.updateUserRanking();
 		},
 		onSuccess: data => {
 			queryClient.invalidateQueries({ queryKey: ['userRanking'] });
@@ -80,15 +80,37 @@ export const useGlobalLeaderboard = () => {
  * @param limit Number of users to return
  * @returns Query result with period leaderboard data
  */
-export const useLeaderboardByPeriod = (period: 'weekly' | 'monthly' | 'yearly', limit: number = 100) => {
+export const useLeaderboardByPeriod = (period: 'weekly' | 'monthly', limit: number = 100, offset: number = 0) => {
 	return useQuery({
-		queryKey: ['leaderboardByPeriod', period, limit],
+		queryKey: ['leaderboardByPeriod', period, limit, offset],
 		queryFn: async () => {
-			logger.userInfo('Fetching leaderboard (period filter not implemented)', { period, limit });
-			const result = await gameHistoryService.getLeaderboard(limit);
+			logger.userInfo('Fetching leaderboard by period', { period, limit, offset });
+			const result = await apiService.getLeaderboardByPeriod(period, limit, offset);
 			logger.userInfo('Leaderboard fetched successfully', {
 				period,
 				count: result.length,
+			});
+			return result;
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		gcTime: 10 * 60 * 1000, // 10 minutes
+	});
+};
+
+/**
+ * Hook for getting leaderboard statistics for a specific period
+ * @param period Time period (weekly, monthly, yearly)
+ * @returns Query result with leaderboard statistics
+ */
+export const useLeaderboardStats = (period: 'weekly' | 'monthly' | 'yearly' = 'weekly') => {
+	return useQuery({
+		queryKey: ['leaderboardStats', period],
+		queryFn: async () => {
+			logger.userInfo('Fetching leaderboard stats', { period });
+			const result = await apiService.getLeaderboardStats(period);
+			logger.userInfo('Leaderboard stats fetched successfully', {
+				period,
+				activeUsers: result.activeUsers,
 			});
 			return result;
 		},

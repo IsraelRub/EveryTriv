@@ -6,27 +6,25 @@
  */
 import { Body, Controller, Get, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
-import type { Request } from 'express';
 
 import { CACHE_DURATION, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { AdminUserData, TokenPayload } from '@shared/types';
+import type { AdminUserData, GoogleAuthRequest, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AuthGuard as LocalAuthGuard, Cache, CurrentUser, CurrentUserId, NoCache, Public, Roles, RolesGuard } from '../../common';
+import {
+	Cache,
+	CurrentUser,
+	CurrentUserId,
+	AuthGuard as LocalAuthGuard,
+	NoCache,
+	Public,
+	Roles,
+	RolesGuard,
+} from '../../common';
+import { UserService } from '../user';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
-import { UserService } from '../user';
-
-interface GoogleAuthPayload {
-	google_id: string;
-	email?: string;
-	username?: string;
-	full_name?: string;
-	firstName?: string;
-	lastName?: string;
-	avatar?: string;
-}
 
 @Controller('auth')
 export class AuthController {
@@ -175,11 +173,11 @@ export class AuthController {
 	@Get('google/callback')
 	@Public()
 	@UseGuards(PassportAuthGuard('google'))
-	async googleCallback(@Req() req: Request) {
+	async googleCallback(@Req() req: GoogleAuthRequest) {
 		try {
 			logger.authInfo('Google OAuth callback requested');
 
-			const payload = req.user as GoogleAuthPayload | undefined;
+			const payload = req.user;
 			if (!payload || !payload.google_id) {
 				throw new UnauthorizedException('Google profile not available');
 			}
@@ -188,7 +186,6 @@ export class AuthController {
 				googleId: payload.google_id,
 				email: payload.email,
 				username: payload.username,
-				fullName: payload.full_name,
 				firstName: payload.firstName,
 				lastName: payload.lastName,
 				avatar: payload.avatar,
@@ -230,11 +227,11 @@ export class AuthController {
 			const result = await this.userService.getAllUsers(parsedLimit, parsedOffset);
 
 			const adminUser: AdminUserData = {
-					id: user.sub,
-					username: user.username,
+				id: user.sub,
+				username: user.username,
 				email: user.email ?? `${user.username}@everytriv.com`,
-				role: user.role as UserRole,
-					createdAt: new Date().toISOString(),
+				role: user.role,
+				createdAt: new Date().toISOString(),
 				lastLogin: undefined,
 			};
 

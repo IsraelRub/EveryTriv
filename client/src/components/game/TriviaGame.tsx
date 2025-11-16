@@ -18,8 +18,8 @@ import { updateScore } from '../../redux/slices';
 import { audioService } from '../../services';
 import type { TriviaGameProps } from '../../types';
 import { fadeInUp, scaleIn } from '../animations';
-import { Button } from '../ui';
 import { Icon } from '../IconLibrary';
+import { Button } from '../ui';
 
 export default function TriviaGame({ question, onComplete, timeLimit = 30 }: TriviaGameProps) {
 	const dispatch = useAppDispatch();
@@ -205,16 +205,12 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 					{selectedAnswer === question.correctAnswerIndex ? (
 						<div className='text-green-400 text-xl font-bold flex items-center justify-center gap-2'>
 							<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
-							<span>
-								Correct! +{calculatePoints(question.difficulty, timer)} points
-							</span>
+							<span>Correct! +{calculatePoints(question.difficulty, timer)} points</span>
 						</div>
 					) : (
 						<div className='text-red-400 text-xl font-bold flex items-center justify-center gap-2'>
 							<Icon name='x' size={ComponentSize.SM} className='text-red-400' />
-							<span>
-								Incorrect! The correct answer was {String.fromCharCode(65 + question.correctAnswerIndex)}
-							</span>
+							<span>Incorrect! The correct answer was {String.fromCharCode(65 + question.correctAnswerIndex)}</span>
 						</div>
 					)}
 				</motion.div>

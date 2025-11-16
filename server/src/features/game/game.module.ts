@@ -16,16 +16,11 @@ import { PointCalculationService } from '@shared/services';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
-import {
-	CustomDifficultyPipe,
-	GameAnswerPipe,
-	LanguageValidationPipe,
-	TriviaQuestionPipe,
-	TriviaRequestPipe,
-} from '../../common/pipes';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaQuestionPipe, TriviaRequestPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
+import { LeaderboardModule } from '../leaderboard';
 import { UserModule } from '../user';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
@@ -37,6 +32,7 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity, TriviaEntity]),
 		AnalyticsModule,
 		AuthModule,
+		LeaderboardModule,
 		CacheModule,
 		StorageModule,
 		ValidationModule,
@@ -52,7 +48,6 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
 		TriviaQuestionPipe,
 		GameAnswerPipe,
 		TriviaRequestPipe,
-		LanguageValidationPipe,
 	],
 	exports: [GameService, AiProvidersService],
 })

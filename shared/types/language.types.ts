@@ -5,7 +5,7 @@
  * @description TypeScript interfaces for language validation and LanguageTool API
  */
 
-import { SimpleValidationResult } from './domain';
+import { BaseValidationResult } from './domain';
 
 export interface LanguageToolError {
 	message: string;
@@ -52,7 +52,7 @@ export interface LanguageValidationOptions {
 	useExternalAPI?: boolean;
 }
 
-export interface LanguageValidationResult extends SimpleValidationResult {
+export interface LanguageValidationResult extends BaseValidationResult {
 	suggestions: string[];
 	confidence?: number;
 }

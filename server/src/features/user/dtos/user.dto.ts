@@ -9,11 +9,9 @@ import { Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
-	IsDateString,
 	IsIn,
 	IsNotEmpty,
 	IsNumber,
-	IsObject,
 	IsOptional,
 	IsString,
 	IsUrl,
@@ -26,7 +24,7 @@ import {
 } from 'class-validator';
 
 import { UserStatus } from '@shared/constants';
-import { BasicValue, CustomDifficultyItem, UserAddress, UserPreferences } from '@shared/types';
+import { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -84,66 +82,12 @@ export class UpdateUserProfileDto {
 	avatar?: string;
 
 	@ApiPropertyOptional({
-		description: 'User bio',
-		example: 'Software developer passionate about trivia',
-		maxLength: 500,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(500, { message: 'Bio must be less than 500 characters' })
-	bio?: string;
-
-	@ApiPropertyOptional({
-		description: 'Date of birth',
-		example: '1990-01-01',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'Date of birth must be a valid date' })
-	dateOfBirth?: Date;
-
-	@ApiPropertyOptional({
-		description: 'Location',
-		example: 'New York, NY',
-		maxLength: 100,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(100, { message: 'Location cannot exceed 100 characters' })
-	location?: string;
-
-	@ApiPropertyOptional({
-		description: 'Website URL',
-		example: 'https://example.com',
-		maxLength: 200,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(200, { message: 'Website URL cannot exceed 200 characters' })
-	website?: string;
-
-	@ApiPropertyOptional({
-		description: 'Social media links',
-		example: { twitter: 'https://twitter.com/example', linkedin: 'https://linkedin.com/in/example' },
-	})
-	@IsOptional()
-	@IsObject()
-	socialLinks?: Record<string, string>;
-
-	@ApiPropertyOptional({
 		description: 'User preferences',
 	})
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => Object)
 	preferences?: Partial<UserPreferences>;
-
-	@ApiPropertyOptional({
-		description: 'User address',
-	})
-	@IsOptional()
-	@ValidateNested()
-	@Type(() => Object)
-	address?: UserAddress;
 }
 
 export class SearchUsersDto {

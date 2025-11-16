@@ -16,10 +16,11 @@ import { AUTH_CONSTANTS } from '@shared/constants';
 
 import { UserEntity } from '@internal/entities';
 
+import { UserModule } from '../user';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
-import { UserModule } from '../user';
+import { AdminBootstrapService } from './services/admin-bootstrap.service';
 
 @Module({
 	imports: [
@@ -35,6 +36,7 @@ import { UserModule } from '../user';
 	providers: [
 		AuthService,
 		GoogleStrategy,
+		AdminBootstrapService,
 		AuthenticationManager,
 		PasswordService,
 		JwtTokenService,

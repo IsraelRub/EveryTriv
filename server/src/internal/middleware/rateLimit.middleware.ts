@@ -8,6 +8,8 @@ import { ensureErrorObject } from '@shared/utils';
 
 import { NestRequest } from '@internal/types';
 
+import { AppConfig } from '../../config/app.config';
+
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
 	private readonly WINDOW_SIZE_IN_SECONDS = RATE_LIMIT_DEFAULTS.WINDOW_MS / 1000;
@@ -17,6 +19,11 @@ export class RateLimitMiddleware implements NestMiddleware {
 	constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {}
 
 	async use(req: NestRequest, res: Response, next: NextFunction) {
+		if (!AppConfig.features.rateLimitingEnabled) {
+			next();
+			return;
+		}
+
 		const startTime = Date.now();
 		const ip = req.ip || req.connection?.remoteAddress || 'unknown';
 

@@ -22,7 +22,6 @@ import { UserDataPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { UserStatsService } from './userStats.service';
 
 @Module({
 	imports: [
@@ -37,7 +36,7 @@ import { UserStatsService } from './userStats.service';
 		}),
 	],
 	controllers: [UserController],
-	providers: [UserService, UserStatsService, UserDataPipe, AuthenticationManager, PasswordService],
-	exports: [UserService, UserStatsService],
+	providers: [UserService, UserDataPipe, AuthenticationManager, PasswordService],
+	exports: [UserService],
 })
 export class UserModule {}

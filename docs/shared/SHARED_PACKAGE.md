@@ -1,10 +1,12 @@
-# Shared Package Documentation
+# חבילה משותפת - Shared
 
 תיעוד חבילת Shared המשותפת בין Client ו-Server.
 
 ## סקירה כללית
 
 חבילת Shared מכילה קוד משותף בין Frontend ו-Backend, כולל טיפוסים, קבועים, ולידציה, שירותים ופונקציות עזר.
+
+לדיאגרמות מפורטות, ראו: [דיאגרמות - חבילה משותפת](../DIAGRAMS.md#דיאגרמת-חבילה-משותפת-shared)
 
 ## מבנה החבילה
 
@@ -16,29 +18,13 @@ shared/
 │   │   ├── error.types.ts
 │   │   ├── performance.types.ts
 │   │   ├── response.types.ts
-│   │   ├── utility.types.ts
 │   │   └── index.ts
-│   ├── domain/          # טיפוסי דומיין
+│   ├── domain/          # טיפוסי תחום
 │   │   ├── ai.types.ts
 │   │   ├── analytics/   # טיפוסי אנליטיקה
-│   │   │   ├── analytics.types.ts
-│   │   │   ├── metrics.types.ts
-│   │   │   └── index.ts
 │   │   ├── game/        # טיפוסי משחק
-│   │   │   ├── achievements.types.ts
-│   │   │   ├── game.types.ts
-│   │   │   ├── trivia.types.ts
-│   │   │   └── index.ts
 │   │   ├── user/        # טיפוסי משתמש
-│   │   │   ├── preferences.types.ts
-│   │   │   ├── profile.types.ts
-│   │   │   ├── user.types.ts
-│   │   │   └── index.ts
-│   │   ├── validation/  # טיפוסי ולידציה
-│   │   │   ├── forms.types.ts
-│   │   │   ├── rules.types.ts
-│   │   │   ├── validation.types.ts
-│   │   │   └── index.ts
+│   │   ├── validation.types.ts
 │   │   └── index.ts
 │   ├── infrastructure/  # טיפוסי תשתית
 │   │   ├── api.types.ts
@@ -50,545 +36,742 @@ shared/
 │   │   ├── redis.types.ts
 │   │   ├── storage.types.ts
 │   │   └── index.ts
-│   ├── language.types.ts # טיפוסי שפה
-│   ├── payment.types.ts # טיפוסי תשלום
-│   ├── points.types.ts  # טיפוסי נקודות
-│   ├── subscription.types.ts # טיפוסי מנוי
-│   ├── ui.types.ts      # טיפוסי UI
-│   └── index.ts
-├── constants/           # קבועים משותפים
-│   ├── business/        # קבועי עסק
-│   │   ├── game.constants.ts
-│   │   ├── info.constants.ts
-│   │   ├── payment.constants.ts
-│   │   ├── points.constants.ts
-│   │   └── social.constants.ts
-│   ├── core/           # קבועי ליבה
-│   │   ├── api.constants.ts
-│   │   ├── error.constants.ts
-│   │   ├── game.constants.ts
-│   │   ├── info.constants.ts
-│   │   ├── language.constants.ts
-│   │   ├── logging.constants.ts
-│   │   └── validation.constants.ts
-│   ├── infrastructure/ # קבועי תשתית
-│   │   ├── http.constants.ts
-│   │   └── infrastructure.constants.ts
-│   ├── navigation/     # קבועי ניווט
-│   │   ├── routes.constants.ts
-│   │   └── ui.constants.ts
-│   └── index.ts
-├── validation/         # ולידציה משותפת
-│   ├── difficulty.validation.ts
-│   ├── index.ts
-│   ├── payment.validation.ts
-│   ├── points.validation.ts
-│   ├── schemas.ts
-│   ├── trivia.validation.ts
+│   ├── payment.types.ts
+│   ├── points.types.ts
+│   ├── subscription.types.ts
+│   └── language.types.ts
+├── constants/            # קבועים משותפים
+│   ├── business/         # קבועי עסק
+│   ├── core/            # קבועי ליבה
+│   ├── domain/          # קבועי תחום
+│   └── infrastructure/  # קבועי תשתית
+├── services/             # שירותים משותפים
+│   ├── core/            # שירותי ליבה
+│   │   └── logging/     # שירותי לוגים
+│   ├── domain/          # שירותי תחום
+│   │   └── points/      # שירותי נקודות
+│   └── infrastructure/  # שירותי תשתית
+│       ├── auth/        # שירותי אימות
+│       ├── cache/       # שירותי מטמון
+│       └── storage/     # שירותי אחסון
+├── utils/                # פונקציות עזר משותפות
+│   ├── core/            # כלים בסיסיים
+│   ├── domain/          # כלי תחום
+│   ├── infrastructure/  # כלי תשתית
 │   └── validation.utils.ts
-├── services/           # שירותים משותפים
-│   ├── auth/           # שירותי אימות
-│   ├── cache/          # שירותי מטמון
-│   ├── logging/        # שירותי לוגים
-│   ├── points/         # שירותי נקודות
-│   ├── storage/        # שירותי אחסון
-│   └── index.ts
-├── utils/              # פונקציות עזר
-│   ├── data.utils.ts
-│   ├── date.utils.ts
-│   ├── error.utils.ts
-│   ├── format.utils.ts
-│   ├── id.utils.ts
-│   ├── index.ts
-│   ├── payment.utils.ts
-│   ├── points.utils.ts
-│   ├── preferences.utils.ts
-│   ├── sanitization.utils.ts
-│   ├── storage.utils.ts
-│   └── time.utils.ts
-└── package.json        # הגדרות החבילה
+├── validation/           # ולידציה משותפת
+│   └── domain/          # ולידציה של תחום
+│       ├── difficulty.validation.ts
+│       ├── payment.validation.ts
+│       └── trivia.validation.ts
+└── package.json
 ```
 
-## Types (טיפוסים)
+## Types
 
 ### Core Types
 
-#### Base Types
-```typescript
-// shared/types/core/data.types.ts
-export interface BaseEntity {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+#### data.types.ts
+טיפוסי נתונים בסיסיים:
+- `Id` - מזהה ייחודי
+- `Timestamp` - חותמת זמן
+- `Metadata` - מטא-דאטה
 
-export interface BaseApiResponse<T> {
-  data: T;
-  success: boolean;
-  message?: string;
-}
+#### error.types.ts
+טיפוסי שגיאות:
+- `ErrorResponse` - תגובת שגיאה
+- `ValidationError` - שגיאת ולידציה
 
-export interface PaginatedResponse<T> extends BaseApiResponse<T[]> {
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-```
-
-#### Error Types
-```typescript
-// shared/types/core/error.types.ts
-export interface ApiError {
-  statusCode: number;
-  message: string;
-  error: string;
-  timestamp: string;
-  path: string;
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
-  value?: any;
-}
-```
+#### response.types.ts
+טיפוסי תגובות:
+- `ApiResponse<T>` - תגובת API
+- `PaginatedResponse<T>` - תגובה עם pagination
 
 ### Domain Types
 
-#### Game Types
-```typescript
-// shared/types/domain/game/game.types.ts
-export interface Game {
-  id: string;
-  userId: string;
-  difficulty: Difficulty;
-  topics: string[];
-  questions: Question[];
-  currentQuestionIndex: number;
-  score: number;
-  status: GameStatus;
-  startedAt: Date;
-  completedAt?: Date;
-}
+#### game.types.ts
+טיפוסי משחק:
+- `TriviaQuestion` - שאלת טריוויה
+- `TriviaRequest` - בקשה לשאלה
+- `GameMode` - מצב משחק
+- `GameDifficulty` - קושי משחק
 
-export interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  difficulty: Difficulty;
-  topic: string;
-}
+#### user.types.ts
+טיפוסי משתמש:
+- `BasicUser` - משתמש בסיסי
+- `UserPreferences` - העדפות משתמש
+- `UserStats` - סטטיסטיקות משתמש
 
-export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';
-
-export enum Difficulty {
-  EASY = 'easy',
-  MEDIUM = 'medium',
-  HARD = 'hard'
-}
-```
-
-#### User Types
-```typescript
-// shared/types/domain/user/user.types.ts
-export interface User {
-  id: string;
-  email: string;
-  username: string;
-  avatar?: string;
-  points: number;
-  credits: number;
-  subscription: Subscription;
-  preferences: UserPreferences;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface UserPreferences {
-  language: string;
-  difficulty: Difficulty;
-  topics: string[];
-  notifications: NotificationSettings;
-}
-
-export interface NotificationSettings {
-  email: boolean;
-  push: boolean;
-  gameReminders: boolean;
-}
-```
+#### analytics.types.ts
+טיפוסי אנליטיקה:
+- `AnalyticsEvent` - אירוע אנליטיקה
+- `AnalyticsMetrics` - מטריקות אנליטיקה
 
 ### Infrastructure Types
 
-#### API Types
-```typescript
-// shared/types/infrastructure/api.types.ts
-export interface ApiConfig {
-  baseURL: string;
-  timeout: number;
-  retries: number;
-}
+#### api.types.ts
+טיפוסי API:
+- `ApiEndpoint` - נקודת קצה API
+- `ApiMethod` - שיטת HTTP
 
-export interface RequestConfig {
-  headers?: Record<string, string>;
-  params?: Record<string, any>;
-  timeout?: number;
-}
-```
+#### auth.types.ts
+טיפוסי אימות:
+- `TokenPayload` - payload של token
+- `AuthResponse` - תגובת אימות
 
-#### Storage Types
-```typescript
-// shared/types/infrastructure/storage.types.ts
-export interface StorageConfig {
-  type: 'local' | 'session' | 'indexeddb';
-  key: string;
-  ttl?: number;
-}
-
-export interface StorageItem<T> {
-  value: T;
-  timestamp: number;
-  ttl?: number;
-}
-```
-
-## Constants (קבועים)
-
-### Business Constants
-```typescript
-// shared/constants/business/game.constants.ts
-export const GAME_CONSTANTS = {
-  MAX_QUESTIONS: 50,
-  MIN_QUESTIONS: 5,
-  DEFAULT_QUESTIONS: 10,
-  TIME_LIMIT: {
-    EASY: 30,
-    MEDIUM: 20,
-    HARD: 15
-  }
-} as const;
-
-// shared/constants/business/points.constants.ts
-export const POINTS_CONSTANTS = {
-  BASE_POINTS: 10,
-  MULTIPLIERS: {
-    EASY: 1,
-    MEDIUM: 1.5,
-    HARD: 2
-  },
-  STREAK_BONUS: 5
-} as const;
-```
+## Constants
 
 ### Core Constants
+
+#### api.constants.ts
+קבועי API:
 ```typescript
-// shared/constants/core/api.constants.ts
-export const API_CONSTANTS = {
-  ENDPOINTS: {
-    AUTH: '/auth',
-    USER: '/user',
-    GAME: '/game',
-    POINTS: '/points',
-    ANALYTICS: '/analytics',
-    LEADERBOARD: '/leaderboard',
-    PAYMENT: '/payment',
-    SUBSCRIPTION: '/subscription'
-  },
-  TIMEOUTS: {
-    DEFAULT: 30000,
-    UPLOAD: 60000
+import { API_ENDPOINTS, HTTP_STATUS_CODES } from '@shared/constants';
+
+// נקודות קצה API
+API_ENDPOINTS.AUTH.REGISTER    // '/auth/register'
+API_ENDPOINTS.AUTH.LOGIN       // '/auth/login'
+API_ENDPOINTS.GAME.TRIVIA      // '/game/trivia'
+API_ENDPOINTS.GAME.ANSWER      // '/game/answer'
+API_ENDPOINTS.USERS.PROFILE    // '/users/profile'
+
+// קודי סטטוס HTTP
+HTTP_STATUS_CODES.OK           // 200
+HTTP_STATUS_CODES.CREATED      // 201
+HTTP_STATUS_CODES.BAD_REQUEST  // 400
+HTTP_STATUS_CODES.UNAUTHORIZED // 401
+HTTP_STATUS_CODES.NOT_FOUND    // 404
+HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR // 500
+```
+
+#### validation.constants.ts
+קבועי ולידציה:
+```typescript
+import { VALIDATION_RULES, VALIDATION_ERRORS } from '@shared/constants';
+
+// כללי ולידציה
+VALIDATION_RULES.USERNAME_MIN_LENGTH  // 3
+VALIDATION_RULES.USERNAME_MAX_LENGTH  // 30
+VALIDATION_RULES.PASSWORD_MIN_LENGTH  // 8
+VALIDATION_RULES.EMAIL_PATTERN        // regex
+
+// הודעות שגיאה
+VALIDATION_ERRORS.REQUIRED            // 'Field is required'
+VALIDATION_ERRORS.INVALID_EMAIL       // 'Invalid email format'
+```
+
+### Domain Constants
+
+#### game.constants.ts
+קבועי משחק:
+```typescript
+import {
+  DIFFICULTY_LEVELS,
+  GAME_MODES,
+  SCORING_MULTIPLIERS,
+  DifficultyLevel,
+  GameMode
+} from '@shared/constants';
+
+// רמות קושי
+DifficultyLevel.EASY      // 'easy'
+DifficultyLevel.MEDIUM    // 'medium'
+DifficultyLevel.HARD      // 'hard'
+DifficultyLevel.CUSTOM    // 'custom'
+
+// מצבי משחק
+GameMode.QUESTION_LIMITED // 'question-limited'
+GameMode.TIME_LIMITED     // 'time-limited'
+GameMode.ENDLESS          // 'endless'
+
+// מכפילי ניקוד
+SCORING_MULTIPLIERS.EASY    // 1.0
+SCORING_MULTIPLIERS.MEDIUM  // 1.5
+SCORING_MULTIPLIERS.HARD    // 2.0
+```
+
+#### user.constants.ts
+קבועי משתמש:
+```typescript
+import {
+  USER_ROLES,
+  USER_STATUSES,
+  UserRole,
+  UserStatus
+} from '@shared/constants';
+
+// תפקידי משתמש
+UserRole.USER    // 'user'
+UserRole.ADMIN   // 'admin'
+UserRole.MODERATOR // 'moderator'
+
+// סטטוסי משתמש
+UserStatus.ACTIVE    // 'active'
+UserStatus.INACTIVE  // 'inactive'
+UserStatus.BANNED    // 'banned'
+UserStatus.PENDING   // 'pending'
+```
+
+#### points.constants.ts
+קבועי נקודות:
+```typescript
+import {
+  POINT_PACKAGES,
+  DEFAULT_DAILY_LIMIT,
+  POINT_DECAY_RATE
+} from '@shared/constants';
+
+// חבילות נקודות
+POINT_PACKAGES.SMALL   // { points: 100, price: 5 }
+POINT_PACKAGES.MEDIUM  // { points: 500, price: 20 }
+POINT_PACKAGES.LARGE   // { points: 1000, price: 35 }
+
+// מגבלות
+DEFAULT_DAILY_LIMIT    // 20
+POINT_DECAY_RATE       // 0.001
+```
+
+### Infrastructure Constants
+
+#### http.constants.ts
+קבועי HTTP:
+```typescript
+import { HTTP_METHODS, HTTP_HEADERS } from '@shared/constants';
+
+// שיטות HTTP
+HTTP_METHODS.GET    // 'GET'
+HTTP_METHODS.POST   // 'POST'
+HTTP_METHODS.PUT    // 'PUT'
+HTTP_METHODS.DELETE // 'DELETE'
+
+// כותרות HTTP
+HTTP_HEADERS.AUTHORIZATION  // 'Authorization'
+HTTP_HEADERS.CONTENT_TYPE   // 'Content-Type'
+HTTP_HEADERS.ACCEPT         // 'Accept'
+```
+
+#### storage.constants.ts
+קבועי אחסון:
+```typescript
+import { STORAGE_KEYS, CACHE_TTL } from '@shared/constants';
+
+// מפתחות אחסון
+STORAGE_KEYS.USER_SESSION  // 'user_session'
+STORAGE_KEYS.USER_PREFERENCES // 'user_preferences'
+STORAGE_KEYS.GAME_STATE    // 'game_state'
+
+// זמני cache
+CACHE_TTL.SHORT    // 300 (5 minutes)
+CACHE_TTL.MEDIUM   // 1800 (30 minutes)
+CACHE_TTL.LONG     // 3600 (1 hour)
+CACHE_TTL.VERY_LONG // 86400 (24 hours)
+```
+
+#### performance.constants.ts
+קבועי ביצועים:
+```typescript
+import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
+
+// ספי ביצועים
+PERFORMANCE_THRESHOLDS.ACCEPTABLE  // 1000ms
+PERFORMANCE_THRESHOLDS.SLOW        // 3000ms
+PERFORMANCE_THRESHOLDS.VERY_SLOW   // 5000ms
+```
+
+## Services
+
+### Logging Services
+
+#### clientLogger.service.ts
+Logger ללקוח - שימוש ב-console של הדפדפן:
+```typescript
+import { clientLogger as logger } from '@shared/services';
+
+// לוגים בסיסיים
+logger.info('משחק התחיל', { topic: 'history', difficulty: 'medium' });
+logger.error('שגיאה במשחק', { error: getErrorMessage(error), questionId: '123' });
+logger.warn('אזהרה', { message: 'נקודות נמוכות' });
+logger.debug('מידע debug', { state: gameState });
+
+// לוגים ספציפיים למשתמש
+logger.userInfo('משתמש התחבר', { userId: '123', username: 'user' });
+logger.userError('שגיאה בפרופיל', { userId: '123', field: 'email' });
+logger.userWarn('אזהרה למשתמש', { userId: '123' });
+logger.logUserActivity('user123', 'login', { timestamp: new Date() });
+
+// לוגים ספציפיים ל-API
+logger.apiCreate('game_created', { gameId: '123', userId: 'user123' });
+logger.apiRead('user_profile', { userId: 'user123' });
+logger.apiUpdate('user_profile', { userId: 'user123', fields: ['firstName'] });
+logger.apiDelete('game_history', { gameId: '123' });
+logger.apiError('API error', { endpoint: '/game/trivia', statusCode: 500 });
+
+// לוגים ספציפיים למשחק
+logger.gameInfo('משחק התחיל', { topic: 'history', difficulty: 'medium' });
+logger.gameError('שגיאה במשחק', { error: getErrorMessage(error), questionId: '123' });
+logger.gameWarn('אזהרה במשחק', { message: 'זמן עבר' });
+
+// לוגים ספציפיים לביצועים
+logger.performance('question_generation', 1500, { topic: 'history' });
+
+// לוגים ספציפיים למטמון
+logger.cacheSet('trivia:history:medium', { topic: 'history' });
+logger.cacheHit('trivia:history:medium');
+logger.cacheMiss('trivia:history:medium');
+logger.cacheInfo('Cache cleared', { keys: 10 });
+
+// לוגים ספציפיים לאבטחה
+logger.securityLogin('User login', { userId: 'user123' });
+logger.securityLogout('User logout', { userId: 'user123' });
+logger.securityDenied('Access denied', { userId: 'user123', endpoint: '/admin' });
+logger.authRegister('User registered', { userId: 'user123', username: 'user' });
+logger.authError('Auth error', { error: getErrorMessage(error) });
+logger.authInfo('Auth info', { message: 'Token refreshed' });
+logger.authTokenRefresh('Token refresh', { userId: 'user123' });
+logger.authLogout('User logout', { userId: 'user123' });
+logger.authDebug('Auth debug', { token: 'token...' });
+```
+
+#### serverLogger.service.ts
+Logger לשרת - שימוש ב-file system ולוגים מובנים:
+```typescript
+import { serverLogger as logger } from '@shared/services';
+
+// כל ה-methods של clientLogger זמינים גם כאן
+// בנוסף, יש תמיכה ב-performance tracking
+
+// Performance tracking
+logger.startPerformanceTracking('generate_question');
+// ... code ...
+const duration = logger.endPerformanceTracking('generate_question', { topic: 'history' });
+
+// לוגים מובנים
+logger.databaseError(error, 'Failed to save game', { gameId: '123' });
+logger.databaseInfo('Database connected', { host: 'localhost' });
+logger.databaseWarn('Slow query detected', { query: 'SELECT * FROM games', duration: 5000 });
+
+// לוגים ספציפיים לאחסון
+logger.storageError('Storage error', { key: 'user:123', operation: 'set' });
+logger.storageWarn('Storage warning', { key: 'user:123' });
+
+// לוגים ספציפיים לתשלומים
+logger.payment('Payment processed', { paymentId: 'pay_123', amount: 10.00 });
+logger.paymentFailed('pay_123', 'Payment failed', { error: getErrorMessage(error) });
+
+// Validation logs
+logger.validationInfo('Validation passed', { field: 'email', value: 'user@example.com' });
+logger.validationWarn('Validation warning', { field: 'password', issue: 'weak' });
+logger.validationError('Validation error', { field: 'username', error: 'already exists' });
+logger.validationDebug('Validation debug', { field: 'email', checks: ['format', 'length'] });
+```
+
+### Points Services
+
+#### pointCalculation.service.ts
+חישוב נקודות - שירות סטטי:
+```typescript
+import { PointCalculationService } from '@shared/services';
+import { DifficultyLevel } from '@shared/constants';
+
+const service = new PointCalculationService();
+
+// חישוב נקודות לתשובה
+const points = service.calculateAnswerPoints(
+  DifficultyLevel.MEDIUM,  // difficulty
+  15000,                    // timeSpent in milliseconds
+  3,                        // streak
+  true                      // isCorrect
+);
+
+// חישוב bonus points
+const bonusPoints = service.calculateBonusPoints(
+  100,                      // baseScore
+  DifficultyLevel.MEDIUM,   // difficulty
+  1.5                       // timeBonus multiplier
+);
+
+// חישוב streak bonus
+const streakBonus = service.calculateStreakBonus(
+  5,                        // streakLength
+  20                        // basePoints
+);
+
+// חישוב daily limit
+const dailyLimitInfo = service.calculateDailyLimit(
+  50,                       // currentBalance
+  new Date('2024-01-01'),   // lastResetTime
+  20                        // dailyLimit
+);
+```
+
+### Storage Services
+
+#### storageManager.service.ts
+ניהול אחסון - שירות היברידי (cache + persistent):
+```typescript
+import { StorageManagerService } from '@shared/services';
+import { StorageService } from '@shared/types';
+
+// יצירת instance (בשימוש בשרת)
+const storageManager = new StorageManagerService(
+  persistentStorage,  // StorageService
+  cacheStorage,       // StorageService
+  {                  // StorageConfig
+    enableMetrics: true,
+    defaultTtl: 3600
   }
-} as const;
-```
+);
 
-## Validation (ולידציה)
-
-### Schemas
-```typescript
-// shared/validation/schemas.ts
-import { z } from 'zod';
-
-export const CreateGameSchema = z.object({
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-  topics: z.array(z.string()).min(1).max(10),
-  questionCount: z.number().min(5).max(50)
-});
-
-export const AnswerSchema = z.object({
-  gameId: z.string().uuid(),
-  questionId: z.string().uuid(),
-  answer: z.number().min(0).max(3),
-  timeSpent: z.number().min(0)
-});
-```
-
-### Validation Utils
-```typescript
-// shared/validation/validation.utils.ts
-export function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+// Set value
+const result = await storageManager.set('user:123', userData, 3600, 'hybrid');
+if (result.success) {
+  console.log('Value saved');
 }
 
-export function validatePassword(password: string): boolean {
-  return password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+// Get value
+const getResult = await storageManager.get<UserData>('user:123', 'hybrid');
+if (getResult.success && getResult.data) {
+  console.log('User data:', getResult.data);
 }
+
+// Remove value
+const removeResult = await storageManager.remove('user:123', 'hybrid');
+if (removeResult.success) {
+  console.log('Value removed');
+}
+
+// Get statistics
+const stats = await storageManager.getStats();
+console.log('Storage stats:', stats);
+
+// Cleanup
+const cleanupResult = await storageManager.cleanup({ maxAge: 86400 });
+console.log('Cleaned up items:', cleanupResult.deletedCount);
 ```
 
-## Services (שירותים)
+### Infrastructure Services
 
-### Logging Service
+#### tokenExtraction.service.ts
+שירות לחילוץ טוקנים מבקשות HTTP:
 ```typescript
-// shared/services/logging/logger.service.ts
-export interface LoggerService {
-  log(level: LogLevel, message: string, context?: any): void;
-  error(message: string, error?: Error, context?: any): void;
-  warn(message: string, context?: any): void;
-  info(message: string, context?: any): void;
-  debug(message: string, context?: any): void;
-}
+import { TokenExtractionService } from '@shared/services';
 
-export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug'
+// חילוץ טוקן מה-Authorization header או cookies
+const token = TokenExtractionService.extractToken(
+  request.headers.authorization,
+  request.cookies
+);
+
+if (token) {
+  // טוקן נמצא, המשך עם אימות
+  const user = await verifyToken(token);
 }
 ```
 
-### Points Service
+#### cache.service.ts
+שירות מטמון - ניהול מטמון Redis:
 ```typescript
-// shared/services/points/points.service.ts
-export interface PointsService {
-  calculatePoints(
-    difficulty: Difficulty,
-    timeSpent: number,
-    isCorrect: boolean,
-    streak: number
-  ): number;
-  
-  formatPoints(points: number): string;
-  validatePointsTransaction(amount: number): boolean;
-}
+import { CacheStrategyService } from '@shared/services';
+
+// יצירת instance (בשימוש בשרת)
+const cacheService = new CacheStrategyService(
+  cacheStorage,       // StorageService
+  persistentStorage   // StorageService
+);
+
+// Get value with cache strategy
+const result = await cacheService.get('key', 'cache-first');
+
+// Set value in cache
+await cacheService.set('key', value, ttl, 'cache-first');
+
+// Delete value from cache
+await cacheService.delete('key');
 ```
 
-### Storage Service
+## Utils
+
+### Core Utils
+
+#### error.utils.ts
+כלי טיפול בשגיאות:
 ```typescript
-// shared/services/storage/storage.service.ts
-export interface StorageService {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  remove(key: string): Promise<void>;
-  clear(): Promise<void>;
-  keys(): Promise<string[]>;
-}
-```
+import { getErrorMessage, getErrorStack, getErrorType, ensureErrorObject } from '@shared/utils';
 
-## Utils (פונקציות עזר)
-
-### Data Utils
-```typescript
-// shared/utils/data.utils.ts
-export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
-  return array.reduce((groups, item) => {
-    const group = String(item[key]);
-    groups[group] = groups[group] || [];
-    groups[group].push(item);
-    return groups;
-  }, {} as Record<string, T[]>);
-}
-```
-
-### Date Utils
-```typescript
-// shared/utils/date.utils.ts
-export function formatDate(date: Date, format: 'short' | 'long' | 'iso' = 'short'): string {
-  switch (format) {
-    case 'short':
-      return date.toLocaleDateString();
-    case 'long':
-      return date.toLocaleDateString('he-IL', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    case 'iso':
-      return date.toISOString();
-  }
+// קבלת הודעת שגיאה מתוך כל סוג של error
+try {
+  // code that might throw
+} catch (error) {
+  const message = getErrorMessage(error);
+  console.log(message);
 }
 
-export function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+// קבלת stack trace
+const stack = getErrorStack(error);
+
+// קבלת סוג השגיאה
+const errorType = getErrorType(error); // 'Error', 'TypeError', 'HttpException', etc.
+
+// הבטחה ש-error הוא Error object
+const errorObj = ensureErrorObject(error);
+```
+
+#### data.utils.ts
+כלי נתונים בסיסיים:
+```typescript
+import {
+  isRecord,
+  hasProperty,
+  hasPropertyOfType,
+  calculatePercentage,
+  unique,
+  groupBy,
+  buildCountRecord
+} from '@shared/utils';
+
+// בדיקה אם ערך הוא record (object עם string keys)
+if (isRecord(value)) {
+  // value הוא Record<string, unknown>
 }
-```
 
-### Format Utils
-```typescript
-// shared/utils/format.utils.ts
-export function formatNumber(num: number, decimals: number = 0): string {
-  return num.toLocaleString('he-IL', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
+// בדיקה אם record יש property מסוים
+if (hasProperty(data, 'userId')) {
+  // data הוא Record<'userId', unknown>
 }
 
-export function formatCurrency(amount: number, currency: string = 'ILS'): string {
-  return new Intl.NumberFormat('he-IL', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
+// בדיקה אם record יש property עם type מסוים
+if (hasPropertyOfType(data, 'userId', (val): val is string => typeof val === 'string')) {
+  // data הוא Record<'userId', string>
 }
+
+// חישוב אחוז
+const percentage = calculatePercentage(75, 100); // 75
+const percentage2 = calculatePercentage(75, 100, 2); // 75.00
+
+// קבלת ערכים ייחודיים
+const uniqueValues = unique([1, 2, 2, 3, 3, 3]); // [1, 2, 3]
+
+// קיבוץ לפי key
+const grouped = groupBy(users, 'role');
+// { 'admin': [...], 'user': [...] }
+
+// בניית record של counts
+const counts = buildCountRecord(
+  games,
+  (game) => game.topic,
+  (game) => game.score
+);
+// { 'history': 100, 'science': 50 }
 ```
 
-## שימוש בחבילה
-
-### התקנה
-```bash
-# ב-Client
-npm install @everytriv/shared
-
-# ב-Server
-npm install @everytriv/shared
-```
-
-### Import
+#### math.utils.ts
+כלי מתמטיקה:
 ```typescript
-// Import types
-import { Game, Difficulty, ApiResponse } from '@everytriv/shared';
+import { roundToDecimal, clamp, randomInt } from '@shared/utils';
 
-// Import constants
-import { GAME_CONSTANTS, API_CONSTANTS } from '@everytriv/shared';
+// עיגול לעשרוני
+const rounded = roundToDecimal(3.14159, 2); // 3.14
 
-// Import validation
-import { CreateGameSchema } from '@everytriv/shared';
+// הגבלת ערך לטווח
+const clamped = clamp(150, 0, 100); // 100
 
-// Import services
-import { LoggerService, PointsService } from '@everytriv/shared';
-
-// Import utils
-import { formatDate, formatNumber } from '@everytriv/shared';
+// מספר רנדומלי בטווח
+const random = randomInt(1, 10); // מספר בין 1 ל-10
 ```
 
-### דוגמת שימוש
+#### format.utils.ts
+כלי עיצוב:
 ```typescript
-import { 
-  Game, 
-  Difficulty, 
-  CreateGameSchema,
-  GAME_CONSTANTS,
-  formatDate 
-} from '@everytriv/shared';
+import { formatCurrency, calculatePricePerPoint } from '@shared/utils';
 
-// יצירת משחק
-const gameData = {
-  difficulty: Difficulty.MEDIUM,
-  topics: ['science', 'history'],
-  questionCount: 10
-};
+// עיצוב מטבע
+const formatted = formatCurrency(10.50, 'USD', 'en-US'); // '$10.50'
+const formattedIL = formatCurrency(10.50, 'ILS', 'he-IL'); // '₪10.50'
 
-// ולידציה
-const validatedData = CreateGameSchema.parse(gameData);
-
-// שימוש בקבועים
-const maxQuestions = GAME_CONSTANTS.MAX_QUESTIONS;
-
-// פורמט תאריך
-const formattedDate = formatDate(new Date(), 'long');
+// חישוב מחיר לנקודה
+const pricePerPoint = calculatePricePerPoint(10.00, 100); // 0.1
 ```
 
-## Testing
+### Domain Utils
 
-### Unit Tests
+#### user.utils.ts
+כלי משתמש:
 ```typescript
-// shared/__tests__/utils/format.utils.test.ts
-import { formatNumber, formatCurrency } from '../format.utils';
+import { mergeUserPreferences } from '@shared/utils';
+import { DEFAULT_USER_PREFERENCES } from '@shared/constants';
+import { UserPreferences } from '@shared/types';
 
-describe('formatNumber', () => {
-  it('should format number with default decimals', () => {
-    expect(formatNumber(1234.56)).toBe('1,235');
-  });
-
-  it('should format number with custom decimals', () => {
-    expect(formatNumber(1234.56, 2)).toBe('1,234.56');
-  });
-});
+// מיזוג העדפות משתמש
+const merged = mergeUserPreferences(
+  existingPreferences,  // UserPreferences | null | undefined
+  newPreferences        // Partial<UserPreferences> | null | undefined
+);
+// מחזיר UserPreferences מלא עם ערכי ברירת מחדל
 ```
 
-### Integration Tests
+#### points.utils.ts
+כלי נקודות:
 ```typescript
-// shared/__tests__/services/points.service.test.ts
-import { PointsService } from '../services/points/points.service';
+import {
+  calculateAnswerPoints,
+  calculateBonusPoints,
+  calculateStreakBonus,
+  calculateDailyLimit,
+  calculateOptimalPackage,
+  calculatePointDecay,
+  calculatePointInterest,
+  calculatePointEfficiency
+} from '@shared/utils';
+import { PointBalance, PointPurchaseOption } from '@shared/types';
 
-describe('PointsService', () => {
-  let pointsService: PointsService;
+// חישוב נקודות לתשובה
+const points = calculateAnswerPoints(
+  'medium',     // difficulty
+  15000,        // timeSpentMs in milliseconds
+  3,            // streak
+  true          // isCorrect
+);
 
-  beforeEach(() => {
-    pointsService = new PointsService();
-  });
+// חישוב bonus points
+const bonus = calculateBonusPoints(100, 'medium', 1.5);
 
-  it('should calculate points correctly', () => {
-    const points = pointsService.calculatePoints(
-      Difficulty.MEDIUM,
-      15,
-      true,
-      3
-    );
-    expect(points).toBe(22.5); // 10 * 1.5 * 1.5
-  });
-});
+// חישוב streak bonus
+const streakBonus = calculateStreakBonus(5, 20);
+
+// חישוב daily limit
+const dailyLimitInfo = calculateDailyLimit(
+  pointBalance,           // PointBalance
+  lastResetTime,          // Date | null
+  20                      // dailyLimit
+);
+
+// חישוב חבילה אופטימלית
+const optimal = calculateOptimalPackage(
+  availablePackages,      // PointPurchaseOption[]
+  100,                    // targetPoints
+  50                      // budget
+);
+
+// חישוב דעיכת נקודות
+const decayed = calculatePointDecay(1000, 60, 0.001);
+
+// חישוב ריבית נקודות
+const withInterest = calculatePointInterest(1000, 120, 0.0005);
+
+// חישוב יעילות נקודות
+const efficiency = calculatePointEfficiency(500, 10, 20);
 ```
 
-## Best Practices
+### Infrastructure Utils
 
-### 1. Type Safety
-- השתמש בטיפוסים מפורשים
-- הימנע מ-`any`
-- השתמש ב-generics כשצריך
+#### id.utils.ts
+כלי יצירת מזהה:
+```typescript
+import {
+  generateId,
+  generateTraceId,
+  generateSessionId,
+  generateUserId,
+  generatePaymentIntentId,
+  generateQuestionId
+} from '@shared/utils';
 
-### 2. Constants
-- השתמש ב-`as const` לקבועים
-- ארגן קבועים לפי קטגוריות
-- השתמש ב-enums עבור ערכים מוגבלים
+// יצירת ID רנדומלי
+const id = generateId();           // ID באורך 13 (ברירת מחדל)
+const longId = generateId(20);     // ID באורך 20
 
-### 3. Validation
-- השתמש ב-Zod לסכמות ולידציה
-- הוסף ולידציה לכל input
-- החזר שגיאות ברורות
+// יצירת trace ID
+const traceId = generateTraceId(); // ID באורך 30
 
-### 4. Services
-- הגדר interfaces עבור שירותים
-- השתמש ב-dependency injection
-- הוסף error handling
+// יצירת session ID
+const sessionId = generateSessionId(); // ID עם timestamp prefix
 
-### 5. Utils
-- כתוב פונקציות pure
-- הוסף JSDoc comments
-- כתוב tests מקיפים
+// יצירת user ID
+const userId = generateUserId(); // 'user_...'
 
-## Versioning
+// יצירת payment intent ID
+const paymentId = generatePaymentIntentId(); // 'pi_...'
 
-החבילה משתמשת ב-Semantic Versioning:
+// יצירת question ID
+const questionId = generateQuestionId(); // 'q_...'
+```
 
-- **Major**: שינויים לא תואמים
-- **Minor**: תכונות חדשות (תואמות לאחור)
-- **Patch**: תיקוני באגים
+#### sanitization.utils.ts
+כלי ניקוי ואבטחה:
+```typescript
+import {
+  sanitizeInput,
+  sanitizeLogMessage,
+  sanitizeEmail,
+  sanitizeCardNumber,
+  truncateText,
+  normalizeText,
+  escapeHtml
+} from '@shared/utils';
 
-## Changelog
+// ניקוי input
+const cleaned = sanitizeInput(userInput, 1000); // מסיר HTML ומגביל אורך
 
-### v1.0.0
-- הוספת טיפוסי ליבה
-- הוספת קבועים בסיסיים
-- הוספת ולידציה בסיסית
-- הוספת שירותי לוגים ונקודות
-- הוספת פונקציות עזר בסיסיות
+// ניקוי הודעת לוג
+const safeLog = sanitizeLogMessage('Password: secret123'); // 'Password: ***'
+
+// ניקוי email
+const cleanEmail = sanitizeEmail('  USER@EXAMPLE.COM  '); // 'user@example.com'
+
+// ניקוי מספר כרטיס
+const cleanCard = sanitizeCardNumber('1234 5678 9012 3456'); // '1234567890123456'
+
+// קיצור טקסט
+const truncated = truncateText('Long text here...', 10); // 'Long te...'
+
+// נירמול טקסט
+const normalized = normalizeText('  HELLO   WORLD  '); // 'hello world'
+
+// Escape HTML
+const escaped = escapeHtml('<script>alert("xss")</script>'); // '&lt;script&gt;...'
+```
+
+#### storage.utils.ts
+כלי אחסון:
+```typescript
+import { isStorageAvailable, getStorageSize, clearStorage } from '@shared/utils';
+
+// בדיקת זמינות אחסון
+if (isStorageAvailable('localStorage')) {
+  // localStorage זמין
+}
+
+// קבלת גודל אחסון
+const size = getStorageSize('localStorage'); // בגודל bytes
+
+// ניקוי אחסון
+clearStorage('localStorage');
+```
+
+## Validation
+
+### Domain Validation
+
+#### trivia.validation.ts
+ולידציה של שאלות טריוויה:
+- ולידציה של נושא
+- ולידציה של קושי
+- ולידציה של שאלה ותשובות
+
+#### difficulty.validation.ts
+ולידציה של קושי:
+- ולידציה של רמת קושי
+- ולידציה של קושי מותאם
+
+#### payment.validation.ts
+ולידציה של תשלומים:
+- ולידציה של סכום
+- ולידציה של שיטת תשלום
+
+## הפניות
+
+- [ארכיטקטורה כללית](../ARCHITECTURE.md)
+- [טיפוסים](./TYPES.md)
+- [קבועים](./CONSTANTS.md)
+- [ולידציה](./VALIDATION.md)
+- [דיאגרמת חבילה משותפת (Shared)](../DIAGRAMS.md#דיאגרמת-חבילה-משותפת-shared)

@@ -1,12 +1,13 @@
-import { Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION } from '@shared/constants';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
+import type { TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { Cache, NoCache } from '../../common';
+import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
-import { GetLeaderboardDto } from './dtos';
+import { GetLeaderboardDto, GetLeaderboardStatsDto } from './dtos';
 import { LeaderboardService } from './leaderboard.service';
 
 /**
@@ -31,7 +32,7 @@ export class LeaderboardController {
 	 */
 	@Get('user/ranking')
 	@NoCache()
-	async getUserRanking(@Param('userId') userId: string) {
+	async getUserRanking(@CurrentUserId() userId: string) {
 		try {
 			const ranking = await this.leaderboardService.getUserRanking(userId);
 
@@ -67,7 +68,7 @@ export class LeaderboardController {
 	 * @returns Updated ranking data
 	 */
 	@Post('user/update')
-	async updateUserRanking(@Param('userId') userId: string) {
+	async updateUserRanking(@CurrentUserId() userId: string) {
 		try {
 			const ranking = await this.leaderboardService.updateUserRanking(userId);
 
@@ -140,10 +141,10 @@ export class LeaderboardController {
 	@Get('period/:period')
 	@Public()
 	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
-	async getLeaderboardByPeriod(@Query() query: GetLeaderboardDto) {
+	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit || 100;
-			const period = query.type || 'weekly';
+			const period = periodParam || query.type || 'weekly';
 
 			if (!this.isLeaderboardPeriod(period)) {
 				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
@@ -173,7 +174,7 @@ export class LeaderboardController {
 		} catch (error) {
 			logger.userError('Error getting period leaderboard', {
 				error: getErrorMessage(error),
-				period: query.type || 'weekly',
+				period: periodParam || query.type || 'weekly',
 				limit: query.limit,
 			});
 			throw error;
@@ -181,29 +182,65 @@ export class LeaderboardController {
 	}
 
 	/**
-	 * Get user percentile
-	 * @param userId Authenticated user ID
-	 * @returns User percentile
+	 * Get leaderboard statistics for a specific period
+	 * @param query Query parameters with period
+	 * @returns Leaderboard statistics
 	 */
-	@Get('user/percentile')
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getUserPercentile(@Param('userId') userId: string) {
+	@Get('stats')
+	@Public()
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
 		try {
-			const percentile = await this.leaderboardService.getUserPercentile(userId);
+			const period = query.period || 'weekly';
 
-			logger.apiRead('leaderboard_user_percentile', {
-				userId,
-				percentile,
+			if (!this.isLeaderboardPeriod(period)) {
+				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
+			}
+
+			const stats = await this.leaderboardService.getLeaderboardStats(period);
+
+			logger.apiRead('leaderboard_stats', {
+				period,
+				activeUsers: stats.activeUsers,
+				averagePoints: stats.averagePoints,
+				averageGames: stats.averageGames,
+			});
+
+			return stats;
+		} catch (error) {
+			logger.userError('Error getting leaderboard stats', {
+				error: getErrorMessage(error),
+				period: query.period,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Admin endpoint - delete all leaderboard entries (admin only)
+	 */
+	@Delete('admin/clear-all')
+	@Roles(UserRole.ADMIN)
+	async clearAllLeaderboard(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.leaderboardService.clearAllLeaderboard();
+
+			logger.apiDelete('leaderboard_admin_clear_all', {
+				id: user.sub,
+				role: user.role,
+				deletedCount: result.deletedCount,
 			});
 
 			return {
-				userId,
-				percentile,
+				cleared: true,
+				deletedCount: result.deletedCount,
+				message: result.message,
 			};
 		} catch (error) {
-			logger.userError('Error getting user percentile', {
+			logger.userError('Failed to clear all leaderboard', {
 				error: getErrorMessage(error),
-				userId,
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}

@@ -449,9 +449,11 @@ export const ariaLabels = {
 ```
 
 ### Focus Management
+דוגמה למימוש focus trap:
 ```typescript
 import { useRef, useEffect } from 'react';
 
+// דוגמה קונספטואלית - לא מימוש קיים בפרויקט
 export const useFocusTrap = (isActive: boolean) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -463,6 +465,7 @@ export const useFocusTrap = (isActive: boolean) => {
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
 
+    // Type assertion נדרש כאן כי querySelectorAll מחזיר NodeListOf<Element>
     const firstElement = focusableElements[0] as HTMLElement;
     const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 

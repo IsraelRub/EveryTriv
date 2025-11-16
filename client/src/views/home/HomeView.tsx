@@ -54,7 +54,7 @@ import {
 } from '../../hooks';
 import { selectCurrentDifficulty, selectCurrentGameMode, selectCurrentTopic } from '../../redux/selectors';
 import { resetGame } from '../../redux/slices';
-import { audioService, storageService } from '../../services';
+import { audioService, customDifficultyService, storageService } from '../../services';
 import type {
 	ClientGameState,
 	CurrentQuestionMetadata,
@@ -540,7 +540,7 @@ export default function HomeView() {
 			setIsGameActive(true);
 			audioService.play(AudioKey.GAME_START);
 			audioService.play(AudioKey.GAME_MUSIC);
-		} catch (err: unknown) {
+		} catch (err) {
 			const errorMessage = getErrorMessage(err);
 			updateGameState({
 				error: errorMessage,
@@ -577,8 +577,24 @@ export default function HomeView() {
 		await handleSubmitWithMode();
 	};
 
-	const handleGameEnd = useCallback(() => {
+	const handleGameEnd = useCallback(async () => {
 		audioService.play(AudioKey.GAME_END);
+
+		// Save custom difficulty to history with final score
+		const currentTopic = gameState.config?.topic ?? topic;
+		const currentDifficulty = gameState.config?.difficulty ?? difficulty;
+		const finalScore = gameState.stats?.currentScore ?? 0;
+
+		if (isCustomDifficulty(currentDifficulty) && currentTopic) {
+			try {
+				await customDifficultyService.addToHistory(currentTopic, currentDifficulty, finalScore);
+			} catch (error) {
+				logger.storageError('Failed to update custom difficulty history with score', {
+					error: getErrorMessage(error),
+				});
+			}
+		}
+
 		updateGameState({
 			gameMode: {
 				...gameState.gameMode,
@@ -594,7 +610,16 @@ export default function HomeView() {
 		});
 		setIsGameActive(false);
 		dispatch(resetGame());
-	}, [gameState.gameMode, updateGameState, dispatch, audioService]);
+	}, [
+		gameState.gameMode,
+		gameState.config,
+		gameState.stats,
+		topic,
+		difficulty,
+		updateGameState,
+		dispatch,
+		audioService,
+	]);
 
 	// Use centralized game timer hook for automatic timer management
 	// This hook handles all timer updates, game over detection, and time warnings
@@ -724,7 +749,7 @@ export default function HomeView() {
 							<header className='text-center'>
 								<h3 className='text-sm font-medium text-white/80'>Popular Topics</h3>
 							</header>
-							<ResponsiveGrid minWidth='100px' gap={Spacing.SM} className='max-w-5xl mx-auto'>
+							<ResponsiveGrid gap={Spacing.SM} className='max-w-5xl mx-auto'>
 								{['Science', 'History', 'Sports', 'Music', 'Movies', 'Geography', 'Art', 'Technology'].map(
 									(suggestedTopic: string, index: number) => (
 										<motion.button

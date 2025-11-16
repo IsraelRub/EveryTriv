@@ -9,6 +9,7 @@
 import { ChangeEvent, forwardRef, useEffect, useState } from 'react';
 
 import { clientLogger as logger } from '@shared/services';
+import type { ValidationStatus } from '@shared/types';
 
 import { AudioKey, ComponentSize } from '../../constants';
 import { useValidation } from '../../hooks';
@@ -41,7 +42,13 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		const [isValid, setIsValid] = useState(true);
 		const [errors, setErrors] = useState<string[]>([]);
 		const [isValidating, setIsValidating] = useState(false);
+		const [internalValue, setInternalValue] = useState(initialValue);
 		const { validate } = useValidation();
+
+		// Update internal value when initialValue changes (controlled mode support)
+		useEffect(() => {
+			setInternalValue(initialValue);
+		}, [initialValue]);
 
 		const validateValue = async (value: string) => {
 			setIsValidating(true);
@@ -56,6 +63,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		// Handle input change
 		const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
 			const value = e.target.value;
+			setInternalValue(value);
 
 			// Log user activity
 			logger.logUserActivity('input_change', validationType, {
@@ -86,10 +94,10 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		}, []);
 
 		// Determine validation status
-		const getValidationStatus = (): 'idle' | 'validating' | 'valid' | 'invalid' | 'warning' | 'pending' | 'none' => {
+		const getValidationStatus = (): ValidationStatus => {
 			if (isValidating) return 'validating';
 			if (errors.length > 0) return 'invalid';
-			if (isValid && initialValue) return 'valid';
+			if (isValid && internalValue) return 'valid';
 			return 'idle';
 		};
 
@@ -114,7 +122,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 				<div className='mt-1 space-y-1'>
 					{errors.map((error: string, index: number) => (
 						<p key={index} className='text-sm text-red-400 flex items-center'>
-							<Icon name='Error' className='w-3 h-3 mr-1' />
+							<Icon name='alerttriangle' size={ComponentSize.SM} className='w-3 h-3 mr-1' />
 							{error}
 						</p>
 					))}
@@ -150,13 +158,13 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 							// Validation state
 							{
 								'border border-red-500 focus:ring-red-500/20': errors.length > 0,
-								'border border-green-500 focus:ring-green-500/20': isValid && initialValue,
+								'border border-green-500 focus:ring-green-500/20': isValid && internalValue,
 							},
 
 							className
 						)}
 						{...props}
-						value={initialValue}
+						value={internalValue}
 					/>
 
 					{/* Validation icon */}

@@ -6,7 +6,7 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { VALID_DIFFICULTIES, VALID_PLAN_TYPES } from '@shared/constants';
+import { VALID_DIFFICULTIES, VALID_PLAN_TYPES, VALIDATION_LIMITS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
 	AnalyticsEventData,
@@ -18,27 +18,23 @@ import type {
 	ValidationOptions,
 	ValidationResult,
 } from '@shared/types';
+import { getErrorMessage, isRecord, sanitizeCardNumber, sanitizeEmail, sanitizeInput } from '@shared/utils';
 import {
-	getErrorMessage,
-	isRecord,
+	isCustomDifficulty,
+	isRegisteredDifficulty,
 	performLocalLanguageValidationAsync,
-	sanitizeCardNumber,
-	sanitizeEmail,
-	sanitizeInput,
+	validateCustomDifficultyText,
 	validateEmail,
 	validateInputContent,
 	validatePassword,
 	validateTopicLength,
 	validateUsername,
-} from '@shared/utils';
-import { isCustomDifficulty, validateCustomDifficultyText } from '@shared/validation';
+} from '@shared/validation';
 
 import { UserEntity } from '@internal/entities';
 import { createStringLengthValidationError, createValidationError } from '@internal/utils';
 
 import { LanguageToolService } from './languageTool.service';
-
-// import type { ValidationServiceInterface, ValidationContext } from '../types'; // Reserved for future use
 
 @Injectable()
 export class ValidationService {
@@ -295,18 +291,15 @@ export class ValidationService {
 					errors.push('Custom difficulty must be at least 3 characters long');
 				}
 			} else {
-				const normalizedDifficulty = difficulty.toLowerCase();
-				const isValidDifficulty = VALID_DIFFICULTIES.some(
-					validDiff => validDiff.toLowerCase() === normalizedDifficulty
-				);
-				if (!isValidDifficulty) {
+				if (!isRegisteredDifficulty(difficulty)) {
 					errors.push(`Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`);
 				}
 			}
 
 			// Validate count
-			if (!count || count < 1 || count > 50) {
-				errors.push('Question count must be between 1 and 50');
+			const { MIN, MAX } = VALIDATION_LIMITS.QUESTION_COUNT;
+			if (!count || count < MIN || count > MAX) {
+				errors.push(`Question count must be between ${MIN} and ${MAX}`);
 			}
 
 			const result = {
@@ -397,50 +390,6 @@ export class ValidationService {
 			return {
 				isValid: false,
 				errors: ['Points purchase validation failed'],
-			};
-		}
-	}
-
-	/**
-	 * Validate phone number
-	 * @param phone Phone number to validate
-	 * @returns Validation result
-	 */
-	async validatePhone(phone: string, options: ValidationOptions = {}): Promise<ValidationResult> {
-		try {
-			logger.validationDebug('phone', phone, 'validation_start');
-
-			// Remove non-digit characters
-			const digitsOnly = phone.replace(/\D/g, '');
-
-			// Basic phone validation
-			if (!digitsOnly || digitsOnly.length < 7) {
-				return {
-					isValid: false,
-					errors: ['Phone number must be at least 7 digits long'],
-				};
-			}
-
-			if (digitsOnly.length > 15) {
-				return {
-					isValid: false,
-					errors: ['Phone number must not exceed 15 digits'],
-				};
-			}
-
-			logger.validationInfo('phone', phone, 'validation_success');
-			return {
-				isValid: true,
-				errors: [],
-			};
-		} catch (error) {
-			logger.validationError('phone', phone, 'validation_error', {
-				...options,
-				error: getErrorMessage(error),
-			});
-			return {
-				isValid: false,
-				errors: ['Phone validation failed'],
 			};
 		}
 	}
@@ -685,13 +634,6 @@ export class ValidationService {
 				}
 			}
 
-			// Validate bio
-			if (profileData.bio) {
-				if (profileData.bio.length > 500) {
-					errors.push('Bio cannot exceed 500 characters');
-				}
-			}
-
 			const result = {
 				isValid: errors.length === 0,
 				errors,
@@ -849,9 +791,9 @@ export class ValidationService {
 						// Add suggestions from replacements
 						if (match.replacements && Array.isArray(match.replacements)) {
 							const replacementSuggestions = match.replacements
-								.slice(0, 3) // Limit to first 3 suggestions
-								.map(replacement => replacement.value)
-								.filter(value => value && value.trim());
+								.slice(0, 3)
+								.map(({ value: replacementValue }) => replacementValue)
+								.filter(replacementValue => replacementValue.trim().length > 0);
 
 							suggestions.push(...replacementSuggestions);
 						}

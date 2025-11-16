@@ -1,3 +1,6 @@
+import { NEST_EXCEPTION_NAMES } from '../../constants';
+import { ErrorResponseData } from '../infrastructure';
+
 /**
  * Error types for EveryTriv
  * Shared between client and server
@@ -11,7 +14,7 @@
  * @type NestExceptionName
  * @description Type derived from NEST_EXCEPTION_NAMES constant
  */
-export type NestExceptionName = (typeof import('../../constants').NEST_EXCEPTION_NAMES)[number];
+export type NestExceptionName = (typeof NEST_EXCEPTION_NAMES)[number];
 
 /**
  * HTTP error interface
@@ -23,10 +26,7 @@ export interface HttpError extends Error {
 	response?: {
 		status?: number;
 		statusText?: string;
-		data?: {
-			message?: string;
-			error?: string;
-		};
+		data?: ErrorResponseData;
 	};
 	config?: {
 		url?: string;

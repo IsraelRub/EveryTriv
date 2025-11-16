@@ -13,10 +13,19 @@ import { motion } from 'framer-motion';
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { Button, CardGrid, FeatureHighlightList, fadeInUp, hoverScale, Icon, scaleIn, ValidatedForm } from '../../components';
 import {
-	AUTH_VIEW_CLASSNAMES,
+	Button,
+	CardGrid,
+	fadeInUp,
+	FeatureHighlightList,
+	hoverScale,
+	Icon,
+	scaleIn,
+	ValidatedForm,
+} from '../../components';
+import {
 	AudioKey,
+	AUTH_VIEW_CLASSNAMES,
 	ButtonVariant,
 	CLIENT_STORAGE_KEYS,
 	LOGIN_FEATURE_HIGHLIGHTS,
@@ -190,7 +199,6 @@ export default function RegistrationView() {
 					initialValues={{
 						username: REGISTRATION_DEFAULT_VALUES.username,
 						email: REGISTRATION_DEFAULT_VALUES.email,
-						'address.country': REGISTRATION_DEFAULT_VALUES.address.country,
 						password: REGISTRATION_DEFAULT_VALUES.password,
 						confirmPassword: REGISTRATION_DEFAULT_VALUES.confirmPassword,
 					}}
@@ -278,7 +286,8 @@ export default function RegistrationView() {
 						<header className={AUTH_VIEW_CLASSNAMES.featuresHeader}>
 							<h2 className='text-2xl font-semibold text-white'>Why create an account?</h2>
 							<p className='text-sm text-slate-400'>
-								Unlock personalised analytics, cross-platform sync, and team invitations directly from the desktop experience.
+								Unlock personalised analytics, cross-platform sync, and team invitations directly from the desktop
+								experience.
 							</p>
 						</header>
 						<FeatureHighlightList items={LOGIN_FEATURE_HIGHLIGHTS} />

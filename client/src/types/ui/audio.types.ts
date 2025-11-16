@@ -5,8 +5,9 @@
  */
 import type { ReactNode } from 'react';
 
-import type { AudioKey, AudioCategory } from '../../constants';
 import type { UserPreferences } from '@shared/types';
+
+import type { AudioCategory, AudioKey } from '../../constants';
 
 /**
  * Audio Service Interface

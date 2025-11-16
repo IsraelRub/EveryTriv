@@ -6,9 +6,8 @@ import type { GameData, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
-import { CustomDifficultyPipe, GameAnswerPipe, LanguageValidationPipe, TriviaRequestPipe } from '../../common/pipes';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
 import { ValidateCustomDifficultyDto } from './dtos/customDifficulty.dto';
-import { ValidateLanguageDto } from './dtos/languageValidation.dto';
 import { SubmitAnswerDto } from './dtos/submitAnswer.dto';
 import { TriviaRequestDto } from './dtos/triviaRequest.dto';
 import { GameService } from './game.service';
@@ -39,33 +38,6 @@ export class GameController {
 			logger.gameError('Error getting question by ID', {
 				error: getErrorMessage(error),
 				questionId: id,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get game by ID (for client compatibility)
-	 */
-	@Get(':id')
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getGameById(@Param('id') id: string) {
-		try {
-			if (!id) {
-				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
-			}
-
-			const result = await this.gameService.getQuestionById(id);
-
-			logger.apiRead('game_by_id', {
-				id,
-			});
-
-			return result;
-		} catch (error) {
-			logger.gameError('Error getting game by ID', {
-				error: getErrorMessage(error),
-				id,
 			});
 			throw error;
 		}
@@ -106,8 +78,7 @@ export class GameController {
 	 */
 	@Post('trivia')
 	@NoCache()
-	@UsePipes(TriviaRequestPipe)
-	async getTriviaQuestions(@CurrentUserId() userId: string, @Body() body: TriviaRequestDto) {
+	async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPipe) body: TriviaRequestDto) {
 		try {
 			if (!body.topic || !body.difficulty || !body.questionCount) {
 				throw new HttpException('Topic, difficulty, and question count are required', HttpStatus.BAD_REQUEST);
@@ -171,8 +142,8 @@ export class GameController {
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
 		try {
 			// Validate required fields
-			if (!body.userId || !body.score) {
-				throw new HttpException('User ID and score are required', HttpStatus.BAD_REQUEST);
+			if (!body.score) {
+				throw new HttpException('Score is required', HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.saveGameHistory(userId, body);
@@ -274,34 +245,6 @@ export class GameController {
 	}
 
 	/**
-	 * Validate text with language tool
-	 */
-	@Post('validate-language')
-	@UsePipes(LanguageValidationPipe)
-	async validateLanguage(@Body() body: ValidateLanguageDto) {
-		try {
-			if (!body.text) {
-				throw new HttpException('Text is required', HttpStatus.BAD_REQUEST);
-			}
-
-			// The LanguageValidationPipe handles all validation logic
-			// This method simply returns the result from the pipe
-			logger.apiUpdate('game_validate_language', {
-				textLength: body.text.length,
-				enableSpellCheck: body.enableSpellCheck,
-				enableGrammarCheck: body.enableGrammarCheck,
-			});
-			return body;
-		} catch (error) {
-			logger.gameError('Error validating language', {
-				error: getErrorMessage(error),
-				textLength: body.text?.length,
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Admin endpoint - get game statistics (admin only)
 	 */
 	@Get('admin/statistics')
@@ -354,6 +297,71 @@ export class GameController {
 				id: user.sub,
 				role: user.role,
 			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Admin endpoint - delete all trivia questions (admin only)
+	 */
+	@Delete('admin/trivia/clear-all')
+	@Roles(UserRole.ADMIN)
+	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.gameService.clearAllTrivia();
+
+			logger.apiDelete('game_admin_clear_all_trivia', {
+				id: user.sub,
+				role: user.role,
+				deletedCount: result.deletedCount,
+			});
+
+			return {
+				cleared: true,
+				deletedCount: result.deletedCount,
+				message: result.message,
+			};
+		} catch (error) {
+			logger.gameError('Failed to clear all trivia', {
+				error: getErrorMessage(error),
+				id: user.sub,
+				role: user.role,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get game by ID (for client compatibility)
+	 * Must be last to avoid conflicts with specific routes like 'trivia/:id'
+	 */
+	@Get(':id')
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getGameById(@Param('id') id: string) {
+		try {
+			if (!id) {
+				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
+			}
+
+			// Prevent matching reserved route names
+			const reservedRoutes = ['trivia', 'history', 'admin', 'answer', 'validate-custom'];
+			if (reservedRoutes.includes(id.toLowerCase())) {
+				throw new HttpException(`Invalid game ID. '${id}' is a reserved route name.`, HttpStatus.BAD_REQUEST);
+			}
+
+			const result = await this.gameService.getGameById(id);
+
+			logger.apiRead('game_by_id', {
+				id,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Error getting game by ID', {
+				error: getErrorMessage(error),
+				id,
+			});
+
 			throw error;
 		}
 	}

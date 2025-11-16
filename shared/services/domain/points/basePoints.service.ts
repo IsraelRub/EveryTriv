@@ -6,7 +6,7 @@
  * @author EveryTriv Team
  */
 import { GameMode } from '@shared/constants';
-import type { CanPlayResponse, PointBalance, PointPurchaseOption, SimpleValidationResult } from '@shared/types';
+import type { BaseValidationResult, CanPlayResponse, PointBalance, PointPurchaseOption } from '@shared/types';
 
 /**
  * Abstract base class for points management
@@ -92,7 +92,7 @@ export abstract class BasePointsService {
 	} {
 		let newPurchasedPoints = currentBalance.purchasedPoints;
 		let newFreeQuestions = currentBalance.freeQuestions;
-		let newCredits = currentBalance.totalPoints - currentBalance.purchasedPoints - currentBalance.freeQuestions * 0.1;
+		let newCredits = currentBalance.totalPoints;
 
 		let freeQuestionsUsed = 0;
 		let purchasedPointsUsed = 0;
@@ -121,7 +121,7 @@ export abstract class BasePointsService {
 			newCredits -= creditsUsed;
 		}
 
-		const newTotalPoints = newPurchasedPoints + newFreeQuestions * 0.1 + newCredits;
+		const newTotalPoints = newCredits;
 
 		return {
 			newBalance: {
@@ -129,6 +129,7 @@ export abstract class BasePointsService {
 				totalPoints: newTotalPoints,
 				purchasedPoints: newPurchasedPoints,
 				freeQuestions: newFreeQuestions,
+				canPlayFree: newFreeQuestions > 0,
 			},
 			deductionDetails: {
 				freeQuestionsUsed,
@@ -147,7 +148,7 @@ export abstract class BasePointsService {
 	protected validatePointPackage(
 		packageId: string,
 		availablePackages: PointPurchaseOption[]
-	): SimpleValidationResult & { package?: PointPurchaseOption } {
+	): BaseValidationResult & { package?: PointPurchaseOption } {
 		const packageToPurchase = availablePackages.find(pkg => pkg.id === packageId);
 		const errors: string[] = [];
 

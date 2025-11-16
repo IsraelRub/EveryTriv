@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 import { CUSTOM_DIFFICULTY_KEYWORDS, CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { SimpleValidationResult } from '@shared/types';
+import type { BaseValidationResult } from '@shared/types';
 import {
 	extractCustomDifficultyText,
 	isCustomDifficulty as isCustomDifficultyUtil,
@@ -52,7 +52,7 @@ export default function TriviaForm({
 }: TriviaFormProps) {
 	const [isCustomDifficulty, setIsCustomDifficulty] = useState(false);
 	const [customDifficultyText, setCustomDifficultyText] = useState('');
-	const [validationResult, setValidationResult] = useState<SimpleValidationResult | null>(null);
+	const [validationResult, setValidationResult] = useState<BaseValidationResult | null>(null);
 
 	const debouncedTopic = useDebounce(topic, 500);
 
@@ -177,9 +177,7 @@ export default function TriviaForm({
 							<textarea
 								placeholder='Describe the difficulty level in detail'
 								value={customDifficultyText}
-								onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-									handleCustomDifficultyChange(event.target.value)
-								}
+								onChange={(event: ChangeEvent<HTMLTextAreaElement>) => handleCustomDifficultyChange(event.target.value)}
 								rows={3}
 								required
 								className={`w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-200 resize-y ${validationResult && !validationResult.isValid && validationResult.errors.length > 0 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-white/20 focus:border-blue-400/50'}`}

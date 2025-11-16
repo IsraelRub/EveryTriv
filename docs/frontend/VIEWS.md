@@ -1,147 +1,304 @@
-# Frontend Views Documentation
+# דפי האפליקציה - Frontend
 
-תיעוד דפי האפליקציה (Views) ב-React.
+תיעוד דפי האפליקציה ב-Frontend, כולל דפי משחק, פרופיל, תשלומים ועוד.
 
 ## סקירה כללית
 
-דפי האפליקציה מאורגנים בתיקיית `views/` ומכילים את הדפים הראשיים של האפליקציה.
+המערכת כוללת דפים מאורגנים בתיקיית `views/`. כל דף כולל את הרכיבים והלוגיקה שלו.
 
-## מבנה Views
+## מבנה הדפים
 
 ```
 client/src/views/
-├── admin/           # דף מנהל
-├── analytics/       # דף אנליטיקה
-├── gameHistory/     # היסטוריית משחקים
-├── home/            # דף הבית והמשחק
-├── leaderboard/     # לוח תוצאות
-├── login/           # דף התחברות
-├── payment/         # תשלומים
-├── registration/    # דף רישום
-├── unauthorized/    # דף לא מורשה
-└── user/            # פרופיל משתמש
+├── admin/          # דף מנהל
+├── analytics/      # דף אנליטיקה
+├── game/           # דפי משחק
+├── gameHistory/    # היסטוריית משחקים
+├── home/           # דף הבית והמשחק
+├── leaderboard/    # לוח תוצאות
+├── login/          # דף התחברות
+├── payment/        # תשלומים
+├── points/         # נקודות
+├── registration/   # דף רישום
+├── settings/       # הגדרות
+├── unauthorized/   # דף לא מורשה
+└── user/           # פרופיל משתמש
 ```
 
-## דפים עיקריים
+## דפים ציבוריים
 
-### Home View
-- **קובץ**: `home/HomeView.tsx`
-- **תיאור**: דף הבית הראשי עם אפשרויות משחק
-- **תכונות**: בחירת נושא, קושי, מצב משחק, טופס טריוויה, משחק פעיל
-- **רכיבים**: Game, TriviaForm, GameMode, DifficultyDisplay, Leaderboard
+### HomeView
+דף הבית והמשחק - הממשק הראשי של המשחק:
+```typescript
+import HomeView from '@views/home/HomeView';
 
-### User Profile
-- **קובץ**: `user/UserProfile.tsx`
-- **תיאור**: פרופיל משתמש עם סטטיסטיקות
-- **תכונות**: עריכת פרופיל, העדפות, היסטוריה
+// השימוש ב-AppRoutes
+<Route path="/" element={<HomeView />} />
+```
 
-### Game History
-- **קובץ**: `gameHistory/GameHistory.tsx`
-- **תיאור**: היסטוריית משחקים של המשתמש
-- **תכונות**: סינון, חיפוש, סטטיסטיקות
+**תכונות:**
+- בחירת נושא וקושי
+- בחירת מצב משחק (question-limited, time-limited, unlimited)
+- יצירת שאלות טריוויה
+- ניהול מצב משחק עם Context API
+- עדכון ניקוד בזמן אמת
+- שמירת היסטוריית משחקים
+- תמיכה בקושי מותאם אישית
+- ניהול נקודות
+- לוגים ואנליטיקה
 
-### Leaderboard
-- **קובץ**: `leaderboard/LeaderboardView.tsx`
-- **תיאור**: לוח תוצאות גלובלי
-- **תכונות**: דירוגים, פילטרים, סטטיסטיקות
+**רכיבים משולבים:**
+- `TriviaForm` - טופס יצירת שאלות
+- `Game` - משחק טריוויה
+- `GameTimer` - טיימר המשחק
+- `Leaderboard` - לוח תוצאות
+- `ScoringSystem` - מערכת ניקוד
+- `FavoriteTopics` - נושאים מועדפים
+- `CustomDifficultyHistory` - היסטוריית קושי מותאם
 
-### Points View
-- **קובץ**: `points/PointsView.tsx`
-- **תיאור**: תצוגת נקודות המשתמש והיסטוריית עסקאות
-- **תכונות**: 
-  - הצגת יתרת נקודות בזמן אמת
-  - היסטוריית עסקאות עם אנימציית stagger
-  - סינון לפי סוג עסקה
-  - חיפוש בהיסטוריה
-- **רכיבים**: PointsBalance, TransactionHistory, FilterControls
+### LoginView
+דף התחברות עם OAuth:
+```typescript
+import LoginView from '@views/login/LoginView';
 
-### Game Session View
-- **קובץ**: `game/GameSessionView.tsx`
-- **תיאור**: זרימת משחק מלאה עם שאלות טריוויה
-- **תכונות**:
-  - טיימר שאלה
-  - הצגת שאלה ותשובות
-  - מעקב נקודות
-  - מעבר בין שאלות
-- **רכיבים**: TriviaGame, QuestionTimer, ScoreDisplay
+// השימוש ב-AppRoutes
+<Route path="/login" element={<LoginView />} />
+```
 
-### Game Summary View
-- **קובץ**: `game/GameSummaryView.tsx`
-- **תיאור**: מסך סיכום משחק עם תוצאות
-- **תכונות**:
-  - הצגת תוצאה סופית
-  - פירוט תשובות נכונות/שגויות
-  - אפשרות לשחק שוב
-  - שמירת תוצאות
-- **רכיבים**: ScoreSummary, AnswerReview, ActionButtons
+**תכונות:**
+- טופס התחברות עם email/password
+- OAuth עם Google
+- ולידציה של נתונים
+- טיפול בשגיאות
+- קישור לרישום
+- שמירת token ב-Redux state
 
-### Custom Difficulty View
-- **קובץ**: `game/CustomDifficultyView.tsx`
-- **תיאור**: יצירת קושי מותאם אישית
-- **תכונות**:
-  - יצירת קושי חדש
-  - ולידציה של תיאור קושי
-  - שמירת קשיים מותאמים
-- **רכיבים**: DifficultyForm, ValidationInput, SaveButton
+### RegistrationView
+דף רישום עם ולידציה:
+```typescript
+import RegistrationView from '@views/registration/RegistrationView';
 
-### Admin Dashboard
-- **קובץ**: `admin/AdminDashboard.tsx`
-- **תיאור**: דף ניהול מערכת למנהלים
-- **תכונות**: ניהול משתמשים, סטטיסטיקות מערכת, הגדרות
+// השימוש ב-AppRoutes
+<Route path="/register" element={<RegistrationView />} />
+```
 
-### Analytics
-- **קובץ**: `analytics/AnalyticsView.tsx`
-- **תיאור**: דף אנליטיקה למנהלים
-- **תכונות**: גרפים, מדדים, דוחות
+**תכונות:**
+- טופס רישום עם ולידציה
+- בדיקת זמינות username/email
+- אימות סיסמה
+- קישור להתחברות
+- טיפול בשגיאות
+- OAuth עם Google
 
-### Payment
-- **קובץ**: `payment/PaymentView.tsx`
-- **תיאור**: דף תשלומים ומנויים
-- **תכונות**: תשלום, מנוי, היסטוריית תשלומים
+### LeaderboardView
+לוח תוצאות עם דירוגים:
+```typescript
+import LeaderboardView from '@views/leaderboard/LeaderboardView';
 
-### Login
-- **קובץ**: `login/LoginView.tsx`
-- **תיאור**: דף התחברות עם Google OAuth
-- **תכונות**: התחברות עם Google, טופס התחברות בסיסי
+// השימוש ב-AppRoutes
+<Route path="/leaderboard" element={<LeaderboardView />} />
+```
 
-### Registration
-- **קובץ**: `registration/RegistrationView.tsx`
-- **תיאור**: דף רישום משתמש חדש
-- **תכונות**: טופס רישום, ולידציה
+**תכונות:**
+- דירוג גלובלי, שבועי, חודשי, שנתי
+- מיקום המשתמש
+- טבלת דירוגים עם pagination
+- פילטרים לפי תקופה
+- עדכון אוטומטי
 
-### Unauthorized
-- **קובץ**: `unauthorized/UnauthorizedView.tsx`
-- **תיאור**: דף לא מורשה
-- **תכונות**: הודעת שגיאה, הפניה להתחברות
+## דפים מוגנים
 
-## ניווט בין דפים
+### UserProfileView
+פרופיל משתמש:
+```typescript
+import UserProfileView from '@views/user/UserProfile';
 
-הניווט מתבצע באמצעות React Router עם הגדרות ב-`AppRoutes.tsx`.
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/user/profile" element={<ProtectedRoute><UserProfileView /></ProtectedRoute>} />
+```
 
-### נתיבים ציבוריים
-- `/` - דף הבית
-- `/game` - דף משחק
-- `/play` - דף משחק
-- `/start` - דף התחלה
-- `/leaderboard` - לוח תוצאות
-- `/register` - דף רישום
-- `/auth/callback` - OAuth callback
-- `/unauthorized` - דף לא מורשה
+**תכונות:**
+- הצגת פרטי משתמש
+- עדכון פרופיל (firstName, lastName, bio)
+- עדכון העדפות משתמש
+- ניהול תמונת פרופיל
+- הצגת סטטיסטיקות בסיסיות
+- ניהול חשבון
 
-### נתיבים מוגנים
-- `/profile` - פרופיל משתמש
-- `/history` - היסטוריית משחקים
-- `/payment` - תשלומים
-- `/complete-profile` - השלמת פרופיל
+### GameSessionView
+משחק פעיל - ממשק המשחק המלא:
+```typescript
+import GameSessionView from '@views/game/GameSessionView';
 
-## הגנות גישה
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/game/session" element={<ProtectedRoute><GameSessionView /></ProtectedRoute>} />
+```
 
-- **Protected Routes**: דפים שדורשים אימות (ProtectedRoute)
-- **Public Routes**: דפים פתוחים לכל המשתמשים (PublicRoute)
-- **OAuth Callback**: ללא הגנה נדרשת
+**תכונות:**
+- הצגת שאלות טריוויה
+- שליחת תשובות
+- עדכון ניקוד בזמן אמת
+- טיימר המשחק
+- היסטוריית שאלות
+- סיום משחק
 
-## קישורים רלוונטיים
+### GameSummaryView
+סיכום משחק - תוצאות המשחק:
+```typescript
+import GameSummaryView from '@views/game/GameSummaryView';
 
-- [מערכת הניווט](./ROUTING.md)
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/game/summary" element={<ProtectedRoute><GameSummaryView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- תוצאות המשחק (ניקוד סופי, שאלות נכונות, זמן)
+- הישגים חדשים
+- השוואה לסטטיסטיקות קודמות
+- שיתוף תוצאות
+- המשך למשחק הבא
+
+### CustomDifficultyView
+קושי מותאם - יצירה וניהול קשיים מותאמים:
+```typescript
+import CustomDifficultyView from '@views/game/CustomDifficultyView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/game/custom-difficulty" element={<ProtectedRoute><CustomDifficultyView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- יצירת קושי מותאם אישית
+- היסטוריית קשיים שנוצרו
+- שימוש בקושי במשחקים
+- עריכה ומחיקה של קשיים
+- ולידציה של טקסט קושי
+
+### GameHistoryView
+היסטוריית משחקים:
+```typescript
+import GameHistoryView from '@views/gameHistory/GameHistory';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/game/history" element={<ProtectedRoute><GameHistoryView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- רשימת כל המשחקים
+- פילטרים לפי נושא, קושי, תאריך
+- סטטיסטיקות מפורטות
+- מחיקת משחקים בודדים
+- ניקוי כל ההיסטוריה
+- ייצוא נתונים
+
+### PaymentView
+תשלומים:
+```typescript
+import PaymentView from '@views/payment/PaymentView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/payment" element={<ProtectedRoute><PaymentView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- תוכניות מנוי זמינות
+- רכישת נקודות (חבילות נקודות)
+- היסטוריית תשלומים
+- ניהול כרטיסי אשראי
+- ביטול מנויים
+- אינטגרציה עם Stripe
+
+### PointsView
+נקודות:
+```typescript
+import PointsView from '@views/points/PointsView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/points" element={<ProtectedRoute><PointsView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- הצגת מאזן נקודות (totalPoints, freeQuestions, purchasedPoints)
+- היסטוריית עסקות נקודות
+- רכישת נקודות
+- חבילות נקודות זמינות
+- מגבלות יומיות
+- זמן איפוס הבא
+
+### AnalyticsView
+אנליטיקה - דשבורד סטטיסטיקות:
+```typescript
+import AnalyticsView from '@views/analytics/AnalyticsView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/analytics" element={<ProtectedRoute><AnalyticsView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- סטטיסטיקות משתמש מפורטות
+- מטריקות ביצועים
+- דוחות לפי תקופה
+- גרפים וייצוגים ויזואליים
+- ניתוח לפי נושאים וקשיים
+- ייצוא נתונים
+
+### SettingsView
+הגדרות:
+```typescript
+import SettingsView from '@views/settings/SettingsView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/settings" element={<ProtectedRoute><SettingsView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- עדכון פרטים אישיים
+- העדפות משתמש (notifications, privacy, game)
+- הגדרות אודיו (enable/disable, volume)
+- הגדרות UI (theme, language)
+- ניהול חשבון (מחיקה, השבתה)
+
+### AdminDashboard
+דף מנהל:
+```typescript
+import AdminDashboard from '@views/admin/AdminDashboard';
+
+// השימוש ב-AppRoutes (מוגן - רק למנהלים)
+<Route path="/admin" element={<ProtectedRoute roles={[UserRole.ADMIN]}><AdminDashboard /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- ניהול משתמשים (צפייה, עריכה, השעיה)
+- סטטיסטיקות כלליות של המערכת
+- ניהול מערכת (מחיקת נתונים, איפוס)
+- ניהול שאלות טריוויה
+- ניהול AI providers
+
+## דפים נוספים
+
+### UnauthorizedView
+דף לא מורשה:
+- הודעת שגיאה
+- קישור לדף הבית
+
+## ניתוב
+
+### AppRoutes.tsx
+הגדרת הנתיבים:
+- Routes ציבוריים
+- Routes מוגנים
+- Protected routes
+- Public routes
+
+לדיאגרמות מפורטות, ראו: 
+- [דיאגרמת Views מלאה](../DIAGRAMS.md#דיאגרמת-views-מלאה)
+- [דיאגרמת Routes/Navigation](../DIAGRAMS.md#דיאגרמת-routesnavigation)
+- [דיאגרמת מבנה Frontend](../DIAGRAMS.md#דיאגרמת-מבנה-frontend)
+
+## הפניות
+
+- [ארכיטקטורה כללית](../ARCHITECTURE.md)
 - [רכיבי UI](./COMPONENTS.md)
-- [ניהול מצב](./STATE.md)
+- [ניתוב](./ROUTING.md)
+- [דיאגרמת Views מלאה](../DIAGRAMS.md#דיאגרמת-views-מלאה)
+- [דיאגרמת Routes/Navigation](../DIAGRAMS.md#דיאגרמת-routesnavigation)

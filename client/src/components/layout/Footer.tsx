@@ -25,11 +25,11 @@ export default function Footer() {
 
 	return (
 		<footer className={FOOTER_CLASSNAMES.wrapper}>
-			<Container size={ContainerSize.XL}>
-				<GridLayout variant='balanced' gap={Spacing.XL}>
+			<Container size={ContainerSize.XL} padding={Spacing.LG}>
+				<GridLayout variant='balanced' gap={Spacing.LG}>
 					{/* Company Info */}
-					<motion.div variants={fadeInUp} initial='hidden' animate='visible' className='col-span-2'>
-						<div className={`${FOOTER_CLASSNAMES.infoRow} mb-6`}>
+					<motion.div variants={fadeInUp} initial='hidden' animate='visible'>
+						<div className={FOOTER_CLASSNAMES.infoRow}>
 							<div className={FOOTER_CLASSNAMES.brandBadge}>
 								<Icon name='brain' size={ComponentSize.XL} className='text-white' />
 							</div>
@@ -67,10 +67,7 @@ export default function Footer() {
 						<ul className='space-y-3'>
 							{FOOTER_LINK_GROUPS.quick.map((link, index) => (
 								<li key={index}>
-									<Link
-										to={link.path}
-										className={FOOTER_CLASSNAMES.quickLink}
-									>
+									<Link to={link.path} className={FOOTER_CLASSNAMES.quickLink}>
 										<Icon name='arrow-right' size={ComponentSize.XS} className='mr-2 text-slate-500' />
 										{link.label}
 									</Link>

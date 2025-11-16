@@ -12,6 +12,8 @@ import type {
 	StorageValue,
 } from '@shared/types';
 
+import { deleteKeysByPattern, scanKeys } from '../../utils';
+
 /**
  * Server-side persistent storage service using Redis
  *
@@ -108,7 +110,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 			}
 
 			if (validator(deserialized)) {
-			return this.createSuccessResult<T | null>(deserialized);
+				return this.createSuccessResult<T | null>(deserialized);
 			}
 
 			return this.createErrorResult<T | null>('Stored value failed validation');
@@ -149,18 +151,8 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 	async clear(): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		try {
-			const keysResult = await this.getKeys();
-			if (!keysResult.success || !keysResult.data) {
-				this.trackOperationWithTiming('clear', startTime, false, 'persistent');
-				return this.createErrorResult<void>('Failed to get keys for clearing');
-			}
-
-			const prefixedKeys = keysResult.data.map((key: string) => this.getPrefixedKey(key));
-			if (prefixedKeys.length > 0) {
-				for (const key of prefixedKeys) {
-					await this.redisClient.del(key);
-				}
-			}
+			const pattern = `${this.config.prefix}*`;
+			await deleteKeysByPattern(this.redisClient, pattern);
 
 			this.trackOperationWithTiming('clear', startTime, true, 'persistent');
 			return this.createSuccessResult<void>();
@@ -174,7 +166,7 @@ export class ServerStorageService extends BaseStorageService implements StorageS
 		const startTime = Date.now();
 		try {
 			const pattern = `${this.config.prefix}*`;
-			const keys = await this.redisClient.keys(pattern);
+			const keys = await scanKeys(this.redisClient, pattern);
 			const unprefixedKeys = keys.map((key: string) => key.replace(this.config.prefix, ''));
 
 			this.trackOperationWithTiming('getKeys', startTime, true, 'persistent');

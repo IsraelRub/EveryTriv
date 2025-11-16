@@ -6,6 +6,10 @@
  */
 // eslint-disable-next-line simple-import-sort/imports
 // prettier-ignore
+import 'tsconfig-paths/register';
+
+// eslint-disable-next-line simple-import-sort/imports
+// prettier-ignore
 import * as dotenv from 'dotenv';
 
 // eslint-disable-next-line simple-import-sort/imports

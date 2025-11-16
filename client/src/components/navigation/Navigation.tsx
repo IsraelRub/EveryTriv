@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
+	ButtonVariant,
 	ComponentSize,
 	ContainerSize,
 	NAVIGATION_BRAND_CLASSNAMES,
@@ -9,47 +10,34 @@ import {
 	NAVIGATION_CLASSNAMES,
 	NAVIGATION_LINK_CLASSNAMES,
 	Spacing,
-	ButtonVariant,
 } from '../../constants';
-import { combineClassNames } from '../../utils';
-import AudioControls from '../AudioControls';
-import { Button, Avatar } from '../ui';
-import { Icon } from '../IconLibrary';
 import { useNavigationController } from '../../hooks';
-import { Container } from '../layout';
 import type {
 	NavigationActionsProps,
 	NavigationBrandProps,
 	NavigationMenuProps,
 	NavigationUserDisplay,
 } from '../../types';
+import { combineClassNames } from '../../utils';
+import AudioControls from '../AudioControls';
+import { Icon } from '../IconLibrary';
+import { Container } from '../layout';
+import { Avatar, Button } from '../ui';
 
 const NavigationRoot = memo(function Navigation() {
-	const {
-		appName,
-		isHomePage,
-		links,
-		isAuthenticated,
-		userDisplay,
-		points,
-		actions,
-	} = useNavigationController();
+	const { appName, isHomePage, links, isAuthenticated, userDisplay, points, actions } = useNavigationController();
 
 	return (
 		<nav role='navigation' aria-label='Main navigation' className={NAVIGATION_CLASSNAMES.wrapper}>
 			<Container
 				size={ContainerSize.FULL}
-				maxWidth={ContainerSize.XXL}
-				padding={Spacing.XL}
+				maxWidth={ContainerSize.FULL}
+				padding={Spacing.NONE}
 				className={NAVIGATION_CLASSNAMES.container}
 			>
 				<div className={NAVIGATION_CLASSNAMES.row}>
 					<section aria-label='Logo and Brand' className='flex flex-shrink-0 items-center'>
-						<NavigationBrand
-							isHome={isHomePage}
-							appName={appName}
-							onNavigateHome={actions.onNavigateHome}
-						/>
+						<NavigationBrand isHome={isHomePage} appName={appName} onNavigateHome={actions.onNavigateHome} />
 					</section>
 
 					<NavigationMenu
@@ -74,7 +62,7 @@ const NavigationRoot = memo(function Navigation() {
 
 export default NavigationRoot;
 
-export function NavigationBrand({ isHome, appName, onNavigateHome }: NavigationBrandProps) {
+function NavigationBrand({ isHome, appName, onNavigateHome }: NavigationBrandProps) {
 	if (isHome) {
 		return (
 			<div className={NAVIGATION_BRAND_CLASSNAMES.homeWrapper}>
@@ -102,7 +90,7 @@ export function NavigationBrand({ isHome, appName, onNavigateHome }: NavigationB
 	);
 }
 
-export function NavigationActions({
+function NavigationActions({
 	isAuthenticated,
 	userDisplay,
 	onLogout,
@@ -119,7 +107,6 @@ export function NavigationActions({
 						<Avatar
 							src={userDisplay?.avatar}
 							username={userDisplay?.username}
-							fullName={userDisplay?.fullName}
 							firstName={userDisplay?.firstName}
 							lastName={userDisplay?.lastName}
 							size={userDisplay?.avatarSize ?? ComponentSize.SM}
@@ -160,7 +147,7 @@ export function NavigationActions({
 	);
 }
 
-export function NavigationMenu({
+function NavigationMenu({
 	links,
 	audioControls,
 	isAuthenticated,
@@ -200,7 +187,7 @@ export function NavigationMenu({
 			>
 				<div className={NAVIGATION_CLASSNAMES.audioContainer}>{audioControls}</div>
 				{isAuthenticated && (
-					<div className='flex items-center gap-4'>
+					<div className='flex items-center gap-3'>
 						<div className={NAVIGATION_CLASSNAMES.pointsBadge}>
 							<Icon name='zap' size={ComponentSize.SM} className='text-amber-400' />
 							<span className='text-slate-200 font-medium'>{pointsDisplay ?? totalPoints ?? 0}</span>
@@ -211,9 +198,7 @@ export function NavigationMenu({
 								<span className='font-medium'>Free: {freeQuestions}</span>
 								<Icon name='clock' size={ComponentSize.SM} className='text-emerald-400' />
 								{nextResetTime && (
-									<div className='text-xs text-emerald-300/80'>
-										{new Date(nextResetTime).toLocaleTimeString()}
-									</div>
+									<div className='text-xs text-emerald-300/80'>{new Date(nextResetTime).toLocaleTimeString()}</div>
 								)}
 							</div>
 						) : (

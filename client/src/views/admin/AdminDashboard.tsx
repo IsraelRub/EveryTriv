@@ -14,15 +14,29 @@ import {
 	Card,
 	ConfirmModal,
 	Container,
-	Icon,
-	createStaggerContainer,
 	fadeInUp,
 	FeatureErrorBoundary,
 	GridLayout,
+	Icon,
 	scaleIn,
 } from '../../components';
 import { AlertVariant, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
-import { useDeleteUser, useGetUserById, useUpdateUserCredits, useUpdateUserStatus } from '../../hooks';
+import {
+	useCompareUserPerformance,
+	useDeleteUser,
+	useGetUserById,
+	useUpdateUserCredits,
+	useUpdateUserStatus,
+	useUserAchievementsById,
+	useUserActivityById,
+	useUserInsightsById,
+	useUserPerformanceById,
+	useUserProgressById,
+	useUserRecommendationsById,
+	useUserStatisticsById,
+	useUserSummaryById,
+	useUserTrendsById,
+} from '../../hooks';
 
 export default function AdminDashboard() {
 	return (
@@ -39,9 +53,36 @@ const ADMIN_TABS: readonly ['users', 'analytics', 'settings'] = ['users', 'analy
 
 const isUserStatus = (value: string): value is UserStatusOption => USER_STATUS_VALUES.some(status => status === value);
 
+type AnalyticsViewType =
+	| 'statistics'
+	| 'performance'
+	| 'progress'
+	| 'activity'
+	| 'insights'
+	| 'recommendations'
+	| 'achievements'
+	| 'trends'
+	| 'comparison'
+	| 'summary';
+
+const ANALYTICS_VIEWS: readonly AnalyticsViewType[] = [
+	'statistics',
+	'performance',
+	'progress',
+	'activity',
+	'insights',
+	'recommendations',
+	'achievements',
+	'trends',
+	'comparison',
+	'summary',
+] as const;
+
 function AdminDashboardContent() {
 	const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'settings'>('users');
 	const [selectedUserId, setSelectedUserId] = useState('');
+	const [analyticsUserId, setAnalyticsUserId] = useState('');
+	const [analyticsView, setAnalyticsView] = useState<AnalyticsViewType>('statistics');
 	const [creditsAmount, setCreditsAmount] = useState(0);
 	const [creditsReason, setCreditsReason] = useState('');
 	const [userStatus, setUserStatus] = useState<UserStatusOption>('active');
@@ -60,6 +101,18 @@ function AdminDashboardContent() {
 	const updateUserStatus = useUpdateUserStatus();
 	const deleteUser = useDeleteUser();
 	const getUserById = useGetUserById();
+
+	// Admin analytics hooks
+	const userStatistics = useUserStatisticsById(analyticsUserId);
+	const userPerformance = useUserPerformanceById(analyticsUserId);
+	const userProgress = useUserProgressById(analyticsUserId);
+	const userActivity = useUserActivityById(analyticsUserId);
+	const userInsights = useUserInsightsById(analyticsUserId);
+	const userRecommendations = useUserRecommendationsById(analyticsUserId);
+	const userAchievements = useUserAchievementsById(analyticsUserId);
+	const userTrends = useUserTrendsById(analyticsUserId);
+	const userComparison = useCompareUserPerformance(analyticsUserId);
+	const userSummary = useUserSummaryById(analyticsUserId, false);
 
 	const handleUpdateCredits = () => {
 		if (selectedUserId === '' || creditsAmount <= 0) return;
@@ -276,41 +329,284 @@ function AdminDashboardContent() {
 							whileHover={{ scale: 1.02 }}
 						>
 							<div className='glass-strong rounded-lg p-8'>
-								<h2 className='text-2xl font-bold text-white mb-6'>System Analytics</h2>
-								<motion.div variants={createStaggerContainer(0.1)} initial='hidden' animate='visible'>
-									<GridLayout variant='balanced' gap={Spacing.LG}>
-										<motion.div variants={fadeInUp}>
+								<h2 className='text-2xl font-bold text-white mb-6'>User Analytics (Admin Only)</h2>
+
+								{/* User ID Input */}
+								<div className='mb-6'>
+									<label className='block text-white font-medium mb-2'>User ID</label>
+									<div className='flex gap-4'>
+										<input
+											type='text'
+											value={analyticsUserId}
+											onChange={e => setAnalyticsUserId(e.target.value)}
+											className='flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+											placeholder='Enter user ID to view analytics'
+										/>
+										<select
+											value={analyticsView}
+											onChange={e => setAnalyticsView(e.target.value as AnalyticsViewType)}
+											className='p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
+										>
+											{ANALYTICS_VIEWS.map(view => (
+												<option key={view} value={view}>
+													{view.charAt(0).toUpperCase() + view.slice(1)}
+												</option>
+											))}
+										</select>
+									</div>
+								</div>
+
+								{/* Analytics Content */}
+								{analyticsUserId ? (
+									<div className='space-y-6'>
+										{analyticsView === 'statistics' && (
 											<Card
 												variant={CardVariant.TRANSPARENT}
 												padding={Spacing.LG}
-												className='rounded-lg border border-green-400/30 bg-green-500/10 text-center'
+												className='rounded-lg border border-blue-400/30'
 											>
-												<div className='text-3xl font-bold text-green-400 mb-2'>1,234</div>
-												<div className='text-slate-300'>Total Users</div>
+												<h3 className='text-xl font-bold text-white mb-4'>User Statistics</h3>
+												{userStatistics.isLoading && (
+													<div className='text-slate-300 text-center py-8'>Loading statistics...</div>
+												)}
+												{userStatistics.error && (
+													<div className='text-red-400 text-center py-8'>
+														Error loading statistics: {userStatistics.error.message}
+													</div>
+												)}
+												{userStatistics.data && (
+													<GridLayout variant='balanced' gap={Spacing.MD}>
+														<Card variant={CardVariant.TRANSPARENT} padding={Spacing.MD} className='text-center'>
+															<div className='text-2xl font-bold text-blue-400 mb-1'>
+																{userStatistics.data.data?.totalGames ?? 0}
+															</div>
+															<div className='text-slate-300 text-sm'>Total Games</div>
+														</Card>
+														<Card variant={CardVariant.TRANSPARENT} padding={Spacing.MD} className='text-center'>
+															<div className='text-2xl font-bold text-green-400 mb-1'>
+																{userStatistics.data.data?.totalQuestions ?? 0}
+															</div>
+															<div className='text-slate-300 text-sm'>Total Questions</div>
+														</Card>
+														<Card variant={CardVariant.TRANSPARENT} padding={Spacing.MD} className='text-center'>
+															<div className='text-2xl font-bold text-purple-400 mb-1'>
+																{userStatistics.data.data?.successRate?.toFixed(1) ?? 0}%
+															</div>
+															<div className='text-slate-300 text-sm'>Success Rate</div>
+														</Card>
+														<Card variant={CardVariant.TRANSPARENT} padding={Spacing.MD} className='text-center'>
+															<div className='text-2xl font-bold text-yellow-400 mb-1'>
+																{userStatistics.data.data?.averageScore?.toFixed(1) ?? 0}
+															</div>
+															<div className='text-slate-300 text-sm'>Average Score</div>
+														</Card>
+													</GridLayout>
+												)}
 											</Card>
-										</motion.div>
-										<motion.div variants={fadeInUp}>
+										)}
+
+										{analyticsView === 'performance' && (
 											<Card
 												variant={CardVariant.TRANSPARENT}
 												padding={Spacing.LG}
-												className='rounded-lg border border-blue-400/30 bg-blue-500/10 text-center'
+												className='rounded-lg border border-green-400/30'
 											>
-												<div className='text-3xl font-bold text-blue-400 mb-2'>5,678</div>
-												<div className='text-slate-300'>Games Played Today</div>
+												<h3 className='text-xl font-bold text-white mb-4'>User Performance</h3>
+												{userPerformance.isLoading && (
+													<div className='text-slate-300 text-center py-8'>Loading performance...</div>
+												)}
+												{userPerformance.error && (
+													<div className='text-red-400 text-center py-8'>
+														Error loading performance: {userPerformance.error.message}
+													</div>
+												)}
+												{userPerformance.data && (
+													<div className='space-y-4'>
+														<div className='flex justify-between items-center'>
+															<span className='text-slate-300'>Best Streak:</span>
+															<span className='text-white font-semibold'>
+																{userPerformance.data.data?.bestStreak ?? 0} days
+															</span>
+														</div>
+														<div className='flex justify-between items-center'>
+															<span className='text-slate-300'>Current Streak:</span>
+															<span className='text-white font-semibold'>
+																{userPerformance.data.data?.streakDays ?? 0} days
+															</span>
+														</div>
+														<div className='flex justify-between items-center'>
+															<span className='text-slate-300'>Improvement Rate:</span>
+															<span className='text-white font-semibold'>
+																{userPerformance.data.data?.improvementRate?.toFixed(2) ?? 0}%
+															</span>
+														</div>
+													</div>
+												)}
 											</Card>
-										</motion.div>
-										<motion.div variants={fadeInUp}>
+										)}
+
+										{analyticsView === 'activity' && (
 											<Card
 												variant={CardVariant.TRANSPARENT}
 												padding={Spacing.LG}
-												className='rounded-lg border border-purple-400/30 bg-purple-500/10 text-center'
+												className='rounded-lg border border-purple-400/30'
 											>
-												<div className='text-3xl font-bold text-purple-400 mb-2'>89%</div>
-												<div className='text-slate-300'>System Uptime</div>
+												<h3 className='text-xl font-bold text-white mb-4'>User Activity</h3>
+												{userActivity.isLoading && (
+													<div className='text-slate-300 text-center py-8'>Loading activity...</div>
+												)}
+												{userActivity.error && (
+													<div className='text-red-400 text-center py-8'>
+														Error loading activity: {userActivity.error.message}
+													</div>
+												)}
+												{userActivity.data && (
+													<div className='space-y-2'>
+														{userActivity.data.data && userActivity.data.data.length > 0 ? (
+															userActivity.data.data.slice(0, 10).map((activity, index) => (
+																<Card
+																	key={index}
+																	variant={CardVariant.TRANSPARENT}
+																	padding={Spacing.SM}
+																	className='border border-white/10'
+																>
+																	<div className='text-slate-300 text-sm'>{activity.action ?? 'Activity'}</div>
+																	{activity.detail && <div className='text-slate-400 text-xs'>{activity.detail}</div>}
+																	<div className='text-slate-400 text-xs'>
+																		{activity.date ? new Date(activity.date).toLocaleString() : 'Unknown time'}
+																	</div>
+																</Card>
+															))
+														) : (
+															<div className='text-slate-400 text-center py-4'>No activity found</div>
+														)}
+													</div>
+												)}
 											</Card>
-										</motion.div>
-									</GridLayout>
-								</motion.div>
+										)}
+
+										{analyticsView === 'achievements' && (
+											<Card
+												variant={CardVariant.TRANSPARENT}
+												padding={Spacing.LG}
+												className='rounded-lg border border-yellow-400/30'
+											>
+												<h3 className='text-xl font-bold text-white mb-4'>User Achievements</h3>
+												{userAchievements.isLoading && (
+													<div className='text-slate-300 text-center py-8'>Loading achievements...</div>
+												)}
+												{userAchievements.error && (
+													<div className='text-red-400 text-center py-8'>
+														Error loading achievements: {userAchievements.error.message}
+													</div>
+												)}
+												{userAchievements.data && (
+													<div className='space-y-2'>
+														{userAchievements.data.data && userAchievements.data.data.length > 0 ? (
+															userAchievements.data.data.map((achievement, index) => (
+																<Card
+																	key={index}
+																	variant={CardVariant.TRANSPARENT}
+																	padding={Spacing.MD}
+																	className='border border-yellow-400/20'
+																>
+																	<div className='text-white font-semibold'>{achievement.name ?? 'Achievement'}</div>
+																	<div className='text-slate-300 text-sm'>{achievement.description ?? ''}</div>
+																</Card>
+															))
+														) : (
+															<div className='text-slate-400 text-center py-4'>No achievements found</div>
+														)}
+													</div>
+												)}
+											</Card>
+										)}
+
+										{analyticsView === 'summary' && (
+											<Card
+												variant={CardVariant.TRANSPARENT}
+												padding={Spacing.LG}
+												className='rounded-lg border border-indigo-400/30'
+											>
+												<h3 className='text-xl font-bold text-white mb-4'>User Summary</h3>
+												{userSummary.isLoading && (
+													<div className='text-slate-300 text-center py-8'>Loading summary...</div>
+												)}
+												{userSummary.error && (
+													<div className='text-red-400 text-center py-8'>
+														Error loading summary: {userSummary.error.message}
+													</div>
+												)}
+												{userSummary.data && (
+													<div className='space-y-4'>
+														{userSummary.data.data?.insights && userSummary.data.data.insights.length > 0 ? (
+															<div className='space-y-2'>
+																{userSummary.data.data.insights.map((insight, index) => (
+																	<div key={index} className='text-slate-300'>
+																		{insight}
+																	</div>
+																))}
+															</div>
+														) : (
+															<div className='text-slate-300'>No summary available</div>
+														)}
+													</div>
+												)}
+											</Card>
+										)}
+
+										{(analyticsView === 'progress' ||
+											analyticsView === 'insights' ||
+											analyticsView === 'recommendations' ||
+											analyticsView === 'trends' ||
+											analyticsView === 'comparison') && (
+											<Card
+												variant={CardVariant.TRANSPARENT}
+												padding={Spacing.LG}
+												className='rounded-lg border border-blue-400/30'
+											>
+												<h3 className='text-xl font-bold text-white mb-4 capitalize'>{analyticsView}</h3>
+												<div className='text-slate-300 text-center py-8'>
+													{analyticsView === 'progress' && userProgress.isLoading && 'Loading progress...'}
+													{analyticsView === 'progress' && userProgress.error && `Error: ${userProgress.error.message}`}
+													{analyticsView === 'progress' && userProgress.data && (
+														<div>Progress data loaded ({userProgress.data.data?.topics?.length ?? 0} topics)</div>
+													)}
+													{analyticsView === 'insights' && userInsights.isLoading && 'Loading insights...'}
+													{analyticsView === 'insights' && userInsights.error && `Error: ${userInsights.error.message}`}
+													{analyticsView === 'insights' && userInsights.data && 'Insights data loaded'}
+													{analyticsView === 'recommendations' &&
+														userRecommendations.isLoading &&
+														'Loading recommendations...'}
+													{analyticsView === 'recommendations' &&
+														userRecommendations.error &&
+														`Error: ${userRecommendations.error.message}`}
+													{analyticsView === 'recommendations' &&
+														userRecommendations.data &&
+														`${userRecommendations.data.data?.length ?? 0} recommendations`}
+													{analyticsView === 'trends' && userTrends.isLoading && 'Loading trends...'}
+													{analyticsView === 'trends' && userTrends.error && `Error: ${userTrends.error.message}`}
+													{analyticsView === 'trends' &&
+														userTrends.data &&
+														`${userTrends.data.data?.length ?? 0} trend points`}
+													{analyticsView === 'comparison' && userComparison.isLoading && 'Loading comparison...'}
+													{analyticsView === 'comparison' &&
+														userComparison.error &&
+														`Error: ${userComparison.error.message}`}
+													{analyticsView === 'comparison' && userComparison.data && 'Comparison data loaded'}
+												</div>
+											</Card>
+										)}
+									</div>
+								) : (
+									<Card
+										variant={CardVariant.TRANSPARENT}
+										padding={Spacing.LG}
+										className='rounded-lg border border-slate-400/30'
+									>
+										<div className='text-slate-400 text-center py-8'>Enter a user ID above to view their analytics</div>
+									</Card>
+								)}
 							</div>
 						</motion.section>
 					)}

@@ -7,8 +7,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-	Max,
-	Min,
 	IsBoolean,
 	IsDateString,
 	IsIn,
@@ -17,7 +15,9 @@ import {
 	IsObject,
 	IsOptional,
 	IsString,
+	Max,
 	MaxLength,
+	Min,
 	MinLength,
 } from 'class-validator';
 
@@ -25,9 +25,7 @@ import {
 	EventResult,
 	SortOrder,
 	TimePeriod,
-	VALID_DIFFICULTIES,
 	VALID_EVENT_RESULTS,
-	VALID_GAME_MODES,
 	VALID_SORT_ORDERS,
 	VALID_TIME_PERIODS,
 } from '@shared/constants';
@@ -131,69 +129,6 @@ export class TrackEventDto {
 	properties?: Record<string, BasicValue>;
 }
 
-export class GameAnalyticsQueryDto {
-	@ApiPropertyOptional({
-		description: 'Start date for game analytics query',
-		example: '2024-01-01',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'End date for game analytics query',
-		example: '2024-01-31',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'Filter by specific topic',
-		example: 'science',
-		maxLength: 100,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(100, { message: 'Topic cannot exceed 100 characters' })
-	topic?: string;
-
-	@ApiPropertyOptional({
-		description: 'Filter by difficulty level',
-		example: 'medium',
-		enum: VALID_DIFFICULTIES,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_DIFFICULTIES, {
-		message: `Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`,
-	})
-	difficulty?: string;
-
-	@ApiPropertyOptional({
-		description: 'Filter by game mode',
-		example: 'question-limited',
-		enum: VALID_GAME_MODES,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_GAME_MODES, {
-		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
-	})
-	gameMode?: string;
-
-	@ApiPropertyOptional({
-		description: 'Maximum number of results to return',
-		example: 100,
-		minimum: 1,
-		maximum: 1000,
-	})
-	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
-	@IsNumber({}, { message: 'Limit must be a number' })
-	limit?: number;
-}
-
 export class TopicAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for topic analytics query',
@@ -257,6 +192,7 @@ export class DifficultyAnalyticsQueryDto {
 		example: true,
 	})
 	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true')
 	@IsBoolean({ message: 'Include custom difficulties must be a boolean value' })
 	includeCustom?: boolean;
 
@@ -380,7 +316,7 @@ export class UserSummaryQueryDto {
 		example: true,
 	})
 	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true')
 	@IsBoolean({ message: 'includeActivity must be a boolean value' })
 	includeActivity?: boolean;
 }
-

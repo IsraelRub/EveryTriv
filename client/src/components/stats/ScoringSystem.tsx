@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { StatisticsItem } from '@shared/types';
+import type { TopicAnalyticsRecord } from '@shared/types';
 
 import { ComponentSize, SCORING_DEFAULTS, Spacing } from '@/constants';
 
@@ -32,26 +32,32 @@ export default function ScoringSystem({
 
 		const matchedRange = gradeRanges.find(range => percentage >= range.min) ?? gradeRanges[gradeRanges.length - 1];
 
-					return {
+		return {
 			correct: normalizedScore,
 			total: normalizedTotal,
 			grade: matchedRange.grade,
 			color: matchedRange.color,
-						percentage,
+			percentage,
 		};
 	}, [score, total]);
 
 	const topTopics = useMemo(() => {
 		if (!topicsPlayed) return [];
 
-		const topicEntries: Array<Pick<StatisticsItem, 'topic' | 'count'>> = Object.entries(topicsPlayed).map(
-			([topic, count]) => ({
+		const topicEntries: Pick<TopicAnalyticsRecord, 'topic' | 'totalGames'>[] = Object.entries(topicsPlayed).map(
+			([topic, totalGames]) => ({
 				topic,
-				count: Number(count) || 0,
+				totalGames: Number(totalGames) ?? 0,
 			})
 		);
 
-		return topicEntries.sort((a, b) => b.count - a.count).slice(0, 5);
+		return topicEntries
+			.sort((a, b) => (b.totalGames ?? 0) - (a.totalGames ?? 0))
+			.slice(0, 5)
+			.map(entry => ({
+				topic: entry.topic,
+				totalGames: entry.totalGames ?? 0,
+			}));
 	}, [topicsPlayed]);
 
 	if (total === 0) {
@@ -170,12 +176,12 @@ export default function ScoringSystem({
 					</div>
 					{topTopics.length > 0 ? (
 						<div className='flex flex-wrap gap-2'>
-							{topTopics.map(({ topic, count }) => (
+							{topTopics.map(({ topic, totalGames }) => (
 								<span
 									key={topic}
 									className='bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm border border-blue-400/30'
 								>
-									{topic}: {count} time{count !== 1 ? 's' : ''}
+									{topic}: {totalGames} time{totalGames !== 1 ? 's' : ''}
 								</span>
 							))}
 						</div>

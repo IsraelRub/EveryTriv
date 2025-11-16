@@ -1,4 +1,3 @@
-// import { DifficultyLevel } from '@shared/constants';
 import { MouseEvent, useEffect, useState } from 'react';
 
 import { motion } from 'framer-motion';
@@ -49,8 +48,6 @@ export default function UserProfile() {
 		bestStreak: 0,
 	});
 	const [email, setEmail] = useState('');
-	const [bio, setBio] = useState('');
-	const [location, setLocation] = useState('');
 	const [preferences, setPreferences] = useState({
 		soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
 		musicEnabled: DEFAULT_USER_PREFERENCES.musicEnabled,
@@ -87,8 +84,6 @@ export default function UserProfile() {
 			dispatch(setUsername(profile.username ?? ''));
 			dispatch(setAvatar(profile.avatar ?? ''));
 			setEmail(profile.email ?? '');
-			setBio(profile.bio ?? '');
-			setLocation('');
 
 			// Set preferences from response
 			if (userProfile.preferences) {
@@ -155,15 +150,12 @@ export default function UserProfile() {
 			updateProfileMutation.mutate({
 				username,
 				avatar,
-				bio: bio,
 			});
 			logger.userInfo('User profile updated successfully', {
 				userId: userProfile?.profile?.id,
 				username: username,
 				avatar: avatar,
 				email: email,
-				bio: bio,
-				location: location,
 			});
 		} catch (err) {
 			logger.userWarn('Failed to update user profile', {
@@ -259,48 +251,6 @@ export default function UserProfile() {
 												variant={ButtonVariant.SECONDARY}
 												size={ComponentSize.SM}
 												onClick={() => updateUserField.mutate({ field: 'email', value: email })}
-												disabled={updateUserField.isPending}
-												className='px-4'
-											>
-												{updateUserField.isPending ? '...' : 'Save'}
-											</Button>
-										</div>
-									</div>
-									<div>
-										<label className='block text-white font-medium mb-2'>Bio</label>
-										<div className='flex gap-2'>
-											<textarea
-												value={bio}
-												onChange={e => setBio(e.target.value)}
-												className='flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-												placeholder='Tell us about yourself'
-												rows={3}
-											/>
-											<Button
-												variant={ButtonVariant.SECONDARY}
-												size={ComponentSize.SM}
-												onClick={() => updateUserField.mutate({ field: 'bio', value: bio })}
-												disabled={updateUserField.isPending}
-												className='px-4 self-start'
-											>
-												{updateUserField.isPending ? '...' : 'Save'}
-											</Button>
-										</div>
-									</div>
-									<div>
-										<label className='block text-white font-medium mb-2'>Location</label>
-										<div className='flex gap-2'>
-											<input
-												type='text'
-												value={location}
-												onChange={e => setLocation(e.target.value)}
-												className='flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-												placeholder='Enter your location'
-											/>
-											<Button
-												variant={ButtonVariant.SECONDARY}
-												size={ComponentSize.SM}
-												onClick={() => updateUserField.mutate({ field: 'location', value: location })}
 												disabled={updateUserField.isPending}
 												className='px-4'
 											>

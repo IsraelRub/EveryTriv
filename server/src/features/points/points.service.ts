@@ -2,9 +2,23 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { GameMode, POINT_PURCHASE_PACKAGES, PointSource, PointTransactionType } from '@shared/constants';
+import {
+	GameMode,
+	PaymentMethod,
+	PaymentStatus,
+	POINT_PURCHASE_PACKAGES,
+	PointSource,
+	PointTransactionType,
+	VALIDATION_LIMITS,
+} from '@shared/constants';
 import { BasePointsService, serverLogger as logger } from '@shared/services';
-import type { CanPlayResponse, PointBalance, PointPurchaseOption } from '@shared/types';
+import type {
+	CanPlayResponse,
+	ManualPaymentDetails,
+	PaymentResult,
+	PointBalance,
+	PointPurchaseOption,
+} from '@shared/types';
 import { ensureErrorObject, isPointBalanceCacheEntry, isPointPurchaseOptionArray } from '@shared/utils';
 
 import { PointTransactionEntity, UserEntity } from '@internal/entities';
@@ -12,6 +26,14 @@ import { CacheService } from '@internal/modules';
 
 import { ValidationService } from '../../common';
 import { PaymentService } from '../payment';
+
+type PointsPurchaseRequest = {
+	packageId: string;
+	paymentMethod: PaymentMethod;
+	paypalOrderId?: string;
+	paypalPaymentId?: string;
+	manualPayment?: ManualPaymentDetails;
+};
 
 @Injectable()
 export class PointsService extends BasePointsService {
@@ -25,6 +47,13 @@ export class PointsService extends BasePointsService {
 		private readonly validationService: ValidationService
 	) {
 		super();
+	}
+
+	private assertQuestionCountWithinLimits(questionCount: number): void {
+		const { MIN, MAX } = VALIDATION_LIMITS.QUESTION_COUNT;
+		if (!Number.isFinite(questionCount) || questionCount < MIN || questionCount > MAX) {
+			throw new BadRequestException(`Question count must be between ${MIN} and ${MAX}`);
+		}
 	}
 
 	/**
@@ -116,16 +145,14 @@ export class PointsService extends BasePointsService {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			if (!questionCount || questionCount < 1 || questionCount > 50) {
-				throw new BadRequestException('Question count must be between 1 and 50');
-			}
+			this.assertQuestionCountWithinLimits(questionCount);
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new NotFoundException('User not found');
 			}
 
-			const totalAvailable = user.credits + user.remainingFreeQuestions;
+			const totalAvailable = user.credits + user.purchasedPoints + user.remainingFreeQuestions;
 
 			if (totalAvailable >= questionCount) {
 				return { canPlay: true };
@@ -156,9 +183,7 @@ export class PointsService extends BasePointsService {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			if (!questionCount || questionCount < 1 || questionCount > 50) {
-				throw new BadRequestException('Question count must be between 1 and 50');
-			}
+			this.assertQuestionCountWithinLimits(questionCount);
 
 			const gameModeValidation = await this.validationService.validateInputContent(gameMode);
 			if (!gameModeValidation.isValid) {
@@ -176,13 +201,14 @@ export class PointsService extends BasePointsService {
 			}
 
 			// Use deduction logic
+			const nextResetTime = user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null;
 			const currentBalance: PointBalance = {
-				totalPoints: user.credits + user.purchasedPoints + user.remainingFreeQuestions * 0.1,
+				totalPoints: user.credits,
 				purchasedPoints: user.purchasedPoints,
 				freeQuestions: user.remainingFreeQuestions,
 				canPlayFree: user.remainingFreeQuestions > 0,
-				dailyLimit: 10,
-				nextResetTime: null,
+				dailyLimit: user.dailyFreeQuestions,
+				nextResetTime,
 			};
 
 			const deductionResult = this.calculateNewBalance(currentBalance, questionCount, gameMode);
@@ -190,10 +216,7 @@ export class PointsService extends BasePointsService {
 			// Update user with new balance
 			user.remainingFreeQuestions = deductionResult.newBalance.freeQuestions;
 			user.purchasedPoints = deductionResult.newBalance.purchasedPoints;
-			user.credits =
-				deductionResult.newBalance.totalPoints -
-				deductionResult.newBalance.purchasedPoints -
-				deductionResult.newBalance.freeQuestions * 0.1;
+			user.credits = deductionResult.newBalance.totalPoints;
 
 			await this.userRepository.save(user);
 
@@ -203,8 +226,9 @@ export class PointsService extends BasePointsService {
 			// Create transaction record
 			const transaction = this.pointTransactionRepository.create({
 				userId,
-				type: PointTransactionType.DEDUCTION,
-				source: PointSource.PURCHASE,
+				type: PointTransactionType.GAME_USAGE,
+				source:
+					deductionResult.deductionDetails.purchasedPointsUsed > 0 ? PointSource.PURCHASED : PointSource.FREE_DAILY,
 				amount: -questionCount,
 				balanceAfter: user.credits,
 				freeQuestionsAfter: user.remainingFreeQuestions,
@@ -225,7 +249,7 @@ export class PointsService extends BasePointsService {
 			logger.databaseCreate('point_transaction', {
 				id: transaction.id,
 				userId,
-				type: PointTransactionType.DEDUCTION,
+				type: PointTransactionType.GAME_USAGE,
 				amount: -questionCount,
 				reason: reason ?? 'not_provided',
 			});
@@ -236,7 +260,7 @@ export class PointsService extends BasePointsService {
 				freeQuestions: user.remainingFreeQuestions,
 				dailyLimit: user.dailyFreeQuestions,
 				canPlayFree: user.remainingFreeQuestions > 0,
-				nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
+				nextResetTime,
 			};
 
 			logger.databaseInfo('Points deducted successfully', {
@@ -295,10 +319,13 @@ export class PointsService extends BasePointsService {
 	/**
 	 * Purchase points package
 	 */
-	async purchasePoints(userId: string, packageId: string): Promise<{ paymentUrl?: string }> {
+	async purchasePoints(
+		userId: string,
+		request: PointsPurchaseRequest
+	): Promise<PaymentResult & { balance?: PointBalance }> {
 		try {
 			// Validate purchase request
-			const purchaseValidation = await this.validationService.validatePointsPurchase(userId, packageId);
+			const purchaseValidation = await this.validationService.validatePointsPurchase(userId, request.packageId);
 			if (!purchaseValidation.isValid) {
 				throw new BadRequestException({
 					message: 'Invalid purchase request',
@@ -307,7 +334,7 @@ export class PointsService extends BasePointsService {
 			}
 
 			// Extract points from package ID
-			const pointsMatch = packageId.match(/package_(\d+)/);
+			const pointsMatch = request.packageId.match(/package_(\d+)/);
 			if (!pointsMatch) {
 				throw new BadRequestException('Invalid package ID');
 			}
@@ -327,30 +354,78 @@ export class PointsService extends BasePointsService {
 				numberOfPayments: 1,
 				type: 'points_purchase',
 				metadata: {
-					packageId,
+					packageId: request.packageId,
 					points,
 					price: packageInfo.price,
 				},
+				method: request.paymentMethod,
+				paypalOrderId: request.paypalOrderId,
+				paypalPaymentId: request.paypalPaymentId,
+				manualPayment: request.manualPayment,
 			});
 
-			logger.databaseInfo('Points purchase initiated', {
+			if (paymentResult.status !== PaymentStatus.COMPLETED) {
+				logger.databaseInfo('Points purchase pending completion', {
+					userId,
+					id: request.packageId,
+					points,
+					price: packageInfo.price,
+					status: paymentResult.status,
+					paymentId: paymentResult.transactionId,
+				});
+
+				return paymentResult;
+			}
+
+			logger.databaseInfo('Points purchase completed', {
 				userId,
-				id: packageId,
+				id: request.packageId,
 				points,
 				price: packageInfo.price,
-				paymentId: paymentResult.paymentId,
+				paymentId: paymentResult.transactionId,
 			});
 
+			const packageDetails = packageInfo as PointPurchaseOption;
+			const balance = await this.applyPointsPurchase(userId, points, packageDetails.bonus ?? 0);
+
 			return {
-				paymentUrl: `/payment/process/${paymentResult.paymentId}`,
+				...paymentResult,
+				balance,
 			};
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to purchase points', {
 				userId,
-				id: packageId,
+				id: request.packageId,
 			});
 			throw error;
 		}
+	}
+
+	private async applyPointsPurchase(userId: string, points: number, bonus: number): Promise<PointBalance> {
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			throw new NotFoundException('User not found');
+		}
+
+		const totalPoints = points + bonus;
+		user.credits = (user.credits ?? 0) + totalPoints;
+		user.purchasedPoints = (user.purchasedPoints ?? 0) + totalPoints;
+
+		await this.userRepository.save(user);
+
+		// Invalidate points cache
+		await this.cacheService.delete(`points:balance:${userId}`);
+
+		return {
+			totalPoints: user.credits ?? 0,
+			freeQuestions: user.remainingFreeQuestions ?? 0,
+			purchasedPoints: user.purchasedPoints ?? 0,
+			dailyLimit: user.dailyFreeQuestions ?? 0,
+			canPlayFree: (user.remainingFreeQuestions ?? 0) > 0,
+			nextResetTime: user.lastFreeQuestionsReset ? user.lastFreeQuestionsReset.toISOString() : null,
+			userId,
+			balance: user.credits,
+		};
 	}
 
 	/**
@@ -387,7 +462,7 @@ export class PointsService extends BasePointsService {
 			const transaction = this.pointTransactionRepository.create({
 				userId,
 				type: PointTransactionType.PURCHASE,
-				source: PointSource.PURCHASE,
+				source: PointSource.PURCHASED,
 				amount: points,
 				balanceAfter: user.credits,
 				freeQuestionsAfter: user.remainingFreeQuestions,

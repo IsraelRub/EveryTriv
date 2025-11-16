@@ -35,7 +35,8 @@ export const useCreateSubscription = () => {
 		onSuccess: data => {
 			// Invalidate queries with consistent keys
 			invalidateSubscriptionQueries(queryClient);
-			const normalizedPlan = data.planType && Object.values(PlanType).includes(data.planType) ? data.planType : undefined;
+			const normalizedPlan =
+				data.planType && Object.values(PlanType).includes(data.planType) ? data.planType : undefined;
 			const normalizedCycle = data.billingCycle;
 			logger.userInfo('Subscription created successfully', {
 				id: data.subscriptionId ?? undefined,

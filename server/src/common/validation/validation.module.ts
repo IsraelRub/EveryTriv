@@ -4,7 +4,7 @@ import { LanguageToolService } from './languageTool.service';
 import { ValidationService } from './validation.service';
 
 @Module({
-	providers: [ValidationService, LanguageToolService],
-	exports: [ValidationService, LanguageToolService],
+	providers: [LanguageToolService, ValidationService],
+	exports: [LanguageToolService, ValidationService],
 })
 export class ValidationModule {}

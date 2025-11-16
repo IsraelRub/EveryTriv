@@ -5,9 +5,9 @@
  * @description Logging system type definitions with modular interfaces
  * @used_by shared/services/logging
  */
-import { GameData } from '..';
-import { BillingCycle, GameMode, LogLevel, PlanType, UserRole, UserStatus } from '../../constants';
-import { BasicValue } from '../core';
+import type { GameData } from '..';
+import type { BillingCycle, GameMode, LogLevel, PaymentMethod, PlanType, UserRole, UserStatus } from '../../constants';
+import type { BasicValue } from '../core';
 import type { GameDifficulty } from '../domain/game/trivia.types';
 import { User, UserPreferences } from '../domain/user/user.types';
 import type { ValidationContext } from '../domain/validation.types';
@@ -18,14 +18,6 @@ export interface LogEntry {
 	level: LogLevel;
 	message: string;
 	meta?: LogMeta;
-}
-
-// Enhanced log entry with context
-export interface EnhancedLogEntry extends LogEntry {
-	context?: LogContext;
-	traceId?: string;
-	userId?: string;
-	sessionId?: string;
 }
 
 // HTTP-specific log data interface
@@ -103,6 +95,7 @@ export interface DatabaseLogger {
 	databaseInfo(message: string, meta?: LogMeta): void;
 	databaseWarn(message: string, meta?: LogMeta): void;
 	databaseDebug(message: string, meta?: LogMeta): void;
+	databaseCreate(resource: string, meta?: LogMeta): void;
 }
 
 export interface ApiLogger {
@@ -127,6 +120,7 @@ export interface CacheLogger {
 	cacheMiss(key: string, meta?: LogMeta): void;
 	cacheError(operation: string, key: string, meta?: LogMeta): void;
 	cacheInfo(message: string, meta?: LogMeta): void;
+	cacheDelete(key: string, meta?: LogMeta): void;
 }
 
 export interface StorageLogger {
@@ -150,7 +144,6 @@ export interface SecurityLogger {
 
 export interface ValidationLogger {
 	validationError(field: string, value: string, constraint: string, meta?: LogMeta): void;
-	validationSuccess(message: string, meta?: LogMeta): void;
 	validationWarn(field: string, value: string, constraint: string, meta?: LogMeta): void;
 	validationDebug(field: string, value: string, constraint: string, meta?: LogMeta): void;
 	validationInfo(field: string, value: string, constraint: string, meta?: LogMeta): void;
@@ -200,14 +193,6 @@ export interface LanguageToolLogger {
 	languageToolValidation(textLength: number, language: string, matchesCount: number, meta?: LogMeta): void;
 	languageToolError(errorMessage: string, meta?: LogMeta): void;
 	languageToolAvailabilityCheck(isAvailable: boolean, status: number, meta?: LogMeta): void;
-}
-
-export interface DatabaseExtendedLogger {
-	databaseCreate(resource: string, meta?: LogMeta): void;
-}
-
-export interface CacheExtendedLogger {
-	cacheDelete(key: string, meta?: LogMeta): void;
 }
 
 export interface NavigationLogger {
@@ -262,14 +247,8 @@ export interface Logger
 		ProviderLogger,
 		AuthLogger,
 		LanguageToolLogger,
-		DatabaseExtendedLogger,
-		CacheExtendedLogger,
 		NavigationLogger,
-		MediaLogger {
-	// Log retrieval methods (for debugging/analytics)
-	getLogs(): EnhancedLogEntry[];
-	clearLogs(): void;
-}
+		MediaLogger {}
 
 // Enhanced logger interface - for server-side only
 export interface EnhancedLoggerInterface extends Logger, EnhancedLogger {
@@ -281,6 +260,7 @@ export interface LogMeta {
 	accessTokenExpiry?: string;
 	action?: string;
 	activeProviders?: number;
+	activeUsers?: number;
 	actualCount?: number;
 	aiQuestion?: string;
 	amount?: number;
@@ -291,13 +271,14 @@ export interface LogMeta {
 	availableProviders?: number;
 	avatar?: string;
 	averageAccuracy?: number;
+	averageGames?: number;
+	averagePoints?: number;
 	averageScore?: number;
 	avgResponseTime?: number;
 	baseUrl?: string;
 	batchSize?: number;
 	bestStreak?: number;
 	billingCycle?: BillingCycle;
-	bio?: string;
 	burstCount?: number;
 	canPlay?: boolean;
 	canPlayFree?: boolean;
@@ -352,7 +333,7 @@ export interface LogMeta {
 	freeQuestions?: number;
 	gameData?: GameData;
 	gameMode?: GameMode;
-	gameModes?: string[];
+	gameModes?: GameMode[];
 	googleId?: string;
 	hasApiKey?: boolean;
 	hasData?: boolean;
@@ -408,6 +389,7 @@ export interface LogMeta {
 	pattern?: string;
 	paymentId?: string;
 	paymentMethodId?: string;
+	paymentMethod?: PaymentMethod;
 	paymentsCount?: number;
 	paymentType?: string;
 	percentile?: number;
@@ -439,11 +421,10 @@ export interface LogMeta {
 	remainingInQueue?: number;
 	remainingPoints?: number;
 	requestCount?: number;
-	requestedCount?: number;
 	requests?: number;
+	requestedCount?: number;
 	requiredRoles?: UserRole[];
 	requireEmailVerification?: boolean;
-	requirePhoneVerification?: boolean;
 	responseTime?: number;
 	resultsCount?: number;
 	retryCount?: number;

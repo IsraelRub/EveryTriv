@@ -5,11 +5,11 @@
  * @description Shared validation functions for trivia game input validation
  * @author EveryTriv Team
  */
-import { CUSTOM_DIFFICULTY_PREFIX, VALID_DIFFICULTIES } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX } from '@shared/constants';
 import type { TriviaInputValidationResult } from '@shared/types';
-import { validateTopicLength } from '@shared/utils';
 
-import { isCustomDifficulty } from './difficulty.validation';
+import { validateTopicLength } from '../core/topic.validation';
+import { isCustomDifficulty, isRegisteredDifficulty } from './difficulty.validation';
 
 /**
  * Performs quick validation for trivia input without external API calls
@@ -47,9 +47,7 @@ export function validateTriviaInputQuick(topic: string, difficulty: string): Tri
 			result.difficulty.errors.push('Custom difficulty must be at least 3 characters');
 		}
 	} else {
-		const normalizedDifficulty = difficulty.toLowerCase();
-		const isValidDifficulty = VALID_DIFFICULTIES.some(validDiff => validDiff.toLowerCase() === normalizedDifficulty);
-		if (!isValidDifficulty) {
+		if (!isRegisteredDifficulty(difficulty)) {
 			result.difficulty.isValid = false;
 			result.difficulty.errors.push('Please select a valid difficulty level');
 		}

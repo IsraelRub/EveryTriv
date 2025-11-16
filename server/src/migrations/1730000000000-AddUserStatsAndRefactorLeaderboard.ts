@@ -37,8 +37,6 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 					"total_play_time" integer NOT NULL DEFAULT '0',
 					"best_game_score" integer NOT NULL DEFAULT '0',
 					"best_game_date" TIMESTAMP,
-					"unlocked_achievements" jsonb NOT NULL DEFAULT '[]',
-					"total_achievements" integer NOT NULL DEFAULT '0',
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "UQ_user_stats_user_id" UNIQUE ("user_id"),
@@ -64,11 +62,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
 
-			// Drop existing leaderboard table
-			console.log('Dropping existing leaderboard table');
-			await queryRunner.query(`DROP TABLE IF EXISTS "leaderboard"`);
-
-			// Create new leaderboard table with improved structure
+			// Create leaderboard table
 			console.log('Creating new leaderboard table');
 			await queryRunner.query(`
 				CREATE TABLE "leaderboard" (
@@ -77,15 +71,9 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 					"user_stats_id" uuid NOT NULL,
 					"rank" integer NOT NULL DEFAULT '0',
 					"percentile" integer NOT NULL DEFAULT '0',
+					"score" integer NOT NULL DEFAULT '0',
 					"total_users" integer NOT NULL DEFAULT '0',
-					"weekly_rank" integer NOT NULL DEFAULT '0',
-					"monthly_rank" integer NOT NULL DEFAULT '0',
-					"yearly_rank" integer NOT NULL DEFAULT '0',
 					"last_rank_update" TIMESTAMP,
-					"last_weekly_rank_update" TIMESTAMP,
-					"last_monthly_rank_update" TIMESTAMP,
-					"last_yearly_rank_update" TIMESTAMP,
-					"rank_history" jsonb NOT NULL DEFAULT '[]',
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "UQ_leaderboard_user_id" UNIQUE ("user_id"),
@@ -99,9 +87,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_user_stats_id" ON "leaderboard" ("user_stats_id")`);
 			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_rank" ON "leaderboard" ("rank")`);
 			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_percentile" ON "leaderboard" ("percentile")`);
-			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_weekly_rank" ON "leaderboard" ("weekly_rank")`);
-			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_monthly_rank" ON "leaderboard" ("monthly_rank")`);
-			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_yearly_rank" ON "leaderboard" ("yearly_rank")`);
+			await queryRunner.query(`CREATE INDEX "IDX_leaderboard_score" ON "leaderboard" ("score")`);
 
 			// Add foreign key constraints for leaderboard
 			console.log('Adding foreign key constraints for leaderboard');
@@ -114,38 +100,11 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 				FOREIGN KEY ("user_stats_id") REFERENCES "user_stats"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
 
-			// Create leaderboard view for real-time calculations
-			console.log('Creating leaderboard view');
-			await queryRunner.query(`
-				CREATE VIEW leaderboard_view AS
-				SELECT 
-					u.id as user_id,
-					u.username,
-					u.avatar,
-					u.score,
-					COALESCE(us.total_games, 0) as total_games,
-					COALESCE(us.total_questions, 0) as total_questions,
-					COALESCE(us.correct_answers, 0) as correct_answers,
-					COALESCE(us.overall_success_rate, 0) as success_rate,
-					COALESCE(us.current_streak, 0) as current_streak,
-					COALESCE(us.longest_streak, 0) as longest_streak,
-					us.last_play_date,
-					us.weekly_score,
-					us.monthly_score,
-					us.yearly_score,
-					RANK() OVER (ORDER BY u.score DESC) as rank,
-					PERCENT_RANK() OVER (ORDER BY u.score DESC) * 100 as percentile
-				FROM users u
-				LEFT JOIN user_stats us ON u.id = us.user_id
-				WHERE u.is_active = true
-			`);
-
 			console.log('Migration completed successfully: AddUserStatsAndRefactorLeaderboard', {
 				migrationName: this.name,
 				operation: 'up',
 				tablesCreated: ['user_stats', 'leaderboard'],
-				viewCreated: ['leaderboard_view'],
-				indexesCreated: 12,
+				indexesCreated: 9,
 				foreignKeysAdded: 3,
 			});
 		} catch (error) {
@@ -158,42 +117,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 		}
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		console.log('Starting migration rollback: AddUserStatsAndRefactorLeaderboard', {
-			migrationName: this.name,
-			operation: 'down',
-		});
-
-		try {
-			// Drop view
-			console.log('Dropping leaderboard view');
-			await queryRunner.query(`DROP VIEW IF EXISTS leaderboard_view`);
-
-			// Drop foreign key constraints
-			console.log('Dropping foreign key constraints');
-			await queryRunner.query(`ALTER TABLE "leaderboard" DROP CONSTRAINT IF EXISTS "FK_leaderboard_user_stats"`);
-			await queryRunner.query(`ALTER TABLE "leaderboard" DROP CONSTRAINT IF EXISTS "FK_leaderboard_user"`);
-			await queryRunner.query(`ALTER TABLE "user_stats" DROP CONSTRAINT IF EXISTS "FK_user_stats_user"`);
-
-			// Drop tables
-			console.log('Dropping tables');
-			await queryRunner.query(`DROP TABLE IF EXISTS "leaderboard"`);
-			await queryRunner.query(`DROP TABLE IF EXISTS "user_stats"`);
-
-			console.log('Migration rollback completed: AddUserStatsAndRefactorLeaderboard', {
-				migrationName: this.name,
-				operation: 'down',
-				tablesDropped: ['leaderboard', 'user_stats'],
-				viewDropped: ['leaderboard_view'],
-				foreignKeysDropped: 3,
-			});
-		} catch (error) {
-			console.error('Migration rollback failed: AddUserStatsAndRefactorLeaderboard', {
-				migrationName: this.name,
-				operation: 'down',
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
+	public async down(): Promise<void> {
+		throw new Error('Migration rollback is not supported');
 	}
 }

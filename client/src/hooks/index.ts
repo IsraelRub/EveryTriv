@@ -56,6 +56,7 @@ export { useUpdateUserProfile, useUserProfile } from './useUser';
 export {
 	useGlobalLeaderboard,
 	useLeaderboardByPeriod,
+	useLeaderboardStats,
 	useUpdateUserRanking,
 	useUserRanking,
 } from './useLeaderboardFeatures';
@@ -67,10 +68,28 @@ export {
 export {
 	useAnalyticsExport,
 	useDifficultyStats,
+	useGlobalStats,
 	usePopularTopics,
 	useRealTimeAnalytics,
 	useUserAnalytics,
 } from './useAnalyticsDashboard';
+
+/**
+ * Admin analytics hooks
+ * @description Admin-only analytics hooks for user analytics by ID
+ */
+export {
+	useUserStatisticsById,
+	useUserPerformanceById,
+	useUserProgressById,
+	useUserActivityById,
+	useUserInsightsById,
+	useUserRecommendationsById,
+	useUserAchievementsById,
+	useUserTrendsById,
+	useCompareUserPerformance,
+	useUserSummaryById,
+} from './useAdminAnalytics';
 
 /**
  * Subscription management hooks

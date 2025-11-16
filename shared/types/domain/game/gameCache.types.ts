@@ -5,4 +5,3 @@ export interface SavedGameConfiguration extends Record<string, unknown> {
 	timeLimit: number;
 	soundEnabled: boolean;
 }
-

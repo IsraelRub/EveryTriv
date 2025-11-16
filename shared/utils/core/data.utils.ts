@@ -82,12 +82,39 @@ export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
 	const grouped: Record<string, T[]> = {};
 
 	for (const item of arr) {
-			const groupKey = String(item[key]);
+		const groupKey = String(item[key]);
 		if (!grouped[groupKey]) {
 			grouped[groupKey] = [];
-			}
+		}
 		grouped[groupKey].push(item);
 	}
 
 	return grouped;
+}
+
+/**
+ * Build a count record from an array of items
+ * @param items Items to aggregate
+ * @param keySelector Selector for the record key
+ * @param countSelector Selector for the numeric value
+ * @returns Record mapping keys to numeric counts
+ */
+export function buildCountRecord<T>(
+	items: T[],
+	keySelector: (item: T) => string | null | undefined,
+	countSelector: (item: T) => number | null | undefined
+): Record<string, number> {
+	const record: Record<string, number> = {};
+
+	for (const item of items) {
+		const key = keySelector(item);
+		if (!key) {
+			continue;
+		}
+
+		const value = countSelector(item);
+		record[key] = Number(value ?? 0);
+	}
+
+	return record;
 }

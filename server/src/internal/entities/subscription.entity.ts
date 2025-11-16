@@ -1,80 +1,160 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { PaymentMethod, PlanType, SubscriptionStatus } from '@shared/constants';
-import { SubscriptionData } from '@shared/types';
+import { PlanType, SubscriptionStatus } from '@shared/constants';
+import type { SubscriptionData } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
+
+type SubscriptionMetadata = Partial<SubscriptionData> & {
+	currency?: string;
+	paymentHistoryId?: string;
+};
 
 @Entity('subscriptions')
 export class SubscriptionEntity extends BaseEntity {
 	@Column({ name: 'user_id' })
 	@Index()
-	userId: string;
+	userId!: string;
 
 	@ManyToOne(() => UserEntity, user => user.id, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'user_id' })
-	user: UserEntity;
+	user!: UserEntity;
 
-	@Column({ name: 'plan_id' })
-	planId: string;
+	@Column({ name: 'subscription_id', type: 'varchar' })
+	subscriptionExternalId: string = '';
 
-	@Column({
-		type: 'enum',
-		enum: SubscriptionStatus,
-		default: SubscriptionStatus.PENDING,
-	})
-	status: SubscriptionStatus;
+	@Column({ name: 'plan_id', type: 'varchar' })
+	planId: string = '';
 
-	@Column('decimal', { precision: 10, scale: 2 })
-	price: number;
+	@Column({ name: 'status', type: 'varchar', default: SubscriptionStatus.PENDING })
+	private statusInternal: SubscriptionStatus = SubscriptionStatus.PENDING;
 
-	@Column({ default: 'USD' })
-	currency: string;
+	@Column({ name: 'current_period_start', type: 'timestamp', nullable: true })
+	private periodStart?: Date;
 
-	@Column({ name: 'start_date' })
-	startDate: Date;
+	@Column({ name: 'current_period_end', type: 'timestamp', nullable: true })
+	private periodEnd?: Date;
 
-	@Column({ name: 'end_date' })
-	endDate: Date;
+	@Column({ name: 'cancel_at_period_end', type: 'boolean', default: false })
+	cancelAtPeriodEnd: boolean = false;
 
-	@Column({
-		name: 'payment_method',
-		type: 'enum',
-		enum: PaymentMethod,
-		default: PaymentMethod.STRIPE,
-	})
-	paymentMethod: PaymentMethod;
+	@Column('jsonb', { default: () => "'{}'::jsonb" })
+	private metadataInternal: SubscriptionMetadata = {};
 
-	@Column({ name: 'stripe_price_id', nullable: true })
-	stripePriceId?: string;
+	get status(): SubscriptionStatus {
+		return this.statusInternal ?? SubscriptionStatus.PENDING;
+	}
 
-	@Column({ name: 'stripe_subscription_id', nullable: true })
-	stripeSubscriptionId?: string;
+	set status(value: SubscriptionStatus) {
+		this.statusInternal = value;
+	}
 
-	@Column({ name: 'stripe_customer_id', nullable: true })
-	stripeCustomerId?: string;
+	get startDate(): Date | undefined {
+		return this.periodStart;
+	}
 
-	@Column({
-		name: 'plan_type',
-		type: 'enum',
-		enum: PlanType,
-		default: PlanType.BASIC,
-	})
-	planType: PlanType;
+	set startDate(value: Date | undefined) {
+		this.periodStart = value;
+	}
 
-	@Column({ name: 'auto_renew', default: true })
-	autoRenew: boolean = true;
+	get endDate(): Date | undefined {
+		return this.periodEnd;
+	}
 
-	@Column({ name: 'next_billing_date', type: 'timestamp', nullable: true })
-	nextBillingDate?: Date;
+	set endDate(value: Date | undefined) {
+		this.periodEnd = value;
+	}
 
-	@Column({ name: 'cancelled_at', type: 'timestamp', nullable: true })
-	cancelledAt?: Date;
+	get metadata(): SubscriptionMetadata {
+		if (!this.metadataInternal) {
+			this.metadataInternal = {};
+		}
+		return this.metadataInternal;
+	}
 
-	@Column({ name: 'payment_history_id', nullable: true })
-	paymentHistoryId?: string;
+	set metadata(value: SubscriptionMetadata) {
+		this.metadataInternal = value ?? {};
+	}
 
-	@Column('jsonb', { default: {} })
-	metadata: SubscriptionData;
+	get planType(): PlanType {
+		return this.metadata.planType ?? PlanType.BASIC;
+	}
+
+	set planType(value: PlanType) {
+		this.metadata.planType = value;
+		this.planId = value;
+	}
+
+	get price(): number {
+		return this.metadata.price ?? 0;
+	}
+
+	set price(value: number) {
+		this.metadata.price = value;
+	}
+
+	get currency(): string {
+		return this.metadata.currency ?? 'USD';
+	}
+
+	set currency(value: string) {
+		this.metadata.currency = value;
+	}
+
+	get autoRenew(): boolean {
+		return this.metadata.autoRenew ?? !this.cancelAtPeriodEnd;
+	}
+
+	set autoRenew(value: boolean) {
+		this.metadata.autoRenew = value;
+		this.cancelAtPeriodEnd = !value;
+	}
+
+	get nextBillingDate(): Date | undefined {
+		const value = this.metadata.nextBillingDate;
+		return value ? new Date(value) : undefined;
+	}
+
+	set nextBillingDate(value: Date | undefined) {
+		if (value) {
+			this.metadata.nextBillingDate = value;
+		} else {
+			delete this.metadata.nextBillingDate;
+		}
+	}
+
+	get paymentHistoryId(): string | undefined {
+		return this.metadata.paymentHistoryId ?? undefined;
+	}
+
+	set paymentHistoryId(value: string | undefined) {
+		if (value) {
+			this.metadata.paymentHistoryId = value;
+		} else {
+			delete this.metadata.paymentHistoryId;
+		}
+	}
+
+	get features(): string[] {
+		const value = this.metadata.features;
+		return Array.isArray(value) ? [...value] : [];
+	}
+
+	set features(value: string[]) {
+		this.metadata.features = value ?? [];
+	}
+
+	get cancelledAt(): Date | undefined {
+		const value = this.metadata.cancelledAt;
+		return value ? new Date(value) : undefined;
+	}
+
+	set cancelledAt(value: Date | undefined) {
+		if (value) {
+			this.metadata.cancelledAt = value;
+		} else {
+			delete this.metadata.cancelledAt;
+		}
+	}
 }

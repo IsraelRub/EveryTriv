@@ -41,9 +41,10 @@ export class AddPointTransactionSystem1710000000000 implements MigrationInterfac
 					"description" character varying,
 					"game_history_id" character varying,
 					"payment_id" character varying,
-					"metadata" jsonb NOT NULL DEFAULT '{}',
+					"metadata" jsonb NOT NULL DEFAULT '{}'::jsonb,
 					"transaction_date" date NOT NULL DEFAULT CURRENT_DATE,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
+					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "PK_point_transactions_id" PRIMARY KEY ("id")
 				)
 			`);
@@ -80,46 +81,7 @@ export class AddPointTransactionSystem1710000000000 implements MigrationInterfac
 		}
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		console.log('Starting migration rollback: AddPointTransactionSystem', {
-			migrationName: this.name,
-			operation: 'down',
-		});
-
-		try {
-			// Drop foreign key constraint
-			console.log('Dropping foreign key constraint');
-			await queryRunner.query(`ALTER TABLE "point_transactions" DROP CONSTRAINT "FK_point_transactions_user"`);
-
-			// Drop indexes
-			console.log('Dropping indexes');
-			await queryRunner.query(`DROP INDEX "IDX_point_transactions_date"`);
-			await queryRunner.query(`DROP INDEX "IDX_point_transactions_user_id"`);
-
-			// Drop table
-			console.log('Dropping point_transactions table');
-			await queryRunner.query(`DROP TABLE "point_transactions"`);
-
-			// Drop enums
-			console.log('Dropping enums');
-			await queryRunner.query(`DROP TYPE "point_source_enum"`);
-			await queryRunner.query(`DROP TYPE "point_transaction_type_enum"`);
-
-			console.log('Migration rollback completed: AddPointTransactionSystem', {
-				migrationName: this.name,
-				operation: 'down',
-				tablesDropped: ['point_transactions'],
-				enumsDropped: ['point_source_enum', 'point_transaction_type_enum'],
-				indexesDropped: 2,
-				foreignKeysDropped: 1,
-			});
-		} catch (error) {
-			console.error('Migration rollback failed: AddPointTransactionSystem', {
-				migrationName: this.name,
-				operation: 'down',
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
+	public async down(): Promise<void> {
+		throw new Error('Migration rollback is not supported');
 	}
 }

@@ -69,3 +69,17 @@ export class GetLeaderboardDto {
 	})
 	order?: SortOrder = SortOrder.DESC;
 }
+
+export class GetLeaderboardStatsDto {
+	@ApiPropertyOptional({
+		description: 'Time period for statistics',
+		example: 'weekly',
+		enum: ['weekly', 'monthly', 'yearly'],
+	})
+	@IsOptional()
+	@IsString()
+	@IsIn(['weekly', 'monthly', 'yearly'], {
+		message: 'Period must be one of: weekly, monthly, yearly',
+	})
+	period?: 'weekly' | 'monthly' | 'yearly' = 'weekly';
+}

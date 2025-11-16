@@ -13,7 +13,7 @@ alwaysApply: true
 ## 🔧 TypeScript
 
 - Always use TypeScript with `"strict": true` mode.
-- Do not use `any`; prefer `unknown` with proper type refinement.
+- Avoid `any`, `unknown`, and `as` assertions; rely on concrete types and type guards.
 - Type all props and state explicitly.
 - Store shared types in `shared/types/`.
 - Use proper type imports/exports.
@@ -43,6 +43,12 @@ Optional:
 - tailwindcss
 - axios
 - date-fns
+
+## 🛠 Tooling
+
+- Use `pnpm` for all commands.
+- Run compound PowerShell commands separately (no `&&` chaining support).
+- Keep shared workspace barrel exports up to date when adding or renaming files.
 
 ## 🧪 Testing
 
@@ -99,6 +105,8 @@ Optional:
 - Implement error boundaries
 - Use React.memo when needed
 - Follow composition over inheritance
+- Avoid duplicate logic across features; consolidate shared behavior.
+- Do not add placeholder components or example code—only production-ready logic.
 
 ### State Management
 - Use Redux Toolkit for global state
@@ -120,13 +128,14 @@ Optional:
 - Use proper dependency arrays
 - Handle cleanup in useEffect
 - Use proper hook naming
+- Ensure each hook has an immediate consumer before committing it.
 
 ## 🎨 Code Style
 
 - Use PascalCase for components
 - Use camelCase for variables and functions
 - Use UPPER_CASE for constants
-- Use kebab-case for file names
+- Use camelCase for file names
 - Add JSDoc comments for complex logic
 
 ## 🔄 Data Flow

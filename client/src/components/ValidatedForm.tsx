@@ -10,9 +10,16 @@ import { ChangeEvent, FormEvent, useCallback, useMemo, useRef, useState } from '
 
 import { VALID_DIFFICULTIES, VALID_QUESTION_COUNTS, VALIDATION_LIMITS } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { SimpleValidationResult } from '@shared/types';
-import { isRecord, validateEmail, validatePassword, validateTopicLength, validateUsername } from '@shared/utils';
-import { isCustomDifficulty, validateCustomDifficultyText } from '@shared/validation';
+import type { BaseValidationResult } from '@shared/types';
+import { isRecord } from '@shared/utils';
+import {
+	isValidDifficulty,
+	validateCustomDifficultyText,
+	validateEmail,
+	validatePassword,
+	validateTopicLength,
+	validateUsername,
+} from '@shared/validation';
 
 import { ButtonVariant, CardVariant, Spacing } from '../constants';
 import type { FormField, ValidatedFormProps } from '../types';
@@ -62,18 +69,16 @@ export function ValidatedForm({
 }: ValidatedFormProps<Record<string, string>>) {
 	const validators = useMemo(
 		() =>
-			fields.reduce((acc: Record<string, (value: string) => SimpleValidationResult>, field: FormField) => {
+			fields.reduce((acc: Record<string, (value: string) => BaseValidationResult>, field: FormField) => {
 				acc[field.name] = (value: string) => {
-					const validations: Record<string, () => SimpleValidationResult> = {
+					const validations: Record<string, () => BaseValidationResult> = {
 						username: () => validateUsername(value),
 						password: () => validatePassword(value),
 						email: () => validateEmail(value),
 						topic: () => validateTopicLength(value),
 						customDifficulty: () => validateCustomDifficultyText(value),
 						difficulty: () => {
-							const normalizedValue = value.toLowerCase();
-							const isValidStandard = VALID_DIFFICULTIES.some(validDiff => validDiff.toLowerCase() === normalizedValue);
-							const isValid = isValidStandard || isCustomDifficulty(value);
+							const isValid = isValidDifficulty(value);
 							return {
 								isValid,
 								errors: isValid

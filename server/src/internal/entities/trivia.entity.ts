@@ -17,6 +17,7 @@ export class TriviaEntity extends BaseEntity {
 		enum: DifficultyLevel,
 		default: DifficultyLevel.EASY,
 	})
+	@Index()
 	difficulty: DifficultyLevel = DifficultyLevel.EASY;
 
 	@Column()
@@ -29,8 +30,8 @@ export class TriviaEntity extends BaseEntity {
 	@Column({ name: 'correct_answer_index', type: 'int' })
 	correctAnswerIndex: number = 0;
 
-	@Column({ name: 'user_id', nullable: true })
-	userId: string = '';
+	@Column({ name: 'user_id', type: 'uuid', nullable: true })
+	userId: string | null = null;
 
 	@ManyToOne(() => UserEntity, { nullable: true })
 	@JoinColumn({ name: 'user_id' })
@@ -41,7 +42,4 @@ export class TriviaEntity extends BaseEntity {
 
 	@Column('jsonb', { nullable: true })
 	metadata: TriviaQuestionDetailsMetadata = {};
-
-	@Column({ name: 'search_vector', type: 'tsvector', select: false })
-	searchVector: string = '';
 }

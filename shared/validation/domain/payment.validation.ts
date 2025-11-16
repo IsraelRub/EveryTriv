@@ -5,7 +5,8 @@
  * @description Shared validation functions for payment processing and transaction validation
  * @author EveryTriv Team
  */
-import type { BaseValidationResult } from '@shared/types';
+import type { BaseValidationResult } from '../../types';
+import { sanitizeCardNumber } from '../../utils/infrastructure/sanitization.utils';
 
 /**
  * Validates payment amount and currency constraints
@@ -39,30 +40,39 @@ export function validatePaymentAmount(amount: number, currency: string = 'USD'):
 }
 
 /**
- * Validates credit card number using Luhn algorithm
+ * Validates credit card number using Luhn algorithm and length constraints
  *
- * @param cardNumber - The credit card number string to validate
- * @returns boolean True if the card number passes Luhn algorithm validation
- * @description Implements Luhn algorithm to check credit card number validity without external API calls
+ * @param rawNumber - The credit card number string to validate
+ * @returns boolean True if the card number passes validation (Luhn algorithm and length 12-19)
+ * @description Validates credit card number using Luhn algorithm and checks length constraints.
+ * Card numbers must be between 12 and 19 digits long and pass the Luhn checksum validation.
  */
-export function isValidLuhn(cardNumber: string): boolean {
+export function isValidCardNumber(rawNumber: string): boolean {
+	const digits = sanitizeCardNumber(rawNumber);
+	if (digits.length < 12 || digits.length > 19) {
+		return false;
+	}
+
 	let sum = 0;
-	let isEven = false;
+	let shouldDouble = false;
 
-	const cleanNumber = cardNumber.replace(/\s/g, '').split('').reverse().join('');
-
-	for (let i = 0; i < cleanNumber.length; i++) {
-		let digit = parseInt(cleanNumber[i], 10);
-
-		if (isEven) {
-			digit *= 2;
-			if (digit > 9) {
-				digit -= 9;
-			}
+	for (let index = digits.length - 1; index >= 0; index -= 1) {
+		const digit = parseInt(digits.charAt(index), 10);
+		if (Number.isNaN(digit)) {
+			return false;
 		}
 
-		sum += digit;
-		isEven = !isEven;
+		if (shouldDouble) {
+			let doubled = digit * 2;
+			if (doubled > 9) {
+				doubled -= 9;
+			}
+			sum += doubled;
+		} else {
+			sum += digit;
+		}
+
+		shouldDouble = !shouldDouble;
 	}
 
 	return sum % 10 === 0;

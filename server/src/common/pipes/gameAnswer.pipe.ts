@@ -8,7 +8,7 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { serverLogger as logger } from '@shared/services';
-import { GameAnswerSubmission, ValidationResult } from '@shared/types';
+import { GameAnswerSubmission } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { ValidationService } from '../validation';
@@ -17,7 +17,7 @@ import { ValidationService } from '../validation';
 export class GameAnswerPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: GameAnswerSubmission): Promise<ValidationResult> {
+	async transform(value: GameAnswerSubmission): Promise<GameAnswerSubmission> {
 		const startTime = Date.now();
 
 		try {
@@ -55,11 +55,11 @@ export class GameAnswerPipe implements PipeTransform {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				isValid,
-				errors,
-				suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
-			};
+			if (!isValid) {
+				throw new BadRequestException(errors.join(', ') || 'Invalid answer submission');
+			}
+
+			return value;
 		} catch (error) {
 			logger.validationError('game_answer', '[REDACTED]', 'validation_error', {
 				error: getErrorMessage(error),

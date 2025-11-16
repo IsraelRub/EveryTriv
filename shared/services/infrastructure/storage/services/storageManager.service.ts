@@ -114,8 +114,7 @@ export class StorageManagerService {
 						this.cacheStorage.set<T>(key, value, ttl),
 					]);
 
-					const persistentSuccess =
-						persistentResult.status === 'fulfilled' ? persistentResult.value.success : false;
+					const persistentSuccess = persistentResult.status === 'fulfilled' ? persistentResult.value.success : false;
 					const cacheSuccess = cacheResult.status === 'fulfilled' ? cacheResult.value.success : false;
 					success = persistentSuccess || cacheSuccess;
 
@@ -149,7 +148,8 @@ export class StorageManagerService {
 		validator?: (value: StorageValue) => value is T
 	): Promise<StorageOperationResult<T | null>> {
 		const guard: (value: StorageValue) => value is T =
-			validator ?? ((value: StorageValue): value is T => {
+			validator ??
+			((value: StorageValue): value is T => {
 				void value;
 				return true;
 			});

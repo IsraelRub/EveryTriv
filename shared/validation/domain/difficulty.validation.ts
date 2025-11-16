@@ -6,8 +6,8 @@
  * @author EveryTriv Team
  * @used_by client/src/utils/customDifficulty.utils.ts, shared/validation
  */
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
-import type { GameDifficulty, SimpleValidationResult } from '@shared/types';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES } from '@shared/constants';
+import type { BaseValidationResult, GameDifficulty } from '@shared/types';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -26,15 +26,13 @@ export function toDifficultyLevel(difficulty: GameDifficulty): DifficultyLevel {
 		return DifficultyLevel.CUSTOM;
 	}
 
-	// Type guard: Check if difficulty is a valid DifficultyLevel enum value
 	const normalizedDifficulty = difficulty.toLowerCase();
-	const validDifficulty = Object.values(DifficultyLevel).find(level => level.toLowerCase() === normalizedDifficulty);
+	const matchedDifficulty = VALID_DIFFICULTIES.find(level => level.toLowerCase() === normalizedDifficulty);
 
-	if (validDifficulty) {
-		return validDifficulty;
+	if (matchedDifficulty) {
+		return matchedDifficulty;
 	}
 
-	// Default to MEDIUM if invalid
 	return DifficultyLevel.MEDIUM;
 }
 
@@ -47,6 +45,29 @@ export function toDifficultyLevel(difficulty: GameDifficulty): DifficultyLevel {
  */
 export function isCustomDifficulty(difficulty: string): boolean {
 	return difficulty.startsWith(CUSTOM_DIFFICULTY_PREFIX);
+}
+
+/**
+ * Checks if the provided difficulty matches a registered difficulty level
+ *
+ * @param difficulty - The difficulty string to check
+ * @returns boolean True if the difficulty matches a registered difficulty
+ * @description Determines if difficulty corresponds to one of the predefined levels
+ */
+export function isRegisteredDifficulty(difficulty: string): difficulty is DifficultyLevel {
+	const normalizedDifficulty = difficulty.toLowerCase();
+	return VALID_DIFFICULTIES.some(validDiff => validDiff.toLowerCase() === normalizedDifficulty);
+}
+
+/**
+ * Checks if a difficulty value is valid (registered or custom)
+ *
+ * @param difficulty - The difficulty string to validate
+ * @returns boolean True if the difficulty is registered or a valid custom difficulty
+ * @description Validates that a difficulty is either one of the predefined levels or a custom difficulty
+ */
+export function isValidDifficulty(difficulty: string): boolean {
+	return isRegisteredDifficulty(difficulty) || isCustomDifficulty(difficulty);
 }
 
 /**
@@ -157,7 +178,7 @@ export function hasValidCustomDifficultyContent(text: string): boolean {
  * @returns SimpleValidationResult containing validation result and error messages if invalid
  * @description Performs comprehensive validation of custom difficulty text including length, content, and forbidden words
  */
-export function validateCustomDifficultyText(text: string): SimpleValidationResult {
+export function validateCustomDifficultyText(text: string): BaseValidationResult {
 	const trimmed = text.trim();
 
 	if (trimmed.length === 0) {

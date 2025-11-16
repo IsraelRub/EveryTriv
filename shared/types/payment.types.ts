@@ -3,8 +3,7 @@
  * @module PaymentInterfaces
  * @description Payment-related interfaces and types
  */
-import { PlanType } from '../constants';
-import type { UserAddress } from './domain';
+import { PaymentMethod, PaymentStatus, PAYPAL_ENVIRONMENTS, PlanType } from '../constants';
 
 /**
  * Payment metadata interface
@@ -44,6 +43,15 @@ export interface PaymentMetadata {
 	requestSource?: 'web' | 'mobile' | 'api';
 	gatewayTransactionId?: string;
 	refundReason?: string;
+	paypalOrderId?: string;
+	paypalPaymentId?: string;
+	paypalTransactionId?: string;
+	paypalMerchantId?: string;
+	manualCaptureReference?: string;
+	cardLast4?: string;
+	cardBrand?: string;
+	cardExpirationMonth?: number;
+	cardExpirationYear?: number;
 }
 
 // Personal payment data interface for payment forms
@@ -52,11 +60,6 @@ export interface PersonalPaymentData {
 	firstName: string;
 	lastName: string;
 	email: string;
-	phone: string;
-	dateOfBirth: string;
-
-	// Address Information
-	address: UserAddress;
 
 	// Payment Information
 	cardNumber: string;
@@ -71,16 +74,48 @@ export interface PersonalPaymentData {
 	// Additional
 	additionalInfo?: string;
 	agreeToTerms: boolean;
+	paymentMethod?: PaymentMethod;
+	paypalOrderId?: string;
+	paypalPaymentId?: string;
 }
+
+export interface ManualPaymentDetails {
+	cardNumber: string;
+	expiryMonth: number;
+	expiryYear: number;
+	cvv: string;
+	cardHolderName: string;
+	email?: string;
+	agreeToTerms?: boolean;
+	expiryDate?: string;
+	postalCode?: string;
+}
+
+export type PayPalEnvironment = (typeof PAYPAL_ENVIRONMENTS)[keyof typeof PAYPAL_ENVIRONMENTS];
+
+export interface PayPalOrderRequest {
+	environment: PayPalEnvironment;
+	clientId: string;
+	currencyCode: string;
+	amount: string;
+	description?: string;
+}
+
+export type PaymentClientAction = 'complete' | 'manual_capture' | 'confirm_paypal';
 
 // Payment data for creating payments (shared between client and server)
 export interface PaymentData {
 	amount: number;
 	currency: string;
 	description: string;
+	method: PaymentMethod;
 	planType?: PlanType;
 	numberOfPayments?: number;
 	type?: string;
+	manualPayment?: ManualPaymentDetails;
+	paypalOrderId?: string;
+	paypalPaymentId?: string;
+	clientTransactionId?: string;
 	metadata?: PaymentMetadata;
 }
 
@@ -88,9 +123,16 @@ export interface PaymentData {
 export interface PaymentResult {
 	paymentId?: string;
 	transactionId?: string;
-	status?: string;
+	status: PaymentStatus;
 	message?: string;
 	amount?: number;
 	currency?: string;
 	error?: string;
+	paymentMethod: PaymentMethod;
+	clientAction: PaymentClientAction;
+	paypalOrderRequest?: PayPalOrderRequest;
+	paypalOrderId?: string;
+	paypalPaymentId?: string;
+	manualCaptureReference?: string;
+	metadata?: PaymentMetadata;
 }

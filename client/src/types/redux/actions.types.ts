@@ -18,6 +18,8 @@ export interface PointBalancePayload {
 	purchasedPoints: number;
 	freePoints: number;
 	lastUpdated: Date;
+	dailyLimit?: number;
+	nextResetTime?: string | null;
 	points?: number;
 }
 

@@ -6,11 +6,12 @@
  * @description Client-side points management and balance tracking
  * @used_by client/src/components/payment, client/src/views/user, client/src/hooks
  */
-import { GameMode, VALID_GAME_MODES } from '@shared/constants';
+import { GameMode, PaymentMethod, VALID_GAME_MODES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { CanPlayResponse, PointBalance, PointPurchaseOption, PointTransaction } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import type { PointsPurchaseRequest, PointsPurchaseResponse } from '../types';
 import { formatTimeUntilReset } from '../utils';
 import { apiService } from './api.service';
 
@@ -137,19 +138,28 @@ class ClientPointsService {
 	/**
 	 * Purchase points package
 	 */
-	async purchasePoints(packageId: string): Promise<{ success: boolean; paymentUrl?: string }> {
+	async purchasePoints(request: PointsPurchaseRequest): Promise<PointsPurchaseResponse> {
 		try {
-			logger.userInfo('Purchasing points package', { id: packageId });
+			logger.userInfo('Purchasing points package', {
+				id: request.packageId,
+				method: request.paymentMethod ?? PaymentMethod.MANUAL_CREDIT,
+			});
 
-			const result = await apiService.purchasePoints(packageId);
+			const result = await apiService.purchasePoints(request);
 
-			logger.userInfo('Points purchase initiated', { id: packageId, success: result.success });
-			return {
-				success: result.success,
-				paymentUrl: result.url,
-			};
+			logger.userInfo('Points purchase response received', {
+				id: request.packageId,
+				status: result.status,
+				method: request.paymentMethod,
+			});
+
+			return result;
 		} catch (error) {
-			logger.userError('Failed to purchase points', { error: getErrorMessage(error), id: packageId });
+			logger.userError('Failed to purchase points', {
+				error: getErrorMessage(error),
+				id: request.packageId,
+				method: request.paymentMethod,
+			});
 			throw error;
 		}
 	}

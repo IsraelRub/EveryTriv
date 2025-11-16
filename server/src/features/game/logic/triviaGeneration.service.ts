@@ -141,6 +141,30 @@ export class TriviaGenerationService {
 	}
 
 	/**
+	 * Generate deterministic fallback questions when AI providers are unavailable
+	 * @param topic Topic for the questions
+	 * @param difficulty Difficulty level
+	 * @param count Number of questions requested
+	 * @param userId (Optional) user identifier for analytics consistency
+	 * @returns Array of stored fallback trivia entities
+	 */
+	async generateFallbackQuestions(topic: string, difficulty: GameDifficulty, count: number, userId?: string) {
+		const normalizedTopic = topic?.trim().length ? topic.trim() : 'general knowledge';
+		const difficultyLevel = toDifficultyLevel(difficulty);
+		const totalQuestions = Math.max(1, count);
+		const fallbackQuestions: TriviaEntity[] = [];
+
+		for (let index = 0; index < totalQuestions; index++) {
+			const fallbackQuestionData = this.buildFallbackQuestionData(normalizedTopic, difficultyLevel, index);
+			const triviaEntity = this.convertQuestionToEntity(fallbackQuestionData, userId);
+			const savedQuestion = await this.saveQuestion(triviaEntity);
+			fallbackQuestions.push(savedQuestion);
+		}
+
+		return fallbackQuestions;
+	}
+
+	/**
 	 * Get existing question by ID
 	 * @param questionId Question ID
 	 * @returns Trivia question
@@ -190,13 +214,9 @@ export class TriviaGenerationService {
 				count,
 			});
 
-			const questions = await this.triviaRepository
-				.createQueryBuilder('trivia')
-				.where('trivia.topic = :topic', { topic })
-				.andWhere('trivia.difficulty = :difficulty', { difficulty })
-				.orderBy('RANDOM()')
-				.limit(count)
-				.getMany();
+			const { createRandomQuery } = await import('../../../common/queries');
+			const queryBuilder = createRandomQuery(this.triviaRepository, 'trivia', { topic, difficulty }, count);
+			const questions = await queryBuilder.getMany();
 
 			return questions.map(question => ({
 				id: question.id,
@@ -255,6 +275,52 @@ export class TriviaGenerationService {
 			});
 			throw createValidationError('AI question format', 'string');
 		}
+	}
+
+	/**
+	 * Build fallback question data when AI providers are unavailable
+	 */
+	private buildFallbackQuestionData(
+		topic: string,
+		difficulty: DifficultyLevel,
+		index: number
+	): ServerTriviaQuestionInput {
+		const questionVariants = [
+			`Which statement about ${topic} is accurate?`,
+			`What best describes the trivia topic "${topic}"?`,
+			`Select the fact that matches the theme of ${topic}.`,
+			`Identify the correct insight regarding ${topic}.`,
+		];
+		const baseAnswers = [
+			`${topic} is a core subject in the EveryTriv knowledge base.`,
+			`Learning about ${topic} expands general knowledge and curiosity.`,
+			`${topic} frequently appears in engaging trivia challenges.`,
+			`Exploring ${topic} encourages players to think critically.`,
+			`${topic} offers interesting facts that are easy to remember.`,
+		];
+
+		const questionText = questionVariants[index % questionVariants.length];
+		const answers = [
+			baseAnswers[(index + 0) % baseAnswers.length],
+			baseAnswers[(index + 1) % baseAnswers.length],
+			baseAnswers[(index + 2) % baseAnswers.length],
+			baseAnswers[(index + 3) % baseAnswers.length],
+		];
+
+		return {
+			question: questionText,
+			answers,
+			correctAnswerIndex: 0,
+			topic,
+			difficulty,
+			metadata: {
+				category: topic,
+				source: 'system',
+				providerName: 'fallback',
+				difficulty,
+				generatedAt: new Date().toISOString(),
+			},
+		};
 	}
 
 	/**
@@ -324,7 +390,7 @@ export class TriviaGenerationService {
 			topic: questionData.topic,
 			difficulty: questionData.difficulty,
 			metadata: questionData.metadata,
-			userId: userId || '',
+			userId: userId ?? null,
 			createdAt: new Date(),
 		};
 	}

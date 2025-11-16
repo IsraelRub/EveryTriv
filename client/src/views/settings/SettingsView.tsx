@@ -16,8 +16,16 @@ import { clientLogger as logger } from '@shared/services';
 import type { UpdateUserProfileData, UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AlertModal, Button, Card, Container, Icon, fadeInUp, GridLayout, scaleIn } from '../../components';
-import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
+import { AlertModal, Button, Card, Container, fadeInUp, GridLayout, Icon, scaleIn } from '../../components';
+import {
+	AlertVariant,
+	AudioKey,
+	ButtonVariant,
+	CardVariant,
+	ComponentSize,
+	ContainerSize,
+	Spacing,
+} from '../../constants';
 import { useChangePassword, useDeleteUserAccount, useUpdateUserProfile } from '../../hooks';
 import { audioService } from '../../services';
 import type { RootState } from '../../types';
@@ -80,10 +88,10 @@ export default function SettingsView() {
 			return;
 		}
 
-			setSettings(prev => ({
-				...prev,
+		setSettings(prev => ({
+			...prev,
 			[action.key]: action.value,
-			}));
+		}));
 	};
 
 	const handleDifficultyChange = (value: string) => {

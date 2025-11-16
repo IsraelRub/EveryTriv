@@ -23,9 +23,6 @@ export interface UserRegisterRequest extends AuthCredentials {
 	confirmPassword: string;
 	firstName?: string;
 	lastName?: string;
-	phone?: string;
-	dateOfBirth?: string;
 	favoriteTopics?: string[];
 	agreeToTerms: boolean;
-	agreeToNewsletter?: boolean;
 }

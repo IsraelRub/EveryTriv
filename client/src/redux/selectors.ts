@@ -6,8 +6,6 @@
 import type { RootState } from '../types';
 
 // User selectors
-export const selectCurrentUser = (state: RootState) => state.user.currentUser;
-
 export const selectUserPointBalance = (state: RootState) => state.user.pointBalance;
 
 export const selectCanPlayFree = (state: RootState) => state.user.pointBalance?.canPlayFree ?? false;

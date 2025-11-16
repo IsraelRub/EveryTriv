@@ -16,6 +16,8 @@ export enum PaymentStatus {
 	PENDING = 'pending',
 	COMPLETED = 'completed',
 	FAILED = 'failed',
+	REQUIRES_CAPTURE = 'requires_capture',
+	REQUIRES_ACTION = 'requires_action',
 }
 
 /**
@@ -25,8 +27,21 @@ export enum PaymentStatus {
  * @used_by server/src/features/payment, shared/types/domain/payment.types.ts
  */
 export enum PaymentMethod {
-	STRIPE = 'stripe',
+	MANUAL_CREDIT = 'manual_credit',
+	PAYPAL = 'paypal',
 }
+
+export const PAYPAL_ENVIRONMENTS = {
+	PRODUCTION: 'production',
+	SANDBOX: 'sandbox',
+} as const;
+
+export const MANUAL_CREDIT_SUPPORTED_CARD_LENGTHS = {
+	MIN: 12,
+	MAX: 19,
+} as const;
+
+export const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
 
 /**
  * Subscription Status Enum
@@ -94,6 +109,9 @@ export const POINT_PURCHASE_PACKAGES = [
 	{ id: 'package_2000', points: 2000, price: 64.99, tier: 'ultimate' },
 ].map(pkg => ({
 	...pkg,
+	paypalProductId: `everytriv_points_${pkg.points}`,
+	paypalPrice: pkg.price.toFixed(2),
+	supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	pricePerPoint: pkg.price / pkg.points,
 	priceDisplay: `$${pkg.price.toFixed(2)}`,
 }));
@@ -112,6 +130,8 @@ export const SUBSCRIPTION_PLANS = {
 		features: ['Unlimited trivia questions', 'Basic analytics', 'Email support'],
 		pointBonus: 100,
 		questionLimit: 1000,
+		paypalProductId: 'everytriv_subscription_basic',
+		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},
 	premium: {
 		price: 19.99,
@@ -126,6 +146,8 @@ export const SUBSCRIPTION_PLANS = {
 		],
 		pointBonus: 250,
 		questionLimit: -1,
+		paypalProductId: 'everytriv_subscription_premium',
+		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},
 	pro: {
 		name: 'Pro Plan',
@@ -141,5 +163,7 @@ export const SUBSCRIPTION_PLANS = {
 		],
 		pointBonus: 500,
 		questionLimit: -1,
+		paypalProductId: 'everytriv_subscription_pro',
+		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},
 } as const;

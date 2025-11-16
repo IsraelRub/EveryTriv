@@ -7,54 +7,84 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
+import { PaymentMethod } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { PersonalPaymentData, ValidationResult } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+
+import type { CreatePaymentDto } from '../../features/payment/dtos/payment.dto';
 
 @Injectable()
 export class PaymentDataPipe implements PipeTransform {
-	async transform(value: PersonalPaymentData): Promise<ValidationResult> {
+	async transform(value: PersonalPaymentData | CreatePaymentDto): Promise<PersonalPaymentData | CreatePaymentDto> {
 		const startTime = Date.now();
 
-		try {
-			logger.validationDebug('payment_data', '[REDACTED]', 'validation_start');
+		logger.validationDebug('payment_data', '[REDACTED]', 'validation_start');
 
-			// Perform basic validation
-			const validationResult = this.validatePaymentData(value);
-
-			// Log validation result
-			if (validationResult.isValid) {
-				logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
-			} else {
-				logger.validationWarn('payment_data', '[REDACTED]', 'validation_failed', {
-					errors: validationResult.errors,
-				});
-			}
-
-			// Log API call
-			logger.apiUpdate('payment_data_validation', {
-				isValid: validationResult.isValid,
-				errorsCount: validationResult.errors.length,
-				duration: Date.now() - startTime,
+		if (!this.isPlainObject(value)) {
+			logger.validationWarn('payment_data', '[REDACTED]', 'validation_skipped', {
+				reason: 'non_object_payload',
 			});
+			return value;
+		}
 
-			return {
-				isValid: validationResult.isValid,
+		logger.validationDebug('payment_data_payload', JSON.stringify(Object.keys(value)), 'keys');
+
+		const paymentMethod = this.getPaymentMethod(value);
+		if (paymentMethod === PaymentMethod.PAYPAL) {
+			if (this.hasPayPalOrderId(value)) {
+				this.ensurePayPalOrderId(value);
+			}
+			logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
+			logger.apiUpdate('payment_data_validation', {
+				isValid: true,
+				errorsCount: 0,
+				duration: Date.now() - startTime,
+				method: paymentMethod,
+			});
+			return value;
+		}
+
+		if (paymentMethod !== PaymentMethod.MANUAL_CREDIT) {
+			logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
+			logger.apiUpdate('payment_data_validation', {
+				isValid: true,
+				errorsCount: 0,
+				duration: Date.now() - startTime,
+				method: paymentMethod,
+			});
+			return value;
+		}
+
+		if (!this.hasCardData(value)) {
+			throw new BadRequestException('Card details are required for manual credit payments');
+		}
+
+		if (!this.isManualPaymentPayload(value)) {
+			throw new BadRequestException('Incomplete payment information supplied');
+		}
+
+		const validationResult = this.validateManualPaymentData(value);
+
+		logger.apiUpdate('payment_data_validation', {
+			isValid: validationResult.isValid,
+			errorsCount: validationResult.errors.length,
+			duration: Date.now() - startTime,
+			method: paymentMethod,
+		});
+
+		if (!validationResult.isValid) {
+			throw new BadRequestException({
+				message: 'Payment data validation failed',
 				errors: validationResult.errors,
 				suggestion: validationResult.suggestion,
-			};
-		} catch (error) {
-			logger.validationError('payment_data', '[REDACTED]', 'validation_error', {
-				error: getErrorMessage(error),
 			});
-
-			logger.apiUpdateError('paymentDataValidation', getErrorMessage(error));
-
-			throw new BadRequestException('Payment data validation failed');
 		}
+
+		logger.validationInfo('payment_data', '[REDACTED]', 'validation_success');
+		return this.sanitizeManualPaymentValue(value);
 	}
 
-	private validatePaymentData(data: PersonalPaymentData): ValidationResult {
+	private validateManualPaymentData(data: PersonalPaymentData | CreatePaymentDto): ValidationResult {
 		const errors: string[] = [];
 		const suggestions: string[] = [];
 
@@ -138,5 +168,63 @@ export class PaymentDataPipe implements PipeTransform {
 			errors,
 			suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
 		};
+	}
+
+	private ensurePayPalOrderId(value: PersonalPaymentData | CreatePaymentDto): void {
+		if (
+			(typeof value.paypalOrderId !== 'string' || value.paypalOrderId.trim().length < 10) &&
+			(typeof value.paypalPaymentId !== 'string' || value.paypalPaymentId.trim().length < 10)
+		) {
+			throw new BadRequestException('A valid PayPal order ID or payment ID is required');
+		}
+	}
+
+	private hasPayPalOrderId(value: PersonalPaymentData | CreatePaymentDto): boolean {
+		return (
+			(typeof value.paypalOrderId === 'string' && value.paypalOrderId.trim().length > 0) ||
+			(typeof value.paypalPaymentId === 'string' && value.paypalPaymentId.trim().length > 0)
+		);
+	}
+
+	private getPaymentMethod(value: PersonalPaymentData | CreatePaymentDto): PaymentMethod {
+		if ('paymentMethod' in value && value.paymentMethod) {
+			return value.paymentMethod;
+		}
+		return PaymentMethod.MANUAL_CREDIT;
+	}
+
+	private hasCardData(value: PersonalPaymentData | CreatePaymentDto): boolean {
+		const hasCardNumber =
+			'cardNumber' in value && typeof value.cardNumber === 'string' && value.cardNumber.trim().length > 0;
+		const hasCvv = 'cvv' in value && typeof value.cvv === 'string' && value.cvv.trim().length > 0;
+		return hasCardNumber || hasCvv;
+	}
+
+	private isManualPaymentPayload(value: PersonalPaymentData | CreatePaymentDto): value is PersonalPaymentData {
+		if (!('cardNumber' in value) || !('cvv' in value)) {
+			return false;
+		}
+
+		return typeof value.cardNumber === 'string' && typeof value.cvv === 'string';
+	}
+
+	private isPlainObject(value: unknown): value is PersonalPaymentData | CreatePaymentDto {
+		return typeof value === 'object' && value !== null;
+	}
+
+	private sanitizeManualPaymentValue<T extends PersonalPaymentData | CreatePaymentDto>(value: T): T {
+		if ('cardNumber' in value && typeof value.cardNumber === 'string') {
+			value.cardNumber = value.cardNumber.replace(/\s+/g, '');
+		}
+
+		if ('cvv' in value && typeof value.cvv === 'string') {
+			value.cvv = value.cvv.trim();
+		}
+
+		if ('expiryDate' in value && typeof value.expiryDate === 'string') {
+			value.expiryDate = value.expiryDate.trim();
+		}
+
+		return value;
 	}
 }

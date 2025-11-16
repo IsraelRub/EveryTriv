@@ -12,13 +12,11 @@ import type {
 	UpdateUserProfileData,
 	UserPreferences,
 	UserSearchCacheEntry,
-	UserStatsCacheEntry,
 } from '@shared/types';
 import {
 	getErrorMessage,
 	isAuditLogEntry,
 	isUserSearchCacheEntry,
-	isUserStatsCacheEntry,
 	mergeUserPreferences,
 	normalizeText,
 } from '@shared/utils';
@@ -28,6 +26,7 @@ import { CacheService, ServerStorageService } from '@internal/modules';
 import { createServerError, createValidationError } from '@internal/utils';
 
 import { AuthenticationManager, PasswordService, ValidationService } from '../../common';
+import { addSearchConditions } from '../../common/queries';
 
 /**
  * Service for managing user data, profiles, and authentication
@@ -216,7 +215,6 @@ export class UserService {
 				firstName: user.firstName,
 				lastName: user.lastName,
 				avatar: user.avatar,
-				bio: user.bio,
 				preferences: user.preferences,
 				createdAt: user.createdAt,
 				updatedAt: user.updatedAt,
@@ -264,7 +262,6 @@ export class UserService {
 			if (profileData.username !== undefined) user.username = profileData.username;
 			if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
 			if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
-			if (profileData.bio !== undefined) user.bio = profileData.bio;
 			if (profileData.avatar !== undefined) user.avatar = profileData.avatar;
 			if (profileData.preferences !== undefined)
 				user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
@@ -284,61 +281,12 @@ export class UserService {
 				firstName: updatedUser.firstName,
 				lastName: updatedUser.lastName,
 				avatar: updatedUser.avatar,
-				bio: updatedUser.bio,
 				preferences: updatedUser.preferences,
 				createdAt: updatedUser.createdAt,
 				updatedAt: updatedUser.updatedAt,
 			};
 		} catch (error) {
 			logger.userError('Failed to update user profile', {
-				context: 'UserService',
-				error: getErrorMessage(error),
-				userId,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get user statistics
-	 * @param userId User ID
-	 * @returns User statistics
-	 */
-	async getUserStats(userId: string): Promise<UserStatsCacheEntry> {
-		try {
-			logger.userInfo('Getting user stats', {
-				context: 'UserService',
-				userId,
-			});
-
-			const cacheKey = `user:stats:${userId}`;
-
-			return await this.cacheService.getOrSet<UserStatsCacheEntry>(
-				cacheKey,
-				async () => {
-					const user = await this.userRepository.findOne({ where: { id: userId } });
-					if (!user) {
-						throw new NotFoundException('User not found');
-					}
-
-					return {
-						userId: user.id,
-						username: user.username,
-						credits: user.credits,
-						purchasedPoints: user.purchasedPoints,
-						totalPoints: user.credits + user.purchasedPoints,
-						stats: user.stats ?? {},
-						created_at: user.createdAt,
-						accountAge: user.createdAt
-							? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
-							: 0,
-					};
-				},
-				CACHE_DURATION.VERY_LONG,
-				isUserStatsCacheEntry
-			);
-		} catch (error) {
-			logger.userError('Failed to get user stats', {
 				context: 'UserService',
 				error: getErrorMessage(error),
 				userId,
@@ -372,15 +320,16 @@ export class UserService {
 			return await this.cacheService.getOrSet<UserSearchCacheEntry>(
 				cacheKey,
 				async () => {
-					const users = await this.userRepository
-						.createQueryBuilder('user')
-						.where('user.username ILIKE :query OR user.firstName ILIKE :query OR user.lastName ILIKE :query', {
-							query: `%${normalizedQuery}%`,
-						})
+					const queryBuilder = this.userRepository.createQueryBuilder('user');
+					addSearchConditions(queryBuilder, 'user', ['username', 'firstName', 'lastName'], normalizedQuery, {
+						wildcardPattern: 'both',
+					});
+					queryBuilder
 						.andWhere('user.is_active = :isActive', { isActive: true })
 						.select(['user.id', 'user.username', 'user.firstName', 'user.lastName', 'user.avatar'])
-						.limit(limit)
-						.getMany();
+						.limit(limit);
+
+					const users = await queryBuilder.getMany();
 
 					return {
 						query,
@@ -659,30 +608,6 @@ export class UserService {
 	}
 
 	/**
-	 * Get user by reset token
-	 * @param resetToken Reset token
-	 * @returns User entity
-	 */
-	async getUserByResetToken(resetToken: string) {
-		try {
-			logger.userInfo('Getting user by reset token', {
-				context: 'UserService',
-				token: resetToken.substring(0, 10) + '...',
-			});
-
-			const user = await this.userRepository.findOne({ where: { resetPasswordToken: resetToken } });
-			return user;
-		} catch (error) {
-			logger.userError('Failed to get user by reset token', {
-				context: 'UserService',
-				error: getErrorMessage(error),
-				token: resetToken.substring(0, 10) + '...',
-			});
-			return null;
-		}
-	}
-
-	/**
 	 * Find user by Google ID
 	 * @param googleId Google ID
 	 * @returns User entity
@@ -755,7 +680,8 @@ export class UserService {
 	async createGoogleUser(userData: {
 		googleId: string;
 		email: string;
-		fullName?: string;
+		firstName?: string;
+		lastName?: string;
 		username: string;
 		avatar?: string;
 	}) {
@@ -768,7 +694,8 @@ export class UserService {
 			const user = this.userRepository.create({
 				googleId: userData.googleId,
 				email: userData.email,
-				fullName: userData.fullName,
+				firstName: userData.firstName,
+				lastName: userData.lastName,
 				username: userData.username,
 				avatar: userData.avatar,
 				role: UserRole.USER,
@@ -943,14 +870,9 @@ export class UserService {
 				email: { type: 'string' },
 				firstName: { type: 'string' },
 				lastName: { type: 'string' },
-				phone: { type: 'string' },
 				avatar: { type: 'string' },
-				bio: { type: 'string', maxLength: 500 },
 				isActive: { type: 'boolean' },
-				agreeToNewsletter: { type: 'boolean' },
-				score: { type: 'number' },
 				credits: { type: 'number' },
-				points: { type: 'number' },
 				purchasedPoints: { type: 'number' },
 				dailyFreeQuestions: { type: 'number' },
 				remainingFreeQuestions: { type: 'number' },
@@ -1148,17 +1070,12 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
-			const userStats = { ...(user.stats ?? {}) };
-			userStats.status = status;
-
 			// Update status by mapping to isActive field
 			if (status === UserStatus.ACTIVE) {
 				user.isActive = true;
 			} else if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
 				user.isActive = false;
 			}
-
-			user.stats = userStats;
 
 			const updatedUser = await this.userRepository.save(user);
 
@@ -1190,7 +1107,10 @@ export class UserService {
 	 * @param limit Maximum number of users
 	 * @param offset Number of users to skip
 	 */
-	async getAllUsers(limit: number = 50, offset: number = 0): Promise<{
+	async getAllUsers(
+		limit: number = 50,
+		offset: number = 0
+	): Promise<{
 		users: AdminUserData[];
 		total: number;
 		limit: number;

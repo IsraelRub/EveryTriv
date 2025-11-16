@@ -1,991 +1,451 @@
-# Frontend Components Documentation
+# רכיבי UI - Frontend
 
-תיעוד כל רכיבי ה-UI של האפליקציה, כולל props, state, ושימוש.
-
-> **מערכות נוספות**: למידע על [מערכת האנימציות](./ANIMATION_SYSTEM.md) ו-[מערכת האודיו](./AUDIO_SYSTEM.md) ראו את המסמכים המתאימים.
+תיעוד רכיבי UI ב-Frontend, כולל רכיבי משחק, UI בסיסיים, פריסה וניווט.
 
 ## סקירה כללית
 
-האפליקציה משתמשת ב-React עם TypeScript ו-Tailwind CSS. הרכיבים מאורגנים בהיררכיה ברורה:
+המערכת משתמשת ברכיבי React מאורגנים לפי תחום. כל רכיב מאורגן בתיקייה המתאימה.
 
-- **UI Components**: רכיבי UI בסיסיים
-- **Feature Components**: רכיבים ספציפיים לתכונות
-- **Layout Components**: רכיבי פריסה
-- **Views**: דפי האפליקציה
+## מבנה הרכיבים
 
-## UI Components
-
-### Modals
-
-#### AlertModal
-רכיב modal להצגת הודעות למשתמש.
-
-```typescript
-interface AlertModalProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  message: string;
-  variant?: 'success' | 'error' | 'info';
-  buttonText?: string;
-}
+```
+client/src/components/
+├── animations/           # אנימציות
+├── game/                 # רכיבי משחק
+├── home/                 # רכיבי דף הבית
+├── layout/               # רכיבי פריסה
+├── navigation/           # רכיבי ניווט
+├── stats/                # רכיבי סטטיסטיקות
+├── user/                 # רכיבי משתמש
+├── ui/                   # רכיבי UI בסיסיים
+├── AudioControls.tsx     # בקרת אודיו
+├── FeatureErrorBoundary.tsx # Error boundary לתכונות
+├── GameMode.tsx          # בחירת מצב משחק
+├── IconLibrary.tsx       # ספריית אייקונים
+├── Leaderboard.tsx       # לוח מובילים
+├── ProtectedRoute.tsx    # רכיב הגנה על נתיבים
+├── SubscriptionPlans.tsx # תוכניות מנוי
+└── ValidatedForm.tsx     # טופס עם ולידציה
 ```
 
-**דוגמת שימוש:**
-```tsx
-<AlertModal
-  open={showAlert}
-  onClose={() => setShowAlert(false)}
-  title="שגיאה"
-  message="אירעה שגיאה בעת שמירת הנתונים"
-  variant="error"
-  buttonText="אישור"
+## רכיבי משחק
+
+### Game.tsx
+הרכיב הראשי של המשחק:
+- ניהול מצב המשחק
+- הצגת שאלות
+- טיפול בתשובות
+- עדכון ניקוד
+
+### GameTimer.tsx
+טיימר המשחק עם תמיכה במצבי משחק שונים:
+```typescript
+import GameTimer from '@components/game/GameTimer';
+import type { GameTimerProps, GameConfig } from '@types';
+
+const timer = {
+  isRunning: true,
+  timeElapsed: 45000,  // milliseconds
+  timeRemaining: 15000 // milliseconds (רק למצב time-limited)
+};
+
+const gameMode: GameConfig = {
+  mode: GameMode.TIME_LIMITED,
+  topic: 'history',
+  difficulty: DifficultyLevel.MEDIUM,
+  timeLimit: 60000,
+  questionLimit: 10,
+  settings: {}
+};
+
+<GameTimer timer={timer} gameMode={gameMode} className="mb-4" />
+```
+
+**Props:**
+- `timer`: `{ isRunning: boolean, timeElapsed: number, timeRemaining?: number }`
+- `gameMode`: `GameConfig` - הגדרות מצב משחק
+- `className`: `string` - CSS classes נוספים
+
+**תכונות:**
+- תצוגה דינמית לפי מצב משחק (time-limited, question-limited, unlimited)
+- ספירה לאחור במצב time-limited
+- ספירה קדימה במצבים אחרים
+- התראה ויזואלית כשהזמן נגמר
+- אנימציות עם framer-motion
+
+### TriviaForm.tsx
+טופס שאלות טריוויה:
+- בחירת נושא
+- בחירת קושי
+- שליחת בקשה
+
+### TriviaGame.tsx
+משחק טריוויה מלא עם טיימר וציון:
+```typescript
+import TriviaGame from '@components/game/TriviaGame';
+import { TriviaQuestion } from '@shared/types';
+import type { TriviaGameProps } from '@types';
+
+const question: TriviaQuestion = {
+  id: 'q_123',
+  question: 'מי כתב את המלט?',
+  answers: [
+    { text: 'שייקספיר', isCorrect: true, order: 0 },
+    { text: 'דיקנס', isCorrect: false, order: 1 },
+    { text: 'טולסטוי', isCorrect: false, order: 2 },
+    { text: 'המינגווי', isCorrect: false, order: 3 }
+  ],
+  correctAnswerIndex: 0,
+  topic: 'ספרות',
+  difficulty: 'medium',
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
+
+<TriviaGame
+  question={question}
+  onComplete={(isCorrect: boolean, points: number) => {
+    console.log('Answer:', isCorrect, 'Points:', points);
+  }}
+  timeLimit={30}
 />
 ```
 
-#### ConfirmModal
-רכיב modal לאישור פעולות.
+**Props:**
+- `question`: `TriviaQuestion` - שאלת טריוויה
+- `onComplete`: `(isCorrect: boolean, points: number) => void` - callback בסיום
+- `timeLimit`: `number` - מגבלת זמן בשניות (ברירת מחדל: 30)
 
+**תכונות:**
+- טיימר אוטומטי עם ספירה לאחור
+- הצגת שאלה ותשובות
+- בדיקת נכונות תשובה
+- חישוב נקודות לפי קושי וזמן
+- עדכון Redux state עם נקודות
+- אנימציות עם framer-motion
+- צלילי feedback (נכון/שגוי/טיימאוט)
+- לוגים עם clientLogger
+
+## רכיבי UI בסיסיים
+
+### Button.tsx
+כפתורים עם וריאנטים וגודל:
 ```typescript
-interface ConfirmModalProps {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  variant?: 'danger' | 'warning' | 'info';
-  isLoading?: boolean;
-}
-```
+import { Button } from '@components/ui';
+import { ButtonVariant, ComponentSize } from '@constants';
 
-**דוגמת שימוש:**
-```tsx
-<ConfirmModal
-  open={showConfirm}
-  onClose={() => setShowConfirm(false)}
-  onConfirm={handleDelete}
-  title="מחיקת פריט"
-  message="האם אתה בטוח שברצונך למחוק את הפריט?"
-  confirmText="מחק"
-  cancelText="ביטול"
-  variant="danger"
-  isLoading={isDeleting}
-/>
-```
+// כפתור ראשי
+<Button variant={ButtonVariant.PRIMARY} size={ComponentSize.MD}>
+  לחץ כאן
+</Button>
 
-### Validation
+// כפתור משני
+<Button variant={ButtonVariant.SECONDARY} size={ComponentSize.LG}>
+  ביטול
+</Button>
 
-#### ValidationIcon
-רכיב אייקון המציג סטטוס ולידציה של שדה.
-
-```typescript
-interface ValidationIconProps {
-  isValid: boolean;
-  isInvalid: boolean;
-  isValidating: boolean;
-  className?: string;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<ValidationIcon
-  isValid={isValid}
-  isInvalid={isInvalid}
-  isValidating={isValidating}
-  className="ml-2"
-/>
-```
-
-### Button
-
-רכיב כפתור מתקדם עם אנימציות וצלילים.
-
-```typescript
-interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'accent' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
-  isGlassy?: boolean;
-  withGlow?: boolean;
-  withAnimation?: boolean;
-  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
-  children: React.ReactNode;
-  className?: string;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Button 
-  variant="primary" 
-  size="md" 
-  isGlassy={true}
-  withGlow={true}
-  withAnimation={true}
-  onClick={handleClick}
->
+// כפתור accent
+<Button variant={ButtonVariant.ACCENT} size={ComponentSize.SM}>
   שמור
+</Button>
+
+// כפתור ghost
+<Button variant={ButtonVariant.GHOST}>
+  העדפות
+</Button>
+
+// כפתור עם glass effect
+<Button isGlassy={true} withGlow={true}>
+  מיוחד
+</Button>
+
+// כפתור עם אנימציה
+<Button withAnimation={true} onClick={handleClick}>
+  לחץ
 </Button>
 ```
 
-### Card
+**Props:**
+- `variant`: `ButtonVariant.PRIMARY` | `ButtonVariant.SECONDARY` | `ButtonVariant.ACCENT` | `ButtonVariant.GHOST`
+- `size`: `ComponentSize.SM` | `ComponentSize.MD` | `ComponentSize.LG`
+- `isGlassy`: `boolean` - אפקט זכוכית
+- `withGlow`: `boolean` - אפקט זוהר
+- `withAnimation`: `boolean` - אנימציה
+- `onClick`: `(e: MouseEvent<HTMLButtonElement>) => void`
 
-רכיב כרטיס מתקדם עם אפקטי זכוכית.
-
+### Card.tsx
+כרטיסים עם תמיכה ב-header ו-footer:
 ```typescript
-interface CardProps {
-  isGlassy?: boolean;
-  withGlow?: boolean;
-  children: React.ReactNode;
-  className?: string;
-}
+import { Card } from '@components/ui';
 
-interface CardHeaderProps {
-  children: React.ReactNode;
-  className?: string;
-}
+// כרטיס בסיסי
+<Card className="p-6">
+  <h3 className="text-xl font-bold mb-2">כותרת</h3>
+  <p>תוכן הכרטיס</p>
+</Card>
 
-interface CardTitleProps {
-  children: React.ReactNode;
-  className?: string;
-}
+// כרטיס עם header
+<Card>
+  <Card.Header>
+    <h3>כותרת הכרטיס</h3>
+  </Card.Header>
+  <Card.Body>
+    <p>תוכן הכרטיס</p>
+  </Card.Body>
+</Card>
 
-interface CardContentProps {
-  children: React.ReactNode;
-  className?: string;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Card isGlassy={true} withGlow={true}>
-  <CardHeader>
-    <CardTitle>סטטיסטיקות</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div>תוכן הכרטיס</div>
-  </CardContent>
+// כרטיס עם footer
+<Card>
+  <Card.Header>
+    <h3>כותרת</h3>
+  </Card.Header>
+  <Card.Body>
+    <p>תוכן</p>
+  </Card.Body>
+  <Card.Footer>
+    <Button>פעולה</Button>
+  </Card.Footer>
 </Card>
 ```
 
-### Modal
+**Props:**
+- `className`: `string` - CSS classes נוספים
+- `isGlassy`: `boolean` - אפקט זכוכית
+- `children`: `ReactNode` - תוכן הכרטיס
 
-רכיב חלון קופץ מתקדם עם אפקטי זכוכית.
+**תכונות:**
+- תמיכה ב-header, body, footer
+- אפקט זכוכית אופציונלי
+- אנימציות עם framer-motion
 
+### Modal.tsx
+חלונות מודאליים עם גדלים שונים:
 ```typescript
-interface ModalProps {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg';
-  isGlassy?: boolean;
-  disableEscapeKeyDown?: boolean;
-  disableBackdropClick?: boolean;
-  className?: string;
-}
-```
+import { Modal } from '@components/ui';
+import { ModalSize } from '@constants';
+import { useState } from 'react';
 
-**דוגמת שימוש:**
-```tsx
+const [open, setOpen] = useState(false);
+
 <Modal 
-  open={isModalOpen} 
-  onClose={() => setIsModalOpen(false)}
-  size="md"
+  open={open}
+  onClose={() => setOpen(false)}
+  size={ModalSize.MD}
   isGlassy={true}
+  disableEscapeKeyDown={false}
+  disableBackdropClick={false}
 >
   <div className="p-6">
-    <h2 className="text-xl font-bold mb-4">אישור פעולה</h2>
-    <p>האם אתה בטוח?</p>
+    <h2 className="text-2xl font-bold mb-4">כותרת</h2>
+    <p>תוכן המודאל</p>
   </div>
 </Modal>
 ```
 
-### Input
+**Props:**
+- `open`: `boolean` - האם המודאל פתוח
+- `onClose`: `() => void` - callback לסגירה
+- `size`: `ModalSize.SM` | `ModalSize.MD` | `ModalSize.LG` | `ModalSize.XL` | `ModalSize.FULL`
+- `isGlassy`: `boolean` - אפקט זכוכית (ברירת מחדל: true)
+- `disableEscapeKeyDown`: `boolean` - מניעת סגירה ב-Escape
+- `disableBackdropClick`: `boolean` - מניעת סגירה בלחיצה על הרקע
 
-רכיב שדה קלט מתקדם עם אנימציות ואפקטי זכוכית.
+**תכונות:**
+- Portal ל-body
+- סגירה ב-Escape
+- סגירה בלחיצה על רקע
+- מניעת scroll ל-body כשפתוח
+- אנימציות fade-in
 
+### Input.tsx
+שדות קלט עם ולידציה:
 ```typescript
-interface UIInputProps {
-  type?: 'text' | 'email' | 'password' | 'number';
-  placeholder?: string;
-  value?: string;
-  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  disabled?: boolean;
-  required?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-  isGlassy?: boolean;
-  withAnimation?: boolean;
-  className?: string;
-}
-```
+import { Input, ValidatedInput } from '@components/ui';
+import { useState } from 'react';
 
-**דוגמת שימוש:**
-```tsx
+// Input בסיסי
+const [value, setValue] = useState('');
+
 <Input
+  type="text"
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  placeholder="הכנס שם משתמש"
+  className="mb-4"
+/>
+
+// ValidatedInput עם ולידציה
+<ValidatedInput
   type="email"
-  placeholder="כתובת אימייל"
   value={email}
-  onChange={handleEmailChange}
-  error={emailError}
-  size="md"
-  isGlassy={true}
-  withAnimation={true}
-  required
+  onChange={(e) => setEmail(e.target.value)}
+  validation={(val) => val.includes('@')}
+  errorMessage="אימייל לא תקין"
+  label="אימייל"
 />
 ```
 
-### Select
-
-רכיב בחירה מרשימה מתקדם עם אפקטי זכוכית.
-
-```typescript
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface UISelectProps {
-  options: SelectOption[];
-  value?: string;
-  onChange?: (e: ChangeEvent<HTMLSelectElement>) => void;
-  placeholder?: string;
-  error?: string;
-  disabled?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-  isGlassy?: boolean;
-  className?: string;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Select
-  options={[
-    { value: 'easy', label: 'קל' },
-    { value: 'medium', label: 'בינוני' },
-    { value: 'hard', label: 'קשה' }
-  ]}
-  value={difficulty}
-  onChange={handleDifficultyChange}
-  size="md"
-  isGlassy={true}
-  placeholder="בחר קושי"
-/>
-```
-
-### Avatar
-
-רכיב תמונת פרופיל מתקדם עם מערכת fallback ו-retry.
-
-```typescript
-interface AvatarProps {
-  src?: string;
-  username?: string;
-  fullName?: string;
-  firstName?: string;
-  lastName?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  customSize?: number;
-  className?: string;
-  alt?: string;
-  showLoading?: boolean;
-  lazy?: boolean;
-  onClick?: () => void;
-  clickable?: boolean;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Avatar 
-  src={user.avatar} 
-  username={user.username}
-  fullName={user.fullName}
-  size="md"
-  showLoading={true}
-  lazy={true}
-  clickable={true}
-  onClick={handleAvatarClick}
-/>
-```
-
-## Feature Components
-
-### Game Components
-
-#### Game
-
-רכיב משחק ראשי.
-
-```typescript
-interface GameProps {
-  gameId: string;
-  onGameComplete: (result: GameResult) => void;
-  onGameAbandon: () => void;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Game 
-  gameId={currentGame.id}
-  onGameComplete={handleGameComplete}
-  onGameAbandon={handleGameAbandon}
-/>
-```
-
-#### GameTimer
-
-רכיב טיימר למשחק.
-
-```typescript
-interface GameTimerProps {
-  timeLimit: number;
-  onTimeUp: () => void;
-  isRunning: boolean;
-  onPause?: () => void;
-  onResume?: () => void;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<GameTimer
-  timeLimit={30}
-  onTimeUp={handleTimeUp}
-  isRunning={isGameActive}
-  onPause={handlePause}
-  onResume={handleResume}
-/>
-```
-
-#### TriviaForm
-
-טופס יצירת משחק טריוויה.
-
-```typescript
-interface TriviaFormProps {
-  onSubmit: (data: CreateGameData) => void;
-  loading?: boolean;
-  defaultValues?: Partial<CreateGameData>;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<TriviaForm
-  onSubmit={handleCreateGame}
-  loading={isCreatingGame}
-  defaultValues={{
-    difficulty: 'medium',
-    topics: ['science']
-  }}
-/>
-```
-
-#### TriviaGame
-
-רכיב משחק טריוויה.
-
-```typescript
-interface TriviaGameProps {
-  questions: Question[];
-  onAnswer: (answer: AnswerData) => void;
-  onComplete: (result: GameResult) => void;
-  timeLimit?: number;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<TriviaGame
-  questions={game.questions}
-  onAnswer={handleAnswer}
-  onComplete={handleComplete}
-  timeLimit={30}
-/>
-```
-
-### Auth Components
-
-#### ProtectedRoute
-
-רכיב הגנה על נתיבים.
-
-```typescript
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireAuth?: boolean;
-  requireSubscription?: boolean;
-  fallback?: React.ReactNode;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<ProtectedRoute requireAuth requireSubscription>
-  <PremiumContent />
-</ProtectedRoute>
-```
-
-#### OAuthCallback
-
-רכיב טיפול ב-OAuth callback.
-
-```typescript
-interface OAuthCallbackProps {
-  onSuccess: (user: User) => void;
-  onError: (error: string) => void;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<OAuthCallback
-  onSuccess={handleAuthSuccess}
-  onError={handleAuthError}
-/>
-```
-
-#### CompleteProfile
-
-טופס השלמת פרופיל.
-
-```typescript
-interface CompleteProfileProps {
-  user: Partial<User>;
-  onSubmit: (data: UserProfileData) => void;
-  loading?: boolean;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<CompleteProfile
-  user={user}
-  onSubmit={handleCompleteProfile}
-  loading={isUpdating}
-/>
-```
-
-### User Components
-
-#### UserProfile
-
-רכיב פרופיל משתמש.
-
-```typescript
-interface UserProfileProps {
-  user: User;
-  onEdit?: () => void;
-  showStats?: boolean;
-  showAchievements?: boolean;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<UserProfile
-  user={currentUser}
-  onEdit={handleEditProfile}
-  showStats
-  showAchievements
-/>
-```
-
-#### FavoriteTopics
-
-רכיב ניהול נושאים מועדפים.
-
-```typescript
-interface FavoriteTopicsProps {
-  topics: string[];
-  onToggle: (topic: string) => void;
-  availableTopics: string[];
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<FavoriteTopics
-  topics={user.preferences.topics}
-  onToggle={handleToggleTopic}
-  availableTopics={allTopics}
-/>
-```
-
-#### UserStatsCard
-
-כרטיס סטטיסטיקות משתמש.
-
-```typescript
-interface UserStatsCardProps {
-  stats: UserStats;
-  showDetails?: boolean;
-  onViewDetails?: () => void;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<UserStatsCard
-  stats={userStats}
-  showDetails
-  onViewDetails={handleViewDetails}
-/>
-```
-
-## Layout Components
-
-### Navigation
-
-רכיב ניווט ראשי.
-
-```typescript
-interface NavigationProps {
-  user?: User;
-  onLogin: () => void;
-  onLogout: () => void;
-  onProfile: () => void;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Navigation
-  user={currentUser}
-  onLogin={handleLogin}
-  onLogout={handleLogout}
-  onProfile={handleProfile}
-/>
-```
-
-### Footer
-
-רכיב כותרת תחתונה.
-
-```typescript
-interface FooterProps {
-  showSocialLinks?: boolean;
-  showLegalLinks?: boolean;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<Footer
-  showSocialLinks
-  showLegalLinks
-/>
-```
-
-### GridLayout
-
-רכיב פריסת רשת.
-
-```typescript
-interface GridLayoutProps {
-  columns?: number;
-  gap?: number;
-  children: React.ReactNode;
-  className?: string;
-}
-```
-
-**דוגמת שימוש:**
-```tsx
-<GridLayout columns={3} gap={4}>
-  <Card>תוכן 1</Card>
-  <Card>תוכן 2</Card>
-  <Card>תוכן 3</Card>
-</GridLayout>
-```
-
-## Page Components (Views)
-
-### HomeView
-
-דף הבית.
-
-```typescript
-interface HomeViewProps {
-  featuredGames?: Game[];
-  userStats?: UserStats;
-  onStartGame: () => void;
-}
-```
-
-### UserView
-
-דף משתמש.
-
-```typescript
-interface UserViewProps {
-  userId?: string;
-  onEditProfile: () => void;
-  onViewStats: () => void;
-}
-```
-
-### GameView
-
-דף משחק.
-
-```typescript
-interface GameViewProps {
-  gameId?: string;
-  onGameComplete: (result: GameResult) => void;
-  onGameAbandon: () => void;
-}
-```
-
-### LeaderboardView
-
-דף לוח תוצאות.
-
-```typescript
-interface LeaderboardViewProps {
-  type?: 'global' | 'friends';
-  onUserClick: (userId: string) => void;
-}
-```
-
-### AnalyticsView
-
-דף אנליטיקה.
-
-```typescript
-interface AnalyticsViewProps {
-  userId?: string;
-  timeRange?: 'week' | 'month' | 'year';
-  onTimeRangeChange: (range: string) => void;
-}
-```
-
-### PaymentView
-
-דף תשלום.
-
-```typescript
-interface PaymentViewProps {
-  subscriptionType?: 'monthly' | 'yearly';
-  onPaymentSuccess: (subscription: Subscription) => void;
-  onPaymentError: (error: string) => void;
-}
-```
-
-## Hooks
-
-### useGame
-
-Hook לניהול משחק.
-
-```typescript
-function useGame(gameId?: string) {
-  const [game, setGame] = useState<Game | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const createGame = async (data: CreateGameData) => {
-    // לוגיקת יצירת משחק
-  };
-
-  const submitAnswer = async (answer: AnswerData) => {
-    // לוגיקת שליחת תשובה
-  };
-
-  const completeGame = async () => {
-    // לוגיקת השלמת משחק
-  };
-
-  return {
-    game,
-    loading,
-    error,
-    createGame,
-    submitAnswer,
-    completeGame
-  };
-}
-```
-
-### useAuth
-
-Hook לניהול אימות.
-
-```typescript
-function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const login = async (googleToken: string) => {
-    // לוגיקת התחברות
-  };
-
-  const logout = async () => {
-    // לוגיקת התנתקות
-  };
-
-  const updateProfile = async (data: UserProfileData) => {
-    // לוגיקת עדכון פרופיל
-  };
-
-  return {
-    user,
-    loading,
-    error,
-    login,
-    logout,
-    updateProfile
-  };
-}
-```
-
-### useAnalytics
-
-Hook לניהול אנליטיקה.
-
-```typescript
-function useAnalytics(userId?: string) {
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = async (timeRange: string) => {
-    // לוגיקת אחזור סטטיסטיקות
-  };
-
-  const fetchLeaderboard = async (type: 'global' | 'friends') => {
-    // לוגיקת אחזור לוח תוצאות
-  };
-
-  return {
-    stats,
-    loading,
-    error,
-    fetchStats,
-    fetchLeaderboard
-  };
-}
-```
-
-## Styling
-
-### Tailwind Classes
-
-האפליקציה משתמשת ב-Tailwind CSS עם classes מותאמים אישית:
-
-```css
-/* Custom classes */
-.btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-}
-
-.btn-secondary {
-  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors;
-}
-
-.card {
-  @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
-}
-
-.input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
-```
-
-### Animations
-
-#### StaggerContainer
-אנימציית stagger לרשימות עם אפקט הדרגתי.
-
-```typescript
-// יצירת stagger container
-const staggerContainer = createStaggerContainer(0.05); // 50ms delay
-
-// שימוש ברכיב
-<motion.div 
-  variants={staggerContainer} 
-  initial="hidden" 
-  animate="visible"
->
-  {items.map((item) => (
-    <motion.div key={item.id} variants={fadeInUp}>
-      <ItemComponent item={item} />
-    </motion.div>
-  ))}
-</motion.div>
-```
-
-**דוגמאות שימוש:**
-- `LeaderboardView` - אנימציית רשימת מובילים
-- `PointsView` - אנימציית היסטוריית עסקאות
-- `AdminDashboard` - אנימציית כרטיסי סטטיסטיקות
-
-#### Animation Variants
-```typescript
-// fadeInUp - אנימציית כניסה מלמטה
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
-};
-
-// scaleIn - אנימציית כניסה עם scale
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { opacity: 1, scale: 1 }
-};
-```
-
-### Theme
-
-האפליקציה משתמשת בערכת צבעים קבועה (ללא light/dark mode toggle):
-
-```typescript
-// theme.ts
-export const theme = {
-  colors: {
-    primary: '#3B82F6',
-    secondary: '#6B7280',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    background: '#F9FAFB',
-    surface: '#FFFFFF',
-    text: '#111827'
-  },
-  spacing: {
-    xs: '0.25rem',
-    sm: '0.5rem',
-    md: '1rem',
-    lg: '1.5rem',
-    xl: '2rem'
-  },
-  borderRadius: {
-    sm: '0.25rem',
-    md: '0.5rem',
-    lg: '0.75rem'
-  }
-};
-```
-
-## Testing
-
-### Component Tests
-
-```typescript
-// Button.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Button } from './Button';
-
-describe('Button', () => {
-  it('renders with correct text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText('Click me')).toBeInTheDocument();
-  });
-
-  it('calls onClick when clicked', () => {
-    const handleClick = jest.fn();
-    render(<Button onClick={handleClick}>Click me</Button>);
-    fireEvent.click(screen.getByText('Click me'));
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows loading state', () => {
-    render(<Button loading>Click me</Button>);
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-  });
-});
-```
-
-### Hook Tests
-
-```typescript
-// useGame.test.ts
-import { renderHook, act } from '@testing-library/react';
-import { useGame } from './useGame';
-
-describe('useGame', () => {
-  it('creates game successfully', async () => {
-    const { result } = renderHook(() => useGame());
-
-    await act(async () => {
-      await result.current.createGame({
-        difficulty: 'medium',
-        topics: ['science'],
-        questionCount: 10
-      });
-    });
-
-    expect(result.current.game).toBeDefined();
-    expect(result.current.loading).toBe(false);
-  });
-});
-```
-
-## Best Practices
-
-### 1. Component Design
-- השתמש ב-functional components
-- השתמש ב-TypeScript עבור type safety
-- הפרד בין logic ו-presentation
-- השתמש ב-React.memo עבור optimization
-
-### 2. Props Interface
-- הגדר interfaces מפורשים
-- השתמש ב-optional props כשצריך
-- הוסף default values
-- תיעד props עם JSDoc
-
-### 3. State Management
-- השתמש ב-Redux עבור global state
-- השתמש ב-local state עבור UI state
-- השתמש ב-custom hooks עבור shared logic
-- הימנע מ-prop drilling
-
-### 4. Styling
-- השתמש ב-Tailwind CSS
-- השתמש ב-custom classes עבור patterns חוזרים
-- השתמש ב-CSS variables עבור theme
-- הימנע מ-inline styles
-
-### 5. Testing
-- כתוב tests עבור כל component
-- השתמש ב-React Testing Library
-- Test user interactions
-- Test error states
-
-## Performance
-
-### Optimization Techniques
-
-1. **React.memo**: למניעת re-renders מיותרים
-2. **useMemo**: לחישובים יקרים
-3. **useCallback**: לפונקציות ב-props
-4. **Lazy Loading**: לטעינת components על פי דרישה
-5. **Code Splitting**: לחלוקת bundle
-
-### Bundle Analysis
-
-```bash
-# ניתוח bundle size
-npm run build
-npm run analyze
-```
-
-### Performance Monitoring
-
-```typescript
-// Performance monitoring
-import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
-
-getCLS(console.log);
-getFID(console.log);
-getFCP(console.log);
-getLCP(console.log);
-getTTFB(console.log);
-```
+**Props (Input):**
+- `type`: `string` - סוג input
+- `value`: `string` - ערך
+- `onChange`: `(e: ChangeEvent<HTMLInputElement>) => void`
+- `placeholder`: `string` - טקסט מקום
+- `disabled`: `boolean` - האם מושבת
+- `className`: `string` - CSS classes נוספים
+
+**Props (ValidatedInput):**
+- כל ה-props של Input
+- `validation`: `(value: string) => boolean` - פונקציית ולידציה
+- `errorMessage`: `string` - הודעת שגיאה
+- `label`: `string` - תווית
+
+### Select.tsx
+רשימות נפתחות:
+- Select בסיסי
+- Select עם חיפוש
+- Select מרובה בחירות
+
+### Avatar.tsx
+תמונות פרופיל:
+- Avatar עגול
+- Avatar מרובע
+- Avatar עם fallback
+
+### ErrorBoundary.tsx
+טיפול בשגיאות:
+- Error boundary בסיסי
+- Error boundary עם fallback UI
+- Error boundary עם error reporting
+
+## רכיבי פריסה
+
+### Footer.tsx
+Footer של האפליקציה:
+- קישורים חשובים
+- מידע על האפליקציה
+- רשתות חברתיות
+
+### GridLayout.tsx
+פריסת Grid:
+- Grid responsive
+- Grid עם columns מותאמים
+
+### NotFound.tsx
+דף 404:
+- הודעת שגיאה
+- קישור לדף הבית
+
+### SocialShare.tsx
+שיתוף חברתי:
+- שיתוף בפייסבוק
+- שיתוף בטוויטר
+- שיתוף ב-WhatsApp
+
+## רכיבי ניווט
+
+### Navigation.tsx
+תפריט ניווט:
+- לינקים לדפים עיקריים
+- מצב אימות
+- פרופיל משתמש
+
+## רכיבי סטטיסטיקות
+
+### ScoringSystem.tsx
+מערכת ניקוד:
+- הצגת ניקוד
+- חישוב נקודות
+- היסטוריית ניקוד
+
+### CustomDifficultyHistory.tsx
+היסטוריית קושי מותאם:
+- רשימת קשיים מותאמים
+- סטטיסטיקות לפי קושי
+
+## רכיבי משתמש
+
+### CompleteProfile.tsx
+השלמת פרופיל:
+- שדות נדרשים
+- ולידציה
+- שמירה
+
+### FavoriteTopics.tsx
+נושאים מועדפים:
+- רשימת נושאים
+- הוספה והסרה
+- שמירה
+
+### OAuthCallback.tsx
+Callback של OAuth:
+- טיפול ב-OAuth callback
+- שמירת token
+- הפניה לדף הבית
+
+## רכיבי אנימציה
+
+### AnimationLibrary.tsx
+ספריית אנימציות:
+- Fade in/out
+- Slide in/out
+- Scale in/out
+- Rotate
+
+## רכיבי אודיו
+
+### AudioControls.tsx
+בקרת אודיו:
+- הפעלה/עצירה
+- ווליום
+- סאונדים שונים
+
+## רכיבים נוספים
+
+### FeatureErrorBoundary.tsx
+Error boundary לתכונות ספציפיות:
+- טיפול בשגיאות ברמת תכונה
+- Fallback UI מותאם
+- שמירת שגיאות לניתוח
+
+### GameMode.tsx
+בחירת מצב משחק:
+- בחירת מצב (question-limited, time-limited, unlimited)
+- הגדרות מצב מותאמות
+- ולידציה של קלט
+
+### IconLibrary.tsx
+ספריית אייקונים:
+- אייקונים מותאמים אישית
+- תמיכה בגדלים שונים
+- אייקונים לפי הקשר
+
+### Leaderboard.tsx
+לוח מובילים:
+- הצגת דירוגים
+- פילטרים לפי תקופה
+- מיקום המשתמש
+
+### ProtectedRoute.tsx
+רכיב הגנה על נתיבים:
+- בדיקת אימות
+- בדיקת תפקידים
+- הפניה לדף התחברות אם לא מורשה
+
+### SubscriptionPlans.tsx
+תוכניות מנוי:
+- הצגת תוכניות זמינות
+- השוואה בין תוכניות
+- בחירת תוכנית
+
+### ValidatedForm.tsx
+טופס עם ולידציה:
+- ולידציה משולבת
+- טיפול בשגיאות
+- הצגת הודעות ולידציה
+
+## הפניות
+
+- [ארכיטקטורה כללית](../ARCHITECTURE.md)
+- [דיאגרמת Components מלאה](../DIAGRAMS.md#דיאגרמת-components-מלאה)
+- [דיאגרמת מבנה Frontend](../DIAGRAMS.md#דיאגרמת-מבנה-frontend)
+- [דפי האפליקציה](./VIEWS.md)

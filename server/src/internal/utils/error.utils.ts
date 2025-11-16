@@ -12,6 +12,8 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 
+import { getErrorMessage } from '@shared/utils';
+
 /**
  * Create validation error for field type validation
  * @param field - The field name
@@ -53,7 +55,6 @@ export function createStringLengthValidationError(
  * @returns InternalServerErrorException with storage error message
  */
 export function createStorageError(operation: string, originalError?: unknown): InternalServerErrorException {
-	const { getErrorMessage } = require('@shared/utils');
 	const message = originalError
 		? `Failed to ${operation}: ${getErrorMessage(originalError)}`
 		: `Failed to ${operation}`;
@@ -67,7 +68,6 @@ export function createStorageError(operation: string, originalError?: unknown): 
  * @returns InternalServerErrorException with server error message
  */
 export function createServerError(operation: string, originalError: unknown): InternalServerErrorException {
-	const { getErrorMessage } = require('@shared/utils');
 	return new InternalServerErrorException(`Failed to ${operation}: ${getErrorMessage(originalError)}`);
 }
 
@@ -87,7 +87,6 @@ export function createNotFoundError(resource: string): NotFoundException {
  * @returns InternalServerErrorException with cache error message
  */
 export function createCacheError(operation: string, originalError?: unknown): InternalServerErrorException {
-	const { getErrorMessage } = require('@shared/utils');
 	const message = originalError
 		? `Failed to ${operation}: ${getErrorMessage(originalError)}`
 		: `Failed to ${operation}`;

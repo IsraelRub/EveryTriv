@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 
-import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage, validateEmail, validatePassword, validateTopicLength, validateUsername } from '@shared/utils';
-import { validateCustomDifficultyText } from '@shared/validation';
+import {
+	performLocalLanguageValidationAsync,
+	validateCustomDifficultyText,
+	validateEmail,
+	validatePassword,
+	validateTopicLength,
+	validateUsername,
+} from '@shared/validation';
 
-import { apiService } from '../services';
 import type { BasicValidationResult, ValidationHookOptions, ValidatorsMap } from '../types';
 
 export function useValidation() {
-	const languageTimerRef = useRef<number | null>(null);
-
 	const validators: ValidatorsMap = useMemo(
 		() => ({
 			username: async (value: string) => Promise.resolve(validateUsername(value)),
@@ -20,29 +22,17 @@ export function useValidation() {
 			language: async (
 				value: string,
 				options?: ValidationHookOptions | { enableSpellCheck?: boolean; enableGrammarCheck?: boolean }
-			) =>
-				new Promise(resolve => {
-					if (languageTimerRef.current) {
-						window.clearTimeout(languageTimerRef.current);
-					}
-					languageTimerRef.current = window.setTimeout(async () => {
-						try {
-							// Only pass language-specific options to the API
-							const languageOptions: { enableSpellCheck?: boolean; enableGrammarCheck?: boolean } = {};
-							if (options && 'enableSpellCheck' in options) languageOptions.enableSpellCheck = options.enableSpellCheck;
-							if (options && 'enableGrammarCheck' in options)
-								languageOptions.enableGrammarCheck = options.enableGrammarCheck;
-
-							const res = await apiService.validateLanguage(value, languageOptions);
-							resolve({ isValid: res.isValid, errors: res.errors ?? [] });
-						} catch (error) {
-							logger.validationWarn('language_validation_client_failed', value, 'client_language_validation_failed', {
-								error: getErrorMessage(error),
-							});
-							resolve({ isValid: false, errors: ['Language validation failed'] });
-						}
-					}, 350);
-				}),
+			) => {
+				const languageOptions = options && 'enableSpellCheck' in options ? options : undefined;
+				const result = await performLocalLanguageValidationAsync(value, {
+					enableSpellCheck: languageOptions?.enableSpellCheck ?? true,
+					enableGrammarCheck: languageOptions?.enableGrammarCheck ?? true,
+				});
+				return {
+					isValid: result.isValid,
+					errors: result.errors,
+				};
+			},
 		}),
 		[]
 	);

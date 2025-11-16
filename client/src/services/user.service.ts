@@ -8,7 +8,14 @@
  */
 import { BillingCycle, PlanType } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { BasicValue, UpdateUserProfileData, UserPreferences, UserProfileResponseType } from '@shared/types';
+import type {
+	BasicUser,
+	BasicValue,
+	UpdateUserProfileData,
+	User,
+	UserPreferences,
+	UserProfileResponseType,
+} from '@shared/types';
 import { getErrorMessage, hasPropertyOfType } from '@shared/utils';
 
 import type { SubscriptionCreationResponse } from '../types';
@@ -190,9 +197,7 @@ class ClientUserService {
 			logger.userInfo('Creating subscription', { planType: plan, billingCycle });
 
 			const response = await apiService.createSubscription(plan, billingCycle);
-			const normalizedBillingCycle = Object.values(BillingCycle).find(
-				cycle => cycle === response.billingCycle
-			);
+			const normalizedBillingCycle = Object.values(BillingCycle).find(cycle => cycle === response.billingCycle);
 			const paymentId = hasPropertyOfType(response, 'paymentId', (value): value is string => typeof value === 'string')
 				? response.paymentId
 				: undefined;
@@ -242,12 +247,39 @@ class ClientUserService {
 	}
 
 	/**
+	 * Search users
+	 */
+	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
+		try {
+			logger.userInfo('Searching users', { query, limit });
+			const users = await apiService.searchUsers(query, limit);
+			logger.userInfo('Users found', { count: users.length });
+			return users;
+		} catch (error) {
+			logger.userError('Failed to search users', { error: getErrorMessage(error), query });
+			throw error;
+		}
+	}
+
+	/**
+	 * Get user by username
+	 */
+	async getUserByUsername(username: string): Promise<BasicUser> {
+		try {
+			logger.userInfo('Getting user by username', { username });
+			const user = await apiService.getUserByUsername(username);
+			logger.userInfo('User retrieved successfully', { username });
+			return user;
+		} catch (error) {
+			logger.userError('Failed to get user by username', { error: getErrorMessage(error), username });
+			throw error;
+		}
+	}
+
+	/**
 	 * Update user field
 	 */
-	async updateUserField(
-		field: string,
-		value: import('@shared/types').BasicValue
-	): Promise<{ user: import('@shared/types').User }> {
+	async updateUserField(field: string, value: BasicValue): Promise<{ user: User }> {
 		try {
 			logger.userInfo('Updating user field', { field });
 

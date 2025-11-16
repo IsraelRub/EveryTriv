@@ -22,7 +22,7 @@ export default function SocialShare({
 	const [isOpen, setIsOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 
-	const percentage = calculatePercentage(score || 0, total || 0);
+	const percentage = calculatePercentage(score ?? 0, total ?? 0);
 	const scoreText = `Just scored ${score}/${total} (${percentage}%) on ${topic} ${difficulty} difficulty in EveryTriv!`;
 
 	const shareUrl = `${window.location.origin}?challenge=${encodeURIComponent(topic)}&difficulty=${difficulty}`;
@@ -133,7 +133,7 @@ export default function SocialShare({
 							<div className='space-y-2 mb-4'>
 								<p className='text-sm text-slate-400 mb-3'>Share on:</p>
 								<motion.div variants={createStaggerContainer(0.05)} initial='hidden' animate='visible' role='list'>
-									<ResponsiveGrid minWidth='120px' gap={Spacing.SM}>
+									<ResponsiveGrid gap={Spacing.SM}>
 										{socialPlatforms.map((platform: (typeof socialPlatforms)[number], index: number) => (
 											<motion.div
 												key={platform.name}

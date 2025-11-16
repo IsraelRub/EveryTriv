@@ -73,13 +73,17 @@ const userStateSlice = createSlice({
 			state.error = null;
 		},
 		setPointBalance: (state, action: PayloadAction<PointBalancePayload>) => {
+			const freeQuestions = action.payload.freePoints;
+			const dailyLimit = action.payload.dailyLimit ?? state.pointBalance?.dailyLimit ?? 20;
+			const nextResetTime = action.payload.nextResetTime ?? state.pointBalance?.nextResetTime ?? null;
+
 			state.pointBalance = {
 				totalPoints: action.payload.balance,
-				freeQuestions: action.payload.balance - action.payload.purchasedPoints,
+				freeQuestions,
 				purchasedPoints: action.payload.purchasedPoints,
-				dailyLimit: state.pointBalance?.dailyLimit ?? 20,
-				canPlayFree: action.payload.balance - action.payload.purchasedPoints > 0,
-				nextResetTime: state.pointBalance?.nextResetTime ?? null,
+				dailyLimit,
+				canPlayFree: freeQuestions > 0,
+				nextResetTime,
 			};
 		},
 		deductPoints: (state, action: PayloadAction<number>) => {

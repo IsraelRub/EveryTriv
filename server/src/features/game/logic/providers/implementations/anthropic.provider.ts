@@ -14,7 +14,7 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 		name: 'Anthropic',
 		config: {
 			providerName: 'Anthropic',
-			model: 'claude-3-5-sonnet-20241022',
+			model: 'claude-3-5-sonnet-20240229',
 			version: '1.0',
 			capabilities: ['trivia-generation'],
 			rateLimit: {
@@ -39,6 +39,9 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 	}
 
 	protected getProviderConfig(prompt: string): ProviderConfig {
+		// Anthropic API requires system prompt and proper format
+		const systemPrompt = `You are an expert trivia question generator. Generate high-quality, factual trivia questions in JSON format.`;
+
 		return {
 			name: 'anthropic',
 			apiKey: this.apiKey,
@@ -49,12 +52,13 @@ export class AnthropicTriviaProvider extends BaseTriviaProvider {
 			priority: 1,
 			headers: {
 				'x-api-key': this.apiKey,
+				'anthropic-version': '2024-06-20',
 				'Content-Type': 'application/json',
-				'anthropic-version': '2023-06-01',
 			},
 			body: {
-				model: 'claude-3-5-sonnet-20241022',
-				max_tokens: 512,
+				model: 'claude-3-5-sonnet-20240229',
+				max_tokens: 1024, // Increased to ensure complete JSON response
+				system: systemPrompt,
 				messages: [
 					{
 						role: 'user',

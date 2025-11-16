@@ -44,33 +44,6 @@ export class AiProvidersController {
 	}
 
 	/**
-	 * Get available providers count
-	 * @returns Promise<number> Number of available providers
-	 */
-	@Get('count')
-	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
-	async getAvailableProvidersCount() {
-		try {
-			const count = this.aiProvidersService.getAvailableProvidersCount();
-
-			logger.providerStats('ai_providers', {
-				availableProviders: count,
-			});
-
-			return {
-				availableProviders: count,
-				timestamp: new Date().toISOString(),
-			};
-		} catch (error) {
-			logger.providerError('ai_providers', 'Failed to get providers count', {
-				error: getErrorMessage(error),
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Health check for AI providers
 	 * @returns Promise<{
 	 *   status: 'healthy' | 'degraded' | 'unhealthy';

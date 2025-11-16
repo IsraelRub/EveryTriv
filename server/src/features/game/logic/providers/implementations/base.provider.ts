@@ -27,7 +27,7 @@ import type {
 import { clamp, getErrorMessage, shuffle } from '@shared/utils';
 import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
-import { createAuthError } from '@internal/utils';
+import { createAuthError, createServerError } from '@internal/utils';
 
 import type { QuestionCacheMap, TriviaQuestionMetadata } from '@features/game/types';
 
@@ -68,14 +68,30 @@ export abstract class BaseTriviaProvider {
 
 		const config = this.getProviderConfig(prompt);
 		let lastError: Error | null = null;
+		let lastStatusCode: number | null = null;
 
-		// Log initial request
+		// Log initial request with detailed info (redact sensitive data)
+		const sanitizedBody = config.body ? { ...config.body } : {};
+		if (sanitizedBody && typeof sanitizedBody === 'object') {
+			// Remove or redact sensitive fields from logging
+			if ('messages' in sanitizedBody && Array.isArray(sanitizedBody.messages)) {
+				// Keep message structure but limit content length for logging
+				sanitizedBody.messages = sanitizedBody.messages.map((msg: { role?: string; content?: unknown }) => ({
+					role: msg.role,
+					content: typeof msg.content === 'string' ? `${msg.content.substring(0, 100)}...` : '[content]',
+				}));
+			}
+		}
+
 		logger.providerStats(this.name, {
 			eventType: 'api_call_start',
 			baseUrl: config.baseUrl.replace(config.apiKey || '', '[REDACTED]'),
 			timeout: config.timeout,
 			maxRetries: config.maxRetries,
-		});
+			...(config.body && 'model' in config.body ? { model: (config.body as { model?: string }).model } : {}),
+		} as typeof logger.providerStats extends (name: string, meta: infer M) => unknown
+			? M
+			: never & { headers?: Record<string, string>; bodyKeys?: string[]; model?: string });
 
 		// Retry logic
 		for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
@@ -104,11 +120,108 @@ export abstract class BaseTriviaProvider {
 				});
 
 				clearTimeout(timeoutId);
+				lastStatusCode = response.status;
 
 				// Check if response is OK
 				if (!response.ok) {
 					const errorText = await response.text().catch(() => 'Unknown error');
-					throw new Error(`${this.name} API returned ${response.status} ${response.statusText}: ${errorText}`);
+					const errorMessage = `${this.name} API returned ${response.status} ${response.statusText}: ${errorText}`;
+
+					// Log detailed error info for debugging (especially for 400 errors)
+					if (response.status === 400 && this.name === 'Anthropic') {
+						logger.providerError(this.name, 'Detailed 400 error for debugging', {
+							status: response.status,
+							error: errorText,
+							attempt: attempt + 1,
+						} as typeof logger.providerError extends (name: string, message: string, meta: infer M) => unknown
+							? M
+							: never & { requestBody?: unknown; headers?: Record<string, string> });
+					}
+
+					// Handle 401 Unauthorized - don't retry, throw immediately
+					if (response.status === 401) {
+						logger.providerError(this.name, 'API key authentication failed', {
+							status: response.status,
+							error: errorText,
+							attempt: attempt + 1,
+						});
+						const authError = new Error(errorMessage) as Error & {
+							statusCode?: number;
+							isAuthError?: boolean;
+							provider?: string;
+						};
+						authError.statusCode = 401;
+						authError.isAuthError = true;
+						authError.provider = this.name;
+						throw authError;
+					}
+
+					// Handle 429 Rate Limit - smart retry with Retry-After header
+					if (response.status === 429) {
+						const retryAfterHeader = response.headers.get('Retry-After');
+						// Increased base delay for rate limits - start with 5 seconds minimum
+						const baseDelay = Math.max(HTTP_CLIENT_CONFIG.RETRY_DELAY * 5, 5000); // At least 5 seconds
+						let retryDelay = baseDelay * Math.pow(2, attempt); // Exponential backoff
+
+						if (retryAfterHeader) {
+							const retryAfterSeconds = parseInt(retryAfterHeader, 10);
+							if (!isNaN(retryAfterSeconds) && retryAfterSeconds > 0) {
+								// Use the Retry-After header value, but ensure it's at least 5 seconds
+								retryDelay = Math.max(retryAfterSeconds * 1000, 5000);
+								logger.providerStats(this.name, {
+									eventType: 'rate_limit_detected',
+									attempt: attempt + 1,
+									delay: retryDelay,
+								} as typeof logger.providerStats extends (name: string, meta: infer M) => unknown
+									? M
+									: never & { retryAfterSeconds?: number });
+							}
+						} else {
+							// No Retry-After header, use exponential backoff with minimum 5 seconds
+							logger.providerStats(this.name, {
+								eventType: 'rate_limit_detected_no_header',
+								attempt: attempt + 1,
+								delay: retryDelay,
+							});
+						}
+
+						// If this is the last attempt, throw a special rate limit error
+						if (attempt === config.maxRetries) {
+							logger.providerError(this.name, 'Rate limit exceeded', {
+								status: response.status,
+								error: errorText,
+								attempt: attempt + 1,
+							});
+							const rateLimitError = new Error(errorMessage) as Error & {
+								statusCode?: number;
+								isRateLimitError?: boolean;
+								retryAfter?: number;
+								provider?: string;
+							};
+							rateLimitError.statusCode = 429;
+							rateLimitError.isRateLimitError = true;
+							rateLimitError.retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined;
+							rateLimitError.provider = this.name;
+							throw rateLimitError;
+						}
+
+						// Add jitter to prevent thundering herd problem
+						const jitter = Math.random() * Math.min(retryDelay * 0.1, 2000); // up to 10% or 2 seconds
+						retryDelay = retryDelay + jitter;
+
+						// Wait longer for rate limit errors
+						logger.providerStats(this.name, {
+							eventType: 'rate_limit_retry',
+							attempt: attempt + 1,
+							maxRetries: config.maxRetries,
+							delay: retryDelay,
+						});
+						await new Promise(resolve => setTimeout(resolve, retryDelay));
+						continue; // Retry after delay
+					}
+
+					// For other errors, throw and let retry logic handle it
+					throw new Error(errorMessage);
 				}
 
 				// Parse response JSON
@@ -134,6 +247,16 @@ export abstract class BaseTriviaProvider {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
 
+				// Check if it's an auth error (401) - don't retry
+				if ('isAuthError' in lastError && lastError.isAuthError === true) {
+					throw lastError;
+				}
+
+				// Check if it's a rate limit error (429) on last attempt - don't retry again
+				if ('isRateLimitError' in lastError && lastError.isRateLimitError === true && attempt === config.maxRetries) {
+					throw lastError;
+				}
+
 				// Check if it's an abort error (timeout)
 				if (lastError.name === 'AbortError' || lastError.message.includes('aborted')) {
 					lastError = new Error(`${this.name} API call timed out after ${config.timeout}ms`);
@@ -143,6 +266,7 @@ export abstract class BaseTriviaProvider {
 				if (attempt === config.maxRetries) {
 					logger.providerError(this.name, ERROR_CONTEXT_MESSAGES.AI_GENERATION_FAILED, {
 						error: getErrorMessage(lastError),
+						statusCode: lastStatusCode ?? undefined,
 						attempt: attempt + 1,
 						maxRetries: config.maxRetries,
 						timeout: config.timeout,
@@ -151,6 +275,7 @@ export abstract class BaseTriviaProvider {
 					logger.providerStats(this.name, {
 						eventType: 'api_call_retry',
 						error: getErrorMessage(lastError),
+						statusCode: lastStatusCode ?? undefined,
 						attempt: attempt + 1,
 						maxRetries: config.maxRetries,
 					});
@@ -161,14 +286,19 @@ export abstract class BaseTriviaProvider {
 					break;
 				}
 
-				// Wait before retrying (exponential backoff)
+				// Wait before retrying (exponential backoff with jitter)
 				const delay = HTTP_CLIENT_CONFIG.RETRY_DELAY * Math.pow(2, attempt);
-				await new Promise(resolve => setTimeout(resolve, delay));
+				const jitter = Math.random() * Math.min(delay * 0.1, 1000); // עד 10% או 1 שנייה
+				await new Promise(resolve => setTimeout(resolve, delay + jitter));
 			}
 		}
 
 		// If we get here, all retries failed
-		throw lastError || new Error(`${this.name} API call failed after ${config.maxRetries} retries`);
+		const finalError = lastError || new Error(`${this.name} API call failed after ${config.maxRetries} retries`);
+		if (lastStatusCode) {
+			(finalError as Error & { statusCode?: number }).statusCode = lastStatusCode;
+		}
+		throw finalError;
 	}
 
 	// Implement the required generateQuestion method from LLMProvider interface
@@ -228,8 +358,8 @@ export abstract class BaseTriviaProvider {
 					difficulty,
 				});
 
-				// Return a fallback response with error information
-				return this.createFallbackQuestion(topic, difficulty, 'PARSE_ERROR');
+				// Throw error instead of returning fallback question
+				throw createServerError('parse AI provider response', err);
 			}
 
 			// Check if AI returned null response (could not generate question)
@@ -240,7 +370,8 @@ export abstract class BaseTriviaProvider {
 					explanation: data.explanation || 'No explanation provided',
 				});
 
-				return this.createFallbackQuestion(topic, difficulty, 'VALIDATION_ERROR');
+				// Throw error instead of returning fallback question
+				throw createServerError('AI could not generate question', new Error('AI returned empty response'));
 			}
 
 			// Calculate custom difficulty multiplier if needed
@@ -269,8 +400,8 @@ export abstract class BaseTriviaProvider {
 					errors: ['Invalid question format'],
 				});
 
-				// Return fallback question instead of invalid one
-				return this.createFallbackQuestion(topic, difficulty, 'VALIDATION_ERROR');
+				// Throw error instead of returning fallback question
+				throw createServerError('validate question format', new Error('Invalid question format from AI provider'));
 			}
 
 			// Sanitize the question
@@ -321,8 +452,8 @@ export abstract class BaseTriviaProvider {
 				difficulty,
 			});
 
-			// Return fallback question instead of throwing error
-			return this.createFallbackQuestion(topic, difficulty, 'API_ERROR');
+			// Re-throw the error instead of returning fallback question
+			throw createServerError('generate trivia question', error);
 		}
 	}
 

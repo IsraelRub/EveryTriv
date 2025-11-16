@@ -28,7 +28,7 @@ export type StatsValue = BasicValue | Date | Record<string, BasicValue | Date>;
  * @type StorageValue
  * @description Generic data value that can be stored in cache or transmitted
  */
-export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] | unknown[] | Date | null | undefined | object;
+export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] | unknown[] | Date | null | object;
 
 /**
  * Request data type for API requests
@@ -61,12 +61,18 @@ export interface SlowOperation {
 }
 
 /**
- * Base data interface
- * @type BaseData
- * @description Base interface for flexible data structures
+ * Base data value type
+ * @type BaseDataValue
+ * @description Allowed value types in BaseData
  */
-export interface BaseData
-	extends Record<string, number | boolean | string | string[] | BaseData | BaseData[] | Date | undefined> {}
+export type BaseDataValue = number | boolean | string | string[] | Date;
+
+/**
+ * Base data interface
+ * @interface BaseData
+ * @description Base interface for flexible data structures without recursive nesting
+ */
+export interface BaseData extends Record<string, BaseDataValue> {}
 
 /**
  * Common option interface for select components

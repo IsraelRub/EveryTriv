@@ -4,6 +4,8 @@
  * @description Application configuration related types
  */
 
+import type { PayPalEnvironment } from '../payment.types';
+
 // Database Configuration
 export interface DatabaseConfigType {
 	host: string;
@@ -28,6 +30,14 @@ export interface JwtConfig {
 	secret: string;
 	expiresIn: string;
 	refreshExpiresIn: string;
+}
+
+// PayPal configuration
+export interface PayPalConfig {
+	clientId: string;
+	clientSecret: string;
+	merchantId: string;
+	environment: PayPalEnvironment;
 }
 
 // Redis Configuration - imported from redis.types.ts
@@ -59,4 +69,5 @@ export interface AppConfigInterface {
 		password?: string;
 		db?: number;
 	};
+	paypal: PayPalConfig;
 }

@@ -68,6 +68,10 @@ export class AuthService {
 			};
 		}
 
+		// Determine role for new user: first registered user becomes admin
+		const adminExists = await this.userRepository.existsBy({ role: UserRole.ADMIN });
+		const roleForNewUser = adminExists ? UserRole.USER : UserRole.ADMIN;
+
 		// Hash password using PasswordService
 		const hashedPassword = await this.passwordService.hashPassword(registerDto.password);
 
@@ -78,7 +82,7 @@ export class AuthService {
 			passwordHash: hashedPassword,
 			firstName: registerDto.firstName,
 			lastName: registerDto.lastName,
-			role: UserRole.USER,
+			role: roleForNewUser,
 			isActive: true,
 		});
 
@@ -242,7 +246,6 @@ export class AuthService {
 		googleId: string;
 		email?: string;
 		username?: string;
-		fullName?: string;
 		firstName?: string;
 		lastName?: string;
 		avatar?: string;
@@ -253,17 +256,12 @@ export class AuthService {
 
 		const normalizedEmail = profile.email?.toLowerCase();
 		const baseUsername =
-			profile.username ||
-			normalizedEmail?.split('@')[0] ||
-			`google_${profile.googleId.substring(0, 8)}`;
+			profile.username || normalizedEmail?.split('@')[0] || `google_${profile.googleId.substring(0, 8)}`;
 
 		const sanitizedBase = baseUsername.replace(/[^a-zA-Z0-9_-]/g, '') || `google_${Date.now()}`;
 
 		let user = await this.userRepository.findOne({
-			where: [
-				{ googleId: profile.googleId },
-				...(normalizedEmail ? [{ email: normalizedEmail }] : []),
-			],
+			where: [{ googleId: profile.googleId }, ...(normalizedEmail ? [{ email: normalizedEmail }] : [])],
 		});
 
 		if (!user) {
@@ -281,18 +279,15 @@ export class AuthService {
 			}
 
 			const email = normalizedEmail ?? `${profile.googleId}@googleuser.everytriv`;
-			const [firstName, ...restName] =
-				profile.fullName?.split(' ') ?? profile.firstName
-					? [profile.firstName ?? '', profile.lastName ?? '']
-					: [usernameCandidate, ''];
+			const firstName = profile.firstName ?? usernameCandidate;
+			const lastName = profile.lastName ?? '';
 
 			user = this.userRepository.create({
 				username: usernameCandidate,
 				email,
 				googleId: profile.googleId,
-				fullName: profile.fullName,
-				firstName: profile.firstName ?? firstName ?? undefined,
-				lastName: profile.lastName ?? (restName.length ? restName.join(' ') : undefined),
+				firstName: firstName || undefined,
+				lastName: lastName || undefined,
 				avatar: profile.avatar,
 				role: UserRole.USER,
 				isActive: true,
@@ -310,11 +305,12 @@ export class AuthService {
 				user.avatar = profile.avatar;
 				shouldPersist = true;
 			}
-			if (!user.firstName && profile.fullName) {
-				const [firstName, ...rest] = profile.fullName.split(' ');
-				user.firstName = firstName;
-				user.lastName = rest.join(' ') || user.lastName;
-				user.fullName = profile.fullName;
+			if (!user.firstName && profile.firstName) {
+				user.firstName = profile.firstName;
+				shouldPersist = true;
+			}
+			if (!user.lastName && profile.lastName) {
+				user.lastName = profile.lastName;
 				shouldPersist = true;
 			}
 			if (shouldPersist) {

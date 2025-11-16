@@ -7,7 +7,7 @@
  */
 import { StorageOperationResult } from '@shared/types';
 
-import { getErrorMessage } from '../error.utils';
+import { getErrorMessage } from '../core/error.utils';
 
 /**
  * Create operation result with timing

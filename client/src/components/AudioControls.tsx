@@ -1,7 +1,7 @@
 import { ChangeEvent, memo, useCallback, useEffect, useState } from 'react';
 
-import { useAudio } from '../hooks/useAudio';
 import { ButtonVariant, CLIENT_STORAGE_KEYS, ComponentSize } from '../constants';
+import { useAudio } from '../hooks/useAudio';
 import { storageService } from '../services';
 import { AudioControlsProps } from '../types';
 import { combineClassNames } from '../utils';

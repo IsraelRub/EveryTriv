@@ -13,8 +13,11 @@
  * @used_by server/src/features/points, shared/types/domain/points.types.ts
  */
 export enum PointTransactionType {
-	PURCHASE = 'purchase',
-	DEDUCTION = 'deduction',
+	DAILY_RESET = 'DAILY_RESET',
+	PURCHASE = 'PURCHASE',
+	GAME_USAGE = 'GAME_USAGE',
+	ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
+	REFUND = 'REFUND',
 }
 
 /**
@@ -24,5 +27,8 @@ export enum PointTransactionType {
  * @used_by server/src/features/points, shared/types/domain/points.types.ts
  */
 export enum PointSource {
-	PURCHASE = 'purchase',
+	FREE_DAILY = 'FREE_DAILY',
+	PURCHASED = 'PURCHASED',
+	BONUS = 'BONUS',
+	REFUND = 'REFUND',
 }

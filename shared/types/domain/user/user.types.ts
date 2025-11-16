@@ -33,7 +33,6 @@ export interface BasicUser {
 export interface UserProfile extends BasicUser, BaseEntity {
 	firstName?: string;
 	lastName?: string;
-	bio?: string;
 	avatar?: string;
 	preferences?: Partial<UserPreferences>;
 }
@@ -96,13 +95,9 @@ export interface User extends UserProfile {
 	authProvider: AuthProvider;
 
 	// Additional fields in use
-	fullName?: string;
-	address?: UserAddress;
 	credits: number;
 	purchasedPoints: number;
 	totalPoints: number;
-	score: number;
-	statistics?: UserStatistics;
 }
 
 /**
@@ -116,23 +111,6 @@ export interface UserStatistics extends BaseGameStatistics {
 	favoriteTopic: string;
 	lastPlayed: Date;
 	accountAge: number;
-}
-
-/**
- * User address interface
- * @interface UserAddress
- * @description User's address information
- */
-export interface UserAddress {
-	street?: string;
-	city?: string;
-	state?: string;
-	postalCode?: string;
-	country?: string;
-	apartment?: string;
-	countryCode?: string;
-	phoneNumber?: string;
-	isDefault?: boolean;
 }
 
 /**

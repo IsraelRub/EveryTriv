@@ -137,10 +137,16 @@ export default function AppRoutes() {
 	}, [dispatch]);
 
 	return (
-		<div className='flex flex-col min-h-screen'>
+		<div className='app-shell'>
 			<NavigationTracker />
+			<a
+				href='#main-content'
+				className='sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:block'
+			>
+				Skip to main content
+			</a>
 			<Navigation />
-			<main className='flex-grow'>
+			<main id='main-content' className='app-main' tabIndex={-1}>
 				<Routes>
 					{/* Public routes */}
 					<Route path='/' element={<HomeView />} />
@@ -240,6 +246,9 @@ export default function AppRoutes() {
 
 					{/* OAuth callback - no protection needed */}
 					<Route path='/auth/callback' element={<OAuthCallback />} />
+
+					{/* Forgot password - placeholder route */}
+					<Route path='/forgot-password' element={<NotFound />} />
 
 					{/* Unauthorized page */}
 					<Route path='/unauthorized' element={<UnauthorizedView />} />

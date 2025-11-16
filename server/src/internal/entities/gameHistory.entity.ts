@@ -10,40 +10,42 @@ import { UserEntity } from './user.entity';
 export class GameHistoryEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index()
-	userId: string = '';
+	userId!: string;
 
-	@ManyToOne(() => UserEntity, user => user.gameHistory)
+	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'user_id' })
 	user!: UserEntity;
+
+	@Column({ type: 'varchar', default: '' })
+	@Index()
+	topic: string = '';
+
+	@Column({ type: 'varchar', default: '' })
+	@Index()
+	difficulty: string = '';
 
 	@Column('int')
 	score: number = 0;
 
-	@Column({ name: 'total_questions', type: 'int' })
+	@Column({ name: 'total_questions', type: 'int', default: 0 })
 	totalQuestions: number = 0;
 
-	@Column({ name: 'correct_answers', type: 'int' })
+	@Column({ name: 'correct_answers', type: 'int', default: 0 })
 	correctAnswers: number = 0;
 
-	@Column()
-	difficulty: string = '';
-
-	@Column({ nullable: true })
-	topic?: string;
-
-	@Column({
-		name: 'game_mode',
-		type: 'varchar',
-		default: GameMode.QUESTION_LIMITED,
-	})
+	@Column({ name: 'game_mode', type: 'varchar', default: GameMode.QUESTION_LIMITED })
 	gameMode: GameMode = GameMode.QUESTION_LIMITED;
 
-	@Column({ name: 'time_spent', type: 'int', nullable: true })
-	timeSpent?: number; // in seconds
+	@Column({ name: 'time_spent', type: 'int', default: 0, nullable: true })
+	timeSpent?: number;
 
-	@Column({ name: 'credits_used', type: 'int' })
+	@Column({ name: 'credits_used', type: 'int', default: 0 })
 	creditsUsed: number = 0;
 
-	@Column({ name: 'questions_data', type: 'jsonb', default: [] })
+	@Column({ name: 'questions_data', type: 'jsonb', default: () => "'[]'::jsonb" })
 	questionsData: QuestionData[] = [];
+
+	get incorrectAnswers(): number {
+		return Math.max(0, this.totalQuestions - this.correctAnswers);
+	}
 }

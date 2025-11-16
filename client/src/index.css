@@ -23,7 +23,7 @@ body {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
   min-height: 100vh;
   margin: 0;
-  padding-top: 56px; /* Account for fixed navigation - reduced from 64px */
+  padding-top: 0;
   font-family: var(--font-family-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

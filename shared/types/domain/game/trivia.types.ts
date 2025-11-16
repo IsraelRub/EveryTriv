@@ -8,7 +8,7 @@
 import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
-import type { SimpleValidationResult } from '../validation.types';
+import type { BaseValidationResult } from '../validation.types';
 
 /**
  * Custom difficulty string type
@@ -118,9 +118,8 @@ export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionCore, 'an
  */
 export type TriviaQuestionInput<TDifficulty = GameDifficulty> = TriviaQuestionCore<TDifficulty>;
 
-export interface TriviaQuestionPayload
-	extends Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>,
-		Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>> {}
+export type TriviaQuestionPayload = Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'> &
+	Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>>;
 
 /**
  * Base answer payload shared across submission and result structures
@@ -162,8 +161,8 @@ export interface GameAnswerSubmission extends BaseAnswerPayload {
  * @description Aggregated validation results for trivia topic and difficulty inputs
  */
 export interface TriviaInputValidationResult {
-	topic: SimpleValidationResult;
-	difficulty: SimpleValidationResult;
+	topic: BaseValidationResult;
+	difficulty: BaseValidationResult;
 	overall: {
 		isValid: boolean;
 		canProceed: boolean;

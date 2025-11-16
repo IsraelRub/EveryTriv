@@ -74,9 +74,15 @@ export class LeaderboardService {
 			}
 
 			// Calculate user statistics
-			const calculatedStats = this.calculateUserStats(gameHistory, user);
+			const calculatedStats = this.calculateUserStats(gameHistory);
 			Object.assign(userStats, calculatedStats);
 			await this.userStatsRepository.save(userStats);
+
+			// Calculate total score for leaderboard (not part of UserStatsEntity)
+			const totalScore = this.calculateTotalScore(user, gameHistory, calculatedStats.overallSuccessRate, {
+				current: calculatedStats.currentStreak,
+				best: calculatedStats.longestStreak,
+			});
 
 			// Get or create leaderboard entry
 			let leaderboardEntry = await this.leaderboardRepository.findOne({
@@ -87,11 +93,11 @@ export class LeaderboardService {
 				leaderboardEntry = this.leaderboardRepository.create({
 					userId,
 					userStatsId: userStats.id,
-					score: calculatedStats.score,
+					score: totalScore,
 				});
 			} else {
 				leaderboardEntry.userStatsId = userStats.id;
-				leaderboardEntry.score = calculatedStats.score;
+				leaderboardEntry.score = totalScore;
 			}
 
 			// Save the entry
@@ -229,40 +235,11 @@ export class LeaderboardService {
 	}
 
 	/**
-	 * Get user percentile
-	 * @param userId User ID
-	 * @returns User percentile
-	 */
-	async getUserPercentile(userId: string): Promise<number> {
-		try {
-			const userRanking = await this.getUserRanking(userId);
-			if (!userRanking) {
-				return 0;
-			}
-
-			const totalUsers = await this.leaderboardRepository.count();
-			if (totalUsers === 0) {
-				return 0;
-			}
-
-			const percentile = Math.round(((totalUsers - userRanking.rank + 1) / totalUsers) * 100);
-			return Math.min(100, Math.max(0, percentile));
-		} catch (error) {
-			logger.analyticsError('getUserPercentile', {
-				error: getErrorMessage(error),
-				userId,
-			});
-			return 0;
-		}
-	}
-
-	/**
 	 * Calculate user statistics from game history
 	 * @param gameHistory Array of game history records
-	 * @param user User entity
 	 * @returns Calculated user statistics
 	 */
-	private calculateUserStats(gameHistory: GameHistoryEntity[], user: UserEntity) {
+	private calculateUserStats(gameHistory: GameHistoryEntity[]) {
 		const totalGames = gameHistory.length;
 		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
 		const correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
@@ -278,9 +255,6 @@ export class LeaderboardService {
 		const topicStats = this.calculateTopicStats(gameHistory);
 		const difficultyStats = this.calculateDifficultyStats(gameHistory);
 
-		// Calculate total score (weighted combination)
-		const totalScore = this.calculateTotalScore(user, gameHistory, successRate, streakData);
-
 		return {
 			totalGames,
 			totalQuestions,
@@ -295,7 +269,6 @@ export class LeaderboardService {
 			yearlyScore: timeScores.yearly,
 			topicStats,
 			difficultyStats,
-			score: totalScore,
 		};
 	}
 
@@ -375,19 +348,25 @@ export class LeaderboardService {
 		const groupedByTopic = groupBy(gameHistory, 'topic');
 		const topicStats: Record<
 			string,
-			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
+			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
 		> = {};
 
 		Object.entries(groupedByTopic).forEach(([topic, games]) => {
 			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
 			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const score = games.reduce((sum, game) => sum + game.score, 0);
+			const lastPlayed = games.reduce((latest, game) => {
+				const gameDate = new Date(game.createdAt);
+				const latestDate = new Date(latest);
+				return gameDate > latestDate ? gameDate : latestDate;
+			}, new Date(0));
 
 			topicStats[topic] = {
 				totalQuestions,
 				correctAnswers,
 				score,
 				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+				lastPlayed,
 			};
 		});
 
@@ -403,19 +382,25 @@ export class LeaderboardService {
 		const groupedByDifficulty = groupBy(gameHistory, 'difficulty');
 		const difficultyStats: Record<
 			string,
-			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number }
+			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
 		> = {};
 
 		Object.entries(groupedByDifficulty).forEach(([difficulty, games]) => {
 			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
 			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const score = games.reduce((sum, game) => sum + game.score, 0);
+			const lastPlayed = games.reduce((latest, game) => {
+				const gameDate = new Date(game.createdAt);
+				const latestDate = new Date(latest);
+				return gameDate > latestDate ? gameDate : latestDate;
+			}, new Date(0));
 
 			difficultyStats[difficulty] = {
 				totalQuestions,
 				correctAnswers,
 				score,
 				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+				lastPlayed,
 			};
 		});
 
@@ -483,6 +468,173 @@ export class LeaderboardService {
 			logger.analyticsError('updateGlobalRankings', {
 				error: getErrorMessage(error),
 			});
+		}
+	}
+
+	/**
+	 * Get leaderboard statistics for a specific period
+	 * @param period Time period (weekly, monthly, yearly)
+	 * @returns Leaderboard statistics
+	 */
+	async getLeaderboardStats(period: 'weekly' | 'monthly' | 'yearly'): Promise<{
+		activeUsers: number;
+		averagePoints: number;
+		averageGames: number;
+	}> {
+		try {
+			const cacheKey = `leaderboard:stats:${period}`;
+
+			return await this.cacheService.getOrSet<{
+				activeUsers: number;
+				averagePoints: number;
+				averageGames: number;
+			}>(
+				cacheKey,
+				async () => {
+					// Calculate date range based on period
+					const now = new Date();
+					let startDate: Date;
+
+					switch (period) {
+						case 'weekly':
+							startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+							break;
+						case 'monthly':
+							startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+							break;
+						case 'yearly':
+							startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+							break;
+						default:
+							startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+					}
+
+					// Get active users (users who played games in the period)
+					const { addDateRangeConditions } = await import('../../common/queries');
+					const activeUsersQueryBuilder = this.gameHistoryRepository
+						.createQueryBuilder('game')
+						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count');
+					addDateRangeConditions(activeUsersQueryBuilder, 'game', 'createdAt', startDate);
+					const activeUsersRaw = await activeUsersQueryBuilder.getRawOne<{ count: number }>();
+
+					const activeUsers = activeUsersRaw?.count ?? 0;
+
+					// Get average points from leaderboard entries for the period
+					const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
+						weekly: 'weeklyScore',
+						monthly: 'monthlyScore',
+						yearly: 'yearlyScore',
+					};
+
+					const scoreField = scoreFieldMap[period];
+					if (!scoreField) {
+						throw new Error(`Invalid period: ${period}`);
+					}
+
+					const averagePointsRaw = await this.leaderboardRepository
+						.createQueryBuilder('leaderboard')
+						.leftJoin('leaderboard.userStats', 'userStats')
+						.select(`CAST(AVG(userStats.${scoreField}) AS DOUBLE PRECISION)`, 'average')
+						.where(`userStats.${scoreField} > 0`)
+						.getRawOne<{ average: number | null }>();
+
+					const averagePoints = averagePointsRaw?.average ? Math.round(averagePointsRaw.average) : 0;
+
+					// Get average games played in the period
+					const averageGamesQueryBuilder = this.gameHistoryRepository
+						.createQueryBuilder('game')
+						.select('CAST(COUNT(*) AS DOUBLE PRECISION)', 'total')
+						.addSelect('CAST(COUNT(DISTINCT game.userId) AS DOUBLE PRECISION)', 'users');
+					addDateRangeConditions(averageGamesQueryBuilder, 'game', 'createdAt', startDate);
+					const averageGamesRaw = await averageGamesQueryBuilder.getRawOne<{
+						total: number | null;
+						users: number | null;
+					}>();
+
+					const totalGames = averageGamesRaw?.total ?? 0;
+					const uniqueUsers = averageGamesRaw?.users ?? 0;
+					const averageGames = uniqueUsers > 0 ? Math.round(totalGames / uniqueUsers) : 0;
+
+					return {
+						activeUsers,
+						averagePoints,
+						averageGames,
+					};
+				},
+				CACHE_DURATION.MEDIUM,
+				(data): data is { activeUsers: number; averagePoints: number; averageGames: number } => {
+					return (
+						typeof data === 'object' &&
+						data !== null &&
+						typeof (data as { activeUsers?: unknown }).activeUsers === 'number' &&
+						typeof (data as { averagePoints?: unknown }).averagePoints === 'number' &&
+						typeof (data as { averageGames?: unknown }).averageGames === 'number'
+					);
+				}
+			);
+		} catch (error) {
+			logger.analyticsError('getLeaderboardStats', {
+				error: getErrorMessage(error),
+				period,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Clear all leaderboard entries (admin)
+	 */
+	async clearAllLeaderboard(): Promise<{ message: string; deletedCount: number }> {
+		try {
+			logger.analyticsTrack('Clearing entire leaderboard dataset', {});
+
+			const totalBefore = await this.leaderboardRepository.count();
+
+			if (totalBefore === 0) {
+				logger.analyticsTrack('No leaderboard records to clear', {});
+				// Clear cache even if no records found
+				try {
+					await this.cacheService.invalidatePattern('leaderboard:*');
+				} catch (cacheError) {
+					logger.cacheError('invalidatePattern', 'leaderboard:*', {
+						error: getErrorMessage(cacheError),
+					});
+				}
+				return {
+					message: 'No leaderboard records found',
+					deletedCount: 0,
+				};
+			}
+
+			await this.leaderboardRepository.clear();
+			const deletedCount = totalBefore;
+
+			logger.analyticsTrack('All leaderboard cleared by admin', {
+				deletedCount,
+			});
+
+			// Clear cache after database deletion
+			try {
+				const cacheDeleted = await this.cacheService.invalidatePattern('leaderboard:*');
+				if (cacheDeleted > 0) {
+					logger.cacheInfo(`Leaderboard cache cleared: ${cacheDeleted} keys deleted`);
+				}
+			} catch (cacheError) {
+				logger.cacheError('invalidatePattern', 'leaderboard:*', {
+					error: getErrorMessage(cacheError),
+				});
+				// Don't throw - database deletion was successful
+			}
+
+			return {
+				message: 'All leaderboard records removed successfully',
+				deletedCount,
+			};
+		} catch (error) {
+			logger.analyticsError('Failed to clear all leaderboard', {
+				error: getErrorMessage(error),
+			});
+			throw error;
 		}
 	}
 }

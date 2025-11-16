@@ -13,9 +13,9 @@ alwaysApply: true
 ## 🔧 TypeScript
 
 - Always use TypeScript with `"strict": true` mode.
-- Do not use `any`; prefer `unknown` with proper type refinement.
+- Avoid `any`, `unknown`, and `as` assertions; rely on concrete types and type guards.
 - Type all function inputs and outputs explicitly.
-- Store shared types in `shared/types/`.
+- Keep shared types under the relevant domain-specific folder in `shared/types/` and reuse existing definitions.
 - Use TypeORM decorators for entity definitions.
 
 ## 🌐 API Design
@@ -44,6 +44,12 @@ Optional:
 - @nestjs/caching
 - @nestjs/schedule
 - @nestjs/websockets
+
+## 🛠 Tooling
+
+- Use `pnpm` for dependency installation and scripts.
+- Run multi-step commands separately in PowerShell (no `&&` chaining support).
+- Keep shared package barrel exports in sync when adding or renaming files.
 
 ## 🧪 Testing
 
@@ -96,13 +102,18 @@ Shared code:
 - Use logging service instead of console.log
 - Cache expensive operations
 - Use TypeORM repositories for database operations
+- Define constants in dedicated files within `shared/constants/` and use barrel imports.
+- Prevent duplicate logging between services and controllers; centralize logging responsibilities.
+- Add new utilities only when they have an immediate use and colocate them with the relevant domain.
+- Avoid placeholder or example code—commit only production-ready implementations.
+- Prefer barrel imports (`index.ts`) over deep relative paths.
 
 ## 🎨 Code Style
 
 - Use PascalCase for classes and interfaces
 - Use camelCase for variables and functions
 - Use UPPER_CASE for constants
-- Use kebab-case for file names
+- Use camelCase for file names
 - Add JSDoc comments for public APIs
 - Follow NestJS naming conventions
 

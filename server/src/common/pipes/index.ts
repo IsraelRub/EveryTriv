@@ -47,10 +47,3 @@ export * from './gameAnswer.pipe';
  * @used_by server/src/features/game, server/src/controllers
  */
 export * from './triviaRequest.pipe';
-
-/**
- * Language validation pipe
- * @description Pipe for validating text with language tool
- * @used_by server/src/features/game, server/src/controllers
- */
-export * from './languageValidation.pipe';

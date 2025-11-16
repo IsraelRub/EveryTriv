@@ -21,8 +21,12 @@ const isExpressResponse = (value: unknown): value is Response =>
 	isRecord(value) && typeof value.status === 'function' && typeof value.setHeader === 'function';
 
 const isCacheableValue = (value: unknown): value is StorageValue => {
-	if (value == null) {
+	if (value === null) {
 		return true;
+	}
+
+	if (value === undefined) {
+		return false;
 	}
 
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -109,7 +113,7 @@ export class CacheInterceptor implements NestInterceptor {
 							}
 
 							if (!cacheMetadata.condition(request, result)) {
-							logger.cacheInfo('Cache condition failed - not caching', {
+								logger.cacheInfo('Cache condition failed - not caching', {
 									key: cacheMetadata.key,
 									method: request.method,
 									url: request.originalUrl,

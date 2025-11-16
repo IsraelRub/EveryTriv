@@ -17,8 +17,8 @@ import {
 	Icon,
 } from '../../components';
 import { ButtonVariant, CardVariant, ComponentSize, Spacing } from '../../constants';
-import { useGlobalLeaderboard, useLeaderboardByPeriod, useUserRanking } from '../../hooks';
-import type { LeaderboardEntryProps, RankingCardProps } from '../../types';
+import { useGlobalLeaderboard, useLeaderboardByPeriod, useLeaderboardStats, useUserRanking } from '../../hooks';
+import type { CardMetricProps, LeaderboardEntryProps } from '../../types';
 
 export function LeaderboardView() {
 	const [timeFilter, setTimeFilter] = useState<'global' | 'weekly' | 'monthly' | 'yearly'>('global');
@@ -28,8 +28,13 @@ export function LeaderboardView() {
 	// Use leaderboard hooks
 	const { data: userRanking, isLoading: userRankingLoading } = useUserRanking();
 	const { data: globalLeaderboard, isLoading: globalLoading } = useGlobalLeaderboard();
-	const periodFilter = timeFilter === 'global' ? 'weekly' : timeFilter;
+	const periodFilter: 'weekly' | 'monthly' = timeFilter === 'global' || timeFilter === 'yearly' ? 'weekly' : timeFilter;
 	const { data: periodLeaderboard, isLoading: periodLoading } = useLeaderboardByPeriod(periodFilter, limit);
+
+	// Get stats for all periods
+	const { data: weeklyStats, isLoading: weeklyStatsLoading } = useLeaderboardStats('weekly');
+	const { data: monthlyStats, isLoading: monthlyStatsLoading } = useLeaderboardStats('monthly');
+	const { data: yearlyStats, isLoading: yearlyStatsLoading } = useLeaderboardStats('yearly');
 
 	useEffect(() => {
 		logger.navigationPage('leaderboard', {
@@ -110,26 +115,38 @@ export function LeaderboardView() {
 						</CardHeader>
 						<CardContent>
 							<GridLayout variant='balanced' gap={Spacing.LG}>
-								{['weekly', 'monthly', 'yearly'].map(period => (
+								{[
+									{ period: 'weekly' as const, stats: weeklyStats, isLoading: weeklyStatsLoading },
+									{ period: 'monthly' as const, stats: monthlyStats, isLoading: monthlyStatsLoading },
+									{ period: 'yearly' as const, stats: yearlyStats, isLoading: yearlyStatsLoading },
+								].map(({ period, stats, isLoading }) => (
 									<Card key={period} variant={CardVariant.GLASS} padding={Spacing.SM}>
 										<CardContent>
 											<h3 className='text-lg font-semibold text-white mb-3'>
 												{period === 'weekly' ? 'Weekly' : period === 'monthly' ? 'Monthly' : 'Yearly'}
 											</h3>
-											<div className='space-y-2'>
-												<div className='flex justify-between'>
-													<span className='text-sm text-white/70'>Active Users:</span>
-													<span className='font-semibold text-white'>{Math.floor(Math.random() * 1000) + 100}</span>
+											{isLoading ? (
+												<div className='space-y-2'>
+													<div className='h-4 bg-white/10 rounded animate-pulse'></div>
+													<div className='h-4 bg-white/10 rounded animate-pulse'></div>
+													<div className='h-4 bg-white/10 rounded animate-pulse'></div>
 												</div>
-												<div className='flex justify-between'>
-													<span className='text-sm text-white/70'>Average Points:</span>
-													<span className='font-semibold text-white'>{Math.floor(Math.random() * 5000) + 1000}</span>
+											) : (
+												<div className='space-y-2'>
+													<div className='flex justify-between'>
+														<span className='text-sm text-white/70'>Active Users:</span>
+														<span className='font-semibold text-white'>{stats?.activeUsers ?? 0}</span>
+													</div>
+													<div className='flex justify-between'>
+														<span className='text-sm text-white/70'>Average Points:</span>
+														<span className='font-semibold text-white'>{stats?.averagePoints ?? 0}</span>
+													</div>
+													<div className='flex justify-between'>
+														<span className='text-sm text-white/70'>Average Games:</span>
+														<span className='font-semibold text-white'>{stats?.averageGames ?? 0}</span>
+													</div>
 												</div>
-												<div className='flex justify-between'>
-													<span className='text-sm text-white/70'>Average Games:</span>
-													<span className='font-semibold text-white'>{Math.floor(Math.random() * 50) + 10}</span>
-												</div>
-											</div>
+											)}
 										</CardContent>
 									</Card>
 								))}
@@ -235,8 +252,8 @@ export function LeaderboardView() {
 
 // Ranking Card Component
 
-function RankingCard({ title, value, subtitle, icon, color }: RankingCardProps) {
-	const colorClasses: Record<RankingCardProps['color'], string> = {
+function RankingCard({ title, value, subtitle, icon, color }: CardMetricProps) {
+	const colorClasses: Record<CardMetricProps['color'], string> = {
 		yellow: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30',
 		blue: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
 		green: 'bg-green-500/20 text-green-300 border-green-400/30',

@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Post, UseGuards, UsePipes } from '@nestjs/common';
 
 import { CACHE_DURATION } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
 import { AuthGuard, Cache, CurrentUserId } from '../../common';
+import { PaymentDataPipe } from '../../common/pipes';
 import { CreateSubscriptionDto } from './dtos';
 import { SubscriptionService } from './subscription.service';
 
@@ -65,23 +66,21 @@ export class SubscriptionController {
 	 */
 	@Post('create')
 	@UseGuards(AuthGuard)
+	@UsePipes(PaymentDataPipe)
 	async createSubscription(@CurrentUserId() userId: string, @Body() body: CreateSubscriptionDto) {
 		try {
 			if (!body.planType) {
 				throw new HttpException('Plan type is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.subscriptionService.createSubscription(
-				userId,
-				body.planType,
-				body.billingCycle || 'monthly'
-			);
+			const result = await this.subscriptionService.createSubscription(userId, body);
 
 			// Log API call for subscription creation
 			logger.apiCreate('subscription_create', {
 				userId,
 				planType: body.planType,
 				billingCycle: body.billingCycle || 'monthly',
+				paymentMethod: body.paymentMethod,
 			});
 
 			return result;

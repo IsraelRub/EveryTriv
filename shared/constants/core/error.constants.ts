@@ -52,6 +52,9 @@ export const ERROR_CONTEXT_MESSAGES = {
 	API_KEY_MISSING: 'API key not configured',
 	INVALID_RESPONSE: 'Invalid response format from AI provider',
 	QUESTION_GENERATION_FAILED: 'Failed to generate trivia question',
+	AUTH_ERROR: 'API key authentication failed',
+	RATE_LIMIT_ERROR: 'Rate limit exceeded',
+	PROVIDER_UNAVAILABLE: 'Provider is currently unavailable',
 } as const;
 
 // Error logging context
@@ -128,6 +131,9 @@ export const PROVIDER_ERROR_MESSAGES = {
 	INVALID_OPENAI_RESPONSE: 'Invalid OpenAI response format',
 	NO_PROVIDERS_AVAILABLE: 'No AI providers available',
 	API_KEY_NOT_CONFIGURED: 'API key not configured',
+	AUTH_FAILED: 'Authentication failed - invalid or missing API key',
+	RATE_LIMIT_EXCEEDED: 'Rate limit exceeded - too many requests',
+	ALL_PROVIDERS_FAILED: 'All AI providers failed - unable to generate question',
 } as const;
 
 // Analytics error messages
@@ -172,9 +178,27 @@ export const COMMON_ERROR_MESSAGES = {
  * @used_by shared/utils/error.utils.ts
  */
 export const NEST_EXCEPTION_NAMES = [
+	'BadGatewayException',
 	'BadRequestException',
-	'NotFoundException',
-	'InternalServerErrorException',
-	'UnauthorizedException',
+	'ConflictException',
 	'ForbiddenException',
+	'GatewayTimeoutException',
+	'GoneException',
+	'HttpException',
+	'HttpVersionNotSupportedException',
+	'ImATeapotException',
+	'InternalServerErrorException',
+	'IntrinsicException',
+	'MethodNotAllowedException',
+	'MisdirectedException',
+	'NotAcceptableException',
+	'NotFoundException',
+	'NotImplementedException',
+	'PayloadTooLargeException',
+	'PreconditionFailedException',
+	'RequestTimeoutException',
+	'ServiceUnavailableException',
+	'UnauthorizedException',
+	'UnprocessableEntityException',
+	'UnsupportedMediaTypeException',
 ] as const;

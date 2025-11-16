@@ -77,7 +77,6 @@ export interface LeaderboardEntry extends BaseScoreData {
 	userId: string;
 	username: string;
 	avatar?: string;
-	fullName?: string;
 	rank: number;
 	gamesPlayed: number;
 	lastPlayed: Date;
@@ -114,6 +113,18 @@ export interface UserStatsData extends BaseGameStatistics, BaseScoreData {
 	gamesPlayed?: number;
 	currentStreak: number;
 	bestStreak: number;
+}
+
+/**
+ * Leaderboard statistics response interface
+ * @interface LeaderboardStatsResponse
+ * @description Statistics for leaderboard periods (weekly/monthly/yearly)
+ * @used_by client: client/src/views/leaderboard/LeaderboardView.tsx (period comparison stats)
+ */
+export interface LeaderboardStatsResponse {
+	activeUsers: number;
+	averagePoints: number;
+	averageGames: number;
 }
 
 /**

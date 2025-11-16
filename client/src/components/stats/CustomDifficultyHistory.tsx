@@ -6,8 +6,8 @@ import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 import { getDifficultyDisplayText } from '@shared/validation';
 
-// import { storageService } from '../../services';
 import { ButtonVariant, ComponentSize, ModalSize } from '../../constants';
+import { customDifficultyService } from '../../services';
 import { CustomDifficultyHistoryProps, HistoryItem } from '../../types';
 import { formatRelativeTime, formatTopic, getDifficultyIcon } from '../../utils';
 import { createStaggerContainer, fadeInLeft, hoverScale } from '../animations';
@@ -27,24 +27,13 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 	const loadHistory = async () => {
 		setLoading(true);
 		try {
-			// TODO: Implement custom difficulties storage
-			const recentItems: string[] = [];
-			// Convert string array to HistoryItem array
-			const historyItems: HistoryItem[] = recentItems.map((item: string) => {
-				const [topic, difficulty] = item.split(':');
-				return {
-					topic: topic || '',
-					difficulty: difficulty || '',
-					score: 0,
-					date: new Date().toISOString(),
-					timestamp: Date.now(),
-				};
-			});
+			const historyItems = await customDifficultyService.getHistory();
 			setHistory(historyItems);
 		} catch (error) {
 			logger.storageError('Failed to load custom difficulty history', {
 				error: getErrorMessage(error),
 			});
+			setHistory([]);
 		} finally {
 			setLoading(false);
 		}
@@ -60,10 +49,15 @@ export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }
 		onClose?.();
 	};
 
-	const handleClearHistory = () => {
-		// TODO: Implement clear custom difficulties
-		// storageService.clearCustomDifficulties();
-		setHistory([]);
+	const handleClearHistory = async () => {
+		try {
+			await customDifficultyService.clearHistory();
+			setHistory([]);
+		} catch (error) {
+			logger.storageError('Failed to clear custom difficulty history', {
+				error: getErrorMessage(error),
+			});
+		}
 	};
 
 	if (!isVisible) return null;

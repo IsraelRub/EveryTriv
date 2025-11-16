@@ -17,7 +17,7 @@
 
 תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
 
-- Backend Features: `docs/backend/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Points, Payment, Subscription)
+- Backend Features: `docs/backend/features/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Points, Payment, Subscription)
 - Frontend Structure: `docs/frontend/` (State, Hooks, Services, Components, Routing)
 - Shared Layer: `docs/shared/` (Types, Validation, Constants, Utilities)
 
@@ -51,7 +51,7 @@ pnpm run dev   # הפעלה מקבילה של client+server
 
 שרת ברירת מחדל: `http://localhost:3001`  |  ממשק לקוח: `http://localhost:5173`
 
-## � סקריפטים שימושיים (Root)
+## 📋 סקריפטים שימושיים
 
 ```bash
 pnpm run dev           # פיתוח מלא
@@ -62,29 +62,29 @@ pnpm run format        # עיצוב קוד
 
 סקריפטים מפורטים נוספים: ראה תיקיית `scripts/` ותיעוד ייעודי ב-`docs/DEVELOPMENT.md`.
 
-## � סביבת Docker בסיסית
+## 🐳 סביבת Docker בסיסית
 
 ```bash
 docker-compose up -d
 ```
 תצורות מלאות ופרופילי פיתוח מורחבים: `docs/DEPLOYMENT.md`.
 
-## � מסד נתונים
+## 💾 מסד נתונים
 
 הגדרה מאוחדת (PostgreSQL + Redis) בדוקר: `docs/database/DATABASE_SETUP.md`.
 
 ## 🔐 אבטחה
 
 JWT + Refresh Flow, בקרות תפקידים, ולידציה בכל שכבת כניסה (DTO + Pipes), Rate Limiting, Cache Layer.
-פרטים: `docs/ARCHITECTURE.md` ו-`docs/backend/feature-auth.md`.
+פרטים: `docs/ARCHITECTURE.md` ו-`docs/backend/features/AUTH.md`.
 
 ## 🧩 מודולריות (Backend)
 
-כל מודול תחום (Feature) כולל: Controller(s) + Service(s) + DTOs. סיכום מרוכז: `docs/backend/FEATURES.md`.
+כל מודול תחום (Feature) כולל: Controller(s) + Service(s) + DTOs. ראה `docs/backend/features/` לפרטים על כל מודול.
 
 ## 🧠 לוגיקת משחק (Game Flow)
 
-תיעוד סטטי לזרימות ושכבות: `docs/backend/feature-game.md` + דיאגרמות ב-`docs/DIAGRAMS.md`.
+תיעוד סטטי לזרימות ושכבות: `docs/backend/features/GAME.md` + דיאגרמות ב-`docs/DIAGRAMS.md`.
 
 ## 🎨 UI ו-Hooks
 
@@ -93,10 +93,6 @@ Frontend Hooks בשכבות (API / Business / UI / Utils): ראה `docs/frontend
 ## 📚 קונסיסטנטיות טיפוסים
 
 כל שימוש בנתונים בין לקוח ושרת עובר דרך טיפוסים משותפים ב-`shared/types`. ראה `docs/shared/TYPES.md`.
-
-## 🤝 תרומה
-
-קוד חדש נדרש: בדיקות טיפוסים, Lint נקי, תאימות לשכבת Shared.
 
 ## 📄 רישיון
 

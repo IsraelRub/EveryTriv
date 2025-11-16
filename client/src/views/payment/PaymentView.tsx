@@ -1,17 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
-import { BillingCycle, CONTACT_INFO, PlanType, VALID_GAME_MODES } from '@shared/constants';
+import {
+	BillingCycle,
+	CONTACT_INFO,
+	PaymentMethod,
+	PaymentStatus,
+	PlanType,
+	VALID_GAME_MODES,
+} from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type {
 	PointPurchaseOption,
 	SubscriptionData,
 	SubscriptionPlans as SubscriptionPlansType,
-	UrlResponse,
+	ValidationStatus,
 } from '@shared/types';
-import { formatCurrency, getErrorMessage } from '@shared/utils';
+import { formatCurrency, getErrorMessage, isSubscriptionData, isSubscriptionPlans } from '@shared/utils';
 
 import {
 	Button,
@@ -54,8 +61,8 @@ import {
 } from '../../hooks';
 import { selectUserPointBalance } from '../../redux/selectors';
 import { setPointBalance } from '../../redux/slices';
-import { audioService, storageService } from '../../services';
-import { isSubscriptionData, isSubscriptionPlans } from '../../utils';
+import { audioService, pointsService, storageService } from '../../services';
+import type { ManualPaymentPayload, PointsPurchaseResponse } from '../../types';
 
 export default function PaymentView() {
 	const navigate = useNavigate();
@@ -72,7 +79,175 @@ export default function PaymentView() {
 	const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
 	const [purchasing, setPurchasing] = useState(false);
 	const [success, setSuccess] = useState(false);
-	const [purchaseStatus, setPurchaseStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'warning'>('idle');
+	const [purchaseStatus, setPurchaseStatus] = useState<ValidationStatus>('idle');
+	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.MANUAL_CREDIT);
+	const [cardNumber, setCardNumber] = useState('');
+	const [expiryDate, setExpiryDate] = useState('');
+	const [cvv, setCvv] = useState('');
+	const [cardHolderName, setCardHolderName] = useState('');
+	const [postalCode, setPostalCode] = useState('');
+	const [pendingReference, setPendingReference] = useState<string | null>(null);
+	const [paypalLoading, setPaypalLoading] = useState(false);
+	const [paypalError, setPaypalError] = useState<string | null>(null);
+
+	const parseExpiryDateParts = useCallback((value: string): { month: number; year: number } => {
+		const [monthPart, yearPart] = value.split('/');
+		const monthValue = parseInt((monthPart ?? '').trim(), 10);
+		const yearDigits = parseInt((yearPart ?? '').trim(), 10);
+		const yearValue = Number.isNaN(yearDigits) ? 0 : 2000 + yearDigits;
+		return {
+			month: Number.isNaN(monthValue) ? 0 : monthValue,
+			year: yearValue,
+		};
+	}, []);
+
+	const buildManualPaymentPayload = useCallback((): ManualPaymentPayload | null => {
+		const sanitizedCardNumber = cardNumber.replace(/\s+/g, '');
+		if (!sanitizedCardNumber || !expiryDate || !cvv || !cardHolderName) {
+			return null;
+		}
+
+		const { month, year } = parseExpiryDateParts(expiryDate);
+
+		return {
+			cardNumber: sanitizedCardNumber,
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: cvv.trim(),
+			cardHolderName: cardHolderName.trim(),
+			postalCode: postalCode.trim() || undefined,
+			expiryDate,
+		};
+	}, [cardNumber, cardHolderName, cvv, expiryDate, parseExpiryDateParts, postalCode]);
+
+	const applySuccessfulPurchase = useCallback(
+		(result: PointsPurchaseResponse) => {
+			setSuccess(true);
+			setPurchasing(false);
+			setPurchaseStatus('valid');
+			setPendingReference(null);
+			setPaypalError(null);
+
+			if (result.balance) {
+				dispatch(
+					setPointBalance({
+						balance: result.balance.balance ?? result.balance.totalPoints ?? 0,
+						purchasedPoints: result.balance.purchasedPoints ?? 0,
+						freePoints: result.balance.freeQuestions ?? 0,
+						lastUpdated: new Date(),
+						dailyLimit: result.balance.dailyLimit,
+						nextResetTime: result.balance.nextResetTime,
+					})
+				);
+			}
+
+			audioService.play(AudioKey.SUCCESS);
+		},
+		[audioService, dispatch]
+	);
+
+	const handlePurchaseSuccess = useCallback(
+		(result: PointsPurchaseResponse) => {
+			if (result.status === PaymentStatus.COMPLETED) {
+				applySuccessfulPurchase(result);
+				return;
+			}
+
+			setPurchasing(false);
+
+			if (result.status === PaymentStatus.REQUIRES_CAPTURE) {
+				setPurchaseStatus('warning');
+				setPendingReference(
+					result.manualCaptureReference
+						? `Payment recorded and pending manual capture. Reference: ${result.manualCaptureReference}`
+						: 'Payment recorded and pending manual capture.'
+				);
+				return;
+			}
+
+			setPurchaseStatus('invalid');
+		},
+		[applySuccessfulPurchase]
+	);
+
+	const handlePurchaseError = useCallback(
+		(error: unknown) => {
+			setPurchasing(false);
+			setPurchaseStatus('invalid');
+			const message = getErrorMessage(error);
+			logger.paymentFailed('points_purchase', message, {
+				id: selectedPackage ?? 'unknown',
+			});
+			audioService.play(AudioKey.ERROR);
+		},
+		[audioService, logger, selectedPackage]
+	);
+
+	const loadPayPalSdk = useCallback(async (): Promise<void> => {
+		if (window.paypal) {
+			return;
+		}
+
+		await new Promise<void>((resolve, reject) => {
+			const existingScript = document.querySelector<HTMLScriptElement>('script[src*="paypal.com"]');
+			if (existingScript) {
+				existingScript.addEventListener('load', () => resolve(), { once: true });
+				existingScript.addEventListener('error', () => reject(new Error('Failed to load PayPal SDK')), { once: true });
+				return;
+			}
+
+			const script = document.createElement('script');
+			script.src = 'https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=USD';
+			script.async = true;
+			script.onload = () => resolve();
+			script.onerror = () => reject(new Error('Failed to load PayPal SDK'));
+			document.head.appendChild(script);
+		});
+	}, []);
+
+	const handlePayPalPurchase = useCallback(
+		async (packageId: string) => {
+			try {
+				setPurchaseStatus('validating');
+				setPurchasing(true);
+				setPaypalLoading(true);
+				setPaypalError(null);
+				setPendingReference(null);
+
+				const initialResult = await pointsService.purchasePoints({
+					packageId,
+					paymentMethod: PaymentMethod.PAYPAL,
+				});
+
+				if (initialResult.status === PaymentStatus.COMPLETED) {
+					applySuccessfulPurchase(initialResult);
+					return;
+				}
+
+				if (!initialResult.paypalOrderRequest) {
+					throw new Error('PayPal configuration is unavailable.');
+				}
+
+				await loadPayPalSdk();
+
+				if (!window.paypal) {
+					throw new Error('PayPal SDK unavailable');
+				}
+
+				// PayPal button will be rendered and handle the payment flow
+				// The order ID will be captured when user approves the payment
+				setPurchaseStatus('warning');
+				setPaypalError('PayPal payment requires user approval.');
+				setPurchasing(false);
+			} catch (error) {
+				handlePurchaseError(error);
+				setPaypalError(getErrorMessage(error));
+			} finally {
+				setPaypalLoading(false);
+			}
+		},
+		[applySuccessfulPurchase, loadPayPalSdk, handlePurchaseError, pointsService]
+	);
 
 	const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlansType | null>(null);
 	const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(true);
@@ -87,6 +262,9 @@ export default function PaymentView() {
 	const handlePackageSelect = (packageId: string) => {
 		audioService.play(AudioKey.BUTTON_CLICK);
 		debouncedPackageSelect.debounced(packageId);
+		setPendingReference(null);
+		setPurchaseStatus('idle');
+		setPaypalError(null);
 
 		logger.gameTarget('Package selected', {
 			id: packageId,
@@ -189,83 +367,51 @@ export default function PaymentView() {
 		[]
 	);
 
-	const handlePurchase = async () => {
+	const handlePurchase = useCallback(() => {
 		if (!selectedPackage) {
 			audioService.play(AudioKey.ERROR);
 			setPurchaseStatus('invalid');
 			return;
 		}
 
-		const startTime = performance.now();
-		setPurchaseStatus('validating');
-
-		try {
-			setPurchasing(true);
-
-			// Save purchase attempt to storage
-			await storageService.set('purchase-attempt', {
-				packageId: selectedPackage,
-				timestamp: new Date().toISOString(),
-				gameModes: VALID_GAME_MODES,
-			});
-
-			purchaseMutation.mutate(selectedPackage, {
-				onSuccess: (response: UrlResponse & { paymentUrl?: string }) => {
-					if (response.success) {
-						setPurchaseStatus('valid');
-						audioService.play(AudioKey.GAME_START);
-
-						logger.payment('Payment intent created successfully', {
-							id: selectedPackage,
-							gameModes: VALID_GAME_MODES,
-							timestamp: new Date().toISOString(),
-						});
-
-						// Simulate payment confirmation
-						setTimeout(() => {
-							setSuccess(true);
-							setPurchasing(false);
-							audioService.play(AudioKey.SUCCESS);
-							const duration = performance.now() - startTime;
-							logger.performance('point_purchase', duration, { success: true });
-						}, 2000);
-					}
-				},
-				onError: (err: Error) => {
-					setPurchaseStatus('invalid');
-					audioService.play(AudioKey.ERROR);
-					const errorMessage = getErrorMessage(err);
-					logger.payment('Purchase failed', {
-						error: errorMessage,
-						id: selectedPackage,
-					});
-					const duration = performance.now() - startTime;
-					logger.performance('point_purchase', duration, {
-						success: false,
-						error: errorMessage,
-					});
-					logger.userError('Purchase failed', { error: errorMessage });
-					setPurchasing(false);
-				},
-			});
-		} catch (err: unknown) {
-			setPurchaseStatus('invalid');
-			audioService.play(AudioKey.ERROR);
-			const errorMessage = getErrorMessage(err);
-			logger.paymentFailed('payment_intent', errorMessage, {
-				id: selectedPackage,
-			});
-			const duration = performance.now() - startTime;
-			logger.performance('point_purchase', duration, {
-				success: false,
-				error: errorMessage,
-			});
-			logger.userError('Purchase failed', {
-				error: errorMessage,
-			});
-			setPurchasing(false);
+		if (paymentMethod === PaymentMethod.PAYPAL) {
+			void handlePayPalPurchase(selectedPackage);
+			return;
 		}
-	};
+
+		const manualPayment = buildManualPaymentPayload();
+		if (!manualPayment) {
+			audioService.play(AudioKey.ERROR);
+			setPurchaseStatus('invalid');
+			return;
+		}
+
+		setPurchasing(true);
+		setPurchaseStatus('validating');
+		setPendingReference(null);
+		setPaypalError(null);
+
+		purchaseMutation.mutate(
+			{
+				packageId: selectedPackage,
+				paymentMethod: PaymentMethod.MANUAL_CREDIT,
+				manualPayment,
+			},
+			{
+				onSuccess: handlePurchaseSuccess,
+				onError: handlePurchaseError,
+			}
+		);
+	}, [
+		audioService,
+		buildManualPaymentPayload,
+		handlePayPalPurchase,
+		handlePurchaseError,
+		handlePurchaseSuccess,
+		paymentMethod,
+		purchaseMutation,
+		selectedPackage,
+	]);
 
 	if (balanceLoading || packagesLoading) {
 		return (
@@ -384,9 +530,7 @@ export default function PaymentView() {
 						transition={{ delay: 0.2 }}
 						className='text-center mb-12'
 					>
-						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>
-							{PAYMENT_CONTENT.HEADER.title}
-						</h1>
+						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>{PAYMENT_CONTENT.HEADER.title}</h1>
 						<p className='text-xl text-slate-300'>{PAYMENT_CONTENT.HEADER.subtitle}</p>
 					</motion.header>
 
@@ -748,40 +892,125 @@ export default function PaymentView() {
 									</CardTitle>
 								</CardHeader>
 								<CardContent>
-									<GridLayout variant='form' gap={Spacing.LG}>
-										<div>
-											<label className='block text-white font-medium mb-2'>{PAYMENT_CONTENT.PAYMENT.cardNumber}</label>
-											<input
-												type='text'
-												placeholder={PAYMENT_CONTENT.PAYMENT.cardNumberPlaceholder}
-												className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-											/>
-										</div>
-										<div>
-											<label className='block text-white font-medium mb-2'>{PAYMENT_CONTENT.PAYMENT.expiryDate}</label>
-											<input
-												type='text'
-												placeholder={PAYMENT_CONTENT.PAYMENT.expiryDatePlaceholder}
-												className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-											/>
-										</div>
-										<div>
-											<label className='block text-white font-medium mb-2'>{PAYMENT_CONTENT.PAYMENT.cvv}</label>
-											<input
-												type='text'
-												placeholder={PAYMENT_CONTENT.PAYMENT.cvvPlaceholder}
-												className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-											/>
-										</div>
-										<div>
-											<label className='block text-white font-medium mb-2'>{PAYMENT_CONTENT.PAYMENT.nameOnCard}</label>
-											<input
-												type='text'
-												placeholder={PAYMENT_CONTENT.PAYMENT.nameOnCardPlaceholder}
-												className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-											/>
-										</div>
-									</GridLayout>
+									<div className='flex justify-center gap-4 mb-6'>
+										<Button
+											variant={
+												paymentMethod === PaymentMethod.MANUAL_CREDIT ? ButtonVariant.PRIMARY : ButtonVariant.SECONDARY
+											}
+											size={ComponentSize.MD}
+											onClick={() => setPaymentMethod(PaymentMethod.MANUAL_CREDIT)}
+											disabled={purchasing || paypalLoading}
+											className={
+												paymentMethod === PaymentMethod.MANUAL_CREDIT
+													? 'bg-blue-500 text-white'
+													: 'bg-transparent border border-white/20 text-slate-200'
+											}
+										>
+											Manual Credit
+										</Button>
+										<Button
+											variant={paymentMethod === PaymentMethod.PAYPAL ? ButtonVariant.PRIMARY : ButtonVariant.SECONDARY}
+											size={ComponentSize.MD}
+											onClick={() => setPaymentMethod(PaymentMethod.PAYPAL)}
+											disabled={purchasing || paypalLoading}
+											className={
+												paymentMethod === PaymentMethod.PAYPAL
+													? 'bg-blue-500 text-white'
+													: 'bg-transparent border border-white/20 text-slate-200'
+											}
+										>
+											PayPal
+										</Button>
+									</div>
+
+									{paymentMethod === PaymentMethod.MANUAL_CREDIT && (
+										<GridLayout variant='form' gap={Spacing.LG}>
+											<div>
+												<label className='block text-white font-medium mb-2'>
+													{PAYMENT_CONTENT.PAYMENT.cardNumber}
+												</label>
+												<input
+													type='text'
+													value={cardNumber}
+													onChange={event => setCardNumber(event.target.value)}
+													placeholder={PAYMENT_CONTENT.PAYMENT.cardNumberPlaceholder}
+													className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+													disabled={purchasing}
+													autoComplete='cc-number'
+												/>
+											</div>
+											<div>
+												<label className='block text-white font-medium mb-2'>
+													{PAYMENT_CONTENT.PAYMENT.expiryDate}
+												</label>
+												<input
+													type='text'
+													value={expiryDate}
+													onChange={event => setExpiryDate(event.target.value)}
+													placeholder={PAYMENT_CONTENT.PAYMENT.expiryDatePlaceholder}
+													className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+													disabled={purchasing}
+													autoComplete='cc-exp'
+												/>
+											</div>
+											<div>
+												<label className='block text-white font-medium mb-2'>{PAYMENT_CONTENT.PAYMENT.cvv}</label>
+												<input
+													type='text'
+													value={cvv}
+													onChange={event => setCvv(event.target.value)}
+													placeholder={PAYMENT_CONTENT.PAYMENT.cvvPlaceholder}
+													className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+													disabled={purchasing}
+													autoComplete='cc-csc'
+												/>
+											</div>
+											<div>
+												<label className='block text-white font-medium mb-2'>
+													{PAYMENT_CONTENT.PAYMENT.nameOnCard}
+												</label>
+												<input
+													type='text'
+													value={cardHolderName}
+													onChange={event => setCardHolderName(event.target.value)}
+													placeholder={PAYMENT_CONTENT.PAYMENT.nameOnCardPlaceholder}
+													className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+													disabled={purchasing}
+													autoComplete='cc-name'
+												/>
+											</div>
+											<div>
+												<label className='block text-white font-medium mb-2'>Postal Code</label>
+												<input
+													type='text'
+													value={postalCode}
+													onChange={event => setPostalCode(event.target.value)}
+													placeholder='12345'
+													className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+													disabled={purchasing}
+													autoComplete='postal-code'
+												/>
+											</div>
+										</GridLayout>
+									)}
+
+									{pendingReference && (
+										<ValidationMessage
+											status='warning'
+											warnings={[pendingReference]}
+											className='mt-4 text-center'
+											showMessages={true}
+										/>
+									)}
+
+									{paypalError && (
+										<ValidationMessage
+											status='invalid'
+											errors={[paypalError]}
+											className='mt-4 text-center'
+											showMessages={true}
+										/>
+									)}
 
 									<div className='mt-8 text-center'>
 										<motion.div variants={fadeInRight} initial='hidden' animate='visible' transition={{ delay: 0.2 }}>
@@ -790,13 +1019,15 @@ export default function PaymentView() {
 												size={ComponentSize.LG}
 												className='w-full py-4 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
 												onClick={handlePurchase}
-												disabled={purchasing}
+												disabled={purchasing || paypalLoading}
 											>
-												{purchasing ? (
+												{purchasing || paypalLoading ? (
 													<div className='flex items-center justify-center'>
 														<div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2'></div>
 														{PAYMENT_CONTENT.PAYMENT.processing}
 													</div>
+												) : paymentMethod === PaymentMethod.PAYPAL ? (
+													'Continue with PayPal'
 												) : (
 													`${PAYMENT_CONTENT.PAYMENT.payButton} ${formatCurrency(packages?.find((pkg: PointPurchaseOption) => pkg.id === selectedPackage)?.price ?? 0)}`
 												)}

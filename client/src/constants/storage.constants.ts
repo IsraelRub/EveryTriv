@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
 	GAME_STATE: 'game_state',
 	GAME_HISTORY: 'game_history',
 	USER_PREFERENCES: 'user_preferences',
+	CUSTOM_DIFFICULTIES: 'custom_difficulties',
+	CUSTOM_DIFFICULTY_HISTORY: 'custom_difficulty_history',
 
 	// UI state (localStorage - persistent)
 	AUDIO_SETTINGS: 'audio_settings',

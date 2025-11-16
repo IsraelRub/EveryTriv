@@ -22,17 +22,9 @@ export interface Position {
  * @interface SimpleValidationResult
  * @description Base validation result structure
  */
-export interface SimpleValidationResult {
+export interface BaseValidationResult {
 	isValid: boolean;
 	errors: string[];
-}
-
-/**
- * Base validation result interface
- * @interface BaseValidationResult
- * @description Extended validation result with optional warnings
- */
-export interface BaseValidationResult extends SimpleValidationResult {
 	warnings?: string[];
 }
 
@@ -54,15 +46,16 @@ export interface PasswordValidationResult extends BaseValidationResult {
  * @interface ValidationResult
  * @description Validation result with additional context
  */
-export interface ValidationResult extends SimpleValidationResult {
+export interface ValidationResult extends BaseValidationResult {
 	suggestion?: string;
 	position?: Position;
-	warnings?: string[];
 }
 
 /**
  * Validation error with position information
  */
+export type ValidationSeverity = 'error' | 'warning' | 'info';
+
 export interface ValidationError {
 	message: string;
 	code: string;
@@ -71,7 +64,7 @@ export interface ValidationError {
 		start: number;
 		end: number;
 	};
-	severity: 'error' | 'warning' | 'info';
+	severity: ValidationSeverity;
 }
 
 /**
@@ -146,6 +139,6 @@ export interface CustomDifficultyRequest {
  * @interface ExtendedPipeValidationResult
  * @description Pipe validation result with additional context
  */
-export interface PipeValidationWithSuggestion extends SimpleValidationResult {
+export interface PipeValidationWithSuggestion extends BaseValidationResult {
 	suggestion?: string;
 }

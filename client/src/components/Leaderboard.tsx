@@ -158,7 +158,6 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 											<Avatar
 												src={entry.avatar}
 												username={entry.username}
-												fullName={entry.fullName}
 												size={ComponentSize.SM}
 												alt={entry.username ?? entry.userId}
 											/>

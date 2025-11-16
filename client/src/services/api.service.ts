@@ -4,59 +4,83 @@
  * @module ClientApiService
  * @used_by client/src/hooks/api/**, client/src/views/**
  */
-import { BillingCycle, GameMode, HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, PlanType, TimePeriod } from '@shared/constants';
+import {
+	BillingCycle,
+	GameMode,
+	HTTP_CLIENT_CONFIG,
+	HTTP_STATUS_CODES,
+	PlanType,
+	TimePeriod,
+	VALIDATION_LIMITS,
+} from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import {
 	Achievement,
 	ActivityEntry,
+	AnalyticsResponse,
+	AnswerResult,
 	ApiError,
 	ApiResponse,
 	AuthCredentials,
 	AuthenticationResult,
 	BaseData,
+	BaseValidationResult,
 	BasicUser,
 	BasicValue,
 	CanPlayResponse,
+	ClientLogsRequest,
 	CompleteUserAnalytics,
 	CustomDifficultyRequest,
 	DifficultyStatsData,
 	ErrorResponseData,
-	AnalyticsResponse,
-	UserAnalytics,
 	GameData,
 	GameHistoryEntry,
-	LanguageValidationResult,
+	GlobalStatsResponse,
 	LeaderboardEntry,
+	LeaderboardStatsResponse,
+	PaymentResult,
 	PointBalance,
 	PointPurchaseOption,
 	PointTransaction,
 	RequestData,
-	SimpleValidationResult,
 	SubscriptionData,
+	SubscriptionPlans,
+	SystemRecommendation,
 	TopicStatsData,
 	TriviaQuestion,
 	TriviaRequest,
 	UpdateUserProfileData,
-	UrlResponse,
 	User,
 	UserAnalyticsQuery,
+	UserAnalyticsRecord,
+	UserComparisonResult,
+	UserInsightsData,
+	UserPerformanceMetrics,
 	UserPreferences,
 	UserProfileResponseType,
+	UserProgressAnalytics,
 	UserRankData,
 	UserStatsData,
-	UserPerformanceMetrics,
-	UserProgressAnalytics,
-	UserInsightsData,
-	SystemRecommendation,
-	UserTrendPoint,
-	UserComparisonResult,
 	UserSummaryData,
+	UserTrendPoint,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, hasPropertyOfType, isRecord } from '@shared/utils';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
-import type { ClientApiService, EnhancedRequestConfig, RequestTransformer, ResponseTransformer } from '../types';
-import { ErrorInterceptorManager, RequestInterceptorManager, ResponseInterceptorManager } from './interceptors';
+import type {
+	ClientApiService,
+	EnhancedRequestConfig,
+	PointsPurchaseRequest,
+	PointsPurchaseResponse,
+	RequestTransformer,
+	ResponseTransformer,
+} from '../types';
+import {
+	authRequestInterceptor,
+	ErrorInterceptorManager,
+	RequestInterceptorManager,
+	ResponseInterceptorManager,
+} from './interceptors';
 import { storageService } from './storage.service';
 
 type TrendQueryParams = {
@@ -113,17 +137,21 @@ class ApiService implements ClientApiService {
 		return hasProperty(response, 'data') && hasProperty(response, 'success');
 	}
 
+	private assertQuestionCountWithinLimits(questionCount: number): void {
+		const { MIN, MAX } = VALIDATION_LIMITS.QUESTION_COUNT;
+		if (!Number.isFinite(questionCount) || questionCount < MIN || questionCount > MAX) {
+			throw new Error(`Question count must be between ${MIN} and ${MAX}`);
+		}
+	}
+
 	constructor() {
 		this.baseURL = ApiConfig.getBaseUrl();
 		this.requestInterceptors = new RequestInterceptorManager();
 		this.responseInterceptors = new ResponseInterceptorManager();
 		this.errorInterceptors = new ErrorInterceptorManager();
-	}
 
-	private async getAuthHeaders(): Promise<Record<string, string>> {
-		const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-		const token = tokenResult.success ? tokenResult.data : null;
-		return token ? { Authorization: `Bearer ${token}` } : {};
+		// Register auth request interceptor with highest priority (runs first)
+		this.requestInterceptors.use(authRequestInterceptor, { priority: 0 });
 	}
 
 	private async sleep(ms: number): Promise<void> {
@@ -194,10 +222,10 @@ class ApiService implements ClientApiService {
 				return new Promise<ApiResponse<T>>((resolve, reject) => {
 					existingRequest
 						.then(response => {
-					if (this.isValidApiResponse<T>(response)) {
+							if (this.isValidApiResponse<T>(response)) {
 								resolve(response);
 								return;
-					}
+							}
 							reject(new Error('Invalid API response structure'));
 						})
 						.catch(reject);
@@ -267,18 +295,14 @@ class ApiService implements ClientApiService {
 				baseURL: config.baseURL ?? this.baseURL,
 			};
 
-			// Execute request interceptors
+			// Execute request interceptors (auth headers are added by authRequestInterceptor)
 			const interceptedConfig = await this.requestInterceptors.execute(enhancedConfig);
-
-			// Get auth headers (if not skipped)
-			const authHeaders = interceptedConfig.skipAuth ? {} : await this.getAuthHeaders();
 
 			// Prepare fetch config
 			const fetchConfig: RequestInit = {
 				method,
 				headers: {
 					...HTTP_CLIENT_CONFIG.DEFAULT_HEADERS,
-					...authHeaders,
 					...interceptedConfig.headers,
 				},
 				signal: interceptedConfig.signal,
@@ -366,7 +390,9 @@ class ApiService implements ClientApiService {
 				attempt < this.retryAttempts && (apiErrorWithFlags.isServerError || apiError.statusCode === 0);
 
 			if (shouldRetry) {
-				await this.sleep(this.retryDelay * attempt);
+				const baseDelay = this.retryDelay * attempt;
+				const jitter = Math.random() * Math.min(baseDelay * 0.1, 1000);
+				await this.sleep(baseDelay + jitter);
 				return this.retryRequest(requestFn, attempt + 1);
 			}
 
@@ -417,7 +443,7 @@ class ApiService implements ClientApiService {
 							) {
 								details[key] = value;
 							} else if (Array.isArray(value)) {
-								details[key] = value;
+								details[key] = JSON.stringify(value);
 							} else if (isRecord(value)) {
 								const baseDataValue: BaseData = {};
 								for (const [nestedKey, nestedValue] of Object.entries(value)) {
@@ -429,26 +455,12 @@ class ApiService implements ClientApiService {
 									) {
 										baseDataValue[nestedKey] = nestedValue;
 									} else if (Array.isArray(nestedValue)) {
-										baseDataValue[nestedKey] = nestedValue;
+										baseDataValue[nestedKey] = JSON.stringify(nestedValue);
 									} else if (isRecord(nestedValue)) {
-										// Recursively convert nested records to BaseData
-										const nestedBaseData: BaseData = {};
-										for (const [deepKey, deepValue] of Object.entries(nestedValue)) {
-											if (
-												typeof deepValue === 'string' ||
-												typeof deepValue === 'number' ||
-												typeof deepValue === 'boolean' ||
-												deepValue instanceof Date
-											) {
-												nestedBaseData[deepKey] = deepValue;
-											} else if (Array.isArray(deepValue)) {
-												nestedBaseData[deepKey] = deepValue;
-											}
-										}
-										baseDataValue[nestedKey] = nestedBaseData;
+										baseDataValue[nestedKey] = JSON.stringify(nestedValue);
 									}
 								}
-								details[key] = baseDataValue;
+								details[key] = JSON.stringify(baseDataValue);
 							}
 						}
 					} else {
@@ -457,7 +469,9 @@ class ApiService implements ClientApiService {
 					}
 				} catch (parseError) {
 					errorData = { message: getErrorMessage(parseError) };
-					details.message = errorData.message;
+					if (errorData.message) {
+						details.message = errorData.message;
+					}
 				}
 			} else {
 				const textMessage = await response.text().catch(textError => getErrorMessage(textError));
@@ -508,14 +522,11 @@ class ApiService implements ClientApiService {
 				data: responseData.data,
 				success: Boolean(responseData.success),
 				statusCode: response.status,
-				timestamp:
-					typeof responseData.timestamp === 'string'
-						? responseData.timestamp
-						: new Date().toISOString(),
+				timestamp: typeof responseData.timestamp === 'string' ? responseData.timestamp : new Date().toISOString(),
 			};
 
 			if (this.isValidApiResponse<T>(apiResponse)) {
-			return apiResponse;
+				return apiResponse;
 			}
 
 			throw new Error('Invalid API response structure.');
@@ -529,7 +540,7 @@ class ApiService implements ClientApiService {
 		};
 
 		if (this.isValidApiResponse<T>(fallbackResponse)) {
-		return fallbackResponse;
+			return fallbackResponse;
 		}
 
 		throw new Error('Invalid API fallback response structure.');
@@ -659,7 +670,7 @@ class ApiService implements ClientApiService {
 			throw new Error('Game history data is incomplete');
 		}
 
-		const response = await this.post<void>('/game-history', data);
+		const response = await this.post<void>('/game/history', data);
 		return response.data;
 	}
 
@@ -672,17 +683,21 @@ class ApiService implements ClientApiService {
 			throw new Error('Offset must be non-negative');
 		}
 
-		const params = new URLSearchParams();
-		if (limit) params.append('limit', limit.toString());
-		if (offset) params.append('offset', offset.toString());
+		const query = this.buildQueryString({
+			limit,
+			offset,
+		});
 
-		const response = await this.get<GameHistoryEntry[]>(`/game-history/user?${params}`);
+		const response = await this.get<GameHistoryEntry[]>(`/game/history${query}`);
 		return response.data;
 	}
 
 	async getLeaderboardEntries(limit?: number): Promise<LeaderboardEntry[]> {
-		const params = limit ? `?limit=${limit}` : '';
-		const response = await this.get<LeaderboardEntry[]>(`/leaderboard/global${params}`);
+		const query = this.buildQueryString({
+			limit,
+		});
+
+		const response = await this.get<LeaderboardEntry[]>(`/leaderboard/global${query}`);
 		return response.data;
 	}
 
@@ -714,10 +729,87 @@ class ApiService implements ClientApiService {
 		};
 	}
 
-	async getUserPercentile(): Promise<{ percentile: number; rank: number; totalUsers: number }> {
-		const response = await this.get<{ percentile: number; rank: number; totalUsers: number }>(
-			'/leaderboard/user/percentile'
-		);
+	/**
+	 * Update user ranking
+	 */
+	async updateUserRanking(): Promise<UserRankData> {
+		const response = await this.post<UserRankData>('/leaderboard/user/update');
+		return response.data;
+	}
+
+	/**
+	 * Get leaderboard by period (weekly/monthly)
+	 */
+	async getLeaderboardByPeriod(
+		period: 'weekly' | 'monthly',
+		limit?: number,
+		offset?: number
+	): Promise<LeaderboardEntry[]> {
+		// Validate pagination parameters
+		if (limit && (limit < 1 || limit > 1000)) {
+			throw new Error('Limit must be between 1 and 1000');
+		}
+		if (offset && offset < 0) {
+			throw new Error('Offset must be non-negative');
+		}
+
+		const query = this.buildQueryString({
+			limit,
+			offset,
+		});
+
+		const response = await this.get<LeaderboardEntry[]>(`/leaderboard/period/${period}${query}`);
+		return response.data;
+	}
+
+	/**
+	 * Get leaderboard statistics for a specific period
+	 */
+	async getLeaderboardStats(period: 'weekly' | 'monthly' | 'yearly'): Promise<LeaderboardStatsResponse> {
+		// Validate period
+		if (!['weekly', 'monthly', 'yearly'].includes(period)) {
+			throw new Error('Period must be weekly, monthly, or yearly');
+		}
+
+		const query = this.buildQueryString({
+			period,
+		});
+
+		const response = await this.get<LeaderboardStatsResponse>(`/leaderboard/stats${query}`);
+		return response.data;
+	}
+
+	/**
+	 * Search users
+	 */
+	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
+		// Validate input
+		if (!query || query.trim().length === 0) {
+			throw new Error('Search query is required');
+		}
+		if (limit < 1 || limit > 100) {
+			throw new Error('Limit must be between 1 and 100');
+		}
+
+		const queryString = this.buildQueryString({
+			query,
+			limit,
+		});
+
+		const response = await this.get<BasicUser[]>(`/users/search${queryString}`);
+		return response.data;
+	}
+
+	/**
+	 * Get user by username
+	 */
+	async getUserByUsername(username: string): Promise<BasicUser> {
+		// Validate username
+		if (!username || username.trim().length === 0) {
+			throw new Error('Username is required');
+		}
+
+		const response = await this.get<BasicUser>(`/users/username/${username}`);
 		return response.data;
 	}
 
@@ -734,17 +826,22 @@ class ApiService implements ClientApiService {
 
 	async canPlay(questionCount: number): Promise<CanPlayResponse> {
 		// Validate question count
-		if (questionCount <= 0) {
-			throw new Error('Question count must be greater than 0');
-		}
+		this.assertQuestionCountWithinLimits(questionCount);
 
-		const response = await this.get<CanPlayResponse>(`/points/can-play?questionCount=${questionCount}`);
+		const query = this.buildQueryString({
+			questionCount,
+		});
+
+		const response = await this.get<CanPlayResponse>(`/points/can-play${query}`);
 		return response.data;
 	}
 
 	async getPointHistory(limit?: number): Promise<PointTransaction[]> {
-		const params = limit ? `?limit=${limit}` : '';
-		const response = await this.get<PointTransaction[]>(`/points/history${params}`);
+		const query = this.buildQueryString({
+			limit,
+		});
+
+		const response = await this.get<PointTransaction[]>(`/points/history${query}`);
 		return response.data;
 	}
 
@@ -772,15 +869,64 @@ class ApiService implements ClientApiService {
 		if (!request || !request.topic.trim() || !request.difficulty.trim()) {
 			throw new Error('Trivia request is incomplete');
 		}
-		if (request.questionCount && (Number(request.questionCount) < 1 || Number(request.questionCount) > 50)) {
-			throw new Error('Question count must be between 1 and 50');
+		if (request.questionCount !== undefined) {
+			this.assertQuestionCountWithinLimits(Number(request.questionCount));
 		}
 
 		const response = await this.post<TriviaQuestion>('/game/trivia', request);
 		return response.data;
 	}
 
-	async validateCustomDifficulty(customText: string): Promise<SimpleValidationResult> {
+	/**
+	 * Submit answer to a trivia question
+	 */
+	async submitAnswer(questionId: string, answer: string, timeSpent: number = 0): Promise<AnswerResult> {
+		// Validate input
+		if (!questionId || questionId.trim().length === 0) {
+			throw new Error('Question ID is required');
+		}
+		if (!answer || answer.trim().length === 0) {
+			throw new Error('Answer is required');
+		}
+		if (timeSpent < 0) {
+			throw new Error('Time spent must be non-negative');
+		}
+
+		const response = await this.post<AnswerResult>('/game/answer', {
+			questionId,
+			answer,
+			timeSpent,
+		});
+		return response.data;
+	}
+
+	/**
+	 * Get trivia question by ID
+	 */
+	async getTriviaQuestionById(questionId: string): Promise<TriviaQuestion> {
+		// Validate question ID
+		if (!questionId || questionId.trim().length === 0) {
+			throw new Error('Question ID is required');
+		}
+
+		const response = await this.get<TriviaQuestion>(`/game/trivia/${questionId}`);
+		return response.data;
+	}
+
+	/**
+	 * Get game by ID
+	 */
+	async getGameById(gameId: string): Promise<GameHistoryEntry> {
+		// Validate game ID
+		if (!gameId || gameId.trim().length === 0) {
+			throw new Error('Game ID is required');
+		}
+
+		const response = await this.get<GameHistoryEntry>(`/game/${gameId}`);
+		return response.data;
+	}
+
+	async validateCustomDifficulty(customText: string): Promise<BaseValidationResult> {
 		// Validate input
 		if (!customText || customText.trim().length === 0) {
 			throw new Error('Custom difficulty text is required');
@@ -790,29 +936,7 @@ class ApiService implements ClientApiService {
 		}
 
 		const request: CustomDifficultyRequest = { customText };
-		const response = await this.post<SimpleValidationResult>('/game/validate-custom', request);
-		return response.data;
-	}
-
-	/**
-	 * Validate language and spelling
-	 */
-	async validateLanguage(
-		text: string,
-		options?: {
-			enableSpellCheck?: boolean;
-			enableGrammarCheck?: boolean;
-		}
-	): Promise<LanguageValidationResult> {
-		// Validate input
-		if (!text || text.trim().length === 0) {
-			throw new Error('Text is required for language validation');
-		}
-
-		const response = await this.post<LanguageValidationResult>('/game/validate-language', {
-			text,
-			...options,
-		});
+		const response = await this.post<BaseValidationResult>('/game/validate-custom', request);
 		return response.data;
 	}
 
@@ -837,8 +961,8 @@ class ApiService implements ClientApiService {
 	}
 
 	// Analytics dashboard methods
-	async getUserStatisticsById(userId: string): Promise<AnalyticsResponse<UserAnalytics>> {
-		const response = await this.get<AnalyticsResponse<UserAnalytics>>(`/analytics/user-stats/${userId}`);
+	async getUserStatisticsById(userId: string): Promise<AnalyticsResponse<UserAnalyticsRecord>> {
+		const response = await this.get<AnalyticsResponse<UserAnalyticsRecord>>(`/analytics/user-stats/${userId}`);
 		return response.data;
 	}
 
@@ -863,18 +987,13 @@ class ApiService implements ClientApiService {
 		return response.data;
 	}
 
-	async getUserActivityById(
-		userId: string,
-		params?: ActivityQueryParams
-	): Promise<AnalyticsResponse<ActivityEntry[]>> {
+	async getUserActivityById(userId: string, params?: ActivityQueryParams): Promise<AnalyticsResponse<ActivityEntry[]>> {
 		const query = this.buildQueryString({
 			startDate: params?.startDate,
 			endDate: params?.endDate,
 			limit: params?.limit,
 		});
-		const response = await this.get<AnalyticsResponse<ActivityEntry[]>>(
-			`/analytics/user-activity/${userId}${query}`
-		);
+		const response = await this.get<AnalyticsResponse<ActivityEntry[]>>(`/analytics/user-activity/${userId}${query}`);
 		return response.data;
 	}
 
@@ -895,19 +1014,14 @@ class ApiService implements ClientApiService {
 		return response.data;
 	}
 
-	async getUserTrendsById(
-		userId: string,
-		params?: TrendQueryParams
-	): Promise<AnalyticsResponse<UserTrendPoint[]>> {
+	async getUserTrendsById(userId: string, params?: TrendQueryParams): Promise<AnalyticsResponse<UserTrendPoint[]>> {
 		const query = this.buildQueryString({
 			startDate: params?.startDate,
 			endDate: params?.endDate,
 			groupBy: params?.groupBy,
 			limit: params?.limit,
 		});
-		const response = await this.get<AnalyticsResponse<UserTrendPoint[]>>(
-			`/analytics/user-trends/${userId}${query}`
-		);
+		const response = await this.get<AnalyticsResponse<UserTrendPoint[]>>(`/analytics/user-trends/${userId}${query}`);
 		return response.data;
 	}
 
@@ -934,9 +1048,7 @@ class ApiService implements ClientApiService {
 		const query = this.buildQueryString({
 			includeActivity,
 		});
-		const response = await this.get<AnalyticsResponse<UserSummaryData>>(
-			`/analytics/user-summary/${userId}${query}`
-		);
+		const response = await this.get<AnalyticsResponse<UserSummaryData>>(`/analytics/user-summary/${userId}${query}`);
 		return response.data;
 	}
 
@@ -946,38 +1058,126 @@ class ApiService implements ClientApiService {
 	}
 
 	async getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData> {
-		let params = '';
-		if (query) {
-			const searchParams = new URLSearchParams();
-			if (query.startDate) searchParams.append('startDate', query.startDate);
-			if (query.endDate) searchParams.append('endDate', query.endDate);
-			if (query.includeGameHistory !== undefined)
-				searchParams.append('includeGameHistory', String(query.includeGameHistory));
-			if (query.includePerformance !== undefined)
-				searchParams.append('includePerformance', String(query.includePerformance));
-			if (query.includeTopicBreakdown !== undefined)
-				searchParams.append('includeTopicBreakdown', String(query.includeTopicBreakdown));
-			params = `?${searchParams.toString()}`;
-		}
-		const response = await this.get<TopicStatsData>(`/analytics/topics/popular${params}`);
+		const queryString = this.buildQueryString({
+			startDate: query?.startDate,
+			endDate: query?.endDate,
+			includeGameHistory: query?.includeGameHistory,
+			includePerformance: query?.includePerformance,
+			includeTopicBreakdown: query?.includeTopicBreakdown,
+		});
+
+		const response = await this.get<TopicStatsData>(`/analytics/topics/popular${queryString}`);
 		return response.data;
 	}
 
 	async getDifficultyStats(query?: UserAnalyticsQuery): Promise<DifficultyStatsData> {
-		let params = '';
-		if (query) {
-			const searchParams = new URLSearchParams();
-			if (query.startDate) searchParams.append('startDate', query.startDate);
-			if (query.endDate) searchParams.append('endDate', query.endDate);
-			if (query.includeGameHistory !== undefined)
-				searchParams.append('includeGameHistory', String(query.includeGameHistory));
-			if (query.includePerformance !== undefined)
-				searchParams.append('includePerformance', String(query.includePerformance));
-			if (query.includeTopicBreakdown !== undefined)
-				searchParams.append('includeTopicBreakdown', String(query.includeTopicBreakdown));
-			params = `?${searchParams.toString()}`;
+		const queryString = this.buildQueryString({
+			startDate: query?.startDate,
+			endDate: query?.endDate,
+			includeGameHistory: query?.includeGameHistory,
+			includePerformance: query?.includePerformance,
+			includeTopicBreakdown: query?.includeTopicBreakdown,
+		});
+
+		const response = await this.get<DifficultyStatsData>(`/analytics/difficulty/stats${queryString}`);
+		return response.data;
+	}
+
+	/**
+	 * Get global statistics for comparison
+	 */
+	async getGlobalStats(): Promise<GlobalStatsResponse> {
+		const response = await this.get<GlobalStatsResponse>('/analytics/global-stats');
+		return response.data;
+	}
+
+	/**
+	 * Track analytics event
+	 */
+	async trackAnalyticsEvent(eventData: {
+		eventType: string;
+		userId?: string;
+		sessionId?: string;
+		timestamp?: Date | string;
+		page?: string;
+		action?: string;
+		result?: 'success' | 'failure' | 'error';
+		duration?: number;
+		value?: number;
+		properties?: Record<string, BasicValue>;
+	}): Promise<{ tracked: boolean }> {
+		// Validate event data
+		if (!eventData || !eventData.eventType || eventData.eventType.trim().length === 0) {
+			throw new Error('Event type is required');
 		}
-		const response = await this.get<DifficultyStatsData>(`/analytics/difficulty/stats${params}`);
+
+		const response = await this.post<{ tracked: boolean }>('/analytics/track', eventData);
+		return response.data;
+	}
+
+	/**
+	 * Create payment
+	 */
+	async createPayment(paymentData: {
+		amount?: number;
+		currency?: string;
+		description?: string;
+		planType?: PlanType;
+		numberOfPayments?: number;
+		paymentMethod: string;
+		cardNumber?: string;
+		expiryDate?: string;
+		cvv?: string;
+		cardHolderName?: string;
+		postalCode?: string;
+		paypalOrderId?: string;
+		paypalPaymentId?: string;
+		agreeToTerms?: boolean;
+		additionalInfo?: string;
+	}): Promise<PaymentResult> {
+		// Validate payment data
+		if (!paymentData.paymentMethod) {
+			throw new Error('Payment method is required');
+		}
+
+		const response = await this.post<PaymentResult>('/payment/create', paymentData);
+		return response.data;
+	}
+
+	/**
+	 * Get payment history
+	 */
+	async getPaymentHistory(): Promise<PaymentResult[]> {
+		const response = await this.get<PaymentResult[]>('/payment/history');
+		return response.data;
+	}
+
+	/**
+	 * Get subscription plans
+	 */
+	async getSubscriptionPlans(): Promise<SubscriptionPlans> {
+		const response = await this.get<SubscriptionPlans>('/subscription/plans');
+		return response.data;
+	}
+
+	/**
+	 * Get current subscription
+	 */
+	async getCurrentSubscription(): Promise<SubscriptionData | null> {
+		const response = await this.get<SubscriptionData | null>('/subscription/current');
+		return response.data;
+	}
+
+	/**
+	 * Submit client logs
+	 */
+	async submitClientLogs(logs: ClientLogsRequest): Promise<{ success: boolean; message?: string }> {
+		// Validate logs
+		if (!logs || !logs.logs || !Array.isArray(logs.logs) || logs.logs.length === 0) {
+			throw new Error('Logs array is required and must not be empty');
+		}
+
+		const response = await this.post<{ success: boolean; message?: string }>('/client-logs/batch', logs);
 		return response.data;
 	}
 
@@ -1007,7 +1207,7 @@ class ApiService implements ClientApiService {
 			throw new Error('Value is required');
 		}
 
-		const response = await this.put<{ user: User }>(`/users/profile/${field}`, { value });
+		const response = await this.patch<{ user: User }>(`/users/profile/${field}`, { value });
 		return response.data;
 	}
 
@@ -1020,7 +1220,7 @@ class ApiService implements ClientApiService {
 			throw new Error('Value is required');
 		}
 
-		return this.put(`/users/preferences/${preference}`, { value });
+		return this.patch(`/users/preferences/${preference}`, { value });
 	}
 
 	async getUserById(userId: string): Promise<unknown> {
@@ -1066,13 +1266,18 @@ class ApiService implements ClientApiService {
 	/**
 	 * Purchase points package
 	 */
-	async purchasePoints(packageId: string): Promise<UrlResponse> {
-		// Validate package ID
+	async purchasePoints(request: PointsPurchaseRequest): Promise<PointsPurchaseResponse> {
+		const { packageId, paymentMethod } = request;
+
 		if (!packageId || packageId.trim().length === 0) {
 			throw new Error('Package ID is required');
 		}
 
-		const response = await this.post<UrlResponse>('/points/purchase', { packageId });
+		if (!paymentMethod) {
+			throw new Error('Payment method is required');
+		}
+
+		const response = await this.post<PointsPurchaseResponse>('/points/purchase', request);
 		return response.data;
 	}
 

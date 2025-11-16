@@ -124,7 +124,7 @@ export default function Game({
 					className='game-info p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg mb-4'
 					whileHover={{ scale: 1.01 }}
 				>
-					<ResponsiveGrid minWidth='100px' gap={Spacing.MD} className='text-white'>
+					<ResponsiveGrid gap={Spacing.MD} className='text-white'>
 						{info}
 					</ResponsiveGrid>
 				</motion.div>

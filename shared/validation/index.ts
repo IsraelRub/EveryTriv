@@ -5,5 +5,14 @@
  * @description Shared domain validation utilities for EveryTriv
  */
 
-// Domain validation
+/**
+ * Core validation utilities
+ * @description Core validation functions for input, email, username, password, topic, and language
+ */
+export * from './core';
+
+/**
+ * Domain validation utilities
+ * @description Domain-specific validation functions
+ */
 export * from './domain';

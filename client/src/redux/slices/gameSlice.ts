@@ -6,13 +6,13 @@ import { calculateScore } from '../../services';
 import { ClientGameState, ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '../../types';
 
 const initialGameState: ClientGameState = {
-		status: 'idle',
-		isPlaying: false,
-		currentQuestion: 0,
-		totalQuestions: 0,
-		questions: [],
-		answers: [],
-		loading: false,
+	status: 'idle',
+	isPlaying: false,
+	currentQuestion: 0,
+	totalQuestions: 0,
+	questions: [],
+	answers: [],
+	loading: false,
 };
 
 const initialState: GameSliceState = {

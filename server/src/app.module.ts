@@ -11,12 +11,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ClientLogsController, MiddlewareMetricsController } from '@internal/controllers';
-import {
-	BulkOperationsMiddleware,
-	CountryCheckMiddleware,
-	DecoratorAwareMiddleware,
-	RateLimitMiddleware,
-} from '@internal/middleware';
+import { BulkOperationsMiddleware, DecoratorAwareMiddleware, RateLimitMiddleware } from '@internal/middleware';
 import { StorageModule } from '@internal/modules';
 
 import { AppController } from './app.controller';
@@ -128,9 +123,6 @@ export class AppModule implements NestModule {
 
 		// Apply rate limiting middleware (supports both default and decorator-based)
 		consumer.apply(RateLimitMiddleware).forRoutes('*');
-
-		// Apply country check middleware
-		consumer.apply(CountryCheckMiddleware).forRoutes('*');
 
 		// Apply bulk operations middleware - optimizes bulk operations
 		consumer.apply(BulkOperationsMiddleware).forRoutes('*');

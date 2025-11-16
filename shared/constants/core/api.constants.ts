@@ -107,6 +107,26 @@ export const API_ENDPOINTS = {
 	CLIENT_LOGS: {
 		BATCH: '/client-logs/batch',
 	},
+	ANALYTICS: {
+		USER: '/analytics/user',
+		USER_STATS: (userId: string) => `/analytics/user-stats/${userId}`,
+		USER_PERFORMANCE: (userId: string) => `/analytics/user-performance/${userId}`,
+		USER_PROGRESS: (userId: string) => `/analytics/user-progress/${userId}`,
+		USER_ACTIVITY: (userId: string) => `/analytics/user-activity/${userId}`,
+		USER_INSIGHTS: (userId: string) => `/analytics/user-insights/${userId}`,
+		USER_RECOMMENDATIONS: (userId: string) => `/analytics/user-recommendations/${userId}`,
+		USER_ACHIEVEMENTS: (userId: string) => `/analytics/user-achievements/${userId}`,
+		USER_TRENDS: (userId: string) => `/analytics/user-trends/${userId}`,
+		USER_COMPARISON: (userId: string) => `/analytics/user-comparison/${userId}`,
+		USER_SUMMARY: (userId: string) => `/analytics/user-summary/${userId}`,
+		TOPICS_POPULAR: '/analytics/topics/popular',
+		DIFFICULTY_STATS: '/analytics/difficulty/stats',
+		TRACK: '/analytics/track',
+		GLOBAL_STATS: '/analytics/global-stats',
+	},
+	LEADERBOARD: {
+		STATS: '/leaderboard/stats',
+	},
 } as const;
 
 // Cookie names
@@ -129,9 +149,9 @@ export const PAGINATION_DEFAULTS = {
 // Rate limiting defaults
 export const RATE_LIMIT_DEFAULTS = {
 	WINDOW_MS: 60000,
-	MAX_REQUESTS: 100,
-	MAX_REQUESTS_PER_WINDOW: 100,
-	BURST_LIMIT: 20,
+	MAX_REQUESTS: 200,
+	MAX_REQUESTS_PER_WINDOW: 200,
+	BURST_LIMIT: 50,
 	BURST_WINDOW_MS: 10000,
 	CLIENT_LOGS_MAX_REQUESTS: 50,
 	CLIENT_LOGS_BURST_LIMIT: 10,

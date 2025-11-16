@@ -14,8 +14,3 @@ export * from './core';
 
 // Domain utilities
 export * from './domain';
-
-// Root utilities (commonly used everywhere)
-export * from './error.utils';
-export * from './format.utils';
-export * from './validation.utils';

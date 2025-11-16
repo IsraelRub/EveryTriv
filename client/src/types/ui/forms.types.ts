@@ -6,9 +6,9 @@
 import { InputHTMLAttributes, ReactNode } from 'react';
 
 import type { LanguageValidationOptions, SelectOption, ValidationType } from '@shared/types';
-import type { ClientValidationType, ValidationHookOptions } from '../validation.types';
 
 import { InteractiveSize } from '../../constants';
+import type { ClientValidationType, ValidationHookOptions } from '../validation.types';
 
 // Form-related types
 export interface FormField {

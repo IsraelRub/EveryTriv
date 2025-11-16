@@ -11,6 +11,12 @@
  * @description Core validation logic and utilities
  * @used_by server/src/features, server/src/controllers
  */
+export * from './languageTool.service';
+/**
+ * Validation service
+ * @description Core validation logic and utilities
+ * @used_by server/src/features, server/src/controllers
+ */
 export * from './validation.service';
 
 /**
@@ -19,10 +25,3 @@ export * from './validation.service';
  * @used_by server/src/app, server/src/features
  */
 export * from './validation.module';
-
-/**
- * LanguageTool Service
- * @description LanguageTool service for server-side validation
- * @used_by server/src/features, server/src/controllers
- */
-export * from './languageTool.service';

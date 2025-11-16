@@ -1,7 +1,91 @@
 import type { EnhancedLoggerInterface, LoggerConfigUpdate, LogMeta } from '@shared/types';
-import { sanitizeLogMessage } from '@shared/utils';
+import { hasProperty, hasPropertyOfType, isRecord, sanitizeLogMessage } from '@shared/utils';
 
 import { BaseLoggerService } from './baseLogger.service';
+
+type TraceStorage = {
+	enterWith(value: string): void;
+	getStore(): string | undefined;
+};
+
+type AsyncLocalStorageConstructor = new () => TraceStorage;
+
+const isEnterWithFunction = (candidate: unknown): candidate is (value: string) => void => {
+	return typeof candidate === 'function';
+};
+
+const isGetStoreFunction = (candidate: unknown): candidate is () => string | undefined => {
+	return typeof candidate === 'function';
+};
+
+const isAsyncLocalStorageConstructor = (value: unknown): value is AsyncLocalStorageConstructor => {
+	if (typeof value !== 'function') {
+		return false;
+	}
+
+	const prototypeCandidate: unknown = value.prototype;
+	if (!isRecord(prototypeCandidate)) {
+		return false;
+	}
+
+	const hasEnterWith = hasPropertyOfType(prototypeCandidate, 'enterWith', isEnterWithFunction);
+	const hasGetStore = hasPropertyOfType(prototypeCandidate, 'getStore', isGetStoreFunction);
+
+	return hasEnterWith && hasGetStore;
+};
+
+const loadAsyncLocalStorage = (): AsyncLocalStorageConstructor | undefined => {
+	if (typeof process === 'undefined' || !process.versions?.node) {
+		return undefined;
+	}
+
+	try {
+		const moduleCandidate: unknown = require('async_hooks');
+		if (!hasProperty(moduleCandidate, 'AsyncLocalStorage')) {
+			return undefined;
+		}
+
+		const constructorCandidate = moduleCandidate.AsyncLocalStorage;
+		if (isAsyncLocalStorageConstructor(constructorCandidate)) {
+			return constructorCandidate;
+		}
+	} catch {
+		return undefined;
+	}
+
+	return undefined;
+};
+
+const createTraceStorage = (): TraceStorage => {
+	const asyncLocalStorageConstructor = loadAsyncLocalStorage();
+	if (asyncLocalStorageConstructor) {
+		const storageInstance = new asyncLocalStorageConstructor();
+		return {
+			enterWith(value: string): void {
+				storageInstance.enterWith(value);
+			},
+			getStore(): string | undefined {
+				const store = storageInstance.getStore();
+				if (typeof store === 'string' && store.length > 0) {
+					return store;
+				}
+
+				return undefined;
+			},
+		};
+	}
+
+	let activeTraceId: string | undefined;
+
+	return {
+		enterWith(value: string): void {
+			activeTraceId = value;
+		},
+		getStore(): string | undefined {
+			return activeTraceId;
+		},
+	};
+};
 
 /**
  * Server Logger Implementation
@@ -28,6 +112,7 @@ if (typeof process !== 'undefined' && process.versions?.node) {
  * Extends BaseLoggerService with server-specific logging behavior
  */
 export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInterface {
+	private readonly traceStorage: TraceStorage;
 	private logDir: string;
 	private logFile: string;
 	private performanceMetrics: Map<string, { startTime: number; endTime?: number; duration?: number }>;
@@ -35,6 +120,8 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 
 	constructor(config?: LoggerConfigUpdate) {
 		super(config);
+
+		this.traceStorage = createTraceStorage();
 
 		// Initialize server-specific config defaults
 		this.config = {
@@ -226,6 +313,35 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 		};
 
 		this.securityLogin(`Authentication: ${event}`, context);
+	}
+
+	public override newTrace(): string {
+		const traceId = super.newTrace();
+		this.traceStorage.enterWith(traceId);
+		return traceId;
+	}
+
+	public override getTraceId(): string {
+		const activeTraceId = this.traceStorage.getStore();
+		if (typeof activeTraceId === 'string' && activeTraceId.length > 0) {
+			return activeTraceId;
+		}
+
+		return super.getTraceId();
+	}
+
+	protected override buildMeta(meta?: LogMeta): LogMeta {
+		const baseMeta = super.buildMeta(meta);
+		const activeTraceId = this.traceStorage.getStore();
+
+		if (!activeTraceId) {
+			return baseMeta;
+		}
+
+		return {
+			...baseMeta,
+			traceId: activeTraceId,
+		};
 	}
 }
 

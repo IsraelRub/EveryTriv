@@ -135,7 +135,6 @@ logger.debug('http.request.end', { path:'/game/start', ms: elapsed });
 
 ## אסטרטגיית אחסון
 - קובץ מסתובב לפי גודל (rotation) + מחיקה אוטומטית בעת הפעלה.
-- הרחבה עתידית לשילוח חיצוני (Elastic / Loki) – לא מתועדת כאן.
 
 ## קורלציה (Request Id)
 ```typescript
@@ -162,6 +161,13 @@ logger.with({ feature: 'points' }).info('points.awarded', { amount: 50 });
 
 ## סיכום
 מערכת לוגים אחודה + ניטור בסיסי מספקת עקיבות, חלוקה שכבתית ויכולת הרחבה ללא שינוי חוזה בסיס.
+
+## קישורים רלוונטיים
+
+- מבנה Shared Services: `./SHARED_PACKAGE.md`
+- Types: `./TYPES.md`
+- Constants: `./CONSTANTS.md`
+- דיאגרמות: [דיאגרמת חבילה משותפת (Shared)](../DIAGRAMS.md#דיאגרמת-חבילה-משותפת-shared)
 
 ---
  

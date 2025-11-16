@@ -4,7 +4,7 @@
  * @module SubscriptionTypes
  * @description Type definitions for subscription and billing data structures
  */
-import { PlanType, SUBSCRIPTION_PLANS } from '@shared/constants';
+import { PaymentMethod, PlanType, SUBSCRIPTION_PLANS } from '@shared/constants';
 
 /**
  * Subscription data interface with nullable fields
@@ -25,6 +25,11 @@ export type SubscriptionData = {
 	price: number;
 	features: string[];
 	cancelledAt?: Date;
+	paymentMethod?: PaymentMethod;
+	paypalTransactionId?: string;
+	paypalOrderId?: string;
+	manualCaptureReference?: string;
+	paymentId?: string;
 };
 
 /**
@@ -40,6 +45,7 @@ export interface SubscriptionPlanDetails {
 	features: string[] | readonly string[];
 	pointBonus?: number;
 	questionLimit?: number;
+	paypalProductId?: string;
 }
 
 /**

@@ -10,6 +10,8 @@ import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, 
 
 import { GameMode, VALID_GAME_MODES } from '@shared/constants';
 
+import { PaymentMethodDetailsDto } from '../../payment/dtos';
+
 export class DeductPointsDto {
 	@ApiPropertyOptional({
 		description: 'Number of questions to deduct points for',
@@ -72,7 +74,7 @@ export class DeductPointsDto {
 	reason?: string;
 }
 
-export class PurchasePointsDto {
+export class PurchasePointsDto extends PaymentMethodDetailsDto {
 	@ApiProperty({
 		description: 'Package ID for points purchase',
 		example: 'package_points',

@@ -5,10 +5,10 @@
  * @description Utility functions for user management and preferences
  */
 import { clientLogger as logger } from '@shared/services';
+import { generateUserId } from '@shared/utils';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
 import { storageService } from '../services';
-import { generateUserId } from './data.utils';
 
 /**
  * Generate or retrieve user ID from localStorage

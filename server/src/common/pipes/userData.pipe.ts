@@ -17,7 +17,7 @@ import { ValidationService } from '../validation';
 export class UserDataPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: UpdateUserProfileData): Promise<ValidationResult> {
+	async transform(value: UpdateUserProfileData): Promise<UpdateUserProfileData> {
 		const startTime = Date.now();
 
 		try {
@@ -75,11 +75,15 @@ export class UserDataPipe implements PipeTransform {
 				duration: Date.now() - startTime,
 			});
 
-			return {
-				isValid,
-				errors,
-				suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
-			};
+			if (!isValid) {
+				throw new BadRequestException({
+					message: 'User data validation failed',
+					errors,
+					suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
+				});
+			}
+
+			return value;
 		} catch (error) {
 			logger.validationError('user_data', '[REDACTED]', 'validation_error', {
 				error: getErrorMessage(error),

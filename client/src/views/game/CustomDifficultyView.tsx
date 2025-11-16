@@ -5,17 +5,25 @@
  * @description Manage custom difficulty levels
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { motion } from 'framer-motion';
 
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { AlertModal, Button, Card, ConfirmModal, Container, Icon, fadeInUp, scaleIn } from '../../components';
-import { AlertVariant, AudioKey, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
+import { AlertModal, Button, Card, ConfirmModal, Container, fadeInUp, Icon, scaleIn } from '../../components';
+import {
+	AlertVariant,
+	AudioKey,
+	ButtonVariant,
+	CardVariant,
+	ComponentSize,
+	ContainerSize,
+	Spacing,
+} from '../../constants';
 import { useValidateCustomDifficulty } from '../../hooks';
-import { audioService } from '../../services';
+import { audioService, customDifficultyService } from '../../services';
 
 export default function CustomDifficultyView() {
 	const [customText, setCustomText] = useState('');
@@ -42,6 +50,21 @@ export default function CustomDifficultyView() {
 
 	const validateDifficulty = useValidateCustomDifficulty();
 
+	useEffect(() => {
+		loadCustomDifficulties();
+	}, []);
+
+	const loadCustomDifficulties = async () => {
+		try {
+			const difficulties = await customDifficultyService.getCustomDifficulties();
+			setSavedDifficulties(difficulties);
+		} catch (error) {
+			logger.storageError('Failed to load custom difficulties', {
+				error: getErrorMessage(error),
+			});
+		}
+	};
+
 	const handleCreate = async () => {
 		if (!customText.trim()) {
 			audioService.play(AudioKey.ERROR);
@@ -61,8 +84,12 @@ export default function CustomDifficultyView() {
 			// Validate the custom difficulty
 			await validateDifficulty(customText);
 
-			// If validation succeeds, add to list
-			setSavedDifficulties(prev => [...prev, customText]);
+			// Save to storage
+			await customDifficultyService.saveCustomDifficulty(customText);
+
+			// Reload from storage
+			await loadCustomDifficulties();
+
 			setCustomText('');
 
 			audioService.play(AudioKey.SUCCESS);
@@ -95,12 +122,23 @@ export default function CustomDifficultyView() {
 		});
 	};
 
-	const confirmDelete = () => {
+	const confirmDelete = async () => {
 		const { difficulty } = confirmModal;
-		setSavedDifficulties(prev => prev.filter(d => d !== difficulty));
-		audioService.play(AudioKey.SUCCESS);
-		logger.gameInfo('Custom difficulty deleted', { customText: difficulty });
-		setConfirmModal({ open: false, difficulty: '' });
+		try {
+			await customDifficultyService.deleteCustomDifficulty(difficulty);
+			await loadCustomDifficulties();
+			audioService.play(AudioKey.SUCCESS);
+			logger.gameInfo('Custom difficulty deleted', { customText: difficulty });
+			setConfirmModal({ open: false, difficulty: '' });
+		} catch (error) {
+			logger.gameError('Failed to delete custom difficulty', { error: getErrorMessage(error) });
+			setAlertModal({
+				open: true,
+				title: 'Error',
+				message: 'Failed to delete custom difficulty. Please try again.',
+				variant: AlertVariant.ERROR,
+			});
+		}
 	};
 
 	return (

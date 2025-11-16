@@ -6,7 +6,13 @@
 import { FormEvent } from 'react';
 
 import { GameMode } from '@shared/constants';
-import type { DifficultyBreakdown, FavoriteTopic, GameModeConfig, TriviaQuestion } from '@shared/types';
+import type {
+	DifficultyBreakdown,
+	FavoriteTopic,
+	GameModeConfig,
+	TriviaQuestion,
+	ValidationSeverity,
+} from '@shared/types';
 
 import { ClientGameState, GameTimerState } from './config.types';
 
@@ -163,7 +169,7 @@ export interface HomeTitleProps {
  */
 export interface ErrorBannerProps {
 	message: string;
-	type?: 'error' | 'warning' | 'info';
+	type?: ValidationSeverity;
 	onClose?: () => void;
 	className?: string;
 	difficulty?: string;

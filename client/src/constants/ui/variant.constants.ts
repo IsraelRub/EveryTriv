@@ -13,7 +13,6 @@
 export enum ButtonVariant {
 	PRIMARY = 'primary',
 	SECONDARY = 'secondary',
-	OUTLINE = 'outline',
 	GHOST = 'ghost',
 	DANGER = 'danger',
 	ACCENT = 'accent',
@@ -48,9 +47,9 @@ export enum AlertVariant {
 /**
  * Error boundary variant enum
  * @enum {string} ErrorBoundaryVariant
- * @description Display variants for error boundary components
+ * @description Visual style variants for error boundary components
  */
 export enum ErrorBoundaryVariant {
-	FULLSCREEN = 'fullscreen',
+	FULL = 'full',
 	INLINE = 'inline',
 }

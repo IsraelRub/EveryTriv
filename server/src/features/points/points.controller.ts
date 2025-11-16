@@ -1,7 +1,8 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, GameMode } from '@shared/constants';
+import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, GameMode, PaymentMethod } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
+import type { ManualPaymentDetails } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { Cache, CurrentUserId, NoCache } from '../../common';
@@ -64,8 +65,7 @@ export class PointsController {
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
 		try {
-			const questionCount =
-				query.questionCount ?? DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5;
+			const questionCount = query.questionCount ?? DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5;
 
 			if (!questionCount || questionCount <= 0) {
 				throw new HttpException('Valid question count is required', HttpStatus.BAD_REQUEST);
@@ -171,7 +171,15 @@ export class PointsController {
 				throw new HttpException('Package ID is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.pointsService.purchasePoints(userId, body.packageId);
+			const manualPayment =
+				body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.buildManualPaymentDetails(body) : undefined;
+			const result = await this.pointsService.purchasePoints(userId, {
+				packageId: body.packageId,
+				paymentMethod: body.paymentMethod,
+				paypalOrderId: body.paypalOrderId,
+				paypalPaymentId: body.paypalPaymentId,
+				manualPayment,
+			});
 
 			// Log API call for points purchase
 			logger.apiCreate('points_purchase', {
@@ -219,5 +227,31 @@ export class PointsController {
 			});
 			throw error;
 		}
+	}
+
+	private buildManualPaymentDetails(body: PurchasePointsDto): ManualPaymentDetails {
+		const { month, year } = this.parseExpiryDate(body.expiryDate);
+
+		return {
+			cardNumber: body.cardNumber ?? '',
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: body.cvv ?? '',
+			cardHolderName: body.cardHolderName ?? '',
+			postalCode: body.postalCode,
+			expiryDate: body.expiryDate,
+		};
+	}
+
+	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
+		if (!expiryDate) {
+			return { month: 0, year: 0 };
+		}
+
+		const [monthPart, yearPart] = expiryDate.split('/');
+		const month = parseInt(monthPart ?? '0', 10);
+		const year = 2000 + parseInt(yearPart ?? '0', 10);
+
+		return { month, year };
 	}
 }

@@ -2,17 +2,18 @@ import type {
 	AuditLogEntry,
 	BusinessMetrics,
 	CompleteUserAnalytics,
-	DifficultyStat,
+	DifficultyStats,
 	PointBalance,
 	PointPurchaseOption,
 	SavedGameConfiguration,
 	SubscriptionData,
 	SubscriptionPlans,
-	TopicStats,
+	TopicAnalyticsRecord,
 	TriviaQuestion,
 	UserSearchCacheEntry,
 	UserStatsCacheEntry,
 } from '@shared/types';
+
 import { isRecord } from '../core';
 
 type Primitive = 'string' | 'number' | 'boolean';
@@ -37,13 +38,18 @@ const hasPrimitive = (value: unknown, type: Primitive): boolean => typeof value 
 const hasOptionalPrimitive = (value: unknown, type: Primitive): boolean =>
 	value === null || typeof value === 'undefined' || typeof value === type;
 
-export const createArrayGuard = <T>(itemGuard: (value: unknown) => value is T) =>
-	(value: unknown): value is T[] => Array.isArray(value) && value.every(itemGuard);
+export const createArrayGuard =
+	<T>(itemGuard: (value: unknown) => value is T) =>
+	(value: unknown): value is T[] =>
+		Array.isArray(value) && value.every(itemGuard);
 
-export const createNullableGuard = <T>(guard: (value: unknown) => value is T) =>
-	(value: unknown): value is T | null => value === null || guard(value);
+export const createNullableGuard =
+	<T>(guard: (value: unknown) => value is T) =>
+	(value: unknown): value is T | null =>
+		value === null || guard(value);
 
-export const createLeaderboardEntryGuard = <T extends LeaderboardEntryShape>() =>
+export const createLeaderboardEntryGuard =
+	<T extends LeaderboardEntryShape>() =>
 	(value: unknown): value is T => {
 		if (!isRecord(value)) {
 			return false;
@@ -57,7 +63,8 @@ export const createLeaderboardEntryGuard = <T extends LeaderboardEntryShape>() =
 		);
 	};
 
-export const createUserStatsEntityGuard = <T extends UserStatsEntityShape>() =>
+export const createUserStatsEntityGuard =
+	<T extends UserStatsEntityShape>() =>
 	(value: unknown): value is T => {
 		if (!isRecord(value)) {
 			return false;
@@ -98,9 +105,7 @@ export const isPointPurchaseOptionArray = (value: unknown): value is PointPurcha
 		}
 
 		return (
-			hasPrimitive(option.id, 'string') &&
-			hasPrimitive(option.points, 'number') &&
-			hasPrimitive(option.price, 'number')
+			hasPrimitive(option.id, 'string') && hasPrimitive(option.points, 'number') && hasPrimitive(option.price, 'number')
 		);
 	});
 };
@@ -153,7 +158,7 @@ export const isTriviaQuestionArray = (value: unknown): value is TriviaQuestion[]
 	});
 };
 
-export const isTopicStatsArray = (value: unknown): value is TopicStats[] => {
+export const isTopicAnalyticsRecordArray = (value: unknown): value is TopicAnalyticsRecord[] => {
 	if (!Array.isArray(value)) {
 		return false;
 	}
@@ -163,16 +168,11 @@ export const isTopicStatsArray = (value: unknown): value is TopicStats[] => {
 			return false;
 		}
 
-		return (
-			hasPrimitive(stat.name, 'string') &&
-			hasPrimitive(stat.totalGames, 'number') &&
-			hasPrimitive(stat.averageCorrectAnswers, 'number') &&
-			hasPrimitive(stat.averageTimeSpent, 'number')
-		);
+		return hasPrimitive(stat.topic, 'string') && hasPrimitive(stat.totalGames, 'number');
 	});
 };
 
-export const isDifficultyStatsRecord = (value: unknown): value is Record<string, DifficultyStat> => {
+export const isDifficultyStatsRecord = (value: unknown): value is Record<string, DifficultyStats> => {
 	if (!isRecord(value)) {
 		return false;
 	}
@@ -185,7 +185,7 @@ export const isDifficultyStatsRecord = (value: unknown): value is Record<string,
 		return (
 			hasPrimitive(stat.total, 'number') &&
 			hasPrimitive(stat.correct, 'number') &&
-			hasPrimitive(stat.averageTime, 'number')
+			hasOptionalPrimitive(stat.successRate, 'number')
 		);
 	});
 };
@@ -242,7 +242,6 @@ export const isUserStatsCacheEntry = (value: unknown): value is UserStatsCacheEn
 		hasPrimitive(value.credits, 'number') &&
 		hasPrimitive(value.purchasedPoints, 'number') &&
 		hasPrimitive(value.totalPoints, 'number') &&
-		isRecord(value.stats) &&
 		value.created_at !== undefined &&
 		hasPrimitive(value.accountAge, 'number')
 	);
@@ -257,14 +256,15 @@ export const isUserSearchCacheEntry = (value: unknown): value is UserSearchCache
 		return false;
 	}
 
-	return value.results.every(result =>
-		isRecord(result) &&
-		hasPrimitive(result.id, 'string') &&
-		hasPrimitive(result.username, 'string') &&
-		(hasPrimitive(result.firstName, 'string') || result.firstName === null) &&
-		(hasPrimitive(result.lastName, 'string') || result.lastName === null) &&
-		(hasPrimitive(result.avatar, 'string') || result.avatar === null) &&
-		hasPrimitive(result.displayName, 'string')
+	return value.results.every(
+		result =>
+			isRecord(result) &&
+			hasPrimitive(result.id, 'string') &&
+			hasPrimitive(result.username, 'string') &&
+			(hasPrimitive(result.firstName, 'string') || result.firstName === null) &&
+			(hasPrimitive(result.lastName, 'string') || result.lastName === null) &&
+			(hasPrimitive(result.avatar, 'string') || result.avatar === null) &&
+			hasPrimitive(result.displayName, 'string')
 	);
 };
 

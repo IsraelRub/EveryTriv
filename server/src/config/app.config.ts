@@ -5,7 +5,8 @@
  * @description Central configuration class for application settings
  * @used_by server/src/app, server/src/main, server/src/config
  */
-import { DEFAULT_PORTS, LOCALHOST_URLS } from '@shared/constants';
+import { DEFAULT_PORTS, LOCALHOST_URLS, PAYPAL_ENVIRONMENTS } from '@shared/constants';
+import type { PayPalConfig, PayPalEnvironment } from '@shared/types';
 
 /**
  * Application configuration class
@@ -90,6 +91,36 @@ export class AppConfig {
 			secret: process.env.JWT_SECRET || 'everytriv-jwt-secret',
 			expiresIn: process.env.JWT_EXPIRES_IN || '1h',
 			refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+		};
+	}
+
+	static get features() {
+		return {
+			rateLimitingEnabled: process.env.ENABLE_RATE_LIMIT !== 'false',
+			aiFallbackEnabled: process.env.DISABLE_AI_FALLBACK !== 'true',
+		};
+	}
+
+	static get adminCredentials() {
+		return {
+			username: process.env.ADMIN_USERNAME?.trim() || 'admin_user',
+			email: process.env.ADMIN_EMAIL?.trim() || 'admin@example.com',
+			password: process.env.ADMIN_PASSWORD ?? 'AdminPass123!',
+		};
+	}
+
+	static get paypal(): PayPalConfig {
+		const environmentValue = (process.env.PAYPAL_ENVIRONMENT ?? 'sandbox').toLowerCase();
+		const environment: PayPalEnvironment =
+			environmentValue === PAYPAL_ENVIRONMENTS.PRODUCTION
+				? PAYPAL_ENVIRONMENTS.PRODUCTION
+				: PAYPAL_ENVIRONMENTS.SANDBOX;
+
+		return {
+			clientId: process.env.PAYPAL_CLIENT_ID ?? '',
+			clientSecret: process.env.PAYPAL_CLIENT_SECRET ?? '',
+			merchantId: process.env.PAYPAL_MERCHANT_ID ?? '',
+			environment,
 		};
 	}
 }

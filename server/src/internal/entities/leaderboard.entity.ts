@@ -1,7 +1,5 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import type { GameHistoryEntry } from '@shared/types';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 import { UserStatsEntity } from './userStats.entity';
@@ -48,33 +46,7 @@ export class LeaderboardEntity extends BaseEntity {
 	@Column('int', { name: 'total_users' })
 	totalUsers: number = 0;
 
-	// Time-based rankings (calculated from UserStatsEntity)
-	@Column('int', { name: 'weekly_rank' })
-	@Index()
-	weeklyRank: number = 0;
-
-	@Column('int', { name: 'monthly_rank' })
-	@Index()
-	monthlyRank: number = 0;
-
-	@Column('int', { name: 'yearly_rank' })
-	@Index()
-	yearlyRank: number = 0;
-
 	// Ranking metadata
 	@Column('timestamp', { name: 'last_rank_update', nullable: true })
 	lastRankUpdate?: Date;
-
-	@Column('timestamp', { name: 'last_weekly_rank_update', nullable: true })
-	lastWeeklyRankUpdate?: Date;
-
-	@Column('timestamp', { name: 'last_monthly_rank_update', nullable: true })
-	lastMonthlyRankUpdate?: Date;
-
-	@Column('timestamp', { name: 'last_yearly_rank_update', nullable: true })
-	lastYearlyRankUpdate?: Date;
-
-	// Ranking history (for trend analysis)
-	@Column('jsonb', { name: 'rank_history', default: [] })
-	rankHistory: GameHistoryEntry[] = [];
 }

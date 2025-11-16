@@ -16,7 +16,7 @@ import { clientLogger as logger } from '@shared/services';
 import type { QuestionData } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
-import { AlertModal, Button, Card, Container, Icon, fadeInUp, GridLayout, scaleIn } from '../../components';
+import { AlertModal, Button, Card, Container, fadeInUp, GridLayout, Icon, scaleIn } from '../../components';
 import {
 	AlertVariant,
 	AudioKey,

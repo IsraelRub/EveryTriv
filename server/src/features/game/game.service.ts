@@ -1,11 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_TTL, DEFAULT_USER_PREFERENCES, GameMode, HTTP_TIMEOUTS, SERVER_GAME_CONSTANTS } from '@shared/constants';
+import {
+	CACHE_TTL,
+	DEFAULT_USER_PREFERENCES,
+	GameMode,
+	HTTP_TIMEOUTS,
+	PROVIDER_ERROR_MESSAGES,
+	SERVER_GAME_CONSTANTS,
+} from '@shared/constants';
 import { serverLogger as logger, PointCalculationService } from '@shared/services';
-import type { AnswerResult, GameDifficulty, QuestionData, TriviaQuestion, UserAnalytics } from '@shared/types';
-import { getErrorMessage, isSavedGameConfiguration, isTriviaQuestionArray } from '@shared/utils';
+import type { AnswerResult, GameDifficulty, QuestionData, TriviaQuestion, UserAnalyticsRecord } from '@shared/types';
+import { buildCountRecord, getErrorMessage, isSavedGameConfiguration, isTriviaQuestionArray } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
@@ -13,7 +20,9 @@ import { CacheService, ServerStorageService } from '@internal/modules';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
 import { ValidationService } from '../../common';
+import { AppConfig } from '../../config/app.config';
 import { AnalyticsService } from '../analytics';
+import { LeaderboardService } from '../leaderboard';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 
 /**
@@ -30,6 +39,7 @@ export class GameService {
 		@InjectRepository(TriviaEntity)
 		private readonly triviaRepository: Repository<TriviaEntity>,
 		private readonly analyticsService: AnalyticsService,
+		private readonly leaderboardService: LeaderboardService,
 		private readonly cacheService: CacheService,
 		private readonly storageService: ServerStorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
@@ -65,34 +75,40 @@ export class GameService {
 		try {
 			const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
 
-			const questions = await this.cacheService.getOrSet<TriviaQuestion[]>(
-				cacheKey,
-				async () => {
-					const generatedQuestions = [];
-					const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
+			// Check if value exists in cache first
+			const cachedResult = await this.cacheService.get<TriviaQuestion[]>(cacheKey, isTriviaQuestionArray);
+			const fromCache = cachedResult.success && cachedResult.data !== null && cachedResult.data !== undefined;
 
-					for (let i = 0; i < actualQuestionCount; i++) {
-						const question = await Promise.race([
-							this.triviaGenerationService.generateQuestion(topic, difficulty),
-							new Promise<never>((_, reject) => {
-								const timeoutId = setTimeout(() => {
-									reject(new Error('Question generation timeout'));
-								}, generationTimeout);
+			const questions = fromCache
+				? cachedResult.data
+				: await this.cacheService.getOrSet<TriviaQuestion[]>(
+						cacheKey,
+						async () => {
+							const generatedQuestions = [];
+							const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
 
-								// Clean up timeout if promise resolves
-								setTimeout(() => clearTimeout(timeoutId), 0);
-							}),
-						]);
-						generatedQuestions.push(question);
-					}
+							for (let i = 0; i < actualQuestionCount; i++) {
+								const question = await Promise.race([
+									this.triviaGenerationService.generateQuestion(topic, difficulty),
+									new Promise<never>((_, reject) => {
+										const timeoutId = setTimeout(() => {
+											reject(new Error('Question generation timeout'));
+										}, generationTimeout);
 
-					return generatedQuestions;
-				},
-				CACHE_TTL.TRIVIA_QUESTIONS,
-				isTriviaQuestionArray
-			);
+										// Clean up timeout if promise resolves
+										setTimeout(() => clearTimeout(timeoutId), 0);
+									}),
+								]);
+								generatedQuestions.push(question);
+							}
 
-			if (userId) {
+							return generatedQuestions;
+						},
+						CACHE_TTL.TRIVIA_QUESTIONS,
+						isTriviaQuestionArray
+					);
+
+			if (!fromCache && userId) {
 				await this.analyticsService.trackEvent(userId, {
 					eventType: 'game',
 					userId,
@@ -103,10 +119,41 @@ export class GameService {
 			}
 
 			return {
-				questions,
-				fromCache: false,
+				questions: questions || [],
+				fromCache,
 			};
 		} catch (error) {
+			logger.gameError('Failed to generate trivia questions', {
+				error: getErrorMessage(error),
+				topic,
+				difficulty,
+				requestedCount: actualQuestionCount,
+			});
+
+			if (this.shouldUseTriviaFallback(error)) {
+				const fallbackQuestions = await this.triviaGenerationService.generateFallbackQuestions(
+					topic,
+					difficulty,
+					actualQuestionCount,
+					userId
+				);
+
+				if (userId) {
+					await this.analyticsService.trackEvent(userId, {
+						eventType: 'game',
+						userId,
+						timestamp: new Date(),
+						action: 'question_requested_fallback',
+						properties: { topic, difficulty, questionCount: actualQuestionCount, fallback: true },
+					});
+				}
+
+				return {
+					questions: fallbackQuestions,
+					fromCache: false,
+				};
+			}
+
 			throw createServerError('generate trivia questions', error);
 		}
 	}
@@ -118,6 +165,16 @@ export class GameService {
 	 */
 	async getQuestionById(questionId: string) {
 		try {
+			if (!questionId || questionId.trim().length === 0) {
+				throw new BadRequestException('Question ID is required');
+			}
+
+			// Validate UUID format
+			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+			if (!uuidRegex.test(questionId)) {
+				throw new BadRequestException('Invalid question ID format. Must be a valid UUID');
+			}
+
 			const question = await this.triviaRepository.findOne({
 				where: { id: questionId },
 			});
@@ -128,6 +185,9 @@ export class GameService {
 
 			return question;
 		} catch (error) {
+			if (error instanceof HttpException) {
+				throw error;
+			}
 			throw createServerError('get question', error);
 		}
 	}
@@ -142,6 +202,16 @@ export class GameService {
 	 */
 	async submitAnswer(questionId: string, answer: string, userId: string, timeSpent: number): Promise<AnswerResult> {
 		try {
+			if (!questionId || questionId.trim().length === 0) {
+				throw new BadRequestException('Question ID is required');
+			}
+
+			// Validate UUID format
+			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+			if (!uuidRegex.test(questionId)) {
+				throw new BadRequestException('Invalid question ID format. Must be a valid UUID');
+			}
+
 			const question = await this.getQuestionById(questionId);
 			if (!question) {
 				throw createNotFoundError('Question');
@@ -176,8 +246,6 @@ export class GameService {
 				],
 			});
 
-			await this.updateUserScore(userId, score);
-
 			await this.analyticsService.trackUserAnswer(userId, questionId, {
 				selectedAnswer: answer,
 				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
@@ -211,37 +279,6 @@ export class GameService {
 	private checkAnswer(question: TriviaEntity, answer: string): boolean {
 		const correctAnswer = question.answers[question.correctAnswerIndex]?.text || '';
 		return answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
-	}
-
-	/**
-	 * Update user score
-	 * @param userId User ID
-	 * @param score Score to add
-	 */
-	private async updateUserScore(userId: string, score: number): Promise<void> {
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
-
-			user.score += score;
-			await this.userRepository.save(user);
-
-			await this.cacheService.delete(`user:score:${userId}`);
-			await this.cacheService.invalidatePattern(`leaderboard:*`);
-			await this.cacheService.invalidatePattern(`analytics:user:${userId}`);
-
-			const result = await this.storageService.removeItem(`active_game:${userId}`);
-			if (!result.success) {
-				logger.gameError('Failed to clear active game session', {
-					error: result.error || 'Unknown error',
-					userId,
-				});
-			}
-		} catch (error) {
-			throw createServerError('update user score', error);
-		}
 	}
 
 	/**
@@ -294,15 +331,16 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
+			const incorrectAnswers = Math.max(0, gameData.totalQuestions - gameData.correctAnswers);
 			const gameHistory = this.gameHistoryRepository.create({
 				userId,
 				score: gameData.score,
 				totalQuestions: gameData.totalQuestions,
 				correctAnswers: gameData.correctAnswers,
 				difficulty: gameData.difficulty,
-				topic: gameData.topic,
+				topic: gameData.topic ?? '',
 				gameMode: gameData.gameMode,
-				timeSpent: gameData.timeSpent,
+				timeSpent: gameData.timeSpent ?? 0,
 				creditsUsed: gameData.creditsUsed,
 				questionsData: gameData.questionsData,
 			});
@@ -314,12 +352,21 @@ export class GameService {
 				score: gameData.score,
 			});
 
+			// Update user stats and leaderboard asynchronously (don't block response)
+			this.leaderboardService.updateUserRanking(userId).catch(error => {
+				logger.analyticsError('Failed to update user ranking after game', {
+					error: getErrorMessage(error),
+					userId,
+				});
+			});
+
 			return {
 				id: savedHistory.id,
 				userId: savedHistory.userId,
 				score: savedHistory.score,
 				totalQuestions: savedHistory.totalQuestions,
 				correctAnswers: savedHistory.correctAnswers,
+				incorrectAnswers,
 				successRate: (savedHistory.correctAnswers / savedHistory.totalQuestions) * 100,
 				difficulty: savedHistory.difficulty,
 				topic: savedHistory.topic,
@@ -394,7 +441,7 @@ export class GameService {
 	 * @param userId User ID
 	 * @returns User analytics data
 	 */
-	async getUserGameStats(userId: string): Promise<UserAnalytics> {
+	async getUserGameStats(userId: string): Promise<UserAnalyticsRecord> {
 		try {
 			return await this.analyticsService.getUserStats(userId);
 		} catch (error) {
@@ -429,6 +476,16 @@ export class GameService {
 	 */
 	async getGameById(gameId: string) {
 		try {
+			if (!gameId || gameId.trim().length === 0) {
+				throw new BadRequestException('Game ID is required');
+			}
+
+			// Validate UUID format
+			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+			if (!uuidRegex.test(gameId)) {
+				throw new BadRequestException('Invalid game ID format. Must be a valid UUID');
+			}
+
 			logger.gameInfo('Getting game by ID', {
 				id: gameId,
 			});
@@ -730,11 +787,18 @@ export class GameService {
 			});
 
 			// Delete all game history records for user
-			await this.gameHistoryRepository.delete({ userId });
+			const deleteResult = await this.gameHistoryRepository
+				.createQueryBuilder()
+				.delete()
+				.from(GameHistoryEntity)
+				.where('user_id = :userId', { userId })
+				.execute();
+
+			const deletedCount = typeof deleteResult.affected === 'number' ? deleteResult.affected : count;
 
 			logger.gameInfo('All game history deleted', {
 				userId,
-				deletedCount: count,
+				deletedCount,
 			});
 
 			// Clear cache
@@ -742,7 +806,7 @@ export class GameService {
 
 			return {
 				message: 'All game history cleared successfully',
-				deletedCount: count,
+				deletedCount,
 			};
 		} catch (error) {
 			logger.gameError('Failed to clear game history', {
@@ -786,48 +850,52 @@ export class GameService {
 					lastActivity: Date;
 				}>();
 
-			const topicStatsRaw = await this.gameHistoryRepository
-				.createQueryBuilder('game')
+			const topicQueryBuilder = this.gameHistoryRepository.createQueryBuilder('game');
+			topicQueryBuilder
 				.select('game.topic', 'topic')
 				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
 				.where('game.topic IS NOT NULL')
 				.groupBy('game.topic')
-				.orderBy('count', 'DESC')
-				.getRawMany<{ topic: string; count: number }>();
+				.orderBy('count', 'DESC');
+			const topicStatsRaw = await topicQueryBuilder.getRawMany<{ topic: string; count: number }>();
 
-			const difficultyStatsRaw = await this.gameHistoryRepository
-				.createQueryBuilder('game')
+			const difficultyQueryBuilder = this.gameHistoryRepository.createQueryBuilder('game');
+			difficultyQueryBuilder
 				.select('game.difficulty', 'difficulty')
 				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
 				.where('game.difficulty IS NOT NULL')
 				.groupBy('game.difficulty')
-				.orderBy('count', 'DESC')
-				.getRawMany<{ difficulty: string; count: number }>();
+				.orderBy('count', 'DESC');
+			const difficultyStatsRaw = await difficultyQueryBuilder.getRawMany<{ difficulty: string; count: number }>();
 
-			const activePlayersRaw = await this.gameHistoryRepository
+			const { addDateRangeConditions } = await import('../../common/queries');
+			const activePlayersQueryBuilder = this.gameHistoryRepository
 				.createQueryBuilder('game')
-				.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count')
-				.where('game.createdAt >= :date', { date: new Date(Date.now() - 24 * 60 * 60 * 1000) })
-				.getRawOne<{ count: number }>();
+				.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count');
+			addDateRangeConditions(
+				activePlayersQueryBuilder,
+				'game',
+				'createdAt',
+				new Date(Date.now() - 24 * 60 * 60 * 1000)
+			);
+			const activePlayersRaw = await activePlayersQueryBuilder.getRawOne<{ count: number }>();
 
 			const totalGames = totalsRaw?.totalGames ?? 0;
 			const totalQuestions = totalsRaw?.totalQuestions ?? 0;
 			const correctAnswers = totalsRaw?.correctAnswers ?? 0;
 			const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
-			const topics: Record<string, number> = {};
-			topicStatsRaw.forEach(stat => {
-				if (stat.topic) {
-					topics[stat.topic] = stat.count;
-				}
-			});
+			const topics = buildCountRecord(
+				topicStatsRaw,
+				stat => stat.topic ?? null,
+				stat => stat.count ?? 0
+			);
 
-			const difficultyDistribution: Record<string, number> = {};
-			difficultyStatsRaw.forEach(stat => {
-				if (stat.difficulty) {
-					difficultyDistribution[stat.difficulty] = stat.count;
-				}
-			});
+			const difficultyDistribution = buildCountRecord(
+				difficultyStatsRaw,
+				stat => stat.difficulty ?? null,
+				stat => stat.count ?? 0
+			);
 
 			return {
 				totalGames,
@@ -857,12 +925,42 @@ export class GameService {
 			logger.gameInfo('Clearing entire game history dataset', {});
 
 			const totalBefore = await this.gameHistoryRepository.count();
-			const deleteResult = await this.gameHistoryRepository.delete({});
-			const deletedCount = deleteResult.affected ?? totalBefore;
+
+			if (totalBefore === 0) {
+				logger.gameInfo('No game history records to clear', {});
+				// Clear cache even if no records found
+				try {
+					await this.cacheService.invalidatePattern('game_history:*');
+				} catch (cacheError) {
+					logger.cacheError('invalidatePattern', 'game_history:*', {
+						error: getErrorMessage(cacheError),
+					});
+				}
+				return {
+					message: 'No game history records found',
+					deletedCount: 0,
+				};
+			}
+
+			await this.gameHistoryRepository.clear();
+			const deletedCount = totalBefore;
 
 			logger.gameInfo('All game history cleared by admin', {
 				deletedCount,
 			});
+
+			// Clear cache after database deletion
+			try {
+				const cacheDeleted = await this.cacheService.invalidatePattern('game_history:*');
+				if (cacheDeleted > 0) {
+					logger.cacheInfo(`Game history cache cleared: ${cacheDeleted} keys deleted`);
+				}
+			} catch (cacheError) {
+				logger.cacheError('invalidatePattern', 'game_history:*', {
+					error: getErrorMessage(cacheError),
+				});
+				// Don't throw - database deletion was successful
+			}
 
 			return {
 				message: 'All game history records removed successfully',
@@ -874,5 +972,99 @@ export class GameService {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Clear all trivia questions (admin)
+	 */
+	async clearAllTrivia(): Promise<{ message: string; deletedCount: number }> {
+		try {
+			logger.gameInfo('Clearing entire trivia dataset', {});
+
+			const totalBefore = await this.triviaRepository.count();
+
+			if (totalBefore === 0) {
+				logger.gameInfo('No trivia records to clear', {});
+				// Clear cache even if no records found
+				try {
+					await this.cacheService.invalidatePattern('trivia:*');
+				} catch (cacheError) {
+					logger.cacheError('invalidatePattern', 'trivia:*', {
+						error: getErrorMessage(cacheError),
+					});
+				}
+				return {
+					message: 'No trivia records found',
+					deletedCount: 0,
+				};
+			}
+
+			await this.triviaRepository.clear();
+			const deletedCount = totalBefore;
+
+			logger.gameInfo('All trivia cleared by admin', {
+				deletedCount,
+			});
+
+			// Clear cache after database deletion
+			try {
+				const cacheDeleted = await this.cacheService.invalidatePattern('trivia:*');
+				if (cacheDeleted > 0) {
+					logger.cacheInfo(`Trivia cache cleared: ${cacheDeleted} keys deleted`);
+				}
+			} catch (cacheError) {
+				logger.cacheError('invalidatePattern', 'trivia:*', {
+					error: getErrorMessage(cacheError),
+				});
+				// Don't throw - database deletion was successful
+			}
+
+			return {
+				message: 'All trivia records removed successfully',
+				deletedCount,
+			};
+		} catch (error) {
+			logger.gameError('Failed to clear all trivia', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
+	}
+
+	private shouldUseTriviaFallback(error: unknown): boolean {
+		if (!AppConfig.features.aiFallbackEnabled) {
+			return false;
+		}
+
+		const normalizedMessage = getErrorMessage(error).toLowerCase();
+
+		// Check for general AI provider failures
+		if (
+			normalizedMessage.includes(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE.toLowerCase()) ||
+			normalizedMessage.includes('ai providers failed') ||
+			normalizedMessage.includes('question generation timeout') ||
+			normalizedMessage.includes(PROVIDER_ERROR_MESSAGES.ALL_PROVIDERS_FAILED.toLowerCase())
+		) {
+			return true;
+		}
+
+		// Check for specific provider errors that should trigger fallback
+		const providerErrorIndicators = [
+			'unauthorized',
+			'401',
+			'authentication failed',
+			'api key',
+			'rate limit',
+			'429',
+			'too many requests',
+			'credit balance',
+			'balance is too low',
+			'invalid api key',
+			'api key not configured',
+			'provider error',
+			'all providers failed',
+		];
+
+		return providerErrorIndicators.some(indicator => normalizedMessage.includes(indicator));
 	}
 }

@@ -9,7 +9,9 @@ import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'cl
 
 import { BillingCycle, PlanType, VALID_BILLING_CYCLES, VALID_PLAN_TYPES } from '@shared/constants';
 
-export class CreateSubscriptionDto {
+import { PaymentMethodDetailsDto } from '../../payment/dtos';
+
+export class CreateSubscriptionDto extends PaymentMethodDetailsDto {
 	@ApiProperty({
 		description: 'Plan type for subscription',
 		example: 'premium',
@@ -33,17 +35,6 @@ export class CreateSubscriptionDto {
 		message: `Billing cycle must be one of: ${VALID_BILLING_CYCLES.join(', ')}`,
 	})
 	billingCycle: BillingCycle;
-
-	@ApiProperty({
-		description: 'Payment method ID',
-		example: 'pm_your_payment_method_id',
-		minLength: 1,
-		maxLength: 100,
-	})
-	@IsString()
-	@IsNotEmpty({ message: 'Payment method ID is required' })
-	@MaxLength(100, { message: 'Payment method ID cannot exceed 100 characters' })
-	paymentMethodId: string;
 
 	@ApiPropertyOptional({
 		description: 'Promo code for discount',

@@ -49,19 +49,6 @@ export enum Spacing {
 }
 
 /**
- * Shadow size enum
- * @enum {string} ShadowSize
- * @description Standard shadow size options for elevation effects
- */
-export enum ShadowSize {
-	NONE = BaseSize.NONE,
-	SM = BaseSize.SM,
-	MD = BaseSize.MD,
-	LG = BaseSize.LG,
-	XL = BaseSize.XL,
-}
-
-/**
  * Modal size enum
  * @enum {string} ModalSize
  * @description Size options for modal components

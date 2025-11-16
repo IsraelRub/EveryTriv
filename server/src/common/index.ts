@@ -54,3 +54,10 @@ export * from './auth';
  * @used_by server/src/features, server/src/controllers
  */
 export * from './guards';
+
+/**
+ * Query helpers
+ * @description Helper functions for common TypeORM query patterns
+ * @used_by server/src/features
+ */
+export * from './queries';

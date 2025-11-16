@@ -1,7 +1,7 @@
 import { forwardRef, ForwardRefRenderFunction } from 'react';
 
 import { CardVariant, Spacing } from '../../constants';
-import { CardContentProps, CardHeaderProps, CardProps, CardTitleProps } from '../../types';
+import { BaseComponentProps, CardContentProps, CardProps } from '../../types';
 import { combineClassNames } from '../../utils';
 
 /**
@@ -41,8 +41,7 @@ const CardComponent: ForwardRefRenderFunction<HTMLDivElement, CardProps> = (
 		: '';
 
 	// Default padding for glass variant via inline style if padding not specified
-	const defaultPaddingStyle =
-		effectiveVariant === CardVariant.GLASS && !padding ? { padding: '2rem' } : undefined;
+	const defaultPaddingStyle = effectiveVariant === CardVariant.GLASS && !padding ? { padding: '2rem' } : undefined;
 
 	return (
 		<div
@@ -65,9 +64,9 @@ const CardComponent: ForwardRefRenderFunction<HTMLDivElement, CardProps> = (
 						? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
 						: effectiveVariant === CardVariant.GRAY
 							? '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-						: effectiveVariant === CardVariant.GLASS
-							? '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-							: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+							: effectiveVariant === CardVariant.GLASS
+								? '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+								: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
 				borderRadius:
 					effectiveVariant !== CardVariant.WHITE && effectiveVariant !== CardVariant.GRAY ? '0.5rem' : undefined,
 				...defaultPaddingStyle,
@@ -88,14 +87,14 @@ const CardContentComponent: ForwardRefRenderFunction<HTMLDivElement, CardContent
 	return <div ref={ref} className={combineClassNames('', className)} {...props} />;
 };
 
-const CardHeaderComponent: ForwardRefRenderFunction<HTMLDivElement, CardHeaderProps> = (
+const CardHeaderComponent: ForwardRefRenderFunction<HTMLDivElement, BaseComponentProps> = (
 	{ className, ...props },
 	ref
 ) => {
 	return <div ref={ref} className={combineClassNames('mb-4', className)} {...props} />;
 };
 
-const CardTitleComponent: ForwardRefRenderFunction<HTMLHeadingElement, CardTitleProps> = (
+const CardTitleComponent: ForwardRefRenderFunction<HTMLHeadingElement, BaseComponentProps> = (
 	{ className, ...props },
 	ref
 ) => {

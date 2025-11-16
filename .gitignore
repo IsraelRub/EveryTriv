@@ -23,6 +23,7 @@ dist-temp/
 *.env
 
 # IDE and editor files
+tools/
 .vscode/
 .idea/
 .cursor/

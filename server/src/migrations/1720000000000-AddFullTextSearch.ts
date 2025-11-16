@@ -16,18 +16,15 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 				CREATE TABLE "game_history" (
 					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
 					"user_id" uuid NOT NULL,
-					"game_id" character varying NOT NULL,
 					"topic" character varying NOT NULL,
 					"difficulty" character varying NOT NULL,
 					"score" integer NOT NULL DEFAULT 0,
 					"total_questions" integer NOT NULL DEFAULT 0,
 					"correct_answers" integer NOT NULL DEFAULT 0,
-					"incorrect_answers" integer NOT NULL DEFAULT 0,
-					"time_taken" integer NOT NULL DEFAULT 0,
-					"questions" jsonb NOT NULL DEFAULT '[]',
-					"answers" jsonb NOT NULL DEFAULT '[]',
-					"metadata" jsonb NOT NULL DEFAULT '{}',
-					"search_vector" tsvector,
+					"game_mode" character varying NOT NULL DEFAULT 'QUESTION_LIMITED',
+					"time_spent" integer,
+					"credits_used" integer NOT NULL DEFAULT 0,
+					"questions_data" jsonb NOT NULL DEFAULT '[]',
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "PK_game_history_id" PRIMARY KEY ("id")
@@ -47,7 +44,6 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 					"user_id" uuid,
 					"is_correct" boolean NOT NULL DEFAULT false,
 					"metadata" jsonb,
-					"search_vector" tsvector,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "PK_trivia_id" PRIMARY KEY ("id")
@@ -66,11 +62,6 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 			await queryRunner.query(`CREATE INDEX "IDX_trivia_difficulty" ON "trivia" ("difficulty")`);
 			await queryRunner.query(`CREATE INDEX "IDX_trivia_user_id" ON "trivia" ("user_id")`);
 
-			// Create full-text search indexes
-			console.log('Creating full-text search indexes');
-			await queryRunner.query(`CREATE INDEX "IDX_game_history_search" ON "game_history" USING GIN ("search_vector")`);
-			await queryRunner.query(`CREATE INDEX "IDX_trivia_search" ON "trivia" USING GIN ("search_vector")`);
-
 			// Add foreign key constraints
 			console.log('Adding foreign key constraints');
 			await queryRunner.query(`
@@ -83,12 +74,19 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
 
+			// Drop unused columns and indexes if they exist (for existing databases)
+			console.log('Dropping unused search_vector columns and indexes if they exist');
+			await queryRunner.query(`DROP INDEX IF EXISTS "IDX_game_history_search"`);
+			await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trivia_search"`);
+			await queryRunner.query(`ALTER TABLE "game_history" DROP COLUMN IF EXISTS "search_vector"`);
+			await queryRunner.query(`ALTER TABLE "trivia" DROP COLUMN IF EXISTS "search_vector"`);
+
 			console.log('Migration completed successfully: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'up',
 				tablesCreated: ['game_history', 'trivia'],
-				indexesCreated: 10,
-				foreignKeysAdded: 1,
+				indexesCreated: 8,
+				foreignKeysAdded: 2,
 			});
 		} catch (error) {
 			console.error('Migration failed: AddFullTextSearch', {
@@ -100,50 +98,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 		}
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		console.log('Starting migration rollback: AddFullTextSearch', {
-			migrationName: this.name,
-			operation: 'down',
-		});
-
-		try {
-			// Drop foreign key constraints
-			console.log('Dropping foreign key constraints');
-			await queryRunner.query(`ALTER TABLE "game_history" DROP CONSTRAINT "FK_game_history_user"`);
-			await queryRunner.query(`ALTER TABLE "trivia" DROP CONSTRAINT "FK_trivia_user"`);
-
-			// Drop indexes
-			console.log('Dropping indexes');
-			await queryRunner.query(`DROP INDEX "IDX_trivia_search"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_search"`);
-			await queryRunner.query(`DROP INDEX "IDX_trivia_user_id"`);
-			await queryRunner.query(`DROP INDEX "IDX_trivia_difficulty"`);
-			await queryRunner.query(`DROP INDEX "IDX_trivia_topic"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_created_at"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_score"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_difficulty"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_topic"`);
-			await queryRunner.query(`DROP INDEX "IDX_game_history_user_id"`);
-
-			// Drop tables
-			console.log('Dropping game_history and trivia tables');
-			await queryRunner.query(`DROP TABLE "trivia"`);
-			await queryRunner.query(`DROP TABLE "game_history"`);
-
-			console.log('Migration rollback completed: AddFullTextSearch', {
-				migrationName: this.name,
-				operation: 'down',
-				tablesDropped: ['trivia', 'game_history'],
-				indexesDropped: 10,
-				foreignKeysDropped: 1,
-			});
-		} catch (error) {
-			console.error('Migration rollback failed: AddFullTextSearch', {
-				migrationName: this.name,
-				operation: 'down',
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
+	public async down(): Promise<void> {
+		throw new Error('Migration rollback is not supported');
 	}
 }

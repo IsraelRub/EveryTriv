@@ -1,6 +1,6 @@
 # מערכת האנימציות - EveryTriv
 
-> **הערת ארגון**: תיעוד זה מספק פירוט יישומי (Implementation-Level) למערכת האנימציות. העקרונות הוויזואליים / טוקנים / וריאנטים מרוכזים ב-[מערכת העיצוב](./DESIGN_SYSTEM.md), והקישורים להוקסים מתקדמים נמצאים ב-[ארכיטקטורת Hooks](./HOOKS_ARCHITECTURE.md). טוקנים וקבועים מנוהלים במקום יחיד.
+> **הערת ארגון**: תיעוד זה מספק פירוט יישומי (Implementation-Level) למערכת האנימציות. העקרונות הוויזואליים / טוקנים / וריאנטים מרוכזים ב-[מערכת העיצוב](./DESIGN_SYSTEM.md), והקישורים להוקסים מתקדמים נמצאים ב-[ארכיטקטורת Hooks](./HOOKS.md). טוקנים וקבועים מנוהלים במקום יחיד.
 
 ## סקירה כללית
 
@@ -9,11 +9,10 @@
 ## 🚀 תכונות עיקריות
 
 ### ביצועים מיטביים
-- **requestAnimationFrame** במקום setInterval
-- **Throttling** ל-60fps קבוע
 - **Hardware acceleration** עם CSS transforms
-- **Memory management** עם ניקוי אוטומטי
-- **Lazy loading** לאנימציות כבדות
+- **Framer Motion** לאנימציות יעילות
+- **CSS animations** לאנימציות בסיסיות מהירות
+- **Optimized rendering** עם React optimizations
 
 ### נגישות מתקדמת
 - **prefers-reduced-motion** תמיכה מלאה
@@ -23,8 +22,8 @@
 
 ### ארכיטקטורה משופרת
 - **constants** תחת קובץ אחד
-- **Custom hooks** לאנימציות מותאמות אישית
-- **Performance monitoring** עם useOperationTimer
+- **Framer Motion variants** לאנימציות מתקדמות
+- **CSS animations** לאנימציות בסיסיות
 - **Type safety** מלא עם TypeScript
 
 ## 📁 מבנה הקבצים
@@ -32,134 +31,59 @@
 ```
 client/src/
 ├── components/animations/
-│   ├── AnimationLibrary.tsx      # וריאנטים ו־helpers לאנימציות
+│   ├── AnimationLibrary.tsx      # וריאנטים של Framer Motion
 │   └── index.ts                  # ייצוא מאוחד
-├── hooks/layers/ui/
-│   ├── useOptimizedAnimations.ts # Hook אנימציות מיטבי
-│   └── useCustomAnimations.ts    # Hook אנימציות מותאמות אישית
-├── constants/
+├── constants/ui/
 │   └── animation.constants.ts    # קבועים מאוחדים
 └── styles/
-    └── animations.css            # CSS אנימציות משופר
+    └── global.css                # CSS אנימציות בסיסיות
 ```
 
 ## 🎯 שימוש בסיסי
 
-### Hook אנימציות מיטבי
+### Framer Motion Variants
 
 ```tsx
-import { useOptimizedAnimations } from '../hooks';
-
-function MyComponent() {
-  const { 
-    particles, 
-    addParticleBurst, 
-    clearParticles,
-    particleCount,
-    maxParticles 
-  } = useOptimizedAnimations(score, {
-    enableParticles: true,
-    particleLimit: 50
-  });
-
-  const handleSuccess = () => {
-    addParticleBurst(mouseX, mouseY, {
-      count: 15,
-      colors: ['#10b981', '#34d399'],
-      size: 4
-    });
-  };
-
-  return (
-    <div>
-      {particles.map(particle => (
-        <div key={particle.id} className="particle" />
-      ))}
-    </div>
-  );
-}
-```
-
-### קומפוננטי אנימציות
-
-```tsx
-import { 
-  FadeInUp, 
-  ScaleIn, 
-  HoverScale,
-  createStaggerContainer 
-} from '../components/animations';
+import { motion } from 'framer-motion';
+import { fadeInUp, scaleIn, hoverScale, createStaggerContainer } from '../components/animations';
 
 function AnimatedList() {
   const staggerVariants = createStaggerContainer(0.1);
 
   return (
     <motion.div variants={staggerVariants} initial="hidden" animate="visible">
-      <FadeInUp delay={0.1}>
-        <h1>כותרת ראשית</h1>
-      </FadeInUp>
+      <motion.h1 variants={fadeInUp}>
+        כותרת ראשית
+      </motion.h1>
       
-      <ScaleIn delay={0.2}>
-        <p>פסקה ראשונה</p>
-      </ScaleIn>
+      <motion.p variants={scaleIn}>
+        פסקה ראשונה
+      </motion.p>
       
-      <HoverScale>
-        <button>כפתור אינטראקטיבי</button>
-      </HoverScale>
+      <motion.button variants={hoverScale} whileHover="hover">
+        כפתור אינטראקטיבי
+      </motion.button>
     </motion.div>
   );
 }
 ```
 
-### Hook אנימציות מותאמות אישית
+### CSS Animations
 
 ```tsx
-import { useCustomAnimations } from '../hooks';
-
-function CustomAnimationComponent() {
-  const { 
-    createAnimationLoop, 
-    createStaggerAnimation,
-    isReducedMotion 
-  } = useCustomAnimations();
-
-  useEffect(() => {
-    const cleanup = createAnimationLoop((timestamp) => {
-      // לוגיקת אנימציה מותאמת אישית
-    }, { fps: 30 });
-
-    return cleanup;
-  }, [createAnimationLoop]);
-
-  if (isReducedMotion) {
-    return <div>גרסה ללא אנימציות</div>;
-  }
-
-  return <div>תוכן עם אנימציות</div>;
+function MyComponent() {
+  return (
+    <div className="animate-fade-in">
+      <div className="animate-slide-up">תוכן מופיע מלמטה</div>
+      <div className="animate-scale-in">תוכן מתרחב</div>
+      <div className="animate-spin">איקון מסתובב</div>
+      <div className="animate-pulse">תוכן מנצנץ</div>
+    </div>
+  );
 }
 ```
 
 ## ⚙️ הגדרות ביצועים
-
-### קבועי ביצועים
-
-```typescript
-export const PERFORMANCE_CONFIG = {
-  FPS: {
-    TARGET: 60,
-    THROTTLE_MS: 16, // 1000ms / 60fps
-  },
-  PARTICLES: {
-    MAX_COUNT: 100,
-    DEFAULT_LIMIT: 50,
-    BATCH_SIZE: 10,
-  },
-  MEMORY: {
-    CLEANUP_INTERVAL: 5000, // 5 שניות
-    MAX_ANIMATION_DURATION: 10000, // 10 שניות
-  },
-};
-```
 
 ### הגדרות אנימציות
 
@@ -171,6 +95,13 @@ export const ANIMATION_CONFIG = {
   },
   EASING: {
     EASE_OUT: [0.4, 0, 0.2, 1],
+  },
+};
+
+export const ACCESSIBILITY_CONFIG = {
+  REDUCED_MOTION: {
+    ENABLED: true,
+    SCALE_FACTOR: 0.01,
   },
 };
 ```
@@ -210,19 +141,12 @@ export const ANIMATION_CONFIG = {
 
 ## 🔧 אופטימיזציות
 
-### ניהול זיכרון
-
-- **Automatic cleanup** של חלקיקים ישנים
-- **Particle limit** למניעת עומס
-- **Memory monitoring** עם useOperationTimer
-- **Efficient updates** עם batch processing
-
 ### ביצועים
 
-- **Throttled updates** ל-60fps
 - **Hardware acceleration** עם CSS transforms
 - **Optimized rendering** עם useMemo ו-useCallback
-- **Intersection Observer** לאנימציות scroll
+- **Framer Motion** לאנימציות יעילות
+- **CSS animations** לאנימציות בסיסיות מהירות
 
 ## ♿ נגישות
 
@@ -241,10 +165,9 @@ if (isReducedMotion) {
 ### תמיכה ב-keyboard navigation
 
 ```css
-.animate-focus-visible:focus-visible {
-  outline: 2px solid #667eea;
+.focus-visible:focus-visible {
+  outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
-  animation: pulseGlow 0.3s ease-in-out;
 }
 ```
 
@@ -255,8 +178,7 @@ if (isReducedMotion) {
 ```css
 @media (max-width: 768px) {
   .animate-fade-in,
-  .animate-slide-up,
-  .animate-slide-down {
+  .animate-slide-up {
     animation-duration: 0.4s; /* מהיר יותר במובייל */
   }
 }
@@ -298,22 +220,6 @@ const isReducedMotion = mediaQuery.matches;
 // בדיקת high contrast
 const highContrast = window.matchMedia('(prefers-contrast: high)').matches;
 ```
-
-## 🚀 שיפורים עתידיים
-
-### תכונות מתוכננות
-
-- **WebGL particles** לביצועים טובים יותר
-- **Animation presets** לתצוגות נפוצות
-- **Performance analytics** מפורטים יותר
-- **A/B testing** לאנימציות שונות
-
-### אופטימיזציות נוספות
-
-- **Virtual scrolling** לחלקיקים רבים
-- **Web Workers** לחישובים כבדים
-- **Service Worker** לאנימציות offline
-- **Progressive enhancement** למכשירים חלשים
 
 ## 📚 משאבים נוספים
 

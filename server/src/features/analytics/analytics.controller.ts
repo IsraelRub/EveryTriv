@@ -1,14 +1,15 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION } from '@shared/constants';
+import { CACHE_DURATION, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
+import type { TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { Cache, CurrentUserId } from '../../common';
+import { Cache, CurrentUser, CurrentUserId, Roles } from '../../common';
+import { Public } from '../../common/decorators/auth.decorator';
 import { AnalyticsService } from './analytics.service';
 import {
 	DifficultyAnalyticsQueryDto,
-	GameAnalyticsQueryDto,
 	TopicAnalyticsQueryDto,
 	TrackEventDto,
 	UserActivityQueryDto,
@@ -58,29 +59,6 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get game statistics
-	 */
-	@Get('game/stats')
-	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
-	async getGameStats(@Query() query: GameAnalyticsQueryDto) {
-		try {
-			const result = await this.analyticsService.getGameStats(query);
-
-			logger.apiRead('analytics_game_stats', {
-				query: Object.keys(query),
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting game stats', {
-				error: getErrorMessage(error),
-				query: Object.keys(query),
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Get analytics for the authenticated user
 	 */
 	@Get('user')
@@ -104,9 +82,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user statistics overview
+	 * Get user statistics overview (Admin only)
 	 */
 	@Get('user-stats/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserStats(@Param() params: UserIdParamDto) {
 		try {
@@ -127,9 +106,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user performance metrics
+	 * Get user performance metrics (Admin only)
 	 */
 	@Get('user-performance/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserPerformance(@Param() params: UserIdParamDto) {
 		try {
@@ -150,9 +130,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user progress analytics
+	 * Get user progress analytics (Admin only)
 	 */
 	@Get('user-progress/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserProgress(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
 		try {
@@ -174,9 +155,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get detailed user activity
+	 * Get detailed user activity (Admin only)
 	 */
 	@Get('user-activity/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async getUserActivity(@Param() params: UserIdParamDto, @Query() query: UserActivityQueryDto) {
 		try {
@@ -198,9 +180,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user insights
+	 * Get user insights (Admin only)
 	 */
 	@Get('user-insights/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserInsights(@Param() params: UserIdParamDto) {
 		try {
@@ -221,9 +204,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get personalized user recommendations
+	 * Get personalized user recommendations (Admin only)
 	 */
 	@Get('user-recommendations/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.SHORT + 60) // Cache for 2 minutes
 	async getUserRecommendations(@Param() params: UserIdParamDto) {
 		try {
@@ -245,9 +229,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user achievements
+	 * Get user achievements (Admin only)
 	 */
 	@Get('user-achievements/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getUserAchievements(@Param() params: UserIdParamDto) {
 		try {
@@ -269,9 +254,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user trend timeline
+	 * Get user trend timeline (Admin only)
 	 */
 	@Get('user-trends/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async getUserTrends(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
 		try {
@@ -293,9 +279,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Compare user metrics with another user or global averages
+	 * Compare user metrics with another user or global averages (Admin only)
 	 */
 	@Get('user-comparison/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async compareUser(@Param() params: UserIdParamDto, @Query() query: UserComparisonQueryDto) {
 		try {
@@ -319,9 +306,10 @@ export class AnalyticsController {
 	}
 
 	/**
-	 * Get user summary
+	 * Get user summary (Admin only)
 	 */
 	@Get('user-summary/:userId')
+	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
 		try {
@@ -383,6 +371,57 @@ export class AnalyticsController {
 			logger.analyticsError('Error getting difficulty stats', {
 				error: getErrorMessage(error),
 				query: Object.keys(query),
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Get global statistics for comparison (public endpoint)
+	 */
+	@Get('global-stats')
+	@Public()
+	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	async getGlobalStats() {
+		try {
+			const result = await this.analyticsService.getGlobalStats();
+
+			logger.apiRead('analytics_global_stats', {});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting global stats', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Admin endpoint - delete all user stats (admin only)
+	 */
+	@Delete('admin/stats/clear-all')
+	@Roles(UserRole.ADMIN)
+	async clearAllUserStats(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.analyticsService.clearAllUserStats();
+
+			logger.apiDelete('analytics_admin_clear_all_user_stats', {
+				id: user.sub,
+				role: user.role,
+				deletedCount: result.deletedCount,
+			});
+
+			return {
+				cleared: true,
+				deletedCount: result.deletedCount,
+				message: result.message,
+			};
+		} catch (error) {
+			logger.userError('Failed to clear all user stats', {
+				error: getErrorMessage(error),
+				id: user.sub,
+				role: user.role,
 			});
 			throw error;
 		}

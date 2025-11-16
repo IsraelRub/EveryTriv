@@ -4,16 +4,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { APP_NAME } from '@shared/constants';
 
-import { useAudio } from './useAudio';
 import { AudioKey, NAVIGATION_LINKS, ROUTE_PATHS } from '../constants';
-import { usePointBalance } from './usePoints';
+import type { NavigationControllerResult, NavigationMenuLink, NavigationUserDisplay, RootState } from '../types';
 import { formatScore, formatUsername } from '../utils';
-import type {
-	NavigationControllerResult,
-	NavigationMenuLink,
-	NavigationUserDisplay,
-	RootState,
-} from '../types';
+import { useAudio } from './useAudio';
+import { usePointBalance } from './usePoints';
 
 function buildNavigationLinks(currentPath: string): ReadonlyArray<NavigationMenuLink> {
 	return NAVIGATION_LINKS.main.map(link => ({
@@ -37,7 +32,6 @@ function buildUserDisplay(params: {
 
 	return {
 		username: formatUsername(displayUsername),
-		fullName: displayUsername,
 		avatar: stateAvatar || undefined,
 		firstName: '',
 		lastName: '',
@@ -49,17 +43,17 @@ export function useNavigationController(): NavigationControllerResult {
 	const location = useLocation();
 	const navigate = useNavigate();
 
-	const { currentUser, isAuthenticated, username: stateUsername, avatar: stateAvatar } = useSelector(
-		(state: RootState) => state.user
-	);
+	const {
+		currentUser,
+		isAuthenticated,
+		username: stateUsername,
+		avatar: stateAvatar,
+	} = useSelector((state: RootState) => state.user);
 	const { data: pointsData } = usePointBalance();
 
 	const isHomePage = location.pathname === ROUTE_PATHS.HOME;
 
-	const navigationLinks = useMemo(
-		() => buildNavigationLinks(location.pathname),
-		[location.pathname]
-	);
+	const navigationLinks = useMemo(() => buildNavigationLinks(location.pathname), [location.pathname]);
 
 	const userDisplay = useMemo(
 		() =>
@@ -125,5 +119,3 @@ export function useNavigationController(): NavigationControllerResult {
 		},
 	};
 }
-
-

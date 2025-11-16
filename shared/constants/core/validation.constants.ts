@@ -64,10 +64,6 @@ export const VALIDATION_LIMITS = {
 		MIN_LENGTH: 1,
 		MAX_LENGTH: 50,
 	},
-	PHONE: {
-		MIN_LENGTH: 9,
-		MAX_LENGTH: 15,
-	},
 	QUESTION_COUNT: {
 		MIN: 1,
 		MAX: 50,

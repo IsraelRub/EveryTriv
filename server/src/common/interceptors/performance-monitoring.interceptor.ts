@@ -28,6 +28,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	 * @returns Observable with performance monitoring
 	 */
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+		const traceId = logger.newTrace();
 		const request = context.switchToHttp().getRequest();
 		const startTime = Date.now();
 		const startMemory = process.memoryUsage();
@@ -37,6 +38,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 		const method = request.method;
 		const userId = request.user?.sub || 'anonymous';
 		const userAgent = request.get('user-agent') || 'unknown';
+		request.traceId = traceId;
 
 		return next.handle().pipe(
 			tap(_data => {

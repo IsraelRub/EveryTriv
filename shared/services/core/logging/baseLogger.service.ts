@@ -5,7 +5,7 @@
  * @description Abstract base class for all logger implementations
  */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '@shared/constants';
-import type { EnhancedLogEntry, Logger, LoggerConfig, LoggerConfigUpdate, LogMeta } from '@shared/types';
+import type { Logger, LoggerConfig, LoggerConfigUpdate, LogMeta } from '@shared/types';
 import { generateSessionId, generateTraceId } from '@shared/utils';
 
 /**
@@ -215,10 +215,6 @@ export abstract class BaseLoggerService implements Logger {
 	// ValidationLogger implementation
 	validationError(field: string, value: string, constraint: string, meta?: LogMeta): void {
 		this.error(MESSAGE_FORMATTERS.validation.field(field, `${value} (${constraint})`), meta);
-	}
-
-	validationSuccess(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.validation.success(message), meta);
 	}
 
 	validationWarn(field: string, value: string, constraint: string, meta?: LogMeta): void {
@@ -442,24 +438,6 @@ export abstract class BaseLoggerService implements Logger {
 
 	audioError(key: string, error: string, meta?: LogMeta): void {
 		this.error(MESSAGE_FORMATTERS.media.audioError(key, error), meta);
-	}
-
-	// Log retrieval methods (for debugging/analytics)
-	getLogs(): EnhancedLogEntry[] {
-		return [];
-	}
-
-	// Function for automatic logger cleanup
-	clearLogs(): void {
-		// Clear session and trace IDs
-		this.sessionId = generateSessionId();
-		this.traceId = generateTraceId();
-
-		// Log the clearing action
-		this.info('🧹 Logger cleared - new session started', {
-			sessionId: this.sessionId,
-			traceId: this.traceId,
-		});
 	}
 
 	// Private helper methods

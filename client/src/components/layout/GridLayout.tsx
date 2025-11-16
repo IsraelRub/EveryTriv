@@ -9,7 +9,7 @@ export const CardGrid: FC<CardGridProps> = ({
 	className,
 	columns = 'auto',
 	gap = Spacing.LG,
-	as = 'article',
+	element = 'article',
 }) => {
 	const cardGridClasses = combineClassNames(
 		'grid',
@@ -29,7 +29,7 @@ export const CardGrid: FC<CardGridProps> = ({
 		className
 	);
 
-	const Component = as;
+	const Component = element;
 	const autoColumnStyle = columns === 'auto' ? { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } : undefined;
 	return (
 		<Component className={cardGridClasses} style={autoColumnStyle}>
@@ -45,23 +45,33 @@ export const GridLayout: FC<GridLayoutProps> = ({
 	gap = Spacing.LG,
 	align = 'start',
 	justify = 'start',
-	as = 'section',
+	columns,
+	element = 'section',
 }) => {
 	const gridClasses = combineClassNames(
 		// Base grid classes
 		'grid',
 
 		// Variant-specific classes (simplified to 8 most used)
-		{
-			'grid-content': variant === 'content',
-			'grid-cards': variant === 'cards',
-			'grid-stats': variant === 'stats',
-			'grid-form': variant === 'form',
-			'grid-game': variant === 'game',
-			'grid-balanced': variant === 'balanced',
-			'grid-compact': variant === 'compact',
-			'grid-auto-fit': variant === 'auto-fit',
-		},
+		columns !== undefined
+			? {
+					'grid-cols-1': columns === 1,
+					'grid-cols-2': columns === 2,
+					'grid-cols-3': columns === 3,
+					'grid-cols-4': columns === 4,
+					'grid-cols-5': columns === 5,
+					'grid-cols-6': columns === 6,
+				}
+			: {
+					'grid-content': variant === 'content',
+					'grid-cards': variant === 'cards',
+					'grid-stats': variant === 'stats',
+					'grid-form': variant === 'form',
+					'grid-game': variant === 'game',
+					'grid-balanced': variant === 'balanced',
+					'grid-compact': variant === 'compact',
+					'grid-auto-fit': variant === 'auto-fit',
+				},
 
 		// Gap classes
 		{
@@ -92,7 +102,7 @@ export const GridLayout: FC<GridLayoutProps> = ({
 		className
 	);
 
-	const Component = as;
+	const Component = element;
 	return <Component className={gridClasses}>{children}</Component>;
 };
 
@@ -120,11 +130,10 @@ export const LayoutContainer: FC<ContainerProps> = ({
 	size = ContainerSize.LG,
 	maxWidth,
 	padding = Spacing.XL,
-	center,
 	centered = true,
 }) => {
 	const effectiveSize = maxWidth ?? size;
-	const shouldCenter = center ?? centered;
+	const shouldCenter = centered;
 	const containerClasses = combineClassNames(
 		'w-full',
 		CONTAINER_SIZE_CLASSES[effectiveSize],
@@ -139,12 +148,10 @@ export const LayoutContainer: FC<ContainerProps> = ({
 export const ResponsiveGrid: FC<ResponsiveGridProps> = ({
 	children,
 	className,
-	minWidth: _minWidth = '300px',
 	gap = Spacing.LG,
 	columns,
-	as = 'div',
+	element = 'div',
 }) => {
-	void _minWidth;
 	const responsiveGridClasses = combineClassNames(
 		'grid',
 		{
@@ -171,7 +178,7 @@ export const ResponsiveGrid: FC<ResponsiveGridProps> = ({
 				}
 			: {};
 
-	const Component = as;
+	const Component = element;
 	return (
 		<Component className={responsiveGridClasses} style={gridStyle}>
 			{children}

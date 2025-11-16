@@ -11,3 +11,6 @@ export * from './error.utils';
 
 // Guards utilities
 export * from './guards.utils';
+
+// Redis utilities
+export * from './redis.utils';

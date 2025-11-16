@@ -1,4 +1,12 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import {
+	ArgumentsHost,
+	Catch,
+	ExceptionFilter,
+	ForbiddenException,
+	HttpException,
+	HttpStatus,
+	UnauthorizedException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 
 import { serverLogger as logger } from '@shared/services';
@@ -38,17 +46,24 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 			}
 		}
 
-		// Log the error with enhanced context (stack trace only in logs, not in response)
-		logger.systemError(`Global Exception: ${errorMessage}`, {
-			status,
-			path: request.url ?? 'unknown',
-			method: request.method || 'unknown',
-			userAgent: request.headers?.['user-agent'] || 'unknown',
-			ip: request.ip || 'unknown',
-			errorType,
-			stack: getErrorStack(exception),
-			timestamp: new Date().toISOString(),
-		});
+		// Skip logging for authentication/authorization errors that are already logged by guards
+		const isAuthError = exception instanceof UnauthorizedException || exception instanceof ForbiddenException;
+		if (isAuthError) {
+			// These errors are already logged by AuthGuard and RolesGuard, skip logging here
+		} else if (status >= 500) {
+			// Log server errors (5xx) as ERROR
+			logger.systemError(`Global Exception: ${errorMessage}`, {
+				status,
+				path: request.url ?? 'unknown',
+				method: request.method || 'unknown',
+				userAgent: request.headers?.['user-agent'] || 'unknown',
+				ip: request.ip || 'unknown',
+				errorType,
+				stack: getErrorStack(exception),
+				timestamp: new Date().toISOString(),
+			});
+		}
+		// For other 4xx errors, don't log here as they should be handled by specific handlers
 
 		// Send sanitized error response (no stack traces or sensitive info)
 		interface ErrorResponse {

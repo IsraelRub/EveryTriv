@@ -6,6 +6,7 @@
  * @description Points and credits management type definitions
  * @used_by server/src/features/points/points.service.ts, client/src/services/utils/points.service.ts
  */
+import { PaymentMethod } from '../constants';
 import type { BaseEntity } from './core/data.types';
 
 export interface PointBalance {
@@ -31,6 +32,9 @@ export interface PointPurchaseOption {
 	bonus?: number;
 	savings?: string;
 	popular?: boolean;
+	paypalProductId?: string;
+	paypalPrice?: string;
+	supportedMethods?: PaymentMethod[];
 }
 
 /**
@@ -41,7 +45,7 @@ export interface PointPurchaseOption {
 export interface BasePointsEntity extends BaseEntity {
 	userId: string;
 	amount: number;
-	type: 'purchase' | 'deduction' | 'refund' | 'transfer' | 'bonus';
+	type: 'DAILY_RESET' | 'PURCHASE' | 'GAME_USAGE' | 'ADMIN_ADJUSTMENT' | 'REFUND';
 	balanceAfter: number;
 	description?: string;
 }
