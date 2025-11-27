@@ -3,31 +3,30 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
-	CACHE_TTL,
 	DEFAULT_USER_PREFERENCES,
+	GAME_MODE_DEFAULTS,
 	GameMode,
+	HTTP_ERROR_MESSAGES,
 	HTTP_TIMEOUTS,
-	PROVIDER_ERROR_MESSAGES,
 	SERVER_GAME_CONSTANTS,
+	VALIDATION_LIMITS,
 } from '@shared/constants';
-import { serverLogger as logger, PointCalculationService } from '@shared/services';
+import { serverLogger as logger, ScoreCalculationService } from '@shared/services';
 import type { AnswerResult, GameDifficulty, QuestionData, TriviaQuestion, UserAnalyticsRecord } from '@shared/types';
-import { buildCountRecord, getErrorMessage, isSavedGameConfiguration, isTriviaQuestionArray } from '@shared/utils';
+import { buildCountRecord, getErrorMessage, isSavedGameConfiguration } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
-import { ValidationService } from '../../common';
-import { AppConfig } from '../../config/app.config';
 import { AnalyticsService } from '../analytics';
 import { LeaderboardService } from '../leaderboard';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 
 /**
- * Service for managing trivia games, game history, and user points
- * Handles game logic, question generation, scoring, history tracking, and points management
+ * Service for managing trivia games, game history, and user scoring
+ * Handles game logic, question generation, scoring, history tracking, and scoring management
  */
 @Injectable()
 export class GameService {
@@ -43,70 +42,246 @@ export class GameService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: ServerStorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
-		private readonly validationService: ValidationService,
-		private readonly pointCalculationService: PointCalculationService
+		private readonly scoreCalculationService: ScoreCalculationService
 	) {}
 
 	/**
-	 * Get trivia question
+	 * Get questions that user has already seen from game history
+	 * Retrieves all questions from user's game history to prevent showing the same questions again
+	 * @param userId User ID
+	 * @returns Set of question texts (normalized to lowercase) that the user has already seen
+	 */
+	private async getUserSeenQuestions(userId: string): Promise<Set<string>> {
+		try {
+			const gameHistories = await this.gameHistoryRepository.find({
+				where: { userId },
+				select: ['questionsData'],
+			});
+
+			const seenQuestions = new Set<string>();
+			for (const history of gameHistories) {
+				if (history.questionsData && Array.isArray(history.questionsData)) {
+					for (const questionData of history.questionsData) {
+						if (questionData.question && typeof questionData.question === 'string') {
+							seenQuestions.add(questionData.question.toLowerCase().trim());
+						}
+					}
+				}
+			}
+
+			logger.gameTarget('Retrieved user seen questions', {
+				userId,
+				totalItems: seenQuestions.size,
+			});
+
+			return seenQuestions;
+		} catch (error) {
+			logger.gameError('Failed to get user seen questions', {
+				error: getErrorMessage(error),
+				userId,
+			});
+			return new Set<string>();
+		}
+	}
+
+	/**
+	 * Get trivia questions with smart retrieval strategy
+	 *
+	 * Process flow:
+	 * 1. Validates the trivia request (topic, difficulty, requestedQuestions)
+	 * 2. Retrieves questions the user has already seen from game history
+	 * 3. Checks if questions exist in database for the requested topic and difficulty
+	 * 4. Attempts to retrieve existing questions from database first (excluding user's seen questions)
+	 * 5. If not enough questions exist, generates new questions using AI
+	 * 6. When generating new questions, checks if question already exists in database before saving
+	 * 7. Prevents duplicate questions within the same request batch
+	 * 8. Ensures user never receives the same question across different game sessions
+	 *
 	 * @param topic Topic for the question
 	 * @param difficulty Difficulty level
-	 * @param questionCount Number of questions to generate
-	 * @param userId User ID for personalization
-	 * @returns Trivia question
+	 * @param requestedQuestions Number of questions requested by user
+	 * @param userId User ID for personalization and to exclude already seen questions
+	 * @returns Trivia questions with fromCache flag
 	 */
-	async getTriviaQuestion(topic: string, difficulty: GameDifficulty, questionCount: number = 1, userId?: string) {
-		const validation = await this.validationService.validateTriviaRequest(topic, difficulty, questionCount);
-		if (!validation.isValid) {
-			throw new BadRequestException(validation.errors.join(', '));
+	async getTriviaQuestion(topic: string, difficulty: GameDifficulty, requestedQuestions: number = 1, userId?: string) {
+		// Note: requestedQuestions is already validated and converted by TriviaRequestPipe
+		// For unlimited mode (999), we request questions in batches to allow continuous gameplay
+		const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+		const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
+
+		// For unlimited mode, request questions in batches (maxQuestions per request)
+		// This allows continuous gameplay while respecting server limits
+		// Note: In unlimited mode, the client should request 1 question at a time for subsequent requests
+		// to avoid unnecessary credit deductions. The initial request uses 999 to indicate unlimited mode.
+		const normalizedRequestedQuestions =
+			requestedQuestions === UNLIMITED ? maxQuestions : Math.min(requestedQuestions, maxQuestions);
+
+		if (requestedQuestions > maxQuestions && requestedQuestions !== UNLIMITED) {
+			logger.gameError(
+				`Requested questions ${requestedQuestions} exceeds limit ${maxQuestions}, using ${normalizedRequestedQuestions}`,
+				{
+					requestedCount: requestedQuestions,
+					maxQuestions,
+					actualCount: normalizedRequestedQuestions,
+				}
+			);
 		}
 
-		const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-		const actualQuestionCount = Math.min(questionCount, maxQuestions);
-
-		if (questionCount > maxQuestions) {
-			logger.gameError(`Question count ${questionCount} exceeds limit ${maxQuestions}, using ${actualQuestionCount}`, {
-				requestedCount: questionCount,
-				maxQuestions,
-				actualCount: actualQuestionCount,
+		if (requestedQuestions === UNLIMITED) {
+			logger.gameInfo('Unlimited mode: requesting questions in batches', {
+				batchSize: normalizedRequestedQuestions,
+				topic,
+				difficulty,
 			});
 		}
 
 		try {
-			const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
+			// Get user's seen questions if userId is provided
+			const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
+			const excludeQuestionTexts = Array.from(userSeenQuestions);
 
-			// Check if value exists in cache first
-			const cachedResult = await this.cacheService.get<TriviaQuestion[]>(cacheKey, isTriviaQuestionArray);
-			const fromCache = cachedResult.success && cachedResult.data !== null && cachedResult.data !== undefined;
+			// Check if questions exist in database for this topic and difficulty
+			const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(
+				topic,
+				difficulty
+			);
 
-			const questions = fromCache
-				? cachedResult.data
-				: await this.cacheService.getOrSet<TriviaQuestion[]>(
-						cacheKey,
-						async () => {
-							const generatedQuestions = [];
-							const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
+			logger.gameTarget('Checking for available questions', {
+				topic,
+				difficulty,
+				exists: hasExistingQuestions,
+				totalItems: excludeQuestionTexts.length,
+				requestedCount: normalizedRequestedQuestions,
+			});
 
-							for (let i = 0; i < actualQuestionCount; i++) {
-								const question = await Promise.race([
-									this.triviaGenerationService.generateQuestion(topic, difficulty),
-									new Promise<never>((_, reject) => {
-										const timeoutId = setTimeout(() => {
-											reject(new Error('Question generation timeout'));
-										}, generationTimeout);
+			// Try to get existing questions first
+			let availableQuestions: TriviaEntity[] = [];
+			if (hasExistingQuestions) {
+				availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
+					topic,
+					difficulty,
+					normalizedRequestedQuestions * 2,
+					excludeQuestionTexts
+				);
+			}
 
-										// Clean up timeout if promise resolves
-										setTimeout(() => clearTimeout(timeoutId), 0);
-									}),
-								]);
-								generatedQuestions.push(question);
+			const questions: TriviaQuestion[] = [];
+			const excludeQuestions: string[] = [...excludeQuestionTexts];
+			const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
+			const maxRetries = 3;
+
+			// Use existing questions first
+			// Note: getAvailableQuestions already filters excluded questions at SQL level
+			for (const questionEntity of availableQuestions) {
+				if (questions.length >= normalizedRequestedQuestions) {
+					break;
+				}
+
+				questions.push({
+					id: questionEntity.id,
+					topic: questionEntity.topic,
+					difficulty: questionEntity.difficulty,
+					question: questionEntity.question,
+					answers: questionEntity.answers,
+					correctAnswerIndex: questionEntity.correctAnswerIndex,
+					metadata: questionEntity.metadata,
+					createdAt: questionEntity.createdAt,
+					updatedAt: questionEntity.updatedAt,
+				});
+
+				excludeQuestions.push(questionEntity.question);
+			}
+
+			// Generate new questions if we don't have enough
+			const remainingCount = normalizedRequestedQuestions - questions.length;
+			if (remainingCount > 0) {
+				logger.gameTarget('Generating additional questions', {
+					topic,
+					difficulty,
+					actualCount: questions.length,
+					remaining: remainingCount,
+				});
+
+				for (let i = 0; i < remainingCount; i++) {
+					let question: TriviaQuestion | null = null;
+					let retries = 0;
+
+					while (retries < maxRetries && !question) {
+						try {
+							const questionEntity = await Promise.race([
+								this.triviaGenerationService.generateQuestion(topic, difficulty, userId, excludeQuestions),
+								new Promise<never>((_, reject) => {
+									const timeoutId = setTimeout(() => {
+										reject(new Error('Question generation timeout'));
+									}, generationTimeout);
+
+									setTimeout(() => clearTimeout(timeoutId), 0);
+								}),
+							]);
+
+							const questionText = questionEntity.question.toLowerCase().trim();
+
+							// Check if this question is a duplicate in the current batch or already seen by user
+							if (excludeQuestions.some(existing => existing.toLowerCase().trim() === questionText)) {
+								logger.gameError('Generated duplicate question, retrying', {
+									topic,
+									difficulty,
+									attempt: retries + 1,
+									count: questions.length + i + 1,
+								});
+								retries++;
+								continue;
 							}
 
-							return generatedQuestions;
-						},
-						CACHE_TTL.TRIVIA_QUESTIONS,
-						isTriviaQuestionArray
-					);
+							question = {
+								id: questionEntity.id,
+								topic: questionEntity.topic,
+								difficulty: questionEntity.difficulty,
+								question: questionEntity.question,
+								answers: questionEntity.answers,
+								correctAnswerIndex: questionEntity.correctAnswerIndex,
+								metadata: questionEntity.metadata,
+								createdAt: questionEntity.createdAt,
+								updatedAt: questionEntity.updatedAt,
+							};
+
+							excludeQuestions.push(questionEntity.question);
+							questions.push(question);
+						} catch (error) {
+							logger.gameError('Failed to generate question, retrying', {
+								error: getErrorMessage(error),
+								topic,
+								difficulty,
+								attempt: retries + 1,
+								count: questions.length + i + 1,
+							});
+							retries++;
+						}
+					}
+
+					if (!question) {
+						logger.gameError('Failed to generate question after max retries', {
+							topic,
+							difficulty,
+							count: questions.length + i + 1,
+							maxRetries,
+						});
+					}
+				}
+			}
+
+			// If we have fewer questions than requested, log a warning
+			if (questions.length < normalizedRequestedQuestions) {
+				logger.gameError(`Got ${questions.length} questions out of ${normalizedRequestedQuestions} requested`, {
+					topic,
+					difficulty,
+					requestedCount: normalizedRequestedQuestions,
+					actualCount: questions.length,
+					totalItems: availableQuestions.length,
+				});
+			}
+
+			const fromCache = false;
 
 			if (!fromCache && userId) {
 				await this.analyticsService.trackEvent(userId, {
@@ -114,7 +289,7 @@ export class GameService {
 					userId,
 					timestamp: new Date(),
 					action: 'question_requested',
-					properties: { topic, difficulty, questionCount: actualQuestionCount },
+					properties: { topic, difficulty, requestedQuestions: normalizedRequestedQuestions },
 				});
 			}
 
@@ -127,32 +302,8 @@ export class GameService {
 				error: getErrorMessage(error),
 				topic,
 				difficulty,
-				requestedCount: actualQuestionCount,
+				requestedCount: normalizedRequestedQuestions,
 			});
-
-			if (this.shouldUseTriviaFallback(error)) {
-				const fallbackQuestions = await this.triviaGenerationService.generateFallbackQuestions(
-					topic,
-					difficulty,
-					actualQuestionCount,
-					userId
-				);
-
-				if (userId) {
-					await this.analyticsService.trackEvent(userId, {
-						eventType: 'game',
-						userId,
-						timestamp: new Date(),
-						action: 'question_requested_fallback',
-						properties: { topic, difficulty, questionCount: actualQuestionCount, fallback: true },
-					});
-				}
-
-				return {
-					questions: fallbackQuestions,
-					fromCache: false,
-				};
-			}
 
 			throw createServerError('generate trivia questions', error);
 		}
@@ -219,7 +370,7 @@ export class GameService {
 
 			const isCorrect = this.checkAnswer(question, answer);
 
-			const score = this.pointCalculationService.calculateAnswerPoints(
+			const score = this.scoreCalculationService.calculateAnswerScore(
 				toDifficultyLevel(question.difficulty),
 				timeSpent,
 				0,
@@ -261,7 +412,7 @@ export class GameService {
 				correctAnswer: question.answers[question.correctAnswerIndex]?.text || '',
 				isCorrect,
 				timeSpent,
-				pointsEarned: score,
+				scoreEarned: score,
 				totalScore: 0,
 				feedback: isCorrect ? 'Correct answer!' : 'Wrong answer. Try again!',
 			};
@@ -314,7 +465,7 @@ export class GameService {
 
 		if (!result.success) {
 			logger.gameError('Failed to store active game session', {
-				error: result.error || 'Unknown error',
+				error: result.error || HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
 				userId,
 			});
 		}
@@ -362,6 +513,7 @@ export class GameService {
 
 			return {
 				id: savedHistory.id,
+				gameId: savedHistory.id,
 				userId: savedHistory.userId,
 				score: savedHistory.score,
 				totalQuestions: savedHistory.totalQuestions,
@@ -411,10 +563,11 @@ export class GameService {
 
 			return {
 				userId,
-				username: user.username,
+				email: user.email,
 				totalGames: gameHistory.length,
 				games: gameHistory.map(game => ({
 					id: game.id,
+					gameId: game.id,
 					score: game.score,
 					totalQuestions: game.totalQuestions,
 					correctAnswers: game.correctAnswers,
@@ -500,6 +653,7 @@ export class GameService {
 
 			return {
 				id: game.id,
+				gameId: game.id,
 				userId: game.userId,
 				score: game.score,
 				totalQuestions: game.totalQuestions,
@@ -523,11 +677,11 @@ export class GameService {
 	}
 
 	/**
-	 * Get user point balance
+	 * Get user credit balance
 	 * @param userId User ID
-	 * @returns User point balance
+	 * @returns User credit balance
 	 */
-	async getUserPointBalance(userId: string) {
+	async getUserCreditBalance(userId: string) {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
@@ -536,11 +690,11 @@ export class GameService {
 
 			return {
 				userId: user.id,
-				username: user.username,
-				points: user.credits ?? 0,
+				email: user.email,
+				credits: user.credits ?? 0,
 			};
 		} catch (error) {
-			logger.gameError('Failed to get user point balance', {
+			logger.gameError('Failed to get user credit balance', {
 				error: getErrorMessage(error),
 				userId,
 			});
@@ -549,16 +703,16 @@ export class GameService {
 	}
 
 	/**
-	 * Add points to user
+	 * Add credits to user
 	 * @param userId User ID
-	 * @param points Points to add
-	 * @returns Updated point balance
+	 * @param credits Credits to add
+	 * @returns Updated credit balance
 	 */
-	async addPoints(userId: string, points: number) {
+	async addCredits(userId: string, credits: number) {
 		try {
-			logger.gameInfo('Adding points to user', {
+			logger.gameInfo('Adding credits to user', {
 				userId,
-				points,
+				credits,
 				reason: 'Game completion',
 			});
 
@@ -567,37 +721,37 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
-			const newPoints = (user.credits ?? 0) + points;
-			await this.userRepository.update(userId, { credits: newPoints });
+			const newCredits = (user.credits ?? 0) + credits;
+			await this.userRepository.update(userId, { credits: newCredits });
 
 			return {
 				userId: user.id,
-				username: user.username,
-				previousPoints: user.credits ?? 0,
-				addedPoints: points,
-				newPoints,
+				email: user.email,
+				previousCredits: user.credits ?? 0,
+				addedCredits: credits,
+				newCredits,
 			};
 		} catch (error) {
-			logger.gameError('Failed to add points', {
+			logger.gameError('Failed to add credits', {
 				error: getErrorMessage(error),
 				userId,
-				points,
+				credits,
 			});
 			throw error;
 		}
 	}
 
 	/**
-	 * Deduct points from user
+	 * Deduct credits from user
 	 * @param userId User ID
-	 * @param points Points to deduct
-	 * @returns Updated point balance
+	 * @param credits Credits to deduct
+	 * @returns Updated credit balance
 	 */
-	async deductPoints(userId: string, points: number) {
+	async deductCredits(userId: string, credits: number) {
 		try {
-			logger.gameInfo('Deducting points from user', {
+			logger.gameInfo('Deducting credits from user', {
 				userId,
-				points,
+				credits,
 				reason: 'Game loss',
 			});
 
@@ -606,26 +760,26 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
-			const currentPoints = user.credits ?? 0;
-			if (currentPoints < points) {
-				throw createValidationError('points', 'number');
+			const currentCredits = user.credits ?? 0;
+			if (currentCredits < credits) {
+				throw createValidationError('credits', 'number');
 			}
 
-			const newPoints = currentPoints - points;
-			await this.userRepository.update(userId, { credits: newPoints });
+			const newCredits = currentCredits - credits;
+			await this.userRepository.update(userId, { credits: newCredits });
 
 			return {
 				userId: user.id,
-				username: user.username,
-				previousPoints: currentPoints,
-				deductedPoints: points,
-				newPoints,
+				email: user.email,
+				previousCredits: currentCredits,
+				deductedCredits: credits,
+				newCredits,
 			};
 		} catch (error) {
-			logger.gameError('Failed to deduct points', {
+			logger.gameError('Failed to deduct credits', {
 				error: getErrorMessage(error),
 				userId,
-				points,
+				credits,
 			});
 			throw error;
 		}
@@ -642,7 +796,7 @@ export class GameService {
 		config: {
 			defaultDifficulty?: string;
 			defaultTopic?: string;
-			questionCount?: number;
+			requestedQuestions?: number;
 			timeLimit?: number;
 			soundEnabled?: boolean;
 			notifications?: boolean;
@@ -668,7 +822,7 @@ export class GameService {
 			if (!result.success) {
 				logger.gameError('Failed to store game configuration', {
 					userId,
-					error: result.error || 'Unknown error',
+					error: result.error || HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
 				});
 				throw createServerError('save game configuration', new Error('Failed to save game configuration'));
 			}
@@ -706,11 +860,13 @@ export class GameService {
 				};
 			}
 
+			const defaultGameMode = DEFAULT_USER_PREFERENCES.game?.defaultGameMode ?? GameMode.QUESTION_LIMITED;
+			const gameModeDefaults = GAME_MODE_DEFAULTS[defaultGameMode];
 			const defaultConfig = {
 				defaultDifficulty: DEFAULT_USER_PREFERENCES.game?.defaultDifficulty ?? 'medium',
 				defaultTopic: DEFAULT_USER_PREFERENCES.game?.defaultTopic ?? 'general',
-				questionCount: DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5,
-				timeLimit: DEFAULT_USER_PREFERENCES.game?.timeLimit ?? 30,
+				requestedQuestions: DEFAULT_USER_PREFERENCES.game?.questionLimit ?? gameModeDefaults.questionLimit,
+				timeLimit: DEFAULT_USER_PREFERENCES.game?.timeLimit ?? gameModeDefaults.timeLimit,
 				soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
 			};
 
@@ -850,25 +1006,19 @@ export class GameService {
 					lastActivity: Date;
 				}>();
 
-			const topicQueryBuilder = this.gameHistoryRepository.createQueryBuilder('game');
-			topicQueryBuilder
-				.select('game.topic', 'topic')
-				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
-				.where('game.topic IS NOT NULL')
-				.groupBy('game.topic')
-				.orderBy('count', 'DESC');
+			const { addDateRangeConditions, createGroupByQuery } = await import('../../common/queries');
+
+			const topicQueryBuilder = createGroupByQuery(this.gameHistoryRepository, 'game', 'topic', 'count', {
+				topic: 'IS NOT NULL',
+			});
+			topicQueryBuilder.orderBy('count', 'DESC');
 			const topicStatsRaw = await topicQueryBuilder.getRawMany<{ topic: string; count: number }>();
 
-			const difficultyQueryBuilder = this.gameHistoryRepository.createQueryBuilder('game');
-			difficultyQueryBuilder
-				.select('game.difficulty', 'difficulty')
-				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
-				.where('game.difficulty IS NOT NULL')
-				.groupBy('game.difficulty')
-				.orderBy('count', 'DESC');
+			const difficultyQueryBuilder = createGroupByQuery(this.gameHistoryRepository, 'game', 'difficulty', 'count', {
+				difficulty: 'IS NOT NULL',
+			});
+			difficultyQueryBuilder.orderBy('count', 'DESC');
 			const difficultyStatsRaw = await difficultyQueryBuilder.getRawMany<{ difficulty: string; count: number }>();
-
-			const { addDateRangeConditions } = await import('../../common/queries');
 			const activePlayersQueryBuilder = this.gameHistoryRepository
 				.createQueryBuilder('game')
 				.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count');
@@ -975,6 +1125,46 @@ export class GameService {
 	}
 
 	/**
+	 * Get all trivia questions (admin)
+	 * @returns All trivia questions from database
+	 */
+	async getAllTriviaQuestions() {
+		try {
+			logger.gameInfo('Getting all trivia questions', {});
+
+			const questions = await this.triviaRepository.find({
+				order: { createdAt: 'DESC' },
+			});
+
+			logger.apiRead('game_admin_get_all_trivia', {
+				totalQuestions: questions.length,
+			});
+
+			return {
+				questions: questions.map(question => ({
+					id: question.id,
+					question: question.question,
+					answers: question.answers,
+					correctAnswerIndex: question.correctAnswerIndex,
+					topic: question.topic,
+					difficulty: question.difficulty,
+					metadata: question.metadata,
+					userId: question.userId,
+					isCorrect: question.isCorrect,
+					createdAt: question.createdAt,
+					updatedAt: question.updatedAt,
+				})),
+				totalCount: questions.length,
+			};
+		} catch (error) {
+			logger.gameError('Failed to get all trivia questions', {
+				error: getErrorMessage(error),
+			});
+			throw createServerError('get all trivia questions', error);
+		}
+	}
+
+	/**
 	 * Clear all trivia questions (admin)
 	 */
 	async clearAllTrivia(): Promise<{ message: string; deletedCount: number }> {
@@ -1029,42 +1219,5 @@ export class GameService {
 			});
 			throw error;
 		}
-	}
-
-	private shouldUseTriviaFallback(error: unknown): boolean {
-		if (!AppConfig.features.aiFallbackEnabled) {
-			return false;
-		}
-
-		const normalizedMessage = getErrorMessage(error).toLowerCase();
-
-		// Check for general AI provider failures
-		if (
-			normalizedMessage.includes(PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE.toLowerCase()) ||
-			normalizedMessage.includes('ai providers failed') ||
-			normalizedMessage.includes('question generation timeout') ||
-			normalizedMessage.includes(PROVIDER_ERROR_MESSAGES.ALL_PROVIDERS_FAILED.toLowerCase())
-		) {
-			return true;
-		}
-
-		// Check for specific provider errors that should trigger fallback
-		const providerErrorIndicators = [
-			'unauthorized',
-			'401',
-			'authentication failed',
-			'api key',
-			'rate limit',
-			'429',
-			'too many requests',
-			'credit balance',
-			'balance is too low',
-			'invalid api key',
-			'api key not configured',
-			'provider error',
-			'all providers failed',
-		];
-
-		return providerErrorIndicators.some(indicator => normalizedMessage.includes(indicator));
 	}
 }

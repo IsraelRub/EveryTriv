@@ -16,7 +16,7 @@ import { useValidation } from '../../hooks';
 import { audioService } from '../../services';
 import type { ValidatedInputProps } from '../../types';
 import { combineClassNames } from '../../utils';
-import { Icon } from '../IconLibrary';
+import { Icon } from './IconLibrary';
 import { ValidationStatusIndicator } from './ValidationIcon';
 
 export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
@@ -51,6 +51,13 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 		}, [initialValue]);
 
 		const validateValue = async (value: string) => {
+			if (!validationType) {
+				// No validation needed
+				setIsValid(true);
+				setErrors([]);
+				return { isValid: true, errors: [] };
+			}
+
 			setIsValidating(true);
 
 			const result = await validate(validationType, value, validationOptions);
@@ -66,15 +73,19 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
 			setInternalValue(value);
 
 			// Log user activity
-			logger.logUserActivity('input_change', validationType, {
-				valueLength: value.length,
-			});
+			if (validationType) {
+				logger.logUserActivity('input_change', validationType, {
+					valueLength: value.length,
+				});
+			}
 
 			// Measure validation performance
 			const startTime = performance.now();
 			const result = await validateValue(value);
 			const duration = performance.now() - startTime;
-			logger.performance(`validation_${validationType}`, duration);
+			if (validationType) {
+				logger.performance(`validation_${validationType}`, duration);
+			}
 
 			// Play input sound
 			audioService.play(AudioKey.INPUT);

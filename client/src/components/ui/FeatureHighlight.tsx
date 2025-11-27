@@ -1,7 +1,7 @@
 import { ComponentSize } from '../../constants';
 import type { FeatureHighlightItem, FeatureHighlightListProps, FeatureHighlightProps } from '../../types';
 import { combineClassNames } from '../../utils';
-import { Icon } from '../IconLibrary';
+import { Icon } from './IconLibrary';
 
 const ACCENT_CLASSES: Record<NonNullable<FeatureHighlightItem['accent']>, { icon: string; label: string }> = {
 	blue: {

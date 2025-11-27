@@ -27,16 +27,22 @@ export type GameDifficulty = DifficultyLevel | CustomDifficultyString;
 
 /**
  * Acceptable sources for trivia questions
+ * @type TriviaQuestionSource
+ * @description Sources that trivia questions can come from
  */
 export type TriviaQuestionSource = 'ai' | 'user' | 'imported' | 'seeded' | 'system';
 
 /**
  * Review state for curated trivia questions
+ * @type TriviaQuestionReviewStatus
+ * @description Review status for trivia questions
  */
 export type TriviaQuestionReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
 
 /**
  * Structured metadata describing trivia question provenance and quality signals
+ * @interface TriviaQuestionDetailsMetadata
+ * @description Metadata for trivia questions
  */
 export interface TriviaQuestionDetailsMetadata {
 	category?: string;
@@ -136,7 +142,7 @@ export interface BaseAnswerPayload {
  * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
  */
 export interface TriviaRequest {
-	questionCount: number;
+	requestedQuestions: number;
 	topic: string;
 	difficulty: GameDifficulty;
 	category?: string;
@@ -197,7 +203,7 @@ export interface AnswerResult extends BaseAnswerPayload {
 	userAnswer: string;
 	correctAnswer: string;
 	isCorrect: boolean;
-	pointsEarned: number;
+	scoreEarned: number;
 	totalScore: number;
 	explanation?: string;
 	feedback: string;

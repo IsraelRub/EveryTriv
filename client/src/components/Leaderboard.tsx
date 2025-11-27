@@ -11,9 +11,9 @@ import { gameHistoryService } from '../services';
 import { LeaderboardProps } from '../types';
 import { isToday, isYesterday } from '../utils';
 import { createStaggerContainer, fadeInLeft, fadeInUp } from './animations';
-import { Icon } from './IconLibrary';
 import { Avatar } from './ui';
 import { Card } from './ui/Card';
+import { Icon } from './ui/IconLibrary';
 
 const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 	const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -157,9 +157,9 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 										<div className='flex items-center space-x-3'>
 											<Avatar
 												src={entry.avatar}
-												username={entry.username}
+												email={entry.email}
 												size={ComponentSize.SM}
-												alt={entry.username ?? entry.userId}
+												alt={entry.email ?? entry.userId}
 											/>
 											<div
 												className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${entry.rankInfo.backgroundColor}`}
@@ -181,8 +181,10 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 													<>
 														<Icon name='user' size={ComponentSize.SM} className='mr-1' /> You
 													</>
+												) : entry.firstName && entry.lastName ? (
+													`${entry.firstName} ${entry.lastName}`
 												) : (
-													(entry.username ?? entry.userId)
+													entry.firstName || entry.lastName || entry.email || entry.userId
 												)}
 											</div>
 											{entry.userId === userId && <div className='text-yellow-400 text-sm'>Your score</div>}
@@ -190,7 +192,7 @@ const Leaderboard = memo(function Leaderboard({ userId }: LeaderboardProps) {
 									</div>
 									<div className='text-right'>
 										<div className='text-lg font-bold text-white'>{entry.formattedScore}</div>
-										<div className='text-white/60 text-sm'>points</div>
+										<div className='text-white/60 text-sm'>score</div>
 										{entry.lastPlayed && (
 											<div className='text-white/40 text-xs mt-1'>
 												{isToday(new Date(entry.lastPlayed))

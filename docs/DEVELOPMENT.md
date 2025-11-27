@@ -68,11 +68,15 @@ JWT_EXPIRES_IN=1h
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# AI Providers
-OPENAI_API_KEY=your-openai-key
-ANTHROPIC_API_KEY=your-anthropic-key
-GOOGLE_AI_API_KEY=your-google-key
-MISTRAL_API_KEY=your-mistral-key
+# AI Providers (ordered by priority - lower number = selected first)
+# Priority: 1 (highest) - Groq (free tier)
+GROQ_API_KEY=your-groq-api-key
+# Priority: 2 - Gemini (cost: $0.075/M tokens)
+GEMINI_API_KEY=your-google-api-key
+# Priority: 3 - ChatGPT (cost: $0.15/M tokens)
+CHATGBT_API_KEY=your-openai-key
+# Priority: 4 (lowest) - Claude (cost: $0.25/M tokens)
+CLAUDE_API_KEY=your-anthropic-key
 
 # Stripe
 STRIPE_SECRET_KEY=your-stripe-key
@@ -338,24 +342,24 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
     const isCorrect = selectedAnswer === question.correctAnswerIndex;
 
     if (isCorrect) {
-      const points = calculatePoints(question.difficulty, timer);
+      const score = calculateScore(question.difficulty, timer);
       dispatch(
         updateScore({
-          score: points,
+          score,
           timeSpent: 30 - timer,
           isCorrect: true,
           responseTime: 30 - timer,
         })
       );
       audioService.play(AudioKey.SUCCESS);
-      logger.gameInfo('Correct answer', { questionId: question.id, points });
+      logger.gameInfo('Correct answer', { questionId: question.id, score });
     } else {
       audioService.play(AudioKey.ERROR);
       logger.gameInfo('Incorrect answer', { questionId: question.id });
     }
 
     setTimeout(() => {
-      onComplete(isCorrect, isCorrect ? points : 0);
+      onComplete(isCorrect, isCorrect ? score : 0);
     }, 1500);
   };
 
@@ -508,31 +512,31 @@ export const useUpdateUserProfile = () => {
 };
 ```
 
-##### usePoints Hook
-מנהל נקודות משתמש:
+##### useCredits Hook
+מנהל קרדיטים משתמש:
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '../../hooks';
-import { setPointBalance } from '../../redux/slices';
-import { pointsService } from '../../services';
+import { setCreditBalance } from '../../redux/slices';
+import { creditsService } from '../../services';
 
-export const usePointBalance = () => {
+export const useCreditBalance = () => {
   return useQuery({
-    queryKey: ['points', 'balance'],
-    queryFn: () => pointsService.getPointBalance(),
+    queryKey: ['credits', 'balance'],
+    queryFn: () => creditsService.getCreditBalance(),
     staleTime: 2 * 60 * 1000,
   });
 };
 
-export const usePurchasePoints = () => {
+export const usePurchaseCredits = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: (packageId: string) => pointsService.purchasePoints(packageId),
+    mutationFn: (packageId: string) => creditsService.purchaseCredits(packageId),
     onSuccess: (data) => {
-      dispatch(setPointBalance(data.pointBalance));
-      queryClient.invalidateQueries({ queryKey: ['points'] });
+      dispatch(setCreditBalance(data.balance));
+      queryClient.invalidateQueries({ queryKey: ['credits'] });
     },
   });
 };
@@ -721,10 +725,10 @@ const gameSlice = createSlice({
         const totalTime = action.payload.totalTime ?? 30;
         const timeSpent = action.payload.timeSpent ?? 0;
         const streak = state.state.stats.correctStreak ?? 0;
-        const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
+        const scoreEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
         
-        state.state.data.score += pointsEarned;
-        state.state.stats.currentScore += pointsEarned;
+        state.state.data.score += scoreEarned;
+        state.state.stats.currentScore += scoreEarned;
         state.state.stats.correctStreak += 1;
         state.state.stats.maxStreak = Math.max(state.state.stats.maxStreak, state.state.stats.correctStreak);
       } else {
@@ -745,9 +749,9 @@ export default gameSlice.reducer;
 ```typescript
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { BasicUser } from '@shared/types';
-import { UserState, LoadingPayload, ErrorPayload, PointBalancePayload } from '../../types';
+import { UserState, LoadingPayload, ErrorPayload, CreditBalancePayload } from '../../types';
 import { authService } from '../../services';
-import { POINT_BALANCE_DEFAULT_VALUES } from '../../constants';
+import { CREDIT_BALANCE_DEFAULT_VALUES } from '../../constants';
 
 export const fetchUserData = createAsyncThunk('user/fetchUserData', async (_, { rejectWithValue }) => {
   try {
@@ -762,7 +766,7 @@ const initialState: UserState = {
   currentUser: null,
   username: '',
   avatar: '',
-  pointBalance: POINT_BALANCE_DEFAULT_VALUES,
+  creditBalance: CREDIT_BALANCE_DEFAULT_VALUES,
   isLoading: false,
   error: null,
   isAuthenticated: false,
@@ -787,15 +791,15 @@ const userSlice = createSlice({
       state.isLoading = false;
       state.error = null;
     },
-    setPointBalance: (state, action: PayloadAction<PointBalancePayload>) => {
-      const freeQuestions = action.payload.freePoints;
-      const dailyLimit = action.payload.dailyLimit ?? state.pointBalance?.dailyLimit ?? 20;
-      const nextResetTime = action.payload.nextResetTime ?? state.pointBalance?.nextResetTime ?? null;
+    setCreditBalance: (state, action: PayloadAction<CreditBalancePayload>) => {
+      const freeQuestions = action.payload.freeCredits;
+      const dailyLimit = action.payload.dailyLimit ?? state.creditBalance?.dailyLimit ?? 20;
+      const nextResetTime = action.payload.nextResetTime ?? state.creditBalance?.nextResetTime ?? null;
 
-      state.pointBalance = {
-        totalPoints: action.payload.balance,
+      state.creditBalance = {
+        totalCredits: action.payload.balance,
         freeQuestions,
-        purchasedPoints: action.payload.purchasedPoints,
+        purchasedCredits: action.payload.purchasedCredits,
         dailyLimit,
         canPlayFree: freeQuestions > 0,
         nextResetTime,
@@ -815,7 +819,7 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUser, setPointBalance, setAuthenticated } = userSlice.actions;
+export const { setUser, setCreditBalance, setAuthenticated } = userSlice.actions;
 export default userSlice.reducer;
 ```
 
@@ -868,7 +872,7 @@ export const store = configureStore({
 ```typescript
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PointCalculationService } from '@shared/services';
+import { ScoreCalculationService } from '@shared/services';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 import { CustomDifficultyPipe, GameAnswerPipe, TriviaQuestionPipe, TriviaRequestPipe } from '../../common/pipes';
@@ -898,7 +902,7 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
     GameService,
     TriviaGenerationService,
     AiProvidersService,
-    PointCalculationService,
+    ScoreCalculationService,
     CustomDifficultyPipe,
     TriviaQuestionPipe,
     GameAnswerPipe,
@@ -932,14 +936,14 @@ export class GameController {
     @Body(TriviaRequestPipe) body: TriviaRequestDto
   ) {
     try {
-      if (!body.topic || !body.difficulty || !body.questionCount) {
-        throw new HttpException('Topic, difficulty, and question count are required', HttpStatus.BAD_REQUEST);
+      if (!body.topic || !body.difficulty || !body.requestedQuestions) {
+        throw new HttpException('Topic, difficulty, and requested questions are required', HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.gameService.getTriviaQuestion(
         body.topic,
         body.difficulty,
-        body.questionCount,
+        body.requestedQuestions,
         userId
       );
 
@@ -947,7 +951,7 @@ export class GameController {
         userId,
         topic: body.topic,
         difficulty: body.difficulty,
-        questionCount: body.questionCount,
+        requestedQuestions: body.requestedQuestions,
       });
 
       return result;
@@ -1025,7 +1029,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_TTL, SERVER_GAME_CONSTANTS, HTTP_TIMEOUTS } from '@shared/constants';
-import { serverLogger as logger, PointCalculationService } from '@shared/services';
+import { serverLogger as logger, ScoreCalculationService } from '@shared/services';
 import { AnswerResult, TriviaQuestion, GameDifficulty } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
@@ -1040,27 +1044,27 @@ export class GameService {
     @InjectRepository(TriviaEntity)
     private readonly triviaRepository: Repository<TriviaEntity>,
     private readonly cacheService: CacheService,
-    private readonly pointCalculationService: PointCalculationService
+    private readonly scoreCalculationService: ScoreCalculationService
   ) {}
 
   async getTriviaQuestion(
     topic: string,
     difficulty: GameDifficulty,
-    questionCount: number = 1,
+    requestedQuestions: number = 1,
     userId?: string
   ) {
     const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-    const actualQuestionCount = Math.min(questionCount, maxQuestions);
+    const normalizedRequestedQuestions = Math.min(requestedQuestions, maxQuestions);
 
     try {
-      const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
+      const cacheKey = `trivia:${topic}:${difficulty}:${normalizedRequestedQuestions}`;
 
       const cachedResult = await this.cacheService.get<TriviaQuestion[]>(cacheKey);
       const fromCache = cachedResult.success && cachedResult.data !== null;
 
       const questions = fromCache
         ? cachedResult.data!
-        : await this.generateQuestions(topic, difficulty, actualQuestionCount);
+        : await this.generateQuestions(topic, difficulty, normalizedRequestedQuestions);
 
       if (!fromCache && questions) {
         await this.cacheService.set(cacheKey, questions, CACHE_TTL.TRIVIA_QUESTIONS);
@@ -1075,7 +1079,7 @@ export class GameService {
         error: getErrorMessage(error),
         topic,
         difficulty,
-        requestedCount: actualQuestionCount,
+        requestedCount: normalizedRequestedQuestions,
       });
       throw error;
     }
@@ -1197,11 +1201,11 @@ POST /api/subscription/cancel
 GET  /api/subscription/history
 ```
 
-#### נקודות (Points)
+#### קרדיטים (Credits)
 ```http
-GET  /api/points/balance
-GET  /api/points/history
-POST /api/points/calculate
+GET  /api/credits/balance
+GET  /api/credits/history
+POST /api/credits/deduct
 ```
 
 #### לוח תוצאות (Leaderboard)

@@ -184,7 +184,6 @@ export const MESSAGE_FORMATTERS = {
 		info: (message: string) => `${LOG_ICONS.INFO} ${message}`,
 		debug: (message: string) => `${LOG_ICONS.DEBUG} ${message}`,
 		field: (field: string, message: string) => `${LOG_ICONS.FORM} ${field}: ${message}`,
-		username: (message: string) => `${LOG_ICONS.USER} ${message}`,
 		password: (message: string) => `${LOG_ICONS.SECURITY} ${message}`,
 		email: (message: string) => `${LOG_ICONS.USER} ${message}`,
 		content: (message: string) => `${LOG_ICONS.FORM} ${message}`,

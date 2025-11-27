@@ -6,7 +6,7 @@
  * @description Client-side user profile and preferences management
  * @used_by client/src/views/user, client/src/components/user, client/src/hooks
  */
-import { BillingCycle, PlanType } from '@shared/constants';
+import { BillingCycle, GameMode, PlanType } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type {
 	BasicUser,
@@ -49,6 +49,8 @@ class ClientUserService {
 
 	/**
 	 * Update user profile
+	 * @param data User profile update data
+	 * @returns Updated user profile data
 	 */
 	async updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType> {
 		try {
@@ -65,36 +67,25 @@ class ClientUserService {
 	}
 
 	/**
-	 * Get user credits
-	 */
-	async getUserCredits(): Promise<number> {
-		try {
-			logger.userInfo('Getting user credits');
-
-			const credits = await apiService.getUserCredits();
-
-			logger.userInfo('User credits retrieved successfully', { credits });
-			return credits;
-		} catch (error) {
-			logger.userError('Failed to get user credits', { error: getErrorMessage(error) });
-			throw error;
-		}
-	}
-
-	/**
-	 * Deduct user credits
+	 * Deduct user credits (for admin/user management)
+	 * @param amount Amount of credits to deduct
+	 * @returns Credit deduction result with updated balance
 	 */
 	async deductCredits(amount: number): Promise<{ success: boolean; credits: number }> {
 		try {
 			logger.userInfo('Deducting user credits', { amount });
 
-			const result = await apiService.deductCredits(amount);
+			// Use game mode for admin credit deduction (QUESTION_LIMITED is the default)
+			const result = await apiService.deductCredits(amount, 'QUESTION_LIMITED' as GameMode);
 
 			logger.userInfo('User credits deducted successfully', {
 				amount,
-				newCredits: result.credits,
+				newCredits: result.totalCredits,
 			});
-			return result;
+			return {
+				success: true,
+				credits: result.totalCredits,
+			};
 		} catch (error) {
 			logger.userError('Failed to deduct user credits', { error: getErrorMessage(error), amount });
 			throw error;
@@ -103,6 +94,7 @@ class ClientUserService {
 
 	/**
 	 * Delete user account
+	 * @returns Account deletion result
 	 */
 	async deleteAccount(): Promise<{ success: boolean; message: string }> {
 		try {
@@ -123,6 +115,8 @@ class ClientUserService {
 
 	/**
 	 * Delete user by ID (Admin)
+	 * @param userId User identifier to delete
+	 * @returns User deletion result
 	 */
 	async deleteUser(userId: string): Promise<unknown> {
 		try {
@@ -140,6 +134,8 @@ class ClientUserService {
 
 	/**
 	 * Get user by ID (Admin)
+	 * @param userId User identifier
+	 * @returns User data
 	 */
 	async getUserById(userId: string): Promise<unknown> {
 		try {
@@ -157,6 +153,10 @@ class ClientUserService {
 
 	/**
 	 * Update user credits (Admin)
+	 * @param userId User identifier to update
+	 * @param amount Credit amount to update
+	 * @param reason Reason for credit update
+	 * @returns Credit update result
 	 */
 	async updateCredits(userId: string, amount: number, reason: string): Promise<unknown> {
 		try {
@@ -174,6 +174,9 @@ class ClientUserService {
 
 	/**
 	 * Update user status (Admin)
+	 * @param userId User identifier to update
+	 * @param status New user status
+	 * @returns Status update result
 	 */
 	async updateStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<unknown> {
 		try {
@@ -191,6 +194,9 @@ class ClientUserService {
 
 	/**
 	 * Create subscription
+	 * @param plan Subscription plan type
+	 * @param billingCycle Optional billing cycle (default: monthly)
+	 * @returns Subscription creation result
 	 */
 	async createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionCreationResponse> {
 		try {
@@ -228,6 +234,7 @@ class ClientUserService {
 
 	/**
 	 * Cancel subscription
+	 * @returns Subscription cancellation result
 	 */
 	async cancelSubscription(): Promise<{ success: boolean; message: string }> {
 		try {
@@ -248,6 +255,9 @@ class ClientUserService {
 
 	/**
 	 * Search users
+	 * @param query Search query string
+	 * @param limit Maximum number of results (default: 10)
+	 * @returns List of matching users
 	 */
 	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
 		try {
@@ -262,22 +272,10 @@ class ClientUserService {
 	}
 
 	/**
-	 * Get user by username
-	 */
-	async getUserByUsername(username: string): Promise<BasicUser> {
-		try {
-			logger.userInfo('Getting user by username', { username });
-			const user = await apiService.getUserByUsername(username);
-			logger.userInfo('User retrieved successfully', { username });
-			return user;
-		} catch (error) {
-			logger.userError('Failed to get user by username', { error: getErrorMessage(error), username });
-			throw error;
-		}
-	}
-
-	/**
 	 * Update user field
+	 * @param field Field name to update
+	 * @param value New field value
+	 * @returns Updated user data
 	 */
 	async updateUserField(field: string, value: BasicValue): Promise<{ user: User }> {
 		try {
@@ -295,6 +293,9 @@ class ClientUserService {
 
 	/**
 	 * Update single preference
+	 * @param preference Preference name to update
+	 * @param value New preference value
+	 * @returns Preference update result
 	 */
 	async updateSinglePreference(preference: string, value: BasicValue): Promise<unknown> {
 		try {
@@ -312,6 +313,8 @@ class ClientUserService {
 
 	/**
 	 * Update user preferences
+	 * @param preferences User preferences data to update
+	 * @returns Resolves when preferences are updated
 	 */
 	async updateUserPreferences(preferences: Partial<UserPreferences>): Promise<void> {
 		try {

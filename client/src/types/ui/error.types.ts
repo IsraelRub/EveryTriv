@@ -35,9 +35,10 @@ export interface ErrorBoundaryState {
 }
 
 /**
- * Deprecated: Use ErrorBoundaryProps with variant="inline" instead
+ * Feature-specific error boundary props interface
  * @interface FeatureErrorBoundaryProps
- * @deprecated
+ * @description Props for feature-specific error boundary component
+ * @used_by client/src/components/FeatureErrorBoundary.tsx
  */
 export interface FeatureErrorBoundaryProps {
 	children: ReactNode;

@@ -26,6 +26,8 @@ client/src/hooks/
 ├── useRedux.ts                     # Redux hooks מותאמים
 ├── useAudio.tsx                    # Audio context hook
 ├── useNavigationController.ts      # בקרת ניווט
+├── useMultiplayer.ts               # מרובה משתתפים - WebSocket connection
+├── useMultiplayerRoom.ts           # מרובה משתתפים - ניהול חדר
 └── index.ts                        # ייצוא מאוחד
 ```
 
@@ -70,12 +72,12 @@ const userKeys = {
 };
 
 // Points Query Keys
-const pointsKeys = {
-  all: ['points'] as const,
-  balance: () => [...pointsKeys.all, 'balance'] as const,
-  packages: () => [...pointsKeys.all, 'packages'] as const,
-  canPlay: (questionCount: number) => [...pointsKeys.all, 'can-play', questionCount] as const,
-  history: (limit: number) => [...pointsKeys.all, 'history', limit] as const,
+const creditsKeys = {
+  all: ['credits'] as const,
+  balance: () => [...creditsKeys.all, 'balance'] as const,
+  packages: () => [...creditsKeys.all, 'packages'] as const,
+  canPlay: (totalQuestions: number) => [...creditsKeys.all, 'can-play', totalQuestions] as const,
+  history: (limit: number) => [...creditsKeys.all, 'history', limit] as const,
 };
 
 // Game History Query Keys
@@ -100,7 +102,7 @@ const { mutate, mutateAsync, isLoading, error, isError } = useTriviaQuestionMuta
 mutate({
   topic: 'history',
   difficulty: 'medium',
-  questionCount: 1
+  requestedQuestions: 1
 });
 
 // או עם async/await
@@ -108,7 +110,7 @@ try {
   const result = await mutateAsync({
     topic: 'history',
     difficulty: 'medium',
-    questionCount: 1
+    requestedQuestions: 1
   });
   console.log(result.questions, result.fromCache);
 } catch (error) {
@@ -261,50 +263,50 @@ mutate({
 
 #### Points Hooks
 
-##### usePointBalance
-קבלת מאזן נקודות:
+##### useCreditBalance
+קבלת מאזן קרדיטים:
 ```typescript
-import { usePointBalance } from '@hooks';
+import { useCreditBalance } from '@hooks';
 
-const { data: pointBalance, isLoading } = usePointBalance();
+const { data: creditBalance, isLoading } = useCreditBalance();
 
-// data מכיל PointBalance:
+// data מכיל CreditBalance:
 // {
-//   totalPoints: number,
+//   totalCredits: number,
 //   freeQuestions: number,
-//   purchasedPoints: number,
+//   purchasedCredits: number,
 //   dailyLimit: number,
 //   canPlayFree: boolean,
 //   nextResetTime: string | null
 // }
 ```
 
-##### useCanPlay
+##### useCanPlayCredits
 בדיקה אם המשתמש יכול לשחק:
 ```typescript
-import { useCanPlay } from '@hooks';
+import { useCanPlayCredits } from '@hooks';
 
-const { data: canPlay, isLoading } = useCanPlay(5); // 5 שאלות
+const { data: canPlay, isLoading } = useCanPlayCredits(5); // 5 שאלות
 
 // data הוא boolean
 ```
 
-##### usePointPackages
-קבלת חבילות נקודות:
+##### useCreditPackages
+קבלת חבילות קרדיטים:
 ```typescript
-import { usePointPackages } from '@hooks';
+import { useCreditPackages } from '@hooks';
 
-const { data: packages, isLoading } = usePointPackages();
+const { data: packages, isLoading } = useCreditPackages();
 
-// data מכיל PointPurchaseOption[]
+// data מכיל CreditPurchaseOption[]
 ```
 
-##### usePurchasePoints
-רכישת נקודות:
+##### usePurchaseCredits
+רכישת קרדיטים:
 ```typescript
-import { usePurchasePoints } from '@hooks';
+import { usePurchaseCredits } from '@hooks';
 
-const { mutate, isLoading } = usePurchasePoints();
+const { mutate, isLoading } = usePurchaseCredits();
 
 mutate({
   packageId: 'package-1',
@@ -312,16 +314,16 @@ mutate({
 });
 ```
 
-##### useDeductPoints
-ניכוי נקודות:
+##### useDeductCredits
+ניכוי קרדיטים:
 ```typescript
-import { useDeductPoints } from '@hooks';
+import { useDeductCredits } from '@hooks';
 import { GameMode } from '@shared/constants';
 
-const { mutate, isLoading } = useDeductPoints();
+const { mutate, isLoading } = useDeductCredits();
 
 mutate({
-  questionCount: 5,
+  totalQuestions: 5,
   gameMode: GameMode.QUESTION_LIMITED
 });
 
@@ -335,7 +337,7 @@ import { useTransactionHistory } from '@hooks';
 
 const { data: transactions, isLoading } = useTransactionHistory(50);
 
-// data מכיל PointTransaction[]
+// data מכיל CreditTransaction[]
 ```
 
 #### Stats Hooks
@@ -557,24 +559,24 @@ import type { PointBalance } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { selectCanPlayFree, selectUserPointBalance } from '../redux/selectors';
 import { deductPoints } from '../redux/slices';
-import { pointsService } from '../services';
+import { creditsService } from '../services';
 import type { PointsPurchaseRequest } from '../types';
 import { useAppDispatch, useAppSelector } from './useRedux';
 
 // Query keys
-const pointsKeys = {
-  all: ['points'] as const,
-  balance: () => [...pointsKeys.all, 'balance'] as const,
-  packages: () => [...pointsKeys.all, 'packages'] as const,
-  canPlay: (questionCount: number) => [...pointsKeys.all, 'can-play', questionCount] as const,
-  history: (limit: number) => [...pointsKeys.all, 'history', limit] as const,
+const creditsKeys = {
+  all: ['credits'] as const,
+  balance: () => [...creditsKeys.all, 'balance'] as const,
+  packages: () => [...creditsKeys.all, 'packages'] as const,
+  canPlay: (totalQuestions: number) => [...creditsKeys.all, 'can-play', totalQuestions] as const,
+  history: (limit: number) => [...creditsKeys.all, 'history', limit] as const,
 };
 
 // Hook לבדיקת יכולת משחק
-export const useCanPlay = (questionCount: number = 1) => {
-  const pointBalance = useAppSelector(selectUserPointBalance);
+export const useCanPlayCredits = (totalQuestions: number = 1) => {
+  const creditBalance = useAppSelector(selectUserCreditBalance);
   const canPlayFree = useAppSelector(selectCanPlayFree);
-  const canPlay = (pointBalance?.totalPoints ?? 0) >= questionCount || canPlayFree;
+  const canPlay = (creditBalance?.totalCredits ?? 0) >= totalQuestions || canPlayFree;
 
   return {
     data: canPlay,
@@ -585,22 +587,22 @@ export const useCanPlay = (questionCount: number = 1) => {
 };
 
 // Hook לניכוי נקודות
-export const useDeductPoints = () => {
+export const useDeductCredits = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: ({ questionCount, gameMode }: { questionCount: number; gameMode?: GameMode }) =>
-      pointsService.deductPoints(questionCount, gameMode ?? GameMode.QUESTION_LIMITED),
-    onMutate: async ({ questionCount }) => {
+    mutationFn: ({ totalQuestions, gameMode }: { totalQuestions: number; gameMode?: GameMode }) =>
+      creditsService.deductCredits(totalQuestions, gameMode ?? GameMode.QUESTION_LIMITED),
+    onMutate: async ({ totalQuestions }) => {
       await queryClient.cancelQueries({ queryKey: pointsKeys.balance() });
       const previousBalance = queryClient.getQueryData(pointsKeys.balance());
-      queryClient.setQueryData(pointsKeys.balance(), (old: PointBalance | undefined) => {
+      queryClient.setQueryData(creditsKeys.balance(), (old: CreditBalance | undefined) => {
         if (!old) {
           return {
-            totalPoints: 0,
+            totalCredits: 0,
             freeQuestions: 0,
-            purchasedPoints: 0,
+            purchasedCredits: 0,
             dailyLimit: 0,
             canPlayFree: false,
             nextResetTime: new Date().toISOString(),
@@ -608,52 +610,52 @@ export const useDeductPoints = () => {
         }
         return {
           ...old,
-          totalPoints: Math.max(0, old.totalPoints - questionCount),
+          totalCredits: Math.max(0, old.totalCredits - totalQuestions),
         };
       });
       return { previousBalance };
     },
     onError: (_err, _variables, context) => {
       if (context?.previousBalance) {
-        queryClient.setQueryData(pointsKeys.balance(), context.previousBalance);
+        queryClient.setQueryData(creditsKeys.balance(), context.previousBalance);
       }
     },
-    onSettled: (_, __, { questionCount }) => {
-      dispatch(deductPoints(questionCount));
-      queryClient.invalidateQueries({ queryKey: pointsKeys.all });
+    onSettled: (_, __, { totalQuestions }) => {
+      dispatch(deductCredits(totalQuestions));
+      queryClient.invalidateQueries({ queryKey: creditsKeys.all });
     },
   });
 };
 
-// Hook לקבלת יתרת נקודות
-export const usePointBalance = () => {
-  const pointBalance = useAppSelector(selectUserPointBalance);
+// Hook לקבלת יתרת קרדיטים
+export const useCreditBalance = () => {
+  const creditBalance = useAppSelector(selectUserCreditBalance);
 
   return {
-    data: pointBalance,
+    data: creditBalance,
     isLoading: false,
     error: null,
     refetch: () => {},
   };
 };
 
-// Hook לקבלת חבילות נקודות
-export const usePointPackages = () => {
+// Hook לקבלת חבילות קרדיטים
+export const useCreditPackages = () => {
   return useQuery({
-    queryKey: pointsKeys.packages(),
-    queryFn: () => pointsService.getPointPackages(),
+    queryKey: creditsKeys.packages(),
+    queryFn: () => creditsService.getCreditPackages(),
     staleTime: 10 * 60 * 1000, // Consider stale after 10 minutes
   });
 };
 
-// Hook לרכישת נקודות
-export const usePurchasePoints = () => {
+// Hook לרכישת קרדיטים
+export const usePurchaseCredits = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: PointsPurchaseRequest) => pointsService.purchasePoints(request),
+    mutationFn: (request: CreditsPurchaseRequest) => creditsService.purchaseCredits(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: pointsKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: creditsKeys.balance() });
     },
   });
 };
@@ -661,8 +663,8 @@ export const usePurchasePoints = () => {
 // Hook לקבלת היסטוריית עסקאות
 export const useTransactionHistory = (limit: number = 50) => {
   return useQuery({
-    queryKey: pointsKeys.history(limit),
-    queryFn: () => pointsService.getTransactionHistory(limit),
+    queryKey: creditsKeys.history(limit),
+    queryFn: () => creditsService.getCreditTransactionHistory(limit),
     staleTime: 60 * 1000, // Consider stale after 1 minute
   });
 };
@@ -1665,6 +1667,99 @@ export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
 ```
 
+## Hooks למרובה משתתפים (Multiplayer)
+
+### useMultiplayer.ts
+
+Hook ראשי לניהול חיבור WebSocket ומצב מרובה משתתפים.
+
+**שימוש:**
+```typescript
+import { useMultiplayer } from '@hooks';
+
+const {
+  isConnected,
+  room,
+  gameState,
+  leaderboard,
+  error,
+  connect,
+  disconnect,
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  startGame,
+  submitAnswer,
+} = useMultiplayer();
+```
+
+**State:**
+- `isConnected` - סטטוס חיבור WebSocket
+- `room` - מצב החדר הנוכחי (`MultiplayerRoom | null`)
+- `gameState` - מצב המשחק (`GameState | null`)
+- `leaderboard` - לוח תוצאות (`Player[]`)
+- `error` - שגיאות (`string | null`)
+
+**Methods:**
+- `connect()` - התחברות לשרת WebSocket
+- `disconnect()` - ניתוק מהשרת
+- `createRoom(config)` - יצירת חדר חדש
+- `joinRoom(roomId)` - הצטרפות לחדר קיים
+- `leaveRoom(roomId)` - יציאה מחדר
+- `startGame(roomId)` - התחלת משחק (host only)
+- `submitAnswer(roomId, questionId, answer, timeSpent)` - שליחת תשובה
+
+**Event Listeners:**
+ההוק מגדיר event listeners אוטומטית עבור:
+- `room-created`, `room-joined`, `room-left`
+- `player-joined`, `player-left`
+- `game-started`, `question-started`, `question-ended`, `game-ended`
+- `answer-received`, `leaderboard-update`, `room-updated`
+- `error`
+
+**Auto-connect:**
+ההוק מתחבר אוטומטית כאשר יש token זמין.
+
+### useMultiplayerRoom.ts
+
+Hook מיוחד לניהול חדר מרובה משתתפים.
+
+**שימוש:**
+```typescript
+import { useMultiplayerRoom } from '@hooks';
+
+const {
+  room,
+  isLoading,
+  isConnected,
+  error,
+  isHost,
+  currentPlayer,
+  isReadyToStart,
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  startGame,
+} = useMultiplayerRoom(roomId?);
+```
+
+**Computed Values:**
+- `isHost` - האם המשתמש הוא host של החדר
+- `currentPlayer` - השחקן הנוכחי (`Player | undefined`)
+- `isReadyToStart` - האם החדר מוכן להתחיל (לפחות 2 שחקנים)
+
+**Auto-join:**
+אם `roomId` מסופק, ההוק מצטרף אוטומטית לחדר.
+
+**שימוש ב-Views:**
+```typescript
+// MultiplayerLobbyView
+const { room, createRoom, joinRoom, isHost, isReadyToStart, startGame } = useMultiplayerRoom();
+
+// MultiplayerGameView
+const { room, gameState, submitAnswer } = useMultiplayer();
+```
+
 ## Context Hooks
 
 ### useAudio.tsx
@@ -1711,7 +1806,7 @@ export const useAudio = () => {
 ### שמות Hooks
 - `useLogin`, `useRegister`, `useCurrentUser` - קריאות API לאימות
 - `useTriviaQuestionMutation`, `useGameHistory` - קריאות API למשחק
-- `usePointBalance`, `useCanPlay`, `usePurchasePoints` - קריאות API לנקודות
+- `useCreditBalance`, `useCanPlayCredits`, `usePurchaseCredits` - קריאות API לקרדיטים
 - `useGameTimer` - UI hooks
 - `useDebounce`, `usePrevious` - Utility hooks
 

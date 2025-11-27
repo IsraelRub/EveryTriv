@@ -5,8 +5,8 @@ import type { TopicAnalyticsRecord } from '@shared/types';
 import { ComponentSize, SCORING_DEFAULTS, Spacing } from '@/constants';
 
 import type { ScoreStats, ScoringSystemProps } from '../../types';
-import { Icon } from '../IconLibrary';
 import { GridLayout } from '../layout';
+import { Icon } from '../ui/IconLibrary';
 
 export default function ScoringSystem({
 	score,
@@ -137,7 +137,7 @@ export default function ScoringSystem({
 									</div>
 								)}
 								<div className='text-center'>
-									<span className='text-green-400 font-medium'>{currentQuestionMetadata.questionCount ?? 1}</span>
+									<span className='text-green-400 font-medium'>{currentQuestionMetadata.totalQuestions ?? 1}</span>
 									<div className='text-white/60'>Questions</div>
 								</div>
 							</GridLayout>

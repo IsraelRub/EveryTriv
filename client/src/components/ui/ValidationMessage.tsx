@@ -12,7 +12,7 @@ import { AudioKey } from '../../constants';
 import { audioService } from '../../services';
 import type { ValidationMessageProps } from '../../types';
 import { combineClassNames } from '../../utils';
-import { Icon } from '../IconLibrary';
+import { Icon } from './IconLibrary';
 
 export const ValidationMessage: FC<ValidationMessageProps> = ({
 	status,
@@ -73,7 +73,7 @@ export const ValidationMessage: FC<ValidationMessageProps> = ({
 
 		switch (status) {
 			case 'validating':
-				return <Icon name='Loading' className='animate-spin' />;
+				return <Icon name='loading' className='animate-spin' />;
 			case 'valid':
 				return <Icon name='Check' />;
 			case 'invalid':

@@ -38,14 +38,35 @@ export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] |
 export type RequestData = StorageValue | unknown;
 
 /**
- * Base entity interface with common fields
- * @interface BaseEntity
- * @description Base interface for all entities with common fields
+ * Base timestamps interface with common timestamp fields
+ * @interface BaseTimestamps
+ * @description Base interface for objects with creation and update timestamps
+ * Foundation for entities and stats objects that track creation and modification times
  */
-export interface BaseEntity {
-	id: string;
+export interface BaseTimestamps {
 	createdAt: Date;
 	updatedAt: Date;
+}
+
+/**
+ * Base entity interface with common fields
+ * @interface BaseEntity
+ * @description Base interface for all database entities with ID and timestamps
+ * @used_by server/src/internal/entities (all TypeORM entities)
+ */
+export interface BaseEntity extends BaseTimestamps {
+	id: string;
+}
+
+/**
+ * Base cache entry interface with common timestamp fields
+ * @interface BaseCacheEntry
+ * @description Base interface for cache entries with creation, update, and access tracking
+ * Used for cache entries that track when items were created, updated, and last accessed
+ * @used_by server/src/internal/types/trivia.types.ts (QuestionCacheEntry)
+ */
+export interface BaseCacheEntry extends BaseTimestamps {
+	lastAccessed: Date;
 }
 
 /**

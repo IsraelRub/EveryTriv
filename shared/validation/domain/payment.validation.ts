@@ -11,8 +11,8 @@ import { sanitizeCardNumber } from '../../utils/infrastructure/sanitization.util
 /**
  * Validates payment amount and currency constraints
  *
- * @param amount - The payment amount to validate
- * @param currency - The currency code for validation (defaults to USD)
+ * @param amount The payment amount to validate
+ * @param currency The currency code for validation (defaults to USD)
  * @returns PaymentValidationResult Validation result with errors and warnings
  * @description Checks payment amount limits, currency-specific rules, and provides warnings for large amounts
  */
@@ -42,7 +42,7 @@ export function validatePaymentAmount(amount: number, currency: string = 'USD'):
 /**
  * Validates credit card number using Luhn algorithm and length constraints
  *
- * @param rawNumber - The credit card number string to validate
+ * @param rawNumber The credit card number string to validate
  * @returns boolean True if the card number passes validation (Luhn algorithm and length 12-19)
  * @description Validates credit card number using Luhn algorithm and checks length constraints.
  * Card numbers must be between 12 and 19 digits long and pass the Luhn checksum validation.

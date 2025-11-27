@@ -12,8 +12,8 @@ import { ButtonVariant, ComponentSize } from '../../constants';
 import type { CurrentDifficultyProps } from '../../types';
 import { formatTopic, getDifficultyIcon } from '../../utils';
 import { fadeInUp } from '../animations';
-import { Icon } from '../IconLibrary';
 import { Button } from '../ui/Button';
+import { Icon } from '../ui/IconLibrary';
 
 export default function CurrentDifficulty({
 	className,

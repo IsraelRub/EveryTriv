@@ -20,12 +20,12 @@ import type {
 } from '../../types';
 import { combineClassNames } from '../../utils';
 import AudioControls from '../AudioControls';
-import { Icon } from '../IconLibrary';
 import { Container } from '../layout';
 import { Avatar, Button } from '../ui';
+import { Icon } from '../ui/IconLibrary';
 
 const NavigationRoot = memo(function Navigation() {
-	const { appName, isHomePage, links, isAuthenticated, userDisplay, points, actions } = useNavigationController();
+	const { appName, isHomePage, links, isAuthenticated, userDisplay, credits, actions } = useNavigationController();
 
 	return (
 		<nav role='navigation' aria-label='Main navigation' className={NAVIGATION_CLASSNAMES.wrapper}>
@@ -44,15 +44,15 @@ const NavigationRoot = memo(function Navigation() {
 						links={links}
 						audioControls={<AudioControls className='text-slate-300' />}
 						isAuthenticated={isAuthenticated}
-						pointsDisplay={points.display}
-						totalPoints={points.total}
-						freeQuestions={points.freeQuestions}
-						nextResetTime={points.nextResetTime}
+						creditsDisplay={credits.display}
+						totalCredits={credits.total}
+						freeQuestions={credits.freeQuestions}
+						nextResetTime={credits.nextResetTime}
 						userDisplay={userDisplay}
 						onLogout={actions.onLogout}
 						onSignUp={actions.onSignUp}
-						onGoogleLogin={actions.onGoogleLogin}
-						onGetMorePoints={actions.onGetMorePoints}
+						onSignIn={actions.onSignIn}
+						onGetMoreCredits={actions.onGetMoreCredits}
 					/>
 				</div>
 			</Container>
@@ -95,7 +95,7 @@ function NavigationActions({
 	userDisplay,
 	onLogout,
 	onSignUp,
-	onGoogleLogin,
+	onSignIn,
 	children,
 }: NavigationActionsProps) {
 	return (
@@ -106,13 +106,17 @@ function NavigationActions({
 					<div className={NAVIGATION_CLASSNAMES.userBadge}>
 						<Avatar
 							src={userDisplay?.avatar}
-							username={userDisplay?.username}
+							email={userDisplay?.email}
 							firstName={userDisplay?.firstName}
 							lastName={userDisplay?.lastName}
 							size={userDisplay?.avatarSize ?? ComponentSize.SM}
-							alt={userDisplay?.username}
+							alt={userDisplay?.email}
 						/>
-						<span className='text-sm font-medium text-slate-100'>{userDisplay?.username}</span>
+						<span className='text-sm font-medium text-slate-100'>
+							{userDisplay?.firstName && userDisplay?.lastName
+								? `${userDisplay.firstName} ${userDisplay.lastName}`
+								: userDisplay?.firstName || userDisplay?.lastName || userDisplay?.email}
+						</span>
 					</div>
 					<Button
 						variant={ButtonVariant.GHOST}
@@ -136,7 +140,7 @@ function NavigationActions({
 					<Button
 						variant={ButtonVariant.PRIMARY}
 						className={NAVIGATION_BUTTON_CLASSNAMES.primary}
-						onClick={onGoogleLogin}
+						onClick={onSignIn}
 						withAnimation={false}
 					>
 						Sign In
@@ -151,19 +155,19 @@ function NavigationMenu({
 	links,
 	audioControls,
 	isAuthenticated,
-	pointsDisplay,
-	totalPoints,
+	creditsDisplay,
+	totalCredits,
 	freeQuestions,
 	nextResetTime,
 	userDisplay,
 	onLogout,
 	onSignUp,
-	onGoogleLogin,
-	onGetMorePoints,
+	onSignIn,
+	onGetMoreCredits,
 }: NavigationMenuProps) {
 	return (
-		<section aria-label='Desktop Navigation' className={NAVIGATION_CLASSNAMES.desktopSection}>
-			<div className={NAVIGATION_CLASSNAMES.desktopLinksWrapper}>
+		<section aria-label=' Navigation' className={NAVIGATION_CLASSNAMES.Section}>
+			<div className={NAVIGATION_CLASSNAMES.LinksWrapper}>
 				{links.map(item => (
 					<Link
 						key={item.path}
@@ -183,15 +187,15 @@ function NavigationMenu({
 				userDisplay={augmentUserDisplay(userDisplay)}
 				onLogout={onLogout}
 				onSignUp={onSignUp}
-				onGoogleLogin={onGoogleLogin}
+				onSignIn={onSignIn}
 			>
 				<div className={NAVIGATION_CLASSNAMES.audioContainer}>{audioControls}</div>
 				{isAuthenticated && (
 					<div className='flex items-center gap-3'>
-						<div className={NAVIGATION_CLASSNAMES.pointsBadge}>
+						<div className={NAVIGATION_CLASSNAMES.creditsBadge}>
 							<Icon name='zap' size={ComponentSize.SM} className='text-amber-400' />
-							<span className='text-slate-200 font-medium'>{pointsDisplay ?? totalPoints ?? 0}</span>
-							<span className='text-xs text-slate-400'>Points</span>
+							<span className='text-slate-200 font-medium'>{creditsDisplay ?? totalCredits ?? 0}</span>
+							<span className='text-xs text-slate-400'>Credits</span>
 						</div>
 						{freeQuestions && freeQuestions > 0 ? (
 							<div className={NAVIGATION_CLASSNAMES.freeQuestionsBadge}>
@@ -204,10 +208,10 @@ function NavigationMenu({
 						) : (
 							<button
 								type='button'
-								onClick={onGetMorePoints}
+								onClick={onGetMoreCredits}
 								className='bg-transparent text-sm text-blue-400 underline transition-colors duration-150 hover:text-blue-300'
 							>
-								Get more points
+								Get more credits
 							</button>
 						)}
 					</div>

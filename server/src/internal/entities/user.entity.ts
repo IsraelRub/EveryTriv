@@ -9,10 +9,6 @@ import { BaseEntity } from './base.entity';
 export class UserEntity extends BaseEntity {
 	@Column()
 	@Index({ unique: true })
-	username: string;
-
-	@Column()
-	@Index({ unique: true })
 	email: string;
 
 	@Column({ name: 'password_hash', nullable: true })
@@ -33,8 +29,8 @@ export class UserEntity extends BaseEntity {
 	@Column('int', { default: 100 })
 	credits: number = 100;
 
-	@Column({ name: 'purchased_points', type: 'int', default: 0 })
-	purchasedPoints: number = 0;
+	@Column({ name: 'purchased_credits', type: 'int', default: 0 })
+	purchasedCredits: number = 0;
 
 	@Column({ name: 'daily_free_questions', type: 'int', default: 20 })
 	dailyFreeQuestions: number = 20;
@@ -44,6 +40,9 @@ export class UserEntity extends BaseEntity {
 
 	@Column({ name: 'last_free_questions_reset', type: 'date', nullable: true })
 	lastFreeQuestionsReset?: Date;
+
+	@Column({ name: 'last_login', type: 'timestamp', nullable: true })
+	lastLogin?: Date;
 
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean = true;

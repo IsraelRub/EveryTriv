@@ -29,12 +29,13 @@ class AuthService {
 
 	/**
 	 * Authenticate user with credentials
+	 * @param credentials User login credentials
 	 * @returns Authentication response with token and user data
 	 * @throws When authentication fails
 	 */
 	async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
 		try {
-			logger.securityLogin('Attempting to login user', { username: credentials.username });
+			logger.securityLogin('Attempting to login user', { email: credentials.email });
 
 			const response = await apiService.login(credentials);
 
@@ -42,23 +43,24 @@ class AuthService {
 			await this.setAuthData(response);
 
 			if (response.user) {
-				logger.logUserActivity(response.user.id, 'login', { username: credentials.username });
+				logger.logUserActivity(response.user.id, 'login', { email: credentials.email });
 			}
 			return response;
 		} catch (error) {
-			logger.securityDenied('Login failed', { error: getErrorMessage(error), username: credentials.username });
+			logger.securityDenied('Login failed', { error: getErrorMessage(error), email: credentials.email });
 			throw error;
 		}
 	}
 
 	/**
 	 * Register user account
+	 * @param credentials User registration credentials including email
 	 * @returns Authentication response after successful registration
 	 * @throws When registration fails
 	 */
 	async register(credentials: AuthCredentials & { email: string }): Promise<AuthenticationResult> {
 		try {
-			logger.authRegister('Attempting to register user', { username: credentials.username });
+			logger.authRegister('Attempting to register user', { email: credentials.email });
 
 			const response = await apiService.register(credentials);
 
@@ -71,7 +73,7 @@ class AuthService {
 			return response;
 		} catch (error) {
 			logger.authError(ensureErrorObject(error), 'Registration failed', {
-				username: credentials.username,
+				email: credentials.email,
 			});
 			throw error;
 		}
@@ -101,6 +103,7 @@ class AuthService {
 
 	/**
 	 * Get user info
+	 * @returns Current user data
 	 */
 	async getCurrentUser(): Promise<BasicUser> {
 		try {
@@ -121,6 +124,7 @@ class AuthService {
 
 	/**
 	 * Refresh authentication token
+	 * @returns New authentication result with refreshed tokens
 	 */
 	async refreshToken(): Promise<AuthenticationResult> {
 		try {
@@ -161,6 +165,7 @@ class AuthService {
 
 	/**
 	 * Check if user is authenticated
+	 * @returns True if user is authenticated, false otherwise
 	 */
 	async isAuthenticated(): Promise<boolean> {
 		return await apiService.isAuthenticated();
@@ -168,6 +173,7 @@ class AuthService {
 
 	/**
 	 * Get auth token
+	 * @returns Authentication token or null if not available
 	 */
 	async getToken(): Promise<string | null> {
 		return await apiService.getAuthToken();
@@ -175,6 +181,7 @@ class AuthService {
 
 	/**
 	 * Get user from storage
+	 * @returns Stored user data or null if not found
 	 */
 	async getStoredUser(): Promise<User | null> {
 		const result = await storageService.get<User>(this.USER_KEY, isUser);
@@ -183,6 +190,7 @@ class AuthService {
 
 	/**
 	 * Get auth state
+	 * @returns Current authentication state with user and token
 	 */
 	async getAuthState(): Promise<{
 		isAuthenticated: boolean;
@@ -213,6 +221,8 @@ class AuthService {
 
 	/**
 	 * Initiate Google OAuth login
+	 * Redirects user to Google OAuth authentication page
+	 * @returns Resolves when redirect is initiated
 	 */
 	async initiateGoogleLogin(): Promise<void> {
 		try {
@@ -220,6 +230,11 @@ class AuthService {
 
 			// Redirect to Google OAuth endpoint
 			const googleAuthUrl = ApiConfig.getGoogleAuthUrl();
+
+			logger.authInfo('Redirecting to Google OAuth', {
+				url: googleAuthUrl,
+			});
+
 			window.location.href = googleAuthUrl;
 		} catch (error) {
 			logger.securityDenied('Google login initiation failed', { error: getErrorMessage(error) });
@@ -229,6 +244,8 @@ class AuthService {
 
 	/**
 	 * Complete user profile after registration
+	 * @param profileData Profile completion data
+	 * @returns Completed user profile data
 	 */
 	async completeProfile(profileData: {
 		firstName: string;

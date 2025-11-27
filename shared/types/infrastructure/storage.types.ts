@@ -5,7 +5,7 @@
  * @module StorageTypes
  * @description Storage interfaces and data structures
  */
-import { BasicValue, StorageValue } from '../core/data.types';
+import { BaseCacheEntry, BasicValue, StorageValue } from '../core/data.types';
 
 /**
  * storage service interface
@@ -41,6 +41,15 @@ export interface StorageService {
 	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
 
+export type StorageType = 'persistent' | 'cache' | 'hybrid';
+
+/**
+ * Storage get strategy type
+ * @type StorageGetStrategy
+ * @description Strategy for reading from storage (different from StorageType)
+ */
+export type StorageGetStrategy = 'cache-first' | 'persistent-first' | 'both';
+
 /**
  * Storage configuration interface
  * @interface StorageConfig
@@ -52,7 +61,7 @@ export interface StorageConfig {
 	defaultTtl?: number;
 	enableCompression?: boolean;
 	maxSize?: number;
-	type: 'persistent' | 'cache' | 'hybrid';
+	type: StorageType;
 	enableMetrics?: boolean;
 	enableSync?: boolean;
 }
@@ -69,7 +78,7 @@ export interface StorageOperationResult<T = StorageItemMetadata> {
 	error?: string;
 	timestamp: Date;
 	duration?: number;
-	storageType?: 'persistent' | 'cache' | 'hybrid';
+	storageType?: StorageType;
 }
 
 /**
@@ -89,14 +98,11 @@ export interface StorageStatsResult {
  * @description Metadata for stored items
  * @used_by shared/services/storage (BaseStorageService)
  */
-export interface StorageItemMetadata {
-	createdAt: Date;
-	updatedAt: Date;
-	lastAccessed: Date;
+export interface StorageItemMetadata extends BaseCacheEntry {
 	size: number;
 	ttl?: number;
 	isExpired: boolean;
-	storageType: 'persistent' | 'cache' | 'hybrid';
+	storageType: StorageType;
 	accessCount: number;
 	version?: string;
 	source?: string;
@@ -106,6 +112,11 @@ export interface StorageItemMetadata {
 	cacheExpiry?: Date;
 	accessTime?: number;
 	writeTime?: number;
+}
+
+export interface StorageStatsItem {
+	items: number;
+	size: number;
 }
 
 /**
@@ -124,9 +135,9 @@ export interface StorageStats {
 	opsPerSecond: number;
 	avgResponseTime: number;
 	typeBreakdown: {
-		persistent: { items: number; size: number };
-		cache: { items: number; size: number };
-		hybrid: { items: number; size: number };
+		persistent: StorageStatsItem;
+		cache: StorageStatsItem;
+		hybrid: StorageStatsItem;
 	};
 }
 
@@ -141,7 +152,7 @@ export interface StorageCleanupOptions {
 	maxAge?: number;
 	maxSize?: number;
 	dryRun?: boolean;
-	types?: ('persistent' | 'cache' | 'hybrid')[];
+	types?: StorageType[];
 }
 
 /**
@@ -172,6 +183,25 @@ export interface StorageSyncOptions {
 	syncMetadata?: boolean;
 }
 
+export interface StorageMetricsItem {
+	operations: number;
+	errors: number;
+	size: number;
+}
+
+export interface StorageMetricsOperation {
+	set: number;
+	get: number;
+	delete: number;
+	exists: number;
+	clear: number;
+	getKeys: number;
+	invalidate: number;
+	getOrSet: number;
+	getStats: number;
+	cleanup: number;
+}
+
 /**
  * Storage metrics interface
  * @interface StorageMetrics
@@ -179,30 +209,10 @@ export interface StorageSyncOptions {
  * @used_by shared/services/storage
  */
 export interface StorageMetrics {
-	operations: {
-		set: number;
-		get: number;
-		delete: number;
-		exists: number;
-		clear: number;
-		getKeys: number;
-		invalidate: number;
-		getOrSet: number;
-		getStats: number;
-		cleanup: number;
-	};
-	errors: {
-		set: number;
-		get: number;
-		delete: number;
-		exists: number;
-		clear: number;
-		getKeys: number;
-		invalidate: number;
-		getOrSet: number;
-		getStats: number;
-		cleanup: number;
-	};
+	operations: StorageMetricsOperation;
+	errors: StorageMetricsOperation;
+	totalOps: number;
+	totalErrors: number;
 	performance: {
 		avgResponseTime: number;
 		opsPerSecond: number;
@@ -210,9 +220,9 @@ export interface StorageMetrics {
 		missRate: number;
 	};
 	storageTypes: {
-		persistent: { operations: number; errors: number; size: number };
-		cache: { operations: number; errors: number; size: number };
-		hybrid: { operations: number; errors: number; size: number };
+		persistent: StorageMetricsItem;
+		cache: StorageMetricsItem;
+		hybrid: StorageMetricsItem;
 	};
 	uptime: {
 		ms: number;
@@ -220,8 +230,7 @@ export interface StorageMetrics {
 		minutes: number;
 		hours: number;
 	};
-	totalOps: number;
-	totalErrors: number;
+
 	middleware?: {
 		[middlewareName: string]: {
 			requestCount: number;

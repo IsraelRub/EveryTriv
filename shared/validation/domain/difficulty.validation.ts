@@ -17,7 +17,7 @@ import type { BaseValidationResult, GameDifficulty } from '@shared/types';
  * Converts GameDifficulty to DifficultyLevel for database storage
  * Custom difficulties are converted to DifficultyLevel.CUSTOM
  *
- * @param difficulty - The difficulty to convert (GameDifficulty)
+ * @param difficulty The difficulty to convert (GameDifficulty)
  * @returns DifficultyLevel The corresponding difficulty level for storage
  * @description Converts both standard difficulty levels and custom difficulty strings to DifficultyLevel enum
  */
@@ -39,7 +39,7 @@ export function toDifficultyLevel(difficulty: GameDifficulty): DifficultyLevel {
 /**
  * Checks if the provided difficulty string represents a custom difficulty
  *
- * @param difficulty - The difficulty string to check
+ * @param difficulty The difficulty string to check
  * @returns boolean True if the difficulty is custom, false otherwise
  * @description Determines if difficulty starts with the custom difficulty prefix
  */
@@ -50,7 +50,7 @@ export function isCustomDifficulty(difficulty: string): boolean {
 /**
  * Checks if the provided difficulty matches a registered difficulty level
  *
- * @param difficulty - The difficulty string to check
+ * @param difficulty The difficulty string to check
  * @returns boolean True if the difficulty matches a registered difficulty
  * @description Determines if difficulty corresponds to one of the predefined levels
  */
@@ -62,7 +62,7 @@ export function isRegisteredDifficulty(difficulty: string): difficulty is Diffic
 /**
  * Checks if a difficulty value is valid (registered or custom)
  *
- * @param difficulty - The difficulty string to validate
+ * @param difficulty The difficulty string to validate
  * @returns boolean True if the difficulty is registered or a valid custom difficulty
  * @description Validates that a difficulty is either one of the predefined levels or a custom difficulty
  */
@@ -73,7 +73,7 @@ export function isValidDifficulty(difficulty: string): boolean {
 /**
  * Extracts the custom difficulty text from a full difficulty string
  *
- * @param difficulty - The full difficulty string to extract from
+ * @param difficulty The full difficulty string to extract from
  * @returns string The custom difficulty text without the prefix
  * @description Removes the custom difficulty prefix to get the user-defined text
  */
@@ -85,7 +85,7 @@ export function extractCustomDifficultyText(difficulty: string): string {
 /**
  * Creates a custom difficulty string from user input text
  *
- * @param text - The user input text for custom difficulty
+ * @param text The user input text for custom difficulty
  * @returns string The formatted custom difficulty string with prefix
  * @description Adds the custom difficulty prefix to user input text
  */
@@ -96,8 +96,8 @@ export function createCustomDifficulty(text: string): string {
 /**
  * Gets display text for difficulty with length constraints
  *
- * @param difficulty - The difficulty string to format for display
- * @param maxLength - Maximum length for display text (defaults to 50)
+ * @param difficulty The difficulty string to format for display
+ * @param maxLength Maximum length for display text (defaults to 50)
  * @returns string Formatted display text for the difficulty
  * @description Formats difficulty text for UI display with truncation for long custom difficulties
  */
@@ -117,7 +117,7 @@ export function getDifficultyDisplayText(difficulty: string, maxLength: number =
 /**
  * Gets the score multiplier based on mapped difficulty level
  *
- * @param mappedDifficulty - The mapped difficulty level
+ * @param mappedDifficulty The mapped difficulty level
  * @returns number The score multiplier for the difficulty level
  * @description Returns appropriate score multiplier for different difficulty levels
  */
@@ -137,7 +137,7 @@ export function getCustomDifficultyMultiplier(mappedDifficulty: DifficultyLevel)
 /**
  * Normalizes custom difficulty text for consistent processing
  *
- * @param text - The text to normalize
+ * @param text The text to normalize
  * @returns string Normalized text with consistent formatting
  * @description Cleans and standardizes custom difficulty text for processing
  */
@@ -153,7 +153,7 @@ export function normalizeCustomDifficulty(text: string): string {
 /**
  * Checks if custom difficulty text contains meaningful content
  *
- * @param text - The text to validate for meaningful content
+ * @param text The text to validate for meaningful content
  * @returns boolean True if the text contains meaningful content
  * @description Validates that custom difficulty text has substantial content beyond common words
  */
@@ -174,7 +174,7 @@ export function hasValidCustomDifficultyContent(text: string): boolean {
 /**
  * Validates custom difficulty text input for format and content
  *
- * @param text - The custom difficulty text to validate
+ * @param text The custom difficulty text to validate
  * @returns SimpleValidationResult containing validation result and error messages if invalid
  * @description Performs comprehensive validation of custom difficulty text including length, content, and forbidden words
  */

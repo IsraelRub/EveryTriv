@@ -136,15 +136,15 @@ export class PaymentService {
   }
 
   /**
-   * Get point purchase options
+   * Get credit purchase options
    */
-  async getPointPurchaseOptions(): Promise<PointPurchaseOption[]> {
-    return POINT_PURCHASE_PACKAGES.map(pkg => ({
+  async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
+    return CREDIT_PURCHASE_PACKAGES.map(pkg => ({
       id: pkg.id,
-      points: pkg.points,
+      credits: pkg.credits,
       price: pkg.price,
       priceDisplay: pkg.priceDisplay,
-      pricePerPoint: pkg.pricePerPoint,
+      pricePerCredit: pkg.pricePerCredit,
     }));
   }
 
@@ -454,7 +454,7 @@ export class PaymentService {
 - API Reference: `../API_REFERENCE.md`
 - Internal Structure: `../internal/README.md`
 - Subscription Module: `./SUBSCRIPTION.md`
-- Points Module: `./POINTS.md`
+- Credits Module: `./CREDITS.md`
 - דיאגרמות: [דיאגרמת זרימת תשלומים](../../DIAGRAMS.md#דיאגרמת-זרימת-תשלומים)
 
 ---

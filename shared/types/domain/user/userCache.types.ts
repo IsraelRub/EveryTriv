@@ -1,16 +1,16 @@
 export interface UserStatsCacheEntry extends Record<string, unknown> {
 	userId: string;
-	username: string;
+	email: string;
 	credits: number;
-	purchasedPoints: number;
-	totalPoints: number;
+	purchasedCredits: number;
+	totalCredits: number;
 	created_at: unknown;
 	accountAge: number;
 }
 
 export interface UserSearchCacheResult extends Record<string, unknown> {
 	id: string;
-	username: string;
+	email: string;
 	firstName: string | null;
 	lastName: string | null;
 	avatar: string | null;

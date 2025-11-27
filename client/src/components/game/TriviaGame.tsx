@@ -18,8 +18,8 @@ import { updateScore } from '../../redux/slices';
 import { audioService } from '../../services';
 import type { TriviaGameProps } from '../../types';
 import { fadeInUp, scaleIn } from '../animations';
-import { Icon } from '../IconLibrary';
 import { Button } from '../ui';
+import { Icon } from '../ui/IconLibrary';
 
 export default function TriviaGame({ question, onComplete, timeLimit = 30 }: TriviaGameProps) {
 	const dispatch = useAppDispatch();
@@ -57,8 +57,8 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 		}, 1500);
 	};
 
-	const calculatePoints = (difficulty: string, remainingTime: number): number => {
-		const basePoints =
+	const calculateScore = (difficulty: string, remainingTime: number): number => {
+		const baseScore =
 			{
 				easy: 10,
 				medium: 20,
@@ -66,9 +66,9 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 			}[difficulty.toLowerCase()] || 10;
 
 		// Time bonus: up to 50% extra for fast answers
-		const timeBonus = Math.floor(basePoints * (remainingTime / timeLimit) * 0.5);
+		const timeBonus = Math.floor(baseScore * (remainingTime / timeLimit) * 0.5);
 
-		return basePoints + timeBonus;
+		return baseScore + timeBonus;
 	};
 
 	const handleAnswerSelect = (answerIndex: number) => {
@@ -85,10 +85,10 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 		const isCorrect = selectedAnswer === question.correctAnswerIndex;
 
 		if (isCorrect) {
-			const points = calculatePoints(question.difficulty, timer);
+			const score = calculateScore(question.difficulty, timer);
 			dispatch(
 				updateScore({
-					score: points,
+					score,
 					timeSpent: 30 - timer,
 					isCorrect: true,
 					responseTime: 30 - timer,
@@ -97,7 +97,7 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 			audioService.play(AudioKey.SUCCESS);
 			logger.gameInfo('Correct answer', {
 				questionId: question.id,
-				points,
+				score,
 				timeRemaining: timer,
 			});
 		} else {
@@ -110,10 +110,10 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 		}
 
 		// Wait a moment to show feedback, then complete
-		const points = isCorrect ? calculatePoints(question.difficulty, timer) : 0;
+		const score = isCorrect ? calculateScore(question.difficulty, timer) : 0;
 
 		setTimeout(() => {
-			onComplete(isCorrect, points);
+			onComplete(isCorrect, score);
 		}, 1500);
 	};
 
@@ -205,7 +205,7 @@ export default function TriviaGame({ question, onComplete, timeLimit = 30 }: Tri
 					{selectedAnswer === question.correctAnswerIndex ? (
 						<div className='text-green-400 text-xl font-bold flex items-center justify-center gap-2'>
 							<Icon name='check' size={ComponentSize.SM} className='text-green-400' />
-							<span>Correct! +{calculatePoints(question.difficulty, timer)} points</span>
+							<span>Correct! +{calculateScore(question.difficulty, timer)} score</span>
 						</div>
 					) : (
 						<div className='text-red-400 text-xl font-bold flex items-center justify-center gap-2'>

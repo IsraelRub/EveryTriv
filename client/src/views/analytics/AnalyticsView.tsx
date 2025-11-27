@@ -101,7 +101,7 @@ function AnalyticsViewContent() {
 	const defaultAnalytics: CompleteUserAnalytics = {
 		basic: {
 			userId: '',
-			username: '',
+			email: '',
 			...USER_DEFAULT_VALUES,
 			createdAt: new Date(),
 			accountAge: 0,
@@ -185,9 +185,9 @@ function AnalyticsViewContent() {
 						trend={analyticsData.ranking.percentile > 50 ? 'up' : 'down'}
 					/>
 					<MetricCard
-						title='Total points'
-						value={analyticsData.basic.totalPoints.toLocaleString()}
-						subtitle={`${analyticsData.basic.credits} base points + ${analyticsData.basic.purchasedPoints} purchases`}
+						title='Total credits'
+						value={analyticsData.basic.totalCredits.toLocaleString()}
+						subtitle={`${analyticsData.basic.credits} base credits + ${analyticsData.basic.purchasedCredits} purchases`}
 						icon='star'
 						color='blue'
 						trend='up'
@@ -440,12 +440,12 @@ function AnalyticsViewContent() {
  * Displays a single metric with title, value, subtitle, icon, and trend indicator.
  * Used in the analytics dashboard to show key performance indicators.
  *
- * @param title - The metric title
- * @param value - The metric value to display
- * @param subtitle - Additional context text
- * @param icon - Icon name to display
- * @param color - Color theme for the card
- * @param trend - Trend direction (up, down, neutral)
+ * @param title The metric title
+ * @param value The metric value to display
+ * @param subtitle Additional context text
+ * @param icon Icon name to display
+ * @param color Color theme for the card
+ * @param trend Trend direction (up, down, neutral)
  * @returns JSX element containing the metric card
  */
 function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: CardMetricProps & { icon: string }) {
@@ -504,11 +504,11 @@ function MetricCard({ title, value, subtitle, icon, color, trend = 'neutral' }: 
  * Displays a comparison between user value and average value with visual indicators.
  * Shows percentage difference and trend direction for performance metrics.
  *
- * @param title - The metric title
- * @param userValue - User's value for the metric
- * @param averageValue - Average value for comparison
- * @param unit - Unit of measurement
- * @param higherIsBetter - Whether higher values are better
+ * @param title The metric title
+ * @param userValue User's value for the metric
+ * @param averageValue Average value for comparison
+ * @param unit Unit of measurement
+ * @param higherIsBetter Whether higher values are better
  * @returns JSX element containing the comparison card
  */
 function ComparisonCard({ title, userValue, averageValue, unit, higherIsBetter }: ComparisonCardProps) {
@@ -568,7 +568,7 @@ function ComparisonCard({ title, userValue, averageValue, unit, higherIsBetter }
  * Displays a horizontal bar chart showing the most played topics.
  * Shows top 5 topics with animated progress bars.
  *
- * @param topicsPlayed - Object mapping topic names to play counts
+ * @param topicsPlayed Object mapping topic names to play counts
  * @returns JSX element containing the topics chart
  */
 function TopicsChart({ topicsPlayed }: { topicsPlayed: TopicsPlayed }) {
@@ -619,7 +619,7 @@ function TopicsChart({ topicsPlayed }: { topicsPlayed: TopicsPlayed }) {
  * Displays success rates by difficulty level with color-coded progress bars.
  * Shows correct/total ratios and percentage success rates.
  *
- * @param difficultyBreakdown - Object mapping difficulty levels to correct/total stats
+ * @param difficultyBreakdown Object mapping difficulty levels to correct/total stats
  * @returns JSX element containing the difficulty chart
  */
 function DifficultyChart({ difficultyBreakdown }: { difficultyBreakdown: DifficultyBreakdown }) {
@@ -675,7 +675,7 @@ function DifficultyChart({ difficultyBreakdown }: { difficultyBreakdown: Difficu
  * Displays recent user activity including last game, streak, and performance metrics.
  * Shows additional performance indicators when available.
  *
- * @param analyticsData - Complete user analytics data
+ * @param analyticsData Complete user analytics data
  * @returns JSX element containing the recent activity section
  */
 function RecentActivity({ analyticsData }: { analyticsData: CompleteUserAnalytics }) {

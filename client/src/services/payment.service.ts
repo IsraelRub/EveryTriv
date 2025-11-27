@@ -66,6 +66,7 @@ class ClientPaymentService {
 
 	/**
 	 * Get payment history
+	 * @returns List of payment history entries
 	 */
 	async getPaymentHistory(): Promise<PaymentResult[]> {
 		try {

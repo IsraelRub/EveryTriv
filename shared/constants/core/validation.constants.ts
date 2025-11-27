@@ -37,13 +37,9 @@ export enum ValidationErrorCategory {
 
 // Validation limits for input fields
 export const VALIDATION_LIMITS = {
-	USERNAME: {
-		MIN_LENGTH: 3,
-		MAX_LENGTH: 30,
-	},
 	PASSWORD: {
-		MIN_LENGTH: 8,
-		MAX_LENGTH: 128,
+		MIN_LENGTH: 6,
+		MAX_LENGTH: 15,
 	},
 	EMAIL: {
 		MAX_LENGTH: 255,
@@ -64,11 +60,31 @@ export const VALIDATION_LIMITS = {
 		MIN_LENGTH: 1,
 		MAX_LENGTH: 50,
 	},
-	QUESTION_COUNT: {
+	REQUESTED_QUESTIONS: {
 		MIN: 1,
 		MAX: 50,
+		/**
+		 * Magic number representing unlimited questions mode
+		 *
+		 * Why 999 and not Infinity or a string?
+		 * - Infinity cannot be serialized in JSON (becomes null)
+		 * - Infinity fails @IsInt() validation (Number.isInteger(Infinity) === false)
+		 * - Database JSONB columns cannot store Infinity
+		 * - String values break type safety (requestedQuestions: number)
+		 * - String values fail @IsInt() validation
+		 *
+		 * Why 999 specifically?
+		 * - Large enough to be clearly distinct from MAX (50)
+		 * - Small enough to avoid performance issues
+		 * - Common convention for "unlimited" or "max" values
+		 * - Works seamlessly across all system layers (API, validation, database)
+		 *
+		 * Usage: When requestedQuestions === UNLIMITED, the system treats it as unlimited mode,
+		 * requesting questions in batches while respecting server limits.
+		 */
+		UNLIMITED: 999,
 	},
-	POINTS: {
+	CREDITS: {
 		MIN: 1,
 		MAX: 10000,
 	},
@@ -88,7 +104,6 @@ export const VALIDATION_LIMITS = {
  * @used_by client/src/constants/form.constants.ts, client/src/components/forms/ValidatedInput.tsx
  */
 export const FORM_VALIDATION_TYPES = {
-	USERNAME: 'username',
 	PASSWORD: 'password',
 	EMAIL: 'email',
 	TOPIC: 'topic',

@@ -6,7 +6,8 @@
  * @used_by shared/utils/index.ts
  */
 
-export * from './points.utils';
+export * from './credits.utils';
+export * from './score.utils';
 export * from './user.utils';
-export * from './subscription.utils';
 export * from './entityGuards';
+export * from './multiplayer-guards';

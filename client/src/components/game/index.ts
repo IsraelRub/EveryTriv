@@ -27,3 +27,10 @@ export { default as TriviaForm } from './TriviaForm';
  * @used_by client/src/views, client/src/components
  */
 export { default as TriviaGame } from './TriviaGame';
+
+/**
+ * Game mode selection component
+ * @description Component for selecting game mode (time-limited, question-limited, unlimited)
+ * @used_by client/src/components/game/TriviaForm
+ */
+export { default as GameMode } from './GameMode';

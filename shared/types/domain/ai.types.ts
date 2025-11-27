@@ -5,17 +5,30 @@
  * @description Type definitions for AI providers, models, and AI-related functionality
  * @used_by server/src/features/game/logic/providers/implementations
  */
-import type { BasicValue } from '../core/data.types';
-import type { TriviaQuestion } from './game/trivia.types';
+import type { BaseTimestamps, BasicValue } from '../core/data.types';
+
+/**
+ * LLM question format (simplified, without topic/difficulty which are added later)
+ * @interface LLMQuestion
+ * @description Question format returned by LLM providers
+ */
+export interface LLMQuestion {
+	question: string;
+	answers: string[];
+	correctAnswerIndex: number;
+}
 
 /**
  * LLM trivia response interface
  * @interface LLMTriviaResponse
  * @description Trivia-specific response from LLM providers with enhanced metadata
+ * Uses LLMQuestion (with answers: string[]) instead of TriviaQuestion (with answers: TriviaAnswer[])
+ * because LLM providers return simple string arrays for answers
+ * Topic and difficulty are added later in base.provider.ts
  * @used_by server/src/features/game/logic/providers/implementations
  */
 export interface LLMTriviaResponse {
-	questions: TriviaQuestion[];
+	questions: LLMQuestion[];
 	explanation?: string;
 	content: string;
 	status: 'success' | 'error';
@@ -32,7 +45,9 @@ export interface LLMTriviaResponse {
 /**
  * Provider configuration interface
  * @interface ProviderConfig
- * @description Provider configuration for trivia generation
+ * @description Provider configuration for trivia generation.
+ * Priority determines selection order (lower number = higher priority, selected first).
+ * Providers are prioritized by cost: free providers (priority 1) are selected before paid ones.
  * @used_by server/src/features/game/logic/providers/implementations
  */
 export interface ProviderConfig {
@@ -42,13 +57,9 @@ export interface ProviderConfig {
 	timeout: number;
 	maxRetries: number;
 	enabled: boolean;
+	/** Priority level (1 = highest priority, selected first). Lower number = higher priority */
 	priority: number;
 	headers?: Record<string, string>;
-	/**
-	 * Request body for API call
-	 * @description JSON-serializable object that can contain strings, numbers, booleans, arrays, and nested objects
-	 * Different providers have different body structures (OpenAI uses messages array, Google uses contents array, etc.)
-	 */
 	body?: Record<string, unknown>;
 }
 
@@ -58,7 +69,7 @@ export interface ProviderConfig {
  * @description Provider statistics
  * @used_by server/src/features/game/logic/providers/management/providers.service.ts
  */
-export interface ProviderStats {
+export interface ProviderStats extends BaseTimestamps {
 	providerName: string;
 	requests: number;
 	successes: number;
@@ -68,8 +79,6 @@ export interface ProviderStats {
 	errorRate: number;
 	lastUsed: Date | null;
 	status: 'healthy' | 'unhealthy' | 'unavailable' | 'available';
-	createdAt: Date;
-	updatedAt: Date;
 }
 
 /**
@@ -81,10 +90,10 @@ export interface ProviderStats {
 export interface PromptParams {
 	topic: string;
 	difficulty: string;
-	questionCount: number;
-	answerCount?: number;
+	answerCount: number;
 	customInstructions?: string;
 	isCustomDifficulty?: boolean;
+	excludeQuestions?: string[];
 	options?: {
 		includeExplanation?: boolean;
 		includeHints?: boolean;

@@ -75,7 +75,9 @@ export interface GameHistoryEntry extends BaseGameEntity {
  */
 export interface LeaderboardEntry extends BaseScoreData {
 	userId: string;
-	username: string;
+	email: string;
+	firstName?: string;
+	lastName?: string;
 	avatar?: string;
 	rank: number;
 	gamesPlayed: number;
@@ -123,7 +125,7 @@ export interface UserStatsData extends BaseGameStatistics, BaseScoreData {
  */
 export interface LeaderboardStatsResponse {
 	activeUsers: number;
-	averagePoints: number;
+	averageScore: number;
 	averageGames: number;
 }
 

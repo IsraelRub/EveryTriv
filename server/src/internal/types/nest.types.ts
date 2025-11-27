@@ -67,7 +67,6 @@ export interface ApiResponseConfig {
 // User payload types
 export interface UserPayload {
 	sub: string;
-	username: string;
 	email: string;
 	role: UserRole;
 	iat: number;

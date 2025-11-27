@@ -22,7 +22,7 @@ const invalidateSubscriptionQueries = (queryClient: ReturnType<typeof useQueryCl
 
 /**
  * Hook for creating subscription
- * @returns Mutation for creating subscription
+ * @returns Mutation for creating subscription with plan and billing cycle
  */
 export const useCreateSubscription = () => {
 	const queryClient = useQueryClient();

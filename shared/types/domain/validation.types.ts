@@ -34,10 +34,6 @@ export interface BaseValidationResult {
 export interface PasswordValidationResult extends BaseValidationResult {
 	checks: {
 		hasMinLength: boolean;
-		hasUppercase: boolean;
-		hasLowercase: boolean;
-		hasNumber: boolean;
-		hasSpecialChar: boolean;
 	};
 }
 
@@ -84,7 +80,6 @@ export interface ValidationContext {
  * Validation type for form fields
  */
 export type ValidationType =
-	| 'username'
 	| 'password'
 	| 'email'
 	| 'topic'

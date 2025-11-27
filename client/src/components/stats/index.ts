@@ -16,7 +16,7 @@ export { default as CustomDifficultyHistory } from './CustomDifficultyHistory';
 
 /**
  * Scoring system component
- * @description Points, scoring display, and performance metrics
+ * @description Scoring display, and performance metrics
  * @used_by client/src/views/user, client/src/components
  */
 export { default as ScoringSystem } from './ScoringSystem';

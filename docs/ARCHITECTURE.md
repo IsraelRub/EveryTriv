@@ -18,6 +18,7 @@ EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI
 - **Framer Motion** - אנימציות
 - **Vite** - כלי בנייה מהיר
 - **React Router** - ניווט בין דפים
+- **Socket.IO Client** - WebSocket client למרובה משתתפים
 
 ### Backend
 - **NestJS** - מסגרת Node.js מודולרית
@@ -28,12 +29,13 @@ EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI
 - **Passport.js** - אימות OAuth
 - **JWT** - טוקני גישה
 - **bcrypt** - הצפנת סיסמאות
+- **WebSocket (Socket.IO)** - תקשורת בזמן אמת למרובה משתתפים
 
 ### AI ו-Infrastructure
-- **OpenAI GPT-4** - ייצור שאלות איכותיות
-- **Anthropic Claude** - שאלות מורכבות
-- **Google AI Gemini** - גיוון בשאלות
-- **Mistral** - ספק AI נוסף
+- **Groq** - פרובידר חינמי עם Llama 3.1 8B (priority 1 - נבחר ראשון)
+- **Gemini** - Google Gemini 1.5 Flash - $0.075/M tokens (priority 2)
+- **ChatGPT** - OpenAI GPT-4o-mini - $0.15/M tokens (priority 3)
+- **Claude** - Anthropic Claude 3.5 Haiku - $0.25/M tokens (priority 4)
 - **Docker** - containerization
 - **Docker Compose** - אורכיסטרציה
 
@@ -52,7 +54,7 @@ EveryTriv/
 │   │   │   ├── leaderboard/  # לוח תוצאות
 │   │   │   ├── login/        # דף התחברות
 │   │   │   ├── payment/      # תשלומים
-│   │   │   ├── points/       # נקודות
+│   │   │   ├── credits/      # אשראי
 │   │   │   ├── registration/ # דף רישום
 │   │   │   ├── settings/     # הגדרות
 │   │   │   ├── unauthorized/ # דף לא מורשה
@@ -94,7 +96,7 @@ EveryTriv/
 │   │   │   │   │   │   └── prompts/         # תבניות שאלות
 │   │   │   │   │   └── triviaGeneration.service.ts
 │   │   │   │   └── types/    # טיפוסי משחק
-│   │   │   ├── points/       # מערכת נקודות
+│   │   │   ├── credits/      # מערכת אשראי
 │   │   │   ├── payment/      # תשלומים
 │   │   │   ├── subscription/ # מנויים
 │   │   │   ├── analytics/    # אנליטיקה
@@ -222,15 +224,16 @@ React Query מטפל במצב שרת (server state) עם cache אוטומטי ו
 #### מודול Game
 מודול משחק מטפל ב:
 - יצירת שאלות טריוויה באמצעות AI providers
-- ניהול ספקי AI (OpenAI, Anthropic, Google, Mistral)
+- ניהול ספקי AI לפי priority (עלות): Groq (חינמי), Gemini, ChatGPT, Claude
+- round-robin selection עם fallback אוטומטי
 - לוגיקת משחק וניקוד
 - היסטוריית משחקים
 
-#### מודול Points
-מודול נקודות מטפל ב:
-- חישוב נקודות לפי קושי וזמן
-- שמירת טרנזקציות נקודות
-- עדכון מאזן נקודות משתמש
+#### מודול Credits
+מודול אשראי מטפל ב:
+- ניהול מאזן אשראי משתמש
+- שמירת טרנזקציות אשראי
+- עדכון מאזן אשראי משתמש
 
 #### מודול Leaderboard
 מודול לוח תוצאות מטפל ב:
@@ -260,11 +263,11 @@ React Query מטפל במצב שרת (server state) עם cache אוטומטי ו
 
 #### שירותי AI
 - **BaseProvider** - ממשק בסיס לספקי AI
-- **OpenAIProvider** - אינטגרציה עם OpenAI
-- **AnthropicProvider** - אינטגרציה עם Anthropic
-- **GoogleProvider** - אינטגרציה עם Google AI
-- **MistralProvider** - אינטגרציה עם Mistral
-- **ProvidersService** - ניהול ספקי AI
+- **GroqProvider** - אינטגרציה עם Groq (חינמי, priority 1)
+- **GeminiProvider** - אינטגרציה עם Gemini ($0.075/M, priority 2)
+- **ChatGPTProvider** - אינטגרציה עם ChatGPT ($0.15/M, priority 3)
+- **ClaudeProvider** - אינטגרציה עם Claude ($0.25/M, priority 4)
+- **ProvidersService** - ניהול ספקי AI עם round-robin ו-fallback
 - **ProvidersController** - API לניהול ספקים
 
 לדיאגרמת AI Providers מפורטת, ראו: [דיאגרמות - AI Providers](./DIAGRAMS.md#דיאגרמת-ai-providers)
@@ -300,8 +303,12 @@ const { addSearchConditions } = require('../../common/queries');
 addSearchConditions(queryBuilder, 'user', ['username', 'firstName', 'lastName'], searchTerm);
 
 // Random query
-const { createRandomQuery } = await import('../../common/queries');
-const queryBuilder = createRandomQuery(repository, 'trivia', { topic, difficulty }, limit);
+const queryBuilder = repository
+  .createQueryBuilder('trivia')
+  .where('trivia.topic = :topic', { topic })
+  .andWhere('trivia.difficulty = :difficulty', { difficulty })
+  .orderBy('RANDOM()')
+  .limit(limit);
 ```
 
 **תיעוד מפורט:** [Database Queries](./backend/DATABASE_QUERIES.md)
@@ -315,7 +322,7 @@ const queryBuilder = createRandomQuery(repository, 'trivia', { topic, difficulty
 - **user_stats** - סטטיסטיקות משתמשים
 - **leaderboard** - לוח תוצאות
 - **payment_history** - היסטוריית תשלומים
-- **point_transactions** - עסקאות נקודות
+- **credit_transactions** - עסקאות אשראי
 - **subscriptions** - מנויים
 
 #### אינדקסים
@@ -364,8 +371,8 @@ const queryBuilder = createRandomQuery(repository, 'trivia', { topic, difficulty
 1. משתמש עונה על שאלה
 2. Frontend שולח תשובה ל-`POST /api/game/answer`
 3. Backend בודק נכונות תשובה
-4. PointsService מחשב נקודות לפי קושי וזמן
-5. שומר טרנזקציית נקודות
+4. ScoreCalculationService מחשב ניקוד לפי קושי וזמן
+5. שומר טרנזקציית אשראי
 6. מעדכן סטטיסטיקות משתמש
 7. מחזיר תוצאה וניקוד ל-Frontend
 

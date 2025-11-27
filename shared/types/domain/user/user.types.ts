@@ -16,13 +16,9 @@ import type { BaseGameStatistics } from '../game/game.types';
  */
 export interface BasicUser {
 	id: string;
-	username: string;
 	email: string;
 	role: UserRole;
 }
-
-/**
-
 
 /**
  * User profile interface for API responses
@@ -96,8 +92,8 @@ export interface User extends UserProfile {
 
 	// Additional fields in use
 	credits: number;
-	purchasedPoints: number;
-	totalPoints: number;
+	purchasedCredits: number;
+	totalCredits: number;
 }
 
 /**

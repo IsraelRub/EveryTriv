@@ -4,16 +4,27 @@
  */
 import { DifficultyLevel } from '@shared/constants';
 import { PromptParams } from '@shared/types';
+import { extractCustomDifficultyText } from '@shared/validation';
 
 export class PromptTemplates {
 	/**
 	 * Generate trivia question prompt with advanced quality guidelines
 	 */
 	static generateTriviaQuestion(params: PromptParams): string {
-		const { topic, difficulty, answerCount, isCustomDifficulty } = params;
-		const difficultyDescription = difficulty;
+		const { topic, difficulty, answerCount, isCustomDifficulty, excludeQuestions } = params;
+		// Extract the actual difficulty text without the "custom:" prefix for AI
+		const difficultyDescription = isCustomDifficulty ? extractCustomDifficultyText(difficulty) : difficulty;
 
-		return `Generate a high-quality trivia question about "${topic}" with difficulty level: "${difficultyDescription}". 
+		const excludeSection =
+			excludeQuestions && excludeQuestions.length > 0
+				? `\n\nIMPORTANT - AVOID DUPLICATES:
+You must generate a question that is DIFFERENT from the following questions that have already been generated:
+${excludeQuestions.map((q, i) => `${i + 1}. "${q}"`).join('\n')}
+
+Do NOT generate a question that is similar to, rephrased version of, or essentially the same as any of the questions listed above.`
+				: '';
+
+		return `Generate a high-quality trivia question about "${topic}" with difficulty level: "${difficultyDescription}".${excludeSection} 
 
 QUALITY REQUIREMENTS:
 - Question must be factual and verifiable from reliable sources

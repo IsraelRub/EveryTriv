@@ -8,7 +8,7 @@
 import { QueryClient } from '@tanstack/react-query';
 
 import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
+import { calculateRetryDelay, getErrorMessage } from '@shared/utils';
 
 export const prefetchCommonQueries = async () => {
 	try {
@@ -29,13 +29,24 @@ export const prefetchCommonQueries = async () => {
 
 export const prefetchAuthenticatedQueries = async () => {
 	try {
+		// Prefetch credit packages
 		await queryClient.prefetchQuery({
-			queryKey: ['points', 'packages'],
+			queryKey: ['credits', 'packages'],
 			queryFn: async () => {
 				const { apiService } = await import('./api.service');
-				return apiService.getPointPackages();
+				return apiService.getCreditPackages();
 			},
 			staleTime: 10 * 60 * 1000,
+		});
+
+		// Prefetch credit balance
+		await queryClient.prefetchQuery({
+			queryKey: ['credits', 'balance'],
+			queryFn: async () => {
+				const { apiService } = await import('./api.service');
+				return apiService.getCreditBalance();
+			},
+			staleTime: 5 * 60 * 1000,
 		});
 
 		logger.apiInfo('Authenticated queries prefetched successfully');
@@ -56,8 +67,10 @@ export const queryClient = new QueryClient({
 				return failureCount < 3;
 			},
 			retryDelay: attemptIndex => {
-				const baseDelay = Math.min(1000 * 2 ** attemptIndex, 30000);
-				return baseDelay + Math.random() * 1000;
+				return calculateRetryDelay(1000, attemptIndex, {
+					maxDelay: 30000,
+					jitter: { fixedJitter: 1000 },
+				});
 			},
 			refetchOnWindowFocus: false,
 			refetchOnReconnect: true,

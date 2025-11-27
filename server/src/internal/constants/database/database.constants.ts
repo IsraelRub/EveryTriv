@@ -16,9 +16,6 @@ export enum RedisKeyPrefix {
 
 // Redis constants
 export const REDIS_CONSTANTS = {
-	/**
-	 * Default connection options - lazy loaded to ensure env vars are available
-	 */
 	get CONNECTION() {
 		return {
 			HOST: process.env.REDIS_HOST || 'localhost',
@@ -30,14 +27,8 @@ export const REDIS_CONSTANTS = {
 		};
 	},
 
-	/**
-	 * Redis key prefixes for different types of data
-	 */
 	KEY_PREFIXES: Object.fromEntries(Object.entries(RedisKeyPrefix).map(([key, value]) => [key, value])),
 
-	/**
-	 * Default TTL values in seconds
-	 */
 	TTL: {
 		CACHE_SHORT: CACHE_DURATION.MEDIUM, // 5 minutes
 		CACHE_MEDIUM: CACHE_DURATION.VERY_LONG, // 1 hour

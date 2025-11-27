@@ -9,14 +9,11 @@
 
 // Localhost URLs configuration
 export const LOCALHOST_URLS = {
-	// API URLs
-	API_BASE: 'http://localhost:3001',
-	API_HEALTH: 'http://localhost:3001/health',
+	SERVER: 'http://localhost:3001',
 
-	// Client URLs
 	CLIENT: 'http://localhost:5173',
 
-	// Admin interfaces
+	// Admin URLs
 	PGADMIN_URL: 'http://localhost:8080',
 	REDIS_COMMANDER_URL: 'http://localhost:8081',
 	WEBDB_URL: 'http://localhost:22071',
@@ -54,9 +51,9 @@ export const ENV_VAR_NAMES = {
 
 // Fallback values for environment variables
 export const ENV_FALLBACKS = {
-	API_BASE_URL: LOCALHOST_URLS.API_BASE,
+	API_BASE_URL: LOCALHOST_URLS.SERVER,
 	CLIENT_URL: LOCALHOST_URLS.CLIENT,
-	SERVER_URL: LOCALHOST_URLS.API_BASE,
+	SERVER_URL: LOCALHOST_URLS.SERVER,
 	DATABASE_HOST: LOCALHOST_HOSTS.DATABASE,
 	DATABASE_PORT: LOCALHOST_PORTS.DATABASE,
 	REDIS_HOST: LOCALHOST_HOSTS.REDIS,

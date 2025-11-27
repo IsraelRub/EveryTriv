@@ -9,7 +9,7 @@
 
 /**
  * Generate a random ID using base36 encoding
- * @param length - Length of the generated ID
+ * @param length Length of the generated ID
  * @returns Random alphanumeric string ID
  * @description Creates a random identifier using base36 encoding for URL-safe IDs
  * @default 13
@@ -63,4 +63,23 @@ export function generatePaymentIntentId(): string {
  */
 export function generateQuestionId(): string {
 	return 'q_' + Date.now() + '_' + generateId(10);
+}
+
+/**
+ * Generate a subscription ID
+ * @returns Unique subscription ID with 'sub_' prefix, timestamp, and random suffix
+ * @description Creates an identifier for user subscriptions
+ */
+export function generateSubscriptionId(): string {
+	return `sub_${Date.now()}_${generateId(9)}`;
+}
+
+/**
+ * Generate an interceptor ID with custom prefix
+ * @param prefix Prefix for the interceptor ID
+ * @returns Unique interceptor ID with prefix, timestamp, and random suffix
+ * @description Creates an identifier for interceptors with a custom prefix
+ */
+export function generateInterceptorId(prefix: string): string {
+	return `${prefix}_${Date.now()}_${generateId(9)}`;
 }

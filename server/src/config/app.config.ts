@@ -103,7 +103,6 @@ export class AppConfig {
 
 	static get adminCredentials() {
 		return {
-			username: process.env.ADMIN_USERNAME?.trim() || 'admin_user',
 			email: process.env.ADMIN_EMAIL?.trim() || 'admin@example.com',
 			password: process.env.ADMIN_PASSWORD ?? 'AdminPass123!',
 		};

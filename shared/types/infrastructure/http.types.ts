@@ -5,9 +5,17 @@
  * @module HttpTypes
  * @description HTTP client and request type definitions
  */
+import { HTTP_METHODS } from '@shared/constants';
+
 import type { BaseData, StorageValue } from '../core/data.types';
 import type { HttpError } from '../core/error.types';
 import type { Logger } from './logging.types';
+
+/**
+ * HTTP method type
+ * @description Union type of all valid HTTP methods
+ */
+export type HttpMethod = (typeof HTTP_METHODS)[keyof typeof HTTP_METHODS];
 
 // Define our own base request config for HTTP requests
 /**
@@ -55,14 +63,7 @@ export interface ExtendedRequestConfig extends BaseRequestConfig {
  * @used_by error interceptors, retry logic, error formatting
  */
 export interface HttpErrorWithConfig extends HttpError {
-	/**
-	 * Request configuration (overrides HttpError.config with more specific type)
-	 */
 	config?: BaseRequestConfig;
-	/**
-	 * Request object when request was made but no response received
-	 * @description Used to detect network errors vs server errors
-	 */
 	request?: StorageValue;
 }
 

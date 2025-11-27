@@ -23,7 +23,7 @@ import { ClientGameState, GameTimerState } from './config.types';
 export interface CurrentQuestionMetadata {
 	customDifficultyMultiplier?: number;
 	actualDifficulty?: string;
-	questionCount?: number;
+	totalQuestions?: number;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface GameProps {
  */
 export interface TriviaGameProps {
 	question: TriviaQuestion;
-	onComplete: (isCorrect: boolean, pointsEarned?: number) => void;
+	onComplete: (isCorrect: boolean, scoreEarned?: number) => void;
 	timeLimit?: number;
 }
 
@@ -73,13 +73,10 @@ export interface TriviaFormProps {
 	loading?: boolean;
 	topic?: string;
 	difficulty?: string;
-	questionCount?: number;
+	answerCount?: number;
 	onTopicChange?: (topic: string) => void;
 	onDifficultyChange?: (difficulty: string) => void;
-	onQuestionCountChange?: (count: number) => void;
-	onGameModeSelect?: (mode: string) => void;
-	showGameModeSelector?: boolean;
-	onGameModeSelectorClose?: () => void;
+	onAnswerCountChange?: (count: number) => void;
 }
 
 /**
@@ -197,11 +194,11 @@ export interface SocialShareProps {
 export interface LeaderboardProps {
 	entries?: {
 		rank: number;
-		username: string;
+		email: string;
 		score: number;
 		avatar?: string;
 	}[];
-	onEntryClick?: (entry: { id: string; username: string; score: number; rank: number }) => void;
+	onEntryClick?: (entry: { id: string; email: string; score: number; rank: number }) => void;
 	className?: string;
 	userId?: string;
 }

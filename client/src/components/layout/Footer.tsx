@@ -17,7 +17,7 @@ import {
 } from '../../constants';
 import type { SocialLinkItem } from '../../types';
 import { fadeInUp } from '../animations';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 import { LayoutContainer as Container, GridLayout } from './GridLayout';
 
 export default function Footer() {

@@ -6,12 +6,10 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
+import { HTTP_METHODS, LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
-type HttpMethod = 'GET' | 'POST';
+import type { HttpMethod, LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
 interface LanguageToolCheckOptions extends LanguageValidationOptions {
 	language?: string;
@@ -54,7 +52,7 @@ export class LanguageToolService {
 		const endpoint = LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.LANGUAGES;
 
 		try {
-			const response = await this.performRequest('GET', endpoint);
+			const response = await this.performRequest(HTTP_METHODS.GET, endpoint);
 			logger.languageToolAvailabilityCheck(response.ok, response.status, {
 				endpoint,
 			});
@@ -80,7 +78,7 @@ export class LanguageToolService {
 		const params = this.buildCheckParams(text, options);
 
 		try {
-			const response = await this.performRequest('POST', endpoint, params);
+			const response = await this.performRequest(HTTP_METHODS.POST, endpoint, params);
 			const rawData = await response.json();
 
 			if (!this.isLanguageToolResponse(rawData)) {
@@ -239,7 +237,7 @@ export class LanguageToolService {
 	}
 
 	private isLanguageToolResponse(value: unknown): value is LanguageToolResponse {
-		if (!this.isRecord(value)) {
+		if (!isRecord(value)) {
 			return false;
 		}
 
@@ -252,7 +250,7 @@ export class LanguageToolService {
 	}
 
 	private isLanguageToolMatch(value: unknown): value is LanguageToolResponse['matches'][number] {
-		if (!this.isRecord(value)) {
+		if (!isRecord(value)) {
 			return false;
 		}
 
@@ -264,14 +262,10 @@ export class LanguageToolService {
 	}
 
 	private isReplacement(value: unknown): value is { value: string } {
-		if (!this.isRecord(value)) {
+		if (!isRecord(value)) {
 			return false;
 		}
 
 		return typeof value.value === 'string';
-	}
-
-	private isRecord(value: unknown): value is Record<string, unknown> {
-		return typeof value === 'object' && value !== null;
 	}
 }

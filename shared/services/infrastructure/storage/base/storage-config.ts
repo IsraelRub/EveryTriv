@@ -5,7 +5,7 @@
  * @description configuration factory for all storage services
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage
  */
-import { StorageConfig } from '@shared/types';
+import { StorageConfig, StorageType } from '@shared/types';
 
 /**
  * Storage Configuration Factory
@@ -19,10 +19,7 @@ export class StorageConfigFactory {
 	 * @param overrides Configuration overrides
 	 * @returns Storage configuration
 	 */
-	static createDefaultConfig(
-		type: 'persistent' | 'cache' | 'hybrid' = 'persistent',
-		overrides: Partial<StorageConfig> = {}
-	): StorageConfig {
+	static createDefaultConfig(type: StorageType = 'persistent', overrides: Partial<StorageConfig> = {}): StorageConfig {
 		return {
 			prefix: 'everytriv_',
 			defaultTtl: 3600, // 1 hour default

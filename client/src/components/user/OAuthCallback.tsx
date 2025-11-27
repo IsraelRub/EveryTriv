@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
+import { HTTP_ERROR_MESSAGES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
@@ -12,7 +13,7 @@ import { setAuthenticated, setUser } from '@/redux/slices';
 import { ComponentSize } from '../../constants';
 import { authService } from '../../services';
 import { fadeInUp, scaleIn } from '../animations';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 
 export default function OAuthCallback() {
 	const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function OAuthCallback() {
 			try {
 				const success = searchParams.get('success');
 				const error = searchParams.get('error');
+				const errorDescription = searchParams.get('error_description');
 				const params: Record<string, string> = {};
 				for (const [key, value] of searchParams.entries()) {
 					params[key] = value;
@@ -34,16 +36,28 @@ export default function OAuthCallback() {
 				logger.authLogin('OAuth callback received', {
 					success: success ? true : false,
 					error: error || undefined,
+					errorDescription: errorDescription || undefined,
 				});
 				logger.authDebug('Search params', { params });
 
 				if (error) {
-					logger.authError('OAuth error received', { error: error || 'Unknown error' });
-					logger.authError('OAuth error details', { error: error || 'Unknown error' });
-					setError(error);
+					let errorMessage = error;
+					if (error === 'invalid_client') {
+						errorMessage = 'Invalid OAuth client configuration. Please check your Google OAuth settings.';
+					} else if (errorDescription) {
+						errorMessage = decodeURIComponent(errorDescription);
+					}
+
+					logger.authError('OAuth error received', {
+						error: error || HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
+						errorDescription: errorDescription || undefined,
+					});
+
+					setError(errorMessage);
 					setTimeout(() => {
-						navigate('/login?error=oauth_failed');
-					}, 3000);
+						const errorParam = error === 'invalid_client' ? 'invalid_client' : 'oauth_failed';
+						navigate(`/login?error=${errorParam}`);
+					}, 5000);
 					return;
 				}
 
@@ -58,14 +72,9 @@ export default function OAuthCallback() {
 						dispatch(setUser(user));
 						dispatch(setAuthenticated(true));
 
-						// Navigate to home or profile completion
-						if (!user?.username) {
-							logger.authLogin('User has no username, navigating to complete-profile');
-							navigate('/complete-profile');
-						} else {
-							logger.authLogin('User has username, navigating to home');
-							navigate('/');
-						}
+						// Navigate to home
+						logger.authLogin('User authenticated, navigating to home');
+						navigate('/');
 					} catch (error) {
 						logger.authError('Failed to get current user', {
 							error: getErrorMessage(error),
@@ -119,7 +128,14 @@ export default function OAuthCallback() {
 					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.4 }}>
 						<h1 className='text-white text-2xl font-bold mb-4'>Authentication Error</h1>
 						<p className='text-white text-lg mb-6'>An error occurred during the login process</p>
-						<p className='text-red-200 text-sm mb-4'>Error details: {error}</p>
+						<p className='text-red-200 text-sm mb-4 max-w-md mx-auto'>{error}</p>
+						{error.includes('Invalid OAuth client') && (
+							<div className='text-yellow-200 text-xs mt-2 max-w-md mx-auto p-3 bg-yellow-900 bg-opacity-30 rounded'>
+								<p className='font-semibold mb-1'>Configuration Issue:</p>
+								<p>This error usually means the Google OAuth client ID or secret is not configured correctly.</p>
+								<p className='mt-2'>Please contact the administrator to verify the OAuth settings.</p>
+							</div>
+						)}
 					</motion.div>
 
 					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.6 }}>

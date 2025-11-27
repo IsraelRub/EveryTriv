@@ -23,7 +23,7 @@ export interface ValidationHookOptions {
  */
 export type BasicValidationResult = BaseValidationResult;
 
-export type ClientValidationType = 'username' | 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
+export type ClientValidationType = 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
 
 // Validator function type - accepts union type for flexibility
 export type UnifiedValidator = (

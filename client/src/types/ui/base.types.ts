@@ -59,7 +59,7 @@ export interface CardGridProps extends BaseComponentProps {
 	element?: ElementType;
 }
 
-// Input Props (deprecated - use ValidatedInput instead)
+// Input Props
 export interface UIInputProps extends BaseComponentProps {
 	value: string;
 	onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -72,6 +72,8 @@ export interface UIInputProps extends BaseComponentProps {
 	isGlassy?: boolean;
 	error?: boolean;
 	withAnimation?: boolean;
+	min?: number;
+	max?: number;
 }
 
 // Modal Props
@@ -145,7 +147,7 @@ export interface ResponsiveGridProps extends BaseComponentProps {
 // Avatar Props
 export interface AvatarProps {
 	src?: string;
-	username?: string;
+	email?: string;
 	firstName?: string;
 	lastName?: string;
 	size?: ComponentSize;

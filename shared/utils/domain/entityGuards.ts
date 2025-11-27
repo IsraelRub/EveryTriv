@@ -2,16 +2,15 @@ import type {
 	AuditLogEntry,
 	BusinessMetrics,
 	CompleteUserAnalytics,
+	CreditBalance,
+	CreditPurchaseOption,
 	DifficultyStats,
-	PointBalance,
-	PointPurchaseOption,
 	SavedGameConfiguration,
 	SubscriptionData,
 	SubscriptionPlans,
 	TopicAnalyticsRecord,
 	TriviaQuestion,
 	UserSearchCacheEntry,
-	UserStatsCacheEntry,
 } from '@shared/types';
 
 import { isRecord } from '../core';
@@ -23,14 +22,6 @@ type LeaderboardEntryShape = {
 	rank: number;
 	score: number;
 	percentile: number;
-};
-
-type UserStatsEntityShape = {
-	userId: string;
-	totalGames: number;
-	totalQuestions: number;
-	topicStats: unknown;
-	difficultyStats: unknown;
 };
 
 const hasPrimitive = (value: unknown, type: Primitive): boolean => typeof value === type;
@@ -63,30 +54,15 @@ export const createLeaderboardEntryGuard =
 		);
 	};
 
-export const createUserStatsEntityGuard =
-	<T extends UserStatsEntityShape>() =>
-	(value: unknown): value is T => {
-		if (!isRecord(value)) {
-			return false;
-		}
-
-		return (
-			hasPrimitive(value.userId, 'string') &&
-			hasPrimitive(value.totalGames, 'number') &&
-			hasPrimitive(value.totalQuestions, 'number') &&
-			typeof value.topicStats === 'object' &&
-			typeof value.difficultyStats === 'object'
-		);
-	};
-
-export const isPointBalanceCacheEntry = (value: unknown): value is PointBalance => {
+export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalance => {
 	if (!isRecord(value)) {
 		return false;
 	}
 
 	return (
-		hasPrimitive(value.totalPoints, 'number') &&
-		hasPrimitive(value.purchasedPoints, 'number') &&
+		hasPrimitive(value.totalCredits, 'number') &&
+		hasPrimitive(value.credits, 'number') &&
+		hasPrimitive(value.purchasedCredits, 'number') &&
 		hasPrimitive(value.freeQuestions, 'number') &&
 		hasPrimitive(value.dailyLimit, 'number') &&
 		hasPrimitive(value.canPlayFree, 'boolean') &&
@@ -94,20 +70,17 @@ export const isPointBalanceCacheEntry = (value: unknown): value is PointBalance 
 	);
 };
 
-export const isPointPurchaseOptionArray = (value: unknown): value is PointPurchaseOption[] => {
-	if (!Array.isArray(value)) {
-		return false;
-	}
-
-	return value.every(option => {
-		if (!isRecord(option)) {
-			return false;
-		}
-
-		return (
-			hasPrimitive(option.id, 'string') && hasPrimitive(option.points, 'number') && hasPrimitive(option.price, 'number')
-		);
-	});
+export const isCreditPurchaseOptionArray = (value: unknown): value is CreditPurchaseOption[] => {
+	return (
+		Array.isArray(value) &&
+		value.every(
+			option =>
+				isRecord(option) &&
+				hasPrimitive(option.id, 'string') &&
+				hasPrimitive(option.credits, 'number') &&
+				hasPrimitive(option.price, 'number')
+		)
+	);
 };
 
 export const isSubscriptionData = (value: unknown): value is SubscriptionData => {
@@ -141,35 +114,23 @@ export const isSubscriptionPlans = (value: unknown): value is SubscriptionPlans 
 };
 
 export const isTriviaQuestionArray = (value: unknown): value is TriviaQuestion[] => {
-	if (!Array.isArray(value)) {
-		return false;
-	}
-
-	return value.every(question => {
-		if (!isRecord(question)) {
-			return false;
-		}
-
-		return (
-			hasPrimitive(question.question, 'string') &&
-			Array.isArray(question.answers) &&
-			hasPrimitive(question.correctAnswerIndex, 'number')
-		);
-	});
+	return (
+		Array.isArray(value) &&
+		value.every(
+			question =>
+				isRecord(question) &&
+				hasPrimitive(question.question, 'string') &&
+				Array.isArray(question.answers) &&
+				hasPrimitive(question.correctAnswerIndex, 'number')
+		)
+	);
 };
 
 export const isTopicAnalyticsRecordArray = (value: unknown): value is TopicAnalyticsRecord[] => {
-	if (!Array.isArray(value)) {
-		return false;
-	}
-
-	return value.every(stat => {
-		if (!isRecord(stat)) {
-			return false;
-		}
-
-		return hasPrimitive(stat.topic, 'string') && hasPrimitive(stat.totalGames, 'number');
-	});
+	return (
+		Array.isArray(value) &&
+		value.every(stat => isRecord(stat) && hasPrimitive(stat.topic, 'string') && hasPrimitive(stat.totalGames, 'number'))
+	);
 };
 
 export const isDifficultyStatsRecord = (value: unknown): value is Record<string, DifficultyStats> => {
@@ -218,9 +179,9 @@ export const isCompleteUserAnalyticsData = (value: unknown): value is CompleteUs
 	return (
 		isRecord(basic) &&
 		hasPrimitive(basic.userId, 'string') &&
-		hasPrimitive(basic.username, 'string') &&
+		hasPrimitive(basic.email, 'string') &&
 		hasPrimitive(basic.credits, 'number') &&
-		hasPrimitive(basic.purchasedPoints, 'number') &&
+		hasPrimitive(basic.purchasedCredits, 'number') &&
 		isRecord(game) &&
 		hasPrimitive(game.totalGames, 'number') &&
 		isRecord(performance) &&
@@ -228,22 +189,6 @@ export const isCompleteUserAnalyticsData = (value: unknown): value is CompleteUs
 		hasPrimitive(performance.streakDays, 'number') &&
 		isRecord(ranking) &&
 		hasPrimitive(ranking.rank, 'number')
-	);
-};
-
-export const isUserStatsCacheEntry = (value: unknown): value is UserStatsCacheEntry => {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	return (
-		hasPrimitive(value.userId, 'string') &&
-		hasPrimitive(value.username, 'string') &&
-		hasPrimitive(value.credits, 'number') &&
-		hasPrimitive(value.purchasedPoints, 'number') &&
-		hasPrimitive(value.totalPoints, 'number') &&
-		value.created_at !== undefined &&
-		hasPrimitive(value.accountAge, 'number')
 	);
 };
 
@@ -260,7 +205,7 @@ export const isUserSearchCacheEntry = (value: unknown): value is UserSearchCache
 		result =>
 			isRecord(result) &&
 			hasPrimitive(result.id, 'string') &&
-			hasPrimitive(result.username, 'string') &&
+			hasPrimitive(result.email, 'string') &&
 			(hasPrimitive(result.firstName, 'string') || result.firstName === null) &&
 			(hasPrimitive(result.lastName, 'string') || result.lastName === null) &&
 			(hasPrimitive(result.avatar, 'string') || result.avatar === null) &&
@@ -290,8 +235,33 @@ export const isSavedGameConfiguration = (value: unknown): value is SavedGameConf
 	return (
 		hasPrimitive(value.defaultDifficulty, 'string') &&
 		hasPrimitive(value.defaultTopic, 'string') &&
-		hasPrimitive(value.questionCount, 'number') &&
+		hasPrimitive(value.requestedQuestions, 'number') &&
 		hasPrimitive(value.timeLimit, 'number') &&
 		hasPrimitive(value.soundEnabled, 'boolean')
+	);
+};
+
+/**
+ * Type guard for CreditPurchaseOption
+ */
+export const isCreditPurchaseOption = (value: unknown): value is CreditPurchaseOption => {
+	if (!isRecord(value)) {
+		return false;
+	}
+
+	return (
+		hasPrimitive(value.id, 'string') &&
+		hasPrimitive(value.credits, 'number') &&
+		hasPrimitive(value.price, 'number') &&
+		hasPrimitive(value.priceDisplay, 'string') &&
+		hasPrimitive(value.pricePerCredit, 'number') &&
+		hasOptionalPrimitive(value.description, 'string') &&
+		hasOptionalPrimitive(value.currency, 'string') &&
+		hasOptionalPrimitive(value.bonus, 'number') &&
+		hasOptionalPrimitive(value.savings, 'string') &&
+		hasOptionalPrimitive(value.popular, 'boolean') &&
+		hasOptionalPrimitive(value.paypalProductId, 'string') &&
+		hasOptionalPrimitive(value.paypalPrice, 'string') &&
+		(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
 	);
 };

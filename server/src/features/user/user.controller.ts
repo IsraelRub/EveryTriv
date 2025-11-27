@@ -54,6 +54,8 @@ export class UserController {
 
 	/**
 	 * Get user profile
+	 * @param user Current user token payload
+	 * @returns User profile data
 	 */
 	@Get('profile')
 	@NoCache()
@@ -77,31 +79,10 @@ export class UserController {
 	}
 
 	/**
-	 * Get user credits
-	 */
-	@Get('credits')
-	@NoCache()
-	async getUserCredits(@CurrentUserId() userId: string) {
-		try {
-			const credits = await this.userService.getUserCredits(userId);
-
-			// Log API call
-			logger.apiRead('user_credits', {
-				userId,
-			});
-
-			return { credits };
-		} catch (error) {
-			logger.userError('Error getting user credits', {
-				error: getErrorMessage(error),
-				userId,
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Deduct user credits
+	 * @param userId Current user identifier
+	 * @param body Credit deduction data
+	 * @returns Credit deduction result
 	 */
 	@Post('credits')
 	async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCreditsDto) {
@@ -128,6 +109,9 @@ export class UserController {
 
 	/**
 	 * Update user profile
+	 * @param userId Current user identifier
+	 * @param profileData Profile update data
+	 * @returns Updated user profile
 	 */
 	@Put('profile')
 	@UsePipes(UserDataPipe)
@@ -156,6 +140,8 @@ export class UserController {
 
 	/**
 	 * Search users
+	 * @param query Search query parameters
+	 * @returns Search results with matching users
 	 */
 	@Get('search')
 	@Cache(CACHE_DURATION.MEDIUM) // Cache search results for 5 minutes
@@ -182,35 +168,9 @@ export class UserController {
 	}
 
 	/**
-	 * Get user by username
-	 */
-	@Get('username/:username')
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getUserByUsername(@Param('username') username: string) {
-		try {
-			if (!username) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USERNAME, HttpStatus.BAD_REQUEST);
-			}
-
-			const result = await this.userService.getUserByUsername(username);
-
-			// Log API call for user by username
-			logger.apiRead('user_by_username', {
-				username,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Error getting user by username', {
-				error: getErrorMessage(error),
-				username,
-			});
-			throw error;
-		}
-	}
-
-	/**
 	 * Delete user account
+	 * @param userId Current user identifier
+	 * @returns Account deletion result
 	 */
 	@Delete('account')
 	async deleteUserAccount(@CurrentUserId() userId: string) {
@@ -234,6 +194,9 @@ export class UserController {
 
 	/**
 	 * Change user password
+	 * @param userId Current user identifier
+	 * @param passwordData Password change data
+	 * @returns Password change result
 	 */
 	@Put('change-password')
 	async changePassword(@CurrentUserId() userId: string, @Body() passwordData: ChangePasswordDto) {
@@ -265,6 +228,9 @@ export class UserController {
 
 	/**
 	 * Update user preferences
+	 * @param userId Current user identifier
+	 * @param preferences User preferences data
+	 * @returns Updated user preferences
 	 */
 	@Put('preferences')
 	async updateUserPreferences(@CurrentUserId() userId: string, @Body() preferences: UpdateUserPreferencesDto) {
@@ -290,6 +256,10 @@ export class UserController {
 
 	/**
 	 * Update specific user field
+	 * @param userId Current user identifier
+	 * @param field Field name to update
+	 * @param body Field update data
+	 * @returns Updated user field value
 	 */
 	@Patch('profile/:field')
 	async updateUserField(
@@ -304,14 +274,13 @@ export class UserController {
 
 			// Validate field name before type cast
 			const validFields: string[] = [
-				'username',
 				'email',
 				'firstName',
 				'lastName',
 				'avatar',
 				'isActive',
 				'credits',
-				'purchasedPoints',
+				'purchasedCredits',
 				'dailyFreeQuestions',
 				'remainingFreeQuestions',
 				'role',
@@ -345,6 +314,10 @@ export class UserController {
 
 	/**
 	 * Update single preference
+	 * @param userId Current user identifier
+	 * @param preference Preference name to update
+	 * @param body Preference update data
+	 * @returns Updated preference value
 	 */
 	@Patch('preferences/:preference')
 	async updateSinglePreference(
@@ -379,6 +352,8 @@ export class UserController {
 
 	/**
 	 * Get user by ID (for admins)
+	 * @param id User identifier
+	 * @returns User data
 	 */
 	@Get(':id')
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
@@ -407,6 +382,9 @@ export class UserController {
 
 	/**
 	 * Update user credits (for admins)
+	 * @param userId User identifier to update
+	 * @param creditsData Credit update data
+	 * @returns Credit update result
 	 */
 	@Put('credits/:userId')
 	@Roles(UserRole.ADMIN)
@@ -438,6 +416,8 @@ export class UserController {
 
 	/**
 	 * Delete user (for admins)
+	 * @param userId User identifier to delete
+	 * @returns User deletion result
 	 */
 	@Delete(':userId')
 	@Roles(UserRole.ADMIN)
@@ -466,6 +446,9 @@ export class UserController {
 
 	/**
 	 * Update user status (for admins)
+	 * @param userId User identifier to update
+	 * @param statusData Status update data
+	 * @returns Updated user status
 	 */
 	@Patch(':userId/status')
 	@Roles(UserRole.ADMIN)
@@ -501,6 +484,10 @@ export class UserController {
 
 	/**
 	 * Admin endpoint - get all users (admin only)
+	 * @param user Current admin user token payload
+	 * @param limit Optional pagination limit
+	 * @param offset Optional pagination offset
+	 * @returns List of users with pagination metadata
 	 */
 	@Get('admin/all')
 	@Roles(UserRole.ADMIN)
@@ -524,8 +511,7 @@ export class UserController {
 
 			const adminInfo: AdminUserData = {
 				id: user.sub,
-				username: user.username,
-				email: user.email ?? `${user.username}@everytriv.com`,
+				email: user.email,
 				role: user.role,
 				createdAt: new Date().toISOString(),
 				lastLogin: undefined,
@@ -555,6 +541,10 @@ export class UserController {
 
 	/**
 	 * Admin endpoint - update user status (admin only)
+	 * @param adminUser Current admin user data
+	 * @param userId User identifier to update
+	 * @param statusData Status update data
+	 * @returns Updated user status information
 	 */
 	@Put('admin/:userId/status')
 	@Roles(UserRole.ADMIN)

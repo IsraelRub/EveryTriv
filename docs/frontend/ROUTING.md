@@ -58,7 +58,7 @@
   }
 />
 <Route
-  path='/points'
+  path='/credits'
   element={
     <ProtectedRoute>
       <PointsView />
@@ -156,7 +156,7 @@
 | /profile | UserProfile | כן | - | פרופיל משתמש |
 | /history | GameHistory | כן | - | היסטוריית משחקים |
 | /payment | PaymentView | כן | - | תשלומים |
-| /points | PointsView | כן | - | נקודות |
+| /credits | CreditsView | כן | - | קרדיטים |
 | /complete-profile | CompleteProfile | כן | - | השלמת פרופיל |
 | /analytics | AnalyticsView | כן | - | אנליטיקה |
 | /settings | SettingsView | כן | - | הגדרות |
@@ -200,7 +200,7 @@ import HomeView from './views/home/HomeView';
 import { LeaderboardView } from './views/leaderboard';
 import LoginView from './views/login/LoginView';
 import PaymentView from './views/payment';
-import PointsView from './views/points/PointsView';
+import CreditsView from './views/credits/CreditsView';
 import { RegistrationView } from './views/registration';
 import SettingsView from './views/settings/SettingsView';
 import UnauthorizedView from './views/unauthorized/UnauthorizedView';
@@ -297,7 +297,7 @@ function NavigationTracker() {
       '/history',
       '/leaderboard',
       '/payment',
-      '/points',
+      '/credits',
       '/settings',
       '/register',
       '/login',

@@ -11,7 +11,6 @@ import { AUTH_CONSTANTS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
 	AuthenticationRequest,
-	BasicUser,
 	JWTDecodedToken,
 	TokenPair,
 	TokenPayload,
@@ -28,18 +27,11 @@ export class JwtTokenService {
 	/**
 	 * Generate access token
 	 */
-	async generateAccessToken(
-		userId: string,
-		username: string,
-		email: string,
-		role: UserRole,
-		expiresIn: string = '1h'
-	): Promise<string> {
+	async generateAccessToken(userId: string, email: string, role: UserRole, expiresIn: string = '1h'): Promise<string> {
 		try {
 			const payload: TokenPayload = {
 				sub: userId,
 				email,
-				username,
 				role,
 			};
 
@@ -50,7 +42,7 @@ export class JwtTokenService {
 
 			logger.securityLogin('Access token generated', {
 				userId,
-				username,
+				email,
 				role,
 				expiresIn,
 			});
@@ -59,7 +51,7 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate access token', {
 				userId,
-				username,
+				email,
 				error: getErrorMessage(error),
 			});
 			throw createServerError('generate access token', error);
@@ -69,18 +61,11 @@ export class JwtTokenService {
 	/**
 	 * Generate refresh token
 	 */
-	async generateRefreshToken(
-		userId: string,
-		username: string,
-		email: string,
-		role: UserRole,
-		expiresIn: string = '7d'
-	): Promise<string> {
+	async generateRefreshToken(userId: string, email: string, role: UserRole, expiresIn: string = '7d'): Promise<string> {
 		try {
 			const payload: TokenPayload = {
 				sub: userId,
 				email,
-				username,
 				role,
 			};
 
@@ -91,7 +76,7 @@ export class JwtTokenService {
 
 			logger.securityLogin('Refresh token generated', {
 				userId,
-				username,
+				email,
 				role,
 				expiresIn,
 			});
@@ -100,7 +85,7 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate refresh token', {
 				userId,
-				username,
+				email,
 				error: getErrorMessage(error),
 			});
 			throw createServerError('generate refresh token', error);
@@ -112,7 +97,6 @@ export class JwtTokenService {
 	 */
 	async generateTokenPair(
 		userId: string,
-		username: string,
 		email: string,
 		role: UserRole,
 		accessExpiresIn: string = '1h',
@@ -120,13 +104,13 @@ export class JwtTokenService {
 	): Promise<TokenPair> {
 		try {
 			const [accessToken, refreshToken] = await Promise.all([
-				this.generateAccessToken(userId, username, email, role, accessExpiresIn),
-				this.generateRefreshToken(userId, username, email, role, refreshExpiresIn),
+				this.generateAccessToken(userId, email, role, accessExpiresIn),
+				this.generateRefreshToken(userId, email, role, refreshExpiresIn),
 			]);
 
 			logger.securityLogin('Token pair generated', {
 				userId,
-				username,
+				email,
 				role,
 			});
 
@@ -137,7 +121,7 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate token pair', {
 				userId,
-				username,
+				email,
 				error: getErrorMessage(error),
 			});
 			throw createServerError('generate token pair', error);
@@ -155,7 +139,7 @@ export class JwtTokenService {
 
 			logger.securityLogin('Token verified successfully', {
 				userId: payload.sub,
-				username: payload.username,
+				email: payload.email,
 			});
 
 			return {
@@ -255,7 +239,7 @@ export class JwtTokenService {
 	/**
 	 * Generate token for specific user data
 	 */
-	async generateTokenForUser(user: BasicUser): Promise<TokenPair> {
-		return this.generateTokenPair(user.id, user.username, user.email, user.role);
+	async generateTokenForUser(user: { id: string; email: string; role: UserRole }): Promise<TokenPair> {
+		return this.generateTokenPair(user.id, user.email, user.role);
 	}
 }

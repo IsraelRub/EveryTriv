@@ -9,30 +9,13 @@ import type { ClientGameState } from '../types';
 
 /**
  * Hook for managing game timer, game over checks, and time warnings
+ * Centralized hook for game timer logic including timer interval management, time calculations, game over detection, and time warnings
  *
- * @hook useGameTimer
- * @description Centralized hook for game timer logic including:
- * - Timer interval management (updates every second)
- * - Time elapsed and remaining calculations
- * - Game over detection (TIME_LIMITED and QUESTION_LIMITED modes)
- * - Time warnings (TIME_WARNING, COUNTDOWN, BEEP)
- *
- * @param currentGameMode - Current game mode configuration from GameModeConfig
- * @param onStateChange - Callback to update game state when timer changes
- * @param state - Current game state (ClientGameState)
- * @param onGameEnd - Optional callback when game ends (time runs out or question limit reached)
- *
- * @used_by
- * - client/src/components/game/Game.tsx - Main game component
- * - client/src/views/home/HomeView.tsx - Home view with game state management
- *
- * @remarks
- * This hook should be used in any component that needs to manage game timer state.
- * It automatically handles:
- * - Timer updates every second when isRunning is true
- * - Game over detection for TIME_LIMITED and QUESTION_LIMITED modes
- * - Audio warnings when time is running out
- * - Cleanup on unmount or when timer stops
+ * @param currentGameMode Current game mode configuration from GameModeConfig
+ * @param onStateChange Callback to update game state when timer changes
+ * @param state Current game state (ClientGameState)
+ * @param onGameEnd Optional callback when game ends (time runs out or question limit reached)
+ * @returns Void - this hook manages side effects only
  */
 export function useGameTimer(
 	currentGameMode: GameModeConfig | undefined,

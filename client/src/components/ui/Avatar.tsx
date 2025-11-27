@@ -18,7 +18,7 @@ import { combineClassNames } from '../../utils';
 
 export const Avatar = memo(function Avatar({
 	src,
-	username,
+	email,
 	firstName,
 	lastName,
 	size = ComponentSize.MD,
@@ -43,12 +43,12 @@ export const Avatar = memo(function Avatar({
 			return firstName[0].toUpperCase();
 		}
 
-		if (username) {
-			return username.substring(0, 2).toUpperCase();
+		if (email) {
+			return email.substring(0, 2).toUpperCase();
 		}
 
 		return '?';
-	}, [firstName, lastName, username]);
+	}, [firstName, lastName, email]);
 
 	const backgroundColor = useMemo(() => {
 		const hash = initials.charCodeAt(0) + initials.charCodeAt(1);
@@ -81,16 +81,15 @@ export const Avatar = memo(function Avatar({
 	const sizeClass = customSize ? '' : AVATAR_SIZES[size].classes;
 
 	const gravatarUrl = useMemo(() => {
-		if (!username?.trim() && !firstName?.trim()) return null;
+		if (!email?.trim() && !firstName?.trim()) return null;
 
-		const email = username
-			? `${username}@example.com`
-			: `${firstName}${lastName ? lastName : ''}`.toLowerCase().replace(/\s+/g, '') + '@example.com';
-		const hash = btoa(email)
+		const gravatarEmail =
+			email || `${firstName}${lastName ? lastName : ''}`.toLowerCase().replace(/\s+/g, '') + '@example.com';
+		const hash = btoa(gravatarEmail)
 			.replace(/[^a-zA-Z0-9]/g, '')
 			.substring(0, 32);
 		return `${AVATAR_CONFIG.GRAVATAR_BASE_URL}/${hash}?d=${AVATAR_CONFIG.GRAVATAR_DEFAULT}&s=${avatarSize}`;
-	}, [username, firstName, lastName, avatarSize]);
+	}, [email, firstName, lastName, avatarSize]);
 
 	const avatarClasses = combineClassNames(
 		'relative inline-flex items-center justify-center rounded-full border-2 border-white/20 overflow-hidden',
@@ -121,8 +120,7 @@ export const Avatar = memo(function Avatar({
 				<img
 					src={src}
 					alt={
-						alt ??
-						`Avatar for ${username ?? (firstName && lastName ? `${firstName} ${lastName}` : firstName) ?? 'user'}`
+						alt ?? `Avatar for ${email ?? (firstName && lastName ? `${firstName} ${lastName}` : firstName) ?? 'user'}`
 					}
 					className='w-full h-full object-cover'
 					loading={lazy ? 'lazy' : 'eager'}
@@ -137,8 +135,7 @@ export const Avatar = memo(function Avatar({
 				<img
 					src={gravatarUrl}
 					alt={
-						alt ??
-						`Gravatar for ${username ?? (firstName && lastName ? `${firstName} ${lastName}` : firstName) ?? 'user'}`
+						alt ?? `Gravatar for ${email ?? (firstName && lastName ? `${firstName} ${lastName}` : firstName) ?? 'user'}`
 					}
 					className='w-full h-full object-cover'
 					loading={lazy ? 'lazy' : 'eager'}

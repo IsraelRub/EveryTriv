@@ -27,9 +27,10 @@ import {
 	AnalyticsModule,
 	AuthModule,
 	CacheModule,
+	CreditsModule,
 	GameModule,
+	MultiplayerModule,
 	PaymentModule,
-	PointsModule,
 	SubscriptionModule,
 	UserModule,
 } from './features';
@@ -51,11 +52,12 @@ import { RedisModule } from './internal/modules/redis.module';
 		// Feature Modules - Direct imports instead of TriviaModule
 		AuthModule,
 		GameModule,
+		MultiplayerModule,
 		AnalyticsModule,
 		CacheModule,
 		UserModule,
 		PaymentModule,
-		PointsModule,
+		CreditsModule,
 		SubscriptionModule,
 	],
 	controllers: [AppController, ClientLogsController, MiddlewareMetricsController],
@@ -99,6 +101,9 @@ import { RedisModule } from './internal/modules/redis.module';
 				transform: true,
 				whitelist: true,
 				forbidNonWhitelisted: true,
+				skipMissingProperties: false,
+				skipNullProperties: false,
+				skipUndefinedProperties: false,
 				exceptionFactory: errors => {
 					const result = errors.map(error => ({
 						property: error.property,

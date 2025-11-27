@@ -22,6 +22,7 @@ client/src/services/
 ├── payment.service.ts           # שירות תשלומים
 ├── score.service.ts             # שירות ניקוד
 ├── customDifficulty.service.ts  # שירות קושי מותאם
+├── multiplayer.service.ts       # שירות multiplayer
 ├── queryClient.service.ts       # תצורת React Query
 ├── interceptors/                # Interceptors ל-API
 │   ├── auth.interceptor.ts      # Interceptor לאימות
@@ -73,7 +74,7 @@ class ApiService implements ClientApiService {
 
   // Get trivia questions
   async getTrivia(request: TriviaRequest): Promise<TriviaQuestion> {
-    this.assertQuestionCountWithinLimits(request.questionCount);
+    this.assertRequestedQuestionsWithinLimits(request.requestedQuestions);
     const response = await this.post<TriviaQuestion>('/game/trivia', request);
     return response.data;
   }
@@ -210,9 +211,11 @@ export const apiService = new ApiService();
 ```typescript
 import { UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { AuthCredentials, AuthenticationResult, BasicUser } from '@shared/types';
+import type { AuthCredentials, AuthenticationResult, BasicUser, User, UserProfileResponseType } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { ensureErrorObject } from '@shared/utils/core/error.utils';
 import { CLIENT_STORAGE_KEYS } from '../constants';
+import { isUser } from '../utils/data.utils';
 import { ApiConfig, apiService } from './api.service';
 import { storageService } from './storage.service';
 
@@ -266,35 +269,142 @@ class AuthService {
 
   async getCurrentUser(): Promise<BasicUser> {
     try {
-      const response = await apiService.getCurrentUser();
-      return response.data;
+      const user = await apiService.getCurrentUser();
+      await storageService.set(this.USER_KEY, user);
+      return {
+        ...user,
+        role: user.role || UserRole.USER,
+      };
     } catch (error) {
       logger.authError(ensureErrorObject(error), 'Failed to get current user');
       throw error;
     }
   }
 
+  async refreshToken(): Promise<AuthenticationResult> {
+    try {
+      logger.authTokenRefresh('Refreshing auth token');
+      const response = await apiService.refreshToken();
+      const user = await this.getStoredUser();
+      if (!user) {
+        throw new Error('No user data found');
+      }
+      const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+      const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+      const fullResponse: AuthenticationResult = {
+        user,
+        accessToken: response.accessToken,
+        refreshToken,
+      };
+      await this.setAuthData(fullResponse);
+      logger.authTokenRefresh('Token refreshed successfully');
+      return fullResponse;
+    } catch (error) {
+      logger.authError(ensureErrorObject(error), 'Token refresh failed');
+      await this.clearAuthData();
+      throw error;
+    }
+  }
+
   async isAuthenticated(): Promise<boolean> {
-    const tokenResult = await storageService.getString(this.TOKEN_KEY);
-    return tokenResult.success && !!tokenResult.data;
+    return await apiService.isAuthenticated();
   }
 
   async getToken(): Promise<string | null> {
-    const tokenResult = await storageService.getString(this.TOKEN_KEY);
-    return tokenResult.success ? tokenResult.data : null;
+    return await apiService.getAuthToken();
   }
 
-  private async setAuthData(response: AuthenticationResult): Promise<void> {
-    if (response.access_token) {
-      await storageService.set(this.TOKEN_KEY, response.access_token);
+  async getStoredUser(): Promise<User | null> {
+    const result = await storageService.get<User>(this.USER_KEY, isUser);
+    return result.success && result.data ? result.data : null;
+  }
+
+  async getAuthState(): Promise<{
+    isAuthenticated: boolean;
+    user: User | null;
+    token: string | null;
+  }> {
+    const token = await this.getToken();
+    const user = await this.getStoredUser();
+    return {
+      isAuthenticated: !!token && !!user,
+      user,
+      token,
+    };
+  }
+
+  async initiateGoogleLogin(): Promise<void> {
+    try {
+      logger.securityLogin('Initiating Google OAuth login');
+      const googleAuthUrl = ApiConfig.getGoogleAuthUrl();
+      window.location.href = googleAuthUrl;
+    } catch (error) {
+      logger.securityDenied('Google login initiation failed', { error: getErrorMessage(error) });
+      throw error;
     }
-    if (response.user) {
-      await storageService.set(this.USER_KEY, response.user);
+  }
+
+  async completeProfile(profileData: {
+    firstName: string;
+    lastName?: string;
+    avatar?: string;
+  }): Promise<UserProfileResponseType> {
+    try {
+      logger.authProfileUpdate('Completing user profile');
+      const profileResponse = await apiService.updateUserProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        avatar: profileData.avatar,
+      });
+      logger.authProfileUpdate('Profile completed successfully');
+      return profileResponse;
+    } catch (error) {
+      logger.authError('Profile completion failed', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  async updateUserProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    email?: string;
+  }): Promise<UserProfileResponseType> {
+    try {
+      logger.authProfileUpdate('Updating user profile');
+      const profileResponse = await apiService.updateUserProfile(profileData);
+      logger.authProfileUpdate('Profile updated successfully');
+      return profileResponse;
+    } catch (error) {
+      logger.authError('Profile update failed', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      logger.authProfileUpdate('Changing user password');
+      const response = await apiService.changePassword(currentPassword, newPassword);
+      logger.authProfileUpdate('Password changed successfully');
+      return response;
+    } catch (error) {
+      logger.authError('Password change failed', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  private async setAuthData(authResponse: AuthenticationResult): Promise<void> {
+    if (authResponse.user) {
+      await storageService.set(this.USER_KEY, authResponse.user);
     }
   }
 
   private async clearAuthData(): Promise<void> {
     await storageService.delete(this.TOKEN_KEY);
+    await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
     await storageService.delete(this.USER_KEY);
   }
 }
@@ -325,6 +435,7 @@ export class AudioService implements AudioServiceInterface {
   private isMuted = false;
   private volumes: Map<AudioKey, number> = new Map();
   private categoryVolumes: Map<AudioCategory, number>;
+  private masterVolume = 1;
   private userInteracted = false;
   private userPreferences: UserPreferences | null = null;
 
@@ -341,61 +452,152 @@ export class AudioService implements AudioServiceInterface {
     this.setupUserInteractionListener();
   }
 
+  // Public API methods
   play(key: AudioKey): void {
-    if (this.isMuted || !this.userInteracted) return;
+    const audio = this.ensureAudioLoaded(key);
+    if (!audio) return;
 
-    const audio = this.audioElements.get(key);
-    if (!audio) {
-      this.loadAudio(key);
+    // Check user preferences
+    if (AUDIO_CATEGORIES[key] === AudioCategory.EFFECTS && this.userPreferences && !this.userPreferences.soundEnabled) {
+      return;
+    }
+    if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC && this.userPreferences && !this.userPreferences.musicEnabled) {
+      return;
+    }
+    if (key === AudioKey.BACKGROUND_MUSIC && !this.userInteracted) {
       return;
     }
 
-    try {
-      const audioClone = audio.cloneNode() as HTMLAudioElement;
-      audioClone.volume = this.getVolume(key);
-      audioClone.play().catch(error => {
-        logger.audioError('Failed to play audio', { key, error: getErrorMessage(error) });
+    // For music, restart from beginning
+    if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC) {
+      audio.currentTime = 0;
+      const soundVolume = this.volumes.get(key) || 0.7;
+      const category = AUDIO_CATEGORIES[key];
+      const categoryVolume = this.categoryVolumes.get(category) || 1;
+      audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+      audio.play().catch(err => {
+        logger.audioError(key, err.message, { key, error: err });
       });
-    } catch (error) {
-      logger.audioError('Failed to play audio', { key, error: getErrorMessage(error) });
+      return;
     }
-  }
 
-  setMuted(muted: boolean): void {
-    this.isMuted = muted;
-    if (muted) {
-      this.audioElements.forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
-    }
-  }
-
-  setVolume(key: AudioKey, volume: number): void {
-    const clampedVolume = Math.max(0, Math.min(1, volume));
-    this.volumes.set(key, clampedVolume);
-    const audio = this.audioElements.get(key);
-    if (audio) {
-      audio.volume = clampedVolume;
-    }
-  }
-
-  setCategoryVolume(category: AudioCategory, volume: number): void {
-    const clampedVolume = Math.max(0, Math.min(1, volume));
-    this.categoryVolumes.set(category, clampedVolume);
-
-    Object.entries(AUDIO_CATEGORIES).forEach(([key, cat]) => {
-      if (cat === category) {
-        this.setVolume(key as AudioKey, clampedVolume);
-      }
+    // For sound effects, clone to allow overlapping playback
+    const clone = audio.cloneNode() as HTMLAudioElement;
+    const soundVolume = this.volumes.get(key) || 0.7;
+    const category = AUDIO_CATEGORIES[key];
+    const categoryVolume = this.categoryVolumes.get(category) || 1;
+    clone.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+    clone.play().catch(err => {
+      logger.audioError(key, err.message, { key, error: err });
     });
+    clone.addEventListener('ended', () => clone.remove());
+  }
+
+  stop(key: AudioKey): void {
+    const audio = this.audioElements.get(key);
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+  }
+
+  stopAll(): void {
+    this.audioElements.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+  }
+
+  mute(): void {
+    this.isMuted = true;
+    this.audioElements.forEach(audio => {
+      audio.volume = 0;
+    });
+  }
+
+  unmute(): void {
+    this.isMuted = false;
+    this.audioElements.forEach((audio, key) => {
+      const category = AUDIO_CATEGORIES[key];
+      const categoryVolume = this.categoryVolumes.get(category) || 1;
+      const soundVolume = this.volumes.get(key) || 0.7;
+      audio.volume = soundVolume * categoryVolume * this.masterVolume;
+    });
+  }
+
+  toggleMute(): boolean {
+    if (this.isMuted) {
+      this.unmute();
+    } else {
+      this.mute();
+    }
+    return this.isMuted;
+  }
+
+  setMasterVolume(volume: number): void {
+    this.masterVolume = volume;
+    this.audioElements.forEach((audio, key) => {
+      const soundVolume = this.volumes.get(key) || 0.7;
+      const category = AUDIO_CATEGORIES[key];
+      const categoryVolume = this.categoryVolumes.get(category) || 1;
+      audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+    });
+  }
+
+  setVolume(volume: number): void {
+    // Alias for setMasterVolume
+    this.setMasterVolume(volume);
+  }
+
+  playAchievementSound(score: number, total: number, previousScore: number): void {
+    if (score <= previousScore) return;
+    const scoreIncrease = score - previousScore;
+    const percentage = (score / total) * 100;
+
+    if (percentage >= 100) {
+      this.play(AudioKey.NEW_ACHIEVEMENT);
+    } else if (percentage >= 80) {
+      this.play(AudioKey.LEVEL_UP);
+    } else if (scoreIncrease >= 5) {
+      this.play(AudioKey.SCORE_STREAK);
+    } else if (scoreIncrease >= 2) {
+      this.play(AudioKey.SCORE_EARNED);
+    } else if (scoreIncrease >= 1) {
+      this.play(AudioKey.ACHIEVEMENT);
+    } else {
+      this.play(AudioKey.CLICK);
+    }
   }
 
   setUserPreferences(preferences: UserPreferences | null): void {
     this.userPreferences = preferences;
-    if (preferences?.soundEnabled !== undefined) {
-      this.setMuted(!preferences.soundEnabled);
+  }
+
+  // Getters
+  get isEnabled(): boolean {
+    return !this.isMuted;
+  }
+
+  get volume(): number {
+    return this.isMuted ? 0 : this.masterVolume;
+  }
+
+  // Private methods
+  private ensureAudioLoaded(key: AudioKey): HTMLAudioElement | null {
+    let audio = this.audioElements.get(key);
+    if (!audio) {
+      const path = AUDIO_PATHS[key];
+      if (path) {
+        const category = AUDIO_CATEGORIES[key];
+        const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
+        const config = AUDIO_CONFIG[key] ?? {};
+        this.preloadAudioInternal(key, path, {
+          volume: config.volume ?? defaultVolume,
+          loop: config.loop ?? false,
+        });
+        audio = this.audioElements.get(key);
+      }
     }
+    return audio || null;
   }
 
   private preloadEssentialAudio(): void {
@@ -423,11 +625,19 @@ export class AudioService implements AudioServiceInterface {
 
   private preloadAudioInternal(key: AudioKey, src: string, config: { volume?: number; loop?: boolean }): void {
     const audio = new Audio();
-    audio.volume = this.isMuted ? 0 : (config.volume ?? 0.7);
+    const soundVolume = config.volume ?? 0.7;
+    const category = AUDIO_CATEGORIES[key];
+    const categoryVolume = this.categoryVolumes.get(category) || 1;
+    audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
     audio.loop = config.loop ?? false;
-    audio.preload = 'auto';
-    audio.src = src;
+    audio.preload = 'metadata';
+    audio.addEventListener('error', err => {
+      logger.mediaError(`Failed to load audio file: ${key}`, { error: getErrorMessage(err), key, src });
+    });
     this.audioElements.set(key, audio);
+    this.volumes.set(key, config.volume ?? 0.7);
+    audio.src = src;
+    audio.load();
   }
 
   private setupUserInteractionListener(): void {
@@ -444,28 +654,6 @@ export class AudioService implements AudioServiceInterface {
     document.addEventListener('click', enableAudio);
     document.addEventListener('keydown', enableAudio);
     document.addEventListener('touchstart', enableAudio);
-  }
-
-  private getVolume(key: AudioKey): number {
-    const specificVolume = this.volumes.get(key);
-    if (specificVolume !== undefined) return specificVolume;
-
-    const category = AUDIO_CATEGORIES[key];
-    return this.categoryVolumes.get(category) ?? 0.7;
-  }
-
-  private loadAudio(key: AudioKey): void {
-    const path = AUDIO_PATHS[key];
-    if (!path) return;
-
-    const category = AUDIO_CATEGORIES[key];
-    const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
-    const config = AUDIO_CONFIG[key] ?? {};
-    this.preloadAudioInternal(key, path, {
-      volume: config.volume ?? defaultVolume,
-      loop: config.loop ?? false,
-    });
-    this.play(key);
   }
 }
 
@@ -651,26 +839,59 @@ class ClientGameHistoryService {
     }
   }
 
-  async deleteGameHistory(gameId: string): Promise<{ message: string }> {
+  async getLeaderboard(limit: number = 10): Promise<LeaderboardEntry[]> {
     try {
-      logger.userInfo('Deleting game history', { gameId });
-      await apiService.deleteGameHistory(gameId);
-      logger.userInfo('Game history deleted successfully', { gameId });
-      return { message: 'Game history deleted successfully' };
+      logger.gameStatistics('Getting leaderboard', { limit });
+      const leaderboard = await apiService.getLeaderboardEntries(limit);
+      logger.gameStatistics('Leaderboard retrieved successfully', {
+        entries: leaderboard.length,
+      });
+      return leaderboard;
     } catch (error) {
-      logger.userError('Failed to delete game history', { error: getErrorMessage(error), gameId });
+      logger.gameError('Failed to get leaderboard', { error: getErrorMessage(error), limit });
       throw error;
     }
   }
 
-  async clearGameHistory(): Promise<{ message: string; deletedCount: number }> {
+  async getGameById(gameId: string): Promise<GameHistoryEntry> {
     try {
-      logger.userInfo('Clearing all game history');
-      await apiService.clearGameHistory();
-      logger.userInfo('All game history cleared successfully');
-      return { message: 'All game history cleared successfully', deletedCount: 0 };
+      logger.gameStatistics('Getting game by ID', { id: gameId });
+      const game = await apiService.getGameById(gameId);
+      logger.gameStatistics('Game retrieved successfully', {
+        id: gameId,
+      });
+      return game;
     } catch (error) {
-      logger.userError('Failed to clear game history', { error: getErrorMessage(error) });
+      logger.gameError('Failed to get game by ID', { error: getErrorMessage(error), id: gameId });
+      throw error;
+    }
+  }
+
+  async deleteGameHistory(gameId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      logger.gameStatistics('Deleting game history', { id: gameId });
+      const response = await apiService.deleteGameHistory(gameId);
+      logger.gameStatistics('Game history deleted successfully', { id: gameId });
+      return response;
+    } catch (error) {
+      logger.gameError('Failed to delete game history', {
+        error: getErrorMessage(error),
+        id: gameId,
+      });
+      throw error;
+    }
+  }
+
+  async clearGameHistory(): Promise<{ deletedCount: number }> {
+    try {
+      logger.gameStatistics('Clearing all game history');
+      const response = await apiService.clearGameHistory();
+      logger.gameStatistics('All game history cleared successfully', {
+        deletedCount: response.deletedCount,
+      });
+      return response;
+    } catch (error) {
+      logger.gameError('Failed to clear game history', { error: getErrorMessage(error) });
       throw error;
     }
   }
@@ -681,50 +902,51 @@ export const gameHistoryService = new ClientGameHistoryService();
 
 ## שירות נקודות (Points Service)
 
-### points.service.ts
+### credits.service.ts
 
 ```typescript
 import { GameMode, PaymentMethod, VALID_GAME_MODES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { CanPlayResponse, PointBalance, PointPurchaseOption, PointTransaction } from '@shared/types';
+import type { CanPlayResponse, CreditBalance, CreditPurchaseOption, CreditTransaction } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import type { PointsPurchaseRequest, PointsPurchaseResponse } from '../types';
+import type { CreditsPurchaseRequest, CreditsPurchaseResponse } from '../types';
+import { formatTimeUntilReset } from '../utils';
 import { apiService } from './api.service';
 
-class ClientPointsService {
-  async getPointBalance(): Promise<PointBalance> {
+class ClientCreditsService {
+  async getCreditBalance(): Promise<CreditBalance> {
     try {
-      logger.userInfo('Getting point balance');
-      const balance = await apiService.getPointBalance();
-      logger.userInfo('Point balance retrieved successfully', {
-        totalPoints: balance.totalPoints,
-        purchasedPoints: balance.purchasedPoints,
+      logger.userInfo('Getting credit balance');
+      const balance = await apiService.getCreditBalance();
+      logger.userInfo('Credit balance retrieved successfully', {
+        totalCredits: balance.totalCredits,
+        purchasedCredits: balance.purchasedCredits,
       });
       return balance;
     } catch (error) {
-      logger.userError('Failed to get point balance', { error: getErrorMessage(error) });
+      logger.userError('Failed to get credit balance', { error: getErrorMessage(error) });
       throw error;
     }
   }
 
-  async getPointPackages(): Promise<PointPurchaseOption[]> {
+  async getCreditPackages(): Promise<CreditPurchaseOption[]> {
     try {
-      logger.userInfo('Getting point packages');
-      const packages = await apiService.getPointPackages();
-      logger.userInfo('Point packages retrieved successfully', {
+      logger.userInfo('Getting credit packages');
+      const packages = await apiService.getCreditPackages();
+      logger.userInfo('Credit packages retrieved successfully', {
         count: packages.length,
       });
       return packages;
     } catch (error) {
-      logger.userError('Failed to get point packages', { error: getErrorMessage(error) });
+      logger.userError('Failed to get credit packages', { error: getErrorMessage(error) });
       throw error;
     }
   }
 
-  async canPlay(questionCount: number): Promise<CanPlayResponse> {
+  async canPlayCredits(totalQuestions: number): Promise<CanPlayResponse> {
     try {
-      logger.userInfo('Checking if user can play', { questionCount });
-      const result = await apiService.canPlay(questionCount);
+      logger.userInfo('Checking if user can play', { totalQuestions });
+      const result = await apiService.canPlayCredits(totalQuestions);
       logger.userInfo('Can play check completed', {
         canPlay: result.canPlay,
         reason: result.reason,
@@ -734,40 +956,40 @@ class ClientPointsService {
         reason: result.reason,
       };
     } catch (error) {
-      logger.userError('Failed to check if user can play', { error: getErrorMessage(error), questionCount });
+      logger.userError('Failed to check if user can play', { error: getErrorMessage(error), totalQuestions });
       throw error;
     }
   }
 
-  async deductPoints(questionCount: number, gameMode: GameMode): Promise<PointBalance> {
+  async deductCredits(totalQuestions: number, gameMode: GameMode): Promise<CreditBalance> {
     try {
       const normalizedGameMode = this.resolveGameMode(gameMode);
-      logger.userInfo('Deducting points', { questionCount, gameMode: normalizedGameMode });
-      const newBalance = await apiService.deductPoints(questionCount, gameMode);
-      logger.userInfo('Points deducted successfully', {
-        newTotalPoints: newBalance.totalPoints,
+      logger.userInfo('Deducting credits', { totalQuestions, gameMode: normalizedGameMode });
+      const newBalance = await apiService.deductCredits(totalQuestions, gameMode);
+      logger.userInfo('Credits deducted successfully', {
+        newTotalCredits: newBalance.totalCredits,
       });
       return newBalance;
     } catch (error) {
-      logger.userError('Failed to deduct points', { error: getErrorMessage(error), questionCount, gameMode });
+      logger.userError('Failed to deduct credits', { error: getErrorMessage(error), totalQuestions, gameMode });
       throw error;
     }
   }
 
-  async purchasePoints(request: PointsPurchaseRequest): Promise<PointsPurchaseResponse> {
+  async purchaseCredits(request: CreditsPurchaseRequest): Promise<CreditsPurchaseResponse> {
     try {
-      logger.userInfo('Purchasing points', {
+      logger.userInfo('Purchasing credits', {
         packageId: request.packageId,
         paymentMethod: request.paymentMethod,
       });
-      const response = await apiService.purchasePoints(request);
-      logger.userInfo('Points purchased successfully', {
+      const response = await apiService.purchaseCredits(request);
+      logger.userInfo('Credits purchased successfully', {
         amount: response.amount,
-        totalPoints: response.totalPoints,
+        totalCredits: response.balance?.totalCredits,
       });
       return response;
     } catch (error) {
-      logger.userError('Failed to purchase points', {
+      logger.userError('Failed to purchase credits', {
         error: getErrorMessage(error),
         request,
       });
@@ -775,30 +997,646 @@ class ClientPointsService {
     }
   }
 
-  async getTransactionHistory(limit: number = 50): Promise<PointTransaction[]> {
+  async getCreditHistory(limit: number = 20): Promise<CreditTransaction[]> {
     try {
-      logger.userInfo('Getting transaction history', { limit });
-      const transactions = await apiService.getTransactionHistory(limit);
-      logger.userInfo('Transaction history retrieved successfully', {
-        count: transactions.length,
+      logger.userInfo('Getting credit history', { limit });
+      const history = await apiService.getCreditHistory(limit);
+      logger.userInfo('Credit history retrieved successfully', {
+        count: history.length,
       });
-      return transactions;
+      return history;
     } catch (error) {
-      logger.userError('Failed to get transaction history', { error: getErrorMessage(error), limit });
+      logger.userError('Failed to get credit history', { error: getErrorMessage(error), limit });
       throw error;
     }
   }
 
-  private resolveGameMode(gameMode: GameMode): GameMode {
-    if (VALID_GAME_MODES.includes(gameMode)) {
-      return gameMode;
+  async confirmCreditPurchase(paymentIntentId: string): Promise<CreditBalance> {
+    try {
+      logger.userInfo('Confirming credit purchase', { id: paymentIntentId });
+      const newBalance = await apiService.confirmCreditPurchase(paymentIntentId);
+      logger.userInfo('Credit purchase confirmed successfully', {
+        newCredits: newBalance.totalCredits,
+      });
+      return newBalance;
+    } catch (error) {
+      logger.userError('Failed to confirm credit purchase', { error: getErrorMessage(error), id: paymentIntentId });
+      throw error;
     }
-    logger.userWarn('Invalid game mode, defaulting to QUESTION_LIMITED', { gameMode });
-    return GameMode.QUESTION_LIMITED;
+  }
+
+  async getCreditTransactionHistory(limit: number = 20): Promise<CreditTransaction[]> {
+    return this.getCreditHistory(limit);
+  }
+
+  formatTimeUntilReset(resetTime: Date): string {
+    return formatTimeUntilReset(resetTime.getTime());
+  }
+
+  private resolveGameMode(gameMode: GameMode): GameMode | undefined {
+    return VALID_GAME_MODES.find(mode => mode === gameMode);
   }
 }
 
-export const pointsService = new ClientPointsService();
+export const creditsService = new ClientCreditsService();
+```
+
+## שירות משתמש (User Service)
+
+### user.service.ts
+
+```typescript
+import { BillingCycle, PlanType } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import type {
+  BasicUser,
+  BasicValue,
+  UpdateUserProfileData,
+  User,
+  UserPreferences,
+  UserProfileResponseType,
+} from '@shared/types';
+import { getErrorMessage, hasPropertyOfType } from '@shared/utils';
+
+import type { SubscriptionCreationResponse } from '../types';
+import { apiService } from './api.service';
+
+class ClientUserService {
+  async getUserProfile(): Promise<UserProfileResponseType> {
+    try {
+      logger.userInfo('Getting user profile');
+      const profileResponse = await apiService.getUserProfile();
+      logger.userInfo('User profile retrieved successfully');
+      return profileResponse;
+    } catch (error) {
+      logger.userError('Failed to get user profile', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  async updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType> {
+    try {
+      logger.userInfo('Updating user profile', { data });
+      const profileResponse = await apiService.updateUserProfile(data);
+      logger.userInfo('User profile updated successfully');
+      return profileResponse;
+    } catch (error) {
+      logger.userError('Failed to update user profile', { error: getErrorMessage(error), data });
+      throw error;
+    }
+  }
+
+  async deductCredits(amount: number): Promise<{ success: boolean; credits: number }> {
+    try {
+      logger.userInfo('Deducting user credits', { amount });
+      const result = await apiService.deductCredits(amount);
+      logger.userInfo('User credits deducted successfully', {
+        amount,
+        newCredits: result.credits,
+      });
+      return result;
+    } catch (error) {
+      logger.userError('Failed to deduct user credits', { error: getErrorMessage(error), amount });
+      throw error;
+    }
+  }
+
+  async deleteAccount(): Promise<{ success: boolean; message: string }> {
+    try {
+      logger.userInfo('Deleting user account');
+      const response = await apiService.deleteUserAccount();
+      logger.userInfo('User account deleted successfully', {
+        success: response.success,
+        message: response.message,
+      });
+      return response;
+    } catch (error) {
+      logger.userError('Failed to delete user account', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  async createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionCreationResponse> {
+    try {
+      logger.userInfo('Creating subscription', { planType: plan, billingCycle });
+      const response = await apiService.createSubscription(plan, billingCycle);
+      const normalizedBillingCycle = Object.values(BillingCycle).find(cycle => cycle === response.billingCycle);
+      const paymentId = hasPropertyOfType(response, 'paymentId', (value): value is string => typeof value === 'string')
+        ? response.paymentId
+        : undefined;
+
+      const subscriptionPayload: SubscriptionCreationResponse = {
+        subscriptionId: response.subscriptionId,
+        planType: response.planType,
+        billingCycle: normalizedBillingCycle,
+        status: response.status,
+        paymentId,
+      };
+
+      logger.userInfo('Subscription created successfully', {
+        id: subscriptionPayload.subscriptionId ?? undefined,
+        planType: subscriptionPayload.planType,
+        billingCycle: subscriptionPayload.billingCycle,
+      });
+      return subscriptionPayload;
+    } catch (error) {
+      logger.userError('Failed to create subscription', {
+        error: getErrorMessage(error),
+        planType: plan,
+        billingCycle,
+      });
+      throw error;
+    }
+  }
+
+  async cancelSubscription(): Promise<{ success: boolean; message: string }> {
+    try {
+      logger.userInfo('Canceling subscription');
+      const response = await apiService.cancelSubscription();
+      logger.userInfo('Subscription canceled successfully', {
+        success: response.success,
+        message: response.message,
+      });
+      return response;
+    } catch (error) {
+      logger.userError('Failed to cancel subscription', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+
+  async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
+    try {
+      logger.userInfo('Searching users', { query, limit });
+      const users = await apiService.searchUsers(query, limit);
+      logger.userInfo('Users found', { count: users.length });
+      return users;
+    } catch (error) {
+      logger.userError('Failed to search users', { error: getErrorMessage(error), query });
+      throw error;
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<BasicUser> {
+    try {
+      logger.userInfo('Getting user by username', { username });
+      const user = await apiService.getUserByUsername(username);
+      logger.userInfo('User retrieved successfully', { username });
+      return user;
+    } catch (error) {
+      logger.userError('Failed to get user by username', { error: getErrorMessage(error), username });
+      throw error;
+    }
+  }
+
+  async updateUserPreferences(preferences: Partial<UserPreferences>): Promise<void> {
+    try {
+      logger.userInfo('Updating user preferences', { preferences });
+      await apiService.updateUserPreferences(preferences);
+      logger.userInfo('User preferences updated successfully');
+    } catch (error) {
+      logger.userError('Failed to update user preferences', { error: getErrorMessage(error), preferences });
+      throw error;
+    }
+  }
+}
+
+export const userService = new ClientUserService();
+```
+
+## שירות תשלומים (Payment Service)
+
+### payment.service.ts
+
+```typescript
+import { PaymentMethod, PlanType } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+import type { PaymentResult } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { apiService } from './api.service';
+
+class ClientPaymentService {
+  async createPayment(paymentData: {
+    amount?: number;
+    currency?: string;
+    description?: string;
+    planType?: PlanType;
+    numberOfPayments?: number;
+    paymentMethod: PaymentMethod;
+    cardNumber?: string;
+    expiryDate?: string;
+    cvv?: string;
+    cardHolderName?: string;
+    postalCode?: string;
+    paypalOrderId?: string;
+    paypalPaymentId?: string;
+    agreeToTerms?: boolean;
+    additionalInfo?: string;
+  }): Promise<PaymentResult> {
+    try {
+      logger.userInfo('Creating payment', {
+        amount: paymentData.amount,
+        planType: paymentData.planType,
+        paymentMethod: paymentData.paymentMethod,
+      });
+
+      const result = await apiService.createPayment(paymentData);
+
+      logger.userInfo('Payment created successfully', {
+        paymentId: result.paymentId,
+        status: result.status,
+      });
+      return result;
+    } catch (error) {
+      logger.userError('Failed to create payment', {
+        error: getErrorMessage(error),
+        amount: paymentData.amount,
+        planType: paymentData.planType,
+      });
+      throw error;
+    }
+  }
+
+  async getPaymentHistory(): Promise<PaymentResult[]> {
+    try {
+      logger.userInfo('Getting payment history');
+
+      const history = await apiService.getPaymentHistory();
+
+      logger.userInfo('Payment history retrieved successfully', {
+        count: history.length,
+      });
+      return history;
+    } catch (error) {
+      logger.userError('Failed to get payment history', { error: getErrorMessage(error) });
+      throw error;
+    }
+  }
+}
+
+export const paymentService = new ClientPaymentService();
+```
+
+## שירות ניקוד (Score Service)
+
+### score.service.ts
+
+```typescript
+import type { TriviaQuestion } from '@shared/types';
+import { calculateAnswerPoints } from '@shared/utils';
+
+/**
+ * Calculate total score for a correct answer using ALGORITHM
+ */
+export const calculateScore = (
+  question: TriviaQuestion,
+  _totalTime: number,
+  timeSpent: number,
+  streak: number = 0,
+  isCorrect: boolean = true
+): number => {
+  return calculateAnswerPoints(question.difficulty, timeSpent, streak, isCorrect);
+};
+```
+
+## שירות קושי מותאם (Custom Difficulty Service)
+
+### customDifficulty.service.ts
+
+```typescript
+import { isCustomDifficulty } from '@shared/validation';
+
+import { CLIENT_STORAGE_KEYS } from '../constants';
+import type { HistoryItem } from '../types';
+import { storageService } from './storage.service';
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function isHistoryItemArray(value: unknown): value is HistoryItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      item =>
+        typeof item === 'object' &&
+        item !== null &&
+        'topic' in item &&
+        'difficulty' in item &&
+        'score' in item &&
+        'date' in item &&
+        typeof item.topic === 'string' &&
+        typeof item.difficulty === 'string' &&
+        typeof item.score === 'number' &&
+        typeof item.date === 'string'
+    )
+  );
+}
+
+class CustomDifficultyService {
+  private readonly CUSTOM_DIFFICULTIES_KEY = CLIENT_STORAGE_KEYS.CUSTOM_DIFFICULTIES;
+  private readonly HISTORY_KEY = CLIENT_STORAGE_KEYS.CUSTOM_DIFFICULTY_HISTORY;
+  private readonly MAX_HISTORY_ITEMS = 50;
+
+  async getCustomDifficulties(): Promise<string[]> {
+    try {
+      const result = await storageService.get<string[]>(this.CUSTOM_DIFFICULTIES_KEY, isStringArray);
+      return result.success && result.data ? result.data : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async saveCustomDifficulty(difficulty: string): Promise<void> {
+    try {
+      const difficulties = await this.getCustomDifficulties();
+      if (!difficulties.includes(difficulty)) {
+        difficulties.push(difficulty);
+        await storageService.set(this.CUSTOM_DIFFICULTIES_KEY, difficulties);
+      }
+    } catch (error) {
+      throw new Error(`Failed to save custom difficulty: ${error}`);
+    }
+  }
+
+  async deleteCustomDifficulty(difficulty: string): Promise<void> {
+    try {
+      const difficulties = await this.getCustomDifficulties();
+      const filtered = difficulties.filter(d => d !== difficulty);
+      await storageService.set(this.CUSTOM_DIFFICULTIES_KEY, filtered);
+    } catch (error) {
+      throw new Error(`Failed to delete custom difficulty: ${error}`);
+    }
+  }
+
+  async getHistory(): Promise<HistoryItem[]> {
+    try {
+      const result = await storageService.get<HistoryItem[]>(this.HISTORY_KEY, isHistoryItemArray);
+      return result.success && result.data ? result.data : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async addToHistory(topic: string, difficulty: string, score: number = 0): Promise<void> {
+    try {
+      if (!isCustomDifficulty(difficulty)) {
+        return;
+      }
+
+      const history = await this.getHistory();
+      const timestamp = Date.now();
+
+      const existingIndex = history.findIndex(item => item.topic === topic && item.difficulty === difficulty);
+
+      if (existingIndex !== -1) {
+        const updated = [...history];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          score: Math.max(updated[existingIndex].score, score),
+          date: new Date(timestamp).toISOString(),
+          timestamp,
+        };
+
+        const [updatedItem] = updated.splice(existingIndex, 1);
+        const reordered = [updatedItem, ...updated];
+        const limited = reordered.slice(0, this.MAX_HISTORY_ITEMS);
+        await storageService.set(this.HISTORY_KEY, limited);
+      } else {
+        const newItem: HistoryItem = {
+          topic,
+          difficulty,
+          score,
+          date: new Date(timestamp).toISOString(),
+          timestamp,
+        };
+
+        const updated = [newItem, ...history];
+        const limited = updated.slice(0, this.MAX_HISTORY_ITEMS);
+        await storageService.set(this.HISTORY_KEY, limited);
+      }
+    } catch (error) {
+      throw new Error(`Failed to add to history: ${error}`);
+    }
+  }
+
+  async clearHistory(): Promise<void> {
+    try {
+      await storageService.set(this.HISTORY_KEY, []);
+    } catch (error) {
+      throw new Error(`Failed to clear history: ${error}`);
+    }
+  }
+}
+
+export const customDifficultyService = new CustomDifficultyService();
+```
+
+## שירות Multiplayer (Multiplayer Service)
+
+### multiplayer.service.ts
+
+```typescript
+import { io, Socket } from 'socket.io-client';
+
+import { clientLogger as logger } from '@shared/services';
+import type {
+  AnswerReceivedEvent,
+  GameEndedEvent,
+  GameStartedEvent,
+  LeaderboardUpdateEvent,
+  PlayerJoinedEvent,
+  PlayerLeftEvent,
+  QuestionEndedEvent,
+  QuestionStartedEvent,
+  RoomUpdatedEvent,
+} from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
+import { ApiConfig } from './api.service';
+
+class MultiplayerService {
+  private socket: Socket | null = null;
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 5;
+  private readonly reconnectDelay = 1000;
+
+  connect(token: string): Socket {
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    const serverUrl = ApiConfig.getBaseUrl();
+    const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
+    const wsUrl = serverUrl.replace(/^https?:\/\//, '').split('/')[0];
+
+    this.socket = io(`${wsProtocol}://${wsUrl}/multiplayer`, {
+      auth: {
+        token,
+      },
+      query: {
+        token,
+      },
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: this.maxReconnectAttempts,
+      reconnectionDelay: this.reconnectDelay,
+    });
+
+    this.setupEventHandlers();
+    return this.socket;
+  }
+
+  disconnect(): void {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+      this.reconnectAttempts = 0;
+    }
+  }
+
+  isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+
+  private setupEventHandlers(): void {
+    if (!this.socket) return;
+
+    this.socket.on('connect', () => {
+      logger.gameInfo('Connected to multiplayer server');
+      this.reconnectAttempts = 0;
+    });
+
+    this.socket.on('disconnect', reason => {
+      logger.gameError('Disconnected from multiplayer server', {
+        reason,
+      });
+    });
+
+    this.socket.on('connect_error', error => {
+      logger.gameError('Failed to connect to multiplayer server', {
+        error: getErrorMessage(error),
+      });
+      this.reconnectAttempts++;
+    });
+
+    this.socket.on('error', (error: { message: string }) => {
+      logger.gameError('Multiplayer server error', {
+        error: error.message,
+      });
+    });
+  }
+
+  emit(event: string, data: unknown): void {
+    if (!this.socket?.connected) {
+      logger.gameError('Cannot emit event - not connected', { eventName: event });
+      return;
+    }
+    this.socket.emit(event, data);
+  }
+
+  on<T = unknown>(event: string, callback: (data: T) => void): void {
+    if (!this.socket) {
+      logger.gameError('Cannot listen to event - socket not initialized', { eventName: event });
+      return;
+    }
+    this.socket.on(event, callback);
+  }
+
+  off(event: string, callback?: (data: unknown) => void): void {
+    if (!this.socket) return;
+    if (callback) {
+      this.socket.off(event, callback);
+    } else {
+      this.socket.off(event);
+    }
+  }
+
+  createRoom(config: {
+    topic: string;
+    difficulty: string;
+    requestedQuestions: number;
+    maxPlayers: number;
+    gameMode: string;
+  }): void {
+    this.emit('create-room', config);
+  }
+
+  joinRoom(roomId: string): void {
+    this.emit('join-room', { roomId });
+  }
+
+  leaveRoom(roomId: string): void {
+    this.emit('leave-room', { roomId });
+  }
+
+  startGame(roomId: string): void {
+    this.emit('start-game', { roomId });
+  }
+
+  submitAnswer(roomId: string, questionId: string, answer: number, timeSpent: number): void {
+    this.emit('submit-answer', {
+      roomId,
+      questionId,
+      answer,
+      timeSpent,
+    });
+  }
+
+  onRoomCreated(callback: (data: { room: unknown; code: string }) => void): void {
+    this.on('room-created', callback);
+  }
+
+  onRoomJoined(callback: (data: { room: unknown }) => void): void {
+    this.on('room-joined', callback);
+  }
+
+  onRoomLeft(callback: (data: { roomId: string }) => void): void {
+    this.on('room-left', callback);
+  }
+
+  onPlayerJoined(callback: (event: PlayerJoinedEvent) => void): void {
+    this.on<PlayerJoinedEvent>('player-joined', callback);
+  }
+
+  onPlayerLeft(callback: (event: PlayerLeftEvent) => void): void {
+    this.on<PlayerLeftEvent>('player-left', callback);
+  }
+
+  onGameStarted(callback: (event: GameStartedEvent) => void): void {
+    this.on<GameStartedEvent>('game-started', callback);
+  }
+
+  onQuestionStarted(callback: (event: QuestionStartedEvent) => void): void {
+    this.on<QuestionStartedEvent>('question-started', callback);
+  }
+
+  onAnswerReceived(callback: (event: AnswerReceivedEvent) => void): void {
+    this.on<AnswerReceivedEvent>('answer-received', callback);
+  }
+
+  onQuestionEnded(callback: (event: QuestionEndedEvent) => void): void {
+    this.on<QuestionEndedEvent>('question-ended', callback);
+  }
+
+  onGameEnded(callback: (event: GameEndedEvent) => void): void {
+    this.on<GameEndedEvent>('game-ended', callback);
+  }
+
+  onLeaderboardUpdate(callback: (event: LeaderboardUpdateEvent) => void): void {
+    this.on<LeaderboardUpdateEvent>('leaderboard-update', callback);
+  }
+
+  onRoomUpdated(callback: (event: RoomUpdatedEvent) => void): void {
+    this.on<RoomUpdatedEvent>('room-updated', callback);
+  }
+
+  onError(callback: (error: { message: string }) => void): void {
+    this.on<{ message: string }>('error', callback);
+  }
+}
+
+export const multiplayerService = new MultiplayerService();
 ```
 
 ## Interceptors

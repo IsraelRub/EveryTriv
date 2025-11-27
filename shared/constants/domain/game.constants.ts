@@ -6,6 +6,8 @@
  * @description Core game mechanics constants and configuration with advanced features
  */
 
+import { VALIDATION_LIMITS } from '../core/validation.constants';
+
 /**
  * Prefix for custom difficulty levels
  * @constant
@@ -38,7 +40,7 @@ export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
 /**
  * Scoring multipliers for different difficulty levels
  * @constant
- * @description Points multiplier based on question difficulty
+ * @description Scoring multiplier based on question difficulty
  * @used_by server/src/features/game/logic, client/src/hooks/layers/business, server/src/features/analytics/analytics.service.ts
  */
 export const DIFFICULTY_MULTIPLIERS = {
@@ -65,12 +67,12 @@ export const CUSTOM_DIFFICULTY_MULTIPLIERS = {
 } as const;
 
 /**
- * Valid question count options per game
+ * Valid requested questions options per game
  * @constant
- * @description Allowed number of questions in a single game session
+ * @description Allowed number of questions requested in a single game session
  * @used_by shared/validation, client/forms, server/src/features/game/logic
  */
-export const VALID_QUESTION_COUNTS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
+export const VALID_REQUESTED_QUESTIONS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
 
 /**
  * Game mode enumeration
@@ -96,7 +98,7 @@ export const VALID_GAME_MODES = Object.values(GameMode);
  * Credit operation types enumeration
  * @enum {string} CreditOperation
  * @description Operations that can be performed on user credits
- * @used_by server/src/features/user, server/src/features/points, shared/validation
+ * @used_by server/src/features/user, server/src/features/scoring, shared/validation
  */
 export enum CreditOperation {
 	ADD = 'add',
@@ -213,6 +215,27 @@ export const CUSTOM_DIFFICULTY_KEYWORDS = {
 } as const;
 
 /**
+ * Game mode default settings
+ * @constant
+ * @description Default settings for each game mode
+ * @used_by client/src/constants/game/game-mode.constants.ts, server/src/features/game/game.service.ts
+ */
+export const GAME_MODE_DEFAULTS = {
+	[GameMode.QUESTION_LIMITED]: {
+		timeLimit: undefined,
+		questionLimit: 10, // 10 questions
+	},
+	[GameMode.TIME_LIMITED]: {
+		timeLimit: 60, // 60 seconds
+		questionLimit: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+	},
+	[GameMode.UNLIMITED]: {
+		timeLimit: undefined,
+		questionLimit: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+	},
+} as const;
+
+/**
  * Game state constants
  * @constant
  * @description Default game state values and configuration
@@ -230,7 +253,6 @@ export const GAME_STATE_DEFAULTS = {
 	IS_GAME_OVER: false,
 	QUESTION_INDEX: 0,
 	TOTAL_QUESTIONS: 10, // Default for question-limited mode
-	TIME_LIMIT: 60, // 1 minute default for time-limited mode
 	DIFFICULTY: DifficultyLevel.EASY,
 	TOPIC: 'General Knowledge',
 } as const;

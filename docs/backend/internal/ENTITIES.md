@@ -64,7 +64,6 @@ export class UserEntity extends BaseEntity {
 ### שדות
 
 **פרטי משתמש:**
-- `username` (string, unique, indexed) - שם משתמש
 - `email` (string, unique, indexed) - אימייל
 - `passwordHash` (string, nullable) - hash סיסמה (למשתמשים עם סיסמה)
 - `googleId` (string, nullable) - מזהה Google (למשתמשי OAuth)
@@ -76,7 +75,7 @@ export class UserEntity extends BaseEntity {
 
 **נקודות ואשראי:**
 - `credits` (int, default: 100) - אשראי למשחקים
-- `purchasedPoints` (int, default: 0) - נקודות שנרכשו
+- `purchasedCredits` (int, default: 0) - קרדיטים שנרכשו
 - `dailyFreeQuestions` (int, default: 20) - שאלות חינם יומיות
 - `remainingFreeQuestions` (int, default: 20) - שאלות חינם נותרות
 - `lastFreeQuestionsReset` (date, nullable) - תאריך איפוס אחרון
@@ -92,7 +91,6 @@ export class UserEntity extends BaseEntity {
 
 ### אינדקסים
 
-- `username` - unique index
 - `email` - unique index
 
 ### קשרים
@@ -104,7 +102,6 @@ export class UserEntity extends BaseEntity {
 ```typescript
 // יצירת משתמש חדש
 const user = new UserEntity();
-user.username = 'john_doe';
 user.email = 'john@example.com';
 user.passwordHash = hashedPassword;
 user.credits = 100;
@@ -112,7 +109,7 @@ user.dailyFreeQuestions = 20;
 user.remainingFreeQuestions = 20;
 
 // עדכון נקודות
-user.purchasedPoints += 100;
+user.purchasedCredits += 100;
 user.credits += 50;
 
 // עדכון העדפות
@@ -364,7 +361,7 @@ userStats.topicStats = {
 - `amount` (int) - סכום נקודות (חיובי = credit, שלילי = debit)
 - `balanceAfter` (int) - מאזן אחרי העסקה
 - `freeQuestionsAfter` (int, default: 0) - שאלות חינם נותרות אחרי העסקה
-- `purchasedPointsAfter` (int, default: 0) - נקודות נרכשות נותרות אחרי העסקה
+- `purchasedCreditsAfter` (int, default: 0) - קרדיטים נרכשים נותרות אחרי העסקה
 
 **מטא-דאטה:**
 - `description` (string, nullable) - תיאור העסקה
@@ -375,12 +372,12 @@ userStats.topicStats = {
 **metadata (jsonb, default: {}):**
 - `difficulty` (string) - קושי (אם רלוונטי)
 - `topic` (string) - נושא (אם רלוונטי)
-- `questionCount` (number) - מספר שאלות (אם רלוונטי)
+- `requestedQuestions` (number) - מספר שאלות מבוקשות (אם רלוונטי)
 - `pricePerPoint` (number) - מחיר לנקודה (אם רלוונטי)
 - `originalAmount` (number) - סכום מקורי (אם רלוונטי)
 - `gameMode` (string) - מצב משחק (אם רלוונטי)
 - `freeQuestionsUsed` (number) - שאלות חינם שנצרכו
-- `purchasedPointsUsed` (number) - נקודות נרכשות שנצרכו
+- `purchasedCreditsUsed` (number) - קרדיטים נרכשים שנצרכו
 - `creditsUsed` (number) - אשראי שנצרך
 - `reason` (string | null) - סיבת העסקה
 
@@ -402,11 +399,11 @@ transaction.userId = userId;
 transaction.type = PointTransactionType.PURCHASE;
 transaction.source = PointSource.PURCHASE;
 transaction.amount = 100;
-transaction.balanceAfter = user.purchasedPoints + 100;
-transaction.description = 'Purchased 100 points';
+transaction.balanceAfter = user.purchasedCredits + 100;
+transaction.description = 'Purchased 100 credits';
 transaction.paymentId = paymentId;
 transaction.metadata = {
-  pricePerPoint: 0.1,
+  pricePerCredit: 0.1,
   originalAmount: 10,
 };
 
@@ -415,14 +412,14 @@ const usageTransaction = new PointTransactionEntity();
 usageTransaction.userId = userId;
 usageTransaction.type = PointTransactionType.USAGE;
 usageTransaction.amount = -10; // שלילי = debit
-usageTransaction.balanceAfter = user.purchasedPoints - 10;
+usageTransaction.balanceAfter = user.purchasedCredits - 10;
 usageTransaction.gameHistoryId = gameHistoryId;
 usageTransaction.metadata = {
   difficulty: 'medium',
   topic: 'Science',
-  questionCount: 10,
+  requestedQuestions: 10,
   gameMode: 'QUESTION_LIMITED',
-  purchasedPointsUsed: 10,
+  purchasedCreditsUsed: 10,
 };
 ```
 

@@ -14,8 +14,8 @@ import { isCustomDifficulty, isRegisteredDifficulty } from './difficulty.validat
 /**
  * Performs quick validation for trivia input without external API calls
  *
- * @param topic - The trivia topic string to validate
- * @param difficulty - The difficulty level string to validate
+ * @param topic The trivia topic string to validate
+ * @param difficulty The difficulty level string to validate
  * @returns TriviaInputValidationResult Validation result with detailed error information
  * @description Validates topic length, difficulty format, and custom difficulty requirements
  */

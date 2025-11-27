@@ -61,15 +61,14 @@ const result = await validationService.validateEmail('user@example.com');
 **תפקיד:** ולידציה של password.
 
 **ולידציות:**
-- אורך: מ-8 עד 100 תווים
-- לפחות אות גדולה, אות קטנה, מספר, ותו מיוחד
+- אורך: מ-6 עד 15 תווים
 - שימוש ב-`validatePassword()` מ-`@shared/utils`
 
 **הערה:** Password לא נרשם בלוגים (REDACTED).
 
 **דוגמה:**
 ```typescript
-const result = await validationService.validatePassword('Password123!');
+const result = await validationService.validatePassword('password123');
 // { isValid: true, errors: [] }
 ```
 
@@ -126,7 +125,7 @@ const result = await validationService.validateTopicLength('Science');
 **ולידציות:**
 - **Topic:** ולידציית אורך דרך `validateTopicLength()`
 - **Difficulty:** בדיקת difficulty תקין (VALID_DIFFICULTIES) או custom difficulty
-- **Count:** בדיקת טווח (MIN-MAX לפי VALIDATION_LIMITS.QUESTION_COUNT)
+- **Requested Questions:** בדיקת טווח (MIN-MAX לפי VALIDATION_LIMITS.REQUESTED_QUESTIONS)
 
 **דוגמה:**
 ```typescript
@@ -138,9 +137,9 @@ const result = await validationService.validateTriviaRequest(
 // { isValid: true, errors: [] }
 ```
 
-#### 8. validatePointsPurchase(userId: string, packageId: string)
+#### 8. validateCreditsPurchase(userId: string, packageId: string)
 
-**תפקיד:** ולידציה של בקשת רכישת נקודות.
+**תפקיד:** ולידציה של בקשת רכישת קרדיטים.
 
 **ולידציות:**
 - **User ID:** חייב להיות לא ריק
@@ -243,9 +242,9 @@ const result = await validationService.validateSubscriptionPlan('premium');
 // { isValid: true, errors: [] }
 ```
 
-#### 14. validatePointsAmount(amount: number)
+#### 14. validateCreditsAmount(amount: number)
 
-**תפקיד:** ולידציה של סכום נקודות.
+**תפקיד:** ולידציה של סכום קרדיטים.
 
 **ולידציות:**
 - חייב להיות >= 0
@@ -254,7 +253,7 @@ const result = await validationService.validateSubscriptionPlan('premium');
 
 **דוגמה:**
 ```typescript
-const result = await validationService.validatePointsAmount(100);
+const result = await validationService.validateCreditsAmount(100);
 // { isValid: true, errors: [] }
 ```
 
@@ -476,7 +475,7 @@ async transform(value: TriviaRequest | string): Promise<TriviaRequest> {
   const triviaValidation = await this.validationService.validateTriviaRequest(
     payload.topic,
     payload.difficulty,
-    payload.questionCount
+    payload.requestedQuestions
   );
   // ...
 }

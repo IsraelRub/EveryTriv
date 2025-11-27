@@ -103,12 +103,12 @@ export interface PurchaseDto {
 }
 
 /**
- * DTO for confirming point purchase
- * @interface ConfirmPointPurchaseDto
- * @description Request payload for confirming point purchase
- * @used_by client/src/services/api.service.ts (confirmPointPurchase), client/src/services/utils/points.service.ts (confirmPointPurchase)
+ * DTO for confirming credit purchase
+ * @interface ConfirmCreditPurchaseDto
+ * @description Request payload for confirming credit purchase
+ * @used_by client/src/services/api.service.ts (confirmCreditPurchase), client/src/services/credits.service.ts (confirmCreditPurchase)
  */
-export interface ConfirmPointPurchaseDto {
+export interface ConfirmCreditPurchaseDto {
 	paymentIntentId: string;
 }
 
@@ -116,7 +116,7 @@ export interface ConfirmPointPurchaseDto {
  * Purchase response interface
  * @interface PurchaseResponse
  * @description Response for purchase operations
- * @used_by client/src/services/api.service.ts (purchasePointPackage), client/src/services/utils/points.service.ts (purchasePoints)
+ * @used_by client/src/services/api.service.ts (purchaseCreditPackage), client/src/services/credits.service.ts (purchaseCredits)
  */
 export interface PurchaseResponse {
 	status: string;
@@ -124,13 +124,13 @@ export interface PurchaseResponse {
 }
 
 /**
- * Deduct points request interface
- * @interface DeductPointsRequest
- * @description Request payload for deducting points
- * @used_by client/src/services/api.service.ts (deductPoints), client/src/services/utils/points.service.ts (deductPoints)
+ * Deduct credits request interface
+ * @interface DeductCreditsRequest
+ * @description Request payload for deducting credits
+ * @used_by client/src/services/api.service.ts (deductCredits), client/src/services/credits.service.ts (deductCredits)
  */
-export interface DeductPointsRequest {
-	questionCount: number;
+export interface DeductCreditsRequest {
+	requestedQuestions: number;
 	gameMode: GameMode;
 }
 

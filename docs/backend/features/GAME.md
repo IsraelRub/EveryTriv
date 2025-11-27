@@ -14,10 +14,25 @@
 
 - ניהול מצב סשן משחק
 - יצירת שאלות טריוויה באמצעות AI providers
-- אחזור שאלות ממטמון
+- אחזור שאלות קיימות ממסד הנתונים לפני יצירת חדשות
+- מניעת כפילויות - שאלות שהמשתמש כבר ראה לא יוצגו שוב
+- מניעת כפילויות במסד הנתונים - בדיקה לפני שמירת שאלה חדשה
 - חישוב תוצאות ושיוך נקודות
 - רישום היסטוריית משחק
 - ניהול קושי מותאם אישית
+
+## טיפוסים
+
+טיפוסים ספציפיים לשרת נמצאים ב-`@internal/types`:
+- `TriviaQuestionMetadata` - metadata עבור שאלות שנוצרו
+- `ServerTriviaQuestionInput` - קלט שאלה עבור השרת
+- `QuestionCacheEntry` - ערך cache עבור שאלות
+- `QuestionCacheMap` - מפה של מפתחות שאלות לערכי cache
+
+טיפוסים משותפים נמצאים ב-`@shared/types`:
+- `TriviaQuestion` - שאלת טריוויה
+- `TriviaQuestionInput` - קלט שאלה
+- `TriviaQuestionDetailsMetadata` - metadata מפורט (כולל `TriviaQuestionSource` ו-`TriviaQuestionReviewStatus`)
 
 ## מבנה מודול
 
@@ -31,12 +46,12 @@ server/src/features/game/
 ├── logic/                      # לוגיקת יצירת טריוויה
 │   ├── triviaGeneration.service.ts # שירות יצירת טריוויה
 │   ├── providers/              # AI Providers
-│   │   ├── implementations/    # מימושים ספציפיים
-│   │   │   ├── anthropic.provider.ts
+│   │   ├── implementations/    # מימושים ספציפיים (מסודרים לפי priority)
+│   │   │   ├── groq.provider.ts      # Priority 1 - חינמי
+│   │   │   ├── gemini.provider.ts    # Priority 2 - $0.075/M
+│   │   │   ├── chatgbt.provider.ts   # Priority 3 - $0.15/M
+│   │   │   ├── claude.provider.ts    # Priority 4 - $0.25/M
 │   │   │   ├── base.provider.ts
-│   │   │   ├── google.provider.ts
-│   │   │   ├── mistral.provider.ts
-│   │   │   ├── openai.provider.ts
 │   │   │   └── index.ts
 │   │   ├── management/         # ניהול providers
 │   │   │   ├── providers.controller.ts
@@ -46,9 +61,6 @@ server/src/features/game/
 │   │   │   ├── prompts.ts
 │   │   │   └── index.ts
 │   │   └── index.ts
-│   └── index.ts
-├── types/                      # טיפוסים ספציפיים
-│   ├── trivia.types.ts
 │   └── index.ts
 ├── game.controller.ts          # Controller
 ├── game.service.ts             # Service
@@ -60,14 +72,14 @@ server/src/features/game/
 
 ### POST /game/trivia
 
-יצירת שאלות טריוויה חדשות.
+יצירת שאלות טריוויה. המערכת בודקת תחילה אם יש שאלות קיימות במסד הנתונים עם הנושא והרמה המבוקשים, ומשתמשת בהן לפני יצירת שאלות חדשות. המערכת גם מונעת מהמשתמש לקבל שאלות שכבר ראה במשחקים קודמים.
 
 **Request Body:**
 ```typescript
 {
   topic: string;           // נושא השאלות
   difficulty: string;      // רמת קושי (easy, medium, hard, custom:*)
-  questionCount: number;   // מספר שאלות (1-50)
+  requestedQuestions: number;   // מספר שאלות מבוקשות (1-50)
 }
 ```
 
@@ -87,7 +99,7 @@ async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPip
   const result = await this.gameService.getTriviaQuestion(
     body.topic,
     body.difficulty,
-    body.questionCount,
+    body.requestedQuestions,
     userId
   );
   return result;
@@ -112,7 +124,7 @@ async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPip
 {
   isCorrect: boolean;
   correctAnswer: number;
-  pointsEarned: number;
+  scoreEarned: number;
   explanation?: string;
 }
 ```
@@ -238,54 +250,92 @@ export class GameService {
 
   /**
    * Get trivia question
+   * 
+   * Process flow:
+   * 1. Validates the trivia request (topic, difficulty, requestedQuestions)
+   * 2. Retrieves questions the user has already seen from game history
+   * 3. Checks if questions exist in database for the requested topic and difficulty
+   * 4. Attempts to retrieve existing questions from database first (excluding user's seen questions)
+   * 5. If not enough questions exist, generates new questions using AI
+   * 6. When generating new questions, checks if question already exists in database before saving
+   * 7. Prevents duplicate questions within the same request batch
+   * 8. Ensures user never receives the same question across different game sessions
    */
   async getTriviaQuestion(
     topic: string,
     difficulty: GameDifficulty,
-    questionCount: number = 1,
+    requestedQuestions: number = 1,
     userId?: string
   ): Promise<{ questions: TriviaQuestion[]; fromCache: boolean }> {
-    const validation = await this.validationService.validateTriviaRequest(topic, difficulty, questionCount);
+    const validation = await this.validationService.validateTriviaRequest(topic, difficulty, requestedQuestions);
     if (!validation.isValid) {
       throw new BadRequestException(validation.errors.join(', '));
     }
 
     const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-    const actualQuestionCount = Math.min(questionCount, maxQuestions);
+    const normalizedRequestedQuestions = Math.min(requestedQuestions, maxQuestions);
 
-    const cacheKey = `trivia:${topic}:${difficulty}:${actualQuestionCount}`;
-    const cachedResult = await this.cacheService.get<TriviaQuestion[]>(cacheKey, isTriviaQuestionArray);
-    const fromCache = cachedResult.success && cachedResult.data !== null && cachedResult.data !== undefined;
+    // Get user's seen questions from game history
+    const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
+    const excludeQuestionTexts = Array.from(userSeenQuestions);
 
-    const questions = fromCache
-      ? cachedResult.data
-      : await this.cacheService.getOrSet<TriviaQuestion[]>(
-          cacheKey,
-          async () => {
-            const generatedQuestions = [];
-            for (let i = 0; i < actualQuestionCount; i++) {
-              const question = await this.triviaGenerationService.generateQuestion(topic, difficulty);
-              generatedQuestions.push(question);
-            }
-            return generatedQuestions;
-          },
-          CACHE_TTL.TRIVIA_QUESTIONS,
-          isTriviaQuestionArray
+    // Check if questions exist in database
+    const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(topic, difficulty);
+
+    // Try to get existing questions first (excluding user's seen questions)
+    let availableQuestions: TriviaEntity[] = [];
+    if (hasExistingQuestions) {
+      availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
+        topic,
+        difficulty,
+        normalizedRequestedQuestions * 2,
+        excludeQuestionTexts
+      );
+    }
+
+    const questions: TriviaQuestion[] = [];
+    const excludeQuestions: string[] = [...excludeQuestionTexts];
+
+    // Use existing questions first
+    for (const questionEntity of availableQuestions) {
+      if (questions.length >= normalizedRequestedQuestions) break;
+      questions.push(questionEntity);
+      excludeQuestions.push(questionEntity.question);
+    }
+
+    // Generate new questions if we don't have enough
+    const remainingCount = normalizedRequestedQuestions - questions.length;
+    if (remainingCount > 0) {
+      for (let i = 0; i < remainingCount; i++) {
+        const questionEntity = await this.triviaGenerationService.generateQuestion(
+          topic, 
+          difficulty, 
+          userId, 
+          excludeQuestions
         );
+        
+        // Check for duplicates in current batch
+        const questionText = questionEntity.question.toLowerCase().trim();
+        if (!excludeQuestions.some(existing => existing.toLowerCase().trim() === questionText)) {
+          questions.push(questionEntity);
+          excludeQuestions.push(questionEntity.question);
+        }
+      }
+    }
 
-    if (!fromCache && userId) {
+    if (userId) {
       await this.analyticsService.trackEvent(userId, {
         eventType: 'game',
         userId,
         timestamp: new Date(),
         action: 'question_requested',
-        properties: { topic, difficulty, questionCount: actualQuestionCount },
+        properties: { topic, difficulty, requestedQuestions: normalizedRequestedQuestions },
       });
     }
 
     return {
       questions: questions || [],
-      fromCache,
+      fromCache: false,
     };
   }
 
@@ -305,7 +355,7 @@ export class GameService {
 
     const isCorrect = answer === question.correctAnswerIndex;
     const difficulty = toDifficultyLevel(question.difficulty);
-    const pointsEarned = isCorrect
+    const scoreEarned = isCorrect
       ? this.pointCalculationService.calculatePoints(difficulty, timeSpent || 30)
       : 0;
 
@@ -315,14 +365,14 @@ export class GameService {
         userId,
         timestamp: new Date(),
         action: 'answer_correct',
-        properties: { questionId, pointsEarned, timeSpent },
+        properties: { questionId, scoreEarned, timeSpent },
       });
     }
 
     return {
       isCorrect,
       correctAnswer: question.correctAnswerIndex,
-      pointsEarned,
+      scoreEarned,
       explanation: question.explanation,
     };
   }
@@ -385,12 +435,68 @@ export class GameService {
 }
 ```
 
+## AI Providers
+
+המערכת תומכת ב-4 AI providers מסודרים לפי priority (עלות), כאשר priority נמוך יותר = עדיפות גבוהה יותר (נבחר ראשון):
+
+| Provider | Priority | עלות | מודל | Rate Limit |
+|----------|----------|------|------|------------|
+| **Groq** | 1 | חינמי ($0) | Llama 3.1 8B Instant | 30 req/min |
+| **Gemini** | 2 | $0.075/M tokens | Gemini 1.5 Flash | 60 req/min |
+| **ChatGPT** | 3 | $0.15/M tokens | GPT-4o-mini | 60 req/min |
+| **Claude** | 4 | $0.25/M tokens | Claude 3.5 Haiku | 60 req/min |
+
+### Provider Selection
+
+המערכת משתמשת ב-round-robin selection עם fallback אוטומטי:
+1. **Selection**: Providers נבחרים לפי סדר priority (Groq → Gemini → ChatGPT → Claude)
+2. **Fallback**: במקרה של שגיאה, המערכת עוברת אוטומטית לפרובידר הבא
+3. **Error Handling**: Rate limits (429) ו-auth errors (401) מובילים לדילוג על הפרובידר הנוכחי
+4. **Cost Optimization**: הפרובידר הזול ביותר נבחר קודם לחיסכון בעלויות
+
+### Environment Variables
+
+```env
+# Priority 1 - Groq (free tier)
+GROQ_API_KEY=your-groq-api-key
+
+# Priority 2 - Gemini
+GEMINI_API_KEY=your-google-api-key
+
+# Priority 3 - ChatGPT
+CHATGBT_API_KEY=your-openai-key
+
+# Priority 4 - Claude
+CLAUDE_API_KEY=your-anthropic-key
+```
+
+### Provider Configuration
+
+כל provider מכיל:
+- `priority`: מספר עדיפות (1-4)
+- `costPerToken`: עלות per token
+- `rateLimit`: הגבלות קצב (requests/minute, tokens/minute)
+- `model`: שם המודל בשימוש
+- `maxTokens`: מקסימום tokens לשאילתה
+
+## Question Retrieval Strategy
+
+המערכת משתמשת באסטרטגיה חכמה לאחזור שאלות:
+
+1. **בדיקת שאלות שהמשתמש כבר ראה** - אוסף שאלות מהיסטוריית המשחקים של המשתמש
+2. **אחזור שאלות קיימות** - בודק אם יש שאלות במסד הנתונים עם הנושא והרמה המבוקשים
+3. **שימוש בשאלות קיימות תחילה** - משתמש בשאלות קיימות לפני יצירת חדשות (חיסכון בעלויות AI)
+4. **יצירת שאלות חדשות** - רק אם אין מספיק שאלות קיימות
+5. **מניעת כפילויות** - בודק אם שאלה כבר קיימת במסד הנתונים לפני שמירה
+6. **מניעת כפילויות בבאצ'** - בודק שאלות לא חוזרות על עצמן באותו בקשה
+
 ## Cache Strategy
 
 | סוג נתון | Key Pattern | TTL | הערה |
 |----------|-------------|-----|------|
-| שאלות טריוויה | `trivia:{topic}:{difficulty}:{count}` | 3600s | הפחתת עלות יצירת תוכן |
 | שאלה לפי ID | `question:{id}` | 300s | אחזור מהיר |
+
+**הערה:** שאלות טריוויה לא נשמרות במטמון יותר, אלא נאחזרות ישירות ממסד הנתונים תוך התחשבות בשאלות שהמשתמש כבר ראה.
 
 ## אינטגרציות
 
@@ -410,9 +516,11 @@ export class GameService {
 
 ## ביצועים
 
-- Caching לשאלות חוזרות
+- אחזור שאלות קיימות ממסד הנתונים לפני יצירת חדשות (חיסכון בעלויות AI)
 - Timeout ליצירת שאלות (30 שניות)
-- Fallback לשאלות ברירת מחדל
+- Retry logic עם עד 3 נסיונות לכל שאלה
+- מניעת כפילויות ברמת SQL (סינון שאלות שהמשתמש כבר ראה)
+- מניעת כפילויות במסד הנתונים (בדיקה לפני שמירה)
 - Batch generation למספר שאלות
 
 ## קישורים רלוונטיים

@@ -11,7 +11,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { PointCalculationService } from '@shared/services';
+import { ScoreCalculationService } from '@shared/services';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
@@ -43,7 +43,7 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
 		GameService,
 		TriviaGenerationService,
 		AiProvidersService,
-		PointCalculationService,
+		ScoreCalculationService,
 		CustomDifficultyPipe,
 		TriviaQuestionPipe,
 		GameAnswerPipe,

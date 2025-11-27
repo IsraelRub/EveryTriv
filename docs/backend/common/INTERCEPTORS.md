@@ -90,7 +90,7 @@ export class LeaderboardController {
 export class PointsController {
   @Get('balance')
   @NoCache() // ← אין cache
-  async getPointBalance(@CurrentUserId() userId: string) {
+  async getCreditBalance(@CurrentUserId() userId: string) {
     // תוצאה לא תישמר במטמון (נתונים בזמן אמת)
   }
 }

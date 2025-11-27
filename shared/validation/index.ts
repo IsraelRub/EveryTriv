@@ -7,7 +7,7 @@
 
 /**
  * Core validation utilities
- * @description Core validation functions for input, email, username, password, topic, and language
+ * @description Core validation functions for input, email, password, topic, and language
  */
 export * from './core';
 

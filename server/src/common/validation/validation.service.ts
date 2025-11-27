@@ -6,7 +6,7 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { VALID_DIFFICULTIES, VALID_PLAN_TYPES, VALIDATION_LIMITS } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, VALID_DIFFICULTIES, VALID_PLAN_TYPES } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
 	AnalyticsEventData,
@@ -28,7 +28,6 @@ import {
 	validateInputContent,
 	validatePassword,
 	validateTopicLength,
-	validateUsername,
 } from '@shared/validation';
 
 import { UserEntity } from '@internal/entities';
@@ -39,42 +38,6 @@ import { LanguageToolService } from './languageTool.service';
 @Injectable()
 export class ValidationService {
 	constructor(private readonly languageToolService: LanguageToolService) {}
-
-	/**
-	 * Validate username
-	 */
-	async validateUsername(value: string, options: ValidationOptions = {}): Promise<ValidationResult> {
-		try {
-			logger.validationDebug('username', value, 'validation_start');
-
-			// Sanitize input first
-			const sanitizedValue = sanitizeInput(value);
-
-			// Use shared validation function
-			const result = validateUsername(sanitizedValue);
-
-			// Log validation result
-			if (result.isValid) {
-				logger.validationInfo('username', value, 'validation_success');
-			} else {
-				logger.validationWarn('username', value, 'validation_failed', {
-					...options,
-					errors: result.errors,
-				});
-			}
-
-			return result;
-		} catch (error) {
-			logger.validationError('username', value, 'validation_error', {
-				...options,
-				error: getErrorMessage(error),
-			});
-			return {
-				isValid: false,
-				errors: ['Username validation failed'],
-			};
-		}
-	}
 
 	/**
 	 * Validate email
@@ -286,7 +249,7 @@ export class ValidationService {
 				errors.push('Difficulty is required');
 			} else if (isCustomDifficulty(difficulty)) {
 				// Validate custom difficulty
-				const customText = difficulty.substring('custom:'.length);
+				const customText = difficulty.substring(CUSTOM_DIFFICULTY_PREFIX.length);
 				if (customText.length < 3) {
 					errors.push('Custom difficulty must be at least 3 characters long');
 				}
@@ -296,11 +259,8 @@ export class ValidationService {
 				}
 			}
 
-			// Validate count
-			const { MIN, MAX } = VALIDATION_LIMITS.QUESTION_COUNT;
-			if (!count || count < MIN || count > MAX) {
-				errors.push(`Question count must be between ${MIN} and ${MAX}`);
-			}
+			// Note: requestedQuestions validation is handled by TriviaRequestDto (@Min, @Max decorators)
+			// This service validates business logic only (topic, difficulty)
 
 			const result = {
 				isValid: errors.length === 0,
@@ -339,14 +299,14 @@ export class ValidationService {
 	}
 
 	/**
-	 * Validate points purchase request
+	 * Validate scoring purchase request
 	 * @param userId User ID
 	 * @param packageId Package ID
 	 * @returns Validation result
 	 */
-	async validatePointsPurchase(userId: string, packageId: string): Promise<ValidationResult> {
+	async validateCreditsPurchase(userId: string, packageId: string): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('points_purchase', packageId, 'validation_start', { userId });
+			logger.validationDebug('credits_purchase', packageId, 'validation_start', { userId });
 
 			const errors: string[] = [];
 
@@ -356,13 +316,13 @@ export class ValidationService {
 			}
 
 			// Validate package ID format
-			const pointsMatch = packageId.match(/package_(\d+)/);
-			if (!pointsMatch) {
+			const creditsMatch = packageId.match(/package_(\d+)/);
+			if (!creditsMatch) {
 				errors.push('Invalid package ID format');
 			} else {
-				const points = parseInt(pointsMatch[1]);
-				if (points <= 0 || points > 10000) {
-					errors.push('Invalid points amount');
+				const credits = parseInt(creditsMatch[1]);
+				if (credits <= 0 || credits > 10000) {
+					errors.push('Invalid credits amount');
 				}
 			}
 
@@ -373,9 +333,9 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('points_purchase', packageId, 'validation_success', { userId });
+				logger.validationInfo('credits_purchase', packageId, 'validation_success', { userId });
 			} else {
-				logger.validationWarn('points_purchase', packageId, 'validation_failed', {
+				logger.validationWarn('credits_purchase', packageId, 'validation_failed', {
 					userId,
 					errors: result.errors,
 				});
@@ -383,13 +343,13 @@ export class ValidationService {
 
 			return result;
 		} catch (error) {
-			logger.validationError('points_purchase', packageId, 'validation_error', {
+			logger.validationError('credits_purchase', packageId, 'validation_error', {
 				userId,
 				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
-				errors: ['Points purchase validation failed'],
+				errors: ['Credits purchase validation failed'],
 			};
 		}
 	}
@@ -605,15 +565,6 @@ export class ValidationService {
 
 			const errors: string[] = [];
 
-			// Validate username if provided
-			if (profileData.username) {
-				const usernameValidation = await this.validateUsername(profileData.username);
-
-				if (!usernameValidation.isValid) {
-					errors.push(...usernameValidation.errors);
-				}
-			}
-
 			// Validate first name
 			if (profileData.firstName) {
 				if (profileData.firstName.length > 50) {
@@ -704,27 +655,27 @@ export class ValidationService {
 	}
 
 	/**
-	 * Validate points amount
-	 * @param amount Points amount to validate
+	 * Validate credits amount
+	 * @param amount Credits amount to validate
 	 * @param options Validation options
 	 * @returns Validation result
 	 */
-	async validatePointsAmount(amount: number): Promise<ValidationResult> {
+	async validateCreditsAmount(amount: number): Promise<ValidationResult> {
 		try {
-			logger.validationDebug('points_amount', amount.toString(), 'validation_start');
+			logger.validationDebug('credits_amount', amount.toString(), 'validation_start');
 
 			const errors: string[] = [];
 
 			if (amount < 0) {
-				errors.push('Points amount cannot be negative');
+				errors.push('Credits amount cannot be negative');
 			}
 
 			if (amount > 100000) {
-				errors.push('Points amount cannot exceed 100,000');
+				errors.push('Credits amount cannot exceed 100,000');
 			}
 
 			if (!Number.isInteger(amount)) {
-				errors.push('Points amount must be a whole number');
+				errors.push('Credits amount must be a whole number');
 			}
 
 			const result = {
@@ -734,21 +685,21 @@ export class ValidationService {
 
 			// Log validation result
 			if (result.isValid) {
-				logger.validationInfo('points_amount', amount.toString(), 'validation_success');
+				logger.validationInfo('credits_amount', amount.toString(), 'validation_success');
 			} else {
-				logger.validationWarn('points_amount', amount.toString(), 'validation_failed', {
+				logger.validationWarn('credits_amount', amount.toString(), 'validation_failed', {
 					errors: result.errors,
 				});
 			}
 
 			return result;
 		} catch (error) {
-			logger.validationError('points_amount', amount.toString(), 'validation_error', {
+			logger.validationError('credits_amount', amount.toString(), 'validation_error', {
 				error: getErrorMessage(error),
 			});
 			return {
 				isValid: false,
-				errors: ['Points amount validation failed'],
+				errors: ['Credits amount validation failed'],
 			};
 		}
 	}

@@ -46,12 +46,11 @@
 #### userSlice
 מצב המשתמש (persisted):
 - `currentUser` - משתמש נוכחי (BasicUser | null)
-- `username` - שם משתמש
 - `avatar` - תמונת פרופיל
-- `pointBalance` - מאזן נקודות (PointBalance | null) עם:
-  - `totalPoints` - נקודות כולל
+- `creditBalance` - מאזן קרדיטים (CreditBalance | null) עם:
+  - `totalCredits` - קרדיטים כולל
   - `freeQuestions` - שאלות חינמיות
-  - `purchasedPoints` - נקודות שנרכשו
+  - `purchasedCredits` - קרדיטים שנרכשו
   - `dailyLimit` - מגבלה יומית
   - `canPlayFree` - האם יכול לשחק חינם
   - `nextResetTime` - זמן איפוס הבא
@@ -170,18 +169,18 @@ dispatch(updateScore({
 dispatch(resetGame());
 
 // User actions
-import { setUser, setUsername, setAvatar, setPointBalance, deductPoints, setAuthenticated, logout } from '@redux/slices';
+import { setUser, setAvatar, setCreditBalance, deductCredits, setAuthenticated, logout } from '@redux/slices';
 
 dispatch(setUser(user));
 dispatch(setAuthenticated(true));
-dispatch(setPointBalance({
+dispatch(setCreditBalance({
   balance: 1000,
-  freePoints: 20,
-  purchasedPoints: 980,
+  freeCredits: 20,
+  purchasedCredits: 980,
   dailyLimit: 20,
   nextResetTime: '2024-01-02T00:00:00Z'
 }));
-dispatch(deductPoints(5));
+dispatch(deductCredits(5));
 dispatch(logout());
 
 // Stats actions

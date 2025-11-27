@@ -5,8 +5,8 @@ import { useAudio } from '../hooks/useAudio';
 import { storageService } from '../services';
 import { AudioControlsProps } from '../types';
 import { combineClassNames } from '../utils';
-import { Icon } from './IconLibrary';
 import { Button } from './ui';
+import { Icon } from './ui/IconLibrary';
 
 /**
  * Main audio controls component
@@ -20,33 +20,41 @@ const AudioControls = memo(function AudioControls({ className }: AudioControlsPr
 	// Load initial state from service and storage
 	useEffect(() => {
 		const loadAudioSettings = async () => {
+			// Sync mute state from service (already initialized in App.tsx)
 			setIsMuted(!audioService.isEnabled);
-			setVolume(audioService.volume);
 
 			// Load volume from storage
 			const storedVolume = await storageService.getNumber(CLIENT_STORAGE_KEYS.AUDIO_VOLUME);
 			if (storedVolume.success && storedVolume.data) {
 				setVolume(storedVolume.data);
-				audioService.setVolume(storedVolume.data);
+				audioService.setMasterVolume(storedVolume.data);
+			} else {
+				setVolume(audioService.volume);
 			}
 		};
 
 		loadAudioSettings();
-	}, []);
+	}, [audioService]);
 
-	const handleVolumeChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-		const newVolume = parseFloat(e.target.value);
-		setVolume(newVolume);
-		audioService.setMasterVolume(newVolume);
+	const handleVolumeChange = useCallback(
+		async (e: ChangeEvent<HTMLInputElement>) => {
+			const newVolume = parseFloat(e.target.value);
+			setVolume(newVolume);
+			audioService.setMasterVolume(newVolume);
 
-		// Save volume to storage
-		await storageService.set(CLIENT_STORAGE_KEYS.AUDIO_VOLUME, newVolume);
-	}, []);
+			// Save volume to storage
+			await storageService.set(CLIENT_STORAGE_KEYS.AUDIO_VOLUME, newVolume);
+		},
+		[audioService]
+	);
 
-	const handleMuteToggle = useCallback(() => {
+	const handleMuteToggle = useCallback(async () => {
 		const newMutedState = audioService.toggleMute();
 		setIsMuted(newMutedState);
-	}, []);
+
+		// Save mute state to storage
+		await storageService.set(CLIENT_STORAGE_KEYS.AUDIO_MUTED, newMutedState);
+	}, [audioService]);
 
 	return (
 		<div className={combineClassNames('flex items-center gap-2', className)}>

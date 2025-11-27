@@ -19,21 +19,22 @@ export const USER_DEFAULT_VALUES = {
 	emailVerified: false,
 	authProvider: 'local' as const,
 	credits: 0,
-	purchasedPoints: 0,
-	totalPoints: 0,
+	purchasedCredits: 0,
+	totalCredits: 0,
 	score: 0,
 } as const;
 
 /**
- * Default point balance values for new users
+ * Default credit balance values for new users
  * @constant
- * @description Default point balance structure for new users
+ * @description Default credit balance structure for new users
  * @used_by client/src/redux/slices/userSlice.ts
  */
-export const POINT_BALANCE_DEFAULT_VALUES = {
-	totalPoints: 0,
+export const CREDIT_BALANCE_DEFAULT_VALUES = {
+	totalCredits: 0,
+	credits: 0,
 	freeQuestions: 0,
-	purchasedPoints: 0,
+	purchasedCredits: 0,
 	dailyLimit: 20,
 	canPlayFree: false,
 	nextResetTime: null,

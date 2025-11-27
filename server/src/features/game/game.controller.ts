@@ -6,7 +6,7 @@ import type { GameData, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
-import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
+import { CustomDifficultyPipe, GameAnswerPipe } from '../../common/pipes';
 import { ValidateCustomDifficultyDto } from './dtos/customDifficulty.dto';
 import { SubmitAnswerDto } from './dtos/submitAnswer.dto';
 import { TriviaRequestDto } from './dtos/triviaRequest.dto';
@@ -18,6 +18,8 @@ export class GameController {
 
 	/**
 	 * Get trivia question by ID
+	 * @param id Question identifier
+	 * @returns Trivia question details
 	 */
 	@Get('trivia/:id')
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
@@ -44,7 +46,10 @@ export class GameController {
 	}
 
 	/**
-	 * Submit answer
+	 * Submit answer to a trivia question
+	 * @param userId Current user identifier
+	 * @param body Answer submission data
+	 * @returns Answer result with correctness and scoring
 	 */
 	@Post('answer')
 	@UsePipes(GameAnswerPipe)
@@ -74,23 +79,27 @@ export class GameController {
 	}
 
 	/**
-	 * Get trivia questions
+	 * Get trivia questions based on topic and difficulty
+	 * @param userId Current user identifier
+	 * @param body Trivia request parameters
+	 * @returns Generated trivia questions
 	 */
 	@Post('trivia')
 	@NoCache()
-	async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPipe) body: TriviaRequestDto) {
+	async getTriviaQuestions(@CurrentUserId() userId: string, @Body() body: TriviaRequestDto) {
 		try {
-			if (!body.topic || !body.difficulty || !body.questionCount) {
-				throw new HttpException('Topic, difficulty, and question count are required', HttpStatus.BAD_REQUEST);
-			}
-
-			const result = await this.gameService.getTriviaQuestion(body.topic, body.difficulty, body.questionCount, userId);
+			const result = await this.gameService.getTriviaQuestion(
+				body.topic,
+				body.difficulty,
+				body.requestedQuestions,
+				userId
+			);
 
 			logger.apiCreate('game_trivia_questions', {
 				userId,
 				topic: body.topic,
 				difficulty: body.difficulty,
-				questionCount: body.questionCount,
+				requestedQuestions: body.requestedQuestions,
 			});
 
 			return result;
@@ -106,7 +115,9 @@ export class GameController {
 	}
 
 	/**
-	 * Get game history
+	 * Get user's game history
+	 * @param userId Current user identifier
+	 * @returns User's game history with statistics
 	 */
 	@Get('history')
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
@@ -136,7 +147,10 @@ export class GameController {
 	}
 
 	/**
-	 * Save game history
+	 * Save game history entry
+	 * @param userId Current user identifier
+	 * @param body Game data to save
+	 * @returns Saved game history entry
 	 */
 	@Post('history')
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
@@ -167,6 +181,9 @@ export class GameController {
 
 	/**
 	 * Delete specific game from history
+	 * @param userId Current user identifier
+	 * @param gameId Game identifier to delete
+	 * @returns Deletion result
 	 */
 	@Delete('history/:gameId')
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
@@ -196,6 +213,8 @@ export class GameController {
 
 	/**
 	 * Clear all game history for user
+	 * @param userId Current user identifier
+	 * @returns Clear operation result
 	 */
 	@Delete('history')
 	async clearGameHistory(@CurrentUserId() userId: string) {
@@ -219,6 +238,8 @@ export class GameController {
 
 	/**
 	 * Validate custom difficulty text
+	 * @param body Custom difficulty validation data
+	 * @returns Validated custom difficulty data
 	 */
 	@Post('validate-custom')
 	@UsePipes(CustomDifficultyPipe)
@@ -246,6 +267,8 @@ export class GameController {
 
 	/**
 	 * Admin endpoint - get game statistics (admin only)
+	 * @param user Current admin user token payload
+	 * @returns Game statistics summary
 	 */
 	@Get('admin/statistics')
 	@Roles(UserRole.ADMIN)
@@ -273,6 +296,8 @@ export class GameController {
 
 	/**
 	 * Admin endpoint - delete all game history (admin only)
+	 * @param user Current admin user token payload
+	 * @returns Clear operation result with deleted count
 	 */
 	@Delete('admin/history/clear-all')
 	@Roles(UserRole.ADMIN)
@@ -302,7 +327,38 @@ export class GameController {
 	}
 
 	/**
+	 * Admin endpoint - get all trivia questions (admin only)
+	 * @param user Current admin user token payload
+	 * @returns All trivia questions from database
+	 */
+	@Get('admin/trivia')
+	@Roles(UserRole.ADMIN)
+	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.gameService.getAllTriviaQuestions();
+
+			logger.apiRead('game_admin_get_all_trivia', {
+				id: user.sub,
+				role: user.role,
+				totalQuestions: result.totalCount,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Failed to get all trivia questions', {
+				error: getErrorMessage(error),
+				id: user.sub,
+				role: user.role,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Admin endpoint - delete all trivia questions (admin only)
+	 * @param user Current admin user token payload
+	 * @returns Clear operation result with deleted count
 	 */
 	@Delete('admin/trivia/clear-all')
 	@Roles(UserRole.ADMIN)
@@ -334,6 +390,8 @@ export class GameController {
 	/**
 	 * Get game by ID (for client compatibility)
 	 * Must be last to avoid conflicts with specific routes like 'trivia/:id'
+	 * @param id Game identifier
+	 * @returns Game details
 	 */
 	@Get(':id')
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
@@ -343,16 +401,19 @@ export class GameController {
 				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
 			}
 
+			// Normalize ID (remove trailing slashes)
+			const normalizedId = id.trim().replace(/\/+$/, '');
+
 			// Prevent matching reserved route names
 			const reservedRoutes = ['trivia', 'history', 'admin', 'answer', 'validate-custom'];
-			if (reservedRoutes.includes(id.toLowerCase())) {
-				throw new HttpException(`Invalid game ID. '${id}' is a reserved route name.`, HttpStatus.BAD_REQUEST);
+			if (reservedRoutes.includes(normalizedId.toLowerCase())) {
+				throw new HttpException(`Invalid game ID. '${normalizedId}' is a reserved route name.`, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.gameService.getGameById(id);
+			const result = await this.gameService.getGameById(normalizedId);
 
 			logger.apiRead('game_by_id', {
-				id,
+				id: normalizedId,
 			});
 
 			return result;

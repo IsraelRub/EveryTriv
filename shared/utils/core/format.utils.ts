@@ -20,11 +20,11 @@ export function formatCurrency(amount: number, currency: string = 'USD', locale:
 }
 
 /**
- * Calculate price per point with rounding
+ * Calculate price per credit with rounding
  * @param price Price amount
- * @param points Number of points
- * @returns Rounded price per point
+ * @param credits Number of credits
+ * @returns Rounded price per credit
  */
-export function calculatePricePerPoint(price: number, points: number): number {
-	return parseFloat((price / points).toFixed(4));
+export function calculatePricePerCredit(price: number, credits: number): number {
+	return parseFloat((price / credits).toFixed(4));
 }

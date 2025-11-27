@@ -48,10 +48,10 @@ export * from './infrastructure';
 export * from './language.types';
 
 /**
- * Points types
- * @description Types for points management, calculations, and balances
+ * Credits types
+ * @description Types for credits management, calculations, and balances
  */
-export * from './points.types';
+export * from './credits.types';
 
 /**
  * Subscription types

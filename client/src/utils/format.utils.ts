@@ -7,7 +7,7 @@
  */
 
 /**
- * Format number with appropriate suffix (consolidated with formatPoints)
+ * Format number with appropriate suffix (consolidated with formatScore)
  * @param num Number to format
  * @param decimals Number of decimal places (default: 1)
  * @param includeSuffix Whether to include K/M suffix (default: true)
@@ -53,15 +53,6 @@ export function formatScore(score: number, showPlus: boolean = true): string {
 }
 
 /**
- * Format username with proper casing
- * @param username Username to format
- * @returns Formatted username
- */
-export function formatUsername(username: string): string {
-	return username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
-}
-
-/**
  * Format topic name for display
  * @param topic Topic name to format
  * @returns Formatted topic name
@@ -71,4 +62,27 @@ export function formatTopic(topic: string): string {
 		.split('-')
 		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 		.join(' ');
+}
+
+/**
+ * Format user display name from firstName and lastName
+ * @param firstName First name (optional)
+ * @param lastName Last name (optional)
+ * @param fallback Fallback value if both names are missing (default: empty string)
+ * @returns Formatted display name or fallback
+ */
+export function formatDisplayName(firstName?: string, lastName?: string, fallback: string = ''): string {
+	if (firstName && lastName) {
+		return `${firstName} ${lastName}`;
+	}
+
+	if (firstName) {
+		return firstName;
+	}
+
+	if (lastName) {
+		return lastName;
+	}
+
+	return fallback;
 }

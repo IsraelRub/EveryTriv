@@ -7,24 +7,47 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { CUSTOM_DIFFICULTY_PREFIX, VALID_DIFFICULTIES } from '@shared/constants';
+import {
+	CUSTOM_DIFFICULTY_PREFIX,
+	SERVER_GAME_CONSTANTS,
+	VALID_DIFFICULTIES,
+	VALIDATION_LIMITS,
+} from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { GameDifficulty, TriviaRequest } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
+import { TriviaRequestDto } from '../../features/game/dtos/triviaRequest.dto';
 import { ValidationService } from '../validation';
 
 @Injectable()
 export class TriviaRequestPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: TriviaRequest | string): Promise<TriviaRequest> {
+	async transform(value: unknown): Promise<TriviaRequestDto> {
 		const startTime = Date.now();
 
 		try {
-			logger.validationDebug('trivia_request', '[REDACTED]', 'validation_start');
+			// Debug: Log what we receive
+			const isStringValue = typeof value === 'string';
+			logger.validationDebug('trivia_request', '[REDACTED]', 'validation_start', {
+				type: typeof value,
+				data: {
+					isObject: isRecord(value),
+					isNull: value === null,
+					isString: isStringValue,
+					stringLength: isStringValue ? value.length : undefined,
+					stringPreview: isStringValue ? value.substring(0, 100) : undefined,
+				},
+			});
 
 			const payload = this.buildTriviaPayload(value);
+
+			// Convert UNLIMITED_QUESTIONS (999) to MAX_QUESTIONS_PER_REQUEST before validation
+			const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
+			const requestedQuestionsForValidation =
+				payload.requestedQuestions === UNLIMITED ? maxQuestions : payload.requestedQuestions;
 
 			const errors: string[] = [];
 			const suggestions: string[] = [];
@@ -34,7 +57,7 @@ export class TriviaRequestPipe implements PipeTransform {
 				const triviaValidation = await this.validationService.validateTriviaRequest(
 					payload.topic,
 					payload.difficulty,
-					payload.questionCount
+					requestedQuestionsForValidation
 				);
 
 				if (!triviaValidation.isValid) {
@@ -45,9 +68,6 @@ export class TriviaRequestPipe implements PipeTransform {
 					}
 					if (triviaValidation.errors.some(e => e.includes('difficulty'))) {
 						suggestions.push('Start with "easy" difficulty if you\'re unsure');
-					}
-					if (triviaValidation.errors.some(e => e.includes('count'))) {
-						suggestions.push('Try 5-10 questions for a good game length');
 					}
 				}
 			}
@@ -75,45 +95,182 @@ export class TriviaRequestPipe implements PipeTransform {
 				});
 			}
 
-			return payload;
+			// Create and return TriviaRequestDto with converted requestedQuestions
+			return this.createTriviaRequestDto(payload, requestedQuestionsForValidation);
 		} catch (error) {
+			const errorMessage = getErrorMessage(error);
+
 			logger.validationError('trivia_request', '[REDACTED]', 'validation_error', {
-				error: getErrorMessage(error),
+				error: errorMessage,
 			});
 
-			logger.apiUpdateError('triviaRequestValidation', getErrorMessage(error));
+			logger.apiUpdateError('triviaRequestValidation', errorMessage);
 
-			throw new BadRequestException('Trivia request validation failed');
+			if (error instanceof BadRequestException) {
+				throw error;
+			}
+
+			throw new BadRequestException({
+				message: 'Trivia request validation failed',
+				errors: [errorMessage],
+			});
 		}
 	}
 
-	private buildTriviaPayload(value: TriviaRequest | string): TriviaRequest {
-		const source = this.normalizeValue(value);
+	private buildTriviaPayload(value: unknown): TriviaRequest {
+		// Debug: Log before normalization
+		logger.validationDebug('trivia_request', '[REDACTED]', 'build_payload_start', {
+			type: typeof value,
+			data: {
+				isPlainObject: isRecord(value),
+			},
+		});
 
-		if (!this.isTriviaRequest(source)) {
-			throw new BadRequestException('Invalid trivia request payload structure');
+		// First check if value is already a plain object (most common case)
+		if (!isRecord(value)) {
+			// If not, try to normalize it (handles string edge cases)
+			const normalized = this.normalizeValue(value);
+
+			// Debug: Log after normalization
+			logger.validationDebug('trivia_request', '[REDACTED]', 'build_payload_after_normalize', {
+				type: typeof normalized,
+				data: {
+					isPlainObject: isRecord(normalized),
+				},
+			});
+
+			if (!isRecord(normalized)) {
+				throw new BadRequestException({
+					message: 'Invalid trivia request payload structure',
+					errors: [
+						`Request body must be a valid object (received: ${typeof normalized}, isArray: ${Array.isArray(normalized)}, isNull: ${normalized === null})`,
+					],
+				});
+			}
+			value = normalized;
 		}
 
-		return this.sanitizeTriviaRequest(source);
-	}
-
-	private normalizeValue(value: TriviaRequest | string): unknown {
-		if (typeof value === 'string') {
-			const parsedValue: unknown = JSON.parse(value);
-			return parsedValue;
+		if (!this.isTriviaRequest(value)) {
+			// Collect validation details for better error message
+			const details: string[] = [];
+			if (isRecord(value)) {
+				details.push(
+					`topic: ${typeof value.topic}${value.topic ? ` (${String(value.topic).substring(0, 20)})` : ' (missing)'}`
+				);
+				details.push(
+					`difficulty: ${typeof value.difficulty}${value.difficulty ? ` (${String(value.difficulty)})` : ' (missing)'}`
+				);
+				details.push(
+					`requestedQuestions: ${typeof value.requestedQuestions}${value.requestedQuestions !== undefined ? ` (${value.requestedQuestions})` : ' (missing)'}`
+				);
+			} else {
+				details.push(`value type: ${typeof value}`);
+			}
+			throw new BadRequestException({
+				message: 'Invalid trivia request payload structure',
+				errors: [
+					`Payload must contain valid topic, difficulty, and requestedQuestions fields. Received: ${details.join(', ')}`,
+				],
+			});
 		}
 
 		return value;
 	}
 
+	private normalizeValue(value: unknown): unknown {
+		// Debug: Log what we're trying to normalize
+		const isStringValue = typeof value === 'string';
+		logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_start', {
+			type: typeof value,
+			data: {
+				isString: isStringValue,
+				stringLength: isStringValue ? value.length : undefined,
+				stringPreview: isStringValue ? value.substring(0, 200) : undefined,
+				isObject: isRecord(value),
+				isNull: value === null,
+			},
+		});
+
+		// NestJS already parses JSON body, so value should be an object
+		// Handle edge cases where value might be a string (shouldn't happen in normal flow)
+		if (typeof value === 'string') {
+			// Empty string or whitespace - invalid
+			if (value.trim().length === 0) {
+				logger.validationWarn('trivia_request', '[REDACTED]', 'normalize_empty_string', {
+					type: typeof value,
+					valueLength: value.length,
+				});
+				throw new BadRequestException({
+					message: 'Invalid request body format',
+					errors: [`Request body cannot be empty (received: ${typeof value}, length: ${value.length})`],
+				});
+			}
+			// Check if string looks like JSON (starts with { or [)
+			if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
+				logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_attempting_json_parse', {
+					data: {
+						preview: value.substring(0, 100),
+					},
+				});
+				try {
+					const parsedValue: unknown = JSON.parse(value);
+					logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_json_parse_success', {
+						type: typeof parsedValue,
+						data: {
+							isObject: isRecord(parsedValue),
+						},
+					});
+					return parsedValue;
+				} catch (error) {
+					// If parsing fails, throw a more descriptive error
+					logger.validationError('trivia_request', '[REDACTED]', 'normalize_json_parse_failed', {
+						error: getErrorMessage(error),
+						data: {
+							preview: value.substring(0, 100),
+						},
+					});
+					throw new BadRequestException({
+						message: 'Invalid JSON format in request body',
+						errors: [`JSON parsing failed: ${getErrorMessage(error)} (preview: ${value.substring(0, 50)}...)`],
+					});
+				}
+			}
+			// If string doesn't look like JSON, throw error
+			logger.validationWarn('trivia_request', '[REDACTED]', 'normalize_string_not_json', {
+				type: typeof value,
+				valueLength: value.length,
+				data: {
+					preview: value.substring(0, 100),
+					startsWithBrace: value.trim().startsWith('{'),
+					startsWithBracket: value.trim().startsWith('['),
+				},
+			});
+			throw new BadRequestException({
+				message: 'Invalid request body format',
+				errors: [
+					`Request body must be a valid JSON object (received: ${typeof value}, length: ${value.length}, preview: ${value.substring(0, 50)}...)`,
+				],
+			});
+		}
+
+		// If value is already an object, return it as-is
+		logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_returning_as_is', {
+			type: typeof value,
+			data: {
+				isObject: isRecord(value),
+			},
+		});
+		return value;
+	}
+
 	private isTriviaRequest(candidate: unknown): candidate is TriviaRequest {
-		if (!this.isPlainObject(candidate)) {
+		if (!isRecord(candidate)) {
 			return false;
 		}
 
-		const { questionCount, topic, difficulty } = candidate;
+		const { requestedQuestions, topic, difficulty } = candidate;
 		if (
-			!this.isValidQuestionCount(questionCount) ||
+			!this.isValidRequestedQuestions(requestedQuestions) ||
 			!this.isNonEmptyString(topic) ||
 			!this.isGameDifficulty(difficulty)
 		) {
@@ -123,12 +280,12 @@ export class TriviaRequestPipe implements PipeTransform {
 		return this.areOptionalTriviaFieldsValid(candidate);
 	}
 
-	private isPlainObject(value: unknown): value is Record<string, unknown> {
-		return typeof value === 'object' && value !== null && !Array.isArray(value);
-	}
-
-	private isValidQuestionCount(value: unknown): value is number {
-		return typeof value === 'number' && Number.isInteger(value) && value > 0;
+	private isValidRequestedQuestions(value: unknown): value is number {
+		if (typeof value !== 'number' || !Number.isInteger(value)) {
+			return false;
+		}
+		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+		return value === UNLIMITED || (value >= MIN && value <= MAX);
 	}
 
 	private isNonEmptyString(value: unknown): value is string {
@@ -167,33 +324,32 @@ export class TriviaRequestPipe implements PipeTransform {
 		return value === undefined || (typeof value === 'number' && Number.isFinite(value));
 	}
 
-	private sanitizeTriviaRequest(candidate: TriviaRequest): TriviaRequest {
-		const sanitized: TriviaRequest = {
-			questionCount: candidate.questionCount,
-			topic: candidate.topic,
-			difficulty: candidate.difficulty,
-		};
+	private createTriviaRequestDto(payload: TriviaRequest, requestedQuestions: number): TriviaRequestDto {
+		const dto = new TriviaRequestDto();
+		dto.topic = payload.topic;
+		dto.difficulty = payload.difficulty;
+		dto.requestedQuestions = requestedQuestions;
 
-		if (candidate.category !== undefined) {
-			sanitized.category = candidate.category;
+		if (payload.category !== undefined) {
+			dto.category = payload.category;
 		}
 
-		if (candidate.userId !== undefined) {
-			sanitized.userId = candidate.userId;
+		if (payload.userId !== undefined) {
+			dto.userId = payload.userId;
 		}
 
-		if (candidate.gameMode !== undefined) {
-			sanitized.gameMode = candidate.gameMode;
+		if (payload.gameMode !== undefined) {
+			dto.gameMode = payload.gameMode;
 		}
 
-		if (candidate.timeLimit !== undefined) {
-			sanitized.timeLimit = candidate.timeLimit;
+		if (payload.timeLimit !== undefined) {
+			dto.timeLimit = payload.timeLimit;
 		}
 
-		if (candidate.questionLimit !== undefined) {
-			sanitized.questionLimit = candidate.questionLimit;
+		if (payload.questionLimit !== undefined) {
+			dto.questionLimit = payload.questionLimit;
 		}
 
-		return sanitized;
+		return dto;
 	}
 }

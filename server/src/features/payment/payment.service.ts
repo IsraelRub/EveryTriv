@@ -11,24 +11,24 @@ import { Repository } from 'typeorm';
 
 import {
 	CACHE_DURATION,
+	CREDIT_PURCHASE_PACKAGES,
 	PAYMENT_ERROR_MESSAGES,
 	PaymentMethod,
 	PaymentStatus,
 	PlanType,
-	POINT_PURCHASE_PACKAGES,
 	SUBSCRIPTION_PLANS,
 	SubscriptionStatus,
 	VALID_PAYMENT_METHODS,
 } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
+	CreditBalance,
+	CreditPurchaseOption,
 	ManualPaymentDetails,
 	PaymentData,
 	PaymentResult,
 	PayPalConfig,
 	PayPalOrderRequest,
-	PointBalance,
-	PointPurchaseOption,
 	SubscriptionData,
 	SubscriptionPlanDetails,
 	SubscriptionPlans,
@@ -36,7 +36,7 @@ import type {
 import {
 	generatePaymentIntentId,
 	getErrorMessage,
-	isPointPurchaseOptionArray,
+	isCreditPurchaseOptionArray,
 	isSubscriptionPlans,
 	sanitizeCardNumber,
 } from '@shared/utils';
@@ -86,29 +86,29 @@ export class PaymentService {
 	}
 
 	/**
-	 * Get point purchase options
-	 * @returns Available point purchase options
+	 * Get credit purchase options
+	 * @returns Available credit purchase options
 	 */
-	async getPointPurchaseOptions(): Promise<PointPurchaseOption[]> {
+	async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
 		try {
-			logger.payment('Getting point purchase options');
+			logger.payment('Getting credit purchase options');
 
-			const cachedOptions = await this.cacheService.get<PointPurchaseOption[]>(
-				'point_purchase_options',
-				isPointPurchaseOptionArray
+			const cachedOptions = await this.cacheService.get<CreditPurchaseOption[]>(
+				'credit_purchase_options',
+				isCreditPurchaseOptionArray
 			);
 			if (cachedOptions.success && cachedOptions.data) {
 				return cachedOptions.data;
 			}
 
-			await this.cacheService.set('point_purchase_options', POINT_PURCHASE_PACKAGES, CACHE_DURATION.VERY_LONG);
+			await this.cacheService.set('credit_purchase_options', CREDIT_PURCHASE_PACKAGES, CACHE_DURATION.VERY_LONG);
 
-			return [...POINT_PURCHASE_PACKAGES];
+			return [...CREDIT_PURCHASE_PACKAGES];
 		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to get point purchase options', {
+			logger.paymentFailed('unknown', 'Failed to get credit purchase options', {
 				error: getErrorMessage(error),
 			});
-			throw createServerError('retrieve point options', error);
+			throw createServerError('retrieve credit options', error);
 		}
 	}
 
@@ -528,30 +528,30 @@ export class PaymentService {
 	}
 
 	/**
-	 * Purchase points
+	 * Purchase credits
 	 * @param userId User ID
-	 * @param optionId Point purchase option ID
-	 * @returns Point balance update result
+	 * @param optionId Credit purchase option ID
+	 * @returns Credit balance update result
 	 */
-	async purchasePoints(userId: string, optionId: string): Promise<PaymentResult & { balance?: PointBalance }> {
+	async purchaseCredits(userId: string, optionId: string): Promise<PaymentResult & { balance?: CreditBalance }> {
 		try {
-			logger.payment('Purchasing points', { userId, id: optionId });
+			logger.payment('Purchasing credits', { userId, id: optionId });
 
-			const options = await this.getPointPurchaseOptions();
+			const options = await this.getCreditPurchaseOptions();
 			const selectedOption = options.find(opt => opt.id === optionId);
 
 			if (!selectedOption) {
-				throw createValidationError('point option', 'string');
+				throw createValidationError('credit option', 'string');
 			}
 
 			// Process payment
 			const paymentResult = await this.processPayment(userId, {
 				amount: selectedOption.price,
 				currency: selectedOption.currency || 'USD',
-				description: `Points purchase: ${selectedOption.points} points`,
+				description: `Credits purchase: ${selectedOption.credits} credits`,
 				metadata: {
 					optionId,
-					points: selectedOption.points,
+					credits: selectedOption.credits,
 					bonus: selectedOption.bonus ?? 0,
 				},
 				method: selectedOption.supportedMethods?.includes(PaymentMethod.PAYPAL)
@@ -563,35 +563,40 @@ export class PaymentService {
 				return paymentResult;
 			}
 
-			// Update user points
+			// Update user scoring
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw createNotFoundError('User');
 			}
 
-			const totalPoints = selectedOption.points + (selectedOption.bonus ?? 0);
-			user.credits = (user.credits ?? 0) + totalPoints;
-			user.purchasedPoints = (user.purchasedPoints ?? 0) + totalPoints;
+			const creditsToAdd = selectedOption.credits + (selectedOption.bonus ?? 0);
+			user.credits = (user.credits ?? 0) + creditsToAdd;
+			user.purchasedCredits = (user.purchasedCredits ?? 0) + creditsToAdd;
 			await this.userRepository.save(user);
 
-			// Invalidate points cache
-			await this.cacheService.delete(`points:balance:${userId}`);
+			// Invalidate credits cache
+			await this.cacheService.delete(`credits:balance:${userId}`);
 
-			logger.payment('Points purchased successfully', {
+			logger.payment('Credits purchased successfully', {
 				userId,
-				points: totalPoints,
+				credits: creditsToAdd,
 				id: paymentResult.transactionId,
 			});
 
-			const balance: PointBalance = {
-				totalPoints: user.credits ?? 0,
-				freeQuestions: user.remainingFreeQuestions ?? 0,
-				purchasedPoints: user.purchasedPoints ?? 0,
+			const creditsBalance = user.credits ?? 0;
+			const purchasedCredits = user.purchasedCredits ?? 0;
+			const freeQuestions = user.remainingFreeQuestions ?? 0;
+			const totalCredits = creditsBalance + purchasedCredits + freeQuestions;
+
+			const balance: CreditBalance = {
+				totalCredits,
+				credits: creditsBalance,
+				purchasedCredits,
+				freeQuestions,
 				dailyLimit: user.dailyFreeQuestions ?? 0,
-				canPlayFree: (user.remainingFreeQuestions ?? 0) > 0,
+				canPlayFree: freeQuestions > 0,
 				nextResetTime: user.lastFreeQuestionsReset ? user.lastFreeQuestionsReset.toISOString() : null,
 				userId,
-				balance: user.credits,
 			};
 
 			return {
@@ -599,12 +604,12 @@ export class PaymentService {
 				balance,
 			};
 		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to purchase points', {
+			logger.paymentFailed('unknown', 'Failed to purchase credits', {
 				userId,
 				id: optionId,
 				error: getErrorMessage(error),
 			});
-			throw createServerError('purchase points', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_POINTS));
+			throw createServerError('purchase credits', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_CREDITS));
 		}
 	}
 
@@ -669,15 +674,15 @@ export class PaymentService {
 
 			await this.subscriptionRepository.save(subscription);
 
-			// Add bonus points if any
-			if (planDetails?.pointBonus && planDetails.pointBonus > 0) {
+			// Add bonus scoring if any
+			if (planDetails?.creditBonus && planDetails.creditBonus > 0) {
 				const user = await this.userRepository.findOne({ where: { id: userId } });
 				if (user) {
-					user.credits = (user.credits ?? 0) + planDetails.pointBonus;
-					user.purchasedPoints = (user.purchasedPoints ?? 0) + planDetails.pointBonus;
+					user.credits = (user.credits ?? 0) + planDetails.creditBonus;
+					user.purchasedCredits = (user.purchasedCredits ?? 0) + planDetails.creditBonus;
 					await this.userRepository.save(user);
-					// Invalidate points cache
-					await this.cacheService.delete(`points:balance:${userId}`);
+					// Invalidate credits cache
+					await this.cacheService.delete(`credits:balance:${userId}`);
 				}
 			}
 
@@ -767,8 +772,8 @@ export class PaymentService {
 			case 'subscription':
 				// Subscription logic handled in subscribeToPlan
 				break;
-			case 'points_purchase':
-				// Points purchase logic handled in purchasePoints
+			case 'credits_purchase':
+				// Credits purchase logic handled in purchaseCredits
 				break;
 			case 'one_time':
 				// Handle one-time payment

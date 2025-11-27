@@ -222,7 +222,7 @@ export const useUserAchievementsById = (userId: string, enabled?: boolean) => {
  * @param userId User ID to get trends for
  * @param params Optional query parameters
  * @param enabled Whether the query is enabled (default: !!userId)
- * @returns Query result with user trend points
+ * @returns Query result with user trend data
  */
 export const useUserTrendsById = (userId: string, params?: TrendQueryParams, enabled?: boolean) => {
 	return useQuery<AnalyticsResponse<UserTrendPoint[]>>({

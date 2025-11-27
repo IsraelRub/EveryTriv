@@ -11,7 +11,7 @@ import { FC, ReactNode } from 'react';
 import { ComponentSize } from '../../constants';
 import type { ValidationIconProps, ValidationStatusIndicatorProps } from '../../types';
 import { combineClassNames } from '../../utils';
-import { Icon } from '../IconLibrary';
+import { Icon } from './IconLibrary';
 
 export const ValidationIcon: FC<ValidationIconProps> = ({
 	status,

@@ -19,14 +19,14 @@ import type {
 	CanPlayResponse,
 	ClientLogsRequest,
 	CompleteUserAnalytics,
+	CreditBalance,
+	CreditPurchaseOption,
+	CreditTransaction,
 	DifficultyStatsData,
 	GameData,
 	GameHistoryEntry,
 	LeaderboardEntry,
 	PaymentResult,
-	PointBalance,
-	PointPurchaseOption,
-	PointTransaction,
 	RequestData,
 	SubscriptionData,
 	SubscriptionPlans,
@@ -69,7 +69,7 @@ export interface ManualPaymentPayload {
 	expiryDate?: string;
 }
 
-export interface PointsPurchaseRequest {
+export interface CreditsPurchaseRequest {
 	packageId: string;
 	paymentMethod: PaymentMethod;
 	paypalOrderId?: string;
@@ -77,8 +77,8 @@ export interface PointsPurchaseRequest {
 	manualPayment?: ManualPaymentPayload;
 }
 
-export interface PointsPurchaseResponse extends PaymentResult {
-	balance?: PointBalance;
+export interface CreditsPurchaseResponse extends PaymentResult {
+	balance?: CreditBalance;
 }
 
 export interface ClientApiService {
@@ -98,10 +98,7 @@ export interface ClientApiService {
 	getCurrentUser(): Promise<BasicUser>;
 	getUserProfile(): Promise<UserProfileResponseType>;
 	updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType>;
-	getUserCredits(): Promise<number>;
-	deductCredits(amount: number): Promise<{ success: boolean; credits: number }>;
 	searchUsers(query: string, limit?: number): Promise<BasicUser[]>;
-	getUserByUsername(username: string): Promise<BasicUser>;
 
 	// Game history methods
 	saveGameHistory(data: GameData): Promise<void>;
@@ -114,13 +111,13 @@ export interface ClientApiService {
 	updateUserRanking(): Promise<UserRankData>;
 	getLeaderboardByPeriod(period: 'weekly' | 'monthly', limit?: number, offset?: number): Promise<LeaderboardEntry[]>;
 
-	// Points methods
-	getPointBalance(): Promise<PointBalance>;
-	getPointPackages(): Promise<PointPurchaseOption[]>;
-	canPlay(questionCount: number): Promise<CanPlayResponse>;
-	deductPoints(questionCount: number, gameMode: GameMode): Promise<PointBalance>;
-	getPointHistory(limit?: number): Promise<PointTransaction[]>;
-	confirmPointPurchase(paymentIntentId: string): Promise<PointBalance>;
+	// Credits methods
+	getCreditBalance(): Promise<CreditBalance>;
+	getCreditPackages(): Promise<CreditPurchaseOption[]>;
+	canPlay(requestedQuestions: number): Promise<CanPlayResponse>;
+	deductCredits(requestedQuestions: number, gameMode: GameMode): Promise<CreditBalance>;
+	getCreditHistory(limit?: number): Promise<CreditTransaction[]>;
+	confirmCreditPurchase(paymentIntentId: string): Promise<CreditBalance>;
 
 	// Trivia methods
 	getTrivia(request: TriviaRequest): Promise<TriviaQuestion>;
@@ -189,7 +186,7 @@ export interface ClientApiService {
 	updateUserCredits(userId: string, amount: number, reason: string): Promise<unknown>;
 	deleteUser(userId: string): Promise<unknown>;
 	updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<unknown>;
-	purchasePoints(request: PointsPurchaseRequest): Promise<PointsPurchaseResponse>;
+	purchaseCredits(request: CreditsPurchaseRequest): Promise<CreditsPurchaseResponse>;
 
 	// Subscription management methods
 	createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionData>;

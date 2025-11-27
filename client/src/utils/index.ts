@@ -8,7 +8,7 @@
 // UI utilities
 export * from './ui';
 
-// User utilities (moved from domain)
+// User utilities
 export * from './user.utils';
 
 // DateTime utilities

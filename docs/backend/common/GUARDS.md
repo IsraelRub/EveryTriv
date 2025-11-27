@@ -11,6 +11,7 @@ Guards ב-NestJS אחראים להגנה על endpoints ולבדיקת הרשא�
 **קבצים:**
 - `auth.guard.ts` - Guard לאימות JWT tokens
 - `roles.guard.ts` - Guard לבדיקת roles והרשאות
+- `ws-auth.guard.ts` - Guard לאימות WebSocket connections
 
 **סדר ביצוע:**
 1. Middleware (DecoratorAwareMiddleware, RateLimitMiddleware)
@@ -394,9 +395,88 @@ async getProfile(@CurrentUser() user: TokenPayload) {
 }
 ```
 
+## WebSocket Authentication Guard
+
+**מיקום:** `server/src/common/guards/ws-auth.guard.ts`
+
+**תפקיד:**
+- אימות WebSocket connections
+- חילוץ JWT token מ-handshake
+- הצמדת user payload ל-`client.data`
+
+### שימוש
+
+```typescript
+import { UseGuards } from '@nestjs/common';
+import { WebSocketGateway } from '@nestjs/websockets';
+import { WsAuthGuard } from '@common/guards';
+
+@WebSocketGateway({
+  namespace: '/multiplayer',
+})
+@UseGuards(WsAuthGuard)
+export class MultiplayerGateway {
+  // כל ה-handlers דורשים אימות
+}
+```
+
+### איך זה עובד
+
+1. **חילוץ Token:**
+   - מ-`client.handshake.auth.token`
+   - או מ-`client.handshake.headers.authorization` (Bearer token)
+
+2. **אימות Token:**
+   - בודק את ה-token עם `JwtService`
+   - אם ה-token לא תקין, מנתק את ה-client
+
+3. **הצמדת User Payload:**
+   - מצרף `payload` ל-`client.data.user` (UserPayload)
+   - מצרף `payload.sub` ל-`client.data.userId`
+
+### שימוש ב-TypedSocket
+
+```typescript
+import type { TypedSocket } from '@internal/types';
+
+async handleConnection(client: TypedSocket) {
+  const userId = client.data.userId; // מוקלד
+  const user = client.data.user; // UserPayload
+  const roomId = client.data.roomId; // מוקלד
+}
+```
+
+### דוגמה מלאה
+
+```typescript
+import { UseGuards } from '@nestjs/common';
+import { WebSocketGateway, SubscribeMessage } from '@nestjs/websockets';
+import { WsAuthGuard } from '@common/guards';
+import { WsCurrentUserId, ConnectedSocket } from '@common/decorators';
+import type { TypedSocket } from '@internal/types';
+
+@WebSocketGateway({
+  namespace: '/multiplayer',
+})
+@UseGuards(WsAuthGuard)
+export class MultiplayerGateway {
+  @SubscribeMessage('join-room')
+  async handleJoinRoom(
+    @WsCurrentUserId() userId: string,
+    @ConnectedSocket() client: TypedSocket,
+    @MessageBody() data: JoinRoomDto
+  ) {
+    // userId כבר מאומת
+    // client.data.userId ו-client.data.user זמינים
+    client.data.roomId = data.roomId;
+  }
+}
+```
+
 ## הפניות
 
-- [Decorators](./DECORATORS.md) - איך Decorators משמשים את Guards
+- [Decorators](./DECORATORS.md) - איך Decorators משמשים את Guards (כולל WebSocket decorators)
 - [Request-Response Cycle](../REQUEST_RESPONSE_CYCLE.md) - סדר ביצוע Guards
 - [Middleware](../internal/MIDDLEWARE.md) - איך Middleware מכין metadata ל-Guards
+- [Internal Types](../internal/TYPES.md) - TypedSocket ו-SocketData
 - [Common Structure](../common/README.md) - סקירה כללית

@@ -7,7 +7,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Response } from 'express';
 
-import { CACHE_DURATION } from '@shared/constants';
+import { CACHE_DURATION, HTTP_METHODS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { CacheEntry } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -129,7 +129,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		}
 
 		// Extract from query parameters for GET requests
-		if (req.method === 'GET' && req.query.ids) {
+		if (req.method === HTTP_METHODS.GET && req.query.ids) {
 			const ids = Array.isArray(req.query.ids) ? req.query.ids : [req.query.ids];
 			return ids.map(id => ({
 				key: `bulk_${id}`,

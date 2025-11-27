@@ -114,7 +114,7 @@ export function performLocalLanguageValidation(
 
 /**
  * Performs local text quality checks to complement external API validation
- * @param input - The input string to check
+ * @param input The input string to check
  * @returns Object containing errors and suggestions for text quality improvements
  * Checks for repeated words, excessive punctuation, capitalization issues,
  * and word length problems to improve text quality

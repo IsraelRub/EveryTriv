@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 
 import type { UserPreferences } from '@shared/types';
 
-import type { AudioCategory, AudioKey } from '../../constants';
+import type { AudioKey } from '../../constants';
 
 /**
  * Audio Service Interface
@@ -21,20 +21,12 @@ export interface AudioServiceInterface {
 	play: (key: AudioKey) => void;
 	stop: (key: AudioKey) => void;
 	stopAll: () => void;
-	stopCategory: (category: AudioCategory) => void;
 	mute: () => void;
 	unmute: () => void;
 	toggleMute: () => boolean;
-	setSoundVolume: (key: AudioKey, volume: number) => void;
 	setMasterVolume: (volume: number) => void;
-	setCategoryVolume: (category: AudioCategory, volume: number) => void;
 	playAchievementSound: (score: number, total: number, previousScore: number) => void;
-	toggleAudio: () => void;
 	setVolume: (volume: number) => void;
-	playSound: (soundName: AudioKey) => void;
-	preloadAudio: (audioKey: AudioKey, path: string) => Promise<void>;
-	stopSound: (soundName: AudioKey) => void;
-	stopAllSounds: () => void;
 }
 
 /**

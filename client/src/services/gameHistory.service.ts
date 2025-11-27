@@ -91,6 +91,9 @@ class ClientGameHistoryService {
 
 	/**
 	 * Get user game history
+	 * @param limit Maximum number of entries to return (default: 20)
+	 * @param offset Pagination offset (default: 0)
+	 * @returns List of game history entries
 	 */
 	async getUserGameHistory(limit: number = 20, offset: number = 0): Promise<GameHistoryEntry[]> {
 		try {
@@ -110,6 +113,8 @@ class ClientGameHistoryService {
 
 	/**
 	 * Get global leaderboard
+	 * @param limit Maximum number of entries to return (default: 10)
+	 * @returns List of leaderboard entries
 	 */
 	async getLeaderboard(limit: number = 10): Promise<LeaderboardEntry[]> {
 		try {
@@ -129,6 +134,7 @@ class ClientGameHistoryService {
 
 	/**
 	 * Get user rank
+	 * @returns User ranking data
 	 */
 	async getUserRank(): Promise<UserRankData> {
 		try {
@@ -146,6 +152,7 @@ class ClientGameHistoryService {
 
 	/**
 	 * Get user statistics
+	 * @returns User statistics data
 	 */
 	async getUserStats(): Promise<UserStatsData> {
 		try {
@@ -164,6 +171,8 @@ class ClientGameHistoryService {
 
 	/**
 	 * Get specific game by ID
+	 * @param gameId Game identifier
+	 * @returns Game history entry
 	 */
 	async getGameById(gameId: string): Promise<GameHistoryEntry> {
 		try {
@@ -183,6 +192,8 @@ class ClientGameHistoryService {
 
 	/**
 	 * Delete specific game history entry
+	 * @param gameId Game identifier to delete
+	 * @returns Deletion result
 	 */
 	async deleteGameHistory(gameId: string): Promise<{ success: boolean; message: string }> {
 		try {
@@ -203,6 +214,7 @@ class ClientGameHistoryService {
 
 	/**
 	 * Clear all user game history
+	 * @returns Clear operation result with deleted count
 	 */
 	async clearGameHistory(): Promise<{ deletedCount: number }> {
 		try {

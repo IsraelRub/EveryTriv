@@ -145,7 +145,7 @@ export default function GameSummaryView() {
 
 	const handleShare = () => {
 		audioService.play(AudioKey.BUTTON_CLICK);
-		const text = `I just scored ${score} points on EveryTriv! ${correctAnswers}/${totalQuestions} correct answers (${accuracy}% accuracy)`;
+		const text = `I just scored ${score} score on EveryTriv! ${correctAnswers}/${totalQuestions} correct answers (${accuracy}% accuracy)`;
 
 		if (navigator.share) {
 			navigator
@@ -207,7 +207,7 @@ export default function GameSummaryView() {
 						<div className='text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-4'>
 							{score}
 						</div>
-						<p className='text-2xl text-slate-300'>Total Points</p>
+						<p className='text-2xl text-slate-300'>Total Score</p>
 					</Card>
 				</motion.section>
 

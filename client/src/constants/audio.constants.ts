@@ -38,8 +38,8 @@ export enum AudioKey {
 	ACHIEVEMENT = 'ACHIEVEMENT',
 	NEW_ACHIEVEMENT = 'NEW_ACHIEVEMENT',
 	LEVEL_UP = 'LEVEL_UP',
-	POINT_STREAK = 'POINT_STREAK',
-	POINT_EARNED = 'POINT_EARNED',
+	SCORE_STREAK = 'SCORE_STREAK',
+	SCORE_EARNED = 'SCORE_EARNED',
 
 	// Background Music
 	BACKGROUND_MUSIC = 'BACKGROUND_MUSIC',
@@ -81,8 +81,8 @@ export const AUDIO_CATEGORIES: Record<AudioKey, AudioCategory> = {
 	[AudioKey.ACHIEVEMENT]: AudioCategory.ACHIEVEMENT,
 	[AudioKey.NEW_ACHIEVEMENT]: AudioCategory.ACHIEVEMENT,
 	[AudioKey.LEVEL_UP]: AudioCategory.ACHIEVEMENT,
-	[AudioKey.POINT_STREAK]: AudioCategory.ACHIEVEMENT,
-	[AudioKey.POINT_EARNED]: AudioCategory.ACHIEVEMENT,
+	[AudioKey.SCORE_STREAK]: AudioCategory.ACHIEVEMENT,
+	[AudioKey.SCORE_EARNED]: AudioCategory.ACHIEVEMENT,
 
 	[AudioKey.BACKGROUND_MUSIC]: AudioCategory.MUSIC,
 	[AudioKey.MENU_MUSIC]: AudioCategory.MUSIC,
@@ -116,8 +116,8 @@ export const AUDIO_PATHS: Record<AudioKey, string> = {
 	[AudioKey.ACHIEVEMENT]: '/assets/sounds/achievements/win.wav',
 	[AudioKey.NEW_ACHIEVEMENT]: '/assets/sounds/achievements/win.wav',
 	[AudioKey.LEVEL_UP]: '/assets/sounds/achievements/win.wav',
-	[AudioKey.POINT_STREAK]: '/assets/sounds/ui/pop.wav',
-	[AudioKey.POINT_EARNED]: '/assets/sounds/ui/click.wav',
+	[AudioKey.SCORE_STREAK]: '/assets/sounds/ui/pop.wav',
+	[AudioKey.SCORE_EARNED]: '/assets/sounds/ui/click.wav',
 
 	// Background Music - use existing music files
 	[AudioKey.BACKGROUND_MUSIC]: '/assets/sounds/music/general.mp3',
@@ -149,8 +149,8 @@ export const AUDIO_CONFIG: Record<AudioKey, { volume?: number; loop?: boolean }>
 	[AudioKey.ACHIEVEMENT]: { volume: 0.9, loop: false },
 	[AudioKey.NEW_ACHIEVEMENT]: { volume: 0.9, loop: false },
 	[AudioKey.LEVEL_UP]: { volume: 0.8, loop: false },
-	[AudioKey.POINT_STREAK]: { volume: 0.7, loop: false },
-	[AudioKey.POINT_EARNED]: { volume: 0.6, loop: false },
+	[AudioKey.SCORE_STREAK]: { volume: 0.7, loop: false },
+	[AudioKey.SCORE_EARNED]: { volume: 0.6, loop: false },
 	[AudioKey.BEEP]: { volume: 0.5, loop: false },
 
 	[AudioKey.BACKGROUND_MUSIC]: { volume: 0.3, loop: true },

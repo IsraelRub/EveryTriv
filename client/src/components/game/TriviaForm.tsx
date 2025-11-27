@@ -15,9 +15,8 @@ import { ButtonVariant, ComponentSize } from '../../constants';
 import { useDebounce } from '../../hooks';
 import { TriviaFormProps } from '../../types';
 import { fadeInUp } from '../animations';
-import GameModeSelection from '../GameMode';
-import { Icon } from '../IconLibrary';
 import { Button, Select } from '../ui';
+import { Icon } from '../ui/IconLibrary';
 
 /**
  * Trivia form component for topic and difficulty selection
@@ -26,29 +25,23 @@ import { Button, Select } from '../ui';
  * @description Form component for trivia game configuration with topic input, difficulty selection, and custom difficulty support
  * @param topic - Current topic input value
  * @param difficulty - Selected difficulty level
- * @param questionCount - Number of questions to generate
+ * @param answerCount - Number of answer choices per question (3|4|5)
  * @param loading - Loading state for form submission
  * @param onTopicChange - Callback for topic input changes
  * @param onDifficultyChange - Callback for difficulty selection changes
- * @param onQuestionCountChange - Callback for question count changes
+ * @param onAnswerCountChange - Callback for answer count changes
  * @param onSubmit - Form submission handler
- * @param onGameModeSelect - Game mode selection handler
- * @param showGameModeSelector - Whether to show game mode selector
- * @param onGameModeSelectorClose - Game mode selector close handler
  * @returns JSX.Element The rendered trivia configuration form
  */
 export default function TriviaForm({
 	topic,
 	difficulty,
-	questionCount,
+	answerCount,
 	loading,
 	onTopicChange,
 	onDifficultyChange,
-	onQuestionCountChange,
+	onAnswerCountChange,
 	onSubmit,
-	onGameModeSelect,
-	showGameModeSelector = false,
-	onGameModeSelectorClose,
 }: TriviaFormProps) {
 	const [isCustomDifficulty, setIsCustomDifficulty] = useState(false);
 	const [customDifficultyText, setCustomDifficultyText] = useState('');
@@ -206,33 +199,21 @@ export default function TriviaForm({
 				)}
 
 				<fieldset>
-					<legend className='sr-only'>Question Count Field</legend>
-					<label className='block text-sm font-medium text-white/80 mb-2'>Number of Questions</label>
+					<legend className='sr-only'>Answer Choices Count Field</legend>
+					<label className='block text-sm font-medium text-white/80 mb-2'>Number of Answer Choices</label>
 					<Select
 						options={[
-							{ value: '3', label: '3 Questions' },
-							{ value: '4', label: '4 Questions' },
-							{ value: '5', label: '5 Questions' },
+							{ value: '3', label: '3 Answer Choices' },
+							{ value: '4', label: '4 Answer Choices' },
+							{ value: '5', label: '5 Answer Choices' },
 						]}
-						value={questionCount?.toString() || '3'}
-						onChange={(e: ChangeEvent<HTMLSelectElement>) => onQuestionCountChange?.(Number(e.target.value))}
+						value={answerCount?.toString() || '4'}
+						onChange={(e: ChangeEvent<HTMLSelectElement>) => onAnswerCountChange?.(Number(e.target.value))}
 						isGlassy
 						className='w-full'
 					/>
 				</fieldset>
 			</div>
-
-			<GameModeSelection
-				isVisible={showGameModeSelector}
-				// onSelectMode={onGameModeSelect}
-				onCancel={
-					onGameModeSelectorClose ||
-					(() => {
-						// Default no-op cancel handler
-					})
-				}
-				onModeSelect={(mode: string) => onGameModeSelect?.(mode)}
-			/>
 
 			<div className='pt-4'>
 				<Button

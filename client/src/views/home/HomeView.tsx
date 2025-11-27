@@ -2,10 +2,18 @@ import { createContext, FormEvent, useCallback, useContext, useEffect, useMemo, 
 
 import { motion } from 'framer-motion';
 
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode, VALID_DIFFICULTIES } from '@shared/constants';
+import {
+	CUSTOM_DIFFICULTY_PREFIX,
+	DifficultyLevel,
+	GAME_MODE_DEFAULTS,
+	GameMode,
+	UserRole,
+	VALID_DIFFICULTIES,
+	VALIDATION_LIMITS,
+} from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { FavoriteTopic, GameDifficulty } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { calculateRequiredCredits, formatValidationErrorMessage, getErrorMessage } from '@shared/utils';
 import { isCustomDifficulty } from '@shared/validation';
 
 import {
@@ -22,7 +30,6 @@ import {
 	HomeTitle,
 	hoverScale,
 	Icon,
-	Leaderboard,
 	ResponsiveGrid,
 	scaleIn,
 	ScoringSystem,
@@ -34,16 +41,14 @@ import {
 	CLIENT_STORAGE_KEYS,
 	ComponentSize,
 	DEFAULT_GAME_STATE,
-	GAME_MODE_DEFAULTS,
 	GAME_STATE_UPDATES,
 	Spacing,
-	UNLIMITED_QUESTIONS,
 } from '../../constants';
 import {
 	useAppDispatch,
 	useAppSelector,
 	useCanPlay,
-	useDeductPoints,
+	useDeductCredits,
 	useGameTimer,
 	usePrevious,
 	useSaveHistory,
@@ -52,16 +57,9 @@ import {
 	useValidateCustomDifficulty,
 	useValueChange,
 } from '../../hooks';
-import { selectCurrentDifficulty, selectCurrentGameMode, selectCurrentTopic } from '../../redux/selectors';
 import { resetGame } from '../../redux/slices';
 import { audioService, customDifficultyService, storageService } from '../../services';
-import type {
-	ClientGameState,
-	CurrentQuestionMetadata,
-	GameConfig,
-	GameSessionData,
-	QuestionCountOption,
-} from '../../types';
+import type { ClientGameState, CurrentQuestionMetadata, RequestedQuestionsOption } from '../../types';
 import { getOrCreateClientUserId } from '../../utils';
 
 /**
@@ -109,14 +107,15 @@ const isGameDifficulty = (value: string): value is GameDifficulty =>
  */
 export default function HomeView() {
 	const dispatch = useAppDispatch();
-	const gameMode = useAppSelector(selectCurrentGameMode);
-	const currentTopic = useAppSelector(selectCurrentTopic);
-	const currentDifficulty = useAppSelector(selectCurrentDifficulty);
-
 	const { data: userProfileResponse } = useUserProfile();
 
 	const [topic, setTopic] = useState('');
 	const [difficulty, setDifficulty] = useState<GameDifficulty>(DifficultyLevel.MEDIUM);
+	const [gameState, setGameState] = useState<ClientGameState>(DEFAULT_GAME_STATE);
+	const [userId, setUserId] = useState<string>('');
+	const [showHistory, setShowHistory] = useState(false);
+	const [isGameActive, setIsGameActive] = useState(false);
+	const [showGameModeSelector, setShowGameModeSelector] = useState(false);
 
 	useEffect(() => {
 		if (userProfileResponse?.preferences?.game) {
@@ -132,32 +131,16 @@ export default function HomeView() {
 		}
 	}, [userProfileResponse]);
 
-	const gameModeConfig = useMemo(() => {
-		const defaults = GAME_MODE_DEFAULTS[gameMode];
+	const currentGameMode = gameState.gameMode?.mode ?? GameMode.QUESTION_LIMITED;
+	const gameModeDefaults = GAME_MODE_DEFAULTS[currentGameMode];
 
-		const getDefaultQuestionCount = (): QuestionCountOption => {
-			const count = defaults.questionLimit;
-
-			return {
-				value: count,
-				label: count === UNLIMITED_QUESTIONS ? 'Unlimited Questions' : `${count} Questions`,
-			};
-		};
-
+	const requestedQuestions = useMemo<RequestedQuestionsOption>(() => {
+		const count = gameState.gameMode?.questionLimit ?? gameModeDefaults.questionLimit;
 		return {
-			questionCount: getDefaultQuestionCount(),
-			timeLimit: defaults.timeLimit,
-			questionLimit: defaults.questionLimit,
-			timeRemaining: defaults.timeLimit,
+			value: count,
+			label: count === VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED ? 'Unlimited Questions' : `${count} Questions`,
 		};
-	}, [gameMode]);
-
-	const [questionCount, setQuestionCount] = useState<QuestionCountOption>(() => gameModeConfig.questionCount);
-	const [gameState, setGameState] = useState<ClientGameState>(DEFAULT_GAME_STATE);
-	const [userId, setUserId] = useState<string>('');
-	const [showHistory, setShowHistory] = useState(false);
-	const [isGameActive, setIsGameActive] = useState(false);
-	const [showGameModeSelector, setShowGameModeSelector] = useState(false);
+	}, [gameState.gameMode?.questionLimit, gameModeDefaults.questionLimit]);
 
 	const previousScore = usePrevious(gameState.stats?.currentScore);
 	const scoreChange = useValueChange(gameState.stats?.currentScore);
@@ -170,25 +153,20 @@ export default function HomeView() {
 		return {
 			customDifficultyMultiplier: metadata.difficultyScore,
 			actualDifficulty: metadata.difficulty ?? metadata.customDifficultyDescription,
-			questionCount: metadata.usageCount,
+			totalQuestions: metadata.usageCount,
 		};
 	}, [gameState.trivia?.metadata]);
-
-	const addParticleBurst = (x: number, y: number, type: string) => {
-		logger.logUserActivity('particleBurst', `x: ${x}, y: ${y}, type: ${type}`);
-	};
 
 	const triviaMutation = useTriviaQuestionMutation();
 	const saveHistoryMutation = useSaveHistory();
 	const validateCustomDifficulty = useValidateCustomDifficulty();
 
-	// Points hooks for game start
-	const { data: canPlay } = useCanPlay(questionCount.value);
-	const { mutate: deductPoints } = useDeductPoints();
+	const { data: canPlay } = useCanPlay(requestedQuestions.value, currentGameMode);
+	const { mutate: deductCredits } = useDeductCredits();
+	const currentUser = useAppSelector(state => state.user.currentUser);
+	const isAdmin = currentUser?.role === UserRole.ADMIN;
 
 	const isFormValid = topic.trim().length > 0 && difficulty.trim().length > 0;
-	const validationErrors: string[] = [];
-	const isValidating = false;
 
 	const updateDifficultySelection = (nextDifficulty: string) => {
 		if (isGameDifficulty(nextDifficulty)) {
@@ -196,26 +174,18 @@ export default function HomeView() {
 		}
 	};
 
-	const setHookGameMode = (config: GameConfig) => {
-		logger.logUserActivity('gameModeChanged', JSON.stringify(config));
-	};
-
-	const updateSessionData = (data: GameSessionData) => {
-		logger.logUserActivity('sessionUpdated', JSON.stringify(data));
-	};
-
 	const createGameModeConfig = useCallback(
 		(
 			mode: GameMode,
-			config: { timeLimit: number; questionLimit: number; timeRemaining: number },
+			config: { timeLimit?: number; questionLimit: number; timeRemaining?: number },
 			existingGameMode?: ClientGameState['gameMode']
 		): ClientGameState['gameMode'] => {
 			return {
 				mode,
 				timer: {
-					isRunning: false,
-					startTime: null,
-					timeElapsed: 0,
+					isRunning: existingGameMode?.timer?.isRunning ?? false,
+					startTime: existingGameMode?.timer?.startTime ?? null,
+					timeElapsed: existingGameMode?.timer?.timeElapsed ?? 0,
 					timeRemaining: config.timeRemaining,
 				},
 				isGameOver: existingGameMode?.isGameOver ?? false,
@@ -225,18 +195,6 @@ export default function HomeView() {
 		},
 		[]
 	);
-
-	useEffect(() => {
-		setGameState((prev: ClientGameState) => ({
-			...prev,
-			gameMode: createGameModeConfig(gameMode, gameModeConfig, prev.gameMode),
-		}));
-
-		if (currentTopic) setTopic(currentTopic);
-		if (currentDifficulty) setDifficulty(currentDifficulty);
-
-		setQuestionCount(gameModeConfig.questionCount);
-	}, [gameMode, currentTopic, currentDifficulty, gameModeConfig, createGameModeConfig]);
 
 	useEffect(() => {
 		const loadUserId = async () => {
@@ -274,7 +232,7 @@ export default function HomeView() {
 				});
 
 				if (currentScore > previousScore) {
-					audioService.play(AudioKey.POINT_EARNED);
+					audioService.play(AudioKey.SCORE_EARNED);
 				} else if (currentScore < previousScore) {
 					audioService.play(AudioKey.ERROR);
 				}
@@ -353,7 +311,6 @@ export default function HomeView() {
 			const newStats = updateStats(gameState.trivia.topic, gameState.trivia.difficulty, isCorrect, gameState.stats);
 
 			if (isCorrect) {
-				addParticleBurst(0, 0, 'correct-answer');
 				audioService.play(AudioKey.CORRECT_ANSWER);
 			} else {
 				audioService.play(AudioKey.WRONG_ANSWER);
@@ -403,64 +360,17 @@ export default function HomeView() {
 				],
 			});
 
-			const sessionCurrentScore = (gameState.stats?.currentScore ?? 0) + (isCorrect ? 1 : 0);
-			const sessionQuestionsAnswered = (gameState.stats?.questionsAnswered ?? 0) + 1;
-
-			updateSessionData({
-				sessionId: '',
-				startTime: new Date(),
-				stats: {
-					currentScore: sessionCurrentScore,
-					maxScore: sessionQuestionsAnswered,
-					successRate: (sessionCurrentScore / sessionQuestionsAnswered) * 100,
-					averageTimePerQuestion: 1000,
-					correctStreak: isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0,
-					maxStreak: Math.max(
-						gameState.stats?.maxStreak ?? 0,
-						isCorrect ? (gameState.stats?.correctStreak ?? 0) + 1 : 0
-					),
-					questionsAnswered: sessionQuestionsAnswered,
-					correctAnswers: (gameState.stats?.correctAnswers ?? 0) + (isCorrect ? 1 : 0),
-					totalGames: gameState.stats?.totalGames ?? 0,
-				},
-				lastGameMode: gameState.gameMode?.mode ?? null,
-				sessionCount: 1,
-				lastScore: sessionCurrentScore,
-				lastTimeElapsed: gameState.gameMode?.timer?.timeElapsed ?? 0,
-			});
-
 			if (gameState.gameMode?.mode !== 'time-limited' && gameState.gameMode?.mode !== 'question-limited') {
 				setTimeout(() => {
 					setIsGameActive(false);
 				}, GAME_STATE_UPDATES.ANIMATION_DELAYS.ANSWER_FEEDBACK);
 			}
 		},
-		[
-			gameState,
-			userId,
-			updateStats,
-			updateGameState,
-			saveHistoryMutation,
-			updateSessionData,
-			addParticleBurst,
-			audioService,
-		]
+		[gameState, userId, updateStats, updateGameState, saveHistoryMutation, audioService]
 	);
 
 	const handleGameModeSelect = (config: { mode: GameMode; timeLimit?: number; questionLimit?: number }) => {
 		audioService.play(AudioKey.BUTTON_CLICK);
-		setHookGameMode({
-			mode: gameMode,
-			topic: topic,
-			difficulty: difficulty,
-			timeLimit: config.timeLimit,
-			questionLimit: config.questionLimit,
-			settings: {
-				showTimer: true,
-				showProgress: true,
-				allowBackNavigation: false,
-			},
-		});
 
 		const gameModeDefaults = GAME_MODE_DEFAULTS[config.mode];
 		const newGameModeConfig = {
@@ -475,40 +385,45 @@ export default function HomeView() {
 		audioService.play(AudioKey.MENU_CLOSE);
 		audioService.play(AudioKey.MENU_MUSIC);
 		setShowGameModeSelector(false);
-		handleSubmitWithMode();
+		startGame();
 	};
 
-	const handleSubmitWithMode = async () => {
+	const startGame = async () => {
 		updateGameState({ error: '', loading: true });
 		try {
 			if (!isFormValid) {
-				throw new Error(validationErrors.join(', '));
+				throw new Error('Please fill in all required fields');
 			}
 
-			// Check if user has enough points to play
-			if (!canPlay) {
-				throw new Error(`Insufficient points! You need ${questionCount.value} points to play.`);
+			// Check if user has enough credits to play (admin users can always play)
+			if (!isAdmin && !canPlay) {
+				const requiredCredits = calculateRequiredCredits(requestedQuestions.value, currentGameMode);
+				throw new Error(`Insufficient credits! You need ${requiredCredits} credits to play.`);
 			}
 
-			// Deduct points before starting the game
-			await new Promise<void>((resolve, reject) => {
-				deductPoints(
-					{
-						questionCount: questionCount.value,
-						gameMode: gameState.gameMode?.mode ?? GameMode.QUESTION_LIMITED,
-					},
-					{
-						onSuccess: () => {
-							logger.gameInfo('Points deducted successfully', { questionCount: questionCount.value });
-							resolve();
+			// Deduct credits before starting the game (skip for admin users)
+			if (!isAdmin) {
+				await new Promise<void>((resolve, reject) => {
+					deductCredits(
+						{
+							requestedQuestions: requestedQuestions.value,
+							gameMode: currentGameMode,
 						},
-						onError: error => {
-							logger.gameError('Failed to deduct points', { error: getErrorMessage(error) });
-							reject(new Error('Failed to deduct points. Please try again.'));
-						},
-					}
-				);
-			});
+						{
+							onSuccess: () => {
+								logger.gameInfo('Credits deducted successfully', { requestedQuestions: requestedQuestions.value });
+								resolve();
+							},
+							onError: error => {
+								logger.gameError('Failed to deduct credits', { error: getErrorMessage(error) });
+								reject(new Error('Failed to deduct credits. Please try again.'));
+							},
+						}
+					);
+				});
+			} else {
+				logger.gameInfo('Admin user - skipping credit deduction', { requestedQuestions: requestedQuestions.value });
+			}
 
 			if (isCustomDifficulty(difficulty)) {
 				await validateCustomDifficulty(`${topic} ${difficulty}`);
@@ -517,7 +432,7 @@ export default function HomeView() {
 			const response = await triviaMutation.mutateAsync({
 				topic,
 				difficulty: difficulty,
-				questionCount: questionCount.value,
+				requestedQuestions: requestedQuestions.value,
 				userId: userId,
 			});
 
@@ -527,13 +442,17 @@ export default function HomeView() {
 				selected: null,
 				gameMode: {
 					...gameState.gameMode,
-					mode: gameState.gameMode?.mode ?? GameMode.UNLIMITED,
+					mode: currentGameMode,
 					isGameOver: false,
 					timer: {
 						...gameState.gameMode?.timer,
 						isRunning: true,
 						startTime: Date.now(),
 						timeElapsed: 0,
+						timeRemaining:
+							currentGameMode === GameMode.TIME_LIMITED
+								? (gameState.gameMode?.timeLimit ?? gameModeDefaults.timeLimit)
+								: undefined,
 					},
 				},
 			});
@@ -541,9 +460,10 @@ export default function HomeView() {
 			audioService.play(AudioKey.GAME_START);
 			audioService.play(AudioKey.GAME_MUSIC);
 		} catch (err) {
-			const errorMessage = getErrorMessage(err);
+			const userFriendlyMessage = formatValidationErrorMessage(err);
+
 			updateGameState({
-				error: errorMessage,
+				error: userFriendlyMessage,
 				loading: false,
 			});
 			setIsGameActive(false);
@@ -559,13 +479,13 @@ export default function HomeView() {
 		logger.gameForm('Trivia form submitted', {
 			topic: topic.substring(0, 50) + (topic.length > 50 ? '...' : ''),
 			difficulty,
-			questionCount: typeof questionCount === 'number' ? questionCount : undefined,
+			requestedQuestions: requestedQuestions.value,
 			isGameActive,
 			formValid: isFormValid,
 			timestamp: new Date().toISOString(),
 		});
 
-		if (!isGameActive) {
+		if (!isGameActive || !gameState.trivia) {
 			logger.gameGamepad('Game mode selector opened', {
 				reason: 'new_game_start',
 			});
@@ -574,7 +494,7 @@ export default function HomeView() {
 			return;
 		}
 
-		await handleSubmitWithMode();
+		await startGame();
 	};
 
 	const handleGameEnd = useCallback(async () => {
@@ -598,13 +518,14 @@ export default function HomeView() {
 		updateGameState({
 			gameMode: {
 				...gameState.gameMode,
-				mode: gameState.gameMode?.mode ?? GameMode.UNLIMITED,
+				mode: currentGameMode,
 				isGameOver: true,
 				timer: {
 					...gameState.gameMode?.timer,
 					isRunning: false,
 					startTime: gameState.gameMode?.timer?.startTime ?? null,
 					timeElapsed: gameState.gameMode?.timer?.timeElapsed ?? 0,
+					timeRemaining: gameState.gameMode?.timer?.timeRemaining,
 				},
 			},
 		});
@@ -614,6 +535,7 @@ export default function HomeView() {
 		gameState.gameMode,
 		gameState.config,
 		gameState.stats,
+		currentGameMode,
 		topic,
 		difficulty,
 		updateGameState,
@@ -625,34 +547,40 @@ export default function HomeView() {
 	// This hook handles all timer updates, game over detection, and time warnings
 	useGameTimer(gameState.gameMode, updateGameState, gameState, handleGameEnd);
 
-	const startNewGame = useCallback(() => {
-		audioService.play(AudioKey.GAME_START);
-		setShowGameModeSelector(true);
-	}, [audioService]);
-
 	const loadNextQuestion = useCallback(async () => {
 		if (gameState.gameMode?.isGameOver) return;
 		updateGameState({ loading: true });
 		try {
+			// For unlimited mode, request questions in batches (don't deduct credits again)
+			// For limited modes, use the original requestedQuestions value
+			const questionsToRequest = currentGameMode === GameMode.UNLIMITED ? 1 : requestedQuestions.value;
+
 			const response = await triviaMutation.mutateAsync({
 				topic,
 				difficulty: difficulty,
-				questionCount: questionCount.value,
+				requestedQuestions: questionsToRequest,
 				userId: userId,
 			});
+			const updatedQuestionLimit =
+				currentGameMode === GameMode.QUESTION_LIMITED
+					? (gameState.gameMode?.questionLimit ?? 0) - 1
+					: gameState.gameMode?.questionLimit;
+
 			updateGameState({
 				trivia: response,
 				loading: false,
 				selected: null,
 				gameMode: {
 					...gameState.gameMode,
-					mode: gameState.gameMode?.mode ?? GameMode.UNLIMITED,
+					mode: currentGameMode,
 					isGameOver: gameState.gameMode?.isGameOver ?? false,
-					timer: gameState.gameMode?.timer ?? { isRunning: false, startTime: null, timeElapsed: 0 },
-					questionLimit:
-						gameState.gameMode?.mode === 'question-limited'
-							? (gameState.gameMode?.questionLimit ?? 0) - 1
-							: gameState.gameMode?.questionLimit,
+					timer: gameState.gameMode?.timer ?? {
+						isRunning: false,
+						startTime: null,
+						timeElapsed: 0,
+						timeRemaining: currentGameMode === GameMode.TIME_LIMITED ? gameState.gameMode?.timeLimit : undefined,
+					},
+					questionLimit: updatedQuestionLimit,
 				},
 			});
 		} catch (err: unknown) {
@@ -661,7 +589,16 @@ export default function HomeView() {
 				loading: false,
 			});
 		}
-	}, [topic, difficulty, userId, gameState.gameMode, updateGameState, triviaMutation]);
+	}, [
+		topic,
+		difficulty,
+		userId,
+		currentGameMode,
+		gameState.gameMode,
+		requestedQuestions,
+		updateGameState,
+		triviaMutation,
+	]);
 
 	const gameContextValue = {
 		gameState,
@@ -673,11 +610,7 @@ export default function HomeView() {
 
 	return (
 		<GameContext.Provider value={gameContextValue}>
-			<main
-				role='main'
-				aria-label='Game Interface'
-				className='min-h-screen flex flex-col items-center justify-center p-4 pt-12'
-			>
+			<section aria-label='Game Interface' className='min-h-screen flex flex-col items-center justify-center p-4 pt-12'>
 				{/* Main Content Container */}
 				<motion.section
 					variants={scaleIn}
@@ -724,14 +657,16 @@ export default function HomeView() {
 						<TriviaForm
 							topic={topic}
 							difficulty={difficulty}
-							questionCount={questionCount.value}
-							loading={gameState.loading || isValidating}
+							answerCount={4}
+							loading={gameState.loading}
 							onTopicChange={setTopic}
 							onDifficultyChange={updateDifficultySelection}
-							onQuestionCountChange={(count: number) => setQuestionCount({ value: count, label: `${count} Questions` })}
+							onAnswerCountChange={() => {
+								// Store answer count for trivia generation
+								// This is the number of answer choices per question (3|4|5)
+								// Currently not used, but kept for future use
+							}}
 							onSubmit={handleSubmit}
-							showGameModeSelector={showGameModeSelector}
-							onGameModeSelectorClose={() => setShowGameModeSelector(false)}
 						/>
 					</motion.section>
 
@@ -788,34 +723,6 @@ export default function HomeView() {
 					{/* Error Display */}
 					<ErrorBanner message={gameState.error || ''} />
 
-					{/* Game Mode Button */}
-					{!gameState.loading && !gameState.trivia && (
-						<motion.section
-							variants={fadeInUp}
-							initial='hidden'
-							animate='visible'
-							exit='exit'
-							transition={{ delay: 1 }}
-							className='mt-6'
-							aria-label='Game Mode Selection'
-						>
-							<motion.button
-								variants={hoverScale}
-								initial='hidden'
-								animate='visible'
-								exit='exit'
-								onClick={() => {
-									audioService.play(AudioKey.BUTTON_CLICK);
-									startNewGame();
-								}}
-								className='w-full py-4 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 transform hover:scale-105 transition-all duration-200'
-							>
-								<Icon name='gamepad' size={ComponentSize.LG} className='mr-2' />
-								Start Game with Options
-							</motion.button>
-						</motion.section>
-					)}
-
 					{/* Active Game */}
 					{gameState.trivia && (
 						<motion.article
@@ -839,88 +746,88 @@ export default function HomeView() {
 					)}
 				</motion.section>
 
-				{/* Scoring and Leaderboard Section */}
-				<motion.section
-					variants={createStaggerContainer(0.1)}
-					initial='hidden'
-					animate='visible'
-					exit='exit'
-					className='w-full max-w-7xl mt-8 space-y-6'
-					aria-label='Scoring and Leaderboard'
-				>
-					{/* Score Change Indicator */}
-					{scoreChange.hasChanged && (
-						<motion.div
-							variants={fadeInUp}
-							initial='hidden'
-							animate='visible'
-							exit='exit'
-							transition={{ delay: 0.1 }}
-							role='status'
-							aria-live='polite'
-						>
-							<div className='text-center'>
-								<div
-									className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-										(scoreChange.current ?? 0) > (scoreChange.previous ?? 0)
-											? 'bg-green-500/20 text-green-300 border border-green-400/30'
-											: 'bg-red-500/20 text-red-300 border border-red-400/30'
-									}`}
-								>
-									<Icon
-										name={(scoreChange.current ?? 0) > (scoreChange.previous ?? 0) ? 'trending-up' : 'trending-down'}
-										size={ComponentSize.SM}
-										className='mr-2'
-									/>
-									Score {(scoreChange.current ?? 0) > (scoreChange.previous ?? 0) ? 'increased' : 'decreased'} by{' '}
-									{Math.abs((scoreChange.current ?? 0) - (scoreChange.previous ?? 0))}
+				{/* Scoring Section - Only shown when there's active game or stats */}
+				{(isGameActive || (gameState.stats?.questionsAnswered ?? 0) > 0) && (
+					<motion.section
+						variants={createStaggerContainer(0.1)}
+						initial='hidden'
+						animate='visible'
+						exit='exit'
+						className='w-full max-w-7xl mt-8 space-y-6'
+						aria-label='Scoring System'
+					>
+						{/* Score Change Indicator */}
+						{scoreChange.hasChanged && (
+							<motion.div
+								variants={fadeInUp}
+								initial='hidden'
+								animate='visible'
+								exit='exit'
+								transition={{ delay: 0.1 }}
+								role='status'
+								aria-live='polite'
+							>
+								<div className='text-center'>
+									<div
+										className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+											(scoreChange.current ?? 0) > (scoreChange.previous ?? 0)
+												? 'bg-green-500/20 text-green-300 border border-green-400/30'
+												: 'bg-red-500/20 text-red-300 border border-red-400/30'
+										}`}
+									>
+										<Icon
+											name={(scoreChange.current ?? 0) > (scoreChange.previous ?? 0) ? 'trending-up' : 'trending-down'}
+											size={ComponentSize.SM}
+											className='mr-2'
+										/>
+										Score {(scoreChange.current ?? 0) > (scoreChange.previous ?? 0) ? 'increased' : 'decreased'} by{' '}
+										{Math.abs((scoreChange.current ?? 0) - (scoreChange.previous ?? 0))}
+									</div>
 								</div>
-							</div>
-						</motion.div>
-					)}
+							</motion.div>
+						)}
 
-					<GridLayout variant='balanced' gap={Spacing.LG}>
-						<motion.article
-							variants={fadeInRight}
-							initial='hidden'
-							animate='visible'
-							exit='exit'
-							className='col-span-2'
-							aria-label='Scoring System'
-						>
-							<ScoringSystem
-								currentStreak={gameState.stats?.correctStreak ?? 0}
-								score={gameState.stats?.currentScore ?? 0}
-								total={gameState.stats?.questionsAnswered ?? 0}
-								topicsPlayed={Object.keys(gameState.stats?.topicsPlayed ?? {})}
-								difficultyStats={gameState.stats?.successRateByDifficulty}
-								currentQuestionMetadata={currentQuestionMetadata}
-							/>
-						</motion.article>
-
-						{/* Social Share Component */}
-						{(gameState.stats?.questionsAnswered ?? 0) > 0 && (
-							<motion.aside
+						<GridLayout variant='balanced' gap={Spacing.LG}>
+							<motion.article
 								variants={fadeInRight}
 								initial='hidden'
 								animate='visible'
 								exit='exit'
-								className='col-span-1'
-								aria-label='Social Sharing'
+								className='col-span-2'
+								aria-label='Scoring System'
 							>
-								<SocialShare
+								<ScoringSystem
+									currentStreak={gameState.stats?.correctStreak ?? 0}
 									score={gameState.stats?.currentScore ?? 0}
 									total={gameState.stats?.questionsAnswered ?? 0}
-									topic={topic}
-									difficulty={difficulty}
-									className='w-full'
+									topicsPlayed={Object.keys(gameState.stats?.topicsPlayed ?? {})}
+									difficultyStats={gameState.stats?.successRateByDifficulty}
+									currentQuestionMetadata={currentQuestionMetadata}
 								/>
-							</motion.aside>
-						)}
-					</GridLayout>
+							</motion.article>
 
-					<Leaderboard userId={userId} />
-				</motion.section>
+							{/* Social Share Component */}
+							{(gameState.stats?.questionsAnswered ?? 0) > 0 && (
+								<motion.aside
+									variants={fadeInRight}
+									initial='hidden'
+									animate='visible'
+									exit='exit'
+									className='col-span-1'
+									aria-label='Social Sharing'
+								>
+									<SocialShare
+										score={gameState.stats?.currentScore ?? 0}
+										total={gameState.stats?.questionsAnswered ?? 0}
+										topic={topic}
+										difficulty={difficulty}
+										className='w-full'
+									/>
+								</motion.aside>
+							)}
+						</GridLayout>
+					</motion.section>
+				)}
 
 				{/* Modals */}
 				<CustomDifficultyHistory
@@ -934,7 +841,7 @@ export default function HomeView() {
 					onModeSelect={(mode: string) => logger.gameInfo('Game mode selected', { mode })}
 					onCancel={() => setShowGameModeSelector(false)}
 				/>
-			</main>
+			</section>
 		</GameContext.Provider>
 	);
 }

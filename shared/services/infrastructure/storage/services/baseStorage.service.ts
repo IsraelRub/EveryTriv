@@ -15,10 +15,11 @@ import {
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
+	StorageType,
 	StorageValue,
 	UserProgressData,
 } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { createTimedResult, formatStorageError, getErrorMessage } from '@shared/utils';
 
 import { StorageMetricsTracker } from '../base/metrics-tracker';
 import { StorageConfigFactory } from '../base/storage-config';
@@ -75,9 +76,9 @@ export abstract class BaseStorageService implements StorageService {
 		data?: T,
 		error?: string,
 		startTime?: number,
-		storageType?: 'persistent' | 'cache' | 'hybrid'
+		storageType: StorageType = this.config.type
 	): StorageOperationResult<T> {
-		return StorageUtils.createTimedResult(success, data, error, startTime, storageType ?? this.config.type);
+		return createTimedResult(success, data, error, startTime, storageType);
 	}
 
 	/**
@@ -94,7 +95,7 @@ export abstract class BaseStorageService implements StorageService {
 		operation: keyof StorageMetrics['operations'],
 		startTime: number,
 		success: boolean,
-		storageType: 'persistent' | 'cache' | 'hybrid' = this.config.type,
+		storageType: StorageType = this.config.type,
 		size?: number
 	): void {
 		StorageMetricsTracker.trackOperation(operation, startTime, success, storageType, size, this.config.enableMetrics);
@@ -108,7 +109,7 @@ export abstract class BaseStorageService implements StorageService {
 	 * @description Provides consistent error formatting across storage operations
 	 */
 	protected formatError(error: unknown): string {
-		return StorageUtils.formatError(error);
+		return formatStorageError(error);
 	}
 
 	protected updateMetadata(key: string, size: number, ttl?: number): void {
@@ -345,28 +346,20 @@ export abstract class BaseStorageService implements StorageService {
 
 	/**
 	 * Legacy methods for backward compatibility
-	 * @description Deprecated methods maintained for compatibility with older code
-	 */
-	/**
-	 * @deprecated Use set() instead
+	 * @description Legacy methods maintained for compatibility with older code
+	 * @used_by server/src/features/game/game.service.ts
 	 */
 	async setItem<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
 		return this.set(key, value, ttl);
 	}
 
-	/**
-	 * @deprecated Use get() instead
-	 */
 	async getItem<T extends StorageValue>(
 		key: string,
 		validator: (value: StorageValue) => value is T
 	): Promise<StorageOperationResult<T | null>> {
-		return this.get(key, validator);
+		return this.get<T>(key, validator);
 	}
 
-	/**
-	 * @deprecated Use delete() instead
-	 */
 	async removeItem(key: string): Promise<StorageOperationResult<void>> {
 		return this.delete(key);
 	}

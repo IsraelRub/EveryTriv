@@ -30,12 +30,12 @@ export class AuthService {
 	 * Register a new user
 	 * @param registerDto User registration data
 	 * @returns Authentication response with tokens and user data
-	 * @throws BadRequestException if username or email already exists
+	 * @throws BadRequestException if email already exists
 	 */
 	async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-		// Check if username or email already exists
+		// Check if email already exists
 		const existingUser = await this.userRepository.findOne({
-			where: [{ username: registerDto.username }, { email: registerDto.email }],
+			where: { email: registerDto.email },
 		});
 
 		if (existingUser) {
@@ -44,12 +44,11 @@ export class AuthService {
 				: false;
 
 			if (!passwordMatches) {
-				throw new BadRequestException('Username or email already exists');
+				throw new BadRequestException('Email already exists');
 			}
 
 			const tokenPair = await this.authenticationManager.generateTokensForUser({
 				id: existingUser.id,
-				username: existingUser.username,
 				email: existingUser.email,
 				role: existingUser.role,
 			});
@@ -59,7 +58,6 @@ export class AuthService {
 				refresh_token: tokenPair.refreshToken,
 				user: {
 					id: existingUser.id,
-					username: existingUser.username,
 					email: existingUser.email,
 					firstName: existingUser.firstName,
 					lastName: existingUser.lastName,
@@ -77,7 +75,6 @@ export class AuthService {
 
 		// Create user
 		const user = this.userRepository.create({
-			username: registerDto.username,
 			email: registerDto.email,
 			passwordHash: hashedPassword,
 			firstName: registerDto.firstName,
@@ -91,7 +88,6 @@ export class AuthService {
 		// Generate tokens using AuthenticationManager
 		const tokenPair = await this.authenticationManager.generateTokensForUser({
 			id: savedUser.id,
-			username: savedUser.username,
 			email: savedUser.email,
 			role: savedUser.role,
 		});
@@ -101,7 +97,6 @@ export class AuthService {
 			refresh_token: tokenPair.refreshToken,
 			user: {
 				id: savedUser.id,
-				username: savedUser.username,
 				email: savedUser.email,
 				firstName: savedUser.firstName,
 				lastName: savedUser.lastName,
@@ -112,43 +107,58 @@ export class AuthService {
 
 	/**
 	 * Login user
-	 * @param loginDto User login credentials
+	 * @param loginDto User login credentials (email)
 	 * @returns Authentication response with tokens and user data
 	 * @throws UnauthorizedException if credentials are invalid
+	 * @throws BadRequestException if email is not provided
 	 */
 	async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-		const user = await this.userRepository.findOne({
-			where: { username: loginDto.username, isActive: true },
-		});
+		try {
+			// Find user by email
+			const user = await this.userRepository.findOne({
+				where: { email: loginDto.email, isActive: true },
+			});
 
-		if (!user) {
-			throw new UnauthorizedException('Invalid credentials');
+			if (!user) {
+				throw new UnauthorizedException('Invalid credentials');
+			}
+
+			// Use AuthenticationManager for authentication
+			const authResult = await this.authenticationManager.authenticate(
+				{ email: user.email, password: loginDto.password },
+				{
+					id: user.id,
+					email: user.email,
+					passwordHash: user.passwordHash || '',
+					role: user.role,
+					isActive: user.isActive,
+				}
+			);
+
+			if (authResult.error) {
+				throw new UnauthorizedException(authResult.error || 'Invalid credentials');
+			}
+
+			// Type guard: we know these exist when there's no error
+			if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
+				throw new UnauthorizedException('Authentication result incomplete');
+			}
+
+			// Update lastLogin timestamp
+			user.lastLogin = new Date();
+			await this.userRepository.save(user);
+
+			return {
+				access_token: authResult.accessToken,
+				refresh_token: authResult.refreshToken,
+				user: authResult.user,
+			};
+		} catch (error) {
+			if (error instanceof UnauthorizedException) {
+				throw error;
+			}
+			throw error;
 		}
-
-		// Use AuthenticationManager for authentication
-		const authResult = await this.authenticationManager.authenticate(loginDto, {
-			id: user.id,
-			username: user.username,
-			email: user.email,
-			passwordHash: user.passwordHash || '',
-			role: user.role,
-			isActive: user.isActive,
-		});
-
-		if (authResult.error) {
-			throw new UnauthorizedException(authResult.error || 'Invalid credentials');
-		}
-
-		// Type guard: we know these exist when there's no error
-		if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
-			throw new UnauthorizedException('Authentication result incomplete');
-		}
-
-		return {
-			access_token: authResult.accessToken,
-			refresh_token: authResult.refreshToken,
-			user: authResult.user,
-		};
 	}
 
 	/**
@@ -158,21 +168,28 @@ export class AuthService {
 	 * @throws UnauthorizedException if refresh token is invalid
 	 */
 	async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
-		// Use AuthenticationManager for token refresh
-		const authResult = await this.authenticationManager.refreshAccessToken(refreshTokenDto.refreshToken);
+		try {
+			// Use AuthenticationManager for token refresh
+			const authResult = await this.authenticationManager.refreshAccessToken(refreshTokenDto.refreshToken);
 
-		if (authResult.error) {
-			throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
+			if (authResult.error) {
+				throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
+			}
+
+			// Type guard: we know accessToken exists when there's no error
+			if (!authResult.accessToken) {
+				throw new UnauthorizedException('Authentication result incomplete');
+			}
+
+			return {
+				access_token: authResult.accessToken,
+			};
+		} catch (error) {
+			if (error instanceof UnauthorizedException) {
+				throw error;
+			}
+			throw error;
 		}
-
-		// Type guard: we know accessToken exists when there's no error
-		if (!authResult.accessToken) {
-			throw new UnauthorizedException('Authentication result incomplete');
-		}
-
-		return {
-			access_token: authResult.accessToken,
-		};
 	}
 
 	/**
@@ -182,27 +199,33 @@ export class AuthService {
 	 * @throws UnauthorizedException if user not found
 	 */
 	async getCurrentUser(userId: string): Promise<Omit<UserData, 'passwordHash'> & { passwordHash?: string }> {
-		const user = await this.userRepository.findOne({
-			where: { id: userId, isActive: true },
-			select: ['id', 'username', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
-		});
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId, isActive: true },
+				select: ['id', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
+			});
 
-		if (!user) {
-			throw new UnauthorizedException('User not found');
+			if (!user) {
+				throw new UnauthorizedException('User not found');
+			}
+
+			return user;
+		} catch (error) {
+			if (error instanceof UnauthorizedException) {
+				throw error;
+			}
+			throw error;
 		}
-
-		return user;
 	}
 
 	/**
 	 * Logout user (invalidate tokens)
 	 * @param userId User ID
-	 * @param username Username
 	 * @returns Success message
 	 */
-	async logout(userId: string, username: string): Promise<{ message: string }> {
+	async logout(userId: string): Promise<{ message: string }> {
 		// Use AuthenticationManager for logout
-		await this.authenticationManager.logout(userId, username);
+		await this.authenticationManager.logout(userId);
 
 		return {
 			message: 'Logged out successfully',
@@ -211,13 +234,13 @@ export class AuthService {
 
 	/**
 	 * Validate user credentials
-	 * @param username Username
+	 * @param email Email
 	 * @param password Password
 	 * @returns User data if valid, null otherwise
 	 */
-	async validateUser(username: string, password: string): Promise<Omit<UserData, 'passwordHash'> | null> {
+	async validateUser(email: string, password: string): Promise<Omit<UserData, 'passwordHash'> | null> {
 		const user = await this.userRepository.findOne({
-			where: { username, isActive: true },
+			where: { email, isActive: true },
 		});
 
 		if (!user) {
@@ -245,7 +268,6 @@ export class AuthService {
 	async loginWithGoogle(profile: {
 		googleId: string;
 		email?: string;
-		username?: string;
 		firstName?: string;
 		lastName?: string;
 		avatar?: string;
@@ -255,35 +277,17 @@ export class AuthService {
 		}
 
 		const normalizedEmail = profile.email?.toLowerCase();
-		const baseUsername =
-			profile.username || normalizedEmail?.split('@')[0] || `google_${profile.googleId.substring(0, 8)}`;
-
-		const sanitizedBase = baseUsername.replace(/[^a-zA-Z0-9_-]/g, '') || `google_${Date.now()}`;
 
 		let user = await this.userRepository.findOne({
 			where: [{ googleId: profile.googleId }, ...(normalizedEmail ? [{ email: normalizedEmail }] : [])],
 		});
 
 		if (!user) {
-			// Ensure username uniqueness
-			let usernameCandidate = sanitizedBase;
-			let suffix = 1;
-			let usernameTaken = await this.userRepository.findOne({
-				where: { username: usernameCandidate },
-			});
-			while (usernameTaken) {
-				usernameCandidate = `${sanitizedBase}${suffix++}`;
-				usernameTaken = await this.userRepository.findOne({
-					where: { username: usernameCandidate },
-				});
-			}
-
 			const email = normalizedEmail ?? `${profile.googleId}@googleuser.everytriv`;
-			const firstName = profile.firstName ?? usernameCandidate;
-			const lastName = profile.lastName ?? '';
+			const firstName = profile.firstName;
+			const lastName = profile.lastName;
 
 			user = this.userRepository.create({
-				username: usernameCandidate,
 				email,
 				googleId: profile.googleId,
 				firstName: firstName || undefined,
@@ -291,6 +295,7 @@ export class AuthService {
 				avatar: profile.avatar,
 				role: UserRole.USER,
 				isActive: true,
+				lastLogin: new Date(),
 			});
 
 			await this.userRepository.save(user);
@@ -313,6 +318,9 @@ export class AuthService {
 				user.lastName = profile.lastName;
 				shouldPersist = true;
 			}
+			// Always update lastLogin on successful login
+			user.lastLogin = new Date();
+			shouldPersist = true;
 			if (shouldPersist) {
 				await this.userRepository.save(user);
 			}
@@ -324,7 +332,6 @@ export class AuthService {
 
 		const tokenPair = await this.authenticationManager.generateTokensForUser({
 			id: user.id,
-			username: user.username,
 			email: user.email,
 			role: user.role,
 		});
@@ -334,7 +341,6 @@ export class AuthService {
 			refresh_token: tokenPair.refreshToken,
 			user: {
 				id: user.id,
-				username: user.username,
 				email: user.email,
 				firstName: user.firstName,
 				lastName: user.lastName,

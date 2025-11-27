@@ -5,7 +5,7 @@
  * @description metrics tracking for all storage operations
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage
  */
-import { StorageMetrics } from '@shared/types';
+import { StorageMetrics, StorageType } from '@shared/types';
 
 import { metricsService } from '../services/metrics.service';
 
@@ -28,7 +28,7 @@ export class StorageMetricsTracker {
 		operation: keyof StorageMetrics['operations'],
 		startTime: number,
 		success: boolean,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'hybrid',
+		storageType: StorageType = 'persistent',
 		size?: number,
 		enableMetrics: boolean = true
 	): void {

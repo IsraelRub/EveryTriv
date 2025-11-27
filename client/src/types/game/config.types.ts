@@ -57,7 +57,6 @@ export interface GameData {
  * @interface GameModeConfigPayload
  * @description Game mode configuration payload for Redux - alias for GameConfig
  * @used_by client/src/redux/features/gameModeSlice.ts
- * @deprecated Use GameConfig instead
  */
 export type GameModeConfigPayload = GameConfig;
 
@@ -106,8 +105,7 @@ export interface ClientGameState {
 
 /**
  * Game timer state
- * @used_by client/src/components/game/GameTimer.tsx, client/src/hooks/layers/business/useGameLogic.ts
- * @deprecated Use GameModeConfig.timer instead
+ * @used_by client/src/components/game/GameTimer.tsx, client/src/hooks/layers/business/useGameLogic.ts, client/src/types/game/components.types.ts
  */
 export type GameTimerState = NonNullable<GameModeConfig['timer']>;
 
@@ -152,16 +150,16 @@ export interface GameSessionData {
  * @used_by client/src/constants/gameModeDefaults.ts, client/src/redux/features/gameModeSlice.ts
  */
 export interface GameModeDefaults {
-	timeLimit: number;
+	timeLimit?: number;
 	questionLimit: number;
 }
 
 /**
- * Question count option type
- * @interface QuestionCountOption
- * @description Option for selecting number of questions
+ * Requested questions option type
+ * @interface RequestedQuestionsOption
+ * @description Option for selecting number of questions requested
  */
-export interface QuestionCountOption {
+export interface RequestedQuestionsOption {
 	value: number;
 	label: string;
 }

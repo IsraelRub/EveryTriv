@@ -2,7 +2,7 @@
  * UI constants index for EveryTriv client
  *
  * @module UIConstants
- * @description Central export point for all UI-related constants
+ * @description Central export point for all UI-related constants and configuration
  * @used_by client/components, client/src/hooks, client/services
  */
 

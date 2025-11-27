@@ -6,5 +6,4 @@
 
 export * from './date-range.query';
 export * from './group-by.query';
-export * from './random.query';
 export * from './search.query';

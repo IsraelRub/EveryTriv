@@ -29,28 +29,48 @@ export class AdminBootstrapService implements OnModuleInit {
 	 * Ensure that at least one administrator account exists with the proper role
 	 */
 	async onModuleInit(): Promise<void> {
-		try {
-			const { username, email, password } = AppConfig.adminCredentials;
-			const defaultAccount = await this.userRepository.findOne({
-				where: [{ username }, { email }],
-			});
+		const maxRetries = 5;
+		const retryDelay = 2000;
 
-			if (defaultAccount) {
-				await this.ensureUserIsAdmin(defaultAccount, password);
+		for (let attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				const { email, password } = AppConfig.adminCredentials;
+				const defaultAccount = await this.userRepository.findOne({
+					where: { email },
+				});
+
+				if (defaultAccount) {
+					await this.ensureUserIsAdmin(defaultAccount, password);
+					return;
+				}
+
+				const adminExists = await this.userRepository.existsBy({ role: UserRole.ADMIN });
+				if (adminExists) {
+					return;
+				}
+
+				await this.createDefaultAdmin(email, password);
 				return;
-			}
+			} catch (error) {
+				const normalizedError = ensureErrorObject(error);
+				const isTableNotExistsError =
+					normalizedError.message.includes('does not exist') || normalizedError.message.includes('relation');
 
-			const adminExists = await this.userRepository.existsBy({ role: UserRole.ADMIN });
-			if (adminExists) {
-				return;
-			}
+				if (isTableNotExistsError && attempt < maxRetries) {
+					logger.securityWarn(`Admin bootstrap retry attempt ${attempt}/${maxRetries} - tables not ready yet`, {
+						error: normalizedError.message,
+					});
+					await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+					continue;
+				}
 
-			await this.createDefaultAdmin(username, email, password);
-		} catch (error) {
-			const normalizedError = ensureErrorObject(error);
-			logger.securityError('Admin bootstrap failed', {
-				error: normalizedError.message,
-			});
+				logger.securityError('Admin bootstrap failed', {
+					error: normalizedError.message,
+					attempt,
+					maxRetries,
+				});
+				break;
+			}
 		}
 	}
 
@@ -71,15 +91,14 @@ export class AdminBootstrapService implements OnModuleInit {
 			await this.userRepository.save(user);
 			logger.securityLogin('Admin account synchronized', {
 				userId: user.id,
-				username: user.username,
+				email: user.email,
 			});
 		}
 	}
 
-	private async createDefaultAdmin(username: string, email: string, password: string | undefined): Promise<void> {
+	private async createDefaultAdmin(email: string, password: string | undefined): Promise<void> {
 		if (!password) {
 			logger.securityWarn('Default admin password missing. Skipping admin account creation.', {
-				username,
 				email,
 			});
 			return;
@@ -87,7 +106,6 @@ export class AdminBootstrapService implements OnModuleInit {
 
 		const passwordHash = await this.passwordService.hashPassword(password);
 		const adminUser = this.userRepository.create({
-			username,
 			email,
 			passwordHash,
 			role: UserRole.ADMIN,
@@ -98,7 +116,7 @@ export class AdminBootstrapService implements OnModuleInit {
 
 		logger.securityLogin('Default admin account created', {
 			userId: savedUser.id,
-			username: savedUser.username,
+			email: savedUser.email,
 		});
 	}
 }

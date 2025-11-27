@@ -118,9 +118,6 @@ export const AppDataSource = new DataSource({
 @Entity('users')
 export class UserEntity extends BaseEntity {
   @Column() @Index({ unique: true })
-  username: string;              // שם משתמש (unique)
-
-  @Column() @Index({ unique: true })
   email: string;                 // אימייל (unique)
 
   @Column({ name: 'password_hash', nullable: true })
@@ -142,7 +139,7 @@ export class UserEntity extends BaseEntity {
   credits: number = 100;         // נקודות זכות (ברירת מחדל: 100)
 
   @Column({ name: 'purchased_points', type: 'int', default: 0 })
-  purchasedPoints: number = 0;   // נקודות שנרכשו
+  purchasedCredits: number = 0;   // קרדיטים שנרכשו
 
   @Column({ name: 'daily_free_questions', type: 'int', default: 20 })
   dailyFreeQuestions: number = 20; // שאלות חינמיות יומיות
@@ -518,7 +515,7 @@ export class PointTransactionEntity extends BaseEntity {
   freeQuestionsAfter: number = 0; // שאלות חינמיות נותרות אחרי עסקה
 
   @Column({ name: 'purchased_points_after', type: 'int', default: 0 })
-  purchasedPointsAfter: number = 0; // נקודות שנרכשו נותרות אחרי עסקה
+  purchasedCreditsAfter: number = 0; // קרדיטים שנרכשו נותרות אחרי עסקה
 
   @Column({ nullable: true })
   description?: string;          // תיאור העסקה
@@ -533,12 +530,12 @@ export class PointTransactionEntity extends BaseEntity {
   metadata: {
     difficulty?: string;
     topic?: string;
-    questionCount?: number;
-    pricePerPoint?: number;
+    requestedQuestions?: number;
+    pricePerCredit?: number;
     originalAmount?: number;
     gameMode?: string;
     freeQuestionsUsed?: number;
-    purchasedPointsUsed?: number;
+    purchasedCreditsUsed?: number;
     creditsUsed?: number;
     reason?: string | null;
   } = {};                        // מטא-דאטה
@@ -671,7 +668,7 @@ CACHE_DURATION.EXTENDED   // 900 seconds (15 minutes)
 - `everytriv_cache_points:balance:{userId}` - מאזן נקודות
 - `everytriv_cache_leaderboard:global` - לוח תוצאות גלובלי
 - `everytriv_cache_user_session:{userId}` - Session משתמש
-- `everytriv_cache_points:packages:all` - חבילות נקודות
+- `everytriv_cache_credits:packages:all` - חבילות קרדיטים
 
 **Cache Decorator:**
 ```typescript

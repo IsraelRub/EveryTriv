@@ -8,9 +8,12 @@ import {
 	BillingCycle,
 	GameMode,
 	HTTP_CLIENT_CONFIG,
+	HTTP_METHODS,
 	HTTP_STATUS_CODES,
+	LOCALHOST_URLS,
 	PlanType,
 	TimePeriod,
+	VALID_GAME_MODES,
 	VALIDATION_LIMITS,
 } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
@@ -30,18 +33,19 @@ import {
 	CanPlayResponse,
 	ClientLogsRequest,
 	CompleteUserAnalytics,
+	CreditBalance,
+	CreditPurchaseOption,
+	CreditTransaction,
 	CustomDifficultyRequest,
 	DifficultyStatsData,
 	ErrorResponseData,
 	GameData,
 	GameHistoryEntry,
 	GlobalStatsResponse,
+	HttpMethod,
 	LeaderboardEntry,
 	LeaderboardStatsResponse,
 	PaymentResult,
-	PointBalance,
-	PointPurchaseOption,
-	PointTransaction,
 	RequestData,
 	SubscriptionData,
 	SubscriptionPlans,
@@ -64,14 +68,14 @@ import {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
-import { getErrorMessage, hasProperty, hasPropertyOfType, isRecord } from '@shared/utils';
+import { calculateRetryDelay, getErrorMessage, hasProperty, hasPropertyOfType, isRecord } from '@shared/utils';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
 import type {
 	ClientApiService,
+	CreditsPurchaseRequest,
+	CreditsPurchaseResponse,
 	EnhancedRequestConfig,
-	PointsPurchaseRequest,
-	PointsPurchaseResponse,
 	RequestTransformer,
 	ResponseTransformer,
 } from '../types';
@@ -110,7 +114,7 @@ type ComparisonQueryParams = {
 class ApiConfig {
 	static getBaseUrl(): string {
 		const envUrl = import.meta.env.VITE_API_BASE_URL;
-		return envUrl || 'http://localhost:3001';
+		return envUrl || LOCALHOST_URLS.SERVER;
 	}
 
 	static getGoogleAuthUrl(): string {
@@ -137,10 +141,13 @@ class ApiService implements ClientApiService {
 		return hasProperty(response, 'data') && hasProperty(response, 'success');
 	}
 
-	private assertQuestionCountWithinLimits(questionCount: number): void {
-		const { MIN, MAX } = VALIDATION_LIMITS.QUESTION_COUNT;
-		if (!Number.isFinite(questionCount) || questionCount < MIN || questionCount > MAX) {
-			throw new Error(`Question count must be between ${MIN} and ${MAX}`);
+	private assertRequestedQuestionsWithinLimits(requestedQuestions: number): void {
+		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+		if (
+			!Number.isFinite(requestedQuestions) ||
+			(requestedQuestions !== UNLIMITED && (requestedQuestions < MIN || requestedQuestions > MAX))
+		) {
+			throw new Error(`Requested questions must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`);
 		}
 	}
 
@@ -160,7 +167,7 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Create timeout abort controller
-	 * @param timeoutMs - Timeout in milliseconds
+	 * @param timeoutMs Timeout in milliseconds
 	 * @returns AbortController that will abort after timeout
 	 */
 	private createTimeoutController(timeoutMs: number): AbortController {
@@ -173,12 +180,12 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Generate request key for deduplication
-	 * @param url - Request URL
-	 * @param method - HTTP method
-	 * @param requestId - Optional request ID
+	 * @param url Request URL
+	 * @param method HTTP method
+	 * @param requestId Optional request ID
 	 * @returns Unique request key
 	 */
-	private getRequestKey(url: string, method: string, requestId?: string): string {
+	private getRequestKey(url: string, method: HttpMethod, requestId?: string): string {
 		return requestId || `${method}:${url}`;
 	}
 
@@ -200,15 +207,15 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Execute request with all interceptors and features
-	 * @param url - Request URL
-	 * @param method - HTTP method
-	 * @param config - Request configuration
-	 * @param data - Request body data
+	 * @param url Request URL
+	 * @param method HTTP method
+	 * @param config Request configuration
+	 * @param data Request body data
 	 * @returns API response
 	 */
 	private async executeRequest<T>(
 		url: string,
-		method: string,
+		method: HttpMethod,
 		config: EnhancedRequestConfig = {},
 		data?: RequestData
 	): Promise<ApiResponse<T>> {
@@ -255,15 +262,15 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Internal request execution with interceptors
-	 * @param url - Request URL
-	 * @param method - HTTP method
-	 * @param config - Request configuration
-	 * @param data - Request body data
+	 * @param url Request URL
+	 * @param method HTTP method
+	 * @param config Request configuration
+	 * @param data Request body data
 	 * @returns API response
 	 */
 	private async executeRequestInternal<T>(
 		url: string,
-		method: string,
+		method: HttpMethod,
 		config: EnhancedRequestConfig = {},
 		data?: RequestData
 	): Promise<ApiResponse<T>> {
@@ -298,24 +305,91 @@ class ApiService implements ClientApiService {
 			// Execute request interceptors (auth headers are added by authRequestInterceptor)
 			const interceptedConfig = await this.requestInterceptors.execute(enhancedConfig);
 
-			// Prepare fetch config
-			const fetchConfig: RequestInit = {
-				method,
-				headers: {
-					...HTTP_CLIENT_CONFIG.DEFAULT_HEADERS,
-					...interceptedConfig.headers,
-				},
-				signal: interceptedConfig.signal,
-				...interceptedConfig,
-			};
-
 			// Transform request data if provided
 			let transformedData: RequestData = data;
-			if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
+			let requestBody: string | undefined;
+
+			// Log initial data state
+			logger.apiDebug('Request data received', {
+				url,
+				method,
+				data: {
+					hasData: !!data,
+					dataType: typeof data,
+					isPostPutPatch: method === HTTP_METHODS.POST || method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH,
+					dataKeys: isRecord(data) ? Object.keys(data) : undefined,
+				},
+			});
+
+			if (data && (method === HTTP_METHODS.POST || method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH)) {
 				for (const transformer of this.requestTransformers) {
 					transformedData = await transformer(transformedData);
 				}
-				fetchConfig.body = JSON.stringify(transformedData);
+				requestBody = JSON.stringify(transformedData);
+
+				// Debug logging for request body (runs in all environments)
+				logger.apiDebug('Request body prepared', {
+					url,
+					method,
+					data: {
+						originalData: data,
+						transformedData,
+						bodyString: requestBody,
+					},
+				});
+			} else {
+				// Log when body is not prepared
+				logger.apiDebug('Request body not prepared', {
+					url,
+					method,
+					data: {
+						hasData: !!data,
+						isPostPutPatch:
+							method === HTTP_METHODS.POST || method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH,
+					},
+				});
+			}
+
+			// Prepare fetch config - body must be set after spreading interceptedConfig to prevent it from being overwritten
+			// Extract body from interceptedConfig if it exists and exclude it from spread to prevent overwriting our body
+			const { body: _ignoredBody, ...configWithoutBody } = interceptedConfig;
+
+			// Build headers separately to ensure Content-Type is set correctly
+			const headers = new Headers({
+				...HTTP_CLIENT_CONFIG.DEFAULT_HEADERS,
+				...interceptedConfig.headers,
+			});
+
+			// Ensure Content-Type is set when body is present
+			if (requestBody) {
+				headers.set('Content-Type', 'application/json');
+			}
+
+			const fetchConfig: RequestInit = {
+				method,
+				headers,
+				signal: interceptedConfig.signal,
+				// Spread config without body to preserve other properties
+				...configWithoutBody,
+				// Body must be set last and explicitly to prevent it from being overwritten
+				...(requestBody ? { body: requestBody } : {}),
+			};
+
+			// Debug logging for fetch config (runs in all environments)
+			if (requestBody) {
+				logger.apiDebug('Fetch config prepared', {
+					url,
+					method,
+					data: {
+						hasBody: !!fetchConfig.body,
+						bodyType: typeof fetchConfig.body,
+						bodyLength: typeof fetchConfig.body === 'string' ? fetchConfig.body.length : 0,
+						contentType:
+							fetchConfig.headers && 'Content-Type' in fetchConfig.headers
+								? fetchConfig.headers['Content-Type']
+								: undefined,
+					},
+				});
 			}
 
 			// Execute fetch
@@ -328,7 +402,7 @@ class ApiService implements ClientApiService {
 				// Re-execute the full request flow including interceptors
 				return this.executeRequestInternal<T>(url, method, config, data);
 			};
-			let apiResponse = await this.handleResponse<T>(response, originalRequestFn);
+			let apiResponse = await this.handleResponse<T>(response, method, originalRequestFn);
 
 			// Transform response data
 			if (apiResponse.data && this.responseTransformers.length > 0) {
@@ -344,12 +418,61 @@ class ApiService implements ClientApiService {
 
 			return interceptedResponse;
 		} catch (error) {
-			// Create API error - error is unknown in catch block
+			// Create API error - error is unknown in catch block, but may already contain rich metadata
 			const errorMessage = getErrorMessage(error);
+
+			let statusCode: number = 0;
+			let details: BaseData = { error: errorMessage };
+
+			if (isRecord(error)) {
+				const hasStatusCode = hasPropertyOfType(
+					error,
+					'statusCode',
+					(value): value is number => typeof value === 'number'
+				);
+				if (hasStatusCode) {
+					statusCode = error.statusCode;
+				}
+
+				if (hasProperty(error, 'details') && isRecord(error.details)) {
+					const extractedDetails: BaseData = {};
+					for (const [key, value] of Object.entries(error.details)) {
+						if (
+							typeof value === 'string' ||
+							typeof value === 'number' ||
+							typeof value === 'boolean' ||
+							value instanceof Date
+						) {
+							extractedDetails[key] = value;
+						} else if (Array.isArray(value)) {
+							extractedDetails[key] = JSON.stringify(value);
+						} else if (isRecord(value)) {
+							const baseDataValue: BaseData = {};
+							for (const [nestedKey, nestedValue] of Object.entries(value)) {
+								if (
+									typeof nestedValue === 'string' ||
+									typeof nestedValue === 'number' ||
+									typeof nestedValue === 'boolean' ||
+									nestedValue instanceof Date
+								) {
+									baseDataValue[nestedKey] = nestedValue;
+								} else if (Array.isArray(nestedValue)) {
+									baseDataValue[nestedKey] = JSON.stringify(nestedValue);
+								} else if (isRecord(nestedValue)) {
+									baseDataValue[nestedKey] = JSON.stringify(nestedValue);
+								}
+							}
+							extractedDetails[key] = JSON.stringify(baseDataValue);
+						}
+					}
+					details = extractedDetails;
+				}
+			}
+
 			const apiError: ApiError = {
 				message: errorMessage,
-				statusCode: 0,
-				details: { error: errorMessage },
+				statusCode,
+				details,
 			};
 
 			// Execute error interceptors
@@ -367,9 +490,15 @@ class ApiService implements ClientApiService {
 			return await requestFn();
 		} catch (error) {
 			const errorMessage = getErrorMessage(error);
+			let statusCode: number = 0;
+
+			if (hasPropertyOfType(error, 'statusCode', (value): value is number => typeof value === 'number')) {
+				statusCode = error.statusCode;
+			}
+
 			const apiError: ApiError = {
 				message: errorMessage,
-				statusCode: 0,
+				statusCode,
 				details: { error: errorMessage },
 			};
 
@@ -387,12 +516,15 @@ class ApiService implements ClientApiService {
 			};
 
 			const shouldRetry =
-				attempt < this.retryAttempts && (apiErrorWithFlags.isServerError || apiError.statusCode === 0);
+				attempt < this.retryAttempts && (apiErrorWithFlags.isServerError === true || apiError.statusCode === 0);
 
 			if (shouldRetry) {
-				const baseDelay = this.retryDelay * attempt;
-				const jitter = Math.random() * Math.min(baseDelay * 0.1, 1000);
-				await this.sleep(baseDelay + jitter);
+				// Linear retry delay: baseDelay * attempt (not exponential)
+				const delay = calculateRetryDelay(this.retryDelay, attempt - 1, {
+					useExponentialBackoff: false,
+					jitter: { maxJitter: 1000 },
+				});
+				await this.sleep(delay);
 				return this.retryRequest(requestFn, attempt + 1);
 			}
 
@@ -402,22 +534,37 @@ class ApiService implements ClientApiService {
 
 	private async handleResponse<T>(
 		response: Response,
+		method: HttpMethod,
 		originalRequest?: () => Promise<ApiResponse<T>>
 	): Promise<ApiResponse<T>> {
 		if (!response.ok) {
 			// Handle 401 Unauthorized - try to refresh token
 			if (response.status === 401 && originalRequest) {
-				try {
-					await this.refreshToken();
-					// Retry the original request with new token
-					return await originalRequest();
-				} catch {
-					// Refresh failed, clear tokens and redirect to login
+				// Check if we have a refresh token before attempting refresh
+				const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+				const hasRefreshToken = refreshTokenResult.success && !!refreshTokenResult.data;
+
+				if (hasRefreshToken) {
+					try {
+						await this.refreshToken();
+						// Retry the original request with new token
+						return await originalRequest();
+					} catch {
+						// Refresh failed, clear tokens
+						await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+						await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+						// Throw error - AppRoutes will handle redirect to login
+						const sessionExpiredError = new Error('Session expired. Please login again.');
+						sessionExpiredError.name = 'SessionExpiredError';
+						throw sessionExpiredError;
+					}
+				} else {
+					// No refresh token available, clear tokens and throw error
 					await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
 					await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
-					// Redirect to login page
-					window.location.href = '/login';
-					throw new Error('Session expired. Please login again.');
+					const sessionExpiredError = new Error('Session expired. Please login again.');
+					sessionExpiredError.name = 'SessionExpiredError';
+					throw sessionExpiredError;
 				}
 			}
 
@@ -501,7 +648,7 @@ class ApiService implements ClientApiService {
 				isServerError,
 				isClientError,
 				url: response.url,
-				method: 'unknown', // Will be set by the calling method
+				method: method,
 			};
 			throw errorResponse;
 		}
@@ -517,12 +664,16 @@ class ApiService implements ClientApiService {
 		}
 
 		// Handle server response format: { success: true, data: T, timestamp: string }
-		if (isRecord(responseData) && hasProperty(responseData, 'success') && hasProperty(responseData, 'data')) {
+		if (hasProperty(responseData, 'success') && hasProperty(responseData, 'data') && isRecord(responseData)) {
+			const timestampValue =
+				'timestamp' in responseData && typeof responseData.timestamp === 'string'
+					? responseData.timestamp
+					: new Date().toISOString();
 			const apiResponse: ApiResponse<unknown> = {
 				data: responseData.data,
 				success: Boolean(responseData.success),
 				statusCode: response.status,
-				timestamp: typeof responseData.timestamp === 'string' ? responseData.timestamp : new Date().toISOString(),
+				timestamp: timestampValue,
 			};
 
 			if (this.isValidApiResponse<T>(apiResponse)) {
@@ -547,31 +698,42 @@ class ApiService implements ClientApiService {
 	}
 
 	async get<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
-		return this.executeRequest<T>(url, 'GET', config);
+		return this.executeRequest<T>(url, HTTP_METHODS.GET, config);
 	}
 
 	async post<T>(url: string, data?: RequestData, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
-		return this.executeRequest<T>(url, 'POST', config, data);
+		return this.executeRequest<T>(url, HTTP_METHODS.POST, config, data);
 	}
 
 	async put<T>(url: string, data?: RequestData, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
-		return this.executeRequest<T>(url, 'PUT', config, data);
+		return this.executeRequest<T>(url, HTTP_METHODS.PUT, config, data);
 	}
 
 	async patch<T>(url: string, data?: RequestData, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
-		return this.executeRequest<T>(url, 'PATCH', config, data);
+		return this.executeRequest<T>(url, HTTP_METHODS.PATCH, config, data);
 	}
 
 	async delete<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
-		return this.executeRequest<T>(url, 'DELETE', config);
+		return this.executeRequest<T>(url, HTTP_METHODS.DELETE, config);
 	}
 
 	// Auth methods
 	async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
-		const response = await this.post<AuthenticationResult>('/auth/login', credentials);
+		const response = await this.post<{
+			access_token?: string;
+			refresh_token?: string;
+			user?: BasicUser;
+		}>('/auth/login', credentials);
+
+		// Convert server response format (access_token) to client format (accessToken)
+		const serverResponse = response.data;
+		const authResult: AuthenticationResult = {
+			user: serverResponse.user,
+			accessToken: serverResponse.access_token,
+			refreshToken: serverResponse.refresh_token,
+		};
 
 		// Store tokens securely using centralized constants
-		const authResult: AuthenticationResult = response.data;
 		if (authResult.accessToken) {
 			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
 		}
@@ -579,13 +741,33 @@ class ApiService implements ClientApiService {
 			await storageService.set(CLIENT_STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
 		}
 
-		return response.data;
+		return authResult;
 	}
 
 	async register(credentials: AuthCredentials): Promise<AuthenticationResult> {
-		const response = await this.post<AuthenticationResult>('/auth/register', credentials);
+		const response = await this.post<{
+			access_token?: string;
+			refresh_token?: string;
+			user?: BasicUser;
+		}>('/auth/register', credentials);
 
-		return response.data;
+		// Convert server response format (access_token) to client format (accessToken)
+		const serverResponse = response.data;
+		const authResult: AuthenticationResult = {
+			user: serverResponse.user,
+			accessToken: serverResponse.access_token,
+			refreshToken: serverResponse.refresh_token,
+		};
+
+		// Store tokens securely using centralized constants
+		if (authResult.accessToken) {
+			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+		}
+		if (authResult.refreshToken) {
+			await storageService.set(CLIENT_STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+		}
+
+		return authResult;
 	}
 
 	async logout(): Promise<void> {
@@ -608,14 +790,15 @@ class ApiService implements ClientApiService {
 			throw new Error('No refresh token available');
 		}
 
-		const response = await this.post<{ accessToken: string }>('/auth/refresh', { refreshToken });
+		const response = await this.post<{ access_token: string }>('/auth/refresh', { refreshToken });
 
-		// Update stored access token
-		if (response.data.accessToken) {
-			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
+		// Convert server response format (access_token) to client format (accessToken)
+		const accessToken = response.data.access_token;
+		if (accessToken) {
+			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, accessToken);
 		}
 
-		return response.data;
+		return { accessToken };
 	}
 
 	async getCurrentUser(): Promise<BasicUser> {
@@ -646,20 +829,6 @@ class ApiService implements ClientApiService {
 		}
 
 		const response = await this.put<UserProfileResponseType>('/users/profile', data);
-		return response.data;
-	}
-
-	async getUserCredits(): Promise<number> {
-		const response = await this.get<number>('/users/credits');
-		return response.data;
-	}
-
-	async deductCredits(amount: number): Promise<{ success: boolean; credits: number }> {
-		if (amount <= 0) {
-			throw new Error('Amount must be greater than 0');
-		}
-
-		const response = await this.post<{ success: boolean; credits: number }>('/users/credits', { amount });
 		return response.data;
 	}
 
@@ -721,7 +890,7 @@ class ApiService implements ClientApiService {
 			totalPlayTime: analytics.game.totalPlayTime ?? 0,
 			totalGames: analytics.game.totalGames,
 			gamesPlayed: analytics.game.totalGames,
-			score: analytics.basic.totalPoints,
+			score: analytics.basic.totalCredits,
 			averageScore: analytics.game.averageScore,
 			bestScore: analytics.game.bestScore,
 			currentStreak: analytics.performance.streakDays,
@@ -800,53 +969,40 @@ class ApiService implements ClientApiService {
 		return response.data;
 	}
 
-	/**
-	 * Get user by username
-	 */
-	async getUserByUsername(username: string): Promise<BasicUser> {
-		// Validate username
-		if (!username || username.trim().length === 0) {
-			throw new Error('Username is required');
-		}
-
-		const response = await this.get<BasicUser>(`/users/username/${username}`);
+	// Credits methods
+	async getCreditBalance(): Promise<CreditBalance> {
+		const response = await this.get<CreditBalance>('/credits/balance');
 		return response.data;
 	}
 
-	// Points methods
-	async getPointBalance(): Promise<PointBalance> {
-		const response = await this.get<PointBalance>('/points/balance');
+	async getCreditPackages(): Promise<CreditPurchaseOption[]> {
+		const response = await this.get<CreditPurchaseOption[]>('/credits/packages');
 		return response.data;
 	}
 
-	async getPointPackages(): Promise<PointPurchaseOption[]> {
-		const response = await this.get<PointPurchaseOption[]>('/points/packages');
-		return response.data;
-	}
-
-	async canPlay(questionCount: number): Promise<CanPlayResponse> {
-		// Validate question count
-		this.assertQuestionCountWithinLimits(questionCount);
+	async canPlay(requestedQuestions: number): Promise<CanPlayResponse> {
+		// Validate requested questions
+		this.assertRequestedQuestionsWithinLimits(requestedQuestions);
 
 		const query = this.buildQueryString({
-			questionCount,
+			requestedQuestions,
 		});
 
-		const response = await this.get<CanPlayResponse>(`/points/can-play${query}`);
+		const response = await this.get<CanPlayResponse>(`/credits/can-play${query}`);
 		return response.data;
 	}
 
-	async getPointHistory(limit?: number): Promise<PointTransaction[]> {
+	async getCreditHistory(limit?: number): Promise<CreditTransaction[]> {
 		const query = this.buildQueryString({
 			limit,
 		});
 
-		const response = await this.get<PointTransaction[]>(`/points/history${query}`);
+		const response = await this.get<CreditTransaction[]>(`/credits/history${query}`);
 		return response.data;
 	}
 
-	async confirmPointPurchase(paymentIntentId: string): Promise<PointBalance> {
-		const response = await this.post<PointBalance>('/points/confirm-purchase', { paymentIntentId });
+	async confirmCreditPurchase(paymentIntentId: string): Promise<CreditBalance> {
+		const response = await this.post<CreditBalance>('/credits/confirm-purchase', { paymentIntentId });
 		return response.data;
 	}
 
@@ -865,14 +1021,6 @@ class ApiService implements ClientApiService {
 
 	// Trivia methods
 	async getTrivia(request: TriviaRequest): Promise<TriviaQuestion> {
-		// Validate trivia request
-		if (!request || !request.topic.trim() || !request.difficulty.trim()) {
-			throw new Error('Trivia request is incomplete');
-		}
-		if (request.questionCount !== undefined) {
-			this.assertQuestionCountWithinLimits(Number(request.questionCount));
-		}
-
 		const response = await this.post<TriviaQuestion>('/game/trivia', request);
 		return response.data;
 	}
@@ -1248,25 +1396,47 @@ class ApiService implements ClientApiService {
 	}
 
 	/**
-	 * Deduct points for game play
+	 * Deduct credits for game play
 	 */
-	async deductPoints(questionCount: number, gameMode: GameMode): Promise<PointBalance> {
+	async deductCredits(requestedQuestions: number, gameMode: GameMode): Promise<CreditBalance> {
 		// Validate parameters
-		if (questionCount <= 0) {
-			throw new Error('Question count must be greater than 0');
-		}
-		if (!gameMode || gameMode.trim().length === 0) {
-			throw new Error('Game mode is required');
+		if (requestedQuestions <= 0 || !Number.isFinite(requestedQuestions)) {
+			throw new Error('Requested questions must be a positive number');
 		}
 
-		const response = await this.post<PointBalance>('/points/deduct', { questionCount, gameMode });
+		if (!gameMode || !VALID_GAME_MODES.includes(gameMode)) {
+			throw new Error('Valid game mode is required');
+		}
+
+		// Ensure requestedQuestions is an integer
+		const normalizedRequestedQuestions = Number.isInteger(requestedQuestions)
+			? requestedQuestions
+			: Math.floor(requestedQuestions);
+
+		// Request body with validated values - gameMode is already GameMode type
+		const requestBody: { requestedQuestions: number; gameMode: GameMode } = {
+			requestedQuestions: normalizedRequestedQuestions,
+			gameMode,
+		};
+
+		logger.apiDebug('Deducting credits - request body', {
+			requestedQuestions: requestBody.requestedQuestions,
+			gameMode: requestBody.gameMode,
+		});
+
+		// Also send parameters as query for robustness in case body parsing fails
+		const query = `?requestedQuestions=${encodeURIComponent(
+			String(requestBody.requestedQuestions)
+		)}&gameMode=${encodeURIComponent(requestBody.gameMode)}`;
+
+		const response = await this.post<CreditBalance>(`/credits/deduct${query}`, requestBody);
 		return response.data;
 	}
 
 	/**
-	 * Purchase points package
+	 * Purchase credits package
 	 */
-	async purchasePoints(request: PointsPurchaseRequest): Promise<PointsPurchaseResponse> {
+	async purchaseCredits(request: CreditsPurchaseRequest): Promise<CreditsPurchaseResponse> {
 		const { packageId, paymentMethod } = request;
 
 		if (!packageId || packageId.trim().length === 0) {
@@ -1277,7 +1447,7 @@ class ApiService implements ClientApiService {
 			throw new Error('Payment method is required');
 		}
 
-		const response = await this.post<PointsPurchaseResponse>('/points/purchase', request);
+		const response = await this.post<CreditsPurchaseResponse>('/credits/purchase', request);
 		return response.data;
 	}
 
@@ -1312,7 +1482,7 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Add request transformer
-	 * @param transformer - Request transformer function
+	 * @param transformer Request transformer function
 	 */
 	addRequestTransformer(transformer: RequestTransformer): void {
 		this.requestTransformers.push(transformer);
@@ -1320,7 +1490,7 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Remove request transformer
-	 * @param transformer - Transformer function to remove
+	 * @param transformer Transformer function to remove
 	 */
 	removeRequestTransformer(transformer: RequestTransformer): void {
 		const index = this.requestTransformers.indexOf(transformer);
@@ -1338,7 +1508,7 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Add response transformer
-	 * @param transformer - Response transformer function
+	 * @param transformer Response transformer function
 	 */
 	addResponseTransformer(transformer: ResponseTransformer): void {
 		this.responseTransformers.push(transformer);
@@ -1346,7 +1516,7 @@ class ApiService implements ClientApiService {
 
 	/**
 	 * Remove response transformer
-	 * @param transformer - Transformer function to remove
+	 * @param transformer Transformer function to remove
 	 */
 	removeResponseTransformer(transformer: ResponseTransformer): void {
 		const index = this.responseTransformers.indexOf(transformer);

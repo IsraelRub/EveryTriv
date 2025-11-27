@@ -12,6 +12,9 @@ import {
 	ERROR_CONTEXT_MESSAGES,
 	FALLBACK_QUESTION_ANSWERS,
 	HTTP_CLIENT_CONFIG,
+	HTTP_ERROR_MESSAGES,
+	HTTP_METHODS,
+	HTTP_STATUS_CODES,
 	PROVIDER_ERROR_MESSAGES,
 } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
@@ -24,12 +27,21 @@ import type {
 	ProviderConfig,
 	TriviaQuestion,
 } from '@shared/types';
-import { clamp, getErrorMessage, shuffle } from '@shared/utils';
+import {
+	calculateRetryDelay,
+	generateId,
+	generateQuestionId,
+	getErrorMessage,
+	isProviderAuthError,
+	isProviderRateLimitError,
+	isRecord,
+	shuffle,
+} from '@shared/utils';
 import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
-import { createAuthError, createServerError } from '@internal/utils';
-
-import type { QuestionCacheMap, TriviaQuestionMetadata } from '@features/game/types';
+import { AI_PROVIDER_NAMES, PROVIDER_ERROR_MESSAGE_KEYS } from '@internal/constants';
+import type { QuestionCacheMap, TriviaQuestionMetadata } from '@internal/types';
+import { createAuthError, createServerError, createValidationError } from '@internal/utils';
 
 import { PromptTemplates } from '../prompts';
 
@@ -45,7 +57,7 @@ export abstract class BaseTriviaProvider {
 	protected extractMetadata(triviaQuestion: TriviaQuestion): TriviaQuestionMetadata {
 		return {
 			actualDifficulty: triviaQuestion.difficulty,
-			questionCount: 1,
+			totalQuestions: 1,
 			customDifficultyMultiplier: 1,
 			mappedDifficulty: triviaQuestion.difficulty,
 		};
@@ -57,7 +69,7 @@ export abstract class BaseTriviaProvider {
 	// Provider instance for AIProviderWithTrivia interface
 	abstract provider: AIProviderInstance;
 
-	// Updated abstract method - questionCount is not needed since it's in the prompt
+	// Updated abstract method - answerCount is used for number of answer choices per question
 	protected abstract getProviderConfig(prompt: string): ProviderConfig;
 
 	// API call method with timeout, retry, and error handling
@@ -72,26 +84,27 @@ export abstract class BaseTriviaProvider {
 
 		// Log initial request with detailed info (redact sensitive data)
 		const sanitizedBody = config.body ? { ...config.body } : {};
-		if (sanitizedBody && typeof sanitizedBody === 'object') {
-			// Remove or redact sensitive fields from logging
-			if ('messages' in sanitizedBody && Array.isArray(sanitizedBody.messages)) {
-				// Keep message structure but limit content length for logging
-				sanitizedBody.messages = sanitizedBody.messages.map((msg: { role?: string; content?: unknown }) => ({
-					role: msg.role,
-					content: typeof msg.content === 'string' ? `${msg.content.substring(0, 100)}...` : '[content]',
-				}));
-			}
+		// Remove or redact sensitive fields from logging
+		if ('messages' in sanitizedBody && Array.isArray(sanitizedBody.messages)) {
+			// Keep message structure but limit content length for logging
+			sanitizedBody.messages = sanitizedBody.messages.map((msg: { role?: string; content?: unknown }) => ({
+				role: msg.role,
+				content: typeof msg.content === 'string' ? `${msg.content.substring(0, 100)}...` : '[content]',
+			}));
 		}
+
+		const modelValue =
+			config.body && isRecord(config.body) && 'model' in config.body && typeof config.body.model === 'string'
+				? config.body.model
+				: undefined;
 
 		logger.providerStats(this.name, {
 			eventType: 'api_call_start',
 			baseUrl: config.baseUrl.replace(config.apiKey || '', '[REDACTED]'),
 			timeout: config.timeout,
 			maxRetries: config.maxRetries,
-			...(config.body && 'model' in config.body ? { model: (config.body as { model?: string }).model } : {}),
-		} as typeof logger.providerStats extends (name: string, meta: infer M) => unknown
-			? M
-			: never & { headers?: Record<string, string>; bodyKeys?: string[]; model?: string });
+			...(modelValue ? { model: modelValue } : {}),
+		});
 
 		// Retry logic
 		for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
@@ -113,7 +126,7 @@ export abstract class BaseTriviaProvider {
 
 				// Make the API call
 				const response = await globalThis.fetch(config.baseUrl, {
-					method: 'POST',
+					method: HTTP_METHODS.POST,
 					headers: config.headers ?? {},
 					body: JSON.stringify(config.body),
 					signal: abortController.signal,
@@ -124,64 +137,56 @@ export abstract class BaseTriviaProvider {
 
 				// Check if response is OK
 				if (!response.ok) {
-					const errorText = await response.text().catch(() => 'Unknown error');
+					const errorText = await response.text().catch(() => HTTP_ERROR_MESSAGES.UNKNOWN_ERROR);
 					const errorMessage = `${this.name} API returned ${response.status} ${response.statusText}: ${errorText}`;
 
 					// Log detailed error info for debugging (especially for 400 errors)
-					if (response.status === 400 && this.name === 'Anthropic') {
+					if (response.status === HTTP_STATUS_CODES.BAD_REQUEST && this.name === AI_PROVIDER_NAMES.CLAUDE) {
 						logger.providerError(this.name, 'Detailed 400 error for debugging', {
 							status: response.status,
 							error: errorText,
 							attempt: attempt + 1,
-						} as typeof logger.providerError extends (name: string, message: string, meta: infer M) => unknown
-							? M
-							: never & { requestBody?: unknown; headers?: Record<string, string> });
+						});
 					}
 
 					// Handle 401 Unauthorized - don't retry, throw immediately
-					if (response.status === 401) {
+					if (response.status === HTTP_STATUS_CODES.UNAUTHORIZED) {
 						logger.providerError(this.name, 'API key authentication failed', {
 							status: response.status,
 							error: errorText,
 							attempt: attempt + 1,
 						});
-						const authError = new Error(errorMessage) as Error & {
-							statusCode?: number;
-							isAuthError?: boolean;
-							provider?: string;
-						};
-						authError.statusCode = 401;
-						authError.isAuthError = true;
-						authError.provider = this.name;
+						const authError = new Error(errorMessage);
+						Object.assign(authError, {
+							statusCode: HTTP_STATUS_CODES.UNAUTHORIZED,
+							isAuthError: true,
+							provider: this.name,
+						});
 						throw authError;
 					}
 
 					// Handle 429 Rate Limit - smart retry with Retry-After header
-					if (response.status === 429) {
+					if (response.status === HTTP_STATUS_CODES.TOO_MANY_REQUESTS) {
 						const retryAfterHeader = response.headers.get('Retry-After');
 						// Increased base delay for rate limits - start with 5 seconds minimum
-						const baseDelay = Math.max(HTTP_CLIENT_CONFIG.RETRY_DELAY * 5, 5000); // At least 5 seconds
-						let retryDelay = baseDelay * Math.pow(2, attempt); // Exponential backoff
+						const baseDelay = Math.max(HTTP_CLIENT_CONFIG.RETRY_DELAY * 5, HTTP_CLIENT_CONFIG.RETRY_DELAY_RATE_LIMIT);
 
+						let retryAfterSeconds: number | undefined;
 						if (retryAfterHeader) {
-							const retryAfterSeconds = parseInt(retryAfterHeader, 10);
-							if (!isNaN(retryAfterSeconds) && retryAfterSeconds > 0) {
-								// Use the Retry-After header value, but ensure it's at least 5 seconds
-								retryDelay = Math.max(retryAfterSeconds * 1000, 5000);
+							const parsed = parseInt(retryAfterHeader, 10);
+							if (!isNaN(parsed) && parsed > 0) {
+								retryAfterSeconds = parsed;
 								logger.providerStats(this.name, {
 									eventType: 'rate_limit_detected',
 									attempt: attempt + 1,
-									delay: retryDelay,
-								} as typeof logger.providerStats extends (name: string, meta: infer M) => unknown
-									? M
-									: never & { retryAfterSeconds?: number });
+									retryAfterSeconds,
+								});
 							}
 						} else {
 							// No Retry-After header, use exponential backoff with minimum 5 seconds
 							logger.providerStats(this.name, {
 								eventType: 'rate_limit_detected_no_header',
 								attempt: attempt + 1,
-								delay: retryDelay,
 							});
 						}
 
@@ -192,22 +197,22 @@ export abstract class BaseTriviaProvider {
 								error: errorText,
 								attempt: attempt + 1,
 							});
-							const rateLimitError = new Error(errorMessage) as Error & {
-								statusCode?: number;
-								isRateLimitError?: boolean;
-								retryAfter?: number;
-								provider?: string;
-							};
-							rateLimitError.statusCode = 429;
-							rateLimitError.isRateLimitError = true;
-							rateLimitError.retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined;
-							rateLimitError.provider = this.name;
+							const rateLimitError = new Error(errorMessage);
+							Object.assign(rateLimitError, {
+								statusCode: HTTP_STATUS_CODES.TOO_MANY_REQUESTS,
+								isRateLimitError: true,
+								retryAfter: retryAfterSeconds,
+								provider: this.name,
+							});
 							throw rateLimitError;
 						}
 
-						// Add jitter to prevent thundering herd problem
-						const jitter = Math.random() * Math.min(retryDelay * 0.1, 2000); // up to 10% or 2 seconds
-						retryDelay = retryDelay + jitter;
+						// Calculate retry delay with exponential backoff and jitter
+						const retryDelay = calculateRetryDelay(baseDelay, attempt, {
+							retryAfter: retryAfterSeconds,
+							minDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY_RATE_LIMIT,
+							jitter: { maxJitter: 2000 }, // up to 10% or 2 seconds
+						});
 
 						// Wait longer for rate limit errors
 						logger.providerStats(this.name, {
@@ -248,18 +253,30 @@ export abstract class BaseTriviaProvider {
 				lastError = error instanceof Error ? error : new Error(String(error));
 
 				// Check if it's an auth error (401) - don't retry
-				if ('isAuthError' in lastError && lastError.isAuthError === true) {
+				if (isProviderAuthError(lastError)) {
 					throw lastError;
 				}
 
 				// Check if it's a rate limit error (429) on last attempt - don't retry again
-				if ('isRateLimitError' in lastError && lastError.isRateLimitError === true && attempt === config.maxRetries) {
+				if (isProviderRateLimitError(lastError) && attempt === config.maxRetries) {
 					throw lastError;
 				}
 
 				// Check if it's an abort error (timeout)
 				if (lastError.name === 'AbortError' || lastError.message.includes('aborted')) {
 					lastError = new Error(`${this.name} API call timed out after ${config.timeout}ms`);
+				}
+
+				// Handle fetch network errors with more context
+				if (lastError.message === 'fetch failed' || lastError.message.includes('fetch failed')) {
+					const networkError = new Error(
+						`${this.name} API network error: Unable to connect to ${config.baseUrl}. This may be due to network issues, SSL/TLS problems, or the API being temporarily unavailable.`
+					);
+					Object.assign(networkError, {
+						cause: lastError,
+						isNetworkError: true,
+					});
+					lastError = networkError;
 				}
 
 				// Log error (only log as error on final attempt, otherwise as warning)
@@ -287,16 +304,17 @@ export abstract class BaseTriviaProvider {
 				}
 
 				// Wait before retrying (exponential backoff with jitter)
-				const delay = HTTP_CLIENT_CONFIG.RETRY_DELAY * Math.pow(2, attempt);
-				const jitter = Math.random() * Math.min(delay * 0.1, 1000); // עד 10% או 1 שנייה
-				await new Promise(resolve => setTimeout(resolve, delay + jitter));
+				const delay = calculateRetryDelay(HTTP_CLIENT_CONFIG.RETRY_DELAY, attempt, {
+					jitter: { maxJitter: 1000 }, // עד 10% או 1 שנייה
+				});
+				await new Promise(resolve => setTimeout(resolve, delay));
 			}
 		}
 
 		// If we get here, all retries failed
 		const finalError = lastError || new Error(`${this.name} API call failed after ${config.maxRetries} retries`);
-		if (lastStatusCode) {
-			(finalError as Error & { statusCode?: number }).statusCode = lastStatusCode;
+		if (lastStatusCode && finalError instanceof Error) {
+			Object.assign(finalError, { statusCode: lastStatusCode });
 		}
 		throw finalError;
 	}
@@ -305,7 +323,13 @@ export abstract class BaseTriviaProvider {
 	async generateQuestion(topic: string, difficulty: GameDifficulty): Promise<LLMTriviaResponse> {
 		const question = await this.generateTriviaQuestionInternal(topic, difficulty, 5);
 		return {
-			questions: [question],
+			questions: [
+				{
+					question: question.question,
+					answers: question.answers.map(answer => answer.text),
+					correctAnswerIndex: question.correctAnswerIndex,
+				},
+			],
 			explanation: 'Generated by AI provider',
 			content: 'Generated by AI provider',
 			status: 'success' as const,
@@ -313,8 +337,12 @@ export abstract class BaseTriviaProvider {
 	}
 
 	// Implement the required generateTriviaQuestion method from LLMProvider interface
-	async generateTriviaQuestion(topic: string, difficulty: GameDifficulty): Promise<TriviaQuestion> {
-		return this.generateTriviaQuestionInternal(topic, difficulty, 5);
+	async generateTriviaQuestion(
+		topic: string,
+		difficulty: GameDifficulty,
+		excludeQuestions?: string[]
+	): Promise<TriviaQuestion> {
+		return this.generateTriviaQuestionInternal(topic, difficulty, 5, excludeQuestions);
 	}
 
 	// Implement the required hasApiKey method from LLMProvider interface
@@ -325,14 +353,15 @@ export abstract class BaseTriviaProvider {
 	async generateTriviaQuestionInternal(
 		topic: string,
 		difficulty: GameDifficulty,
-		questionCount: number = 5
+		answerCount: number = 5,
+		excludeQuestions?: string[]
 	): Promise<TriviaQuestion> {
 		const startTime = Date.now();
 
 		try {
-			// Use user's requested question count without optimization
-			const actualQuestionCount = clamp(questionCount, 3, 5);
-			const prompt = this.buildPrompt(topic, difficulty, actualQuestionCount);
+			// Clamp answer count to valid range (3-5) for batch generation
+			const actualAnswerCount = Math.max(3, Math.min(5, answerCount));
+			const prompt = this.buildPrompt(topic, difficulty, actualAnswerCount, excludeQuestions);
 
 			// Determine if this is a custom difficulty
 
@@ -342,7 +371,7 @@ export abstract class BaseTriviaProvider {
 				topic,
 				difficulty,
 				promptBuildTime,
-				questionCount: actualQuestionCount,
+				answerCount: actualAnswerCount,
 			});
 
 			const response = await this.makeApiCall(prompt);
@@ -379,12 +408,12 @@ export abstract class BaseTriviaProvider {
 			// Create trivia question object
 			const firstQuestion = data.questions[0];
 			const question: TriviaQuestion = {
-				id: `question_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+				id: generateQuestionId(),
 				topic: topic,
 				difficulty: difficulty,
 				question: firstQuestion.question,
-				answers: firstQuestion.answers.map((answer, i: number) => ({
-					text: answer.text,
+				answers: firstQuestion.answers.map((answerText: string, i: number) => ({
+					text: answerText,
 					isCorrect: i === firstQuestion.correctAnswerIndex,
 				})),
 				correctAnswerIndex: firstQuestion.correctAnswerIndex,
@@ -413,6 +442,19 @@ export abstract class BaseTriviaProvider {
 
 			// Shuffle answers to prevent position bias
 			question.answers = shuffle(question.answers);
+
+			// Update correctAnswerIndex after shuffling
+			const correctAnswerIndex = question.answers.findIndex(answer => answer.isCorrect);
+			if (correctAnswerIndex === -1) {
+				logger.providerError(this.name, 'Question validation failed: No correct answer found after shuffle', {
+					topic,
+					difficulty,
+					errors: ['No correct answer found'],
+				});
+				throw createServerError('validate question format', new Error('No correct answer found after shuffle'));
+			}
+			question.correctAnswerIndex = correctAnswerIndex;
+
 			logger.providerSuccess(this.name, {
 				topic,
 				difficulty,
@@ -457,14 +499,96 @@ export abstract class BaseTriviaProvider {
 		}
 	}
 
-	protected buildPrompt(topic: string, difficulty: GameDifficulty, questionCount: number): string {
+	protected buildPrompt(
+		topic: string,
+		difficulty: GameDifficulty,
+		answerCount: number,
+		excludeQuestions?: string[]
+	): string {
 		// Use the advanced prompt generation with full quality guidelines
 		return PromptTemplates.generateTriviaQuestion({
 			topic,
 			difficulty,
-			questionCount: questionCount,
+			answerCount,
 			isCustomDifficulty: isCustomDifficulty(difficulty),
+			excludeQuestions,
 		});
+	}
+
+	/**
+	 * Get provider-specific error message for invalid response format
+	 * @returns Error message for the current provider
+	 */
+	protected getProviderErrorMessageKey(): string {
+		const providerName = this.name;
+		const isProviderName = (name: string): name is keyof typeof PROVIDER_ERROR_MESSAGE_KEYS => {
+			return name in PROVIDER_ERROR_MESSAGE_KEYS;
+		};
+
+		if (isProviderName(providerName)) {
+			const errorKey = PROVIDER_ERROR_MESSAGE_KEYS[providerName];
+			if (errorKey) {
+				// Map error key to actual error message
+				const errorMessageMap: Record<string, string> = {
+					INVALID_GROQ_RESPONSE: PROVIDER_ERROR_MESSAGES.INVALID_GROQ_RESPONSE,
+					INVALID_GEMINI_RESPONSE: PROVIDER_ERROR_MESSAGES.INVALID_GEMINI_RESPONSE,
+					INVALID_CHATGPT_RESPONSE: PROVIDER_ERROR_MESSAGES.INVALID_CHATGPT_RESPONSE,
+					INVALID_CLAUDE_RESPONSE: PROVIDER_ERROR_MESSAGES.INVALID_CLAUDE_RESPONSE,
+				};
+				return errorMessageMap[errorKey] ?? PROVIDER_ERROR_MESSAGES.INVALID_QUESTION_FORMAT;
+			}
+		}
+		return PROVIDER_ERROR_MESSAGES.INVALID_QUESTION_FORMAT;
+	}
+
+	/**
+	 * Parse LLM content string to LLMTriviaResponse format
+	 * This is a shared method used by all providers after extracting content from their specific response format
+	 * @param content The JSON string content from LLM response
+	 * @returns LLMTriviaResponse with parsed questions
+	 */
+	protected parseLLMContentToTriviaResponse(content: string): LLMTriviaResponse {
+		if (!content || typeof content !== 'string' || content.trim().length === 0) {
+			throw createValidationError(`${this.name} ${PROVIDER_ERROR_MESSAGES.RESPONSE_CONTENT_EMPTY}`, 'string');
+		}
+
+		let parsed: { question?: string | null; answers?: string[]; explanation?: string };
+		try {
+			parsed = JSON.parse(content);
+		} catch {
+			throw createValidationError(`${this.name} response is not valid JSON`, 'string');
+		}
+
+		// Check if LLM returned error format (question is null)
+		if (parsed.question === null || parsed.question === undefined) {
+			return {
+				questions: [],
+				explanation: parsed.explanation || PROVIDER_ERROR_MESSAGES.UNABLE_TO_GENERATE_QUESTION,
+				content: content,
+				status: 'error',
+			};
+		}
+
+		// Convert single question object to LLMTriviaResponse format
+		// LLM returns: { question, answers, explanation }
+		// We need: { questions: [{ question, answers, correctAnswerIndex }], explanation, content, status }
+		if (parsed.question && Array.isArray(parsed.answers) && parsed.answers.length > 0) {
+			return {
+				questions: [
+					{
+						question: parsed.question,
+						answers: parsed.answers,
+						correctAnswerIndex: 0, // Correct answer is first in the array
+					},
+				],
+				explanation: parsed.explanation,
+				content: content,
+				status: 'success',
+			};
+		}
+
+		// If format doesn't match expected structure, throw error
+		throw createValidationError(`${this.name} ${PROVIDER_ERROR_MESSAGES.INVALID_QUESTION_FORMAT}`, 'string');
 	}
 
 	protected abstract parseResponse(response: LLMResponse): LLMTriviaResponse;
@@ -490,6 +614,7 @@ export abstract class BaseTriviaProvider {
 
 	protected addQuestion(question: TriviaQuestion): void {
 		const key = `${question.question.toLowerCase().trim()}`;
+		const now = new Date();
 		this.questionCache[key] = {
 			question: {
 				question: question.question,
@@ -499,8 +624,9 @@ export abstract class BaseTriviaProvider {
 				topic: question.topic,
 			},
 			createdAt: question.createdAt,
+			updatedAt: now,
 			accessCount: 0,
-			lastAccessed: new Date(),
+			lastAccessed: now,
 		};
 	}
 
@@ -509,7 +635,7 @@ export abstract class BaseTriviaProvider {
 			this.analytics.questions = [];
 		}
 		this.analytics.questions.push({
-			id: `analytics_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			id: `analytics_${Date.now()}_${generateId(9)}`,
 			topic: question.topic || 'unknown',
 			difficulty: question.difficulty || 'unknown',
 			responseTime,
@@ -536,7 +662,7 @@ export abstract class BaseTriviaProvider {
 		errorType: keyof typeof AI_PROVIDER_ERROR_TYPES
 	): TriviaQuestion {
 		return {
-			id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			id: generateQuestionId(),
 			topic: topic,
 			difficulty: difficulty,
 			question: AI_PROVIDER_ERROR_TYPES[errorType],

@@ -6,10 +6,10 @@
 import type {
 	Achievement,
 	BasicUser,
+	CreditBalance,
 	DifficultyBreakdown,
 	GameHistoryEntry,
 	LeaderboardEntry,
-	PointBalance,
 	TopicsPlayed,
 } from '@shared/types';
 
@@ -33,9 +33,8 @@ export interface UserStatsResponse {
 export interface UserState extends BaseReduxState {
 	currentUser: BasicUser | null;
 	isAuthenticated: boolean;
-	username: string;
 	avatar: string;
-	pointBalance: PointBalance | null;
+	creditBalance: CreditBalance | null;
 }
 
 // Game Slice State

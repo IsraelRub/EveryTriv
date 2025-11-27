@@ -32,7 +32,7 @@ export interface UserAnalyticsRecord {
 	userId?: string;
 	favoriteTopic?: string;
 	averageTimePerQuestion?: number;
-	totalPoints?: number;
+	totalScore?: number;
 	topicsPlayed?: TopicsPlayed;
 	difficultyBreakdown?: DifficultyBreakdown;
 	recentActivity?: ActivityEntry[];
@@ -43,10 +43,10 @@ export interface UserAnalyticsRecord {
  */
 export interface UserBasicInfo {
 	userId: string;
-	username: string;
+	email: string;
 	credits: number;
-	purchasedPoints: number;
-	totalPoints: number;
+	purchasedCredits: number;
+	totalCredits: number;
 	createdAt: Date;
 	accountAge: number;
 }

@@ -28,14 +28,14 @@ export class AuthenticationManager {
 	async authenticate(credentials: LoginCredentials, userData: UserData): Promise<AuthenticationResult> {
 		try {
 			// Use enhanced logging
-			logger.logAuthenticationEnhanced('login', userData.id, credentials.username, {
+			logger.logAuthenticationEnhanced('login', userData.id, credentials.email, {
 				context: 'AuthenticationManager',
 			});
 
 			// Check if user is active
 			if (!userData.isActive) {
 				logger.logSecurityEventEnhanced('User account is inactive', 'warn', {
-					username: credentials.username,
+					email: credentials.email,
 					userId: userData.id,
 				});
 				return {
@@ -48,7 +48,7 @@ export class AuthenticationManager {
 
 			if (!isPasswordValid) {
 				logger.logSecurityEventEnhanced('Invalid password', 'warn', {
-					username: credentials.username,
+					email: credentials.email,
 					userId: userData.id,
 				});
 				return {
@@ -57,14 +57,21 @@ export class AuthenticationManager {
 			}
 
 			// Generate tokens
-			const tokenPair = await this.jwtTokenService.generateTokenPair(
-				userData.id,
-				userData.username,
-				userData.email,
-				userData.role
-			);
+			let tokenPair;
+			try {
+				tokenPair = await this.jwtTokenService.generateTokenPair(userData.id, userData.email, userData.role);
+			} catch (tokenError) {
+				logger.securityError('Token generation failed', {
+					email: credentials.email,
+					userId: userData.id,
+					error: getErrorMessage(tokenError),
+				});
+				return {
+					error: 'Token generation failed',
+				};
+			}
 
-			logger.logAuthenticationEnhanced('login', userData.id, credentials.username, {
+			logger.logAuthenticationEnhanced('login', userData.id, credentials.email, {
 				success: true,
 				role: userData.role,
 				context: 'AuthenticationManager',
@@ -73,7 +80,6 @@ export class AuthenticationManager {
 			return {
 				user: {
 					id: userData.id,
-					username: userData.username,
 					email: userData.email,
 					role: userData.role,
 				},
@@ -83,7 +89,7 @@ export class AuthenticationManager {
 			};
 		} catch (error) {
 			logger.securityError('Authentication failed', {
-				username: credentials.username,
+				email: credentials.email,
 				error: getErrorMessage(error),
 			});
 			return {
@@ -111,22 +117,28 @@ export class AuthenticationManager {
 			const payload = tokenResult.payload;
 
 			// Generate new access token
-			const newAccessToken = await this.jwtTokenService.generateAccessToken(
-				payload.sub,
-				payload.username,
-				payload.email,
-				payload.role
-			);
+			let newAccessToken;
+			try {
+				newAccessToken = await this.jwtTokenService.generateAccessToken(payload.sub, payload.email, payload.role);
+			} catch (tokenError) {
+				logger.securityError('Token generation failed during refresh', {
+					userId: payload.sub,
+					email: payload.email,
+					error: getErrorMessage(tokenError),
+				});
+				return {
+					error: 'Token generation failed',
+				};
+			}
 
 			logger.securityLogin('Token refresh successful', {
 				userId: payload.sub,
-				username: payload.username,
+				email: payload.email,
 			});
 
 			return {
 				user: {
 					id: payload.sub,
-					username: payload.username,
 					email: payload.email,
 					role: payload.role,
 				},
@@ -148,7 +160,6 @@ export class AuthenticationManager {
 	 */
 	async generateTokensForUser(user: {
 		id: string;
-		username: string;
 		email: string;
 		role: UserRole;
 	}): Promise<{ accessToken: string; refreshToken: string }> {
@@ -158,10 +169,9 @@ export class AuthenticationManager {
 	/**
 	 * Logout user (invalidate tokens)
 	 */
-	async logout(userId: string, username: string): Promise<void> {
+	async logout(userId: string): Promise<void> {
 		logger.securityLogin('User logout', {
 			userId,
-			username,
 		});
 	}
 }

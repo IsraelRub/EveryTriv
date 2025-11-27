@@ -18,17 +18,17 @@ export { useCurrentUser, useLogin, useRegister } from './useAuth';
 export { useNavigationController } from './useNavigationController';
 
 /**
- * Points management hooks
- * @description Point balance, transactions, and purchase management hooks
+ * Credits management hooks
+ * @description Credit balance, transactions, and purchase management hooks
  */
 export {
-	usePointBalance,
-	usePointPackages,
-	usePurchasePoints,
+	useCreditBalance,
+	useCreditPackages,
+	usePurchaseCredits,
 	useCanPlay,
-	useDeductPoints,
+	useDeductCredits,
 	useTransactionHistory,
-} from './usePoints';
+} from './useCredits';
 
 /**
  * Trivia game hooks
@@ -156,3 +156,10 @@ export { useGameTimer } from './useGameTimer';
  * @description Audio context and control hooks
  */
 export { AudioProvider, useAudio } from './useAudio';
+
+/**
+ * Multiplayer hooks
+ * @description Multiplayer game hooks
+ */
+export { useMultiplayer } from './useMultiplayer';
+export { useMultiplayerRoom } from './useMultiplayerRoom';

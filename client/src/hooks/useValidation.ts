@@ -6,15 +6,17 @@ import {
 	validateEmail,
 	validatePassword,
 	validateTopicLength,
-	validateUsername,
 } from '@shared/validation';
 
 import type { BasicValidationResult, ValidationHookOptions, ValidatorsMap } from '../types';
 
+/**
+ * Hook for form validation
+ * @returns Validation object with validate function for different field types
+ */
 export function useValidation() {
 	const validators: ValidatorsMap = useMemo(
 		() => ({
-			username: async (value: string) => Promise.resolve(validateUsername(value)),
 			password: async (value: string) => Promise.resolve(validatePassword(value)),
 			email: async (value: string) => Promise.resolve(validateEmail(value)),
 			topic: async (value: string) => Promise.resolve(validateTopicLength(value)),

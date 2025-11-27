@@ -133,7 +133,6 @@ const CompleteProfile = memo(function CompleteProfile() {
 				const profile = profileResponse.profile;
 				const userData = {
 					id: profile.id || '',
-					username: profile.username || '',
 					email: profile.email || '',
 					role: profile.role || UserRole.USER,
 				};
@@ -181,7 +180,6 @@ const CompleteProfile = memo(function CompleteProfile() {
 							<ValidatedInput
 								id='firstName'
 								type='text'
-								validationType='username'
 								value={formData.firstName}
 								initialValue={formData.firstName}
 								onChange={(value: string) => {
@@ -199,7 +197,6 @@ const CompleteProfile = memo(function CompleteProfile() {
 							<ValidatedInput
 								id='lastName'
 								type='text'
-								validationType='username'
 								value={formData.lastName}
 								initialValue={formData.lastName}
 								onChange={(value: string) => {
@@ -233,7 +230,6 @@ const CompleteProfile = memo(function CompleteProfile() {
 							<div className='text-center'>
 								<Avatar
 									src={formData.avatar}
-									username={formData.firstName}
 									firstName={formData.firstName}
 									lastName={formData.lastName}
 									size={ComponentSize.LG}

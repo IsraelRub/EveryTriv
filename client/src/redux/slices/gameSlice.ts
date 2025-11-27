@@ -81,10 +81,10 @@ const gameStateSlice = createSlice({
 				const totalTime = action.payload.totalTime ?? 30;
 				const timeSpent = action.payload.timeSpent ?? 0;
 				const streak = state.state.stats.correctStreak ?? 0;
-				const pointsEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
+				const scoreEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
 
-				state.state.data.score += pointsEarned;
-				state.state.stats.currentScore += pointsEarned;
+				state.state.data.score += scoreEarned;
+				state.state.stats.currentScore += scoreEarned;
 				state.state.stats.correctStreak += 1;
 				state.state.stats.maxStreak = Math.max(state.state.stats.maxStreak, state.state.stats.correctStreak);
 			} else {

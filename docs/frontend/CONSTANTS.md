@@ -51,7 +51,7 @@ export enum AudioCategory {
 
 **AudioKey Enum:**
 - UI Sounds: `BUTTON_CLICK`, `HOVER`, `SUCCESS`, `ERROR`, `WARNING`, `NOTIFICATION`, `CLICK`, `SWIPE`, `POP`, `INPUT`, `PAGE_CHANGE`, `MENU_OPEN`, `MENU_CLOSE`
-- Game Sounds: `CORRECT_ANSWER`, `WRONG_ANSWER`, `GAME_START`, `GAME_END`, `TIME_WARNING`, `COUNTDOWN`, `BEEP`, `ACHIEVEMENT`, `NEW_ACHIEVEMENT`, `LEVEL_UP`, `POINT_STREAK`, `POINT_EARNED`
+- Game Sounds: `CORRECT_ANSWER`, `WRONG_ANSWER`, `GAME_START`, `GAME_END`, `TIME_WARNING`, `COUNTDOWN`, `BEEP`, `ACHIEVEMENT`, `NEW_ACHIEVEMENT`, `LEVEL_UP`, `SCORE_STREAK`, `SCORE_EARNED`
 - Background Music: `BACKGROUND_MUSIC`, `MENU_MUSIC`, `GAME_MUSIC`
 
 **Constants:**
@@ -474,18 +474,18 @@ export const USER_DEFAULT_VALUES = {
   emailVerified: false,
   authProvider: 'local' as const,
   credits: 0,
-  purchasedPoints: 0,
-  totalPoints: 0,
+  purchasedCredits: 0,
+  totalCredits: 0,
   score: 0,
 } as const;
 ```
 
-**POINT_BALANCE_DEFAULT_VALUES:**
+**CREDIT_BALANCE_DEFAULT_VALUES:**
 ```typescript
-export const POINT_BALANCE_DEFAULT_VALUES = {
-  totalPoints: 0,
+export const CREDIT_BALANCE_DEFAULT_VALUES = {
+  totalCredits: 0,
   freeQuestions: 0,
-  purchasedPoints: 0,
+  purchasedCredits: 0,
   dailyLimit: 20,
   canPlayFree: false,
   nextResetTime: null,

@@ -10,11 +10,12 @@
 
 ### רכיבים עיקריים
 
-1. **AudioService** (`client/src/services/media/audio.service.ts`)
+1. **AudioService** (`client/src/services/audio.service.ts`)
    - ניהול מרכזי של כל קבצי האודיו
    - טעינה על דרישה (lazy loading)
-   - ניהול נפח ושתיקה
+   - ניהול נפח היררכי: master volume, category volumes, ו-individual sound volumes
    - תמיכה בקטגוריות שונות של צלילים
+   - שמירת מצב השתקה ב-localStorage
 
 2. **AudioContext** (`client/src/hooks/contexts/AudioContext.tsx`)
    - ניהול מצב האודיו ברמת האפליקציה
@@ -105,15 +106,47 @@ import { useAudio } from '@/hooks';
 import { AudioKey } from '@/constants';
 
 const MyComponent = () => {
-	const { playSound } = useAudio();
+	const audioService = useAudio();
 	
 	const handleSuccess = () => {
-		playSound(AudioKey.SUCCESS);
+		audioService.play(AudioKey.SUCCESS);
 	};
 	
 	return <button onClick={handleSuccess}>הצלחה!</button>;
 };
 ```
+
+## ניהול נפח
+
+המערכת משתמשת במערכת נפח היררכית:
+
+1. **Master Volume** - נפח כללי לכל האודיו (0-1)
+2. **Category Volume** - נפח לכל קטגוריה (UI, MUSIC, EFFECTS וכו')
+3. **Sound Volume** - נפח ספציפי לכל צליל
+
+הנפח הסופי מחושב כך: `soundVolume * categoryVolume * masterVolume`
+
+### API לשליטה בנפח
+
+```typescript
+// הגדרת נפח כללי (master volume)
+audioService.setMasterVolume(0.7); // או setVolume(0.7)
+
+// השתקה/הפעלה
+audioService.mute();
+audioService.unmute();
+audioService.toggleMute(); // מחזיר את מצב ההשתקה החדש
+
+// בדיקת מצב
+const isEnabled = audioService.isEnabled; // true אם לא מושתק
+const currentVolume = audioService.volume; // מחזיר 0 אם מושתק, אחרת masterVolume
+```
+
+### שמירת מצב
+
+המצב של האודיו נשמר ב-localStorage:
+- `AUDIO_MUTED` - מצב השתקה
+- `AUDIO_VOLUME` - נפח כללי
 
 ## ביצועים וייעול
 
@@ -123,6 +156,7 @@ const MyComponent = () => {
    - צלילי לחיצה בסיסיים
    - צלילי מעבר עכבר
    - מוזיקת רקע
+   - משתמש ב-`preload='metadata'` לטעינה מהירה
 
 2. **טעינה על דרישה**
    - צלילי משחק ספציפיים
@@ -131,8 +165,9 @@ const MyComponent = () => {
 
 ### ניהול זיכרון
 
-- ניקוי אוטומטי של צלילים שסיימו לנגן
-- שימוש ב-cloning לצלילים חופפים
+- ניקוי אוטומטי של צלילים שסיימו לנגן (cloned elements)
+- שימוש ב-cloning לצלילים חופפים (sound effects)
+- מוזיקה משתמשת ב-element יחיד ומתחילה מההתחלה
 - ניטור שימוש בזיכרון
 
 ## מקורות מומלצים

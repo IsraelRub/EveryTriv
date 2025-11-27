@@ -588,7 +588,7 @@ function AdminDashboardContent() {
 													{analyticsView === 'trends' && userTrends.error && `Error: ${userTrends.error.message}`}
 													{analyticsView === 'trends' &&
 														userTrends.data &&
-														`${userTrends.data.data?.length ?? 0} trend points`}
+														`${userTrends.data.data?.length ?? 0} trend data points`}
 													{analyticsView === 'comparison' && userComparison.isLoading && 'Loading comparison...'}
 													{analyticsView === 'comparison' &&
 														userComparison.error &&

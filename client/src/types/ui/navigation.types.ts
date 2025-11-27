@@ -45,7 +45,7 @@ export interface NavigationMenuLink extends NavigationLink {
  * @interface NavigationUserDisplay
  */
 export interface NavigationUserDisplay {
-	username: string;
+	email: string;
 	avatar?: string;
 	firstName?: string;
 	lastName?: string;
@@ -77,15 +77,15 @@ export interface NavigationMenuProps {
 	links: ReadonlyArray<NavigationMenuLink>;
 	audioControls: ReactNode;
 	isAuthenticated: boolean;
-	pointsDisplay?: string;
-	totalPoints?: number;
+	creditsDisplay?: string;
+	totalCredits?: number;
 	freeQuestions?: number;
 	nextResetTime?: string | null;
 	userDisplay?: NavigationUserDisplay;
 	onLogout: () => void;
 	onSignUp: () => void;
-	onGoogleLogin: () => void;
-	onGetMorePoints: () => void;
+	onSignIn: () => void;
+	onGetMoreCredits: () => void;
 }
 
 /**
@@ -97,15 +97,15 @@ export interface NavigationActionsProps {
 	userDisplay?: NavigationActionsUserDisplay;
 	onLogout: () => void;
 	onSignUp: () => void;
-	onGoogleLogin: () => void;
+	onSignIn: () => void;
 	children?: ReactNode;
 }
 
 /**
- * Navigation points display state
- * @interface NavigationPointsState
+ * Navigation credits display state
+ * @interface NavigationCreditsState
  */
-export interface NavigationPointsState {
+export interface NavigationCreditsState {
 	display: string;
 	total?: number;
 	freeQuestions?: number;
@@ -120,8 +120,8 @@ export interface NavigationActionHandlers {
 	onNavigateHome: () => void;
 	onLogout: () => void;
 	onSignUp: () => void;
-	onGoogleLogin: () => void;
-	onGetMorePoints: () => void;
+	onSignIn: () => void;
+	onGetMoreCredits: () => void;
 }
 
 /**
@@ -134,6 +134,6 @@ export interface NavigationControllerResult {
 	links: ReadonlyArray<NavigationMenuLink>;
 	isAuthenticated: boolean;
 	userDisplay?: NavigationUserDisplay;
-	points: NavigationPointsState;
+	credits: NavigationCreditsState;
 	actions: NavigationActionHandlers;
 }

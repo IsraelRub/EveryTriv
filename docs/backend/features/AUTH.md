@@ -44,7 +44,6 @@ server/src/features/auth/
 **Request Body:**
 ```typescript
 {
-  username: string;     // שם משתמש (3-40 תווים)
   email: string;        // אימייל
   password: string;     // סיסמה (6-128 תווים)
   firstName?: string;   // שם פרטי
@@ -59,7 +58,6 @@ server/src/features/auth/
   refresh_token: string;
   user: {
     id: string;
-    username: string;
     email: string;
     firstName?: string;
     lastName?: string;
@@ -85,7 +83,7 @@ async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
 **Request Body:**
 ```typescript
 {
-  username: string;  // שם משתמש או אימייל
+  email: string;     // אימייל
   password: string;  // סיסמה
 }
 ```
@@ -97,7 +95,6 @@ async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
   refresh_token: string;
   user: {
     id: string;
-    username: string;
     email: string;
     firstName?: string;
     lastName?: string;
@@ -153,7 +150,6 @@ async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<RefreshTok
 ```typescript
 {
   id: string;
-  username: string;
   email: string;
   firstName?: string;
   lastName?: string;
@@ -233,9 +229,9 @@ export class AuthService {
    * Register a new user
    */
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    // Check if username or email already exists
+    // Check if email already exists
     const existingUser = await this.userRepository.findOne({
-      where: [{ username: registerDto.username }, { email: registerDto.email }],
+      where: { email: registerDto.email },
     });
 
     if (existingUser) {
@@ -244,13 +240,12 @@ export class AuthService {
         : false;
 
       if (!passwordMatches) {
-        throw new BadRequestException('Username or email already exists');
+        throw new BadRequestException('Email already exists');
       }
 
       // Login existing user
       const tokenPair = await this.authenticationManager.generateTokensForUser({
         id: existingUser.id,
-        username: existingUser.username,
         email: existingUser.email,
         role: existingUser.role,
       });
@@ -260,7 +255,6 @@ export class AuthService {
         refresh_token: tokenPair.refreshToken,
         user: {
           id: existingUser.id,
-          username: existingUser.username,
           email: existingUser.email,
           firstName: existingUser.firstName,
           lastName: existingUser.lastName,
@@ -278,7 +272,6 @@ export class AuthService {
 
     // Create user
     const user = this.userRepository.create({
-      username: registerDto.username,
       email: registerDto.email,
       passwordHash: hashedPassword,
       firstName: registerDto.firstName,
@@ -292,7 +285,6 @@ export class AuthService {
     // Generate tokens
     const tokenPair = await this.authenticationManager.generateTokensForUser({
       id: savedUser.id,
-      username: savedUser.username,
       email: savedUser.email,
       role: savedUser.role,
     });
@@ -302,7 +294,6 @@ export class AuthService {
       refresh_token: tokenPair.refreshToken,
       user: {
         id: savedUser.id,
-        username: savedUser.username,
         email: savedUser.email,
         firstName: savedUser.firstName,
         lastName: savedUser.lastName,
@@ -316,7 +307,7 @@ export class AuthService {
    */
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.userRepository.findOne({
-      where: { username: loginDto.username, isActive: true },
+      where: { email: loginDto.email, isActive: true },
     });
 
     if (!user) {
@@ -326,7 +317,6 @@ export class AuthService {
     // Use AuthenticationManager for authentication
     const authResult = await this.authenticationManager.authenticate(loginDto, {
       id: user.id,
-      username: user.username,
       email: user.email,
       passwordHash: user.passwordHash || '',
       role: user.role,
@@ -381,7 +371,6 @@ export class AuthService {
         const roleForNewUser = adminExists ? UserRole.USER : UserRole.ADMIN;
 
         user = this.userRepository.create({
-          username: googleUser.email.split('@')[0],
           email: googleUser.email,
           googleId: googleUser.id,
           firstName: googleUser.given_name,
@@ -397,7 +386,6 @@ export class AuthService {
 
     const tokenPair = await this.authenticationManager.generateTokensForUser({
       id: user.id,
-      username: user.username,
       email: user.email,
       role: user.role,
     });
@@ -407,7 +395,6 @@ export class AuthService {
       refresh_token: tokenPair.refreshToken,
       user: {
         id: user.id,
-        username: user.username,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,

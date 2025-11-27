@@ -28,19 +28,6 @@ import { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
-		description: 'Username',
-		example: 'username',
-		minLength: 3,
-		maxLength: 50,
-	})
-	@IsOptional()
-	@IsString()
-	@MinLength(3, { message: 'Username must be at least 3 characters long' })
-	@MaxLength(50, { message: 'Username cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z0-9_-]+$/, { message: 'Username can only contain letters, numbers, underscores, and hyphens' })
-	username?: string;
-
-	@ApiPropertyOptional({
 		description: 'First name',
 		example: 'First',
 		maxLength: 50,
@@ -220,15 +207,15 @@ export class UpdateUserStatusDto {
 }
 
 export class ChangePasswordDto {
-	@ApiProperty({ description: 'Current password', minLength: 6, maxLength: 200 })
+	@ApiProperty({ description: 'Current password', minLength: 6, maxLength: 15 })
 	@IsString()
 	@MinLength(6, { message: 'Current password must be at least 6 characters long' })
-	@MaxLength(200, { message: 'Current password cannot exceed 200 characters' })
+	@MaxLength(15, { message: 'Current password cannot exceed 15 characters' })
 	currentPassword!: string;
 
-	@ApiProperty({ description: 'New password', minLength: 8, maxLength: 200 })
+	@ApiProperty({ description: 'New password', minLength: 6, maxLength: 15 })
 	@IsString()
-	@MinLength(8, { message: 'New password must be at least 8 characters long' })
-	@MaxLength(200, { message: 'New password cannot exceed 200 characters' })
+	@MinLength(6, { message: 'New password must be at least 6 characters long' })
+	@MaxLength(15, { message: 'New password cannot exceed 15 characters' })
 	newPassword!: string;
 }

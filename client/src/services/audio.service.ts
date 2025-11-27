@@ -25,6 +25,7 @@ export class AudioService implements AudioServiceInterface {
 	private isMuted = false;
 	private volumes: Map<AudioKey, number> = new Map();
 	private categoryVolumes: Map<AudioCategory, number>;
+	private masterVolume = 1;
 	private userInteracted = false;
 	private userPreferences: UserPreferences | null = null;
 
@@ -95,7 +96,10 @@ export class AudioService implements AudioServiceInterface {
 	 */
 	private preloadAudioInternal(key: AudioKey, src: string, config: { volume?: number; loop?: boolean }): void {
 		const audio = new Audio();
-		audio.volume = this.isMuted ? 0 : (config.volume ?? 0.7);
+		const soundVolume = config.volume ?? 0.7;
+		const category = AUDIO_CATEGORIES[key];
+		const categoryVolume = this.categoryVolumes.get(category) || 1;
+		audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
 		audio.loop = config.loop ?? false;
 
 		audio.preload = 'metadata';
@@ -178,6 +182,11 @@ export class AudioService implements AudioServiceInterface {
 		// If it's music, restart from the beginning
 		if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC) {
 			audio.currentTime = 0;
+			// Ensure music volume is set correctly
+			const soundVolume = this.volumes.get(key) || 0.7;
+			const category = AUDIO_CATEGORIES[key];
+			const categoryVolume = this.categoryVolumes.get(category) || 1;
+			audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
 			audio.play().catch(err => {
 				// Handle autoplay restrictions gracefully
 				if (err.name === 'NotAllowedError') {
@@ -199,7 +208,10 @@ export class AudioService implements AudioServiceInterface {
 			return;
 		}
 		const clone = clonedNode;
-		clone.volume = this.isMuted ? 0 : this.volumes.get(key) || 0.7;
+		const soundVolume = this.volumes.get(key) || 0.7;
+		const category = AUDIO_CATEGORIES[key];
+		const categoryVolume = this.categoryVolumes.get(category) || 1;
+		clone.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
 		clone.play().catch(err => {
 			// Handle autoplay restrictions gracefully
 			if (err.name === 'NotAllowedError') {
@@ -240,21 +252,6 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	/**
-	 * Stop all sounds in a category
-	 */
-	public stopCategory(category: AudioCategory): void {
-		const audioKeyValues = Object.values(AudioKey);
-		Object.entries(AUDIO_CATEGORIES).forEach(([key, cat]) => {
-			if (cat === category) {
-				const audioKeyValue = audioKeyValues.find(ak => ak === key);
-				if (audioKeyValue) {
-					this.stop(audioKeyValue);
-				}
-			}
-		});
-	}
-
-	/**
 	 * Mute all audio
 	 */
 	public mute(): void {
@@ -273,7 +270,7 @@ export class AudioService implements AudioServiceInterface {
 			const category = AUDIO_CATEGORIES[key];
 			const categoryVolume = this.categoryVolumes.get(category) || 1;
 			const soundVolume = this.volumes.get(key) || 0.7;
-			audio.volume = categoryVolume * soundVolume;
+			audio.volume = soundVolume * categoryVolume * this.masterVolume;
 		});
 	}
 
@@ -290,50 +287,15 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	/**
-	 * Set volume for a specific sound
-	 */
-	public setSoundVolume(key: AudioKey, volume: number): void {
-		const audio = this.audioElements.get(key);
-		if (!audio || this.isMuted) return;
-
-		this.volumes.set(key, volume);
-
-		const category = AUDIO_CATEGORIES[key];
-		const categoryVolume = this.categoryVolumes.get(category) || 1;
-		audio.volume = volume * categoryVolume;
-	}
-
-	/**
 	 * Set master volume for all sounds
 	 */
 	public setMasterVolume(volume: number): void {
+		this.masterVolume = volume;
 		this.audioElements.forEach((audio, key) => {
 			const soundVolume = this.volumes.get(key) || 0.7;
 			const category = AUDIO_CATEGORIES[key];
 			const categoryVolume = this.categoryVolumes.get(category) || 1;
-			audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * volume;
-		});
-	}
-
-	/**
-	 * Set volume for an entire category of sounds
-	 */
-	public setCategoryVolume(category: AudioCategory, volume: number): void {
-		this.categoryVolumes.set(category, volume);
-
-		// Update all audio elements in this category
-		const audioKeyValues = Object.values(AudioKey);
-		Object.entries(AUDIO_CATEGORIES).forEach(([key, cat]) => {
-			if (cat === category) {
-				const audioKeyValue = audioKeyValues.find(ak => ak === key);
-				if (audioKeyValue) {
-					const audio = this.audioElements.get(audioKeyValue);
-					if (!audio || this.isMuted) return;
-
-					const soundVolume = this.volumes.get(audioKeyValue) || 0.7;
-					audio.volume = soundVolume * volume;
-				}
-			}
+			audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
 		});
 	}
 
@@ -355,9 +317,9 @@ export class AudioService implements AudioServiceInterface {
 		} else if (percentage >= 80) {
 			this.play(AudioKey.LEVEL_UP);
 		} else if (scoreIncrease >= 5) {
-			this.play(AudioKey.POINT_STREAK);
+			this.play(AudioKey.SCORE_STREAK);
 		} else if (scoreIncrease >= 2) {
-			this.play(AudioKey.POINT_EARNED);
+			this.play(AudioKey.SCORE_EARNED);
 		} else if (scoreIncrease >= 1) {
 			this.play(AudioKey.ACHIEVEMENT);
 		} else {
@@ -371,44 +333,12 @@ export class AudioService implements AudioServiceInterface {
 	}
 
 	get volume(): number {
-		return this.isMuted ? 0 : 0.5;
-	}
-
-	toggleAudio(): void {
-		this.isMuted = !this.isMuted;
-		this.audioElements.forEach((audio, key) => {
-			audio.volume = this.isMuted ? 0 : this.volumes.get(key) || 0.5;
-		});
+		return this.isMuted ? 0 : this.masterVolume;
 	}
 
 	setVolume(volume: number): void {
-		// Set global volume for all audio
-		this.audioElements.forEach((audio, key) => {
-			const soundVolume = this.volumes.get(key) || 0.5;
-			audio.volume = this.isMuted ? 0 : soundVolume * volume;
-		});
-	}
-
-	playSound(soundName: AudioKey): void {
-		this.play(soundName);
-	}
-
-	/**
-	 * Preload audio as required by AudioServiceInterface
-	 */
-	async preloadAudio(audioKey: AudioKey, path: string): Promise<void> {
-		this.preloadAudioInternal(audioKey, path, { volume: 0.5, loop: false });
-	}
-
-	stopSound(soundName: AudioKey): void {
-		this.stop(soundName);
-	}
-
-	stopAllSounds(): void {
-		this.audioElements.forEach(audio => {
-			audio.pause();
-			audio.currentTime = 0;
-		});
+		// Alias for setMasterVolume to maintain interface compatibility
+		this.setMasterVolume(volume);
 	}
 }
 

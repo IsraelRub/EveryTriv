@@ -7,8 +7,6 @@
  * @used_by client/src/constants, server/src/internal/modules/storage
  */
 
-// Storage keys moved to client/src/constants/storage/storage.constants.ts
-
 // Storage configuration
 export const STORAGE_CONFIG = {
 	PREFIX: 'everytriv_',
@@ -32,6 +30,6 @@ export const CACHE_TTL = {
 	GAME_HISTORY: 7200, // 2 hours (from server)
 	LEADERBOARD: 300, // 5 minutes
 	USER_STATS: 3600, // 1 hour (from server)
-	POINTS_BALANCE: 300, // 5 minutes (from server)
+	CREDITS_BALANCE: 300, // 5 minutes (from server)
 	USER_ANALYTICS: 1800, // 30 minutes
 } as const;

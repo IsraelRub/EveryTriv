@@ -28,7 +28,7 @@ Pipes ב-NestJS אחראים לוולידציה וטרנספורמציה של נ
 **מיקום:** `server/src/common/pipes/triviaRequest.pipe.ts`
 
 **תפקיד:**
-- ולידציה של trivia request data (topic, difficulty, questionCount)
+- ולידציה של trivia request data (topic, difficulty, requestedQuestions)
 - טרנספורמציה ונורמליזציה של נתונים
 - שימוש ב-ValidationService לוולידציה עסקית
 
@@ -71,21 +71,21 @@ export class GameController {
 {
   topic: "Science",
   difficulty: "medium",
-  questionCount: 10
+  requestedQuestions: 10
 }
 
-// ❌ שגיאה - questionCount לא תקין
+// ❌ שגיאה - requestedQuestions לא תקין
 {
   topic: "Science",
   difficulty: "medium",
-  questionCount: 0 // ← חייב להיות > 0
+  requestedQuestions: 0 // ← חייב להיות > 0
 }
 
 // ❌ שגיאה - topic ריק
 {
   topic: "", // ← חייב להיות לא ריק
   difficulty: "medium",
-  questionCount: 10
+  requestedQuestions: 10
 }
 ```
 
@@ -96,7 +96,7 @@ export class GameController {
 const triviaValidation = await this.validationService.validateTriviaRequest(
   payload.topic,
   payload.difficulty,
-  payload.questionCount
+  payload.requestedQuestions
 );
 
 if (!triviaValidation.isValid) {
@@ -371,7 +371,7 @@ constructor(private readonly validationService: ValidationService) {}
 const validationResult = await this.validationService.validateTriviaRequest(
   topic,
   difficulty,
-  questionCount
+  requestedQuestions
 );
 ```
 

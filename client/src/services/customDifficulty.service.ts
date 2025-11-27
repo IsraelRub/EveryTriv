@@ -4,18 +4,12 @@
  * @description Service for managing custom difficulties and their history in localStorage
  * @used_by client/src/components/stats/CustomDifficultyHistory.tsx, client/src/views/game/CustomDifficultyView.tsx
  */
+import { isRecord } from '@shared/utils';
 import { isCustomDifficulty } from '@shared/validation';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
 import type { HistoryItem } from '../types';
 import { storageService } from './storage.service';
-
-/**
- * Type guard for custom difficulty string array
- */
-function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every(item => typeof item === 'string');
-}
 
 /**
  * Type guard for history item array
@@ -25,16 +19,12 @@ function isHistoryItemArray(value: unknown): value is HistoryItem[] {
 		Array.isArray(value) &&
 		value.every(
 			item =>
-				typeof item === 'object' &&
-				item !== null &&
-				'topic' in item &&
-				'difficulty' in item &&
-				'score' in item &&
-				'date' in item &&
+				isRecord(item) &&
 				typeof item.topic === 'string' &&
 				typeof item.difficulty === 'string' &&
 				typeof item.score === 'number' &&
-				typeof item.date === 'string'
+				typeof item.date === 'string' &&
+				(item.timestamp === undefined || typeof item.timestamp === 'number')
 		)
 	);
 }
@@ -50,7 +40,7 @@ class CustomDifficultyService {
 	 */
 	async getCustomDifficulties(): Promise<string[]> {
 		try {
-			const result = await storageService.get<string[]>(this.CUSTOM_DIFFICULTIES_KEY, isStringArray);
+			const result = await storageService.getStringArray(this.CUSTOM_DIFFICULTIES_KEY);
 			return result.success && result.data ? result.data : [];
 		} catch {
 			return [];
@@ -59,7 +49,8 @@ class CustomDifficultyService {
 
 	/**
 	 * Save a custom difficulty
-	 * @param difficulty - Custom difficulty text
+	 * @param difficulty Custom difficulty text
+	 * @returns Resolves when difficulty is saved
 	 */
 	async saveCustomDifficulty(difficulty: string): Promise<void> {
 		try {
@@ -75,7 +66,8 @@ class CustomDifficultyService {
 
 	/**
 	 * Delete a custom difficulty
-	 * @param difficulty - Custom difficulty text to delete
+	 * @param difficulty Custom difficulty text to delete
+	 * @returns Resolves when difficulty is deleted
 	 */
 	async deleteCustomDifficulty(difficulty: string): Promise<void> {
 		try {
@@ -102,9 +94,10 @@ class CustomDifficultyService {
 
 	/**
 	 * Add or update an entry in custom difficulty history
-	 * @param topic - Topic used with the custom difficulty
-	 * @param difficulty - Custom difficulty text
-	 * @param score - Optional score from the game
+	 * @param topic Topic used with the custom difficulty
+	 * @param difficulty Custom difficulty text
+	 * @param score Optional score from the game (default: 0)
+	 * @returns Resolves when history entry is added or updated
 	 */
 	async addToHistory(topic: string, difficulty: string, score: number = 0): Promise<void> {
 		try {
@@ -160,6 +153,7 @@ class CustomDifficultyService {
 
 	/**
 	 * Clear custom difficulty history
+	 * @returns Resolves when history is cleared
 	 */
 	async clearHistory(): Promise<void> {
 		try {

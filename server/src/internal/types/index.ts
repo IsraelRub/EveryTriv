@@ -12,3 +12,17 @@
  * @exports {Object} Nest types
  */
 export * from './nest.types';
+
+/**
+ * Multiplayer types
+ * @description Multiplayer game types for WebSocket connections
+ * @exports {Object} Multiplayer types
+ */
+export * from './multiplayer.types';
+
+/**
+ * Trivia types
+ * @description Server-side trivia question types and metadata
+ * @exports {Object} Trivia types
+ */
+export * from './trivia.types';

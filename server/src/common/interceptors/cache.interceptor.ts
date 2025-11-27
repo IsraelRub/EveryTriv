@@ -58,8 +58,8 @@ export class CacheInterceptor implements NestInterceptor {
 
 	/**
 	 * Intercept HTTP requests and implement caching
-	 * @param context - Execution context
-	 * @param next - Call handler
+	 * @param context Execution context
+	 * @param next Call handler
 	 * @returns Observable with cached or fresh data
 	 */
 	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
@@ -174,8 +174,8 @@ export class CacheInterceptor implements NestInterceptor {
 
 	/**
 	 * Generate cache key from request
-	 * @param request - HTTP request object
-	 * @param customKey - Custom key from decorator
+	 * @param request HTTP request object
+	 * @param customKey Custom key from decorator
 	 * @returns Generated cache key
 	 */
 	private generateCacheKey(request: NestRequest, customKey?: string): string {

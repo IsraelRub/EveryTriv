@@ -246,6 +246,16 @@ import { DifficultyLevel } from '@shared/constants';
 import type { BaseEntity } from '../../core/data.types';
 
 /**
+ * Trivia question source type
+ */
+export type TriviaQuestionSource = 'ai' | 'user' | 'imported' | 'seeded' | 'system';
+
+/**
+ * Trivia question review status type
+ */
+export type TriviaQuestionReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+
+/**
  * Trivia question interface
  */
 export interface TriviaQuestion extends BaseEntity {
@@ -265,12 +275,41 @@ export interface TriviaQuestion extends BaseEntity {
 }
 
 /**
+ * Trivia question details metadata
+ */
+export interface TriviaQuestionDetailsMetadata {
+  category?: string;
+  tags?: string[];
+  source?: TriviaQuestionSource; // משתמש ב-TriviaQuestionSource
+  providerName?: string;
+  difficulty?: GameDifficulty;
+  difficultyScore?: number;
+  customDifficultyDescription?: string;
+  generatedAt?: string;
+  importedAt?: string;
+  lastReviewedAt?: string;
+  reviewStatus?: TriviaQuestionReviewStatus; // משתמש ב-TriviaQuestionReviewStatus
+  language?: string;
+  explanation?: string;
+  referenceUrls?: string[];
+  hints?: string[];
+  usageCount?: number;
+  correctAnswerCount?: number;
+  aiConfidenceScore?: number;
+  safeContentScore?: number;
+  flaggedReasons?: string[];
+  popularityScore?: number;
+  averageAnswerTimeMs?: number;
+}
+```
+
+/**
  * Trivia request interface
  */
 export interface TriviaRequest {
   topic: string;
   difficulty: string;
-  questionCount: number;
+  requestedQuestions: number;
 }
 
 /**
@@ -279,7 +318,7 @@ export interface TriviaRequest {
 export interface AnswerResult {
   isCorrect: boolean;
   correctAnswer: number;
-  pointsEarned: number;
+  scoreEarned: number;
   explanation?: string;
 }
 ```
@@ -361,8 +400,8 @@ export interface User extends UserProfile {
   lastLogin?: Date;
   authProvider: AuthProvider;
   credits: number;
-  purchasedPoints: number;
-  totalPoints: number;
+  purchasedCredits: number;
+  totalCredits: number;
   dailyFreeQuestions: number;
   remainingFreeQuestions: number;
   currentSubscriptionId?: string;
@@ -523,12 +562,12 @@ export interface LanguageValidationResult {
 
 ```typescript
 /**
- * Point balance interface
+ * Credit balance interface
  */
-export interface PointBalance {
-  totalPoints: number;
+export interface CreditBalance {
+  totalCredits: number;
   freeQuestions: number;
-  purchasedPoints: number;
+  purchasedCredits: number;
   dailyLimit: number;
   canPlayFree: boolean;
   nextResetTime: string;
@@ -550,7 +589,7 @@ export interface PointTransaction {
 /**
  * Point purchase option interface
  */
-export interface PointPurchaseOption {
+export interface CreditPurchaseOption {
   id: string;
   points: number;
   price: number;

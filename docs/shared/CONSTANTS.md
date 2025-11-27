@@ -93,9 +93,9 @@ export const API_ENDPOINTS_BASE = {
     CREATE: '/payment/create',
   },
   POINTS: {
-    GET: '/points',
-    BALANCE: '/points/balance',
-    HISTORY: '/points/history',
+    GET: '/credits',
+    BALANCE: '/credits/balance',
+    HISTORY: '/credits/history',
   },
 } as const;
 
@@ -191,9 +191,9 @@ export const CUSTOM_DIFFICULTY_MULTIPLIERS = {
 } as const;
 
 /**
- * Valid question count options per game
+ * Valid requested questions options per game
  */
-export const VALID_QUESTION_COUNTS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
+export const VALID_REQUESTED_QUESTIONS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
 
 /**
  * Game mode enumeration

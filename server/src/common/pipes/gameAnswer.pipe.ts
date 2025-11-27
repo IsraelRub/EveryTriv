@@ -61,13 +61,19 @@ export class GameAnswerPipe implements PipeTransform {
 
 			return value;
 		} catch (error) {
+			// If it's already a BadRequestException from validation, re-throw it
+			if (error instanceof BadRequestException) {
+				throw error;
+			}
+
 			logger.validationError('game_answer', '[REDACTED]', 'validation_error', {
 				error: getErrorMessage(error),
 			});
 
 			logger.apiUpdateError('gameAnswerValidation', getErrorMessage(error));
 
-			throw new BadRequestException('Game answer validation failed');
+			// Re-throw the original error if it's not a validation error
+			throw error;
 		}
 	}
 }

@@ -9,9 +9,9 @@ import { GameProps } from '../../types';
 import { formatTimeDisplay } from '../../utils';
 import { useGame } from '../../views/home/HomeView';
 import { fadeInDown, fadeInUp, scaleIn } from '../animations';
-import { Icon } from '../IconLibrary';
 import { ResponsiveGrid } from '../layout';
 import { Button } from '../ui';
+import { Icon } from '../ui/IconLibrary';
 import GameTimer from './GameTimer';
 import TriviaGame from './TriviaGame';
 

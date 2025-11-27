@@ -6,4 +6,5 @@
  * @used_by shared/services/index.ts
  */
 
-export * from './points';
+export * from './credits';
+export * from './score';

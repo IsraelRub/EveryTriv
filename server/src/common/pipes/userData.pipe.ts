@@ -26,17 +26,6 @@ export class UserDataPipe implements PipeTransform {
 			const errors: string[] = [];
 			const suggestions: string[] = [];
 
-			// Validate username if provided
-			if (value.username) {
-				const usernameValidation: ValidationResult = await this.validationService.validateUsername(value.username);
-				if (!usernameValidation.isValid) {
-					errors.push(...usernameValidation.errors);
-					if (usernameValidation.suggestion) {
-						suggestions.push(usernameValidation.suggestion);
-					}
-				}
-			}
-
 			// Password validation is handled separately in auth service
 
 			// Validate first name if provided

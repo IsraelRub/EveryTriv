@@ -67,15 +67,15 @@ export const ERROR_LOGGING_CONTEXT = {
 // Payment error messages
 export const PAYMENT_ERROR_MESSAGES = {
 	FAILED_TO_RETRIEVE_PRICING_PLANS: 'Failed to retrieve pricing plans',
-	FAILED_TO_RETRIEVE_POINT_OPTIONS: 'Failed to retrieve point purchase options',
+	FAILED_TO_RETRIEVE_CREDIT_OPTIONS: 'Failed to retrieve credit purchase options',
 	INVALID_PAYMENT_AMOUNT: 'Invalid payment amount',
 	PAYMENT_PROCESSING_FAILED: 'Payment processing failed',
 	FAILED_TO_RETRIEVE_PAYMENT_HISTORY: 'Failed to retrieve payment history',
 	FAILED_TO_RETRIEVE_SUBSCRIPTION: 'Failed to retrieve subscription details',
-	INVALID_POINT_OPTION: 'Invalid point purchase option',
+	INVALID_CREDIT_OPTION: 'Invalid credit purchase option',
 	PAYMENT_FAILED: 'Payment failed',
 	USER_NOT_FOUND: 'User not found',
-	FAILED_TO_PURCHASE_POINTS: 'Failed to purchase points',
+	FAILED_TO_PURCHASE_CREDITS: 'Failed to purchase credits',
 	INVALID_PLAN_TYPE: 'Invalid plan type',
 	FAILED_TO_CREATE_SUBSCRIPTION: 'Failed to create subscription',
 	NO_ACTIVE_SUBSCRIPTION: 'No active subscription found',
@@ -93,7 +93,7 @@ export const GAME_ERROR_MESSAGES = {
 	FAILED_TO_UPDATE_SCORE: 'Failed to update user score',
 	FAILED_TO_GET_SCORE_DATA: 'Failed to get user score data',
 	GAME_NOT_FOUND: 'Game not found',
-	INSUFFICIENT_POINTS: 'Insufficient points',
+	INSUFFICIENT_CREDITS: 'Insufficient credits',
 	FAILED_TO_SAVE_CONFIG: 'Failed to save game configuration',
 } as const;
 
@@ -125,15 +125,18 @@ export const TIMEOUT_ERROR_MESSAGES = {
 
 // Provider error messages
 export const PROVIDER_ERROR_MESSAGES = {
-	INVALID_ANTHROPIC_RESPONSE: 'Invalid Anthropic response format',
-	INVALID_GOOGLE_RESPONSE: 'Invalid Google response format',
-	INVALID_MISTRAL_RESPONSE: 'Invalid Mistral response format',
-	INVALID_OPENAI_RESPONSE: 'Invalid OpenAI response format',
+	INVALID_CLAUDE_RESPONSE: 'Invalid Claude response format',
+	INVALID_GEMINI_RESPONSE: 'Invalid Gemini response format',
+	INVALID_CHATGPT_RESPONSE: 'Invalid ChatGPT response format',
+	INVALID_GROQ_RESPONSE: 'Invalid Groq response format',
 	NO_PROVIDERS_AVAILABLE: 'No AI providers available',
 	API_KEY_NOT_CONFIGURED: 'API key not configured',
 	AUTH_FAILED: 'Authentication failed - invalid or missing API key',
 	RATE_LIMIT_EXCEEDED: 'Rate limit exceeded - too many requests',
 	ALL_PROVIDERS_FAILED: 'All AI providers failed - unable to generate question',
+	RESPONSE_CONTENT_EMPTY: 'Response content is empty',
+	INVALID_QUESTION_FORMAT: 'Response does not contain valid question format',
+	UNABLE_TO_GENERATE_QUESTION: 'Unable to generate question',
 } as const;
 
 // Analytics error messages
@@ -147,7 +150,7 @@ export const VALIDATION_ERROR_MESSAGES = {
 	FAILED_TO_FETCH_LANGUAGES: 'Failed to fetch languages',
 	REQUIRED: 'This field is required',
 	INVALID_EMAIL: 'Please enter a valid email address',
-	INVALID_PASSWORD: 'Password must be at least 8 characters long',
+	INVALID_PASSWORD: 'Password must be between 6 and 15 characters long',
 	INVALID_USERNAME: 'Username must be between 3 and 20 characters',
 	INVALID_TOPIC: 'Please enter a valid topic',
 	INVALID_DIFFICULTY: 'Please select a valid difficulty level',

@@ -6,7 +6,7 @@
  */
 
 import { FormEvent, useId, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
@@ -14,21 +14,18 @@ import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
 import { Button, fadeInUp, FeatureHighlightList, GoogleIcon, scaleIn, ValidatedInput } from '../../components';
-import { Icon } from '../../components/IconLibrary';
+import { Icon } from '../../components/ui/IconLibrary';
 import {
 	AudioKey,
 	AUTH_VIEW_CLASSNAMES,
 	ButtonVariant,
-	CLIENT_STORAGE_KEYS,
 	ComponentSize,
 	LOGIN_FEATURE_HIGHLIGHTS,
 } from '../../constants';
 import { useGoogleOAuth, useLogin } from '../../hooks';
-import { audioService, storageService } from '../../services';
+import { audioService } from '../../services';
 
 export default function LoginView() {
-	const navigate = useNavigate();
-
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
@@ -53,12 +50,12 @@ export default function LoginView() {
 		login(
 			{ email, password },
 			{
-				onSuccess: async data => {
+				onSuccess: () => {
 					logger.authInfo('Login successful', { email });
-					if (data.accessToken) {
-						await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, data.accessToken);
-					}
-					navigate('/');
+					// Token is already stored by apiService.login() in useLogin hook
+					// Redux state is updated in useLogin hook
+					// PublicRoute will automatically redirect authenticated users to home
+					// No need for manual navigation here
 				},
 				onError: error => {
 					const errorMessage = getErrorMessage(error);

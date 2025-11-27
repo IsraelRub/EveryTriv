@@ -49,9 +49,9 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Sets a value in cache with optional TTL
 	 *
-	 * @param key - The cache key to store the value under
-	 * @param value - The value to cache
-	 * @param ttl - Time to live in seconds (optional)
+	 * @param key The cache key to store the value under
+	 * @param value The value to cache
+	 * @param ttl Time to live in seconds (optional)
 	 * @returns Promise<StorageOperationResult<void>> Operation result with timing information
 	 * @description Stores value in either Redis or memory cache with optional expiration
 	 */
@@ -84,7 +84,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Gets a value from cache
 	 *
-	 * @param key - The cache key to retrieve
+	 * @param key The cache key to retrieve
 	 * @returns Promise<StorageOperationResult<T | null>> Operation result with cached value or null
 	 * @description Retrieves value from either Redis or memory cache with hit/miss logging
 	 */
@@ -179,7 +179,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Gets multiple values from cache
 	 *
-	 * @param keys - Array of cache keys to retrieve
+	 * @param keys Array of cache keys to retrieve
 	 * @returns Promise<(T | null)[]> Array of cached values with null for missing keys
 	 * @description Retrieves multiple values efficiently using batch operations
 	 */
@@ -200,7 +200,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Sets multiple values in cache
 	 *
-	 * @param keyValues - Array of key-value pairs with optional TTL
+	 * @param keyValues Array of key-value pairs with optional TTL
 	 * @returns Promise<void> Operation completion
 	 * @description Stores multiple values efficiently using batch operations
 	 */
@@ -226,8 +226,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Increments a numeric value in cache
 	 *
-	 * @param key - The cache key to increment
-	 * @param amount - Amount to increment (defaults to 1)
+	 * @param key The cache key to increment
+	 * @param amount Amount to increment (defaults to 1)
 	 * @returns Promise<number> New value after increment
 	 * @description Atomically increments numeric values in cache
 	 */
@@ -463,7 +463,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	/**
 	 * Performs cache cleanup operations
 	 *
-	 * @param options - Cleanup configuration options
+	 * @param options Cleanup configuration options
 	 * @returns Promise<StorageOperationResult<void>> Operation result with timing information
 	 * @description Removes expired items from memory cache to free up space with advanced options
 	 */

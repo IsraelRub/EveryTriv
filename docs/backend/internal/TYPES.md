@@ -10,6 +10,8 @@ Types ב-NestJS מספקים טיפוסים ספציפיים ל-NestJS ולבק�
 
 **Types:**
 - `nest.types.ts` - טיפוסים ספציפיים ל-NestJS
+- `multiplayer.types.ts` - טיפוסים ספציפיים למרובה משתתפים (server-only)
+- `trivia.types.ts` - טיפוסים ספציפיים לטריוויה (server-only)
 
 ## NestRequest
 
@@ -348,9 +350,229 @@ if (req.body && Array.isArray(req.body) && req.body.length > 1) {
 }
 ```
 
+## Multiplayer Types
+
+**מיקום:** `server/src/internal/types/multiplayer.types.ts`
+
+**תפקיד:**
+- טיפוסים ספציפיים למרובה משתתפים (server-only)
+- ניהול טיימרים של חדרים
+- טיפוסים עבור WebSocket connections
+
+### טיפוסים
+
+#### RoomTimer
+
+ממשק לניהול טיימרים של שאלות בחדר:
+
+```typescript
+export interface RoomTimer {
+  checkInterval: NodeJS.Timeout;
+  timeoutId: NodeJS.Timeout;
+}
+```
+
+#### RoomTimerMap
+
+מפה של room IDs לטיימרים:
+
+```typescript
+export type RoomTimerMap = Record<string, RoomTimer>;
+```
+
+#### SocketData
+
+מבנה נתונים עבור Socket.data ב-WebSocket Gateway:
+
+```typescript
+export interface SocketData {
+  user?: {
+    sub: string;
+    username?: string;
+    role?: string;
+    [key: string]: unknown;
+  };
+  userId?: string;
+  userRole?: string;
+  roomId?: string;
+}
+```
+
+#### TypedSocket
+
+Socket עם data property מוקלד:
+
+```typescript
+export type TypedSocket = Socket & {
+  data: SocketData;
+};
+```
+
+#### RoomSearchFilters
+
+פילטרים לחיפוש חדרים זמינים:
+
+```typescript
+export interface RoomSearchFilters {
+  topic?: string;
+  difficulty?: string;
+  maxPlayers?: number;
+  status?: MultiplayerRoom['status'];
+}
+```
+
+### שימוש
+
+```typescript
+import type { TypedSocket, RoomTimerMap, SocketData } from '@internal/types';
+
+@WebSocketGateway()
+export class MultiplayerGateway {
+  private readonly roomTimers: RoomTimerMap = {};
+
+  async handleConnection(client: TypedSocket) {
+    const userId = client.data.userId;
+    // ...
+  }
+}
+```
+
+## Trivia Types
+
+**מיקום:** `server/src/internal/types/trivia.types.ts`
+
+**תפקיד:**
+- טיפוסים ספציפיים לטריוויה (server-only)
+- metadata עבור שאלות שנוצרו
+- cache entries עבור providers
+
+### טיפוסים
+
+#### TriviaQuestionMetadata
+
+Metadata נוסף עבור שאלות שנוצרו:
+
+```typescript
+export interface TriviaQuestionMetadata {
+  actualDifficulty: GameDifficulty;
+  totalQuestions: number;
+  customDifficultyMultiplier: number;
+  mappedDifficulty: GameDifficulty;
+}
+```
+
+#### ServerTriviaQuestionInput
+
+קלט שאלה עבור השרת (עם DifficultyLevel constraint):
+
+```typescript
+export type ServerTriviaQuestionInput = TriviaQuestionInput<DifficultyLevel>;
+```
+
+#### QuestionCacheEntry
+
+ערך cache עבור שאלות:
+
+```typescript
+export interface QuestionCacheEntry {
+  question: ServerTriviaQuestionInput;
+  createdAt: Date;
+  accessCount: number;
+  lastAccessed: Date;
+}
+```
+
+#### QuestionCacheMap
+
+מפה של מפתחות שאלות לערכי cache:
+
+```typescript
+export type QuestionCacheMap = Record<string, QuestionCacheEntry>;
+```
+
+### שימוש
+
+```typescript
+import type { TriviaQuestionMetadata, QuestionCacheMap } from '@internal/types';
+
+export abstract class BaseTriviaProvider {
+  protected questionCache: QuestionCacheMap = {};
+
+  protected extractMetadata(triviaQuestion: TriviaQuestion): TriviaQuestionMetadata {
+    return {
+      actualDifficulty: triviaQuestion.difficulty,
+      totalQuestions: 1,
+      customDifficultyMultiplier: 1,
+      mappedDifficulty: triviaQuestion.difficulty,
+    };
+  }
+}
+```
+
+## Best Practices
+
+### 1. שימוש ב-NestRequest
+
+```typescript
+// ✅ טוב - שימוש ב-NestRequest
+@Get('profile')
+async getProfile(@Req() req: NestRequest) {
+  const userId = req.user?.sub;
+}
+
+// ❌ רע - שימוש ב-Request גנרי
+@Get('profile')
+async getProfile(@Req() req: Request) {
+  const userId = (req as any).user?.sub; // לא בטוח
+}
+```
+
+### 2. בדיקת decoratorMetadata
+
+```typescript
+// ✅ טוב - בדיקת decoratorMetadata
+const isPublic = req.decoratorMetadata?.isPublic;
+if (isPublic) {
+  return true;
+}
+
+// ❌ רע - שימוש בלי בדיקה
+const isPublic = req.decoratorMetadata.isPublic; // עלול להיות undefined
+```
+
+### 3. שימוש ב-bulkMetadata
+
+```typescript
+// ✅ טוב - שימוש ב-bulkMetadata
+if (req.bulkMetadata?.isBulk) {
+  // אופטימיזציה ל-bulk operations
+}
+
+// ❌ רע - בדיקה ידנית
+if (req.body && Array.isArray(req.body) && req.body.length > 1) {
+  // כפילות
+}
+```
+
+### 4. שימוש ב-TypedSocket
+
+```typescript
+// ✅ טוב - שימוש ב-TypedSocket
+async handleConnection(client: TypedSocket) {
+  const userId = client.data.userId;
+  const roomId = client.data.roomId;
+}
+
+// ❌ רע - שימוש ב-Socket גנרי
+async handleConnection(client: Socket) {
+  const userId = (client.data as any).userId; // לא בטוח
+}
+```
+
 ## הפניות
 
 - [Middleware](./MIDDLEWARE.md) - Middleware יוצרים metadata
 - [Guards](../common/GUARDS.md) - Guards משתמשים ב-metadata
 - [Interceptors](../common/INTERCEPTORS.md) - Interceptors משתמשים ב-metadata
+- [Multiplayer Feature](../features/MULTIPLAYER.md) - שימוש ב-multiplayer types
 - [Internal Structure](./README.md) - סקירה כללית

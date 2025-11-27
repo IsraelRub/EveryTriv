@@ -11,8 +11,8 @@ import { customDifficultyService } from '../../services';
 import { CustomDifficultyHistoryProps, HistoryItem } from '../../types';
 import { formatRelativeTime, formatTopic, getDifficultyIcon } from '../../utils';
 import { createStaggerContainer, fadeInLeft, hoverScale } from '../animations';
-import { Icon } from '../IconLibrary';
 import { Button, Modal } from '../ui';
+import { Icon } from '../ui/IconLibrary';
 
 export default function CustomDifficultyHistory({ isVisible, onSelect, onClose }: CustomDifficultyHistoryProps) {
 	const [history, setHistory] = useState<HistoryItem[]>([]);

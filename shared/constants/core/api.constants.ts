@@ -49,10 +49,10 @@ export const API_ENDPOINTS_BASE = {
 		HISTORY: '/payment/history',
 		CREATE: '/payment/create',
 	},
-	POINTS: {
-		GET: '/points',
-		BALANCE: '/points/balance',
-		HISTORY: '/points/history',
+	CREDITS: {
+		GET: '/credits',
+		BALANCE: '/credits/balance',
+		HISTORY: '/credits/history',
 	},
 } as const;
 
@@ -89,11 +89,11 @@ export const API_ENDPOINTS = {
 		DELETE: (id: string) => `/game-history/${id}`,
 		CLEAR: '/game-history',
 	},
-	POINTS: {
-		...API_ENDPOINTS_BASE.POINTS,
-		PACKAGES: '/points/packages',
-		CAN_PLAY: '/points/can-play',
-		DEDUCT: '/points/deduct',
+	CREDITS: {
+		...API_ENDPOINTS_BASE.CREDITS,
+		PACKAGES: '/credits/packages',
+		CAN_PLAY: '/credits/can-play',
+		DEDUCT: '/credits/deduct',
 	},
 	PAYMENT: {
 		...API_ENDPOINTS_BASE.PAYMENT,
@@ -101,8 +101,8 @@ export const API_ENDPOINTS = {
 		CANCEL_SUBSCRIPTION: '/payment/cancel-subscription',
 		RETRY: (id: string) => `/payment/retry/${id}`,
 		CONFIRM: '/payment/confirm',
-		PURCHASE_POINTS: '/payment/purchase-points',
-		CONFIRM_POINT_PURCHASE: '/payment/confirm-point-purchase',
+		PURCHASE_CREDITS: '/payment/purchase-credits',
+		CONFIRM_CREDIT_PURCHASE: '/payment/confirm-credit-purchase',
 	},
 	CLIENT_LOGS: {
 		BATCH: '/client-logs/batch',

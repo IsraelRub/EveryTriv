@@ -5,9 +5,9 @@
  * @description Centralized error handling utilities for consistent error processing
  * @used_by server/src/features, client/src/services, shared/services
  */
-import { NEST_EXCEPTION_NAMES } from '../../constants';
+import { HTTP_ERROR_MESSAGES, NEST_EXCEPTION_NAMES } from '../../constants';
 import type { HttpError, NestExceptionName } from '../../types';
-import { isRecord } from './data.utils';
+import { hasProperty, isRecord } from './data.utils';
 
 const NEST_EXCEPTION_NAME_SET = new Set<string>(NEST_EXCEPTION_NAMES);
 
@@ -73,7 +73,7 @@ const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | 
 
 /**
  * Enhanced error message extraction with specific error type handling
- * @param error - The error to extract message from
+ * @param error The error to extract message from
  * @returns The error message with enhanced context or 'Unknown error' as fallback
  */
 export function getErrorMessage(error: unknown): string {
@@ -87,10 +87,10 @@ export function getErrorMessage(error: unknown): string {
 		if (isHttpError(error) && (error.code || error.response)) {
 			// Handle specific error codes
 			if (['ECONNABORTED', 'ETIMEDOUT'].includes(error.code ?? '')) {
-				return 'Request timed out. Please check your connection and try again.';
+				return HTTP_ERROR_MESSAGES.TIMEOUT_ERROR;
 			}
 			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code ?? '')) {
-				return 'Unable to connect to server. Please check your connection.';
+				return HTTP_ERROR_MESSAGES.NETWORK_ERROR;
 			}
 
 			// Handle response errors
@@ -108,10 +108,10 @@ export function getErrorMessage(error: unknown): string {
 				return error.response.statusText;
 			}
 			if (error.response?.status) {
-				return `Server error (${error.response.status}). Please try again later.`;
+				return HTTP_ERROR_MESSAGES.SERVER_ERROR;
 			}
 
-			return error.message ?? 'Network request failed.';
+			return error.message ?? HTTP_ERROR_MESSAGES.NETWORK_ERROR;
 		}
 
 		if (errorName === 'JsonWebTokenError' || errorName === 'TokenExpiredError' || errorName === 'NotBeforeError') {
@@ -135,7 +135,7 @@ export function getErrorMessage(error: unknown): string {
 
 		// Handle timeout errors (check message content)
 		if (normalizedMessage.includes('timeout')) {
-			return 'Operation timed out. Please try again.';
+			return HTTP_ERROR_MESSAGES.TIMEOUT_ERROR;
 		}
 
 		// Handle rate limiting errors (check message content)
@@ -169,7 +169,7 @@ export function getErrorMessage(error: unknown): string {
 		}
 
 		// Default Error
-		return error.message ?? 'An unexpected error occurred.';
+		return error.message ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR;
 	}
 
 	// Handle string errors
@@ -196,7 +196,7 @@ export function getErrorMessage(error: unknown): string {
 
 /**
  * Get error stack trace if available
- * @param error - The error to extract stack from
+ * @param error The error to extract stack from
  * @returns The stack trace or 'No stack trace available' as fallback
  */
 export function getErrorStack(error: unknown): string {
@@ -208,7 +208,7 @@ export function getErrorStack(error: unknown): string {
 
 /**
  * Get error type for logging
- * @param error - The error to process
+ * @param error The error to process
  * @returns Error type string
  */
 export function getErrorType(error: unknown): string {
@@ -217,9 +217,103 @@ export function getErrorType(error: unknown): string {
 
 /**
  * Ensure error is an Error object for logging with stack traces
- * @param error - The error to normalize
+ * @param error The error to normalize
  * @returns Error object suitable for errorWithStack logging
  */
 export function ensureErrorObject(error: unknown): Error {
 	return error instanceof Error ? error : new Error(getErrorMessage(error));
+}
+
+/**
+ * Extract validation errors from API error response
+ * Handles nested error structures from NestJS BadRequestException and similar error formats
+ * @param error The error object to extract validation errors from
+ * @returns Array of validation error messages
+ */
+export function extractValidationErrors(error: unknown): string[] {
+	const errors: string[] = [];
+
+	if (!isRecord(error)) {
+		return errors;
+	}
+
+	let rawDetails: unknown;
+	if (hasProperty(error, 'details') && isRecord(error.details)) {
+		rawDetails = error.details;
+	} else if (hasProperty(error, 'response') && isRecord(error.response)) {
+		const response = error.response;
+		if (hasProperty(response, 'data') && isRecord(response.data)) {
+			rawDetails = response.data;
+		}
+	} else {
+		rawDetails = error;
+	}
+
+	let rawErrors: unknown;
+	if (isRecord(rawDetails)) {
+		if (hasProperty(rawDetails, 'errors')) {
+			rawErrors = rawDetails.errors;
+		}
+		if (!rawErrors && hasProperty(rawDetails, 'error')) {
+			const errorValue = rawDetails.error;
+			if (Array.isArray(errorValue)) {
+				rawErrors = errorValue;
+			}
+		}
+	}
+
+	if (Array.isArray(rawErrors)) {
+		for (const item of rawErrors) {
+			if (typeof item === 'string') {
+				errors.push(item);
+			} else if (hasProperty(item, 'message') && typeof item.message === 'string') {
+				errors.push(item.message);
+			} else if (hasProperty(item, 'constraints') && isRecord(item.constraints)) {
+				const constraints = item.constraints;
+				for (const constraintValue of Object.values(constraints)) {
+					if (typeof constraintValue === 'string') {
+						errors.push(constraintValue);
+					}
+				}
+			}
+		}
+	} else if (typeof rawErrors === 'string') {
+		try {
+			const parsed = JSON.parse(rawErrors);
+			if (Array.isArray(parsed)) {
+				for (const item of parsed) {
+					if (typeof item === 'string') {
+						errors.push(item);
+					} else if (hasProperty(item, 'message') && typeof item.message === 'string') {
+						errors.push(item.message);
+					}
+				}
+			}
+		} catch {
+			errors.push(rawErrors);
+		}
+	}
+
+	return errors;
+}
+
+/**
+ * Format validation errors into a user-friendly message
+ * @param error The error object to extract and format validation errors from
+ * @param baseMessage Optional base message to prepend
+ * @returns Formatted error message string
+ */
+export function formatValidationErrorMessage(error: unknown, baseMessage?: string): string {
+	const validationErrors = extractValidationErrors(error);
+
+	if (validationErrors.length === 0) {
+		return baseMessage ?? getErrorMessage(error);
+	}
+
+	const errorsText = validationErrors.join('; ');
+	if (baseMessage) {
+		return `${baseMessage}: ${errorsText}`;
+	}
+
+	return `Validation failed: ${errorsText}`;
 }

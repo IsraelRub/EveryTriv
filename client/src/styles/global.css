@@ -309,6 +309,13 @@
   box-shadow: var(--shadow-xl);
 }
 
+.glass-morphism {
+  background: var(--glass-light);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+}
+
 /* ===== BUTTON SYSTEM ===== */
 .btn {
   display: inline-flex;
@@ -548,40 +555,40 @@ main {
   width: 100%;
 }
 
-/* Section element styles */
+/* Section element styles - Allow flex/grid to override */
 section {
-  width: 100%;
-  display: block;
+  box-sizing: border-box;
 }
 
-/* Article element styles */
+/* Article element styles - Allow flex/grid to override */
 article {
-  display: block;
-  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Aside element styles */
+/* Aside element styles - Allow flex/grid to override */
 aside {
-  display: block;
-  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Header element styles */
 header {
   display: block;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Footer element styles */
 footer {
   display: block;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Navigation element styles */
 nav {
   display: block;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Fieldset element styles */
@@ -648,11 +655,3 @@ ul, ol {
   white-space: normal;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background-color: #0f172a;
-  color: #e2e8f0;
-  font-family: var(--font-family-sans);
-  -webkit-font-smoothing: antialiased;
-}

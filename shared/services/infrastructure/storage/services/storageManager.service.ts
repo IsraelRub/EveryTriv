@@ -8,21 +8,20 @@
 import type {
 	StorageCleanupOptions,
 	StorageConfig,
+	StorageGetStrategy,
 	StorageMetrics,
 	StorageOperationResult,
 	StorageService,
 	StorageStatsResult,
 	StorageSyncOptions,
+	StorageType,
 	StorageValue,
 } from '@shared/types';
+import { createTimedResult, formatStorageError } from '@shared/utils';
 
 import { CacheStrategyService } from '../../cache/cache.service';
 import { StorageMetricsTracker } from '../base/metrics-tracker';
 import { StorageConfigFactory } from '../base/storage-config';
-import { StorageUtils } from '../base/storage-utils';
-
-type StorageSetStrategy = 'cache' | 'persistent' | 'hybrid';
-type StorageGetStrategy = 'cache-first' | 'persistent-first' | 'hybrid';
 
 /**
  * Storage Manager Service
@@ -51,9 +50,9 @@ export class StorageManagerService {
 		data?: T,
 		error?: string,
 		startTime?: number,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'hybrid'
+		storageType: StorageType = 'hybrid'
 	): StorageOperationResult<T> {
-		return StorageUtils.createTimedResult(success, data, error, startTime, storageType);
+		return createTimedResult(success, data, error, startTime, storageType);
 	}
 
 	/**
@@ -63,7 +62,7 @@ export class StorageManagerService {
 		operation: keyof StorageMetrics['operations'],
 		startTime: number,
 		success: boolean,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'hybrid',
+		storageType: StorageType = 'hybrid',
 		size?: number
 	): void {
 		StorageMetricsTracker.trackOperation(operation, startTime, success, storageType, size, this.config.enableMetrics);
@@ -74,7 +73,7 @@ export class StorageManagerService {
 	 * @returns Formatted error message
 	 */
 	private formatError(error: unknown): string {
-		return StorageUtils.formatError(error);
+		return formatStorageError(error);
 	}
 
 	/**
@@ -85,7 +84,7 @@ export class StorageManagerService {
 		key: string,
 		value: T,
 		ttl?: number,
-		strategy: StorageSetStrategy = 'hybrid'
+		strategy: StorageType = 'hybrid'
 	): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		let success = false;
@@ -164,7 +163,7 @@ export class StorageManagerService {
 		key: string,
 		factory: () => Promise<T>,
 		ttl?: number,
-		strategy: Extract<StorageSetStrategy, 'cache' | 'hybrid'> = 'hybrid',
+		strategy: Extract<StorageType, 'cache' | 'hybrid'> = 'hybrid',
 		validator?: (value: StorageValue) => value is T
 	): Promise<T> {
 		const startTime = Date.now();

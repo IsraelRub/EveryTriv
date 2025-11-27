@@ -9,4 +9,4 @@
 export * from './game.constants';
 export * from './user.constants';
 export * from './payment.constants';
-export * from './points.constants';
+export * from './credits.constants';

@@ -1,7 +1,12 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 /**
- * Creates a GROUP BY query with COUNT aggregation
+ * Creates a GROUP BY query with COUNT aggregation at the database level.
+ *
+ * @description Intended for DB-level aggregations and COUNT queries on large datasets.
+ * For in-memory grouping on arrays that are already loaded, prefer the groupBy utility
+ * from shared core data utilities.
+ *
  * @param repository The repository to create query from
  * @param alias The table alias
  * @param groupByField The field to group by

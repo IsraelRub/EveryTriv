@@ -6,9 +6,8 @@ import { CACHE_DURATION, RATE_LIMIT_DEFAULTS } from '@shared/constants';
 import { serverLogger as logger, metricsService } from '@shared/services';
 import { ensureErrorObject } from '@shared/utils';
 
-import { NestRequest } from '@internal/types';
-
 import { AppConfig } from '../../config/app.config';
+import { NestRequest } from '../types';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {

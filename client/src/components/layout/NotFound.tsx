@@ -7,7 +7,7 @@ import { clientLogger as logger } from '@shared/services';
 
 import { ComponentSize } from '../../constants';
 import { fadeInUp, hoverScale, scaleIn } from '../animations';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 
 export const NotFound = () => {
 	const navigate = useNavigate();

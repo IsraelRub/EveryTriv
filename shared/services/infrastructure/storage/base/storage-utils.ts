@@ -6,8 +6,8 @@
  * @used_by shared/services/storage/services/baseStorage.service.ts, shared/services/storage
  */
 import { STORAGE_ERROR_MESSAGES } from '@shared/constants';
-import type { StorageOperationResult, StorageValue, UserProgressData } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import type { StorageOperationResult, StorageType, StorageValue, UserProgressData } from '@shared/types';
+import { isRecord } from '@shared/utils';
 
 /**
  * Storage Utility Functions
@@ -16,51 +16,12 @@ import { getErrorMessage, isRecord } from '@shared/utils';
  */
 export class StorageUtils {
 	/**
-	 * Create operation result with timing
-	 * @param success Whether operation was successful
-	 * @param data Operation data
-	 * @param error Error message
-	 * @param startTime Operation start time
-	 * @param storageType Storage type
-	 * @returns Operation result with timing
-	 */
-	static createTimedResult<T>(
-		success: boolean,
-		data?: T,
-		error?: string,
-		startTime?: number,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'hybrid'
-	): StorageOperationResult<T> {
-		const duration = startTime ? Date.now() - startTime : undefined;
-		const result: StorageOperationResult<T> = {
-			success,
-			timestamp: new Date(),
-			storageType,
-		};
-
-		if (data !== undefined) {
-			result.data = data;
-		}
-		if (error) {
-			result.error = error;
-		}
-		if (duration !== undefined) {
-			result.duration = duration;
-		}
-
-		return result;
-	}
-
-	/**
 	 * Create success result
 	 * @param data Operation data
 	 * @param storageType Storage type
 	 * @returns Success operation result
 	 */
-	static createSuccessResult<T>(
-		data?: T,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'persistent'
-	): StorageOperationResult<T> {
+	static createSuccessResult<T>(data?: T, storageType: StorageType = 'persistent'): StorageOperationResult<T> {
 		return {
 			success: true,
 			data,
@@ -75,10 +36,7 @@ export class StorageUtils {
 	 * @param storageType Storage type
 	 * @returns Error operation result
 	 */
-	static createErrorResult<T>(
-		error: string,
-		storageType: 'persistent' | 'cache' | 'hybrid' = 'persistent'
-	): StorageOperationResult<T> {
+	static createErrorResult<T>(error: string, storageType: StorageType = 'persistent'): StorageOperationResult<T> {
 		return {
 			success: false,
 			error,
@@ -124,23 +82,10 @@ export class StorageUtils {
 	}
 
 	/**
-	 * Format storage error
-	 * @param error Error object
-	 * @returns Formatted error message
+	 * Type guard to check if value is UserProgressData
+	 * @param value Value to check
+	 * @returns True if value is UserProgressData
 	 */
-	static formatError(error: unknown): string {
-		return getErrorMessage(error);
-	}
-
-	/**
-	 * Calculate operation duration
-	 * @param startTime Operation start time
-	 * @returns Duration in milliseconds
-	 */
-	static calculateDuration(startTime: number): number {
-		return Date.now() - startTime;
-	}
-
 	static isUserProgressData(value: StorageValue): value is UserProgressData {
 		if (!isRecord(value)) {
 			return false;

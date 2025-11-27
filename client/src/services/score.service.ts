@@ -4,7 +4,7 @@
  * @description Service for calculating game scores and multipliers
  */
 import { TriviaQuestion } from '@shared/types';
-import { calculateAnswerPoints } from '@shared/utils';
+import { calculateAnswerScore } from '@shared/utils';
 
 /**
  * Calculate total score for a correct answer using ALGORITHM
@@ -16,5 +16,5 @@ export const calculateScore = (
 	streak: number = 0,
 	isCorrect: boolean = true
 ): number => {
-	return calculateAnswerPoints(question.difficulty, timeSpent, streak, isCorrect);
+	return calculateAnswerScore(question.difficulty, timeSpent, streak, isCorrect);
 };

@@ -35,15 +35,6 @@ export * from './api.types';
  */
 export * from './interceptors.types';
 
-// UI types are exported from './ui' above
-
-/**
- * Statistics types
- * @description User statistics and analytics response types
- * @exports {Object} Statistics-related type definitions
- */
-// Stats types moved to redux.types
-
 /**
  * User types
  * @description User profiles, authentication, and preferences

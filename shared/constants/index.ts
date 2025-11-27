@@ -23,7 +23,7 @@ export * from './core';
 
 /**
  * Domain constants
- * @description Game, user, payment, and points constants
+ * @description Game, user, payment, analytics and scoring constants
  */
 export * from './domain';
 

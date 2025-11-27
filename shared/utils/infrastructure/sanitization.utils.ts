@@ -52,17 +52,6 @@ export function sanitizeCardNumber(cardNumber: string): string {
 }
 
 /**
- * Truncate text to specified length with ellipsis
- * @param text Text to truncate
- * @param maxLength Maximum length
- * @returns string Truncated text
- */
-export function truncateText(text: string, maxLength: number): string {
-	if (text.length <= maxLength) return text;
-	return text.substring(0, maxLength - 3) + '...';
-}
-
-/**
  * Normalize text by removing extra spaces and converting to lowercase
  * @param text Text to normalize
  * @returns string Normalized text
@@ -72,20 +61,4 @@ export function normalizeText(text: string): string {
 		.trim()
 		.replace(/\s+/g, ' ') // Replace multiple spaces with single space
 		.toLowerCase();
-}
-
-/**
- * Escape special characters for safe display
- * @param text Text to escape
- * @returns string Escaped text
- */
-export function escapeHtml(text: string): string {
-	const map: Record<string, string> = {
-		'&': '&amp;',
-		'<': '&lt;',
-		'>': '&gt;',
-		'"': '&quot;',
-		"'": '&#039;',
-	};
-	return text.replace(/[&<>"']/g, m => map[m]);
 }

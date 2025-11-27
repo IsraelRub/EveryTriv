@@ -15,10 +15,37 @@ import { getErrorMessage } from '@shared/utils';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 	constructor() {
+		const clientID = process.env.GOOGLE_CLIENT_ID || '';
+		const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+		const callbackURL = `${process.env.SERVER_URL || LOCALHOST_URLS.SERVER}/auth/google/callback`;
+
+		// Validate OAuth credentials
+		if (!clientID || !clientSecret) {
+			logger.systemError('Google OAuth credentials are missing', {
+				data: {
+					hasClientID: !!clientID,
+					hasClientSecret: !!clientSecret,
+					callbackURL,
+				},
+			});
+		} else if (
+			clientID === 'your-google-client-id.apps.googleusercontent.com' ||
+			clientSecret === 'GOCSPX-your-google-client-secret'
+		) {
+			logger.systemInfo('Google OAuth credentials appear to be placeholder values', {
+				url: callbackURL,
+			});
+		} else {
+			logger.systemInfo('Google OAuth strategy initialized', {
+				clientId: clientID.substring(0, 20) + '...',
+				url: callbackURL,
+			});
+		}
+
 		super({
-			clientID: process.env.GOOGLE_CLIENT_ID || '',
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-			callbackURL: `${process.env.SERVER_URL || LOCALHOST_URLS.API_BASE}/auth/google/callback`,
+			clientID,
+			clientSecret,
+			callbackURL,
 			scope: ['email', 'profile'],
 		});
 	}
@@ -35,7 +62,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			const user = {
 				google_id: profile.id,
 				email: profile.emails?.[0]?.value || '',
-				username: profile.displayName || profile.emails?.[0]?.value?.split('@')[0] || '',
 				firstName: profile.name?.givenName,
 				lastName: profile.name?.familyName,
 				avatar: profile.photos?.[0]?.value,
@@ -44,7 +70,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Log successful validation
 			logger.logAuthenticationEnhanced('login', 'google_user', profile.id, {
 				email: profile.emails?.[0]?.value || '',
-				username: user.username,
 				provider: 'google',
 				context: 'GoogleStrategy',
 			});

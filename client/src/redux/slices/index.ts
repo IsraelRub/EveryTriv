@@ -48,13 +48,12 @@ export { default as userSlice } from './userSlice';
  * @used_by client/src/components, client/src/views
  */
 export {
-	deductPoints,
+	deductCredits,
 	fetchUserData,
 	setAvatar,
 	setAuthenticated,
-	setPointBalance,
+	setCreditBalance,
 	setUser,
-	setUsername,
 	updateUserProfile,
 } from './userSlice';
 

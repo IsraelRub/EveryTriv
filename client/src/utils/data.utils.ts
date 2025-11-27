@@ -19,7 +19,7 @@ export function isUser(value: unknown): value is User {
 	}
 
 	// Check required BasicUser fields
-	if (typeof value.id !== 'string' || typeof value.username !== 'string' || typeof value.email !== 'string') {
+	if (typeof value.id !== 'string' || typeof value.email !== 'string') {
 		return false;
 	}
 
@@ -35,8 +35,8 @@ export function isUser(value: unknown): value is User {
 	// Check numeric fields
 	if (
 		typeof value.credits !== 'number' ||
-		typeof value.purchasedPoints !== 'number' ||
-		typeof value.totalPoints !== 'number' ||
+		typeof value.purchasedCredits !== 'number' ||
+		typeof value.totalCredits !== 'number' ||
 		typeof value.score !== 'number'
 	) {
 		return false;

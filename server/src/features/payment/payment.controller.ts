@@ -16,6 +16,9 @@ export class PaymentController {
 
 	/**
 	 * Create payment session
+	 * @param userId Current user identifier
+	 * @param paymentData Payment creation data
+	 * @returns Payment processing result
 	 */
 	@Post('create')
 	@UsePipes(PaymentDataPipe)
@@ -83,6 +86,8 @@ export class PaymentController {
 
 	/**
 	 * Get payment history for user
+	 * @param userId Current user identifier
+	 * @returns Payment history list
 	 */
 	@Get('history')
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes

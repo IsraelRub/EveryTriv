@@ -264,8 +264,8 @@ export default function SettingsView() {
 							</div>
 
 							<div className='flex justify-between items-center'>
-								<span className='text-slate-300'>Username</span>
-								<span className='text-white'>{currentUser?.username || 'Not set'}</span>
+								<span className='text-slate-300'>Email</span>
+								<span className='text-white'>{currentUser?.email || 'Not set'}</span>
 							</div>
 
 							<hr className='border-slate-700' />
@@ -450,7 +450,7 @@ export default function SettingsView() {
 						</p>
 						<ul className='text-slate-400 text-sm mb-6 space-y-2 list-disc list-inside'>
 							<li>Game history and statistics</li>
-							<li>Points and purchases</li>
+							<li>Credits and purchases</li>
 							<li>Profile information</li>
 							<li>All settings and preferences</li>
 						</ul>

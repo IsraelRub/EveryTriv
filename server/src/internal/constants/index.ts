@@ -24,3 +24,9 @@ export * from './auth';
  * @description Public endpoints that don't require authentication
  */
 export * from './public-endpoints.constants';
+
+/**
+ * AI Provider constants
+ * @description AI provider names and priority mappings (server-only)
+ */
+export * from './ai.constants';

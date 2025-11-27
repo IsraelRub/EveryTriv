@@ -59,8 +59,6 @@ export const useUpdateUserRanking = () => {
 
 /**
  * Hook for getting global leaderboard
- * @param limit Number of users to return
- * @param offset Offset for pagination
  * @returns Query result with global leaderboard data
  */
 export const useGlobalLeaderboard = () => {
@@ -77,7 +75,8 @@ export const useGlobalLeaderboard = () => {
 /**
  * Hook for getting leaderboard by time period
  * @param period Time period (weekly, monthly, yearly)
- * @param limit Number of users to return
+ * @param limit Number of users to return (default: 100)
+ * @param offset Offset for pagination (default: 0)
  * @returns Query result with period leaderboard data
  */
 export const useLeaderboardByPeriod = (period: 'weekly' | 'monthly', limit: number = 100, offset: number = 0) => {

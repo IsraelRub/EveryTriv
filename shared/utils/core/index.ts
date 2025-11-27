@@ -7,7 +7,7 @@
  */
 
 export * from './data.utils';
-export * from './math.utils';
-export * from './array.utils';
 export * from './error.utils';
 export * from './format.utils';
+export * from './retry.utils';
+export * from './provider-error.utils';

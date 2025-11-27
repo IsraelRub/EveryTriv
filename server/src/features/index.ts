@@ -49,11 +49,11 @@ export * from './leaderboard';
 export * from './payment';
 
 /**
- * Points feature
- * @description Points management and transactions
+ * Credits feature
+ * @description Credits management and transactions
  * @used_by server/src/app, server/src/controllers
  */
-export * from './points';
+export * from './credits';
 
 /**
  * Subscription feature

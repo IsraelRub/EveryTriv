@@ -12,12 +12,13 @@ import type { Response } from 'express';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
 
-import { NestRequest } from '@internal/types';
+import { NestRequest } from '../internal/types';
 
 /**
  * Type guard to check if response is a validation error response
+ * Ensures presence of an errors field, and optionally a message field.
  */
-function isValidationErrorResponse(response: unknown): response is { errors: unknown } {
+function isValidationErrorResponse(response: unknown): response is { errors: unknown; message?: unknown } {
 	return isRecord(response) && 'errors' in response;
 }
 
@@ -36,12 +37,30 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		if (exception instanceof HttpException && status === HttpStatus.BAD_REQUEST) {
 			const exceptionResponse = exception.getResponse();
 			if (isValidationErrorResponse(exceptionResponse)) {
+				// Debug: Log validation error details
+				const errorMessage = typeof exceptionResponse.message === 'string' ? exceptionResponse.message : undefined;
+				const errorArray = Array.isArray(exceptionResponse.errors) ? exceptionResponse.errors : undefined;
+				logger.validationError('global_validation_error', '[REDACTED]', 'validation_failed', {
+					path: request.url ?? 'unknown',
+					method: request.method || 'unknown',
+					message: errorMessage,
+					errors: errorArray,
+					body: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
+					bodyType: typeof request.body,
+				});
+
 				// This is a validation error with detailed error information
+				const validationMessage =
+					typeof exceptionResponse.message === 'string' && exceptionResponse.message.trim().length > 0
+						? exceptionResponse.message
+						: 'Validation failed';
+
 				return response.status(status).json({
 					statusCode: status,
 					path: request.url ?? 'unknown',
-					message: 'Validation failed',
+					message: validationMessage,
 					errors: exceptionResponse.errors,
+					timestamp: new Date().toISOString(),
 				});
 			}
 		}

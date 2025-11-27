@@ -39,7 +39,7 @@ export interface ValidatedFormProps<T extends Record<string, string>> {
 
 // ValidatedInputProps interface
 export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size'> {
-	validationType: ClientValidationType;
+	validationType?: ClientValidationType;
 	initialValue?: string;
 	validationOptions?:
 		| ValidationHookOptions

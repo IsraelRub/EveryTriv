@@ -14,3 +14,6 @@ export * from './cache.decorator';
 
 // Param decorators
 export * from './param.decorator';
+
+// WebSocket param decorators
+export * from './ws-param.decorator';

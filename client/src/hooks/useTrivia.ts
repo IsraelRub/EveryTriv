@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { clientLogger as logger } from '@shared/services';
 import type { GameData, GameHistoryEntry, TriviaRequest } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { extractValidationErrors, getErrorMessage, isRecord } from '@shared/utils';
 
 import { apiService, gameHistoryService } from '../services';
 
@@ -20,7 +20,12 @@ const triviaKeys = {
 	difficultyStats: (userId?: string) => [...triviaKeys.all, 'difficulty-stats', userId] as const,
 } as const;
 
-// Game History hooks
+/**
+ * Hook for getting user game history
+ * @param limit Maximum number of entries to return (default: 20)
+ * @param offset Pagination offset (default: 0)
+ * @returns Query result with game history entries
+ */
 export const useGameHistory = (limit: number = 20, offset: number = 0) => {
 	return useQuery({
 		queryKey: ['game-history', limit, offset],
@@ -29,7 +34,10 @@ export const useGameHistory = (limit: number = 20, offset: number = 0) => {
 	});
 };
 
-// Mutations
+/**
+ * Hook for saving game history
+ * @returns Mutation for saving game result to history
+ */
 export const useSaveHistory = () => {
 	const queryClient = useQueryClient();
 
@@ -72,7 +80,10 @@ export const useSaveHistory = () => {
 	});
 };
 
-// Specialized hook for game scenarios that returns a function to fetch trivia
+/**
+ * Hook for fetching trivia questions
+ * @returns Mutation for fetching trivia questions based on request
+ */
 export const useTriviaQuestionMutation = () => {
 	const queryClient = useQueryClient();
 
@@ -82,15 +93,36 @@ export const useTriviaQuestionMutation = () => {
 			// Cache the result for potential reuse
 			queryClient.setQueryData(triviaKeys.question(request), data);
 		},
+		onError: (error: unknown) => {
+			const message = getErrorMessage(error);
+			const validationErrors = extractValidationErrors(error);
+
+			let statusCode: number | undefined;
+			if (isRecord(error) && 'statusCode' in error && typeof error.statusCode === 'number') {
+				statusCode = error.statusCode;
+			}
+
+			logger.apiError('Trivia request failed', {
+				message,
+				statusCode,
+				errors: validationErrors.length > 0 ? validationErrors : undefined,
+			});
+		},
 	});
 };
 
-// Validation hook
+/**
+ * Hook for validating custom difficulty text
+ * @returns Validation function for custom difficulty text
+ */
 export const useValidateCustomDifficulty = () => {
 	return (customText: string) => apiService.validateCustomDifficulty(customText);
 };
 
-// Game History Management hooks
+/**
+ * Hook for deleting game history entry
+ * @returns Mutation for deleting specific game history entry
+ */
 export const useDeleteGameHistory = () => {
 	const queryClient = useQueryClient();
 
@@ -110,6 +142,10 @@ export const useDeleteGameHistory = () => {
 	});
 };
 
+/**
+ * Hook for clearing all game history
+ * @returns Mutation for clearing all user game history
+ */
 export const useClearGameHistory = () => {
 	const queryClient = useQueryClient();
 

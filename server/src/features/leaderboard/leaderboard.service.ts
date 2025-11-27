@@ -10,6 +10,7 @@ import {
 	createNullableGuard,
 	getErrorMessage,
 	groupBy,
+	isRecord,
 } from '@shared/utils';
 
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
@@ -132,12 +133,20 @@ export class LeaderboardService {
 			return await this.cacheService.getOrSet<LeaderboardEntity | null>(
 				cacheKey,
 				async () => {
-					const ranking = await this.leaderboardRepository.findOne({
-						where: { userId },
-						relations: ['user', 'userStats'],
-					});
+					try {
+						const ranking = await this.leaderboardRepository.findOne({
+							where: { userId },
+							relations: ['user', 'userStats'],
+						});
 
-					return ranking;
+						return ranking;
+					} catch (dbError) {
+						logger.analyticsError('Database error in getUserRanking', {
+							error: getErrorMessage(dbError),
+							userId,
+						});
+						throw dbError;
+					}
 				},
 				CACHE_DURATION.MEDIUM,
 				isLeaderboardEntryOrNull
@@ -164,14 +173,23 @@ export class LeaderboardService {
 			return await this.cacheService.getOrSet<LeaderboardEntity[]>(
 				cacheKey,
 				async () => {
-					const leaderboard = await this.leaderboardRepository.find({
-						relations: ['user', 'userStats'],
-						order: { score: 'DESC' },
-						take: limit,
-						skip: offset,
-					});
+					try {
+						const leaderboard = await this.leaderboardRepository.find({
+							relations: ['user', 'userStats'],
+							order: { score: 'DESC' },
+							take: limit,
+							skip: offset,
+						});
 
-					return leaderboard;
+						return leaderboard;
+					} catch (dbError) {
+						logger.analyticsError('Database error in getGlobalLeaderboard', {
+							error: getErrorMessage(dbError),
+							limit,
+							offset,
+						});
+						throw dbError;
+					}
 				},
 				CACHE_DURATION.LONG,
 				isLeaderboardArray
@@ -179,6 +197,8 @@ export class LeaderboardService {
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
 				error: getErrorMessage(error),
+				limit,
+				offset,
 			});
 			throw error;
 		}
@@ -200,27 +220,36 @@ export class LeaderboardService {
 			return await this.cacheService.getOrSet<LeaderboardEntity[]>(
 				cacheKey,
 				async () => {
-					// Type-safe mapping for period to score field
-					const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
-						weekly: 'weeklyScore',
-						monthly: 'monthlyScore',
-						yearly: 'yearlyScore',
-					};
+					try {
+						// Type-safe mapping for period to score field
+						const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
+							weekly: 'weeklyScore',
+							monthly: 'monthlyScore',
+							yearly: 'yearlyScore',
+						};
 
-					const scoreField = scoreFieldMap[period];
-					if (!scoreField) {
-						throw new Error(`Invalid period: ${period}. Valid periods are: weekly, monthly, yearly`);
+						const scoreField = scoreFieldMap[period];
+						if (!scoreField) {
+							throw new Error(`Invalid period: ${period}. Valid periods are: weekly, monthly, yearly`);
+						}
+
+						const leaderboard = await this.leaderboardRepository
+							.createQueryBuilder('leaderboard')
+							.leftJoinAndSelect('leaderboard.user', 'user')
+							.leftJoinAndSelect('leaderboard.userStats', 'userStats')
+							.orderBy(`userStats.${scoreField}`, 'DESC')
+							.limit(limit)
+							.getMany();
+
+						return leaderboard;
+					} catch (dbError) {
+						logger.analyticsError('Database error in getLeaderboardByPeriod', {
+							error: getErrorMessage(dbError),
+							period,
+							limit,
+						});
+						throw dbError;
 					}
-
-					const leaderboard = await this.leaderboardRepository
-						.createQueryBuilder('leaderboard')
-						.leftJoinAndSelect('leaderboard.user', 'user')
-						.leftJoinAndSelect('leaderboard.userStats', 'userStats')
-						.orderBy(`userStats.${scoreField}`, 'DESC')
-						.limit(limit)
-						.getMany();
-
-					return leaderboard;
 				},
 				CACHE_DURATION.LONG,
 				isLeaderboardArray
@@ -421,23 +450,23 @@ export class LeaderboardService {
 		successRate: number,
 		streakData: { current: number; best: number }
 	) {
-		// Base score from user credits and purchased points
-		const baseScore = user.credits + user.purchasedPoints;
+		// Credits contribution to score (user credits and purchased credits)
+		const creditsContribution = user.credits + user.purchasedCredits;
 
 		// Game performance score
 		const totalGameScore = gameHistory.reduce((sum, game) => sum + game.score, 0);
 
-		// Success rate bonus (up to 1000 points)
+		// Success rate bonus (up to 1000 scoring)
 		const successRateBonus = Math.min(1000, successRate * 10);
 
-		// Streak bonus (up to 500 points)
+		// Streak bonus (up to 500 scoring)
 		const streakBonus = Math.min(500, streakData.current * 10 + streakData.best * 5);
 
-		// Total questions bonus (up to 200 points)
+		// Total questions bonus (up to 200 scoring)
 		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
 		const questionsBonus = Math.min(200, totalQuestions * 2);
 
-		return baseScore + totalGameScore + successRateBonus + streakBonus + questionsBonus;
+		return creditsContribution + totalGameScore + successRateBonus + streakBonus + questionsBonus;
 	}
 
 	/**
@@ -478,7 +507,7 @@ export class LeaderboardService {
 	 */
 	async getLeaderboardStats(period: 'weekly' | 'monthly' | 'yearly'): Promise<{
 		activeUsers: number;
-		averagePoints: number;
+		averageScore: number;
 		averageGames: number;
 	}> {
 		try {
@@ -486,7 +515,7 @@ export class LeaderboardService {
 
 			return await this.cacheService.getOrSet<{
 				activeUsers: number;
-				averagePoints: number;
+				averageScore: number;
 				averageGames: number;
 			}>(
 				cacheKey,
@@ -519,7 +548,7 @@ export class LeaderboardService {
 
 					const activeUsers = activeUsersRaw?.count ?? 0;
 
-					// Get average points from leaderboard entries for the period
+					// Get average scoring from leaderboard entries for the period
 					const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
 						weekly: 'weeklyScore',
 						monthly: 'monthlyScore',
@@ -531,14 +560,14 @@ export class LeaderboardService {
 						throw new Error(`Invalid period: ${period}`);
 					}
 
-					const averagePointsRaw = await this.leaderboardRepository
+					const averageScoreRaw = await this.leaderboardRepository
 						.createQueryBuilder('leaderboard')
 						.leftJoin('leaderboard.userStats', 'userStats')
 						.select(`CAST(AVG(userStats.${scoreField}) AS DOUBLE PRECISION)`, 'average')
 						.where(`userStats.${scoreField} > 0`)
 						.getRawOne<{ average: number | null }>();
 
-					const averagePoints = averagePointsRaw?.average ? Math.round(averagePointsRaw.average) : 0;
+					const averageScore = averageScoreRaw?.average ? Math.round(averageScoreRaw.average) : 0;
 
 					// Get average games played in the period
 					const averageGamesQueryBuilder = this.gameHistoryRepository
@@ -557,18 +586,19 @@ export class LeaderboardService {
 
 					return {
 						activeUsers,
-						averagePoints,
+						averageScore,
 						averageGames,
 					};
 				},
 				CACHE_DURATION.MEDIUM,
-				(data): data is { activeUsers: number; averagePoints: number; averageGames: number } => {
+				(data): data is { activeUsers: number; averageScore: number; averageGames: number } => {
+					if (!isRecord(data)) {
+						return false;
+					}
 					return (
-						typeof data === 'object' &&
-						data !== null &&
-						typeof (data as { activeUsers?: unknown }).activeUsers === 'number' &&
-						typeof (data as { averagePoints?: unknown }).averagePoints === 'number' &&
-						typeof (data as { averageGames?: unknown }).averageGames === 'number'
+						typeof data.activeUsers === 'number' &&
+						typeof data.averageScore === 'number' &&
+						typeof data.averageGames === 'number'
 					);
 				}
 			);

@@ -14,6 +14,7 @@ client/src/views/
 ├── analytics/      # דף אנליטיקה
 ├── game/           # דפי משחק
 ├── gameHistory/    # היסטוריית משחקים
+├── multiplayer/    # דפי מרובה משתתפים
 ├── home/           # דף הבית והמשחק
 ├── leaderboard/    # לוח תוצאות
 ├── login/          # דף התחברות
@@ -191,6 +192,66 @@ import GameHistoryView from '@views/gameHistory/GameHistory';
 - ניקוי כל ההיסטוריה
 - ייצוא נתונים
 
+### MultiplayerLobbyView
+לובי מרובה משתתפים - יצירה והצטרפות לחדר:
+```typescript
+import MultiplayerLobbyView from '@views/multiplayer/MultiplayerLobbyView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/multiplayer" element={<ProtectedRoute><MultiplayerLobbyView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- יצירת חדר חדש עם הגדרות (נושא, קושי, מספר שאלות, מספר שחקנים מקסימלי)
+- הצטרפות לחדר לפי room ID
+- הצגת רשימת שחקנים בחדר
+- כפתור התחלה (host only)
+- הצגת room code לשיתוף
+- עדכון בזמן אמת של שחקנים
+
+**רכיבים משולבים:**
+- `PlayerList` - רשימת שחקנים
+- `useMultiplayerRoom` hook
+
+### MultiplayerGameView
+משחק מרובה משתתפים פעיל:
+```typescript
+import MultiplayerGameView from '@views/multiplayer/MultiplayerGameView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/multiplayer/game/:roomId" element={<ProtectedRoute><MultiplayerGameView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- הצגת שאלה נוכחית
+- בחירת תשובה (4 אפשרויות)
+- טיימר לשאלה (30 שניות)
+- לוח תוצאות בזמן אמת
+- עדכון אוטומטי של תשובות שחקנים אחרים
+- מעבר אוטומטי לשאלה הבאה
+- סיום משחק אוטומטי
+
+**רכיבים משולבים:**
+- `QuestionTimer` - טיימר לשאלה
+- `LiveLeaderboard` - לוח תוצאות בזמן אמת
+- `useMultiplayer` hook
+
+### MultiplayerResultsView
+תוצאות סופיות של משחק מרובה משתתפים:
+```typescript
+import MultiplayerResultsView from '@views/multiplayer/MultiplayerResultsView';
+
+// השימוש ב-AppRoutes (מוגן)
+<Route path="/multiplayer/results/:roomId" element={<ProtectedRoute><MultiplayerResultsView /></ProtectedRoute>} />
+```
+
+**תכונות:**
+- מנצח המשחק
+- דירוג אישי
+- לוח תוצאות מלא
+- סטטיסטיקות (ניקוד, תשובות נכונות, זמן ממוצע)
+- כפתורי המשך (משחק חדש, חזרה ללובי)
+
 ### PaymentView
 תשלומים:
 ```typescript
@@ -211,14 +272,14 @@ import PaymentView from '@views/payment/PaymentView';
 ### PointsView
 נקודות:
 ```typescript
-import PointsView from '@views/points/PointsView';
+import CreditsView from '@views/credits/CreditsView';
 
 // השימוש ב-AppRoutes (מוגן)
-<Route path="/points" element={<ProtectedRoute><PointsView /></ProtectedRoute>} />
+<Route path="/credits" element={<ProtectedRoute><CreditsView /></ProtectedRoute>} />
 ```
 
 **תכונות:**
-- הצגת מאזן נקודות (totalPoints, freeQuestions, purchasedPoints)
+- הצגת מאזן קרדיטים (totalCredits, freeQuestions, purchasedCredits)
 - היסטוריית עסקות נקודות
 - רכישת נקודות
 - חבילות נקודות זמינות

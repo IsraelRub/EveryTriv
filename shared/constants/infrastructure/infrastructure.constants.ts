@@ -27,6 +27,6 @@ export const DEFAULT_PORTS = {
  * @used_by server/src/internal/utils/interceptors.utils.ts, client/src/services/api.service.ts, shared/services/storage
  */
 export const DEFAULT_URLS = {
-	DEV_SERVER: LOCALHOST_URLS.API_BASE,
+	DEV_SERVER: LOCALHOST_URLS.SERVER,
 	DEV_CLIENT: LOCALHOST_URLS.CLIENT,
 } as const;

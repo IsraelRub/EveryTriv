@@ -15,9 +15,8 @@ import { getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
+import type { ServerTriviaQuestionInput } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-
-import type { ServerTriviaQuestionInput } from '@features/game/types';
 
 import { AiProvidersService } from './providers/management';
 
@@ -25,6 +24,30 @@ const ALLOWED_TRIVIA_SOURCES: TriviaQuestionSource[] = ['ai', 'user', 'imported'
 const ALLOWED_REVIEW_STATUSES: TriviaQuestionReviewStatus[] = ['pending', 'approved', 'rejected', 'flagged'];
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+
+const isTriviaQuestionSource = (value: unknown): value is TriviaQuestionSource => {
+	if (typeof value !== 'string') {
+		return false;
+	}
+	for (const allowedSource of ALLOWED_TRIVIA_SOURCES) {
+		if (value === allowedSource) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const isTriviaQuestionReviewStatus = (value: unknown): value is TriviaQuestionReviewStatus => {
+	if (typeof value !== 'string') {
+		return false;
+	}
+	for (const allowedStatus of ALLOWED_REVIEW_STATUSES) {
+		if (value === allowedStatus) {
+			return true;
+		}
+	}
+	return false;
+};
 
 const normalizeStringArray = (value?: unknown): string[] | undefined => {
 	if (!Array.isArray(value)) {
@@ -47,13 +70,26 @@ export class TriviaGenerationService {
 	) {}
 
 	/**
-	 * Generate trivia question
+	 * Generate trivia question using AI
+	 *
+	 * Process:
+	 * 1. Generates question using AI providers with excludeQuestions to prevent duplicates
+	 * 2. Before saving, checks if question already exists in database
+	 * 3. If question exists, returns existing question instead of creating duplicate
+	 * 4. If question doesn't exist, saves new question to database
+	 *
 	 * @param topic Topic for the question
 	 * @param difficulty Difficulty level
 	 * @param userId User ID for personalization
-	 * @returns Generated trivia question
+	 * @param excludeQuestions List of question texts to exclude (to prevent duplicates in AI generation)
+	 * @returns Generated or existing trivia question entity
 	 */
-	async generateQuestion(topic: string, difficulty: GameDifficulty, userId?: string): Promise<TriviaEntity> {
+	async generateQuestion(
+		topic: string,
+		difficulty: GameDifficulty,
+		userId?: string,
+		excludeQuestions?: string[]
+	): Promise<TriviaEntity> {
 		try {
 			logger.gameTarget('Generating trivia question', {
 				topic,
@@ -62,7 +98,7 @@ export class TriviaGenerationService {
 			});
 
 			// Try to generate question using AI
-			const aiQuestion = await this.aiProvidersService.generateQuestion(topic, difficulty);
+			const aiQuestion = await this.aiProvidersService.generateQuestion(topic, difficulty, excludeQuestions);
 			const question = this.convertAIQuestionToFormat(aiQuestion, topic, toDifficultyLevel(difficulty));
 
 			if (question) {
@@ -141,30 +177,6 @@ export class TriviaGenerationService {
 	}
 
 	/**
-	 * Generate deterministic fallback questions when AI providers are unavailable
-	 * @param topic Topic for the questions
-	 * @param difficulty Difficulty level
-	 * @param count Number of questions requested
-	 * @param userId (Optional) user identifier for analytics consistency
-	 * @returns Array of stored fallback trivia entities
-	 */
-	async generateFallbackQuestions(topic: string, difficulty: GameDifficulty, count: number, userId?: string) {
-		const normalizedTopic = topic?.trim().length ? topic.trim() : 'general knowledge';
-		const difficultyLevel = toDifficultyLevel(difficulty);
-		const totalQuestions = Math.max(1, count);
-		const fallbackQuestions: TriviaEntity[] = [];
-
-		for (let index = 0; index < totalQuestions; index++) {
-			const fallbackQuestionData = this.buildFallbackQuestionData(normalizedTopic, difficultyLevel, index);
-			const triviaEntity = this.convertQuestionToEntity(fallbackQuestionData, userId);
-			const savedQuestion = await this.saveQuestion(triviaEntity);
-			fallbackQuestions.push(savedQuestion);
-		}
-
-		return fallbackQuestions;
-	}
-
-	/**
 	 * Get existing question by ID
 	 * @param questionId Question ID
 	 * @returns Trivia question
@@ -214,8 +226,12 @@ export class TriviaGenerationService {
 				count,
 			});
 
-			const { createRandomQuery } = await import('../../../common/queries');
-			const queryBuilder = createRandomQuery(this.triviaRepository, 'trivia', { topic, difficulty }, count);
+			const queryBuilder = this.triviaRepository
+				.createQueryBuilder('trivia')
+				.where('trivia.topic = :topic', { topic })
+				.andWhere('trivia.difficulty = :difficulty', { difficulty })
+				.orderBy('RANDOM()')
+				.limit(count);
 			const questions = await queryBuilder.getMany();
 
 			return questions.map(question => ({
@@ -236,6 +252,88 @@ export class TriviaGenerationService {
 				count,
 			});
 			throw error;
+		}
+	}
+
+	/**
+	 * Get available questions by topic and difficulty, excluding questions the user has already seen
+	 * @param topic Topic
+	 * @param difficulty Difficulty level
+	 * @param count Number of questions needed
+	 * @param excludeQuestionTexts List of question texts to exclude (questions user has already seen)
+	 * @returns Array of available questions
+	 */
+	async getAvailableQuestions(
+		topic: string,
+		difficulty: GameDifficulty,
+		count: number,
+		excludeQuestionTexts: string[] = []
+	): Promise<TriviaEntity[]> {
+		try {
+			logger.gameTarget('Getting available questions', {
+				topic,
+				difficulty,
+				count,
+				totalItems: excludeQuestionTexts.length,
+			});
+
+			const difficultyLevel = toDifficultyLevel(difficulty);
+			const queryBuilder = this.triviaRepository
+				.createQueryBuilder('trivia')
+				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
+				.andWhere('trivia.difficulty = :difficulty', { difficulty: difficultyLevel });
+
+			if (excludeQuestionTexts.length > 0) {
+				const normalizedExcludes = excludeQuestionTexts.map(q => q.toLowerCase().trim());
+				queryBuilder.andWhere('LOWER(TRIM(trivia.question)) NOT IN (:...excludes)', { excludes: normalizedExcludes });
+			}
+
+			queryBuilder.orderBy('RANDOM()').limit(count);
+
+			const questions = await queryBuilder.getMany();
+
+			logger.gameTarget('Found available questions', {
+				topic,
+				difficulty,
+				requestedCount: count,
+				actualCount: questions.length,
+			});
+
+			return questions;
+		} catch (error) {
+			logger.gameError('Failed to get available questions', {
+				error: getErrorMessage(error),
+				topic,
+				difficulty,
+				count,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Check if questions exist in database for given topic and difficulty
+	 * @param topic Topic
+	 * @param difficulty Difficulty level
+	 * @returns True if questions exist, false otherwise
+	 */
+	async hasQuestionsForTopicAndDifficulty(topic: string, difficulty: GameDifficulty): Promise<boolean> {
+		try {
+			const difficultyLevel = toDifficultyLevel(difficulty);
+			const count = await this.triviaRepository
+				.createQueryBuilder('trivia')
+				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
+				.andWhere('trivia.difficulty = :difficulty', { difficulty: difficultyLevel })
+				.getCount();
+
+			return count > 0;
+		} catch (error) {
+			logger.gameError('Failed to check if questions exist', {
+				error: getErrorMessage(error),
+				topic,
+				difficulty,
+			});
+			return false;
 		}
 	}
 
@@ -278,52 +376,6 @@ export class TriviaGenerationService {
 	}
 
 	/**
-	 * Build fallback question data when AI providers are unavailable
-	 */
-	private buildFallbackQuestionData(
-		topic: string,
-		difficulty: DifficultyLevel,
-		index: number
-	): ServerTriviaQuestionInput {
-		const questionVariants = [
-			`Which statement about ${topic} is accurate?`,
-			`What best describes the trivia topic "${topic}"?`,
-			`Select the fact that matches the theme of ${topic}.`,
-			`Identify the correct insight regarding ${topic}.`,
-		];
-		const baseAnswers = [
-			`${topic} is a core subject in the EveryTriv knowledge base.`,
-			`Learning about ${topic} expands general knowledge and curiosity.`,
-			`${topic} frequently appears in engaging trivia challenges.`,
-			`Exploring ${topic} encourages players to think critically.`,
-			`${topic} offers interesting facts that are easy to remember.`,
-		];
-
-		const questionText = questionVariants[index % questionVariants.length];
-		const answers = [
-			baseAnswers[(index + 0) % baseAnswers.length],
-			baseAnswers[(index + 1) % baseAnswers.length],
-			baseAnswers[(index + 2) % baseAnswers.length],
-			baseAnswers[(index + 3) % baseAnswers.length],
-		];
-
-		return {
-			question: questionText,
-			answers,
-			correctAnswerIndex: 0,
-			topic,
-			difficulty,
-			metadata: {
-				category: topic,
-				source: 'system',
-				providerName: 'fallback',
-				difficulty,
-				generatedAt: new Date().toISOString(),
-			},
-		};
-	}
-
-	/**
 	 * Normalize metadata for AI-generated questions
 	 * @param metadataRaw Raw metadata from AI
 	 * @param topic Topic
@@ -339,10 +391,10 @@ export class TriviaGenerationService {
 	): TriviaQuestionDetailsMetadata {
 		const base = metadataInput ?? {};
 		const generatedAt = isNonEmptyString(base.generatedAt) ? base.generatedAt : new Date().toISOString();
-		const source: TriviaQuestionSource =
-			base.source && ALLOWED_TRIVIA_SOURCES.includes(base.source) ? base.source : 'ai';
-		const reviewStatus: TriviaQuestionReviewStatus | undefined =
-			base.reviewStatus && ALLOWED_REVIEW_STATUSES.includes(base.reviewStatus) ? base.reviewStatus : undefined;
+		const source: TriviaQuestionSource = isTriviaQuestionSource(base.source) ? base.source : 'ai';
+		const reviewStatus: TriviaQuestionReviewStatus | undefined = isTriviaQuestionReviewStatus(base.reviewStatus)
+			? base.reviewStatus
+			: undefined;
 		const fallbackExplanation = isNonEmptyString(explanation) ? explanation : undefined;
 
 		return {
@@ -396,12 +448,67 @@ export class TriviaGenerationService {
 	}
 
 	/**
-	 * Save question to database
-	 * @param triviaEntity Trivia entity
-	 * @returns Saved trivia entity
+	 * Check if question already exists in database
+	 * @param questionText Question text
+	 * @param topic Topic
+	 * @param difficulty Difficulty level
+	 * @returns Existing question if found, null otherwise
+	 */
+	private async findExistingQuestion(
+		questionText: string,
+		topic: string,
+		difficulty: DifficultyLevel
+	): Promise<TriviaEntity | null> {
+		try {
+			const existingQuestion = await this.triviaRepository
+				.createQueryBuilder('trivia')
+				.where('LOWER(TRIM(trivia.question)) = LOWER(TRIM(:question))', { question: questionText })
+				.andWhere('LOWER(trivia.topic) = LOWER(:topic)', { topic })
+				.andWhere('trivia.difficulty = :difficulty', { difficulty })
+				.getOne();
+
+			return existingQuestion || null;
+		} catch (error) {
+			logger.gameError('Failed to check for existing question', {
+				error: getErrorMessage(error),
+				topic,
+				difficulty,
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Save question to database with duplicate prevention
+	 *
+	 * Before saving a new question, checks if an identical question already exists in the database
+	 * (same question text, topic, and difficulty). If found, returns the existing question instead
+	 * of creating a duplicate entry.
+	 *
+	 * @param triviaEntity Trivia entity to save
+	 * @returns Existing trivia entity if found, otherwise newly created and saved entity
 	 */
 	private async saveQuestion(triviaEntity: DeepPartial<TriviaEntity>): Promise<TriviaEntity> {
 		try {
+			// Check if question already exists in database
+			if (triviaEntity.question && triviaEntity.topic && triviaEntity.difficulty) {
+				const existingQuestion = await this.findExistingQuestion(
+					triviaEntity.question,
+					triviaEntity.topic,
+					triviaEntity.difficulty
+				);
+
+				if (existingQuestion) {
+					logger.gameTarget('Question already exists in database, returning existing', {
+						questionId: existingQuestion.id,
+						topic: existingQuestion.topic || 'unknown',
+					});
+
+					return existingQuestion;
+				}
+			}
+
+			// Question doesn't exist, create new one
 			const question = this.triviaRepository.create(triviaEntity);
 			const savedQuestion = await this.triviaRepository.save(question);
 

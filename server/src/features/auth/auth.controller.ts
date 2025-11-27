@@ -4,10 +4,11 @@
  * @module AuthController
  * @description Authentication controller with login, register, and user management endpoints
  */
-import { Body, Controller, Get, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
+import type { Response } from 'express';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { CACHE_DURATION, LOCALHOST_URLS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { AdminUserData, GoogleAuthRequest, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -35,13 +36,14 @@ export class AuthController {
 
 	/**
 	 * Register a new user
+	 * @param registerDto User registration data
+	 * @returns Authentication response with user data and tokens
 	 */
 	@Post('register')
 	@Public()
 	async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
 		try {
 			logger.authRegister('User registration attempt', {
-				username: registerDto.username,
 				email: registerDto.email,
 			});
 
@@ -49,14 +51,13 @@ export class AuthController {
 
 			logger.authRegister('User registered successfully', {
 				userId: result.user.id,
-				username: result.user.username,
+				email: result.user.email,
 			});
 
 			return result;
 		} catch (error) {
 			logger.authError('User registration failed', {
 				error: getErrorMessage(error),
-				username: registerDto.username,
 				email: registerDto.email,
 			});
 			throw error;
@@ -65,27 +66,29 @@ export class AuthController {
 
 	/**
 	 * Login user
+	 * @param loginDto User login credentials (email)
+	 * @returns Authentication response with user data and tokens
 	 */
 	@Post('login')
 	@Public()
 	async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
 		try {
 			logger.securityLogin('User login attempt', {
-				username: loginDto.username,
+				email: loginDto.email,
 			});
 
 			const result = await this.authService.login(loginDto);
 
 			logger.securityLogin('User logged in successfully', {
 				userId: result.user.id,
-				username: result.user.username,
+				email: result.user.email,
 			});
 
 			return result;
 		} catch (error) {
 			logger.authError('User login failed', {
 				error: getErrorMessage(error),
-				username: loginDto.username,
+				email: loginDto.email,
 			});
 			throw error;
 		}
@@ -93,6 +96,8 @@ export class AuthController {
 
 	/**
 	 * Refresh access token
+	 * @param refreshTokenDto Refresh token data
+	 * @returns New token pair with access and refresh tokens
 	 */
 	@Post('refresh')
 	@Public()
@@ -116,6 +121,8 @@ export class AuthController {
 
 	/**
 	 * Get current user profile
+	 * @param user Current user token payload
+	 * @returns Current user token payload
 	 */
 	@Get('me')
 	@NoCache()
@@ -137,11 +144,13 @@ export class AuthController {
 
 	/**
 	 * Logout user
+	 * @param userId Current user identifier
+	 * @returns Logout confirmation message
 	 */
 	@Post('logout')
 	async logout(@CurrentUserId() userId: string): Promise<{ message: string }> {
 		try {
-			const result = await this.authService.logout(userId, 'manual');
+			const result = await this.authService.logout(userId);
 
 			logger.authLogout('User logged out', {
 				userId,
@@ -159,6 +168,7 @@ export class AuthController {
 
 	/**
 	 * Google OAuth login
+	 * Initiates Google OAuth authentication flow
 	 */
 	@Get('google')
 	@Public()
@@ -169,23 +179,50 @@ export class AuthController {
 
 	/**
 	 * Google OAuth callback
+	 * Handles Google OAuth callback and authenticates user
+	 * @param req Google authentication request with user profile
+	 * @param res Express response object for redirects
+	 * @returns Authentication response with user data and tokens or redirects on error
 	 */
 	@Get('google/callback')
 	@Public()
 	@UseGuards(PassportAuthGuard('google'))
-	async googleCallback(@Req() req: GoogleAuthRequest) {
+	async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
 		try {
 			logger.authInfo('Google OAuth callback requested');
 
+			// Check for OAuth errors from Google (query parameters)
+			const error = typeof req.query.error === 'string' ? req.query.error : undefined;
+			const errorDescription =
+				typeof req.query.error_description === 'string' ? req.query.error_description : undefined;
+			const errorUri = typeof req.query.error_uri === 'string' ? req.query.error_uri : undefined;
+
+			if (error) {
+				logger.authError('Google OAuth error received', {
+					error,
+					errorDescription,
+					errorUri,
+				});
+
+				const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
+				const errorParam = error === 'invalid_client' ? 'invalid_client' : 'oauth_failed';
+				const redirectUrl = `${clientUrl}/auth/callback?error=${errorParam}&error_description=${encodeURIComponent(errorDescription || error)}`;
+
+				return res.redirect(redirectUrl);
+			}
+
 			const payload = req.user;
 			if (!payload || !payload.google_id) {
-				throw new UnauthorizedException('Google profile not available');
+				logger.authError('Google profile not available in callback');
+				const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
+				const redirectUrl = `${clientUrl}/auth/callback?error=oauth_failed&error_description=${encodeURIComponent('Google profile not available')}`;
+
+				return res.redirect(redirectUrl);
 			}
 
 			const result = await this.authService.loginWithGoogle({
 				googleId: payload.google_id,
 				email: payload.email,
-				username: payload.username,
 				firstName: payload.firstName,
 				lastName: payload.lastName,
 				avatar: payload.avatar,
@@ -195,17 +232,46 @@ export class AuthController {
 				userId: result.user.id,
 			});
 
-			return result;
+			// Set tokens in cookies
+			const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
+			res.cookie('access_token', result.access_token, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production',
+				sameSite: 'lax',
+				maxAge: 15 * 60 * 1000, // 15 minutes
+			});
+
+			if (result.refresh_token) {
+				res.cookie('refresh_token', result.refresh_token, {
+					httpOnly: true,
+					secure: process.env.NODE_ENV === 'production',
+					sameSite: 'lax',
+					maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+				});
+			}
+
+			// Redirect to client with success
+			const redirectUrl = `${clientUrl}/auth/callback?success=true`;
+			return res.redirect(redirectUrl);
 		} catch (error) {
 			logger.authError('Google OAuth callback error', {
 				error: getErrorMessage(error),
 			});
-			throw error;
+
+			const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
+			const errorMessage = getErrorMessage(error);
+			const redirectUrl = `${clientUrl}/auth/callback?error=oauth_failed&error_description=${encodeURIComponent(errorMessage)}`;
+
+			return res.redirect(redirectUrl);
 		}
 	}
 
 	/**
 	 * Admin endpoint - get all users (admin only)
+	 * @param user Current admin user token payload
+	 * @param limit Optional pagination limit
+	 * @param offset Optional pagination offset
+	 * @returns List of users with pagination metadata
 	 */
 	@Get('admin/users')
 	@UseGuards(LocalAuthGuard, RolesGuard)
@@ -228,8 +294,7 @@ export class AuthController {
 
 			const adminUser: AdminUserData = {
 				id: user.sub,
-				username: user.username,
-				email: user.email ?? `${user.username}@everytriv.com`,
+				email: user.email,
 				role: user.role,
 				createdAt: new Date().toISOString(),
 				lastLogin: undefined,

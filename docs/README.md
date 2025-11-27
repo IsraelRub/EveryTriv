@@ -30,7 +30,8 @@
 | Auth | `/auth` | אימות, הנפקת JWT, OAuth (Google) | [AUTH.md](./backend/features/AUTH.md) |
 | User | `/users` | פרופיל משתמש, סטטיסטיקות | [USER.md](./backend/features/USER.md) |
 | Game | `/game` | לוגיקת משחק, trivia, AI providers | [GAME.md](./backend/features/GAME.md) |
-| Points | `/points` | חישוב וניהול נקודות | [POINTS.md](./backend/features/POINTS.md) |
+| Multiplayer | `/multiplayer` (WebSocket) | משחק סימולטני בזמן אמת (2-4 שחקנים) | [MULTIPLAYER.md](./backend/features/MULTIPLAYER.md) |
+| Credits | `/credits` | ניהול קרדיטים | [CREDITS.md](./backend/features/CREDITS.md) |
 | Leaderboard | `/leaderboard` | דירוגים וחישובי מיקום | [LEADERBOARD.md](./backend/features/LEADERBOARD.md) |
 | Analytics | `/analytics` | מדדים, איסוף שימוש, דוחות | [ANALYTICS.md](./backend/features/ANALYTICS.md) |
 | Payment | `/payment` | תשלומים, טרנזקציות | [PAYMENT.md](./backend/features/PAYMENT.md) |
@@ -83,14 +84,16 @@
 - [אימות והרשאות](./backend/AUTHORIZATION.md)
 - [מודול אימות](./backend/features/AUTH.md)
 - [מודול משחק](./backend/features/GAME.md)
+- [מודול מרובה משתתפים](./backend/features/MULTIPLAYER.md)
 - [מודול משתמשים](./backend/features/USER.md)
-- [מודול נקודות](./backend/features/POINTS.md)
+- [מודול קרדיטים](./backend/features/CREDITS.md)
 - [מודול אנליטיקה](./backend/features/ANALYTICS.md)
 
 ### Frontend
 - [ניהול מצב (Redux)](./frontend/REDUX.md)
 - [Hooks (כולל React Query)](./frontend/HOOKS.md)
 - [דפי האפליקציה](./frontend/VIEWS.md)
+- [מרובה משתתפים - Frontend](./frontend/MULTIPLAYER.md)
 - [רכיבי UI](./frontend/COMPONENTS.md)
 - [מערכת עיצוב](./frontend/DESIGN_SYSTEM.md)
 - [ניתוב](./frontend/ROUTING.md)

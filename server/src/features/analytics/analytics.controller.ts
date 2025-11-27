@@ -28,6 +28,8 @@ export class AnalyticsController {
 
 	/**
 	 * Track analytics event
+	 * @param eventData Event tracking data
+	 * @returns Event tracking confirmation
 	 */
 	@Post('track')
 	async trackEvent(@Body() eventData: TrackEventDto) {
@@ -60,6 +62,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get analytics for the authenticated user
+	 * @param userId Current user identifier
+	 * @returns User analytics data
 	 */
 	@Get('user')
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
@@ -83,6 +87,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get user statistics overview (Admin only)
+	 * @param params User identifier parameter
+	 * @returns User statistics data
 	 */
 	@Get('user-stats/:userId')
 	@Roles(UserRole.ADMIN)
@@ -107,6 +113,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get user performance metrics (Admin only)
+	 * @param params User identifier parameter
+	 * @returns User performance metrics
 	 */
 	@Get('user-performance/:userId')
 	@Roles(UserRole.ADMIN)
@@ -131,6 +139,9 @@ export class AnalyticsController {
 
 	/**
 	 * Get user progress analytics (Admin only)
+	 * @param params User identifier parameter
+	 * @param query Trend query parameters
+	 * @returns User progress analytics
 	 */
 	@Get('user-progress/:userId')
 	@Roles(UserRole.ADMIN)
@@ -156,6 +167,9 @@ export class AnalyticsController {
 
 	/**
 	 * Get detailed user activity (Admin only)
+	 * @param params User identifier parameter
+	 * @param query Activity query parameters
+	 * @returns User activity entries
 	 */
 	@Get('user-activity/:userId')
 	@Roles(UserRole.ADMIN)
@@ -181,6 +195,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get user insights (Admin only)
+	 * @param params User identifier parameter
+	 * @returns User insights data
 	 */
 	@Get('user-insights/:userId')
 	@Roles(UserRole.ADMIN)
@@ -205,6 +221,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get personalized user recommendations (Admin only)
+	 * @param params User identifier parameter
+	 * @returns User recommendations
 	 */
 	@Get('user-recommendations/:userId')
 	@Roles(UserRole.ADMIN)
@@ -230,6 +248,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get user achievements (Admin only)
+	 * @param params User identifier parameter
+	 * @returns User achievements list
 	 */
 	@Get('user-achievements/:userId')
 	@Roles(UserRole.ADMIN)
@@ -255,6 +275,9 @@ export class AnalyticsController {
 
 	/**
 	 * Get user trend timeline (Admin only)
+	 * @param params User identifier parameter
+	 * @param query Trend query parameters
+	 * @returns User trend data
 	 */
 	@Get('user-trends/:userId')
 	@Roles(UserRole.ADMIN)
@@ -280,6 +303,9 @@ export class AnalyticsController {
 
 	/**
 	 * Compare user metrics with another user or global averages (Admin only)
+	 * @param params User identifier parameter
+	 * @param query Comparison query parameters
+	 * @returns User comparison results
 	 */
 	@Get('user-comparison/:userId')
 	@Roles(UserRole.ADMIN)
@@ -307,6 +333,9 @@ export class AnalyticsController {
 
 	/**
 	 * Get user summary (Admin only)
+	 * @param params User identifier parameter
+	 * @param query Summary query parameters
+	 * @returns User summary data
 	 */
 	@Get('user-summary/:userId')
 	@Roles(UserRole.ADMIN)
@@ -332,6 +361,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get popular topics
+	 * @param query Topic analytics query parameters
+	 * @returns Popular topics statistics
 	 */
 	@Get('topics/popular')
 	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
@@ -355,6 +386,8 @@ export class AnalyticsController {
 
 	/**
 	 * Get difficulty statistics
+	 * @param query Difficulty analytics query parameters
+	 * @returns Difficulty statistics data
 	 */
 	@Get('difficulty/stats')
 	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
@@ -378,6 +411,7 @@ export class AnalyticsController {
 
 	/**
 	 * Get global statistics for comparison (public endpoint)
+	 * @returns Global statistics data
 	 */
 	@Get('global-stats')
 	@Public()
@@ -399,6 +433,8 @@ export class AnalyticsController {
 
 	/**
 	 * Admin endpoint - delete all user stats (admin only)
+	 * @param user Current admin user token payload
+	 * @returns Clear operation result with deleted count
 	 */
 	@Delete('admin/stats/clear-all')
 	@Roles(UserRole.ADMIN)

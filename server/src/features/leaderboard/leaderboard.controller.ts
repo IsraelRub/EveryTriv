@@ -90,8 +90,7 @@ export class LeaderboardController {
 
 	/**
 	 * Get global leaderboard
-	 * @param limit Number of users to return
-	 * @param offset Offset for pagination
+	 * @param query Leaderboard query parameters
 	 * @returns Global leaderboard data
 	 */
 	@Get('global')
@@ -134,8 +133,8 @@ export class LeaderboardController {
 
 	/**
 	 * Get leaderboard by time period
-	 * @param period Time period (weekly, monthly, yearly)
-	 * @param limit Number of users to return
+	 * @param periodParam Time period parameter (weekly, monthly, yearly)
+	 * @param query Leaderboard query parameters
 	 * @returns Leaderboard for specific time period
 	 */
 	@Get('period/:period')
@@ -183,7 +182,7 @@ export class LeaderboardController {
 
 	/**
 	 * Get leaderboard statistics for a specific period
-	 * @param query Query parameters with period
+	 * @param query Leaderboard statistics query parameters
 	 * @returns Leaderboard statistics
 	 */
 	@Get('stats')
@@ -202,7 +201,7 @@ export class LeaderboardController {
 			logger.apiRead('leaderboard_stats', {
 				period,
 				activeUsers: stats.activeUsers,
-				averagePoints: stats.averagePoints,
+				averageScore: stats.averageScore,
 				averageGames: stats.averageGames,
 			});
 
@@ -218,6 +217,8 @@ export class LeaderboardController {
 
 	/**
 	 * Admin endpoint - delete all leaderboard entries (admin only)
+	 * @param user Current admin user token payload
+	 * @returns Clear operation result with deleted count
 	 */
 	@Delete('admin/clear-all')
 	@Roles(UserRole.ADMIN)

@@ -30,13 +30,12 @@ import {
 	useUserProfile,
 	useUserStats,
 } from '../../hooks';
-import { setAvatar, setUsername } from '../../redux/slices';
+import { setAvatar } from '../../redux/slices';
 import { audioService } from '../../services';
 import type { RootState } from '../../types';
 import { formatNumber, getCurrentTimestamp } from '../../utils';
 
 export default function UserProfile() {
-	const username = useAppSelector((state: RootState) => state.user.username);
 	const avatar = useAppSelector((state: RootState) => state.user.avatar);
 	const dispatch = useAppDispatch();
 
@@ -81,7 +80,6 @@ export default function UserProfile() {
 		// Update Redux state when profile data is loaded
 		if (userProfile) {
 			const profile = userProfile.profile;
-			dispatch(setUsername(profile.username ?? ''));
 			dispatch(setAvatar(profile.avatar ?? ''));
 			setEmail(profile.email ?? '');
 
@@ -148,19 +146,17 @@ export default function UserProfile() {
 		setLoading(true);
 		try {
 			updateProfileMutation.mutate({
-				username,
 				avatar,
 			});
 			logger.userInfo('User profile updated successfully', {
 				userId: userProfile?.profile?.id,
-				username: username,
 				avatar: avatar,
 				email: email,
 			});
 		} catch (err) {
 			logger.userWarn('Failed to update user profile', {
 				error: getErrorMessage(err),
-				username,
+				email,
 			});
 			// Handle error silently - mutation hook will show user feedback
 		} finally {
@@ -216,27 +212,6 @@ export default function UserProfile() {
 							</CardHeader>
 							<CardContent>
 								<GridLayout variant='balanced' gap={Spacing.LG}>
-									<div>
-										<label className='block text-white font-medium mb-2'>Display Name</label>
-										<div className='flex gap-2'>
-											<input
-												type='text'
-												value={username}
-												onChange={e => dispatch(setUsername(e.target.value))}
-												className='flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-												placeholder='Enter your display name'
-											/>
-											<Button
-												variant={ButtonVariant.SECONDARY}
-												size={ComponentSize.SM}
-												onClick={() => updateUserField.mutate({ field: 'username', value: username })}
-												disabled={updateUserField.isPending}
-												className='px-4'
-											>
-												{updateUserField.isPending ? '...' : 'Save'}
-											</Button>
-										</div>
-									</div>
 									<div>
 										<label className='block text-white font-medium mb-2'>Email</label>
 										<div className='flex gap-2'>

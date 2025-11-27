@@ -17,14 +17,6 @@ import type { FormField } from '../../types';
  */
 export const REGISTRATION_FIELDS: FormField[] = [
 	{
-		name: 'username',
-		label: 'Username',
-		type: FORM_FIELD_TYPES.TEXT,
-		validationType: FORM_VALIDATION_TYPES.USERNAME,
-		required: true,
-		placeholder: 'Enter your username',
-	},
-	{
 		name: 'email',
 		label: 'Email',
 		type: FORM_FIELD_TYPES.EMAIL,
@@ -57,7 +49,6 @@ export const REGISTRATION_FIELDS: FormField[] = [
  * @used_by client/src/views/registration
  */
 export const REGISTRATION_DEFAULT_VALUES = {
-	username: '',
 	email: '',
 	password: '',
 	confirmPassword: '',

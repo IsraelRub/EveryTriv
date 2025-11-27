@@ -13,7 +13,7 @@ import {
 } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type {
-	PointPurchaseOption,
+	CreditPurchaseOption,
 	SubscriptionData,
 	SubscriptionPlans as SubscriptionPlansType,
 	ValidationStatus,
@@ -54,25 +54,25 @@ import {
 	useAppSelector,
 	useCancelSubscription,
 	useCreateSubscription,
+	useCreditBalance,
+	useCreditPackages,
 	useDebouncedCallback,
-	usePointBalance,
-	usePointPackages,
-	usePurchasePoints,
+	usePurchaseCredits,
 } from '../../hooks';
-import { selectUserPointBalance } from '../../redux/selectors';
-import { setPointBalance } from '../../redux/slices';
-import { audioService, pointsService, storageService } from '../../services';
-import type { ManualPaymentPayload, PointsPurchaseResponse } from '../../types';
+import { selectUserCreditBalance } from '../../redux/selectors';
+import { setCreditBalance } from '../../redux/slices';
+import { audioService, creditsService, storageService } from '../../services';
+import type { CreditsPurchaseResponse, ManualPaymentPayload } from '../../types';
 
 export default function PaymentView() {
 	const navigate = useNavigate();
 	const dispatch = useAppDispatch();
-	const pointBalance = useAppSelector(selectUserPointBalance);
+	const creditBalance = useAppSelector(selectUserCreditBalance);
 
 	// Use custom hooks for data fetching
-	const { data: balanceData, isLoading: balanceLoading } = usePointBalance();
-	const { data: packages, isLoading: packagesLoading } = usePointPackages();
-	const purchaseMutation = usePurchasePoints();
+	const { data: balanceData, isLoading: balanceLoading } = useCreditBalance();
+	const { data: packages, isLoading: packagesLoading } = useCreditPackages();
+	const purchaseMutation = usePurchaseCredits();
 	const createSubscription = useCreateSubscription();
 	const cancelSubscription = useCancelSubscription();
 
@@ -121,7 +121,7 @@ export default function PaymentView() {
 	}, [cardNumber, cardHolderName, cvv, expiryDate, parseExpiryDateParts, postalCode]);
 
 	const applySuccessfulPurchase = useCallback(
-		(result: PointsPurchaseResponse) => {
+		(result: CreditsPurchaseResponse) => {
 			setSuccess(true);
 			setPurchasing(false);
 			setPurchaseStatus('valid');
@@ -130,11 +130,11 @@ export default function PaymentView() {
 
 			if (result.balance) {
 				dispatch(
-					setPointBalance({
-						balance: result.balance.balance ?? result.balance.totalPoints ?? 0,
-						purchasedPoints: result.balance.purchasedPoints ?? 0,
-						freePoints: result.balance.freeQuestions ?? 0,
-						lastUpdated: new Date(),
+					setCreditBalance({
+						balance: result.balance.balance ?? result.balance.totalCredits ?? 0,
+						purchasedCredits: result.balance.purchasedCredits ?? 0,
+						freeQuestions: result.balance.freeQuestions ?? 0,
+						lastUpdated: new Date().toISOString(),
 						dailyLimit: result.balance.dailyLimit,
 						nextResetTime: result.balance.nextResetTime,
 					})
@@ -147,7 +147,7 @@ export default function PaymentView() {
 	);
 
 	const handlePurchaseSuccess = useCallback(
-		(result: PointsPurchaseResponse) => {
+		(result: CreditsPurchaseResponse) => {
 			if (result.status === PaymentStatus.COMPLETED) {
 				applySuccessfulPurchase(result);
 				return;
@@ -175,7 +175,7 @@ export default function PaymentView() {
 			setPurchasing(false);
 			setPurchaseStatus('invalid');
 			const message = getErrorMessage(error);
-			logger.paymentFailed('points_purchase', message, {
+			logger.paymentFailed('credits_purchase', message, {
 				id: selectedPackage ?? 'unknown',
 			});
 			audioService.play(AudioKey.ERROR);
@@ -214,7 +214,7 @@ export default function PaymentView() {
 				setPaypalError(null);
 				setPendingReference(null);
 
-				const initialResult = await pointsService.purchasePoints({
+				const initialResult = await creditsService.purchaseCredits({
 					packageId,
 					paymentMethod: PaymentMethod.PAYPAL,
 				});
@@ -246,7 +246,7 @@ export default function PaymentView() {
 				setPaypalLoading(false);
 			}
 		},
-		[applySuccessfulPurchase, loadPayPalSdk, handlePurchaseError, pointsService]
+		[applySuccessfulPurchase, loadPayPalSdk, handlePurchaseError, creditsService]
 	);
 
 	const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlansType | null>(null);
@@ -277,12 +277,13 @@ export default function PaymentView() {
 	useEffect(() => {
 		if (balanceData) {
 			dispatch(
-				setPointBalance({
-					points: 0,
-					balance: balanceData.totalPoints,
-					purchasedPoints: balanceData.purchasedPoints,
-					freePoints: balanceData.freeQuestions,
-					lastUpdated: new Date(),
+				setCreditBalance({
+					credits: 0,
+					balance: balanceData.totalCredits,
+					purchasedCredits: balanceData.purchasedCredits,
+					freeQuestions: balanceData.freeQuestions,
+					// Store as ISO string for Redux serializability
+					lastUpdated: new Date().toISOString(),
 				})
 			);
 		}
@@ -456,16 +457,16 @@ export default function PaymentView() {
 						<CardContent>
 							<div className='space-y-2 text-left text-slate-300'>
 								<div className='flex justify-between'>
-									<span>Total Points:</span>
-									<span className='font-semibold text-white'>{pointBalance?.totalPoints ?? 0}</span>
+									<span>Total Credits:</span>
+									<span className='font-semibold text-white'>{creditBalance?.totalCredits ?? 0}</span>
 								</div>
 								<div className='flex justify-between'>
 									<span>Free Questions:</span>
-									<span className='text-green-400'>{pointBalance?.freeQuestions ?? 0}</span>
+									<span className='text-green-400'>{creditBalance?.freeQuestions ?? 0}</span>
 								</div>
 								<div className='flex justify-between'>
-									<span>Purchased Points:</span>
-									<span className='text-blue-400'>{pointBalance?.purchasedPoints ?? 0}</span>
+									<span>Purchased Credits:</span>
+									<span className='text-blue-400'>{creditBalance?.purchasedCredits ?? 0}</span>
 								</div>
 							</div>
 						</CardContent>
@@ -516,7 +517,7 @@ export default function PaymentView() {
 		);
 	}
 
-	const [activeTab, setActiveTab] = useState<'points' | 'subscription'>('points');
+	const [activeTab, setActiveTab] = useState<'credits' | 'subscription'>('credits');
 
 	return (
 		<main role='main' aria-label='Payment'>
@@ -546,13 +547,13 @@ export default function PaymentView() {
 						<div className='flex justify-center'>
 							<div className='bg-slate-800/60 rounded-lg p-1 border border-white/10'>
 								<button
-									onClick={() => setActiveTab('points')}
+									onClick={() => setActiveTab('credits')}
 									className={`px-6 py-3 rounded-md text-sm font-medium transition-colors ${
-										activeTab === 'points' ? 'bg-blue-500 text-white' : 'text-slate-300 hover:text-white'
+										activeTab === 'credits' ? 'bg-blue-500 text-white' : 'text-slate-300 hover:text-white'
 									}`}
 								>
 									<Icon name='zap' size={ComponentSize.SM} className='mr-2 inline' />
-									Points Packages
+									Credits Packages
 								</button>
 								<button
 									onClick={() => setActiveTab('subscription')}
@@ -705,14 +706,14 @@ export default function PaymentView() {
 					)}
 
 					{/* Content based on active tab */}
-					{activeTab === 'points' ? (
-						// Points Packages Content
+					{activeTab === 'credits' ? (
+						// Credits Packages Content
 						<motion.section
 							variants={fadeInUp}
 							initial='hidden'
 							animate='visible'
 							exit='exit'
-							aria-label='Points Packages'
+							aria-label='Credits Packages'
 						>
 							{/* Package Selection */}
 							<motion.section
@@ -766,7 +767,7 @@ export default function PaymentView() {
 												transition={{ delay: 0.1 + index * 0.1 }}
 												whileHover={{ scale: 1.02 }}
 												whileTap={{ scale: 0.98 }}
-												aria-label={`Package ${pkg.points} points for ${pkg.priceDisplay}`}
+												aria-label={`Package ${pkg.credits} credits for ${pkg.priceDisplay}`}
 											>
 												<Card
 													variant={CardVariant.GLASS}
@@ -789,7 +790,7 @@ export default function PaymentView() {
 														<div className='text-center'>
 															<h3 className='text-2xl font-bold text-white mb-2'>{formatCurrency(pkg.price)}</h3>
 															<div className='text-4xl font-bold text-white mb-4'>
-																{pkg.points} {PAYMENT_CONTENT.PACKAGES.points}
+																{pkg.credits} {PAYMENT_CONTENT.PACKAGES.credits}
 																{pkg.savings && (
 																	<span className='text-lg text-green-400 block'>
 																		{PAYMENT_CONTENT.PACKAGES.save} {pkg.savings}
@@ -804,7 +805,7 @@ export default function PaymentView() {
 																		color='success'
 																		className='mr-3 flex-shrink-0'
 																	/>
-																	{pkg.points} {PAYMENT_CONTENT.PACKAGES.features.questions}
+																	{pkg.credits} {PAYMENT_CONTENT.PACKAGES.features.questions}
 																</div>
 																<div className='flex items-center text-slate-300'>
 																	<Icon
@@ -1029,7 +1030,7 @@ export default function PaymentView() {
 												) : paymentMethod === PaymentMethod.PAYPAL ? (
 													'Continue with PayPal'
 												) : (
-													`${PAYMENT_CONTENT.PAYMENT.payButton} ${formatCurrency(packages?.find((pkg: PointPurchaseOption) => pkg.id === selectedPackage)?.price ?? 0)}`
+													`${PAYMENT_CONTENT.PAYMENT.payButton} ${formatCurrency(packages?.find((pkg: CreditPurchaseOption) => pkg.id === selectedPackage)?.price ?? 0)}`
 												)}
 											</Button>
 										</motion.div>

@@ -302,12 +302,12 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 	public logAuthenticationEnhanced(
 		event: 'login' | 'logout' | 'register' | 'token_refresh' | 'password_reset',
 		userId: string,
-		username: string,
+		email: string,
 		metadata?: LogMeta
 	): void {
 		const context = {
 			userId,
-			username,
+			email,
 			event,
 			...metadata,
 		};

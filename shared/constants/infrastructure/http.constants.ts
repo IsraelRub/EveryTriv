@@ -10,7 +10,7 @@ import { ENV_FALLBACKS, ENV_VAR_NAMES, LOCALHOST_URLS } from './localhost.consta
 
 // API base URL configuration
 export const API_BASE_URL = {
-	DEVELOPMENT: LOCALHOST_URLS.API_BASE,
+	DEVELOPMENT: LOCALHOST_URLS.SERVER,
 	PRODUCTION: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
 	STAGING: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
 } as const;
@@ -54,6 +54,16 @@ export const HTTP_STATUS_CODES = {
 	GATEWAY_TIMEOUT: 504,
 	SERVER_ERROR_MIN: 500,
 	SERVER_ERROR_MAX: 599,
+} as const;
+
+// HTTP methods
+export const HTTP_METHODS = {
+	GET: 'GET',
+	POST: 'POST',
+	PUT: 'PUT',
+	PATCH: 'PATCH',
+	DELETE: 'DELETE',
+	OPTIONS: 'OPTIONS',
 } as const;
 
 // HTTP error codes

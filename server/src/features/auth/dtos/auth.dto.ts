@@ -9,47 +9,28 @@ import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLengt
 
 export class LoginDto {
 	@ApiProperty({
-		description: 'Username or email for login',
-		example: 'username',
-		minLength: 3,
-		maxLength: 50,
+		description: 'Email for login',
+		example: 'user@example.com',
 	})
-	@IsString()
-	@IsNotEmpty({ message: 'Username is required' })
-	@MinLength(3, { message: 'Username must be at least 3 characters long' })
-	@MaxLength(50, { message: 'Username cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z0-9_-]+$/, { message: 'Username can only contain letters, numbers, underscores, and hyphens' })
-	username: string;
+	@IsEmail({}, { message: 'Please provide a valid email address' })
+	@IsNotEmpty({ message: 'Email is required' })
+	@MaxLength(255, { message: 'Email cannot exceed 255 characters' })
+	email: string;
 
 	@ApiProperty({
 		description: 'User password',
 		example: 'securePassword123',
 		minLength: 6,
+		maxLength: 15,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
 	@MinLength(6, { message: 'Password must be at least 6 characters long' })
-	@MaxLength(128, { message: 'Password cannot exceed 128 characters' })
-	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
-	})
+	@MaxLength(15, { message: 'Password cannot exceed 15 characters' })
 	password: string;
 }
 
 export class RegisterDto {
-	@ApiProperty({
-		description: 'Unique username',
-		example: 'username',
-		minLength: 3,
-		maxLength: 50,
-	})
-	@IsString()
-	@IsNotEmpty({ message: 'Username is required' })
-	@MinLength(3, { message: 'Username must be at least 3 characters long' })
-	@MaxLength(50, { message: 'Username cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z0-9_-]+$/, { message: 'Username can only contain letters, numbers, underscores, and hyphens' })
-	username: string;
-
 	@ApiProperty({
 		description: 'Valid email address',
 		example: 'user@your-domain.com',
@@ -63,14 +44,12 @@ export class RegisterDto {
 		description: 'Secure password',
 		example: 'SecurePassword123!',
 		minLength: 6,
+		maxLength: 15,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
 	@MinLength(6, { message: 'Password must be at least 6 characters long' })
-	@MaxLength(128, { message: 'Password cannot exceed 128 characters' })
-	@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-		message: 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
-	})
+	@MaxLength(15, { message: 'Password cannot exceed 15 characters' })
 	password: string;
 
 	@ApiPropertyOptional({
@@ -114,7 +93,6 @@ export class AuthResponseDto {
 	})
 	user: {
 		id: string;
-		username: string;
 		email: string;
 		firstName?: string;
 		lastName?: string;

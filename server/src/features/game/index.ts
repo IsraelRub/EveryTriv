@@ -39,3 +39,11 @@ export { GameService } from './game.service';
  * @used_by server/features/game, server/services
  */
 export * from './logic';
+
+/**
+ * Multiplayer module
+ * @description Multiplayer simultaneous trivia games
+ * @used_by server/app.module
+ */
+export { MultiplayerModule } from './multiplayer/multiplayer.module';
+export { MultiplayerController } from './multiplayer/multiplayer.controller';

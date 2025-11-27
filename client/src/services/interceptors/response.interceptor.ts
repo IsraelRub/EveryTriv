@@ -24,7 +24,7 @@ export class ResponseInterceptorManager extends BaseInterceptorManager<
 	/**
 	 * Execute all registered interceptors
 	 * @template T - Response data type
-	 * @param response - API response
+	 * @param response API response
 	 * @returns Transformed response
 	 */
 	async execute<T>(response: ApiResponse<T>): Promise<ApiResponse<T>> {

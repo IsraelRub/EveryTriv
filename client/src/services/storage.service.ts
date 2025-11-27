@@ -5,6 +5,7 @@
  * @used_by client/src/services, client/src/utils, client/src/components
  */
 import type { StorageOperationResult } from '@shared/types';
+import { isStringArray } from '@shared/utils';
 
 /**
  * Type guard function for runtime validation
@@ -47,6 +48,15 @@ class ClientStorageService {
 	 */
 	async getBoolean(key: string): Promise<StorageOperationResult<boolean>> {
 		return this.get(key, defaultValidators.boolean);
+	}
+
+	/**
+	 * Get string array value from localStorage with automatic runtime validation
+	 * @param key - Storage key
+	 * @returns Storage operation result with validated string array
+	 */
+	async getStringArray(key: string): Promise<StorageOperationResult<string[]>> {
+		return this.get(key, isStringArray);
 	}
 
 	/**

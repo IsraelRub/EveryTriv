@@ -138,8 +138,8 @@ export function LeaderboardView() {
 														<span className='font-semibold text-white'>{stats?.activeUsers ?? 0}</span>
 													</div>
 													<div className='flex justify-between'>
-														<span className='text-sm text-white/70'>Average Points:</span>
-														<span className='font-semibold text-white'>{stats?.averagePoints ?? 0}</span>
+														<span className='text-sm text-white/70'>Average Score:</span>
+														<span className='font-semibold text-white'>{stats?.averageScore ?? 0}</span>
 													</div>
 													<div className='flex justify-between'>
 														<span className='text-sm text-white/70'>Average Games:</span>
@@ -173,7 +173,7 @@ export function LeaderboardView() {
 								<RankingCard
 									title='Total Score'
 									value={userRanking.score?.toLocaleString() || '0'}
-									subtitle='Points earned'
+									subtitle='Score earned'
 									icon={<Icon name='star' size={ComponentSize.LG} color='primary' />}
 									color='blue'
 								/>
@@ -311,7 +311,9 @@ function LeaderboardEntry({ entry, isCurrentUser }: LeaderboardEntryProps) {
 				</div>
 				<div>
 					<h3 className='font-semibold text-white flex items-center'>
-						{entry.username}
+						{entry.firstName && entry.lastName
+							? `${entry.firstName} ${entry.lastName}`
+							: entry.firstName || entry.lastName || entry.email}
 						{isCurrentUser && (
 							<span className='ml-2 text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded border border-yellow-400/30'>
 								You
@@ -327,7 +329,7 @@ function LeaderboardEntry({ entry, isCurrentUser }: LeaderboardEntryProps) {
 			</div>
 			<div className='text-right'>
 				<p className='text-lg font-bold text-white'>{entry.score.toLocaleString()}</p>
-				<p className='text-sm text-white/70'>points</p>
+				<p className='text-sm text-white/70'>score</p>
 				{entry.gamesPlayed && entry.gamesPlayed > 0 && (
 					<p className='text-xs text-orange-400 flex items-center'>
 						<Icon name='gamepad' size={ComponentSize.XS} color='warning' className='mr-1' />

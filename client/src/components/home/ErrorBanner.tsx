@@ -9,7 +9,7 @@ import { isCustomDifficulty } from '@shared/validation';
 
 import { ComponentSize } from '../../constants';
 import type { ErrorBannerProps } from '../../types';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 
 export default function ErrorBanner({ message, difficulty }: ErrorBannerProps) {
 	if (!message) return null;

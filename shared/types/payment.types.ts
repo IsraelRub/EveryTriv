@@ -25,7 +25,7 @@ export interface PaymentMetadata {
 	status?: string;
 	optionId?: string;
 	packageId?: string;
-	points?: number;
+	credits?: number;
 	bonus?: number;
 	// Optional metadata fields
 	createdAt?: Date;

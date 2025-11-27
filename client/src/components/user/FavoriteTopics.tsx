@@ -10,7 +10,7 @@ import { AudioKey, ComponentSize } from '../../constants';
 import { audioService } from '../../services';
 import { FavoriteTopicsProps } from '../../types';
 import { createStaggerContainer } from '../animations';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 
 // Individual Favorite Card component with gesture support
 const FavoriteCard = ({

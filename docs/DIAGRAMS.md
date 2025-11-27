@@ -20,7 +20,7 @@ graph LR
         C --> L[AdminDashboard]
         C --> M[LeaderboardView]
         C --> N[PaymentView]
-        C --> O[PointsView]
+        C --> O[CreditsView]
         C --> P[SettingsView]
         C --> Q[LoginView]
         C --> R[RegistrationView]
@@ -42,7 +42,7 @@ graph LR
         AG --> AH[api.service]
         AG --> AI[auth.service]
         AG --> AJ[user.service]
-        AG --> AK[points.service]
+        AG --> AK[credits.service]
         AG --> AL[payment.service]
         AG --> AM[gameHistory.service]
         AG --> AN[customDifficulty.service]
@@ -53,7 +53,7 @@ graph LR
         A --> AS[Hooks]
         AS --> AT[useAuth]
         AS --> AU[useTrivia]
-        AS --> AV[usePoints]
+        AS --> AV[useCredits]
         AS --> AW[useUser]
         AS --> AX[useUserStats]
         AS --> AY[useAnalyticsDashboard]
@@ -91,18 +91,18 @@ graph LR
         BS --> CD[Game Constants]
         BS --> CE[User Constants]
         BS --> CF[Payment Constants]
-        BS --> CG[Points Constants]
+        BS --> CG[Credits Constants]
         BT --> CH[HTTP Constants]
         BT --> CI[Infrastructure Constants]
         BT --> CJ[Localhost Constants]
         BT --> CK[Logging Constants]
         BT --> CL[Storage Constants]
         CD[Services] --> CEA[Logging Services]
-        CD --> CFA[Points Services]
+        CD --> CFA[Credits Services]
         CD --> CGA[Storage Services]
         CEA --> CHA[Client Logger]
         CEA --> CIA[Server Logger]
-        CFA --> CJA[Points Calculation]
+        CFA --> CJA[Score Calculation]
         CGA --> CKA[Storage Manager]
         BTA[Utils] --> BUA[Core Utils]
         BTA --> BVA[Domain Utils]
@@ -113,7 +113,7 @@ graph LR
         BUA --> CBA[Error Utils]
         BUA --> CCA[Format Utils]
         BVA --> CEB[User Utils]
-        BVA --> CFB[Points Utils]
+        BVA --> CFB[Credits Utils]
         BVA --> CGB[Payment Utils]
         BVA --> CHB[Subscription Utils]
         BVA --> CIB[Entity Guards]
@@ -131,7 +131,7 @@ graph LR
         DJ --> DK[AuthModule]
         DJ --> DL[GameModule]
         DJ --> DM[UserModule]
-        DJ --> DN[PointsModule]
+        DJ --> DN[CreditsModule]
         DJ --> DO[PaymentModule]
         DJ --> DP[SubscriptionModule]
         DJ --> DQ[LeaderboardModule]
@@ -182,23 +182,57 @@ sequenceDiagram
     participant U as User
     participant F as Frontend
     participant G as GameService
-    participant AI as AI Providers
+    participant GH as GameHistory
+    participant TG as TriviaGenerationService
     participant DB as PostgreSQL
-    participant C as Redis Cache
+    participant AI as AI Providers
 
     U->>F: בחירת נושא וקושי
     F->>G: POST /api/game/trivia
-    G->>C: בדיקת מטמון
-    alt יש במטמון
-        C->>G: החזרת שאלה
-    else אין במטמון
-        G->>AI: יצירת שאלה
-        AI->>G: שאלה חדשה
-        G->>DB: שמירת שאלה
-        G->>C: שמירה במטמון
+    G->>G: ולידציית בקשה
+    
+    alt יש userId
+        G->>GH: איסוף שאלות שהמשתמש כבר ראה
+        GH->>DB: שאילתת game_history
+        DB->>GH: החזרת היסטוריית משחקים
+        GH->>G: רשימת שאלות שכבר נראו
     end
-    G->>F: החזרת שאלה
-    F->>U: הצגת שאלה
+    
+    G->>TG: בדיקה אם יש שאלות במסד הנתונים
+    TG->>DB: שאילתת trivia (נושא + רמה)
+    DB->>TG: מספר שאלות קיימות
+    TG->>G: יש/אין שאלות קיימות
+    
+    alt יש שאלות קיימות
+        G->>TG: אחזור שאלות קיימות (מסוננות)
+        TG->>DB: שאילתת trivia (מסוננת לפי שאלות שכבר נראו)
+        DB->>TG: שאלות קיימות
+        TG->>G: שאלות קיימות
+        G->>G: הוספת שאלות קיימות לרשימה
+    end
+    
+    alt אין מספיק שאלות
+        loop עד מספר השאלות המבוקש
+            G->>TG: יצירת שאלה חדשה
+            TG->>AI: יצירת שאלה עם AI
+            AI->>TG: שאלה חדשה
+            TG->>TG: בדיקה אם שאלה כבר קיימת במסד
+            TG->>DB: בדיקת כפילות (שאלה, נושא, רמה)
+            alt שאלה כבר קיימת
+                DB->>TG: שאלה קיימת
+                TG->>G: החזרת שאלה קיימת
+            else שאלה לא קיימת
+                TG->>DB: שמירת שאלה חדשה
+                DB->>TG: אישור שמירה
+                TG->>G: שאלה חדשה
+            end
+            G->>G: בדיקת כפילות בבאצ' הנוכחי
+            G->>G: הוספת שאלה לרשימה
+        end
+    end
+    
+    G->>F: החזרת שאלות
+    F->>U: הצגת שאלות
 ```
 
 ## דיאגרמת זרימת נתונים - תשובה לשאלה
@@ -208,14 +242,14 @@ sequenceDiagram
     participant U as User
     participant F as Frontend
     participant G as GameService
-    participant P as PointsService
+    participant P as CreditsService
     participant S as UserStats
     participant DB as PostgreSQL
 
     U->>F: שליחת תשובה
     F->>G: POST /api/game/answer
     G->>G: בדיקת נכונות
-    G->>P: חישוב נקודות
+    G->>P: חישוב ניקוד
     P->>P: חישוב לפי קושי וזמן
     P->>DB: שמירת טרנזקציה
     G->>S: עדכון סטטיסטיקות
@@ -230,7 +264,7 @@ sequenceDiagram
 graph TB
     subgraph "Feature Modules"
         A[AuthModule] --> B[UserModule]
-        C[GameModule] --> D[PointsModule]
+        C[GameModule] --> D[CreditsModule]
         C --> E[AnalyticsModule]
         C --> F[LeaderboardModule]
         E --> F
@@ -372,7 +406,7 @@ graph LR
         E5[LeaderboardEntity]
         E6[PaymentHistoryEntity]
         E7[SubscriptionEntity]
-        E8[PointTransactionEntity]
+        E8[CreditTransactionEntity]
         BE[BaseEntity<br/>id, createdAt, updatedAt]
     end
 
@@ -384,7 +418,7 @@ graph LR
         R5[LeaderboardRepository]
         R6[PaymentRepository]
         R7[SubscriptionRepository]
-        R8[PointTransactionRepository]
+        R8[CreditTransactionRepository]
     end
 
     subgraph "Internal Layer - Modules"
@@ -520,7 +554,7 @@ graph LR
         H[AdminDashboard]
         I[LeaderboardView]
         J[PaymentView]
-        K[PointsView]
+        K[CreditsView]
         L[SettingsView]
         M[LoginView]
         N[RegistrationView]
@@ -530,8 +564,8 @@ graph LR
     subgraph "Supporting Layers"
         COMP[Components<br/>Game, UI, Form, Layout<br/>Navigation, Stats, User<br/>Animations, Audio, etc.]
         STATE[State Management<br/>Redux Store + Slices<br/>React Query Cache]
-        SERV[Services<br/>API, Auth, User, Points<br/>Payment, Game History, etc.]
-        HOOKS[Hooks<br/>Auth, Trivia, Points, User<br/>Analytics, Admin, etc.]
+        SERV[Services<br/>API, Auth, User, Credits<br/>Payment, Game History, etc.]
+        HOOKS[Hooks<br/>Auth, Trivia, Credits, User<br/>Analytics, Admin, etc.]
         CONST[Constants<br/>Storage, UI, Game, Audio]
         TYPES[Types<br/>API, Game, Redux, UI, User]
         UTILS[Utils<br/>Data, Date/Time, Format, UI]
@@ -591,7 +625,7 @@ erDiagram
     USERS ||--o{ USER_STATS : "has"
     USERS ||--o{ PAYMENT_HISTORY : "makes"
     USERS ||--o{ SUBSCRIPTIONS : "subscribes"
-    USERS ||--o{ POINT_TRANSACTIONS : "transacts"
+    USERS ||--o{ CREDIT_TRANSACTIONS : "transacts"
     USERS ||--o{ LEADERBOARD : "ranks"
 
     USERS {
@@ -601,7 +635,7 @@ erDiagram
         string password_hash
         string google_id
         int credits
-        int purchased_points
+        int purchased_credits
         int daily_free_questions
         int remaining_free_questions
         boolean is_active
@@ -688,11 +722,11 @@ erDiagram
         timestamp updated_at
     }
 
-    POINT_TRANSACTIONS {
+    CREDIT_TRANSACTIONS {
         uuid id PK
         uuid user_id FK
         string transaction_type
-        int points_amount
+        int credits_amount
         int balance_after
         string description
         string reference_id
@@ -755,8 +789,8 @@ stateDiagram-v2
     GameSession --> Question: טעינת שאלה
     Question --> Answer: הצגת שאלה
     Answer --> Validate: שליחת תשובה
-    Validate --> Points: חישוב נקודות
-    Points --> UpdateStats: עדכון סטטיסטיקות
+    Validate --> Score: חישוב ניקוד
+    Score --> UpdateStats: עדכון סטטיסטיקות
     UpdateStats --> NextQuestion: שאלה נוספת?
     NextQuestion --> Question: כן
     NextQuestion --> GameSummary: לא
@@ -809,7 +843,7 @@ graph LR
         W --> AG[Game Constants]
         W --> AH[User Constants]
         W --> AI[Payment Constants]
-        W --> AJ[Points Constants]
+        W --> AJ[Credits Constants]
         V --> AK[HTTP Constants]
         V --> AL[Infrastructure Constants]
         V --> AM[Localhost Constants]
@@ -819,13 +853,13 @@ graph LR
 
     subgraph "Services"
         AP[Logging Services]
-        AQ[Points Services]
+        AQ[Credits Services]
         AR[Storage Services]
         AP --> AS[Client Logger]
         AP --> AT[Server Logger]
         AP --> AU[Base Logger]
-        AQ --> AV[Points Calculation]
-        AQ --> AW[Base Points Service]
+        AQ --> AV[Score Calculation]
+        AQ --> AW[Base Credits Service]
         AR --> AX[Storage Manager]
         AR --> AY[Base Storage Service]
         AR --> AZ[Metrics Service]
@@ -843,7 +877,7 @@ graph LR
         BC --> BJ[Error Utils]
         BC --> BK[Format Utils]
         BD --> BM[User Utils]
-        BD --> BN[Points Utils]
+        BD --> BN[Credits Utils]
         BD --> BO[Payment Utils]
         BD --> BP[Subscription Utils]
         BD --> BQ[Entity Guards]
@@ -873,20 +907,20 @@ graph LR
 graph TB
     A[TriviaGenerationService] --> B[ProvidersService]
     B --> C[BaseProvider]
-    C --> D[OpenAIProvider]
-    C --> E[AnthropicProvider]
-    C --> F[GoogleProvider]
-    C --> G[MistralProvider]
+    C --> D[GroqProvider<br/>Priority: 1<br/>Free]
+    C --> E[GeminiProvider<br/>Priority: 2<br/>$0.075/M]
+    C --> F[ChatGPTProvider<br/>Priority: 3<br/>$0.15/M]
+    C --> G[ClaudeProvider<br/>Priority: 4<br/>$0.25/M]
     
-    B --> H[Provider Selection]
-    H --> I[Round Robin]
+    B --> H[Provider Selection<br/>by Priority]
+    H --> I[Round Robin<br/>Cost-based]
     H --> J[Load Balancing]
-    H --> K[Fallback]
+    H --> K[Fallback<br/>on Error]
     
-    D --> L[OpenAI API]
-    E --> M[Anthropic API]
-    F --> N[Google AI API]
-    G --> O[Mistral API]
+    D --> L[Groq API<br/>Llama 3.1 8B]
+    E --> M[Gemini API<br/>Gemini 1.5 Flash]
+    F --> N[ChatGPT API<br/>GPT-4o-mini]
+    G --> O[Claude API<br/>Claude 3.5 Haiku]
     
     A --> P[Prompt Templates]
     P --> Q[Trivia Prompt]
@@ -945,13 +979,13 @@ graph LR
     C --> W[currentUser]
     C --> X[username]
     C --> Y[avatar]
-    C --> Z[pointBalance]
+    C --> Z[creditBalance]
     C --> AA[isLoading]
     C --> AB[error]
     C --> AC[isAuthenticated]
-    Z --> AD[purchasedPoints]
-    Z --> AE[freePoints]
-    Z --> AF[totalPoints]
+    Z --> AD[purchasedCredits]
+    Z --> AE[freeCredits]
+    Z --> AF[totalCredits]
     
     D --> AG[stats]
     D --> AH[globalStats]
@@ -1090,7 +1124,7 @@ graph LR
         J[GameHistory]
         K[AnalyticsView]
         L[PaymentView]
-        M[PointsView]
+        M[CreditsView]
         N[SettingsView]
     end
 
@@ -1256,15 +1290,15 @@ graph LR
     end
 
     subgraph "Game Hooks"
-        GAME[Game Hooks<br/>useTrivia, useGameTimer<br/>useSaveHistory, useCanPlay<br/>useDeductPoints]
+        GAME[Game Hooks<br/>useTrivia, useGameTimer<br/>useSaveHistory, useCanPlay<br/>useDeductCredits]
     end
 
     subgraph "User Hooks"
         USER[User Hooks<br/>useUser, useUpdateUserProfile<br/>useUserPreferences]
     end
 
-    subgraph "Points Hooks"
-        POINTS[Points Hooks<br/>usePoints, usePointBalance<br/>usePointHistory]
+    subgraph "Credits Hooks"
+        CREDITS[Credits Hooks<br/>useCredits, useCreditBalance<br/>useCreditHistory]
     end
 
     subgraph "Subscription Hooks"
@@ -1294,7 +1328,7 @@ graph LR
         BH[api.service]
         BI[auth.service]
         BJ[user.service]
-        BK[points.service]
+        BK[credits.service]
         BL[payment.service]
         BM[audio.service]
         BN[Redux Store]
@@ -1303,7 +1337,7 @@ graph LR
     RQH --> BH
     AUTH --> BI
     USER --> BJ
-    POINTS --> BK
+    CREDITS --> BK
     SUB --> BL
     GAME --> BH
     ACCOUNT --> BH
@@ -1321,7 +1355,7 @@ graph LR
     style RQH fill:#e3f2fd,color:#000000
     style AUTH fill:#fff4e6,color:#000000
     style USER fill:#e8f5e9,color:#000000
-    style POINTS fill:#fff9c4,color:#000000
+    style CREDITS fill:#fff9c4,color:#000000
     style SUB fill:#fce4ec,color:#000000
     style GAME fill:#e1bee7,color:#000000
     style ACCOUNT fill:#f3e5f5,color:#000000
@@ -1336,7 +1370,7 @@ graph LR
         A[api.service]
         B[auth.service]
         C[user.service]
-        D[points.service]
+        D[credits.service]
         E[payment.service]
         F[gameHistory.service]
         G[customDifficulty.service]
@@ -1415,7 +1449,7 @@ graph LR
         M[profile - UserProfile]
         N[history - GameHistory]
         O[payment - PaymentView]
-        P[points - PointsView]
+        P[credits - CreditsView]
         Q[analytics - AnalyticsView]
         R[settings - SettingsView]
         S[complete-profile - CompleteProfile]
@@ -1594,7 +1628,7 @@ graph TB
     end
 
     subgraph "Common Layer (Query Helpers)"
-        QH[Query Helpers<br/>- addDateRangeConditions<br/>- addSearchConditions<br/>- createRandomQuery<br/>- createGroupByQuery]
+        QH[Query Helpers<br/>- addDateRangeConditions<br/>- addSearchConditions<br/>- createGroupByQuery]
     end
 
     subgraph "Services Layer (Business Logic)"
@@ -1602,7 +1636,7 @@ graph TB
         S2[GameService]
         S3[AnalyticsService]
         S4[LeaderboardService]
-        S5[PointsService]
+        S5[CreditsService]
         S6[PaymentService]
         S7[SubscriptionService]
     end
@@ -1612,13 +1646,13 @@ graph TB
         C2[GameController]
         C3[AnalyticsController]
         C4[LeaderboardController]
-        C5[PointsController]
+        C5[CreditsController]
         C6[PaymentController]
         C7[SubscriptionController]
     end
 
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/points<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
+        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
     end
 
     DB --> E1
@@ -1699,7 +1733,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/points<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
+        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
     end
 
     subgraph "API Service Layer (HTTP Client)"
@@ -1711,7 +1745,7 @@ graph TB
     end
 
     subgraph "React Query Hooks Group"
-        RQ_ALL[React Query Hooks<br/>useAuth, useTrivia<br/>useUser, usePoints<br/>useUserStats, etc.]
+        RQ_ALL[React Query Hooks<br/>useAuth, useTrivia<br/>useUser, useCredits<br/>useUserStats, etc.]
     end
 
     subgraph "Components Group"
@@ -1760,7 +1794,7 @@ graph TB
 
     subgraph "Frontend - State Management Layer"
         RS[Redux Store<br/>gameSlice<br/>userSlice<br/>statsSlice<br/>favoritesSlice<br/>gameModeSlice]
-        RQ[React Query Hooks<br/>useAuth<br/>useTrivia<br/>useUser<br/>usePoints<br/>etc.]
+        RQ[React Query Hooks<br/>useAuth<br/>useTrivia<br/>useUser<br/>useCredits<br/>etc.]
         QC[React Query Client<br/>Cache Management]
     end
 
@@ -1805,7 +1839,7 @@ graph LR
     subgraph "Shared Package"
         SP_T[Types<br/>Domain, Core, Infrastructure]
         SP_C[Constants<br/>Business, Core, Domain, Infrastructure]
-        SP_S[Services<br/>Core: Logging<br/>Domain: Points<br/>Infrastructure: Storage, Cache, Auth]
+        SP_S[Services<br/>Core: Logging<br/>Domain: Credits<br/>Infrastructure: Storage, Cache, Auth]
         SP_U[Utils<br/>Core, Domain, Infrastructure]
         SP_V[Validation<br/>Core, Domain]
     end

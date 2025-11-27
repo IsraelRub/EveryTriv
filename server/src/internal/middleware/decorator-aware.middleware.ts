@@ -8,7 +8,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { NextFunction, Response } from 'express';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
+import { CACHE_DURATION, HTTP_METHODS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
@@ -138,7 +138,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 	 */
 	private analyzeRequest(req: NestRequest) {
 		const path = req.path || '';
-		const method = req.method || 'GET';
+		const method = req.method || HTTP_METHODS.GET;
 
 		// Smart public endpoint detection
 		const publicPatterns = [
@@ -169,13 +169,13 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 			suggestedRateLimit = { limit: 5, window: 60 }; // 5 per minute for login
 		} else if (path.includes('/auth/register')) {
 			suggestedRateLimit = { limit: 3, window: 300 }; // 3 per 5 minutes for register
-		} else if (method === 'GET' && !path.includes('/admin')) {
+		} else if (method === HTTP_METHODS.GET && !path.includes('/admin')) {
 			suggestedRateLimit = { limit: 100, window: 60 }; // 100 per minute for GET requests
 		}
 
 		// Smart cache suggestions
 		let suggestedCache: { ttl: number; key?: string } | null = null;
-		if (method === 'GET' && !path.includes('/auth') && !path.includes('/admin')) {
+		if (method === HTTP_METHODS.GET && !path.includes('/auth') && !path.includes('/admin')) {
 			suggestedCache = { ttl: CACHE_DURATION.MEDIUM }; // 5 minutes cache for GET requests
 		}
 

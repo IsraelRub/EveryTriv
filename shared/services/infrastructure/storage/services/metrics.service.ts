@@ -5,7 +5,7 @@
  * @description Centralized metrics tracking for all storage operations
  */
 import { serverLogger as logger } from '@shared/services';
-import type { BasicValue, MiddlewareMetrics, StatsValue, StorageMetrics } from '@shared/types';
+import type { BasicValue, MiddlewareMetrics, StatsValue, StorageMetrics, StorageType } from '@shared/types';
 
 /**
  * metrics service class
@@ -90,7 +90,7 @@ export class MetricsService {
 	 */
 	trackOperation(
 		operation: keyof StorageMetrics['operations'],
-		storageType: 'persistent' | 'cache' | 'hybrid',
+		storageType: StorageType,
 		success: boolean,
 		duration: number,
 		size?: number

@@ -9,7 +9,7 @@ import { calculatePercentage, getErrorMessage } from '@shared/utils';
 import { ComponentSize, Spacing } from '../../constants';
 import { SocialShareProps } from '../../types';
 import { createStaggerContainer, fadeInUp, hoverScale, scaleIn } from '../animations';
-import { Icon } from '../IconLibrary';
+import { Icon } from '../ui/IconLibrary';
 import { ResponsiveGrid } from './GridLayout';
 
 export default function SocialShare({

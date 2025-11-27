@@ -6,7 +6,7 @@
  */
 
 // Re-export client-specific formatting functions
-export { formatNumber, formatRelativeTime, formatScore, formatUsername, formatTopic } from '../format.utils';
+export { formatDisplayName, formatNumber, formatRelativeTime, formatScore, formatTopic } from '../format.utils';
 
 /**
  * Get icon name for difficulty level

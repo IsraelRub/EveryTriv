@@ -24,6 +24,7 @@ export const STORAGE_KEYS = {
 	// UI state (localStorage - persistent)
 	AUDIO_SETTINGS: 'audio_settings',
 	AUDIO_VOLUME: 'audioVolume',
+	AUDIO_MUTED: 'audioMuted',
 	SCORE_HISTORY: 'score_history',
 
 	// Temporary data (sessionStorage - session only)

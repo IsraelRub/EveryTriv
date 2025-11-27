@@ -316,7 +316,7 @@ export class AnalyticsService implements OnModuleInit {
       correctAnswers: stats.correctAnswers,
       favoriteTopic: stats.favoriteTopic,
       averageTimePerQuestion: stats.averageTimePerQuestion ?? 0,
-      totalPoints: stats.totalPoints,
+      totalScore: stats.totalScore,
       topicsPlayed: stats.topicsPlayed,
       difficultyBreakdown: stats.difficultyBreakdown,
       recentActivity: stats.recentActivity,

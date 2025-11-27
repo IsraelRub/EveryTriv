@@ -15,6 +15,7 @@ export class SubscriptionController {
 
 	/**
 	 * Get available subscription plans
+	 * @returns Available subscription plans
 	 */
 	@Get('plans')
 	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 2 hours - subscription plans rarely change
@@ -37,6 +38,8 @@ export class SubscriptionController {
 
 	/**
 	 * Get current subscription for user
+	 * @param userId Current user identifier
+	 * @returns Current subscription data
 	 */
 	@Get('current')
 	@UseGuards(AuthGuard)
@@ -63,6 +66,9 @@ export class SubscriptionController {
 
 	/**
 	 * Create new subscription
+	 * @param userId Current user identifier
+	 * @param body Subscription creation data
+	 * @returns Subscription creation result
 	 */
 	@Post('create')
 	@UseGuards(AuthGuard)
@@ -97,6 +103,8 @@ export class SubscriptionController {
 
 	/**
 	 * Cancel subscription
+	 * @param userId Current user identifier
+	 * @returns Subscription cancellation result
 	 */
 	@Delete('cancel')
 	@UseGuards(AuthGuard)

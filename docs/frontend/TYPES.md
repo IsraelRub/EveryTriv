@@ -83,7 +83,7 @@ export interface PointsPurchaseRequest {
 **PointsPurchaseResponse:**
 ```typescript
 export interface PointsPurchaseResponse extends PaymentResult {
-  balance?: PointBalance;
+  balance?: CreditBalance;
 }
 ```
 
@@ -91,10 +91,10 @@ export interface PointsPurchaseResponse extends PaymentResult {
 Interface מלא עם כל ה-methods של API service:
 - HTTP methods: `get`, `post`, `put`, `delete`
 - Auth methods: `login`, `register`, `logout`, `refreshToken`
-- User methods: `getCurrentUser`, `getUserProfile`, `updateUserProfile`, `getUserCredits`, `deductCredits`, `searchUsers`, `getUserByUsername`
+- User methods: `getCurrentUser`, `getUserProfile`, `updateUserProfile`, `deductCredits`, `searchUsers`
 - Game history methods: `saveGameHistory`, `getUserGameHistory`, `deleteGameHistory`, `clearGameHistory`
 - Leaderboard methods: `getLeaderboardEntries`, `getUserRank`, `getUserStats`, `updateUserRanking`, `getLeaderboardByPeriod`
-- Points methods: `getPointBalance`, `getPointPackages`, `canPlay`, `deductPoints`, `getPointHistory`, `confirmPointPurchase`, `purchasePoints`
+- Credits methods: `getCreditBalance`, `getCreditPackages`, `canPlayCredits`, `deductCredits`, `getCreditHistory`, `confirmCreditPurchase`, `purchaseCredits`
 - Trivia methods: `getTrivia`, `submitAnswer`, `getTriviaQuestionById`, `getGameById`, `validateCustomDifficulty`
 - Analytics methods: `getUserAnalytics`, `getPopularTopics`, `getDifficultyStats`, `trackAnalyticsEvent`, `getUserStatisticsById`, `getUserPerformanceById`, `getUserProgressById`, `getUserActivityById`, `getUserInsightsById`, `getUserRecommendationsById`, `getUserAchievementsById`, `getUserTrendsById`, `compareUserPerformanceById`, `getUserSummaryById`
 - User preferences methods: `updateUserPreferences`
@@ -114,7 +114,7 @@ Interface מלא עם כל ה-methods של API service:
 export interface CurrentQuestionMetadata {
   customDifficultyMultiplier?: number;
   actualDifficulty?: string;
-  questionCount?: number;
+  totalQuestions?: number;
 }
 ```
 
@@ -135,7 +135,7 @@ export interface GameProps {
 ```typescript
 export interface TriviaGameProps {
   question: TriviaQuestion;
-  onComplete: (isCorrect: boolean, pointsEarned?: number) => void;
+  onComplete: (isCorrect: boolean, scoreEarned?: number) => void;
   timeLimit?: number;
 }
 ```
@@ -156,7 +156,7 @@ export interface TriviaFormProps {
   loading?: boolean;
   topic?: string;
   difficulty?: string;
-  questionCount?: number;
+  answerCount?: number;
   // ... עוד props
 }
 ```
@@ -178,11 +178,11 @@ export interface ScoringSystemProps {
 export interface LeaderboardProps {
   entries?: {
     rank: number;
-    username: string;
+    email: string;
     score: number;
     avatar?: string;
   }[];
-  onEntryClick?: (entry: { id: string; username: string; score: number; rank: number }) => void;
+  onEntryClick?: (entry: { id: string; email: string; score: number; rank: number }) => void;
   className?: string;
   userId?: string;
 }
@@ -323,15 +323,10 @@ export interface RegisteredInterceptor<T> {
 
 טיפוסי Redux State:
 
-**UserState:**
+**ClientValidationType:**
 ```typescript
-export interface UserState extends BaseReduxState {
-  currentUser: BasicUser | null;
-  isAuthenticated: boolean;
-  username: string;
-  avatar: string;
-  pointBalance: PointBalance | null;
-}
+export type ClientValidationType = 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
+```
 ```
 
 **GameSliceState:**
@@ -388,12 +383,12 @@ export interface FavoritePayload {
 }
 ```
 
-**PointBalancePayload:**
+**CreditBalancePayload:**
 ```typescript
-export interface PointBalancePayload {
+export interface CreditBalancePayload {
   balance: number;
-  purchasedPoints: number;
-  freePoints: number;
+  purchasedCredits: number;
+  freeCredits: number;
   lastUpdated: Date;
   dailyLimit?: number;
   nextResetTime?: string | null;
@@ -548,7 +543,7 @@ export interface ConfirmModalProps {
 ```typescript
 export interface AvatarProps {
   src?: string;
-  username?: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   size?: ComponentSize;
@@ -656,7 +651,7 @@ export interface NavigationMenuProps {
   audioControls: ReactNode;
   isAuthenticated: boolean;
   pointsDisplay?: string;
-  totalPoints?: number;
+  totalCredits?: number;
   freeQuestions?: number;
   nextResetTime?: string | null;
   userDisplay?: NavigationUserDisplay;
@@ -807,7 +802,7 @@ export interface ValidationHookOptions {
 
 **ClientValidationType:**
 ```typescript
-export type ClientValidationType = 'username' | 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
+export type ClientValidationType = 'password' | 'email' | 'topic' | 'customDifficulty' | 'language';
 ```
 
 **ValidatorsMap:**

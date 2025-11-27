@@ -9,8 +9,8 @@ import { motion } from 'framer-motion';
 
 import { AlertVariant, ButtonVariant, ComponentSize, ModalSize } from '../../constants';
 import type { ConfirmModalProps } from '../../types';
-import { Icon } from '../IconLibrary';
 import { Button } from './Button';
+import { Icon } from './IconLibrary';
 import { Modal } from './Modal';
 
 export default function ConfirmModal({

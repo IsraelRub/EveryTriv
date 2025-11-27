@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { BillingCycle, PaymentMethod, PaymentStatus, PlanType, SubscriptionStatus } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { ManualPaymentDetails, SubscriptionData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { generateSubscriptionId, getErrorMessage } from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
 
@@ -85,7 +85,7 @@ export class SubscriptionService {
 				throw new NotFoundException('User not found');
 			}
 
-			const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const subscriptionId = generateSubscriptionId();
 			const startDate = new Date();
 			const endDate = new Date();
 			endDate.setMonth(endDate.getMonth() + (billingCycle === BillingCycle.YEARLY ? 12 : 1));

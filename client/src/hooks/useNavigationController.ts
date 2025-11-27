@@ -2,13 +2,19 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { APP_NAME } from '@shared/constants';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { AudioKey, NAVIGATION_LINKS, ROUTE_PATHS } from '../constants';
+import { APP_NAME } from '@shared/constants';
+import { clientLogger as logger } from '@shared/services';
+
+import { AudioKey, NAVIGATION_LINKS } from '../constants';
+import { setAuthenticated, setUser } from '../redux/slices';
+import { authService } from '../services';
 import type { NavigationControllerResult, NavigationMenuLink, NavigationUserDisplay, RootState } from '../types';
-import { formatScore, formatUsername } from '../utils';
+import { formatScore } from '../utils';
 import { useAudio } from './useAudio';
-import { usePointBalance } from './usePoints';
+import { useCreditBalance } from './useCredits';
+import { useAppDispatch } from './useRedux';
 
 function buildNavigationLinks(currentPath: string): ReadonlyArray<NavigationMenuLink> {
 	return NAVIGATION_LINKS.main.map(link => ({
@@ -19,22 +25,27 @@ function buildNavigationLinks(currentPath: string): ReadonlyArray<NavigationMenu
 
 function buildUserDisplay(params: {
 	currentUser: RootState['user']['currentUser'];
-	stateUsername?: string | null;
 	stateAvatar?: string | null;
 }): NavigationUserDisplay | undefined {
-	const { currentUser, stateUsername, stateAvatar } = params;
+	const { currentUser, stateAvatar } = params;
 
 	if (!currentUser) {
 		return undefined;
 	}
 
-	const displayUsername = stateUsername || currentUser.username || '';
+	const displayEmail = currentUser.email || '';
+
+	// Try to get firstName and lastName if they exist (if currentUser is UserProfile instead of BasicUser)
+	const firstName =
+		'firstName' in currentUser && typeof currentUser.firstName === 'string' ? currentUser.firstName : undefined;
+	const lastName =
+		'lastName' in currentUser && typeof currentUser.lastName === 'string' ? currentUser.lastName : undefined;
 
 	return {
-		username: formatUsername(displayUsername),
+		email: displayEmail,
 		avatar: stateAvatar || undefined,
-		firstName: '',
-		lastName: '',
+		firstName: firstName ?? '',
+		lastName: lastName ?? '',
 	};
 }
 
@@ -42,16 +53,13 @@ export function useNavigationController(): NavigationControllerResult {
 	const audioService = useAudio();
 	const location = useLocation();
 	const navigate = useNavigate();
+	const dispatch = useAppDispatch();
+	const queryClient = useQueryClient();
 
-	const {
-		currentUser,
-		isAuthenticated,
-		username: stateUsername,
-		avatar: stateAvatar,
-	} = useSelector((state: RootState) => state.user);
-	const { data: pointsData } = usePointBalance();
+	const { currentUser, isAuthenticated, avatar: stateAvatar } = useSelector((state: RootState) => state.user);
+	const { data: creditsData } = useCreditBalance();
 
-	const isHomePage = location.pathname === ROUTE_PATHS.HOME;
+	const isHomePage = location.pathname === '/';
 
 	const navigationLinks = useMemo(() => buildNavigationLinks(location.pathname), [location.pathname]);
 
@@ -59,43 +67,66 @@ export function useNavigationController(): NavigationControllerResult {
 		() =>
 			buildUserDisplay({
 				currentUser,
-				stateUsername,
 				stateAvatar,
 			}),
-		[currentUser, stateUsername, stateAvatar]
+		[currentUser, stateAvatar]
 	);
 
-	const pointsDisplay = useMemo(() => {
-		if (!pointsData?.balance) {
+	const creditsDisplay = useMemo(() => {
+		if (!creditsData?.balance) {
 			return '0';
 		}
 
-		return formatScore(pointsData.balance);
-	}, [pointsData]);
+		return formatScore(creditsData.balance);
+	}, [creditsData]);
 
 	const handleNavigateHome = useCallback(() => {
 		if (!isHomePage) {
 			audioService.play(AudioKey.PAGE_CHANGE);
-			navigate(ROUTE_PATHS.HOME);
+			navigate('/');
 		}
 	}, [audioService, isHomePage, navigate]);
 
-	const handleLogout = useCallback(() => {
+	const handleLogout = useCallback(async () => {
 		audioService.play(AudioKey.PAGE_CHANGE);
-		navigate(ROUTE_PATHS.HOME);
-	}, [audioService, navigate]);
 
-	const handleGoogleLogin = useCallback(() => {
+		try {
+			// Call logout service to clear tokens and API session
+			await authService.logout();
+
+			// Clear Redux state
+			dispatch(setUser(null));
+			dispatch(setAuthenticated(false));
+
+			// Clear React Query cache
+			queryClient.clear();
+
+			// Navigate to home page
+			navigate('/');
+		} catch {
+			// Even if logout fails, clear local state and navigate
+			dispatch(setUser(null));
+			dispatch(setAuthenticated(false));
+			queryClient.clear();
+			navigate('/');
+		}
+	}, [audioService, navigate, dispatch, queryClient]);
+
+	const handleSignIn = useCallback(() => {
 		audioService.play(AudioKey.PAGE_CHANGE);
-	}, [audioService]);
+		logger.authInfo('Sign In button clicked - navigating to login page', {
+			path: location.pathname,
+		});
+		navigate('/login');
+	}, [audioService, navigate, location.pathname]);
 
 	const handleSignUp = useCallback(() => {
 		audioService.play(AudioKey.PAGE_CHANGE);
-		navigate(ROUTE_PATHS.REGISTER);
+		navigate('/register');
 	}, [audioService, navigate]);
 
-	const handleGetMorePoints = useCallback(() => {
-		navigate(ROUTE_PATHS.PAYMENT);
+	const handleGetMoreCredits = useCallback(() => {
+		navigate('/payment');
 	}, [navigate]);
 
 	return {
@@ -104,18 +135,18 @@ export function useNavigationController(): NavigationControllerResult {
 		links: navigationLinks,
 		isAuthenticated,
 		userDisplay,
-		points: {
-			display: pointsDisplay,
-			total: pointsData?.totalPoints,
-			freeQuestions: pointsData?.freeQuestions,
-			nextResetTime: pointsData?.nextResetTime ?? null,
+		credits: {
+			display: creditsDisplay,
+			total: creditsData?.totalCredits,
+			freeQuestions: creditsData?.freeQuestions,
+			nextResetTime: creditsData?.nextResetTime ?? null,
 		},
 		actions: {
 			onNavigateHome: handleNavigateHome,
 			onLogout: handleLogout,
 			onSignUp: handleSignUp,
-			onGoogleLogin: handleGoogleLogin,
-			onGetMorePoints: handleGetMorePoints,
+			onSignIn: handleSignIn,
+			onGetMoreCredits: handleGetMoreCredits,
 		},
 	};
 }

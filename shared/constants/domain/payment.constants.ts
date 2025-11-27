@@ -95,24 +95,24 @@ export enum BillingCycle {
 export const VALID_BILLING_CYCLES = Object.values(BillingCycle);
 
 /**
- * Point packages - single source of truth
+ * Credit packages - single source of truth
  * @constant
- * @description All point packages with consistent pricing
+ * @description All credit packages with consistent pricing
  * @used_by server/src/features/payment, client/src/views/payment
  */
-export const POINT_PURCHASE_PACKAGES = [
-	{ id: 'package_50', points: 50, price: 2.99, tier: 'basic' },
-	{ id: 'package_100', points: 100, price: 4.99, tier: 'basic' },
-	{ id: 'package_250', points: 250, price: 9.99, tier: 'standard' },
-	{ id: 'package_500', points: 500, price: 18.99, tier: 'premium' },
-	{ id: 'package_1000', points: 1000, price: 34.99, tier: 'ultimate' },
-	{ id: 'package_2000', points: 2000, price: 64.99, tier: 'ultimate' },
+export const CREDIT_PURCHASE_PACKAGES = [
+	{ id: 'package_50', credits: 50, price: 2.99, tier: 'basic' },
+	{ id: 'package_100', credits: 100, price: 4.99, tier: 'basic' },
+	{ id: 'package_250', credits: 250, price: 9.99, tier: 'standard' },
+	{ id: 'package_500', credits: 500, price: 18.99, tier: 'premium' },
+	{ id: 'package_1000', credits: 1000, price: 34.99, tier: 'ultimate' },
+	{ id: 'package_2000', credits: 2000, price: 64.99, tier: 'ultimate' },
 ].map(pkg => ({
 	...pkg,
-	paypalProductId: `everytriv_points_${pkg.points}`,
+	paypalProductId: `everytriv_credits_${pkg.credits}`,
 	paypalPrice: pkg.price.toFixed(2),
 	supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
-	pricePerPoint: pkg.price / pkg.points,
+	pricePerCredit: pkg.price / pkg.credits,
 	priceDisplay: `$${pkg.price.toFixed(2)}`,
 }));
 
@@ -128,7 +128,7 @@ export const SUBSCRIPTION_PLANS = {
 		currency: 'USD',
 		interval: 'month',
 		features: ['Unlimited trivia questions', 'Basic analytics', 'Email support'],
-		pointBonus: 100,
+		creditBonus: 100,
 		questionLimit: 1000,
 		paypalProductId: 'everytriv_subscription_basic',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
@@ -144,7 +144,7 @@ export const SUBSCRIPTION_PLANS = {
 			'Custom difficulty levels',
 			'Export functionality',
 		],
-		pointBonus: 250,
+		creditBonus: 250,
 		questionLimit: -1,
 		paypalProductId: 'everytriv_subscription_premium',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
@@ -161,7 +161,7 @@ export const SUBSCRIPTION_PLANS = {
 			'Dedicated support',
 			'Custom integrations',
 		],
-		pointBonus: 500,
+		creditBonus: 500,
 		questionLimit: -1,
 		paypalProductId: 'everytriv_subscription_pro',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],

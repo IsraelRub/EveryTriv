@@ -5,7 +5,13 @@
  * @description caching strategy for consistent cache behavior across the system
  * @author EveryTriv Team
  */
-import type { StorageOperationResult, StorageService, StorageValue } from '@shared/types';
+import type {
+	StorageGetStrategy,
+	StorageOperationResult,
+	StorageService,
+	StorageType,
+	StorageValue,
+} from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 /**
@@ -29,13 +35,13 @@ export class CacheStrategyService {
 	async get<T extends StorageValue>(
 		key: string,
 		validator: (value: StorageValue) => value is T,
-		strategy: 'cache-first' | 'persistent-first' | 'hybrid' = 'cache-first'
+		strategy: StorageGetStrategy = 'cache-first'
 	): Promise<StorageOperationResult<T | null>> {
 		const startTime = Date.now();
 		let success = false;
 		let data: T | null = null;
 		let error: string | undefined;
-		let storageType: 'cache' | 'persistent' | 'hybrid' = 'cache';
+		let storageType: StorageType = 'cache';
 
 		try {
 			switch (strategy) {
@@ -77,7 +83,7 @@ export class CacheStrategyService {
 					break;
 				}
 
-				case 'hybrid': {
+				case 'both': {
 					// Try both simultaneously
 					const [persistentResult, cacheResult] = await Promise.allSettled([
 						this.persistentStorage.get<T>(key, validator),
@@ -140,12 +146,12 @@ export class CacheStrategyService {
 		key: string,
 		value: T,
 		ttl?: number,
-		strategy: 'cache' | 'persistent' | 'hybrid' = 'hybrid'
+		strategy: StorageType = 'hybrid'
 	): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		let success = false;
 		let error: string | undefined;
-		let storageType: 'cache' | 'persistent' | 'hybrid' = 'cache';
+		let storageType: StorageType = 'cache';
 
 		try {
 			switch (strategy) {

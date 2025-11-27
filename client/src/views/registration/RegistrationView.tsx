@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
@@ -35,9 +36,11 @@ import {
 } from '../../constants';
 import { useRegister } from '../../hooks';
 import { audioService, authService, storageService } from '../../services';
+import type { RootState } from '../../types';
 
 export default function RegistrationView() {
 	const navigate = useNavigate();
+	const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
 	const [step, setStep] = useState<'method' | 'manual' | 'confirmation'>('method');
 
@@ -50,6 +53,18 @@ export default function RegistrationView() {
 			page: 'registration',
 		});
 	}, []);
+
+	// Navigate to home if user becomes authenticated (after registration)
+	useEffect(() => {
+		if (isAuthenticated && step === 'confirmation') {
+			// Small delay to ensure Redux state is fully updated
+			const timer = setTimeout(() => {
+				logger.gameInfo('User authenticated after registration, navigating to home');
+				navigate('/');
+			}, 500);
+			return () => clearTimeout(timer);
+		}
+	}, [isAuthenticated, step, navigate]);
 
 	const handleGoogleSignUp = () => {
 		logger.gameInfo('Google sign-up initiated', {
@@ -84,13 +99,11 @@ export default function RegistrationView() {
 		}
 
 		logger.gameInfo('Manual registration form submitted', {
-			username: values.username,
 			email: values.email,
 		});
 
 		register(
 			{
-				username: values.username,
 				email: values.email,
 				password: values.password,
 				confirmPassword: values.password,
@@ -100,7 +113,7 @@ export default function RegistrationView() {
 				onSuccess: async data => {
 					setRegistrationSuccess(true);
 					audioService.play(AudioKey.SUCCESS);
-					logger.gameInfo('Registration successful', { username: values.username });
+					logger.gameInfo('Registration successful', { email: values.email });
 
 					if (data.accessToken) {
 						await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, data.accessToken);
@@ -197,7 +210,6 @@ export default function RegistrationView() {
 				<ValidatedForm
 					fields={REGISTRATION_FIELDS}
 					initialValues={{
-						username: REGISTRATION_DEFAULT_VALUES.username,
 						email: REGISTRATION_DEFAULT_VALUES.email,
 						password: REGISTRATION_DEFAULT_VALUES.password,
 						confirmPassword: REGISTRATION_DEFAULT_VALUES.confirmPassword,
@@ -248,17 +260,22 @@ export default function RegistrationView() {
 				<header className='text-center'>
 					<h2 className='text-2xl font-bold text-white mb-4'>Welcome to EveryTriv!</h2>
 					<p className='text-slate-300 mb-6'>
-						Your account has been created successfully. You can start playing and earning points!
+						Your account has been created successfully. You can start playing and earning credits!
 					</p>
 				</header>
 				<Button
 					onClick={() => {
 						audioService.play(AudioKey.GAME_START);
-						navigate('/profile');
+						if (isAuthenticated) {
+							navigate('/profile');
+						} else {
+							// If not authenticated yet, navigate to home (which doesn't require auth)
+							navigate('/');
+						}
 					}}
 					className='w-full'
 				>
-					Go to Profile
+					{isAuthenticated ? 'Go to Profile' : 'Start Playing'}
 					<Icon name='ArrowRight' className='w-4 h-4 ml-2' />
 				</Button>
 			</div>

@@ -226,7 +226,7 @@ export interface MediaLogger {
 export interface EnhancedLogger {
 	// Enhanced logging methods
 	logSecurityEventEnhanced(message: string, level: 'info' | 'warn' | 'error', context?: LogMeta): void;
-	logAuthenticationEnhanced(action: string, userId: string, username: string, context?: LogMeta): void;
+	logAuthenticationEnhanced(action: string, userId: string, email: string, context?: LogMeta): void;
 }
 
 // Complete logger interface - combines all basic modules
@@ -264,6 +264,7 @@ export interface LogMeta {
 	actualCount?: number;
 	aiQuestion?: string;
 	amount?: number;
+	answerCount?: number;
 	analysis?: string;
 	attempt?: number;
 	authorized?: boolean;
@@ -272,10 +273,11 @@ export interface LogMeta {
 	avatar?: string;
 	averageAccuracy?: number;
 	averageGames?: number;
-	averagePoints?: number;
 	averageScore?: number;
 	avgResponseTime?: number;
 	baseUrl?: string;
+	body?: string;
+	bodyType?: string;
 	batchSize?: number;
 	bestStreak?: number;
 	billingCycle?: BillingCycle;
@@ -315,6 +317,9 @@ export interface LogMeta {
 	entries?: number;
 	error?: string;
 	errorCode?: string;
+	errorDescription?: string;
+	errorUri?: string;
+	eventName?: string;
 	errors?: string[];
 	errorsCount?: number;
 	errorType?: string;
@@ -367,15 +372,16 @@ export interface LogMeta {
 	middleware?: string;
 	middlewarePublicFlag?: boolean;
 	mode?: string;
+	model?: string;
 	module?: string;
 	musicEnabled?: boolean;
 	name?: string;
 	newCredits?: number;
 	newFreeQuestions?: number;
-	newPurchasedPoints?: number;
+	newPurchasedCredits?: number;
 	newScore?: number;
 	newStatus?: UserStatus;
-	newTotalPoints?: number;
+	newTotalCredits?: number;
 	offset?: number;
 	oldCredits?: number;
 	operationCount?: number;
@@ -396,19 +402,23 @@ export interface LogMeta {
 	period?: string;
 	plansCount?: number;
 	planType?: PlanType;
-	points?: number;
 	port?: number;
+	priority?: number;
 	preference?: string;
 	preferences?: UserPreferences | Partial<UserPreferences>;
 	previousCredits?: number;
+	previousProvider?: string;
 	previousScore?: number;
+	lastSuccessful?: string;
 	price?: number;
 	promptBuildTime?: number;
 	provider?: string;
 	providerDuration?: number;
-	purchasedPoints?: number;
+	providers?: string[];
+	costPerToken?: number;
+	purchasedCredits?: number;
 	query?: string | string[];
-	questionCount?: number;
+	requestedQuestions?: number;
 	questionId?: string;
 	queueSize?: number;
 	rank?: number;
@@ -419,16 +429,28 @@ export interface LogMeta {
 	refreshTokenExpiry?: string;
 	remaining?: number;
 	remainingInQueue?: number;
-	remainingPoints?: number;
+	remainingCredits?: number;
 	requestCount?: number;
 	requests?: number;
 	requestedCount?: number;
+	requiredCredits?: number;
 	requiredRoles?: UserRole[];
 	requireEmailVerification?: boolean;
 	responseTime?: number;
 	resultsCount?: number;
 	retryCount?: number;
+	retryAfterSeconds?: number;
 	role?: UserRole;
+	roomId?: string;
+	clientId?: string;
+	code?: string;
+	hostId?: string;
+	maxPlayers?: number;
+	playerCount?: number;
+	scoreEarned?: number;
+	currentQuestionIndex?: number;
+	qualityScore?: number;
+	confidenceScore?: number;
 	rules?: string[];
 	rulesCount?: number;
 	saltRounds?: number;
@@ -460,6 +482,7 @@ export interface LogMeta {
 	timeSpent?: number;
 	timestamp?: string;
 	token?: string;
+	tokenCount?: number;
 	topic?: string;
 	totalDifficulties?: number;
 	totalErrors?: number;
@@ -467,7 +490,6 @@ export interface LogMeta {
 	totalItems?: number;
 	totalMiddlewares?: number;
 	totalOps?: number;
-	totalPoints?: number;
 	totalProviders?: number;
 	totalQuestions?: number;
 	totalRequests?: number;
@@ -484,7 +506,6 @@ export interface LogMeta {
 	user?: User;
 	userAgent?: string;
 	userId?: string;
-	username?: string;
 	usersCount?: number;
 	value?: BasicValue;
 	valueLength?: number;

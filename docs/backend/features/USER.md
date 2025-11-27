@@ -45,7 +45,6 @@ server/src/features/user/
 ```typescript
 {
   id: string;
-  username: string;
   email: string;
   role: UserRole;
   firstName?: string;
@@ -64,27 +63,6 @@ server/src/features/user/
 async getUserProfile(@CurrentUser() user: TokenPayload) {
   const result = await this.userService.getUserProfile(user.sub);
   return result;
-}
-```
-
-### GET /users/credits
-
-אחזור נקודות משתמש נוכחי.
-
-**Response:**
-```typescript
-{
-  credits: number;
-}
-```
-
-**דוגמת שימוש:**
-```typescript
-@Get('credits')
-@NoCache()
-async getUserCredits(@CurrentUserId() userId: string) {
-  const credits = await this.userService.getUserCredits(userId);
-  return { credits };
 }
 ```
 
@@ -124,7 +102,6 @@ async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCredits
 **Request Body:**
 ```typescript
 {
-  username?: string;
   firstName?: string;
   lastName?: string;
   avatar?: string;
@@ -136,7 +113,6 @@ async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCredits
 ```typescript
 {
   id: string;
-  username: string;
   email: string;
   role: UserRole;
   firstName?: string;
@@ -178,7 +154,7 @@ async updateUserProfile(@CurrentUserId() userId: string, @Body() profileData: Up
   query: string;
   results: Array<{
     id: string;
-    username: string;
+    email: string;
     firstName?: string;
     lastName?: string;
     avatar?: string;
@@ -197,31 +173,6 @@ async searchUsers(@Query() query: SearchUsersDto) {
 }
 ```
 
-### GET /users/username/:username
-
-אחזור משתמש לפי שם משתמש.
-
-**Response:**
-```typescript
-{
-  id: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
-  avatar?: string;
-  // ... שדות נוספים
-}
-```
-
-**דוגמת שימוש:**
-```typescript
-@Get('username/:username')
-@Cache(CACHE_DURATION.LONG)
-async getUserByUsername(@Param('username') username: string) {
-  const result = await this.userService.getUserByUsername(username);
-  return result;
-}
-```
 
 ### DELETE /users/account
 
@@ -306,7 +257,7 @@ async updateUserPreferences(@CurrentUserId() userId: string, @Body() preferences
 עדכון שדה יחיד בפרופיל משתמש נוכחי.
 
 **Path Parameters:**
-- `field`: שם השדה לעדכון (username, email, firstName, lastName, avatar, וכו')
+- `field`: שם השדה לעדכון (email, firstName, lastName, avatar, וכו')
 
 **Request Body:**
 ```typescript
@@ -540,7 +491,6 @@ export class UserService {
 
     return {
       id: user.id,
-      username: user.username,
       email: user.email,
       role: user.role,
       firstName: user.firstName,
@@ -561,18 +511,7 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // Validate username uniqueness if provided
-    if (profileData.username && profileData.username !== user.username) {
-      const existingUser = await this.userRepository.findOne({
-        where: { username: profileData.username },
-      });
-      if (existingUser) {
-        throw new BadRequestException('Username already taken');
-      }
-    }
-
     // Update user fields
-    if (profileData.username !== undefined) user.username = profileData.username;
     if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
     if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
     if (profileData.avatar !== undefined) user.avatar = profileData.avatar;
@@ -588,7 +527,6 @@ export class UserService {
 
     return {
       id: updatedUser.id,
-      username: updatedUser.username,
       email: updatedUser.email,
       role: updatedUser.role,
       firstName: updatedUser.firstName,
@@ -616,11 +554,11 @@ export class UserService {
       async () => {
         const users = await this.userRepository
           .createQueryBuilder('user')
-          .where('user.username ILIKE :query OR user.firstName ILIKE :query OR user.lastName ILIKE :query', {
+          .where('user.email ILIKE :query OR user.firstName ILIKE :query OR user.lastName ILIKE :query', {
             query: `%${normalizedQuery}%`,
           })
           .andWhere('user.is_active = :isActive', { isActive: true })
-          .select(['user.id', 'user.username', 'user.firstName', 'user.lastName', 'user.avatar'])
+          .select(['user.id', 'user.email', 'user.firstName', 'user.lastName', 'user.avatar'])
           .limit(limit)
           .getMany();
 
@@ -628,7 +566,7 @@ export class UserService {
           query,
           results: users.map(user => ({
             id: user.id,
-            username: user.username,
+            email: user.email,
             firstName: user.firstName ?? null,
             lastName: user.lastName ?? null,
             avatar: user.avatar ?? null,
@@ -640,14 +578,6 @@ export class UserService {
     );
   }
 
-  /**
-   * Get user by username
-   */
-  async getUserByUsername(username: string) {
-    const user = await this.userRepository.findOne({ where: { username } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
     return user;
   }
 
@@ -734,14 +664,13 @@ export class UserService {
    */
   async updateUserField(userId: string, field: string, value: BasicValue): Promise<UserEntity> {
     const validFields = [
-      'username',
       'email',
       'firstName',
       'lastName',
       'avatar',
       'isActive',
       'credits',
-      'purchasedPoints',
+      'purchasedCredits',
       'dailyFreeQuestions',
       'remainingFreeQuestions',
       'role',
@@ -758,27 +687,18 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // Validate field-specific rules
-    if (field === 'username') {
-      const existingUser = await this.userRepository.findOne({ where: { username: value as string } });
-      if (existingUser && existingUser.id !== userId) {
-        throw new BadRequestException('Username already taken');
-      }
-    }
-
     // Field type mapping for validation
     const fieldTypeMap: Record<
       string,
       { type: 'string' | 'number' | 'boolean'; fieldName?: string; minLength?: number; maxLength?: number }
     > = {
-      username: { type: 'string', minLength: 3 },
       email: { type: 'string' },
       firstName: { type: 'string' },
       lastName: { type: 'string' },
       avatar: { type: 'string' },
       isActive: { type: 'boolean' },
       credits: { type: 'number' },
-      purchasedPoints: { type: 'number' },
+      purchasedCredits: { type: 'number' },
       dailyFreeQuestions: { type: 'number' },
       remainingFreeQuestions: { type: 'number' },
     };
@@ -926,7 +846,6 @@ export class UserService {
     return {
       users: users.map(user => ({
         id: user.id,
-        username: user.username,
         email: user.email,
         role: user.role,
         status: user.status,
@@ -937,17 +856,6 @@ export class UserService {
       limit: limit || users.length,
       offset: offset || 0,
     };
-  }
-
-  /**
-   * Get user credits
-   */
-  async getUserCredits(userId: string): Promise<number> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    return user.credits || 0;
   }
 
   /**
@@ -985,12 +893,11 @@ export class UserService {
 |----------|-------------|-----|------|
 | פרופיל משתמש | `user:profile:{userId}` | - | מוסר בעת עדכון |
 | חיפוש משתמשים | `user:search:{query}:{limit}` | 300s | עדכון אוטומטי |
-| משתמש לפי username | `user:username:{username}` | 600s | עדכון בעת שינוי |
 | נקודות משתמש | `user:credits:{userId}` | - | מוסר בעת עדכון |
 | סטטיסטיקות משתמש | `user:stats:{userId}` | - | מוסר בעת עדכון |
 
 ## אבטחה
-- כל פעולה מחייבת אימות משתמש (חוץ מ-search ו-username lookup שעשויים להיות ציבוריים)
+- כל פעולה מחייבת אימות משתמש (חוץ מ-search שעשוי להיות ציבורי)
 - עדכון רק לשדות מותרים
 - בדיקת הרשאות מנהליות על פעולות מנהליות
 - ולידציית שדות לפני עדכון

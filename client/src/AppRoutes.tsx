@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
 
 import { UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
@@ -26,8 +26,10 @@ import GameHistory from './views/gameHistory/GameHistory';
 import HomeView from './views/home/HomeView';
 import { LeaderboardView } from './views/leaderboard';
 import LoginView from './views/login/LoginView';
+import MultiplayerGameView from './views/multiplayer/MultiplayerGameView';
+import MultiplayerLobbyView from './views/multiplayer/MultiplayerLobbyView';
+import MultiplayerResultsView from './views/multiplayer/MultiplayerResultsView';
 import PaymentView from './views/payment';
-import PointsView from './views/points/PointsView';
 import { RegistrationView } from './views/registration';
 import SettingsView from './views/settings/SettingsView';
 import UnauthorizedView from './views/unauthorized/UnauthorizedView';
@@ -57,7 +59,7 @@ function NavigationTracker() {
 			});
 		}
 
-		const validRoutes = [
+		const routePatterns = [
 			'/',
 			'/game',
 			'/game/play',
@@ -69,7 +71,7 @@ function NavigationTracker() {
 			'/history',
 			'/leaderboard',
 			'/payment',
-			'/points',
+			'/credits',
 			'/settings',
 			'/register',
 			'/login',
@@ -77,8 +79,17 @@ function NavigationTracker() {
 			'/auth/callback',
 			'/complete-profile',
 			'/analytics',
+			'/multiplayer',
+			'/multiplayer/game/:roomId',
+			'/multiplayer/results/:roomId',
+			'/forgot-password',
+			'/unauthorized',
 		];
-		if (!validRoutes.includes(location.pathname) && !location.pathname.startsWith('/auth/')) {
+
+		const isValidRoute = routePatterns.some(pattern => matchPath({ path: pattern, end: true }, location.pathname));
+		const isAuthRoute = location.pathname.startsWith('/auth/');
+
+		if (!isValidRoute && !isAuthRoute) {
 			logger.navigationUnknownRoute(location.pathname, {
 				referrer: document.referrer,
 				timestamp: new Date().toISOString(),
@@ -99,6 +110,10 @@ function NavigationTracker() {
  */
 export default function AppRoutes() {
 	const dispatch = useAppDispatch();
+	const location = useLocation();
+
+	// Check if current route is an authentication page
+	const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
 	useEffect(() => {
 		const initAuth = async () => {
@@ -128,13 +143,20 @@ export default function AppRoutes() {
 					logger.authError('Authentication initialization failed', {
 						error: getErrorMessage(error),
 					});
-					authService.logout();
+					await authService.logout();
+					// Clear Redux state after logout
+					dispatch(setUser(null));
+					dispatch(setAuthenticated(false));
+					// Only redirect to login if not already on auth pages
+					if (!isAuthPage) {
+						window.location.href = '/login';
+					}
 				}
 			}
 		};
 
 		initAuth();
-	}, [dispatch]);
+	}, [dispatch, isAuthPage]);
 
 	return (
 		<div className='app-shell'>
@@ -145,7 +167,7 @@ export default function AppRoutes() {
 			>
 				Skip to main content
 			</a>
-			<Navigation />
+			{!isAuthPage && <Navigation />}
 			<main id='main-content' className='app-main' tabIndex={-1}>
 				<Routes>
 					{/* Public routes */}
@@ -159,6 +181,32 @@ export default function AppRoutes() {
 					<Route path='/game/play' element={<GameSessionView />} />
 					<Route path='/game/summary' element={<GameSummaryView />} />
 					<Route path='/game/custom' element={<CustomDifficultyView />} />
+
+					{/* Multiplayer routes */}
+					<Route
+						path='/multiplayer'
+						element={
+							<ProtectedRoute>
+								<MultiplayerLobbyView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/multiplayer/game/:roomId'
+						element={
+							<ProtectedRoute>
+								<MultiplayerGameView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/multiplayer/results/:roomId'
+						element={
+							<ProtectedRoute>
+								<MultiplayerResultsView />
+							</ProtectedRoute>
+						}
+					/>
 
 					{/* Protected routes - require authentication */}
 					<Route
@@ -182,14 +230,6 @@ export default function AppRoutes() {
 						element={
 							<ProtectedRoute>
 								<PaymentView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path='/points'
-						element={
-							<ProtectedRoute>
-								<PointsView />
 							</ProtectedRoute>
 						}
 					/>
@@ -257,7 +297,7 @@ export default function AppRoutes() {
 					<Route path='*' element={<NotFound />} />
 				</Routes>
 			</main>
-			<Footer />
+			{!isAuthPage && <Footer />}
 		</div>
 	);
 }

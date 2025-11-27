@@ -12,7 +12,7 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../../server/database/init:/docker-entrypoint-initdb.d
+      - ./server/database/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U everytriv_user -d everytriv"]
       interval: 10s
@@ -42,7 +42,7 @@ services:
   # Backend Server
   server:
     build: 
-      context: ../..
+      context: .
       dockerfile: server/Dockerfile
       args:
         NODE_ENV: prod
@@ -82,6 +82,11 @@ services:
       - LANGUAGE_TOOL_API_KEY=${LANGUAGE_TOOL_API_KEY:-your-language-tool-api-key-here}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-493943099709-hpmbtnc9fjrtksic99i6ht2p7bhgm2ml.apps.googleusercontent.com}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-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}
+      # AI Providers API Keys (ordered by priority - lower number = selected first)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CHATGBT_API_KEY=${CHATGBT_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
     ports:
       - '3002:3002'
     depends_on:
@@ -90,7 +95,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ../../server/logs:/app/logs
+      - ./server/logs:/app/logs
     networks:
       - everytriv-network
     healthcheck:
@@ -103,7 +108,7 @@ services:
   # Frontend Client
   client:
     build: 
-      context: ../..
+      context: .
       dockerfile: client/Dockerfile
     container_name: everytriv-client
     restart: unless-stopped

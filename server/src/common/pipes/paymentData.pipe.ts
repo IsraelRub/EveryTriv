@@ -10,6 +10,7 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { PaymentMethod } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { PersonalPaymentData, ValidationResult } from '@shared/types';
+import { isRecord } from '@shared/utils';
 
 import type { CreatePaymentDto } from '../../features/payment/dtos/payment.dto';
 
@@ -20,7 +21,7 @@ export class PaymentDataPipe implements PipeTransform {
 
 		logger.validationDebug('payment_data', '[REDACTED]', 'validation_start');
 
-		if (!this.isPlainObject(value)) {
+		if (!isRecord(value)) {
 			logger.validationWarn('payment_data', '[REDACTED]', 'validation_skipped', {
 				reason: 'non_object_payload',
 			});
@@ -206,10 +207,6 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		return typeof value.cardNumber === 'string' && typeof value.cvv === 'string';
-	}
-
-	private isPlainObject(value: unknown): value is PersonalPaymentData | CreatePaymentDto {
-		return typeof value === 'object' && value !== null;
 	}
 
 	private sanitizeManualPaymentValue<T extends PersonalPaymentData | CreatePaymentDto>(value: T): T {

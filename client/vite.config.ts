@@ -60,16 +60,17 @@ export default defineConfig({
 	server: {
 		port: DEFAULT_PORTS.CLIENT,
 		proxy: (() => {
-			const proxyPaths = ['/v1', '/auth', '/api', '/game', '/leaderboard', '/users', '/analytics', '/points', '/payment'];
+			const proxyPaths = ['/v1', '/auth', '/api', '/game', '/leaderboard', '/users', '/analytics', '/credits', '/payment'];
 			const proxyConfig: ViteProxyConfig = {
 				target: DEFAULT_URLS.DEV_SERVER,
 				changeOrigin: true,
 				secure: false,
 			};
+			const proxyMap: Record<string, ViteProxyConfig> = {};
 			return proxyPaths.reduce((acc, path) => {
 				acc[path] = proxyConfig;
 				return acc;
-			}, {} as Record<string, ViteProxyConfig>);
+			}, proxyMap);
 		})(),
 		// Add these settings to prevent extension communication issues
 		hmr: {
@@ -98,7 +99,7 @@ export default defineConfig({
 	},
 	define: {
 		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-		'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || LOCALHOST_URLS.API_BASE),
+		'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || LOCALHOST_URLS.SERVER),
 		'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || 'EveryTriv'),
 	},
 });

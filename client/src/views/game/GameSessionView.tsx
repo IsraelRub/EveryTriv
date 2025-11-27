@@ -66,7 +66,7 @@ export default function GameSessionView() {
 				const response = await triviaMutation.mutateAsync({
 					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
 					difficulty: currentDifficulty || 'medium',
-					questionCount: totalQuestions,
+					requestedQuestions: totalQuestions,
 					userId: currentUser?.id || '',
 				});
 
@@ -96,10 +96,10 @@ export default function GameSessionView() {
 		loadQuestions();
 	}, []);
 
-	const handleQuestionComplete = (wasCorrect: boolean, pointsEarned: number = 0) => {
+	const handleQuestionComplete = (wasCorrect: boolean, scoreEarned: number = 0) => {
 		if (wasCorrect) {
 			setCorrectAnswers(prev => prev + 1);
-			setScore(prev => prev + pointsEarned);
+			setScore(prev => prev + scoreEarned);
 		}
 
 		// Record question data
@@ -127,7 +127,7 @@ export default function GameSessionView() {
 
 			navigate('/game/summary', {
 				state: {
-					score: wasCorrect ? score + pointsEarned : score,
+					score: wasCorrect ? score + scoreEarned : score,
 					totalQuestions,
 					correctAnswers: wasCorrect ? correctAnswers + 1 : correctAnswers,
 					topic: currentTopic,

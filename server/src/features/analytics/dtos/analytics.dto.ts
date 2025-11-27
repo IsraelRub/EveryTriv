@@ -280,7 +280,7 @@ export class UserTrendQueryDto {
 	groupBy?: TimePeriod;
 
 	@ApiPropertyOptional({
-		description: 'Maximum number of timeline points to return',
+		description: 'Maximum number of timeline scoring to return',
 		example: 30,
 		minimum: 1,
 		maximum: 200,

@@ -43,6 +43,16 @@ export function hasPropertyOfType<K extends string, T>(
 }
 
 /**
+ * Type guard to check if value is an array of strings
+ * @param value Value to check
+ * @returns True if value is an array where all items are strings
+ * @description Safely narrows unknown to string[] without type assertions
+ */
+export function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+/**
  * Calculate percentage with rounding
  * @param value Current value
  * @param total Total value
@@ -73,10 +83,13 @@ export function unique<T>(arr: T[]): T[] {
 }
 
 /**
- * Group array by key
- * @param arr Array to group
+ * Group array by key (in-memory)
+ * @param arr Array to group (already loaded into memory)
  * @param key Key to group by
- * @returns Grouped array
+ * @returns Record mapping group key to array of items
+ * @description Intended for in-memory grouping on already-loaded arrays.
+ * For large datasets or DB-level aggregations, prefer createGroupByQuery
+ * from server common queries.
  */
 export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
 	const grouped: Record<string, T[]> = {};
@@ -117,4 +130,18 @@ export function buildCountRecord<T>(
 	}
 
 	return record;
+}
+
+/**
+ * Shuffle array using Fisher-Yates algorithm
+ * @param arr Array to shuffle
+ * @returns Shuffled array
+ */
+export function shuffle<T>(arr: T[]): T[] {
+	const shuffled = [...arr];
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+	return shuffled;
 }

@@ -12,6 +12,7 @@ Decorators ב-NestJS מאפשרים הוספת metadata לקוד, המשמש א�
 - `auth.decorator.ts` - Decorators לאימות והרשאות
 - `cache.decorator.ts` - Decorators למטמון
 - `param.decorator.ts` - Parameter decorators לחילוץ מידע מבקשות
+- `ws-param.decorator.ts` - Parameter decorators לחילוץ מידע מ-WebSocket connections
 
 ## Authentication Decorators
 
@@ -141,7 +142,7 @@ async getLeaderboard() {
 ```typescript
 @Get('balance')
 @NoCache()
-async getPointBalance(@CurrentUserId() userId: string) {
+async getCreditBalance(@CurrentUserId() userId: string) {
   // תוצאה לא תישמר במטמון (נתונים בזמן אמת)
 }
 ```
@@ -152,7 +153,7 @@ async getPointBalance(@CurrentUserId() userId: string) {
 3. אם `disabled === true` → דילוג על מטמון
 
 **דוגמאות שימוש:**
-- `GET /points/balance` - יתרת נקודות בזמן אמת
+- `GET /credits/balance` - יתרת קרדיטים בזמן אמת
 - `POST /game/trivia` - שאלות טריוויה חדשות
 - `GET /leaderboard/user/ranking` - דירוג משתמש בזמן אמת
 
@@ -287,10 +288,82 @@ async getProfile(@CurrentUser() user: TokenPayload) {
 }
 ```
 
+## WebSocket Parameter Decorators
+
+**מיקום:** `server/src/common/decorators/ws-param.decorator.ts`
+
+### @WsCurrentUserId()
+
+מחלץ מזהה משתמש (`user.sub`) מ-WebSocket connection.
+
+**שימוש:**
+```typescript
+@SubscribeMessage('join-room')
+async handleJoinRoom(
+  @WsCurrentUserId() userId: string,
+  @MessageBody() data: JoinRoomDto
+) {
+  // userId מכיל את user.sub מה-JWT
+}
+```
+
+**איך זה עובד:**
+1. `WsAuthGuard` כבר בדק JWT ומחלץ payload
+2. `WsAuthGuard` מצרף `payload` ל-`client.data.user` ו-`client.data.userId`
+3. `@WsCurrentUserId()` מחלץ `client.data.userId` (או `client.data.user?.sub`)
+
+### @WsCurrentUser()
+
+מחלץ אובייקט משתמש מלא (`UserPayload`) מ-WebSocket connection.
+
+**שימוש:**
+```typescript
+import type { UserPayload } from '@internal/types';
+
+@SubscribeMessage('join-room')
+async handleJoinRoom(
+  @WsCurrentUser() user: UserPayload,
+  @MessageBody() data: JoinRoomDto
+) {
+  // user מכיל את כל ה-JWT payload
+  // user.sub, user.role, user.email, וכו'
+}
+```
+
+**איך זה עובד:**
+1. `WsAuthGuard` כבר בדק JWT ומחלץ payload
+2. `WsAuthGuard` מצרף `payload` ל-`client.data.user`
+3. `@WsCurrentUser()` מחלץ `client.data.user`
+
+### @ConnectedSocket()
+
+מחלץ את ה-Socket instance (TypedSocket).
+
+**שימוש:**
+```typescript
+import type { TypedSocket } from '@internal/types';
+
+@SubscribeMessage('join-room')
+async handleJoinRoom(
+  @ConnectedSocket() client: TypedSocket,
+  @MessageBody() data: JoinRoomDto
+) {
+  // client הוא ה-TypedSocket instance עם data מוקלד
+  client.join(roomId);
+  client.data.roomId = roomId;
+}
+```
+
+**איך זה עובד:**
+1. `@ConnectedSocket()` מחזיר את ה-Socket instance
+2. ה-Socket הוא `TypedSocket` עם `data` property מוקלד (`SocketData`)
+3. ניתן לגשת ל-`client.data.userId`, `client.data.roomId`, וכו'
+
 ## הפניות
 
-- [Guards](./GUARDS.md) - איך Guards משתמשים ב-Decorators
+- [Guards](./GUARDS.md) - איך Guards משתמשים ב-Decorators (כולל WsAuthGuard)
 - [Interceptors](./INTERCEPTORS.md) - איך Interceptors משתמשים ב-Decorators
 - [Request-Response Cycle](../REQUEST_RESPONSE_CYCLE.md) - סדר ביצוע Decorators
 - [Common Structure](./README.md) - סקירה כללית
+- [Multiplayer Feature](../features/MULTIPLAYER.md) - שימוש ב-WebSocket decorators
 

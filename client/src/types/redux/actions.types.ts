@@ -13,14 +13,14 @@ export interface FavoritePayload {
 	difficulty?: string;
 }
 
-export interface PointBalancePayload {
+export interface CreditBalancePayload {
 	balance: number;
-	purchasedPoints: number;
-	freePoints: number;
-	lastUpdated: Date;
+	purchasedCredits: number;
+	freeQuestions: number;
+	lastUpdated: string;
 	dailyLimit?: number;
 	nextResetTime?: string | null;
-	points?: number;
+	credits?: number;
 }
 
 export interface ScoreUpdatePayload {

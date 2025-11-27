@@ -6,7 +6,7 @@
  * @used_by client/src/services/interceptors/*.interceptor.ts
  */
 import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage } from '@shared/utils';
+import { generateInterceptorId, getErrorMessage } from '@shared/utils';
 
 import type { InterceptorOptions, RegisteredInterceptor } from '../../types';
 
@@ -32,8 +32,8 @@ export abstract class BaseInterceptorManager<
 
 	/**
 	 * Execute a single interceptor
-	 * @param interceptor - Interceptor function to execute
-	 * @param input - Input value to pass to interceptor
+	 * @param interceptor Interceptor function to execute
+	 * @param input Input value to pass to interceptor
 	 * @returns Result from interceptor execution
 	 */
 	protected abstract executeInterceptor(interceptor: TInterceptor, input: TInput): Promise<TOutput>;
@@ -46,12 +46,12 @@ export abstract class BaseInterceptorManager<
 
 	/**
 	 * Register a new interceptor
-	 * @param interceptor - Interceptor function
-	 * @param options - Interceptor options
+	 * @param interceptor Interceptor function
+	 * @param options Interceptor options
 	 * @returns Unique identifier for removal
 	 */
 	use(interceptor: TInterceptor, options?: InterceptorOptions): string {
-		const id = `${this.getIdPrefix()}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+		const id = generateInterceptorId(this.getIdPrefix());
 		this.interceptors.push({
 			interceptor,
 			options: {
@@ -69,7 +69,7 @@ export abstract class BaseInterceptorManager<
 
 	/**
 	 * Remove an interceptor by ID
-	 * @param id - Interceptor identifier
+	 * @param id Interceptor identifier
 	 * @returns True if removed, false if not found
 	 */
 	eject(id: string): boolean {
@@ -90,7 +90,7 @@ export abstract class BaseInterceptorManager<
 
 	/**
 	 * Execute all registered interceptors
-	 * @param input - Input value to pass through interceptors
+	 * @param input Input value to pass through interceptors
 	 * @returns Transformed output
 	 */
 	async execute(input: TInput): Promise<TOutput> {

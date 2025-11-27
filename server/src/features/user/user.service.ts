@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { DeepPartial, Repository } from 'typeorm';
 
-import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, UserRole, UserStatus } from '@shared/constants';
+import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, HTTP_ERROR_MESSAGES, UserRole, UserStatus } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
 	AdminUserData,
@@ -23,7 +23,7 @@ import {
 
 import { UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
-import { createServerError, createValidationError } from '@internal/utils';
+import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
 import { AuthenticationManager, PasswordService, ValidationService } from '../../common';
 import { addSearchConditions } from '../../common/queries';
@@ -63,10 +63,9 @@ export class UserService {
 			}
 
 			const authResult = await this.authenticationManager.authenticate(
-				{ username: user.username, password },
+				{ email: user.email, password },
 				{
 					id: user.id,
-					username: user.username,
 					email: user.email,
 					passwordHash: user.passwordHash,
 					role: user.role,
@@ -83,6 +82,10 @@ export class UserService {
 				throw new UnauthorizedException('Authentication result incomplete');
 			}
 
+			// Update lastLogin timestamp
+			user.lastLogin = new Date();
+			await this.userRepository.save(user);
+
 			const sessionKey = `user_session:${user.id}`;
 			const result = await this.storageService.set(
 				sessionKey,
@@ -98,14 +101,13 @@ export class UserService {
 				logger.userWarn('Failed to store user session data', {
 					context: 'UserService',
 					userId: user.id,
-					error: result.error ?? 'Unknown error',
+					error: result.error ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
 				});
 			}
 
 			return {
 				user: {
 					id: user.id,
-					username: user.username,
 					email: user.email,
 					firstName: user.firstName,
 					lastName: user.lastName,
@@ -131,17 +133,10 @@ export class UserService {
 	 * @param registerData Registration data
 	 * @returns Registration result
 	 */
-	async register(registerData: {
-		username: string;
-		email: string;
-		password: string;
-		firstName?: string;
-		lastName?: string;
-	}) {
+	async register(registerData: { email: string; password: string; firstName?: string; lastName?: string }) {
 		try {
 			logger.userInfo('User registration attempt', {
 				email: registerData.email,
-				username: registerData.username,
 			});
 
 			const existingEmail = await this.getUserByEmail(registerData.email);
@@ -152,7 +147,6 @@ export class UserService {
 			const passwordHash = await this.passwordService.hashPassword(registerData.password);
 
 			const user = await this.createUser({
-				username: registerData.username,
 				email: registerData.email,
 				passwordHash,
 				firstName: registerData.firstName,
@@ -161,7 +155,6 @@ export class UserService {
 
 			const tokenPair = await this.authenticationManager.generateTokensForUser({
 				id: user.id,
-				username: user.username,
 				email: user.email,
 				role: user.role,
 			});
@@ -169,7 +162,6 @@ export class UserService {
 			return {
 				user: {
 					id: user.id,
-					username: user.username,
 					email: user.email,
 					firstName: user.firstName,
 					lastName: user.lastName,
@@ -183,7 +175,6 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Registration failed', {
 				email: registerData.email,
-				username: registerData.username,
 				error: getErrorMessage(error),
 			});
 			throw error;
@@ -204,12 +195,11 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			return {
 				id: user.id,
-				username: user.username,
 				email: user.email,
 				role: user.role,
 				firstName: user.firstName,
@@ -245,21 +235,10 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
-			}
-
-			// Validate username uniqueness if provided
-			if (profileData.username && profileData.username !== user.username) {
-				const existingUser = await this.userRepository.findOne({
-					where: { username: profileData.username },
-				});
-				if (existingUser) {
-					throw new BadRequestException('Username already taken');
-				}
+				throw createNotFoundError('User');
 			}
 
 			// Update user fields
-			if (profileData.username !== undefined) user.username = profileData.username;
 			if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
 			if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
 			if (profileData.avatar !== undefined) user.avatar = profileData.avatar;
@@ -275,7 +254,6 @@ export class UserService {
 
 			return {
 				id: updatedUser.id,
-				username: updatedUser.username,
 				email: updatedUser.email,
 				role: updatedUser.role,
 				firstName: updatedUser.firstName,
@@ -321,12 +299,12 @@ export class UserService {
 				cacheKey,
 				async () => {
 					const queryBuilder = this.userRepository.createQueryBuilder('user');
-					addSearchConditions(queryBuilder, 'user', ['username', 'firstName', 'lastName'], normalizedQuery, {
+					addSearchConditions(queryBuilder, 'user', ['email', 'firstName', 'lastName'], normalizedQuery, {
 						wildcardPattern: 'both',
 					});
 					queryBuilder
 						.andWhere('user.is_active = :isActive', { isActive: true })
-						.select(['user.id', 'user.username', 'user.firstName', 'user.lastName', 'user.avatar'])
+						.select(['user.id', 'user.email', 'user.firstName', 'user.lastName', 'user.avatar'])
 						.limit(limit);
 
 					const users = await queryBuilder.getMany();
@@ -335,11 +313,11 @@ export class UserService {
 						query,
 						results: users.map(user => ({
 							id: user.id,
-							username: user.username,
+							email: user.email,
 							firstName: user.firstName ?? null,
 							lastName: user.lastName ?? null,
 							avatar: user.avatar ?? null,
-							displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
+							displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
 						})),
 						totalResults: users.length,
 					};
@@ -352,41 +330,6 @@ export class UserService {
 				context: 'UserService',
 				error: getErrorMessage(error),
 				query,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get user by username
-	 * @param username Username
-	 * @returns User profile
-	 */
-	async getUserByUsername(username: string) {
-		try {
-			logger.userInfo('Getting user by username', {
-				context: 'UserService',
-				username,
-			});
-
-			const user = await this.userRepository.findOne({ where: { username } });
-			if (!user) {
-				throw new NotFoundException('User not found');
-			}
-
-			return {
-				id: user.id,
-				username: user.username,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				avatar: user.avatar,
-				created_at: user.createdAt,
-			};
-		} catch (error) {
-			logger.userError('Failed to get user by username', {
-				context: 'UserService',
-				error: getErrorMessage(error),
-				username,
 			});
 			throw error;
 		}
@@ -406,7 +349,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Soft delete by setting is_active to false
@@ -447,7 +390,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Verify current password
@@ -497,7 +440,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Merge existing preferences with new ones (deep merge for privacy and game)
@@ -537,7 +480,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Apply updates
@@ -637,7 +580,6 @@ export class UserService {
 	 * @returns Created user
 	 */
 	async createUser(userData: {
-		username: string;
 		email: string;
 		passwordHash: string;
 		firstName?: string;
@@ -647,11 +589,9 @@ export class UserService {
 		try {
 			logger.userInfo('Creating new user', {
 				email: userData.email,
-				username: userData.username,
 			});
 
 			const user = this.userRepository.create({
-				username: userData.username,
 				email: userData.email,
 				passwordHash: userData.passwordHash,
 				firstName: userData.firstName,
@@ -665,7 +605,6 @@ export class UserService {
 		} catch (error) {
 			logger.userError('Failed to create user', {
 				email: userData.email,
-				username: userData.username,
 				error: getErrorMessage(error),
 			});
 			throw error;
@@ -682,7 +621,6 @@ export class UserService {
 		email: string;
 		firstName?: string;
 		lastName?: string;
-		username: string;
 		avatar?: string;
 	}) {
 		try {
@@ -696,7 +634,6 @@ export class UserService {
 				email: userData.email,
 				firstName: userData.firstName,
 				lastName: userData.lastName,
-				username: userData.username,
 				avatar: userData.avatar,
 				role: UserRole.USER,
 			});
@@ -729,7 +666,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			user.googleId = googleId;
@@ -774,7 +711,7 @@ export class UserService {
 				logger.userWarn('Failed to store audit log', {
 					userId,
 					action,
-					error: result.error ?? 'Unknown error',
+					error: result.error ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
 				});
 			}
 
@@ -858,7 +795,7 @@ export class UserService {
 			});
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Field type mapping for validation
@@ -866,14 +803,13 @@ export class UserService {
 				string,
 				{ type: 'string' | 'number' | 'boolean'; fieldName?: string; minLength?: number; maxLength?: number }
 			> = {
-				username: { type: 'string', minLength: 3 },
 				email: { type: 'string' },
 				firstName: { type: 'string' },
 				lastName: { type: 'string' },
 				avatar: { type: 'string' },
 				isActive: { type: 'boolean' },
 				credits: { type: 'number' },
-				purchasedPoints: { type: 'number' },
+				purchasedCredits: { type: 'number' },
 				dailyFreeQuestions: { type: 'number' },
 				remainingFreeQuestions: { type: 'number' },
 			};
@@ -964,7 +900,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Initialize preferences if not exists
@@ -1012,7 +948,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Update credits
@@ -1067,7 +1003,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			// Update status by mapping to isActive field
@@ -1127,11 +1063,10 @@ export class UserService {
 
 		const mapped: AdminUserData[] = users.map(user => ({
 			id: user.id,
-			username: user.username,
 			email: user.email,
 			role: user.role,
 			createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
-			lastLogin: user.updatedAt ? user.updatedAt.toISOString() : undefined,
+			lastLogin: user.lastLogin ? user.lastLogin.toISOString() : undefined,
 		}));
 
 		return {
@@ -1140,33 +1075,6 @@ export class UserService {
 			limit: safeLimit,
 			offset: safeOffset,
 		};
-	}
-
-	/**
-	 * Get user credits
-	 * @param userId User ID
-	 * @returns User credits
-	 */
-	async getUserCredits(userId: string): Promise<number> {
-		try {
-			const user = await this.userRepository.findOne({
-				where: { id: userId },
-				select: ['id', 'credits'],
-			});
-
-			if (!user) {
-				throw new NotFoundException('User not found');
-			}
-
-			return user.credits ?? 0;
-		} catch (error) {
-			logger.userError('Failed to get user credits', {
-				context: 'UserService',
-				error: getErrorMessage(error),
-				userId,
-			});
-			throw error;
-		}
 	}
 
 	/**
@@ -1184,7 +1092,7 @@ export class UserService {
 			});
 
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw createNotFoundError('User');
 			}
 
 			const currentCredits = user.credits ?? 0;

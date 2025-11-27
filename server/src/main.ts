@@ -18,8 +18,9 @@ dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as express from 'express';
 
-import { LOCALHOST_URLS, MESSAGE_FORMATTERS } from '@shared/constants';
+import { HTTP_METHODS, LOCALHOST_URLS, MESSAGE_FORMATTERS } from '@shared/constants';
 import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { AppModule } from './app.module';
@@ -77,9 +78,13 @@ async function bootstrap() {
 		app.enableCors({
 			origin: process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT,
 			credentials: true,
-			methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+			methods: Object.values(HTTP_METHODS),
 			allowedHeaders: ['Content-Type', AUTH_CONSTANTS.AUTH_HEADER, 'X-Requested-With'],
 		});
+
+		// Enable JSON body parser - must be before other middleware
+		app.use(express.json({ limit: '10mb' }));
+		app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 		app.use(require('cookie-parser')());
 

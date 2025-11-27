@@ -29,7 +29,7 @@ export const PAYMENT_FEATURES = {
 	},
 	DAILY_FREE_QUESTIONS: {
 		title: 'Daily Free Questions (20)',
-		description: 'Get 20 free questions daily to play without spending points. Reset at midnight UTC.',
+		description: 'Get 20 free questions daily to play without spending credits. Reset at midnight UTC.',
 		icon: 'timer',
 		color: 'success',
 	},
@@ -58,7 +58,7 @@ export const PAYMENT_CONTENT = {
 		popularBadge: 'POPULAR',
 		selectPlan: 'Select Plan',
 		selected: 'Selected',
-		points: 'Points',
+		credits: 'Credits',
 		save: 'Save',
 		features: {
 			questions: 'trivia questions',
@@ -84,12 +84,12 @@ export const PAYMENT_CONTENT = {
 	},
 	SUCCESS: {
 		title: 'Payment Successful!',
-		message: 'Your points have been added to your account. You can now enjoy unlimited trivia questions!',
+		message: 'Your credits have been added to your account. You can now enjoy unlimited trivia questions!',
 		startPlaying: 'Start Playing',
 		backToHome: 'Back to Home',
 	},
 	LOADING: {
-		message: 'Loading point information...',
+		message: 'Loading credit information...',
 	},
 	VALIDATION: {
 		selectPackage: 'Please select a package to continue',

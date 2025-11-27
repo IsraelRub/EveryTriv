@@ -36,16 +36,16 @@ export function isUser(value: unknown): value is User
 
 Type guard לבדיקה אם ערך הוא User:
 - בודק אם הערך הוא record
-- בודק שדות BasicUser (id, username, email)
+- בודק שדות BasicUser (id, email)
 - בודק שדות User (status, emailVerified, authProvider)
-- בודק שדות מספריים (credits, purchasedPoints, totalPoints, score)
+- בודק שדות מספריים (credits, purchasedCredits, totalCredits, score)
 
 **Usage:**
 ```typescript
 import { isUser } from '@utils';
 
 if (isUser(data)) {
-  console.log(data.username); // TypeScript knows data is User
+  console.log(data.email); // TypeScript knows data is User
 }
 ```
 
@@ -181,16 +181,6 @@ formatScore(-50); // "50.0"
 formatScore(100, false); // "100.0"
 ```
 
-**formatUsername:**
-```typescript
-export function formatUsername(username: string): string
-```
-
-מעצב שם משתמש (אות ראשונה גדולה, שאר אותיות קטנות):
-```typescript
-formatUsername('JOHN_DOE'); // "John_doe"
-formatUsername('jane smith'); // "Jane smith"
-```
 
 **formatTopic:**
 ```typescript
@@ -240,7 +230,6 @@ const className = combineClassNames(
 - `formatNumber`
 - `formatRelativeTime`
 - `formatScore`
-- `formatUsername`
 - `formatTopic`
 
 **getDifficultyIcon:**
@@ -376,7 +365,7 @@ import { isUser } from '@utils';
 
 if (isUser(data)) {
   // TypeScript knows data is User
-  console.log(data.username, data.email);
+  console.log(data.email);
 }
 ```
 

@@ -19,9 +19,9 @@ export * from './audio.constants';
 
 /**
  * Game constants
- * @description Game logic, rules, and gameplay configuration constants
+ * @description Game configuration and scoring constants
  */
-export * from './game';
+export * from './game.constants';
 
 /**
  * User constants
@@ -34,7 +34,5 @@ export * from './user-defaults.constants';
  * @description Local storage keys, cache configuration, and storage settings
  */
 export * from './storage.constants';
-export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';
 
-// Game mode defaults moved to ./game/game-mode.constants.ts
-// Payment constants moved to ./ui/payment-ui.constants.ts
+export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';

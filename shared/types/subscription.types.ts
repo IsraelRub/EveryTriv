@@ -43,7 +43,8 @@ export interface SubscriptionPlanDetails {
 	currency?: string;
 	interval?: string;
 	features: string[] | readonly string[];
-	pointBonus?: number;
+	pointBonus?: number; // Deprecated - use creditBonus instead
+	creditBonus?: number;
 	questionLimit?: number;
 	paypalProductId?: string;
 }

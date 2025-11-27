@@ -152,7 +152,7 @@ import { VALIDATION_RULES, VALIDATION_ERRORS } from '@shared/constants';
 // כללי ולידציה
 VALIDATION_RULES.USERNAME_MIN_LENGTH  // 3
 VALIDATION_RULES.USERNAME_MAX_LENGTH  // 30
-VALIDATION_RULES.PASSWORD_MIN_LENGTH  // 8
+VALIDATION_RULES.PASSWORD_MIN_LENGTH  // 6
 VALIDATION_RULES.EMAIL_PATTERN        // regex
 
 // הודעות שגיאה
@@ -216,15 +216,15 @@ UserStatus.PENDING   // 'pending'
 קבועי נקודות:
 ```typescript
 import {
-  POINT_PACKAGES,
+  CREDIT_PURCHASE_PACKAGES,
   DEFAULT_DAILY_LIMIT,
-  POINT_DECAY_RATE
+  CREDIT_DECAY_RATE
 } from '@shared/constants';
 
-// חבילות נקודות
-POINT_PACKAGES.SMALL   // { points: 100, price: 5 }
-POINT_PACKAGES.MEDIUM  // { points: 500, price: 20 }
-POINT_PACKAGES.LARGE   // { points: 1000, price: 35 }
+// חבילות קרדיטים
+CREDIT_PURCHASE_PACKAGES[0]   // { credits: 50, price: 2.99 }
+CREDIT_PURCHASE_PACKAGES[1]   // { credits: 100, price: 4.99 }
+CREDIT_PURCHASE_PACKAGES[2]   // { credits: 250, price: 9.99 }
 
 // מגבלות
 DEFAULT_DAILY_LIMIT    // 20
@@ -551,7 +551,7 @@ const percentage2 = calculatePercentage(75, 100, 2); // 75.00
 // קבלת ערכים ייחודיים
 const uniqueValues = unique([1, 2, 2, 3, 3, 3]); // [1, 2, 3]
 
-// קיבוץ לפי key
+// קיבוץ לפי key (in-memory על מערך שכבר נטען)
 const grouped = groupBy(users, 'role');
 // { 'admin': [...], 'user': [...] }
 
@@ -564,32 +564,32 @@ const counts = buildCountRecord(
 // { 'history': 100, 'science': 50 }
 ```
 
-#### math.utils.ts
-כלי מתמטיקה:
+#### array.utils.ts (מורכב ל-data.utils.ts)
+כלי מערכים:
 ```typescript
-import { roundToDecimal, clamp, randomInt } from '@shared/utils';
+import { shuffle, unique, groupBy } from '@shared/utils';
 
-// עיגול לעשרוני
-const rounded = roundToDecimal(3.14159, 2); // 3.14
+// ערבוב מערך
+const shuffled = shuffle([1, 2, 3, 4, 5]); // מערך מעורב
 
-// הגבלת ערך לטווח
-const clamped = clamp(150, 0, 100); // 100
+// ערכים ייחודיים
+const uniqueValues = unique([1, 2, 2, 3, 3, 3]); // [1, 2, 3]
 
-// מספר רנדומלי בטווח
-const random = randomInt(1, 10); // מספר בין 1 ל-10
+// קיבוץ לפי מפתח
+const grouped = groupBy(users, 'role'); // Record<string, User[]>
 ```
 
 #### format.utils.ts
 כלי עיצוב:
 ```typescript
-import { formatCurrency, calculatePricePerPoint } from '@shared/utils';
+import { formatCurrency, calculatePricePerCredit } from '@shared/utils';
 
 // עיצוב מטבע
 const formatted = formatCurrency(10.50, 'USD', 'en-US'); // '$10.50'
 const formattedIL = formatCurrency(10.50, 'ILS', 'he-IL'); // '₪10.50'
 
-// חישוב מחיר לנקודה
-const pricePerPoint = calculatePricePerPoint(10.00, 100); // 0.1
+// חישוב מחיר לקרדיט
+const pricePerCredit = calculatePricePerCredit(10.00, 100); // 0.1
 ```
 
 ### Domain Utils
@@ -610,56 +610,21 @@ const merged = mergeUserPreferences(
 ```
 
 #### points.utils.ts
-כלי נקודות:
+כלי נקודות (גרסת client):
 ```typescript
-import {
-  calculateAnswerPoints,
-  calculateBonusPoints,
-  calculateStreakBonus,
-  calculateDailyLimit,
-  calculateOptimalPackage,
-  calculatePointDecay,
-  calculatePointInterest,
-  calculatePointEfficiency
-} from '@shared/utils';
-import { PointBalance, PointPurchaseOption } from '@shared/types';
+import { calculateAnswerPoints } from '@shared/utils';
 
-// חישוב נקודות לתשובה
+// חישוב נקודות לתשובה (client-side, מקבל string difficulty)
 const points = calculateAnswerPoints(
-  'medium',     // difficulty
+  'medium',     // difficulty (string)
   15000,        // timeSpentMs in milliseconds
   3,            // streak
   true          // isCorrect
 );
 
-// חישוב bonus points
-const bonus = calculateBonusPoints(100, 'medium', 1.5);
-
-// חישוב streak bonus
-const streakBonus = calculateStreakBonus(5, 20);
-
-// חישוב daily limit
-const dailyLimitInfo = calculateDailyLimit(
-  pointBalance,           // PointBalance
-  lastResetTime,          // Date | null
-  20                      // dailyLimit
-);
-
-// חישוב חבילה אופטימלית
-const optimal = calculateOptimalPackage(
-  availablePackages,      // PointPurchaseOption[]
-  100,                    // targetPoints
-  50                      // budget
-);
-
-// חישוב דעיכת נקודות
-const decayed = calculatePointDecay(1000, 60, 0.001);
-
-// חישוב ריבית נקודות
-const withInterest = calculatePointInterest(1000, 120, 0.0005);
-
-// חישוב יעילות נקודות
-const efficiency = calculatePointEfficiency(500, 10, 20);
+// הערה: פונקציות נוספות כמו calculateBonusPoints, calculateStreakBonus, 
+// calculateDailyLimit, calculateOptimalPackage זמינות ב-PointCalculationService 
+// (server-side) בלבד
 ```
 
 ### Infrastructure Utils
@@ -704,9 +669,7 @@ import {
   sanitizeLogMessage,
   sanitizeEmail,
   sanitizeCardNumber,
-  truncateText,
-  normalizeText,
-  escapeHtml
+  normalizeText
 } from '@shared/utils';
 
 // ניקוי input
@@ -721,14 +684,8 @@ const cleanEmail = sanitizeEmail('  USER@EXAMPLE.COM  '); // 'user@example.com'
 // ניקוי מספר כרטיס
 const cleanCard = sanitizeCardNumber('1234 5678 9012 3456'); // '1234567890123456'
 
-// קיצור טקסט
-const truncated = truncateText('Long text here...', 10); // 'Long te...'
-
 // נירמול טקסט
 const normalized = normalizeText('  HELLO   WORLD  '); // 'hello world'
-
-// Escape HTML
-const escaped = escapeHtml('<script>alert("xss")</script>'); // '&lt;script&gt;...'
 ```
 
 #### storage.utils.ts

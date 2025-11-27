@@ -28,11 +28,11 @@ export * from './gameHistory.entity';
 export * from './paymentHistory.entity';
 
 /**
- * Point transaction entity
- * @description Database entity for storing point transaction records
- * @used_by server/src/features/points, server/src/repositories
+ * Credit transaction entity
+ * @description Database entity for storing credit transaction records
+ * @used_by server/src/features/credits, server/src/repositories
  */
-export * from './pointTransaction.entity';
+export * from './creditTransaction.entity';
 
 /**
  * Subscription entity

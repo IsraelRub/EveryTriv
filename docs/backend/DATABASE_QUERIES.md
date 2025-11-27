@@ -90,45 +90,28 @@ addSearchConditions(queryBuilder, 'user', ['username', 'firstName', 'lastName'],
 
 ### Random Queries
 
-**מיקום:** `server/src/common/queries/random.query.ts`
-
-Helper functions לשאילתות אקראיות עם RANDOM():
+שאילתות אקראיות (RANDOM) ממומשות כיום ישירות ב-services, ללא helper ייעודי:
 
 ```typescript
-// Add RANDOM() ordering to existing query builder
-addRandomOrder<T>(queryBuilder: SelectQueryBuilder<T>): SelectQueryBuilder<T>
-
-// Create new query builder with RANDOM() ordering
-createRandomQuery<T>(
-  repository: Repository<T>,
-  alias: string,
-  whereConditions?: Record<string, unknown>,
-  limit?: number
-): SelectQueryBuilder<T>
-```
-
-**דוגמת שימוש:**
-```typescript
-const { createRandomQuery } = await import('../../../common/queries');
-const queryBuilder = createRandomQuery(
-  this.triviaRepository,
-  'trivia',
-  { topic, difficulty },
-  count
-);
+const queryBuilder = this.triviaRepository
+  .createQueryBuilder('trivia')
+  .where('trivia.topic = :topic', { topic })
+  .andWhere('trivia.difficulty = :difficulty', { difficulty })
+  .orderBy('RANDOM()')
+  .limit(count);
 ```
 
 **משמש ב:**
-- `triviaGeneration.service.ts` - `getRandomQuestionsFromDatabase()`
+- `triviaGeneration.service.ts` - `getRandomQuestions()`
 
 ### GROUP BY Queries
 
 **מיקום:** `server/src/common/queries/group-by.query.ts`
 
-Helper functions לשאילתות GROUP BY:
+Helper functions לשאילתות GROUP BY ברמת ה-DB (לנתונים גדולים ואנליטיקות):
 
 ```typescript
-// Create new query builder with GROUP BY
+// Create new query builder with GROUP BY + COUNT
 createGroupByQuery<T>(
   repository: Repository<T>,
   alias: string,
@@ -138,7 +121,11 @@ createGroupByQuery<T>(
 ): SelectQueryBuilder<T>
 ```
 
-**דוגמת שימוש:**
+**כלל שימוש:**  
+- לסטטיסטיקות / Aggregations על טבלאות גדולות (כמו `game_history`) – להשתמש ב-`createGroupByQuery`.  
+- לחישוב על מערכים שכבר נטענו לזיכרון – להשתמש ב-`groupBy` מתוך `shared/utils/core/data.utils.ts`.
+
+**דוגמת שימוש (אנליטיקות):**
 ```typescript
 import { createGroupByQuery } from '../../common/queries';
 
@@ -154,6 +141,7 @@ const topicCounts = await queryBuilder.getRawMany<{ topic: string; count: number
 
 **משמש ב:**
 - `analytics.service.ts` - `calculateUserStats()` - ספירת משחקים לפי נושא
+- `game.service.ts` - חישוב התפלגות נושאים/רמת קושי ברמת ה-DB
 
 ## אינדקסים במסד הנתונים
 

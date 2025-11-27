@@ -106,7 +106,7 @@ Callback של Google OAuth
 ```json
 {
   "activeUsers": 150,
-  "averagePoints": 2500,
+  "averageScore": 2500,
   "averageGames": 12
 }
 ```
@@ -114,7 +114,7 @@ Callback של Google OAuth
 **Description:**
 מחזיר סטטיסטיקות כלליות של leaderboard לפי תקופה:
 - `activeUsers`: מספר משתמשים פעילים בתקופה
-- `averagePoints`: ממוצע נקודות בתקופה
+- `averageScore`: ממוצע ציון בתקופה
 - `averageGames`: ממוצע משחקים למשתמש בתקופה
 
 ### Analytics
@@ -174,7 +174,7 @@ Authorization: Bearer <jwt_token>
 {
   "topic": "string",
   "difficulty": "string",
-  "questionCount": 1
+  "totalQuestions": 1
 }
 ```
 
@@ -230,7 +230,7 @@ Authorization: Bearer <jwt_token>
   "correctAnswer": "string",
   "isCorrect": true,
   "timeSpent": 15000,
-  "pointsEarned": 100,
+  "scoreEarned": 100,
   "totalScore": 100,
   "feedback": "Correct answer!"
 }
@@ -319,10 +319,10 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-### Points
+### Credits
 
-#### GET /points/balance
-קבלת מאזן נקודות
+#### GET /credits/balance
+קבלת מאזן קרדיטים
 
 **Response:**
 ```json
@@ -331,8 +331,8 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### POST /points/purchase
-רכישת נקודות
+#### POST /credits/purchase
+רכישת קרדיטים
 
 **Request:**
 ```json
@@ -342,8 +342,8 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### GET /points/history
-היסטוריית נקודות
+#### GET /credits/history
+היסטוריית קרדיטים
 
 **Response:**
 ```json
