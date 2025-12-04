@@ -27,8 +27,8 @@ export class GameHistoryEntity extends BaseEntity {
 	@Column('int')
 	score: number = 0;
 
-	@Column({ name: 'total_questions', type: 'int', default: 0 })
-	totalQuestions: number = 0;
+	@Column({ name: 'game_question_count', type: 'int', default: 0 })
+	gameQuestionCount: number = 0;
 
 	@Column({ name: 'correct_answers', type: 'int', default: 0 })
 	correctAnswers: number = 0;
@@ -46,6 +46,6 @@ export class GameHistoryEntity extends BaseEntity {
 	questionsData: QuestionData[] = [];
 
 	get incorrectAnswers(): number {
-		return Math.max(0, this.totalQuestions - this.correctAnswers);
+		return Math.max(0, this.gameQuestionCount - this.correctAnswers);
 	}
 }

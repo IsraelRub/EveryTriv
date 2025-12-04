@@ -259,7 +259,7 @@ export class ValidationService {
 				}
 			}
 
-			// Note: requestedQuestions validation is handled by TriviaRequestDto (@Min, @Max decorators)
+			// Note: questionsPerRequest validation is handled by TriviaRequestDto (@Min, @Max decorators)
 			// This service validates business logic only (topic, difficulty)
 
 			const result = {

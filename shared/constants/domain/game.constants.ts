@@ -6,8 +6,6 @@
  * @description Core game mechanics constants and configuration with advanced features
  */
 
-import { VALIDATION_LIMITS } from '../core/validation.constants';
-
 /**
  * Prefix for custom difficulty levels
  * @constant
@@ -84,6 +82,7 @@ export enum GameMode {
 	QUESTION_LIMITED = 'question-limited',
 	TIME_LIMITED = 'time-limited',
 	UNLIMITED = 'unlimited',
+	MULTIPLAYER = 'multiplayer',
 }
 
 /**
@@ -223,15 +222,19 @@ export const CUSTOM_DIFFICULTY_KEYWORDS = {
 export const GAME_MODE_DEFAULTS = {
 	[GameMode.QUESTION_LIMITED]: {
 		timeLimit: undefined,
-		questionLimit: 10, // 10 questions
+		maxQuestionsPerGame: 10, // 10 questions
 	},
 	[GameMode.TIME_LIMITED]: {
-		timeLimit: 60, // 60 seconds
-		questionLimit: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+		timeLimit: 60, // 1 minute
+		maxQuestionsPerGame: undefined, // No question limit in time-limited mode
 	},
 	[GameMode.UNLIMITED]: {
 		timeLimit: undefined,
-		questionLimit: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+		maxQuestionsPerGame: undefined, // No question limit in unlimited mode
+	},
+	[GameMode.MULTIPLAYER]: {
+		timeLimit: 60, // 1 minute
+		maxQuestionsPerGame: 10, // 10 questions
 	},
 } as const;
 

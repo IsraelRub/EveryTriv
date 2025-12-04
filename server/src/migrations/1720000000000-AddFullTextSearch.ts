@@ -19,7 +19,7 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 					"topic" character varying NOT NULL,
 					"difficulty" character varying NOT NULL,
 					"score" integer NOT NULL DEFAULT 0,
-					"total_questions" integer NOT NULL DEFAULT 0,
+					"game_question_count" integer NOT NULL DEFAULT 0,
 					"correct_answers" integer NOT NULL DEFAULT 0,
 					"game_mode" character varying NOT NULL DEFAULT 'QUESTION_LIMITED',
 					"time_spent" integer,

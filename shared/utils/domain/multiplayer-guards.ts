@@ -42,7 +42,7 @@ function isRoomConfig(value: unknown): value is RoomConfig {
 	return (
 		typeof value.topic === 'string' &&
 		typeof value.difficulty === 'string' &&
-		typeof value.requestedQuestions === 'number' &&
+		typeof value.questionsPerRequest === 'number' &&
 		typeof value.maxPlayers === 'number' &&
 		typeof value.gameMode === 'string' &&
 		typeof value.timePerQuestion === 'number'

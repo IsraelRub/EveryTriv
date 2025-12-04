@@ -4,9 +4,11 @@
  * @used_by client/src/components/game (Game component), client/src/hooks/layers/business (useGameLogic hook)
  */
 
+import { Clock, Infinity, ListOrdered } from 'lucide-react';
+
 import { DifficultyLevel, GAME_STATE_DEFAULTS, GameMode, VALIDATION_DEBOUNCE_DELAYS } from '@shared/constants';
 
-import { ClientGameState } from '@/types';
+import type { ClientGameState, GameModeOption } from '@/types';
 
 export const SCORING_DEFAULTS = {
 	BASE_SCORE: 100,
@@ -26,7 +28,7 @@ export const DEFAULT_GAME_STATE: ClientGameState = {
 	status: 'idle',
 	isPlaying: false,
 	currentQuestion: GAME_STATE_DEFAULTS.QUESTION_INDEX,
-	totalQuestions: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+	gameQuestionCount: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
 	questions: [],
 	answers: [],
 	loading: false,
@@ -38,7 +40,7 @@ export const DEFAULT_GAME_STATE: ClientGameState = {
 	gameMode: {
 		mode: GameMode.UNLIMITED,
 		timeLimit: undefined,
-		questionLimit: undefined,
+		maxQuestionsPerGame: undefined, // No question limit in unlimited mode
 		isGameOver: false,
 		timer: {
 			isRunning: false,
@@ -91,3 +93,55 @@ export const GAME_STATE_UPDATES = {
 		AUTO_VALIDATE: true,
 	},
 } as const;
+
+// =============================================================================
+// Game Mode Selection Constants
+// =============================================================================
+
+/**
+ * Available game modes configuration
+ * @description Game mode options for selection UI
+ */
+export const GAME_MODES: GameModeOption[] = [
+	{
+		id: GameMode.QUESTION_LIMITED,
+		name: 'Number of Questions',
+		description: 'Answer a set number of questions',
+		icon: ListOrdered,
+		showQuestionLimit: true,
+		showTimeLimit: false,
+	},
+	{
+		id: GameMode.TIME_LIMITED,
+		name: 'Time Limit',
+		description: 'Answer as many as you can in time',
+		icon: Clock,
+		showQuestionLimit: false,
+		showTimeLimit: true,
+	},
+	{
+		id: GameMode.UNLIMITED,
+		name: 'Unlimited',
+		description: 'Play as long as you want',
+		icon: Infinity,
+		showQuestionLimit: false,
+		showTimeLimit: false,
+	},
+];
+
+/**
+ * Popular topics for game selection
+ * @description Most popular trivia topics for quick selection
+ */
+export const POPULAR_TOPICS = [
+	'General Knowledge',
+	'Science',
+	'History',
+	'Geography',
+	'Sports',
+	'Movies & TV',
+	'Music',
+	'Technology',
+	'Art & Literature',
+	'Food & Cooking',
+] as const;

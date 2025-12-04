@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
-import { LOCALHOST_URLS } from '@shared/constants';
+import { LOCALHOST_URLS, MULTIPLAYER_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { ErrorEvent, MultiplayerGameEvent, MultiplayerRoom } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -131,10 +131,10 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			const { room, code } = await this.multiplayerService.createRoom(userId, {
 				topic: data.topic,
 				difficulty: data.difficulty,
-				requestedQuestions: data.requestedQuestions,
+				questionsPerRequest: data.questionsPerRequest,
 				maxPlayers: data.maxPlayers,
 				gameMode: data.gameMode,
-				timePerQuestion: 30, // Fixed 30 seconds
+				timePerQuestion: MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION,
 			});
 
 			// Join client to room

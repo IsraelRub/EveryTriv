@@ -1,233 +1,135 @@
-import { memo } from 'react';
-import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import { motion } from 'framer-motion';
+import { LogOut, User } from 'lucide-react';
 
 import {
-	ButtonVariant,
-	ComponentSize,
-	ContainerSize,
-	NAVIGATION_BRAND_CLASSNAMES,
-	NAVIGATION_BUTTON_CLASSNAMES,
-	NAVIGATION_CLASSNAMES,
-	NAVIGATION_LINK_CLASSNAMES,
-	Spacing,
-} from '../../constants';
-import { useNavigationController } from '../../hooks';
-import type {
-	NavigationActionsProps,
-	NavigationBrandProps,
-	NavigationMenuProps,
-	NavigationUserDisplay,
-} from '../../types';
-import { combineClassNames } from '../../utils';
-import AudioControls from '../AudioControls';
-import { Container } from '../layout';
-import { Avatar, Button } from '../ui';
-import { Icon } from '../ui/IconLibrary';
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	NavLink,
+} from '@/components';
+import { AudioControls } from '@/components/audio';
+import { CreditBalance } from '@/components/layout';
+import { ButtonSize } from '@/constants';
+import { useAppDispatch } from '@/hooks';
+import { setAuthenticated, setUser } from '@/redux/slices';
+import { authService } from '@/services';
+import type { RootState } from '@/types';
 
-const NavigationRoot = memo(function Navigation() {
-	const { appName, isHomePage, links, isAuthenticated, userDisplay, credits, actions } = useNavigationController();
+export function Navigation() {
+	const navigate = useNavigate();
+	const location = useLocation();
+	const dispatch = useAppDispatch();
 
-	return (
-		<nav role='navigation' aria-label='Main navigation' className={NAVIGATION_CLASSNAMES.wrapper}>
-			<Container
-				size={ContainerSize.FULL}
-				maxWidth={ContainerSize.FULL}
-				padding={Spacing.NONE}
-				className={NAVIGATION_CLASSNAMES.container}
-			>
-				<div className={NAVIGATION_CLASSNAMES.row}>
-					<section aria-label='Logo and Brand' className='flex flex-shrink-0 items-center'>
-						<NavigationBrand isHome={isHomePage} appName={appName} onNavigateHome={actions.onNavigateHome} />
-					</section>
+	const { isAuthenticated, currentUser } = useSelector((state: RootState) => state.user);
 
-					<NavigationMenu
-						links={links}
-						audioControls={<AudioControls className='text-slate-300' />}
-						isAuthenticated={isAuthenticated}
-						creditsDisplay={credits.display}
-						totalCredits={credits.total}
-						freeQuestions={credits.freeQuestions}
-						nextResetTime={credits.nextResetTime}
-						userDisplay={userDisplay}
-						onLogout={actions.onLogout}
-						onSignUp={actions.onSignUp}
-						onSignIn={actions.onSignIn}
-						onGetMoreCredits={actions.onGetMoreCredits}
-					/>
-				</div>
-			</Container>
-		</nav>
-	);
-});
+	const publicNavItems = [
+		{ to: '/', label: 'Home' },
+		{ to: '/leaderboard', label: 'Leaderboard' },
+	];
 
-export default NavigationRoot;
-
-function NavigationBrand({ isHome, appName, onNavigateHome }: NavigationBrandProps) {
-	if (isHome) {
-		return (
-			<div className={NAVIGATION_BRAND_CLASSNAMES.homeWrapper}>
-				<div className={NAVIGATION_BRAND_CLASSNAMES.logoWrapper}>
-					<Icon name='brain' size={ComponentSize.LG} className='text-white' />
-				</div>
-				<span className={NAVIGATION_BRAND_CLASSNAMES.homeTitle}>{appName}</span>
-			</div>
-		);
-	}
-
-	return (
-		<Link
-			to='/'
-			className={NAVIGATION_BRAND_CLASSNAMES.link}
-			onClick={() => {
-				onNavigateHome?.();
-			}}
-		>
-			<div className={NAVIGATION_BRAND_CLASSNAMES.logoWrapper}>
-				<Icon name='brain' size={ComponentSize.LG} className='text-white' />
-			</div>
-			<span className={NAVIGATION_BRAND_CLASSNAMES.title}>{appName}</span>
-		</Link>
-	);
-}
-
-function NavigationActions({
-	isAuthenticated,
-	userDisplay,
-	onLogout,
-	onSignUp,
-	onSignIn,
-	children,
-}: NavigationActionsProps) {
-	return (
-		<div className={NAVIGATION_CLASSNAMES.authContainer}>
-			{children}
-			{isAuthenticated ? (
-				<>
-					<div className={NAVIGATION_CLASSNAMES.userBadge}>
-						<Avatar
-							src={userDisplay?.avatar}
-							email={userDisplay?.email}
-							firstName={userDisplay?.firstName}
-							lastName={userDisplay?.lastName}
-							size={userDisplay?.avatarSize ?? ComponentSize.SM}
-							alt={userDisplay?.email}
-						/>
-						<span className='text-sm font-medium text-slate-100'>
-							{userDisplay?.firstName && userDisplay?.lastName
-								? `${userDisplay.firstName} ${userDisplay.lastName}`
-								: userDisplay?.firstName || userDisplay?.lastName || userDisplay?.email}
-						</span>
-					</div>
-					<Button
-						variant={ButtonVariant.GHOST}
-						className={NAVIGATION_BUTTON_CLASSNAMES.logout}
-						onClick={onLogout}
-						withAnimation={false}
-					>
-						Logout
-					</Button>
-				</>
-			) : (
-				<>
-					<Button
-						variant={ButtonVariant.GHOST}
-						className={NAVIGATION_BUTTON_CLASSNAMES.ghost}
-						onClick={onSignUp}
-						withAnimation={false}
-					>
-						Sign Up
-					</Button>
-					<Button
-						variant={ButtonVariant.PRIMARY}
-						className={NAVIGATION_BUTTON_CLASSNAMES.primary}
-						onClick={onSignIn}
-						withAnimation={false}
-					>
-						Sign In
-					</Button>
-				</>
-			)}
-		</div>
-	);
-}
-
-function NavigationMenu({
-	links,
-	audioControls,
-	isAuthenticated,
-	creditsDisplay,
-	totalCredits,
-	freeQuestions,
-	nextResetTime,
-	userDisplay,
-	onLogout,
-	onSignUp,
-	onSignIn,
-	onGetMoreCredits,
-}: NavigationMenuProps) {
-	return (
-		<section aria-label=' Navigation' className={NAVIGATION_CLASSNAMES.Section}>
-			<div className={NAVIGATION_CLASSNAMES.LinksWrapper}>
-				{links.map(item => (
-					<Link
-						key={item.path}
-						to={item.path}
-						className={combineClassNames(
-							NAVIGATION_LINK_CLASSNAMES.base,
-							item.isActive ? NAVIGATION_LINK_CLASSNAMES.active : NAVIGATION_LINK_CLASSNAMES.inactive
-						)}
-					>
-						{item.label}
-					</Link>
-				))}
-			</div>
-
-			<NavigationActions
-				isAuthenticated={isAuthenticated}
-				userDisplay={augmentUserDisplay(userDisplay)}
-				onLogout={onLogout}
-				onSignUp={onSignUp}
-				onSignIn={onSignIn}
-			>
-				<div className={NAVIGATION_CLASSNAMES.audioContainer}>{audioControls}</div>
-				{isAuthenticated && (
-					<div className='flex items-center gap-3'>
-						<div className={NAVIGATION_CLASSNAMES.creditsBadge}>
-							<Icon name='zap' size={ComponentSize.SM} className='text-amber-400' />
-							<span className='text-slate-200 font-medium'>{creditsDisplay ?? totalCredits ?? 0}</span>
-							<span className='text-xs text-slate-400'>Credits</span>
-						</div>
-						{freeQuestions && freeQuestions > 0 ? (
-							<div className={NAVIGATION_CLASSNAMES.freeQuestionsBadge}>
-								<span className='font-medium'>Free: {freeQuestions}</span>
-								<Icon name='clock' size={ComponentSize.SM} className='text-emerald-400' />
-								{nextResetTime && (
-									<div className='text-xs text-emerald-300/80'>{new Date(nextResetTime).toLocaleTimeString()}</div>
-								)}
-							</div>
-						) : (
-							<button
-								type='button'
-								onClick={onGetMoreCredits}
-								className='bg-transparent text-sm text-blue-400 underline transition-colors duration-150 hover:text-blue-300'
-							>
-								Get more credits
-							</button>
-						)}
-					</div>
-				)}
-			</NavigationActions>
-		</section>
-	);
-}
-
-function augmentUserDisplay(userDisplay?: NavigationUserDisplay): NavigationActionsProps['userDisplay'] {
-	if (!userDisplay) {
-		return undefined;
-	}
-
-	return {
-		...userDisplay,
-		avatarSize: ComponentSize.SM,
+	const handleSignIn = () => {
+		navigate('/login', { state: { modal: true, returnUrl: location.pathname } });
 	};
+
+	const handleLogout = async () => {
+		try {
+			await authService.logout();
+			dispatch(setAuthenticated(false));
+			dispatch(setUser(null));
+			navigate('/');
+		} catch (error) {
+			// Error already logged in auth.service.ts - no need to log again
+			void error;
+		}
+	};
+
+	const getUserInitials = () => {
+		if (currentUser?.email) {
+			return currentUser.email.charAt(0).toUpperCase();
+		}
+		return 'U';
+	};
+
+	return (
+		<motion.nav
+			initial={{ y: -20, opacity: 0 }}
+			animate={{ y: 0, opacity: 1 }}
+			className='sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+		>
+			<div className='container mx-auto px-4'>
+				<div className='flex h-16 items-center justify-between'>
+					<div className='flex items-center gap-6'>
+						<NavLink to='/' className='flex items-center gap-2 text-2xl font-bold text-foreground'>
+							<img src='/assets/logo.svg' alt='EveryTriv Logo' className='w-8 h-8' loading='lazy' />
+							EveryTriv
+						</NavLink>
+
+						{/* Navigation Links */}
+						{publicNavItems.map(item => (
+							<NavLink
+								key={item.to}
+								to={item.to}
+								className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+								activeClassName='text-foreground'
+							>
+								{item.label}
+							</NavLink>
+						))}
+					</div>
+
+					{/* Right Side Actions */}
+					<div className='flex items-center gap-5'>
+						{/* Audio Controls */}
+						<AudioControls />
+
+						{/* Credits Display */}
+						{isAuthenticated && <CreditBalance />}
+
+						{isAuthenticated ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant='ghost' className='relative h-9 w-9 rounded-full'>
+										<Avatar className='h-9 w-9'>
+											<AvatarImage src='' alt='User' />
+											<AvatarFallback>{getUserInitials()}</AvatarFallback>
+										</Avatar>
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align='end' className='w-56'>
+									<div className='flex items-center justify-start gap-2 p-2'>
+										<div className='flex flex-col space-y-1 leading-none'>
+											<p className='font-medium'>{currentUser?.email}</p>
+										</div>
+									</div>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={() => navigate('/profile')}>
+										<User className='mr-2 h-4 w-4' />
+										Profile
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={handleLogout} className='text-destructive'>
+										<LogOut className='mr-2 h-4 w-4' />
+										Sign Out
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<Button size={ButtonSize.SM} onClick={handleSignIn}>
+								Sign In
+							</Button>
+						)}
+					</div>
+				</div>
+			</div>
+		</motion.nav>
+	);
 }

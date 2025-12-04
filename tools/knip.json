@@ -32,7 +32,8 @@
     "server/src/internal/modules/**/index.ts",
     "server/src/internal/modules/cache/dtos/**/*.ts",
     "tools/eslint.config.js",
-    "tools/.prettierrc"
+    "tools/.prettierrc",
+    "OLD/**/*"
   ],
   "ignoreDependencies": [
     "@types/*",

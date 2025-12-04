@@ -40,7 +40,7 @@ export interface PaymentMetadata {
 	campaign?: string;
 	affiliate?: string;
 	apiVersion?: string;
-	requestSource?: 'web' | 'mobile' | 'api';
+	requestSource?: 'web' | 'api';
 	gatewayTransactionId?: string;
 	refundReason?: string;
 	paypalOrderId?: string;

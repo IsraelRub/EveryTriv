@@ -1,70 +1,33 @@
-import { forwardRef } from 'react';
+import { forwardRef, useCallback, type ComponentProps, type FocusEvent } from 'react';
 
-import { motion } from 'framer-motion';
+import { AudioKey } from '@/constants';
+import { useAudio } from '@/hooks';
+import { cn } from '@/utils';
 
-import { UIInputProps } from '../../types';
-import { combineClassNames } from '../../utils';
-import { fadeInUp, hoverScale } from '../animations';
+const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(({ className, type, onFocus, ...props }, ref) => {
+	const audioService = useAudio();
 
-/**
- * Input Component
- *
- * @module Input
- * @description Form input component with validation and styling
- * @used_by client/components, client/src/forms, client/src/views
- */
-export const Input = forwardRef<HTMLInputElement, UIInputProps>(
-	({ className, size = 'md', isGlassy = false, error, withAnimation = true, ...props }, ref) => {
-		const inputElement = (
-			<input
-				ref={ref}
-				className={combineClassNames(
-					// Base styles
-					'w-full bg-white/10 text-white border-0',
-					'placeholder:text-white/60',
-					'focus:outline-none focus:ring-2 focus:ring-white/20',
+	const handleFocus = useCallback(
+		(e: FocusEvent<HTMLInputElement>) => {
+			audioService.play(AudioKey.INPUT);
+			onFocus?.(e);
+		},
+		[onFocus, audioService]
+	);
 
-					// Size variants
-					{
-						'px-3 py-1 text-sm': size === 'sm',
-						'px-4 py-2 text-base': size === 'md',
-						'px-6 py-3 text-lg': size === 'lg',
-					},
-
-					// Glass effect
-					{
-						glass: isGlassy,
-					},
-
-					// Error state
-					{
-						'border border-red-500 focus:ring-red-500/20': error,
-					},
-
-					className
-				)}
-				style={{
-					borderRadius: '0.375rem',
-					fontFamily: 'system-ui, -apple-system, sans-serif',
-					fontWeight: '400',
-					transitionDuration: '0.2s',
-					transitionTimingFunction: 'ease',
-					boxShadow: error ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
-				}}
-				{...props}
-			/>
-		);
-
-		return withAnimation ? (
-			<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.1 }}>
-				<motion.div variants={hoverScale} initial='initial' whileHover='hover'>
-					{inputElement}
-				</motion.div>
-			</motion.div>
-		) : (
-			inputElement
-		);
-	}
-);
-
+	return (
+		<input
+			type={type}
+			className={cn(
+				'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+				className
+			)}
+			ref={ref}
+			onFocus={handleFocus}
+			{...props}
+		/>
+	);
+});
 Input.displayName = 'Input';
+
+export { Input };

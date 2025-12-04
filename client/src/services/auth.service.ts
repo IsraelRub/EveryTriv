@@ -13,7 +13,6 @@ import { getErrorMessage } from '@shared/utils';
 import { ensureErrorObject } from '@shared/utils/core/error.utils';
 
 import { CLIENT_STORAGE_KEYS } from '../constants';
-import { isUser } from '../utils/data.utils';
 import { ApiConfig, apiService } from './api.service';
 import { storageService } from './storage.service';
 
@@ -184,6 +183,22 @@ class AuthService {
 	 * @returns Stored user data or null if not found
 	 */
 	async getStoredUser(): Promise<User | null> {
+		// Type guard for User
+		const isUser = (value: unknown): value is User => {
+			if (!value || typeof value !== 'object') return false;
+			const obj = value as Record<string, unknown>;
+			return (
+				typeof obj.id === 'string' &&
+				typeof obj.email === 'string' &&
+				typeof obj.status === 'string' &&
+				typeof obj.emailVerified === 'boolean' &&
+				typeof obj.authProvider === 'string' &&
+				typeof obj.credits === 'number' &&
+				typeof obj.purchasedCredits === 'number' &&
+				typeof obj.totalCredits === 'number' &&
+				typeof obj.score === 'number'
+			);
+		};
 		const result = await storageService.get<User>(this.USER_KEY, isUser);
 		return result.success && result.data ? result.data : null;
 	}

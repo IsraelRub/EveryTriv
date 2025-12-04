@@ -1,21 +1,19 @@
-/**
- * HomeTitle component
- * Displays the main title and subtitle of the app
- * @module HomeTitle
- * @used_by client/src/views/home
- */
 import { motion } from 'framer-motion';
 
-import type { HomeTitleProps } from '../../types';
-import { fadeInDown } from '../animations';
-
-export default function HomeTitle({ className, delay = 0.2 }: HomeTitleProps) {
+export default function HomeTitle() {
 	return (
-		<motion.div variants={fadeInDown} initial='hidden' animate='visible' transition={{ delay }} className={className}>
-			<h1 className='text-5xl font-bold text-white mb-3 gradient-text'>EveryTriv</h1>
-			<small className='block text-base mt-2 text-white opacity-75'>
-				Smart Trivia Platform with Custom Difficulty Levels
-			</small>
+		<motion.div
+			initial={{ opacity: 0, y: -20 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.6 }}
+			className='text-center space-y-4'
+		>
+			<h1 className='text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight py-3 -mt-20'>
+				EveryTriv
+			</h1>
+			<p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
+				Challenge your knowledge with thousands of trivia questions across multiple categories
+			</p>
 		</motion.div>
 	);
 }

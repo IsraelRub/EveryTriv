@@ -11,7 +11,7 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { LOCALHOST_URLS } from '@shared/constants';
+import { LOCALHOST_URLS, MULTIPLAYER_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { MultiplayerRoom, RoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -79,10 +79,10 @@ export class MultiplayerController {
 			const config: RoomConfig = {
 				topic: body.topic,
 				difficulty: body.difficulty,
-				requestedQuestions: body.requestedQuestions,
+				questionsPerRequest: body.questionsPerRequest,
 				maxPlayers: body.maxPlayers,
 				gameMode: body.gameMode,
-				timePerQuestion: 30,
+				timePerQuestion: MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION,
 			};
 			const result = await this.multiplayerService.createRoom(userId, config);
 

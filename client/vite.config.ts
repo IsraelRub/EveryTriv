@@ -60,17 +60,44 @@ export default defineConfig({
 	server: {
 		port: DEFAULT_PORTS.CLIENT,
 		proxy: (() => {
-			const proxyPaths = ['/v1', '/auth', '/api', '/game', '/leaderboard', '/users', '/analytics', '/credits', '/payment'];
+			// API paths that should be proxied to the server
+			// Note: /auth/callback is handled by React Router, not proxied
+			const proxyPaths = ['/v1', '/api', '/leaderboard', '/users', '/analytics', '/credits', '/payment'];
 			const proxyConfig: ViteProxyConfig = {
 				target: DEFAULT_URLS.DEV_SERVER,
 				changeOrigin: true,
 				secure: false,
+				// Generic bypass logic: identify frontend requests vs API requests
+				// Frontend requests: GET requests without Accept: application/json header
+				// API requests: POST/PUT/DELETE or requests with Accept: application/json header
+				bypass: (req) => {
+					const isFrontendRequest =
+						req.method === 'GET' && !req.headers?.accept?.includes('application/json');
+
+					if (isFrontendRequest) {
+						// Let Vite handle it (SPA routing) - React Router will handle 404
+						return false;
+					}
+					// Proxy to server (API request)
+					return null;
+				},
 			};
 			const proxyMap: Record<string, ViteProxyConfig> = {};
-			return proxyPaths.reduce((acc, path) => {
-				acc[path] = proxyConfig;
-				return acc;
-			}, proxyMap);
+
+			// Add all API paths with the generic bypass logic
+			proxyPaths.forEach(path => {
+				proxyMap[path] = proxyConfig;
+			});
+
+			// Add specific auth endpoints (excluding /auth/callback which is handled by React Router)
+			proxyMap['/auth/google'] = proxyConfig;
+			proxyMap['/auth/google/callback'] = proxyConfig;
+			proxyMap['/auth/login'] = proxyConfig;
+			proxyMap['/auth/register'] = proxyConfig;
+			proxyMap['/auth/logout'] = proxyConfig;
+			proxyMap['/auth/refresh'] = proxyConfig;
+
+			return proxyMap;
 		})(),
 		// Add these settings to prevent extension communication issues
 		hmr: {

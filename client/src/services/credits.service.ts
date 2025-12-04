@@ -8,11 +8,11 @@
  */
 import { GameMode, PaymentMethod, VALID_GAME_MODES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { CanPlayResponse, CreditBalance, CreditPurchaseOption, CreditTransaction } from '@shared/types';
+import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import type { CreditsPurchaseRequest, CreditsPurchaseResponse } from '../types';
-import { formatTimeUntilReset } from '../utils';
+import { formatTimeUntilReset } from '../utils/format.utils';
 import { apiService } from './api.service';
 
 /**
@@ -66,14 +66,14 @@ class ClientCreditsService {
 
 	/**
 	 * Check if user can play with current credits
-	 * @param requestedQuestions Number of questions requested
+	 * @param questionsPerRequest Number of questions per request
 	 * @returns Can play response with reason
 	 */
-	async canPlay(requestedQuestions: number): Promise<CanPlayResponse> {
+	async canPlay(questionsPerRequest: number): Promise<CanPlayResponse> {
 		try {
-			logger.userInfo('Checking if user can play', { requestedQuestions });
+			logger.userInfo('Checking if user can play', { questionsPerRequest });
 
-			const result = await apiService.canPlay(requestedQuestions);
+			const result = await apiService.canPlay(questionsPerRequest);
 
 			logger.userInfo('Can play check completed', {
 				canPlay: result.canPlay,
@@ -84,23 +84,23 @@ class ClientCreditsService {
 				reason: result.reason,
 			};
 		} catch (error) {
-			logger.userError('Failed to check if user can play', { error: getErrorMessage(error), requestedQuestions });
+			logger.userError('Failed to check if user can play', { error: getErrorMessage(error), questionsPerRequest });
 			throw error;
 		}
 	}
 
 	/**
 	 * Deduct credits for playing
-	 * @param requestedQuestions Number of questions requested
+	 * @param questionsPerRequest Number of questions per request
 	 * @param gameMode Game mode for credit calculation
 	 * @returns Updated credit balance
 	 */
-	async deductCredits(requestedQuestions: number, gameMode: GameMode): Promise<CreditBalance> {
+	async deductCredits(questionsPerRequest: number, gameMode: GameMode): Promise<CreditBalance> {
 		try {
 			const normalizedGameMode = this.resolveGameMode(gameMode);
-			logger.userInfo('Deducting credits', { requestedQuestions, gameMode: normalizedGameMode });
+			logger.userInfo('Deducting credits', { questionsPerRequest, gameMode: normalizedGameMode });
 
-			const newBalance = await apiService.deductCredits(requestedQuestions, gameMode);
+			const newBalance = await apiService.deductCredits(questionsPerRequest, gameMode);
 
 			logger.userInfo('Credits deducted successfully', {
 				newTotalCredits: newBalance.totalCredits,
@@ -111,7 +111,7 @@ class ClientCreditsService {
 			const normalizedGameMode = this.resolveGameMode(gameMode);
 			logger.userError('Failed to deduct credits', {
 				error: getErrorMessage(error),
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode: normalizedGameMode,
 			});
 			throw error;
@@ -120,27 +120,6 @@ class ClientCreditsService {
 
 	private resolveGameMode(gameMode: GameMode): GameMode | undefined {
 		return VALID_GAME_MODES.find(mode => mode === gameMode);
-	}
-
-	/**
-	 * Get credit transaction history
-	 * @param limit Maximum number of transactions to return (default: 20)
-	 * @returns List of credit transactions
-	 */
-	async getCreditHistory(limit: number = 20): Promise<CreditTransaction[]> {
-		try {
-			logger.userInfo('Getting credit history', { limit });
-
-			const history = await apiService.getCreditHistory(limit);
-
-			logger.userInfo('Credit history retrieved successfully', {
-				count: history.length,
-			});
-			return history;
-		} catch (error) {
-			logger.userError('Failed to get credit history', { error: getErrorMessage(error), limit });
-			throw error;
-		}
 	}
 
 	/**
@@ -193,15 +172,6 @@ class ClientCreditsService {
 			logger.userError('Failed to confirm credit purchase', { error: getErrorMessage(error), id: paymentIntentId });
 			throw error;
 		}
-	}
-
-	/**
-	 * Get transaction history (alias for getCreditHistory)
-	 * @param limit Maximum number of transactions to return (default: 20)
-	 * @returns List of credit transactions
-	 */
-	async getTransactionHistory(limit: number = 20): Promise<CreditTransaction[]> {
-		return this.getCreditHistory(limit);
 	}
 
 	/**

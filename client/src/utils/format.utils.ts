@@ -22,26 +22,6 @@ export function formatNumber(num: number, decimals: number = 1, includeSuffix: b
 }
 
 /**
- * Format relative time (e.g., "2h ago", "3d ago")
- * @param timestamp Timestamp to format
- * @param now Current timestamp (defaults to now)
- * @returns Formatted relative time string
- */
-export function formatRelativeTime(timestamp: number, now: number = Date.now()): string {
-	const diffInMs = now - timestamp;
-	const diffInHours = diffInMs / (1000 * 60 * 60);
-
-	if (diffInHours < 1) {
-		return 'Just now';
-	} else if (diffInHours < 24) {
-		return `${Math.floor(diffInHours)}h ago`;
-	} else {
-		const diffInDays = Math.floor(diffInHours / 24);
-		return `${diffInDays}d ago`;
-	}
-}
-
-/**
  * Format score with appropriate formatting
  * @param score Score to format
  * @param showPlus Whether to show plus sign for positive scores (default: true)
@@ -53,36 +33,52 @@ export function formatScore(score: number, showPlus: boolean = true): string {
 }
 
 /**
- * Format topic name for display
- * @param topic Topic name to format
- * @returns Formatted topic name
+ * Format time in MM:SS format
+ * @param totalSeconds Total seconds to format
+ * @returns Formatted time string
  */
-export function formatTopic(topic: string): string {
-	return topic
-		.split('-')
-		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join(' ');
+export function formatTime(totalSeconds: number): string {
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 /**
- * Format user display name from firstName and lastName
- * @param firstName First name (optional)
- * @param lastName Last name (optional)
- * @param fallback Fallback value if both names are missing (default: empty string)
- * @returns Formatted display name or fallback
+ * Format time display with appropriate unit
+ * @param seconds Time in seconds
+ * @returns Formatted time string with unit
  */
-export function formatDisplayName(firstName?: string, lastName?: string, fallback: string = ''): string {
-	if (firstName && lastName) {
-		return `${firstName} ${lastName}`;
+export function formatTimeDisplay(seconds: number): string {
+	if (seconds < 60) {
+		return `${seconds}s`;
+	} else if (seconds < 3600) {
+		const minutes = Math.floor(seconds / 60);
+		return `${minutes}m`;
+	} else {
+		const hours = Math.floor(seconds / 3600);
+		return `${hours}h`;
+	}
+}
+
+/**
+ * Format time until reset (for daily limits, etc.)
+ * @param resetTime Reset time timestamp
+ * @returns Formatted time until reset string
+ */
+export function formatTimeUntilReset(resetTime: number): string {
+	const now = Date.now();
+	const timeUntilReset = resetTime - now;
+
+	if (timeUntilReset <= 0) {
+		return 'Reset now';
 	}
 
-	if (firstName) {
-		return firstName;
-	}
+	const hours = Math.floor(timeUntilReset / (1000 * 60 * 60));
+	const minutes = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
 
-	if (lastName) {
-		return lastName;
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	} else {
+		return `${minutes}m`;
 	}
-
-	return fallback;
 }

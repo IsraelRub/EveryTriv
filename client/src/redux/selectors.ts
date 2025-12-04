@@ -18,6 +18,7 @@ export const selectUserRole = (state: RootState) => state.user.currentUser?.role
 export const selectCurrentGameMode = (state: RootState) => state.gameMode.currentMode;
 export const selectCurrentTopic = (state: RootState) => state.gameMode.currentTopic;
 export const selectCurrentDifficulty = (state: RootState) => state.gameMode.currentDifficulty;
+export const selectCurrentSettings = (state: RootState) => state.gameMode.currentSettings;
 
 // Stats selectors
 export const selectLeaderboard = (state: RootState) => state.stats.leaderboard;

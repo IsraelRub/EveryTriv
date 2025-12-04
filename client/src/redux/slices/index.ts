@@ -18,7 +18,7 @@ export { default as favoritesSlice } from './favoritesSlice';
  * @description Redux slice for managing game mode state
  * @used_by client/src/components/game, client/src/views
  */
-export { default as gameModeSlice } from './gameModeSlice';
+export { default as gameModeSlice, setGameMode, resetGameMode } from './gameModeSlice';
 
 /**
  * Game slice

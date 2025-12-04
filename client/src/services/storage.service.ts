@@ -7,11 +7,7 @@
 import type { StorageOperationResult } from '@shared/types';
 import { isStringArray } from '@shared/utils';
 
-/**
- * Type guard function for runtime validation
- * @template T - The expected type
- */
-type TypeGuard<T> = (value: unknown) => value is T;
+import type { TypeGuard } from '@/types/services/storage.types';
 
 /**
  * Default validators for primitive types

@@ -5,27 +5,7 @@
  * @description Retry and jitter calculation utilities for exponential backoff with jitter
  * @used_by client/src/services, server/src/features
  */
-
-/**
- * Options for jitter calculation
- */
-export interface JitterOptions {
-	percentage?: number;
-	maxJitter?: number;
-	fixedJitter?: number;
-}
-
-/**
- * Options for retry delay calculation
- */
-export interface RetryOptions {
-	useExponentialBackoff?: boolean;
-	exponentBase?: number;
-	minDelay?: number;
-	maxDelay?: number;
-	retryAfter?: number;
-	jitter?: JitterOptions;
-}
+import type { JitterOptions, RetryOptions } from '@shared/types';
 
 /**
  * Calculate jitter value for retry delays

@@ -104,27 +104,6 @@ export class SearchUsersDto {
 	limit?: number = 10;
 }
 
-export class DeductCreditsDto {
-	@ApiProperty({
-		description: 'Amount of credits to deduct',
-		example: 10,
-		minimum: 1,
-	})
-	@IsNumber({}, { message: 'Amount must be a number' })
-	@Min(1, { message: 'Amount must be greater than 0' })
-	amount: number;
-
-	@ApiPropertyOptional({
-		description: 'Reason for credit deduction',
-		example: 'Game play',
-		maxLength: 200,
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(200, { message: 'Reason cannot exceed 200 characters' })
-	reason?: string;
-}
-
 export class UpdateUserFieldDto {
 	@ApiProperty({
 		description: 'Field value to update',

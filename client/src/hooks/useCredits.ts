@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GameMode, UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { CreditBalance } from '@shared/types';
-import { calculateRequiredCredits, getErrorMessage } from '@shared/utils';
+import { calculateNewBalance, calculateRequiredCredits, getErrorMessage } from '@shared/utils';
 
 import { selectCanPlayFree, selectUserCreditBalance, selectUserRole } from '../redux/selectors';
 import { deductCredits, setCreditBalance } from '../redux/slices';
@@ -18,12 +18,12 @@ const creditsKeys = {
 	all: ['credits'] as const,
 	balance: () => [...creditsKeys.all, 'balance'] as const,
 	packages: () => [...creditsKeys.all, 'packages'] as const,
-	canPlay: (requestedQuestions: number, gameMode: GameMode) =>
-		[...creditsKeys.all, 'can-play', requestedQuestions, gameMode] as const,
+	canPlay: (questionsPerRequest: number, gameMode: GameMode) =>
+		[...creditsKeys.all, 'can-play', questionsPerRequest, gameMode] as const,
 	history: (limit: number) => [...creditsKeys.all, 'history', limit] as const,
 };
 
-export const useCanPlay = (requestedQuestions: number = 1, gameMode: GameMode = GameMode.QUESTION_LIMITED) => {
+export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode = GameMode.QUESTION_LIMITED) => {
 	const creditBalance = useAppSelector(selectUserCreditBalance);
 	const canPlayFree = useAppSelector(selectCanPlayFree);
 	const userRole = useAppSelector(selectUserRole);
@@ -39,10 +39,10 @@ export const useCanPlay = (requestedQuestions: number = 1, gameMode: GameMode = 
 	}
 
 	// Calculate required credits based on game mode
-	const requiredCredits = calculateRequiredCredits(requestedQuestions, gameMode);
+	const requiredCredits = calculateRequiredCredits(questionsPerRequest, gameMode);
 
 	// Check if user has free questions available
-	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= requestedQuestions;
+	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= questionsPerRequest;
 
 	// Calculate if user can play based on Redux state
 	const canPlay = hasFreeQuestions || (creditBalance?.totalCredits ?? 0) >= requiredCredits;
@@ -50,7 +50,7 @@ export const useCanPlay = (requestedQuestions: number = 1, gameMode: GameMode = 
 	// Debug logging
 	if (process.env.NODE_ENV === 'development') {
 		logger.apiDebug('Can play check', {
-			requestedQuestions,
+			questionsPerRequest,
 			gameMode,
 			requiredCredits,
 			credits: creditBalance?.totalCredits ?? 0,
@@ -78,9 +78,9 @@ export const useDeductCredits = () => {
 	const userRole = useAppSelector(selectUserRole);
 
 	return useMutation({
-		mutationFn: ({ requestedQuestions, gameMode }: { requestedQuestions: number; gameMode?: GameMode }) =>
-			creditsService.deductCredits(requestedQuestions, gameMode ?? GameMode.QUESTION_LIMITED),
-		onMutate: async ({ requestedQuestions, gameMode }) => {
+		mutationFn: ({ questionsPerRequest, gameMode }: { questionsPerRequest: number; gameMode?: GameMode }) =>
+			creditsService.deductCredits(questionsPerRequest, gameMode ?? GameMode.QUESTION_LIMITED),
+		onMutate: async ({ questionsPerRequest, gameMode }) => {
 			// Skip optimistic update for admin users (server handles it)
 			if (userRole === UserRole.ADMIN) {
 				return { previousBalance: queryClient.getQueryData(creditsKeys.balance()) };
@@ -99,11 +99,10 @@ export const useDeductCredits = () => {
 			// Snapshot the previous value
 			const previousBalance = queryClient.getQueryData(creditsKeys.balance());
 
-			// Calculate required credits based on game mode
+			// Normalize game mode
 			const normalizedGameMode = gameMode ?? GameMode.QUESTION_LIMITED;
-			const requiredCredits = calculateRequiredCredits(requestedQuestions, normalizedGameMode);
 
-			// Optimistically update the balance (mimics server deduction logic)
+			// Optimistically update the balance using shared deduction logic
 			queryClient.setQueryData(creditsKeys.balance(), (old: CreditBalance | undefined) => {
 				if (!old) {
 					return {
@@ -117,46 +116,9 @@ export const useDeductCredits = () => {
 					};
 				}
 
-				// Deduction logic: freeQuestions → purchasedCredits → credits
-				// For free questions, use actual requested questions count
-				// For purchased credits and credits, use required credits
-				let remainingFreeToUse = requestedQuestions;
-				let remainingToDeduct = requiredCredits;
-				let newFreeQuestions = old.freeQuestions ?? 0;
-				let newPurchasedCredits = old.purchasedCredits ?? 0;
-				let newCredits = old.credits ?? 0;
-
-				// Step 1: Use free questions first (use actual question count)
-				if (newFreeQuestions > 0 && remainingFreeToUse > 0) {
-					const fromFree = Math.min(newFreeQuestions, remainingFreeToUse);
-					newFreeQuestions -= fromFree;
-					remainingFreeToUse -= fromFree;
-					// Reduce required credits by the number of free questions used
-					remainingToDeduct = Math.max(0, remainingToDeduct - fromFree);
-				}
-
-				// Step 2: Use purchased credits if needed (use required credits)
-				if (remainingToDeduct > 0 && newPurchasedCredits > 0) {
-					const fromPurchased = Math.min(newPurchasedCredits, remainingToDeduct);
-					newPurchasedCredits -= fromPurchased;
-					remainingToDeduct -= fromPurchased;
-				}
-
-				// Step 3: Use credits if still needed (use required credits)
-				if (remainingToDeduct > 0) {
-					newCredits = Math.max(0, newCredits - remainingToDeduct);
-				}
-
-				const newTotalCredits = newCredits + newPurchasedCredits + newFreeQuestions;
-
-				return {
-					...old,
-					totalCredits: newTotalCredits,
-					credits: newCredits,
-					purchasedCredits: newPurchasedCredits,
-					freeQuestions: newFreeQuestions,
-					canPlayFree: newFreeQuestions > 0,
-				};
+				// Use shared deduction logic to ensure consistency with server
+				const deductionResult = calculateNewBalance(old, questionsPerRequest, normalizedGameMode);
+				return deductionResult.newBalance;
 			});
 
 			return { previousBalance };
@@ -167,11 +129,11 @@ export const useDeductCredits = () => {
 				queryClient.setQueryData(creditsKeys.balance(), context.previousBalance);
 			}
 		},
-		onSettled: (_, __, { requestedQuestions }) => {
+		onSettled: (_, __, { questionsPerRequest }) => {
 			// Skip Redux update for admin users (server doesn't deduct credits)
 			if (userRole !== UserRole.ADMIN) {
 				// Update Redux state
-				dispatch(deductCredits(requestedQuestions));
+				dispatch(deductCredits(questionsPerRequest));
 			}
 			// Always refetch after error or success to get latest balance from server
 			queryClient.invalidateQueries({ queryKey: creditsKeys.all });
@@ -235,18 +197,5 @@ export const usePurchaseCredits = () => {
 			// Invalidate balance query
 			queryClient.invalidateQueries({ queryKey: creditsKeys.balance() });
 		},
-	});
-};
-
-/**
- * Hook for getting credit transaction history
- * @param limit Maximum number of transactions to return (default: 50)
- * @returns Query result with transaction history
- */
-export const useTransactionHistory = (limit: number = 50) => {
-	return useQuery({
-		queryKey: creditsKeys.history(limit),
-		queryFn: () => creditsService.getTransactionHistory(limit),
-		staleTime: 60 * 1000, // Consider stale after 1 minute
 	});
 };

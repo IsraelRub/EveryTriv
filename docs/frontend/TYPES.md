@@ -14,6 +14,8 @@ client/src/types/
 │   ├── components.types.ts        # טיפוסי רכיבי משחק
 │   ├── config.types.ts            # טיפוסי הגדרות משחק
 │   └── index.ts                   # ייצוא מאוחד
+├── hooks/                          # טיפוסי Hooks
+│   └── toast.types.ts             # טיפוסי Toast Hook
 ├── interceptors.types.ts          # טיפוסי Interceptors
 ├── redux/                         # טיפוסי Redux
 │   ├── actions.types.ts           # טיפוסי Actions
@@ -21,6 +23,9 @@ client/src/types/
 │   ├── state.types.ts             # טיפוסי State
 │   └── index.ts                   # ייצוא מאוחד
 ├── route.types.ts                 # טיפוסי Routes
+├── services/                      # טיפוסי Services
+│   ├── logger.types.ts            # טיפוסי Logger Service
+│   └── storage.types.ts           # טיפוסי Storage Service
 ├── ui/                            # טיפוסי UI
 │   ├── analytics.types.ts         # טיפוסי Analytics UI
 │   ├── audio.types.ts             # טיפוסי Audio UI
@@ -33,7 +38,10 @@ client/src/types/
 │   ├── navigation.types.ts        # טיפוסי Navigation
 │   ├── social.types.ts            # טיפוסי Social
 │   ├── stats.types.ts             # טיפוסי Stats UI
+│   ├── toast.types.ts             # טיפוסי Toast Component
 │   └── index.ts                   # ייצוא מאוחד
+├── user/                          # טיפוסי User
+│   └── components.types.ts        # טיפוסי רכיבי User
 ├── user.types.ts                  # טיפוסי User
 ├── validation.types.ts            # טיפוסי Validation
 └── index.ts                       # ייצוא מאוחד
@@ -457,6 +465,98 @@ export interface PublicRouteProps {
 }
 ```
 
+## Hooks Types
+
+### hooks/toast.types.ts
+
+טיפוסי Toast Hook:
+
+**ToasterToast:**
+```typescript
+export type ToasterToast = ToastProps & {
+  id: string;
+  title?: ReactNode;
+  description?: ReactNode;
+  action?: ToastActionElement;
+};
+```
+
+**ActionType:**
+```typescript
+export type ActionType = typeof TOAST_ACTION_TYPES;
+```
+
+**Action:**
+```typescript
+export type Action =
+  | { type: ActionType['ADD_TOAST']; toast: ToasterToast; }
+  | { type: ActionType['UPDATE_TOAST']; toast: Partial<ToasterToast>; }
+  | { type: ActionType['DISMISS_TOAST']; toastId?: ToasterToast['id']; }
+  | { type: ActionType['REMOVE_TOAST']; toastId?: ToasterToast['id']; };
+```
+
+**State:**
+```typescript
+export interface State {
+  toasts: ToasterToast[];
+}
+```
+
+**Toast:**
+```typescript
+export type Toast = Omit<ToasterToast, 'id'> & {
+  duration?: number;
+};
+```
+
+## Services Types
+
+### services/logger.types.ts
+
+טיפוסי Logger Service:
+
+**ToastEnabledMethods:**
+```typescript
+export type ToastEnabledMethods = {
+  readonly [key: string]: boolean | undefined;
+};
+```
+
+מגדיר אילו מתודות של הלוגר צריכות להציג התראות toast.
+
+### services/storage.types.ts
+
+טיפוסי Storage Service:
+
+**TypeGuard:**
+```typescript
+export type TypeGuard<T> = (value: unknown) => value is T;
+```
+
+Type guard גנרי לבדיקת טיפוסים ב-runtime.
+
+## User Component Types
+
+### user/components.types.ts
+
+טיפוסי רכיבי User:
+
+**CallbackStatus:**
+```typescript
+export type CallbackStatus = 'processing' | 'success' | 'error';
+```
+
+סטטוס של עיבוד OAuth callback.
+
+**CompleteProfileProps:**
+```typescript
+export interface CompleteProfileProps {
+  onComplete?: (data: { username: string; bio: string }) => void;
+}
+```
+
+Props לרכיב השלמת פרופיל.
+
 ## UI Types
 
 ### ui/base.types.ts
@@ -619,6 +719,26 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
   className?: string;
 }
 ```
+
+### ui/toast.types.ts
+
+טיפוסי Toast Component:
+
+**ToastProps:**
+```typescript
+export type ToastProps = {
+  // Re-exported from @/components/ui/toast
+};
+```
+
+**ToastActionElement:**
+```typescript
+export type ToastActionElement = {
+  // Re-exported from @/components/ui/toast
+};
+```
+
+טיפוסים אלה הם re-exports מהקומפוננטה `Toast` עצמה.
 
 ### ui/navigation.types.ts
 
@@ -820,6 +940,9 @@ Barrel exports לכל ה-types:
 export * from './game';
 export * from './ui';
 export * from './redux';
+export * from './hooks';
+export * from './services';
+export * from './user';
 export * from './api.types';
 export * from './interceptors.types';
 export * from './user.types';

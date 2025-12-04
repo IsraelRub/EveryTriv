@@ -91,15 +91,16 @@ export class GameController {
 			const result = await this.gameService.getTriviaQuestion(
 				body.topic,
 				body.difficulty,
-				body.requestedQuestions,
-				userId
+				body.questionsPerRequest,
+				userId,
+				body.answerCount
 			);
 
 			logger.apiCreate('game_trivia_questions', {
 				userId,
 				topic: body.topic,
 				difficulty: body.difficulty,
-				requestedQuestions: body.requestedQuestions,
+				questionsPerRequest: body.questionsPerRequest,
 			});
 
 			return result;
@@ -341,7 +342,6 @@ export class GameController {
 			logger.apiRead('game_admin_get_all_trivia', {
 				id: user.sub,
 				role: user.role,
-				totalQuestions: result.totalCount,
 			});
 
 			return result;

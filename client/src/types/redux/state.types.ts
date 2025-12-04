@@ -11,6 +11,7 @@ import type {
 	GameHistoryEntry,
 	LeaderboardEntry,
 	TopicsPlayed,
+	UserStatsData,
 } from '@shared/types';
 
 import type { ClientGameState, GameModeState } from '../game';
@@ -20,6 +21,7 @@ import { BaseReduxState } from './async.types';
  * User stats response for Redux state
  * @interface UserStatsResponse
  * @description User statistics response containing game metrics and achievements
+ * @deprecated Use UserStatsData instead. This interface is kept for backward compatibility.
  */
 export interface UserStatsResponse {
 	totalGames: number;
@@ -28,6 +30,17 @@ export interface UserStatsResponse {
 	topicsPlayed: TopicsPlayed;
 	difficultyStats: DifficultyBreakdown;
 	achievements: Achievement[];
+}
+
+/**
+ * Extended user stats for Redux state
+ * @interface ExtendedUserStats
+ * @description User statistics with additional Redux-specific fields
+ */
+export interface ExtendedUserStats extends UserStatsData {
+	topicsPlayed?: TopicsPlayed;
+	difficultyStats?: DifficultyBreakdown;
+	achievements?: Achievement[];
 }
 
 export interface UserState extends BaseReduxState {
@@ -46,8 +59,8 @@ export interface GameSliceState extends BaseReduxState {
 
 // Stats State
 export interface StatsState extends BaseReduxState {
-	stats: UserStatsResponse | null;
-	globalStats: UserStatsResponse | null;
+	stats: ExtendedUserStats | null;
+	globalStats: ExtendedUserStats | null;
 	leaderboard: LeaderboardEntry[];
 }
 

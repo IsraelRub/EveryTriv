@@ -16,6 +16,7 @@ import {
 	HTTP_METHODS,
 	HTTP_STATUS_CODES,
 	PROVIDER_ERROR_MESSAGES,
+	VALIDATION_LIMITS,
 } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type {
@@ -57,7 +58,7 @@ export abstract class BaseTriviaProvider {
 	protected extractMetadata(triviaQuestion: TriviaQuestion): TriviaQuestionMetadata {
 		return {
 			actualDifficulty: triviaQuestion.difficulty,
-			totalQuestions: 1,
+			gameQuestionCount: 1,
 			customDifficultyMultiplier: 1,
 			mappedDifficulty: triviaQuestion.difficulty,
 		};
@@ -340,9 +341,11 @@ export abstract class BaseTriviaProvider {
 	async generateTriviaQuestion(
 		topic: string,
 		difficulty: GameDifficulty,
-		excludeQuestions?: string[]
+		excludeQuestions?: string[],
+		answerCount?: number
 	): Promise<TriviaQuestion> {
-		return this.generateTriviaQuestionInternal(topic, difficulty, 5, excludeQuestions);
+		const actualAnswerCount = answerCount ?? 4;
+		return this.generateTriviaQuestionInternal(topic, difficulty, actualAnswerCount, excludeQuestions);
 	}
 
 	// Implement the required hasApiKey method from LLMProvider interface
@@ -360,7 +363,10 @@ export abstract class BaseTriviaProvider {
 
 		try {
 			// Clamp answer count to valid range (3-5) for batch generation
-			const actualAnswerCount = Math.max(3, Math.min(5, answerCount));
+			const actualAnswerCount = Math.max(
+				VALIDATION_LIMITS.ANSWER_COUNT.MIN,
+				Math.min(VALIDATION_LIMITS.ANSWER_COUNT.MAX, answerCount)
+			);
 			const prompt = this.buildPrompt(topic, difficulty, actualAnswerCount, excludeQuestions);
 
 			// Determine if this is a custom difficulty

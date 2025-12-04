@@ -8,7 +8,7 @@
 import { GameMode } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
-import type { GameDifficulty, TriviaQuestion } from './trivia.types';
+import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
 
 /**
  * Player status in multiplayer game
@@ -41,17 +41,23 @@ export interface Player {
 }
 
 /**
- * Multiplayer room configuration
- * @interface RoomConfig
- * @description Configuration for a multiplayer room
+ * Configuration for creating a new multiplayer room
+ * @interface CreateRoomConfig
+ * @description Input configuration when creating a room (client-side)
  */
-export interface RoomConfig {
-	topic: string;
-	difficulty: GameDifficulty;
-	requestedQuestions: number;
+export interface CreateRoomConfig extends BaseTriviaConfig {
+	questionsPerRequest: number;
 	maxPlayers: number;
 	gameMode: GameMode;
-	timePerQuestion: number; // 30 seconds for simultaneous games
+}
+
+/**
+ * Multiplayer room configuration
+ * @interface RoomConfig
+ * @description Complete room configuration (server-side, includes timePerQuestion)
+ */
+export interface RoomConfig extends CreateRoomConfig {
+	timePerQuestion: number; // See MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION
 }
 
 /**
@@ -81,7 +87,7 @@ export interface MultiplayerRoom extends BaseEntity {
 	status: RoomStatus;
 	currentQuestionIndex: number;
 	questions: TriviaQuestion[];
-	currentQuestionStartTime?: Date; // Timestamp when current question started
+	currentQuestionStartTime?: Date;
 	startTime?: Date;
 	endTime?: Date;
 }
@@ -95,7 +101,7 @@ export interface GameState {
 	roomId: string;
 	currentQuestion: TriviaQuestion | null;
 	currentQuestionIndex: number;
-	totalQuestions: number;
+	gameQuestionCount: number;
 	timeRemaining: number;
 	playersAnswers: PlayerAnswerMap;
 	playersScores: PlayerScoreMap;

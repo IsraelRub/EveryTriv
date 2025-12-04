@@ -1,3 +1,5 @@
+import type { ProviderPriorityMap } from '../types';
+
 /**
  * AI Provider Constants
  *
@@ -20,22 +22,12 @@ export const AI_PROVIDER_NAMES = {
  * Provider priority mapping
  * Lower number = higher priority (selected first)
  */
-export const AI_PROVIDER_PRIORITIES = {
+export const AI_PROVIDER_PRIORITIES: ProviderPriorityMap = {
 	[AI_PROVIDER_NAMES.GROQ]: 1,
 	[AI_PROVIDER_NAMES.GEMINI]: 2,
 	[AI_PROVIDER_NAMES.CHATGPT]: 3,
 	[AI_PROVIDER_NAMES.CLAUDE]: 4,
 } as const;
-
-/**
- * Provider priority interface
- */
-export interface ProviderPriorityMap {
-	readonly [AI_PROVIDER_NAMES.GROQ]: 1;
-	readonly [AI_PROVIDER_NAMES.GEMINI]: 2;
-	readonly [AI_PROVIDER_NAMES.CHATGPT]: 3;
-	readonly [AI_PROVIDER_NAMES.CLAUDE]: 4;
-}
 
 /**
  * Mapping from provider names to their error message keys

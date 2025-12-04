@@ -82,13 +82,15 @@ export class TriviaGenerationService {
 	 * @param difficulty Difficulty level
 	 * @param userId User ID for personalization
 	 * @param excludeQuestions List of question texts to exclude (to prevent duplicates in AI generation)
+	 * @param answerCount Number of answer choices per question (3-5, default: 4)
 	 * @returns Generated or existing trivia question entity
 	 */
 	async generateQuestion(
 		topic: string,
 		difficulty: GameDifficulty,
 		userId?: string,
-		excludeQuestions?: string[]
+		excludeQuestions?: string[],
+		answerCount?: number
 	): Promise<TriviaEntity> {
 		try {
 			logger.gameTarget('Generating trivia question', {
@@ -98,7 +100,13 @@ export class TriviaGenerationService {
 			});
 
 			// Try to generate question using AI
-			const aiQuestion = await this.aiProvidersService.generateQuestion(topic, difficulty, excludeQuestions);
+			const actualAnswerCount = answerCount ?? 4;
+			const aiQuestion = await this.aiProvidersService.generateQuestion(
+				topic,
+				difficulty,
+				excludeQuestions,
+				actualAnswerCount
+			);
 			const question = this.convertAIQuestionToFormat(aiQuestion, topic, toDifficultyLevel(difficulty));
 
 			if (question) {

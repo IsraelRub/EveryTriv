@@ -25,8 +25,8 @@ export class UserStatsEntity extends BaseEntity {
 	@Index()
 	totalGames: number = 0;
 
-	@Column('int', { name: 'total_questions', default: 0 })
-	totalQuestions: number = 0;
+	@Column('int', { name: 'total_questions_answered', default: 0 })
+	totalQuestionsAnswered: number = 0;
 
 	@Column('int', { name: 'correct_answers', default: 0 })
 	correctAnswers: number = 0;
@@ -56,7 +56,7 @@ export class UserStatsEntity extends BaseEntity {
 	topicStats: Record<
 		string,
 		{
-			totalQuestions: number;
+			totalQuestionsAnswered: number;
 			correctAnswers: number;
 			successRate: number;
 			score: number;
@@ -69,7 +69,7 @@ export class UserStatsEntity extends BaseEntity {
 	difficultyStats: Record<
 		string,
 		{
-			totalQuestions: number;
+			totalQuestionsAnswered: number;
 			correctAnswers: number;
 			successRate: number;
 			score: number;

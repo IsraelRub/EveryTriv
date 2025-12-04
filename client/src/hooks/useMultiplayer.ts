@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { clientLogger as logger } from '@shared/services';
 import type {
 	AnswerReceivedEvent,
+	CreateRoomConfig,
 	GameEndedEvent,
 	GameStartedEvent,
 	GameState,
@@ -42,34 +43,45 @@ export const useMultiplayer = () => {
 	const [roomCode, setRoomCode] = useState<string | null>(null);
 	const tokenRef = useRef<string | null>(null);
 	const roomRef = useRef<MultiplayerRoom | null>(null);
+	const isConnectingRef = useRef(false);
+	const hasSetupListenersRef = useRef(false);
 
 	const { currentUser } = useAppSelector((state: RootState) => state.user);
 
 	/**
 	 * Setup event listeners (defined before connect to avoid circular dependency)
+	 * Only sets up listeners once to prevent duplicates
 	 */
 	const setupEventListeners = useCallback(() => {
+		// Prevent setting up listeners multiple times
+		if (hasSetupListenersRef.current) {
+			logger.gameInfo('Event listeners already setup, skipping');
+			return;
+		}
+
+		logger.gameInfo('Setting up multiplayer event listeners');
+		hasSetupListenersRef.current = true;
+
 		// Room events
 		multiplayerService.onRoomCreated(({ room: newRoom, code }) => {
-			const roomData = newRoom as MultiplayerRoom;
-			setRoom(roomData);
-			roomRef.current = roomData;
+			setRoom(newRoom);
+			roomRef.current = newRoom;
+			setError(null);
 			if (code) {
 				setRoomCode(code);
 			}
-			logger.gameInfo('Room created', { roomId: roomData.roomId, code });
+			logger.gameInfo('Room created', { roomId: newRoom.roomId, code });
 		});
 
 		multiplayerService.onRoomJoined(({ room: newRoom, gameState: receivedGameState }) => {
-			const roomData = newRoom as MultiplayerRoom;
-			setRoom(roomData);
-			roomRef.current = roomData;
-			logger.gameInfo('Room joined', { roomId: roomData.roomId });
+			setRoom(newRoom);
+			roomRef.current = newRoom;
+			logger.gameInfo('Room joined', { roomId: newRoom.roomId });
 
 			// If gameState is provided (reconnection during active game), update it
 			if (receivedGameState) {
-				setGameState(receivedGameState as GameState);
-				logger.gameInfo('Game state restored on reconnection', { roomId: roomData.roomId });
+				setGameState(receivedGameState);
+				logger.gameInfo('Game state restored on reconnection', { roomId: newRoom.roomId });
 			}
 		});
 
@@ -131,15 +143,15 @@ export const useMultiplayer = () => {
 		multiplayerService.onQuestionStarted((event: QuestionStartedEvent) => {
 			if (event.data) {
 				setGameState(prev => {
-					// Get totalQuestions from room ref (current value) if available, otherwise use previous value or 0
-					const totalQuestions = roomRef.current?.questions?.length ?? prev?.totalQuestions ?? 0;
+					// Get gameQuestionCount from room ref (current value) if available, otherwise use previous value or 0
+					const gameQuestionCount = roomRef.current?.questions?.length ?? prev?.gameQuestionCount ?? 0;
 
 					if (!prev || prev.roomId !== event.roomId) {
 						return {
 							roomId: event.roomId,
 							currentQuestion: event.data.question,
 							currentQuestionIndex: event.data.questionIndex,
-							totalQuestions,
+							gameQuestionCount,
 							timeRemaining: event.data.timeLimit,
 							playersAnswers: {},
 							playersScores: {},
@@ -150,7 +162,7 @@ export const useMultiplayer = () => {
 						...prev,
 						currentQuestion: event.data.question,
 						currentQuestionIndex: event.data.questionIndex,
-						totalQuestions,
+						gameQuestionCount,
 						timeRemaining: event.data.timeLimit,
 					};
 				});
@@ -234,40 +246,62 @@ export const useMultiplayer = () => {
 	 * Connect to multiplayer server
 	 */
 	const connect = useCallback(async () => {
+		// Prevent multiple simultaneous connection attempts
+		if (isConnectingRef.current) {
+			logger.gameInfo('Connection already in progress, skipping');
+			return;
+		}
+
+		// Check if already connected
+		if (multiplayerService.isConnected()) {
+			logger.gameInfo('Already connected to multiplayer server');
+			setIsConnected(true);
+			return;
+		}
+
 		try {
+			isConnectingRef.current = true;
+			logger.gameInfo('Initiating multiplayer connection');
+
 			const token = await authService.getToken();
 			if (!token) {
 				logger.gameError('Cannot connect - no token available');
 				setError('Authentication required');
+				isConnectingRef.current = false;
 				return;
 			}
 
 			tokenRef.current = token;
+
 			const socket = multiplayerService.connect(token);
+
+			// Setup event listeners after socket is created (only once)
+			setupEventListeners();
 
 			socket.on('connect', () => {
 				setIsConnected(true);
 				setError(null);
+				isConnectingRef.current = false;
 				logger.gameInfo('Connected to multiplayer server');
 			});
 
 			socket.on('disconnect', () => {
 				setIsConnected(false);
+				isConnectingRef.current = false;
 				logger.gameInfo('Disconnected from multiplayer server');
 			});
 
 			socket.on('connect_error', err => {
 				setIsConnected(false);
+				isConnectingRef.current = false;
 				setError(getErrorMessage(err));
 				logger.gameError('Failed to connect to multiplayer server', {
 					error: getErrorMessage(err),
 				});
 			});
-
-			// Setup event listeners immediately (they will work once connected)
-			setupEventListeners();
 		} catch (err) {
 			setError(getErrorMessage(err));
+			isConnectingRef.current = false;
 			logger.gameError('Failed to initialize multiplayer connection', {
 				error: getErrorMessage(err),
 			});
@@ -278,29 +312,22 @@ export const useMultiplayer = () => {
 	 * Disconnect from multiplayer server
 	 */
 	const disconnect = useCallback(() => {
+		logger.gameInfo('Disconnecting from multiplayer server');
 		multiplayerService.disconnect();
 		setIsConnected(false);
 		setRoom(null);
 		setGameState(null);
 		setLeaderboard([]);
 		setError(null);
+		isConnectingRef.current = false;
 	}, []);
 
 	/**
 	 * Create a room
 	 */
-	const createRoom = useCallback(
-		(config: {
-			topic: string;
-			difficulty: string;
-			requestedQuestions: number;
-			maxPlayers: number;
-			gameMode: string;
-		}) => {
-			multiplayerService.createRoom(config);
-		},
-		[]
-	);
+	const createRoom = useCallback((config: CreateRoomConfig) => {
+		multiplayerService.createRoom(config);
+	}, []);
 
 	/**
 	 * Join a room
@@ -331,15 +358,18 @@ export const useMultiplayer = () => {
 	}, []);
 
 	// Auto-connect on mount if user is authenticated
+	// Separated into two effects to prevent disconnect loop
 	useEffect(() => {
-		if (currentUser && !isConnected) {
+		if (currentUser) {
 			connect();
 		}
 
+		// Cleanup only on unmount (empty dependency array for cleanup)
 		return () => {
+			logger.gameInfo('useMultiplayer hook unmounting, disconnecting');
 			disconnect();
 		};
-	}, [currentUser, isConnected, connect, disconnect]);
+	}, [currentUser]);
 
 	return {
 		isConnected,

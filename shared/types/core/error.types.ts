@@ -34,3 +34,35 @@ export interface HttpError extends Error {
 		timeout?: number;
 	};
 }
+
+/**
+ * Provider error with authentication error flag
+ * @interface ProviderAuthError
+ * @description Error from AI provider indicating authentication failure
+ */
+export interface ProviderAuthError extends Error {
+	statusCode?: number;
+	isAuthError: true;
+	provider?: string;
+}
+
+/**
+ * Provider error with rate limit error flag
+ * @interface ProviderRateLimitError
+ * @description Error from AI provider indicating rate limit exceeded
+ */
+export interface ProviderRateLimitError extends Error {
+	statusCode?: number;
+	isRateLimitError: true;
+	retryAfter?: number;
+	provider?: string;
+}
+
+/**
+ * Provider error with status code
+ * @interface ProviderErrorWithStatusCode
+ * @description Error from AI provider with HTTP status code
+ */
+export interface ProviderErrorWithStatusCode extends Error {
+	statusCode: number;
+}

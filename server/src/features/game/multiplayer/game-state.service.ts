@@ -47,7 +47,7 @@ export class GameStateService {
 
 			logger.gameInfo('Multiplayer game initialized', {
 				roomId: room.roomId,
-				totalQuestions: questions.length,
+				gameQuestionCount: questions.length,
 				playerCount: room.players.length,
 			});
 
@@ -71,18 +71,14 @@ export class GameStateService {
 		const timeRemaining = this.calculateTimeRemaining(room);
 
 		// Build players answers map
-		const playersAnswers: Record<string, number> = {};
-		room.players.forEach(player => {
-			if (player.currentAnswer !== undefined) {
-				playersAnswers[player.userId] = player.currentAnswer;
-			}
-		});
+		const playersAnswers = Object.fromEntries(
+			room.players
+				.filter(player => player.currentAnswer !== undefined)
+				.map(player => [player.userId, player.currentAnswer as number])
+		);
 
 		// Build players scores map
-		const playersScores: Record<string, number> = {};
-		room.players.forEach(player => {
-			playersScores[player.userId] = player.score;
-		});
+		const playersScores = Object.fromEntries(room.players.map(player => [player.userId, player.score]));
 
 		// Build leaderboard (sorted by score, then by correct answers)
 		const leaderboard = [...room.players].sort((a, b) => {
@@ -96,7 +92,7 @@ export class GameStateService {
 			roomId: room.roomId,
 			currentQuestion,
 			currentQuestionIndex: room.currentQuestionIndex,
-			totalQuestions: room.questions.length,
+			gameQuestionCount: room.questions.length,
 			timeRemaining,
 			playersAnswers,
 			playersScores,

@@ -11,6 +11,7 @@ import { PasswordService } from 'src/common/auth/password.service';
 import { Repository } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
+import { serverLogger as logger } from '@shared/services';
 import { UserData } from '@shared/types';
 
 import { UserEntity } from '@internal/entities';
@@ -287,6 +288,18 @@ export class AuthService {
 			const firstName = profile.firstName;
 			const lastName = profile.lastName;
 
+			logger.systemInfo('Creating new user from Google profile', {
+				data: {
+					googleId: profile.googleId,
+					email,
+					hasFirstName: !!firstName,
+					firstName: firstName || undefined,
+					hasLastName: !!lastName,
+					lastName: lastName || undefined,
+					hasAvatar: !!profile.avatar,
+				},
+			});
+
 			user = this.userRepository.create({
 				email,
 				googleId: profile.googleId,
@@ -298,10 +311,49 @@ export class AuthService {
 				lastLogin: new Date(),
 			});
 
-			await this.userRepository.save(user);
+			const savedUser = await this.userRepository.save(user);
+
+			logger.systemInfo('User created from Google profile', {
+				userId: savedUser.id,
+				data: {
+					hasFirstName: !!savedUser.firstName,
+					firstName: savedUser.firstName || undefined,
+					hasLastName: !!savedUser.lastName,
+					lastName: savedUser.lastName || undefined,
+					hasAvatar: !!savedUser.avatar,
+				},
+			});
+
+			// Verify data was saved correctly
+			const verifyUser = await this.userRepository.findOne({ where: { id: savedUser.id } });
+			if (verifyUser) {
+				logger.systemInfo('Verified saved user data', {
+					userId: verifyUser.id,
+					data: {
+						hasFirstName: !!verifyUser.firstName,
+						firstName: verifyUser.firstName || undefined,
+						hasLastName: !!verifyUser.lastName,
+						lastName: verifyUser.lastName || undefined,
+						hasAvatar: !!verifyUser.avatar,
+					},
+				});
+			}
 		} else {
 			// Ensure googleId stored and update avatar/full name if missing
 			let shouldPersist = false;
+
+			logger.systemInfo('Updating existing user from Google profile', {
+				userId: user.id,
+				data: {
+					currentFirstName: user.firstName || undefined,
+					currentLastName: user.lastName || undefined,
+					currentAvatar: user.avatar || undefined,
+					profileFirstName: profile.firstName || undefined,
+					profileLastName: profile.lastName || undefined,
+					profileAvatar: profile.avatar || undefined,
+				},
+			});
+
 			if (!user.googleId) {
 				user.googleId = profile.googleId;
 				shouldPersist = true;
@@ -310,19 +362,47 @@ export class AuthService {
 				user.avatar = profile.avatar;
 				shouldPersist = true;
 			}
-			if (!user.firstName && profile.firstName) {
+			// Update firstName and lastName if they exist in profile and user doesn't have them
+			// This ensures we fill missing data from Google
+			// Also update if profile has data and user field is empty/null
+			if (profile.firstName && (!user.firstName || user.firstName.trim() === '')) {
 				user.firstName = profile.firstName;
 				shouldPersist = true;
+				logger.systemInfo('Updating firstName from Google profile', {
+					userId: user.id,
+					data: {
+						oldFirstName: user.firstName || undefined,
+						newFirstName: profile.firstName,
+					},
+				});
 			}
-			if (!user.lastName && profile.lastName) {
+			if (profile.lastName && (!user.lastName || user.lastName.trim() === '')) {
 				user.lastName = profile.lastName;
 				shouldPersist = true;
+				logger.systemInfo('Updating lastName from Google profile', {
+					userId: user.id,
+					data: {
+						oldLastName: user.lastName || undefined,
+						newLastName: profile.lastName,
+					},
+				});
 			}
 			// Always update lastLogin on successful login
 			user.lastLogin = new Date();
 			shouldPersist = true;
 			if (shouldPersist) {
 				await this.userRepository.save(user);
+
+				logger.systemInfo('User updated from Google profile', {
+					userId: user.id,
+					data: {
+						hasFirstName: !!user.firstName,
+						firstName: user.firstName || undefined,
+						hasLastName: !!user.lastName,
+						lastName: user.lastName || undefined,
+						hasAvatar: !!user.avatar,
+					},
+				});
 			}
 		}
 
@@ -336,7 +416,7 @@ export class AuthService {
 			role: user.role,
 		});
 
-		return {
+		const response = {
 			access_token: tokenPair.accessToken,
 			refresh_token: tokenPair.refreshToken,
 			user: {
@@ -347,5 +427,17 @@ export class AuthService {
 				role: user.role,
 			},
 		};
+
+		logger.systemInfo('Google OAuth login response', {
+			userId: user.id,
+			data: {
+				hasFirstName: !!response.user.firstName,
+				firstName: response.user.firstName || undefined,
+				hasLastName: !!response.user.lastName,
+				lastName: response.user.lastName || undefined,
+			},
+		});
+
+		return response;
 	}
 }

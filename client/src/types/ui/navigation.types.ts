@@ -75,7 +75,6 @@ export interface NavigationBrandProps {
  */
 export interface NavigationMenuProps {
 	links: ReadonlyArray<NavigationMenuLink>;
-	audioControls: ReactNode;
 	isAuthenticated: boolean;
 	creditsDisplay?: string;
 	totalCredits?: number;

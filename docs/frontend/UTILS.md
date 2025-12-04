@@ -9,88 +9,47 @@
 
 ```
 client/src/utils/
-├── data.utils.ts                   # פונקציות עיבוד נתונים
-├── datetime/                       # פונקציות תאריך ושעה
-│   ├── date.utils.ts               # פונקציות תאריך
-│   ├── time.utils.ts               # פונקציות זמן
-│   └── index.ts                    # ייצוא מאוחד
-├── format.utils.ts                 # פונקציות עיצוב
-├── ui/                             # פונקציות UI
-│   ├── classNames.utils.ts         # פונקציות class names
-│   ├── format.utils.ts             # פונקציות עיצוב UI
-│   └── index.ts                    # ייצוא מאוחד
-├── user.utils.ts                   # פונקציות משתמש
+├── cn.utils.ts                     # פונקציות class names (cn)
+├── format.utils.ts                 # פונקציות עיצוב (כולל זמן)
 └── index.ts                        # ייצוא מאוחד
 ```
 
-## Data Utils
+## Format Utils
 
-### data.utils.ts
+### format.utils.ts
 
-פונקציות עיבוד נתונים:
+פונקציות עיצוב ופורמט:
 
-**isUser:**
+**formatNumber:**
 ```typescript
-export function isUser(value: unknown): value is User
+export function formatNumber(
+  num: number, 
+  decimals: number = 1, 
+  includeSuffix: boolean = true
+): string
 ```
 
-Type guard לבדיקה אם ערך הוא User:
-- בודק אם הערך הוא record
-- בודק שדות BasicUser (id, email)
-- בודק שדות User (status, emailVerified, authProvider)
-- בודק שדות מספריים (credits, purchasedCredits, totalCredits, score)
-
-**Usage:**
+מעצב מספר עם סיומת K/M:
 ```typescript
-import { isUser } from '@utils';
-
-if (isUser(data)) {
-  console.log(data.email); // TypeScript knows data is User
-}
+formatNumber(1234); // "1.2K"
+formatNumber(1234567); // "1.2M"
+formatNumber(1234, 0, false); // "1234"
 ```
 
-## Date/Time Utils
-
-### datetime/date.utils.ts
-
-פונקציות תאריך:
-
-**isToday:**
+**formatScore:**
 ```typescript
-export function isToday(date: Date): boolean
+export function formatScore(
+  score: number, 
+  showPlus: boolean = true
+): string
 ```
 
-בודק אם תאריך הוא היום:
+מעצב ניקוד:
 ```typescript
-const today = new Date();
-const isTodayDate = isToday(today); // true
+formatScore(100); // "+100.0"
+formatScore(-50); // "50.0"
+formatScore(100, false); // "100.0"
 ```
-
-**isYesterday:**
-```typescript
-export function isYesterday(date: Date): boolean
-```
-
-בודק אם תאריך הוא אתמול:
-```typescript
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
-const isYesterdayDate = isYesterday(yesterday); // true
-```
-
-**getCurrentTimestamp:**
-```typescript
-export function getCurrentTimestamp(): number
-```
-
-מחזיר timestamp נוכחי במילישניות:
-```typescript
-const timestamp = getCurrentTimestamp(); // 1234567890123
-```
-
-### datetime/time.utils.ts
-
-פונקציות זמן:
 
 **formatTime:**
 ```typescript
@@ -127,81 +86,15 @@ formatTimeUntilReset(resetTime); // "1h 0m"
 formatTimeUntilReset(Date.now() - 1000); // "Reset now"
 ```
 
-## Format Utils
+## Class Names Utils
 
-### format.utils.ts
-
-פונקציות עיצוב:
-
-**formatNumber:**
-```typescript
-export function formatNumber(
-  num: number, 
-  decimals: number = 1, 
-  includeSuffix: boolean = true
-): string
-```
-
-מעצב מספר עם סיומת K/M:
-```typescript
-formatNumber(1234); // "1.2K"
-formatNumber(1234567); // "1.2M"
-formatNumber(1234, 0, false); // "1234"
-```
-
-**formatRelativeTime:**
-```typescript
-export function formatRelativeTime(
-  timestamp: number, 
-  now: number = Date.now()
-): string
-```
-
-מעצב זמן יחסי:
-```typescript
-const oneHourAgo = Date.now() - 3600000;
-formatRelativeTime(oneHourAgo); // "1h ago"
-
-const oneDayAgo = Date.now() - 86400000;
-formatRelativeTime(oneDayAgo); // "1d ago"
-```
-
-**formatScore:**
-```typescript
-export function formatScore(
-  score: number, 
-  showPlus: boolean = true
-): string
-```
-
-מעצב ניקוד:
-```typescript
-formatScore(100); // "+100.0"
-formatScore(-50); // "50.0"
-formatScore(100, false); // "100.0"
-```
-
-
-**formatTopic:**
-```typescript
-export function formatTopic(topic: string): string
-```
-
-מעצב שם נושא (כל מילה עם אות ראשונה גדולה):
-```typescript
-formatTopic('world-history'); // "World History"
-formatTopic('science_technology'); // "Science Technology"
-```
-
-## UI Utils
-
-### ui/classNames.utils.ts
+### cn.utils.ts
 
 פונקציות class names:
 
-**combineClassNames:**
+**cn:**
 ```typescript
-export function combineClassNames(...inputs: ClassValue[]): string
+export function cn(...inputs: ClassValue[]): string
 ```
 
 משלב class names עם תמיכה ב-Tailwind merge:
@@ -211,68 +104,15 @@ export function combineClassNames(...inputs: ClassValue[]): string
 
 **Usage:**
 ```typescript
-import { combineClassNames } from '@utils';
+import { cn } from '@utils';
 
-const className = combineClassNames(
+const className = cn(
   'px-4 py-2',
   isActive && 'bg-blue-500',
   'text-white',
   'px-6' // זה יחליף את px-4
 ); // "py-2 bg-blue-500 text-white px-6"
 ```
-
-### ui/format.utils.ts
-
-פונקציות עיצוב UI:
-
-**Re-exports:**
-מייצא מחדש את כל הפונקציות מ-`format.utils.ts`:
-- `formatNumber`
-- `formatRelativeTime`
-- `formatScore`
-- `formatTopic`
-
-**getDifficultyIcon:**
-```typescript
-export const getDifficultyIcon = (difficulty: string): string
-```
-
-מחזיר שם icon עבור רמת קושי:
-```typescript
-getDifficultyIcon('easy'); // "easy"
-getDifficultyIcon('medium'); // "medium"
-getDifficultyIcon('hard'); // "hard"
-getDifficultyIcon('custom_my-difficulty'); // "question"
-getDifficultyIcon('unknown'); // "question"
-```
-
-## User Utils
-
-### user.utils.ts
-
-פונקציות משתמש:
-
-**getOrCreateClientUserId:**
-```typescript
-export async function getOrCreateClientUserId(): Promise<string>
-```
-
-מייצר או מחזיר user ID מ-localStorage:
-- בודק אם יש user ID ב-localStorage
-- אם לא, מייצר user ID חדש ושומר אותו
-- מחזיר user ID קיים או חדש
-
-**Usage:**
-```typescript
-import { getOrCreateClientUserId } from '@utils';
-
-const userId = await getOrCreateClientUserId();
-// userId הוא string ייחודי
-```
-
-**Error Handling:**
-- אם localStorage לא זמין, מייצר user ID זמני
-- לוג warning אם storage לא זמין
 
 ## Index
 
@@ -281,30 +121,19 @@ const userId = await getOrCreateClientUserId();
 Barrel exports לכל ה-utils:
 
 ```typescript
-// UI utilities
-export * from './ui';
-
-// User utilities
-export * from './user.utils';
-
-// DateTime utilities
-export * from './datetime';
-
-// Data utilities
-export * from './data.utils';
-
-// Format utilities
+export * from './cn.utils';
 export * from './format.utils';
 ```
 
 **Usage:**
 ```typescript
 import { 
-  isUser,
+  cn,
   formatTime,
+  formatTimeDisplay,
+  formatTimeUntilReset,
   formatNumber,
-  combineClassNames,
-  getOrCreateClientUserId
+  formatScore
 } from '@utils';
 ```
 
@@ -333,9 +162,9 @@ import {
 
 ### שילוב Class Names
 ```typescript
-import { combineClassNames } from '@utils';
+import { cn } from '@utils';
 
-const buttonClass = combineClassNames(
+const buttonClass = cn(
   'px-4 py-2 rounded',
   variant === 'primary' && 'bg-blue-500',
   disabled && 'opacity-50',
@@ -345,10 +174,11 @@ const buttonClass = combineClassNames(
 
 ### עיצוב זמן
 ```typescript
-import { formatTime, formatTimeDisplay } from '@utils';
+import { formatTime, formatTimeDisplay, formatTimeUntilReset } from '@utils';
 
 const gameTime = formatTime(125); // "02:05"
 const displayTime = formatTimeDisplay(3661); // "1h"
+const resetTime = formatTimeUntilReset(Date.now() + 3600000); // "1h 0m"
 ```
 
 ### עיצוב מספרים
@@ -357,16 +187,6 @@ import { formatNumber, formatScore } from '@utils';
 
 const points = formatNumber(1234); // "1.2K"
 const score = formatScore(100); // "+100.0"
-```
-
-### בדיקת User
-```typescript
-import { isUser } from '@utils';
-
-if (isUser(data)) {
-  // TypeScript knows data is User
-  console.log(data.email);
-}
 ```
 
 ## קישורים רלוונטיים

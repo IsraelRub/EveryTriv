@@ -2,6 +2,7 @@ import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
 	HttpException,
 	HttpStatus,
@@ -15,6 +16,7 @@ import {
 
 import {
 	CACHE_DURATION,
+	GameMode,
 	PAGINATION_LIMITS,
 	STRING_LIMITS,
 	UserRole,
@@ -35,9 +37,10 @@ import {
 	Roles,
 } from '../../common';
 import { UserDataPipe } from '../../common/pipes';
+import { CreditsService } from '../credits/credits.service';
+import { DeductCreditsDto } from '../credits/dtos';
 import {
 	ChangePasswordDto,
-	DeductCreditsDto,
 	SearchUsersDto,
 	UpdateSinglePreferenceDto,
 	UpdateUserCreditsDto,
@@ -50,7 +53,10 @@ import { UserService } from './user.service';
 
 @Controller('users')
 export class UserController {
-	constructor(private readonly userService: UserService) {}
+	constructor(
+		private readonly userService: UserService,
+		private readonly creditsService: CreditsService
+	) {}
 
 	/**
 	 * Get user profile
@@ -59,7 +65,10 @@ export class UserController {
 	 */
 	@Get('profile')
 	@NoCache()
-	async getUserProfile(@CurrentUser() user: TokenPayload) {
+	async getUserProfile(@CurrentUser() user: TokenPayload | null) {
+		if (!user || !user.sub) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const result = await this.userService.getUserProfile(user.sub);
 
@@ -85,14 +94,23 @@ export class UserController {
 	 * @returns Credit deduction result
 	 */
 	@Post('credits')
-	async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCreditsDto) {
+	async deductCredits(@CurrentUserId() userId: string | null, @Body() body: DeductCreditsDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
-			const result = await this.userService.deductCredits(userId, body.amount, body.reason || 'Game play');
+			const result = await this.creditsService.deductCredits(
+				userId,
+				body.questionsPerRequest,
+				body.gameMode || GameMode.QUESTION_LIMITED,
+				body.reason || 'Game play'
+			);
 
 			// Log API call
 			logger.apiUpdate('user_credits_deduct', {
 				userId,
-				amount: body.amount,
+				questionsPerRequest: body.questionsPerRequest,
+				gameMode: body.gameMode || GameMode.QUESTION_LIMITED,
 				reason: body.reason || 'Game play',
 			});
 
@@ -101,7 +119,7 @@ export class UserController {
 			logger.userError('Error deducting credits', {
 				error: getErrorMessage(error),
 				userId,
-				amount: body.amount,
+				questionsPerRequest: body.questionsPerRequest,
 			});
 			throw error;
 		}
@@ -117,7 +135,10 @@ export class UserController {
 	@UsePipes(UserDataPipe)
 	@RequireEmailVerified()
 	@RequireUserStatus('active')
-	async updateUserProfile(@CurrentUserId() userId: string, @Body() profileData: UpdateUserProfileDto) {
+	async updateUserProfile(@CurrentUserId() userId: string | null, @Body() profileData: UpdateUserProfileDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const result = await this.userService.updateUserProfile(userId, profileData);
 
@@ -173,7 +194,10 @@ export class UserController {
 	 * @returns Account deletion result
 	 */
 	@Delete('account')
-	async deleteUserAccount(@CurrentUserId() userId: string) {
+	async deleteUserAccount(@CurrentUserId() userId: string | null) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const result = await this.userService.deleteUserAccount(userId);
 
@@ -199,7 +223,10 @@ export class UserController {
 	 * @returns Password change result
 	 */
 	@Put('change-password')
-	async changePassword(@CurrentUserId() userId: string, @Body() passwordData: ChangePasswordDto) {
+	async changePassword(@CurrentUserId() userId: string | null, @Body() passwordData: ChangePasswordDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			if (!passwordData.currentPassword || !passwordData.newPassword) {
 				throw new HttpException('Current password and new password are required', HttpStatus.BAD_REQUEST);
@@ -233,7 +260,10 @@ export class UserController {
 	 * @returns Updated user preferences
 	 */
 	@Put('preferences')
-	async updateUserPreferences(@CurrentUserId() userId: string, @Body() preferences: UpdateUserPreferencesDto) {
+	async updateUserPreferences(@CurrentUserId() userId: string | null, @Body() preferences: UpdateUserPreferencesDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const result = await this.userService.updateUserPreferences(userId, preferences);
 
@@ -263,10 +293,13 @@ export class UserController {
 	 */
 	@Patch('profile/:field')
 	async updateUserField(
-		@CurrentUserId() userId: string,
+		@CurrentUserId() userId: string | null,
 		@Param('field') field: string,
 		@Body() body: UpdateUserFieldDto
 	) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			if (!field || !body.value) {
 				throw new HttpException(VALIDATION_ERRORS.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
@@ -321,10 +354,13 @@ export class UserController {
 	 */
 	@Patch('preferences/:preference')
 	async updateSinglePreference(
-		@CurrentUserId() userId: string,
+		@CurrentUserId() userId: string | null,
 		@Param('preference') preference: string,
 		@Body() body: UpdateSinglePreferenceDto
 	) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			if (!preference || body.value === undefined) {
 				throw new HttpException(VALIDATION_ERRORS.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
@@ -493,10 +529,13 @@ export class UserController {
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getAllUsers(
-		@CurrentUser() user: TokenPayload,
+		@CurrentUser() user: TokenPayload | null,
 		@Query('limit') limit?: number,
 		@Query('offset') offset?: number
 	) {
+		if (!user || !user.sub) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
 			const parsedOffset = typeof offset === 'string' ? parseInt(offset, 10) : offset;
@@ -549,10 +588,13 @@ export class UserController {
 	@Put('admin/:userId/status')
 	@Roles(UserRole.ADMIN)
 	async adminUpdateUserStatus(
-		@CurrentUser() adminUser: BasicUser,
+		@CurrentUser() adminUser: BasicUser | null,
 		@Param('userId') userId: string,
 		@Body() statusData: UpdateUserStatusDto
 	) {
+		if (!adminUser || !adminUser.id) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			if (!userId || !statusData.status) {
 				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);

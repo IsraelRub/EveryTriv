@@ -14,7 +14,7 @@ import * as dotenv from 'dotenv';
 
 // eslint-disable-next-line simple-import-sort/imports
 // prettier-ignore
-dotenv.config();
+dotenv.config({ override: true });
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';

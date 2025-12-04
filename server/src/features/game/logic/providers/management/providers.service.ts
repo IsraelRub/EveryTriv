@@ -143,12 +143,14 @@ export class AiProvidersService {
 	 * @param topic The topic for the trivia question
 	 * @param difficulty The difficulty level
 	 * @param excludeQuestions List of question texts to exclude (to prevent duplicates)
+	 * @param answerCount Number of answer choices per question (3-5, default: 4)
 	 * @returns Promise<TriviaQuestion> The generated question
 	 */
 	async generateQuestion(
 		topic: string,
 		difficulty: GameDifficulty,
-		excludeQuestions?: string[]
+		excludeQuestions?: string[],
+		answerCount?: number
 	): Promise<TriviaQuestion> {
 		if (this.llmProviders.length === 0) {
 			logger.providerError('all', PROVIDER_ERROR_MESSAGES.NO_PROVIDERS_AVAILABLE, {
@@ -204,7 +206,8 @@ export class AiProvidersService {
 				maxAttempts,
 				failedProviders,
 				attemptedProviders,
-				excludeQuestions
+				excludeQuestions,
+				answerCount
 			);
 
 			// Track this request
@@ -238,7 +241,8 @@ export class AiProvidersService {
 		maxAttempts: number,
 		failedProviders: Set<string>,
 		attemptedProviders: Set<string>,
-		excludeQuestions?: string[]
+		excludeQuestions?: string[],
+		answerCount?: number
 	): Promise<TriviaQuestion> {
 		let lastError: Error | null = null;
 
@@ -356,9 +360,10 @@ export class AiProvidersService {
 
 					this.updateProviderStats(providerName, 'request');
 
+					const actualAnswerCount = answerCount ?? 4;
 					const question = await ('generateTriviaQuestion' in provider &&
 					typeof provider.generateTriviaQuestion === 'function'
-						? provider.generateTriviaQuestion(topic, difficulty, excludeQuestions)
+						? provider.generateTriviaQuestion(topic, difficulty, excludeQuestions, actualAnswerCount)
 						: Promise.reject(new Error('Provider does not support trivia question generation')));
 
 					const duration = Date.now() - startTime;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
 import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, GameMode, PaymentMethod } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
@@ -26,9 +26,12 @@ export class CreditsController {
 	 */
 	@Get('balance')
 	@NoCache()
-	async getCreditBalance(@CurrentUserId() userId: string) {
+	async getCreditBalance(@CurrentUserId() userId: string | null) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
-			const result = this.creditsService.getCreditBalance(userId);
+			const result = await this.creditsService.getCreditBalance(userId);
 
 			// Log API call for balance check
 			logger.apiRead('credits_balance', {
@@ -75,21 +78,24 @@ export class CreditsController {
 	 */
 	@Get('can-play')
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
-	async canPlay(@CurrentUserId() userId: string, @Query() query: CanPlayDto) {
+	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
-			const requestedQuestions = query.requestedQuestions ?? DEFAULT_USER_PREFERENCES.game?.questionLimit ?? 5;
+			const questionsPerRequest = query.questionsPerRequest ?? DEFAULT_USER_PREFERENCES.game?.maxQuestionsPerGame ?? 5;
 
-			if (!requestedQuestions || requestedQuestions <= 0) {
-				throw new HttpException('Valid requested questions is required', HttpStatus.BAD_REQUEST);
+			if (!questionsPerRequest || questionsPerRequest <= 0) {
+				throw new HttpException('Valid questions per request is required', HttpStatus.BAD_REQUEST);
 			}
 
 			const gameMode = query.gameMode ?? GameMode.QUESTION_LIMITED;
-			const result = await this.creditsService.canPlay(userId, requestedQuestions, gameMode);
+			const result = await this.creditsService.canPlay(userId, questionsPerRequest, gameMode);
 
 			// Log API call for can-play check
 			logger.apiRead('credits_can_play', {
 				userId,
-				requestedQuestions,
+				questionsPerRequest,
 				canPlay: result.canPlay,
 				gameMode,
 			});
@@ -99,7 +105,7 @@ export class CreditsController {
 			logger.userError('Error checking can play', {
 				error: getErrorMessage(error),
 				userId,
-				requestedQuestions: query.requestedQuestions,
+				questionsPerRequest: query.questionsPerRequest,
 			});
 			throw error;
 		}
@@ -113,44 +119,45 @@ export class CreditsController {
 	 */
 	@Post('deduct')
 	async deductCredits(
-		@CurrentUserId() userId: string,
+		@CurrentUserId() userId: string | null,
 		@Body() body: DeductCreditsDto,
-		@Query('requestedQuestions') requestedQuestionsParam?: number,
+		@Query('questionsPerRequest') questionsPerRequestParam?: number,
 		@Query('gameMode') gameModeParam?: GameMode
 	) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			logger.apiDebug('Deduct credits request received', {
 				userId,
-				requestedQuestions: body.requestedQuestions,
-				amount: body.amount,
-				gameMode: body.gameMode ?? body.gameType,
+				questionsPerRequest: body.questionsPerRequest,
+				gameMode: body.gameMode,
 				data: {
 					body,
 				},
 			});
 
-			const requestedQuestions = body.requestedQuestions ?? body.amount ?? requestedQuestionsParam;
-			if (!requestedQuestions || requestedQuestions <= 0) {
-				logger.userError('Invalid requested questions in request', {
+			const questionsPerRequest = body.questionsPerRequest ?? questionsPerRequestParam;
+			if (!questionsPerRequest || questionsPerRequest <= 0) {
+				logger.userError('Invalid questions per request in request', {
 					userId,
-					requestedQuestions: body.requestedQuestions ?? body.amount,
-					amount: body.amount,
-					gameMode: body.gameMode ?? body.gameType,
+					questionsPerRequest: body.questionsPerRequest,
+					gameMode: body.gameMode,
 					data: {
 						body,
 					},
 				});
-				throw new HttpException('Valid requested questions is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException('questionsPerRequest is required', HttpStatus.BAD_REQUEST);
 			}
 
-			const gameMode = body.gameMode ?? body.gameType ?? gameModeParam ?? GameMode.QUESTION_LIMITED;
+			const gameMode = body.gameMode ?? gameModeParam ?? GameMode.QUESTION_LIMITED;
 
-			const result = await this.creditsService.deductCredits(userId, requestedQuestions, gameMode, body.reason);
+			const result = await this.creditsService.deductCredits(userId, questionsPerRequest, gameMode, body.reason);
 
 			// Log API call for credits deduction with IP and User Agent
 			logger.apiUpdate('credits_deduct', {
 				userId,
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode,
 				reason: body.reason,
 				remainingCredits: result.totalCredits,
@@ -161,8 +168,8 @@ export class CreditsController {
 			logger.userError('Error deducting credits', {
 				error: getErrorMessage(error),
 				userId,
-				requestedQuestions: body.requestedQuestions ?? body.amount,
-				gameMode: body.gameMode ?? body.gameType,
+				questionsPerRequest: body.questionsPerRequest,
+				gameMode: body.gameMode,
 				reason: body.reason,
 			});
 			throw error;
@@ -177,7 +184,10 @@ export class CreditsController {
 	 */
 	@Get('history')
 	@Cache(CACHE_DURATION.SHORT + 90) // Cache for 2 minutes
-	async getCreditHistory(@CurrentUserId() userId: string, @Query() query: GetCreditHistoryDto) {
+	async getCreditHistory(@CurrentUserId() userId: string | null, @Query() query: GetCreditHistoryDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const limit = query.limit || 50;
 			if (limit > 100) {
@@ -211,7 +221,10 @@ export class CreditsController {
 	 * @returns Credits purchase result
 	 */
 	@Post('purchase')
-	async purchaseCredits(@CurrentUserId() userId: string, @Body() body: PurchaseCreditsDto) {
+	async purchaseCredits(@CurrentUserId() userId: string | null, @Body() body: PurchaseCreditsDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			if (!body.packageId) {
 				throw new HttpException('Package ID is required', HttpStatus.BAD_REQUEST);
@@ -251,7 +264,10 @@ export class CreditsController {
 	 * @returns Purchase confirmation result
 	 */
 	@Post('confirm-purchase')
-	async confirmCreditPurchase(@CurrentUserId() userId: string, @Body() body: ConfirmCreditPurchaseDto) {
+	async confirmCreditPurchase(@CurrentUserId() userId: string | null, @Body() body: ConfirmCreditPurchaseDto) {
+		if (!userId) {
+			throw new ForbiddenException('Authentication required');
+		}
 		try {
 			const paymentIdentifier = body.paymentIntentId ?? body.transactionId ?? body.paymentId;
 			if (!paymentIdentifier || !body.credits || body.credits <= 0) {

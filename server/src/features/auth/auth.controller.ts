@@ -10,7 +10,7 @@ import type { Response } from 'express';
 
 import { CACHE_DURATION, LOCALHOST_URLS, UserRole } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
-import type { AdminUserData, GoogleAuthRequest, TokenPayload } from '@shared/types';
+import type { AdminUserData, BasicUser, GoogleAuthRequest, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import {
@@ -122,17 +122,46 @@ export class AuthController {
 	/**
 	 * Get current user profile
 	 * @param user Current user token payload
-	 * @returns Current user token payload
+	 * @returns Current user data with full profile information
 	 */
 	@Get('me')
 	@NoCache()
-	async getCurrentUser(@CurrentUser() user: TokenPayload): Promise<TokenPayload> {
+	async getCurrentUser(
+		@CurrentUser() user: TokenPayload
+	): Promise<BasicUser & { firstName?: string; lastName?: string }> {
 		try {
 			logger.authInfo('Current user accessed', {
 				userId: user.sub,
 			});
 
-			return user;
+			// Get full user data from database (includes firstName, lastName, etc.)
+			const fullUser = await this.authService.getCurrentUser(user.sub);
+
+			// Return user data with firstName and lastName
+			const userData: BasicUser & { firstName?: string; lastName?: string } = {
+				id: fullUser.id,
+				email: fullUser.email,
+				role: fullUser.role,
+			};
+
+			// Add firstName and lastName if they exist
+			const userWithName = fullUser as { firstName?: string; lastName?: string };
+			if (userWithName.firstName) {
+				userData.firstName = userWithName.firstName;
+			}
+			if (userWithName.lastName) {
+				userData.lastName = userWithName.lastName;
+			}
+
+			logger.systemInfo('Returning user data', {
+				userId: userData.id,
+				data: {
+					hasFirstName: !!userData.firstName,
+					hasLastName: !!userData.lastName,
+				},
+			});
+
+			return userData;
 		} catch (error) {
 			logger.authError('Error getting current user', {
 				error: getErrorMessage(error),
@@ -191,6 +220,27 @@ export class AuthController {
 		try {
 			logger.authInfo('Google OAuth callback requested');
 
+			// Log request details for debugging
+			const queryParamsRecord: Record<string, string | string[]> = {};
+			if (req.query) {
+				for (const [key, value] of Object.entries(req.query)) {
+					if (typeof value === 'string') {
+						queryParamsRecord[key] = value;
+					} else if (Array.isArray(value)) {
+						queryParamsRecord[key] = value.map(v => String(v));
+					} else if (value !== undefined) {
+						queryParamsRecord[key] = String(value);
+					}
+				}
+			}
+
+			logger.systemInfo('Google OAuth callback request details', {
+				hasUser: !!req.user,
+				userType: typeof req.user,
+				userKeys: req.user ? Object.keys(req.user) : [],
+				queryParams: queryParamsRecord,
+			});
+
 			// Check for OAuth errors from Google (query parameters)
 			const error = typeof req.query.error === 'string' ? req.query.error : undefined;
 			const errorDescription =
@@ -212,8 +262,24 @@ export class AuthController {
 			}
 
 			const payload = req.user;
-			if (!payload || !payload.google_id) {
-				logger.authError('Google profile not available in callback');
+			logger.systemInfo('Google OAuth callback payload check', {
+				hasPayload: !!payload,
+				payloadType: typeof payload,
+				payloadKeys: payload ? Object.keys(payload) : [],
+				hasGoogleId: payload ? 'googleId' in payload : false,
+				data: {
+					googleIdType: typeof payload?.googleId,
+					googleIdLength: payload?.googleId ? String(payload.googleId).length : 0,
+				},
+			});
+
+			if (!payload || !payload.googleId) {
+				logger.authError('Google profile not available in callback', {
+					hasPayload: !!payload,
+					payloadType: typeof payload,
+					payloadKeys: payload ? Object.keys(payload) : [],
+					hasGoogleId: payload ? 'googleId' in payload : false,
+				});
 				const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
 				const redirectUrl = `${clientUrl}/auth/callback?error=oauth_failed&error_description=${encodeURIComponent('Google profile not available')}`;
 
@@ -221,7 +287,7 @@ export class AuthController {
 			}
 
 			const result = await this.authService.loginWithGoogle({
-				googleId: payload.google_id,
+				googleId: payload.googleId,
 				email: payload.email,
 				firstName: payload.firstName,
 				lastName: payload.lastName,
@@ -232,26 +298,29 @@ export class AuthController {
 				userId: result.user.id,
 			});
 
-			// Set tokens in cookies
+			// Set tokens in cookies (for same-origin requests)
 			const clientUrl = process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT;
-			res.cookie('access_token', result.access_token, {
+			const isProduction = process.env.NODE_ENV === 'production';
+			const cookieOptions = {
 				httpOnly: true,
-				secure: process.env.NODE_ENV === 'production',
-				sameSite: 'lax',
+				secure: isProduction,
+				sameSite: 'lax' as const,
 				maxAge: 15 * 60 * 1000, // 15 minutes
-			});
+				path: '/',
+			};
+
+			res.cookie('access_token', result.access_token, cookieOptions);
 
 			if (result.refresh_token) {
 				res.cookie('refresh_token', result.refresh_token, {
-					httpOnly: true,
-					secure: process.env.NODE_ENV === 'production',
-					sameSite: 'lax',
+					...cookieOptions,
 					maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 				});
 			}
 
-			// Redirect to client with success
-			const redirectUrl = `${clientUrl}/auth/callback?success=true`;
+			// Also send token in query parameter for cross-origin redirect compatibility
+			// The client will store it in localStorage
+			const redirectUrl = `${clientUrl}/auth/callback?success=true&token=${encodeURIComponent(result.access_token)}`;
 			return res.redirect(redirectUrl);
 		} catch (error) {
 			logger.authError('Google OAuth callback error', {

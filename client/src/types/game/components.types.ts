@@ -7,24 +7,25 @@ import { FormEvent } from 'react';
 
 import { GameMode } from '@shared/constants';
 import type {
+	BaseGameTopicDifficulty,
 	DifficultyBreakdown,
-	FavoriteTopic,
+	GameDifficulty,
 	GameModeConfig,
 	TriviaQuestion,
 	ValidationSeverity,
 } from '@shared/types';
 
-import { ClientGameState, GameTimerState } from './config.types';
-
-/**
- * @interface CurrentQuestionMetadata
- * @description Metadata for the current question being displayed
- */
-export interface CurrentQuestionMetadata {
-	customDifficultyMultiplier?: number;
-	actualDifficulty?: string;
-	totalQuestions?: number;
-}
+import {
+	ClickableItem,
+	ClientGameState,
+	CurrentQuestionMetadata,
+	GameConfig,
+	GameModeSelectionConfig,
+	GameTimerState,
+	HistoryItem,
+	LeaderboardClickEntry,
+	LeaderboardDisplayEntry,
+} from './config.types';
 
 /**
  * Game component props interface
@@ -75,7 +76,7 @@ export interface TriviaFormProps {
 	difficulty?: string;
 	answerCount?: number;
 	onTopicChange?: (topic: string) => void;
-	onDifficultyChange?: (difficulty: string) => void;
+	onDifficultyChange?: (difficulty: GameDifficulty) => void;
 	onAnswerCountChange?: (count: number) => void;
 }
 
@@ -84,9 +85,9 @@ export interface TriviaFormProps {
  * @used_by client/src/components/user/FavoriteTopics.tsx
  */
 export interface FavoriteTopicsProps {
-	favorites: FavoriteTopic[];
+	favorites: BaseGameTopicDifficulty[];
 	onRemove: (index: number) => void;
-	onSelect?: (favorite: FavoriteTopic) => void;
+	onSelect?: (favorite: BaseGameTopicDifficulty) => void;
 	className?: string;
 }
 
@@ -98,10 +99,10 @@ export interface GameModeUIProps {
 	currentMode?: string;
 	onModeChange?: (mode: string) => void;
 	onTopicChange?: (topic: string) => void;
-	onDifficultyChange?: (difficulty: string) => void;
+	onDifficultyChange?: (difficulty: GameDifficulty) => void;
 	className?: string;
 	isVisible?: boolean;
-	onSelectMode?: (config: { mode: GameMode; timeLimit?: number; questionLimit?: number }) => void;
+	onSelectMode?: (config: GameModeSelectionConfig) => void;
 	onModeSelect?: (mode: string) => void;
 	onCancel?: () => void;
 }
@@ -124,29 +125,12 @@ export interface ScoringSystemProps {
  * @used_by client/src/components/stats/CustomDifficultyHistory.tsx
  */
 export interface CustomDifficultyHistoryProps {
-	history?: {
-		difficulty: string;
-		score: number;
-		date: string;
-	}[];
-	onItemClick?: (item: { id: string; name: string; value: number }) => void;
+	history?: HistoryItem[];
+	onItemClick?: (item: ClickableItem) => void;
 	className?: string;
 	isVisible?: boolean;
 	onClose?: () => void;
-	onSelect?: (topic: string, difficulty: string) => void;
-}
-
-/**
- * Props for current difficulty component
- * @used_by client/src/components/home/CurrentDifficulty.tsx
- */
-export interface CurrentDifficultyProps {
-	difficulty: string;
-	onDifficultyChange: (difficulty: string) => void;
-	className?: string;
-	delay?: number;
-	topic?: string;
-	onShowHistory?: () => void;
+	onSelect?: (selection: BaseGameTopicDifficulty) => void;
 }
 
 /**
@@ -192,13 +176,17 @@ export interface SocialShareProps {
  * @used_by client/src/components/leaderboard/Leaderboard.tsx
  */
 export interface LeaderboardProps {
-	entries?: {
-		rank: number;
-		email: string;
-		score: number;
-		avatar?: string;
-	}[];
-	onEntryClick?: (entry: { id: string; email: string; score: number; rank: number }) => void;
+	entries?: LeaderboardDisplayEntry[];
+	onEntryClick?: (entry: LeaderboardClickEntry) => void;
 	className?: string;
 	userId?: string;
+}
+
+/**
+ * Game mode component props interface
+ * @interface GameModeProps
+ * @description Props for the GameMode component
+ */
+export interface GameModeProps {
+	onModeSelect?: (mode: GameMode, settings?: GameConfig) => void;
 }

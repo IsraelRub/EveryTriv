@@ -43,11 +43,11 @@ export class TriviaRequestPipe implements PipeTransform {
 
 			const payload = this.buildTriviaPayload(value);
 
-			// Convert UNLIMITED_QUESTIONS (999) to MAX_QUESTIONS_PER_REQUEST before validation
-			const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST before validation
+			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-			const requestedQuestionsForValidation =
-				payload.requestedQuestions === UNLIMITED ? maxQuestions : payload.requestedQuestions;
+			const questionsPerRequestForValidation =
+				payload.questionsPerRequest === UNLIMITED ? maxQuestions : payload.questionsPerRequest;
 
 			const errors: string[] = [];
 			const suggestions: string[] = [];
@@ -57,7 +57,7 @@ export class TriviaRequestPipe implements PipeTransform {
 				const triviaValidation = await this.validationService.validateTriviaRequest(
 					payload.topic,
 					payload.difficulty,
-					requestedQuestionsForValidation
+					questionsPerRequestForValidation
 				);
 
 				if (!triviaValidation.isValid) {
@@ -95,8 +95,8 @@ export class TriviaRequestPipe implements PipeTransform {
 				});
 			}
 
-			// Create and return TriviaRequestDto with converted requestedQuestions
-			return this.createTriviaRequestDto(payload, requestedQuestionsForValidation);
+			// Create and return TriviaRequestDto with converted questionsPerRequest
+			return this.createTriviaRequestDto(payload, questionsPerRequestForValidation);
 		} catch (error) {
 			const errorMessage = getErrorMessage(error);
 
@@ -161,7 +161,7 @@ export class TriviaRequestPipe implements PipeTransform {
 					`difficulty: ${typeof value.difficulty}${value.difficulty ? ` (${String(value.difficulty)})` : ' (missing)'}`
 				);
 				details.push(
-					`requestedQuestions: ${typeof value.requestedQuestions}${value.requestedQuestions !== undefined ? ` (${value.requestedQuestions})` : ' (missing)'}`
+					`questionsPerRequest: ${typeof value.questionsPerRequest}${value.questionsPerRequest !== undefined ? ` (${value.questionsPerRequest})` : ' (missing)'}`
 				);
 			} else {
 				details.push(`value type: ${typeof value}`);
@@ -169,7 +169,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			throw new BadRequestException({
 				message: 'Invalid trivia request payload structure',
 				errors: [
-					`Payload must contain valid topic, difficulty, and requestedQuestions fields. Received: ${details.join(', ')}`,
+					`Payload must contain valid topic, difficulty, and questionsPerRequest fields. Received: ${details.join(', ')}`,
 				],
 			});
 		}
@@ -268,9 +268,9 @@ export class TriviaRequestPipe implements PipeTransform {
 			return false;
 		}
 
-		const { requestedQuestions, topic, difficulty } = candidate;
+		const { questionsPerRequest, topic, difficulty } = candidate;
 		if (
-			!this.isValidRequestedQuestions(requestedQuestions) ||
+			!this.isValidQuestionsPerRequest(questionsPerRequest) ||
 			!this.isNonEmptyString(topic) ||
 			!this.isGameDifficulty(difficulty)
 		) {
@@ -280,11 +280,11 @@ export class TriviaRequestPipe implements PipeTransform {
 		return this.areOptionalTriviaFieldsValid(candidate);
 	}
 
-	private isValidRequestedQuestions(value: unknown): value is number {
+	private isValidQuestionsPerRequest(value: unknown): value is number {
 		if (typeof value !== 'number' || !Number.isInteger(value)) {
 			return false;
 		}
-		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 		return value === UNLIMITED || (value >= MIN && value <= MAX);
 	}
 
@@ -310,7 +310,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			this.isOptionalString(candidate.userId),
 			this.isOptionalString(candidate.gameMode),
 			this.isOptionalNumber(candidate.timeLimit),
-			this.isOptionalNumber(candidate.questionLimit),
+			this.isOptionalNumber(candidate.maxQuestionsPerGame),
 		];
 
 		return optionalChecks.every(Boolean);
@@ -324,11 +324,11 @@ export class TriviaRequestPipe implements PipeTransform {
 		return value === undefined || (typeof value === 'number' && Number.isFinite(value));
 	}
 
-	private createTriviaRequestDto(payload: TriviaRequest, requestedQuestions: number): TriviaRequestDto {
+	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
 		const dto = new TriviaRequestDto();
 		dto.topic = payload.topic;
 		dto.difficulty = payload.difficulty;
-		dto.requestedQuestions = requestedQuestions;
+		dto.questionsPerRequest = questionsPerRequest;
 
 		if (payload.category !== undefined) {
 			dto.category = payload.category;
@@ -346,8 +346,8 @@ export class TriviaRequestPipe implements PipeTransform {
 			dto.timeLimit = payload.timeLimit;
 		}
 
-		if (payload.questionLimit !== undefined) {
-			dto.questionLimit = payload.questionLimit;
+		if (payload.maxQuestionsPerGame !== undefined) {
+			dto.maxQuestionsPerGame = payload.maxQuestionsPerGame;
 		}
 
 		return dto;

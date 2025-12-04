@@ -47,7 +47,7 @@ export class MultiplayerService {
 				hostId,
 				topic: config.topic,
 				difficulty: config.difficulty,
-				requestedQuestions: config.requestedQuestions,
+				questionsPerRequest: config.questionsPerRequest,
 				maxPlayers: config.maxPlayers,
 			});
 			throw error;
@@ -137,7 +137,7 @@ export class MultiplayerService {
 			const triviaResult = await this.gameService.getTriviaQuestion(
 				room.config.topic,
 				room.config.difficulty,
-				room.config.requestedQuestions,
+				room.config.questionsPerRequest,
 				hostId
 			);
 
@@ -147,7 +147,7 @@ export class MultiplayerService {
 			logger.gameInfo('Multiplayer game started', {
 				roomId,
 				hostId,
-				totalQuestions: triviaResult.questions.length,
+				gameQuestionCount: triviaResult.questions.length,
 				playerCount: initializedRoom.players.length,
 			});
 
@@ -252,7 +252,7 @@ export class MultiplayerService {
 			logger.gameInfo('Moved to next question', {
 				roomId,
 				currentQuestionIndex: updatedRoom.currentQuestionIndex,
-				totalQuestions: updatedRoom.questions.length,
+				gameQuestionCount: updatedRoom.questions.length,
 			});
 
 			return updatedRoom;

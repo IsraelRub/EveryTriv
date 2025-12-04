@@ -5,6 +5,7 @@
  * @description Structures for tracking game performance, topics, and difficulty analytics
  */
 import type { DifficultyBreakdown, TopicsPlayed } from '../../core/data.types';
+import type { BaseGameTopicDifficulty } from '../game/trivia.types';
 import type { TimeStat } from './analyticsCommon.types';
 
 /**
@@ -18,12 +19,10 @@ export interface TopicAnalyticsRecord {
 /**
  * Detailed analytics for individual questions
  */
-export interface QuestionAnalytics {
+export interface QuestionAnalytics extends BaseGameTopicDifficulty {
 	id?: string;
 	questionId?: string;
 	question?: string;
-	topic: string;
-	difficulty: string;
 	difficultyLevel?: string;
 	answerCount: number;
 	totalAttempts: number;
@@ -65,7 +64,7 @@ export type GameAnalyticsStats = Record<string, GameAnalyticsStatsEntry>;
  */
 export interface GameStatsCore {
 	totalGames: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	averageScore: number;
 }
 
@@ -91,7 +90,7 @@ export interface TopicStatsData {
  */
 export interface DifficultyStatsData {
 	difficulties: DifficultyBreakdown;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 }
 
 /**

@@ -270,9 +270,9 @@ export class LeaderboardService {
 	 */
 	private calculateUserStats(gameHistory: GameHistoryEntity[]) {
 		const totalGames = gameHistory.length;
-		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
+		const totalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
 		const correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
-		const successRate = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+		const successRate = totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0;
 
 		// Calculate streak
 		const streakData = this.calculateStreak(gameHistory);
@@ -286,9 +286,9 @@ export class LeaderboardService {
 
 		return {
 			totalGames,
-			totalQuestions,
+			totalQuestionsAnswered,
 			correctAnswers,
-			incorrectAnswers: totalQuestions - correctAnswers,
+			incorrectAnswers: totalQuestionsAnswered - correctAnswers,
 			overallSuccessRate: successRate,
 			currentStreak: streakData.current,
 			longestStreak: streakData.best,
@@ -377,11 +377,11 @@ export class LeaderboardService {
 		const groupedByTopic = groupBy(gameHistory, 'topic');
 		const topicStats: Record<
 			string,
-			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
+			{ totalQuestionsAnswered: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
 		> = {};
 
 		Object.entries(groupedByTopic).forEach(([topic, games]) => {
-			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
+			const totalQuestionsAnswered = games.reduce((sum, game) => sum + game.gameQuestionCount, 0);
 			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const score = games.reduce((sum, game) => sum + game.score, 0);
 			const lastPlayed = games.reduce((latest, game) => {
@@ -391,10 +391,10 @@ export class LeaderboardService {
 			}, new Date(0));
 
 			topicStats[topic] = {
-				totalQuestions,
+				totalQuestionsAnswered,
 				correctAnswers,
 				score,
-				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+				successRate: totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0,
 				lastPlayed,
 			};
 		});
@@ -411,11 +411,11 @@ export class LeaderboardService {
 		const groupedByDifficulty = groupBy(gameHistory, 'difficulty');
 		const difficultyStats: Record<
 			string,
-			{ totalQuestions: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
+			{ totalQuestionsAnswered: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
 		> = {};
 
 		Object.entries(groupedByDifficulty).forEach(([difficulty, games]) => {
-			const totalQuestions = games.reduce((sum, game) => sum + game.totalQuestions, 0);
+			const totalQuestionsAnswered = games.reduce((sum, game) => sum + game.gameQuestionCount, 0);
 			const correctAnswers = games.reduce((sum, game) => sum + game.correctAnswers, 0);
 			const score = games.reduce((sum, game) => sum + game.score, 0);
 			const lastPlayed = games.reduce((latest, game) => {
@@ -425,10 +425,10 @@ export class LeaderboardService {
 			}, new Date(0));
 
 			difficultyStats[difficulty] = {
-				totalQuestions,
+				totalQuestionsAnswered,
 				correctAnswers,
 				score,
-				successRate: totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0,
+				successRate: totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0,
 				lastPlayed,
 			};
 		});
@@ -463,8 +463,8 @@ export class LeaderboardService {
 		const streakBonus = Math.min(500, streakData.current * 10 + streakData.best * 5);
 
 		// Total questions bonus (up to 200 scoring)
-		const totalQuestions = gameHistory.reduce((sum, game) => sum + game.totalQuestions, 0);
-		const questionsBonus = Math.min(200, totalQuestions * 2);
+		const totalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
+		const questionsBonus = Math.min(200, totalQuestionsAnswered * 2);
 
 		return creditsContribution + totalGameScore + successRateBonus + streakBonus + questionsBonus;
 	}

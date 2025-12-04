@@ -1,15 +1,15 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { TriviaQuestion } from '@shared/types';
+import { calculateAnswerScore } from '@shared/utils';
 
-import { calculateScore } from '../../services';
 import { ClientGameState, ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '../../types';
 
 const initialGameState: ClientGameState = {
 	status: 'idle',
 	isPlaying: false,
 	currentQuestion: 0,
-	totalQuestions: 0,
+	gameQuestionCount: 0,
 	questions: [],
 	answers: [],
 	loading: false,
@@ -78,10 +78,9 @@ const gameStateSlice = createSlice({
 			}
 
 			if (action.payload.correct && state.state.stats && state.state.data) {
-				const totalTime = action.payload.totalTime ?? 30;
 				const timeSpent = action.payload.timeSpent ?? 0;
 				const streak = state.state.stats.correctStreak ?? 0;
-				const scoreEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
+				const scoreEarned = calculateAnswerScore(currentQuestion.difficulty, timeSpent, streak, true);
 
 				state.state.data.score += scoreEarned;
 				state.state.stats.currentScore += scoreEarned;

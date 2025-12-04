@@ -1,39 +1,44 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
 
 import { UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage, mergeUserPreferences } from '@shared/utils';
+import { mergeUserPreferences } from '@shared/utils';
+
+import { AudioKey } from '@/constants';
+import { ModalSize } from '@/constants/ui/size.constants';
+import { useAppDispatch, useAudio } from '@/hooks';
 
 import {
 	CompleteProfile,
 	Footer,
+	ModalRouteWrapper,
 	Navigation,
 	NotFound,
 	OAuthCallback,
 	ProtectedRoute,
 	PublicRoute,
 } from './components';
-import { useAppDispatch } from './hooks';
 import { fetchUserData, setAuthenticated, setUser } from './redux/slices';
 import { audioService, authService, prefetchAuthenticatedQueries } from './services';
-import AdminDashboard from './views/admin/AdminDashboard';
-import { AnalyticsView } from './views/analytics/AnalyticsView';
-import CustomDifficultyView from './views/game/CustomDifficultyView';
-import GameSessionView from './views/game/GameSessionView';
-import GameSummaryView from './views/game/GameSummaryView';
-import GameHistory from './views/gameHistory/GameHistory';
-import HomeView from './views/home/HomeView';
-import { LeaderboardView } from './views/leaderboard';
-import LoginView from './views/login/LoginView';
-import MultiplayerGameView from './views/multiplayer/MultiplayerGameView';
-import MultiplayerLobbyView from './views/multiplayer/MultiplayerLobbyView';
-import MultiplayerResultsView from './views/multiplayer/MultiplayerResultsView';
-import PaymentView from './views/payment';
-import { RegistrationView } from './views/registration';
-import SettingsView from './views/settings/SettingsView';
-import UnauthorizedView from './views/unauthorized/UnauthorizedView';
-import UserProfile from './views/user';
+import {
+	AdminDashboard,
+	AnalyticsView,
+	CustomDifficultyView,
+	GameHistory,
+	GameSessionView,
+	GameSummaryView,
+	HomeView,
+	LeaderboardView,
+	LoginView,
+	MultiplayerGameView,
+	MultiplayerLobbyView,
+	MultiplayerResultsView,
+	PaymentView,
+	RegistrationView,
+	UnauthorizedView,
+	UserProfile,
+} from './views';
 
 /**
  * Navigation tracking component for analytics and error logging
@@ -44,8 +49,15 @@ import UserProfile from './views/user';
  */
 function NavigationTracker() {
 	const location = useLocation();
+	const audioService = useAudio();
+	const prevPathnameRef = useRef<string | null>(null);
 
 	useEffect(() => {
+		if (prevPathnameRef.current !== null && prevPathnameRef.current !== location.pathname) {
+			audioService.play(AudioKey.PAGE_CHANGE);
+		}
+		prevPathnameRef.current = location.pathname;
+
 		logger.navigationPage(location.pathname, {
 			search: location.search,
 			timestamp: new Date().toISOString(),
@@ -61,7 +73,6 @@ function NavigationTracker() {
 
 		const routePatterns = [
 			'/',
-			'/game',
 			'/game/play',
 			'/game/summary',
 			'/game/custom',
@@ -72,7 +83,6 @@ function NavigationTracker() {
 			'/leaderboard',
 			'/payment',
 			'/credits',
-			'/settings',
 			'/register',
 			'/login',
 			'/admin',
@@ -133,16 +143,21 @@ export default function AppRoutes() {
 						}
 
 						// Prefetch authenticated-only data
-						try {
-							await prefetchAuthenticatedQueries();
-						} catch (error) {
-							logger.apiError('Failed to prefetch authenticated queries', { error: getErrorMessage(error) });
+						// Error already logged in queryClient.service.ts - no need to log again
+						await prefetchAuthenticatedQueries();
+					} else if (fetchUserData.rejected.match(result)) {
+						// Error already logged in auth.service.ts - no need to log again
+						await authService.logout();
+						// Clear Redux state after logout
+						dispatch(setUser(null));
+						dispatch(setAuthenticated(false));
+						// Only redirect to login if not already on auth pages
+						if (!isAuthPage) {
+							window.location.href = '/login';
 						}
 					}
-				} catch (error) {
-					logger.authError('Authentication initialization failed', {
-						error: getErrorMessage(error),
-					});
+				} catch {
+					// Error already logged in auth.service.ts - no need to log again
 					await authService.logout();
 					// Clear Redux state after logout
 					dispatch(setUser(null));
@@ -155,7 +170,10 @@ export default function AppRoutes() {
 			}
 		};
 
-		initAuth();
+		initAuth().catch(() => {
+			// Silently handle any unhandled promise rejections from initAuth
+			// These are expected when user is not authenticated
+		});
 	}, [dispatch, isAuthPage]);
 
 	return (
@@ -172,7 +190,6 @@ export default function AppRoutes() {
 				<Routes>
 					{/* Public routes */}
 					<Route path='/' element={<HomeView />} />
-					<Route path='/game' element={<HomeView />} />
 					<Route path='/play' element={<HomeView />} />
 					<Route path='/start' element={<HomeView />} />
 					<Route path='/leaderboard' element={<LeaderboardView />} />
@@ -229,7 +246,9 @@ export default function AppRoutes() {
 						path='/payment'
 						element={
 							<ProtectedRoute>
-								<PaymentView />
+								<ModalRouteWrapper modalSize={ModalSize.XL}>
+									<PaymentView />
+								</ModalRouteWrapper>
 							</ProtectedRoute>
 						}
 					/>
@@ -250,14 +269,6 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/settings'
-						element={
-							<ProtectedRoute>
-								<SettingsView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
 						path='/admin'
 						element={
 							<ProtectedRoute requiredRole={UserRole.ADMIN}>
@@ -271,7 +282,9 @@ export default function AppRoutes() {
 						path='/login'
 						element={
 							<PublicRoute>
-								<LoginView />
+								<ModalRouteWrapper>
+									<LoginView />
+								</ModalRouteWrapper>
 							</PublicRoute>
 						}
 					/>
@@ -279,7 +292,9 @@ export default function AppRoutes() {
 						path='/register'
 						element={
 							<PublicRoute>
-								<RegistrationView />
+								<ModalRouteWrapper>
+									<RegistrationView />
+								</ModalRouteWrapper>
 							</PublicRoute>
 						}
 					/>

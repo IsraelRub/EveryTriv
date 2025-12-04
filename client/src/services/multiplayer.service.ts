@@ -10,9 +10,12 @@ import { io, Socket } from 'socket.io-client';
 import { clientLogger as logger } from '@shared/services';
 import type {
 	AnswerReceivedEvent,
+	CreateRoomConfig,
 	GameEndedEvent,
 	GameStartedEvent,
+	GameState,
 	LeaderboardUpdateEvent,
+	MultiplayerRoom,
 	PlayerJoinedEvent,
 	PlayerLeftEvent,
 	QuestionEndedEvent,
@@ -33,6 +36,8 @@ class MultiplayerService {
 	private reconnectAttempts = 0;
 	private readonly maxReconnectAttempts = 5;
 	private readonly reconnectDelay = 1000;
+	private isConnecting = false;
+	private pendingListeners: Array<{ event: string; callback: (data: unknown) => void }> = [];
 
 	/**
 	 * Connect to multiplayer WebSocket server
@@ -40,14 +45,55 @@ class MultiplayerService {
 	 * @returns Socket instance
 	 */
 	connect(token: string): Socket {
-		if (this.socket?.connected) {
+		// Check if already connected and socket exists
+		if (this.socket && this.socket.connected) {
+			logger.gameInfo('Multiplayer service already connected, reusing socket');
+			// Register any pending listeners
+			while (this.pendingListeners.length > 0) {
+				const listener = this.pendingListeners.shift();
+				if (listener) {
+					const { event, callback } = listener;
+					this.socket.on(event, callback);
+				}
+			}
 			return this.socket;
 		}
+
+		// Check if socket exists but disconnected - try to reconnect
+		if (this.socket && !this.socket.connected) {
+			logger.gameInfo('Multiplayer socket exists but disconnected, reconnecting');
+			// Register any pending listeners
+			while (this.pendingListeners.length > 0) {
+				const listener = this.pendingListeners.shift();
+				if (listener) {
+					const { event, callback } = listener;
+					this.socket.on(event, callback);
+				}
+			}
+			this.socket.connect();
+			return this.socket;
+		}
+
+		// Prevent multiple simultaneous connection attempts
+		if (this.isConnecting) {
+			logger.gameInfo('Connection already in progress in service');
+			if (this.socket) {
+				return this.socket;
+			}
+		}
+
+		this.isConnecting = true;
+		logger.gameInfo('Creating new multiplayer WebSocket connection');
 
 		const serverUrl = ApiConfig.getBaseUrl();
 		// Convert HTTP/HTTPS URL to WebSocket URL
 		const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
 		const wsUrl = serverUrl.replace(/^https?:\/\//, '').split('/')[0];
+
+		// Clean up old listeners before creating new socket
+		if (this.socket) {
+			this.removeAllListeners();
+		}
 
 		this.socket = io(`${wsProtocol}://${wsUrl}/multiplayer`, {
 			auth: {
@@ -64,6 +110,17 @@ class MultiplayerService {
 
 		this.setupEventHandlers();
 
+		// Register any pending listeners that were set up before socket was created
+		while (this.pendingListeners.length > 0) {
+			const listener = this.pendingListeners.shift();
+			if (listener) {
+				const { event, callback } = listener;
+				this.socket.on(event, callback);
+			}
+		}
+
+		this.isConnecting = false;
+
 		return this.socket;
 	}
 
@@ -72,9 +129,12 @@ class MultiplayerService {
 	 */
 	disconnect(): void {
 		if (this.socket) {
+			logger.gameInfo('Disconnecting multiplayer socket');
+			this.removeAllListeners();
 			this.socket.disconnect();
 			this.socket = null;
 			this.reconnectAttempts = 0;
+			this.isConnecting = false;
 		}
 	}
 
@@ -87,20 +147,53 @@ class MultiplayerService {
 	}
 
 	/**
+	 * Remove all event listeners from socket
+	 */
+	private removeAllListeners(): void {
+		if (!this.socket) return;
+
+		logger.gameInfo('Removing all multiplayer event listeners');
+
+		// Remove connection event listeners
+		this.socket.off('connect');
+		this.socket.off('disconnect');
+		this.socket.off('connect_error');
+		this.socket.off('error');
+
+		// Remove game event listeners
+		this.socket.off('room-created');
+		this.socket.off('room-joined');
+		this.socket.off('room-left');
+		this.socket.off('player-joined');
+		this.socket.off('player-left');
+		this.socket.off('game-started');
+		this.socket.off('question-started');
+		this.socket.off('answer-received');
+		this.socket.off('question-ended');
+		this.socket.off('game-ended');
+		this.socket.off('leaderboard-update');
+		this.socket.off('room-updated');
+	}
+
+	/**
 	 * Setup event handlers
 	 */
 	private setupEventHandlers(): void {
 		if (!this.socket) return;
 
+		logger.gameInfo('Setting up multiplayer socket event handlers');
+
 		this.socket.on('connect', () => {
 			logger.gameInfo('Connected to multiplayer server');
 			this.reconnectAttempts = 0;
+			this.isConnecting = false;
 		});
 
 		this.socket.on('disconnect', reason => {
 			logger.gameError('Disconnected from multiplayer server', {
 				reason,
 			});
+			this.isConnecting = false;
 		});
 
 		this.socket.on('connect_error', error => {
@@ -108,6 +201,7 @@ class MultiplayerService {
 				error: getErrorMessage(error),
 			});
 			this.reconnectAttempts++;
+			this.isConnecting = false;
 		});
 
 		this.socket.on('error', (error: { message: string }) => {
@@ -137,7 +231,8 @@ class MultiplayerService {
 	 */
 	on<T = unknown>(event: string, callback: (data: T) => void): void {
 		if (!this.socket) {
-			logger.gameError('Cannot listen to event - socket not initialized', { eventName: event });
+			// Store listener in queue to be registered when socket is created
+			this.pendingListeners.push({ event, callback: callback as (data: unknown) => void });
 			return;
 		}
 		this.socket.on(event, callback);
@@ -161,13 +256,7 @@ class MultiplayerService {
 	 * Create a room
 	 * @param config Room configuration
 	 */
-	createRoom(config: {
-		topic: string;
-		difficulty: string;
-		requestedQuestions: number;
-		maxPlayers: number;
-		gameMode: string;
-	}): void {
+	createRoom(config: CreateRoomConfig): void {
 		this.emit('create-room', config);
 	}
 
@@ -215,16 +304,16 @@ class MultiplayerService {
 	 * Listen to room created event
 	 * @param callback Event handler
 	 */
-	onRoomCreated(callback: (data: { room: unknown; code: string }) => void): void {
-		this.on('room-created', callback);
+	onRoomCreated(callback: (data: { room: MultiplayerRoom; code: string }) => void): void {
+		this.on<{ room: MultiplayerRoom; code: string }>('room-created', callback);
 	}
 
 	/**
 	 * Listen to room joined event
 	 * @param callback Event handler
 	 */
-	onRoomJoined(callback: (data: { room: unknown; gameState?: unknown }) => void): void {
-		this.on('room-joined', callback);
+	onRoomJoined(callback: (data: { room: MultiplayerRoom; gameState?: GameState }) => void): void {
+		this.on<{ room: MultiplayerRoom; gameState?: GameState }>('room-joined', callback);
 	}
 
 	/**

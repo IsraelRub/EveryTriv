@@ -8,7 +8,7 @@ import type { BaseCacheEntry, GameDifficulty, TriviaQuestionInput } from '@share
  */
 export interface TriviaQuestionMetadata {
 	actualDifficulty: GameDifficulty;
-	totalQuestions: number;
+	gameQuestionCount: number;
 	customDifficultyMultiplier: number;
 	mappedDifficulty: GameDifficulty;
 }

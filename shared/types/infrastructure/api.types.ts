@@ -130,7 +130,7 @@ export interface PurchaseResponse {
  * @used_by client/src/services/api.service.ts (deductCredits), client/src/services/credits.service.ts (deductCredits)
  */
 export interface DeductCreditsRequest {
-	requestedQuestions: number;
+	questionsPerRequest: number;
 	gameMode: GameMode;
 }
 
@@ -156,7 +156,7 @@ export interface QuestionData {
 export interface GameData {
 	userId?: string;
 	score: number;
-	totalQuestions: number;
+	gameQuestionCount: number;
 	correctAnswers: number;
 	difficulty: GameDifficulty;
 	topic: string;

@@ -19,7 +19,7 @@ export * from './audio.constants';
 
 /**
  * Game constants
- * @description Game configuration and scoring constants
+ * @description Game configuration, scoring constants, and game mode selection
  */
 export * from './game.constants';
 
@@ -36,3 +36,9 @@ export * from './user-defaults.constants';
 export * from './storage.constants';
 
 export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';
+
+/**
+ * Services constants
+ * @description Service-related constants and configuration
+ */
+export * from './services/logger.constants';

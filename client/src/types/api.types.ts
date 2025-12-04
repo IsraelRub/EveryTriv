@@ -4,7 +4,7 @@
  * @module ClientApiTypes
  * @description Client-specific API service interface and response types
  */
-import { BillingCycle, GameMode, PaymentMethod, PlanType } from '@shared/constants';
+import { BillingCycle, GameMode, PaymentMethod, PlanType, type TimePeriod } from '@shared/constants';
 import type {
 	Achievement,
 	ActivityEntry,
@@ -34,6 +34,7 @@ import type {
 	TopicStatsData,
 	TriviaQuestion,
 	TriviaRequest,
+	TriviaResponse,
 	UpdateUserProfileData,
 	UserAnalyticsQuery,
 	UserAnalyticsRecord,
@@ -50,6 +51,41 @@ import type {
 } from '@shared/types';
 
 import type { EnhancedRequestConfig } from './interceptors.types';
+
+/**
+ * Trend query parameters
+ * @interface TrendQueryParams
+ * @description Parameters for trend analytics queries
+ */
+export interface TrendQueryParams {
+	startDate?: string;
+	endDate?: string;
+	groupBy?: TimePeriod;
+	limit?: number;
+}
+
+/**
+ * Activity query parameters
+ * @interface ActivityQueryParams
+ * @description Parameters for activity analytics queries
+ */
+export interface ActivityQueryParams {
+	startDate?: string;
+	endDate?: string;
+	limit?: number;
+}
+
+/**
+ * Comparison query parameters
+ * @interface ComparisonQueryParams
+ * @description Parameters for comparison analytics queries
+ */
+export interface ComparisonQueryParams {
+	target?: 'global' | 'user';
+	targetUserId?: string;
+	startDate?: string;
+	endDate?: string;
+}
 
 export interface SubscriptionCreationResponse {
 	subscriptionId?: string | null;
@@ -114,13 +150,13 @@ export interface ClientApiService {
 	// Credits methods
 	getCreditBalance(): Promise<CreditBalance>;
 	getCreditPackages(): Promise<CreditPurchaseOption[]>;
-	canPlay(requestedQuestions: number): Promise<CanPlayResponse>;
-	deductCredits(requestedQuestions: number, gameMode: GameMode): Promise<CreditBalance>;
+	canPlay(questionsPerRequest: number): Promise<CanPlayResponse>;
+	deductCredits(questionsPerRequest: number, gameMode: GameMode): Promise<CreditBalance>;
 	getCreditHistory(limit?: number): Promise<CreditTransaction[]>;
 	confirmCreditPurchase(paymentIntentId: string): Promise<CreditBalance>;
 
 	// Trivia methods
-	getTrivia(request: TriviaRequest): Promise<TriviaQuestion>;
+	getTrivia(request: TriviaRequest): Promise<TriviaResponse>;
 	submitAnswer(questionId: string, answer: string, timeSpent?: number): Promise<AnswerResult>;
 	getTriviaQuestionById(questionId: string): Promise<TriviaQuestion>;
 	getGameById(gameId: string): Promise<GameHistoryEntry>;

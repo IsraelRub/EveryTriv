@@ -74,7 +74,7 @@ export interface AuthRequest {
 }
 
 export interface GoogleAuthPayload {
-	google_id: string;
+	googleId: string;
 	email?: string;
 	firstName?: string;
 	lastName?: string;

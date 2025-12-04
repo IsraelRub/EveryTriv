@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from '@internal/entities';
@@ -15,7 +15,7 @@ import { PaymentService } from './payment.service';
 		TypeOrmModule.forFeature([PaymentHistoryEntity, SubscriptionEntity, UserEntity]),
 		CacheModule,
 		StorageModule,
-		AuthModule,
+		forwardRef(() => AuthModule),
 		ValidationModule,
 	],
 	controllers: [PaymentController],

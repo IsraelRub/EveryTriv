@@ -84,6 +84,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		}
 		// For other 4xx errors, don't log here as they should be handled by specific handlers
 
+		// Check if this is a frontend request (not an API request)
+		// Frontend requests typically don't have Accept: application/json header
+		// Also check if the request method is GET (typical for page navigation)
+		const acceptHeader = request.headers.accept || '';
+		const isApiRequest =
+			acceptHeader.includes('application/json') || request.url?.startsWith('/api/') || request.method !== 'GET';
+
+		// For 404 errors on frontend routes (GET requests without JSON accept header)
+		// Return 404 without JSON body - this allows Vite's proxy to handle it
+		// and serve the SPA's index.html, which will then let React Router handle the route
+		if (status === HttpStatus.NOT_FOUND && !isApiRequest) {
+			// Return 404 without body - Vite proxy should intercept and serve index.html
+			// This allows React Router to handle the route on the client side
+			return response.status(status).end();
+		}
+
 		// Send sanitized error response (no stack traces or sensitive info)
 		interface ErrorResponse {
 			statusCode: number;

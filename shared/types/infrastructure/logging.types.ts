@@ -263,6 +263,7 @@ export interface LogMeta {
 	activeUsers?: number;
 	actualCount?: number;
 	aiQuestion?: string;
+	audioErrorCode?: number;
 	amount?: number;
 	answerCount?: number;
 	analysis?: string;
@@ -344,6 +345,11 @@ export interface LogMeta {
 	hasData?: boolean;
 	hasDecoratorMetadata?: boolean;
 	hasErrors?: boolean;
+	hasFirstName?: boolean;
+	hasLastName?: boolean;
+	hasAvatar?: boolean;
+	hasUser?: boolean;
+	hasPayload?: boolean;
 	headers?: string[];
 	hitRate?: number;
 	host?: string;
@@ -356,6 +362,7 @@ export interface LogMeta {
 	isHardcodedPublic?: boolean;
 	isPublic?: boolean;
 	isValid?: boolean;
+	isMuted?: boolean;
 	key?: string;
 	keyPrefix?: string;
 	keysCount?: number;
@@ -418,7 +425,7 @@ export interface LogMeta {
 	costPerToken?: number;
 	purchasedCredits?: number;
 	query?: string | string[];
-	requestedQuestions?: number;
+	questionsPerRequest?: number;
 	questionId?: string;
 	queueSize?: number;
 	rank?: number;
@@ -436,6 +443,7 @@ export interface LogMeta {
 	requiredCredits?: number;
 	requiredRoles?: UserRole[];
 	requireEmailVerification?: boolean;
+	needsProfile?: boolean;
 	responseTime?: number;
 	resultsCount?: number;
 	retryCount?: number;
@@ -482,6 +490,7 @@ export interface LogMeta {
 	timeSpent?: number;
 	timestamp?: string;
 	token?: string;
+	currentTime?: number;
 	tokenCount?: number;
 	topic?: string;
 	totalDifficulties?: number;
@@ -491,7 +500,7 @@ export interface LogMeta {
 	totalMiddlewares?: number;
 	totalOps?: number;
 	totalProviders?: number;
-	totalQuestions?: number;
+	gameQuestionCount?: number;
 	totalRequests?: number;
 	totalScore?: number;
 	totalSize?: number;
@@ -504,13 +513,23 @@ export interface LogMeta {
 	uptime?: number;
 	url?: string;
 	user?: User;
+	payloadType?: string;
 	userAgent?: string;
 	userId?: string;
+	userInteracted?: boolean;
 	usersCount?: number;
+	userType?: string;
+	userKeys?: string[] | Record<string, unknown>;
+	payloadKeys?: string[] | Record<string, unknown>;
 	value?: BasicValue;
 	valueLength?: number;
 	version?: string;
+	volume?: number;
+	masterVolume?: number;
+	loop?: boolean;
 	window?: number;
+	queryParams?: Record<string, string | string[]>;
+	hasGoogleId?: boolean;
 }
 
 /**

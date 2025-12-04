@@ -50,8 +50,34 @@ export * from './user.types';
 export * from './route.types';
 
 /**
+ * Routing types
+ * @description Routing-related types and interfaces (modal routes, etc.)
+ */
+export * from './routing/modal.types';
+
+/**
  * Validation types
  * @description Validation types and interfaces
  * @exports {Object} Validation-related type definitions
  */
 export * from './validation.types';
+
+/**
+ * User component types
+ * @description User component prop types and interfaces
+ */
+export * from './user/components.types';
+
+/**
+ * Hooks types
+ * @description Hook-related types and interfaces
+ */
+export * from './hooks/toast.types';
+
+/**
+ * Services types
+ * @description Service-related types and interfaces
+ */
+export * from './services/analytics.types';
+export * from './services/logger.types';
+export * from './services/storage.types';

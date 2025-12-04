@@ -7,6 +7,13 @@
  */
 
 /**
+ * AI types
+ * @description AI provider types and configuration
+ * @exports {Object} AI types
+ */
+export * from './ai.types';
+
+/**
  * Nest types
  * @description Nest types used across the server
  * @exports {Object} Nest types

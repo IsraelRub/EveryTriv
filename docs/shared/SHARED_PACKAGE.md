@@ -406,48 +406,8 @@ const dailyLimitInfo = service.calculateDailyLimit(
 
 ### Storage Services
 
-#### storageManager.service.ts
-ניהול אחסון - שירות היברידי (cache + persistent):
-```typescript
-import { StorageManagerService } from '@shared/services';
-import { StorageService } from '@shared/types';
-
-// יצירת instance (בשימוש בשרת)
-const storageManager = new StorageManagerService(
-  persistentStorage,  // StorageService
-  cacheStorage,       // StorageService
-  {                  // StorageConfig
-    enableMetrics: true,
-    defaultTtl: 3600
-  }
-);
-
-// Set value
-const result = await storageManager.set('user:123', userData, 3600, 'hybrid');
-if (result.success) {
-  console.log('Value saved');
-}
-
-// Get value
-const getResult = await storageManager.get<UserData>('user:123', 'hybrid');
-if (getResult.success && getResult.data) {
-  console.log('User data:', getResult.data);
-}
-
-// Remove value
-const removeResult = await storageManager.remove('user:123', 'hybrid');
-if (removeResult.success) {
-  console.log('Value removed');
-}
-
-// Get statistics
-const stats = await storageManager.getStats();
-console.log('Storage stats:', stats);
-
-// Cleanup
-const cleanupResult = await storageManager.cleanup({ maxAge: 86400 });
-console.log('Cleaned up items:', cleanupResult.deletedCount);
-```
+Storage services are available through `BaseStorageService` and `MetricsService`. 
+For caching strategies, use `CacheStrategyService` from the cache module.
 
 ### Infrastructure Services
 
@@ -546,7 +506,6 @@ if (hasPropertyOfType(data, 'userId', (val): val is string => typeof val === 'st
 
 // חישוב אחוז
 const percentage = calculatePercentage(75, 100); // 75
-const percentage2 = calculatePercentage(75, 100, 2); // 75.00
 
 // קבלת ערכים ייחודיים
 const uniqueValues = unique([1, 2, 2, 3, 3, 3]); // [1, 2, 3]

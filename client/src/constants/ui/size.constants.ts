@@ -77,3 +77,15 @@ export enum ContainerSize {
 
 // Interactive components size type (buttons, inputs)
 export type InteractiveSize = ComponentSize.SM | ComponentSize.MD | ComponentSize.LG;
+
+/**
+ * Button size enum
+ * @enum {string} ButtonSize
+ * @description Size options specifically for Button components
+ */
+export enum ButtonSize {
+	DEFAULT = 'default',
+	SM = ComponentSize.SM,
+	LG = ComponentSize.LG,
+	ICON = 'icon',
+}

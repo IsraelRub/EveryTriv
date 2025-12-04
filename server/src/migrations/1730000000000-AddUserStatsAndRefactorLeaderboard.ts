@@ -17,7 +17,7 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
 					"user_id" uuid NOT NULL,
 					"total_games" integer NOT NULL DEFAULT '0',
-					"total_questions" integer NOT NULL DEFAULT '0',
+					"total_questions_answered" integer NOT NULL DEFAULT '0',
 					"correct_answers" integer NOT NULL DEFAULT '0',
 					"incorrect_answers" integer NOT NULL DEFAULT '0',
 					"overall_success_rate" decimal(5,2) NOT NULL DEFAULT '0',

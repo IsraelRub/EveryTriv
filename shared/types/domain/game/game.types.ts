@@ -5,9 +5,10 @@
  * @description Type definitions for game entities, history, and game modes
  * @used_by client/src/components/game/TriviaGame.tsx, client/src/views/gameHistory
  */
-import { DifficultyLevel, GameMode } from '../../../constants';
+import { GameMode } from '../../../constants';
 import type { BaseEntity } from '../../core/data.types';
 import type { QuestionData } from '../../infrastructure/api.types';
+import type { GameDifficulty } from './trivia.types';
 
 /**
  * Game status types
@@ -21,7 +22,7 @@ export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';
  */
 export interface BaseGameStatistics {
 	totalGames: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	successRate: number;
 	averageScore: number;
 	bestScore: number;
@@ -47,7 +48,7 @@ export interface BaseScoreData {
  */
 export interface BaseGameEntity extends BaseEntity {
 	topic: string;
-	difficulty: DifficultyLevel;
+	difficulty: GameDifficulty;
 	gameMode: GameMode;
 	userId: string;
 	score: number;
@@ -62,7 +63,7 @@ export interface BaseGameEntity extends BaseEntity {
 export interface GameHistoryEntry extends BaseGameEntity {
 	questionsData: QuestionData[];
 	correctAnswers: number;
-	totalQuestions: number;
+	gameQuestionCount: number;
 	timeSpent?: number;
 	creditsUsed?: number;
 }
@@ -84,7 +85,7 @@ export interface LeaderboardEntry extends BaseScoreData {
 	lastPlayed: Date;
 	successRate: number;
 	totalGames: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	totalPlayTime: number;
 }
 
@@ -138,7 +139,7 @@ export interface LeaderboardStatsResponse {
 export interface GameModeConfig {
 	mode: GameMode;
 	timeLimit?: number;
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
 	isGameOver: boolean;
 	timer: {
 		isRunning: boolean;

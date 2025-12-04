@@ -6,6 +6,7 @@
  * @description Cache interfaces and data structures
  */
 import type { StorageValue } from '../core/data.types';
+import type { GameDifficulty } from '../domain/game/trivia.types';
 
 /**
  * Cache entry interface
@@ -27,10 +28,10 @@ export interface UserProgressData {
 	userId: string;
 	topic: string;
 	correctAnswers: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	averageResponseTime: number;
 	lastPlayed: string;
-	difficulty: string;
+	difficulty: GameDifficulty;
 }
 
 /**

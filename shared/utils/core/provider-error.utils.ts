@@ -5,33 +5,9 @@
  * @description Type guards for provider error types with extended properties
  * @used_by server/src/features/game/logic/providers
  */
+import type { ProviderAuthError, ProviderErrorWithStatusCode, ProviderRateLimitError } from '@shared/types';
+
 import { isRecord } from './data.utils';
-
-/**
- * Provider error with authentication error flag
- */
-export interface ProviderAuthError extends Error {
-	statusCode?: number;
-	isAuthError: true;
-	provider?: string;
-}
-
-/**
- * Provider error with rate limit error flag
- */
-export interface ProviderRateLimitError extends Error {
-	statusCode?: number;
-	isRateLimitError: true;
-	retryAfter?: number;
-	provider?: string;
-}
-
-/**
- * Provider error with status code
- */
-export interface ProviderErrorWithStatusCode extends Error {
-	statusCode: number;
-}
 
 /**
  * Type guard for authentication error

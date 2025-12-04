@@ -5,7 +5,6 @@
  * @module DataTypes
  * @description Basic data structures and generic value types
  */
-import { DifficultyLevel } from '../../constants';
 
 /**
  * Generic value type for metadata and configuration
@@ -106,22 +105,12 @@ export interface SelectOption {
 }
 
 /**
- * Favorite topic interface
- * @interface FavoriteTopic
- * @description Structure for favorite topics with difficulty
- */
-export interface FavoriteTopic {
-	topic: string;
-	difficulty: DifficultyLevel;
-}
-
-/**
  * Activity entry interface
  * @interface ActivityEntry
  * @description Structure for user activity tracking
  */
 export interface ActivityEntry {
-	date: Date;
+	date: string;
 	action: string;
 	detail?: string;
 	topic?: string;

@@ -195,7 +195,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			return {
@@ -235,7 +235,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Update user fields
@@ -349,7 +349,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Soft delete by setting is_active to false
@@ -390,7 +390,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Verify current password
@@ -440,7 +440,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Merge existing preferences with new ones (deep merge for privacy and game)
@@ -480,7 +480,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Apply updates
@@ -795,7 +795,7 @@ export class UserService {
 			});
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Field type mapping for validation
@@ -900,7 +900,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Initialize preferences if not exists
@@ -1092,7 +1092,7 @@ export class UserService {
 			});
 
 			if (!user) {
-				throw createNotFoundError('User');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			const currentCredits = user.credits ?? 0;

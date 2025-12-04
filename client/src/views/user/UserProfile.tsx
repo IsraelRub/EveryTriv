@@ -1,461 +1,297 @@
-import { MouseEvent, useEffect, useState } from 'react';
+import { useState, type ElementType } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-
-import { DEFAULT_USER_PREFERENCES } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
-import { getErrorMessage, mergeUserPreferences } from '@shared/utils';
+import { Award, Clock, Flame, GamepadIcon, Key, Target, Trophy } from 'lucide-react';
 
 import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
 	Button,
 	Card,
 	CardContent,
+	CardDescription,
 	CardHeader,
 	CardTitle,
-	ConfirmModal,
-	Container,
-	fadeInDown,
-	fadeInUp,
-	GridLayout,
-} from '../../components';
-import { AlertVariant, ButtonVariant, CardVariant, ComponentSize, ContainerSize, Spacing } from '../../constants';
-import {
-	useAppDispatch,
-	useAppSelector,
-	useDeleteUserAccount,
-	useUpdateSinglePreference,
-	useUpdateUserField,
-	useUpdateUserPreferences,
-	useUpdateUserProfile,
-	useUserProfile,
-	useUserStats,
-} from '../../hooks';
-import { setAvatar } from '../../redux/slices';
-import { audioService } from '../../services';
-import type { RootState } from '../../types';
-import { formatNumber, getCurrentTimestamp } from '../../utils';
+	ChangePasswordDialog,
+	Input,
+	Label,
+	Skeleton,
+} from '@/components';
+import { useAppSelector, useUpdateUserProfile, useUserProfile, useUserStats } from '@/hooks';
+import type { RootState } from '@/types';
+import { formatPlayTime } from '@/utils';
 
-export default function UserProfile() {
-	const avatar = useAppSelector((state: RootState) => state.user.avatar);
-	const dispatch = useAppDispatch();
+function StatCard({
+	icon: Icon,
+	label,
+	value,
+	suffix,
+	color,
+}: {
+	icon: ElementType;
+	label: string;
+	value: number | string;
+	suffix?: string;
+	color: string;
+}) {
+	return (
+		<motion.div
+			initial={{ opacity: 0, scale: 0.95 }}
+			animate={{ opacity: 1, scale: 1 }}
+			className='text-center p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors'
+		>
+			<Icon className={`h-6 w-6 mx-auto mb-2 ${color}`} />
+			<p className='text-3xl font-bold'>
+				{value}
+				{suffix}
+			</p>
+			<p className='text-sm text-muted-foreground'>{label}</p>
+		</motion.div>
+	);
+}
 
-	const [loading, setLoading] = useState(false);
-	const [stats, setStats] = useState({
-		totalGames: 0,
-		totalScore: 0,
-		averageScore: 0,
-		bestStreak: 0,
-	});
-	const [email, setEmail] = useState('');
-	const [preferences, setPreferences] = useState({
-		soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
-		musicEnabled: DEFAULT_USER_PREFERENCES.musicEnabled,
-		animationsEnabled: DEFAULT_USER_PREFERENCES.animationsEnabled,
-	});
-	const [saving, setSaving] = useState(false);
-	const [confirmModal, setConfirmModal] = useState<{
-		open: boolean;
-		onConfirm: () => void;
-	}>({
-		open: false,
-		onConfirm: () => {},
-	});
+function ProfileSkeleton() {
+	return (
+		<div className='space-y-6'>
+			<div className='flex items-center gap-4'>
+				<Skeleton className='h-20 w-20 rounded-full' />
+				<div className='space-y-2'>
+					<Skeleton className='h-6 w-48' />
+					<Skeleton className='h-4 w-32' />
+				</div>
+			</div>
+			<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+				{[...Array(6)].map((_, i) => (
+					<Skeleton key={i} className='h-24 rounded-lg' />
+				))}
+			</div>
+		</div>
+	);
+}
 
-	// Use custom hooks for user profile
-	const { data: userProfile } = useUserProfile();
-	const updateProfileMutation = useUpdateUserProfile();
+export function UserProfile() {
+	const navigate = useNavigate();
+	const [isEditing, setIsEditing] = useState(false);
+	const [editData, setEditData] = useState({ firstName: '', lastName: '' });
+	const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
-	// Use preferences hooks
-	const updatePreferencesMutation = useUpdateUserPreferences();
+	const { currentUser } = useAppSelector((state: RootState) => state.user);
+	const { data: userProfile, isLoading: profileLoading } = useUserProfile();
+	const { data: userStats, isLoading: statsLoading } = useUserStats();
+	const updateProfile = useUpdateUserProfile();
 
-	// Use account management hooks
-	const deleteAccountMutation = useDeleteUserAccount();
-	const updateUserField = useUpdateUserField();
-	const updateSinglePreference = useUpdateSinglePreference();
+	const profile = userProfile?.profile;
+	const isLoading = profileLoading || statsLoading;
 
-	// Use user stats hook
-	const { data: userStats } = useUserStats();
-
-	useEffect(() => {
-		// Update Redux state when profile data is loaded
-		if (userProfile) {
-			const profile = userProfile.profile;
-			dispatch(setAvatar(profile.avatar ?? ''));
-			setEmail(profile.email ?? '');
-
-			// Set preferences from response
-			if (userProfile.preferences) {
-				const merged = mergeUserPreferences(null, userProfile.preferences);
-				setPreferences({
-					soundEnabled: merged.soundEnabled,
-					musicEnabled: merged.musicEnabled,
-					animationsEnabled: merged.animationsEnabled,
-				});
-			} else {
-				setPreferences({
-					soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
-					musicEnabled: DEFAULT_USER_PREFERENCES.musicEnabled,
-					animationsEnabled: DEFAULT_USER_PREFERENCES.animationsEnabled,
-				});
-			}
-		}
-	}, [userProfile, dispatch]);
-
-	// Update stats when userStats data changes
-	useEffect(() => {
-		if (userStats) {
-			setStats({
-				totalGames: userStats.gamesPlayed ?? 0,
-				totalScore: userStats.correctAnswers ?? 0,
-				averageScore: userStats.averageScore ?? 0,
-				bestStreak: 0,
-			});
-			logger.userInfo('User statistics updated from hook', {
-				userId: userProfile?.profile?.id,
-				totalGames: userStats.gamesPlayed,
-				totalScore: userStats.correctAnswers,
-				averageScore: userStats.averageScore,
-				bestStreak: 0,
-			});
-		}
-	}, [userStats, userProfile?.profile?.id]);
-
-	const handleSavePreferences = async () => {
-		setSaving(true);
-		try {
-			// Use preferences hook
-			updatePreferencesMutation.mutate({
-				animationsEnabled: preferences.animationsEnabled,
-			});
-			logger.userInfo('User preferences updated successfully', {
-				userId: userProfile?.profile?.id,
-				preferences: preferences,
-			});
-		} catch (err) {
-			logger.userWarn('Failed to update user preferences', {
-				error: getErrorMessage(err),
-			});
-			// Handle error silently - mutation hook will show user feedback
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	const handleSave = async (e?: MouseEvent<HTMLButtonElement>) => {
-		e?.preventDefault();
-		setLoading(true);
-		try {
-			updateProfileMutation.mutate({
-				avatar,
-			});
-			logger.userInfo('User profile updated successfully', {
-				userId: userProfile?.profile?.id,
-				avatar: avatar,
-				email: email,
-			});
-		} catch (err) {
-			logger.userWarn('Failed to update user profile', {
-				error: getErrorMessage(err),
-				email,
-			});
-			// Handle error silently - mutation hook will show user feedback
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleDeleteAccount = async () => {
-		setConfirmModal({
-			open: true,
-			onConfirm: async () => {
-				try {
-					await deleteAccountMutation.mutateAsync();
-					// Redirect to home page after successful deletion
-					window.location.href = '/';
-				} catch (error) {
-					logger.userError('Failed to delete account', { error: getErrorMessage(error) });
-				}
-				setConfirmModal(prev => ({ ...prev, open: false }));
-			},
+	const handleEditStart = () => {
+		setEditData({
+			firstName: profile?.firstName || '',
+			lastName: profile?.lastName || '',
 		});
+		setIsEditing(true);
 	};
+
+	const handleSave = async () => {
+		try {
+			await updateProfile.mutateAsync({
+				firstName: editData.firstName,
+				lastName: editData.lastName,
+			});
+			setIsEditing(false);
+		} catch {
+			// Error handled by mutation
+		}
+	};
+
+	const getUserInitials = () => {
+		if (profile?.firstName) {
+			return profile.firstName.charAt(0).toUpperCase();
+		}
+		if (currentUser?.email) {
+			return currentUser.email.charAt(0).toUpperCase();
+		}
+		return 'U';
+	};
+
+	const getDisplayName = () => {
+		if (profile?.firstName && profile?.lastName) {
+			return `${profile.firstName} ${profile.lastName}`;
+		}
+		if (profile?.firstName) {
+			return profile.firstName;
+		}
+		return currentUser?.email?.split('@')[0] || 'User';
+	};
+
+	if (isLoading) {
+		return (
+			<motion.main
+				role='main'
+				aria-label='User Profile'
+				initial={{ opacity: 0, y: 20 }}
+				animate={{ opacity: 1, y: 0 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-4xl mx-auto'>
+					<Card>
+						<CardContent className='pt-6'>
+							<ProfileSkeleton />
+						</CardContent>
+					</Card>
+				</div>
+			</motion.main>
+		);
+	}
 
 	return (
-		<main role='main' aria-label='User Profile'>
-			<Container size={ContainerSize.XL} className='min-h-screen flex flex-col items-center justify-start p-4 pt-12'>
-				<Card variant={CardVariant.TRANSPARENT} padding={Spacing.XL} className='w-full space-y-8'>
-					{/* Header */}
-					<motion.header
-						variants={fadeInDown}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.2 }}
-						className='text-center mb-12'
-					>
-						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>User Profile</h1>
-						<p className='text-xl text-slate-300'>Manage your account and preferences</p>
-					</motion.header>
-
-					{/* Profile Information */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.4 }}
-						whileHover={{ scale: 1.02 }}
-						className='w-full'
-						aria-label='Profile Information'
-					>
-						<Card variant={CardVariant.GLASS}>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold text-white'>Profile Information</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<GridLayout variant='balanced' gap={Spacing.LG}>
-									<div>
-										<label className='block text-white font-medium mb-2'>Email</label>
+		<motion.main
+			role='main'
+			aria-label='User Profile'
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			className='min-h-screen py-12 px-4'
+		>
+			<div className='max-w-4xl mx-auto space-y-8'>
+				{/* Profile Header */}
+				<Card>
+					<CardHeader>
+						<div className='flex items-center justify-between'>
+							<div className='flex items-center gap-4'>
+								<Avatar className='h-20 w-20'>
+									<AvatarImage src={profile?.avatar} alt={getDisplayName()} />
+									<AvatarFallback className='text-2xl'>{getUserInitials()}</AvatarFallback>
+								</Avatar>
+								{isEditing ? (
+									<div className='space-y-2'>
 										<div className='flex gap-2'>
-											<input
-												type='email'
-												value={email}
-												onChange={e => setEmail(e.target.value)}
-												className='flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-												placeholder='Enter your email'
-											/>
-											<Button
-												variant={ButtonVariant.SECONDARY}
-												size={ComponentSize.SM}
-												onClick={() => updateUserField.mutate({ field: 'email', value: email })}
-												disabled={updateUserField.isPending}
-												className='px-4'
-											>
-												{updateUserField.isPending ? '...' : 'Save'}
-											</Button>
+											<div>
+												<Label htmlFor='firstName'>First Name</Label>
+												<Input
+													id='firstName'
+													value={editData.firstName}
+													onChange={e => setEditData(prev => ({ ...prev, firstName: e.target.value }))}
+													placeholder='First name'
+												/>
+											</div>
+											<div>
+												<Label htmlFor='lastName'>Last Name</Label>
+												<Input
+													id='lastName'
+													value={editData.lastName}
+													onChange={e => setEditData(prev => ({ ...prev, lastName: e.target.value }))}
+													placeholder='Last name'
+												/>
+											</div>
 										</div>
 									</div>
-								</GridLayout>
-
-								<div className='mt-6 text-center'>
-									<Button
-										variant={ButtonVariant.PRIMARY}
-										onClick={handleSave}
-										disabled={loading}
-										className='px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-									>
-										{loading ? 'Saving...' : 'Save Profile'}
-									</Button>
-								</div>
-							</CardContent>
-						</Card>
-					</motion.section>
-
-					{/* Statistics */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.6 }}
-						aria-label='User Statistics'
-						whileHover={{ scale: 1.02 }}
-						className='w-full'
-					>
-						<Card variant={CardVariant.GLASS}>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold text-white'>Your Statistics</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<GridLayout variant='stats' gap={Spacing.LG}>
-									<Card variant={CardVariant.GLASS} padding={Spacing.SM} className='text-center border border-white/10'>
-										<CardContent>
-											<div className='text-3xl font-bold text-white mb-2'>{stats.totalGames}</div>
-											<div className='text-slate-300'>Total Games</div>
-										</CardContent>
-									</Card>
-									<Card variant={CardVariant.GLASS} padding={Spacing.SM} className='text-center border border-white/10'>
-										<CardContent>
-											<div className='text-3xl font-bold text-green-400 mb-2'>{formatNumber(stats.totalScore)}</div>
-											<div className='text-slate-300'>Total Score</div>
-										</CardContent>
-									</Card>
-									<Card variant={CardVariant.GLASS} padding={Spacing.SM} className='text-center border border-white/10'>
-										<CardContent>
-											<div className='text-3xl font-bold text-blue-400 mb-2'>{formatNumber(stats.averageScore)}</div>
-											<div className='text-slate-300'>Average Score</div>
-										</CardContent>
-									</Card>
-									<Card variant={CardVariant.GLASS} padding={Spacing.SM} className='text-center border border-white/10'>
-										<CardContent>
-											<div className='text-3xl font-bold text-yellow-400 mb-2'>{stats.bestStreak}</div>
-											<div className='text-slate-300'>Best Streak</div>
-										</CardContent>
-									</Card>
-								</GridLayout>
-
-								{/* Last Updated Info */}
-								<div className='mt-4 text-center'>
-									<p className='text-slate-400 text-sm'>Last updated: {getCurrentTimestamp()}</p>
-								</div>
-							</CardContent>
-						</Card>
-					</motion.section>
-
-					{/* Preferences */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						aria-label='User Preferences'
-						animate='visible'
-						transition={{ delay: 0.8 }}
-						whileHover={{ scale: 1.02 }}
-						className='w-full'
-					>
-						<Card variant={CardVariant.GLASS}>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold text-white'>Preferences</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<GridLayout variant='balanced' gap={Spacing.LG}>
+								) : (
 									<div>
-										<h3 className='text-lg font-semibold text-white mb-4'>Game Settings</h3>
-										<div className='space-y-4'>
-											<label className='flex items-center'>
-												<input
-													type='checkbox'
-													checked={preferences.soundEnabled}
-													onChange={e => {
-														const newValue = e.target.checked;
-														setPreferences({ ...preferences, soundEnabled: newValue });
-														updateSinglePreference.mutate({
-															preference: 'soundEnabled',
-															value: newValue,
-														});
-
-														// Update audio service immediately
-														if (userProfile?.preferences) {
-															const mergedPreferences = mergeUserPreferences(null, userProfile.preferences);
-															audioService.setUserPreferences({
-																...mergedPreferences,
-																soundEnabled: newValue,
-															});
-														}
-													}}
-													className='mr-3'
-												/>
-												<span className='text-white'>Enable Sound Effects</span>
-											</label>
-											<label className='flex items-center'>
-												<input
-													type='checkbox'
-													checked={preferences.musicEnabled}
-													onChange={e => {
-														const newValue = e.target.checked;
-														setPreferences({ ...preferences, musicEnabled: newValue });
-														updateSinglePreference.mutate({
-															preference: 'musicEnabled',
-															value: newValue,
-														});
-
-														// Update audio service immediately
-														if (userProfile?.preferences) {
-															const mergedPreferences = mergeUserPreferences(null, userProfile.preferences);
-															audioService.setUserPreferences({
-																...mergedPreferences,
-																musicEnabled: newValue,
-															});
-														}
-													}}
-													className='mr-3'
-												/>
-												<span className='text-white'>Enable Background Music</span>
-											</label>
-											<label className='flex items-center'>
-												<input
-													type='checkbox'
-													checked={preferences.animationsEnabled}
-													onChange={e => {
-														const newValue = e.target.checked;
-														setPreferences({ ...preferences, animationsEnabled: newValue });
-														updateSinglePreference.mutate({
-															preference: 'animationsEnabled',
-															value: newValue,
-														});
-													}}
-													className='mr-3'
-												/>
-												<span className='text-white'>Enable Animations</span>
-											</label>
-										</div>
+										<CardTitle className='text-2xl'>{getDisplayName()}</CardTitle>
+										<CardDescription>{currentUser?.email}</CardDescription>
 									</div>
-									<div>
-										<h3 className='text-lg font-semibold text-white mb-4'>Privacy Settings</h3>
-										<div className='space-y-4'>
-											<p className='text-white/75'>Privacy settings are managed through your account settings.</p>
-										</div>
-									</div>
-								</GridLayout>
-
-								<div className='mt-6 text-center space-x-4'>
-									<Button
-										variant={ButtonVariant.SECONDARY}
-										onClick={handleSavePreferences}
-										disabled={saving}
-										className='px-8 py-3'
-									>
-										{saving ? 'Saving...' : 'Save Preferences'}
+								)}
+							</div>
+							<div className='flex gap-2'>
+								{isEditing ? (
+									<>
+										<Button variant='outline' onClick={() => setIsEditing(false)}>
+											Cancel
+										</Button>
+										<Button onClick={handleSave} disabled={updateProfile.isPending}>
+											{updateProfile.isPending ? 'Saving...' : 'Save'}
+										</Button>
+									</>
+								) : (
+									<Button variant='outline' onClick={handleEditStart}>
+										Edit Profile
 									</Button>
-								</div>
-							</CardContent>
-						</Card>
-					</motion.section>
-
-					{/* Account Management Section */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.6 }}
-						aria-label='Account Management'
-						className='w-full'
-					>
-						<Card
-							variant={CardVariant.TRANSPARENT}
-							className='bg-red-500/10 border border-red-500/20'
-							padding={Spacing.LG}
-						>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold text-white text-center'>Account Management</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className='text-center'>
-									<Button
-										variant={ButtonVariant.DANGER}
-										onClick={handleDeleteAccount}
-										disabled={deleteAccountMutation.isPending}
-										className='px-8 py-3 bg-red-600 hover:bg-red-700'
-									>
-										{deleteAccountMutation.isPending ? 'Deleting...' : 'Delete Account'}
-									</Button>
-									<p className='text-red-300 text-sm mt-2'>
-										This action cannot be undone. All your data will be permanently deleted.
-									</p>
-								</div>
-							</CardContent>
-						</Card>
-					</motion.section>
+								)}
+							</div>
+						</div>
+					</CardHeader>
 				</Card>
-			</Container>
 
-			{/* Confirm Modal */}
-			<ConfirmModal
-				open={confirmModal.open}
-				onClose={() => setConfirmModal(prev => ({ ...prev, open: false }))}
-				onConfirm={confirmModal.onConfirm}
-				title='Delete Account'
-				message='Are you sure you want to delete your account? This action cannot be undone.'
-				confirmText='Delete'
-				cancelText='Cancel'
-				variant={AlertVariant.ERROR}
-			/>
-		</main>
+				{/* Statistics */}
+				<Card>
+					<CardHeader>
+						<CardTitle className='flex items-center gap-2'>
+							<Trophy className='h-5 w-5 text-yellow-500' />
+							Your Statistics
+						</CardTitle>
+						<CardDescription>Track your trivia performance</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+							<StatCard
+								icon={GamepadIcon}
+								label='Games Played'
+								value={userStats?.gamesPlayed || 0}
+								color='text-blue-500'
+							/>
+							<StatCard
+								icon={Target}
+								label='Total Score'
+								value={(userStats?.score || 0).toLocaleString()}
+								color='text-green-500'
+							/>
+							<StatCard
+								icon={Award}
+								label='Success Rate'
+								value={Math.round(userStats?.successRate || 0)}
+								suffix='%'
+								color='text-purple-500'
+							/>
+							<StatCard
+								icon={Trophy}
+								label='Best Score'
+								value={(userStats?.bestScore || 0).toLocaleString()}
+								color='text-yellow-500'
+							/>
+							<StatCard icon={Flame} label='Best Streak' value={userStats?.bestStreak || 0} color='text-orange-500' />
+							<StatCard
+								icon={Clock}
+								label='Play Time'
+								value={formatPlayTime(userStats?.totalPlayTime || 0, 'minutes')}
+								color='text-cyan-500'
+							/>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Quick Actions */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Quick Actions</CardTitle>
+					</CardHeader>
+					<CardContent className='flex flex-wrap gap-3'>
+						<Button onClick={() => navigate('/history')}>View Game History</Button>
+						<Button variant='outline' onClick={() => navigate('/analytics')}>
+							View Analytics
+						</Button>
+					</CardContent>
+				</Card>
+
+				{/* Security */}
+				<Card>
+					<CardHeader>
+						<CardTitle className='flex items-center gap-2'>
+							<Key className='h-5 w-5' />
+							Security
+						</CardTitle>
+						<CardDescription>Manage your account security</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Button variant='outline' onClick={() => setShowPasswordDialog(true)}>
+							Change Password
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* Change Password Dialog */}
+			<ChangePasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} />
+		</motion.main>
 	);
 }

@@ -24,15 +24,16 @@ import { GameMode, VALID_GAME_MODES, VALIDATION_LIMITS } from '@shared/constants
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
 export class DeductCreditsDto {
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description:
-			'Number of questions requested (999 for unlimited mode). See VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED for explanation of why 999 is used instead of Infinity or a string.',
+			'Number of questions per request (-1 for unlimited mode). ' +
+			'BREAKING CHANGE: The "amount" alias has been removed. Use "questionsPerRequest" only. ' +
+			'See VALIDATION_LIMITS.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
 		example: 5,
-		minimum: VALIDATION_LIMITS.REQUESTED_QUESTIONS.MIN,
-		maximum: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
+		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
 	})
-	@ValidateIf((o: DeductCreditsDto) => o.amount === undefined && o.requestedQuestions !== undefined)
-	@IsNotEmpty({ message: 'Requested questions is required when amount is not provided' })
+	@IsNotEmpty({ message: 'Questions per request is required' })
 	@Transform(({ value }) => {
 		if (value === undefined || value === null) {
 			return undefined;
@@ -48,45 +49,19 @@ export class DeductCreditsDto {
 		}
 		return undefined;
 	})
-	@IsNumber({}, { message: 'Requested questions must be a number' })
-	@Min(VALIDATION_LIMITS.REQUESTED_QUESTIONS.MIN, {
-		message: `Requested questions must be at least ${VALIDATION_LIMITS.REQUESTED_QUESTIONS.MIN}`,
+	@IsNumber({}, { message: 'Questions per request must be a number' })
+	@Min(VALIDATION_LIMITS.QUESTIONS.MIN, {
+		message: `Questions per request must be at least ${VALIDATION_LIMITS.QUESTIONS.MIN}`,
 	})
-	@Max(VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED, {
-		message: `Requested questions cannot exceed ${VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED} (use ${VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED} for unlimited mode)`,
+	@ValidateIf((o: DeductCreditsDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_LIMITS.QUESTIONS.MAX, {
+		message: `Questions per request cannot exceed ${VALIDATION_LIMITS.QUESTIONS.MAX} (use ${VALIDATION_LIMITS.QUESTIONS.UNLIMITED} for unlimited mode)`,
 	})
-	requestedQuestions?: number;
+	questionsPerRequest: number;
 
-	@ApiPropertyOptional({
-		description: 'Alias for requestedQuestions. Used for backwards compatibility with older clients.',
-		example: 5,
-		minimum: 1,
-		maximum: 50,
-	})
-	@ValidateIf((o: DeductCreditsDto) => o.requestedQuestions === undefined && o.amount !== undefined)
-	@IsNotEmpty({ message: 'Amount is required when requestedQuestions is not provided' })
-	@Transform(({ value }) => {
-		if (value === undefined || value === null) {
-			return undefined;
-		}
-		// If already a number, return as-is (validate it's integer)
-		if (typeof value === 'number') {
-			return Number.isInteger(value) ? value : Math.floor(value);
-		}
-		// If string, parse it
-		if (typeof value === 'string') {
-			const parsed = parseInt(value, 10);
-			return Number.isNaN(parsed) ? undefined : parsed;
-		}
-		return undefined;
-	})
-	@IsNumber({}, { message: 'Amount must be a number' })
-	@Min(1, { message: 'Amount must be at least 1' })
-	@Max(50, { message: 'Amount cannot exceed 50' })
-	amount?: number;
-
-	@ApiPropertyOptional({
-		description: 'Game mode for the deduction',
+	@ApiProperty({
+		description:
+			'Game mode for the deduction. ' + 'BREAKING CHANGE: The "gameType" alias has been removed. Use "gameMode" only.',
 		example: 'question-limited',
 		enum: VALID_GAME_MODES,
 	})
@@ -96,18 +71,6 @@ export class DeductCreditsDto {
 		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
 	})
 	gameMode?: GameMode;
-
-	@ApiPropertyOptional({
-		description: 'Alias for gameMode used by older clients',
-		example: 'question-limited',
-		enum: VALID_GAME_MODES,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_GAME_MODES, {
-		message: `Game type must be one of: ${VALID_GAME_MODES.join(', ')}`,
-	})
-	gameType?: GameMode;
 
 	@ApiPropertyOptional({
 		description: 'Reason for deduction (for logging purposes)',
@@ -199,17 +162,22 @@ export class GetCreditHistoryDto {
 
 export class CanPlayDto {
 	@ApiPropertyOptional({
-		description: 'Number of questions requested to check if user can play',
+		description: 'Number of questions per request to check if user can play',
 		example: 5,
-		minimum: 1,
-		maximum: 20,
+		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
+		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
 	})
 	@IsOptional()
 	@Transform(({ value }) => (value !== undefined ? parseInt(value, 10) : undefined))
-	@IsNumber({}, { message: 'Requested questions must be a number' })
-	@Min(1, { message: 'Requested questions must be at least 1' })
-	@Max(20, { message: 'Requested questions cannot exceed 20' })
-	requestedQuestions?: number;
+	@IsNumber({}, { message: 'Questions per request must be a number' })
+	@Min(VALIDATION_LIMITS.QUESTIONS.MIN, {
+		message: `Questions per request must be at least ${VALIDATION_LIMITS.QUESTIONS.MIN}`,
+	})
+	@ValidateIf((o: CanPlayDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_LIMITS.QUESTIONS.MAX, {
+		message: `Questions per request cannot exceed ${VALIDATION_LIMITS.QUESTIONS.MAX} (use ${VALIDATION_LIMITS.QUESTIONS.UNLIMITED} for unlimited mode)`,
+	})
+	questionsPerRequest?: number;
 
 	@ApiPropertyOptional({
 		description: 'Game mode to evaluate (optional)',

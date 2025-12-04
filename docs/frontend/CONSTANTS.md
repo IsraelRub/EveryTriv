@@ -14,7 +14,10 @@ client/src/constants/
 │   ├── game-client.constants.ts    # קבועי משחק לקוח
 │   ├── game-mode.constants.ts      # קבועי מצב משחק
 │   ├── game-state.constants.ts     # קבועי מצב משחק
+│   ├── mode.constants.ts           # קבועי מצבי משחק (GAME_MODES, POPULAR_TOPICS)
 │   └── index.ts                    # ייצוא מאוחד
+├── services/                       # קבועי Services
+│   └── logger.constants.ts         # קבועי Logger Service (TOAST_ENABLED_METHODS)
 ├── storage.constants.ts            # קבועי אחסון
 ├── ui/                             # קבועי UI
 │   ├── animation.constants.ts      # קבועי אנימציה
@@ -25,6 +28,7 @@ client/src/constants/
 │   ├── navigation.constants.ts     # קבועי ניווט
 │   ├── payment-ui.constants.ts    # קבועי תשלום UI
 │   ├── size.constants.ts           # קבועי גדלים
+│   ├── toast.constants.ts          # קבועי Toast (TOAST_LIMIT, TOAST_REMOVE_DELAY, etc.)
 │   ├── variant.constants.ts        # קבועי וריאנטים
 │   └── index.ts                    # ייצוא מאוחד
 ├── user-defaults.constants.ts      # ערכי ברירת מחדל למשתמש
@@ -93,7 +97,7 @@ export const SCORING_DEFAULTS = {
 
 **Constants:**
 - `DEFAULT_QUESTION_LIMIT` - מגבלת שאלות ברירת מחדל (10)
-- `UNLIMITED_QUESTIONS` - אינדיקטור שאלות ללא הגבלה (999)
+- `UNLIMITED_QUESTIONS` - אינדיקטור שאלות ללא הגבלה (-1)
 - `DEFAULT_TIME_LIMIT` - מגבלת זמן ברירת מחדל (60 שניות)
 - `DEFAULT_GAME_MODE` - מצב משחק ברירת מחדל (`GameMode.QUESTION_LIMITED`)
 
@@ -165,6 +169,113 @@ export const DEFAULT_GAME_STATE: ClientGameState = {
 - `ANIMATION_DELAYS` - עיכובי אנימציה
 - `PARTICLE_EFFECTS` - הגדרות אפקטי חלקיקים
 - `VALIDATION` - הגדרות ולידציה
+
+### game/mode.constants.ts
+
+קבועי מצבי משחק:
+
+**GameModeOption:**
+```typescript
+export interface GameModeOption {
+  id: GameMode | 'multiplayer';
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  showQuestionLimit: boolean;
+  showTimeLimit: boolean;
+}
+```
+
+**GAME_MODES:**
+```typescript
+export const GAME_MODES: GameModeOption[] = [
+  {
+    id: GameMode.QUESTION_LIMITED,
+    name: 'Question Mode',
+    description: 'Answer a set number of questions',
+    icon: Target,
+    showQuestionLimit: true,
+    showTimeLimit: false,
+  },
+  {
+    id: GameMode.TIME_LIMITED,
+    name: 'Time Attack',
+    description: 'Answer as many as you can in time',
+    icon: Clock,
+    showQuestionLimit: false,
+    showTimeLimit: true,
+  },
+  {
+    id: GameMode.UNLIMITED,
+    name: 'Unlimited',
+    description: 'Play as long as you want',
+    icon: Infinity,
+    showQuestionLimit: false,
+    showTimeLimit: false,
+  },
+  {
+    id: 'multiplayer',
+    name: 'Multiplayer',
+    description: 'Compete with friends',
+    icon: Users,
+    showQuestionLimit: false,
+    showTimeLimit: false,
+  },
+];
+```
+
+**SINGLE_PLAYER_MODES:**
+אותו כמו `GAME_MODES` אבל ללא מצב multiplayer.
+
+**POPULAR_TOPICS:**
+```typescript
+export const POPULAR_TOPICS = [
+  'General Knowledge',
+  'Science',
+  'History',
+  'Geography',
+  'Sports',
+  'Movies & TV',
+  'Music',
+  'Technology',
+  'Art & Literature',
+  'Food & Cooking',
+] as const;
+```
+
+רשימת נושאים פופולריים לבחירה מהירה במשחק.
+
+## Services Constants
+
+### services/logger.constants.ts
+
+קבועי Logger Service:
+
+**TOAST_ENABLED_METHODS:**
+```typescript
+export const TOAST_ENABLED_METHODS: ToastEnabledMethods = {
+  // User-facing errors - always show toast
+  userError: true,
+  authError: true,
+  systemError: true,
+  apiError: true,
+  gameError: true,
+  paymentFailed: true,
+
+  // User-facing warnings - show toast
+  userWarn: true,
+  securityWarn: true,
+
+  // User-facing success messages - show toast
+  authLogin: true,
+  authRegister: true,
+  authProfileUpdate: true,
+  payment: true,
+  providerSuccess: true,
+};
+```
+
+מגדיר אילו מתודות של הלוגר צריכות להציג התראות toast למשתמש.
 
 ## Storage Constants
 
@@ -318,6 +429,43 @@ export const REGISTRATION_DEFAULT_VALUES = {
   agreeToTerms: false,
 } as const;
 ```
+
+### ui/toast.constants.ts
+
+קבועי Toast:
+
+**TOAST_LIMIT:**
+```typescript
+export const TOAST_LIMIT = 3;
+```
+
+מספר מקסימלי של התראות toast להצגה בו-זמנית.
+
+**TOAST_REMOVE_DELAY:**
+```typescript
+export const TOAST_REMOVE_DELAY = 300;
+```
+
+עיכוב לאחר אנימציית dismiss לפני הסרת toast מה-DOM (במילישניות).
+
+**DEFAULT_TOAST_DURATION:**
+```typescript
+export const DEFAULT_TOAST_DURATION = 5000;
+```
+
+משך זמן ברירת מחדל להתראות toast עם auto-dismiss (במילישניות).
+
+**TOAST_ACTION_TYPES:**
+```typescript
+export const TOAST_ACTION_TYPES = {
+  ADD_TOAST: 'ADD_TOAST',
+  UPDATE_TOAST: 'UPDATE_TOAST',
+  DISMISS_TOAST: 'DISMISS_TOAST',
+  REMOVE_TOAST: 'REMOVE_TOAST',
+} as const;
+```
+
+סוגי פעולות ל-toast reducer.
 
 ### ui/navigation.constants.ts
 
@@ -502,6 +650,7 @@ Barrel exports לכל ה-constants:
 export * from './ui';
 export * from './audio.constants';
 export * from './game';
+export * from './services';
 export * from './user-defaults.constants';
 export * from './storage.constants';
 export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';

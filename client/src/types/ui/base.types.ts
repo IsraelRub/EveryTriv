@@ -9,7 +9,6 @@ import type { SelectOption as SharedSelectOption } from '@shared/types';
 
 import {
 	AlertVariant,
-	ButtonVariant,
 	CardVariant,
 	ComponentSize,
 	ContainerSize,
@@ -24,20 +23,6 @@ export interface BaseComponentProps {
 	id?: string;
 	disabled?: boolean;
 	children?: ReactNode;
-}
-
-// Button Props
-export interface ButtonProps extends BaseComponentProps {
-	children: ReactNode;
-	variant?: ButtonVariant;
-	size?: InteractiveSize;
-	type?: 'button' | 'submit' | 'reset';
-	loading?: boolean;
-	onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
-	isGlassy?: boolean;
-	withGlow?: boolean;
-	withAnimation?: boolean;
-	title?: string;
 }
 
 // Card Props

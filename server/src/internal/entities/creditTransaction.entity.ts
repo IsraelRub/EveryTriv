@@ -53,7 +53,7 @@ export class CreditTransactionEntity extends BaseEntity {
 	metadata: {
 		difficulty?: string;
 		topic?: string;
-		requestedQuestions?: number;
+		questionsPerRequest?: number;
 		requiredCredits?: number;
 		pricePerCredit?: number;
 		originalAmount?: number;

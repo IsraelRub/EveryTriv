@@ -5,9 +5,10 @@
  * @description Hook for managing multiplayer room state and operations
  * @used_by client/src/views/multiplayer
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { clientLogger as logger } from '@shared/services';
+import type { CreateRoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { useMultiplayer } from './useMultiplayer';
@@ -22,25 +23,21 @@ export const useMultiplayerRoom = (roomId?: string) => {
 	const { room, isConnected, createRoom, joinRoom, leaveRoom, startGame, error, roomCode } = useMultiplayer();
 	const { data: userProfile } = useUserProfile();
 	const [isLoading, setIsLoading] = useState(false);
+	const isLoadingRef = useRef(false);
 
 	/**
 	 * Create a new room
 	 */
 	const handleCreateRoom = useCallback(
-		async (config: {
-			topic: string;
-			difficulty: string;
-			requestedQuestions: number;
-			maxPlayers: number;
-			gameMode: string;
-		}) => {
+		async (config: CreateRoomConfig) => {
 			setIsLoading(true);
+			isLoadingRef.current = true;
 			try {
 				createRoom(config);
 			} catch (err) {
 				logger.gameError('Failed to create room', { error: getErrorMessage(err) });
-			} finally {
 				setIsLoading(false);
+				isLoadingRef.current = false;
 			}
 		},
 		[createRoom]
@@ -102,6 +99,14 @@ export const useMultiplayerRoom = (roomId?: string) => {
 			handleJoinRoom(roomId);
 		}
 	}, [roomId, isConnected, room, handleJoinRoom]);
+
+	// Stop loading when room is created or error occurs during room creation
+	useEffect(() => {
+		if (isLoadingRef.current && (room || error)) {
+			setIsLoading(false);
+			isLoadingRef.current = false;
+		}
+	}, [room, error]);
 
 	return {
 		room,

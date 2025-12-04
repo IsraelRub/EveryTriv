@@ -60,7 +60,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 		defaultTopic: 'general',
 		defaultGameMode: GameMode.QUESTION_LIMITED,
 		timeLimit: 30,
-		questionLimit: 10,
+		maxQuestionsPerGame: 10,
 	},
 };
 

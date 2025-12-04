@@ -56,30 +56,13 @@ export function isStringArray(value: unknown): value is string[] {
  * Calculate percentage with rounding
  * @param value Current value
  * @param total Total value
- * @param decimals Number of decimal places (default: 0)
- * @returns Percentage as number
+ * @returns Percentage as number (rounded to nearest integer)
  */
-export function calculatePercentage(value: number, total: number, decimals: number = 0): number {
-	try {
-		if (total === 0) return 0;
-		if (isNaN(value) || isNaN(total)) return 0;
+export function calculatePercentage(value: number, total: number): number {
+	if (total === 0) return 0;
 
-		const percentage = (value / total) * 100;
-		return decimals === 0
-			? Math.round(percentage)
-			: Math.round(percentage * Math.pow(10, decimals)) / Math.pow(10, decimals);
-	} catch {
-		return 0;
-	}
-}
-
-/**
- * Get unique values from array
- * @param arr Array to get unique values from
- * @returns Array with unique values
- */
-export function unique<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
+	const percentage = (value / total) * 100;
+	return Math.round(percentage);
 }
 
 /**

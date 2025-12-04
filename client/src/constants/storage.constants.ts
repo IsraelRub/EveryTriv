@@ -22,9 +22,10 @@ export const STORAGE_KEYS = {
 	CUSTOM_DIFFICULTY_HISTORY: 'custom_difficulty_history',
 
 	// UI state (localStorage - persistent)
-	AUDIO_SETTINGS: 'audio_settings',
-	AUDIO_VOLUME: 'audioVolume',
-	AUDIO_MUTED: 'audioMuted',
+	AUDIO_VOLUME: 'audio_volume',
+	AUDIO_MUTED: 'audio_muted',
+	AUDIO_SOUND_ENABLED: 'audio_sound_enabled',
+	AUDIO_MUSIC_ENABLED: 'audio_music_enabled',
 	SCORE_HISTORY: 'score_history',
 
 	// Temporary data (sessionStorage - session only)

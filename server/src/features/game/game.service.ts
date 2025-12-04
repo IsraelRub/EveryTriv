@@ -88,7 +88,7 @@ export class GameService {
 	 * Get trivia questions with smart retrieval strategy
 	 *
 	 * Process flow:
-	 * 1. Validates the trivia request (topic, difficulty, requestedQuestions)
+	 * 1. Validates the trivia request (topic, difficulty, questionsPerRequest)
 	 * 2. Retrieves questions the user has already seen from game history
 	 * 3. Checks if questions exist in database for the requested topic and difficulty
 	 * 4. Attempts to retrieve existing questions from database first (excluding user's seen questions)
@@ -99,37 +99,44 @@ export class GameService {
 	 *
 	 * @param topic Topic for the question
 	 * @param difficulty Difficulty level
-	 * @param requestedQuestions Number of questions requested by user
+	 * @param questionsPerRequest Number of questions requested by user
 	 * @param userId User ID for personalization and to exclude already seen questions
+	 * @param answerCount Number of answer choices per question (3-5)
 	 * @returns Trivia questions with fromCache flag
 	 */
-	async getTriviaQuestion(topic: string, difficulty: GameDifficulty, requestedQuestions: number = 1, userId?: string) {
-		// Note: requestedQuestions is already validated and converted by TriviaRequestPipe
-		// For unlimited mode (999), we request questions in batches to allow continuous gameplay
-		const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+	async getTriviaQuestion(
+		topic: string,
+		difficulty: GameDifficulty,
+		questionsPerRequest: number = 1,
+		userId?: string,
+		answerCount?: number
+	) {
+		// Note: questionsPerRequest is already validated and converted by TriviaRequestPipe
+		// For unlimited mode (-1), we request questions in batches to allow continuous gameplay
+		const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 		const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
 
 		// For unlimited mode, request questions in batches (maxQuestions per request)
 		// This allows continuous gameplay while respecting server limits
 		// Note: In unlimited mode, the client should request 1 question at a time for subsequent requests
-		// to avoid unnecessary credit deductions. The initial request uses 999 to indicate unlimited mode.
-		const normalizedRequestedQuestions =
-			requestedQuestions === UNLIMITED ? maxQuestions : Math.min(requestedQuestions, maxQuestions);
+		// to avoid unnecessary credit deductions. The initial request uses -1 to indicate unlimited mode.
+		const normalizedQuestionsPerRequest =
+			questionsPerRequest === UNLIMITED ? maxQuestions : Math.min(questionsPerRequest, maxQuestions);
 
-		if (requestedQuestions > maxQuestions && requestedQuestions !== UNLIMITED) {
+		if (questionsPerRequest > maxQuestions && questionsPerRequest !== UNLIMITED) {
 			logger.gameError(
-				`Requested questions ${requestedQuestions} exceeds limit ${maxQuestions}, using ${normalizedRequestedQuestions}`,
+				`Questions per request ${questionsPerRequest} exceeds limit ${maxQuestions}, using ${normalizedQuestionsPerRequest}`,
 				{
-					requestedCount: requestedQuestions,
+					requestedCount: questionsPerRequest,
 					maxQuestions,
-					actualCount: normalizedRequestedQuestions,
+					actualCount: normalizedQuestionsPerRequest,
 				}
 			);
 		}
 
-		if (requestedQuestions === UNLIMITED) {
+		if (questionsPerRequest === UNLIMITED) {
 			logger.gameInfo('Unlimited mode: requesting questions in batches', {
-				batchSize: normalizedRequestedQuestions,
+				batchSize: normalizedQuestionsPerRequest,
 				topic,
 				difficulty,
 			});
@@ -151,7 +158,7 @@ export class GameService {
 				difficulty,
 				exists: hasExistingQuestions,
 				totalItems: excludeQuestionTexts.length,
-				requestedCount: normalizedRequestedQuestions,
+				requestedCount: normalizedQuestionsPerRequest,
 			});
 
 			// Try to get existing questions first
@@ -160,7 +167,7 @@ export class GameService {
 				availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
 					topic,
 					difficulty,
-					normalizedRequestedQuestions * 2,
+					normalizedQuestionsPerRequest * 2,
 					excludeQuestionTexts
 				);
 			}
@@ -173,7 +180,7 @@ export class GameService {
 			// Use existing questions first
 			// Note: getAvailableQuestions already filters excluded questions at SQL level
 			for (const questionEntity of availableQuestions) {
-				if (questions.length >= normalizedRequestedQuestions) {
+				if (questions.length >= normalizedQuestionsPerRequest) {
 					break;
 				}
 
@@ -193,7 +200,7 @@ export class GameService {
 			}
 
 			// Generate new questions if we don't have enough
-			const remainingCount = normalizedRequestedQuestions - questions.length;
+			const remainingCount = normalizedQuestionsPerRequest - questions.length;
 			if (remainingCount > 0) {
 				logger.gameTarget('Generating additional questions', {
 					topic,
@@ -209,7 +216,7 @@ export class GameService {
 					while (retries < maxRetries && !question) {
 						try {
 							const questionEntity = await Promise.race([
-								this.triviaGenerationService.generateQuestion(topic, difficulty, userId, excludeQuestions),
+								this.triviaGenerationService.generateQuestion(topic, difficulty, userId, excludeQuestions, answerCount),
 								new Promise<never>((_, reject) => {
 									const timeoutId = setTimeout(() => {
 										reject(new Error('Question generation timeout'));
@@ -271,11 +278,11 @@ export class GameService {
 			}
 
 			// If we have fewer questions than requested, log a warning
-			if (questions.length < normalizedRequestedQuestions) {
-				logger.gameError(`Got ${questions.length} questions out of ${normalizedRequestedQuestions} requested`, {
+			if (questions.length < normalizedQuestionsPerRequest) {
+				logger.gameError(`Got ${questions.length} questions out of ${normalizedQuestionsPerRequest} requested`, {
 					topic,
 					difficulty,
-					requestedCount: normalizedRequestedQuestions,
+					requestedCount: normalizedQuestionsPerRequest,
 					actualCount: questions.length,
 					totalItems: availableQuestions.length,
 				});
@@ -289,7 +296,7 @@ export class GameService {
 					userId,
 					timestamp: new Date(),
 					action: 'question_requested',
-					properties: { topic, difficulty, requestedQuestions: normalizedRequestedQuestions },
+					properties: { topic, difficulty, questionsPerRequest: normalizedQuestionsPerRequest },
 				});
 			}
 
@@ -302,7 +309,7 @@ export class GameService {
 				error: getErrorMessage(error),
 				topic,
 				difficulty,
-				requestedCount: normalizedRequestedQuestions,
+				requestedCount: normalizedQuestionsPerRequest,
 			});
 
 			throw createServerError('generate trivia questions', error);
@@ -379,7 +386,7 @@ export class GameService {
 
 			await this.saveGameHistory(userId, {
 				score,
-				totalQuestions: 1,
+				gameQuestionCount: 1,
 				correctAnswers: isCorrect ? 1 : 0,
 				difficulty: question.difficulty,
 				topic: question.topic,
@@ -442,7 +449,7 @@ export class GameService {
 		userId: string,
 		gameData: {
 			score: number;
-			totalQuestions: number;
+			gameQuestionCount: number;
 			correctAnswers: number;
 			difficulty: GameDifficulty;
 			topic?: string;
@@ -474,7 +481,7 @@ export class GameService {
 				userId,
 				score: gameData.score,
 				correctAnswers: gameData.correctAnswers,
-				totalQuestions: gameData.totalQuestions,
+				gameQuestionCount: gameData.gameQuestionCount,
 			});
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -482,11 +489,11 @@ export class GameService {
 				throw createNotFoundError('User');
 			}
 
-			const incorrectAnswers = Math.max(0, gameData.totalQuestions - gameData.correctAnswers);
+			const incorrectAnswers = Math.max(0, gameData.gameQuestionCount - gameData.correctAnswers);
 			const gameHistory = this.gameHistoryRepository.create({
 				userId,
 				score: gameData.score,
-				totalQuestions: gameData.totalQuestions,
+				gameQuestionCount: gameData.gameQuestionCount,
 				correctAnswers: gameData.correctAnswers,
 				difficulty: gameData.difficulty,
 				topic: gameData.topic ?? '',
@@ -516,10 +523,10 @@ export class GameService {
 				gameId: savedHistory.id,
 				userId: savedHistory.userId,
 				score: savedHistory.score,
-				totalQuestions: savedHistory.totalQuestions,
+				gameQuestionCount: savedHistory.gameQuestionCount,
 				correctAnswers: savedHistory.correctAnswers,
 				incorrectAnswers,
-				successRate: (savedHistory.correctAnswers / savedHistory.totalQuestions) * 100,
+				successRate: (savedHistory.correctAnswers / savedHistory.gameQuestionCount) * 100,
 				difficulty: savedHistory.difficulty,
 				topic: savedHistory.topic,
 				gameMode: savedHistory.gameMode,
@@ -567,17 +574,18 @@ export class GameService {
 				totalGames: gameHistory.length,
 				games: gameHistory.map(game => ({
 					id: game.id,
-					gameId: game.id,
-					score: game.score,
-					totalQuestions: game.totalQuestions,
-					correctAnswers: game.correctAnswers,
-					successRate: (game.correctAnswers / game.totalQuestions) * 100,
-					difficulty: game.difficulty,
+					createdAt: game.createdAt,
+					updatedAt: game.updatedAt,
 					topic: game.topic,
+					difficulty: game.difficulty,
 					gameMode: game.gameMode,
+					userId: game.userId,
+					score: game.score,
+					questionsData: game.questionsData,
+					correctAnswers: game.correctAnswers,
+					gameQuestionCount: game.gameQuestionCount,
 					timeSpent: game.timeSpent,
 					creditsUsed: game.creditsUsed,
-					created_at: game.createdAt,
 				})),
 			};
 		} catch (error) {
@@ -656,9 +664,9 @@ export class GameService {
 				gameId: game.id,
 				userId: game.userId,
 				score: game.score,
-				totalQuestions: game.totalQuestions,
+				gameQuestionCount: game.gameQuestionCount,
 				correctAnswers: game.correctAnswers,
-				successRate: (game.correctAnswers / game.totalQuestions) * 100,
+				successRate: (game.correctAnswers / game.gameQuestionCount) * 100,
 				difficulty: game.difficulty,
 				topic: game.topic,
 				gameMode: game.gameMode,
@@ -796,7 +804,7 @@ export class GameService {
 		config: {
 			defaultDifficulty?: string;
 			defaultTopic?: string;
-			requestedQuestions?: number;
+			questionsPerRequest?: number;
 			timeLimit?: number;
 			soundEnabled?: boolean;
 			notifications?: boolean;
@@ -865,7 +873,7 @@ export class GameService {
 			const defaultConfig = {
 				defaultDifficulty: DEFAULT_USER_PREFERENCES.game?.defaultDifficulty ?? 'medium',
 				defaultTopic: DEFAULT_USER_PREFERENCES.game?.defaultTopic ?? 'general',
-				requestedQuestions: DEFAULT_USER_PREFERENCES.game?.questionLimit ?? gameModeDefaults.questionLimit,
+				questionsPerRequest: DEFAULT_USER_PREFERENCES.game?.maxQuestionsPerGame ?? gameModeDefaults.maxQuestionsPerGame,
 				timeLimit: DEFAULT_USER_PREFERENCES.game?.timeLimit ?? gameModeDefaults.timeLimit,
 				soundEnabled: DEFAULT_USER_PREFERENCES.soundEnabled,
 			};
@@ -994,14 +1002,14 @@ export class GameService {
 				.select('CAST(COUNT(*) AS INTEGER)', 'totalGames')
 				.addSelect('CAST(AVG(game.score) AS DOUBLE PRECISION)', 'averageScore')
 				.addSelect('CAST(MAX(game.score) AS INTEGER)', 'bestScore')
-				.addSelect('CAST(SUM(game.totalQuestions) AS INTEGER)', 'totalQuestions')
+				.addSelect('CAST(SUM(game.game_question_count) AS INTEGER)', 'totalQuestionsAnswered')
 				.addSelect('CAST(SUM(game.correctAnswers) AS INTEGER)', 'correctAnswers')
 				.addSelect('MAX(game.createdAt)', 'lastActivity')
 				.getRawOne<{
 					totalGames: number;
 					averageScore: number;
 					bestScore: number;
-					totalQuestions: number;
+					totalQuestionsAnswered: number;
 					correctAnswers: number;
 					lastActivity: Date;
 				}>();
@@ -1031,9 +1039,9 @@ export class GameService {
 			const activePlayersRaw = await activePlayersQueryBuilder.getRawOne<{ count: number }>();
 
 			const totalGames = totalsRaw?.totalGames ?? 0;
-			const totalQuestions = totalsRaw?.totalQuestions ?? 0;
+			const totalQuestionsAnswered = totalsRaw?.totalQuestionsAnswered ?? 0;
 			const correctAnswers = totalsRaw?.correctAnswers ?? 0;
-			const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+			const accuracy = totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0;
 
 			const topics = buildCountRecord(
 				topicStatsRaw,
@@ -1051,7 +1059,7 @@ export class GameService {
 				totalGames,
 				averageScore: totalsRaw?.averageScore ?? 0,
 				bestScore: totalsRaw?.bestScore ?? 0,
-				totalQuestionsAnswered: totalQuestions,
+				totalQuestionsAnswered,
 				correctAnswers,
 				accuracy,
 				activePlayers24h: activePlayersRaw?.count ?? 0,
@@ -1137,7 +1145,7 @@ export class GameService {
 			});
 
 			logger.apiRead('game_admin_get_all_trivia', {
-				totalQuestions: questions.length,
+				count: questions.length,
 			});
 
 			return {

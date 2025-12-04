@@ -2,14 +2,7 @@ import { clientLogger as logger } from '@shared/services';
 import type { UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import {
-	AUDIO_CATEGORIES,
-	AUDIO_CONFIG,
-	AUDIO_PATHS,
-	AudioCategory,
-	AudioKey,
-	DEFAULT_CATEGORY_VOLUMES,
-} from '../constants';
+import { AUDIO_DATA, AudioCategory, AudioKey } from '../constants';
 import { AudioServiceInterface } from '../types';
 
 /**
@@ -24,22 +17,11 @@ export class AudioService implements AudioServiceInterface {
 	private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
 	private isMuted = false;
 	private volumes: Map<AudioKey, number> = new Map();
-	private categoryVolumes: Map<AudioCategory, number>;
 	private masterVolume = 1;
 	private userInteracted = false;
 	private userPreferences: UserPreferences | null = null;
 
 	constructor() {
-		const categoryEntries: [AudioCategory, number][] = [];
-		for (const category of Object.values(AudioCategory)) {
-			const defaultVolume = DEFAULT_CATEGORY_VOLUMES[category];
-			if (typeof defaultVolume === 'number') {
-				categoryEntries.push([category, defaultVolume]);
-			}
-		}
-
-		this.categoryVolumes = new Map<AudioCategory, number>(categoryEntries);
-
 		this.preloadEssentialAudio();
 
 		this.setupUserInteractionListener();
@@ -51,17 +33,21 @@ export class AudioService implements AudioServiceInterface {
 	private setupUserInteractionListener(): void {
 		const enableAudio = () => {
 			this.userInteracted = true;
-			if (!this.isMuted) {
+
+			// Start background music if not muted and music is enabled
+			const musicEnabled = this.userPreferences?.musicEnabled !== false;
+			if (!this.isMuted && musicEnabled) {
 				this.play(AudioKey.BACKGROUND_MUSIC);
 			}
+
 			document.removeEventListener('click', enableAudio);
 			document.removeEventListener('keydown', enableAudio);
 			document.removeEventListener('touchstart', enableAudio);
 		};
 
-		document.addEventListener('click', enableAudio);
-		document.addEventListener('keydown', enableAudio);
-		document.addEventListener('touchstart', enableAudio);
+		document.addEventListener('click', enableAudio, { once: true });
+		document.addEventListener('keydown', enableAudio, { once: true });
+		document.addEventListener('touchstart', enableAudio, { once: true });
 	}
 
 	/**
@@ -71,49 +57,96 @@ export class AudioService implements AudioServiceInterface {
 		const essentialKeys: AudioKey[] = [
 			AudioKey.CLICK,
 			AudioKey.POP,
-			AudioKey.HOVER,
+			AudioKey.ERROR,
+			AudioKey.WARNING,
+			AudioKey.SUCCESS,
+			AudioKey.NOTIFICATION,
 			AudioKey.BACKGROUND_MUSIC,
 			AudioKey.GAME_MUSIC,
 		];
 
 		essentialKeys.forEach(key => {
-			const path = AUDIO_PATHS[key];
-			if (path) {
-				const category = AUDIO_CATEGORIES[key];
-				const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
-				const config = AUDIO_CONFIG[key] ?? {};
-
-				this.preloadAudioInternal(key, path, {
-					volume: config.volume ?? defaultVolume,
-					loop: config.loop ?? false,
+			const audioData = AUDIO_DATA[key];
+			if (audioData) {
+				this.preloadAudioInternal(key, audioData.path, {
+					loop: audioData.loop,
 				});
 			}
 		});
 	}
 
 	/**
+	 * Calculate the final volume for an audio key
+	 */
+	private calculateVolume(key: AudioKey): number {
+		const audioData = AUDIO_DATA[key];
+		return audioData.volume * this.masterVolume;
+	}
+
+	/**
 	 * Preload a single audio file
 	 */
-	private preloadAudioInternal(key: AudioKey, src: string, config: { volume?: number; loop?: boolean }): void {
+	private preloadAudioInternal(key: AudioKey, src: string, config: { loop?: boolean }): void {
 		const audio = new Audio();
-		const soundVolume = config.volume ?? 0.7;
-		const category = AUDIO_CATEGORIES[key];
-		const categoryVolume = this.categoryVolumes.get(category) || 1;
-		audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+		const finalVolume = this.calculateVolume(key);
+		audio.volume = this.isMuted ? 0 : finalVolume;
 		audio.loop = config.loop ?? false;
 
-		audio.preload = 'metadata';
+		// Use 'auto' instead of 'metadata' to avoid cache issues
+		audio.preload = 'auto';
 
 		audio.addEventListener('error', err => {
-			logger.mediaError(`Failed to load audio file: ${key} (${src})`, { error: getErrorMessage(err), key, src });
+			const errorMessage = getErrorMessage(err);
+			const error = err.target as HTMLAudioElement;
+			const errorCode = error?.error?.code;
+
+			// Handle cache-related errors gracefully
+			if (errorCode === 20 || errorMessage.includes('CACHE_OPERATION_NOT_SUPPORTED')) {
+				logger.mediaWarn(`Audio cache error for ${key}, will retry on demand: ${src}`, {
+					key,
+					src,
+					error: errorMessage,
+					audioErrorCode: errorCode,
+				});
+				// Don't fail completely - allow on-demand loading
+				return;
+			}
+
+			logger.mediaError(`Failed to load audio file: ${key} (${src})`, {
+				error: errorMessage,
+				key,
+				src,
+				audioErrorCode: errorCode,
+			});
 		});
 
 		this.audioElements.set(key, audio);
-		this.volumes.set(key, config.volume ?? 0.7);
+		// Store the base volume (from AUDIO_DATA, without masterVolume) for later use
+		const audioData = AUDIO_DATA[key];
+		this.volumes.set(key, audioData.volume);
 
 		// Set src and load after everything is set up
+		// Add cache-busting query parameter if needed
 		audio.src = src;
-		audio.load();
+
+		// Try to load, but don't fail if cache operation is not supported
+		try {
+			audio.load();
+		} catch (err) {
+			const errorMessage = getErrorMessage(err);
+			if (errorMessage.includes('CACHE_OPERATION_NOT_SUPPORTED')) {
+				logger.mediaWarn(`Audio preload skipped for ${key} due to cache limitation, will load on demand`, {
+					key,
+					src,
+				});
+			} else {
+				logger.mediaError(`Failed to preload audio: ${key}`, {
+					error: errorMessage,
+					key,
+					src,
+				});
+			}
+		}
 	}
 
 	/**
@@ -123,15 +156,10 @@ export class AudioService implements AudioServiceInterface {
 		let audio = this.audioElements.get(key);
 
 		if (!audio) {
-			const path = AUDIO_PATHS[key];
-			if (path) {
-				const category = AUDIO_CATEGORIES[key];
-				const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
-				const config = AUDIO_CONFIG[key] ?? {};
-
-				this.preloadAudioInternal(key, path, {
-					volume: config.volume ?? defaultVolume,
-					loop: config.loop ?? false,
+			const audioData = AUDIO_DATA[key];
+			if (audioData) {
+				this.preloadAudioInternal(key, audioData.path, {
+					loop: audioData.loop,
 				});
 				audio = this.audioElements.get(key);
 			}
@@ -145,10 +173,15 @@ export class AudioService implements AudioServiceInterface {
 	 */
 	public setUserPreferences(preferences: UserPreferences | null): void {
 		this.userPreferences = preferences;
-		logger.userDebug('Audio preferences updated', {
-			soundEnabled: preferences?.soundEnabled,
-			musicEnabled: preferences?.musicEnabled,
-		});
+	}
+
+	/**
+	 * Mark that user has interacted (for manual music start)
+	 */
+	public markUserInteracted(): void {
+		if (!this.userInteracted) {
+			this.userInteracted = true;
+		}
 	}
 
 	/**
@@ -164,13 +197,43 @@ export class AudioService implements AudioServiceInterface {
 			return;
 		}
 
-		// Check user preferences for sound effects
-		if (AUDIO_CATEGORIES[key] === AudioCategory.EFFECTS && this.userPreferences && !this.userPreferences.soundEnabled) {
-			return;
+		// Check if audio is in error state and try to reload
+		if (audio.error && audio.error.code !== 0) {
+			// Try to reload the audio element
+			const audioData = AUDIO_DATA[key];
+			if (audioData) {
+				const src = audio.src || audioData.path;
+				audio.src = '';
+				audio.load();
+				audio.src = src;
+
+				try {
+					audio.load();
+				} catch (err) {
+					logger.mediaWarn(`Failed to reload audio: ${key}`, {
+						key,
+						error: getErrorMessage(err),
+					});
+					return;
+				}
+			}
 		}
 
 		// Check user preferences for music
-		if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC && this.userPreferences && !this.userPreferences.musicEnabled) {
+		if (
+			AUDIO_DATA[key].category === AudioCategory.MUSIC &&
+			this.userPreferences &&
+			!this.userPreferences.musicEnabled
+		) {
+			return;
+		}
+
+		// Check user preferences for sound effects (everything except music)
+		if (
+			AUDIO_DATA[key].category !== AudioCategory.MUSIC &&
+			this.userPreferences &&
+			!this.userPreferences.soundEnabled
+		) {
 			return;
 		}
 
@@ -180,13 +243,21 @@ export class AudioService implements AudioServiceInterface {
 		}
 
 		// If it's music, restart from the beginning
-		if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC) {
+		if (AUDIO_DATA[key].category === AudioCategory.MUSIC) {
 			audio.currentTime = 0;
 			// Ensure music volume is set correctly
-			const soundVolume = this.volumes.get(key) || 0.7;
-			const category = AUDIO_CATEGORIES[key];
-			const categoryVolume = this.categoryVolumes.get(category) || 1;
-			audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+			const finalVolume = this.calculateVolume(key);
+			audio.volume = this.isMuted ? 0 : finalVolume;
+
+			// Ensure loop is set correctly for music
+			const audioData = AUDIO_DATA[key];
+			audio.loop = audioData.loop;
+
+			// Add event listeners for playback tracking (only once per audio element)
+			if (!audio.hasAttribute('data-listeners-added')) {
+				audio.setAttribute('data-listeners-added', 'true');
+			}
+
 			audio.play().catch(err => {
 				// Handle autoplay restrictions gracefully
 				if (err.name === 'NotAllowedError') {
@@ -194,6 +265,8 @@ export class AudioService implements AudioServiceInterface {
 						key,
 						error: err,
 					});
+				} else if (err.name === 'AbortError') {
+					// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
 				} else {
 					logger.audioError(key, err.message, { key, error: err });
 				}
@@ -208,10 +281,9 @@ export class AudioService implements AudioServiceInterface {
 			return;
 		}
 		const clone = clonedNode;
-		const soundVolume = this.volumes.get(key) || 0.7;
-		const category = AUDIO_CATEGORIES[key];
-		const categoryVolume = this.categoryVolumes.get(category) || 1;
-		clone.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+		const finalVolume = this.calculateVolume(key);
+		clone.volume = this.isMuted ? 0 : finalVolume;
+
 		clone.play().catch(err => {
 			// Handle autoplay restrictions gracefully
 			if (err.name === 'NotAllowedError') {
@@ -219,6 +291,8 @@ export class AudioService implements AudioServiceInterface {
 					key,
 					error: err,
 				});
+			} else if (err.name === 'AbortError') {
+				// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
 			} else {
 				logger.audioError(key, err.message, { key, error: err });
 			}
@@ -235,7 +309,9 @@ export class AudioService implements AudioServiceInterface {
 	 */
 	public stop(key: AudioKey): void {
 		const audio = this.audioElements.get(key);
-		if (!audio) return;
+		if (!audio) {
+			return;
+		}
 
 		audio.pause();
 		audio.currentTime = 0;
@@ -267,11 +343,14 @@ export class AudioService implements AudioServiceInterface {
 	public unmute(): void {
 		this.isMuted = false;
 		this.audioElements.forEach((audio, key) => {
-			const category = AUDIO_CATEGORIES[key];
-			const categoryVolume = this.categoryVolumes.get(category) || 1;
-			const soundVolume = this.volumes.get(key) || 0.7;
-			audio.volume = soundVolume * categoryVolume * this.masterVolume;
+			const finalVolume = this.calculateVolume(key);
+			audio.volume = finalVolume;
 		});
+
+		// Start background music if user already interacted and music is enabled
+		if (this.userInteracted && this.userPreferences?.musicEnabled !== false) {
+			this.play(AudioKey.BACKGROUND_MUSIC);
+		}
 	}
 
 	/**
@@ -292,10 +371,8 @@ export class AudioService implements AudioServiceInterface {
 	public setMasterVolume(volume: number): void {
 		this.masterVolume = volume;
 		this.audioElements.forEach((audio, key) => {
-			const soundVolume = this.volumes.get(key) || 0.7;
-			const category = AUDIO_CATEGORIES[key];
-			const categoryVolume = this.categoryVolumes.get(category) || 1;
-			audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
+			const finalVolume = this.calculateVolume(key);
+			audio.volume = this.isMuted ? 0 : finalVolume;
 		});
 	}
 

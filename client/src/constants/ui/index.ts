@@ -17,6 +17,7 @@ export * from './form.constants';
  * @description Animation configuration and performance settings
  */
 export * from './animation.constants';
+export * from './backgroundAnimation.constants';
 export * from './navigation.constants';
 export * from './footer.constants';
 export * from './auth.constants';
@@ -44,3 +45,9 @@ export * from './size.constants';
  * @description Variant enums for UI components
  */
 export * from './variant.constants';
+
+/**
+ * Toast constants
+ * @description Toast notification system constants
+ */
+export * from './toast.constants';

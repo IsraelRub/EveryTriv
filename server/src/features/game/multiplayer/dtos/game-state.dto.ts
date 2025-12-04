@@ -18,7 +18,7 @@ export class GameStateDto implements GameState {
 	currentQuestionIndex!: number;
 
 	@ApiProperty({ description: 'Total number of questions' })
-	totalQuestions!: number;
+	gameQuestionCount!: number;
 
 	@ApiProperty({ description: 'Time remaining in seconds' })
 	timeRemaining!: number;

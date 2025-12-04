@@ -8,7 +8,7 @@
  * @provides CreditsService
  * @entities CreditTransactionEntity, UserEntity
  */
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
@@ -26,7 +26,7 @@ import { CreditsService } from './credits.service';
 		CacheModule,
 		PaymentModule,
 		ValidationModule,
-		AuthModule,
+		forwardRef(() => AuthModule),
 	],
 	controllers: [CreditsController],
 	providers: [CreditsService],

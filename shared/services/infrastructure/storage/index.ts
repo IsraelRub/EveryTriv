@@ -28,4 +28,3 @@ export { StorageUtils } from './base/storage-utils';
  */
 export { BaseStorageService } from './services/baseStorage.service';
 export { MetricsService, metricsService } from './services/metrics.service';
-export { StorageManagerService } from './services/storageManager.service';

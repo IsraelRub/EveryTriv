@@ -21,6 +21,7 @@ import { useAppDispatch } from './useRedux';
 // Helper function to invalidate user-related queries consistently
 const invalidateUserQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
 	queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
+	queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
 	queryClient.invalidateQueries({ queryKey: ['userProfile'] });
 	queryClient.invalidateQueries({ queryKey: ['userPreferences'] });
 };

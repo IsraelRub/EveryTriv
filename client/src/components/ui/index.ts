@@ -1,23 +1,31 @@
-/**
- * UI Components Index
- *
- * @module UIComponents
- * @description Reusable UI components, primitives, and design system elements
- * @used_by client/components, client/src/views, client/src/forms
- */
-
-export { default as AlertModal } from './AlertModal';
-export { Avatar } from './Avatar';
-export * from './Button';
-export { default as ConfirmModal } from './ConfirmModal';
-export * from './Card';
-export { default as ErrorBoundary } from './ErrorBoundary';
-export * from './Modal';
-export * from './Select';
-export { Input } from './Input';
-export { ValidatedInput } from './ValidatedInput';
-export { ValidatedForm } from './ValidatedForm';
-export { ValidationMessage } from './ValidationMessage';
-export * from './FeatureHighlight';
-export { GoogleIcon } from './GoogleIcon';
-export { Icon } from './IconLibrary';
+export * from './accordion';
+export * from './alert';
+export * from './alert-dialog';
+export * from './avatar';
+export { BackgroundAnimation } from './BackgroundAnimation';
+export * from './badge';
+export * from './button';
+export * from './card';
+export * from './checkbox';
+export * from './close-button';
+export * from './dialog';
+export * from './dropdown-menu';
+export * from './form';
+export * from './input';
+export * from './label';
+export * from './numberInput';
+export * from './popover';
+export * from './progress';
+export * from './radio-group';
+export * from './scroll-area';
+export * from './select';
+export * from './separator';
+export * from './skeleton';
+export * from './slider';
+export * from './switch';
+export * from './table';
+export * from './tabs';
+export * from './textarea';
+export * from './toast';
+export { Toaster } from './toaster';
+export * from './tooltip';

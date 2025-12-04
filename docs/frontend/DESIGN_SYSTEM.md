@@ -34,7 +34,145 @@
 - התאמה למובייל תחילה
 - פריסה גמישה
 
+## מבנה קבצי Styles
+
+```
+client/src/
+├── index.css                    # קובץ CSS ראשי (מייבא global.css)
+└── styles/
+    └── global.css               # קובץ CSS גלובלי עם Tailwind ו-CSS Variables
+```
+
 ## טוקנים עיצוביים
+
+### CSS Variables (Design Tokens)
+
+כל הטוקנים העיצוביים מוגדרים ב-`styles/global.css` כ-CSS Variables ב-`:root`:
+
+#### צבעים (Colors)
+- **Background & Foreground:**
+  - `--background`: 222 47% 11%
+  - `--foreground`: 210 40% 98%
+  - `--card`, `--card-foreground`
+  - `--popover`, `--popover-foreground`
+
+- **Primary Colors:**
+  - `--primary`: 217 91% 60%
+  - `--primary-foreground`: 222 47% 11%
+  - `--color-primary-100` עד `--color-primary-900` (shades)
+
+- **Secondary Colors:**
+  - `--secondary`: 292 84% 61%
+  - `--secondary-foreground`: 210 40% 98%
+  - `--color-secondary-100` עד `--color-secondary-900` (shades)
+
+- **Semantic Colors:**
+  - `--accent`: 160 84% 39%
+  - `--destructive`: 0 84% 60%
+  - `--muted`: 217 33% 17%
+  - `--success`, `--warning`, `--error` (100, 300, 500, 700 shades)
+
+- **Glass Morphism:**
+  - `--glass-light`: rgba(255, 255, 255, 0.08)
+  - `--glass-medium`: rgba(255, 255, 255, 0.12)
+  - `--glass-strong`: rgba(255, 255, 255, 0.18)
+  - `--glass-border`: rgba(255, 255, 255, 0.15)
+  - `--glass-border-strong`: rgba(255, 255, 255, 0.25)
+
+#### Gradients
+- `--gradient-primary`: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(292 84% 61%) 100%)
+- `--gradient-secondary`: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(186 94% 42%) 100%)
+- `--gradient-accent`: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(0 84% 60%) 100%)
+- `--gradient-glass`: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)
+- `--gradient-text`: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(186 94% 70%) 50%, hsl(292 84% 61%) 100%)
+- `--gradient-background`: linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 50%, hsl(230 50% 5%) 100%)
+
+#### Spacing
+- `--space-xs`: 0.25rem
+- `--space-sm`: 0.5rem
+- `--space-md`: 1rem
+- `--space-lg`: 1.5rem
+- `--space-xl`: 2rem
+- `--space-2xl`: 3rem
+- `--space-3xl`: 4rem
+
+#### Border Radius
+- `--radius-sm`: 0.25rem
+- `--radius-md`: 0.5rem
+- `--radius-lg`: 1rem
+- `--radius-xl`: 1.5rem
+- `--radius-full`: 9999px
+
+#### Shadows
+- `--shadow-sm`: 0 1px 2px 0 rgba(0, 0, 0, 0.3)
+- `--shadow-md`: 0 4px 6px -1px rgba(0, 0, 0, 0.4)
+- `--shadow-lg`: 0 10px 15px -3px rgba(0, 0, 0, 0.4)
+- `--shadow-xl`: 0 20px 25px -5px rgba(0, 0, 0, 0.4)
+- `--shadow-glow`: 0 0 50px rgba(59, 130, 246, 0.3)
+- `--shadow-glow-secondary`: 0 0 50px rgba(168, 85, 247, 0.3)
+- `--shadow-card`: 0 4px 20px rgba(59, 130, 246, 0.15)
+
+#### Typography
+- **Font Families:**
+  - `--font-family-sans`: 'Inter', 'Segoe UI', Arial, sans-serif
+  - `--font-family-mono`: 'JetBrains Mono', 'Fira Code', monospace
+
+- **Font Sizes:**
+  - `--font-size-xs`: 0.75rem
+  - `--font-size-sm`: 0.875rem
+  - `--font-size-md`: 1rem
+  - `--font-size-lg`: 1.125rem
+  - `--font-size-xl`: 1.25rem
+  - `--font-size-2xl`: 1.5rem
+  - `--font-size-3xl`: 1.875rem
+  - `--font-size-4xl`: 2.25rem
+
+- **Font Weights:**
+  - `--font-weight-light`: 300
+  - `--font-weight-normal`: 400
+  - `--font-weight-medium`: 500
+  - `--font-weight-semibold`: 600
+  - `--font-weight-bold`: 700
+
+#### Timing & Easing
+- **Durations:**
+  - `--duration-fast`: 0.2s
+  - `--duration-normal`: 0.3s
+  - `--duration-slow`: 0.5s
+  - `--duration-slower`: 1s
+
+- **Easing Functions:**
+  - `--ease-out`: cubic-bezier(0, 0, 0.2, 1)
+  - `--ease-in`: cubic-bezier(0.4, 0, 1, 1)
+  - `--ease-in-out`: cubic-bezier(0.4, 0, 0.2, 1)
+  - `--ease-bounce`: cubic-bezier(0.68, -0.55, 0.265, 1.55)
+  - `--ease-elastic`: cubic-bezier(0.175, 0.885, 0.32, 1.275)
+
+#### Z-Index Layers
+- `--z-dropdown`: 1000
+- `--z-sticky`: 1020
+- `--z-fixed`: 1030
+- `--z-modal-backdrop`: 1040
+- `--z-modal`: 1050
+- `--z-popover`: 1060
+- `--z-tooltip`: 1070
+
+#### Layout
+- `--navigation-height`: 4rem (5rem ב-xl ומעלה)
+- `--auth-section-min-height`: calc(100vh - var(--navigation-height))
+
+### Tailwind CSS Integration
+
+הפרויקט משתמש ב-Tailwind CSS עם הגדרות מותאמות אישית:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+כל ה-CSS Variables מוגדרים ב-`@layer base` ומשולבים עם Tailwind דרך `@apply` directives.
+
 ## רכיבי UI בסיסיים
 
 דוגמאות מלאות + טיפוסי Props ווריאנטים נמצאים ב-`./COMPONENTS.md`.
@@ -48,6 +186,111 @@
 | Minimal DOM | ללא עטיפות מיותרות לביצועים |
 
 דוגמאות קוד מפורטות נמצאות ב-`./COMPONENTS.md`.
+
+## רכיבי CSS מותאמים אישית
+
+כל הרכיבים המותאמים אישית מוגדרים ב-`@layer components` ב-`styles/global.css`:
+
+### Glass Morphism
+- `.glass` - אפקט זכוכית בסיסי עם backdrop-filter
+- `.glass-strong` - אפקט זכוכית חזק יותר
+- `.glass-morphism` - אפקט זכוכית מורפיזם
+
+### Buttons
+- `.btn` - כפתור בסיסי
+- `.btn-primary` - כפתור ראשי עם gradient
+- `.btn-secondary` - כפתור משני עם gradient
+- `.btn-accent` - כפתור accent עם gradient
+- `.btn-glass` - כפתור עם אפקט זכוכית
+- `.btn-sm`, `.btn-lg` - גדלים שונים
+- `.btn-enhanced` - כפתור משופר עם אפקט shimmer
+
+### Inputs
+- `.input` - שדה קלט עם אפקט זכוכית
+
+### Text Effects
+- `.text-gradient` - טקסט עם gradient
+
+### Layout Components
+- `.app-shell` - מעטפת האפליקציה
+- `.app-main` - תוכן ראשי
+- `.auth-view-layout` - פריסת מסכי אימות
+- `.grid-content`, `.grid-cards`, `.grid-stats`, `.grid-form`, `.grid-game`, `.grid-balanced`, `.grid-compact`, `.grid-auto-fit` - פריסות grid שונות
+
+### Accessibility
+- `.sr-only` - טקסט נסתר לקוראי מסך (screen reader only)
+
+### Game-Specific
+- `.game-over` - סגנון לסיום משחק
+- `.game-timer` - טיימר משחק
+- `.game-info` - מידע משחק
+
+### Hardware Acceleration
+- `.animate-hardware-accelerated` - אופטימיזציה לביצועים עם will-change
+
+## אנימציות CSS
+
+כל האנימציות מוגדרות ב-`@layer utilities` ב-`styles/global.css`:
+
+### Keyframes
+- `fadeIn` - אנימציית fade in
+- `slideUp` - אנימציית slide up
+- `scaleIn` - אנימציית scale in
+- `spin` - אנימציית סיבוב
+- `pulse` - אנימציית pulse
+- `pulseGlow` - אנימציית pulse glow
+
+### Animation Classes
+- `.animate-fade-in` - אנימציית fade in
+- `.animate-slide-up` - אנימציית slide up
+- `.animate-scale-in` - אנימציית scale in
+- `.animate-spin` - אנימציית סיבוב
+- `.animate-pulse` - אנימציית pulse
+
+### Reduced Motion Support
+
+הפרויקט תומך ב-`prefers-reduced-motion`:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+## שימוש ב-CSS Variables
+
+### דוגמה לשימוש ב-Tailwind
+```typescript
+<div className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+  Content
+</div>
+```
+
+### דוגמה לשימוש ב-CSS
+```css
+.custom-component {
+  background: var(--gradient-primary);
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+```
+
+## רכיבי UI בסיסיים
+
+דוגמאות קוד מפורטות נמצאות ב-`./COMPONENTS.md`.
+
+**דוגמה לרכיב Button:**
+```typescript
+interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
@@ -107,7 +350,7 @@ export const Button: React.FC<ButtonProps> = ({
 ### Card Component
 ```typescript
 import React from 'react';
-import { cn } from '../utils/cn';
+import { cn } from '@/utils';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'elevated' | 'outlined';
@@ -156,7 +399,7 @@ export const Card: React.FC<CardProps> = ({
 ```typescript
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { cn } from '../utils/cn';
+import { cn } from '@/utils';
 import { IconX } from './icons/IconX';
 
 interface ModalProps {
@@ -304,118 +547,7 @@ export const IconX: React.FC<{ className?: string }> = ({ className }) => (
 );
 ```
 
-## אנימציות
-
-### CSS Animations
-```css
-/* animations.css */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes bounce {
-  0%, 20%, 53%, 80%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  40%, 43% {
-    transform: translate3d(0, -30px, 0);
-  }
-  70% {
-    transform: translate3d(0, -15px, 0);
-  }
-  90% {
-    transform: translate3d(0, -4px, 0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-```
-
-### React Animation Hooks
-```typescript
-import { useState, useEffect } from 'react';
-
-export const useFadeIn = (delay: number = 0) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
-
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  return isVisible;
-};
-
-export const useSlideIn = (direction: 'left' | 'right' | 'up' | 'down' = 'up') => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
-
-  const getTransform = () => {
-    switch (direction) {
-      case 'left':
-        return isVisible ? 'translateX(0)' : 'translateX(-100%)';
-      case 'right':
-        return isVisible ? 'translateX(0)' : 'translateX(100%)';
-      case 'up':
-        return isVisible ? 'translateY(0)' : 'translateY(100%)';
-      case 'down':
-        return isVisible ? 'translateY(0)' : 'translateY(-100%)';
-      default:
-        return 'translateY(0)';
-    }
-  };
-
-  return {
-    transform: getTransform(),
-    transition: 'transform 0.3s ease-out',
-  };
-};
-```
+**הערה:** אנימציות CSS מוגדרות ב-`styles/global.css` (ראו סעיף "אנימציות CSS" למעלה). אנימציות React מתועדות ב-`./ANIMATION_SYSTEM.md`.
 
 ## תמיכה בנגישות
 

@@ -93,26 +93,6 @@ export const useRealTimeAnalytics = () => {
 };
 
 /**
- * Hook for getting analytics export data
- * @param format Export format (csv, json, pdf)
- * @returns Query result with export data
- */
-export const useAnalyticsExport = (format: 'csv' | 'json' | 'pdf' = 'json') => {
-	return useQuery({
-		queryKey: ['analyticsExport', format],
-		queryFn: async () => {
-			logger.userInfo('Exporting analytics data', { format });
-			const result = await apiService.getUserAnalytics();
-			logger.userInfo('Analytics data exported successfully', { format });
-			return result;
-		},
-		staleTime: 0,
-		gcTime: 5 * 60 * 1000,
-		enabled: false,
-	});
-};
-
-/**
  * Hook for getting global statistics for comparison
  * @returns Query result with global statistics
  */

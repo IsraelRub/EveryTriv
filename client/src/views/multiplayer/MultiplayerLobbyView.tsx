@@ -1,61 +1,80 @@
-/**
- * Multiplayer Lobby View
- *
- * @module MultiplayerLobbyView
- * @description Lobby view for creating or joining multiplayer rooms
- * @used_by client/src/AppRoutes.tsx
- */
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
+import { AlertCircle, Copy, Crown, FileQuestion, Gamepad2, Hash, Loader2, Plus, Settings, Users } from 'lucide-react';
 
-import { DifficultyLevel, GameMode, VALID_DIFFICULTIES } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
-import type { GameDifficulty } from '@shared/types';
+import { DifficultyLevel, GAME_STATE_DEFAULTS, GameMode, MULTIPLAYER_CONSTANTS } from '@shared/constants';
+import type { CreateRoomConfig } from '@shared/types';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Container, fadeInUp, PlayerList } from '../../components';
-import { Input } from '../../components/ui';
-import { ButtonVariant, CardVariant, ComponentSize, ContainerSize } from '../../constants';
-import { useMultiplayerRoom, useUserProfile } from '../../hooks';
+import {
+	Alert,
+	AlertDescription,
+	Avatar,
+	AvatarFallback,
+	Badge,
+	Button,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	Input,
+	Label,
+	NumberInput,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from '@/components';
+import { ButtonSize } from '@/constants';
+import { useMultiplayerRoom, useToast } from '@/hooks';
 
-export default function MultiplayerLobbyView() {
+export function MultiplayerLobbyView() {
 	const navigate = useNavigate();
-	const { room, isConnected, isHost, isReadyToStart, createRoom, joinRoom, startGame, error, roomCode } =
-		useMultiplayerRoom();
-	const { data: userProfile } = useUserProfile();
+	const { toast } = useToast();
 
-	const [roomId, setRoomId] = useState('');
-	const [showCreateForm, setShowCreateForm] = useState(!room);
-	const [topic, setTopic] = useState('');
-	const [difficulty, setDifficulty] = useState<GameDifficulty>(DifficultyLevel.MEDIUM);
-	const [requestedQuestions, setRequestedQuestions] = useState(10);
-	const [maxPlayers, setMaxPlayers] = useState(4);
-	const [gameMode, setGameMode] = useState<GameMode>(GameMode.QUESTION_LIMITED);
+	const {
+		room,
+		isLoading,
+		isConnected,
+		error,
+		isHost,
+		isReadyToStart,
+		roomCode,
+		createRoom,
+		joinRoom,
+		leaveRoom,
+		startGame,
+	} = useMultiplayerRoom();
+
+	const [joinRoomId, setJoinRoomId] = useState('');
+	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
+		topic: String(GAME_STATE_DEFAULTS.TOPIC),
+		difficulty: DifficultyLevel.MEDIUM,
+		questionsPerRequest: MULTIPLAYER_CONSTANTS.DEFAULT_QUESTIONS_PER_REQUEST,
+		maxPlayers: MULTIPLAYER_CONSTANTS.DEFAULT_MAX_PLAYERS,
+		gameMode: GameMode.QUESTION_LIMITED,
+	});
 
 	const handleCreateRoom = async () => {
-		if (!topic || !difficulty) {
-			logger.gameError('Missing required fields for room creation');
-			return;
-		}
-
-		await createRoom({
-			topic,
-			difficulty,
-			requestedQuestions,
-			maxPlayers,
-			gameMode,
-		});
-		setShowCreateForm(false);
+		await createRoom(gameSettings);
 	};
 
 	const handleJoinRoom = async () => {
-		if (!roomId.trim()) {
-			logger.gameError('Room ID is required');
+		if (!joinRoomId.trim()) {
+			toast({
+				title: 'Error',
+				description: 'Please enter a room code',
+				variant: 'destructive',
+			});
 			return;
 		}
+		await joinRoom(joinRoomId.trim());
+	};
 
-		await joinRoom(roomId.trim());
+	const handleLeaveRoom = () => {
+		leaveRoom();
 	};
 
 	const handleStartGame = () => {
@@ -65,189 +84,345 @@ export default function MultiplayerLobbyView() {
 		}
 	};
 
-	if (room) {
+	const copyRoomCode = () => {
+		if (roomCode) {
+			navigator.clipboard.writeText(roomCode);
+			toast({
+				title: 'Copied!',
+				description: 'Room code copied to clipboard',
+			});
+		}
+	};
+
+	useEffect(() => {
+		if (error) {
+			toast({
+				title: 'Error',
+				description: error,
+				variant: 'destructive',
+			});
+		}
+	}, [error, toast]);
+
+	if (!isConnected) {
 		return (
-			<Container size={ContainerSize.LG} className='py-8'>
-				<motion.div variants={fadeInUp} initial='hidden' animate='visible' className='space-y-6'>
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Room: {roomCode || room.roomId.substring(0, 8).toUpperCase()}
-								{roomCode && <span className='ml-2 text-sm text-gray-400 font-normal'>(Code: {roomCode})</span>}
-							</CardTitle>
-						</CardHeader>
-						<CardContent className='space-y-6'>
-							<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-								<PlayerList players={room.players} currentUserId={userProfile?.profile?.id} className='col-span-1' />
-								<div className='col-span-1'>
-									<Card variant={CardVariant.TRANSPARENT}>
-										<CardContent className='p-4'>
-											<h4 className='font-semibold text-white mb-2'>Room Settings</h4>
-											<div className='space-y-2 text-sm text-gray-400'>
-												<div>Topic: {room.config.topic}</div>
-												<div>Difficulty: {room.config.difficulty}</div>
-												<div>Questions: {room.config.requestedQuestions}</div>
-												<div>Max Players: {room.config.maxPlayers}</div>
-												<div>Game Mode: {room.config.gameMode}</div>
-											</div>
-										</CardContent>
-									</Card>
-								</div>
-							</div>
-
-							{error && (
-								<div className='bg-red-500/20 border border-red-500 text-red-200 px-4 py-2 rounded'>{error}</div>
-							)}
-
-							{isHost && isReadyToStart && (
-								<Button
-									variant={ButtonVariant.PRIMARY}
-									size={ComponentSize.LG}
-									onClick={handleStartGame}
-									className='w-full'
-								>
-									Start Game
-								</Button>
-							)}
-
-							{!isReadyToStart && (
-								<div className='text-center text-gray-400'>
-									Waiting for more players... ({room.players.length}/{room.config.maxPlayers})
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				</motion.div>
-			</Container>
+			<motion.main
+				role='main'
+				aria-label='Multiplayer Lobby'
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-md mx-auto text-center space-y-4'>
+					<Loader2 className='h-12 w-12 animate-spin mx-auto text-primary' />
+					<h2 className='text-xl font-semibold'>Connecting to multiplayer server...</h2>
+					<p className='text-muted-foreground'>Please wait while we establish a connection</p>
+				</div>
+			</motion.main>
 		);
 	}
 
+	// If in a room, show the lobby
+	if (room) {
+		return (
+			<motion.main
+				role='main'
+				aria-label='Multiplayer Lobby'
+				initial={{ opacity: 0, y: 20 }}
+				animate={{ opacity: 1, y: 0 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-2xl mx-auto space-y-6'>
+					<div className='text-center'>
+						<h1 className='text-3xl font-bold mb-2'>Multiplayer Lobby</h1>
+						{roomCode && (
+							<div className='flex items-center justify-center gap-2'>
+								<span className='text-muted-foreground'>Room Code:</span>
+								<Badge variant='outline' className='text-lg font-mono px-3 py-1'>
+									{roomCode}
+								</Badge>
+								<Button variant='ghost' size={ButtonSize.ICON} onClick={copyRoomCode}>
+									<Copy className='h-4 w-4' />
+								</Button>
+							</div>
+						)}
+					</div>
+
+					{error && (
+						<Alert variant='destructive'>
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
+
+					{/* Players Card */}
+					<Card>
+						<CardHeader>
+							<CardTitle className='flex items-center gap-2'>
+								<Users className='h-5 w-5' />
+								Players ({room.players?.length || 0}/
+								{room.config?.maxPlayers || MULTIPLAYER_CONSTANTS.DEFAULT_MAX_PLAYERS})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='space-y-3'>
+								{room.players?.map(player => (
+									<motion.div
+										key={player.userId}
+										initial={{ opacity: 0, x: -10 }}
+										animate={{ opacity: 1, x: 0 }}
+										className='flex items-center gap-3 p-3 rounded-lg bg-muted/50'
+									>
+										<Avatar>
+											<AvatarFallback>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
+										</Avatar>
+										<div className='flex-1'>
+											<div className='flex items-center gap-2'>
+												<span className='font-medium'>{player.displayName || 'Player'}</span>
+												{player.userId === room.hostId && <Crown className='h-4 w-4 text-yellow-500' />}
+											</div>
+										</div>
+										<Badge variant={player.status === 'ready' ? 'default' : 'secondary'}>
+											{player.status === 'ready' ? 'Ready' : 'Not Ready'}
+										</Badge>
+									</motion.div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* Game Settings Card */}
+					<Card>
+						<CardHeader>
+							<CardTitle className='flex items-center gap-2'>
+								<Settings className='h-5 w-5' />
+								Game Settings
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='grid grid-cols-2 gap-4 text-sm'>
+								<div className='flex justify-between'>
+									<span className='text-muted-foreground'>Topic:</span>
+									<span className='font-medium'>{room.config?.topic || 'General'}</span>
+								</div>
+								<div className='flex justify-between'>
+									<span className='text-muted-foreground'>Difficulty:</span>
+									<span className='font-medium capitalize'>{room.config?.difficulty || 'Medium'}</span>
+								</div>
+								<div className='flex justify-between'>
+									<span className='text-muted-foreground'>Questions:</span>
+									<span className='font-medium'>{room.questions?.length || 10}</span>
+								</div>
+								<div className='flex justify-between'>
+									<span className='text-muted-foreground'>Status:</span>
+									<Badge variant='outline' className='capitalize'>
+										{room.status}
+									</Badge>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* Action Buttons */}
+					<div className='flex gap-4'>
+						{isHost && (
+							<Button
+								className='flex-1'
+								size={ButtonSize.LG}
+								onClick={handleStartGame}
+								disabled={!isReadyToStart || isLoading}
+							>
+								{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : <Gamepad2 className='h-4 w-4 mr-2' />}
+								Start Game
+							</Button>
+						)}
+						<Button variant='outline' size={ButtonSize.LG} onClick={handleLeaveRoom} disabled={isLoading}>
+							Leave Lobby
+						</Button>
+					</div>
+
+					{!isReadyToStart && isHost && (
+						<p className='text-center text-sm text-muted-foreground'>
+							Waiting for at least 2 players to start the game...
+						</p>
+					)}
+				</div>
+			</motion.main>
+		);
+	}
+
+	// No room - show create/join options
 	return (
-		<Container size={ContainerSize.LG} className='py-8'>
-			<motion.div variants={fadeInUp} initial='hidden' animate='visible' className='space-y-6'>
-				<Card>
-					<CardHeader>
-						<CardTitle>Multiplayer Lobby</CardTitle>
-					</CardHeader>
-					<CardContent className='space-y-6'>
-						{showCreateForm ? (
-							<div className='space-y-4'>
-								<h3 className='text-xl font-semibold text-white'>Create Room</h3>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Topic</label>
+		<motion.main
+			role='main'
+			aria-label='Multiplayer Lobby'
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			className='min-h-screen py-12 px-4'
+		>
+			<div className='max-w-2xl mx-auto space-y-6'>
+				<div className='text-center'>
+					<h1 className='text-3xl font-bold mb-2'>Multiplayer</h1>
+					<p className='text-muted-foreground'>Play trivia with friends in real-time</p>
+				</div>
+
+				{error && (
+					<Alert variant='destructive'>
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+
+				<Tabs defaultValue='create' className='w-full'>
+					<TabsList className='grid w-full grid-cols-2'>
+						<TabsTrigger value='create'>Create Room</TabsTrigger>
+						<TabsTrigger value='join'>Join Room</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value='create' className='mt-6'>
+						<Card>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2'>
+									<Plus className='h-5 w-5' />
+									Create a New Room
+								</CardTitle>
+								<CardDescription>Set up a game room and invite friends</CardDescription>
+							</CardHeader>
+							<CardContent className='space-y-6'>
+								{/* Topic */}
+								<div className='space-y-2'>
+									<Label htmlFor='topic' className='flex items-center gap-2'>
+										<Hash className='h-4 w-4 text-muted-foreground' />
+										Topic
+									</Label>
 									<Input
-										value={topic}
-										onChange={(e: ChangeEvent<HTMLInputElement>) => setTopic(e.target.value)}
-										placeholder='Enter topic (e.g., Science, History)'
+										id='topic'
+										value={gameSettings.topic}
+										onChange={e => setGameSettings(prev => ({ ...prev, topic: e.target.value }))}
+										placeholder='Enter a topic...'
 									/>
 								</div>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Difficulty</label>
-									<select
-										value={difficulty}
-										onChange={e => setDifficulty(e.target.value as GameDifficulty)}
-										className='w-full px-4 py-2 bg-slate-800 text-white rounded-lg border border-slate-700'
-									>
-										{VALID_DIFFICULTIES.map(d => (
-											<option key={d} value={d}>
-												{d}
-											</option>
-										))}
-									</select>
+
+								{/* Settings Grid */}
+								<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+									{/* Difficulty */}
+									<div className='space-y-2'>
+										<Label className='flex items-center gap-2'>
+											<AlertCircle className='h-4 w-4 text-muted-foreground' />
+											Difficulty
+										</Label>
+										<div className='grid grid-cols-3 gap-2'>
+											<Button
+												type='button'
+												variant={gameSettings.difficulty === DifficultyLevel.EASY ? 'default' : 'outline'}
+												size={ButtonSize.SM}
+												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.EASY }))}
+												className='flex items-center justify-center gap-1'
+											>
+												<span className='w-2 h-2 rounded-full bg-green-500' />
+												Easy
+											</Button>
+											<Button
+												type='button'
+												variant={gameSettings.difficulty === DifficultyLevel.MEDIUM ? 'default' : 'outline'}
+												size={ButtonSize.SM}
+												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.MEDIUM }))}
+												className='flex items-center justify-center gap-1'
+											>
+												<span className='w-2 h-2 rounded-full bg-yellow-500' />
+												Medium
+											</Button>
+											<Button
+												type='button'
+												variant={gameSettings.difficulty === DifficultyLevel.HARD ? 'default' : 'outline'}
+												size={ButtonSize.SM}
+												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.HARD }))}
+												className='flex items-center justify-center gap-1'
+											>
+												<span className='w-2 h-2 rounded-full bg-red-500' />
+												Hard
+											</Button>
+										</div>
+									</div>
+
+									{/* Questions */}
+									<div className='space-y-2'>
+										<Label className='flex items-center gap-2'>
+											<FileQuestion className='h-4 w-4 text-muted-foreground' />
+											Questions
+										</Label>
+										<div className='flex justify-start'>
+											<NumberInput
+												value={gameSettings.questionsPerRequest}
+												onChange={value => setGameSettings(prev => ({ ...prev, questionsPerRequest: value }))}
+												min={5}
+												max={20}
+												step={5}
+											/>
+										</div>
+									</div>
+
+									{/* Max Players */}
+									<div className='space-y-2'>
+										<Label className='flex items-center gap-2'>
+											<Users className='h-4 w-4 text-muted-foreground' />
+											Max Players
+										</Label>
+										<div className='flex justify-start'>
+											<NumberInput
+												value={gameSettings.maxPlayers}
+												onChange={value => setGameSettings(prev => ({ ...prev, maxPlayers: value }))}
+												min={MULTIPLAYER_CONSTANTS.MIN_PLAYERS}
+												max={MULTIPLAYER_CONSTANTS.MAX_PLAYERS}
+												step={1}
+											/>
+										</div>
+									</div>
 								</div>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Number of Questions</label>
-									<Input
-										type='number'
-										value={requestedQuestions.toString()}
-										onChange={(e: ChangeEvent<HTMLInputElement>) =>
-											setRequestedQuestions(parseInt(e.target.value) || 10)
-										}
-										min={1}
-										max={50}
-									/>
-								</div>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Max Players (2-4)</label>
-									<Input
-										type='number'
-										value={maxPlayers.toString()}
-										onChange={(e: ChangeEvent<HTMLInputElement>) => setMaxPlayers(parseInt(e.target.value) || 4)}
-										min={2}
-										max={4}
-									/>
-								</div>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Game Mode</label>
-									<select
-										value={gameMode}
-										onChange={e => setGameMode(e.target.value as GameMode)}
-										className='w-full px-4 py-2 bg-slate-800 text-white rounded-lg border border-slate-700'
-									>
-										<option value={GameMode.QUESTION_LIMITED}>Question Limited</option>
-										<option value={GameMode.TIME_LIMITED}>Time Limited</option>
-										<option value={GameMode.UNLIMITED}>Unlimited</option>
-									</select>
-								</div>
-								<Button
-									variant={ButtonVariant.PRIMARY}
-									size={ComponentSize.LG}
-									onClick={handleCreateRoom}
-									className='w-full'
-									disabled={!topic || !isConnected}
-								>
+
+								<Button className='w-full' size={ButtonSize.LG} onClick={handleCreateRoom} disabled={isLoading}>
+									{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : null}
 									Create Room
 								</Button>
-								<Button
-									variant={ButtonVariant.SECONDARY}
-									size={ComponentSize.MD}
-									onClick={() => setShowCreateForm(false)}
-									className='w-full'
-								>
-									Join Room Instead
-								</Button>
-							</div>
-						) : (
-							<div className='space-y-4'>
-								<h3 className='text-xl font-semibold text-white'>Join Room</h3>
-								<div>
-									<label className='block text-sm font-medium text-gray-300 mb-2'>Room ID</label>
+							</CardContent>
+						</Card>
+					</TabsContent>
+
+					<TabsContent value='join' className='mt-6'>
+						<Card>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2'>
+									<Users className='h-5 w-5' />
+									Join a Room
+								</CardTitle>
+								<CardDescription>Enter the room code shared by your friend</CardDescription>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+								<div className='space-y-2'>
+									<Label htmlFor='roomCode'>Room Code</Label>
 									<Input
-										value={roomId}
-										onChange={(e: ChangeEvent<HTMLInputElement>) => setRoomId(e.target.value)}
-										placeholder='Enter room ID'
+										id='roomCode'
+										value={joinRoomId}
+										onChange={e => setJoinRoomId(e.target.value.toUpperCase())}
+										placeholder='Enter room code...'
+										className='text-center text-lg font-mono uppercase'
+										maxLength={6}
 									/>
 								</div>
-								<Button
-									variant={ButtonVariant.PRIMARY}
-									size={ComponentSize.LG}
-									onClick={handleJoinRoom}
-									className='w-full'
-									disabled={!roomId.trim() || !isConnected}
-								>
+
+								<Button className='w-full' size={ButtonSize.LG} onClick={handleJoinRoom} disabled={isLoading}>
+									{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : null}
 									Join Room
 								</Button>
-								<Button
-									variant={ButtonVariant.SECONDARY}
-									size={ComponentSize.MD}
-									onClick={() => setShowCreateForm(true)}
-									className='w-full'
-								>
-									Create Room Instead
-								</Button>
-							</div>
-						)}
+							</CardContent>
+						</Card>
+					</TabsContent>
+				</Tabs>
 
-						{error && <div className='bg-red-500/20 border border-red-500 text-red-200 px-4 py-2 rounded'>{error}</div>}
-
-						{!isConnected && (
-							<div className='bg-yellow-500/20 border border-yellow-500 text-yellow-200 px-4 py-2 rounded'>
-								Connecting to server...
-							</div>
-						)}
-					</CardContent>
-				</Card>
-			</motion.div>
-		</Container>
+				<div className='text-center'>
+					<Button variant='ghost' onClick={() => navigate('/')}>
+						Back to Home
+					</Button>
+				</div>
+			</div>
+		</motion.main>
 	);
 }

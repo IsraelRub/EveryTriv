@@ -129,7 +129,7 @@ export const SUBSCRIPTION_PLANS = {
 		interval: 'month',
 		features: ['Unlimited trivia questions', 'Basic analytics', 'Email support'],
 		creditBonus: 100,
-		questionLimit: 1000,
+		maxQuestionsPerGame: 1000,
 		paypalProductId: 'everytriv_subscription_basic',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},
@@ -145,7 +145,7 @@ export const SUBSCRIPTION_PLANS = {
 			'Export functionality',
 		],
 		creditBonus: 250,
-		questionLimit: -1,
+		maxQuestionsPerGame: undefined, // Unlimited questions for premium subscription
 		paypalProductId: 'everytriv_subscription_premium',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},
@@ -162,7 +162,7 @@ export const SUBSCRIPTION_PLANS = {
 			'Custom integrations',
 		],
 		creditBonus: 500,
-		questionLimit: -1,
+		maxQuestionsPerGame: undefined, // Unlimited questions for pro subscription
 		paypalProductId: 'everytriv_subscription_pro',
 		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	},

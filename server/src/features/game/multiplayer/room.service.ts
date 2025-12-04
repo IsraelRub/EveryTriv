@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
-import { SERVER_GAME_CONSTANTS } from '@shared/constants';
+import { MULTIPLAYER_CONSTANTS, MULTIPLAYER_VALIDATION, VALIDATION_LIMITS } from '@shared/constants';
 import { serverLogger as logger } from '@shared/services';
 import type { MultiplayerRoom, Player, RoomConfig, RoomStatus } from '@shared/types';
 import { getErrorMessage, isMultiplayerRoom } from '@shared/utils';
@@ -18,7 +18,7 @@ import { ServerStorageService } from '@internal/modules';
  */
 @Injectable()
 export class RoomService {
-	private readonly ROOM_TTL = 3600; // 1 hour
+	private readonly ROOM_TTL = MULTIPLAYER_CONSTANTS.ROOM_TTL;
 	private readonly ROOM_PREFIX = 'multiplayer:room:';
 	private readonly inMemoryRooms = new Map<string, MultiplayerRoom>();
 
@@ -37,16 +37,22 @@ export class RoomService {
 	async createRoom(hostId: string, config: RoomConfig): Promise<MultiplayerRoom> {
 		try {
 			// Validate configuration
-			if (config.maxPlayers < 2 || config.maxPlayers > 4) {
-				throw new BadRequestException('Max players must be between 2 and 4');
-			}
-
 			if (
-				config.requestedQuestions < 1 ||
-				config.requestedQuestions > SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST
+				config.maxPlayers < MULTIPLAYER_VALIDATION.MAX_PLAYERS.MIN ||
+				config.maxPlayers > MULTIPLAYER_VALIDATION.MAX_PLAYERS.MAX
 			) {
 				throw new BadRequestException(
-					`Requested questions must be between 1 and ${SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST}`
+					`Max players must be between ${MULTIPLAYER_VALIDATION.MAX_PLAYERS.MIN} and ${MULTIPLAYER_VALIDATION.MAX_PLAYERS.MAX}`
+				);
+			}
+
+			const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+			if (
+				config.questionsPerRequest !== UNLIMITED &&
+				(config.questionsPerRequest < MIN || config.questionsPerRequest > MAX)
+			) {
+				throw new BadRequestException(
+					`Questions per request must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`
 				);
 			}
 
@@ -78,10 +84,7 @@ export class RoomService {
 				roomId,
 				hostId,
 				players: [hostPlayer],
-				config: {
-					...config,
-					timePerQuestion: 30, // Fixed 30 seconds for simultaneous games
-				},
+				config,
 				status: 'waiting',
 				currentQuestionIndex: 0,
 				questions: [],
@@ -96,7 +99,7 @@ export class RoomService {
 				hostId,
 				topic: config.topic,
 				difficulty: config.difficulty,
-				requestedQuestions: config.requestedQuestions,
+				questionsPerRequest: config.questionsPerRequest,
 				maxPlayers: config.maxPlayers,
 			});
 
@@ -107,7 +110,7 @@ export class RoomService {
 				hostId,
 				topic: config.topic,
 				difficulty: config.difficulty,
-				requestedQuestions: config.requestedQuestions,
+				questionsPerRequest: config.questionsPerRequest,
 				maxPlayers: config.maxPlayers,
 			});
 			throw error;

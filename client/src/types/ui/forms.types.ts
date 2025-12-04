@@ -4,6 +4,7 @@
  * @description Form-related types and interfaces
  */
 import { InputHTMLAttributes, ReactNode } from 'react';
+import type { FieldPath, FieldValues } from 'react-hook-form';
 
 import type { LanguageValidationOptions, SelectOption, ValidationType } from '@shared/types';
 
@@ -51,4 +52,25 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
 	isGlassy?: boolean;
 	size?: InteractiveSize;
 	className?: string;
+}
+
+/**
+ * Form field context value type
+ * @type FormFieldContextValue
+ * @description Context value for form field
+ */
+export type FormFieldContextValue<
+	TFieldValues extends FieldValues = FieldValues,
+	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+> = {
+	name: TName;
+};
+
+/**
+ * Form item context value interface
+ * @interface FormItemContextValue
+ * @description Context value for form item
+ */
+export interface FormItemContextValue {
+	id: string;
 }

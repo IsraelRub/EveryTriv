@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -21,7 +21,12 @@ import type {
 	ManualPaymentDetails,
 	PaymentResult,
 } from '@shared/types';
-import { ensureErrorObject, isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@shared/utils';
+import {
+	calculateNewBalance,
+	ensureErrorObject,
+	isCreditBalanceCacheEntry,
+	isCreditPurchaseOptionArray,
+} from '@shared/utils';
 
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
@@ -51,14 +56,14 @@ export class CreditsService extends BaseCreditsService {
 		super();
 	}
 
-	private assertRequestedQuestionsWithinLimits(requestedQuestions: number): void {
-		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+	private assertQuestionsPerRequestWithinLimits(questionsPerRequest: number): void {
+		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 		if (
-			!Number.isFinite(requestedQuestions) ||
-			(requestedQuestions !== UNLIMITED && (requestedQuestions < MIN || requestedQuestions > MAX))
+			!Number.isFinite(questionsPerRequest) ||
+			(questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX))
 		) {
 			throw new BadRequestException(
-				`Requested questions must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`
+				`Questions per request must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`
 			);
 		}
 	}
@@ -80,7 +85,7 @@ export class CreditsService extends BaseCreditsService {
 				async () => {
 					const user = await this.userRepository.findOne({ where: { id: userId } });
 					if (!user) {
-						throw new NotFoundException('User not found');
+						throw new UnauthorizedException('User not found or authentication failed');
 					}
 
 					const credits = user.credits ?? 0;
@@ -153,7 +158,7 @@ export class CreditsService extends BaseCreditsService {
 	 */
 	async canPlay(
 		userId: string,
-		requestedQuestions: number,
+		questionsPerRequest: number,
 		gameMode: GameMode = GameMode.QUESTION_LIMITED
 	): Promise<CanPlayResponse> {
 		try {
@@ -162,16 +167,16 @@ export class CreditsService extends BaseCreditsService {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			this.assertRequestedQuestionsWithinLimits(requestedQuestions);
+			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 
-			// Convert UNLIMITED_QUESTIONS (999) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
+			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-			const normalizedRequestedQuestions = requestedQuestions === UNLIMITED ? maxQuestions : requestedQuestions;
+			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Admin users can always play without credits
@@ -185,12 +190,12 @@ export class CreditsService extends BaseCreditsService {
 			const totalAvailable = credits + purchasedCredits + freeQuestions;
 
 			// Check if user has free questions available
-			if (freeQuestions >= normalizedRequestedQuestions) {
+			if (freeQuestions >= normalizedQuestionsPerRequest) {
 				return { canPlay: true, reason: 'Free questions available' };
 			}
 
 			// Calculate required credits based on game mode
-			const requiredCredits = this.calculateRequiredCredits(normalizedRequestedQuestions, gameMode);
+			const requiredCredits = this.calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
 
 			// Check if user has enough purchased credits
 			if (purchasedCredits >= requiredCredits) {
@@ -204,12 +209,12 @@ export class CreditsService extends BaseCreditsService {
 
 			return {
 				canPlay: false,
-				reason: `Insufficient credits. You have ${totalAvailable} credits available but need ${requiredCredits} credits (${normalizedRequestedQuestions} questions × ${gameMode} mode).`,
+				reason: `Insufficient credits. You have ${totalAvailable} credits available but need ${requiredCredits} credits (${normalizedQuestionsPerRequest} questions × ${gameMode} mode).`,
 			};
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to check if user can play', {
 				userId,
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode,
 			});
 			throw error;
@@ -221,7 +226,7 @@ export class CreditsService extends BaseCreditsService {
 	 */
 	async deductCredits(
 		userId: string,
-		requestedQuestions: number,
+		questionsPerRequest: number,
 		gameMode: GameMode = GameMode.QUESTION_LIMITED,
 		reason?: string
 	): Promise<CreditBalance> {
@@ -231,12 +236,12 @@ export class CreditsService extends BaseCreditsService {
 				throw new BadRequestException('Invalid user ID');
 			}
 
-			this.assertRequestedQuestionsWithinLimits(requestedQuestions);
+			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 
-			// Convert UNLIMITED_QUESTIONS (999) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
+			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-			const normalizedRequestedQuestions = requestedQuestions === UNLIMITED ? maxQuestions : requestedQuestions;
+			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
 
 			const gameModeValidation = await this.validationService.validateInputContent(gameMode);
 			if (!gameModeValidation.isValid) {
@@ -245,7 +250,7 @@ export class CreditsService extends BaseCreditsService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Admin users can play without deducting credits
@@ -268,7 +273,7 @@ export class CreditsService extends BaseCreditsService {
 
 				logger.databaseInfo('Admin user - credits deduction skipped', {
 					userId,
-					requestedQuestions,
+					questionsPerRequest,
 					gameMode,
 					reason,
 				});
@@ -276,7 +281,7 @@ export class CreditsService extends BaseCreditsService {
 				return balance;
 			}
 
-			const canPlayResult = await this.canPlay(userId, requestedQuestions, gameMode);
+			const canPlayResult = await this.canPlay(userId, questionsPerRequest, gameMode);
 			if (!canPlayResult.canPlay) {
 				throw new BadRequestException(canPlayResult.reason);
 			}
@@ -298,12 +303,12 @@ export class CreditsService extends BaseCreditsService {
 				nextResetTime,
 			};
 
-			const deductionResult = this.calculateNewBalance(currentBalance, normalizedRequestedQuestions, gameMode);
+			const deductionResult = calculateNewBalance(currentBalance, normalizedQuestionsPerRequest, gameMode);
 
 			// Calculate total credits actually deducted (purchased credits + credits, excluding free questions)
 			const totalCreditsDeducted =
 				deductionResult.deductionDetails.purchasedCreditsUsed + deductionResult.deductionDetails.creditsUsed;
-			const requiredCredits = this.calculateRequiredCredits(normalizedRequestedQuestions, gameMode);
+			const requiredCredits = this.calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
 
 			// Update user with new balance
 			user.remainingFreeQuestions = deductionResult.newBalance.freeQuestions;
@@ -330,7 +335,7 @@ export class CreditsService extends BaseCreditsService {
 					: `Credits deducted for ${gameMode} game: ${requiredCredits} credits required, ${totalCreditsDeducted} credits deducted`,
 				metadata: {
 					gameMode,
-					requestedQuestions,
+					questionsPerRequest,
 					requiredCredits,
 					freeQuestionsUsed: deductionResult.deductionDetails.freeQuestionsUsed,
 					purchasedCreditsUsed: deductionResult.deductionDetails.purchasedCreditsUsed,
@@ -346,7 +351,7 @@ export class CreditsService extends BaseCreditsService {
 				type: CreditTransactionType.GAME_USAGE,
 				amount: -totalCreditsDeducted,
 				credits: requiredCredits,
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode,
 				reason: reason ?? 'not_provided',
 			});
@@ -368,7 +373,7 @@ export class CreditsService extends BaseCreditsService {
 
 			logger.databaseInfo('Credits deducted successfully', {
 				userId,
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode,
 				reason,
 				credits: balance.totalCredits,
@@ -380,7 +385,7 @@ export class CreditsService extends BaseCreditsService {
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to deduct credits', {
 				userId,
-				requestedQuestions,
+				questionsPerRequest,
 				gameMode,
 			});
 			throw error;
@@ -507,7 +512,7 @@ export class CreditsService extends BaseCreditsService {
 	private async applyCreditsPurchase(userId: string, credits: number, bonus: number): Promise<CreditBalance> {
 		const user = await this.userRepository.findOne({ where: { id: userId } });
 		if (!user) {
-			throw new NotFoundException('User not found');
+			throw new UnauthorizedException('User not found or authentication failed');
 		}
 
 		const creditsToAdd = credits + bonus;
@@ -559,7 +564,7 @@ export class CreditsService extends BaseCreditsService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw new UnauthorizedException('User not found or authentication failed');
 			}
 
 			// Add credits to user's balance

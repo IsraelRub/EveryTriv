@@ -95,7 +95,7 @@ export class StorageUtils {
 			typeof value.userId === 'string' &&
 			typeof value.topic === 'string' &&
 			typeof value.correctAnswers === 'number' &&
-			typeof value.totalQuestions === 'number' &&
+			typeof value.totalQuestionsAnswered === 'number' &&
 			typeof value.averageResponseTime === 'number' &&
 			typeof value.lastPlayed === 'string' &&
 			typeof value.difficulty === 'string'

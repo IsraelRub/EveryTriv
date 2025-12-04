@@ -60,29 +60,21 @@ export const VALIDATION_LIMITS = {
 		MIN_LENGTH: 1,
 		MAX_LENGTH: 50,
 	},
-	REQUESTED_QUESTIONS: {
+	QUESTIONS: {
 		MIN: 1,
 		MAX: 50,
-		/**
-		 * Magic number representing unlimited questions mode
-		 *
-		 * Why 999 and not Infinity or a string?
-		 * - Infinity cannot be serialized in JSON (becomes null)
-		 * - Infinity fails @IsInt() validation (Number.isInteger(Infinity) === false)
-		 * - Database JSONB columns cannot store Infinity
-		 * - String values break type safety (requestedQuestions: number)
-		 * - String values fail @IsInt() validation
-		 *
-		 * Why 999 specifically?
-		 * - Large enough to be clearly distinct from MAX (50)
-		 * - Small enough to avoid performance issues
-		 * - Common convention for "unlimited" or "max" values
-		 * - Works seamlessly across all system layers (API, validation, database)
-		 *
-		 * Usage: When requestedQuestions === UNLIMITED, the system treats it as unlimited mode,
-		 * requesting questions in batches while respecting server limits.
-		 */
-		UNLIMITED: 999,
+		STEP: 5,
+		UNLIMITED: -1,
+	},
+	ANSWER_COUNT: {
+		MIN: 3,
+		MAX: 5,
+		STEP: 1,
+	},
+	TIME_LIMIT: {
+		MIN: 30,
+		MAX: 300,
+		STEP: 30,
 	},
 	CREDITS: {
 		MIN: 1,
@@ -91,7 +83,7 @@ export const VALIDATION_LIMITS = {
 	REASON: {
 		MAX_LENGTH: 200,
 	},
-	LEADERBOARD_LIMIT: {
+	LEADERBOARD: {
 		MIN: 1,
 		MAX: 100,
 	},
@@ -122,19 +114,6 @@ export const FORM_FIELD_TYPES = {
 	PASSWORD: 'password',
 	TEXTAREA: 'textarea',
 	SELECT: 'select',
-} as const;
-
-/**
- * UI size variants
- * @constant
- * @description Common size variants used across UI components
- * @used_by client/src/constants/ui.constants.ts, client/src/components/ui/Button.tsx
- */
-export const UI_SIZE_VARIANTS = {
-	SM: 'sm',
-	MD: 'md',
-	LG: 'lg',
-	XL: 'xl',
 } as const;
 
 /**

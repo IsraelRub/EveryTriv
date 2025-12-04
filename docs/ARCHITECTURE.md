@@ -76,8 +76,19 @@ EveryTriv/
 │   │   ├── services/         # שירותי API
 │   │   │   └── interceptors/ # interceptors ל-API
 │   │   ├── types/            # טיפוסי TypeScript
+│   │   │   ├── game/         # טיפוסי משחק
+│   │   │   ├── hooks/        # טיפוסי Hooks
+│   │   │   ├── redux/        # טיפוסי Redux
+│   │   │   ├── services/     # טיפוסי Services
+│   │   │   ├── ui/           # טיפוסי UI
+│   │   │   └── user/         # טיפוסי User
 │   │   ├── utils/            # פונקציות עזר
+│   │   │   ├── cn.utils.ts   # פונקציות class names
+│   │   │   └── format.utils.ts # פונקציות עיצוב וזמן
 │   │   ├── constants/        # קבועים
+│   │   │   ├── game/         # קבועי משחק
+│   │   │   ├── services/     # קבועי Services
+│   │   │   └── ui/           # קבועי UI
 │   │   ├── styles/           # עיצובים
 │   │   ├── App.tsx
 │   │   ├── AppRoutes.tsx

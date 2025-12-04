@@ -24,12 +24,18 @@ export const gameModeStateSlice = createSlice({
 	initialState,
 	reducers: {
 		setGameMode: (state, action: PayloadAction<GameModeConfigPayload>) => {
-			const { mode } = action.payload;
+			const { mode, topic, difficulty, maxQuestionsPerGame, timeLimit } = action.payload;
+			const defaults = GAME_MODE_DEFAULTS[mode];
+
 			state.currentMode = mode;
+			state.currentTopic = topic || '';
+			state.currentDifficulty = difficulty || DifficultyLevel.EASY;
 			state.currentSettings = {
-				...state.currentSettings,
 				mode,
-				...GAME_MODE_DEFAULTS[mode],
+				topic: topic || '',
+				difficulty: difficulty || DifficultyLevel.EASY,
+				maxQuestionsPerGame: maxQuestionsPerGame ?? defaults.maxQuestionsPerGame,
+				timeLimit: timeLimit ?? defaults.timeLimit,
 			};
 			state.isLoading = false;
 			state.error = undefined;
@@ -47,5 +53,7 @@ export const gameModeStateSlice = createSlice({
 		resetGameMode: () => initialState,
 	},
 });
+
+export const { setGameMode, setLoading, setError, clearError, resetGameMode } = gameModeStateSlice.actions;
 
 export default gameModeStateSlice.reducer;

@@ -18,6 +18,8 @@ export interface BasicUser {
 	id: string;
 	email: string;
 	role: UserRole;
+	firstName?: string;
+	lastName?: string;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface UserGamePreferences {
 	defaultTopic?: string;
 	defaultGameMode?: GameMode;
 	timeLimit?: number;
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
 }
 
 /**

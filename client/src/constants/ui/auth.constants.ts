@@ -50,3 +50,13 @@ export const LOGIN_FEATURE_HIGHLIGHTS: FeatureHighlightItem[] = [
 		accent: 'purple',
 	},
 ];
+
+/**
+ * OAuth error types for specific handling
+ */
+export const OAUTH_ERROR_TYPES = {
+	INVALID_CLIENT: 'invalid_client',
+	OAUTH_FAILED: 'oauth_failed',
+	NO_TOKEN: 'no_token',
+	UNEXPECTED_ERROR: 'unexpected_error',
+} as const;

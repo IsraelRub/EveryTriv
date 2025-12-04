@@ -45,7 +45,7 @@ export interface SubscriptionPlanDetails {
 	features: string[] | readonly string[];
 	pointBonus?: number; // Deprecated - use creditBonus instead
 	creditBonus?: number;
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
 	paypalProductId?: string;
 }
 

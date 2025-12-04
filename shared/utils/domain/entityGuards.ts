@@ -235,7 +235,7 @@ export const isSavedGameConfiguration = (value: unknown): value is SavedGameConf
 	return (
 		hasPrimitive(value.defaultDifficulty, 'string') &&
 		hasPrimitive(value.defaultTopic, 'string') &&
-		hasPrimitive(value.requestedQuestions, 'number') &&
+		hasPrimitive(value.questionsPerRequest, 'number') &&
 		hasPrimitive(value.timeLimit, 'number') &&
 		hasPrimitive(value.soundEnabled, 'boolean')
 	);

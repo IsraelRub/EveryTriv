@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 
 import { VALIDATION_LIMITS } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
@@ -17,15 +17,16 @@ export class TriviaRequestDto {
 
 	@ApiProperty({
 		description:
-			'Number of requested questions (999 for unlimited mode). See VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED for explanation of why 999 is used instead of Infinity or a string.',
-		minimum: VALIDATION_LIMITS.REQUESTED_QUESTIONS.MIN,
-		maximum: VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED,
+			'Number of questions per request (-1 for unlimited mode). See VALIDATION_LIMITS.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
+		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
+		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
 		example: 10,
 	})
 	@IsInt()
-	@Min(VALIDATION_LIMITS.REQUESTED_QUESTIONS.MIN)
-	@Max(VALIDATION_LIMITS.REQUESTED_QUESTIONS.UNLIMITED)
-	requestedQuestions!: number;
+	@Min(VALIDATION_LIMITS.QUESTIONS.MIN)
+	@ValidateIf((o: TriviaRequestDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_LIMITS.QUESTIONS.MAX)
+	questionsPerRequest!: number;
 
 	@ApiPropertyOptional({ description: 'Optional category for the trivia questions' })
 	@IsOptional()
@@ -49,10 +50,26 @@ export class TriviaRequestDto {
 	@Max(3600)
 	timeLimit?: number;
 
-	@ApiPropertyOptional({ description: 'Optional maximum number of questions for the session' })
+	@ApiPropertyOptional({
+		description:
+			'Optional maximum number of questions for the session. Undefined means no question limit (unlimited mode).',
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
 	@Max(100)
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
+
+	@ApiPropertyOptional({
+		description: 'Number of answer choices per question (3-5)',
+		minimum: VALIDATION_LIMITS.ANSWER_COUNT.MIN,
+		maximum: VALIDATION_LIMITS.ANSWER_COUNT.MAX,
+		example: 4,
+		default: 4,
+	})
+	@IsOptional()
+	@IsInt()
+	@Min(VALIDATION_LIMITS.ANSWER_COUNT.MIN)
+	@Max(VALIDATION_LIMITS.ANSWER_COUNT.MAX)
+	answerCount?: number;
 }

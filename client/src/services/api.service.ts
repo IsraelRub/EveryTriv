@@ -12,7 +12,6 @@ import {
 	HTTP_STATUS_CODES,
 	LOCALHOST_URLS,
 	PlanType,
-	TimePeriod,
 	VALID_GAME_MODES,
 	VALIDATION_LIMITS,
 } from '@shared/constants';
@@ -53,6 +52,7 @@ import {
 	TopicStatsData,
 	TriviaQuestion,
 	TriviaRequest,
+	TriviaResponse,
 	UpdateUserProfileData,
 	User,
 	UserAnalyticsQuery,
@@ -79,6 +79,7 @@ import type {
 	RequestTransformer,
 	ResponseTransformer,
 } from '../types';
+import type { ActivityQueryParams, ComparisonQueryParams, TrendQueryParams } from '../types/api.types';
 import {
 	authRequestInterceptor,
 	ErrorInterceptorManager,
@@ -86,26 +87,6 @@ import {
 	ResponseInterceptorManager,
 } from './interceptors';
 import { storageService } from './storage.service';
-
-type TrendQueryParams = {
-	startDate?: string;
-	endDate?: string;
-	groupBy?: TimePeriod;
-	limit?: number;
-};
-
-type ActivityQueryParams = {
-	startDate?: string;
-	endDate?: string;
-	limit?: number;
-};
-
-type ComparisonQueryParams = {
-	target?: 'global' | 'user';
-	targetUserId?: string;
-	startDate?: string;
-	endDate?: string;
-};
 
 /**
  * API Configuration Helper
@@ -141,13 +122,13 @@ class ApiService implements ClientApiService {
 		return hasProperty(response, 'data') && hasProperty(response, 'success');
 	}
 
-	private assertRequestedQuestionsWithinLimits(requestedQuestions: number): void {
-		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.REQUESTED_QUESTIONS;
+	private assertQuestionsPerRequestWithinLimits(questionsPerRequest: number): void {
+		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
 		if (
-			!Number.isFinite(requestedQuestions) ||
-			(requestedQuestions !== UNLIMITED && (requestedQuestions < MIN || requestedQuestions > MAX))
+			!Number.isFinite(questionsPerRequest) ||
+			(questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX))
 		) {
-			throw new Error(`Requested questions must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`);
+			throw new Error(`Questions per request must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`);
 		}
 	}
 
@@ -352,7 +333,14 @@ class ApiService implements ClientApiService {
 
 			// Prepare fetch config - body must be set after spreading interceptedConfig to prevent it from being overwritten
 			// Extract body from interceptedConfig if it exists and exclude it from spread to prevent overwriting our body
-			const { body: _ignoredBody, ...configWithoutBody } = interceptedConfig;
+			// Also exclude other RequestInit properties that might interfere with body
+			const {
+				body: _ignoredBody,
+				method: _ignoredMethod,
+				headers: _ignoredHeaders,
+				signal: _ignoredSignal,
+				...configWithoutRequestInit
+			} = interceptedConfig;
 
 			// Build headers separately to ensure Content-Type is set correctly
 			const headers = new Headers({
@@ -365,15 +353,20 @@ class ApiService implements ClientApiService {
 				headers.set('Content-Type', 'application/json');
 			}
 
+			// Build fetch config with explicit body handling
 			const fetchConfig: RequestInit = {
 				method,
 				headers,
 				signal: interceptedConfig.signal,
-				// Spread config without body to preserve other properties
-				...configWithoutBody,
-				// Body must be set last and explicitly to prevent it from being overwritten
-				...(requestBody ? { body: requestBody } : {}),
+				// Spread config without RequestInit properties to preserve custom properties only
+				...configWithoutRequestInit,
 			};
+
+			// Body must be set last and explicitly to prevent it from being overwritten
+			// Only set body if we have requestBody to avoid sending undefined/null
+			if (requestBody) {
+				fetchConfig.body = requestBody;
+			}
 
 			// Debug logging for fetch config (runs in all environments)
 			if (requestBody) {
@@ -394,7 +387,13 @@ class ApiService implements ClientApiService {
 
 			// Execute fetch
 			const fullUrl = `${interceptedConfig.baseURL ?? this.baseURL}${url}`;
-			const response = await fetch(fullUrl, fetchConfig);
+			// Ensure cookies are sent with requests (needed for httpOnly cookies from OAuth)
+			const fetchConfigWithCredentials = {
+				...fetchConfig,
+				credentials: 'include' as RequestCredentials,
+			};
+
+			const response = await fetch(fullUrl, fetchConfigWithCredentials);
 
 			// Handle response with retry support for 401
 			// Create a function that will retry the full request (including interceptors)
@@ -535,11 +534,12 @@ class ApiService implements ClientApiService {
 	private async handleResponse<T>(
 		response: Response,
 		method: HttpMethod,
-		originalRequest?: () => Promise<ApiResponse<T>>
+		originalRequest?: () => Promise<ApiResponse<T>>,
+		hasAttemptedRefresh: boolean = false
 	): Promise<ApiResponse<T>> {
 		if (!response.ok) {
-			// Handle 401 Unauthorized - try to refresh token
-			if (response.status === 401 && originalRequest) {
+			// Handle 401 Unauthorized - try to refresh token (only once per request)
+			if (response.status === 401 && originalRequest && !hasAttemptedRefresh) {
 				// Check if we have a refresh token before attempting refresh
 				const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
 				const hasRefreshToken = refreshTokenResult.success && !!refreshTokenResult.data;
@@ -547,9 +547,24 @@ class ApiService implements ClientApiService {
 				if (hasRefreshToken) {
 					try {
 						await this.refreshToken();
-						// Retry the original request with new token
-						return await originalRequest();
-					} catch {
+						// Retry the original request with new token (mark as refresh attempted to prevent infinite loop)
+						const retryResponse = await originalRequest();
+						// If retry also returns 401, don't try to refresh again
+						if (retryResponse.statusCode === 401) {
+							// Refresh failed, clear tokens
+							await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+							await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+							// Throw error - AppRoutes will handle redirect to login
+							const sessionExpiredError = new Error('Session expired. Please login again.');
+							sessionExpiredError.name = 'SessionExpiredError';
+							throw sessionExpiredError;
+						}
+						return retryResponse;
+					} catch (error) {
+						// If error is already SessionExpiredError, re-throw it
+						if (error instanceof Error && error.name === 'SessionExpiredError') {
+							throw error;
+						}
 						// Refresh failed, clear tokens
 						await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
 						await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
@@ -857,8 +872,27 @@ class ApiService implements ClientApiService {
 			offset,
 		});
 
-		const response = await this.get<GameHistoryEntry[]>(`/game/history${query}`);
-		return response.data;
+		const response = await this.get<{ games: GameHistoryEntry[] }>(`/game/history${query}`);
+		const responseData = response.data;
+
+		// Server returns { userId, email, totalGames, games: [...] }
+		// Extract games array from the response object
+		if (
+			responseData &&
+			typeof responseData === 'object' &&
+			'games' in responseData &&
+			Array.isArray(responseData.games)
+		) {
+			return responseData.games;
+		}
+
+		// Fallback: if response is already an array, return it
+		if (Array.isArray(responseData)) {
+			return responseData;
+		}
+
+		// If structure is unexpected, return empty array
+		return [];
 	}
 
 	async getLeaderboardEntries(limit?: number): Promise<LeaderboardEntry[]> {
@@ -883,7 +917,7 @@ class ApiService implements ClientApiService {
 		const analytics = response.data;
 		return {
 			userId: analytics.basic.userId,
-			totalQuestions: analytics.game.totalQuestions,
+			totalQuestionsAnswered: analytics.game.totalQuestionsAnswered,
 			correctAnswers: analytics.game.correctAnswers,
 			successRate: analytics.game.successRate,
 			favoriteTopic: '', // Not available in UserGameAnalytics
@@ -980,12 +1014,12 @@ class ApiService implements ClientApiService {
 		return response.data;
 	}
 
-	async canPlay(requestedQuestions: number): Promise<CanPlayResponse> {
-		// Validate requested questions
-		this.assertRequestedQuestionsWithinLimits(requestedQuestions);
+	async canPlay(questionsPerRequest: number): Promise<CanPlayResponse> {
+		// Validate questions per request
+		this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 
 		const query = this.buildQueryString({
-			requestedQuestions,
+			questionsPerRequest,
 		});
 
 		const response = await this.get<CanPlayResponse>(`/credits/can-play${query}`);
@@ -1020,8 +1054,8 @@ class ApiService implements ClientApiService {
 	}
 
 	// Trivia methods
-	async getTrivia(request: TriviaRequest): Promise<TriviaQuestion> {
-		const response = await this.post<TriviaQuestion>('/game/trivia', request);
+	async getTrivia(request: TriviaRequest): Promise<TriviaResponse> {
+		const response = await this.post<TriviaResponse>('/game/trivia', request);
 		return response.data;
 	}
 
@@ -1177,12 +1211,16 @@ class ApiService implements ClientApiService {
 		userId: string,
 		params?: ComparisonQueryParams
 	): Promise<AnalyticsResponse<UserComparisonResult>> {
-		const query = this.buildQueryString({
-			target: params?.target,
-			targetUserId: params?.targetUserId,
-			startDate: params?.startDate,
-			endDate: params?.endDate,
-		});
+		const query = this.buildQueryString(
+			params
+				? {
+						target: params.target,
+						targetUserId: params.targetUserId,
+						startDate: params.startDate,
+						endDate: params.endDate,
+					}
+				: undefined
+		);
 		const response = await this.get<AnalyticsResponse<UserComparisonResult>>(
 			`/analytics/user-comparison/${userId}${query}`
 		);
@@ -1398,35 +1436,35 @@ class ApiService implements ClientApiService {
 	/**
 	 * Deduct credits for game play
 	 */
-	async deductCredits(requestedQuestions: number, gameMode: GameMode): Promise<CreditBalance> {
+	async deductCredits(questionsPerRequest: number, gameMode: GameMode): Promise<CreditBalance> {
 		// Validate parameters
-		if (requestedQuestions <= 0 || !Number.isFinite(requestedQuestions)) {
-			throw new Error('Requested questions must be a positive number');
+		if (questionsPerRequest <= 0 || !Number.isFinite(questionsPerRequest)) {
+			throw new Error('Questions per request must be a positive number');
 		}
 
 		if (!gameMode || !VALID_GAME_MODES.includes(gameMode)) {
 			throw new Error('Valid game mode is required');
 		}
 
-		// Ensure requestedQuestions is an integer
-		const normalizedRequestedQuestions = Number.isInteger(requestedQuestions)
-			? requestedQuestions
-			: Math.floor(requestedQuestions);
+		// Ensure questionsPerRequest is an integer
+		const normalizedQuestionsPerRequest = Number.isInteger(questionsPerRequest)
+			? questionsPerRequest
+			: Math.floor(questionsPerRequest);
 
 		// Request body with validated values - gameMode is already GameMode type
-		const requestBody: { requestedQuestions: number; gameMode: GameMode } = {
-			requestedQuestions: normalizedRequestedQuestions,
+		const requestBody: { questionsPerRequest: number; gameMode: GameMode } = {
+			questionsPerRequest: normalizedQuestionsPerRequest,
 			gameMode,
 		};
 
 		logger.apiDebug('Deducting credits - request body', {
-			requestedQuestions: requestBody.requestedQuestions,
+			questionsPerRequest: requestBody.questionsPerRequest,
 			gameMode: requestBody.gameMode,
 		});
 
 		// Also send parameters as query for robustness in case body parsing fails
-		const query = `?requestedQuestions=${encodeURIComponent(
-			String(requestBody.requestedQuestions)
+		const query = `?questionsPerRequest=${encodeURIComponent(
+			String(requestBody.questionsPerRequest)
 		)}&gameMode=${encodeURIComponent(requestBody.gameMode)}`;
 
 		const response = await this.post<CreditBalance>(`/credits/deduct${query}`, requestBody);

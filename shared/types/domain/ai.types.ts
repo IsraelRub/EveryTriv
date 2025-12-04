@@ -6,6 +6,7 @@
  * @used_by server/src/features/game/logic/providers/implementations
  */
 import type { BaseTimestamps, BasicValue } from '../core/data.types';
+import type { GameDifficulty } from './game/trivia.types';
 
 /**
  * LLM question format (simplified, without topic/difficulty which are added later)
@@ -89,7 +90,7 @@ export interface ProviderStats extends BaseTimestamps {
  */
 export interface PromptParams {
 	topic: string;
-	difficulty: string;
+	difficulty: GameDifficulty;
 	answerCount: number;
 	customInstructions?: string;
 	isCustomDifficulty?: boolean;

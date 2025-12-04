@@ -5,7 +5,7 @@
  * @description Type definitions for trivia questions, answers, and trivia-related entities
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
@@ -90,6 +90,28 @@ export interface TriviaAnswer {
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
 /**
+ * Base interface for topic and difficulty
+ * @interface BaseGameTopicDifficulty
+ * @description Common structure for interfaces that contain topic and difficulty
+ */
+export interface BaseGameTopicDifficulty {
+	topic: string;
+	difficulty: GameDifficulty;
+}
+
+/**
+ * Base interface for trivia configuration
+ * @interface BaseTriviaConfig
+ * @description Common structure for trivia request configurations
+ */
+export interface BaseTriviaConfig {
+	topic: string;
+	difficulty: GameDifficulty;
+	questionsPerRequest?: number;
+	gameMode?: GameMode;
+}
+
+/**
  * Core trivia question structure used across input and payload types
  */
 export interface TriviaQuestionCore<TDifficulty = GameDifficulty> {
@@ -141,15 +163,13 @@ export interface BaseAnswerPayload {
  * @description Request payload for trivia questions
  * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
  */
-export interface TriviaRequest {
-	requestedQuestions: number;
-	topic: string;
-	difficulty: GameDifficulty;
+export interface TriviaRequest extends BaseTriviaConfig {
+	questionsPerRequest: number;
 	category?: string;
 	userId?: string;
-	gameMode?: string;
 	timeLimit?: number;
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
+	answerCount?: number;
 }
 
 /**
@@ -178,19 +198,12 @@ export interface TriviaInputValidationResult {
 /**
  * Trivia response interface
  * @interface TriviaResponse
- * @description Response payload for trivia questions
- * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
+ * @description Response payload for trivia questions from the server
+ * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts, server/src/features/game/game.service.ts
  */
 export interface TriviaResponse {
 	questions: TriviaQuestion[];
-	totalQuestions: number;
-	metadata: {
-		timestamp: string;
-		requestId: string;
-		processingTime: number;
-		provider: string;
-		cached: boolean;
-	};
+	fromCache: boolean;
 }
 
 /**
@@ -226,5 +239,5 @@ export interface TriviaSession {
 	status: 'active' | 'completed' | 'abandoned';
 	score: number;
 	timeLimit?: number;
-	questionLimit?: number;
+	maxQuestionsPerGame?: number;
 }

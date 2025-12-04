@@ -14,4 +14,5 @@ export * from './config.types';
 export * from './http.types';
 export * from './logging.types';
 export * from './redis.types';
+export * from './retry.types';
 export * from './storage.types';

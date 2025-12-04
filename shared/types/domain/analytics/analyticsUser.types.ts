@@ -23,7 +23,7 @@ export interface UserAnalyticsQuery {
  */
 export interface UserAnalyticsRecord {
 	totalGames: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	successRate: number;
 	averageScore: number;
 	bestScore: number;
@@ -82,7 +82,7 @@ export interface CompleteUserAnalytics {
 export interface UserProgressTopic {
 	topic: string;
 	gamesPlayed: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	correctAnswers: number;
 	successRate: number;
 	averageResponseTime: number;
@@ -97,7 +97,7 @@ export interface UserTrendPoint {
 	date: string;
 	score: number;
 	successRate: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	correctAnswers: number;
 	topic?: string;
 	difficulty?: string;

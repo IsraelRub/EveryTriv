@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { LeaderboardEntry } from '@shared/types';
 
-import { ErrorPayload, LoadingPayload, StatsState, UserStatsResponse } from '../../types';
+import { ErrorPayload, ExtendedUserStats, LoadingPayload, StatsState } from '../../types';
 
 const initialState: StatsState = {
 	stats: null,
@@ -26,7 +26,7 @@ const statsSlice = createSlice({
 		clearError: state => {
 			state.error = null;
 		},
-		setStats: (state, action: PayloadAction<UserStatsResponse>) => {
+		setStats: (state, action: PayloadAction<ExtendedUserStats>) => {
 			state.stats = action.payload;
 			state.isLoading = false;
 			state.error = null;

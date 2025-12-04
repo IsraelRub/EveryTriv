@@ -3,10 +3,10 @@
  * @module GameConfigTypes
  * @description Game configuration and setup types
  */
-import { DifficultyLevel, GameMode } from '@shared/constants';
+import { GameMode } from '@shared/constants';
 import type {
+	BaseGameTopicDifficulty,
 	DifficultyBreakdown,
-	FavoriteTopic,
 	GameDifficulty,
 	GameModeConfig,
 	TopicsPlayed,
@@ -31,19 +31,20 @@ export interface GameUISettings {
  * @description Game configuration and setup
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game-mode/GameMode.tsx
  */
-export interface GameConfig extends Pick<GameModeConfig, 'mode' | 'timeLimit' | 'questionLimit'> {
+export interface GameConfig extends Pick<GameModeConfig, 'mode' | 'timeLimit' | 'maxQuestionsPerGame'> {
 	topic: string;
 	difficulty: GameDifficulty;
+	answerCount?: number;
 	settings?: GameUISettings;
 }
 
 /**
  * Game data interface
- * @interface GameData
- * @description Game data and state
+ * @interface ClientGameData
+ * @description Game data and state for client-side game session
  * @used_by client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game/Game.tsx
  */
-export interface GameData {
+export interface ClientGameData {
 	questions: TriviaQuestion[];
 	answers: TriviaAnswer[];
 	score: number;
@@ -69,7 +70,7 @@ export type GameModeConfigPayload = GameConfig;
 export interface GameModeState {
 	currentMode: GameMode;
 	currentTopic: string;
-	currentDifficulty: DifficultyLevel;
+	currentDifficulty: GameDifficulty;
 	currentSettings: GameConfig;
 	isLoading: boolean;
 	error?: string;
@@ -85,20 +86,20 @@ export interface ClientGameState {
 	status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
 	isPlaying?: boolean;
 	currentQuestion?: number;
-	totalQuestions?: number;
+	gameQuestionCount?: number;
 	canGoBack?: boolean;
 	canGoForward?: boolean;
 	isGameComplete?: boolean;
 	questions?: TriviaQuestion[];
 	answers?: number[];
-	data?: GameData;
+	data?: ClientGameData;
 	config?: GameConfig;
-	stats?: GameSessionStats;
+	stats?: ClientGameSessionStats;
 	error?: string;
 	trivia?: TriviaQuestion;
 	selected?: number | null;
 	loading?: boolean;
-	favorites?: FavoriteTopic[];
+	favorites?: BaseGameTopicDifficulty[];
 	gameMode?: GameModeConfig;
 	streak?: number;
 }
@@ -110,10 +111,12 @@ export interface ClientGameState {
 export type GameTimerState = NonNullable<GameModeConfig['timer']>;
 
 /**
- * Game session statistics
+ * Client game session statistics interface
+ * @interface ClientGameSessionStats
+ * @description Comprehensive game session statistics for client-side game state
  * @used_by client/src/components/stats/ScoringSystem.tsx
  */
-export interface GameSessionStats {
+export interface ClientGameSessionStats {
 	currentScore: number;
 	maxScore: number;
 	successRate: number;
@@ -137,7 +140,7 @@ export interface GameSessionData {
 	startTime?: Date;
 	endTime?: Date;
 	duration?: number;
-	stats?: GameSessionStats;
+	stats?: ClientGameSessionStats;
 	results?: TriviaAnswer[];
 	lastGameMode: GameMode | null;
 	sessionCount: number;
@@ -151,17 +154,7 @@ export interface GameSessionData {
  */
 export interface GameModeDefaults {
 	timeLimit?: number;
-	questionLimit: number;
-}
-
-/**
- * Requested questions option type
- * @interface RequestedQuestionsOption
- * @description Option for selecting number of questions requested
- */
-export interface RequestedQuestionsOption {
-	value: number;
-	label: string;
+	maxQuestionsPerGame: number;
 }
 
 /**
@@ -171,7 +164,7 @@ export interface RequestedQuestionsOption {
  */
 export interface HistoryItem {
 	topic: string;
-	difficulty: string;
+	difficulty: GameDifficulty;
 	score: number;
 	date: string;
 	timestamp?: number;
@@ -186,4 +179,116 @@ export interface ScoreStats {
 	min: number;
 	grade: string;
 	color: string;
+}
+
+/**
+ * Current question metadata interface
+ * @interface CurrentQuestionMetadata
+ * @description Metadata for the current question being displayed
+ */
+export interface CurrentQuestionMetadata {
+	customDifficultyMultiplier?: number;
+	actualDifficulty?: string;
+	gameQuestionCount?: number;
+}
+
+/**
+ * Leaderboard display entry interface
+ * @interface LeaderboardDisplayEntry
+ * @description Leaderboard entry for display purposes
+ */
+export interface LeaderboardDisplayEntry {
+	rank: number;
+	email: string;
+	score: number;
+	avatar?: string;
+}
+
+/**
+ * Leaderboard click entry interface
+ * @interface LeaderboardClickEntry
+ * @description Leaderboard entry data for click callbacks
+ */
+export interface LeaderboardClickEntry {
+	id: string;
+	email: string;
+	score: number;
+	rank: number;
+}
+
+/**
+ * Clickable item interface
+ * @interface ClickableItem
+ * @description Generic clickable item with id, name, and value
+ */
+export interface ClickableItem {
+	id: string;
+	name: string;
+	value: number;
+}
+
+/**
+ * Game mode selection config interface
+ * @interface GameModeSelectionConfig
+ * @description Configuration for game mode selection
+ */
+export interface GameModeSelectionConfig {
+	mode: GameMode;
+	timeLimit?: number;
+	maxQuestionsPerGame?: number;
+}
+
+/**
+ * Game mode option interface
+ * @interface GameModeOption
+ * @description Game mode option configuration for UI selection
+ */
+export interface GameModeOption {
+	id: GameMode;
+	name: string;
+	description: string;
+	icon: import('lucide-react').LucideIcon;
+	showQuestionLimit: boolean;
+	showTimeLimit: boolean;
+}
+
+/**
+ * Base game result data interface
+ * @interface BaseGameResultData
+ * @description Common fields shared between game result interfaces (navigation state and API DTO)
+ */
+export interface BaseGameResultData {
+	score: number;
+	gameQuestionCount: number;
+	correctAnswers: number;
+	timeSpent: number;
+	questionsData: import('@shared/types').QuestionData[];
+}
+
+/**
+ * Game summary navigation state interface
+ * @interface GameSummaryNavigationState
+ * @description State passed via navigation when navigating to game summary view
+ * @used_by client/src/views/game/GameSummaryView.tsx, client/src/views/game/GameSessionView.tsx
+ */
+export interface GameSummaryNavigationState extends BaseGameResultData {
+	topic?: string;
+	difficulty?: string;
+}
+
+/**
+ * Game summary display statistics interface
+ * @interface GameSummaryStats
+ * @description Formatted statistics for display in game summary view
+ * @used_by client/src/views/game/GameSummaryView.tsx
+ */
+export interface GameSummaryStats {
+	score: number;
+	correct: number;
+	total: number;
+	time: string;
+	percentage: number;
+	topic: string;
+	difficulty: string;
+	questionsData: import('@shared/types').QuestionData[];
 }

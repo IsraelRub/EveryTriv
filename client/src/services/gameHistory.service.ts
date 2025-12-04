@@ -31,7 +31,7 @@ class ClientGameHistoryService {
 		try {
 			logger.gameStatistics('Saving game result to history', {
 				score: gameData.score,
-				totalQuestions: gameData.totalQuestions,
+				gameQuestionCount: gameData.gameQuestionCount,
 				correctAnswers: gameData.correctAnswers,
 			});
 
@@ -50,7 +50,7 @@ class ClientGameHistoryService {
 			const createGameHistoryDto: GameData = {
 				userId,
 				score: gameData.score,
-				totalQuestions: gameData.totalQuestions,
+				gameQuestionCount: gameData.gameQuestionCount,
 				correctAnswers: gameData.correctAnswers,
 				difficulty: gameData.difficulty,
 				topic: gameData.topic || GAME_STATE_DEFAULTS.TOPIC,
@@ -70,7 +70,7 @@ class ClientGameHistoryService {
 				difficulty: toDifficultyLevel(gameData.difficulty),
 				gameMode: gameData.gameMode,
 				score: gameData.score,
-				totalQuestions: gameData.totalQuestions,
+				gameQuestionCount: gameData.gameQuestionCount,
 				correctAnswers: gameData.correctAnswers,
 				timeSpent: gameData.timeSpent ?? 0,
 				creditsUsed: gameData.creditsUsed ?? 0,

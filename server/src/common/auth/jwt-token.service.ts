@@ -169,8 +169,8 @@ export class JwtTokenService {
 				return authHeader.substring(7);
 			}
 
-			// Check cookies
-			const cookieToken = request.cookies?.auth_token;
+			// Check cookies (support both access_token and auth_token for backward compatibility)
+			const cookieToken = request.cookies?.access_token || request.cookies?.auth_token;
 			if (cookieToken) {
 				return cookieToken;
 			}

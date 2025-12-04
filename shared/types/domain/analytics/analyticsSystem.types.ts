@@ -13,7 +13,7 @@ export interface SystemStats {
 	activeUsers24h: number;
 	activeUsers: number;
 	totalQuestionsGenerated: number;
-	totalQuestions: number;
+	totalQuestionsAnswered: number;
 	uptime: number;
 	averageResponseTime: number;
 	errorRate: number;

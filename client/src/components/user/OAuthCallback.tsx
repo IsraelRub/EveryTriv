@@ -1,190 +1,264 @@
 import { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
-import { HTTP_ERROR_MESSAGES } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
+import { Alert, AlertDescription, Button, Card } from '@/components';
+import { CLIENT_STORAGE_KEYS, OAUTH_ERROR_TYPES } from '@/constants';
+import { useAppDispatch } from '@/hooks';
 import { setAuthenticated, setUser } from '@/redux/slices';
+import { authService, storageService } from '@/services';
+import type { CallbackStatus } from '@/types';
 
-import { ComponentSize } from '../../constants';
-import { authService } from '../../services';
-import { fadeInUp, scaleIn } from '../animations';
-import { Icon } from '../ui/IconLibrary';
+/**
+ * Get user-friendly error message based on OAuth error type
+ */
+function getOAuthErrorMessage(error: string, errorDescription?: string | null): string {
+	if (error === OAUTH_ERROR_TYPES.INVALID_CLIENT) {
+		return 'Invalid OAuth client configuration. Please contact the administrator.';
+	}
+	if (errorDescription) {
+		return decodeURIComponent(errorDescription);
+	}
+	return error || 'OAuth authentication failed';
+}
 
-export default function OAuthCallback() {
+/**
+ * OAuth Callback Handler
+ * @description Handles OAuth authentication callback from Google/other providers
+ */
+export function OAuthCallback() {
 	const navigate = useNavigate();
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const [searchParams] = useSearchParams();
-	const [error, setError] = useState<string | null>(null);
+
+	const [status, setStatus] = useState<CallbackStatus>('processing');
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [errorType, setErrorType] = useState<string | null>(null);
 
 	useEffect(() => {
 		logger.authLogin('OAuthCallback component mounted');
-		const handleCallback = async () => {
+
+		const handleOAuthCallback = async () => {
 			try {
-				const success = searchParams.get('success');
-				const error = searchParams.get('error');
-				const errorDescription = searchParams.get('error_description');
+				// Log all search params for debugging
 				const params: Record<string, string> = {};
 				for (const [key, value] of searchParams.entries()) {
 					params[key] = value;
 				}
+				logger.authDebug('OAuth callback search params', { params });
+
+				// Get parameters from URL
+				const success = searchParams.get('success');
+				const token = searchParams.get('token');
+				const error = searchParams.get('error');
+				const errorDescription = searchParams.get('error_description');
 
 				logger.authLogin('OAuth callback received', {
-					success: success ? true : false,
+					success: success === 'true',
+					token: token || undefined,
 					error: error || undefined,
 					errorDescription: errorDescription || undefined,
 				});
-				logger.authDebug('Search params', { params });
 
+				// Handle error in callback
 				if (error) {
-					let errorMessage = error;
-					if (error === 'invalid_client') {
-						errorMessage = 'Invalid OAuth client configuration. Please check your Google OAuth settings.';
-					} else if (errorDescription) {
-						errorMessage = decodeURIComponent(errorDescription);
-					}
+					const userMessage = getOAuthErrorMessage(error, errorDescription);
 
 					logger.authError('OAuth error received', {
-						error: error || HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
+						error,
 						errorDescription: errorDescription || undefined,
+						errorType: error === OAUTH_ERROR_TYPES.INVALID_CLIENT ? 'configuration' : 'authentication',
 					});
 
-					setError(errorMessage);
+					setErrorMessage(userMessage);
+					setErrorType(error);
+					setStatus('error');
+
+					// Redirect after delay
 					setTimeout(() => {
-						const errorParam = error === 'invalid_client' ? 'invalid_client' : 'oauth_failed';
-						navigate(`/login?error=${errorParam}`);
+						const errorParam =
+							error === OAUTH_ERROR_TYPES.INVALID_CLIENT
+								? OAUTH_ERROR_TYPES.INVALID_CLIENT
+								: OAUTH_ERROR_TYPES.OAUTH_FAILED;
+						navigate(`/login?error=${errorParam}`, { replace: true });
 					}, 5000);
 					return;
 				}
 
-				if (success === 'true') {
-					logger.authLogin('OAuth success confirmed, proceeding with user authentication...');
-					try {
-						// Get user data (token is already set in cookie by server)
-						logger.authDebug('Attempting to get current user...');
-						const user = await authService.getCurrentUser();
-						logger.authDebug('User data received', { user: user ? JSON.parse(JSON.stringify(user)) : undefined });
-						logger.authDebug('Setting user in Redux store...');
-						dispatch(setUser(user));
-						dispatch(setAuthenticated(true));
+				// Check for success flag or token
+				if (success === 'true' || token) {
+					logger.authLogin('OAuth success confirmed, proceeding with user authentication');
 
-						// Navigate to home
-						logger.authLogin('User authenticated, navigating to home');
-						navigate('/');
-					} catch (error) {
-						logger.authError('Failed to get current user', {
-							error: getErrorMessage(error),
-						});
-						logger.authError('Failed to handle OAuth callback', {
-							error: getErrorMessage(error),
-						});
-						setError('Error receiving user details');
-						setTimeout(() => {
-							navigate('/login?error=oauth_failed');
-						}, 3000);
+					// Store token if provided
+					if (token) {
+						logger.authDebug('Storing authentication token');
+						await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, token);
+
+						// Verify token was stored
+						const storedToken = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+						if (!storedToken.success || !storedToken.data) {
+							logger.authError('Failed to store authentication token', {
+								success: storedToken.success,
+								hasData: Boolean(storedToken.data),
+							});
+							throw new Error('Failed to store authentication token');
+						}
+						logger.authDebug('Token stored successfully');
 					}
-				} else {
-					logger.authError('OAuth callback without success parameter');
-					logger.authError('OAuth callback without success parameter');
-					setError('No approval received from server');
+
+					// Get user data
+					logger.authDebug('Attempting to get current user');
+					const user = await authService.getCurrentUser();
+					logger.authDebug('User data received', {
+						userId: user?.id,
+						email: user?.email || undefined,
+					});
+
+					if (!user) {
+						logger.authError('Failed to retrieve user data - user is null');
+						throw new Error('Failed to retrieve user data');
+					}
+
+					// Update Redux state
+					logger.authDebug('Setting user in Redux store');
+					dispatch(setAuthenticated(true));
+					dispatch(setUser(user));
+
+					logger.authLogin('User authenticated successfully', { userId: user.id });
+					setStatus('success');
+
+					// Redirect after short delay
 					setTimeout(() => {
-						navigate('/login?error=no_token');
+						// Check if user needs to complete profile
+						const userProfile = user as { firstName?: string };
+						const needsProfile = !userProfile.firstName;
+						const redirectTo = needsProfile ? '/complete-profile' : '/';
+
+						logger.authDebug('Redirecting user', {
+							needsProfile,
+							redirectTo,
+						});
+
+						if (needsProfile) {
+							navigate('/complete-profile', { replace: true });
+						} else {
+							navigate('/', { replace: true });
+						}
+					}, 1500);
+				} else {
+					// No success flag and no token
+					logger.authError('OAuth callback without success parameter or token', { params });
+					setErrorMessage('No approval received from server');
+					setErrorType(OAUTH_ERROR_TYPES.NO_TOKEN);
+					setStatus('error');
+
+					setTimeout(() => {
+						navigate(`/login?error=${OAUTH_ERROR_TYPES.NO_TOKEN}`, { replace: true });
 					}, 3000);
 				}
 			} catch (error) {
+				const message = getErrorMessage(error);
 				logger.authError('Unexpected error in OAuth callback', {
-					error: getErrorMessage(error),
+					error: message,
+					stack: error instanceof Error ? error.stack : undefined,
 				});
-				logger.authError('Unexpected error in OAuth callback details', {
-					error: getErrorMessage(error),
-				});
-				setError('Unexpected error');
+				setErrorMessage(message || 'Authentication failed. Please try again.');
+				setErrorType(OAUTH_ERROR_TYPES.UNEXPECTED_ERROR);
+				setStatus('error');
+
 				setTimeout(() => {
-					navigate('/login?error=unexpected_error');
+					navigate(`/login?error=${OAUTH_ERROR_TYPES.UNEXPECTED_ERROR}`, { replace: true });
 				}, 3000);
 			}
 		};
 
-		handleCallback();
-	}, [searchParams, navigate, dispatch]);
+		handleOAuthCallback();
+	}, [searchParams, dispatch, navigate]);
 
-	logger.authDebug('OAuthCallback render - error state', { error: error || 'No error' });
-
-	if (error) {
-		logger.authDebug('Rendering error state', { error: error || 'No error' });
-		return (
-			<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-red-700'>
-				<motion.div variants={scaleIn} initial='hidden' animate='visible' className='text-center'>
-					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.2 }}>
-						<div className='text-red-200 mb-4'>
-							<Icon name='alert-triangle' size={ComponentSize.XXL} />
-						</div>
-					</motion.div>
-
-					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.4 }}>
-						<h1 className='text-white text-2xl font-bold mb-4'>Authentication Error</h1>
-						<p className='text-white text-lg mb-6'>An error occurred during the login process</p>
-						<p className='text-red-200 text-sm mb-4 max-w-md mx-auto'>{error}</p>
-						{error.includes('Invalid OAuth client') && (
-							<div className='text-yellow-200 text-xs mt-2 max-w-md mx-auto p-3 bg-yellow-900 bg-opacity-30 rounded'>
-								<p className='font-semibold mb-1'>Configuration Issue:</p>
-								<p>This error usually means the Google OAuth client ID or secret is not configured correctly.</p>
-								<p className='mt-2'>Please contact the administrator to verify the OAuth settings.</p>
-							</div>
-						)}
-					</motion.div>
-
-					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.6 }}>
-						<button
-							onClick={() => window.location.reload()}
-							className='bg-white text-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors'
-						>
-							Try Again
-						</button>
-					</motion.div>
-
-					<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.8 }}>
-						<p className='text-white text-sm opacity-75 mt-4'>Redirecting you back to the login page...</p>
-					</motion.div>
-				</motion.div>
-			</div>
-		);
-	}
+	logger.authDebug('OAuthCallback render', { status, hasErrors: Boolean(errorMessage) });
 
 	return (
-		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700'>
-			<motion.div variants={scaleIn} initial='hidden' animate='visible' className='text-center'>
-				<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.2 }}>
-					<motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-						<div className='animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto'></div>
-					</motion.div>
-				</motion.div>
+		<motion.main
+			role='main'
+			aria-label='OAuth Callback'
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			className='min-h-screen flex items-center justify-center px-4'
+		>
+			<Card className='w-full max-w-md p-8'>
+				{status === 'processing' && (
+					<div className='text-center space-y-4'>
+						<div className='spinner-pulsing w-12 h-12 mx-auto' />
+						<div>
+							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
+							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>
+						</div>
+					</div>
+				)}
 
-				<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.4 }}>
-					<p className='text-white text-lg mt-4'>Completing authentication...</p>
-					<p className='text-white text-sm mt-2 opacity-75'>Please wait...</p>
-					<p className='text-white text-xs mt-1 opacity-50'>If the process takes too long, try refreshing the page</p>
-				</motion.div>
-
-				<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.6 }}>
-					<button
-						onClick={() => window.location.reload()}
-						className='mt-4 bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-semibold hover:bg-opacity-30 transition-colors'
+				{status === 'success' && (
+					<motion.div
+						initial={{ scale: 0.8, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						className='text-center space-y-4'
 					>
-						Refresh Page
-					</button>
-				</motion.div>
+						<div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto'>
+							<CheckCircle2 className='w-10 h-10 text-green-600' />
+						</div>
+						<div>
+							<h2 className='text-xl font-semibold mb-2'>Sign In Successful!</h2>
+							<p className='text-muted-foreground'>Redirecting you to the app...</p>
+						</div>
+					</motion.div>
+				)}
 
-				<motion.div variants={fadeInUp} initial='hidden' animate='visible' transition={{ delay: 0.8 }}>
-					<p className='text-white text-xs mt-2 opacity-50'>
-						If the problem persists, check the console for more details
-					</p>
-				</motion.div>
-			</motion.div>
-		</div>
+				{status === 'error' && (
+					<div className='space-y-4'>
+						<Alert variant='destructive'>
+							<AlertCircle className='h-4 w-4' />
+							<AlertDescription>{errorMessage}</AlertDescription>
+						</Alert>
+
+						{/* Show additional info for configuration errors */}
+						{errorType === OAUTH_ERROR_TYPES.INVALID_CLIENT && (
+							<Alert>
+								<AlertCircle className='h-4 w-4' />
+								<AlertDescription>
+									<p className='font-semibold mb-1'>Configuration Issue</p>
+									<p className='text-sm'>
+										This error usually means the Google OAuth client ID or secret is not configured correctly. Please
+										contact the administrator to verify the OAuth settings.
+									</p>
+								</AlertDescription>
+							</Alert>
+						)}
+
+						<div className='text-center space-y-4'>
+							<div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto'>
+								<AlertCircle className='w-10 h-10 text-red-600' />
+							</div>
+							<div>
+								<h2 className='text-xl font-semibold mb-2'>Authentication Failed</h2>
+								<p className='text-muted-foreground'>We couldn't complete your sign in.</p>
+								<p className='text-sm text-muted-foreground mt-2'>Redirecting you back to the login page...</p>
+							</div>
+							<div className='flex gap-2 justify-center'>
+								<Button onClick={() => window.location.reload()} variant='default'>
+									Try Again
+								</Button>
+								<Button onClick={() => navigate('/')} variant='outline'>
+									Go Home
+								</Button>
+							</div>
+						</div>
+					</div>
+				)}
+			</Card>
+		</motion.main>
 	);
 }

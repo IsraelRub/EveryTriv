@@ -5,15 +5,14 @@
  * @description Structures for tracking analytics events, metadata, and answer-level telemetry
  */
 import type { BasicValue } from '../../core/data.types';
+import type { BaseGameTopicDifficulty, GameDifficulty } from '../game/trivia.types';
 import type { AnalyticsEnvironment, AnalyticsResult } from './analyticsCommon.types';
 
 /**
  * Provider-specific question metadata captured for analytics
  */
-export interface AnalyticsQuestionDetail {
+export interface AnalyticsQuestionDetail extends BaseGameTopicDifficulty {
 	id: string;
-	topic: string;
-	difficulty: string;
 	responseTime: number;
 	timestamp: Date;
 }
@@ -68,7 +67,7 @@ export interface AnalyticsAnswerData {
 	isCorrect: boolean;
 	timeSpent: number;
 	topic?: string;
-	difficulty?: string;
+	difficulty?: GameDifficulty;
 	selectedAnswer?: string;
 	correctAnswer?: string;
 }

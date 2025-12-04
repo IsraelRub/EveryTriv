@@ -12,7 +12,6 @@ import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthenticationManager, PasswordService } from 'src/common/auth';
-import { AuthModule } from 'src/features/auth';
 
 import { AUTH_CONSTANTS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
@@ -20,6 +19,8 @@ import { CacheModule, StorageModule } from '@internal/modules';
 
 import { UserDataPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
+import { AuthModule } from '../auth';
+import { CreditsModule } from '../credits';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 
@@ -27,6 +28,7 @@ import { UserService } from './user.service';
 	imports: [
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity]),
 		forwardRef(() => AuthModule),
+		CreditsModule,
 		CacheModule,
 		StorageModule,
 		ValidationModule,

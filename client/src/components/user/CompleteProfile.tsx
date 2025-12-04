@@ -1,285 +1,152 @@
-import { FormEvent, memo, useCallback, useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
-import { UserRole } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { ValidationStatus } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import { Button, Card, CloseButton, Input, Label } from '@/components';
+import { useAppDispatch } from '@/hooks';
 import { setUser } from '@/redux/slices';
+import { authService } from '@/services';
+import type { CompleteProfileProps } from '@/types';
 
-import { ButtonVariant, ComponentSize } from '../../constants';
-import { authService } from '../../services';
-import { fadeInUp, hoverScale } from '../animations';
-import { Avatar, Button, ValidatedInput, ValidationMessage } from '../ui';
-
-const CompleteProfile = memo(function CompleteProfile() {
+export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	const navigate = useNavigate();
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
-	// Memoize initial form data
-	const initialFormData = useMemo(
-		() => ({
-			firstName: '',
-			lastName: '',
-			avatar: '',
-		}),
-		[]
-	);
-
-	const [formData, setFormData] = useState(initialFormData);
-
+	const [firstName, setFirstName] = useState('');
+	const [lastName, setLastName] = useState('');
 	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState('');
-	// Enhanced validation with form validation hook
+	const [error, setError] = useState<string | null>(null);
 
-	const [validationStatus, setValidationStatus] = useState<ValidationStatus>('idle');
-	const [validationErrors, setValidationErrors] = useState<string[]>([]);
-
-	const validateForm = useCallback((): boolean => {
-		// Simple validation
-		if (!formData.firstName.trim() || formData.firstName.trim().length < 2) {
-			setValidationErrors(['First name must be at least 2 characters']);
-			setValidationStatus('invalid');
-			return false;
-		}
-
-		if (formData.avatar && !isValidAvatarUrl(formData.avatar)) {
-			setValidationErrors([
-				'Please enter a valid avatar URL from an allowed domain (HTTPS only, image formats: jpg, jpeg, png, gif, webp, svg)',
-			]);
-			setValidationStatus('invalid');
-			return false;
-		}
-
-		setValidationErrors([]);
-		setValidationStatus('valid');
-		return true;
-	}, [formData]);
-
-	const isValidAvatarUrl = useCallback((url: string): boolean => {
-		try {
-			const urlObj = new URL(url);
-
-			// Must be HTTPS
-			if (urlObj.protocol !== 'https:') {
-				return false;
-			}
-
-			// Check for allowed domains
-			const allowedDomains = [
-				'googleusercontent.com',
-				'gravatar.com',
-				'github.com',
-				'githubusercontent.com',
-				'imgur.com',
-				'cloudinary.com',
-				'amazonaws.com',
-				'googleapis.com',
-			];
-
-			const isAllowedDomain = allowedDomains.some(
-				domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-			);
-
-			if (!isAllowedDomain) {
-				return false;
-			}
-
-			// Check file extension
-			const validExtensions = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
-			if (!validExtensions.test(urlObj.pathname)) {
-				return false;
-			}
-
-			// Check for suspicious patterns
-			const suspiciousPatterns = [/\.exe$/i, /\.php$/i, /\.js$/i, /\.html$/i, /\.htm$/i, /script/i, /javascript/i];
-
-			if (suspiciousPatterns.some(pattern => pattern.test(url))) {
-				return false;
-			}
-
-			return true;
-		} catch {
-			return false;
-		}
-	}, []);
-
-	// Form validation is now handled by the useFormValidation hook
+	logger.userDebug('CompleteProfile component rendered');
 
 	const handleSubmit = useCallback(
 		async (e: FormEvent) => {
 			e.preventDefault();
 			setLoading(true);
-			setError('');
-			setValidationStatus('validating');
+			setError(null);
 
-			// Validate form before submission
-			if (!validateForm()) {
-				setLoading(false);
-				return;
-			}
+			logger.userInfo('Profile completion started');
 
 			try {
+				// Basic validation
+				if (!firstName.trim() || firstName.trim().length < 2) {
+					logger.userWarn('Profile validation failed - first name too short');
+					setError('First name must be at least 2 characters');
+					setLoading(false);
+					return;
+				}
+
+				logger.userDebug('Submitting profile to server');
+
 				const profileResponse = await authService.completeProfile({
-					firstName: formData.firstName,
-					lastName: formData.lastName,
-					avatar: formData.avatar,
+					firstName: firstName.trim(),
+					lastName: lastName.trim(),
 				});
-				// Extract user data from profile response
-				const profile = profileResponse.profile;
-				const userData = {
-					id: profile.id || '',
-					email: profile.email || '',
-					role: profile.role || UserRole.USER,
-				};
-				dispatch(setUser(userData));
-				setValidationStatus('valid');
-				navigate('/');
-			} catch (error) {
-				setError('Failed to update profile. Please try again.');
-				setValidationStatus('invalid');
-				logger.userError('Profile completion error', {
-					error: getErrorMessage(error),
+
+				logger.authProfileUpdate('Profile completed successfully', {
+					userId: profileResponse.profile?.id,
 				});
+
+				// Update Redux state with new user data
+				if (profileResponse.profile) {
+					dispatch(setUser(profileResponse.profile));
+				}
+
+				// Call optional onComplete callback
+				if (onComplete) {
+					onComplete({ username: firstName, bio: lastName });
+				}
+
+				// Navigate to home
+				logger.userInfo('Redirecting to home after profile completion');
+				navigate('/', { replace: true });
+			} catch (err) {
+				const message = getErrorMessage(err);
+				logger.userError('Profile completion failed', {
+					error: message,
+				});
+				setError(message || 'Failed to update profile. Please try again.');
 			} finally {
 				setLoading(false);
 			}
 		},
-		[formData, dispatch, navigate, validateForm]
+		[firstName, lastName, dispatch, navigate, onComplete]
 	);
 
 	const handleSkip = useCallback(() => {
-		navigate('/');
+		logger.userInfo('User skipped profile completion');
+		navigate('/', { replace: true });
 	}, [navigate]);
 
 	return (
-		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-800 to-pink-700 py-16 px-12'>
-			<motion.div variants={fadeInUp} initial='hidden' animate='visible' className='max-w-md w-full space-y-8'>
-				<div className='glass p-8 rounded-lg'>
-					<div className='text-center mb-8'>
-						<h2 className='text-3xl font-bold text-white'>Complete Your Profile</h2>
-						<p className='text-slate-300 mt-2'>Add some details to personalize your experience</p>
-					</div>
-
-					{/* Validation Message */}
-					<ValidationMessage status={validationStatus} errors={validationErrors} className='mb-4' />
-
-					{error && (
-						<div className='bg-red-500/20 border border-red-500 text-red-100 px-4 py-3 rounded mb-4'>{error}</div>
-					)}
-
-					<form onSubmit={handleSubmit} className='space-y-6'>
-						<div>
-							<label htmlFor='firstName' className='block text-sm font-medium text-slate-300 mb-2'>
-								First Name *
-							</label>
-							<ValidatedInput
-								id='firstName'
-								type='text'
-								value={formData.firstName}
-								initialValue={formData.firstName}
-								onChange={(value: string) => {
-									setFormData(prev => ({ ...prev, firstName: value }));
-									// Form validation is handled automatically by the hook
-								}}
-								placeholder='Enter your first name'
-								className='w-full'
-							/>
-						</div>
-						<div>
-							<label htmlFor='lastName' className='block text-sm font-medium text-slate-300 mb-2'>
-								Last Name
-							</label>
-							<ValidatedInput
-								id='lastName'
-								type='text'
-								value={formData.lastName}
-								initialValue={formData.lastName}
-								onChange={(value: string) => {
-									setFormData(prev => ({ ...prev, lastName: value }));
-									// Form validation is handled automatically by the hook
-								}}
-								placeholder='Enter your last name'
-								className='w-full'
-							/>
-						</div>
-
-						<div>
-							<label htmlFor='avatar' className='block text-sm font-medium text-slate-300 mb-2'>
-								Avatar URL (optional)
-							</label>
-							<input
-								id='avatar'
-								type='url'
-								value={formData.avatar}
-								onChange={e => {
-									const value = e.target.value;
-									setFormData(prev => ({ ...prev, avatar: value }));
-									// Form validation is handled automatically by the hook
-								}}
-								placeholder='Enter avatar URL'
-								className='w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-800 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-							/>
-						</div>
-
-						{formData.avatar && (
-							<div className='text-center'>
-								<Avatar
-									src={formData.avatar}
-									firstName={formData.firstName}
-									lastName={formData.lastName}
-									size={ComponentSize.LG}
-									alt='Avatar preview'
-									showLoading={true}
-									lazy={false}
-								/>
-							</div>
-						)}
-
-						<div className='flex space-x-4'>
-							<motion.div variants={hoverScale} initial='normal' whileHover='hover'>
-								<Button
-									type='submit'
-									variant={ButtonVariant.PRIMARY}
-									className='flex-1'
-									disabled={loading || validationStatus === 'invalid'}
-								>
-									{loading ? (
-										<div className='flex items-center justify-center'>
-											<div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-											Saving...
-										</div>
-									) : (
-										'Complete Profile'
-									)}
-								</Button>
-							</motion.div>
-
-							<motion.div variants={hoverScale} initial='normal' whileHover='hover'>
-								<Button
-									type='button'
-									variant={ButtonVariant.GHOST}
-									onClick={handleSkip}
-									className='flex-1 text-slate-300 hover:text-white'
-									disabled={loading}
-								>
-									Skip
-								</Button>
-							</motion.div>
-						</div>
-					</form>
-
-					<div className='mt-6 text-center'>
-						<p className='text-xs text-slate-400'>You can always update your profile later in the settings</p>
-					</div>
+		<motion.div
+			initial={{ opacity: 0, scale: 0.95 }}
+			animate={{ opacity: 1, scale: 1 }}
+			className='min-h-screen flex items-center justify-center px-4'
+		>
+			<Card className='p-6 max-w-md w-full relative'>
+				<CloseButton className='absolute top-4 right-4' />
+				<div className='text-center mb-6'>
+					<h2 className='text-2xl font-bold'>Complete Your Profile</h2>
+					<p className='text-muted-foreground mt-2'>Add some details to personalize your experience</p>
 				</div>
-			</motion.div>
-		</div>
-	);
-});
 
-export default CompleteProfile;
+				{error && (
+					<div className='bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded mb-4'>
+						{error}
+					</div>
+				)}
+
+				<form onSubmit={handleSubmit} className='space-y-4'>
+					<div>
+						<Label htmlFor='firstName'>
+							First Name <span className='text-destructive'>*</span>
+						</Label>
+						<Input
+							id='firstName'
+							value={firstName}
+							onChange={e => setFirstName(e.target.value)}
+							placeholder='Enter your first name'
+							required
+							disabled={loading}
+						/>
+					</div>
+					<div>
+						<Label htmlFor='lastName'>Last Name</Label>
+						<Input
+							id='lastName'
+							value={lastName}
+							onChange={e => setLastName(e.target.value)}
+							placeholder='Enter your last name'
+							disabled={loading}
+						/>
+					</div>
+
+					<div className='flex gap-4'>
+						<Button type='submit' className='flex-1' disabled={loading}>
+							{loading ? (
+								<span className='flex items-center justify-center'>
+									<span className='animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white border-r-white mr-2' />
+									Saving...
+								</span>
+							) : (
+								'Complete Profile'
+							)}
+						</Button>
+						<Button type='button' variant='outline' onClick={handleSkip} disabled={loading}>
+							Skip
+						</Button>
+					</div>
+				</form>
+
+				<p className='text-xs text-muted-foreground text-center mt-4'>
+					You can always update your profile later in the settings
+				</p>
+			</Card>
+		</motion.div>
+	);
+}

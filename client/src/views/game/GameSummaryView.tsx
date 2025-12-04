@@ -2,324 +2,301 @@
  * Game Summary View
  *
  * @module GameSummaryView
- * @description Game completion summary with stats and sharing
+ * @description Displays game completion summary with score, statistics, and question breakdown
  */
-
-import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
+import { CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
 
 import { DifficultyLevel, GameMode } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { QuestionData } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import type { GameData, GameDifficulty } from '@shared/types';
+import { calculatePercentage } from '@shared/utils';
 
-import { AlertModal, Button, Card, Container, fadeInUp, GridLayout, Icon, scaleIn } from '../../components';
-import {
-	AlertVariant,
-	AudioKey,
-	ButtonVariant,
-	CardVariant,
-	ComponentSize,
-	ContainerSize,
-	Spacing,
-} from '../../constants';
-import { useSaveHistory, useUpdateUserRanking } from '../../hooks';
-import { audioService } from '../../services';
-import type { RootState } from '../../types';
+import { Button, Card, SocialShare } from '@/components';
+import { AudioKey, ButtonSize } from '@/constants';
+import { useAppSelector, useSaveHistory } from '@/hooks';
+import { selectCurrentGameMode, selectCurrentUser } from '@/redux/selectors';
+import { audioService } from '@/services';
+import type { GameSummaryNavigationState, GameSummaryStats } from '@/types';
+import { calculateGrade } from '@/utils';
+import { formatTime } from '@/utils/format.utils';
 
-interface GameSummaryState {
-	score: number;
-	totalQuestions: number;
-	correctAnswers: number;
-	topic: string;
-	difficulty: DifficultyLevel;
-	timeSpent?: number;
-	questionsData?: QuestionData[];
-}
-
-export default function GameSummaryView() {
+export function GameSummaryView() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { currentUser } = useSelector((state: RootState) => state.user);
-	const { mutate: saveHistory } = useSaveHistory();
-	const { mutate: updateRanking } = useUpdateUserRanking();
-	const [alertModal, setAlertModal] = useState<{
-		open: boolean;
-		title: string;
-		message: string;
-		variant: AlertVariant;
-	}>({
-		open: false,
-		title: '',
-		message: '',
-		variant: AlertVariant.INFO,
-	});
+	const saveHistoryMutation = useSaveHistory();
+	const currentGameMode = useAppSelector(selectCurrentGameMode);
+	const currentUser = useAppSelector(selectCurrentUser);
 
-	const isGameSummaryState = (value: unknown): value is GameSummaryState => {
-		if (!isRecord(value)) {
-			return false;
+	// Get game data from navigation state
+	const gameState = location.state as GameSummaryNavigationState | null;
+
+	const gameStats = useMemo((): GameSummaryStats => {
+		if (!gameState) {
+			return {
+				score: 0,
+				correct: 0,
+				total: 0,
+				time: '0:00',
+				percentage: 0,
+				topic: 'Unknown',
+				difficulty: 'Unknown',
+				questionsData: [],
+			};
 		}
 
-		return (
-			typeof value.score === 'number' &&
-			typeof value.totalQuestions === 'number' &&
-			typeof value.correctAnswers === 'number' &&
-			typeof value.topic === 'string' &&
-			typeof value.difficulty === 'string'
-		);
-	};
+		const time = formatTime(gameState.timeSpent);
+		const percentage = calculatePercentage(gameState.correctAnswers, gameState.gameQuestionCount);
 
-	const summaryData = isGameSummaryState(location.state) ? location.state : undefined;
+		return {
+			score: gameState.score,
+			correct: gameState.correctAnswers,
+			total: gameState.gameQuestionCount,
+			time,
+			percentage,
+			topic: gameState.topic || 'General',
+			difficulty: gameState.difficulty || 'Medium',
+			questionsData: gameState.questionsData || [],
+		};
+	}, [gameState]);
 
+	// Calculate grade with stars
+	const grade = useMemo(() => {
+		return calculateGrade(gameStats.percentage);
+	}, [gameStats.percentage]);
+
+	// Track which stars have appeared
+	const [visibleStars, setVisibleStars] = useState(0);
+
+	// Animate stars appearing one by one
 	useEffect(() => {
-		if (!summaryData) {
-			setAlertModal({
-				open: true,
-				title: 'No Game Data',
-				message: 'No game data found. Redirecting to home.',
-				variant: AlertVariant.ERROR,
-			});
-			setTimeout(() => navigate('/'), 2000);
+		if (grade.stars === 0) {
+			setVisibleStars(0);
 			return;
 		}
 
-		// Play completion sound
-		audioService.play(AudioKey.SUCCESS);
+		setVisibleStars(0);
+		const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-		// Save game history
-		saveHistory(
-			{
-				userId: currentUser?.id || '',
-				score: summaryData.score,
-				totalQuestions: summaryData.totalQuestions,
-				correctAnswers: summaryData.correctAnswers,
-				topic: summaryData.topic,
-				difficulty: summaryData.difficulty,
-				gameMode: GameMode.QUESTION_LIMITED,
-				timeSpent: summaryData.timeSpent ?? 0,
-				creditsUsed: summaryData.totalQuestions,
-				questionsData: summaryData.questionsData ?? [],
+		for (let i = 0; i < grade.stars; i++) {
+			const delay = 300 + i * 200;
+			const timeout = setTimeout(() => {
+				setVisibleStars(i + 1);
+				audioService.play(AudioKey.SUCCESS);
+			}, delay);
+			timeouts.push(timeout);
+		}
+
+		return () => {
+			timeouts.forEach(timeout => clearTimeout(timeout));
+		};
+	}, [grade.stars]);
+
+	// Save game history on mount
+	useEffect(() => {
+		if (!gameState) {
+			logger.gameInfo('No game state found, redirecting to home');
+			navigate('/');
+			return;
+		}
+
+		// Only save if user is authenticated
+		if (!currentUser?.id) {
+			logger.gameInfo('User not authenticated, skipping game history save');
+			return;
+		}
+
+		// Save to history
+		const gameData: GameData = {
+			userId: currentUser.id,
+			score: gameState.score,
+			gameQuestionCount: gameState.gameQuestionCount,
+			correctAnswers: gameState.correctAnswers,
+			topic: gameState.topic || 'General',
+			difficulty: (gameState.difficulty as GameDifficulty) || DifficultyLevel.MEDIUM,
+			gameMode: currentGameMode || GameMode.QUESTION_LIMITED,
+			timeSpent: gameState.timeSpent,
+			creditsUsed: 0,
+			questionsData: gameState.questionsData,
+		};
+
+		saveHistoryMutation.mutate(gameData, {
+			onSuccess: () => {
+				logger.gameInfo('Game saved to history', {
+					score: gameState.score,
+					correctAnswers: gameState.correctAnswers,
+				});
 			},
-			{
-				onSuccess: () => {
-					logger.gameInfo('Game history saved', { score: summaryData.score });
+			onError: error => {
+				logger.gameError('Failed to save game to history', { error: String(error) });
+			},
+		});
+	}, [gameState, currentGameMode, currentUser, navigate, saveHistoryMutation]);
 
-					// Automatically update user ranking after game
-					updateRanking(undefined, {
-						onSuccess: () => {
-							logger.gameInfo('User ranking updated automatically');
-						},
-						onError: error => {
-							logger.gameError('Failed to update ranking', { error: getErrorMessage(error) });
-						},
-					});
-				},
-				onError: error => {
-					logger.gameError('Failed to save game history', { error: getErrorMessage(error) });
-				},
-			}
-		);
-	}, []);
-
-	if (!summaryData) {
-		return null;
-	}
-
-	const { score, totalQuestions, correctAnswers, topic, difficulty } = summaryData;
-	const accuracy = Math.round((correctAnswers / totalQuestions) * 100);
-	const isPerfect = correctAnswers === totalQuestions;
-	const isGood = accuracy >= 70;
-
-	const handlePlayAgain = () => {
+	const handleGoHome = () => {
 		audioService.play(AudioKey.BUTTON_CLICK);
 		navigate('/');
 	};
 
-	const handleViewHistory = () => {
-		audioService.play(AudioKey.BUTTON_CLICK);
-		navigate('/history');
-	};
-
-	const handleShare = () => {
-		audioService.play(AudioKey.BUTTON_CLICK);
-		const text = `I just scored ${score} score on EveryTriv! ${correctAnswers}/${totalQuestions} correct answers (${accuracy}% accuracy)`;
-
-		if (navigator.share) {
-			navigator
-				.share({
-					title: 'EveryTriv Score',
-					text,
-				})
-				.catch(() => {
-					// Fallback: copy to clipboard
-					navigator.clipboard.writeText(text);
-					setAlertModal({
-						open: true,
-						title: 'Copied!',
-						message: 'Score copied to clipboard!',
-						variant: AlertVariant.SUCCESS,
-					});
-				});
-		} else {
-			navigator.clipboard.writeText(text);
-			setAlertModal({
-				open: true,
-				title: 'Copied!',
-				message: 'Score copied to clipboard!',
-				variant: AlertVariant.SUCCESS,
-			});
-		}
-	};
-
-	const headerIcon = isPerfect ? 'trophy' : isGood ? 'partypopper' : 'dumbbell';
-	const headerIconClass = isPerfect ? 'text-yellow-400' : isGood ? 'text-purple-400' : 'text-emerald-400';
+	// Redirect if no game state
+	if (!gameState) {
+		return null;
+	}
 
 	return (
-		<main role='main' aria-label='Game Summary'>
-			<Container size={ContainerSize.XL} className='min-h-screen py-8'>
-				{/* Header */}
-				<motion.header variants={scaleIn} initial='hidden' animate='visible' className='text-center mb-12'>
-					<div className='mb-4 flex justify-center'>
-						<Icon name={headerIcon} size={ComponentSize.XXL} className={headerIconClass} />
+		<motion.main
+			role='main'
+			aria-label='Game Summary'
+			initial={{ opacity: 0, scale: 0.95 }}
+			animate={{ opacity: 1, scale: 1 }}
+			className='min-h-screen py-12 px-4'
+		>
+			<div className='max-w-2xl mx-auto'>
+				<Card className='p-8 text-center space-y-8'>
+					{/* Header */}
+					<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring' }}>
+						<Trophy className='w-24 h-24 text-primary mx-auto mb-4' />
+						<h1 className='text-4xl font-bold mb-2'>Game Complete!</h1>
+						<p className='text-muted-foreground'>
+							{gameStats.topic} - {gameStats.difficulty}
+						</p>
+					</motion.div>
+
+					{/* Grade - Stars */}
+					<motion.div
+						initial={{ opacity: 0, scale: 0.5 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ delay: 0.3 }}
+					>
+						<div className='flex justify-center items-center gap-4 mb-4'>
+							{[0, 1, 2].map(index => (
+								<motion.div
+									key={index}
+									initial={{ opacity: 0, scale: 0, rotate: -180 }}
+									animate={
+										index < visibleStars ? { opacity: 1, scale: 1, rotate: 0 } : { opacity: 0.3, scale: 0.5, rotate: 0 }
+									}
+									transition={{
+										type: 'spring',
+										stiffness: 200,
+										damping: 15,
+									}}
+								>
+									<Star
+										className={`w-16 h-16 fill-current ${index < visibleStars ? 'text-yellow-500' : 'text-gray-400'}`}
+									/>
+								</motion.div>
+							))}
+						</div>
+						<div className='text-2xl text-muted-foreground mt-2'>{gameStats.percentage}% Correct</div>
+					</motion.div>
+
+					{/* Stats Grid */}
+					<div className='grid grid-cols-3 gap-6'>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.4 }}
+							className='space-y-2'
+						>
+							<Trophy className='w-8 h-8 text-primary mx-auto' />
+							<div className='text-3xl font-bold text-primary'>{gameStats.score}</div>
+							<div className='text-sm text-muted-foreground'>Total Score</div>
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.5 }}
+							className='space-y-2'
+						>
+							<Target className='w-8 h-8 text-primary mx-auto' />
+							<div className='text-3xl font-bold text-primary'>
+								{gameStats.correct}/{gameStats.total}
+							</div>
+							<div className='text-sm text-muted-foreground'>Correct Answers</div>
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.6 }}
+							className='space-y-2'
+						>
+							<Clock className='w-8 h-8 text-primary mx-auto' />
+							<div className='text-3xl font-bold text-primary'>{gameStats.time}</div>
+							<div className='text-sm text-muted-foreground'>Time Taken</div>
+						</motion.div>
 					</div>
 
-					<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>
-						{isPerfect ? 'Perfect Score!' : isGood ? 'Great Job!' : 'Good Try!'}
-					</h1>
-					<p className='text-xl text-slate-300'>
-						{isPerfect ? "You're a trivia master!" : isGood ? 'Keep up the excellent work!' : 'Practice makes perfect!'}
-					</p>
-				</motion.header>
-
-				{/* Score Display */}
-				<motion.section
-					variants={scaleIn}
-					initial='hidden'
-					animate='visible'
-					transition={{ delay: 0.2 }}
-					className='mb-12'
-					aria-label='Score Display'
-				>
-					<Card variant={CardVariant.GLASS} padding={Spacing.XL} className='rounded-lg text-center'>
-						<div className='text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-4'>
-							{score}
-						</div>
-						<p className='text-2xl text-slate-300'>Total Score</p>
-					</Card>
-				</motion.section>
-
-				{/* Stats Grid */}
-				<motion.section
-					variants={fadeInUp}
-					initial='hidden'
-					animate='visible'
-					transition={{ delay: 0.4 }}
-					aria-label='Game Statistics'
-				>
-					<GridLayout variant='balanced' gap={Spacing.MD} className='mb-8'>
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg text-center'>
-							<div className='text-4xl font-bold text-green-400 mb-2'>{correctAnswers}</div>
-							<p className='text-slate-300'>Correct</p>
-						</Card>
-
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg text-center'>
-							<div className='text-4xl font-bold text-red-400 mb-2'>{totalQuestions - correctAnswers}</div>
-							<p className='text-slate-300'>Incorrect</p>
-						</Card>
-
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg text-center'>
-							<div className='text-4xl font-bold text-blue-400 mb-2'>{accuracy}%</div>
-							<p className='text-slate-300'>Accuracy</p>
-						</Card>
-					</GridLayout>
-				</motion.section>
-
-				{/* Game Info */}
-				<motion.section
-					variants={fadeInUp}
-					initial='hidden'
-					animate='visible'
-					transition={{ delay: 0.6 }}
-					aria-label='Game Info'
-				>
-					<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg mb-8'>
-						<GridLayout variant='balanced' gap={Spacing.MD} className='text-center'>
-							<div>
-								<p className='text-slate-400 text-sm mb-1'>Topic</p>
-								<p className='text-white font-medium'>{topic || 'General'}</p>
+					{/* Questions Breakdown */}
+					{gameStats.questionsData.length > 0 && (
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.7 }}
+							className='text-left'
+						>
+							<h3 className='text-lg font-semibold mb-4'>Question Breakdown</h3>
+							<div className='space-y-3 max-h-64 overflow-y-auto'>
+								{gameStats.questionsData.map((q, index) => (
+									<div
+										key={index}
+										className={`p-3 rounded-lg border ${
+											q.isCorrect ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'
+										}`}
+									>
+										<div className='flex items-start gap-2'>
+											{q.isCorrect ? (
+												<CheckCircle2 className='w-5 h-5 text-green-500 flex-shrink-0 mt-0.5' />
+											) : (
+												<XCircle className='w-5 h-5 text-red-500 flex-shrink-0 mt-0.5' />
+											)}
+											<div className='flex-1 min-w-0'>
+												<p className='text-sm font-medium truncate'>{q.question}</p>
+												{!q.isCorrect && (
+													<p className='text-xs text-muted-foreground mt-1'>Correct: {q.correctAnswer}</p>
+												)}
+											</div>
+											<span className='text-xs text-muted-foreground'>{q.timeSpent}s</span>
+										</div>
+									</div>
+								))}
 							</div>
-							<div>
-								<p className='text-slate-400 text-sm mb-1'>Difficulty</p>
-								<p className='text-white font-medium capitalize'>{difficulty || 'Medium'}</p>
-							</div>
-						</GridLayout>
-					</Card>
-				</motion.section>
-
-				{/* Action Buttons */}
-				<motion.div
-					variants={fadeInUp}
-					initial='hidden'
-					animate='visible'
-					transition={{ delay: 0.8 }}
-					className='space-y-4'
-				>
-					<Button
-						onClick={handlePlayAgain}
-						variant={ButtonVariant.PRIMARY}
-						className='w-full py-4 text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-					>
-						<Icon name='Play' className='w-5 h-5 mr-2' />
-						Play Again
-					</Button>
-
-					<GridLayout variant='balanced' gap={Spacing.MD} className=''>
-						<Button onClick={handleViewHistory} variant={ButtonVariant.SECONDARY} className='w-full py-3'>
-							<Icon name='History' className='w-5 h-5 mr-2' />
-							View History
-						</Button>
-
-						<Button onClick={handleShare} variant={ButtonVariant.SECONDARY} className='w-full py-3'>
-							<Icon name='Share' className='w-5 h-5 mr-2' />
-							Share Score
-						</Button>
-					</GridLayout>
-				</motion.div>
-
-				{/* Encouragement Message */}
-				<motion.footer
-					variants={fadeInUp}
-					initial='hidden'
-					animate='visible'
-					transition={{ delay: 1 }}
-					className='mt-8 text-center text-slate-400'
-				>
-					{isPerfect ? (
-						<p className='flex items-center justify-center gap-2'>
-							<Icon name='star' size={ComponentSize.MD} className='text-yellow-400' />
-							<span>Outstanding performance! You answered all questions correctly!</span>
-						</p>
-					) : accuracy >= 80 ? (
-						<p>You're doing amazing! Just a few more to master!</p>
-					) : accuracy >= 60 ? (
-						<p>Good progress! Keep practicing to improve your score!</p>
-					) : (
-						<p>Every game is a learning opportunity. Try again!</p>
+						</motion.div>
 					)}
-				</motion.footer>
-			</Container>
 
-			{/* Alert Modal */}
-			<AlertModal
-				open={alertModal.open}
-				onClose={() => setAlertModal((prev: typeof alertModal) => ({ ...prev, open: false }))}
-				title={alertModal.title}
-				message={alertModal.message}
-				variant={alertModal.variant}
-			/>
-		</main>
+					{/* Social Share */}
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.75 }}
+						className='flex justify-center'
+					>
+						<SocialShare
+							score={gameStats.correct}
+							total={gameStats.total}
+							topic={gameStats.topic}
+							difficulty={gameStats.difficulty}
+						/>
+					</motion.div>
+
+					{/* Action Buttons */}
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.8 }}
+						className='flex gap-4 justify-center'
+					>
+						<Button size={ButtonSize.LG} onClick={handleGoHome}>
+							Back to Home
+						</Button>
+					</motion.div>
+				</Card>
+			</div>
+		</motion.main>
 	);
 }

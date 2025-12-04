@@ -95,7 +95,7 @@ export interface CreditTransaction extends BaseCreditsEntity {
 	metadata: {
 		difficulty?: string;
 		topic?: string;
-		requestedQuestions?: number;
+		questionsPerRequest?: number;
 		requiredCredits?: number;
 		packageId?: string;
 		pricePerCredit?: number;

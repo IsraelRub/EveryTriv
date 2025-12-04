@@ -1,431 +1,359 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-
-import { DifficultyLevel, VALID_GAME_MODES } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
-import type { GameHistoryEntry } from '@shared/types';
-import { calculatePercentage, unique } from '@shared/utils';
+import { AlertTriangle, Calendar, Clock, Loader2, Medal, Trash2 } from 'lucide-react';
 
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	Badge,
 	Button,
 	Card,
-	ConfirmModal,
-	Container,
-	createStaggerContainer,
-	CustomDifficultyHistory,
-	fadeInDown,
-	fadeInLeft,
-	fadeInUp,
-	GridLayout,
-} from '../../components';
-import {
-	AlertVariant,
-	AudioKey,
-	ButtonVariant,
-	CardVariant,
-	CLIENT_STORAGE_KEYS,
-	ComponentSize,
-	ContainerSize,
-	Spacing,
-} from '../../constants';
-import { useClearGameHistory, useDeleteGameHistory, useGameHistory } from '../../hooks';
-import { audioService, storageService } from '../../services';
-import { formatScore, isToday, isYesterday } from '../../utils';
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	Skeleton,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components';
+import { ButtonSize } from '@/constants';
+import { useClearGameHistory, useDeleteGameHistory, useGameHistory, useToast } from '@/hooks';
 
-export default function GameHistory() {
-	// Authentication is handled by ProtectedRoute HOC
-	// const { isAuthenticated } = useSelector((state: RootState) => state.user);
+function getDifficultyColor(difficulty: string): string {
+	switch (difficulty?.toLowerCase()) {
+		case 'easy':
+			return 'bg-green-500/10 text-green-500 border-green-500/30';
+		case 'medium':
+			return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30';
+		case 'hard':
+			return 'bg-red-500/10 text-red-500 border-red-500/30';
+		default:
+			return 'bg-muted text-muted-foreground';
+	}
+}
 
-	const [page] = useState(0);
-	const [dateFilter, setDateFilter] = useState('');
-	const [topicFilter, setTopicFilter] = useState('');
-	const [difficultyFilter, setDifficultyFilter] = useState('');
-	const [confirmModal, setConfirmModal] = useState<{
-		open: boolean;
-		title: string;
-		message: string;
-		onConfirm: () => void;
-	}>({
-		open: false,
-		title: '',
-		message: '',
-		onConfirm: () => {},
+function formatDate(date: Date | string): string {
+	const dateObj = typeof date === 'string' ? new Date(date) : date;
+	return dateObj.toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
 	});
-	const [topics, setTopics] = useState<string[]>([]);
-	const [totalGames, setTotalGames] = useState(0);
-	const [totalScore, setTotalScore] = useState(0);
-	const [averageScore, setAverageScore] = useState(0);
-	const [averageAccuracy, setAverageAccuracy] = useState(0);
+}
 
-	// Use custom hook for game history
-	const { data: gameHistory = [], isLoading: loading, error, refetch } = useGameHistory(20, page * 20);
+function formatDuration(seconds: number): string {
+	if (!seconds) return '-';
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
 
-	// Game history management hooks
-	const deleteGameHistory = useDeleteGameHistory();
-	const clearGameHistory = useClearGameHistory();
+export function GameHistory() {
+	const navigate = useNavigate();
+	const { toast } = useToast();
 
-	// Refetch when page changes
-	useEffect(() => {
-		// Always refetch since authentication is handled by ProtectedRoute
-		refetch();
-	}, [page, refetch]);
+	const [showClearDialog, setShowClearDialog] = useState(false);
+	const [deleteId, setDeleteId] = useState<string | null>(null);
 
-	// Memoize game statistics to avoid recalculation on every render
-	const gameStatistics = useMemo(() => {
-		if (!gameHistory || gameHistory.length === 0) {
-			return {
-				topics: [],
-				totalGames: 0,
-				totalScore: 0,
-				averageScore: 0,
-				averageAccuracy: 0,
-			};
-		}
+	const { data: historyData, isLoading, error } = useGameHistory(50, 0);
+	const deleteHistory = useDeleteGameHistory();
+	const clearHistory = useClearGameHistory();
 
-		// Calculate unique topics
-		const uniqueTopics = unique(gameHistory.map((game: GameHistoryEntry) => game.topic));
+	const records = Array.isArray(historyData) ? historyData : [];
 
-		// Calculate statistics
-		const games = Array.isArray(gameHistory) ? gameHistory : [];
-		const sumScore = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.score ?? 0), 0);
-		const avgScore = games.length > 0 ? Math.round(sumScore / games.length) : 0;
-
-		const totalCorrect = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.correctAnswers ?? 0), 0);
-		const totalQuestions = games.reduce((sum: number, game: GameHistoryEntry) => sum + (game.totalQuestions ?? 0), 0);
-		const avgAccuracy = calculatePercentage(totalCorrect, totalQuestions);
-
-		return {
-			topics: uniqueTopics,
-			totalGames: games.length,
-			totalScore: sumScore,
-			averageScore: avgScore,
-			averageAccuracy: avgAccuracy,
-		};
-	}, [gameHistory]);
-
-	// Update state when statistics change
-	useEffect(() => {
-		setTopics(gameStatistics.topics);
-		setTotalGames(gameStatistics.totalGames);
-		setTotalScore(gameStatistics.totalScore);
-		setAverageScore(gameStatistics.averageScore);
-		setAverageAccuracy(gameStatistics.averageAccuracy);
-
-		// Log and save statistics when they change
-		if (gameStatistics.totalGames > 0) {
-			logger.gameStatistics('Game history statistics calculated', {
-				totalGames: gameStatistics.totalGames,
-				totalScore: gameStatistics.totalScore,
-				averageScore: gameStatistics.averageScore,
-				averageAccuracy: gameStatistics.averageAccuracy,
-				gameModes: VALID_GAME_MODES,
-				timestamp: new Date().toISOString(),
+	const handleDelete = async (gameId: string) => {
+		try {
+			await deleteHistory.mutateAsync(gameId);
+			toast({
+				title: 'Game Deleted',
+				description: 'The game record has been removed from your history.',
 			});
-
-			// Save statistics to storage
-			storageService.set(CLIENT_STORAGE_KEYS.GAME_HISTORY, {
-				totalGames: gameStatistics.totalGames,
-				totalScore: gameStatistics.totalScore,
-				averageScore: gameStatistics.averageScore,
-				averageAccuracy: gameStatistics.averageAccuracy,
-				lastModified: new Date().toISOString(),
+		} catch {
+			toast({
+				title: 'Error',
+				description: 'Failed to delete game record.',
+				variant: 'destructive',
 			});
+		} finally {
+			setDeleteId(null);
 		}
-	}, [gameStatistics]);
+	};
+
+	const handleClearAll = async () => {
+		try {
+			const result = await clearHistory.mutateAsync();
+			toast({
+				title: 'History Cleared',
+				description: `${result.deletedCount} game records have been removed.`,
+			});
+		} catch {
+			toast({
+				title: 'Error',
+				description: 'Failed to clear game history.',
+				variant: 'destructive',
+			});
+		} finally {
+			setShowClearDialog(false);
+		}
+	};
+
+	// Loading state
+	if (isLoading) {
+		return (
+			<motion.main
+				role='main'
+				aria-label='Game History Loading'
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-4xl mx-auto space-y-8'>
+					<div className='text-center'>
+						<Skeleton className='h-10 w-48 mx-auto mb-2' />
+						<Skeleton className='h-5 w-64 mx-auto' />
+					</div>
+					<Card className='p-6'>
+						<div className='space-y-4'>
+							{[...Array(5)].map((_, i) => (
+								<Skeleton key={i} className='h-12 w-full' />
+							))}
+						</div>
+					</Card>
+				</div>
+			</motion.main>
+		);
+	}
+
+	// Error state
+	if (error) {
+		return (
+			<motion.main
+				role='main'
+				aria-label='Game History Error'
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-4xl mx-auto text-center'>
+					<AlertTriangle className='h-16 w-16 text-destructive mx-auto mb-4' />
+					<h1 className='text-2xl font-bold mb-2'>Failed to Load History</h1>
+					<p className='text-muted-foreground mb-6'>Unable to fetch your game history. Please try again later.</p>
+					<Button onClick={() => navigate('/')}>Return Home</Button>
+				</div>
+			</motion.main>
+		);
+	}
+
+	// Empty state
+	if (records.length === 0) {
+		return (
+			<motion.main
+				role='main'
+				aria-label='Game History Empty'
+				initial={{ opacity: 0, y: 20 }}
+				animate={{ opacity: 1, y: 0 }}
+				className='min-h-screen py-12 px-4'
+			>
+				<div className='max-w-4xl mx-auto text-center'>
+					<Medal className='h-16 w-16 text-muted-foreground mx-auto mb-4' />
+					<h1 className='text-3xl font-bold mb-2'>No Games Yet</h1>
+					<p className='text-muted-foreground mb-6'>
+						Start playing trivia games to build your history and track your progress!
+					</p>
+					<Button size={ButtonSize.LG} onClick={() => navigate('/')}>
+						Play Now
+					</Button>
+				</div>
+			</motion.main>
+		);
+	}
+
+	// Calculate stats
+	const totalGames = records.length;
+	const totalScore = records.reduce((sum, r) => sum + (r.score || 0), 0);
+	const avgScore = totalGames > 0 ? Math.round(totalScore / totalGames) : 0;
+	const bestScore = Math.max(...records.map(r => r.score || 0));
 
 	return (
-		<main role='main' aria-label='Game History'>
-			<Container size={ContainerSize.XL} className='min-h-screen flex flex-col items-center justify-start p-4 pt-12'>
-				<Card variant={CardVariant.TRANSPARENT} padding={Spacing.XL} className='w-full space-y-8'>
-					{/* Header */}
-					<motion.header
-						variants={fadeInDown}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.2 }}
-						className='text-center mb-12'
-					>
-						<h1 className='text-5xl font-bold text-white mb-4 gradient-text'>Game History</h1>
-						<p className='text-xl text-slate-300'>Review your past trivia sessions</p>
-
-						{/* Management Buttons */}
-						{gameHistory.length > 0 && (
-							<div className='flex justify-center gap-4 mt-6'>
-								<Button
-									variant={ButtonVariant.SECONDARY}
-									onClick={() => {
-										audioService.play(AudioKey.BUTTON_CLICK);
-										setConfirmModal({
-											open: true,
-											title: 'Clear All History',
-											message: 'Are you sure you want to clear all game history? This action cannot be undone.',
-											onConfirm: () => {
-												clearGameHistory.mutate();
-												setConfirmModal(prev => ({ ...prev, open: false }));
-											},
-										});
-									}}
-									disabled={clearGameHistory.isPending}
-									className='bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
-								>
-									{clearGameHistory.isPending ? 'Clearing...' : 'Clear All History'}
-								</Button>
-							</div>
-						)}
-					</motion.header>
-
-					{/* Filters */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.4 }}
-						whileHover={{ scale: 1.02 }}
-						aria-label='Game History Filters'
-					>
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg'>
-							<GridLayout variant='balanced' gap={Spacing.MD}>
-								<div>
-									<label className='block text-white font-medium mb-2'>Date Range</label>
-									<select
-										value={dateFilter}
-										onChange={e => {
-											audioService.play(AudioKey.BUTTON_CLICK);
-											setDateFilter(e.target.value);
-										}}
-										className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
-									>
-										<option value='all'>All Time</option>
-										<option value='today'>Today</option>
-										<option value='week'>This Week</option>
-										<option value='month'>This Month</option>
-									</select>
-								</div>
-								<div>
-									<label className='block text-white font-medium mb-2'>Topic</label>
-									<select
-										value={topicFilter}
-										onChange={e => {
-											audioService.play(AudioKey.BUTTON_CLICK);
-											setTopicFilter(e.target.value);
-										}}
-										className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
-									>
-										<option value='all'>All Topics</option>
-										{topics.map(topic => (
-											<option key={topic} value={topic}>
-												{topic}
-											</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label className='block text-white font-medium mb-2'>Difficulty</label>
-									<select
-										value={difficultyFilter}
-										onChange={e => {
-											audioService.play(AudioKey.BUTTON_CLICK);
-											setDifficultyFilter(e.target.value);
-										}}
-										className='w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
-									>
-										<option value='all'>All Difficulties</option>
-										<option value={DifficultyLevel.EASY}>Easy</option>
-										<option value={DifficultyLevel.MEDIUM}>Medium</option>
-										<option value={DifficultyLevel.HARD}>Hard</option>
-										<option value={DifficultyLevel.CUSTOM}>Custom</option>
-									</select>
-								</div>
-							</GridLayout>
-						</Card>
-					</motion.section>
-
-					{/* Game History List */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 0.6 }}
-						whileHover={{ scale: 1.02 }}
-						aria-label='Game History List'
-					>
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg'>
-							<h2 className='text-2xl font-bold text-white mb-6'>Game History</h2>
-							{loading ? (
-								<div className='text-center py-8'>
-									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto'></div>
-									<p className='text-slate-300 mt-2'>Loading game history...</p>
-								</div>
-							) : error ? (
-								<div className='text-center py-8'>
-									<p className='text-red-400'>{error?.message || 'An error occurred'}</p>
-								</div>
-							) : gameHistory.length === 0 ? (
-								<div className='text-center py-8'>
-									<p className='text-slate-300 text-lg'>No games played yet</p>
-									<p className='text-slate-400'>Start playing trivia to see your history here!</p>
-								</div>
-							) : (
-								<motion.div
-									variants={createStaggerContainer(0.1)}
-									initial='hidden'
-									animate='visible'
-									className='space-y-4'
-									role='list'
-								>
-									{gameHistory.map((game: GameHistoryEntry, index: number) => (
-										<motion.article
-											key={game.id}
-											variants={fadeInLeft}
-											custom={index * 0.05}
-											whileHover={{ scale: 1.02 }}
-											className='glass rounded-lg p-6 hover:bg-white/5 transition-all duration-200'
-											aria-label={`Game ${game.id} - ${game.topic}`}
-										>
-											<GridLayout variant='auto-fit' gap={Spacing.MD} align='center'>
-												<div className='col-span-2'>
-													<h3 className='text-lg font-semibold text-white mb-2'>{game.topic}</h3>
-													<p className='text-slate-300 text-sm'>
-														{isToday(new Date(game.createdAt))
-															? 'Today'
-															: isYesterday(new Date(game.createdAt))
-																? 'Yesterday'
-																: new Date(game.createdAt).toLocaleDateString()}{' '}
-														at {new Date(game.createdAt).toLocaleTimeString()}
-													</p>
-												</div>
-												<div className='text-center'>
-													<div className='text-2xl font-bold text-green-400'>{formatScore(game.score)}</div>
-													<div className='text-slate-300 text-sm'>Score</div>
-												</div>
-												<div className='text-center'>
-													<div className='text-2xl font-bold text-blue-400'>{game.totalQuestions}</div>
-													<div className='text-slate-300 text-sm'>Questions</div>
-												</div>
-												<div className='text-center'>
-													<div className='text-2xl font-bold text-yellow-400'>
-														{calculatePercentage(game.correctAnswers, game.totalQuestions)}%
-													</div>
-													<div className='text-slate-300 text-sm'>Accuracy</div>
-												</div>
-												<div className='text-center'>
-													<span
-														className={`px-3 py-1 rounded-full text-sm font-medium ${
-															game.difficulty === DifficultyLevel.EASY
-																? 'bg-green-500/20 text-green-300 border border-green-400/30'
-																: game.difficulty === DifficultyLevel.MEDIUM
-																	? 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/30'
-																	: game.difficulty === DifficultyLevel.HARD
-																		? 'bg-red-500/20 text-red-300 border border-red-400/30'
-																		: 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-														}`}
-													>
-														{game.difficulty}
-													</span>
-												</div>
-												<div className='text-center'>
-													<Button
-														variant={ButtonVariant.SECONDARY}
-														size={ComponentSize.SM}
-														onClick={() => {
-															audioService.play(AudioKey.BUTTON_CLICK);
-															setConfirmModal({
-																open: true,
-																title: 'Delete Game',
-																message: 'Are you sure you want to delete this game? This action cannot be undone.',
-																onConfirm: () => {
-																	deleteGameHistory.mutate(game.id);
-																	setConfirmModal(prev => ({ ...prev, open: false }));
-																},
-															});
-														}}
-														disabled={deleteGameHistory.isPending}
-														className='bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30'
-													>
-														{deleteGameHistory.isPending ? '...' : 'Delete'}
-													</Button>
-												</div>
-											</GridLayout>
-										</motion.article>
-									))}
-								</motion.div>
-							)}
-						</Card>
-					</motion.section>
-
-					{/* Statistics Summary */}
-					{gameHistory.length > 0 && (
-						<motion.section
-							variants={fadeInUp}
-							initial='hidden'
-							animate='visible'
-							transition={{ delay: 0.8 }}
-							whileHover={{ scale: 1.02 }}
-							aria-label='Game History Summary'
-						>
-							<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg'>
-								<h2 className='text-2xl font-bold text-white mb-6'>Summary</h2>
-								<GridLayout variant='stats' gap={Spacing.LG}>
-									<div className='text-center'>
-										<div className='text-3xl font-bold text-white mb-2'>{totalGames}</div>
-										<div className='text-slate-300'>Total Games</div>
-									</div>
-									<div className='text-center'>
-										<div className='text-3xl font-bold text-green-400 mb-2'>{totalScore}</div>
-										<div className='text-slate-300'>Total Score</div>
-									</div>
-									<div className='text-center'>
-										<div className='text-3xl font-bold text-blue-400 mb-2'>{averageScore}</div>
-										<div className='text-slate-300'>Average Score</div>
-									</div>
-									<div className='text-center'>
-										<div className='text-3xl font-bold text-yellow-400 mb-2'>{averageAccuracy}%</div>
-										<div className='text-slate-300'>Average Accuracy</div>
-									</div>
-								</GridLayout>
-							</Card>
-						</motion.section>
+		<motion.main
+			role='main'
+			aria-label='Game History'
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			className='min-h-screen py-12 px-4'
+		>
+			<div className='max-w-5xl mx-auto space-y-8'>
+				<div className='flex items-center justify-between'>
+					<div>
+						<h1 className='text-3xl font-bold mb-2'>Game History</h1>
+						<p className='text-muted-foreground'>View your past performances and stats</p>
+					</div>
+					{records.length > 0 && (
+						<Button variant='destructive' size={ButtonSize.SM} onClick={() => setShowClearDialog(true)}>
+							<Trash2 className='h-4 w-4 mr-2' />
+							Clear All
+						</Button>
 					)}
+				</div>
 
-					{/* Custom Difficulty History */}
-					<motion.section
-						variants={fadeInUp}
-						initial='hidden'
-						animate='visible'
-						transition={{ delay: 1.0 }}
-						whileHover={{ scale: 1.02 }}
-						aria-label='Custom Difficulty History'
-					>
-						<Card variant={CardVariant.GLASS} padding={Spacing.LG} className='rounded-lg'>
-							<h2 className='text-2xl font-bold text-white mb-6'>Custom Difficulty History</h2>
-							<CustomDifficultyHistory
-								isVisible={true}
-								onSelect={(topic, difficulty) => {
-									audioService.play(AudioKey.BUTTON_CLICK);
-									setTopicFilter(topic);
-									setDifficultyFilter(difficulty);
-								}}
-								onClose={() => {
-									audioService.play(AudioKey.BUTTON_CLICK);
-								}}
-							/>
-						</Card>
-					</motion.section>
+				{/* Stats Summary */}
+				<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardDescription>Total Games</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='text-3xl font-bold'>{totalGames}</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardDescription>Average Score</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='text-3xl font-bold'>{avgScore}</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardDescription>Best Score</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='text-3xl font-bold text-primary'>{bestScore}</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				{/* History Table */}
+				<Card>
+					<CardHeader>
+						<CardTitle className='flex items-center gap-2'>
+							<Clock className='h-5 w-5' />
+							Recent Games
+						</CardTitle>
+						<CardDescription>Your last {totalGames} trivia sessions</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>
+										<div className='flex items-center gap-2'>
+											<Calendar className='h-4 w-4' />
+											Date
+										</div>
+									</TableHead>
+									<TableHead>Topic</TableHead>
+									<TableHead>Difficulty</TableHead>
+									<TableHead>Score</TableHead>
+									<TableHead>Questions</TableHead>
+									<TableHead>Duration</TableHead>
+									<TableHead className='w-10'></TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{records.map(record => (
+									<TableRow key={record.id}>
+										<TableCell className='font-medium'>
+											{record.createdAt ? formatDate(record.createdAt) : '-'}
+										</TableCell>
+										<TableCell>{record.topic || 'General'}</TableCell>
+										<TableCell>
+											<Badge variant='outline' className={getDifficultyColor(record.difficulty || '')}>
+												{record.difficulty || 'Unknown'}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<span className='font-bold text-primary'>{record.score || 0}</span>
+										</TableCell>
+										<TableCell>
+											{record.correctAnswers || 0}/{record.gameQuestionCount || 0}
+										</TableCell>
+										<TableCell>{formatDuration(record.timeSpent || 0)}</TableCell>
+										<TableCell>
+											<Button
+												variant='ghost'
+												size={ButtonSize.ICON}
+												className='h-8 w-8 text-muted-foreground hover:text-destructive'
+												onClick={() => setDeleteId(record.id)}
+												disabled={deleteHistory.isPending}
+											>
+												{deleteHistory.isPending && deleteId === record.id ? (
+													<Loader2 className='h-4 w-4 animate-spin' />
+												) : (
+													<Trash2 className='h-4 w-4' />
+												)}
+											</Button>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</CardContent>
 				</Card>
-			</Container>
+			</div>
 
-			{/* Confirm Modal */}
-			<ConfirmModal
-				open={confirmModal.open}
-				onClose={() => setConfirmModal(prev => ({ ...prev, open: false }))}
-				onConfirm={confirmModal.onConfirm}
-				title={confirmModal.title}
-				message={confirmModal.message}
-				confirmText='Confirm'
-				cancelText='Cancel'
-				variant={AlertVariant.ERROR}
-			/>
-		</main>
+			{/* Delete Single Game Dialog */}
+			<AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Game Record</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete this game record? This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => deleteId && handleDelete(deleteId)}
+							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			{/* Clear All Dialog */}
+			<AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Clear All History</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete all {totalGames} game records. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleClearAll}
+							disabled={clearHistory.isPending}
+							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+						>
+							{clearHistory.isPending ? (
+								<>
+									<Loader2 className='h-4 w-4 mr-2 animate-spin' />
+									Clearing...
+								</>
+							) : (
+								'Clear All'
+							)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</motion.main>
 	);
 }

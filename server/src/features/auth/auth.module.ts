@@ -16,7 +16,7 @@ import { AUTH_CONSTANTS } from '@shared/constants';
 
 import { UserEntity } from '@internal/entities';
 
-import { UserModule } from '../user';
+import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
