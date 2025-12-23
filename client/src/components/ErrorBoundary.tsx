@@ -4,17 +4,16 @@ import { AlertCircle } from 'lucide-react';
 
 import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
 
+import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
+
 import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
-import { ButtonSize } from '@/constants';
+
 import { clientLogger as logger, storageService } from '@/services';
-import type { ErrorBoundaryProps, ErrorBoundaryState } from '@/types';
+
+import type { ErrorBoundaryProps, ExtendedErrorBoundaryState } from '@/types';
 
 const MAX_RETRIES = 2;
 const ERROR_LOG_KEY_PREFIX = 'error-log-';
-
-interface ExtendedErrorBoundaryState extends ErrorBoundaryState {
-	retryCount: number;
-}
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ExtendedErrorBoundaryState> {
 	constructor(props: ErrorBoundaryProps) {
@@ -119,7 +118,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ExtendedErrorBo
 			const retriesRemaining = MAX_RETRIES - this.state.retryCount;
 
 			return (
-				<Alert variant='destructive' className='my-4'>
+				<Alert variant={VariantBase.DESTRUCTIVE} className='my-4'>
 					<AlertCircle className='h-4 w-4' />
 					<AlertTitle>{this.props.featureName ? `${this.props.featureName} Error` : 'Something went wrong'}</AlertTitle>
 					<AlertDescription className='space-y-3'>
@@ -127,15 +126,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ExtendedErrorBo
 
 						<div className='flex gap-2 flex-wrap'>
 							{canRetry ? (
-								<Button variant='outline' size={ButtonSize.SM} onClick={this.handleRetry}>
+								<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} onClick={this.handleRetry}>
 									Retry ({retriesRemaining} remaining)
 								</Button>
 							) : (
-								<Button variant='outline' size={ButtonSize.SM} disabled>
+								<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} disabled>
 									Max Retries Reached
 								</Button>
 							)}
-							<Button variant='outline' size={ButtonSize.SM} onClick={this.handleReload}>
+							<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} onClick={this.handleReload}>
 								Reload Page
 							</Button>
 						</div>

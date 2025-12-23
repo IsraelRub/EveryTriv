@@ -5,7 +5,9 @@
  * @description Type guards for multiplayer game types
  * @used_by server/src/features/game/multiplayer
  */
-import type { MultiplayerRoom, Player, RoomConfig, RoomStatus } from '@shared/types';
+import { RoomStatus } from '@shared/constants';
+import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
+import { isGameDifficulty } from '@shared/validation';
 
 import { isRecord } from '../core';
 
@@ -21,13 +23,17 @@ function isPlayer(value: unknown): value is Player {
 		typeof value.userId === 'string' &&
 		typeof value.email === 'string' &&
 		typeof value.score === 'number' &&
+		Number.isFinite(value.score) &&
 		typeof value.status === 'string' &&
 		value.joinedAt instanceof Date &&
 		typeof value.isHost === 'boolean' &&
 		typeof value.answersSubmitted === 'number' &&
+		Number.isFinite(value.answersSubmitted) &&
 		typeof value.correctAnswers === 'number' &&
-		(value.currentAnswer === undefined || typeof value.currentAnswer === 'number') &&
-		(value.timeSpent === undefined || typeof value.timeSpent === 'number')
+		Number.isFinite(value.correctAnswers) &&
+		(value.currentAnswer === undefined ||
+			(typeof value.currentAnswer === 'number' && Number.isFinite(value.currentAnswer))) &&
+		(value.timeSpent === undefined || (typeof value.timeSpent === 'number' && Number.isFinite(value.timeSpent)))
 	);
 }
 
@@ -42,10 +48,14 @@ function isRoomConfig(value: unknown): value is RoomConfig {
 	return (
 		typeof value.topic === 'string' &&
 		typeof value.difficulty === 'string' &&
+		isGameDifficulty(value.difficulty) &&
 		typeof value.questionsPerRequest === 'number' &&
+		Number.isFinite(value.questionsPerRequest) &&
 		typeof value.maxPlayers === 'number' &&
+		Number.isFinite(value.maxPlayers) &&
 		typeof value.gameMode === 'string' &&
-		typeof value.timePerQuestion === 'number'
+		typeof value.timePerQuestion === 'number' &&
+		Number.isFinite(value.timePerQuestion)
 	);
 }
 
@@ -55,11 +65,10 @@ function isRoomConfig(value: unknown): value is RoomConfig {
 function isRoomStatus(value: unknown): value is RoomStatus {
 	return (
 		typeof value === 'string' &&
-		(value === 'waiting' ||
-			value === 'starting' ||
-			value === 'playing' ||
-			value === 'finished' ||
-			value === 'cancelled')
+		(value === RoomStatus.WAITING ||
+			value === RoomStatus.PLAYING ||
+			value === RoomStatus.FINISHED ||
+			value === RoomStatus.CANCELLED)
 	);
 }
 
@@ -75,7 +84,7 @@ export function isMultiplayerRoom(value: unknown): value is MultiplayerRoom {
 		typeof value.id !== 'string' ||
 		typeof value.roomId !== 'string' ||
 		typeof value.hostId !== 'string' ||
-		typeof value.currentQuestionIndex !== 'number' ||
+		!(typeof value.currentQuestionIndex === 'number' && Number.isFinite(value.currentQuestionIndex)) ||
 		!(value.createdAt instanceof Date) ||
 		!(value.updatedAt instanceof Date)
 	) {

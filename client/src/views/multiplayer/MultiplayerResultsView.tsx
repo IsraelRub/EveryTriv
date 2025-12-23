@@ -4,9 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Award, Crown, Home, Medal, RotateCcw, Share2, Trophy } from 'lucide-react';
 
+import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
+
 import { Avatar, AvatarFallback, Button, Card, CardContent, CardHeader, CardTitle } from '@/components';
-import { ButtonSize } from '@/constants';
+
 import { useAppSelector, useMultiplayer, useToast } from '@/hooks';
+
 import type { RootState } from '@/types';
 
 const podiumColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-700'];
@@ -31,16 +34,16 @@ export function MultiplayerResultsView() {
 	}, []);
 
 	const handlePlayAgain = () => {
-		navigate('/multiplayer');
+		navigate(ROUTES.MULTIPLAYER);
 	};
 
 	const handleGoHome = () => {
 		disconnect();
-		navigate('/');
+		navigate(ROUTES.HOME);
 	};
 
 	const handleShare = async () => {
-		const shareText = `I just played EveryTriv multiplayer! ${isWinner ? '🏆 I won!' : `Final score: ${results.find(r => r.userId === currentUser?.id)?.score || 0}`}`;
+		const shareText = `I just played EveryTriv multiplayer! ${isWinner ? '🏆 I won!' : `Final score: ${results.find(r => r.userId === currentUser?.id)?.score ?? 0}`}`;
 
 		try {
 			if (navigator.share) {
@@ -75,8 +78,6 @@ export function MultiplayerResultsView() {
 
 	return (
 		<motion.main
-			role='main'
-			aria-label='Multiplayer Results'
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			className='min-h-screen py-12 px-4'
@@ -166,7 +167,7 @@ export function MultiplayerResultsView() {
 									transition={{ delay: 0.5 + index * 0.1 }}
 									className={`
 										flex items-center gap-4 p-4 rounded-lg
-										${isCurrentUser ? 'bg-primary/10 ring-1 ring-primary' : 'bg-muted/50'}
+										${isCurrentUser ? 'bg-primary/30 ring-2 ring-primary/60' : 'bg-muted/50'}
 									`}
 								>
 									<span className={`text-3xl font-bold w-12 ${getRankColor(index + 1)}`}>#{index + 1}</span>
@@ -178,7 +179,7 @@ export function MultiplayerResultsView() {
 											{player.displayName || 'Player'}
 											{isCurrentUser && <span className='text-xs text-muted-foreground'>(You)</span>}
 										</div>
-										<div className='text-sm text-muted-foreground'>{player.correctAnswers || 0} correct answers</div>
+										<div className='text-sm text-muted-foreground'>{player.correctAnswers ?? 0} correct answers</div>
 									</div>
 									<div className='text-right'>
 										<div className='text-2xl font-bold text-primary'>{player.score}</div>
@@ -199,11 +200,11 @@ export function MultiplayerResultsView() {
 						<CardContent>
 							<div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-center'>
 								<div>
-									<div className='text-2xl font-bold'>{room.players?.length || 0}</div>
+									<div className='text-2xl font-bold'>{room.players?.length ?? 0}</div>
 									<div className='text-sm text-muted-foreground'>Players</div>
 								</div>
 								<div>
-									<div className='text-2xl font-bold'>{room.questions?.length || 0}</div>
+									<div className='text-2xl font-bold'>{room.questions?.length ?? 0}</div>
 									<div className='text-sm text-muted-foreground'>Questions</div>
 								</div>
 								<div>
@@ -225,11 +226,11 @@ export function MultiplayerResultsView() {
 						<RotateCcw className='h-4 w-4 mr-2' />
 						Play Again
 					</Button>
-					<Button variant='outline' size={ButtonSize.LG} onClick={handleShare}>
+					<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleShare}>
 						<Share2 className='h-4 w-4 mr-2' />
 						Share Result
 					</Button>
-					<Button variant='outline' size={ButtonSize.LG} onClick={handleGoHome}>
+					<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleGoHome}>
 						<Home className='h-4 w-4 mr-2' />
 						Home
 					</Button>

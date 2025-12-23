@@ -7,9 +7,11 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { serverLogger as logger } from '@shared/services';
-import type { ValidationOptions } from '@shared/types';
+import { ERROR_CODES } from '@shared/constants';
+import type { CustomDifficultyRequest, ValidationOptions } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { ValidationService } from '../validation';
 
@@ -17,7 +19,7 @@ import { ValidationService } from '../validation';
 export class CustomDifficultyPipe implements PipeTransform {
 	constructor(private readonly validationService: ValidationService) {}
 
-	async transform(value: { customText: string }): Promise<{ customText: string }> {
+	async transform(value: CustomDifficultyRequest): Promise<CustomDifficultyRequest> {
 		const startTime = Date.now();
 
 		try {
@@ -36,7 +38,9 @@ export class CustomDifficultyPipe implements PipeTransform {
 			});
 
 			if (!validationResult.isValid) {
-				throw new BadRequestException(validationResult.errors.join(', ') || 'Custom difficulty validation failed');
+				throw new BadRequestException(
+					validationResult.errors.join(', ') || ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED
+				);
 			}
 
 			return value;
@@ -47,7 +51,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				throw error;
 			}
 
-			throw new BadRequestException('Custom difficulty validation failed');
+			throw new BadRequestException(ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED);
 		}
 	}
 }

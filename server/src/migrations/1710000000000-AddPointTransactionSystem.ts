@@ -1,5 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+import { ERROR_CODES } from '@shared/constants';
+
 export class AddCreditTransactionSystem1710000000000 implements MigrationInterface {
 	name = 'AddCreditTransactionSystem1710000000000';
 
@@ -82,6 +84,6 @@ export class AddCreditTransactionSystem1710000000000 implements MigrationInterfa
 	}
 
 	public async down(): Promise<void> {
-		throw new Error('Migration rollback is not supported');
+		throw new Error(ERROR_CODES.ROLLBACK_NOT_SUPPORTED);
 	}
 }

@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertCircle, Copy, Crown, FileQuestion, Gamepad2, Hash, Loader2, Plus, Settings, Users } from 'lucide-react';
 
-import { DifficultyLevel, GAME_STATE_DEFAULTS, GameMode, MULTIPLAYER_CONSTANTS } from '@shared/constants';
+import { DifficultyLevel, GAME_STATE_CONFIG, GameMode, MULTIPLAYER_CONFIG, PlayerStatus } from '@shared/constants';
 import type { CreateRoomConfig } from '@shared/types';
+
+import { ButtonSize, ButtonVariant, ROUTES, ToastVariant, VariantBase } from '@/constants';
 
 import {
 	Alert,
@@ -27,7 +29,7 @@ import {
 	TabsList,
 	TabsTrigger,
 } from '@/components';
-import { ButtonSize } from '@/constants';
+
 import { useMultiplayerRoom, useToast } from '@/hooks';
 
 export function MultiplayerLobbyView() {
@@ -50,10 +52,10 @@ export function MultiplayerLobbyView() {
 
 	const [joinRoomId, setJoinRoomId] = useState('');
 	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
-		topic: String(GAME_STATE_DEFAULTS.TOPIC),
+		topic: GAME_STATE_CONFIG.defaults.topic,
 		difficulty: DifficultyLevel.MEDIUM,
-		questionsPerRequest: MULTIPLAYER_CONSTANTS.DEFAULT_QUESTIONS_PER_REQUEST,
-		maxPlayers: MULTIPLAYER_CONSTANTS.DEFAULT_MAX_PLAYERS,
+		questionsPerRequest: MULTIPLAYER_CONFIG.DEFAULT_QUESTIONS_PER_REQUEST,
+		maxPlayers: MULTIPLAYER_CONFIG.DEFAULT_MAX_PLAYERS,
 		gameMode: GameMode.QUESTION_LIMITED,
 	});
 
@@ -66,7 +68,7 @@ export function MultiplayerLobbyView() {
 			toast({
 				title: 'Error',
 				description: 'Please enter a room code',
-				variant: 'destructive',
+				variant: ToastVariant.DESTRUCTIVE,
 			});
 			return;
 		}
@@ -99,20 +101,14 @@ export function MultiplayerLobbyView() {
 			toast({
 				title: 'Error',
 				description: error,
-				variant: 'destructive',
+				variant: ToastVariant.DESTRUCTIVE,
 			});
 		}
 	}, [error, toast]);
 
 	if (!isConnected) {
 		return (
-			<motion.main
-				role='main'
-				aria-label='Multiplayer Lobby'
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				className='min-h-screen py-12 px-4'
-			>
+			<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-md mx-auto text-center space-y-4'>
 					<Loader2 className='h-12 w-12 animate-spin mx-auto text-primary' />
 					<h2 className='text-xl font-semibold'>Connecting to multiplayer server...</h2>
@@ -125,23 +121,17 @@ export function MultiplayerLobbyView() {
 	// If in a room, show the lobby
 	if (room) {
 		return (
-			<motion.main
-				role='main'
-				aria-label='Multiplayer Lobby'
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				className='min-h-screen py-12 px-4'
-			>
+			<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-2xl mx-auto space-y-6'>
 					<div className='text-center'>
 						<h1 className='text-3xl font-bold mb-2'>Multiplayer Lobby</h1>
 						{roomCode && (
 							<div className='flex items-center justify-center gap-2'>
 								<span className='text-muted-foreground'>Room Code:</span>
-								<Badge variant='outline' className='text-lg font-mono px-3 py-1'>
+								<Badge variant={VariantBase.OUTLINE} className='text-lg font-mono px-3 py-1'>
 									{roomCode}
 								</Badge>
-								<Button variant='ghost' size={ButtonSize.ICON} onClick={copyRoomCode}>
+								<Button variant={ButtonVariant.GHOST} size={ButtonSize.ICON} onClick={copyRoomCode}>
 									<Copy className='h-4 w-4' />
 								</Button>
 							</div>
@@ -149,7 +139,7 @@ export function MultiplayerLobbyView() {
 					</div>
 
 					{error && (
-						<Alert variant='destructive'>
+						<Alert variant={VariantBase.DESTRUCTIVE}>
 							<AlertDescription>{error}</AlertDescription>
 						</Alert>
 					)}
@@ -159,8 +149,8 @@ export function MultiplayerLobbyView() {
 						<CardHeader>
 							<CardTitle className='flex items-center gap-2'>
 								<Users className='h-5 w-5' />
-								Players ({room.players?.length || 0}/
-								{room.config?.maxPlayers || MULTIPLAYER_CONSTANTS.DEFAULT_MAX_PLAYERS})
+								Players ({room.players?.length ?? 0}/{room.config?.maxPlayers || MULTIPLAYER_CONFIG.DEFAULT_MAX_PLAYERS}
+								)
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
@@ -181,8 +171,8 @@ export function MultiplayerLobbyView() {
 												{player.userId === room.hostId && <Crown className='h-4 w-4 text-yellow-500' />}
 											</div>
 										</div>
-										<Badge variant={player.status === 'ready' ? 'default' : 'secondary'}>
-											{player.status === 'ready' ? 'Ready' : 'Not Ready'}
+										<Badge variant={player.status === PlayerStatus.READY ? VariantBase.DEFAULT : VariantBase.SECONDARY}>
+											{player.status === PlayerStatus.READY ? 'Ready' : 'Not Ready'}
 										</Badge>
 									</motion.div>
 								))}
@@ -214,7 +204,7 @@ export function MultiplayerLobbyView() {
 								</div>
 								<div className='flex justify-between'>
 									<span className='text-muted-foreground'>Status:</span>
-									<Badge variant='outline' className='capitalize'>
+									<Badge variant={VariantBase.OUTLINE} className='capitalize'>
 										{room.status}
 									</Badge>
 								</div>
@@ -235,7 +225,7 @@ export function MultiplayerLobbyView() {
 								Start Game
 							</Button>
 						)}
-						<Button variant='outline' size={ButtonSize.LG} onClick={handleLeaveRoom} disabled={isLoading}>
+						<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleLeaveRoom} disabled={isLoading}>
 							Leave Lobby
 						</Button>
 					</div>
@@ -252,13 +242,7 @@ export function MultiplayerLobbyView() {
 
 	// No room - show create/join options
 	return (
-		<motion.main
-			role='main'
-			aria-label='Multiplayer Lobby'
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			className='min-h-screen py-12 px-4'
-		>
+		<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
 			<div className='max-w-2xl mx-auto space-y-6'>
 				<div className='text-center'>
 					<h1 className='text-3xl font-bold mb-2'>Multiplayer</h1>
@@ -266,7 +250,7 @@ export function MultiplayerLobbyView() {
 				</div>
 
 				{error && (
-					<Alert variant='destructive'>
+					<Alert variant={VariantBase.DESTRUCTIVE}>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
@@ -312,7 +296,11 @@ export function MultiplayerLobbyView() {
 										<div className='grid grid-cols-3 gap-2'>
 											<Button
 												type='button'
-												variant={gameSettings.difficulty === DifficultyLevel.EASY ? 'default' : 'outline'}
+												variant={
+													gameSettings.difficulty === DifficultyLevel.EASY
+														? ButtonVariant.DEFAULT
+														: ButtonVariant.OUTLINE
+												}
 												size={ButtonSize.SM}
 												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.EASY }))}
 												className='flex items-center justify-center gap-1'
@@ -322,7 +310,11 @@ export function MultiplayerLobbyView() {
 											</Button>
 											<Button
 												type='button'
-												variant={gameSettings.difficulty === DifficultyLevel.MEDIUM ? 'default' : 'outline'}
+												variant={
+													gameSettings.difficulty === DifficultyLevel.MEDIUM
+														? ButtonVariant.DEFAULT
+														: ButtonVariant.OUTLINE
+												}
 												size={ButtonSize.SM}
 												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.MEDIUM }))}
 												className='flex items-center justify-center gap-1'
@@ -332,7 +324,11 @@ export function MultiplayerLobbyView() {
 											</Button>
 											<Button
 												type='button'
-												variant={gameSettings.difficulty === DifficultyLevel.HARD ? 'default' : 'outline'}
+												variant={
+													gameSettings.difficulty === DifficultyLevel.HARD
+														? ButtonVariant.DEFAULT
+														: ButtonVariant.OUTLINE
+												}
 												size={ButtonSize.SM}
 												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.HARD }))}
 												className='flex items-center justify-center gap-1'
@@ -370,8 +366,8 @@ export function MultiplayerLobbyView() {
 											<NumberInput
 												value={gameSettings.maxPlayers}
 												onChange={value => setGameSettings(prev => ({ ...prev, maxPlayers: value }))}
-												min={MULTIPLAYER_CONSTANTS.MIN_PLAYERS}
-												max={MULTIPLAYER_CONSTANTS.MAX_PLAYERS}
+												min={MULTIPLAYER_CONFIG.MIN_PLAYERS}
+												max={MULTIPLAYER_CONFIG.MAX_PLAYERS}
 												step={1}
 											/>
 										</div>
@@ -418,7 +414,7 @@ export function MultiplayerLobbyView() {
 				</Tabs>
 
 				<div className='text-center'>
-					<Button variant='ghost' onClick={() => navigate('/')}>
+					<Button variant={ButtonVariant.GHOST} onClick={() => navigate(ROUTES.HOME)}>
 						Back to Home
 					</Button>
 				</div>

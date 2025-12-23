@@ -7,6 +7,8 @@ import { ReactNode } from 'react';
 
 import type { LeaderboardEntry } from '@shared/types';
 
+import { MetricColor, TrendDirection } from '@/constants';
+
 /**
  * Card Metric Props Interface
  * @interface CardMetricProps
@@ -16,9 +18,9 @@ export interface CardMetricProps {
 	title: string;
 	value: string;
 	subtitle: string;
-	icon: ReactNode | string;
-	color: 'yellow' | 'blue' | 'green' | 'purple' | 'red';
-	trend?: 'up' | 'down' | 'neutral';
+	icon: ReactNode;
+	color: MetricColor;
+	trend?: TrendDirection;
 }
 
 /**

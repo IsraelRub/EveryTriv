@@ -3,16 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldX } from 'lucide-react';
 
+import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
+
 import { Button, Card } from '@/components';
-import { ButtonSize } from '@/constants';
 
 export function UnauthorizedView() {
 	const navigate = useNavigate();
 
 	return (
 		<motion.main
-			role='main'
-			aria-label='Unauthorized'
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			className='min-h-screen flex items-center justify-center px-4'
@@ -26,12 +25,12 @@ export function UnauthorizedView() {
 					<p className='text-muted-foreground'>You don't have permission to access this page</p>
 				</div>
 				<div className='flex flex-col gap-2'>
-					<Button onClick={() => navigate('/')} size={ButtonSize.LG}>
+					<Button onClick={() => navigate(ROUTES.HOME)} size={ButtonSize.LG}>
 						Go Home
 					</Button>
 					<Button
-						onClick={() => navigate('/login', { state: { modal: true, returnUrl: '/unauthorized' } })}
-						variant='outline'
+						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: ROUTES.UNAUTHORIZED } })}
+						variant={ButtonVariant.OUTLINE}
 						size={ButtonSize.LG}
 					>
 						Sign In

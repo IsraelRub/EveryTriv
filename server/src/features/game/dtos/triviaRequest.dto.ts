@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 
-import { VALIDATION_LIMITS } from '@shared/constants';
+import { DifficultyLevel, VALIDATION_CONFIG } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 export class TriviaRequestDto {
@@ -15,17 +15,25 @@ export class TriviaRequestDto {
 	@IsString()
 	difficulty!: GameDifficulty;
 
+	@ApiPropertyOptional({
+		description: 'Normalized difficulty level (DifficultyLevel enum) - set automatically by pipe',
+		enum: DifficultyLevel,
+	})
+	@IsOptional()
+	@IsEnum(DifficultyLevel)
+	mappedDifficulty?: DifficultyLevel;
+
 	@ApiProperty({
 		description:
-			'Number of questions per request (-1 for unlimited mode). See VALIDATION_LIMITS.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
-		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
-		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
+			'Number of questions per request (-1 for unlimited mode). See VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
+		minimum: VALIDATION_CONFIG.limits.QUESTIONS.MIN,
+		maximum: VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED,
 		example: 10,
 	})
 	@IsInt()
-	@Min(VALIDATION_LIMITS.QUESTIONS.MIN)
-	@ValidateIf((o: TriviaRequestDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
-	@Max(VALIDATION_LIMITS.QUESTIONS.MAX)
+	@Min(VALIDATION_CONFIG.limits.QUESTIONS.MIN)
+	@ValidateIf((o: TriviaRequestDto) => o.questionsPerRequest !== VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_CONFIG.limits.QUESTIONS.MAX)
 	questionsPerRequest!: number;
 
 	@ApiPropertyOptional({ description: 'Optional category for the trivia questions' })
@@ -62,14 +70,14 @@ export class TriviaRequestDto {
 
 	@ApiPropertyOptional({
 		description: 'Number of answer choices per question (3-5)',
-		minimum: VALIDATION_LIMITS.ANSWER_COUNT.MIN,
-		maximum: VALIDATION_LIMITS.ANSWER_COUNT.MAX,
+		minimum: VALIDATION_CONFIG.limits.ANSWER_COUNT.MIN,
+		maximum: VALIDATION_CONFIG.limits.ANSWER_COUNT.MAX,
 		example: 4,
 		default: 4,
 	})
 	@IsOptional()
 	@IsInt()
-	@Min(VALIDATION_LIMITS.ANSWER_COUNT.MIN)
-	@Max(VALIDATION_LIMITS.ANSWER_COUNT.MAX)
+	@Min(VALIDATION_CONFIG.limits.ANSWER_COUNT.MIN)
+	@Max(VALIDATION_CONFIG.limits.ANSWER_COUNT.MAX)
 	answerCount?: number;
 }

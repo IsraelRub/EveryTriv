@@ -1,20 +1,15 @@
 /**
  * UI Types Index
  * @module UITypes
- * @description Central export for all UI-related types
+ * @description Central export for all UI component types (generic and specific)
  */
 
-export * from './analytics.types';
+export * from './components.types';
 export * from './stats.types';
 export * from './audio.types';
 export * from './backgroundAnimation.types';
-export * from './components.types';
 export * from './forms.types';
 export * from './icon.types';
-export * from './navigation.types';
-export * from './base.types';
-export * from './featureHighlight.types';
 export * from './leaderboard.types';
 export * from './social.types';
-export * from './error.types';
-export * from './toast.types';
+export * from './charts.types';

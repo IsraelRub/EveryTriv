@@ -141,3 +141,13 @@ export interface DifficultyStats {
  * @description Type alias for difficulty breakdown statistics
  */
 export type DifficultyBreakdown = Record<string, DifficultyStats>;
+
+/**
+ * Text position interface
+ * @interface TextPosition
+ * @description Position of text in a string (start and end indices)
+ */
+export interface TextPosition {
+	start: number;
+	end: number;
+}

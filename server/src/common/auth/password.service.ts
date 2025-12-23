@@ -6,11 +6,12 @@
  * @author EveryTriv Team
  */
 import { Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 
-import { serverLogger as logger } from '@shared/services';
+import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { serverLogger as logger } from '@internal/services';
 import { createServerError } from '@internal/utils';
 
 @Injectable()
@@ -21,7 +22,7 @@ export class PasswordService {
 	async hashPassword(password: string, saltRounds?: number): Promise<string> {
 		try {
 			const rounds = saltRounds ?? 12;
-			const hashedPassword = await bcrypt.hash(password, rounds);
+			const hashedPassword = await hash(password, rounds);
 
 			logger.securityLogin('Password hashed successfully', {
 				saltRounds: rounds,
@@ -32,7 +33,7 @@ export class PasswordService {
 			logger.securityError('Failed to hash password', {
 				error: getErrorMessage(error),
 			});
-			throw createServerError('hash password', new Error('Failed to hash password'));
+			throw createServerError('hash password', new Error(ERROR_CODES.PASSWORD_HASH_FAILED));
 		}
 	}
 
@@ -41,7 +42,7 @@ export class PasswordService {
 	 */
 	async comparePassword(password: string, hash: string): Promise<boolean> {
 		try {
-			const isMatch = await bcrypt.compare(password, hash);
+			const isMatch = await compare(password, hash);
 
 			if (isMatch) {
 				logger.securityLogin('Password comparison successful');

@@ -339,7 +339,7 @@ class AuthService {
   async initiateGoogleLogin(): Promise<void> {
     try {
       logger.securityLogin('Initiating Google OAuth login');
-      const googleAuthUrl = ApiConfig.getGoogleAuthUrl();
+      const googleAuthUrl = `${ApiConfig.getBaseUrl()}${API_ROUTES.AUTH.BASE}/${API_ROUTES.AUTH.GOOGLE}`;
       window.location.href = googleAuthUrl;
     } catch (error) {
       logger.securityDenied('Google login initiation failed', { error: getErrorMessage(error) });

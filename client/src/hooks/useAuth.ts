@@ -2,13 +2,16 @@ import { useSelector } from 'react-redux';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { clientLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 
-import { CLIENT_STORAGE_KEYS } from '../constants';
-import { setAuthenticated, setUser } from '../redux/slices';
-import { authService, storageService } from '../services';
-import type { RootState, UserLoginRequest, UserRegisterRequest } from '../types';
+import { CLIENT_STORAGE_KEYS } from '@/constants';
+
+import { authService, clientLogger as logger, storageService } from '@/services';
+
+import type { RootState, UserLoginRequest, UserRegisterRequest } from '@/types';
+
+import { setAuthenticated, setUser } from '@/redux/slices';
+
 import { useAppDispatch } from './useRedux';
 
 // Query keys
@@ -71,7 +74,8 @@ export const useLogin = () => {
 
 				logger.authInfo('Login successful - Redux state updated', {
 					success: true,
-					hasData: !!data.user,
+					userId: data.user.id,
+					email: data.user.email,
 				});
 
 				// Small delay to ensure Redux state is fully updated before triggering queries
@@ -79,13 +83,12 @@ export const useLogin = () => {
 
 				// Invalidate auth-related queries after token is stored and Redux state is updated
 				// This ensures queries have access to the token when they execute
+				// Note: We don't use queryClient.clear() here to avoid clearing all queries
+				// which could cause issues with other queries that are still needed
 				queryClient.invalidateQueries({ queryKey: authKeys.all });
-				// Clear any cached data that might be user-specific
-				queryClient.clear();
 			} else {
 				logger.authError('Login failed - token not stored or user data missing', {
 					success: tokenStored,
-					hasData: !!data.user,
 					attempt: attempts,
 				});
 			}
@@ -126,27 +129,59 @@ export const useRegister = () => {
 
 			// Only update Redux if token is stored successfully and user data exists
 			if (tokenStored && data.user) {
-				// Update Redux state for HOCs consistency
-				dispatch(setAuthenticated(true));
-				dispatch(setUser(data.user));
+				// Verify the stored token matches the user we're setting
+				const storedTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+				const storedToken = storedTokenResult.success ? storedTokenResult.data : null;
+				let tokenUserId: string | undefined = undefined;
+				if (storedToken) {
+					try {
+						const tokenParts = storedToken.split('.');
+						if (tokenParts.length === 3) {
+							const payload = JSON.parse(atob(tokenParts[1]));
+							tokenUserId = payload.sub;
+						}
+					} catch {
+						// Ignore decode errors
+					}
+				}
 
-				logger.authInfo('Registration successful - Redux state updated', {
+				logger.authInfo('Registration successful - verifying token before Redux update', {
 					success: true,
-					hasData: !!data.user,
+					userId: data.user.id,
+					email: data.user.email,
+					tokenUserId,
+					tokenMatches: tokenUserId === data.user.id,
 				});
 
-				// Small delay to ensure Redux state is fully updated before triggering queries
-				await new Promise(resolve => setTimeout(resolve, 50));
+				// Only update Redux if token matches user
+				if (tokenUserId === data.user.id) {
+					// Update Redux state for HOCs consistency
+					dispatch(setAuthenticated(true));
+					dispatch(setUser(data.user));
 
-				// Invalidate auth-related queries after token is stored and Redux state is updated
-				// This ensures queries have access to the token when they execute
-				queryClient.invalidateQueries({ queryKey: authKeys.all });
-				// Clear any cached data that might be user-specific
-				queryClient.clear();
+					logger.authInfo('Registration successful - Redux state updated', {
+						success: true,
+						userId: data.user.id,
+						email: data.user.email,
+					});
+
+					// Small delay to ensure Redux state is fully updated before triggering queries
+					await new Promise(resolve => setTimeout(resolve, 50));
+
+					// Invalidate auth-related queries after token is stored and Redux state is updated
+					// This ensures queries have access to the token when they execute
+					// Note: We don't use queryClient.clear() here to avoid clearing all queries
+					// which could cause issues with other queries that are still needed
+					queryClient.invalidateQueries({ queryKey: authKeys.all });
+				} else {
+					logger.authError('Token mismatch - not updating Redux', {
+						userId: data.user.id,
+						tokenUserId,
+					});
+				}
 			} else {
 				logger.authError('Registration failed - token not stored or user data missing', {
 					success: tokenStored,
-					hasData: !!data.user,
 					attempt: attempts,
 				});
 			}

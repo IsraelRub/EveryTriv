@@ -36,6 +36,23 @@ export const PAYPAL_ENVIRONMENTS = {
 	SANDBOX: 'sandbox',
 } as const;
 
+/**
+ * PayPal Environment Enum
+ * @enum PayPalEnvironment
+ * @description PayPal environment types
+ */
+export enum PayPalEnvironment {
+	PRODUCTION = 'production',
+	SANDBOX = 'sandbox',
+}
+
+// Payment client action enum
+export enum PaymentClientAction {
+	COMPLETE = 'complete',
+	MANUAL_CAPTURE = 'manual_capture',
+	CONFIRM_PAYPAL = 'confirm_paypal',
+}
+
 export const MANUAL_CREDIT_SUPPORTED_CARD_LENGTHS = {
 	MIN: 12,
 	MAX: 19,
@@ -76,23 +93,14 @@ export enum PlanType {
 export const VALID_PLAN_TYPES = Object.values(PlanType);
 
 /**
- * Billing Cycle Enum
- * @enum BillingCycle
- * @description Billing cycle options for subscriptions
- * @used_by server/src/features/subscription, server/src/features/payment, shared/types
+ * Request source enumeration
+ * @enum RequestSource
+ * @description Source of payment requests
  */
-export enum BillingCycle {
-	MONTHLY = 'monthly',
-	YEARLY = 'yearly',
+export enum RequestSource {
+	WEB = 'web',
+	API = 'api',
 }
-
-/**
- * Array of all valid billing cycles
- * @constant
- * @description Complete list of supported billing cycles
- * @used_by server/src/validation, client/forms, server/src/features/subscription
- */
-export const VALID_BILLING_CYCLES = Object.values(BillingCycle);
 
 /**
  * Credit packages - single source of truth

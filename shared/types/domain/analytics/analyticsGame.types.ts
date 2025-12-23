@@ -38,8 +38,8 @@ export interface QuestionAnalytics extends BaseGameTopicDifficulty {
  * Game analytics query parameters
  */
 export interface GameAnalyticsQuery {
-	startDate?: string;
-	endDate?: string;
+	startDate?: Date;
+	endDate?: Date;
 	topic?: string;
 	difficulty?: string;
 	includeDetailedStats?: boolean;

@@ -6,10 +6,10 @@
  */
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { serverLogger as logger, metricsService } from '@internal/services';
 import { createStorageError } from '@internal/utils';
 
 import { Cache, Public, Roles } from '../../../common';
@@ -28,7 +28,7 @@ export class StorageController {
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - metrics don't change frequently
 	async getMetrics() {
 		try {
-			const metrics = this.storageService.getMetrics();
+			const metrics = metricsService.getMetrics();
 
 			logger.apiRead('storage_metrics', {
 				totalOps: metrics.totalOps,
@@ -53,7 +53,7 @@ export class StorageController {
 	@Roles(UserRole.ADMIN)
 	async resetMetrics() {
 		try {
-			this.storageService.resetMetrics();
+			metricsService.resetMetrics();
 
 			logger.apiUpdate('storage_metrics_reset', {});
 
@@ -104,7 +104,7 @@ export class StorageController {
 	async getItem(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException('Key is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.storageService.get(key);
@@ -114,7 +114,6 @@ export class StorageController {
 
 			logger.apiRead('storage_item_get', {
 				key,
-				hasData: !!result.data,
 			});
 
 			return result.data;

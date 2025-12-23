@@ -5,6 +5,8 @@
  * @module StorageTypes
  * @description Storage interfaces and data structures
  */
+import { StorageType } from '@shared/constants';
+
 import { BaseCacheEntry, BasicValue, StorageValue } from '../core/data.types';
 
 /**
@@ -41,14 +43,9 @@ export interface StorageService {
 	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
 
-export type StorageType = 'persistent' | 'cache' | 'hybrid';
-
-/**
- * Storage get strategy type
- * @type StorageGetStrategy
- * @description Strategy for reading from storage (different from StorageType)
- */
-export type StorageGetStrategy = 'cache-first' | 'persistent-first' | 'both';
+// StorageType is imported from @shared/constants above
+// Re-export here for convenience (it's an enum, not a type)
+export { StorageType };
 
 /**
  * Storage configuration interface

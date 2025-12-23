@@ -40,27 +40,4 @@ export * from './infrastructure';
 // =============================================================================
 // SPECIALIZED TYPES - Specific feature and utility types
 // =============================================================================
-
-/**
- * Language types
- * @description Types for language detection, validation, and tool integration
- */
-export * from './language.types';
-
-/**
- * Credits types
- * @description Types for credits management, calculations, and balances
- */
-export * from './credits.types';
-
-/**
- * Subscription types
- * @description Types for subscription management, plans, and data
- */
-export * from './subscription.types';
-
-/**
- * Payment types
- * @description Types for payment processing and data
- */
-export * from './payment.types';
+// Language validation types are now exported from domain/validation.types.ts

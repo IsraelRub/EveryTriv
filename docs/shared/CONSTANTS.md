@@ -281,23 +281,6 @@ export enum EventResult {
  */
 export const VALID_EVENT_RESULTS = Object.values(EventResult);
 
-// Custom difficulty keywords for detection
-export const CUSTOM_DIFFICULTY_KEYWORDS = {
-  LEVELS: ['beginner', 'elementary', 'basic', 'intermediate', 'advanced', 'expert', 'master', 'professional'],
-  DIFFICULTY_WORDS: ['easy', 'medium', 'hard', 'difficult', 'challenging', 'simple', 'complex', 'basic', 'advanced'],
-  TOPIC_SPECIFIC: [
-    'history',
-    'science',
-    'math',
-    'geography',
-    'literature',
-    'art',
-    'music',
-    'sports',
-    'technology',
-    'politics',
-  ],
-} as const;
 
 /**
  * Game state constants

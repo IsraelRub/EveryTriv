@@ -1,0 +1,2698 @@
+{
+  "info": {
+    "name": "EveryTriv API Collection",
+    "description": "🎯 **COMPLETE API COLLECTION FOR EVERYTRIV TRIVIA PLATFORM**\n\n**Platform Overview:**\nEveryTriv is a comprehensive trivia game platform featuring AI-powered question generation, real-time multiplayer capabilities, advanced analytics, and a complete user management system.\n\n**Key Features:**\n- 🤖 **AI-Powered Questions:** Groq AI provider with multiple models (Llama, GPT-OSS, Mixtral, Gemma)\n- 🎮 **Multiple Game Modes:** Classic, Time Attack, Custom Difficulty\n- 🏆 **Leaderboards:** Global, weekly, monthly rankings\n- 💰 **Credits System:** Earn and spend credits for gameplay\n- 📊 **Advanced Analytics:** User performance, game statistics, system metrics\n- 🔐 **Complete Auth:** JWT-based authentication with role management\n- 💳 **Payment Integration:** Stripe integration for premium features\n\n**Authentication:**\n- Most endpoints require JWT token in Authorization header\n- Admin endpoints require 'admin' role\n- Public endpoints marked with @Public() decorator\n\n**Rate Limiting:**\n- Login: 5 attempts per minute\n- Registration: 3 attempts per 5 minutes\n- Game actions: 20 per minute\n- Admin actions: 5 per minute\n\n**Base URL:** http://localhost:3002 (development)\n**API Version:** v1\n**Documentation:** See /docs for Swagger documentation",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkNWZhYzRhOC1mMTU1LTRiZWQtYjg0Yy0wYjRkYTRjZThmOWQiLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwidXNlcm5hbWUiOiJhZG1pbl91c2VyIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYyOTYzNjEzLCJleHAiOjE3NjI5NjcyMTN9.ySraCxE2dH-JT-c2xd1vMjiFuSOgWEZiX2ftJchNbso",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkNWZhYzRhOC1mMTU1LTRiZWQtYjg0Yy0wYjRkYTRjZThmOWQiLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwidXNlcm5hbWUiOiJhZG1pbl91c2VyIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYyOTYzNjEzLCJleHAiOjE3NjM1Njg0MTN9.QsEizg3VfGymWoJRIznAp65EOKu7aqdA0uCg366ZSaw",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userRole",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "registeredUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "registeredUserRole",
+      "value": "user",
+      "type": "string"
+    },
+    {
+      "key": "registerEmail",
+      "value": "admin_user_cli@everytriv.com",
+      "type": "string"
+    },
+    {
+      "key": "registerPassword",
+      "value": "AdminPass123!",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "AdminPass123!",
+      "type": "string"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminRefreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userRefreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gameId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionAnswer",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "creditsBalance",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Helper functions for shared collection variables",
+          "const getVar = key => (pm.collectionVariables ? pm.collectionVariables.get(key) : undefined);",
+          "const setVar = (key, value) => {",
+          "    if (!pm.collectionVariables || value === undefined || value === null) {",
+          "        return;",
+          "    }",
+          "    pm.collectionVariables.set(key, value);",
+          "};",
+          "",
+          "// Ensure baseUrl exists",
+          "if (!getVar('baseUrl')) {",
+          "    setVar('baseUrl', 'http://localhost:3002');",
+          "}",
+          "",
+          "let usesAdminToken = false;",
+          "pm.request.headers.each(header => {",
+          "    if (header && header.key && header.key.toLowerCase() === 'x-use-admin-token') {",
+          "        usesAdminToken = true;",
+          "    }",
+          "});",
+          "",
+          "// Inject Authorization header automatically when token exists and admin token not requested",
+          "const accessToken = getVar('accessToken');",
+          "if (!usesAdminToken && accessToken && !pm.request.headers.has('Authorization')) {",
+          "    pm.request.headers.add({",
+          "        key: 'Authorization',",
+          "        value: 'Bearer ' + accessToken",
+          "    });",
+          "}",
+          "",
+          "const ensureAdminHeader = token => {",
+          "    if (token) {",
+          "        pm.request.headers.upsert({",
+          "            key: 'Authorization',",
+          "            value: 'Bearer ' + token",
+          "        });",
+          "    }",
+          "};",
+          "",
+          "if (usesAdminToken) {",
+          "    pm.request.headers.remove('X-Use-Admin-Token');",
+          "    const adminToken = getVar('adminAccessToken');",
+          "    if (adminToken) {",
+          "        ensureAdminHeader(adminToken);",
+          "    } else {",
+          "        const adminEmail = getVar('adminEmail');",
+          "        const adminPassword = getVar('adminPassword');",
+          "",
+          "        if (adminEmail && adminPassword) {",
+          "            pm.sendRequest({",
+          "                url: `${getVar('baseUrl')}/auth/login`,",
+          "                method: 'POST',",
+          "                header: { 'Content-Type': 'application/json' },",
+          "                body: {",
+          "                    mode: 'raw',",
+          "                    raw: JSON.stringify({",
+          "                        email: adminEmail,",
+          "                        password: adminPassword",
+          "                    })",
+          "                }",
+          "            }, (error, response) => {",
+          "                if (!error && response && response.code >= 200 && response.code < 300) {",
+          "                    try {",
+          "                        const loginBody = response.json();",
+          "                        const responseData = loginBody && loginBody.data ? loginBody.data : loginBody;",
+          "                        const newAccessToken = responseData && responseData.access_token ? responseData.access_token : loginBody.access_token;",
+          "                        const newRefreshToken = responseData && responseData.refresh_token ? responseData.refresh_token : loginBody.refresh_token;",
+          "",
+          "                        if (newAccessToken) {",
+          "                            setVar('adminAccessToken', newAccessToken);",
+          "                            ensureAdminHeader(newAccessToken);",
+          "                        }",
+          "",
+          "                        if (newRefreshToken) {",
+          "                            setVar('adminRefreshToken', newRefreshToken);",
+          "                        }",
+          "                    } catch (parseError) {",
+          "                        console.warn('Failed to process admin login response', parseError);",
+          "                    }",
+          "                } else {",
+          "                    console.warn('Admin auto-login failed', { error, status: response && response.code });",
+          "                }",
+          "            });",
+          "        }",
+          "    }",
+          "}",
+          "",
+          "// Ensure userId is set from registeredUserId if not available",
+          "const currentUserId = getVar('userId');",
+          "const registeredUserId = getVar('registeredUserId');",
+          "if (!currentUserId && registeredUserId) {",
+          "    setVar('userId', registeredUserId);",
+          "}",
+          "",
+          "// Replace placeholder segments in URL when relevant values are available",
+          "const replacements = [",
+          "    { placeholder: 'user_id_here', value: getVar('userId') || getVar('registeredUserId') },",
+          "    { placeholder: 'game_id_here', value: getVar('gameId') },",
+          "    { placeholder: 'question_id_here', value: getVar('questionId') },",
+          "    { placeholder: 'subscription_id_here', value: getVar('subscriptionId') },",
+          "    { placeholder: 'payment_id_here', value: getVar('paymentId') }",
+          "];",
+          "",
+          "let updatedUrl = pm.request.url.toString();",
+          "replacements.forEach(({ placeholder, value }) => {",
+          "    if (value) {",
+          "        updatedUrl = updatedUrl.replace(placeholder, value);",
+          "    }",
+          "});",
+          "",
+          "// Replace {{userId}} in URL with registeredUserId if userId is empty",
+          "const finalUserId = getVar('userId') || getVar('registeredUserId');",
+          "if (finalUserId && updatedUrl.includes('{{userId}}')) {",
+          "    updatedUrl = updatedUrl.replace(/\\{\\{userId\\}\\}/g, finalUserId);",
+          "}",
+          "",
+          "pm.request.url = updatedUrl;"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const setVar = (key, value) => {",
+          "    if (!pm.collectionVariables || value === undefined || value === null) {",
+          "        return;",
+          "    }",
+          "    pm.collectionVariables.set(key, value);",
+          "};",
+          "",
+          "const requestName = pm.request && pm.request.name ? pm.request.name : '';",
+          "const isRegisteredFlow = /Register User|Login User/i.test(requestName);",
+          "",
+          "if (pm.response.code === 200 || pm.response.code === 201) {",
+          "    try {",
+          "        const responseJson = pm.response.json();",
+          "",
+          "        if (responseJson.access_token) {",
+          "            setVar('accessToken', responseJson.access_token);",
+          "        }",
+          "        if (responseJson.refresh_token) {",
+          "            setVar('refreshToken', responseJson.refresh_token);",
+          "        }",
+          "        if (responseJson.accessToken) {",
+          "            setVar('accessToken', responseJson.accessToken);",
+          "        }",
+          "        if (responseJson.refreshToken) {",
+          "            setVar('refreshToken', responseJson.refreshToken);",
+          "        }",
+          "",
+          "        const setUserValues = (user) => {",
+          "            if (!user) {",
+          "                return;",
+          "            }",
+          "            setVar('userId', user.id);",
+          "            if (user.role) {",
+          "                setVar('userRole', user.role);",
+          "            }",
+          "            if (isRegisteredFlow) {",
+          "                setVar('registeredUserId', user.id);",
+          "                if (user.role) {",
+          "                    setVar('registeredUserRole', user.role);",
+          "                }",
+          "            }",
+          "        };",
+          "",
+          "        if (responseJson.user) {",
+          "            setUserValues(responseJson.user);",
+          "        }",
+          "        if (responseJson.data && responseJson.data.user) {",
+          "            setUserValues(responseJson.data.user);",
+          "        }",
+          "",
+          "        if (responseJson.data && responseJson.data.questions && responseJson.data.questions.length > 0) {",
+          "            const question = responseJson.data.questions[0];",
+          "            if (question) {",
+          "                setVar('questionId', question.id);",
+          "                if (Array.isArray(question.answers)) {",
+          "                    const correctAnswer = question.answers.find(answer => answer && answer.isCorrect);",
+          "                    if (correctAnswer && correctAnswer.text) {",
+          "                        setVar('questionAnswer', correctAnswer.text);",
+          "                    } else if (question.answers[0] && question.answers[0].text) {",
+          "                        setVar('questionAnswer', question.answers[0].text);",
+          "                    }",
+          "                }",
+          "            }",
+          "        }",
+          "",
+        "        if (responseJson.data && responseJson.data.gameId) {",
+          "            setVar('gameId', responseJson.data.gameId);",
+          "        }",
+          "        if (responseJson.data && responseJson.data.id && pm.request.url && pm.request.url.path && pm.request.url.path.includes('game')) {",
+          "            setVar('gameId', responseJson.data.id);",
+          "        }",
+          "        if (responseJson.data && responseJson.data.subscriptionId) {",
+          "            setVar('subscriptionId', responseJson.data.subscriptionId);",
+          "        }",
+          "        if (responseJson.data && responseJson.data.paymentId) {",
+          "            setVar('paymentId', responseJson.data.paymentId);",
+          "        }",
+          "        if (responseJson.gameId) {",
+          "            setVar('gameId', responseJson.gameId);",
+          "        }",
+          "        if (responseJson.questionId) {",
+          "            setVar('questionId', responseJson.questionId);",
+          "        }",
+          "        if (responseJson.subscriptionId) {",
+          "            setVar('subscriptionId', responseJson.subscriptionId);",
+          "        }",
+          "        if (responseJson.paymentId) {",
+          "            setVar('paymentId', responseJson.paymentId);",
+          "        }",
+          "        if (responseJson.creditsBalance !== undefined) {",
+          "            setVar('creditsBalance', responseJson.creditsBalance.toString());",
+          "        }",
+          "        if (responseJson.totalCredits !== undefined) {",
+          "            setVar('creditsBalance', responseJson.totalCredits.toString());",
+          "        }",
+          "        if (responseJson.credits !== undefined) {",
+          "            setVar('creditsBalance', responseJson.credits.toString());",
+          "        }",
+          "        if (responseJson.data && responseJson.data.access_token) {",
+          "            setVar('accessToken', responseJson.data.access_token);",
+          "        }",
+          "        if (responseJson.data && responseJson.data.refresh_token) {",
+          "            setVar('refreshToken', responseJson.data.refresh_token);",
+          "        }",
+          "    } catch (e) {",
+          "        // Ignore parsing errors",
+          "    }",
+          "}",
+          "",
+          "if (pm.response.code === 200 && pm.request.url && pm.request.url.path && (pm.request.url.path.includes('profile') || pm.request.url.path.includes('auth/me'))) {",
+          "    try {",
+          "        const responseJson = pm.response.json();",
+          "        const userData = responseJson.data || responseJson.user || responseJson;",
+          "        if (userData && userData.id) {",
+          "            setVar('userId', userData.id);",
+          "            if (!getVar('registeredUserId')) {",
+          "                setVar('registeredUserId', userData.id);",
+          "            }",
+          "        }",
+          "        if (userData && userData.role) {",
+          "            setVar('userRole', userData.role);",
+          "        }",
+          "        if (responseJson.id) {",
+          "            setVar('userId', responseJson.id);",
+          "            if (!getVar('registeredUserId')) {",
+          "                setVar('registeredUserId', responseJson.id);",
+          "            }",
+          "        }",
+          "        if (responseJson.role) {",
+          "            setVar('userRole', responseJson.role);",
+          "        }",
+          "    } catch (e) {",
+          "        // Ignore parsing errors",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "🏠 App & Health",
+      "description": "🏠 **APPLICATION HEALTH & BASIC ENDPOINTS**\n\n**Purpose:** Monitor application health, get basic information, and verify system status\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** All health and info endpoints\n\n**Key Features:**\n- Application health monitoring\n- System information retrieval\n- Basic connectivity testing\n- Service status verification\n\n**Available Endpoints:**\n- Health Check (GET)\n- App Info (GET)\n\n**Use Cases:**\n- System monitoring\n- Health checks\n- Basic connectivity testing\n- Service verification",
+      "item": [
+        {
+          "name": "App Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+          "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔐 Authentication",
+      "description": "🔐 **AUTHENTICATION & AUTHORIZATION ENDPOINTS**\n\n**Purpose:** Handle user authentication, authorization, and session management\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Registration, login, refresh, OAuth\n- 🔐 **Protected Endpoints:** Current user, logout\n\n**Key Features:**\n- JWT-based authentication\n- OAuth integration (Google)\n- Role-based access control\n- Session management\n- Token refresh mechanism\n\n**Available Endpoints:**\n- Register User (POST)\n- Login User (POST)\n- Login Admin (POST)\n- Refresh Token (POST)\n- Get Current User (GET)\n- Logout (POST)\n- Google OAuth Login (GET)\n- Google OAuth Callback (GET)\n\n**Security Features:**\n- Rate limiting on sensitive endpoints\n- Password hashing and validation\n- JWT token expiration\n- Role-based permissions\n- OAuth 2.0 integration",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const timestamp = Date.now();",
+                  "const uniqueEmail = `cli_user_${timestamp}@everytriv.com`;",
+                  "pm.collectionVariables.set('registerEmail', uniqueEmail);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"{{registerPassword}}\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const accessToken = body.access_token || (body.data && body.data.access_token);",
+                  "        if (accessToken) {",
+                  "            pm.collectionVariables.set('userAccessToken', accessToken);",
+                  "            pm.collectionVariables.set('accessToken', accessToken);",
+                  "        }",
+                  "        const refreshToken = body.refresh_token || (body.data && body.data.refresh_token);",
+                  "        if (refreshToken) {",
+                  "            pm.collectionVariables.set('userRefreshToken', refreshToken);",
+                  "            pm.collectionVariables.set('refreshToken', refreshToken);",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture user login tokens', error);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"{{registerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Auto-use saved refresh token",
+              "const refreshToken = pm.collectionVariables ? pm.collectionVariables.get('refreshToken') : undefined;",
+                  "if (refreshToken) {",
+                  "    pm.request.body.raw = JSON.stringify({",
+                  "        refreshToken: refreshToken",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Google OAuth Login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/google",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "google"]
+            }
+          }
+        },
+        {
+          "name": "Google OAuth Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/google/callback",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "google", "callback"]
+            }
+          }
+        },
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const accessToken = body.access_token || (body.data && body.data.access_token);",
+                  "        if (accessToken) {",
+                  "            pm.collectionVariables.set('adminAccessToken', accessToken);",
+                  "        }",
+                  "        const refreshToken = body.refresh_token || (body.data && body.data.refresh_token);",
+                  "        if (refreshToken) {",
+                  "            pm.collectionVariables.set('adminRefreshToken', refreshToken);",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture admin login tokens', error);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User Management",
+      "description": "👤 **USER MANAGEMENT ENDPOINTS** - User Profile & Account Management\n\n**Purpose:** Manage user profiles, preferences, and account operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** User search, public profiles\n- 🔐 **Protected Endpoints:** Profile management, preferences\n- 👑 **Admin Endpoints:** User administration, status management\n\n**Key Features:**\n- Complete profile management\n- User preferences (audio, animations, privacy)\n- User search functionality\n- Admin user management\n- Account deletion and status updates\n\n**Available Endpoints:**\n- Get User Profile (GET)\n- Update User Profile (PUT)\n- Set User Avatar (PATCH)\n- Update User Field (PATCH)\n- Search Users (GET)\n- Get User by ID (GET)\n- Change Password (PUT)\n- Update User Preferences (PUT)\n- Update Single Preference (PATCH)\n- Delete User Account (DELETE)\n- Delete User (Admin) (DELETE)\n- Update User Status (Admin) (PATCH)\n- Get All Users (Admin) (GET)\n- Admin Update User Status (PATCH)\n- Update User Credits (Admin) (PATCH)\n\n**User Operations:**\n- Profile management\n- Preference settings\n- Account operations\n- User search and discovery\n- Admin user administration",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Valid\",\n  \"lastName\": \"Tester\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Set User Avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/avatar",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "avatar"]
+            }
+          }
+        },
+        {
+          "name": "Update User Field (Make Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Check if role update was successful",
+                  "if (pm.response.code === 200) {",
+                  "    try {",
+                  "        const responseJson = pm.response.json();",
+                  "        console.log('✅ Role updated successfully!');",
+                  "        ",
+                  "        if (responseJson.role === 'admin') {",
+                  "            console.log('🎉 You are now an ADMIN! You can access admin endpoints.');",
+                  "        }",
+                  "    } catch (e) {",
+                  "        console.log('✅ Role update successful (no JSON response)');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Role update failed:', pm.response.code);",
+                  "    if (pm.response.json && pm.response.json().message) {",
+                  "        console.log('Error:', pm.response.json().message);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", "role"]
+            }
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/search?query=admin&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "admin"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Use registeredUserId if userId is not available",
+                  "const userId = pm.collectionVariables.get('userId');",
+                  "const registeredUserId = pm.collectionVariables.get('registeredUserId');",
+                  "const finalUserId = userId || registeredUserId;",
+                  "if (finalUserId) {",
+                  "    pm.request.url = pm.request.url.toString().replace('{{userId}}', finalUserId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"AdminPass123!\",\n  \"newPassword\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Update User Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"soundEnabled\": true,\n  \"musicEnabled\": false,\n  \"animationsEnabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "preferences"]
+            }
+          }
+        },
+        {
+          "name": "Update Single Preference",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/preferences/soundEnabled",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "preferences", "soundEnabled"]
+            }
+          }
+        },
+        {
+          "name": "Delete User Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/account",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "account"]
+            }
+          }
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "all"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update User Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "{{userId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎮 Game Management",
+      "description": "🎮 **GAME MANAGEMENT ENDPOINTS** - Trivia Game Logic & History\n\n**Purpose:** Handle trivia game operations, question generation, answer submission, and game history\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Question retrieval, game info\n- 🔐 **Protected Endpoints:** Answer submission, game history, validation\n- 👑 **Admin Endpoints:** Game statistics, history management, trivia management\n\n**Key Features:**\n- AI-powered question generation\n- Multiple difficulty levels\n- Custom difficulty validation\n- Game history tracking\n- Answer submission and scoring\n- Performance analytics\n- Admin game management\n- Admin trivia management\n\n**Available Endpoints:**\n- Generate Trivia Questions (POST)\n- Get Trivia Question by ID (GET)\n- Submit Answer (POST)\n- Save Game History (POST)\n- Get Game by ID (GET)\n- Get Game History (GET)\n- Delete Game History (DELETE)\n- Clear Game History (DELETE)\n- Validate Custom Difficulty (POST)\n- Get Game Statistics (Admin) (GET)\n- Get All Trivia Questions (Admin) (GET)\n- Clear All Game History (Admin) (DELETE)\n- Clear All Trivia Questions (Admin) (DELETE)\n\n**Game Operations:**\n- Question generation and retrieval\n- Answer submission and validation\n- Game history management\n- Performance tracking\n- Admin game management\n- Statistics and analytics",
+      "item": [
+        {
+          "name": "Generate Trivia Questions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const raw = pm.response.json();",
+                  "        const payload = raw && Array.isArray(raw.questions)",
+                  "            ? raw",
+                  "            : raw && raw.data && Array.isArray(raw.data.questions)",
+                  "                ? raw.data",
+                  "                : null;",
+                  "        if (payload && Array.isArray(payload.questions) && payload.questions.length > 0) {",
+                  "            const firstQuestion = payload.questions[0];",
+                  "            const questionId = firstQuestion.id || firstQuestion.questionId || firstQuestion.uuid || null;",
+                  "            if (questionId) {",
+                  "                pm.collectionVariables.set('questionId', questionId);",
+                  "            }",
+                  "            if (firstQuestion && Array.isArray(firstQuestion.answers)) {",
+                  "                const correctAnswer = firstQuestion.answers.find(answer => answer && answer.isCorrect);",
+                  "                if (correctAnswer && correctAnswer.text) {",
+                  "                    pm.collectionVariables.set('questionAnswer', correctAnswer.text);",
+                  "                } else if (firstQuestion.answers[0] && firstQuestion.answers[0].text) {",
+                  "                    pm.collectionVariables.set('questionAnswer', firstQuestion.answers[0].text);",
+                  "                }",
+                  "            }",
+                  "        }",
+                  "    } catch (err) {",
+                  "        console.warn('Failed to process trivia response for variable extraction', err);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/trivia",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "trivia"]
+            }
+          }
+        },
+        {
+          "name": "Get Trivia Question by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/trivia/{{questionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "trivia", "{{questionId}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"answer\": \"{{questionAnswer}}\",\n  \"timeSpent\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "answer"]
+            }
+          }
+        },
+        {
+          "name": "Save Game History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const data = pm.response.json();",
+                  "        if (data && data.id) {",
+                  "            pm.collectionVariables.set('gameId', data.id);",
+                  "        }",
+                  "    } catch (err) {",
+                  "        console.warn('Failed to capture game history id', err);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 100,\n  \"totalQuestions\": 5,\n  \"correctAnswers\": 4,\n  \"difficulty\": \"medium\",\n  \"topic\": \"science\",\n  \"gameMode\": \"CLASSIC\",\n  \"timeSpent\": 120,\n  \"creditsUsed\": 5,\n  \"questionsData\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Get Game by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/{{gameId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "{{gameId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Game History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Delete Game History",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/history/{{gameId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history", "{{gameId}}"]
+            }
+          }
+        },
+        {
+          "name": "Clear Game History",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "history"]
+            }
+          }
+        },
+        {
+          "name": "Validate Custom Difficulty",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customText\": \"Time attack with extra challenges\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-custom",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-custom"]
+            }
+          }
+        },
+        {
+          "name": "Get Game Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "statistics"]
+            }
+          }
+        },
+        {
+          "name": "Clear All Game History (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clears game history for all users', () => {",
+                  "    if (pm.response.code === 429) {",
+                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "    } else {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response).to.be.an('object');",
+                  "        const payload = response.data || response;",
+                  "        if (payload.message) {",
+                  "            pm.expect(payload).to.have.property('message');",
+                  "            pm.expect(payload).to.have.property('deletedCount');",
+                  "            if (typeof payload.deletedCount === 'number') {",
+                  "                console.log('Deleted game history records:', payload.deletedCount);",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/history/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "history", "clear-all"]
+            }
+          }
+        },
+        {
+          "name": "Get All Trivia Questions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/trivia",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "trivia"]
+            },
+            "description": "Get all trivia questions from the database (admin only)"
+          }
+        },
+        {
+          "name": "Clear All Trivia Questions (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clears all trivia questions', () => {",
+                  "    if (pm.response.code === 429) {",
+                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "    } else {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response).to.be.an('object');",
+                  "        const payload = response.data || response;",
+                  "        if (payload.message) {",
+                  "            pm.expect(payload).to.have.property('message');",
+                  "            pm.expect(payload).to.have.property('deletedCount');",
+                  "            if (typeof payload.deletedCount === 'number') {",
+                  "                console.log('Deleted trivia questions:', payload.deletedCount);",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/admin/trivia/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "admin", "trivia", "clear-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏆 Leaderboard",
+      "description": "🏆 **LEADERBOARD ENDPOINTS** - Rankings & Competition\n\n**Purpose:** Manage user rankings, leaderboards, and competitive features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global leaderboards, period rankings, leaderboard stats\n- 🔐 **Protected Endpoints:** User rankings, updates\n- 👑 **Admin Endpoints:** Leaderboard management\n\n**Key Features:**\n- Global leaderboard system\n- Period-based rankings (weekly, monthly)\n- Ranking updates and management\n- Competitive statistics\n- Performance tracking\n- Admin leaderboard management\n- Leaderboard statistics by period\n\n**Available Endpoints:**\n- Get User Ranking (GET)\n- Update User Ranking (POST)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET) - Public\n- Clear All Leaderboard (Admin) (DELETE)\n\n**Leaderboard Operations:**\n- User ranking retrieval\n- Global leaderboard access\n- Period-based rankings\n- Ranking updates\n- Competitive analytics\n- Leaderboard statistics\n- Admin leaderboard management",
+      "item": [
+        {
+          "name": "Get User Ranking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/ranking",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "ranking"]
+            }
+          }
+        },
+        {
+          "name": "Update User Ranking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "update"]
+            }
+          }
+        },
+        {
+          "name": "Get Global Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/global?limit=10&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "global"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard by Period",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/period/weekly?limit=10&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "period", "weekly"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/stats?period=weekly",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "weekly",
+                  "description": "Time period: weekly, monthly, or yearly"
+                }
+              ]
+            },
+            "description": "Get leaderboard statistics for a specific period (public endpoint)"
+          }
+        },
+        {
+          "name": "Clear All Leaderboard (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clears all leaderboard entries', () => {",
+                  "    if (pm.response.code === 429) {",
+                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "    } else {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response).to.be.an('object');",
+                  "        const payload = response.data || response;",
+                  "        if (payload.message) {",
+                  "            pm.expect(payload).to.have.property('message');",
+                  "            pm.expect(payload).to.have.property('deletedCount');",
+                  "            if (typeof payload.deletedCount === 'number') {",
+                  "                console.log('Deleted leaderboard records:', payload.deletedCount);",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/admin/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "admin", "clear-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Credits System",
+      "description": "💰 **CREDITS SYSTEM ENDPOINTS** - Credits & Monetization\n\n**Purpose:** Manage user credits, purchases, and monetization features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Credit packages\n- 🔐 **Protected Endpoints:** Balance, history, purchases, deductions\n- 👑 **Admin Endpoints:** Credit adjustments\n\n**Key Features:**\n- Credit balance management\n- Credit system integration\n- Purchase packages\n- Transaction history\n- Game play deductions\n- Purchase confirmation\n- Monetization tracking\n- Admin credit management\n\n**Available Endpoints:**\n- Get Credit Balance (GET)\n- Get Credit Packages (GET)\n- Check Can Play (GET)\n- Deduct Credits (POST)\n- Deduct User Credits (POST)\n- Get Credit History (GET)\n- Purchase Credits (POST)\n- Confirm Credit Purchase (POST)\n- Update User Credits (Admin) (PUT)\n\n**Credits Operations:**\n- Balance checking and management\n- Package browsing and purchasing\n- Game play validation\n- Transaction history\n- Purchase confirmation\n- Credit deductions\n- Admin credit adjustments\n- Monetization analytics",
+      "item": [
+        {
+          "name": "Get Credit Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Get Credit Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/credits/packages",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "packages"]
+            }
+          }
+        },
+        {
+          "name": "Check Can Play",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/can-play?questionsPerRequest=5&gameMode=question-limited",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "can-play"],
+              "query": [
+                {
+                  "key": "questionsPerRequest",
+                  "value": "5"
+                },
+                {
+                  "key": "gameMode",
+                  "value": "question-limited"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deduct Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionsPerRequest\": 5,\n  \"gameMode\": \"question-limited\",\n  \"reason\": \"Game play\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credits/deduct",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "deduct"]
+            }
+          }
+        },
+        {
+          "name": "Get Credit History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/history?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "history"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Purchase Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+            "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credits/purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "purchase"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Credit Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_demo_123\",\n  \"credits\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credits/confirm-purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "confirm-purchase"]
+            }
+          }
+        },
+        {
+          "name": "Deduct User Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionsPerRequest\": 10,\n  \"gameMode\": \"question-limited\",\n  \"reason\": \"Game play\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/credits",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "credits"]
+            }
+          }
+        },
+        {
+          "name": "Update User Credits (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"reason\": \"Admin adjustment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/credits/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "credits", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Payment System",
+      "description": "💳 **PAYMENT SYSTEM ENDPOINTS** - Payment Processing & Transactions\n\n**Purpose:** Handle payment processing, transaction management, and financial operations\n\n**Authentication Requirements:**\n- 🔐 **Protected Endpoints:** All payment operations require authentication\n\n**Key Features:**\n- Payment processing\n- Transaction history\n- Financial tracking\n- Payment validation\n- Receipt management\n- Refund processing\n\n**Available Endpoints:**\n- Create Payment (POST)\n- Get Payment History (GET)\n\n**Payment Operations:**\n- Payment creation and processing\n- Transaction history retrieval\n- Payment validation\n- Financial tracking\n- Receipt management\n- Refund processing",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planType\": \"premium\",\n  \"numberOfPayments\": 12,\n  \"agreeToTerms\": true,\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "create"]
+            }
+          }
+        },
+        {
+          "name": "Create Payment (PayPal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planType\": \"premium\",\n  \"numberOfPayments\": 12,\n  \"agreeToTerms\": true,\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\",\n  \"paypalPaymentId\": \"PAYPAL_PAYMENT_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payment/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "history"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Analytics",
+      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user stats management\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get User Performance (Admin) (GET)\n- Get User Activity (Admin) (GET)\n- Get User Insights (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Clear All User Stats (Admin) (DELETE)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user stats management\n- Global trends aggregation",
+      "item": [
+        {
+          "name": "Track Analytics Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+            "raw": "{\n  \"eventType\": \"game_start\",\n  \"userId\": \"{{userId}}\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"properties\": {\n    \"topic\": \"science\",\n    \"difficulty\": \"medium\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analytics/track",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "track"]
+            }
+          }
+        },
+        {
+          "name": "Get Authenticated User Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user"]
+            },
+            "description": "Get analytics for the currently authenticated user (protected endpoint)"
+          }
+        },
+        {
+          "name": "Get User Performance (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-performance/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-performance", "{{userId}}"]
+            },
+            "description": "Get user performance metrics by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Activity (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-activity/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-activity", "{{userId}}"]
+            },
+            "description": "Get detailed user activity by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Insights (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-insights/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-insights", "{{userId}}"]
+            },
+            "description": "Get user insights by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Achievements (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-achievements/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-achievements", "{{userId}}"]
+            },
+            "description": "Get user achievements by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Trends (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-trends/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-trends", "{{userId}}"]
+            },
+            "description": "Get user trend timeline by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Comparison (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-comparison/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-comparison", "{{userId}}"]
+            },
+            "description": "Compare user metrics with another user or global averages (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Summary (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user-summary/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user-summary", "{{userId}}"]
+            },
+            "description": "Get user summary by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get Popular Topics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/topics/popular",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "topics", "popular"]
+            },
+            "description": "Get popular topics statistics (protected endpoint)"
+          }
+        },
+        {
+          "name": "Get Global Difficulty Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/difficulty/global",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "difficulty", "global"]
+            },
+            "description": "Get global difficulty statistics for comparison (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Global Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/global-stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "global-stats"]
+            },
+            "description": "Get global statistics for comparison (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Global Trends (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/global-trends",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "global-trends"]
+            },
+            "description": "Get global trends aggregated from all users (admin only endpoint)"
+          }
+        },
+        {
+          "name": "Clear All User Stats (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clears all user stats', () => {",
+                  "    if (pm.response.code === 429) {",
+                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "    } else {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response).to.be.an('object');",
+                  "        const payload = response.data || response;",
+                  "        if (payload.message) {",
+                  "            pm.expect(payload).to.have.property('message');",
+                  "            pm.expect(payload).to.have.property('deletedCount');",
+                  "            if (typeof payload.deletedCount === 'number') {",
+                  "                console.log('Deleted user stats records:', payload.deletedCount);",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/admin/stats/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "admin", "stats", "clear-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💾 Storage Management",
+      "description": "💾 **STORAGE MANAGEMENT ENDPOINTS** - Data Storage & Management\n\n**Purpose:** Manage application storage, data persistence, and storage operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Storage metrics (read-only)\n- 👑 **Admin Endpoints:** Storage operations, data management, key access\n\n**Key Features:**\n- Storage metrics and monitoring\n- Data storage and retrieval\n- Storage key management\n- Storage clearing and maintenance\n- Performance monitoring\n\n**Available Endpoints:**\n- Get Storage Metrics (GET) - Public\n- Reset Storage Metrics (POST) - Admin\n- Get Storage Keys (GET) - Admin\n- Get Storage Item (GET) - Admin\n- Clear Storage (DELETE) - Admin\n\n**Storage Operations:**\n- Get storage metrics (public)\n- Retrieve storage items (admin)\n- List storage keys (admin)\n- Clear storage data (admin)\n- Reset storage metrics (admin)\n- Data persistence management",
+      "item": [
+        {
+          "name": "Get Storage Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/storage/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Reset Storage Metrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/storage/metrics/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "metrics", "reset"]
+            }
+          }
+        },
+        {
+          "name": "Get Storage Keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/storage/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "keys"]
+            }
+          }
+        },
+        {
+          "name": "Get Storage Item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/storage/item/key_name",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "item", "key_name"]
+            }
+          }
+        },
+        {
+          "name": "Clear Storage",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/storage/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["storage", "clear"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗄️ Cache Management",
+      "description": "🗄️ **CACHE MANAGEMENT ENDPOINTS** - Cache System & Performance\n\n**Purpose:** Manage cache system, performance optimization, and cache operations\n\n**Authentication Requirements:**\n- 👑 **Admin Endpoints:** All cache operations require admin privileges\n\n**Key Features:**\n- Cache statistics and monitoring\n- Cache clearing and management\n- Key existence checking\n- TTL (Time To Live) management\n- Performance optimization\n- Cache health monitoring\n\n**Available Endpoints:**\n- Get Cache Stats (GET) - Admin\n- Clear Cache (DELETE) - Admin\n- Check Cache Key Exists (GET) - Admin\n- Get Cache TTL (GET) - Admin\n\n**Cache Operations:**\n- Cache statistics retrieval (admin)\n- Cache clearing and management (admin)\n- Key existence validation (admin)\n- TTL monitoring (admin)\n- Performance optimization\n- Cache health tracking",
+      "item": [
+        {
+          "name": "Get Cache Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cache/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Clear Cache",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cache/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "clear"]
+            }
+          }
+        },
+        {
+          "name": "Check Cache Key Exists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cache/exists/key_name",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "exists", "key_name"]
+            }
+          }
+        },
+        {
+          "name": "Get Cache TTL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cache/ttl/key_name",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "ttl", "key_name"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Middleware Metrics",
+      "description": "📈 **MIDDLEWARE METRICS ENDPOINTS** - Performance & System Monitoring\n\n**Purpose:** Monitor middleware performance, system metrics, and operational health\n\n**Authentication Requirements:**\n- 👑 **Admin Endpoints:** All middleware metrics require admin privileges\n\n**Key Features:**\n- Middleware performance monitoring\n- System metrics tracking\n- Performance analytics\n- Metrics reset functionality\n- Operational health monitoring\n- System optimization insights\n\n**Available Endpoints:**\n- Get All Middleware Metrics (GET)\n- Get Specific Middleware Metrics (GET)\n- Reset Specific Middleware Metrics (DELETE)\n- Reset All Middleware Metrics (DELETE)\n\n**Metrics Operations:**\n- Performance monitoring\n- System metrics tracking\n- Metrics reset and management\n- Operational health analysis\n- Performance optimization\n- System insights",
+      "item": [
+        {
+          "name": "Get All Middleware Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Middleware Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics/RateLimitMiddleware",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics", "RateLimitMiddleware"]
+            }
+          }
+        },
+        {
+          "name": "Reset Specific Middleware Metrics",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics/RateLimitMiddleware",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics", "RateLimitMiddleware"]
+            }
+          }
+        },
+        {
+          "name": "Reset All Middleware Metrics",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/middleware-metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "middleware-metrics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Client Logs",
+      "description": "📝 **CLIENT LOGS ENDPOINTS** - Client-Side Logging & Monitoring\n\n**Purpose:** Handle client-side logging, error tracking, and user behavior monitoring\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Log submission (for error tracking)\n\n**Key Features:**\n- Client-side log collection\n- Error tracking and monitoring\n- User behavior analytics\n- Performance logging\n- Debug information collection\n- Real-time log processing\n\n**Available Endpoints:**\n- Submit Client Logs (POST)\n\n**Logging Operations:**\n- Client log submission\n- Error tracking and monitoring\n- User behavior analytics\n- Performance logging\n- Debug information collection\n- Real-time log processing",
+      "item": [
+        {
+          "name": "Submit Client Logs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logs\": [\n    {\n      \"level\": \"info\",\n      \"message\": \"User clicked button\",\n      \"timestamp\": \"2024-01-01T00:00:00Z\",\n      \"context\": {\n        \"userId\": \"user123\",\n        \"action\": \"button_click\"\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/client-logs/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["client-logs", "batch"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Subscription Management",
+      "description": "📋 **SUBSCRIPTION MANAGEMENT ENDPOINTS** - Plans & Billing\n\n**Purpose:** Manage subscription plans, billing, and premium features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Available plans\n- 🔐 **Protected Endpoints:** Current subscription, creation, cancellation\n\n**Key Features:**\n- Subscription plan management\n- Billing and payment integration\n- Premium feature access\n- Subscription lifecycle management\n- Plan comparison and selection\n- Billing history tracking\n\n**Available Endpoints:**\n- Get Available Plans (GET)\n- Get Current Subscription (GET)\n- Create Subscription (POST)\n- Cancel Subscription (DELETE)\n\n**Subscription Operations:**\n- Plan browsing and selection\n- Subscription creation and management\n- Billing and payment processing\n- Premium feature access\n- Subscription cancellation\n- Billing history tracking",
+      "item": [
+        {
+          "name": "Get Available Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "plans"]
+            }
+          }
+        },
+        {
+          "name": "Get Current Subscription",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "current"]
+            }
+          }
+        },
+        {
+          "name": "Create Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planType\": \"premium\",\n  \"billingCycle\": \"monthly\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\",\n  \"autoRenewal\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "create"]
+            }
+          }
+        },
+        {
+          "name": "Create Subscription (PayPal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planType\": \"premium\",\n  \"billingCycle\": \"monthly\",\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\",\n  \"paypalPaymentId\": \"PAYPAL_PAYMENT_ID_HERE\",\n  \"autoRenewal\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "create"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍👩‍👦‍👦 Multiplayer (WebSocket)",
+      "description": "👨‍👩‍👦‍👦 **MULTIPLAYER WEBSOCKET EVENTS** - Real-Time Simultaneous Trivia Games\n\n**Purpose:** Handle real-time multiplayer simultaneous trivia games via WebSocket connections\n\n**Connection:**\n- WebSocket URL: `ws://localhost:3002/multiplayer` (or `wss://` for HTTPS)\n- Authentication: JWT token required in connection handshake\n  - Via `auth.token` in connection options\n  - Via `query.token` in connection URL\n  - Via `Authorization: Bearer <token>` header\n\n**Authentication Requirements:**\n- 🔐 **All Events:** Require JWT authentication via WebSocket handshake\n\n**Key Features:**\n- Real-time simultaneous gameplay\n- Room-based game sessions (2-4 players)\n- Manual room creation with join codes\n- Live leaderboard updates\n- Question timer synchronization\n- Answer submission and scoring\n- Game state synchronization\n\n**Available WebSocket Events:**\n\n**Client → Server Events:**\n- `create-room` - Create a new multiplayer room\n- `join-room` - Join an existing room\n- `leave-room` - Leave current room\n- `start-game` - Start the game (host only)\n- `submit-answer` - Submit answer to current question\n\n**Server → Client Events:**\n- `room-created` - Room successfully created\n- `room-joined` - Successfully joined a room\n- `room-left` - Successfully left a room\n- `player-joined` - Another player joined the room\n- `player-left` - A player left the room\n- `game-started` - Game has started\n- `question-started` - New question has started\n- `answer-received` - Answer was received (confirmation)\n- `question-ended` - Current question has ended\n- `game-ended` - Game has finished\n- `leaderboard-update` - Leaderboard updated\n- `room-updated` - Room state updated\n- `error` - Error occurred\n\n**Connection Example (Socket.IO Client):**\n```javascript\nconst socket = io('ws://localhost:3001/multiplayer', {\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n});\n```\n\n**Event Flow:**\n1. Connect to WebSocket with JWT token\n2. Create or join a room\n3. Wait for players (minimum 2)\n4. Host starts the game\n5. Questions are sent to all players simultaneously\n6. Players submit answers\n7. Results and leaderboard updates are broadcast\n8. Game ends when all questions are answered\n\n**Room Configuration:**\n- Topic: Trivia topic (e.g., \"Science\", \"History\")\n- Difficulty: Standard (easy/medium/hard) or custom\n- Question Count: 1-50 questions\n- Max Players: 2-4 players\n- Game Mode: question-limited, time-limited, or unlimited\n- Time Per Question: Fixed 30 seconds for simultaneous games",
+      "item": [
+        {
+          "name": "WebSocket Connection Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer"]
+            },
+            "description": "WebSocket endpoint: ws://localhost:3002/multiplayer\n\n**Connection Requirements:**\n- Protocol: WebSocket (ws:// or wss://)\n- Namespace: /multiplayer\n- Authentication: JWT token required\n\n**Connection Options:**\n```javascript\n{\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n}\n```\n\n**Testing Note:**\n- WebSocket events require a real WebSocket client (not HTTP requests)\n- Use Socket.IO client library or WebSocket testing tools\n- Postman supports WebSocket testing in newer versions\n- For manual testing, use browser console or dedicated WebSocket clients"
+          }
+        },
+        {
+          "name": "Create Room (WebSocket Event)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "        const room = data && data.room ? data.room : null;",
+                  "",
+                  "        if (room && room.roomId) {",
+                  "            pm.collectionVariables.set('multiplayerRoomId', room.roomId);",
+                  "        }",
+                  "",
+                  "        if (data && data.code) {",
+                  "            pm.collectionVariables.set('multiplayerRoomCode', data.code);",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture multiplayer room info', error);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"Science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 10,\n  \"maxPlayers\": 4,\n  \"gameMode\": \"question-limited\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms`\n\n**WebSocket Event Mirrored:** `create-room`\n\n**Emit (Socket.IO):** `socket.emit('create-room', { topic, difficulty, questionsPerRequest, maxPlayers, gameMode })`\n\n**HTTP Response:** `{ room, code }`\n\n**WebSocket Response Events:**\n- `room-created` - Returns { room, code }\n- `player-joined` - Broadcast to all players\n- `error` - If creation fails\n\n**Room Code:** Short 6-character code for easy sharing (first 6 chars of room ID)"
+          }
+        },
+        {
+          "name": "Join Room (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "join"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/join`\n\n**Purpose:** Adds a second authenticated player (admin) so the room has at least two participants.\n\n**WebSocket Event Mirrored:** `join-room`\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `room-joined` - Returns { room }\n- `player-joined` - Broadcast to all players in room\n- `error` - If join fails (room full, not found, etc.)"
+          }
+        },
+        {
+          "name": "Start Game (WebSocket Event)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "        const room = data && data.room ? data.room : null;",
+                  "",
+                  "        if (room && Array.isArray(room.questions) && room.questions.length > 0) {",
+                  "            const nextQuestion = room.questions[room.currentQuestionIndex || 0] || room.questions[0];",
+                  "            if (nextQuestion && nextQuestion.id) {",
+                  "                pm.collectionVariables.set('multiplayerQuestionId', nextQuestion.id);",
+                  "            }",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture multiplayer question info', error);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "start"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/start`\n\n**WebSocket Event Mirrored:** `start-game`\n\n**Emit:** `socket.emit('start-game', { roomId })`\n\n**Requirements:**\n- User must be the room host\n- Minimum 2 players required\n- Room status must be 'waiting'\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `game-started` - Broadcast to all players with { questions, config }\n- `question-started` - First question starts automatically\n- `error` - If start fails (not host, not enough players, etc.)"
+          }
+        },
+        {
+          "name": "Submit Answer (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\",\n  \"questionId\": \"{{multiplayerQuestionId}}\",\n  \"answer\": 0,\n  \"timeSpent\": 12\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "answer"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/answer`\n\n**WebSocket Event Mirrored:** `submit-answer`\n\n**Emit:** `socket.emit('submit-answer', { roomId, questionId, answer, timeSpent })`\n\n**Parameters:**\n- `roomId`: Room UUID\n- `questionId`: Question UUID\n- `answer`: Answer index (0-3)\n- `timeSpent`: Time spent in seconds\n\n**HTTP Response:** `{ roomId, questionId, isCorrect, scoreEarned, leaderboard }`\n\n**WebSocket Response Events:**\n- `answer-received` - Confirmation with { userId, questionId, isCorrect, scoreEarned, leaderboard }\n- `leaderboard-update` - Leaderboard updated\n- `error` - If submission fails"
+          }
+        },
+        {
+          "name": "Get Room Details (HTTP Proxy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}"]
+            },
+            "description": "Returns the full multiplayer room document (`{ room }`) while both players are connected."
+          }
+        },
+        {
+          "name": "Get Room State (HTTP Proxy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}/state",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}", "state"]
+            },
+            "description": "Returns `{ room, gameState }` prior to disconnecting players so diagnostics stay valid."
+          }
+        },
+        {
+          "name": "Leave Room (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "leave"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\n**WebSocket Event Mirrored:** `leave-room`\n\nThis call disconnects the admin player while leaving the original host in the room, so the game can finish cleanly.\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
+          }
+        }
+      ]
+    }
+  ]
+}

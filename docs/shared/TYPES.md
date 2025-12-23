@@ -37,7 +37,7 @@ shared/types/
 │   ├── auth.types.ts          # טיפוסי אימות
 │   ├── cache.types.ts         # טיפוסי cache
 │   ├── config.types.ts        # טיפוסי קונפיגורציה
-│   ├── http.types.ts          # טיפוסי HTTP
+│   ├── api.types.ts           # טיפוסי API (כולל HttpMethod)
 │   ├── logging.types.ts       # טיפוסי לוגים
 │   ├── redis.types.ts         # טיפוסי Redis
 │   ├── storage.types.ts       # טיפוסי אחסון
@@ -415,6 +415,19 @@ export interface User extends UserProfile {
 ### api.types.ts
 
 ```typescript
+/**
+ * HTTP method enumeration
+ * @description Enum of all valid HTTP methods
+ */
+export enum HttpMethod {
+	GET = 'GET',
+	POST = 'POST',
+	PUT = 'PUT',
+	PATCH = 'PATCH',
+	DELETE = 'DELETE',
+	OPTIONS = 'OPTIONS',
+}
+
 /**
  * Question data interface
  */

@@ -1,30 +1,31 @@
-import * as os from 'os';
+import { cpus, freemem, totalmem } from 'os';
 
-import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { CACHE_DURATION, TimePeriod } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { CACHE_DURATION, ComparisonTarget, ERROR_CODES, TimePeriod } from '@shared/constants';
 import type {
-	Achievement,
 	ActivityEntry,
 	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
 	BusinessMetrics,
+	ClearOperationResponse,
+	ComparisonQueryOptions,
 	CompleteUserAnalytics,
 	DifficultyBreakdown,
-	DifficultyStatsData,
 	GameAnalyticsQuery,
 	GameStatsData,
-	SecurityMetrics,
+	GlobalStatsResponse,
+	HistoryFilterOptions,
 	SystemInsights,
-	SystemPerformanceMetrics,
 	SystemRecommendation,
+	TimeStat,
 	TopicAnalyticsRecord,
 	TopicsPlayed,
 	TopicStatsData,
+	TrendQueryOptions,
 	UserAnalyticsRecord,
 	UserComparisonMetrics,
 	UserComparisonResult,
@@ -35,17 +36,16 @@ import type {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
+import { buildCountRecord, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 import {
-	buildCountRecord,
-	getErrorMessage,
-	hasProperty,
 	isBusinessMetricsData,
 	isCompleteUserAnalyticsData,
 	isDifficultyStatsRecord,
-	isRecord,
 	isTopicAnalyticsRecordArray,
-} from '@shared/utils';
+} from '@shared/utils/domain';
+import { isGameDifficulty } from '@shared/validation';
 
+import { SQL_CONDITIONS } from '@internal/constants';
 import {
 	GameHistoryEntity,
 	LeaderboardEntity,
@@ -54,38 +54,18 @@ import {
 	UserStatsEntity,
 } from '@internal/entities';
 import { CacheService } from '@internal/modules';
-import { createNotFoundError } from '@internal/utils';
+import { serverLogger as logger } from '@internal/services';
+import type {
+	Achievement,
+	ActivityQueryOptions,
+	SecurityMetrics,
+	SystemPerformanceMetrics,
+	TopicAnalyticsAccumulator,
+} from '@internal/types';
+import { createNotFoundError, isNumber } from '@internal/utils';
 
-import { addDateRangeConditions, createGroupByQuery } from '../../common/queries';
+import { addDateRangeConditions } from '../../common/queries';
 import { LeaderboardService } from '../leaderboard';
-
-type HistoryFilterOptions = {
-	startDate?: string;
-	endDate?: string;
-};
-
-type TrendQueryOptions = HistoryFilterOptions & {
-	groupBy?: TimePeriod;
-	limit?: number;
-};
-
-type ActivityQueryOptions = HistoryFilterOptions & {
-	limit?: number;
-};
-
-type ComparisonQueryOptions = HistoryFilterOptions & {
-	target?: 'global' | 'user';
-	targetUserId?: string;
-};
-
-type TopicAnalyticsAccumulator = {
-	gamesPlayed: number;
-	totalQuestionsAnswered: number;
-	correctAnswers: number;
-	totalTimeSpent: number;
-	lastPlayed: string | null;
-	difficultyBreakdown: TopicsPlayed;
-};
 
 /**
  * Service for trivia analytics and metrics
@@ -96,7 +76,7 @@ type TopicAnalyticsAccumulator = {
  * @used_by server/src/features/game, server/controllers/analytics, server/src/features/metrics
  */
 @Injectable()
-export class AnalyticsService implements OnModuleInit {
+export class AnalyticsService {
 	private performanceData: SystemPerformanceMetrics = {
 		responseTime: 0,
 		memoryUsage: 0,
@@ -140,9 +120,7 @@ export class AnalyticsService implements OnModuleInit {
 		private readonly userStatsRepo: Repository<UserStatsEntity>,
 		private readonly cacheService: CacheService,
 		private readonly leaderboardService: LeaderboardService
-	) {}
-
-	async onModuleInit() {
+	) {
 		this.startMetricsCollection();
 	}
 
@@ -191,10 +169,10 @@ export class AnalyticsService implements OnModuleInit {
 				totalQuestionsAnswered: stats.totalQuestionsAnswered,
 				successRate: stats.successRate,
 				averageScore: stats.averageScore,
-				bestScore: stats.bestScore,
+				bestScore: Math.round(stats.bestScore),
 				totalPlayTime: stats.totalPlayTime,
 				correctAnswers: stats.correctAnswers,
-				favoriteTopic: stats.favoriteTopic,
+				mostPlayedTopic: stats.mostPlayedTopic,
 				averageTimePerQuestion: stats.averageTimePerQuestion ?? 0,
 				totalScore: stats.totalScore ?? 0,
 				topicsPlayed: stats.topicsPlayed,
@@ -237,27 +215,54 @@ export class AnalyticsService implements OnModuleInit {
 	}
 
 	/**
-	 * Get difficulty statistics
-	 * @param query Query parameters
-	 * @returns Promise<AnalyticsResponse<DifficultyStatsData>>
+	 * Get global difficulty statistics
+	 * @returns Promise<DifficultyBreakdown>
 	 */
-	async getDifficultyStats(query: GameAnalyticsQuery): Promise<AnalyticsResponse<DifficultyStatsData>> {
+	async getGlobalDifficultyStats(): Promise<DifficultyBreakdown> {
 		try {
-			logger.analyticsStats('difficulty', {});
+			logger.analyticsStats('global_difficulty', {});
 
-			const stats = await this.calculateDifficultyStats(query);
+			const cacheKey = 'analytics:difficulty:global';
 
-			const totalQuestionsAnswered = Object.values(stats).reduce((sum: number, diff) => sum + diff.total, 0);
+			return await this.cacheService.getOrSet<DifficultyBreakdown>(
+				cacheKey,
+				async () => {
+					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game');
 
-			return {
-				data: {
-					difficulties: stats,
-					totalQuestionsAnswered,
+					const difficultyStats = await queryBuilder
+						.select('game.difficulty', 'difficulty')
+						.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
+						.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
+						.where(`game.difficulty ${SQL_CONDITIONS.IS_NOT_NULL}`)
+						.andWhere("game.difficulty != ''")
+						.groupBy('game.difficulty')
+						.getRawMany<{ difficulty: string; total: number; correct: number }>();
+
+					const result: DifficultyBreakdown = {};
+					difficultyStats.forEach(stat => {
+						if (
+							stat?.difficulty &&
+							isGameDifficulty(stat.difficulty) &&
+							stat?.total !== undefined &&
+							stat?.correct !== undefined
+						) {
+							const total = stat.total ?? 0;
+							const correct = stat.correct ?? 0;
+							result[stat.difficulty] = {
+								total,
+								correct,
+								successRate: total > 0 ? (correct / total) * 100 : undefined,
+							};
+						}
+					});
+
+					return result;
 				},
-				timestamp: new Date().toISOString(),
-			};
+				1800,
+				isDifficultyStatsRecord
+			);
 		} catch (error) {
-			logger.analyticsError('getDifficultyStats', {
+			logger.analyticsError('getGlobalDifficultyStats', {
 				error: getErrorMessage(error),
 			});
 			throw error;
@@ -557,42 +562,75 @@ export class AnalyticsService implements OnModuleInit {
 			const averageScore = recentGames.length > 0 ? recentScores / recentGames.length : 0;
 			const totalScore = recentScores;
 
-			// Count games by topic from gameHistory (only for topics that exist in topicStats)
-			// This is more efficient than loading all games - we only count distinct topics
-			const topicsInStats = Object.keys(userStats.topicStats);
-			let topicsPlayed: TopicsPlayed = {};
+			// Count games by topic from gameHistory
+			// Optimize: only query topics that exist in topicStats (if available)
+			const topicsInStats = userStats.topicStats ? Object.keys(userStats.topicStats) : [];
+			const queryBuilder = this.gameHistoryRepo
+				.createQueryBuilder('game')
+				.select('game.topic', 'topic')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
+				.where('game.userId = :userId', { userId })
+				.andWhere(`game.topic ${SQL_CONDITIONS.IS_NOT_NULL}`)
+				.andWhere("game.topic != ''");
 
+			// If we have topicStats, filter by those topics for better performance
 			if (topicsInStats.length > 0) {
-				// Count games per topic using a single query
-				const queryBuilder = createGroupByQuery(this.gameHistoryRepo, 'game', 'topic', 'count', {
-					userId,
-					topics: topicsInStats,
-				});
-				const topicCounts = await queryBuilder.getRawMany<{ topic: string; count: number }>();
-
-				// Initialize all topics with 0, then update with actual counts
-				topicsPlayed = Object.fromEntries(topicsInStats.map(topic => [topic, 0]));
-				topicCounts.forEach(({ topic, count }) => {
-					topicsPlayed[topic] = count;
-				});
+				queryBuilder.andWhere('game.topic IN (:...topics)', { topics: topicsInStats });
 			}
 
-			// Find favorite topic (topic with most questions)
-			const favoriteTopic =
-				Object.keys(userStats.topicStats).length > 0
-					? Object.keys(userStats.topicStats).reduce((a, b) =>
-							userStats.topicStats[a]?.totalQuestionsAnswered > userStats.topicStats[b]?.totalQuestionsAnswered ? a : b
-						)
+			queryBuilder.groupBy('game.topic').orderBy('COUNT(*)', 'DESC');
+
+			const topicCounts = await queryBuilder.getRawMany<{ topic: string; count: number }>();
+
+			// Build topicsPlayed from query results
+			const topicsPlayed: TopicsPlayed = {};
+			topicCounts.forEach(({ topic, count }) => {
+				if (topic && count != null) {
+					topicsPlayed[topic] = count;
+				}
+			});
+
+			// Find most played topic (topic with most games)
+			const mostPlayedTopic =
+				Object.keys(topicsPlayed).length > 0
+					? Object.keys(topicsPlayed).reduce((a, b) => ((topicsPlayed[a] ?? 0) > (topicsPlayed[b] ?? 0) ? a : b))
 					: 'None';
 
-			// Convert difficultyStats to difficultyBreakdown format
+			// Calculate difficultyBreakdown from gameHistory
+			// Optimize: only query difficulties that exist in difficultyStats (if available)
+			const difficultiesInStats = userStats.difficultyStats ? Object.keys(userStats.difficultyStats) : [];
+			const difficultyQueryBuilder = this.gameHistoryRepo
+				.createQueryBuilder('game')
+				.select('game.difficulty', 'difficulty')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
+				.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
+				.where('game.userId = :userId', { userId })
+				.andWhere(`game.difficulty ${SQL_CONDITIONS.IS_NOT_NULL}`)
+				.andWhere("game.difficulty != ''");
+
+			// If we have difficultyStats, filter by those difficulties for better performance
+			if (difficultiesInStats.length > 0) {
+				difficultyQueryBuilder.andWhere('game.difficulty IN (:...difficulties)', { difficulties: difficultiesInStats });
+			}
+
+			difficultyQueryBuilder.groupBy('game.difficulty');
+
+			const difficultyStatsRaw = await difficultyQueryBuilder.getRawMany<{
+				difficulty: string;
+				total: number;
+				correct: number;
+			}>();
+
+			// Build difficultyBreakdown from all difficulties in game history
 			const difficultyBreakdown: DifficultyBreakdown = {};
-			Object.entries(userStats.difficultyStats).forEach(([difficulty, stats]) => {
-				difficultyBreakdown[difficulty] = {
-					total: stats.totalQuestionsAnswered,
-					correct: stats.correctAnswers,
-					successRate: stats.successRate,
-				};
+			difficultyStatsRaw.forEach(({ difficulty, total, correct }) => {
+				if (difficulty && isGameDifficulty(difficulty) && total != null && correct != null) {
+					difficultyBreakdown[difficulty] = {
+						total,
+						correct,
+						successRate: total > 0 ? (correct / total) * 100 : 0,
+					};
+				}
 			});
 
 			// Create recent activity from recent games
@@ -609,10 +647,10 @@ export class AnalyticsService implements OnModuleInit {
 				totalQuestionsAnswered: userStats.totalQuestionsAnswered,
 				successRate: Number(userStats.overallSuccessRate),
 				averageScore,
-				bestScore: userStats.bestGameScore,
+				bestScore: Math.round(userStats.bestGameScore),
 				totalPlayTime: userStats.totalPlayTime,
 				correctAnswers: userStats.correctAnswers,
-				favoriteTopic,
+				mostPlayedTopic,
 				averageTimePerQuestion: userStats.averageTimePerQuestion,
 				totalScore,
 				topicsPlayed,
@@ -655,10 +693,10 @@ export class AnalyticsService implements OnModuleInit {
 
 			const difficultyStatsRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('game.difficulty', 'difficulty')
-				.addSelect('CAST(COUNT(*) AS INTEGER)', 'gamesCount')
-				.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correctAnswers')
+				.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
+				.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
 				.groupBy('game.difficulty')
-				.getRawMany<{ difficulty: string | null; gamesCount: number | null; correctAnswers: number | null }>();
+				.getRawMany<{ difficulty: string; total: number; correct: number }>();
 
 			const averageTimeRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('CAST(AVG(game.timeSpent) AS DOUBLE PRECISION)', 'averageTime')
@@ -666,11 +704,12 @@ export class AnalyticsService implements OnModuleInit {
 
 			let medianTime: number | null = null;
 			try {
-				const queryBuilder = this.createFilteredGameHistoryQuery(query);
-				const sql = queryBuilder.getSql();
-				const params = queryBuilder.getParameters();
+				const medianQueryBuilder = this.createFilteredGameHistoryQuery(query).select('game.timeSpent', 'timeSpent');
+
+				const sql = medianQueryBuilder.getQuery();
+				const params = medianQueryBuilder.getParameters();
 				const paramKeys = Object.keys(params);
-				const paramValues = paramKeys.map(key => params[key]);
+				const paramValues = Object.values(params);
 
 				let whereClause = '';
 				if (sql.includes('WHERE')) {
@@ -693,7 +732,7 @@ export class AnalyticsService implements OnModuleInit {
 				});
 			}
 
-			const timeStatsRaw = {
+			const timeStatsRaw: TimeStat = {
 				averageTime: averageTimeRaw?.averageTime ?? null,
 				medianTime,
 			};
@@ -707,7 +746,7 @@ export class AnalyticsService implements OnModuleInit {
 			const difficultyDistribution: TopicsPlayed = buildCountRecord(
 				difficultyStatsRaw,
 				stat => stat?.difficulty ?? null,
-				stat => stat?.gamesCount ?? 0
+				stat => stat?.total ?? 0
 			);
 
 			return {
@@ -774,8 +813,7 @@ export class AnalyticsService implements OnModuleInit {
 
 					return topicStatsRaw
 						.filter(
-							(stat): stat is { topic: string; totalGames: number } =>
-								stat.topic !== null && stat.totalGames !== null && stat.totalGames !== undefined
+							(stat): stat is { topic: string; totalGames: number } => stat.topic != null && stat.totalGames != null
 						)
 						.map(stat => ({
 							topic: stat.topic,
@@ -794,68 +832,20 @@ export class AnalyticsService implements OnModuleInit {
 	}
 
 	/**
-	 * Calculate difficulty statistics from real data
-	 * @param query Query parameters for filtering
-	 * @returns
-	 */
-	private async calculateDifficultyStats(query?: GameAnalyticsQuery): Promise<DifficultyBreakdown> {
-		try {
-			const cacheKey = `analytics:difficulty:stats:${JSON.stringify(query ?? {})}`;
-
-			return await this.cacheService.getOrSet<DifficultyBreakdown>(
-				cacheKey,
-				async () => {
-					const queryBuilder = this.createFilteredGameHistoryQuery(query);
-
-					const difficultyStats = await queryBuilder
-						.select('game.difficulty', 'difficulty')
-						.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
-						.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
-						.where('game.difficulty IS NOT NULL')
-						.groupBy('game.difficulty')
-						.getRawMany<{ difficulty: string; total: number; correct: number }>();
-
-					const result: DifficultyBreakdown = {};
-					difficultyStats.forEach(stat => {
-						if (stat?.difficulty && stat?.total !== undefined && stat?.correct !== undefined) {
-							const total = stat.total ?? 0;
-							const correct = stat.correct ?? 0;
-							result[stat.difficulty] = {
-								total,
-								correct,
-								successRate: total > 0 ? (correct / total) * 100 : undefined,
-							};
-						}
-					});
-
-					return result;
-				},
-				1800,
-				isDifficultyStatsRecord
-			);
-		} catch (error) {
-			logger.analyticsError('calculateDifficultyStats', {
-				error: getErrorMessage(error),
-			});
-			return {};
-		}
-	}
-
-	/**
 	 * Update performance metrics with real system data
 	 */
 	private async updatePerformanceMetrics() {
 		this.performanceData.uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
-		const totalMemory = os.totalmem();
-		const freeMemory = os.freemem();
+		const totalMemory = totalmem();
+		const freeMemory = freemem();
 		this.performanceData.memoryUsage = ((totalMemory - freeMemory) / totalMemory) * 100;
 
-		const cpus = os.cpus();
+		const cpuList = cpus();
 		let totalIdle = 0;
 		let totalTick = 0;
 
-		cpus.forEach(cpu => {
+		cpuList.forEach(cpu => {
 			// Calculate total tick from all CPU time values using Object.values
 			const timeValues = Object.values(cpu.times);
 			totalTick += timeValues.reduce((sum, value) => sum + value, 0);
@@ -1070,6 +1060,9 @@ export class AnalyticsService implements OnModuleInit {
 
 					const performanceMetrics = this.calculatePerformanceMetrics(gameHistory);
 
+					// Build trends from game history for charts
+					const trends = this.buildUserTrends(gameHistory, { limit: 30 });
+
 					const rankingEntry = await this.leaderboardService.getUserRanking(userId);
 					const rankingData = rankingEntry
 						? {
@@ -1107,25 +1100,33 @@ export class AnalyticsService implements OnModuleInit {
 							totalQuestionsAnswered: gameAnalytics.totalQuestionsAnswered ?? 0,
 							successRate: gameAnalytics.successRate ?? 0,
 							averageScore: gameAnalytics.averageScore ?? 0,
-							bestScore: gameAnalytics.bestScore ?? 0,
+							bestScore: Math.round(gameAnalytics.bestScore ?? 0),
 							totalPlayTime: gameAnalytics.totalPlayTime ?? 0,
 							correctAnswers: gameAnalytics.correctAnswers ?? 0,
 							averageTimePerQuestion: gameAnalytics.averageTimePerQuestion ?? 0,
 							topicsPlayed: gameAnalytics.topicsPlayed ?? {},
-							difficultyBreakdown: Object.fromEntries(
-								Object.entries(gameAnalytics.difficultyBreakdown ?? {}).map(([key, value]) => [
-									key,
-									{
-										total: value.total,
-										correct: value.correct,
-										successRate: value.successRate ?? 0,
-									},
-								])
-							),
+							difficultyBreakdown: (() => {
+								const breakdown: DifficultyBreakdown = {};
+								const entries = gameAnalytics.difficultyBreakdown ?? {};
+								for (const [key, value] of Object.entries(entries)) {
+									if (isGameDifficulty(key)) {
+										const stats = value;
+										if (stats !== undefined) {
+											breakdown[key] = {
+												total: stats.total,
+												correct: stats.correct,
+												successRate: stats.successRate ?? 0,
+											};
+										}
+									}
+								}
+								return breakdown;
+							})(),
 							recentActivity: gameAnalytics.recentActivity ?? [],
 						},
 						performance: performanceMetrics,
 						ranking: rankingData,
+						trends,
 					};
 				},
 				900,
@@ -1290,9 +1291,9 @@ export class AnalyticsService implements OnModuleInit {
 		const filteredHistory = this.filterHistoryByDate(history, query);
 		const performance = this.calculatePerformanceMetrics(filteredHistory);
 
-		const targetPreference = query?.target ?? (query?.targetUserId ? 'user' : 'global');
-		if (targetPreference === 'user' && !query?.targetUserId) {
-			throw new BadRequestException('targetUserId is required when target=user');
+		const targetPreference = query?.target ?? (query?.targetUserId ? ComparisonTarget.USER : ComparisonTarget.GLOBAL);
+		if (targetPreference === ComparisonTarget.USER && !query?.targetUserId) {
+			throw new BadRequestException(ERROR_CODES.TARGET_USER_ID_REQUIRED);
 		}
 
 		const result = await this.buildUserComparison(
@@ -1300,7 +1301,7 @@ export class AnalyticsService implements OnModuleInit {
 			stats,
 			performance,
 			filteredHistory,
-			targetPreference === 'user' ? query?.targetUserId : undefined,
+			targetPreference === ComparisonTarget.USER ? query?.targetUserId : undefined,
 			query
 		);
 		return {
@@ -1425,11 +1426,8 @@ export class AnalyticsService implements OnModuleInit {
 			return history;
 		}
 
-		const start = options?.startDate ? new Date(options.startDate) : undefined;
-		const validStart = start && !Number.isNaN(start.getTime()) ? start : undefined;
-
-		const end = options?.endDate ? new Date(options.endDate) : undefined;
-		const validEnd = end && !Number.isNaN(end.getTime()) ? end : undefined;
+		const validStart = options?.startDate && !Number.isNaN(options.startDate.getTime()) ? options.startDate : undefined;
+		const validEnd = options?.endDate && !Number.isNaN(options.endDate.getTime()) ? options.endDate : undefined;
 
 		return history.filter(game => {
 			const createdAt = game.createdAt ? new Date(game.createdAt) : undefined;
@@ -1457,7 +1455,7 @@ export class AnalyticsService implements OnModuleInit {
 	 * Build activity entries from history
 	 */
 	private buildUserActivityEntries(history: GameHistoryEntity[], limit?: number): ActivityEntry[] {
-		const effectiveLimit = typeof limit === 'number' && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
+		const effectiveLimit = isNumber(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
 		const boundedHistory = history.slice(0, effectiveLimit);
 
 		return boundedHistory.map(game => ({
@@ -1896,7 +1894,7 @@ export class AnalyticsService implements OnModuleInit {
 		};
 
 		let targetMetrics: UserComparisonMetrics;
-		let targetType: 'global' | 'user' = 'global';
+		let targetType: ComparisonTarget = ComparisonTarget.GLOBAL;
 		let resolvedTargetUserId: string | undefined;
 
 		if (targetUserId && targetUserId !== userId) {
@@ -1925,7 +1923,7 @@ export class AnalyticsService implements OnModuleInit {
 					improvementRate: targetPerformance.improvementRate,
 					consistencyScore: targetPerformance.consistencyScore,
 				};
-				targetType = 'user';
+				targetType = ComparisonTarget.USER;
 				resolvedTargetUserId = targetUserId;
 			} catch (error) {
 				logger.analyticsError('buildUserComparison target user', {
@@ -2027,7 +2025,7 @@ export class AnalyticsService implements OnModuleInit {
 			user: basicInfo,
 			highlights: {
 				totalGames: stats.totalGames,
-				bestScore: stats.bestScore,
+				bestScore: Math.round(stats.bestScore),
 				topTopics,
 				achievementsUnlocked: achievements.length,
 			},
@@ -2272,21 +2270,11 @@ export class AnalyticsService implements OnModuleInit {
 	 * Get global statistics for comparison
 	 * @returns Global statistics averages
 	 */
-	async getGlobalStats(): Promise<{
-		successRate: number;
-		averageGames: number;
-		averageGameTime: number;
-		consistency: number;
-	}> {
+	async getGlobalStats(): Promise<GlobalStatsResponse> {
 		try {
 			const cacheKey = 'analytics:global:stats';
 
-			return await this.cacheService.getOrSet<{
-				successRate: number;
-				averageGames: number;
-				averageGameTime: number;
-				consistency: number;
-			}>(
+			return await this.cacheService.getOrSet<GlobalStatsResponse>(
 				cacheKey,
 				async () => {
 					const gameStats = await this.calculateGameStats();
@@ -2318,7 +2306,7 @@ export class AnalyticsService implements OnModuleInit {
 
 					let consistency = 0;
 					if (consistencyRaw.length > 0) {
-						const successRates = consistencyRaw.map(r => Number(r.successRate) || 0);
+						const successRates = consistencyRaw.map(r => Number(r.successRate) ?? 0);
 						const mean = successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length;
 						const variance =
 							successRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / successRates.length;
@@ -2335,24 +2323,21 @@ export class AnalyticsService implements OnModuleInit {
 					};
 				},
 				CACHE_DURATION.LONG,
-				(
-					data
-				): data is {
-					successRate: number;
-					averageGames: number;
-					averageGameTime: number;
-					consistency: number;
-				} => {
+				(data): data is GlobalStatsResponse => {
 					return (
 						isRecord(data) &&
 						hasProperty(data, 'successRate') &&
 						typeof data.successRate === 'number' &&
+						Number.isFinite(data.successRate) &&
 						hasProperty(data, 'averageGames') &&
 						typeof data.averageGames === 'number' &&
+						Number.isFinite(data.averageGames) &&
 						hasProperty(data, 'averageGameTime') &&
 						typeof data.averageGameTime === 'number' &&
+						Number.isFinite(data.averageGameTime) &&
 						hasProperty(data, 'consistency') &&
-						typeof data.consistency === 'number'
+						typeof data.consistency === 'number' &&
+						Number.isFinite(data.consistency)
 					);
 				}
 			);
@@ -2365,9 +2350,123 @@ export class AnalyticsService implements OnModuleInit {
 	}
 
 	/**
+	 * Get global trends aggregated from all users
+	 * @param query Optional trend query parameters
+	 * @returns Global trend data
+	 */
+	async getGlobalTrends(query?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
+		try {
+			const limit = query?.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 120) : 30;
+			const { groupBy } = query ?? {};
+
+			// Get all game history with date filtering
+			const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game').orderBy('game.createdAt', 'DESC');
+
+			if (query?.startDate || query?.endDate) {
+				addDateRangeConditions(queryBuilder, 'game', 'createdAt', query.startDate, query.endDate);
+			}
+
+			const allGames = await queryBuilder.limit(limit * 10).getMany();
+
+			// Build global trends using the same logic as buildUserTrends
+			if (!groupBy) {
+				const trends = allGames.slice(0, limit).map(game => {
+					const totalQuestionsAnswered = game.gameQuestionCount ?? 0;
+					const correctAnswers = game.correctAnswers ?? 0;
+					const successRate = totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0;
+
+					return {
+						date: game.createdAt ? new Date(game.createdAt).toISOString() : new Date().toISOString(),
+						score: game.score ?? 0,
+						successRate,
+						totalQuestionsAnswered,
+						correctAnswers,
+						topic: game.topic ?? undefined,
+						difficulty: game.difficulty ?? undefined,
+					};
+				});
+
+				return {
+					data: trends,
+					timestamp: new Date().toISOString(),
+				};
+			}
+
+			// Group by period
+			const buckets = new Map<
+				string,
+				{
+					date: Date;
+					totalScore: number;
+					totalQuestionsAnswered: number;
+					correctAnswers: number;
+					count: number;
+					topicCounter: Record<string, number>;
+					difficultyCounter: Record<string, number>;
+				}
+			>();
+
+			allGames.forEach(game => {
+				const createdAt = game.createdAt ? new Date(game.createdAt) : new Date();
+				const key = this.getPeriodKey(createdAt, groupBy);
+				const bucket = buckets.get(key) ?? {
+					date: this.normalizeDateToPeriod(createdAt, groupBy),
+					totalScore: 0,
+					totalQuestionsAnswered: 0,
+					correctAnswers: 0,
+					count: 0,
+					topicCounter: {},
+					difficultyCounter: {},
+				};
+
+				bucket.totalScore += game.score ?? 0;
+				bucket.totalQuestionsAnswered += game.gameQuestionCount ?? 0;
+				bucket.correctAnswers += game.correctAnswers ?? 0;
+				bucket.count += 1;
+
+				if (game.topic) {
+					bucket.topicCounter[game.topic] = (bucket.topicCounter[game.topic] ?? 0) + 1;
+				}
+				if (game.difficulty) {
+					bucket.difficultyCounter[game.difficulty] = (bucket.difficultyCounter[game.difficulty] ?? 0) + 1;
+				}
+
+				buckets.set(key, bucket);
+			});
+
+			const trends = Array.from(buckets.values())
+				.sort((a, b) => b.date.getTime() - a.date.getTime())
+				.slice(0, limit)
+				.map(bucket => {
+					const successRate =
+						bucket.totalQuestionsAnswered > 0 ? (bucket.correctAnswers / bucket.totalQuestionsAnswered) * 100 : 0;
+					return {
+						date: bucket.date.toISOString(),
+						score: bucket.count > 0 ? bucket.totalScore / bucket.count : 0,
+						successRate,
+						totalQuestionsAnswered: bucket.totalQuestionsAnswered,
+						correctAnswers: bucket.correctAnswers,
+						topic: this.getTopKey(bucket.topicCounter),
+						difficulty: this.getTopKey(bucket.difficultyCounter),
+					};
+				});
+
+			return {
+				data: trends,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('getGlobalTrends', {
+				error: getErrorMessage(error),
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Clear all user stats (admin)
 	 */
-	async clearAllUserStats(): Promise<{ message: string; deletedCount: number }> {
+	async clearAllUserStats(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing entire user stats dataset', {});
 
@@ -2384,6 +2483,7 @@ export class AnalyticsService implements OnModuleInit {
 					});
 				}
 				return {
+					success: true,
 					message: 'No user stats records found',
 					deletedCount: 0,
 				};
@@ -2391,7 +2491,10 @@ export class AnalyticsService implements OnModuleInit {
 
 			const deleteResult = await this.userStatsRepo.createQueryBuilder().delete().from(UserStatsEntity).execute();
 
-			const deletedCount = typeof deleteResult.affected === 'number' ? deleteResult.affected : totalBefore;
+			const deletedCount =
+				typeof deleteResult.affected === 'number' && Number.isFinite(deleteResult.affected)
+					? deleteResult.affected
+					: totalBefore;
 
 			logger.userInfo('All user stats cleared by admin', {
 				deletedCount,
@@ -2411,6 +2514,7 @@ export class AnalyticsService implements OnModuleInit {
 			}
 
 			return {
+				success: true,
 				message: 'All user stats records removed successfully',
 				deletedCount,
 			};

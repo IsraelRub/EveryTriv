@@ -12,6 +12,7 @@
 - דיאגרמות: `docs/DIAGRAMS.md`
 - פיתוח (Workflow וכלים): `docs/DEVELOPMENT.md`
 - פריסה: `docs/DEPLOYMENT.md`
+- קבצי תצורה: `docs/CONFIGURATION.md`
 - מסד נתונים: `docs/database/DATABASE_SETUP.md`
 - ספרייה משותפת (Shared): `docs/shared/SHARED_PACKAGE.md`
 

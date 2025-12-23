@@ -3,9 +3,11 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { BasicUser } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { CREDIT_BALANCE_DEFAULT_VALUES } from '../../constants';
-import { authService } from '../../services';
-import { CreditBalancePayload, ErrorPayload, LoadingPayload, UserState } from '../../types';
+import { CREDIT_BALANCE_DEFAULT_VALUES } from '@/constants';
+
+import { authService } from '@/services';
+
+import { CreditBalancePayload, ErrorPayload, LoadingPayload, UserState } from '@/types';
 
 export const fetchUserData = createAsyncThunk('user/fetchUserData', async (_, { rejectWithValue }) => {
 	try {
@@ -29,7 +31,7 @@ export const updateUserProfile = createAsyncThunk(
 
 const initialState: UserState = {
 	currentUser: null,
-	avatar: '',
+	avatar: null,
 	creditBalance: CREDIT_BALANCE_DEFAULT_VALUES,
 	isLoading: false,
 	error: null,
@@ -50,17 +52,21 @@ const userStateSlice = createSlice({
 		clearError: state => {
 			state.error = null;
 		},
-		setAvatar: (state, action: PayloadAction<string>) => {
+		setAvatar: (state, action: PayloadAction<number | null>) => {
 			state.avatar = action.payload;
 		},
 		setUser: (state, action: PayloadAction<BasicUser | null>) => {
 			if (action.payload) {
 				state.currentUser = action.payload;
-				state.avatar = '';
+				// Set avatar ID if it exists in user data
+				state.avatar =
+					action.payload.avatar && typeof action.payload.avatar === 'number' && Number.isFinite(action.payload.avatar)
+						? action.payload.avatar
+						: null;
 				state.isAuthenticated = true;
 			} else {
 				state.currentUser = null;
-				state.avatar = '';
+				state.avatar = null;
 				state.isAuthenticated = false;
 			}
 			state.isLoading = false;
@@ -129,7 +135,7 @@ const userStateSlice = createSlice({
 				state.creditBalance.credits + state.creditBalance.purchasedCredits + state.creditBalance.freeQuestions;
 			state.creditBalance.canPlayFree = state.creditBalance.freeQuestions > 0;
 		},
-		updateAvatar: (state, action: PayloadAction<string>) => {
+		updateAvatar: (state, action: PayloadAction<number | null>) => {
 			state.avatar = action.payload;
 		},
 		setAuthenticated: (state, action: PayloadAction<boolean>) => {
@@ -137,7 +143,7 @@ const userStateSlice = createSlice({
 		},
 		logout: state => {
 			state.currentUser = null;
-			state.avatar = '';
+			state.avatar = null;
 			state.isLoading = false;
 			state.error = null;
 			state.isAuthenticated = false;
@@ -146,6 +152,7 @@ const userStateSlice = createSlice({
 	},
 });
 
-export const { setUser, setAvatar, setCreditBalance, deductCredits, setAuthenticated } = userStateSlice.actions;
+export const { setUser, setAvatar, updateAvatar, setCreditBalance, deductCredits, setAuthenticated } =
+	userStateSlice.actions;
 
 export default userStateSlice.reducer;

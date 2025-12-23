@@ -62,7 +62,7 @@ server/src/features/game/multiplayer/
 מנהל את מצב המשחק:
 
 - אתחול משחק עם שאלות
-- חישוב נקודות באמצעות `PointCalculationService`
+- חישוב נקודות באמצעות `calculateAnswerScore` מ-`@shared/utils`
 - ניהול תשובות שחקנים
 - עדכון לוח תוצאות
 - מעבר בין שאלות
@@ -344,7 +344,7 @@ server/src/features/game/multiplayer/
 
 ## חישוב נקודות
 
-המערכת משתמשת ב-`PointCalculationService` לחישוב נקודות:
+המערכת משתמשת ב-`calculateAnswerScore` מ-`@shared/utils` לחישוב נקודות:
 
 - **Base Points**: לפי קושי (easy: 10, medium: 20, hard: 30)
 - **Time Bonus**: בונוס זמן (מהיר יותר = יותר נקודות)

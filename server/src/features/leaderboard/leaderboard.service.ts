@@ -2,24 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_DURATION } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import {
-	createArrayGuard,
-	createLeaderboardEntryGuard,
-	createNullableGuard,
-	getErrorMessage,
-	groupBy,
-	isRecord,
-} from '@shared/utils';
+import { CACHE_DURATION, LeaderboardPeriod } from '@shared/constants';
+import type { CategoryStatistics, ClearOperationResponse, LeaderboardStats } from '@shared/types';
+import { getErrorMessage, groupBy, isRecord } from '@shared/utils';
 
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
+import { serverLogger as logger } from '@internal/services';
+import type { StreakData } from '@internal/types';
 import { createNotFoundError } from '@internal/utils';
 
-const isLeaderboardEntry = createLeaderboardEntryGuard<LeaderboardEntity>();
-const isLeaderboardEntryOrNull = createNullableGuard(isLeaderboardEntry);
-const isLeaderboardArray = createArrayGuard(isLeaderboardEntry);
+import { addDateRangeConditions } from '../../common/queries';
 
 /**
  * Leaderboard Service
@@ -148,8 +141,7 @@ export class LeaderboardService {
 						throw dbError;
 					}
 				},
-				CACHE_DURATION.MEDIUM,
-				isLeaderboardEntryOrNull
+				CACHE_DURATION.MEDIUM
 			);
 		} catch (error) {
 			logger.analyticsError('getUserRanking', {
@@ -191,8 +183,7 @@ export class LeaderboardService {
 						throw dbError;
 					}
 				},
-				CACHE_DURATION.LONG,
-				isLeaderboardArray
+				CACHE_DURATION.LONG
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboard', {
@@ -210,10 +201,7 @@ export class LeaderboardService {
 	 * @param limit Number of users to return
 	 * @returns Leaderboard for specific time period
 	 */
-	async getLeaderboardByPeriod(
-		period: 'weekly' | 'monthly' | 'yearly',
-		limit: number = 100
-	): Promise<LeaderboardEntity[]> {
+	async getLeaderboardByPeriod(period: LeaderboardPeriod, limit: number = 100): Promise<LeaderboardEntity[]> {
 		try {
 			const cacheKey = `leaderboard:${period}:${limit}`;
 
@@ -222,10 +210,12 @@ export class LeaderboardService {
 				async () => {
 					try {
 						// Type-safe mapping for period to score field
-						const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
-							weekly: 'weeklyScore',
-							monthly: 'monthlyScore',
-							yearly: 'yearlyScore',
+						const scoreFieldMap: Record<LeaderboardPeriod, keyof UserStatsEntity> = {
+							[LeaderboardPeriod.WEEKLY]: 'weeklyScore',
+							[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
+							[LeaderboardPeriod.YEARLY]: 'yearlyScore',
+							[LeaderboardPeriod.GLOBAL]: 'weeklyScore', // fallback
+							[LeaderboardPeriod.TOPIC]: 'weeklyScore', // fallback
 						};
 
 						const scoreField = scoreFieldMap[period];
@@ -251,8 +241,7 @@ export class LeaderboardService {
 						throw dbError;
 					}
 				},
-				CACHE_DURATION.LONG,
-				isLeaderboardArray
+				CACHE_DURATION.LONG
 			);
 		} catch (error) {
 			logger.analyticsError('getLeaderboardByPeriod', {
@@ -273,6 +262,9 @@ export class LeaderboardService {
 		const totalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
 		const correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
 		const successRate = totalQuestionsAnswered > 0 ? (correctAnswers / totalQuestionsAnswered) * 100 : 0;
+
+		// Calculate best game score (highest score from all games)
+		const bestGameScore = gameHistory.length > 0 ? Math.max(...gameHistory.map(game => game.score)) : 0;
 
 		// Calculate streak
 		const streakData = this.calculateStreak(gameHistory);
@@ -296,6 +288,7 @@ export class LeaderboardService {
 			weeklyScore: timeScores.weekly,
 			monthlyScore: timeScores.monthly,
 			yearlyScore: timeScores.yearly,
+			bestGameScore,
 			topicStats,
 			difficultyStats,
 		};
@@ -375,10 +368,7 @@ export class LeaderboardService {
 	 */
 	private calculateTopicStats(gameHistory: GameHistoryEntity[]) {
 		const groupedByTopic = groupBy(gameHistory, 'topic');
-		const topicStats: Record<
-			string,
-			{ totalQuestionsAnswered: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
-		> = {};
+		const topicStats: Record<string, CategoryStatistics> = {};
 
 		Object.entries(groupedByTopic).forEach(([topic, games]) => {
 			const totalQuestionsAnswered = games.reduce((sum, game) => sum + game.gameQuestionCount, 0);
@@ -409,10 +399,7 @@ export class LeaderboardService {
 	 */
 	private calculateDifficultyStats(gameHistory: GameHistoryEntity[]) {
 		const groupedByDifficulty = groupBy(gameHistory, 'difficulty');
-		const difficultyStats: Record<
-			string,
-			{ totalQuestionsAnswered: number; correctAnswers: number; successRate: number; score: number; lastPlayed: Date }
-		> = {};
+		const difficultyStats: Record<string, CategoryStatistics> = {};
 
 		Object.entries(groupedByDifficulty).forEach(([difficulty, games]) => {
 			const totalQuestionsAnswered = games.reduce((sum, game) => sum + game.gameQuestionCount, 0);
@@ -448,7 +435,7 @@ export class LeaderboardService {
 		user: UserEntity,
 		gameHistory: GameHistoryEntity[],
 		successRate: number,
-		streakData: { current: number; best: number }
+		streakData: StreakData
 	) {
 		// Credits contribution to score (user credits and purchased credits)
 		const creditsContribution = user.credits + user.purchasedCredits;
@@ -505,19 +492,11 @@ export class LeaderboardService {
 	 * @param period Time period (weekly, monthly, yearly)
 	 * @returns Leaderboard statistics
 	 */
-	async getLeaderboardStats(period: 'weekly' | 'monthly' | 'yearly'): Promise<{
-		activeUsers: number;
-		averageScore: number;
-		averageGames: number;
-	}> {
+	async getLeaderboardStats(period: LeaderboardPeriod): Promise<LeaderboardStats> {
 		try {
 			const cacheKey = `leaderboard:stats:${period}`;
 
-			return await this.cacheService.getOrSet<{
-				activeUsers: number;
-				averageScore: number;
-				averageGames: number;
-			}>(
+			return await this.cacheService.getOrSet<LeaderboardStats>(
 				cacheKey,
 				async () => {
 					// Calculate date range based on period
@@ -525,13 +504,13 @@ export class LeaderboardService {
 					let startDate: Date;
 
 					switch (period) {
-						case 'weekly':
+						case LeaderboardPeriod.WEEKLY:
 							startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 							break;
-						case 'monthly':
+						case LeaderboardPeriod.MONTHLY:
 							startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 							break;
-						case 'yearly':
+						case LeaderboardPeriod.YEARLY:
 							startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 							break;
 						default:
@@ -539,7 +518,6 @@ export class LeaderboardService {
 					}
 
 					// Get active users (users who played games in the period)
-					const { addDateRangeConditions } = await import('../../common/queries');
 					const activeUsersQueryBuilder = this.gameHistoryRepository
 						.createQueryBuilder('game')
 						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'count');
@@ -549,10 +527,12 @@ export class LeaderboardService {
 					const activeUsers = activeUsersRaw?.count ?? 0;
 
 					// Get average scoring from leaderboard entries for the period
-					const scoreFieldMap: Record<string, keyof UserStatsEntity> = {
-						weekly: 'weeklyScore',
-						monthly: 'monthlyScore',
-						yearly: 'yearlyScore',
+					const scoreFieldMap: Record<LeaderboardPeriod, keyof UserStatsEntity> = {
+						[LeaderboardPeriod.WEEKLY]: 'weeklyScore',
+						[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
+						[LeaderboardPeriod.YEARLY]: 'yearlyScore',
+						[LeaderboardPeriod.GLOBAL]: 'weeklyScore', // fallback
+						[LeaderboardPeriod.TOPIC]: 'weeklyScore', // fallback
 					};
 
 					const scoreField = scoreFieldMap[period];
@@ -591,14 +571,17 @@ export class LeaderboardService {
 					};
 				},
 				CACHE_DURATION.MEDIUM,
-				(data): data is { activeUsers: number; averageScore: number; averageGames: number } => {
+				(data): data is LeaderboardStats => {
 					if (!isRecord(data)) {
 						return false;
 					}
 					return (
 						typeof data.activeUsers === 'number' &&
+						Number.isFinite(data.activeUsers) &&
 						typeof data.averageScore === 'number' &&
-						typeof data.averageGames === 'number'
+						Number.isFinite(data.averageScore) &&
+						typeof data.averageGames === 'number' &&
+						Number.isFinite(data.averageGames)
 					);
 				}
 			);
@@ -614,7 +597,7 @@ export class LeaderboardService {
 	/**
 	 * Clear all leaderboard entries (admin)
 	 */
-	async clearAllLeaderboard(): Promise<{ message: string; deletedCount: number }> {
+	async clearAllLeaderboard(): Promise<ClearOperationResponse> {
 		try {
 			logger.analyticsTrack('Clearing entire leaderboard dataset', {});
 
@@ -631,6 +614,7 @@ export class LeaderboardService {
 					});
 				}
 				return {
+					success: true,
 					message: 'No leaderboard records found',
 					deletedCount: 0,
 				};
@@ -657,6 +641,7 @@ export class LeaderboardService {
 			}
 
 			return {
+				success: true,
 				message: 'All leaderboard records removed successfully',
 				deletedCount,
 			};

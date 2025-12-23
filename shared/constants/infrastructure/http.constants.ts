@@ -66,6 +66,20 @@ export const HTTP_METHODS = {
 	OPTIONS: 'OPTIONS',
 } as const;
 
+/**
+ * HTTP Method Enum
+ * @enum HttpMethod
+ * @description HTTP methods as enum for type safety
+ */
+export enum HttpMethod {
+	GET = 'GET',
+	POST = 'POST',
+	PUT = 'PUT',
+	PATCH = 'PATCH',
+	DELETE = 'DELETE',
+	OPTIONS = 'OPTIONS',
+}
+
 // HTTP error codes
 export const HTTP_ERROR_CODES = {
 	NETWORK_ERROR: 'NETWORK_ERROR',

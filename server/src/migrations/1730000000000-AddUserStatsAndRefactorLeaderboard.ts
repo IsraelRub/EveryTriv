@@ -1,5 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+import { ERROR_CODES } from '@shared/constants';
+
 export class AddUserStatsAndRefactorLeaderboard1730000000000 implements MigrationInterface {
 	name = 'AddUserStatsAndRefactorLeaderboard1730000000000';
 
@@ -118,6 +120,6 @@ export class AddUserStatsAndRefactorLeaderboard1730000000000 implements Migratio
 	}
 
 	public async down(): Promise<void> {
-		throw new Error('Migration rollback is not supported');
+		throw new Error(ERROR_CODES.ROLLBACK_NOT_SUPPORTED);
 	}
 }

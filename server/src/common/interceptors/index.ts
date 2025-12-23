@@ -18,11 +18,11 @@ export * from './cache.interceptor';
  * @description Interceptor for standardizing API response format
  * @used_by server/src/app, server/src/controllers
  */
-export * from './response-formatting.interceptor';
+export * from './responseFormatting.interceptor';
 
 /**
  * Performance monitoring interceptor
  * @description Interceptor for tracking request performance metrics
  * @used_by server/src/app, server/src/controllers
  */
-export * from './performance-monitoring.interceptor';
+export * from './performanceMonitoring.interceptor';

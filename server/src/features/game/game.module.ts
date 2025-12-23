@@ -5,13 +5,11 @@
  * @description Core game module handling trivia game logic, scoring, and AI providers management
  * @used_by server/app, server/src/controllers
  * @dependencies TypeOrmModule, AnalyticsModule, CacheModule, StorageModule, UserModule
- * @provides GameService, AiProvidersService
+ * @provides GameService
  * @entities UserEntity, GameHistoryEntity, TriviaEntity
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { ScoreCalculationService } from '@shared/services';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
@@ -24,7 +22,6 @@ import { LeaderboardModule } from '../leaderboard';
 import { UserModule } from '../user';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
-import { AiProvidersController, AiProvidersService } from './logic/providers/management';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 
 @Module({
@@ -38,17 +35,15 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
 		ValidationModule,
 		UserModule,
 	],
-	controllers: [GameController, AiProvidersController],
+	controllers: [GameController],
 	providers: [
 		GameService,
 		TriviaGenerationService,
-		AiProvidersService,
-		ScoreCalculationService,
 		CustomDifficultyPipe,
 		TriviaQuestionPipe,
 		GameAnswerPipe,
 		TriviaRequestPipe,
 	],
-	exports: [GameService, AiProvidersService],
+	exports: [GameService],
 })
 export class GameModule {}

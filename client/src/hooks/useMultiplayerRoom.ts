@@ -7,9 +7,11 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { clientLogger as logger } from '@shared/services';
+import { RoomStatus } from '@shared/constants';
 import type { CreateRoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { clientLogger as logger } from '@/services';
 
 import { useMultiplayer } from './useMultiplayer';
 import { useUserProfile } from './useUser';
@@ -91,7 +93,7 @@ export const useMultiplayerRoom = (roomId?: string) => {
 	/**
 	 * Check if room is ready to start
 	 */
-	const isReadyToStart = (room?.players?.length ?? 0) >= 2 && room?.status === 'waiting';
+	const isReadyToStart = (room?.players?.length ?? 0) >= 2 && room?.status === RoomStatus.WAITING;
 
 	// Auto-join room if roomId provided
 	useEffect(() => {

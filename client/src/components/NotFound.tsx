@@ -3,10 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
-import { clientLogger as logger } from '@shared/services';
+import { ButtonSize, ROUTES } from '@/constants';
 
 import { Button, Card } from '@/components';
-import { ButtonSize } from '@/constants';
+
+import { clientLogger as logger } from '@/services';
 
 export function NotFound() {
 	const location = useLocation();
@@ -23,8 +24,6 @@ export function NotFound() {
 
 	return (
 		<motion.main
-			role='main'
-			aria-label='Not Found'
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			className='min-h-screen flex items-center justify-center px-4'
@@ -40,7 +39,7 @@ export function NotFound() {
 					not answers.
 				</p>
 				<div className='flex flex-col gap-2'>
-					<Button size={ButtonSize.LG} onClick={() => navigate('/')}>
+					<Button size={ButtonSize.LG} onClick={() => navigate(ROUTES.HOME)}>
 						Return to Home
 					</Button>
 				</div>

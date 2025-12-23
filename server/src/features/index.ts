@@ -56,13 +56,6 @@ export * from './payment';
 export * from './credits';
 
 /**
- * Subscription feature
- * @description Subscription management and billing
- * @used_by server/src/app, server/src/controllers
- */
-export * from './subscription';
-
-/**
  * User feature
  * @description User management and authentication
  * @used_by server/src/app, server/src/controllers

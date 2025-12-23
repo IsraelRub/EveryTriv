@@ -5,5 +5,5 @@
  * @description Central export point for all shared controllers
  */
 
-export * from './client-logs.controller';
-export * from './middleware-metrics.controller';
+export * from './clientLogs.controller';
+export * from './middlewareMetrics.controller';

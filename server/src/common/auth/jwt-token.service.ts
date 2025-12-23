@@ -7,17 +7,18 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { AUTH_CONSTANTS, UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { UserRole } from '@shared/constants';
+import { getCurrentTimestampInSeconds, getErrorMessage } from '@shared/utils';
+
+import { AUTH_CONSTANTS } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
 import type {
 	AuthenticationRequest,
-	JWTDecodedToken,
 	TokenPair,
 	TokenPayload,
+	TokenUserData,
 	TokenValidationResult,
-} from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+} from '@internal/types';
 import { createServerError } from '@internal/utils';
 
 @Injectable()
@@ -202,12 +203,12 @@ export class JwtTokenService {
 	 */
 	isTokenExpired(token: string): boolean {
 		try {
-			const decoded: JWTDecodedToken | null = this.jwtService.decode<JWTDecodedToken>(token);
+			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
 			if (!decoded || !decoded.exp) {
 				return true;
 			}
 
-			const currentTime = Math.floor(Date.now() / 1000);
+			const currentTime = getCurrentTimestampInSeconds();
 			return decoded.exp < currentTime;
 		} catch (error) {
 			logger.securityError('Failed to check token expiration', {
@@ -222,7 +223,7 @@ export class JwtTokenService {
 	 */
 	getTokenExpiration(token: string): Date | null {
 		try {
-			const decoded: JWTDecodedToken | null = this.jwtService.decode<JWTDecodedToken>(token);
+			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
 			if (!decoded || !decoded.exp) {
 				return null;
 			}
@@ -239,7 +240,7 @@ export class JwtTokenService {
 	/**
 	 * Generate token for specific user data
 	 */
-	async generateTokenForUser(user: { id: string; email: string; role: UserRole }): Promise<TokenPair> {
+	async generateTokenForUser(user: TokenUserData): Promise<TokenPair> {
 		return this.generateTokenPair(user.id, user.email, user.role);
 	}
 }

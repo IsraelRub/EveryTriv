@@ -1,89 +1,64 @@
-import { useState, type ElementType } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ChangeEvent, useMemo, useState } from 'react';
 
 import { motion } from 'framer-motion';
-import { Award, Clock, Flame, GamepadIcon, Key, Target, Trophy } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Key } from 'lucide-react';
+
+import { ButtonSize, ButtonVariant, ToastVariant } from '@/constants';
 
 import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
+	AvatarSelector,
 	Button,
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	ChangePasswordDialog,
 	Input,
 	Label,
-	Skeleton,
+	ProfileSkeleton,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
 } from '@/components';
-import { useAppSelector, useUpdateUserProfile, useUserProfile, useUserStats } from '@/hooks';
-import type { RootState } from '@/types';
-import { formatPlayTime } from '@/utils';
 
-function StatCard({
-	icon: Icon,
-	label,
-	value,
-	suffix,
-	color,
-}: {
-	icon: ElementType;
-	label: string;
-	value: number | string;
-	suffix?: string;
-	color: string;
-}) {
-	return (
-		<motion.div
-			initial={{ opacity: 0, scale: 0.95 }}
-			animate={{ opacity: 1, scale: 1 }}
-			className='text-center p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors'
-		>
-			<Icon className={`h-6 w-6 mx-auto mb-2 ${color}`} />
-			<p className='text-3xl font-bold'>
-				{value}
-				{suffix}
-			</p>
-			<p className='text-sm text-muted-foreground'>{label}</p>
-		</motion.div>
-	);
-}
+import { useAppSelector, useChangePassword, useToast, useUpdateUserProfile, useUserProfile } from '@/hooks';
 
-function ProfileSkeleton() {
-	return (
-		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Skeleton className='h-20 w-20 rounded-full' />
-				<div className='space-y-2'>
-					<Skeleton className='h-6 w-48' />
-					<Skeleton className='h-4 w-32' />
-				</div>
-			</div>
-			<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-				{[...Array(6)].map((_, i) => (
-					<Skeleton key={i} className='h-24 rounded-lg' />
-				))}
-			</div>
-		</div>
-	);
-}
+import type { PasswordFieldErrors, RootState } from '@/types';
+
+import { getAvatarUrl } from '@/utils';
+import { validatePasswordForm, validatePasswordLength, validatePasswordMatch } from '@/utils/validation';
 
 export function UserProfile() {
-	const navigate = useNavigate();
+	const [activeTab, setActiveTab] = useState('profile');
 	const [isEditing, setIsEditing] = useState(false);
 	const [editData, setEditData] = useState({ firstName: '', lastName: '' });
-	const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+	const [showPasswordForm, setShowPasswordForm] = useState(false);
+	const [passwordData, setPasswordData] = useState({
+		currentPassword: '',
+		newPassword: '',
+		confirmPassword: '',
+	});
+	const [passwordFieldErrors, setPasswordFieldErrors] = useState<PasswordFieldErrors>({});
+	const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
-	const { currentUser } = useAppSelector((state: RootState) => state.user);
+	const { currentUser, avatar: reduxAvatar } = useAppSelector((state: RootState) => state.user);
 	const { data: userProfile, isLoading: profileLoading } = useUserProfile();
-	const { data: userStats, isLoading: statsLoading } = useUserStats();
 	const updateProfile = useUpdateUserProfile();
+	const changePassword = useChangePassword();
+	const { toast } = useToast();
 
 	const profile = userProfile?.profile;
-	const isLoading = profileLoading || statsLoading;
+	const isLoading = profileLoading;
+	// Avatar field stores avatarId as number - prioritize Redux state for immediate updates
+	const currentAvatarId = reduxAvatar ?? profile?.avatar ?? undefined;
+	// Memoize avatar URL to ensure it updates when avatar changes
+	const avatarUrl = useMemo(() => {
+		return getAvatarUrl(currentAvatarId);
+	}, [currentAvatarId]);
 
 	const handleEditStart = () => {
 		setEditData({
@@ -91,6 +66,64 @@ export function UserProfile() {
 			lastName: profile?.lastName || '',
 		});
 		setIsEditing(true);
+	};
+
+	const handlePasswordFormToggle = () => {
+		setShowPasswordForm(!showPasswordForm);
+		if (!showPasswordForm) {
+			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+			setPasswordFieldErrors({});
+		}
+	};
+
+	const validatePasswordField = (name: string, value: string): string | null => {
+		if (name === 'currentPassword') {
+			if (!value.trim()) return 'Current password is required';
+		}
+		if (name === 'newPassword') {
+			const validation = validatePasswordLength(value);
+			if (!validation.isValid) {
+				return validation.errors[0] || 'Invalid password';
+			}
+		}
+		if (name === 'confirmPassword') {
+			const validation = validatePasswordMatch(passwordData.newPassword, value);
+			if (!validation.isValid) {
+				return validation.errors[0] || 'Invalid password confirmation';
+			}
+		}
+		return null;
+	};
+
+	const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setPasswordData(prev => ({
+			...prev,
+			[name]: value,
+		}));
+
+		const fieldError = validatePasswordField(name, value);
+		setPasswordFieldErrors(prev => ({
+			...prev,
+			[name]: fieldError || undefined,
+		}));
+
+		if (name === 'newPassword' && passwordData.confirmPassword) {
+			const confirmError = validatePasswordField('confirmPassword', passwordData.confirmPassword);
+			setPasswordFieldErrors(prev => ({
+				...prev,
+				confirmPassword: confirmError || undefined,
+			}));
+		}
+	};
+
+	const isPasswordFormValid = (): boolean => {
+		if (!passwordData.currentPassword.trim()) return false;
+		const passwordValidation = validatePasswordForm({
+			newPassword: passwordData.newPassword,
+			confirmPassword: passwordData.confirmPassword,
+		});
+		return passwordValidation.isValid;
 	};
 
 	const handleSave = async () => {
@@ -102,6 +135,47 @@ export function UserProfile() {
 			setIsEditing(false);
 		} catch {
 			// Error handled by mutation
+		}
+	};
+
+	const handlePasswordSave = async () => {
+		const currentPasswordError = validatePasswordField('currentPassword', passwordData.currentPassword);
+		const newPasswordError = validatePasswordField('newPassword', passwordData.newPassword);
+		const confirmPasswordError = validatePasswordField('confirmPassword', passwordData.confirmPassword);
+
+		const newFieldErrors: typeof passwordFieldErrors = {};
+		if (currentPasswordError) newFieldErrors.currentPassword = currentPasswordError;
+		if (newPasswordError) newFieldErrors.newPassword = newPasswordError;
+		if (confirmPasswordError) newFieldErrors.confirmPassword = confirmPasswordError;
+
+		setPasswordFieldErrors(newFieldErrors);
+
+		if (currentPasswordError || newPasswordError || confirmPasswordError) {
+			return;
+		}
+
+		if (!isPasswordFormValid()) {
+			return;
+		}
+
+		try {
+			await changePassword.mutateAsync({
+				currentPassword: passwordData.currentPassword,
+				newPassword: passwordData.newPassword,
+			});
+			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+			setPasswordFieldErrors({});
+			setShowPasswordForm(false);
+			toast({
+				title: 'Password Changed',
+				description: 'Your password has been updated successfully.',
+			});
+		} catch {
+			toast({
+				title: 'Error',
+				description: 'Failed to change password. Please check your current password.',
+				variant: ToastVariant.DESTRUCTIVE,
+			});
 		}
 	};
 
@@ -127,16 +201,10 @@ export function UserProfile() {
 
 	if (isLoading) {
 		return (
-			<motion.main
-				role='main'
-				aria-label='User Profile'
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				className='min-h-screen py-12 px-4'
-			>
+			<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-4xl mx-auto'>
 					<Card>
-						<CardContent className='pt-6'>
+						<CardContent className='pt-6 overflow-hidden'>
 							<ProfileSkeleton />
 						</CardContent>
 					</Card>
@@ -146,27 +214,55 @@ export function UserProfile() {
 	}
 
 	return (
-		<motion.main
-			role='main'
-			aria-label='User Profile'
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			className='min-h-screen py-12 px-4'
-		>
+		<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
 			<div className='max-w-4xl mx-auto space-y-8'>
 				{/* Profile Header */}
 				<Card>
 					<CardHeader>
-						<div className='flex items-center justify-between'>
-							<div className='flex items-center gap-4'>
+						<div className='flex items-center gap-4 mb-6'>
+							<div className='relative'>
 								<Avatar className='h-20 w-20'>
-									<AvatarImage src={profile?.avatar} alt={getDisplayName()} />
+									<AvatarImage key={currentAvatarId} src={avatarUrl} alt={getDisplayName()} />
 									<AvatarFallback className='text-2xl'>{getUserInitials()}</AvatarFallback>
 								</Avatar>
+								<Button
+									variant={ButtonVariant.OUTLINE}
+									size={ButtonSize.SM}
+									className='absolute -bottom-1 -right-1 h-6 w-6 rounded-full p-0'
+									onClick={() => setShowAvatarSelector(true)}
+								>
+									<svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+										<path
+											strokeLinecap='round'
+											strokeLinejoin='round'
+											strokeWidth={2}
+											d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+										/>
+									</svg>
+								</Button>
+							</div>
+							<div>
+								<CardTitle className='text-2xl'>{getDisplayName()}</CardTitle>
+								<CardDescription>{currentUser?.email}</CardDescription>
+							</div>
+						</div>
+
+						{/* Tabs */}
+						<Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
+							<TabsList className='grid w-full grid-cols-2'>
+								<TabsTrigger value='profile'>Profile</TabsTrigger>
+								<TabsTrigger value='password'>
+									<Key className='h-4 w-4 mr-2' />
+									Password
+								</TabsTrigger>
+							</TabsList>
+
+							{/* Profile Tab */}
+							<TabsContent value='profile' className='mt-6'>
 								{isEditing ? (
-									<div className='space-y-2'>
+									<div className='space-y-4'>
 										<div className='flex gap-2'>
-											<div>
+											<div className='flex-1'>
 												<Label htmlFor='firstName'>First Name</Label>
 												<Input
 													id='firstName'
@@ -175,7 +271,7 @@ export function UserProfile() {
 													placeholder='First name'
 												/>
 											</div>
-											<div>
+											<div className='flex-1'>
 												<Label htmlFor='lastName'>Last Name</Label>
 												<Input
 													id='lastName'
@@ -185,113 +281,119 @@ export function UserProfile() {
 												/>
 											</div>
 										</div>
+										<div className='flex gap-2'>
+											<Button variant={ButtonVariant.OUTLINE} onClick={() => setIsEditing(false)}>
+												Cancel
+											</Button>
+											<Button onClick={handleSave} disabled={updateProfile.isPending}>
+												{updateProfile.isPending ? 'Saving...' : 'Save'}
+											</Button>
+										</div>
 									</div>
 								) : (
-									<div>
-										<CardTitle className='text-2xl'>{getDisplayName()}</CardTitle>
-										<CardDescription>{currentUser?.email}</CardDescription>
+									<div className='flex justify-end'>
+										<Button variant={ButtonVariant.OUTLINE} onClick={handleEditStart}>
+											Edit Profile
+										</Button>
 									</div>
 								)}
-							</div>
-							<div className='flex gap-2'>
-								{isEditing ? (
-									<>
-										<Button variant='outline' onClick={() => setIsEditing(false)}>
-											Cancel
+							</TabsContent>
+
+							{/* Password Tab */}
+							<TabsContent value='password' className='mt-6'>
+								{!showPasswordForm ? (
+									<div className='space-y-4'>
+										<p className='text-muted-foreground'>Click the button below to change your password.</p>
+										<Button onClick={handlePasswordFormToggle} variant={ButtonVariant.OUTLINE}>
+											<Key className='h-4 w-4 mr-2' />
+											Change Password
 										</Button>
-										<Button onClick={handleSave} disabled={updateProfile.isPending}>
-											{updateProfile.isPending ? 'Saving...' : 'Save'}
-										</Button>
-									</>
+									</div>
 								) : (
-									<Button variant='outline' onClick={handleEditStart}>
-										Edit Profile
-									</Button>
+									<div className='space-y-4'>
+										<div className='space-y-2'>
+											<Label htmlFor='current-password'>Current Password</Label>
+											<Input
+												id='current-password'
+												name='currentPassword'
+												type='password'
+												value={passwordData.currentPassword}
+												onChange={handlePasswordChange}
+												className={passwordFieldErrors.currentPassword ? 'border-destructive' : ''}
+												placeholder='Enter current password'
+											/>
+											{passwordFieldErrors.currentPassword && (
+												<p className='text-sm text-destructive flex items-center gap-1'>
+													<AlertCircle className='h-3 w-3' />
+													{passwordFieldErrors.currentPassword}
+												</p>
+											)}
+										</div>
+										<div className='space-y-2'>
+											<Label htmlFor='new-password'>New Password</Label>
+											<Input
+												id='new-password'
+												name='newPassword'
+												type='password'
+												value={passwordData.newPassword}
+												onChange={handlePasswordChange}
+												className={passwordFieldErrors.newPassword ? 'border-destructive' : ''}
+												placeholder='Enter new password'
+											/>
+											{passwordFieldErrors.newPassword && (
+												<p className='text-sm text-destructive flex items-center gap-1'>
+													<AlertCircle className='h-3 w-3' />
+													{passwordFieldErrors.newPassword}
+												</p>
+											)}
+										</div>
+										<div className='space-y-2'>
+											<Label htmlFor='confirm-password'>Confirm New Password</Label>
+											<div className='relative'>
+												<Input
+													id='confirm-password'
+													name='confirmPassword'
+													type='password'
+													value={passwordData.confirmPassword}
+													onChange={handlePasswordChange}
+													className={passwordFieldErrors.confirmPassword ? 'border-destructive' : ''}
+													placeholder='Confirm new password'
+												/>
+												{passwordData.confirmPassword &&
+													passwordData.newPassword === passwordData.confirmPassword &&
+													!passwordFieldErrors.confirmPassword && (
+														<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
+													)}
+											</div>
+											{passwordFieldErrors.confirmPassword && (
+												<p className='text-sm text-destructive flex items-center gap-1'>
+													<AlertCircle className='h-3 w-3' />
+													{passwordFieldErrors.confirmPassword}
+												</p>
+											)}
+										</div>
+										<div className='flex gap-2'>
+											<Button variant={ButtonVariant.OUTLINE} onClick={handlePasswordFormToggle}>
+												Cancel
+											</Button>
+											<Button onClick={handlePasswordSave} disabled={changePassword.isPending}>
+												{changePassword.isPending ? 'Changing...' : 'Change Password'}
+											</Button>
+										</div>
+									</div>
 								)}
-							</div>
-						</div>
+							</TabsContent>
+						</Tabs>
 					</CardHeader>
-				</Card>
-
-				{/* Statistics */}
-				<Card>
-					<CardHeader>
-						<CardTitle className='flex items-center gap-2'>
-							<Trophy className='h-5 w-5 text-yellow-500' />
-							Your Statistics
-						</CardTitle>
-						<CardDescription>Track your trivia performance</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
-							<StatCard
-								icon={GamepadIcon}
-								label='Games Played'
-								value={userStats?.gamesPlayed || 0}
-								color='text-blue-500'
-							/>
-							<StatCard
-								icon={Target}
-								label='Total Score'
-								value={(userStats?.score || 0).toLocaleString()}
-								color='text-green-500'
-							/>
-							<StatCard
-								icon={Award}
-								label='Success Rate'
-								value={Math.round(userStats?.successRate || 0)}
-								suffix='%'
-								color='text-purple-500'
-							/>
-							<StatCard
-								icon={Trophy}
-								label='Best Score'
-								value={(userStats?.bestScore || 0).toLocaleString()}
-								color='text-yellow-500'
-							/>
-							<StatCard icon={Flame} label='Best Streak' value={userStats?.bestStreak || 0} color='text-orange-500' />
-							<StatCard
-								icon={Clock}
-								label='Play Time'
-								value={formatPlayTime(userStats?.totalPlayTime || 0, 'minutes')}
-								color='text-cyan-500'
-							/>
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Quick Actions */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Quick Actions</CardTitle>
-					</CardHeader>
-					<CardContent className='flex flex-wrap gap-3'>
-						<Button onClick={() => navigate('/history')}>View Game History</Button>
-						<Button variant='outline' onClick={() => navigate('/analytics')}>
-							View Analytics
-						</Button>
-					</CardContent>
-				</Card>
-
-				{/* Security */}
-				<Card>
-					<CardHeader>
-						<CardTitle className='flex items-center gap-2'>
-							<Key className='h-5 w-5' />
-							Security
-						</CardTitle>
-						<CardDescription>Manage your account security</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<Button variant='outline' onClick={() => setShowPasswordDialog(true)}>
-							Change Password
-						</Button>
-					</CardContent>
 				</Card>
 			</div>
 
-			{/* Change Password Dialog */}
-			<ChangePasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} />
+			{/* Avatar Selector */}
+			<AvatarSelector
+				open={showAvatarSelector}
+				onOpenChange={setShowAvatarSelector}
+				currentAvatarId={currentAvatarId ?? undefined}
+			/>
 		</motion.main>
 	);
 }

@@ -2,11 +2,16 @@ import { useSelector } from 'react-redux';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { ERROR_CODES } from '@shared/constants';
 import type { BasicUser, UpdateUserProfileData } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
-import { updateUserProfile } from '../redux/slices';
-import { userService } from '../services';
-import type { RootState } from '../types';
+import { clientLogger as logger, userService } from '@/services';
+
+import type { RootState } from '@/types';
+
+import { setAvatar, updateUserProfile } from '@/redux/slices';
+
 import { useAppDispatch } from './useRedux';
 
 /**
@@ -28,7 +33,49 @@ export const useUpdateUserProfile = () => {
 				role: profile.role,
 			};
 			dispatch(updateUserProfile(userData));
-			// Invalidate user-related queries
+			// Update avatar ID in Redux if present
+			if (profile.avatar && typeof profile.avatar === 'number' && Number.isFinite(profile.avatar)) {
+				dispatch(setAvatar(profile.avatar));
+			}
+			// Update query cache directly to ensure immediate UI update
+			queryClient.setQueryData(userKeys.profile(), profileResponse);
+			// Invalidate user-related queries to ensure fresh data on next fetch
+			queryClient.invalidateQueries({ queryKey: userKeys.all });
+		},
+	});
+};
+
+/**
+ * Hook for setting user avatar
+ * @returns Mutation for setting user avatar
+ */
+export const useSetAvatar = () => {
+	const queryClient = useQueryClient();
+	const dispatch = useAppDispatch();
+
+	return useMutation({
+		mutationFn: (avatarId: number) => userService.setAvatar(avatarId),
+		onSuccess: profileResponse => {
+			// Extract avatar from profile response for Redux
+			if (!profileResponse || !profileResponse.profile) {
+				const error = new Error(
+					!profileResponse ? ERROR_CODES.PROFILE_RESPONSE_MISSING : ERROR_CODES.PROFILE_DATA_MISSING
+				);
+				logger.userError('Invalid profile response from setAvatar', {
+					error: getErrorMessage(error),
+				});
+				return;
+			}
+			const profile = profileResponse.profile;
+			if (profile.avatar && typeof profile.avatar === 'number' && Number.isFinite(profile.avatar)) {
+				// Avatar is stored as avatarId (number) in Redux
+				dispatch(setAvatar(profile.avatar));
+			}
+			// Update query cache directly to ensure immediate UI update
+			queryClient.setQueryData(userKeys.profile(), profileResponse, { updatedAt: Date.now() });
+			// Force refetch to ensure UI updates immediately
+			queryClient.refetchQueries({ queryKey: userKeys.profile() });
+			// Invalidate user-related queries to ensure fresh data on next fetch
 			queryClient.invalidateQueries({ queryKey: userKeys.all });
 		},
 	});
@@ -44,7 +91,7 @@ export const useUserProfile = () => {
 	return useQuery({
 		queryKey: userKeys.profile(),
 		queryFn: () => userService.getUserProfile(),
-		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+		staleTime: 0, // Always consider stale to allow immediate updates
 		enabled: isAuthenticated, // Only fetch if user is authenticated
 	});
 };

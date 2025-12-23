@@ -31,7 +31,6 @@ shared/
 │   │   ├── auth.types.ts
 │   │   ├── cache.types.ts
 │   │   ├── config.types.ts
-│   │   ├── http.types.ts
 │   │   ├── logging.types.ts
 │   │   ├── redis.types.ts
 │   │   ├── storage.types.ts
@@ -236,13 +235,13 @@ POINT_DECAY_RATE       // 0.001
 #### http.constants.ts
 קבועי HTTP:
 ```typescript
-import { HTTP_METHODS, HTTP_HEADERS } from '@shared/constants';
+import { HttpMethod, HTTP_HEADERS } from '@shared/constants';
 
 // שיטות HTTP
-HTTP_METHODS.GET    // 'GET'
-HTTP_METHODS.POST   // 'POST'
-HTTP_METHODS.PUT    // 'PUT'
-HTTP_METHODS.DELETE // 'DELETE'
+HttpMethod.GET    // 'GET'
+HttpMethod.POST   // 'POST'
+HttpMethod.PUT    // 'PUT'
+HttpMethod.DELETE // 'DELETE'
 
 // כותרות HTTP
 HTTP_HEADERS.AUTHORIZATION  // 'Authorization'
@@ -365,42 +364,69 @@ logger.validationError('Validation error', { field: 'username', error: 'already 
 logger.validationDebug('Validation debug', { field: 'email', checks: ['format', 'length'] });
 ```
 
-### Points Services
+### Score Utilities
 
-#### pointCalculation.service.ts
-חישוב נקודות - שירות סטטי:
+#### score.utils.ts
+חישוב נקודות - פונקציות טהורות (pure functions):
 ```typescript
-import { PointCalculationService } from '@shared/services';
+import { calculateAnswerScore } from '@shared/utils';
 import { DifficultyLevel } from '@shared/constants';
 
-const service = new PointCalculationService();
+// חישוב נקודות לתשובה (תומך גם ב-DifficultyLevel enum וגם ב-GameDifficulty string)
+// מחזיר 0 אם התשובה שגויה
+// כולל: ניקוד בסיסי לפי קושי, בונוס זמן (עד 10 נקודות), בונוס רצף (עד 20 נקודות)
+const points = calculateAnswerScore(
+  DifficultyLevel.MEDIUM,  // difficulty (enum) או 'medium' (string)
+  15000,                    // timeSpentMs in milliseconds
+  3,                        // streak - רצף תשובות נכונות
+  true                      // isCorrect - האם התשובה נכונה
+);
+// נקודות בסיס: EASY=10, MEDIUM=20, HARD=30, CUSTOM=20
+// בונוס זמן: עד 10 נקודות (תלוי במהירות התשובה)
+// בונוס רצף: עד 20 נקודות (streak * 2)
+```
 
-// חישוב נקודות לתשובה
-const points = service.calculateAnswerPoints(
-  DifficultyLevel.MEDIUM,  // difficulty
-  15000,                    // timeSpent in milliseconds
-  3,                        // streak
-  true                      // isCorrect
+### Credits Utilities
+
+#### credits.utils.ts
+חישוב קרדיטים - פונקציות טהורות (pure functions):
+```typescript
+import { 
+  calculateRequiredCredits, 
+  calculateNewBalance, 
+  calculateDailyLimit, 
+  calculateOptimalPackage 
+} from '@shared/utils';
+import { GameMode } from '@shared/constants';
+import type { CreditBalance, CreditPurchaseOption } from '@shared/types';
+
+// חישוב קרדיטים נדרשים למשחק
+const requiredCredits = calculateRequiredCredits(
+  10,              // questionsPerRequest - מספר שאלות
+  GameMode.MEDIUM  // gameMode - מצב משחק (משפיע על העלות)
+);
+// עלויות: TIME_LIMITED=1.5, QUESTION_LIMITED=1, UNLIMITED=0.8
+
+// חישוב יתרה חדשה לאחר ניכוי קרדיטים
+const { newBalance, deductionDetails } = calculateNewBalance(
+  currentBalance,           // CreditBalance - יתרה נוכחית
+  10,                       // questionsPerRequest - מספר שאלות
+  GameMode.QUESTION_LIMITED // gameMode - מצב משחק
+);
+// סדר ניכוי: freeQuestions → purchasedCredits → credits
+
+// חישוב מגבלה יומית וזמן איפוס
+const dailyLimitInfo = calculateDailyLimit(
+  currentBalance,           // CreditBalance - יתרה נוכחית
+  new Date('2024-01-01'),   // lastResetTime - זמן איפוס אחרון (או null)
+  20                        // dailyLimit - מגבלה יומית
 );
 
-// חישוב bonus points
-const bonusPoints = service.calculateBonusPoints(
-  100,                      // baseScore
-  DifficultyLevel.MEDIUM,   // difficulty
-  1.5                       // timeBonus multiplier
-);
-
-// חישוב streak bonus
-const streakBonus = service.calculateStreakBonus(
-  5,                        // streakLength
-  20                        // basePoints
-);
-
-// חישוב daily limit
-const dailyLimitInfo = service.calculateDailyLimit(
-  50,                       // currentBalance
-  new Date('2024-01-01'),   // lastResetTime
-  20                        // dailyLimit
+// חישוב חבילת קרדיטים אופטימלית
+const recommendation = calculateOptimalPackage(
+  availablePackages,        // CreditPurchaseOption[] - חבילות זמינות
+  100,                      // targetCredits - מספר קרדיטים מטרה
+  50                        // budget - תקציב מקסימלי
 );
 ```
 
@@ -544,8 +570,8 @@ const grouped = groupBy(users, 'role'); // Record<string, User[]>
 import { formatCurrency, calculatePricePerCredit } from '@shared/utils';
 
 // עיצוב מטבע
-const formatted = formatCurrency(10.50, 'USD', 'en-US'); // '$10.50'
-const formattedIL = formatCurrency(10.50, 'ILS', 'he-IL'); // '₪10.50'
+const formatted = formatCurrency(10.50, 'USD'); // '$10.50'
+const formattedIL = formatCurrency(10.50, 'ILS'); // '₪10.50'
 
 // חישוב מחיר לקרדיט
 const pricePerCredit = calculatePricePerCredit(10.00, 100); // 0.1
@@ -573,17 +599,20 @@ const merged = mergeUserPreferences(
 ```typescript
 import { calculateAnswerPoints } from '@shared/utils';
 
-// חישוב נקודות לתשובה (client-side, מקבל string difficulty)
-const points = calculateAnswerPoints(
-  'medium',     // difficulty (string)
+// חישוב נקודות לתשובה (תומך גם ב-DifficultyLevel enum וגם ב-string)
+const points = calculateAnswerScore(
+  'medium',     // difficulty (string) או DifficultyLevel.MEDIUM (enum)
   15000,        // timeSpentMs in milliseconds
   3,            // streak
   true          // isCorrect
 );
 
-// הערה: פונקציות נוספות כמו calculateBonusPoints, calculateStreakBonus, 
-// calculateDailyLimit, calculateOptimalPackage זמינות ב-PointCalculationService 
-// (server-side) בלבד
+// כל הפונקציות זמינות גם ב-client וגם ב-server:
+// - calculateAnswerScore
+// - calculateBonusScore
+// - calculateStreakBonus
+// - calculateDailyLimit
+// - calculateOptimalPackage
 ```
 
 ### Infrastructure Utils

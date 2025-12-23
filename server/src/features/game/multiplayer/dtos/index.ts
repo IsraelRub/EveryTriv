@@ -5,9 +5,9 @@
  * @description Central export point for all multiplayer DTOs
  */
 
-export * from './create-room.dto';
-export * from './join-room.dto';
-export * from './submit-answer.dto';
-export * from './room-action.dto';
-export * from './game-state.dto';
-export * from './player-status.dto';
+export * from './createRoom.dto';
+export * from './joinRoom.dto';
+export * from './submitAnswer.dto';
+export * from './roomAction.dto';
+export * from './gameState.dto';
+export * from './playerStatus.dto';

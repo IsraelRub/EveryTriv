@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { clientLogger as logger } from '@shared/services';
 import type { GameData, GameHistoryEntry, TriviaRequest } from '@shared/types';
 import { extractValidationErrors, getErrorMessage, isRecord } from '@shared/utils';
 
-import { apiService, gameHistoryService } from '../services';
+import { gameHistoryService, gameService, clientLogger as logger } from '@/services';
 
 // Query keys
 const triviaKeys = {
@@ -17,7 +16,6 @@ const triviaKeys = {
 	question: (request: TriviaRequest) => [...triviaKeys.all, 'question', request] as const,
 	score: (userId: string) => [...triviaKeys.all, 'score', userId] as const,
 	leaderboard: (limit: number) => [...triviaKeys.all, 'leaderboard', limit] as const,
-	difficultyStats: (userId?: string) => [...triviaKeys.all, 'difficulty-stats', userId] as const,
 } as const;
 
 /**
@@ -74,8 +72,20 @@ export const useSaveHistory = () => {
 		},
 		onSettled: () => {
 			// Always refetch after error or success
+			// User analytics
 			queryClient.invalidateQueries({ queryKey: ['game-history'] });
-			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['UserAnalytics'] });
+			queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+
+			// Leaderboard
+			queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
+
+			// Global analytics
+			queryClient.invalidateQueries({ queryKey: ['popularTopics'] });
+			queryClient.invalidateQueries({ queryKey: ['globalDifficultyStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalTrends'] });
 		},
 	});
 };
@@ -88,7 +98,7 @@ export const useTriviaQuestionMutation = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (request: TriviaRequest) => apiService.getTrivia(request),
+		mutationFn: (request: TriviaRequest) => gameService.getTrivia(request),
 		onSuccess: (data, request) => {
 			// Cache the result for potential reuse
 			queryClient.setQueryData(triviaKeys.question(request), data);
@@ -98,7 +108,12 @@ export const useTriviaQuestionMutation = () => {
 			const validationErrors = extractValidationErrors(error);
 
 			let statusCode: number | undefined;
-			if (isRecord(error) && 'statusCode' in error && typeof error.statusCode === 'number') {
+			if (
+				isRecord(error) &&
+				'statusCode' in error &&
+				typeof error.statusCode === 'number' &&
+				Number.isFinite(error.statusCode)
+			) {
 				statusCode = error.statusCode;
 			}
 
@@ -116,7 +131,7 @@ export const useTriviaQuestionMutation = () => {
  * @returns Validation function for custom difficulty text
  */
 export const useValidateCustomDifficulty = () => {
-	return (customText: string) => apiService.validateCustomDifficulty(customText);
+	return (customText: string) => gameService.validateCustomDifficulty(customText);
 };
 
 /**
@@ -129,12 +144,23 @@ export const useDeleteGameHistory = () => {
 	return useMutation({
 		mutationFn: (gameId: string) => gameHistoryService.deleteGameHistory(gameId),
 		onSuccess: data => {
-			// Invalidate game history queries
+			// User analytics
 			queryClient.invalidateQueries({ queryKey: ['game-history'] });
-			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['UserAnalytics'] });
+			queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+
+			// Leaderboard
+			queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
+
+			// Global analytics
+			queryClient.invalidateQueries({ queryKey: ['popularTopics'] });
+			queryClient.invalidateQueries({ queryKey: ['globalDifficultyStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalTrends'] });
 
 			// Show success message
-			logger.userInfo('Game history deleted successfully', { message: data.message });
+			logger.userInfo('Game history deleted successfully', { message: data });
 		},
 		onError: error => {
 			logger.userError('Failed to delete game history', { error: getErrorMessage(error) });
@@ -152,9 +178,20 @@ export const useClearGameHistory = () => {
 	return useMutation({
 		mutationFn: () => gameHistoryService.clearGameHistory(),
 		onSuccess: data => {
-			// Invalidate all game history queries
+			// User analytics
 			queryClient.invalidateQueries({ queryKey: ['game-history'] });
-			queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['UserAnalytics'] });
+			queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+
+			// Leaderboard
+			queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
+			queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
+
+			// Global analytics
+			queryClient.invalidateQueries({ queryKey: ['popularTopics'] });
+			queryClient.invalidateQueries({ queryKey: ['globalDifficultyStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalStats'] });
+			queryClient.invalidateQueries({ queryKey: ['globalTrends'] });
 
 			// Show success message
 			logger.userInfo('All game history cleared successfully', {

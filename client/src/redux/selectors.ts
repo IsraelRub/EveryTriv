@@ -3,7 +3,7 @@
  * @module ReduxSelectors
  * @description Centralized selectors for Redux state
  */
-import type { RootState } from '../types';
+import type { RootState } from '@/types';
 
 // User selectors
 export const selectUserCreditBalance = (state: RootState) => state.user.creditBalance;
@@ -19,6 +19,3 @@ export const selectCurrentGameMode = (state: RootState) => state.gameMode.curren
 export const selectCurrentTopic = (state: RootState) => state.gameMode.currentTopic;
 export const selectCurrentDifficulty = (state: RootState) => state.gameMode.currentDifficulty;
 export const selectCurrentSettings = (state: RootState) => state.gameMode.currentSettings;
-
-// Stats selectors
-export const selectLeaderboard = (state: RootState) => state.stats.leaderboard;

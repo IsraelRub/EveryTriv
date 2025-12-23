@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertCircle, Clock, FileQuestion, Loader2, Play, Sliders, X } from 'lucide-react';
 
-import { DifficultyLevel, GameMode } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
+import { DifficultyLevel, ERROR_CODES, GameMode } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils';
+
+import { ButtonSize, ButtonVariant, ROUTES, VariantBase } from '@/constants';
 
 import {
 	Alert,
@@ -21,26 +23,21 @@ import {
 	NumberInput,
 	Slider,
 } from '@/components';
-import { ButtonSize } from '@/constants';
-import { useAppDispatch, useValidateCustomDifficulty } from '@/hooks';
-import { setGameMode } from '@/redux/slices';
 
-interface CustomSettings {
-	questionCount: number;
-	timePerQuestion: number;
-	difficultyValue: number;
-}
+import { useAppDispatch, useValidateCustomDifficulty } from '@/hooks';
+
+import { clientLogger as logger } from '@/services';
+
+import type { CustomSettings } from '@/types';
+
+import { getDifficultyTextColor } from '@/utils';
+
+import { setGameMode } from '@/redux/slices';
 
 function getDifficultyLabel(value: number): DifficultyLevel {
 	if (value < 33) return DifficultyLevel.EASY;
 	if (value < 66) return DifficultyLevel.MEDIUM;
 	return DifficultyLevel.HARD;
-}
-
-function getDifficultyColor(value: number): string {
-	if (value < 33) return 'text-green-500';
-	if (value < 66) return 'text-yellow-500';
-	return 'text-red-500';
 }
 
 export function CustomDifficultyView() {
@@ -78,7 +75,12 @@ export function CustomDifficultyView() {
 			const validationResult = await validateCustomDifficulty(customText);
 
 			if (!validationResult.isValid) {
-				setError('Invalid settings. Please adjust your configuration.');
+				// Use errors array from validation result, with fallback
+				const errorMessage =
+					validationResult.errors && validationResult.errors.length > 0
+						? validationResult.errors.join('; ')
+						: getErrorMessage(ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED);
+				setError(errorMessage);
 				return;
 			}
 
@@ -96,12 +98,13 @@ export function CustomDifficultyView() {
 			logger.gameInfo('Custom game mode set, navigating to game');
 
 			// Navigate to game session
-			navigate('/game/play');
+			navigate(ROUTES.GAME_PLAY);
 		} catch (err) {
+			const errorMessage = getErrorMessage(err);
 			logger.gameError('Failed to start custom game', {
-				error: err instanceof Error ? err.message : 'Unknown error',
+				error: errorMessage,
 			});
-			setError('Failed to start game. Please try again.');
+			setError(errorMessage);
 		} finally {
 			setIsValidating(false);
 		}
@@ -109,7 +112,7 @@ export function CustomDifficultyView() {
 
 	const handleCancel = () => {
 		logger.gameInfo('Custom difficulty cancelled');
-		navigate('/');
+		navigate(ROUTES.HOME);
 	};
 
 	// Calculate estimated game time
@@ -117,8 +120,6 @@ export function CustomDifficultyView() {
 
 	return (
 		<motion.main
-			role='main'
-			aria-label='Custom Difficulty'
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.4 }}
@@ -137,7 +138,7 @@ export function CustomDifficultyView() {
 
 					<CardContent className='space-y-8'>
 						{error && (
-							<Alert variant='destructive'>
+							<Alert variant={VariantBase.DESTRUCTIVE}>
 								<AlertCircle className='h-4 w-4' />
 								<AlertDescription>{error}</AlertDescription>
 							</Alert>
@@ -189,7 +190,7 @@ export function CustomDifficultyView() {
 									<Sliders className='h-4 w-4 text-muted-foreground' />
 									Difficulty Level
 								</Label>
-								<span className={`text-2xl font-bold ${getDifficultyColor(settings.difficultyValue)}`}>
+								<span className={`text-2xl font-bold ${getDifficultyTextColor(settings.difficultyValue)}`}>
 									{difficultyLevel}
 								</span>
 							</div>
@@ -223,7 +224,7 @@ export function CustomDifficultyView() {
 									</div>
 									<div className='flex justify-between'>
 										<span className='text-muted-foreground'>Difficulty:</span>
-										<span className={`font-medium ${getDifficultyColor(settings.difficultyValue)}`}>
+										<span className={`font-medium ${getDifficultyTextColor(settings.difficultyValue)}`}>
 											{difficultyLevel}
 										</span>
 									</div>
@@ -250,7 +251,12 @@ export function CustomDifficultyView() {
 									</>
 								)}
 							</Button>
-							<Button variant='outline' size={ButtonSize.LG} onClick={handleCancel} disabled={isValidating}>
+							<Button
+								variant={ButtonVariant.OUTLINE}
+								size={ButtonSize.LG}
+								onClick={handleCancel}
+								disabled={isValidating}
+							>
 								<X className='h-5 w-5 mr-2' />
 								Cancel
 							</Button>

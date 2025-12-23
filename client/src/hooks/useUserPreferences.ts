@@ -8,13 +8,15 @@ import { useSelector } from 'react-redux';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { clientLogger as logger } from '@shared/services';
 import type { UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { setUser } from '../redux/slices';
-import { userService } from '../services';
-import type { RootState } from '../types';
+import { clientLogger as logger, userService } from '@/services';
+
+import type { RootState } from '@/types';
+
+import { setUser } from '@/redux/slices';
+
 import { authKeys } from './useAuth';
 import { useAppDispatch } from './useRedux';
 

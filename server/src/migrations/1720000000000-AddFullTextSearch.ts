@@ -1,5 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+import { ERROR_CODES } from '@shared/constants';
+
 export class AddFullTextSearch1720000000000 implements MigrationInterface {
 	name = 'AddFullTextSearch1720000000000';
 
@@ -99,6 +101,6 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 	}
 
 	public async down(): Promise<void> {
-		throw new Error('Migration rollback is not supported');
+		throw new Error(ERROR_CODES.ROLLBACK_NOT_SUPPORTED);
 	}
 }

@@ -1,18 +1,11 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
-import type { PaymentMetadata } from '@shared/types';
+
+import type { PaymentHistoryMetadata } from '@internal/types';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
-
-type PaymentHistoryMetadata = PaymentMetadata & {
-	completedAt?: string;
-	failedAt?: string;
-	subscriptionId?: string;
-	originalAmount?: number;
-	originalCurrency?: string;
-};
 
 @Entity('payment_history')
 export class PaymentHistoryEntity extends BaseEntity {
@@ -113,18 +106,6 @@ export class PaymentHistoryEntity extends BaseEntity {
 			this.metadata.failedAt = value.toISOString();
 		} else {
 			delete this.metadata.failedAt;
-		}
-	}
-
-	get subscriptionId(): string | undefined {
-		return this.metadata.subscriptionId ?? undefined;
-	}
-
-	set subscriptionId(value: string | undefined) {
-		if (value) {
-			this.metadata.subscriptionId = value;
-		} else {
-			delete this.metadata.subscriptionId;
 		}
 	}
 

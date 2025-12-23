@@ -1,12 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { ErrorPayload, FavoritePayload, FavoritesState, LoadingPayload } from '../../types';
+import { ErrorPayload, FavoritesState, LoadingPayload } from '@/types';
 
 const initialState: FavoritesState = {
 	topics: [],
 	difficulties: [],
 	games: [],
-	favoriteTopics: [],
 	isLoading: false,
 	error: null,
 };
@@ -23,26 +22,6 @@ const favoritesStateSlice = createSlice({
 			state.isLoading = false;
 		},
 		clearError: state => {
-			state.error = null;
-		},
-		setFavorites: (state, action: PayloadAction<string[]>) => {
-			state.favoriteTopics = action.payload;
-			state.isLoading = false;
-			state.error = null;
-		},
-		addFavorite: (state, action: PayloadAction<FavoritePayload>) => {
-			const { topic, difficulty } = action.payload;
-			const favoriteKey = `${topic}:${difficulty}`;
-			if (!state.favoriteTopics.includes(favoriteKey)) {
-				state.favoriteTopics.push(favoriteKey);
-			}
-		},
-		removeFavorite: (state, action: PayloadAction<number>) => {
-			state.favoriteTopics.splice(action.payload, 1);
-		},
-		clearFavorites: state => {
-			state.favoriteTopics = [];
-			state.isLoading = false;
 			state.error = null;
 		},
 		reset: () => initialState,

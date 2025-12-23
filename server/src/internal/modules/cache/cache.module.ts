@@ -8,7 +8,7 @@
  */
 import { Module, OnModuleInit } from '@nestjs/common';
 
-import { serverLogger as logger } from '@shared/services';
+import { serverLogger as logger } from '@internal/services';
 
 import { RedisModule } from '../redis.module';
 import { CacheController } from './cache.controller';

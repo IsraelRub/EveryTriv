@@ -46,16 +46,12 @@ server/src/features/game/
 ├── logic/                      # לוגיקת יצירת טריוויה
 │   ├── triviaGeneration.service.ts # שירות יצירת טריוויה
 │   ├── providers/              # AI Providers
-│   │   ├── implementations/    # מימושים ספציפיים (מסודרים לפי priority)
-│   │   │   ├── groq.provider.ts      # Priority 1 - חינמי
-│   │   │   ├── gemini.provider.ts    # Priority 2 - $0.075/M
-│   │   │   ├── chatgbt.provider.ts   # Priority 3 - $0.15/M
-│   │   │   ├── claude.provider.ts    # Priority 4 - $0.25/M
+│   │   ├── implementations/    # Base provider class
 │   │   │   ├── base.provider.ts
 │   │   │   └── index.ts
-│   │   ├── management/         # ניהול providers
-│   │   │   ├── providers.controller.ts
-│   │   │   ├── providers.service.ts
+│   │   ├── groq/               # Groq provider עם תמיכה במודלים מרובים
+│   │   │   ├── groq.provider.ts      # Groq provider implementation
+│   │   │   ├── models.ts             # הגדרת מודלים (priority, cost, rate limits)
 │   │   │   └── index.ts
 │   │   ├── prompts/            # Prompts ל-AI
 │   │   │   ├── prompts.ts
@@ -244,8 +240,7 @@ export class GameService {
     private readonly cacheService: CacheService,
     private readonly storageService: ServerStorageService,
     private readonly triviaGenerationService: TriviaGenerationService,
-    private readonly validationService: ValidationService,
-    private readonly pointCalculationService: PointCalculationService
+    private readonly validationService: ValidationService
   ) {}
 
   /**
@@ -356,7 +351,7 @@ export class GameService {
     const isCorrect = answer === question.correctAnswerIndex;
     const difficulty = toDifficultyLevel(question.difficulty);
     const scoreEarned = isCorrect
-      ? this.pointCalculationService.calculatePoints(difficulty, timeSpent || 30)
+      ? calculateAnswerScore(difficulty, timeSpent || 30, 0, true)
       : 0;
 
     if (isCorrect && userId) {
@@ -437,47 +432,44 @@ export class GameService {
 
 ## AI Providers
 
-המערכת תומכת ב-4 AI providers מסודרים לפי priority (עלות), כאשר priority נמוך יותר = עדיפות גבוהה יותר (נבחר ראשון):
+המערכת משתמשת ב-Groq AI Provider עם תמיכה במודלים מרובים דרך API אחד.
 
-| Provider | Priority | עלות | מודל | Rate Limit |
-|----------|----------|------|------|------------|
-| **Groq** | 1 | חינמי ($0) | Llama 3.1 8B Instant | 30 req/min |
-| **Gemini** | 2 | $0.075/M tokens | Gemini 1.5 Flash | 60 req/min |
-| **ChatGPT** | 3 | $0.15/M tokens | GPT-4o-mini | 60 req/min |
-| **Claude** | 4 | $0.25/M tokens | Claude 3.5 Haiku | 60 req/min |
+### Groq Models Configuration
 
-### Provider Selection
+המערכת תומכת במודלים שונים של Groq, מסודרים לפי priority (עלות), כאשר priority נמוך יותר = עדיפות גבוהה יותר (נבחר ראשון):
 
-המערכת משתמשת ב-round-robin selection עם fallback אוטומטי:
-1. **Selection**: Providers נבחרים לפי סדר priority (Groq → Gemini → ChatGPT → Claude)
-2. **Fallback**: במקרה של שגיאה, המערכת עוברת אוטומטית לפרובידר הבא
-3. **Error Handling**: Rate limits (429) ו-auth errors (401) מובילים לדילוג על הפרובידר הנוכחי
-4. **Cost Optimization**: הפרובידר הזול ביותר נבחר קודם לחיסכון בעלויות
+**Priority 1 - מודלים חינמיים/זמינים ב-free tier:**
+- **llama-3.1-8b-instant** - חינמי לחלוטין ($0), 30 req/min, 14,400 req/day
+- **gpt-oss-20b** - זמין ב-free tier (1,000 requests/day), 8 req/min
+
+**Priority 2+ - מודלים בתשלום:**
+- **gpt-oss-120b** - $0.15/$0.75 per M tokens
+- **llama-3.1-70b-versatile** - איכות גבוהה יותר
+
+### Model Selection
+
+המערכת משתמשת ב-round-robin selection בין מודלי Priority 1:
+1. **Selection**: מודלים נבחרים לפי priority (חינמי = priority 1)
+2. **Round-robin**: בין מודלי priority 1 (llama-3.1-8b, gpt-oss-20b) נעשה round-robin
+3. **Cost Optimization**: המודל הזול ביותר (priority 1) נבחר קודם לחיסכון בעלויות
+4. **Fallback**: במקרה של שגיאה, המערכת יכולה לנסות מודל אחר מאותו priority
 
 ### Environment Variables
 
 ```env
-# Priority 1 - Groq (free tier)
+# Groq API Key (required)
 GROQ_API_KEY=your-groq-api-key
-
-# Priority 2 - Gemini
-GEMINI_API_KEY=your-google-api-key
-
-# Priority 3 - ChatGPT
-CHATGBT_API_KEY=your-openai-key
-
-# Priority 4 - Claude
-CLAUDE_API_KEY=your-anthropic-key
 ```
 
-### Provider Configuration
+### Model Configuration
 
-כל provider מכיל:
-- `priority`: מספר עדיפות (1-4)
-- `costPerToken`: עלות per token
-- `rateLimit`: הגבלות קצב (requests/minute, tokens/minute)
-- `model`: שם המודל בשימוש
+כל מודל מכיל:
+- `priority`: מספר עדיפות (1 = חינמי, 2+ = בתשלום)
+- `cost`: עלות per token
+- `rateLimit`: הגבלות קצב (requests/minute, requests/day)
+- `model`: שם המודל ב-Groq API
 - `maxTokens`: מקסימום tokens לשאילתה
+- `availableInFreeTier`: האם זמין ב-free tier
 
 ## Question Retrieval Strategy
 

@@ -117,6 +117,46 @@ export const FORM_FIELD_TYPES = {
 } as const;
 
 /**
+ * Client validation type enum
+ * @enum ClientValidationType
+ * @description Types of validation performed on client side
+ */
+export enum ClientValidationType {
+	EMAIL = 'email',
+	PASSWORD = 'password',
+	TOPIC = 'topic',
+	CUSTOM_DIFFICULTY = 'customDifficulty',
+	FIRST_NAME = 'firstName',
+	LAST_NAME = 'lastName',
+}
+
+/**
+ * Validation severity enumeration
+ * @enum ValidationSeverity
+ * @description Severity levels for validation errors
+ */
+export enum ValidationSeverity {
+	ERROR = 'error',
+	WARNING = 'warning',
+	INFO = 'info',
+}
+
+/**
+ * Validation status enumeration
+ * @enum ValidationStatus
+ * @description Status of validation operations
+ */
+export enum ValidationStatus {
+	IDLE = 'idle',
+	VALIDATING = 'validating',
+	VALID = 'valid',
+	INVALID = 'invalid',
+	WARNING = 'warning',
+	PENDING = 'pending',
+	NONE = 'none',
+}
+
+/**
  * Audio categories
  * @constant
  * @description Audio categories used across the application
@@ -133,4 +173,69 @@ export const AUDIO_CATEGORIES = {
 export const VALIDATION_THRESHOLDS = {
 	EXCESSIVE_PUNCTUATION: 0.3, // 30% of words
 	EXCESSIVE_CAPITALIZATION: 0.2, // 20% of words
+} as const;
+
+/**
+ * Validation configuration with limits
+ * @constant
+ * @description Validation configuration used across the application
+ * @used_by server/src/features/game, server/src/features/credits
+ */
+export const VALIDATION_CONFIG = {
+	limits: {
+		PASSWORD: {
+			MIN_LENGTH: VALIDATION_LIMITS.PASSWORD.MIN_LENGTH,
+			MAX_LENGTH: VALIDATION_LIMITS.PASSWORD.MAX_LENGTH,
+		},
+		EMAIL: {
+			MAX_LENGTH: VALIDATION_LIMITS.EMAIL.MAX_LENGTH,
+		},
+		TOPIC: {
+			MIN_LENGTH: VALIDATION_LIMITS.TOPIC.MIN_LENGTH,
+			MAX_LENGTH: VALIDATION_LIMITS.TOPIC.MAX_LENGTH,
+		},
+		FIRST_NAME: {
+			MIN_LENGTH: VALIDATION_LIMITS.FIRST_NAME.MIN_LENGTH,
+			MAX_LENGTH: VALIDATION_LIMITS.FIRST_NAME.MAX_LENGTH,
+		},
+		LAST_NAME: {
+			MIN_LENGTH: VALIDATION_LIMITS.LAST_NAME.MIN_LENGTH,
+			MAX_LENGTH: VALIDATION_LIMITS.LAST_NAME.MAX_LENGTH,
+		},
+		TIME_LIMIT: {
+			MIN: VALIDATION_LIMITS.TIME_LIMIT.MIN,
+			MAX: VALIDATION_LIMITS.TIME_LIMIT.MAX,
+			STEP: VALIDATION_LIMITS.TIME_LIMIT.STEP,
+		},
+		TRIVIA_QUESTION: {
+			MIN_LENGTH: 10, // Minimum reasonable question length
+			MAX_LENGTH: 500, // Maximum reasonable question length
+		},
+		TRIVIA_ANSWER: {
+			MAX_LENGTH: 200, // Maximum answer length
+		},
+		GAME_ANSWER: {
+			MAX_LENGTH: 200, // Maximum game answer length
+		},
+		PLAYERS: {
+			MIN: 2,
+			MAX: 4,
+		},
+		QUESTIONS: {
+			MIN: VALIDATION_LIMITS.QUESTIONS.MIN,
+			MAX: VALIDATION_LIMITS.QUESTIONS.MAX,
+			STEP: VALIDATION_LIMITS.QUESTIONS.STEP,
+			UNLIMITED: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
+		},
+		ANSWER_COUNT: {
+			MIN: VALIDATION_LIMITS.ANSWER_COUNT.MIN,
+			MAX: VALIDATION_LIMITS.ANSWER_COUNT.MAX,
+			STEP: VALIDATION_LIMITS.ANSWER_COUNT.STEP,
+			DEFAULT: 4,
+		},
+	},
+	thresholds: {
+		EXCESSIVE_PUNCTUATION: VALIDATION_THRESHOLDS.EXCESSIVE_PUNCTUATION,
+		EXCESSIVE_CAPITALIZATION: VALIDATION_THRESHOLDS.EXCESSIVE_CAPITALIZATION,
+	},
 } as const;

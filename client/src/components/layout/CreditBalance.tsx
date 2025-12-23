@@ -4,8 +4,12 @@ import { Coins, Crown, Loader2, Plus } from 'lucide-react';
 
 import { UserRole } from '@shared/constants';
 
+import { ROUTES, VariantBase } from '@/constants';
+
 import { Badge } from '@/components';
+
 import { useAppSelector, useCreditBalance } from '@/hooks';
+
 import { selectUserRole } from '@/redux/selectors';
 
 /**
@@ -30,7 +34,7 @@ export function CreditBalance() {
 	// Admin users have unlimited credits
 	if (isAdmin) {
 		return (
-			<Badge variant='secondary' className='bg-amber-500/10 text-amber-600 border-amber-500/30 px-3 py-1.5'>
+			<Badge variant={VariantBase.SECONDARY} className='bg-amber-500/10 text-amber-600 border-amber-500/30 px-3 py-1.5'>
 				<Crown className='w-4 h-4 mr-1.5' />
 				<span className='font-medium'>Unlimited</span>
 			</Badge>
@@ -38,17 +42,13 @@ export function CreditBalance() {
 	}
 
 	const totalCredits = creditBalance?.totalCredits ?? 0;
-	const freeQuestions = creditBalance?.freeQuestions ?? 0;
 
 	return (
 		<div className='flex items-center rounded-full bg-primary/10 overflow-hidden'>
 			{/* Credit Information Display */}
 			<div className='flex items-center gap-2 px-3 py-1.5'>
-				<Coins className='w-4 h-4 text-primary' />
-				<span className='text-sm font-medium'>
-					{totalCredits}
-					{freeQuestions > 0 && <span className='text-muted-foreground ml-1'>({freeQuestions} free)</span>}
-				</span>
+				<Coins className='w-4 h-4 text-yellow-500' />
+				<span className='text-sm font-medium text-yellow-500'>{totalCredits}</span>
 			</div>
 
 			{/* Divider */}
@@ -56,12 +56,11 @@ export function CreditBalance() {
 
 			{/* Add Credits Button */}
 			<Link
-				to='/payment'
+				to={ROUTES.PAYMENT}
 				className='flex items-center gap-1.5 px-3 py-1.5 hover:bg-primary/20 transition-colors cursor-pointer group'
-				aria-label='Add credits'
 			>
-				<Plus className='w-4 h-4 text-primary opacity-70 group-hover:opacity-100 transition-opacity' />
-				<span className='text-xs font-medium text-primary opacity-70 group-hover:opacity-100 transition-opacity'>
+				<Plus className='w-4 h-4 text-yellow-500 opacity-70 group-hover:opacity-100 transition-opacity' />
+				<span className='text-xs font-medium text-yellow-500 opacity-70 group-hover:opacity-100 transition-opacity'>
 					ADD
 				</span>
 			</Link>

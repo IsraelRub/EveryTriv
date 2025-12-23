@@ -14,9 +14,11 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { queryClient } from '@/services';
+
+import { store } from '@/redux/store';
+
 import App from './App';
-import { store } from './redux/store';
-import { queryClient } from './services';
 
 /**
  * Initialize and render the React application

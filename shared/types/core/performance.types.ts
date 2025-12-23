@@ -6,6 +6,7 @@
  * @description Performance monitoring and metrics type definitions
  * @used_by client: animations, server: logging
  */
+import { PerformanceOperationStatus } from '../../constants';
 import type { BasicValue } from './data.types';
 
 /**
@@ -18,7 +19,7 @@ export interface BasePerformanceOperation {
 	id: string;
 	startTime: number;
 	duration: number | null;
-	status: 'pending' | 'completed' | 'error';
+	status: PerformanceOperationStatus;
 	error?: string;
 	metadata?: Record<string, BasicValue>;
 }

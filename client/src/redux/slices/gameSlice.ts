@@ -1,22 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { GAME_STATE_CONFIG, GameClientStatus } from '@shared/constants';
 import { TriviaQuestion } from '@shared/types';
-import { calculateAnswerScore } from '@shared/utils';
 
-import { ClientGameState, ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '../../types';
-
-const initialGameState: ClientGameState = {
-	status: 'idle',
-	isPlaying: false,
-	currentQuestion: 0,
-	gameQuestionCount: 0,
-	questions: [],
-	answers: [],
-	loading: false,
-};
+import { ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '@/types';
 
 const initialState: GameSliceState = {
-	state: initialGameState,
+	state: GAME_STATE_CONFIG.initialClientState,
 	gameHistory: [],
 	leaderboard: [],
 	isLoading: false,
@@ -28,12 +18,12 @@ const gameStateSlice = createSlice({
 	initialState,
 	reducers: {
 		setLoading: (state, action: PayloadAction<LoadingPayload>) => {
-			state.state.status = action.payload.isLoading ? 'loading' : 'idle';
+			state.state.status = action.payload.isLoading ? GameClientStatus.LOADING : GameClientStatus.IDLE;
 			state.state.loading = action.payload.isLoading;
 		},
 		setError: (state, action: PayloadAction<ErrorPayload>) => {
 			state.error = action.payload.error;
-			state.state.status = 'error';
+			state.state.status = GameClientStatus.ERROR;
 			state.state.error = action.payload.error ?? undefined;
 		},
 		clearError: state => {
@@ -54,7 +44,7 @@ const gameStateSlice = createSlice({
 				state.state.data.questions = [];
 			}
 			state.state.data.questions = [action.payload];
-			state.state.status = 'playing';
+			state.state.status = GameClientStatus.PLAYING;
 			state.state.error = undefined;
 		},
 		updateScore: (state, action: PayloadAction<ScoreUpdatePayload>) => {
@@ -77,10 +67,10 @@ const gameStateSlice = createSlice({
 				};
 			}
 
-			if (action.payload.correct && state.state.stats && state.state.data) {
-				const timeSpent = action.payload.timeSpent ?? 0;
-				const streak = state.state.stats.correctStreak ?? 0;
-				const scoreEarned = calculateAnswerScore(currentQuestion.difficulty, timeSpent, streak, true);
+			if (action.payload.isCorrect && state.state.stats && state.state.data) {
+				// Use score from payload (already calculated in GameSessionView)
+				// to avoid duplicate calculation
+				const scoreEarned = action.payload.score;
 
 				state.state.data.score += scoreEarned;
 				state.state.stats.currentScore += scoreEarned;
@@ -93,10 +83,9 @@ const gameStateSlice = createSlice({
 				}
 			}
 		},
-		resetGame: () => initialState,
 	},
 });
 
-export const { updateScore, resetGame } = gameStateSlice.actions;
+export const { updateScore } = gameStateSlice.actions;
 
 export default gameStateSlice.reducer;

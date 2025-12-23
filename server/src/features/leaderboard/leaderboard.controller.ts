@@ -1,11 +1,19 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { TokenPayload } from '@shared/types';
+import {
+	API_ROUTES,
+	CACHE_DURATION,
+	ERROR_CODES,
+	LeaderboardPeriod,
+	UserRole,
+	VALID_LEADERBOARD_PERIODS,
+} from '@shared/constants';
+import type { LeaderboardEntry, LeaderboardResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
+import { serverLogger as logger } from '@internal/services';
+
+import { Cache, CurrentUserId, NoCache, Roles } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
 import { GetLeaderboardDto, GetLeaderboardStatsDto } from './dtos';
 import { LeaderboardService } from './leaderboard.service';
@@ -17,12 +25,12 @@ import { LeaderboardService } from './leaderboard.service';
  * @description Controller for managing leaderboard and ranking endpoints
  * @used_by client/src/services/api/api.service.ts
  */
-@Controller('leaderboard')
+@Controller(API_ROUTES.LEADERBOARD.BASE)
 export class LeaderboardController {
 	constructor(private readonly leaderboardService: LeaderboardService) {}
 
-	private isLeaderboardPeriod(value: string): value is 'weekly' | 'monthly' | 'yearly' {
-		return value === 'weekly' || value === 'monthly' || value === 'yearly';
+	private isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
+		return VALID_LEADERBOARD_PERIODS.some(period => period === value);
 	}
 
 	/**
@@ -98,11 +106,11 @@ export class LeaderboardController {
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
-			const limitNum = query.limit || 100;
-			const offsetNum = query.offset ?? 0;
+			const limitNum = query.limit;
+			const offsetNum = query.offset;
 
 			if (limitNum > 1000) {
-				throw new HttpException('Limit cannot exceed 1000', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
 			}
 
 			const leaderboard = await this.leaderboardService.getGlobalLeaderboard(limitNum, offsetNum);
@@ -113,8 +121,26 @@ export class LeaderboardController {
 				resultsCount: leaderboard.length,
 			});
 
+			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
+				userId: entry.userId,
+				email: entry.user?.email || '',
+				firstName: entry.user?.firstName,
+				lastName: entry.user?.lastName,
+				avatar: entry.user?.avatar,
+				rank: entry.rank ?? index + offsetNum + 1,
+				score: entry.score,
+				averageScore: entry.userStats?.overallSuccessRate ?? 0,
+				bestScore: entry.userStats?.bestGameScore ?? 0,
+				gamesPlayed: entry.userStats?.totalGames ?? 0,
+				lastPlayed: entry.userStats?.lastPlayDate ?? entry.createdAt,
+				successRate: entry.userStats?.overallSuccessRate ?? 0,
+				totalGames: entry.userStats?.totalGames ?? 0,
+				totalQuestionsAnswered: entry.userStats?.totalQuestionsAnswered ?? 0,
+				totalPlayTime: entry.userStats?.totalPlayTime ?? 0,
+			}));
+
 			return {
-				leaderboard,
+				leaderboard: leaderboardEntries,
 				pagination: {
 					limit: limitNum,
 					offset: offsetNum,
@@ -142,34 +168,54 @@ export class LeaderboardController {
 	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
 	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
 		try {
-			const limitNum = query.limit || 100;
-			const period = periodParam || query.type || 'weekly';
+			const limitNum = query.limit;
+			const periodString = periodParam || query.type || LeaderboardPeriod.WEEKLY;
 
-			if (!this.isLeaderboardPeriod(period)) {
-				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
+			if (!this.isLeaderboardPeriod(periodString)) {
+				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 
 			if (limitNum > 1000) {
-				throw new HttpException('Limit cannot exceed 1000', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
 			}
 
-			// Ensure period is one of the allowed values for getLeaderboardByPeriod
-			const leaderboard = await this.leaderboardService.getLeaderboardByPeriod(period, limitNum);
+			// TypeScript now knows periodString is LeaderboardPeriod due to type guard
+			const leaderboard = await this.leaderboardService.getLeaderboardByPeriod(periodString, limitNum);
 
 			logger.apiRead('leaderboard_period', {
-				period,
+				period: periodString,
 				limit: limitNum,
 				resultsCount: leaderboard.length,
 			});
 
-			return {
-				period,
-				leaderboard,
+			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
+				userId: entry.userId,
+				email: entry.user?.email || '',
+				firstName: entry.user?.firstName,
+				lastName: entry.user?.lastName,
+				avatar: entry.user?.avatar,
+				rank: entry.rank ?? index + 1,
+				score: entry.score,
+				averageScore: entry.userStats?.overallSuccessRate ?? 0,
+				bestScore: entry.userStats?.bestGameScore ?? 0,
+				gamesPlayed: entry.userStats?.totalGames ?? 0,
+				lastPlayed: entry.userStats?.lastPlayDate ?? entry.createdAt,
+				successRate: entry.userStats?.overallSuccessRate ?? 0,
+				totalGames: entry.userStats?.totalGames ?? 0,
+				totalQuestionsAnswered: entry.userStats?.totalQuestionsAnswered ?? 0,
+				totalPlayTime: entry.userStats?.totalPlayTime ?? 0,
+			}));
+
+			const response: LeaderboardResponse = {
+				leaderboard: leaderboardEntries,
 				pagination: {
 					limit: limitNum,
+					offset: 0,
 					total: leaderboard.length,
 				},
+				period: periodString,
 			};
+			return response;
 		} catch (error) {
 			logger.userError('Error getting period leaderboard', {
 				error: getErrorMessage(error),
@@ -190,16 +236,17 @@ export class LeaderboardController {
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
 		try {
-			const period = query.period || 'weekly';
+			const periodString = query.period;
 
-			if (!this.isLeaderboardPeriod(period)) {
-				throw new HttpException('Invalid period. Must be weekly, monthly, or yearly', HttpStatus.BAD_REQUEST);
+			if (!this.isLeaderboardPeriod(periodString)) {
+				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 
-			const stats = await this.leaderboardService.getLeaderboardStats(period);
+			// TypeScript now knows periodString is LeaderboardPeriod due to type guard
+			const stats = await this.leaderboardService.getLeaderboardStats(periodString);
 
 			logger.apiRead('leaderboard_stats', {
-				period,
+				period: periodString,
 				activeUsers: stats.activeUsers,
 				averageScore: stats.averageScore,
 				averageGames: stats.averageGames,
@@ -222,26 +269,21 @@ export class LeaderboardController {
 	 */
 	@Delete('admin/clear-all')
 	@Roles(UserRole.ADMIN)
-	async clearAllLeaderboard(@CurrentUser() user: TokenPayload) {
+	@NoCache()
+	async clearAllLeaderboard(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.leaderboardService.clearAllLeaderboard();
 
 			logger.apiDelete('leaderboard_admin_clear_all', {
-				id: user.sub,
-				role: user.role,
+				userId,
 				deletedCount: result.deletedCount,
 			});
 
-			return {
-				cleared: true,
-				deletedCount: result.deletedCount,
-				message: result.message,
-			};
+			return result;
 		} catch (error) {
 			logger.userError('Failed to clear all leaderboard', {
 				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
+				userId,
 			});
 			throw error;
 		}

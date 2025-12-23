@@ -6,7 +6,7 @@
  * @used_by shared/services/logging
  */
 import type { GameData } from '..';
-import type { BillingCycle, GameMode, LogLevel, PaymentMethod, PlanType, UserRole, UserStatus } from '../../constants';
+import type { GameMode, LogLevel, PaymentMethod, PlanType, UserRole, UserStatus } from '../../constants';
 import type { BasicValue } from '../core';
 import type { GameDifficulty } from '../domain/game/trivia.types';
 import { User, UserPreferences } from '../domain/user/user.types';
@@ -131,6 +131,7 @@ export interface StorageLogger {
 export interface PaymentLogger {
 	paymentFailed(paymentId: string, error: string, meta?: LogMeta): void;
 	payment(message: string, meta?: LogMeta): void;
+	paymentInfo(message: string, meta?: LogMeta): void;
 }
 
 export interface SecurityLogger {
@@ -225,7 +226,7 @@ export interface MediaLogger {
  */
 export interface EnhancedLogger {
 	// Enhanced logging methods
-	logSecurityEventEnhanced(message: string, level: 'info' | 'warn' | 'error', context?: LogMeta): void;
+	logSecurityEventEnhanced(message: string, level: LogLevel, context?: LogMeta): void;
 	logAuthenticationEnhanced(action: string, userId: string, email: string, context?: LogMeta): void;
 }
 
@@ -271,7 +272,7 @@ export interface LogMeta {
 	authorized?: boolean;
 	availableKeys?: string[];
 	availableProviders?: number;
-	avatar?: string;
+	avatar?: number;
 	averageAccuracy?: number;
 	averageGames?: number;
 	averageScore?: number;
@@ -281,7 +282,6 @@ export interface LogMeta {
 	bodyType?: string;
 	batchSize?: number;
 	bestStreak?: number;
-	billingCycle?: BillingCycle;
 	burstCount?: number;
 	canPlay?: boolean;
 	canPlayFree?: boolean;
@@ -523,6 +523,7 @@ export interface LogMeta {
 	payloadKeys?: string[] | Record<string, unknown>;
 	value?: BasicValue;
 	valueLength?: number;
+	validation?: string;
 	version?: string;
 	volume?: number;
 	masterVolume?: number;
@@ -530,7 +531,70 @@ export interface LogMeta {
 	window?: number;
 	queryParams?: Record<string, string | string[]>;
 	hasGoogleId?: boolean;
+	requestedUserId?: string;
+	hasAuthToken?: boolean;
+	firstName?: string;
+	currentFirstName?: string;
+	oldFirstName?: string;
+	oldLastName?: string;
+	userIdMatches?: boolean;
+	lastName?: string;
+	currentLastName?: string;
+	newFirstName?: string;
+	newLastName?: string;
+	hasQueryToken?: boolean;
+	fromUserId?: string;
+	tokenUserId?: string;
+	gameId?: string;
+	avatarId?: number;
+	dataKeys?: string[];
+	bodyLength?: number;
+	tokenMatches?: boolean;
+	nextQuestionIndex?: number;
+	toUserId?: string;
+	tokenLength?: number;
+	serverUserId?: string;
+	isQuestionLimited?: boolean;
+	fromEmail?: string;
+	tokenEmail?: string;
+	shouldEndGame?: boolean;
+	toEmail?: string;
 }
+
+/**
+ * Log component error function type
+ * @type LogComponentErrorFn
+ * @description Function type for logging component errors
+ */
+export type LogComponentErrorFn = (component: string, error: string, meta?: LogMeta) => void;
+
+/**
+ * Log payment error function type
+ * @type LogPaymentErrorFn
+ * @description Function type for logging payment errors
+ */
+export type LogPaymentErrorFn = (paymentId: string, error: string, meta?: LogMeta) => void;
+
+/**
+ * Log provider error function type
+ * @type LogProviderErrorFn
+ * @description Function type for logging provider errors
+ */
+export type LogProviderErrorFn = (provider: string, error: string, meta?: LogMeta) => void;
+
+/**
+ * Log provider function type
+ * @type LogProviderFn
+ * @description Function type for logging provider events
+ */
+export type LogProviderFn = (provider: string, meta?: LogMeta) => void;
+
+/**
+ * Log resource error function type
+ * @type LogResourceErrorFn
+ * @description Function type for logging resource errors
+ */
+export type LogResourceErrorFn = (resource: string, error: string, meta?: LogMeta) => void;
 
 /**
  * Logger Configuration
@@ -561,3 +625,24 @@ export interface LoggerConfigUpdate {
 	enableSecurityLogging?: boolean;
 	enableUserActivityLogging?: boolean;
 }
+
+/**
+ * Log message function type
+ * @type LogMessageFn
+ * @description Function type for logging messages with optional metadata
+ */
+export type LogMessageFn = (message: string, meta?: LogMeta) => void;
+
+/**
+ * Log authentication enhanced function type
+ * @type LogAuthEnhancedFn
+ * @description Function type for enhanced authentication logging
+ */
+export type LogAuthEnhancedFn = (event: string, userId: string, email: string, metadata?: LogMeta) => void;
+
+/**
+ * Log security enhanced function type
+ * @type LogSecurityEnhancedFn
+ * @description Function type for enhanced security event logging
+ */
+export type LogSecurityEnhancedFn = (message: string, level: LogLevel, context?: LogMeta) => void;

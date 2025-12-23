@@ -15,7 +15,14 @@ export { useCurrentUser, useLogin, useRegister } from './useAuth';
  * Credits management hooks
  * @description Credit balance, transactions, and purchase management hooks
  */
-export { useCreditBalance, useCreditPackages, usePurchaseCredits, useCanPlay, useDeductCredits } from './useCredits';
+export {
+	useCanPlay,
+	useCreditBalance,
+	useCreditHistory,
+	useCreditPackages,
+	useDeductCredits,
+	usePurchaseCredits,
+} from './useCredits';
 
 /**
  * Trivia game hooks
@@ -34,7 +41,7 @@ export {
  * User management hooks
  * @description User profile, credits, and profile update hooks
  */
-export { useUpdateUserProfile, useUserProfile } from './useUser';
+export { useSetAvatar, useUpdateUserProfile, useUserProfile } from './useUser';
 
 /**
  * Leaderboard features hooks
@@ -47,8 +54,9 @@ export { useGlobalLeaderboard, useLeaderboardByPeriod, useUserRanking } from './
  * @description Analytics and statistics hooks
  */
 export {
-	useDifficultyStats,
+	useGlobalDifficultyStats,
 	useGlobalStats,
+	useGlobalTrends,
 	usePopularTopics,
 	useRealTimeAnalytics,
 	useUserAnalytics,
@@ -58,13 +66,37 @@ export {
  * Admin analytics hooks
  * @description Admin-only analytics hooks for user analytics by ID
  */
-export { useUserSummaryById } from './useAdminAnalytics';
+export {
+	useClearAllUserStats,
+	useUserComparisonById,
+	useUserPerformanceById,
+	useUserSummaryById,
+	useUserTrendsById,
+} from './useAdminAnalytics';
 
 /**
- * Subscription management hooks
- * @description Subscription create and cancel hooks
+ * Admin users hooks
+ * @description Admin-only hooks for user management
  */
-export { useCancelSubscription, useCreateSubscription } from './useSubscriptionManagement';
+export { useAllUsers } from './useAdminUsers';
+
+/**
+ * AI providers hooks
+ * @description Admin-only hooks for AI provider statistics
+ */
+export { useAiProviderHealth, useAiProviderStats } from './useAiProviders';
+
+/**
+ * Admin game hooks
+ * @description Admin-only hooks for game management
+ */
+export { useAllTriviaQuestions, useClearAllGameHistory, useClearAllTrivia, useGameStatistics } from './useAdminGame';
+
+/**
+ * Admin leaderboard hooks
+ * @description Admin-only hooks for leaderboard management
+ */
+export { useClearAllLeaderboard } from './useAdminLeaderboard';
 
 /**
  * User preferences hooks
@@ -76,21 +108,13 @@ export { useUpdateUserPreferences } from './useUserPreferences';
  * Account management hooks
  * @description Account management functionality hooks
  */
-export { useDeleteUserAccount, useChangePassword } from './useAccountManagement';
-
-export { useUserStats } from './useUserStats';
+export { useChangePassword } from './useAccountManagement';
 
 /**
  * Redux hooks
  * @description Redux hooks
  */
 export { useAppDispatch, useAppSelector } from './useRedux';
-
-/**
- * Utils hooks
- * @description Utils hooks
- */
-export { useDebounce } from './useDebounce';
 
 /**
  * Audio hooks
@@ -116,3 +140,9 @@ export { useToast, toast } from './useToast';
  * @description Modal route management hooks
  */
 export { useModalRoute } from './useModalRoute';
+
+/**
+ * Count up hook
+ * @description Hook for animating numbers counting from 0 to target value
+ */
+export { useCountUp } from './useCountUp';

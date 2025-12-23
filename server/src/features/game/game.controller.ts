@@ -1,18 +1,18 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { GameData, TokenPayload } from '@shared/types';
+import { API_ROUTES, CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
+import type { GameData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import { serverLogger as logger } from '@internal/services';
+import type { TokenPayload } from '@internal/types';
+
 import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
-import { CustomDifficultyPipe, GameAnswerPipe } from '../../common/pipes';
-import { ValidateCustomDifficultyDto } from './dtos/customDifficulty.dto';
-import { SubmitAnswerDto } from './dtos/submitAnswer.dto';
-import { TriviaRequestDto } from './dtos/triviaRequest.dto';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
+import { SubmitAnswerDto, TriviaRequestDto, ValidateCustomDifficultyDto } from './dtos';
 import { GameService } from './game.service';
 
-@Controller('game')
+@Controller(API_ROUTES.GAME.BASE)
 export class GameController {
 	constructor(private readonly gameService: GameService) {}
 
@@ -21,12 +21,12 @@ export class GameController {
 	 * @param id Question identifier
 	 * @returns Trivia question details
 	 */
-	@Get('trivia/:id')
+	@Get(API_ROUTES.GAME.TRIVIA_BY_ID)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getQuestionById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException('Question ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.QUESTION_ID_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.getQuestionById(id);
@@ -51,12 +51,12 @@ export class GameController {
 	 * @param body Answer submission data
 	 * @returns Answer result with correctness and scoring
 	 */
-	@Post('answer')
+	@Post(API_ROUTES.GAME.ANSWER)
 	@UsePipes(GameAnswerPipe)
 	async submitAnswer(@CurrentUserId() userId: string, @Body() body: SubmitAnswerDto) {
 		try {
 			if (!body.questionId || !body.answer) {
-				throw new HttpException('Question ID and answer are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.submitAnswer(body.questionId, body.answer, userId, body.timeSpent);
@@ -84,8 +84,9 @@ export class GameController {
 	 * @param body Trivia request parameters
 	 * @returns Generated trivia questions
 	 */
-	@Post('trivia')
+	@Post(API_ROUTES.GAME.TRIVIA)
 	@NoCache()
+	@UsePipes(TriviaRequestPipe)
 	async getTriviaQuestions(@CurrentUserId() userId: string, @Body() body: TriviaRequestDto) {
 		try {
 			const result = await this.gameService.getTriviaQuestion(
@@ -93,7 +94,8 @@ export class GameController {
 				body.difficulty,
 				body.questionsPerRequest,
 				userId,
-				body.answerCount
+				body.answerCount,
+				body.mappedDifficulty
 			);
 
 			logger.apiCreate('game_trivia_questions', {
@@ -120,7 +122,7 @@ export class GameController {
 	 * @param userId Current user identifier
 	 * @returns User's game history with statistics
 	 */
-	@Get('history')
+	@Get(API_ROUTES.GAME.HISTORY)
 	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
 	async getGameHistory(@CurrentUserId() userId: string) {
 		const startTime = Date.now();
@@ -153,12 +155,12 @@ export class GameController {
 	 * @param body Game data to save
 	 * @returns Saved game history entry
 	 */
-	@Post('history')
+	@Post(API_ROUTES.GAME.HISTORY)
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
 		try {
 			// Validate required fields
 			if (!body.score) {
-				throw new HttpException('Score is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.SCORE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.saveGameHistory(userId, body);
@@ -186,11 +188,11 @@ export class GameController {
 	 * @param gameId Game identifier to delete
 	 * @returns Deletion result
 	 */
-	@Delete('history/:gameId')
+	@Delete(API_ROUTES.GAME.HISTORY_BY_ID)
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
 		try {
 			if (!gameId || gameId.trim().length === 0) {
-				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.GAME_ID_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.deleteGameHistory(userId, gameId);
@@ -217,7 +219,7 @@ export class GameController {
 	 * @param userId Current user identifier
 	 * @returns Clear operation result
 	 */
-	@Delete('history')
+	@Delete(API_ROUTES.GAME.HISTORY)
 	async clearGameHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.gameService.clearUserGameHistory(userId);
@@ -242,14 +244,10 @@ export class GameController {
 	 * @param body Custom difficulty validation data
 	 * @returns Validated custom difficulty data
 	 */
-	@Post('validate-custom')
+	@Post(API_ROUTES.GAME.VALIDATE_CUSTOM)
 	@UsePipes(CustomDifficultyPipe)
 	async validateCustomDifficulty(@Body() body: ValidateCustomDifficultyDto) {
 		try {
-			if (!body.customText) {
-				throw new HttpException('Custom text is required', HttpStatus.BAD_REQUEST);
-			}
-
 			// The CustomDifficultyPipe handles all validation logic
 			// This method simply returns the result from the pipe
 			logger.apiUpdate('game_validate_custom_difficulty', {
@@ -271,7 +269,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Game statistics summary
 	 */
-	@Get('admin/statistics')
+	@Get(API_ROUTES.GAME.ADMIN.STATISTICS)
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getGameStatistics(@CurrentUser() user: TokenPayload) {
@@ -300,7 +298,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Clear operation result with deleted count
 	 */
-	@Delete('admin/history/clear-all')
+	@Delete(API_ROUTES.GAME.ADMIN.HISTORY_CLEAR_ALL)
 	@Roles(UserRole.ADMIN)
 	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
 		try {
@@ -313,8 +311,8 @@ export class GameController {
 			});
 
 			return {
-				cleared: true,
-				deletedCount: result.deletedCount,
+				cleared: (result.deletedCount ?? 0) > 0,
+				deletedCount: result.deletedCount ?? 0,
 				message: result.message,
 			};
 		} catch (error) {
@@ -332,7 +330,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns All trivia questions from database
 	 */
-	@Get('admin/trivia')
+	@Get(API_ROUTES.GAME.ADMIN.TRIVIA)
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload) {
@@ -360,7 +358,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Clear operation result with deleted count
 	 */
-	@Delete('admin/trivia/clear-all')
+	@Delete(API_ROUTES.GAME.ADMIN.TRIVIA_CLEAR_ALL)
 	@Roles(UserRole.ADMIN)
 	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
 		try {
@@ -373,8 +371,8 @@ export class GameController {
 			});
 
 			return {
-				cleared: true,
-				deletedCount: result.deletedCount,
+				cleared: (result.deletedCount ?? 0) > 0,
+				deletedCount: result.deletedCount ?? 0,
 				message: result.message,
 			};
 		} catch (error) {
@@ -393,12 +391,12 @@ export class GameController {
 	 * @param id Game identifier
 	 * @returns Game details
 	 */
-	@Get(':id')
+	@Get(API_ROUTES.GAME.BY_ID)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getGameById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException('Game ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.GAME_ID_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			// Normalize ID (remove trailing slashes)

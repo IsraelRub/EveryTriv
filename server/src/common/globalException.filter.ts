@@ -9,8 +9,9 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { NestRequest } from '../internal/types';
 
@@ -46,7 +47,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 					message: errorMessage,
 					errors: errorArray,
 					body: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
-					bodyType: typeof request.body,
 				});
 
 				// This is a validation error with detailed error information

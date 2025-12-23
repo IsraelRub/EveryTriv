@@ -33,57 +33,18 @@ export interface Position {
 	y: number;
 }
 
-/**
- * Animated word configuration
- */
+// Animated word configuration
+
 export interface AnimatedWord {
-	/** Unique identifier for the word */
 	id: string;
-
-	/** The text content to display */
 	text: TriviaWord;
-
-	/** Starting position (percentage of viewport) */
 	startPosition: Position;
-
-	/** Ending position (percentage of viewport) */
 	endPosition: Position;
-
-	/** Direction of movement */
 	direction: WordDirection;
-
-	/** Animation duration in seconds */
 	duration: number;
-
-	/** Color from palette */
 	color: AnimationColor;
-
-	/** Font family */
 	font: AnimationFont;
-
-	/** Font size in rem */
 	fontSize: number;
-
-	/** Maximum opacity (will fade in/out from 0 to this value) */
 	maxOpacity: number;
-
-	/** Rotation angle in degrees */
 	rotation: number;
-}
-
-/**
- * Animation configuration interface
- */
-export interface AnimationConfig {
-	wordCount: number;
-	minDuration: number;
-	maxDuration: number;
-	minFontSize: number;
-	maxFontSize: number;
-	minOpacity: number;
-	maxOpacity: number;
-	fadeInPercent: number;
-	fadeOutPercent: number;
-	zIndex: number;
-	spawnDelay: number;
 }

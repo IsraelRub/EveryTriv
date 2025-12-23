@@ -12,7 +12,7 @@
     },
     "server": {
       "entry": ["src/main.ts"],
-      "project": ["src/**/*.ts", "test/**/*.ts"]
+      "project": ["src/**/*.ts"]
     }
   },
   "ignore": [
@@ -41,11 +41,6 @@
     "eslint*",
     "prettier*",
     "@ianvs/prettier-plugin-sort-imports",
-    "jest*",
-    "vitest",
-    "@testing-library/*",
-    "jsdom",
-    "ts-jest",
     "ts-node",
     "tsconfig-paths",
     "source-map-support",
@@ -63,9 +58,7 @@
   "ignoreBinaries": [
     "tsc",
     "nest",
-    "jest",
     "vite",
-    "vitest",
     "rimraf",
     "copy",
     "webdb",

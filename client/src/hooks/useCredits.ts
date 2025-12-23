@@ -3,14 +3,16 @@ import { useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, UserRole } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
-import type { CreditBalance } from '@shared/types';
+import type { CreditBalance, CreditsPurchaseRequest, CreditTransaction } from '@shared/types';
 import { calculateNewBalance, calculateRequiredCredits, getErrorMessage } from '@shared/utils';
 
-import { selectCanPlayFree, selectUserCreditBalance, selectUserRole } from '../redux/selectors';
-import { deductCredits, setCreditBalance } from '../redux/slices';
-import { creditsService } from '../services';
-import type { CreditsPurchaseRequest, RootState } from '../types';
+import { creditsService, clientLogger as logger } from '@/services';
+
+import type { DeductCreditsParams, RootState } from '@/types';
+
+import { selectCanPlayFree, selectUserCreditBalance, selectUserRole } from '@/redux/selectors';
+import { deductCredits, setCreditBalance } from '@/redux/slices';
+
 import { useAppDispatch, useAppSelector } from './useRedux';
 
 // Query keys
@@ -47,19 +49,6 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 	// Calculate if user can play based on Redux state
 	const canPlay = hasFreeQuestions || (creditBalance?.totalCredits ?? 0) >= requiredCredits;
 
-	// Debug logging
-	if (process.env.NODE_ENV === 'development') {
-		logger.apiDebug('Can play check', {
-			questionsPerRequest,
-			gameMode,
-			requiredCredits,
-			credits: creditBalance?.totalCredits ?? 0,
-			freeQuestions: creditBalance?.freeQuestions ?? 0,
-			canPlayFree: hasFreeQuestions,
-			canPlay,
-		});
-	}
-
 	return {
 		data: canPlay,
 		isLoading: false,
@@ -78,9 +67,9 @@ export const useDeductCredits = () => {
 	const userRole = useAppSelector(selectUserRole);
 
 	return useMutation({
-		mutationFn: ({ questionsPerRequest, gameMode }: { questionsPerRequest: number; gameMode?: GameMode }) =>
+		mutationFn: ({ questionsPerRequest, gameMode }: DeductCreditsParams) =>
 			creditsService.deductCredits(questionsPerRequest, gameMode ?? GameMode.QUESTION_LIMITED),
-		onMutate: async ({ questionsPerRequest, gameMode }) => {
+		onMutate: async ({ questionsPerRequest, gameMode }: DeductCreditsParams) => {
 			// Skip optimistic update for admin users (server handles it)
 			if (userRole === UserRole.ADMIN) {
 				return { previousBalance: queryClient.getQueryData(creditsKeys.balance()) };
@@ -197,5 +186,26 @@ export const usePurchaseCredits = () => {
 			// Invalidate balance query
 			queryClient.invalidateQueries({ queryKey: creditsKeys.balance() });
 		},
+	});
+};
+
+/**
+ * Hook for getting credit history
+ * @param limit Optional limit for number of transactions to fetch
+ * @returns Query result with credit transaction history
+ */
+export const useCreditHistory = (limit?: number) => {
+	return useQuery<CreditTransaction[]>({
+		queryKey: creditsKeys.history(limit ?? 50),
+		queryFn: async () => {
+			logger.userInfo('Fetching credit history', { limit });
+			const result = await creditsService.getCreditHistory(limit);
+			logger.userInfo('Credit history fetched successfully', {
+				transactionsCount: result.length,
+			});
+			return result;
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		gcTime: 10 * 60 * 1000, // 10 minutes
 	});
 };

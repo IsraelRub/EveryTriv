@@ -4,16 +4,7 @@
  * @module AnalyticsCommonTypes
  * @description Base analytics helpers including result enums, pagination metadata, and time statistics
  */
-
-/**
- * Analytics operation result type
- */
-export type AnalyticsResult = 'success' | 'failure' | 'error';
-
-/**
- * Supported analytics environments
- */
-export type AnalyticsEnvironment = 'development' | 'staging' | 'production' | 'test';
+import { ComparisonTarget, TrendPeriod } from '@shared/constants';
 
 /**
  * Time statistics raw result interface (raw from database)
@@ -41,4 +32,35 @@ export interface AnalyticsResponse<T = unknown> {
 	data: T;
 	metadata?: AnalyticsPaginationMetadata;
 	timestamp: string;
+}
+
+/**
+ * History filter options interface
+ * @interface HistoryFilterOptions
+ * @description Options for filtering history records by date range
+ */
+export interface HistoryFilterOptions {
+	startDate?: Date;
+	endDate?: Date;
+}
+
+/**
+ * Comparison query options interface
+ * @interface ComparisonQueryOptions
+ * @description Options for comparing user performance
+ */
+export interface ComparisonQueryOptions extends HistoryFilterOptions {
+	target?: ComparisonTarget;
+	targetUserId?: string;
+}
+
+/**
+ * Trend query options interface
+ * @interface TrendQueryOptions
+ * @description Options for querying trend data
+ */
+export interface TrendQueryOptions extends HistoryFilterOptions {
+	period?: TrendPeriod;
+	limit?: number;
+	groupBy?: import('@shared/constants').TimePeriod;
 }

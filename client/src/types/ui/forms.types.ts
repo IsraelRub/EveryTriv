@@ -3,20 +3,21 @@
  * @module FormTypes
  * @description Form-related types and interfaces
  */
-import { InputHTMLAttributes, ReactNode } from 'react';
+import { InputHTMLAttributes, ReactNode, type ComponentProps } from 'react';
 import type { FieldPath, FieldValues } from 'react-hook-form';
 
-import type { LanguageValidationOptions, SelectOption, ValidationType } from '@shared/types';
+import type { LanguageValidationOptions } from '@shared/types';
 
-import { InteractiveSize } from '../../constants';
-import type { ClientValidationType, ValidationHookOptions } from '../validation.types';
+import { FORM_FIELD_TYPES, InteractiveSize } from '@/constants';
+
+import type { ClientValidationType, SelectOption, ValidationHookOptions } from '@/types/core';
 
 // Form-related types
 export interface FormField {
 	name: string;
 	label: string;
-	type: 'text' | 'email' | 'password' | 'textarea' | 'select';
-	validationType: ValidationType;
+	type: (typeof FORM_FIELD_TYPES)[keyof typeof FORM_FIELD_TYPES];
+	validationType: ClientValidationType;
 	required?: boolean;
 	placeholder?: string;
 	options?: SelectOption[];
@@ -73,4 +74,30 @@ export type FormFieldContextValue<
  */
 export interface FormItemContextValue {
 	id: string;
+}
+
+/**
+ * Number input component props
+ * @interface NumberInputProps
+ * @description Props for the NumberInput component
+ * @used_by client/src/components/ui/numberInput.tsx
+ */
+export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange'> {
+	value: number;
+	onChange: (value: number) => void;
+	min?: number;
+	max?: number;
+	step?: number;
+}
+
+/**
+ * Password field errors interface
+ * @interface PasswordFieldErrors
+ * @description Error messages for password-related form fields
+ * @used_by client/src/views/user/UserProfile.tsx, client/src/components/user/ChangePasswordDialog.tsx
+ */
+export interface PasswordFieldErrors {
+	currentPassword?: string;
+	newPassword?: string;
+	confirmPassword?: string;
 }

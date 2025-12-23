@@ -11,6 +11,7 @@
  * @description AI-related type definitions including providers, models, and responses
  */
 export * from './ai.types';
+export * from './ai';
 
 /**
  * Analytics Domain Types
@@ -29,6 +30,18 @@ export * from './game';
  * @description User-related type definitions including profiles, preferences, and addresses
  */
 export * from './user';
+
+/**
+ * Payment Domain Types
+ * @description Payment-related type definitions including payment data and results
+ */
+export * from './payment.types';
+
+/**
+ * Credits Domain Types
+ * @description Credits-related type definitions including balances, transactions, and purchase requests
+ */
+export * from './credits.types';
 
 /**
  * Validation Domain Types

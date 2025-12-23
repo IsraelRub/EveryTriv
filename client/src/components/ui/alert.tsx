@@ -2,6 +2,8 @@ import { forwardRef, type HTMLAttributes } from 'react';
 
 import { cva, type VariantProps } from 'class-variance-authority';
 
+import { VariantBase } from '@/constants';
+
 import { cn } from '@/utils';
 
 const alertVariants = cva(
@@ -14,14 +16,14 @@ const alertVariants = cva(
 			},
 		},
 		defaultVariants: {
-			variant: 'default',
+			variant: VariantBase.DEFAULT,
 		},
 	}
 );
 
 const Alert = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>>(
 	({ className, variant, ...props }, ref) => (
-		<div ref={ref} role='alert' className={cn(alertVariants({ variant }), className)} {...props} />
+		<div ref={ref} className={cn(alertVariants({ variant }), className)} {...props} />
 	)
 );
 Alert.displayName = 'Alert';

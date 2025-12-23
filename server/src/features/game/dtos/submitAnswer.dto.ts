@@ -12,7 +12,7 @@ export class SubmitAnswerDto {
 	@MinLength(1)
 	answer!: string;
 
-	@ApiProperty({ description: 'Time spent answering in milliseconds' })
+	@ApiProperty({ description: 'Time spent answering in seconds', example: 15.5, minimum: 0 })
 	@IsNumber()
 	@Min(0)
 	timeSpent!: number;

@@ -12,15 +12,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthenticationManager, JwtTokenService, PasswordService } from 'src/common/auth';
 import { AuthGuard, RolesGuard } from 'src/common/guards';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-
+import { AUTH_CONSTANTS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
+import { CacheModule } from '@internal/modules/cache/cache.module';
+import { StorageModule } from '@internal/modules/storage/storage.module';
 
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
-import { AdminBootstrapService } from './services/admin-bootstrap.service';
+import { AdminBootstrapService } from './services/adminBootstrap.service';
 
 @Module({
 	imports: [
@@ -31,6 +32,8 @@ import { AdminBootstrapService } from './services/admin-bootstrap.service';
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
 		forwardRef(() => UserModule),
+		CacheModule,
+		StorageModule,
 	],
 	controllers: [AuthController],
 	providers: [

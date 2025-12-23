@@ -68,15 +68,9 @@ JWT_EXPIRES_IN=1h
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# AI Providers (ordered by priority - lower number = selected first)
-# Priority: 1 (highest) - Groq (free tier)
+# AI Provider - Groq (with multiple models support)
+# Priority: 1 (free tier models: llama-3.1-8b-instant, gpt-oss-20b)
 GROQ_API_KEY=your-groq-api-key
-# Priority: 2 - Gemini (cost: $0.075/M tokens)
-GEMINI_API_KEY=your-google-api-key
-# Priority: 3 - ChatGPT (cost: $0.15/M tokens)
-CHATGBT_API_KEY=your-openai-key
-# Priority: 4 (lowest) - Claude (cost: $0.25/M tokens)
-CLAUDE_API_KEY=your-anthropic-key
 
 # Stripe
 STRIPE_SECRET_KEY=your-stripe-key
@@ -84,6 +78,13 @@ STRIPE_WEBHOOK_SECRET=your-webhook-secret
 
 # Port
 PORT=3002
+
+# Logging (Optional)
+DATABASE_LOGGING=false
+ENABLE_DEBUG_LOGGING=false
+
+# Security (Optional)
+COOKIE_SECURE=true
 ```
 
 ## Docker
@@ -145,8 +146,66 @@ pnpm run format:check
 ```
 
 **קבצי הגדרה:**
-- `tools/.prettierrc` - הגדרות Prettier
+- `tools/.prettierrc` - הגדרות Prettier (printWidth: 120 תווים)
+- `client/.prettierrc` - הגדרות Prettier ללקוח (printWidth: 100 תווים)
 - `tools/.prettierignore` - קבצים להתעלם מהם
+
+**מתודולוגיה לעיצוב ייבואים:**
+
+Prettier מחליט אוטומטית מתי להשאיר ייבוא בשורה אחת ומתי לשבור אותו לכמה שורות:
+
+1. **ייבוא בשורה אחת**: אם הייבוא (כולל כל התווים) קצר מ-`printWidth`:
+   ```typescript
+   import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+   import { serverLogger as logger } from '@shared/services';
+   ```
+
+2. **ייבוא בכמה שורות**: אם הייבוא ארוך מ-`printWidth`, Prettier שובר אותו:
+   ```typescript
+   import {
+     Body,
+     Controller,
+     ForbiddenException,
+     Get,
+     HttpException,
+     HttpStatus,
+     NotFoundException,
+     Param,
+     ParseUUIDPipe,
+     Post,
+   } from '@nestjs/common';
+   ```
+
+3. **מיון ייבואים**: Prettier מסדר את הייבואים אוטומטית לפי הסדר הבא (מוגדר ב-`importOrder`):
+   - React packages (`react`, `react-*`)
+   - External packages (node_modules)
+   - `@shared` imports
+   - `@internal` imports
+   - `@features` imports
+   - `@common` imports
+   - `@/` imports (client only)
+   - Relative imports (`./`, `../`)
+
+4. **הפרדה בין קבוצות**: Prettier מוסיף שורה ריקה אוטומטית בין קבוצות ייבוא שונות.
+
+**דוגמאות:**
+```typescript
+// ייבוא קצר - נשאר בשורה אחת
+import { UseGuards } from '@nestjs/common';
+import { Server } from 'socket.io';
+
+// ייבוא ארוך - נשבר לכמה שורות
+import type {
+  GameEvent,
+  GameEventDataMap,
+  GameEventType,
+  MultiplayerGameEvent,
+  MultiplayerRoom,
+} from '@shared/types';
+
+// ייבוא עם type - נשאר בשורה אחת אם קצר
+import type { UpdateUserProfileData } from '@shared/types';
+```
 
 ### ESLint
 
@@ -872,7 +931,6 @@ export const store = configureStore({
 ```typescript
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ScoreCalculationService } from '@shared/services';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 import { CustomDifficultyPipe, GameAnswerPipe, TriviaQuestionPipe, TriviaRequestPipe } from '../../common/pipes';
@@ -883,7 +941,6 @@ import { LeaderboardModule } from '../leaderboard';
 import { UserModule } from '../user';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
-import { AiProvidersController, AiProvidersService } from './logic/providers/management';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
 
 @Module({
@@ -897,18 +954,16 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
     ValidationModule,
     UserModule,
   ],
-  controllers: [GameController, AiProvidersController],
+  controllers: [GameController],
   providers: [
     GameService,
     TriviaGenerationService,
-    AiProvidersService,
-    ScoreCalculationService,
     CustomDifficultyPipe,
     TriviaQuestionPipe,
     GameAnswerPipe,
     TriviaRequestPipe,
   ],
-  exports: [GameService, AiProvidersService],
+  exports: [GameService],
 })
 export class GameModule {}
 ```
@@ -1029,7 +1084,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_TTL, SERVER_GAME_CONSTANTS, HTTP_TIMEOUTS } from '@shared/constants';
-import { serverLogger as logger, ScoreCalculationService } from '@shared/services';
+import { serverLogger as logger } from '@internal/services';
+import { calculateAnswerScore } from '@shared/utils';
 import { AnswerResult, TriviaQuestion, GameDifficulty } from '@shared/types';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
@@ -1043,8 +1099,7 @@ export class GameService {
     private readonly gameHistoryRepository: Repository<GameHistoryEntity>,
     @InjectRepository(TriviaEntity)
     private readonly triviaRepository: Repository<TriviaEntity>,
-    private readonly cacheService: CacheService,
-    private readonly scoreCalculationService: ScoreCalculationService
+    private readonly cacheService: CacheService
   ) {}
 
   async getTriviaQuestion(
@@ -1503,4 +1558,3 @@ docker-compose restart server
 - [ארכיטקטורה כללית](./ARCHITECTURE.md)
 - [דיאגרמות](./DIAGRAMS.md)
 - [מדריך פריסה](./DEPLOYMENT.md)
-- [אסטרטגיית בדיקות](./TESTING.md)

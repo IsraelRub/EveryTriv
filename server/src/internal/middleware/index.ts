@@ -18,7 +18,7 @@ export * from './rateLimit.middleware';
  * @description Middleware that reads decorator metadata
  * @used_by server/src/app, server/controllers
  */
-export * from './decorator-aware.middleware';
+export * from './decoratorAware.middleware';
 
 /**
  * Bulk operations middleware

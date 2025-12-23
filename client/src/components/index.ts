@@ -1,10 +1,15 @@
+export * from './admin';
 export * from './audio';
+export * from './auth';
+export * from './charts';
 export * from './game';
 export * from './home';
 export * from './layout';
 export * from './navigation';
+export * from './payment';
 export * from './routing';
 export * from './social';
+export * from './statistics';
 export * from './user';
 export * from './ui';
 export { NavLink } from './NavLink';

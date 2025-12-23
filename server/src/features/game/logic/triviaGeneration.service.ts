@@ -2,26 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 
-import { DifficultyLevel } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type {
-	GameDifficulty,
-	TriviaAnswer,
-	TriviaQuestionDetailsMetadata,
+import {
+	DifficultyLevel,
+	ERROR_CODES,
 	TriviaQuestionReviewStatus,
 	TriviaQuestionSource,
-} from '@shared/types';
+	VALID_TRIVIA_QUESTION_REVIEW_STATUSES,
+	VALID_TRIVIA_SOURCES,
+	VALIDATION_CONFIG,
+} from '@shared/constants';
+import type { GameDifficulty, TriviaAnswer, TriviaQuestionDetailsMetadata } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { toDifficultyLevel } from '@shared/validation';
+import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
-import type { ServerTriviaQuestionInput } from '@internal/types';
+import { serverLogger as logger } from '@internal/services';
+import type { PromptParams, ProviderTriviaGenerationResult, ServerTriviaQuestionInput } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
-import { AiProvidersService } from './providers/management';
-
-const ALLOWED_TRIVIA_SOURCES: TriviaQuestionSource[] = ['ai', 'user', 'imported', 'seeded', 'system'];
-const ALLOWED_REVIEW_STATUSES: TriviaQuestionReviewStatus[] = ['pending', 'approved', 'rejected', 'flagged'];
+import { GroqTriviaProvider } from './providers/groq';
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
@@ -29,7 +28,7 @@ const isTriviaQuestionSource = (value: unknown): value is TriviaQuestionSource =
 	if (typeof value !== 'string') {
 		return false;
 	}
-	for (const allowedSource of ALLOWED_TRIVIA_SOURCES) {
+	for (const allowedSource of VALID_TRIVIA_SOURCES) {
 		if (value === allowedSource) {
 			return true;
 		}
@@ -41,7 +40,7 @@ const isTriviaQuestionReviewStatus = (value: unknown): value is TriviaQuestionRe
 	if (typeof value !== 'string') {
 		return false;
 	}
-	for (const allowedStatus of ALLOWED_REVIEW_STATUSES) {
+	for (const allowedStatus of VALID_TRIVIA_QUESTION_REVIEW_STATUSES) {
 		if (value === allowedStatus) {
 			return true;
 		}
@@ -63,51 +62,45 @@ const normalizeStringArray = (value?: unknown): string[] | undefined => {
  */
 @Injectable()
 export class TriviaGenerationService {
+	private readonly groqProvider: GroqTriviaProvider;
+
 	constructor(
 		@InjectRepository(TriviaEntity)
-		private readonly triviaRepository: Repository<TriviaEntity>,
-		private readonly aiProvidersService: AiProvidersService
-	) {}
+		private readonly triviaRepository: Repository<TriviaEntity>
+	) {
+		this.groqProvider = new GroqTriviaProvider();
+	}
 
 	/**
 	 * Generate trivia question using AI
 	 *
 	 * Process:
-	 * 1. Generates question using AI providers with excludeQuestions to prevent duplicates
+	 * 1. Generates question using AI providers
 	 * 2. Before saving, checks if question already exists in database
 	 * 3. If question exists, returns existing question instead of creating duplicate
 	 * 4. If question doesn't exist, saves new question to database
 	 *
-	 * @param topic Topic for the question
-	 * @param difficulty Difficulty level
-	 * @param userId User ID for personalization
-	 * @param excludeQuestions List of question texts to exclude (to prevent duplicates in AI generation)
-	 * @param answerCount Number of answer choices per question (3-5, default: 4)
+	 * @param params Prompt parameters for the question
+	 * @param userId User ID for personalization (optional)
 	 * @returns Generated or existing trivia question entity
 	 */
-	async generateQuestion(
-		topic: string,
-		difficulty: GameDifficulty,
-		userId?: string,
-		excludeQuestions?: string[],
-		answerCount?: number
-	): Promise<TriviaEntity> {
+	async generateQuestion(params: PromptParams, userId?: string): Promise<TriviaEntity> {
 		try {
 			logger.gameTarget('Generating trivia question', {
-				topic,
-				difficulty,
+				topic: params.topic,
+				difficulty: params.difficulty,
 				userId: userId || 'anonymous',
 			});
 
-			// Try to generate question using AI
-			const actualAnswerCount = answerCount ?? 4;
-			const aiQuestion = await this.aiProvidersService.generateQuestion(
-				topic,
-				difficulty,
-				excludeQuestions,
-				actualAnswerCount
+			// Try to generate question using Groq AI provider
+			const providerResult = await this.groqProvider.generateTriviaQuestion(params);
+			this.applyProviderMetadata(providerResult, params.difficulty);
+
+			const question = this.convertAIQuestionToFormat(
+				providerResult.question,
+				params.topic,
+				params.mappedDifficulty ?? toDifficultyLevel(params.difficulty)
 			);
-			const question = this.convertAIQuestionToFormat(aiQuestion, topic, toDifficultyLevel(difficulty));
 
 			if (question) {
 				// Save to database
@@ -116,20 +109,20 @@ export class TriviaGenerationService {
 
 				logger.gameTarget('Question generated successfully', {
 					questionId: savedQuestion.id,
-					topic,
-					difficulty,
+					topic: params.topic,
+					difficulty: params.difficulty,
 				});
 
 				return savedQuestion;
 			}
 
 			// If AI generation fails, throw an error instead of using mock
-			throw createServerError('generate question with AI providers', new Error('AI providers failed'));
+			throw createServerError('generate question with AI providers', new Error(ERROR_CODES.AI_PROVIDERS_FAILED));
 		} catch (error) {
 			logger.gameError('Failed to generate trivia question', {
 				error: getErrorMessage(error),
-				topic,
-				difficulty,
+				topic: params.topic,
+				difficulty: params.difficulty,
 				userId: userId || 'anonymous',
 			});
 
@@ -156,10 +149,23 @@ export class TriviaGenerationService {
 			});
 
 			const questions = [];
+			const excludeQuestions: string[] = [];
+
 			for (let i = 0; i < count; i++) {
 				try {
-					const question = await this.generateQuestion(topic, difficulty, userId);
-					questions.push(question);
+					const promptParams: PromptParams = {
+						topic,
+						difficulty,
+						answerCount: VALIDATION_CONFIG.limits.ANSWER_COUNT.DEFAULT,
+					};
+					const generatedQuestion = await this.generateQuestion(promptParams, userId);
+					questions.push(generatedQuestion);
+					if (generatedQuestion.question) {
+						const normalized = generatedQuestion.question.toLowerCase().trim();
+						if (!excludeQuestions.some(existing => existing.toLowerCase().trim() === normalized)) {
+							excludeQuestions.push(generatedQuestion.question);
+						}
+					}
 				} catch (error) {
 					logger.gameError('Failed to generate question', {
 						error: getErrorMessage(error),
@@ -275,7 +281,8 @@ export class TriviaGenerationService {
 		topic: string,
 		difficulty: GameDifficulty,
 		count: number,
-		excludeQuestionTexts: string[] = []
+		excludeQuestionTexts: string[] = [],
+		mappedDifficulty?: DifficultyLevel
 	): Promise<TriviaEntity[]> {
 		try {
 			logger.gameTarget('Getting available questions', {
@@ -285,7 +292,7 @@ export class TriviaGenerationService {
 				totalItems: excludeQuestionTexts.length,
 			});
 
-			const difficultyLevel = toDifficultyLevel(difficulty);
+			const difficultyLevel = mappedDifficulty ?? toDifficultyLevel(difficulty);
 			const queryBuilder = this.triviaRepository
 				.createQueryBuilder('trivia')
 				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
@@ -325,9 +332,14 @@ export class TriviaGenerationService {
 	 * @param difficulty Difficulty level
 	 * @returns True if questions exist, false otherwise
 	 */
-	async hasQuestionsForTopicAndDifficulty(topic: string, difficulty: GameDifficulty): Promise<boolean> {
+	async hasQuestionsForTopicAndDifficulty(
+		topic: string,
+		difficulty: GameDifficulty,
+		mappedDifficulty?: DifficultyLevel
+	): Promise<boolean> {
 		try {
-			const difficultyLevel = toDifficultyLevel(difficulty);
+			// Use mappedDifficulty if available, otherwise normalize
+			const difficultyLevel = mappedDifficulty ?? toDifficultyLevel(difficulty);
 			const count = await this.triviaRepository
 				.createQueryBuilder('trivia')
 				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
@@ -399,7 +411,7 @@ export class TriviaGenerationService {
 	): TriviaQuestionDetailsMetadata {
 		const base = metadataInput ?? {};
 		const generatedAt = isNonEmptyString(base.generatedAt) ? base.generatedAt : new Date().toISOString();
-		const source: TriviaQuestionSource = isTriviaQuestionSource(base.source) ? base.source : 'ai';
+		const source: TriviaQuestionSource = isTriviaQuestionSource(base.source) ? base.source : TriviaQuestionSource.AI;
 		const reviewStatus: TriviaQuestionReviewStatus | undefined = isTriviaQuestionReviewStatus(base.reviewStatus)
 			? base.reviewStatus
 			: undefined;
@@ -411,7 +423,10 @@ export class TriviaGenerationService {
 			source,
 			providerName: isNonEmptyString(base.providerName) ? base.providerName : undefined,
 			difficulty: base.difficulty ?? difficulty,
-			difficultyScore: typeof base.difficultyScore === 'number' ? base.difficultyScore : undefined,
+			difficultyScore:
+				typeof base.difficultyScore === 'number' && Number.isFinite(base.difficultyScore)
+					? base.difficultyScore
+					: undefined,
 			customDifficultyDescription: isNonEmptyString(base.customDifficultyDescription)
 				? base.customDifficultyDescription
 				: undefined,
@@ -423,13 +438,29 @@ export class TriviaGenerationService {
 			explanation: isNonEmptyString(base.explanation) ? base.explanation : fallbackExplanation,
 			referenceUrls: normalizeStringArray(base.referenceUrls),
 			hints: normalizeStringArray(base.hints),
-			usageCount: typeof base.usageCount === 'number' ? base.usageCount : undefined,
-			correctAnswerCount: typeof base.correctAnswerCount === 'number' ? base.correctAnswerCount : undefined,
-			aiConfidenceScore: typeof base.aiConfidenceScore === 'number' ? base.aiConfidenceScore : undefined,
-			safeContentScore: typeof base.safeContentScore === 'number' ? base.safeContentScore : undefined,
+			usageCount: typeof base.usageCount === 'number' && Number.isFinite(base.usageCount) ? base.usageCount : undefined,
+			correctAnswerCount:
+				typeof base.correctAnswerCount === 'number' && Number.isFinite(base.correctAnswerCount)
+					? base.correctAnswerCount
+					: undefined,
+			aiConfidenceScore:
+				typeof base.aiConfidenceScore === 'number' && Number.isFinite(base.aiConfidenceScore)
+					? base.aiConfidenceScore
+					: undefined,
+			safeContentScore:
+				typeof base.safeContentScore === 'number' && Number.isFinite(base.safeContentScore)
+					? base.safeContentScore
+					: undefined,
 			flaggedReasons: normalizeStringArray(base.flaggedReasons),
-			popularityScore: typeof base.popularityScore === 'number' ? base.popularityScore : undefined,
-			averageAnswerTimeMs: typeof base.averageAnswerTimeMs === 'number' ? base.averageAnswerTimeMs : undefined,
+			popularityScore:
+				typeof base.popularityScore === 'number' && Number.isFinite(base.popularityScore)
+					? base.popularityScore
+					: undefined,
+			averageAnswerTimeMs:
+				typeof base.averageAnswerTimeMs === 'number' && Number.isFinite(base.averageAnswerTimeMs)
+					? base.averageAnswerTimeMs
+					: undefined,
+			mappedDifficulty: base.mappedDifficulty ?? undefined,
 		};
 	}
 
@@ -533,5 +564,29 @@ export class TriviaGenerationService {
 			});
 			throw error;
 		}
+	}
+
+	private applyProviderMetadata(
+		providerResult: ProviderTriviaGenerationResult,
+		requestedDifficulty: GameDifficulty
+	): void {
+		if (!providerResult.mappedDifficulty) {
+			return;
+		}
+
+		const metadata: Partial<TriviaQuestionDetailsMetadata> = providerResult.question.metadata ?? {};
+		const hasCustomDescription =
+			typeof metadata.customDifficultyDescription === 'string' &&
+			metadata.customDifficultyDescription.trim().length > 0;
+
+		providerResult.question.metadata = {
+			...metadata,
+			mappedDifficulty: providerResult.mappedDifficulty,
+			customDifficultyDescription: isCustomDifficulty(requestedDifficulty)
+				? hasCustomDescription
+					? metadata.customDifficultyDescription
+					: requestedDifficulty
+				: metadata.customDifficultyDescription,
+		};
 	}
 }

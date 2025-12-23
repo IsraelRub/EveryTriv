@@ -8,7 +8,9 @@
 import { BadRequestException, Module } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { MetricsService } from '@shared/services';
+import { ERROR_CODES } from '@shared/constants';
+
+import { MetricsService } from '@internal/services/metrics';
 
 import { RedisModule } from '../redis.module';
 import { StorageController } from './storage.controller';
@@ -22,7 +24,7 @@ import { ServerStorageService } from './storage.service';
 			provide: ServerStorageService,
 			useFactory: (redisClient: Redis | null) => {
 				if (!redisClient) {
-					throw new BadRequestException('Redis client is required for ServerStorageService');
+					throw new BadRequestException(ERROR_CODES.REDIS_CLIENT_REQUIRED);
 				}
 				return new ServerStorageService(redisClient, {});
 			},

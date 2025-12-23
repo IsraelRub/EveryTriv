@@ -1,27 +1,22 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { PersistGate } from 'redux-persist/integration/react';
 
 import { getErrorMessage } from '@shared/utils';
 
+import { BackgroundAnimation, ErrorBoundary, Toaster } from '@/components';
+
+import { AudioProvider, useCurrentUser } from '@/hooks';
+
 import { clientLogger as logger, prefetchCommonQueries } from '@/services';
 
-import AppRoutes from './AppRoutes';
-import { BackgroundAnimation, ErrorBoundary, Toaster } from './components';
-import { AudioProvider, useCurrentUser } from './hooks';
-import { setUser } from './redux/slices';
-import { persistor } from './redux/store';
-import type { RootState } from './types';
+import type { RootState } from '@/types';
 
-// Dynamic import of React Query DevTools - only loaded in development
-const ReactQueryDevtools = import.meta.env.DEV
-	? lazy(() =>
-			import('@tanstack/react-query-devtools').then(module => ({
-				default: module.ReactQueryDevtools,
-			}))
-		)
-	: null;
+import { setUser } from '@/redux/slices';
+import { persistor } from '@/redux/store';
+
+import AppRoutes from './AppRoutes';
 
 /**
  * Main application component
@@ -32,16 +27,32 @@ const ReactQueryDevtools = import.meta.env.DEV
  */
 function App() {
 	const dispatch = useDispatch();
-	const { isAuthenticated } = useSelector((state: RootState) => state.user);
+	const { isAuthenticated, currentUser: reduxUser } = useSelector((state: RootState) => state.user);
 	const { data: currentUser } = useCurrentUser();
 
 	// Sync Redux with current user from server
+	// Only update if user ID changed to prevent overwriting user data from registration/login
 	useEffect(() => {
 		if (currentUser && isAuthenticated) {
-			dispatch(setUser(currentUser));
-			logger.authInfo('User data synced with Redux', { userId: currentUser.id });
+			// Only update if user ID is different or Redux user is null
+			// This prevents overwriting user data immediately after registration/login
+			if (!reduxUser || reduxUser.id !== currentUser.id) {
+				logger.authInfo('Updating Redux user from server query', {
+					fromUserId: reduxUser?.id,
+					toUserId: currentUser.id,
+					fromEmail: reduxUser?.email,
+					toEmail: currentUser.email,
+				});
+				dispatch(setUser(currentUser));
+				logger.authInfo('User data synced with Redux', { userId: currentUser.id });
+			} else {
+				logger.authInfo('Skipping Redux update - user ID unchanged', {
+					userId: currentUser.id,
+					email: currentUser.email,
+				});
+			}
 		}
-	}, [currentUser, isAuthenticated, dispatch]);
+	}, [currentUser, isAuthenticated, dispatch, reduxUser]);
 
 	useEffect(() => {
 		// Setup global error handlers
@@ -112,12 +123,6 @@ function App() {
 				<AudioProvider>
 					<AppRoutes />
 					<Toaster />
-					{/* React Query DevTools - only in development, loaded dynamically */}
-					{import.meta.env.DEV && ReactQueryDevtools && (
-						<Suspense fallback={null}>
-							<ReactQueryDevtools initialIsOpen={false} />
-						</Suspense>
-					)}
 				</AudioProvider>
 			</PersistGate>
 		</ErrorBoundary>

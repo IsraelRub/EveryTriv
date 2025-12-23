@@ -4,25 +4,30 @@
  * @module GameSummaryView
  * @description Displays game completion summary with score, statistics, and question breakdown
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
+import { BookOpen, CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
 
 import { DifficultyLevel, GameMode } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
 import type { GameData, GameDifficulty } from '@shared/types';
 import { calculatePercentage } from '@shared/utils';
+import { isGameDifficulty } from '@shared/validation';
+
+import { AudioKey, ButtonSize, Easing, ROUTES } from '@/constants';
 
 import { Button, Card, SocialShare } from '@/components';
-import { AudioKey, ButtonSize } from '@/constants';
-import { useAppSelector, useSaveHistory } from '@/hooks';
+
+import { useAppSelector, useCountUp, useSaveHistory, useUserAnalytics } from '@/hooks';
+
+import { audioService, clientLogger as logger } from '@/services';
+
+import type { GameSummaryStats } from '@/types';
+
+import { calculateGrade, formatTime, isGameSummaryNavigationState } from '@/utils';
+
 import { selectCurrentGameMode, selectCurrentUser } from '@/redux/selectors';
-import { audioService } from '@/services';
-import type { GameSummaryNavigationState, GameSummaryStats } from '@/types';
-import { calculateGrade } from '@/utils';
-import { formatTime } from '@/utils/format.utils';
 
 export function GameSummaryView() {
 	const navigate = useNavigate();
@@ -30,9 +35,10 @@ export function GameSummaryView() {
 	const saveHistoryMutation = useSaveHistory();
 	const currentGameMode = useAppSelector(selectCurrentGameMode);
 	const currentUser = useAppSelector(selectCurrentUser);
+	const { data: analytics } = useUserAnalytics();
 
 	// Get game data from navigation state
-	const gameState = location.state as GameSummaryNavigationState | null;
+	const gameState = isGameSummaryNavigationState(location.state) ? location.state : null;
 
 	const gameStats = useMemo((): GameSummaryStats => {
 		if (!gameState) {
@@ -43,7 +49,7 @@ export function GameSummaryView() {
 				time: '0:00',
 				percentage: 0,
 				topic: 'Unknown',
-				difficulty: 'Unknown',
+				difficulty: DifficultyLevel.MEDIUM,
 				questionsData: [],
 			};
 		}
@@ -58,7 +64,7 @@ export function GameSummaryView() {
 			time,
 			percentage,
 			topic: gameState.topic || 'General',
-			difficulty: gameState.difficulty || 'Medium',
+			difficulty: gameState.difficulty || DifficultyLevel.MEDIUM,
 			questionsData: gameState.questionsData || [],
 		};
 	}, [gameState]);
@@ -70,6 +76,14 @@ export function GameSummaryView() {
 
 	// Track which stars have appeared
 	const [visibleStars, setVisibleStars] = useState(0);
+
+	// Animated counts for score and correct answers
+	const animatedScore = useCountUp(gameStats.score, { duration: 2000, easing: Easing.EASE_OUT });
+	const animatedCorrect = useCountUp(gameStats.correct, { duration: 2000, easing: Easing.EASE_OUT });
+
+	// Track if game history has been saved to prevent duplicate saves
+	// Use a ref that tracks the last saved game state to detect new games
+	const lastSavedGameRef = useRef<{ score: number; gameQuestionCount: number } | null>(null);
 
 	// Animate stars appearing one by one
 	useEffect(() => {
@@ -95,11 +109,11 @@ export function GameSummaryView() {
 		};
 	}, [grade.stars]);
 
-	// Save game history on mount
+	// Save game history on mount (only once per game)
 	useEffect(() => {
 		if (!gameState) {
 			logger.gameInfo('No game state found, redirecting to home');
-			navigate('/');
+			navigate(ROUTES.HOME);
 			return;
 		}
 
@@ -109,19 +123,50 @@ export function GameSummaryView() {
 			return;
 		}
 
+		// Check if this game has already been saved by comparing with last saved game
+		const currentGameKey = {
+			score: gameState.score,
+			gameQuestionCount: gameState.gameQuestionCount,
+		};
+		const lastSaved = lastSavedGameRef.current;
+		if (
+			lastSaved &&
+			lastSaved.score === currentGameKey.score &&
+			lastSaved.gameQuestionCount === currentGameKey.gameQuestionCount
+		) {
+			return;
+		}
+
+		// Mark as saved immediately to prevent race conditions
+		lastSavedGameRef.current = currentGameKey;
+
 		// Save to history
+		// DifficultyLevel.MEDIUM is already GameDifficulty (DifficultyLevel is part of GameDifficulty union)
+		// Use isGameDifficulty type guard to ensure type safety
+		const difficulty: GameDifficulty =
+			gameState.difficulty && isGameDifficulty(gameState.difficulty) ? gameState.difficulty : DifficultyLevel.MEDIUM;
 		const gameData: GameData = {
 			userId: currentUser.id,
 			score: gameState.score,
 			gameQuestionCount: gameState.gameQuestionCount,
 			correctAnswers: gameState.correctAnswers,
 			topic: gameState.topic || 'General',
-			difficulty: (gameState.difficulty as GameDifficulty) || DifficultyLevel.MEDIUM,
+			difficulty,
 			gameMode: currentGameMode || GameMode.QUESTION_LIMITED,
 			timeSpent: gameState.timeSpent,
 			creditsUsed: 0,
 			questionsData: gameState.questionsData,
 		};
+
+		// Double-check before calling mutate to prevent duplicate saves
+		// This is a safety check in case the useEffect runs again before the mutation completes
+		if (
+			lastSavedGameRef.current &&
+			lastSavedGameRef.current.score === currentGameKey.score &&
+			lastSavedGameRef.current.gameQuestionCount === currentGameKey.gameQuestionCount
+		) {
+			return;
+		}
 
 		saveHistoryMutation.mutate(gameData, {
 			onSuccess: () => {
@@ -131,14 +176,16 @@ export function GameSummaryView() {
 				});
 			},
 			onError: error => {
+				// Reset flag on error to allow retry
+				lastSavedGameRef.current = null;
 				logger.gameError('Failed to save game to history', { error: String(error) });
 			},
 		});
-	}, [gameState, currentGameMode, currentUser, navigate, saveHistoryMutation]);
+	}, [gameState, currentGameMode, currentUser?.id, navigate, saveHistoryMutation]);
 
 	const handleGoHome = () => {
 		audioService.play(AudioKey.BUTTON_CLICK);
-		navigate('/');
+		navigate(ROUTES.HOME);
 	};
 
 	// Redirect if no game state
@@ -148,8 +195,6 @@ export function GameSummaryView() {
 
 	return (
 		<motion.main
-			role='main'
-			aria-label='Game Summary'
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			className='min-h-screen py-12 px-4'
@@ -163,6 +208,21 @@ export function GameSummaryView() {
 						<p className='text-muted-foreground'>
 							{gameStats.topic} - {gameStats.difficulty}
 						</p>
+						{analytics?.game?.mostPlayedTopic &&
+							analytics.game.mostPlayedTopic !== 'None' &&
+							gameStats.topic === analytics.game.mostPlayedTopic && (
+								<motion.div
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: 0.3 }}
+									className='mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg'
+								>
+									<div className='flex items-center gap-3 justify-center'>
+										<BookOpen className='h-5 w-5 text-indigo-500' />
+										<p className='text-sm font-medium text-indigo-500'>🎯 This is your most played topic!</p>
+									</div>
+								</motion.div>
+							)}
 					</motion.div>
 
 					{/* Grade - Stars */}
@@ -203,7 +263,7 @@ export function GameSummaryView() {
 							className='space-y-2'
 						>
 							<Trophy className='w-8 h-8 text-primary mx-auto' />
-							<div className='text-3xl font-bold text-primary'>{gameStats.score}</div>
+							<div className='text-3xl font-bold text-primary'>{animatedScore.toLocaleString()}</div>
 							<div className='text-sm text-muted-foreground'>Total Score</div>
 						</motion.div>
 
@@ -215,7 +275,7 @@ export function GameSummaryView() {
 						>
 							<Target className='w-8 h-8 text-primary mx-auto' />
 							<div className='text-3xl font-bold text-primary'>
-								{gameStats.correct}/{gameStats.total}
+								{animatedCorrect}/{gameStats.total}
 							</div>
 							<div className='text-sm text-muted-foreground'>Correct Answers</div>
 						</motion.div>
@@ -245,8 +305,8 @@ export function GameSummaryView() {
 								{gameStats.questionsData.map((q, index) => (
 									<div
 										key={index}
-										className={`p-3 rounded-lg border ${
-											q.isCorrect ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'
+										className={`p-3 rounded-lg border-2 border-white ${
+											q.isCorrect ? 'bg-green-500/30 ring-2 ring-green-500/50' : 'bg-red-500/30 ring-2 ring-red-500/50'
 										}`}
 									>
 										<div className='flex items-start gap-2'>

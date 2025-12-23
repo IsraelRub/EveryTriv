@@ -19,7 +19,7 @@ import {
 	ValidateIf,
 } from 'class-validator';
 
-import { GameMode, VALID_GAME_MODES, VALIDATION_LIMITS } from '@shared/constants';
+import { GameMode, VALID_GAME_MODES, VALIDATION_CONFIG } from '@shared/constants';
 
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
@@ -28,18 +28,18 @@ export class DeductCreditsDto {
 		description:
 			'Number of questions per request (-1 for unlimited mode). ' +
 			'BREAKING CHANGE: The "amount" alias has been removed. Use "questionsPerRequest" only. ' +
-			'See VALIDATION_LIMITS.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
+			'See VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED for explanation of why -1 is used instead of Infinity or a string.',
 		example: 5,
-		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
-		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
+		minimum: VALIDATION_CONFIG.limits.QUESTIONS.MIN,
+		maximum: VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED,
 	})
 	@IsNotEmpty({ message: 'Questions per request is required' })
 	@Transform(({ value }) => {
-		if (value === undefined || value === null) {
+		if (value == null) {
 			return undefined;
 		}
 		// If already a number, return as-is (validate it's integer)
-		if (typeof value === 'number') {
+		if (typeof value === 'number' && Number.isFinite(value)) {
 			return Number.isInteger(value) ? value : Math.floor(value);
 		}
 		// If string, parse it
@@ -50,12 +50,12 @@ export class DeductCreditsDto {
 		return undefined;
 	})
 	@IsNumber({}, { message: 'Questions per request must be a number' })
-	@Min(VALIDATION_LIMITS.QUESTIONS.MIN, {
-		message: `Questions per request must be at least ${VALIDATION_LIMITS.QUESTIONS.MIN}`,
+	@Min(VALIDATION_CONFIG.limits.QUESTIONS.MIN, {
+		message: `Questions per request must be at least ${VALIDATION_CONFIG.limits.QUESTIONS.MIN}`,
 	})
-	@ValidateIf((o: DeductCreditsDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
-	@Max(VALIDATION_LIMITS.QUESTIONS.MAX, {
-		message: `Questions per request cannot exceed ${VALIDATION_LIMITS.QUESTIONS.MAX} (use ${VALIDATION_LIMITS.QUESTIONS.UNLIMITED} for unlimited mode)`,
+	@ValidateIf((o: DeductCreditsDto) => o.questionsPerRequest !== VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_CONFIG.limits.QUESTIONS.MAX, {
+		message: `Questions per request cannot exceed ${VALIDATION_CONFIG.limits.QUESTIONS.MAX} (use ${VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED} for unlimited mode)`,
 	})
 	questionsPerRequest: number;
 
@@ -151,31 +151,31 @@ export class GetCreditHistoryDto {
 		example: 50,
 		minimum: 1,
 		maximum: 100,
+		default: 50,
 	})
-	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(100, { message: 'Limit cannot exceed 100' })
-	limit?: number = 50;
+	limit: number = 50;
 }
 
 export class CanPlayDto {
 	@ApiPropertyOptional({
 		description: 'Number of questions per request to check if user can play',
 		example: 5,
-		minimum: VALIDATION_LIMITS.QUESTIONS.MIN,
-		maximum: VALIDATION_LIMITS.QUESTIONS.UNLIMITED,
+		minimum: VALIDATION_CONFIG.limits.QUESTIONS.MIN,
+		maximum: VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED,
 	})
 	@IsOptional()
 	@Transform(({ value }) => (value !== undefined ? parseInt(value, 10) : undefined))
 	@IsNumber({}, { message: 'Questions per request must be a number' })
-	@Min(VALIDATION_LIMITS.QUESTIONS.MIN, {
-		message: `Questions per request must be at least ${VALIDATION_LIMITS.QUESTIONS.MIN}`,
+	@Min(VALIDATION_CONFIG.limits.QUESTIONS.MIN, {
+		message: `Questions per request must be at least ${VALIDATION_CONFIG.limits.QUESTIONS.MIN}`,
 	})
-	@ValidateIf((o: CanPlayDto) => o.questionsPerRequest !== VALIDATION_LIMITS.QUESTIONS.UNLIMITED)
-	@Max(VALIDATION_LIMITS.QUESTIONS.MAX, {
-		message: `Questions per request cannot exceed ${VALIDATION_LIMITS.QUESTIONS.MAX} (use ${VALIDATION_LIMITS.QUESTIONS.UNLIMITED} for unlimited mode)`,
+	@ValidateIf((o: CanPlayDto) => o.questionsPerRequest !== VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED)
+	@Max(VALIDATION_CONFIG.limits.QUESTIONS.MAX, {
+		message: `Questions per request cannot exceed ${VALIDATION_CONFIG.limits.QUESTIONS.MAX} (use ${VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED} for unlimited mode)`,
 	})
 	questionsPerRequest?: number;
 

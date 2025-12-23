@@ -5,7 +5,7 @@
  * @description Utility functions for guards and authentication
  * @used_by server/src/common/guards
  */
-import { PUBLIC_ENDPOINTS } from '../constants/public-endpoints.constants';
+import { PUBLIC_ENDPOINTS } from '@internal/constants';
 
 /**
  * Check if an endpoint is public

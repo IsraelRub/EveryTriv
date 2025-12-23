@@ -1,6 +1,8 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { CreditSource, CreditTransactionType } from '@shared/constants';
+import { CreditTransactionType } from '@shared/constants';
+
+import { CreditSource } from '@internal/constants';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
@@ -62,6 +64,7 @@ export class CreditTransactionEntity extends BaseEntity {
 		purchasedCreditsUsed?: number;
 		creditsUsed?: number;
 		reason?: string | null;
+		isBonus?: boolean;
 	} = {};
 
 	@Index()

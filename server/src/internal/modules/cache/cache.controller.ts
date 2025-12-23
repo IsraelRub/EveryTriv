@@ -1,10 +1,11 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-import { CACHE_DURATION, UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { StorageOperation } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
 import { createCacheError } from '@internal/utils';
 
 import { Cache, Roles } from '../../../common';
@@ -41,7 +42,7 @@ export class CacheController {
 
 			return result;
 		} catch (error) {
-			logger.cacheError('get', 'cache_stats', {
+			logger.cacheError(StorageOperation.GET, 'cache_stats', {
 				error: getErrorMessage(error),
 			});
 			throw createCacheError('get cache stats', error);
@@ -63,7 +64,7 @@ export class CacheController {
 
 			return { cleared: true };
 		} catch (error) {
-			logger.cacheError('clear', 'cache_all', {
+			logger.cacheError(StorageOperation.CLEAR, 'cache_all', {
 				error: getErrorMessage(error),
 			});
 			throw createCacheError('clear cache', error);
@@ -81,7 +82,7 @@ export class CacheController {
 	async checkKeyExists(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException('Key is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const existsResult = await this.cacheService.exists(key);
@@ -100,7 +101,7 @@ export class CacheController {
 				ttl,
 			};
 		} catch (error) {
-			logger.cacheError('exists', `cache_key_${key}`, {
+			logger.cacheError(StorageOperation.EXISTS, `cache_key_${key}`, {
 				error: getErrorMessage(error),
 			});
 			throw createCacheError('check key existence', error);
@@ -118,7 +119,7 @@ export class CacheController {
 	async getKeyTTL(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException('Key is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const ttl = await this.cacheService.getTTL(key);
@@ -136,7 +137,7 @@ export class CacheController {
 				exists,
 			};
 		} catch (error) {
-			logger.cacheError('getTTL', `cache_key_${key}`, {
+			logger.cacheError(StorageOperation.GET_TTL, `cache_key_${key}`, {
 				error: getErrorMessage(error),
 			});
 			throw createCacheError('get key TTL', error);

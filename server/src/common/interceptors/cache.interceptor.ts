@@ -6,16 +6,18 @@
  * @author EveryTriv Team
  */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-import { serverLogger as logger } from '@shared/services';
 import type { StorageValue } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { CacheService } from '@internal/modules/cache/cache.service';
-import type { NestRequest } from '@internal/types';
+import { serverLogger as logger } from '@internal/services';
+import type { CacheConfig, NestRequest } from '@internal/types';
+import { isBoolean, isNumber, isString } from '@internal/utils';
 
 const isExpressResponse = (value: unknown): value is Response =>
 	isRecord(value) && typeof value.status === 'function' && typeof value.setHeader === 'function';
@@ -29,7 +31,7 @@ const isCacheableValue = (value: unknown): value is StorageValue => {
 		return false;
 	}
 
-	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+	if (isString(value) || isNumber(value) || isBoolean(value)) {
 		return true;
 	}
 
@@ -54,7 +56,10 @@ const isCacheableValue = (value: unknown): value is StorageValue => {
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
-	constructor(private readonly cacheService: CacheService) {}
+	constructor(
+		private readonly cacheService: CacheService,
+		private readonly reflector: Reflector
+	) {}
 
 	/**
 	 * Intercept HTTP requests and implement caching
@@ -63,11 +68,18 @@ export class CacheInterceptor implements NestInterceptor {
 	 * @returns Observable with cached or fresh data
 	 */
 	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
-		const request = context.switchToHttp().getRequest();
-		const cacheMetadata = request.decoratorMetadata?.cache;
+		const request = context.switchToHttp().getRequest<NestRequest>();
 
-		// If no cache metadata, proceed normally
-		if (!cacheMetadata || cacheMetadata.disabled) {
+		// Read cache decorator metadata directly from handler (most reliable)
+		const handler = context.getHandler();
+		const decoratorCache = this.reflector.get<CacheConfig>('cache', handler);
+
+		// Use decorator metadata if available, otherwise fall back to middleware metadata
+		const cacheMetadata = decoratorCache ?? request.decoratorMetadata?.cache;
+
+		// If no cache metadata or caching is disabled, proceed normally
+		// Also skip caching if ttl is 0 (NoCache decorator)
+		if (!cacheMetadata || cacheMetadata.disabled || cacheMetadata.ttl === 0) {
 			return next.handle();
 		}
 
@@ -179,8 +191,12 @@ export class CacheInterceptor implements NestInterceptor {
 	 * @returns Generated cache key
 	 */
 	private generateCacheKey(request: NestRequest, customKey?: string): string {
+		// Get user ID from request if available (for user-specific caching)
+		const userId = request.user?.sub ?? request.user?.id ?? 'anonymous';
+
 		if (customKey) {
-			return `cache:${customKey}`;
+			// Include userId in custom keys to make them user-specific
+			return `cache:${customKey}:${userId}`;
 		}
 
 		// Generate key from request details
@@ -189,8 +205,8 @@ export class CacheInterceptor implements NestInterceptor {
 		const query = request.query ? JSON.stringify(request.query) : '';
 		const params = request.params ? JSON.stringify(request.params) : '';
 
-		// Create a hash-like key from request components
-		const keyComponents = [method, url, query, params].filter(Boolean);
+		// Create a hash-like key from request components INCLUDING userId
+		const keyComponents = [method, url, query, params, userId].filter(Boolean);
 		const baseKey = keyComponents.join('|');
 
 		// Simple hash function for key generation

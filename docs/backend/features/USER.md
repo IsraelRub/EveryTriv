@@ -136,6 +136,33 @@ async updateUserProfile(@CurrentUserId() userId: string, @Body() profileData: Up
 }
 ```
 
+### PATCH /users/avatar
+
+עדכון avatar של משתמש נוכחי.
+
+**Request Body:**
+```typescript
+{
+  avatarId: number;  // מזהה avatar (1-16)
+}
+```
+
+**Response:**
+```typescript
+UserProfileResponseType
+```
+
+**דוגמת שימוש:**
+```typescript
+@Patch('avatar')
+@RequireEmailVerified()
+@RequireUserStatus('active')
+async setAvatar(@CurrentUserId() userId: string | null, @Body() avatarData: SetAvatarDto) {
+  const result = await this.userService.setAvatar(userId, avatarData.avatarId);
+  return result;
+}
+```
+
 ### GET /users/search
 
 חיפוש משתמשים לפי שאילתה.
@@ -335,7 +362,7 @@ async getUserById(@Param('id') id: string) {
 }
 ```
 
-### PUT /users/credits/:userId (Admin)
+### PATCH /users/credits/:userId (Admin)
 
 עדכון נקודות משתמש (מנהלים בלבד).
 
@@ -354,7 +381,7 @@ UserEntity
 
 **דוגמת שימוש:**
 ```typescript
-@Put('credits/:userId')
+@Patch('credits/:userId')
 @Roles(UserRole.ADMIN)
 async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
   const result = await this.userService.updateUserCredits(userId, creditsData.amount, creditsData.reason);
@@ -406,6 +433,49 @@ UserEntity
 async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
   const result = await this.userService.updateUserStatus(userId, statusData.status);
   return result;
+}
+```
+
+### PATCH /users/admin/:userId/status (Admin)
+
+עדכון סטטוס משתמש על ידי מנהל (מנהלים בלבד, עם בדיקת אימות מפורשת).
+
+**Request Body:**
+```typescript
+{
+  status: UserStatus;  // active, inactive, suspended, banned
+}
+```
+
+**Response:**
+```typescript
+{
+  userId: string;
+  status: UserStatus;
+  isActive: boolean;
+  updatedAt: string;
+}
+```
+
+**דוגמת שימוש:**
+```typescript
+@Patch('admin/:userId/status')
+@Roles(UserRole.ADMIN)
+async adminUpdateUserStatus(
+  @CurrentUser() adminUser: BasicUser | null,
+  @Param('userId') userId: string,
+  @Body() statusData: UpdateUserStatusDto
+) {
+  if (!adminUser || !adminUser.id) {
+    throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+  }
+  const updated = await this.userService.updateUserStatus(userId, statusData.status);
+  return {
+    userId: updated.id,
+    status: statusData.status,
+    isActive: updated.isActive,
+    updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : new Date().toISOString(),
+  };
 }
 ```
 

@@ -26,14 +26,7 @@ export { default as gameModeSlice, setGameMode, resetGameMode } from './gameMode
  * @used_by client/src/components/game, client/src/views
  */
 export { default as gameSlice } from './gameSlice';
-export { resetGame, updateScore } from './gameSlice';
-
-/**
- * Stats slice
- * @description Redux slice for managing user statistics
- * @used_by client/src/components/stats, client/src/views
- */
-export { default as statsSlice } from './statsSlice';
+export { updateScore } from './gameSlice';
 
 /**
  * User slice
@@ -51,6 +44,7 @@ export {
 	deductCredits,
 	fetchUserData,
 	setAvatar,
+	updateAvatar,
 	setAuthenticated,
 	setCreditBalance,
 	setUser,

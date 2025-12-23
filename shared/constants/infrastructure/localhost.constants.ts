@@ -60,3 +60,12 @@ export const ENV_FALLBACKS = {
 	REDIS_PORT: LOCALHOST_PORTS.REDIS,
 	CORS_ORIGIN: LOCALHOST_URLS.CLIENT,
 } as const;
+
+// Localhost configuration object (combines URLs, ports, and hosts)
+export const LOCALHOST_CONFIG = {
+	urls: LOCALHOST_URLS,
+	ports: LOCALHOST_PORTS,
+	hosts: LOCALHOST_HOSTS,
+	envVarNames: ENV_VAR_NAMES,
+	envFallbacks: ENV_FALLBACKS,
+} as const;

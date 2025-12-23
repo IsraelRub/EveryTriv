@@ -1,16 +1,17 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
 
-import { CACHE_DURATION, PaymentMethod, PlanType, SUBSCRIPTION_PLANS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { API_ROUTES, CACHE_DURATION, ERROR_CODES, PaymentMethod } from '@shared/constants';
 import type { ManualPaymentDetails, PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { Cache, CurrentUserId } from '../../common';
 import { PaymentDataPipe } from '../../common/pipes';
 import { CreatePaymentDto } from './dtos';
 import { PaymentService } from './payment.service';
 
-@Controller('payment')
+@Controller(API_ROUTES.PAYMENT.BASE)
 export class PaymentController {
 	constructor(private readonly paymentService: PaymentService) {}
 
@@ -20,26 +21,15 @@ export class PaymentController {
 	 * @param paymentData Payment creation data
 	 * @returns Payment processing result
 	 */
-	@Post('create')
+	@Post(API_ROUTES.PAYMENT.CREATE)
 	@UsePipes(PaymentDataPipe)
 	async createPayment(@CurrentUserId() userId: string, @Body() paymentData: CreatePaymentDto) {
 		try {
-			const isPlanPayment = !!paymentData.planType;
-			let amount = paymentData.amount;
-			let description = paymentData.description;
-			const planType: PlanType | undefined = paymentData.planType;
-
-			if (isPlanPayment) {
-				const planDetails = planType ? SUBSCRIPTION_PLANS[planType] : undefined;
-				if (!planDetails) {
-					throw new HttpException('Invalid subscription plan type', HttpStatus.BAD_REQUEST);
-				}
-				amount = amount ?? planDetails.price;
-				description = description ?? `${planType} subscription`;
-			}
+			const amount = paymentData.amount;
+			const description = paymentData.description;
 
 			if (!amount || amount <= 0) {
-				throw new HttpException('Payment amount is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.PAYMENT_AMOUNT_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const manualPayment =
@@ -50,10 +40,7 @@ export class PaymentController {
 				amount,
 				currency: paymentData.currency ?? 'USD',
 				description: description ?? 'EveryTriv payment',
-				planType,
-				numberOfPayments: paymentData.numberOfPayments ?? 1,
 				metadata: {
-					plan: planType,
 					paymentMethod: paymentData.paymentMethod,
 					tags: paymentData.additionalInfo ? [paymentData.additionalInfo] : undefined,
 				},
@@ -67,7 +54,6 @@ export class PaymentController {
 			// Log API call for payment creation
 			logger.apiCreate('payment_create', {
 				userId,
-				planType,
 				paymentId: result.paymentId ?? result.transactionId,
 				status: result.status,
 				amount,
@@ -78,7 +64,6 @@ export class PaymentController {
 			logger.paymentFailed('unknown', 'Payment creation failed', {
 				error: getErrorMessage(error),
 				userId,
-				planType: paymentData.planType,
 			});
 			throw error;
 		}
@@ -89,7 +74,7 @@ export class PaymentController {
 	 * @param userId Current user identifier
 	 * @returns Payment history list
 	 */
-	@Get('history')
+	@Get(API_ROUTES.PAYMENT.HISTORY)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getPaymentHistory(@CurrentUserId() userId: string) {
 		try {

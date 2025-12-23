@@ -1,20 +1,15 @@
-import { forwardRef, useCallback, type ComponentProps } from 'react';
+import { forwardRef, useCallback } from 'react';
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import { ButtonSize } from '@/constants';
+import { ButtonSize, ButtonVariant } from '@/constants';
+
+import type { NumberInputProps } from '@/types';
+
 import { cn } from '@/utils';
 
 import { Button } from './button';
 import { Input } from './input';
-
-interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange'> {
-	value: number;
-	onChange: (value: number) => void;
-	min?: number;
-	max?: number;
-	step?: number;
-}
 
 const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 	({ className, value, onChange, min, max, step = 1, disabled, ...props }, ref) => {
@@ -73,23 +68,21 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 				<div className='flex flex-col gap-0'>
 					<Button
 						type='button'
-						variant='outline'
+						variant={ButtonVariant.OUTLINE}
 						size={ButtonSize.ICON}
 						className='h-6 w-8 shrink-0 rounded-b-none border-b-0 rounded-tl-md rounded-tr-md'
 						onClick={handleIncrement}
 						disabled={isIncrementDisabled}
-						aria-label='Increase value'
 					>
 						<ChevronUp className='h-3 w-3' />
 					</Button>
 					<Button
 						type='button'
-						variant='outline'
+						variant={ButtonVariant.OUTLINE}
 						size={ButtonSize.ICON}
 						className='h-6 w-8 shrink-0 rounded-t-none border-t-0 rounded-bl-md rounded-br-md'
 						onClick={handleDecrement}
 						disabled={isDecrementDisabled}
-						aria-label='Decrease value'
 					>
 						<ChevronDown className='h-3 w-3' />
 					</Button>

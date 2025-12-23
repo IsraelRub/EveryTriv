@@ -6,14 +6,11 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { HTTP_METHODS, LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { HttpMethod, LanguageToolResponse, LanguageValidationOptions } from '@shared/types';
+import { ERROR_CODES, HttpMethod, LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
-interface LanguageToolCheckOptions extends LanguageValidationOptions {
-	language?: string;
-}
+import { serverLogger as logger } from '@internal/services';
+import type { LanguageToolCheckOptions, LanguageToolResponse } from '@internal/types';
 
 @Injectable()
 export class LanguageToolService {
@@ -44,7 +41,6 @@ export class LanguageToolService {
 			baseUrl: this.baseUrl,
 			timeout: this.timeoutMs,
 			maxRetries: this.maxRetries,
-			hasApiKey: Boolean(this.apiKey),
 		});
 	}
 
@@ -52,7 +48,7 @@ export class LanguageToolService {
 		const endpoint = LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.LANGUAGES;
 
 		try {
-			const response = await this.performRequest(HTTP_METHODS.GET, endpoint);
+			const response = await this.performRequest(HttpMethod.GET, endpoint);
 			logger.languageToolAvailabilityCheck(response.ok, response.status, {
 				endpoint,
 			});
@@ -71,18 +67,18 @@ export class LanguageToolService {
 	async checkText(text: string, options: LanguageToolCheckOptions = {}): Promise<LanguageToolResponse> {
 		const trimmedText = text.trim();
 		if (trimmedText.length === 0) {
-			throw new Error('LanguageTool validation requires non-empty text');
+			throw new Error(ERROR_CODES.LANGUAGETOOL_VALIDATION_REQUIRES_TEXT);
 		}
 
 		const endpoint = LANGUAGE_TOOL_CONSTANTS.ENDPOINTS.CHECK;
 		const params = this.buildCheckParams(text, options);
 
 		try {
-			const response = await this.performRequest(HTTP_METHODS.POST, endpoint, params);
+			const response = await this.performRequest(HttpMethod.POST, endpoint, params);
 			const rawData = await response.json();
 
 			if (!this.isLanguageToolResponse(rawData)) {
-				throw new Error('LanguageTool returned an unexpected response format');
+				throw new Error(ERROR_CODES.LANGUAGETOOL_UNEXPECTED_RESPONSE);
 			}
 
 			logger.languageToolValidation(

@@ -103,3 +103,14 @@ export const STRING_LIMITS = {
 	LONG: 500, // Long string limit
 	MAX_LOG: 1000, // Maximum log string length
 } as const;
+
+/**
+ * Performance operation status enumeration
+ * @enum PerformanceOperationStatus
+ * @description Status of performance operations
+ */
+export enum PerformanceOperationStatus {
+	PENDING = 'pending',
+	COMPLETED = 'completed',
+	ERROR = 'error',
+}

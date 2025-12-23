@@ -13,7 +13,7 @@ export interface UserSearchCacheResult extends Record<string, unknown> {
 	email: string;
 	firstName: string | null;
 	lastName: string | null;
-	avatar: string | null;
+	avatar: number | null;
 	displayName: string;
 }
 

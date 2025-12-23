@@ -5,6 +5,7 @@
  * @module GameConstants
  * @description Core game mechanics constants and configuration with advanced features
  */
+import type { BaseGameTopicDifficulty, GameDifficulty, TriviaQuestion } from '@shared/types';
 
 /**
  * Prefix for custom difficulty levels
@@ -239,6 +240,70 @@ export const GAME_MODE_DEFAULTS = {
 } as const;
 
 /**
+ * Game modes configuration
+ * @constant
+ * @description Complete configuration for each game mode including UI settings and defaults
+ * @used_by client/src/components/game/GameMode.tsx, server/src/features/game/game.service.ts
+ */
+export const GAME_MODES_CONFIG = {
+	[GameMode.QUESTION_LIMITED]: {
+		name: 'Question Mode',
+		description: 'Answer a set number of questions',
+		showQuestionLimit: true,
+		showTimeLimit: false,
+		defaults: GAME_MODE_DEFAULTS[GameMode.QUESTION_LIMITED],
+	},
+	[GameMode.TIME_LIMITED]: {
+		name: 'Time Attack',
+		description: 'Answer as many as you can in time',
+		showQuestionLimit: false,
+		showTimeLimit: true,
+		defaults: GAME_MODE_DEFAULTS[GameMode.TIME_LIMITED],
+	},
+	[GameMode.UNLIMITED]: {
+		name: 'Unlimited',
+		description: 'Play as long as you want',
+		showQuestionLimit: false,
+		showTimeLimit: false,
+		defaults: GAME_MODE_DEFAULTS[GameMode.UNLIMITED],
+	},
+	[GameMode.MULTIPLAYER]: {
+		name: 'Multiplayer',
+		description: 'Compete with friends',
+		showQuestionLimit: false,
+		showTimeLimit: false,
+		defaults: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER],
+	},
+} as const;
+
+/**
+ * Game client status enum
+ * @enum GameClientStatus
+ * @description Status of game on client side
+ */
+export enum GameClientStatus {
+	IDLE = 'idle',
+	LOADING = 'loading',
+	PLAYING = 'playing',
+	PAUSED = 'paused',
+	COMPLETED = 'completed',
+	ERROR = 'error',
+}
+
+/**
+ * Player type enum
+ * @enum PlayerType
+ * @description Type of player in multiplayer games and game mode selection
+ */
+export enum PlayerType {
+	HOST = 'host',
+	GUEST = 'guest',
+	SPECTATOR = 'spectator',
+	SINGLE = 'single',
+	MULTIPLAYER = 'multiplayer',
+}
+
+/**
  * Game state constants
  * @constant
  * @description Default game state values and configuration
@@ -258,4 +323,206 @@ export const GAME_STATE_DEFAULTS = {
 	TOTAL_QUESTIONS: 10, // Default for question-limited mode
 	DIFFICULTY: DifficultyLevel.EASY,
 	TOPIC: 'General Knowledge',
+} as const;
+
+/**
+ * Game state configuration
+ * @constant
+ * @description Configuration for game state management on client
+ */
+const initialClientState: {
+	status: GameClientStatus;
+	isPlaying: boolean;
+	currentQuestion: number;
+	gameQuestionCount: number;
+	canGoBack: boolean;
+	canGoForward: boolean;
+	isGameComplete: boolean;
+	questions: TriviaQuestion[];
+	answers: number[];
+	loading: boolean;
+	error: undefined;
+	trivia: undefined;
+	selected: null;
+	streak: number;
+	favorites: BaseGameTopicDifficulty[];
+} = {
+	status: GameClientStatus.IDLE,
+	isPlaying: false,
+	currentQuestion: 0,
+	gameQuestionCount: 0,
+	canGoBack: false,
+	canGoForward: false,
+	isGameComplete: false,
+	questions: [],
+	answers: [],
+	loading: false,
+	error: undefined,
+	trivia: undefined,
+	selected: null,
+	streak: 0,
+	favorites: [],
+};
+
+const initialGameModeState: {
+	currentMode: GameMode;
+	currentTopic: string;
+	currentDifficulty: GameDifficulty;
+	currentSettings: {
+		mode: GameMode;
+		topic: string;
+		difficulty: GameDifficulty;
+		maxQuestionsPerGame: number | undefined;
+		timeLimit: number | undefined;
+		answerCount: number | undefined;
+	};
+	isLoading: boolean;
+	error: string | undefined;
+} = {
+	currentMode: GameMode.QUESTION_LIMITED,
+	currentTopic: GAME_STATE_DEFAULTS.TOPIC,
+	currentDifficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+	currentSettings: {
+		mode: GameMode.QUESTION_LIMITED,
+		topic: GAME_STATE_DEFAULTS.TOPIC,
+		difficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+		maxQuestionsPerGame: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+		timeLimit: undefined,
+		answerCount: undefined,
+	},
+	isLoading: false,
+	error: undefined,
+};
+
+export const GAME_STATE_CONFIG = {
+	initialClientState,
+	defaults: {
+		topic: GAME_STATE_DEFAULTS.TOPIC,
+		difficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+		maxQuestionsPerGame: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+		timeLimit: undefined,
+	},
+	initialGameModeState,
+} as const;
+
+/**
+ * Game status enumeration
+ * @enum GameStatus
+ * @description Status of game sessions
+ */
+export enum GameStatus {
+	WAITING = 'waiting',
+	IN_PROGRESS = 'in_progress',
+	COMPLETED = 'completed',
+	ABANDONED = 'abandoned',
+}
+
+/**
+ * Trivia question source enumeration
+ * @enum TriviaQuestionSource
+ * @description Sources that trivia questions can come from
+ */
+export enum TriviaQuestionSource {
+	AI = 'ai',
+	USER = 'user',
+	IMPORTED = 'imported',
+	SEEDED = 'seeded',
+	SYSTEM = 'system',
+}
+
+/**
+ * Trivia question review status enumeration
+ * @enum TriviaQuestionReviewStatus
+ * @description Review status for trivia questions
+ */
+export enum TriviaQuestionReviewStatus {
+	PENDING = 'pending',
+	APPROVED = 'approved',
+	REJECTED = 'rejected',
+	FLAGGED = 'flagged',
+}
+
+/**
+ * Array of all valid trivia question sources
+ * @constant
+ * @description Complete list of supported trivia question sources
+ * @used_by server/src/features/game/logic, shared/validation
+ */
+export const VALID_TRIVIA_SOURCES = Object.values(TriviaQuestionSource);
+
+/**
+ * Array of all valid trivia question review statuses
+ * @constant
+ * @description Complete list of supported trivia question review statuses
+ * @used_by server/src/features/game/logic, shared/validation
+ */
+export const VALID_TRIVIA_QUESTION_REVIEW_STATUSES = Object.values(TriviaQuestionReviewStatus);
+
+/**
+ * Provider status enum
+ * @enum ProviderStatus
+ * @description Status of AI providers
+ */
+export enum ProviderStatus {
+	ACTIVE = 'active',
+	INACTIVE = 'inactive',
+	ERROR = 'error',
+	DISABLED = 'disabled',
+	ENABLED = 'enabled',
+	UNAVAILABLE = 'unavailable',
+	HEALTHY = 'healthy',
+	UNHEALTHY = 'unhealthy',
+}
+
+/**
+ * Groq default model
+ * @constant
+ * @description Default Groq model to use when no free tier models are available
+ */
+export const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
+
+/**
+ * Groq free tier models
+ * @constant
+ * @description List of Groq models available in free tier (priority 1)
+ */
+export const GROQ_FREE_TIER_MODELS = ['llama-3.1-8b-instant', 'gpt-oss-20b'] as const;
+
+/**
+ * Groq models configuration
+ * @constant
+ * @description Configuration for all available Groq models
+ */
+export const GROQ_MODELS: Record<
+	string,
+	{ priority: number; cost: number; name: string; rateLimit?: { requestsPerMinute: number; requestsPerDay?: number } }
+> = {
+	'llama-3.1-8b-instant': {
+		priority: 1,
+		cost: 0,
+		name: 'llama-3.1-8b-instant',
+		rateLimit: {
+			requestsPerMinute: 30,
+			requestsPerDay: 14400,
+		},
+	},
+	'gpt-oss-20b': {
+		priority: 1,
+		cost: 0,
+		name: 'gpt-oss-20b',
+		rateLimit: {
+			requestsPerMinute: 8,
+			requestsPerDay: 1000,
+		},
+	},
+	'gpt-oss-120b': {
+		priority: 2,
+		cost: 0.15,
+		name: 'gpt-oss-120b',
+	},
+	'llama-3.1-70b-versatile': {
+		priority: 2,
+		cost: 0.75,
+		name: 'llama-3.1-70b-versatile',
+	},
 } as const;

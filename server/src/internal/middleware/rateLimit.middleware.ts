@@ -3,11 +3,13 @@ import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
 
 import { CACHE_DURATION, RATE_LIMIT_DEFAULTS } from '@shared/constants';
-import { serverLogger as logger, metricsService } from '@shared/services';
-import { ensureErrorObject } from '@shared/utils';
+import { ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
+import { metricsService } from '@internal/services/metrics';
+import type { NestRequest } from '@internal/types';
 
 import { AppConfig } from '../../config/app.config';
-import { NestRequest } from '../types';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -85,7 +87,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 				// Add rate limit headers
 				res.header('X-RateLimit-Limit', limit.toString());
 				res.header('X-RateLimit-Remaining', Math.max(0, limit - requests).toString());
-				res.header('X-RateLimit-Reset', (Math.floor(Date.now() / 1000) + window).toString());
+				res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + window).toString());
 
 				// Log successful rate limit check
 				logger.security('access', 'Decorator rate limit check passed', {
@@ -211,7 +213,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 			// Add rate limit headers
 			res.header('X-RateLimit-Limit', maxRequests.toString());
 			res.header('X-RateLimit-Remaining', Math.max(0, maxRequests - requests).toString());
-			res.header('X-RateLimit-Reset', (Math.floor(Date.now() / 1000) + this.WINDOW_SIZE_IN_SECONDS).toString());
+			res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + this.WINDOW_SIZE_IN_SECONDS).toString());
 
 			// Log successful rate limit check
 			logger.security('access', 'Rate limit check passed', {

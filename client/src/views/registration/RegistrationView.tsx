@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
-import { VALIDATION_LIMITS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
+
+import { AudioKey, ButtonSize, ButtonVariant, ROUTES, VariantBase } from '@/constants';
 
 import {
 	Alert,
@@ -15,14 +16,21 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	Checkbox,
 	Input,
 	Label,
 	Separator,
 } from '@/components';
-import { AudioKey, ButtonSize } from '@/constants';
+
 import { useAudio, useModalRoute, useRegister } from '@/hooks';
+
 import { authService } from '@/services';
+
+import {
+	validateEmailFormat,
+	validatePasswordForm,
+	validatePasswordLength,
+	validatePasswordMatch,
+} from '@/utils/validation';
 
 /**
  * Registration View
@@ -40,11 +48,46 @@ export function RegistrationView() {
 		confirmPassword: '',
 		firstName: '',
 		lastName: '',
-		agreeToTerms: false,
 	});
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<{
+		email?: string;
+		password?: string;
+		confirmPassword?: string;
+	}>({});
 
 	const isLoading = registerMutation.isPending;
+
+	const isFormValid = (): boolean => {
+		const emailValidation = validateEmailFormat(formData.email);
+		const passwordValidation = validatePasswordForm({
+			newPassword: formData.password,
+			confirmPassword: formData.confirmPassword,
+		});
+		return emailValidation.isValid && passwordValidation.isValid;
+	};
+
+	const validateField = (name: string, value: string): string | null => {
+		if (name === 'email') {
+			const validation = validateEmailFormat(value);
+			if (!validation.isValid) {
+				return validation.errors[0] || 'Invalid email';
+			}
+		}
+		if (name === 'password') {
+			const validation = validatePasswordLength(value);
+			if (!validation.isValid) {
+				return validation.errors[0] || 'Invalid password';
+			}
+		}
+		if (name === 'confirmPassword') {
+			const validation = validatePasswordMatch(formData.password, value);
+			if (!validation.isValid) {
+				return validation.errors[0] || 'Invalid password confirmation';
+			}
+		}
+		return null;
+	};
 
 	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -53,66 +96,88 @@ export function RegistrationView() {
 			[name]: value,
 		}));
 		setError(null);
+
+		// Validate field in real-time
+		const fieldError = validateField(name, value);
+		setFieldErrors(prev => ({
+			...prev,
+			[name]: fieldError || undefined,
+		}));
+
+		// Also validate confirmPassword when password changes
+		if (name === 'password' && formData.confirmPassword) {
+			const confirmError = validateField('confirmPassword', formData.confirmPassword);
+			setFieldErrors(prev => ({
+				...prev,
+				confirmPassword: confirmError || undefined,
+			}));
+		}
 	};
 
-	const validateForm = (): string | null => {
-		if (!formData.email.trim()) {
-			return 'Email is required';
-		}
-		if (!formData.email.includes('@')) {
-			return 'Please enter a valid email address';
-		}
-		if (!formData.password) {
-			return 'Password is required';
-		}
-		if (formData.password.length < VALIDATION_LIMITS.PASSWORD.MIN_LENGTH) {
-			return `Password must be at least ${VALIDATION_LIMITS.PASSWORD.MIN_LENGTH} characters`;
-		}
-		if (formData.password !== formData.confirmPassword) {
-			return 'Passwords do not match';
-		}
-		if (!formData.agreeToTerms) {
-			return 'You must agree to the Terms of Service';
-		}
-		return null;
-	};
-
-	const getPasswordStrength = (): { strength: number; label: string; color: string } => {
-		const password = formData.password;
-		let strength = 0;
-
-		if (password.length >= VALIDATION_LIMITS.PASSWORD.MIN_LENGTH) strength++;
-		if (password.length >= 12) strength++;
-		if (/[A-Z]/.test(password)) strength++;
-		if (/[0-9]/.test(password)) strength++;
-		if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-		if (strength <= 1) return { strength, label: 'Weak', color: 'bg-red-500' };
-		if (strength <= 2) return { strength, label: 'Fair', color: 'bg-yellow-500' };
-		if (strength <= 3) return { strength, label: 'Good', color: 'bg-blue-500' };
-		return { strength, label: 'Strong', color: 'bg-green-500' };
-	};
-
-	const handleSubmit = async (e: FormEvent) => {
+	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setError(null);
 
-		const validationError = validateForm();
-		if (validationError) {
-			setError(validationError);
+		// Validate all fields on submit
+		const emailError = validateField('email', formData.email);
+		const passwordError = validateField('password', formData.password);
+		const confirmPasswordError = validateField('confirmPassword', formData.confirmPassword);
+
+		const newFieldErrors: typeof fieldErrors = {};
+		if (emailError) newFieldErrors.email = emailError;
+		if (passwordError) newFieldErrors.password = passwordError;
+		if (confirmPasswordError) newFieldErrors.confirmPassword = confirmPasswordError;
+
+		setFieldErrors(newFieldErrors);
+
+		if (emailError || passwordError || confirmPasswordError) {
+			audioService.play(AudioKey.ERROR);
+			return;
+		}
+
+		if (!isFormValid()) {
 			audioService.play(AudioKey.ERROR);
 			return;
 		}
 
 		try {
+			// #region agent log
+			fetch('http://127.0.0.1:7242/ingest/b690d1e6-594a-4c2e-ab83-a0a7238f9eda', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'RegistrationView.tsx:92',
+					message: 'calling registerMutation.mutateAsync',
+					data: { email: formData.email, hasPassword: !!formData.password },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					runId: 'run1',
+					hypothesisId: 'C',
+				}),
+			}).catch(() => {});
+			// #endregion
 			await registerMutation.mutateAsync({
 				email: formData.email,
 				password: formData.password,
 				confirmPassword: formData.confirmPassword,
 				firstName: formData.firstName || undefined,
 				lastName: formData.lastName || undefined,
-				agreeToTerms: formData.agreeToTerms,
 			});
+			// #region agent log
+			fetch('http://127.0.0.1:7242/ingest/b690d1e6-594a-4c2e-ab83-a0a7238f9eda', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'RegistrationView.tsx:100',
+					message: 'registerMutation.mutateAsync completed successfully',
+					data: { isModal, returnUrl },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					runId: 'run1',
+					hypothesisId: 'C',
+				}),
+			}).catch(() => {});
+			// #endregion
 			audioService.play(AudioKey.SUCCESS);
 			if (isModal) {
 				closeModal();
@@ -120,8 +185,23 @@ export function RegistrationView() {
 				navigate(returnUrl || '/');
 			}
 		} catch (err) {
+			// #region agent log
+			fetch('http://127.0.0.1:7242/ingest/b690d1e6-594a-4c2e-ab83-a0a7238f9eda', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'RegistrationView.tsx:106',
+					message: 'registerMutation.mutateAsync failed',
+					data: { error: getErrorMessage(err), errorType: err?.constructor?.name },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					runId: 'run1',
+					hypothesisId: 'D',
+				}),
+			}).catch(() => {});
+			// #endregion
 			const errorMessage = getErrorMessage(err);
-			setError(errorMessage || 'Registration failed. Please try again.');
+			setError(errorMessage);
 			audioService.play(AudioKey.ERROR);
 		}
 	};
@@ -132,11 +212,9 @@ export function RegistrationView() {
 			await authService.initiateGoogleLogin();
 		} catch (err) {
 			const errorMessage = getErrorMessage(err);
-			setError(errorMessage || 'Failed to initiate Google signup');
+			setError(errorMessage);
 		}
 	};
-
-	const passwordStrength = getPasswordStrength();
 
 	return (
 		<Card className='w-full max-w-md'>
@@ -147,7 +225,7 @@ export function RegistrationView() {
 
 			<CardContent className='space-y-6'>
 				{error && (
-					<Alert variant='destructive'>
+					<Alert variant={VariantBase.DESTRUCTIVE}>
 						<AlertCircle className='h-4 w-4' />
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
@@ -195,9 +273,15 @@ export function RegistrationView() {
 							value={formData.email}
 							onChange={handleChange}
 							disabled={isLoading}
-							required
 							autoComplete='email'
+							className={fieldErrors.email ? 'border-destructive' : ''}
 						/>
+						{fieldErrors.email && (
+							<p className='text-sm text-destructive flex items-center gap-1'>
+								<AlertCircle className='h-3 w-3' />
+								{fieldErrors.email}
+							</p>
+						)}
 					</div>
 
 					<div className='space-y-2'>
@@ -208,27 +292,18 @@ export function RegistrationView() {
 							id='password'
 							name='password'
 							type='password'
-							placeholder='Create a strong password'
+							placeholder='Enter your password'
 							value={formData.password}
 							onChange={handleChange}
 							disabled={isLoading}
-							required
 							autoComplete='new-password'
+							className={fieldErrors.password ? 'border-destructive' : ''}
 						/>
-						{formData.password && (
-							<div className='space-y-1'>
-								<div className='flex gap-1'>
-									{[1, 2, 3, 4, 5].map(level => (
-										<div
-											key={level}
-											className={`h-1 flex-1 rounded ${
-												level <= passwordStrength.strength ? passwordStrength.color : 'bg-muted'
-											}`}
-										/>
-									))}
-								</div>
-								<p className='text-xs text-muted-foreground'>Password strength: {passwordStrength.label}</p>
-							</div>
+						{fieldErrors.password && (
+							<p className='text-sm text-destructive flex items-center gap-1'>
+								<AlertCircle className='h-3 w-3' />
+								{fieldErrors.password}
+							</p>
 						)}
 					</div>
 
@@ -245,35 +320,24 @@ export function RegistrationView() {
 								value={formData.confirmPassword}
 								onChange={handleChange}
 								disabled={isLoading}
-								required
 								autoComplete='new-password'
+								className={fieldErrors.confirmPassword ? 'border-destructive' : ''}
 							/>
-							{formData.confirmPassword && formData.password === formData.confirmPassword && (
-								<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
-							)}
+							{formData.confirmPassword &&
+								formData.password === formData.confirmPassword &&
+								!fieldErrors.confirmPassword && (
+									<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
+								)}
 						</div>
+						{fieldErrors.confirmPassword && (
+							<p className='text-sm text-destructive flex items-center gap-1'>
+								<AlertCircle className='h-3 w-3' />
+								{fieldErrors.confirmPassword}
+							</p>
+						)}
 					</div>
 
-					<div className='flex items-start space-x-2'>
-						<Checkbox
-							id='agreeToTerms'
-							checked={formData.agreeToTerms}
-							onCheckedChange={checked => setFormData(prev => ({ ...prev, agreeToTerms: checked === true }))}
-							disabled={isLoading}
-						/>
-						<Label htmlFor='agreeToTerms' className='text-sm leading-tight cursor-pointer'>
-							I agree to the{' '}
-							<a href='/terms' className='text-primary hover:underline'>
-								Terms of Service
-							</a>{' '}
-							and{' '}
-							<a href='/privacy' className='text-primary hover:underline'>
-								Privacy Policy
-							</a>
-						</Label>
-					</div>
-
-					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading}>
+					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
 								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -296,7 +360,7 @@ export function RegistrationView() {
 
 				<Button
 					type='button'
-					variant='outline'
+					variant={ButtonVariant.OUTLINE}
 					className='w-full'
 					size={ButtonSize.LG}
 					onClick={handleGoogleSignup}
@@ -327,7 +391,7 @@ export function RegistrationView() {
 					<span className='text-muted-foreground'>Already have an account? </span>
 					<button
 						type='button'
-						onClick={() => navigate('/login', { state: { modal: isModal } })}
+						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: isModal } })}
 						className='text-primary font-medium hover:underline'
 					>
 						Sign in

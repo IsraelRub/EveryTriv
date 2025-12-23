@@ -1,5 +1,7 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
+import { WildcardPattern as WildcardPatternEnum } from '@internal/constants';
+
 /**
  * Helper function to add ILIKE search conditions to a query builder
  * @param queryBuilder The query builder to add conditions to
@@ -16,7 +18,7 @@ export function addSearchConditions<T extends ObjectLiteral>(
 	searchTerm: string,
 	options?: {
 		normalizeTerm?: (term: string) => string;
-		wildcardPattern?: 'both' | 'start' | 'end' | 'none';
+		wildcardPattern?: (typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum];
 	}
 ): SelectQueryBuilder<T> {
 	const normalizedTerm = options?.normalizeTerm ? options.normalizeTerm(searchTerm) : searchTerm.trim().toLowerCase();
@@ -27,13 +29,13 @@ export function addSearchConditions<T extends ObjectLiteral>(
 
 	const pattern = (() => {
 		switch (options?.wildcardPattern) {
-			case 'both':
+			case WildcardPatternEnum.BOTH:
 				return `%${normalizedTerm}%`;
-			case 'start':
+			case WildcardPatternEnum.START:
 				return `${normalizedTerm}%`;
-			case 'end':
+			case WildcardPatternEnum.END:
 				return `%${normalizedTerm}`;
-			case 'none':
+			case WildcardPatternEnum.NONE:
 				return normalizedTerm;
 			default:
 				return `%${normalizedTerm}%`;

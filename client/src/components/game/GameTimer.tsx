@@ -1,38 +1,176 @@
-import { useEffect, useState } from 'react';
+/**
+ * Game Timer Component
+ *
+ * @module GameTimer
+ * @description Reusable timer component for game sessions with countdown and elapsed time modes
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { motion } from 'framer-motion';
 
-import { Progress } from '@/components';
+import { calculateElapsedSeconds } from '@shared/utils';
 
-interface GameTimerProps {
-	duration: number;
-	onTimeUp?: () => void;
-}
+import { AudioKey } from '@/constants';
 
-export default function GameTimer({ duration, onTimeUp }: GameTimerProps) {
-	const [timeLeft, setTimeLeft] = useState(duration);
-	const progress = (timeLeft / duration) * 100;
+import { audioService } from '@/services';
 
-	useEffect(() => {
-		if (timeLeft <= 0) {
-			onTimeUp?.();
-			return;
+import type { GameTimerProps } from '@/types';
+
+import { formatTime } from '@/utils';
+
+export function GameTimer({
+	mode,
+	initialTime,
+	startTime,
+	onTimeout,
+	onWarning,
+	label,
+	showProgressBar = true,
+	className = '',
+}: GameTimerProps) {
+	const [currentTime, setCurrentTime] = useState(() => {
+		if (mode === 'countdown' && initialTime !== undefined) {
+			return initialTime;
 		}
+		return 0;
+	});
 
-		const timer = setInterval(() => {
-			setTimeLeft(prev => prev - 1);
+	const onTimeoutRef = useRef(onTimeout);
+	useEffect(() => {
+		onTimeoutRef.current = onTimeout;
+	}, [onTimeout]);
+
+	const onWarningRef = useRef(onWarning);
+	useEffect(() => {
+		onWarningRef.current = onWarning;
+	}, [onWarning]);
+
+	// Countdown mode: count down from initialTime
+	const warningTimeThresholdRef = useRef<number | null>(null);
+	useEffect(() => {
+		if (mode !== 'countdown' || initialTime === undefined) return;
+
+		// Calculate warning threshold (15% of total time)
+		warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
+
+		const interval = setInterval(() => {
+			setCurrentTime((prev: number) => {
+				if (prev <= 1) {
+					onTimeoutRef.current?.();
+					return 0;
+				}
+
+				// Play warning sound every 2 seconds when below warning threshold (15% or less)
+				// Start from the warning threshold and then every 2 seconds
+				if (warningTimeThresholdRef.current !== null && prev <= warningTimeThresholdRef.current) {
+					const timeBelowThreshold = warningTimeThresholdRef.current - prev;
+					// Play at threshold (timeBelowThreshold === 0) and then every 2 seconds
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+						// If custom onWarning callback provided, use it; otherwise play audio directly
+						if (onWarningRef.current) {
+							onWarningRef.current();
+						} else {
+							audioService.play(AudioKey.TIME_WARNING);
+						}
+					}
+				}
+
+				return prev - 1;
+			});
 		}, 1000);
 
-		return () => clearInterval(timer);
-	}, [timeLeft, onTimeUp]);
+		return () => clearInterval(interval);
+	}, [mode, initialTime]);
+
+	// Elapsed mode: count up from startTime
+	useEffect(() => {
+		if (mode !== 'elapsed' || startTime === undefined) return;
+
+		const interval = setInterval(() => {
+			const elapsed = calculateElapsedSeconds(startTime);
+			setCurrentTime(elapsed);
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, [mode, startTime]);
+
+	// Calculate progress percentage
+	// Only used for countdown mode (progress bar is hidden in elapsed mode)
+	const getProgress = useCallback(() => {
+		if (mode === 'countdown' && initialTime !== undefined && initialTime > 0) {
+			return (currentTime / initialTime) * 100;
+		}
+		return 0;
+	}, [mode, currentTime, initialTime]);
+
+	// Get color based on percentage
+	const getColorByPercentage = useCallback((percentage: number, prefix: 'text' | 'bg'): string => {
+		if (percentage > 35) return `${prefix}-green-500`;
+		if (percentage > 15) return `${prefix}-orange-500`;
+		return `${prefix}-red-500`;
+	}, []);
+
+	// Get color based on mode and time
+	const getTimerColor = useCallback(() => {
+		switch (mode) {
+			case 'countdown':
+				if (initialTime !== undefined && initialTime > 0) {
+					const percentage = (currentTime / initialTime) * 100;
+					return getColorByPercentage(percentage, 'text');
+				}
+				return 'text-muted-foreground';
+			case 'elapsed':
+				return 'text-muted-foreground';
+			default:
+				return 'text-muted-foreground';
+		}
+	}, [mode, currentTime, initialTime, getColorByPercentage]);
+
+	const getBarColor = useCallback(() => {
+		switch (mode) {
+			case 'countdown':
+				if (initialTime !== undefined && initialTime > 0) {
+					const percentage = (currentTime / initialTime) * 100;
+					return getColorByPercentage(percentage, 'bg');
+				}
+				return 'bg-primary';
+			case 'elapsed':
+				return 'bg-primary';
+			default:
+				return 'bg-primary';
+		}
+	}, [mode, currentTime, initialTime, getColorByPercentage]);
+
+	const progress = getProgress();
+	const defaultLabel = (() => {
+		switch (mode) {
+			case 'countdown':
+				return 'Game Time';
+			case 'elapsed':
+				return 'Time Elapsed';
+			default:
+				return 'Time Elapsed';
+		}
+	})();
 
 	return (
-		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='space-y-2'>
-			<div className='flex justify-between items-center'>
-				<span className='text-sm font-medium text-muted-foreground'>Time Remaining</span>
-				<span className='text-lg font-bold text-foreground'>{timeLeft}s</span>
+		<div className={`mb-6 ${className}`}>
+			<div className='text-center mb-2'>
+				<div className={`text-2xl font-medium ${getTimerColor()}`}>{formatTime(currentTime)}</div>
+				<p className='text-sm text-muted-foreground mt-1'>{label || defaultLabel}</p>
 			</div>
-			<Progress value={progress} className='h-2' />
-		</motion.div>
+			{showProgressBar && (
+				<div className='relative h-4 bg-muted rounded-full overflow-hidden'>
+					<motion.div
+						className={`absolute inset-y-0 left-0 ${getBarColor()}`}
+						initial={{ width: '100%' }}
+						animate={{
+							width: `${progress}%`,
+						}}
+						transition={{ duration: 0.3 }}
+					/>
+				</div>
+			)}
+		</div>
 	);
 }

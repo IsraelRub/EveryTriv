@@ -9,10 +9,17 @@ import { useNavigate } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
 
-import { GAME_MODE_DEFAULTS, GAME_STATE_DEFAULTS, GameMode, UserRole, VALIDATION_LIMITS } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
+import { GAME_MODES_CONFIG, GAME_STATE_CONFIG, GameMode, UserRole, VALIDATION_CONFIG } from '@shared/constants';
 import type { QuestionData, TriviaQuestion } from '@shared/types';
-import { calculateAnswerScore, getErrorMessage, isRecord } from '@shared/utils';
+import {
+	calculateAnswerScore,
+	calculateElapsedSeconds,
+	createQuestionData,
+	getErrorMessage,
+	isRecord,
+} from '@shared/utils';
+
+import { AudioKey, ButtonSize, ROUTES } from '@/constants';
 
 import {
 	AlertDialog,
@@ -25,10 +32,14 @@ import {
 	AlertDialogTitle,
 	Button,
 	Card,
+	GameTimer,
 	Progress,
 } from '@/components';
-import { AudioKey, ButtonSize } from '@/constants';
+
 import { useAppDispatch, useAppSelector, useDeductCredits, useTriviaQuestionMutation } from '@/hooks';
+
+import { audioService, clientLogger as logger } from '@/services';
+
 import {
 	selectCurrentDifficulty,
 	selectCurrentGameMode,
@@ -38,8 +49,6 @@ import {
 	selectUserRole,
 } from '@/redux/selectors';
 import { updateScore } from '@/redux/slices';
-import { audioService } from '@/services';
-import { formatTime } from '@/utils';
 
 export function GameSessionView() {
 	const navigate = useNavigate();
@@ -58,7 +67,7 @@ export function GameSessionView() {
 
 	// Dynamic limits based on game mode
 	const maxQuestionsPerGame =
-		currentSettings?.maxQuestionsPerGame ?? GAME_MODE_DEFAULTS[currentGameMode]?.maxQuestionsPerGame;
+		currentSettings?.maxQuestionsPerGame ?? GAME_MODES_CONFIG[currentGameMode]?.defaults.maxQuestionsPerGame;
 
 	const totalGameTime = isTimeLimited
 		? currentSettings?.timeLimit || 60 // Default 60 seconds for time-limited mode
@@ -70,7 +79,7 @@ export function GameSessionView() {
 
 	// Game state
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-	const [gameQuestionCount, setGameQuestionCount] = useState<number | undefined>(
+	const [gameQuestionCount] = useState<number | undefined>(
 		isQuestionLimited && maxQuestionsPerGame !== undefined && maxQuestionsPerGame !== null
 			? maxQuestionsPerGame
 			: undefined
@@ -83,7 +92,6 @@ export function GameSessionView() {
 	const [questionsData, setQuestionsData] = useState<QuestionData[]>([]);
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 	const [answered, setAnswered] = useState(false);
-	const [gameTimer, setGameTimer] = useState(totalGameTime || 0); // Overall game timer for TIME_LIMITED
 	const [streak, setStreak] = useState(0);
 
 	// Modal state
@@ -111,7 +119,7 @@ export function GameSessionView() {
 	useEffect(() => {
 		if (!isAdmin && !creditsDeducted && questions.length > 0) {
 			// Convert undefined to UNLIMITED (-1) for API (questionsPerRequest must be a number)
-			const questionsPerRequestForDeduction = maxQuestionsPerGame ?? VALIDATION_LIMITS.QUESTIONS.UNLIMITED;
+			const questionsPerRequestForDeduction = maxQuestionsPerGame ?? VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED;
 			logger.gameInfo('Deducting credits for game', {
 				questionsPerRequest: questionsPerRequestForDeduction,
 				gameMode: currentGameMode,
@@ -142,15 +150,15 @@ export function GameSessionView() {
 			try {
 				setLoading(true);
 				// Convert undefined to UNLIMITED (-1) for API (questionsPerRequest must be a number)
-				const questionsPerRequestForAPI = maxQuestionsPerGame ?? VALIDATION_LIMITS.QUESTIONS.UNLIMITED;
+				const questionsPerRequestForAPI = maxQuestionsPerGame ?? VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED;
 				logger.gameInfo('Loading trivia questions', {
-					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
+					topic: currentTopic || GAME_STATE_CONFIG.defaults.topic,
 					difficulty: currentDifficulty || 'medium',
 					questionsPerRequest: questionsPerRequestForAPI,
 				});
 
 				const response = await triviaMutation.mutateAsync({
-					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
+					topic: currentTopic || GAME_STATE_CONFIG.defaults.topic,
 					difficulty: currentDifficulty || 'medium',
 					questionsPerRequest: questionsPerRequestForAPI,
 					userId: currentUser?.id || '',
@@ -171,7 +179,8 @@ export function GameSessionView() {
 
 						if (validQuestions.length > 0) {
 							setQuestions(validQuestions);
-							setGameQuestionCount(validQuestions.length); // Update gameQuestionCount based on actual questions received
+							// Don't override gameQuestionCount - it's already set to the user's selected question count
+							// The server may return more questions than requested, but we only play the requested amount
 							logger.gameInfo('Questions loaded successfully', { count: validQuestions.length });
 						} else {
 							throw new Error('No valid questions in response');
@@ -191,9 +200,9 @@ export function GameSessionView() {
 				const message = getErrorMessage(error);
 				logger.gameError('Failed to load questions', { error: message });
 				audioService.play(AudioKey.ERROR);
-				setErrorMessage('Failed to load questions. Returning to home.');
+				setErrorMessage(message);
 				setShowErrorDialog(true);
-				setTimeout(() => navigate('/'), 3000);
+				setTimeout(() => navigate(ROUTES.HOME), 3000);
 			}
 		};
 
@@ -220,19 +229,23 @@ export function GameSessionView() {
 			audioService.play(AudioKey.BACKGROUND_MUSIC);
 		}, 100);
 
+		const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
+
 		logger.gameInfo('Game time expired', {
 			score,
 			correctAnswers,
+			timeSpent: totalTimeSpent,
 		});
 
-		navigate('/game/summary', {
+		navigate(ROUTES.GAME_SUMMARY, {
 			state: {
+				userId: currentUser?.id || '',
 				score,
 				gameQuestionCount: currentQuestionIndex + 1,
 				correctAnswers,
 				topic: currentTopic,
 				difficulty: currentDifficulty,
-				timeSpent: totalGameTime,
+				timeSpent: totalTimeSpent,
 				questionsData,
 			},
 		});
@@ -240,10 +253,11 @@ export function GameSessionView() {
 		score,
 		correctAnswers,
 		currentQuestionIndex,
-		totalGameTime,
+		gameStartTime,
 		questionsData,
 		currentTopic,
 		currentDifficulty,
+		currentUser?.id,
 		navigate,
 	]);
 
@@ -252,52 +266,16 @@ export function GameSessionView() {
 		handleGameTimeoutRef.current = handleGameTimeout;
 	}, [handleGameTimeout]);
 
-	// Initialize timer when game starts (only once)
-	const timerInitialized = useRef(false);
-	useEffect(() => {
-		if (isTimeLimited && totalGameTime && !loading && !timerInitialized.current) {
-			setGameTimer(totalGameTime);
-			timerInitialized.current = true;
-		}
-	}, [isTimeLimited, totalGameTime, loading]);
-
-	// Overall game timer (for TIME_LIMITED mode only)
-	useEffect(() => {
-		if (!isTimeLimited || !totalGameTime || loading) return;
-
-		const interval = setInterval(() => {
-			setGameTimer((prev: number) => {
-				if (prev <= 1) {
-					handleGameTimeoutRef.current?.();
-					return 0;
-				}
-				// Play warning sound at 10 seconds
-				if (prev === 11) {
-					audioService.play(AudioKey.TIME_WARNING);
-				}
-				return prev - 1;
-			});
-		}, 1000);
-
-		return () => clearInterval(interval);
-	}, [isTimeLimited, totalGameTime, loading]);
-
 	const recordQuestionData = useCallback(
 		(isCorrect: boolean, timeSpent: number) => {
 			if (!currentQuestion) return;
 
-			const correctAnswerText = currentQuestion.answers[currentQuestion.correctAnswerIndex]?.text || '';
+			// Convert selectedAnswer to appropriate format for createQuestionData
+			const userAnswer: string | number =
+				selectedAnswer !== null ? selectedAnswer : isCorrect ? currentQuestion.correctAnswerIndex : 'Timeout';
 
-			setQuestionsData(prev => [
-				...prev,
-				{
-					question: currentQuestion.question,
-					userAnswer: isCorrect ? correctAnswerText : selectedAnswer !== null ? 'Incorrect' : 'Timeout',
-					correctAnswer: correctAnswerText,
-					isCorrect,
-					timeSpent,
-				},
-			]);
+			const questionData = createQuestionData(currentQuestion, userAnswer, isCorrect, timeSpent);
+			setQuestionsData(prev => [...prev, questionData]);
 		},
 		[currentQuestion, selectedAnswer]
 	);
@@ -305,10 +283,19 @@ export function GameSessionView() {
 	const moveToNextQuestion = useCallback(
 		(wasCorrect: boolean, scoreEarned: number) => {
 			// Check if game is complete based on mode
+			const nextQuestionIndex = currentQuestionIndex + 1;
 			const shouldEndGame =
 				isQuestionLimited && gameQuestionCount
-					? currentQuestionIndex + 1 >= gameQuestionCount // Question limit reached
+					? nextQuestionIndex >= gameQuestionCount // Question limit reached
 					: false; // In time-limited, only time ends the game
+
+			logger.gameInfo('Checking game completion', {
+				currentQuestionIndex,
+				nextQuestionIndex,
+				gameQuestionCount,
+				isQuestionLimited,
+				shouldEndGame,
+			});
 
 			if (shouldEndGame) {
 				// Game over - navigate to summary
@@ -319,7 +306,7 @@ export function GameSessionView() {
 					audioService.play(AudioKey.BACKGROUND_MUSIC);
 				}, 100);
 
-				const totalTimeSpent = Math.floor((Date.now() - gameStartTime) / 1000);
+				const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
 				const finalScore = wasCorrect ? score + scoreEarned : score;
 				const finalCorrectAnswers = wasCorrect ? correctAnswers + 1 : correctAnswers;
 
@@ -330,8 +317,9 @@ export function GameSessionView() {
 					timeSpent: totalTimeSpent,
 				});
 
-				navigate('/game/summary', {
+				navigate(ROUTES.GAME_SUMMARY, {
 					state: {
+						userId: currentUser?.id || '',
 						score: finalScore,
 						gameQuestionCount: gameQuestionCount ?? questions.length,
 						correctAnswers: finalCorrectAnswers,
@@ -377,7 +365,7 @@ export function GameSessionView() {
 
 		setAnswered(true);
 		const isCorrect = selectedAnswer === currentQuestion.correctAnswerIndex;
-		const timeSpent = 30; // Default time for scoring calculation
+		const timeSpent = 30; // Default time for scoring calculation (in seconds)
 
 		if (isCorrect) {
 			const newStreak = streak + 1;
@@ -394,9 +382,6 @@ export function GameSessionView() {
 					score: scoreEarned,
 					timeSpent,
 					isCorrect: true,
-					responseTime: timeSpent,
-					correct: true,
-					totalTime: 30,
 				})
 			);
 
@@ -420,9 +405,6 @@ export function GameSessionView() {
 					score: 0,
 					timeSpent,
 					isCorrect: false,
-					responseTime: timeSpent,
-					correct: false,
-					totalTime: 30,
 				})
 			);
 
@@ -461,45 +443,22 @@ export function GameSessionView() {
 			score,
 			correctAnswers,
 		});
-		navigate('/');
+		navigate(ROUTES.HOME);
 	}, [currentQuestionIndex, score, correctAnswers, navigate]);
-
-	const getGameTimerColor = useCallback(() => {
-		if (!totalGameTime) return 'text-foreground';
-		const percentage = (gameTimer / totalGameTime) * 100;
-		if (percentage > 50) return 'text-green-500';
-		if (percentage > 25) return 'text-yellow-500';
-		return 'text-red-500';
-	}, [gameTimer, totalGameTime]);
-
-	const getGameTimerBarColor = useCallback(() => {
-		if (!totalGameTime) return 'bg-primary';
-		const percentage = (gameTimer / totalGameTime) * 100;
-		if (percentage > 50) return 'bg-green-500';
-		if (percentage > 25) return 'bg-yellow-500';
-		return 'bg-red-500';
-	}, [gameTimer, totalGameTime]);
-
-	const formatTimeLocal = useCallback((seconds: number): string => {
-		return formatTime(seconds);
-	}, []);
 
 	const getAnswerStyle = useCallback(
 		(index: number) => {
 			if (!answered) {
-				return selectedAnswer === index
-					? 'border-primary bg-primary/10'
-					: 'border-border hover:border-primary/50 hover:bg-accent/50';
+				return selectedAnswer === index ? 'bg-blue-500/50 ring-2 ring-blue-500/70' : 'hover:bg-accent/50';
 			}
 
-			// Show correct/incorrect after answer
 			if (index === currentQuestion?.correctAnswerIndex) {
-				return 'border-green-500 bg-green-500/20';
+				return 'bg-green-500/40 ring-2 ring-green-500/70';
 			}
 			if (index === selectedAnswer) {
-				return 'border-red-500 bg-red-500/20';
+				return 'bg-red-500/40 ring-2 ring-red-500/70';
 			}
-			return 'border-border opacity-50';
+			return 'opacity-50';
 		},
 		[answered, selectedAnswer, currentQuestion?.correctAnswerIndex]
 	);
@@ -508,8 +467,6 @@ export function GameSessionView() {
 	if (loading) {
 		return (
 			<motion.main
-				role='main'
-				aria-label='Loading Game'
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				className='min-h-screen flex items-center justify-center'
@@ -526,8 +483,6 @@ export function GameSessionView() {
 	if (!questions || questions.length === 0 || !currentQuestion) {
 		return (
 			<motion.main
-				role='main'
-				aria-label='No Questions'
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				className='min-h-screen flex items-center justify-center'
@@ -536,143 +491,130 @@ export function GameSessionView() {
 					<p className='text-xl text-foreground mb-4'>
 						{!questions || questions.length === 0 ? 'No questions available' : 'Loading question...'}
 					</p>
-					<Button onClick={() => navigate('/')}>Return Home</Button>
+					<Button onClick={() => navigate(ROUTES.HOME)}>Return Home</Button>
 				</div>
 			</motion.main>
 		);
 	}
 
 	return (
-		<motion.main
-			role='main'
-			aria-label='Game Session'
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			className='min-h-screen py-8'
-		>
-			<div className='container mx-auto px-4 max-w-3xl'>
-				{/* Game Timer - Only for TIME_LIMITED mode */}
-				{isTimeLimited && totalGameTime && (
-					<div className='mb-6'>
-						<div className='flex justify-between items-center mb-2'>
-							<span className='text-sm text-muted-foreground'>Game Time</span>
-							<span className={`text-sm font-bold ${getGameTimerColor()}`}>{formatTimeLocal(gameTimer)}</span>
-						</div>
-						<div className='relative h-3 bg-muted rounded-full overflow-hidden'>
-							<motion.div
-								className={`absolute inset-y-0 left-0 ${getGameTimerBarColor()}`}
-								initial={{ width: '100%' }}
-								animate={{
-									width: `${(gameTimer / totalGameTime) * 100}%`,
-								}}
-								transition={{ duration: 0.3 }}
-							/>
-						</div>
-					</div>
-				)}
+		<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-4'>
+			<div className='container mx-auto px-4 max-w-4xl h-screen flex flex-col'>
+				{/* Header Section - Compact */}
+				<div className='flex-shrink-0 mb-4'>
+					{/* Game Timer - persists across all questions */}
+					<GameTimer
+						key='game-timer'
+						mode={isTimeLimited ? 'countdown' : 'elapsed'}
+						initialTime={isTimeLimited ? totalGameTime : undefined}
+						startTime={gameStartTime}
+						onTimeout={isTimeLimited ? handleGameTimeout : undefined}
+						label={isTimeLimited ? 'Game Time' : 'Time Elapsed'}
+						showProgressBar={isTimeLimited}
+					/>
 
-				{/* Progress Bar - Only for QUESTION_LIMITED mode */}
-				{isQuestionLimited && (
-					<div className='mb-8'>
-						<div className='flex justify-between items-center mb-2'>
-							<span className='text-foreground font-medium'>
-								Question {currentQuestionIndex + 1} of {gameQuestionCount}
-							</span>
-							<span className='text-primary font-bold'>Score: {score}</span>
-						</div>
-						<Progress value={progress} className='h-3' />
-					</div>
-				)}
-
-				{/* Game Info */}
-				<div className='mb-6 text-center'>
-					<div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
-						<span>Topic: {currentTopic || 'General'}</span>
-						<span className='text-muted-foreground/50'>•</span>
-						<span>Difficulty: {currentDifficulty || 'Medium'}</span>
-						{streak > 1 && (
-							<>
-								<span className='text-muted-foreground/50'>•</span>
-								<span className='text-primary font-medium'>Streak: {streak}</span>
-							</>
-						)}
-					</div>
-				</div>
-
-				{/* Game Time Elapsed - For non-time-limited modes */}
-				{!isTimeLimited && (
-					<div className='text-center mb-6'>
-						<div className='text-2xl font-medium text-muted-foreground'>
-							{formatTimeLocal(Math.floor((Date.now() - gameStartTime) / 1000))}
-						</div>
-						<p className='text-sm text-muted-foreground mt-1'>Time Elapsed</p>
-					</div>
-				)}
-
-				{/* Question Card */}
-				<Card className='p-8 mb-6'>
-					<p className='text-2xl text-foreground font-medium text-center'>{currentQuestion?.question}</p>
-				</Card>
-
-				{/* Answers */}
-				<div className='space-y-4 mb-6'>
-					{currentQuestion?.answers && Array.isArray(currentQuestion.answers) && currentQuestion.answers.length > 0 ? (
-						currentQuestion.answers.map((answer, index) => (
-							<motion.button
-								key={index}
-								initial={{ opacity: 0, x: -20 }}
-								animate={{ opacity: 1, x: 0 }}
-								transition={{ delay: index * 0.1 }}
-								onClick={() => handleAnswerSelect(index)}
-								disabled={answered}
-								className={`w-full p-6 rounded-lg border-2 transition-all text-left ${getAnswerStyle(index)} ${
-									!answered ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-not-allowed'
-								}`}
-							>
-								<div className='flex items-center'>
-									<div className='w-8 h-8 rounded-full bg-muted flex items-center justify-center mr-4 flex-shrink-0'>
-										<span className='font-bold'>{String.fromCharCode(65 + index)}</span>
-									</div>
-									<span className='text-lg'>{answer.text}</span>
-								</div>
-							</motion.button>
-						))
-					) : (
-						<div className='text-center text-muted-foreground'>No answers available</div>
-					)}
-				</div>
-
-				{/* Submit Button */}
-				<Button
-					onClick={handleSubmit}
-					disabled={selectedAnswer === null || answered}
-					size={ButtonSize.LG}
-					className='w-full py-6 text-lg'
-				>
-					{answered ? 'Processing...' : 'Submit Answer'}
-				</Button>
-
-				{/* Feedback Message */}
-				{answered && currentQuestion && (
-					<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='mt-6 text-center'>
-						{selectedAnswer === currentQuestion.correctAnswerIndex ? (
-							<div className='text-green-500 text-xl font-bold'>Correct! +{score} points</div>
-						) : (
-							<div className='text-red-500 text-xl font-bold'>
-								Incorrect! The correct answer was {String.fromCharCode(65 + currentQuestion.correctAnswerIndex)}
+					{/* Progress Bar - Only for QUESTION_LIMITED mode */}
+					{isQuestionLimited && (
+						<div className='mt-3 mb-3'>
+							<div className='flex justify-between items-center mb-1.5'>
+								<span className='text-sm text-foreground font-medium'>
+									Question {currentQuestionIndex + 1} of {gameQuestionCount}
+								</span>
+								<span className='text-primary font-bold text-sm'>Score: {score}</span>
 							</div>
-						)}
-					</motion.div>
-				)}
+							<Progress value={progress} className='h-2' />
+						</div>
+					)}
 
-				{/* Exit Button */}
-				<div className='mt-8 text-center'>
-					<button
-						onClick={() => setShowExitDialog(true)}
-						className='text-muted-foreground hover:text-foreground transition-colors'
+					{/* Game Info - Compact */}
+					<div className='mb-3 text-center'>
+						<div className='flex items-center justify-center gap-2 text-xs text-muted-foreground flex-wrap'>
+							<span>Topic: {currentTopic || GAME_STATE_CONFIG.defaults.topic}</span>
+							<span className='text-muted-foreground/50'>•</span>
+							<span>Difficulty: {currentDifficulty || GAME_STATE_CONFIG.defaults.difficulty}</span>
+							{streak > 1 && (
+								<>
+									<span className='text-muted-foreground/50'>•</span>
+									<span className='text-primary font-medium'>Streak: {streak}</span>
+								</>
+							)}
+						</div>
+					</div>
+				</div>
+
+				{/* Main Content - Scrollable if needed */}
+				<div className='flex-1 flex flex-col min-h-0'>
+					{/* Question Card - Compact */}
+					<Card className='p-4 mb-4 flex-shrink-0'>
+						<p className='text-xl text-foreground font-medium text-center leading-tight'>{currentQuestion?.question}</p>
+					</Card>
+
+					{/* Answers - Two Columns Grid */}
+					<div className='grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 flex-1 min-h-0'>
+						{currentQuestion?.answers &&
+						Array.isArray(currentQuestion.answers) &&
+						currentQuestion.answers.length > 0 ? (
+							currentQuestion.answers.map((answer, index) => (
+								<motion.button
+									key={index}
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: index * 0.05 }}
+									onClick={() => handleAnswerSelect(index)}
+									disabled={answered}
+									className={`p-4 rounded-lg border-2 border-white transition-all text-left h-full flex items-center ${getAnswerStyle(index)} ${
+										!answered ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed'
+									}`}
+								>
+									<div className='flex items-center w-full'>
+										<div className='w-7 h-7 rounded-full bg-muted flex items-center justify-center mr-3 flex-shrink-0'>
+											<span className='font-bold text-sm'>{String.fromCharCode(65 + index)}</span>
+										</div>
+										<span className='text-base leading-tight flex-1'>{answer.text}</span>
+									</div>
+								</motion.button>
+							))
+						) : (
+							<div className='col-span-2 text-center text-muted-foreground'>No answers available</div>
+						)}
+					</div>
+
+					{/* Submit Button - Compact */}
+					<Button
+						onClick={handleSubmit}
+						disabled={selectedAnswer === null || answered}
+						size={ButtonSize.LG}
+						className='w-full py-4 text-base mb-3 flex-shrink-0'
 					>
-						Exit Game
-					</button>
+						{answered ? 'Processing...' : 'Submit Answer'}
+					</Button>
+
+					{/* Feedback Message - Compact */}
+					{answered && currentQuestion && (
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							className='mb-2 text-center flex-shrink-0'
+						>
+							{selectedAnswer === currentQuestion.correctAnswerIndex ? (
+								<div className='text-green-500 text-lg font-bold'>Correct! +{score} points</div>
+							) : (
+								<div className='text-red-500 text-lg font-bold'>
+									Incorrect! The correct answer was {String.fromCharCode(65 + currentQuestion.correctAnswerIndex)}
+								</div>
+							)}
+						</motion.div>
+					)}
+
+					{/* Exit Button - Compact */}
+					<div className='text-center flex-shrink-0'>
+						<button
+							onClick={() => setShowExitDialog(true)}
+							className='text-xs text-muted-foreground hover:text-foreground transition-colors'
+						>
+							Exit Game
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -698,7 +640,7 @@ export function GameSessionView() {
 						<AlertDialogDescription>{errorMessage}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogAction onClick={() => navigate('/')}>OK</AlertDialogAction>
+						<AlertDialogAction onClick={() => navigate(ROUTES.HOME)}>OK</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

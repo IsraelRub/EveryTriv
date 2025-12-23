@@ -48,20 +48,16 @@
       "@shared/validation": ["../shared/validation"],
       "@shared/validation/*": ["../shared/validation/*"]
     },
-    "types": ["@testing-library/jest-dom", "react", "react-dom"]
+    "types": ["react", "react-dom"]
   },
   "include": [
     "src",
-    "test",
     "../shared",
     "../shared/**/*",
     "**/*.ts",
-    "**/*.tsx",
-    "vitest.config.ts",
-    "playwright.config.ts"
+    "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "test"
+    "node_modules"
   ]
 }

@@ -6,10 +6,16 @@
  */
 import { useQuery } from '@tanstack/react-query';
 
-import { clientLogger as logger } from '@shared/services';
-import type { CompleteUserAnalytics, UserAnalyticsQuery } from '@shared/types';
+import type {
+	CompleteUserAnalytics,
+	DifficultyBreakdown,
+	GlobalStatsResponse,
+	TrendQueryOptions,
+	UserAnalyticsQuery,
+	UserTrendPoint,
+} from '@shared/types';
 
-import { apiService } from '../services';
+import { analyticsService, clientLogger as logger } from '@/services';
 
 /**
  * Hook for getting user analytics
@@ -20,7 +26,7 @@ export const useUserAnalytics = () => {
 		queryKey: ['UserAnalytics'],
 		queryFn: async () => {
 			logger.userInfo('Fetching user analytics');
-			const result = await apiService.getUserAnalytics();
+			const result = await analyticsService.getUserAnalytics();
 			logger.userInfo('user analytics fetched successfully', {
 				userId: result.basic?.userId,
 			});
@@ -41,7 +47,7 @@ export const usePopularTopics = (query?: UserAnalyticsQuery) => {
 		queryKey: ['popularTopics', query],
 		queryFn: async () => {
 			logger.userInfo('Fetching popular topics', { query: query ? JSON.stringify(query) : undefined });
-			const result = await apiService.getPopularTopics(query);
+			const result = await analyticsService.getPopularTopics(query);
 			logger.userInfo('Popular topics fetched successfully', {
 				totalTopics: result.topics.length,
 			});
@@ -53,36 +59,33 @@ export const usePopularTopics = (query?: UserAnalyticsQuery) => {
 };
 
 /**
- * Hook for getting difficulty statistics
- * @param query Optional analytics query parameters
- * @returns Query result with difficulty statistics
+ * Hook for getting global difficulty statistics
+ * @returns Query result with global difficulty statistics
  */
-export const useDifficultyStats = (query?: UserAnalyticsQuery) => {
-	return useQuery({
-		queryKey: ['difficultyStats', query],
+export const useGlobalDifficultyStats = () => {
+	return useQuery<DifficultyBreakdown>({
+		queryKey: ['globalDifficultyStats'],
 		queryFn: async () => {
-			logger.userInfo('Fetching difficulty stats', { query: query ? JSON.stringify(query) : undefined });
-			const result = await apiService.getDifficultyStats(query);
-			logger.userInfo('Difficulty stats fetched successfully', {
-				totalDifficulties: Array.isArray(result.difficulties) ? result.difficulties.length : 0,
-			});
+			logger.userInfo('Fetching global difficulty stats');
+			const result = await analyticsService.getGlobalDifficultyStats();
+			logger.userInfo('Global difficulty stats fetched successfully');
 			return result;
 		},
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		staleTime: 10 * 60 * 1000, // 10 minutes
+		gcTime: 30 * 60 * 1000, // 30 minutes
 	});
 };
 
 /**
  * Hook for getting real-time analytics
- * @returns Query result with real-time analytics
+ * @returns Query result with real-time analytics (global stats)
  */
 export const useRealTimeAnalytics = () => {
-	return useQuery({
+	return useQuery<GlobalStatsResponse>({
 		queryKey: ['realTimeAnalytics'],
 		queryFn: async () => {
 			logger.userInfo('Fetching real-time analytics');
-			const result = await apiService.getUserAnalytics();
+			const result = await analyticsService.getGlobalStats();
 			logger.userInfo('Real-time analytics fetched successfully');
 			return result;
 		},
@@ -101,9 +104,28 @@ export const useGlobalStats = () => {
 		queryKey: ['globalStats'],
 		queryFn: async () => {
 			logger.userInfo('Fetching global stats');
-			const result = await apiService.getGlobalStats();
+			const result = await analyticsService.getGlobalStats();
 			logger.userInfo('Global stats fetched successfully');
 			return result;
+		},
+		staleTime: 10 * 60 * 1000, // 10 minutes
+		gcTime: 30 * 60 * 1000, // 30 minutes
+	});
+};
+
+/**
+ * Hook for getting global trends
+ * @param query Optional trend query parameters
+ * @returns Query result with global trend data
+ */
+export const useGlobalTrends = (query?: TrendQueryOptions) => {
+	return useQuery<UserTrendPoint[]>({
+		queryKey: ['globalTrends', query],
+		queryFn: async () => {
+			logger.userInfo('Fetching global trends', query ? { query: JSON.stringify(query) } : undefined);
+			const result = await analyticsService.getGlobalTrends(query);
+			logger.userInfo('Global trends fetched successfully');
+			return result.data || [];
 		},
 		staleTime: 10 * 60 * 1000, // 10 minutes
 		gcTime: 30 * 60 * 1000, // 30 minutes

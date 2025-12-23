@@ -1,6 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import type { UseModalRouteReturn } from '@/types/routing/modal.types';
+import { ROUTES } from '@/constants';
+
+import type { UseModalRouteReturn } from '@/types';
+
+import { isModalRouteState } from '@/utils';
 
 /**
  * Hook for modal route management
@@ -11,7 +15,7 @@ export function useModalRoute(): UseModalRouteReturn {
 	const location = useLocation();
 	const navigate = useNavigate();
 
-	const modalState = location.state as { modal?: boolean; returnUrl?: string } | null;
+	const modalState = isModalRouteState(location.state) ? location.state : null;
 	const isModal = modalState?.modal === true;
 	const returnUrl = modalState?.returnUrl;
 
@@ -23,7 +27,7 @@ export function useModalRoute(): UseModalRouteReturn {
 			if (window.history.length > 1) {
 				navigate(-1);
 			} else {
-				navigate('/', { replace: true });
+				navigate(ROUTES.HOME, { replace: true });
 			}
 		}
 	};

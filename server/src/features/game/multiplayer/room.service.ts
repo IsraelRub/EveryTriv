@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
-import { MULTIPLAYER_CONSTANTS, MULTIPLAYER_VALIDATION, VALIDATION_LIMITS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { MultiplayerRoom, Player, RoomConfig, RoomStatus } from '@shared/types';
-import { getErrorMessage, isMultiplayerRoom } from '@shared/utils';
+import { ERROR_CODES, MULTIPLAYER_CONFIG, PlayerStatus, RoomStatus, VALIDATION_CONFIG } from '@shared/constants';
+import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+import { isMultiplayerRoom } from '@shared/utils/domain';
 
 import { UserEntity } from '@internal/entities';
 import { ServerStorageService } from '@internal/modules';
+import { serverLogger as logger } from '@internal/services';
 
 /**
  * Service for managing multiplayer rooms
@@ -18,7 +19,7 @@ import { ServerStorageService } from '@internal/modules';
  */
 @Injectable()
 export class RoomService {
-	private readonly ROOM_TTL = MULTIPLAYER_CONSTANTS.ROOM_TTL;
+	private readonly ROOM_TTL = MULTIPLAYER_CONFIG.ROOM_TTL;
 	private readonly ROOM_PREFIX = 'multiplayer:room:';
 	private readonly inMemoryRooms = new Map<string, MultiplayerRoom>();
 
@@ -38,15 +39,15 @@ export class RoomService {
 		try {
 			// Validate configuration
 			if (
-				config.maxPlayers < MULTIPLAYER_VALIDATION.MAX_PLAYERS.MIN ||
-				config.maxPlayers > MULTIPLAYER_VALIDATION.MAX_PLAYERS.MAX
+				config.maxPlayers < VALIDATION_CONFIG.limits.PLAYERS.MIN ||
+				config.maxPlayers > VALIDATION_CONFIG.limits.PLAYERS.MAX
 			) {
 				throw new BadRequestException(
-					`Max players must be between ${MULTIPLAYER_VALIDATION.MAX_PLAYERS.MIN} and ${MULTIPLAYER_VALIDATION.MAX_PLAYERS.MAX}`
+					`Max players must be between ${VALIDATION_CONFIG.limits.PLAYERS.MIN} and ${VALIDATION_CONFIG.limits.PLAYERS.MAX}`
 				);
 			}
 
-			const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+			const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 			if (
 				config.questionsPerRequest !== UNLIMITED &&
 				(config.questionsPerRequest < MIN || config.questionsPerRequest > MAX)
@@ -59,7 +60,7 @@ export class RoomService {
 			// Get host user
 			const host = await this.userRepository.findOne({ where: { id: hostId } });
 			if (!host) {
-				throw new NotFoundException('Host user not found');
+				throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
 			}
 
 			// Create room ID
@@ -71,7 +72,7 @@ export class RoomService {
 				email: host.email,
 				displayName: host.firstName && host.lastName ? `${host.firstName} ${host.lastName}` : host.email,
 				score: 0,
-				status: 'waiting',
+				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
 				isHost: true,
 				answersSubmitted: 0,
@@ -85,7 +86,7 @@ export class RoomService {
 				hostId,
 				players: [hostPlayer],
 				config,
-				status: 'waiting',
+				status: RoomStatus.WAITING,
 				currentQuestionIndex: 0,
 				questions: [],
 				createdAt: new Date(),
@@ -149,15 +150,15 @@ export class RoomService {
 		try {
 			const room = await this.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
-			if (room.status !== 'waiting') {
-				throw new BadRequestException('Room is not accepting new players');
+			if (room.status !== RoomStatus.WAITING) {
+				throw new BadRequestException(ERROR_CODES.ROOM_NOT_ACCEPTING_PLAYERS);
 			}
 
 			if (room.players.length >= room.config.maxPlayers) {
-				throw new BadRequestException('Room is full');
+				throw new BadRequestException(ERROR_CODES.ROOM_FULL);
 			}
 
 			// Check if user is already in room
@@ -168,7 +169,7 @@ export class RoomService {
 			// Get user
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException('User not found');
+				throw new NotFoundException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Create player
@@ -177,7 +178,7 @@ export class RoomService {
 				email: user.email,
 				displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
 				score: 0,
-				status: 'waiting',
+				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
 				isHost: false,
 				answersSubmitted: 0,
@@ -224,7 +225,7 @@ export class RoomService {
 			room.players = room.players.filter(p => p.userId !== userId);
 
 			// If host left and room is not playing, delete room
-			if (room.hostId === userId && room.status === 'waiting') {
+			if (room.hostId === userId && room.status === RoomStatus.WAITING) {
 				await this.deleteRoom(roomId);
 				return null;
 			}
@@ -272,16 +273,20 @@ export class RoomService {
 		try {
 			const room = await this.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			room.status = status;
 			room.updatedAt = new Date();
 
-			if (status === 'playing') {
-				room.startTime = new Date();
-			} else if (status === 'finished' || status === 'cancelled') {
-				room.endTime = new Date();
+			switch (status) {
+				case RoomStatus.PLAYING:
+					room.startTime = new Date();
+					break;
+				case RoomStatus.FINISHED:
+				case RoomStatus.CANCELLED:
+					room.endTime = new Date();
+					break;
 			}
 
 			await this.persistRoomSnapshot(room);
@@ -307,7 +312,7 @@ export class RoomService {
 		try {
 			const room = await this.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			Object.assign(room, updates);

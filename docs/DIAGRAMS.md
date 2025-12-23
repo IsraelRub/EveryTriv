@@ -905,26 +905,21 @@ graph LR
 
 ```mermaid
 graph TB
-    A[TriviaGenerationService] --> B[ProvidersService]
+    A[TriviaGenerationService] --> B[GroqProvider]
     B --> C[BaseProvider]
-    C --> D[GroqProvider<br/>Priority: 1<br/>Free]
-    C --> E[GeminiProvider<br/>Priority: 2<br/>$0.075/M]
-    C --> F[ChatGPTProvider<br/>Priority: 3<br/>$0.15/M]
-    C --> G[ClaudeProvider<br/>Priority: 4<br/>$0.25/M]
     
-    B --> H[Provider Selection<br/>by Priority]
-    H --> I[Round Robin<br/>Cost-based]
-    H --> J[Load Balancing]
-    H --> K[Fallback<br/>on Error]
+    B --> D[Model Selection<br/>by Priority]
+    D --> E[Round Robin<br/>Priority 1 Models]
     
-    D --> L[Groq API<br/>Llama 3.1 8B]
-    E --> M[Gemini API<br/>Gemini 1.5 Flash]
-    F --> N[ChatGPT API<br/>GPT-4o-mini]
-    G --> O[Claude API<br/>Claude 3.5 Haiku]
+    B --> F[Groq API<br/>Unified Endpoint]
+    F --> G[llama-3.1-8b-instant<br/>Priority: 1, Free]
+    F --> H[gpt-oss-20b<br/>Priority: 1, Free Tier]
+    F --> I[gpt-oss-120b<br/>Priority: 2, Paid]
+    F --> J[llama-3.1-70b-versatile<br/>Priority: 3, Paid]
     
-    A --> P[Prompt Templates]
-    P --> Q[Trivia Prompt]
-    P --> R[Custom Difficulty Prompt]
+    A --> K[Prompt Templates]
+    K --> L[Trivia Prompt]
+    K --> M[Custom Difficulty Prompt]
 ```
 
 ## דיאגרמת Middleware Stack

@@ -4,14 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Users } from 'lucide-react';
 
-import { DifficultyLevel, GameMode as GameModeEnum } from '@shared/constants';
+import { DifficultyLevel, GameMode as GameModeEnum, PlayerType as PlayerTypeEnum } from '@shared/constants';
+
+import { ButtonVariant } from '@/constants';
 
 import { Button, Card, GameMode, HomeTitle } from '@/components';
-import { useAppDispatch } from '@/hooks';
-import { setGameMode } from '@/redux/slices';
-import type { GameConfig } from '@/types';
 
-type PlayerType = 'single' | 'multiplayer' | null;
+import { useAppDispatch } from '@/hooks';
+
+import type { GameConfig, PlayerType } from '@/types';
+
+import { setGameMode } from '@/redux/slices';
 
 export function HomeView() {
 	const navigate = useNavigate();
@@ -33,14 +36,15 @@ export function HomeView() {
 				difficulty: gameSettings.difficulty,
 				maxQuestionsPerGame: gameSettings.maxQuestionsPerGame,
 				timeLimit: gameSettings.timeLimit,
+				answerCount: gameSettings.answerCount,
 			})
 		);
 
 		navigate('/game/play');
 	};
 
-	const handlePlayerTypeSelect = (type: 'single' | 'multiplayer') => {
-		if (type === 'multiplayer') {
+	const handlePlayerTypeSelect = (type: PlayerTypeEnum) => {
+		if (type === PlayerTypeEnum.MULTIPLAYER) {
 			navigate('/multiplayer');
 			return;
 		}
@@ -48,13 +52,7 @@ export function HomeView() {
 	};
 
 	return (
-		<motion.main
-			role='main'
-			aria-label='Home Page'
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			className='min-h-screen'
-		>
+		<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen'>
 			<div className='container mx-auto px-4 py-12'>
 				<div className='max-w-6xl mx-auto space-y-12'>
 					<HomeTitle />
@@ -66,7 +64,7 @@ export function HomeView() {
 								<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
 									<Card
 										className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
-										onClick={() => handlePlayerTypeSelect('single')}
+										onClick={() => handlePlayerTypeSelect(PlayerTypeEnum.SINGLE)}
 									>
 										<div className='flex flex-col items-center text-center space-y-4'>
 											<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
@@ -83,7 +81,7 @@ export function HomeView() {
 								<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
 									<Card
 										className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
-										onClick={() => handlePlayerTypeSelect('multiplayer')}
+										onClick={() => handlePlayerTypeSelect(PlayerTypeEnum.MULTIPLAYER)}
 									>
 										<div className='flex flex-col items-center text-center space-y-4'>
 											<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
@@ -101,7 +99,7 @@ export function HomeView() {
 					) : (
 						<section className='space-y-6'>
 							<div className='text-center'>
-								<Button variant='ghost' onClick={() => setPlayerType(null)}>
+								<Button variant={ButtonVariant.GHOST} onClick={() => setPlayerType(null)}>
 									Back to player selection
 								</Button>
 							</div>

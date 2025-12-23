@@ -7,10 +7,15 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { PaymentMethod } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { PersonalPaymentData, ValidationResult } from '@shared/types';
-import { isRecord } from '@shared/utils';
+import { ERROR_CODES, PaymentMethod } from '@shared/constants';
+import type { ValidationResult } from '@shared/types';
+import { isRecord, sanitizeCardNumber } from '@shared/utils';
+import { isPaymentMethod } from '@shared/validation';
+
+import { serverLogger as logger } from '@internal/services';
+import type { PersonalPaymentData } from '@internal/types';
+import { validateName } from '@internal/validation/core';
+import { isValidCardNumber } from '@internal/validation/domain';
 
 import type { CreatePaymentDto } from '../../features/payment/dtos/payment.dto';
 
@@ -57,11 +62,11 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		if (!this.hasCardData(value)) {
-			throw new BadRequestException('Card details are required for manual credit payments');
+			throw new BadRequestException(ERROR_CODES.CARD_DETAILS_REQUIRED);
 		}
 
 		if (!this.isManualPaymentPayload(value)) {
-			throw new BadRequestException('Incomplete payment information supplied');
+			throw new BadRequestException(ERROR_CODES.INCOMPLETE_PAYMENT_INFO);
 		}
 
 		const validationResult = this.validateManualPaymentData(value);
@@ -96,18 +101,15 @@ export class PaymentDataPipe implements PipeTransform {
 			return { isValid: false, errors, suggestion: suggestions[0] };
 		}
 
-		// Validate card number
+		// Validate card number using shared validation function
 		if (!data.cardNumber || typeof data.cardNumber !== 'string') {
 			errors.push('Card number is required');
-			suggestions.push('Please enter your 16-digit card number');
+			suggestions.push('Please enter your card number');
 		} else {
-			const cleanCardNumber = data.cardNumber.replace(/\s+/g, '');
-			if (cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
-				errors.push('Card number must be between 13-19 digits');
-				suggestions.push('Enter a valid card number (13-19 digits without spaces)');
-			} else if (!/^\d+$/.test(cleanCardNumber)) {
-				errors.push('Card number can only contain digits');
-				suggestions.push('Remove any letters or special characters from your card number');
+			const sanitizedCardNumber = sanitizeCardNumber(data.cardNumber);
+			if (!isValidCardNumber(sanitizedCardNumber)) {
+				errors.push('Card number must be between 12-19 digits and pass Luhn algorithm validation');
+				suggestions.push('Enter a valid card number (12-19 digits)');
 			}
 		}
 
@@ -153,14 +155,12 @@ export class PaymentDataPipe implements PipeTransform {
 			}
 		}
 
-		// Validate cardholder name if provided
+		// Validate cardholder name if provided using shared validation function
 		if (data.cardHolderName) {
-			if (typeof data.cardHolderName !== 'string' || data.cardHolderName.trim().length < 2) {
-				errors.push('Cardholder name must be at least 2 characters');
+			const nameValidation = validateName(data.cardHolderName, 'Cardholder name');
+			if (!nameValidation.isValid) {
+				errors.push(...nameValidation.errors);
 				suggestions.push('Enter the full name as it appears on your card');
-			} else if (data.cardHolderName.length > 50) {
-				errors.push('Cardholder name is too long');
-				suggestions.push('Shorten the cardholder name to 50 characters or less');
 			}
 		}
 
@@ -176,7 +176,7 @@ export class PaymentDataPipe implements PipeTransform {
 			(typeof value.paypalOrderId !== 'string' || value.paypalOrderId.trim().length < 10) &&
 			(typeof value.paypalPaymentId !== 'string' || value.paypalPaymentId.trim().length < 10)
 		) {
-			throw new BadRequestException('A valid PayPal order ID or payment ID is required');
+			throw new BadRequestException(ERROR_CODES.PAYPAL_ORDER_ID_REQUIRED);
 		}
 	}
 
@@ -189,7 +189,10 @@ export class PaymentDataPipe implements PipeTransform {
 
 	private getPaymentMethod(value: PersonalPaymentData | CreatePaymentDto): PaymentMethod {
 		if ('paymentMethod' in value && value.paymentMethod) {
-			return value.paymentMethod;
+			const method = value.paymentMethod;
+			if (typeof method === 'string' && isPaymentMethod(method)) {
+				return method;
+			}
 		}
 		return PaymentMethod.MANUAL_CREDIT;
 	}

@@ -18,17 +18,17 @@ dotenv.config({ override: true });
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as express from 'express';
+import { json, urlencoded } from 'express';
 
-import { HTTP_METHODS, LOCALHOST_URLS, MESSAGE_FORMATTERS } from '@shared/constants';
+import { HttpMethod, LOCALHOST_CONFIG, MESSAGE_FORMATTERS } from '@shared/constants';
+import { AUTH_CONSTANTS } from '@internal/constants';
 import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
-import { AUTH_CONSTANTS } from './internal/constants';
 
 // Environment configuration
-const environment = process.env.NODE_ENV || 'development';
+const environment = process.env.NODE_ENV || 'production';
 
 /**
  * Bootstrap the NestJS application
@@ -76,15 +76,15 @@ async function bootstrap() {
 		console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
 
 		app.enableCors({
-			origin: process.env.CLIENT_URL || LOCALHOST_URLS.CLIENT,
+			origin: process.env.CLIENT_URL || LOCALHOST_CONFIG.urls.CLIENT,
 			credentials: true,
-			methods: Object.values(HTTP_METHODS),
+			methods: Object.values(HttpMethod),
 			allowedHeaders: ['Content-Type', AUTH_CONSTANTS.AUTH_HEADER, 'X-Requested-With'],
 		});
 
 		// Enable JSON body parser - must be before other middleware
-		app.use(express.json({ limit: '10mb' }));
-		app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+		app.use(json({ limit: '10mb' }));
+		app.use(urlencoded({ extended: true, limit: '10mb' }));
 
 		app.use(require('cookie-parser')());
 
@@ -92,28 +92,11 @@ async function bootstrap() {
 
 		const bootDuration = Date.now() - startTime;
 
-		console.log('Server startup:', {
+		console.log('Server startup complete:', {
+			port: AppConfig.port,
 			bootTime: `${bootDuration}ms`,
 			environment: environment,
 			nodeVersion: process.version,
-			sessionStart: true,
-			timestamp: new Date().toISOString(),
-		});
-
-		console.log('Server bootstrap performance:', {
-			duration: bootDuration,
-			port: AppConfig.port,
-			environment: environment,
-		});
-
-		console.log('Server startup complete:', {
-			port: AppConfig.port,
-			environment: environment,
-			bootTime: `${bootDuration}ms`,
-		});
-
-		console.log('Server configuration:', {
-			port: AppConfig.port,
 			timestamp: new Date().toISOString(),
 		});
 	} catch (error) {

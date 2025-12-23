@@ -4,9 +4,10 @@
  * @module AnalyticsEventTypes
  * @description Structures for tracking analytics events, metadata, and answer-level telemetry
  */
+import { AnalyticsEnvironment, AnalyticsResult } from '@shared/constants';
+
 import type { BasicValue } from '../../core/data.types';
 import type { BaseGameTopicDifficulty, GameDifficulty } from '../game/trivia.types';
-import type { AnalyticsEnvironment, AnalyticsResult } from './analyticsCommon.types';
 
 /**
  * Provider-specific question metadata captured for analytics
@@ -70,4 +71,16 @@ export interface AnalyticsAnswerData {
 	difficulty?: GameDifficulty;
 	selectedAnswer?: string;
 	correctAnswer?: string;
+	userAnswer?: string;
+}
+
+/**
+ * Track event response interface
+ * @interface TrackEventResponse
+ * @description Response from tracking an analytics event
+ */
+export interface TrackEventResponse {
+	success: boolean;
+	eventId?: string;
+	message?: string;
 }

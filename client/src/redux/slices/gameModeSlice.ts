@@ -1,31 +1,16 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { DifficultyLevel, GAME_MODE_DEFAULTS } from '@shared/constants';
+import { DifficultyLevel, GAME_MODES_CONFIG, GAME_STATE_CONFIG } from '@shared/constants';
 
-import { DEFAULT_GAME_MODE } from '../../constants';
-import type { ErrorPayload, GameModeConfigPayload, GameModeState, LoadingPayload } from '../../types';
-
-const initialState: GameModeState = {
-	currentMode: DEFAULT_GAME_MODE,
-	currentTopic: '',
-	currentDifficulty: DifficultyLevel.EASY,
-	currentSettings: {
-		mode: DEFAULT_GAME_MODE,
-		topic: '',
-		difficulty: DifficultyLevel.EASY,
-		...GAME_MODE_DEFAULTS[DEFAULT_GAME_MODE],
-	},
-	isLoading: false,
-	error: undefined,
-};
+import type { GameConfig } from '@/types';
 
 export const gameModeStateSlice = createSlice({
 	name: 'gameMode',
-	initialState,
+	initialState: GAME_STATE_CONFIG.initialGameModeState,
 	reducers: {
-		setGameMode: (state, action: PayloadAction<GameModeConfigPayload>) => {
-			const { mode, topic, difficulty, maxQuestionsPerGame, timeLimit } = action.payload;
-			const defaults = GAME_MODE_DEFAULTS[mode];
+		setGameMode: (state, action: PayloadAction<GameConfig>) => {
+			const { mode, topic, difficulty, maxQuestionsPerGame, timeLimit, answerCount } = action.payload;
+			const defaults = GAME_MODES_CONFIG[mode].defaults;
 
 			state.currentMode = mode;
 			state.currentTopic = topic || '';
@@ -36,24 +21,15 @@ export const gameModeStateSlice = createSlice({
 				difficulty: difficulty || DifficultyLevel.EASY,
 				maxQuestionsPerGame: maxQuestionsPerGame ?? defaults.maxQuestionsPerGame,
 				timeLimit: timeLimit ?? defaults.timeLimit,
+				answerCount: answerCount,
 			};
 			state.isLoading = false;
 			state.error = undefined;
 		},
-		setLoading: (state, action: PayloadAction<LoadingPayload>) => {
-			state.isLoading = action.payload.isLoading;
-		},
-		setError: (state, action: PayloadAction<ErrorPayload>) => {
-			state.error = action.payload.error;
-			state.isLoading = false;
-		},
-		clearError: state => {
-			state.error = undefined;
-		},
-		resetGameMode: () => initialState,
+		resetGameMode: () => GAME_STATE_CONFIG.initialGameModeState,
 	},
 });
 
-export const { setGameMode, setLoading, setError, clearError, resetGameMode } = gameModeStateSlice.actions;
+export const { setGameMode, resetGameMode } = gameModeStateSlice.actions;
 
 export default gameModeStateSlice.reducer;

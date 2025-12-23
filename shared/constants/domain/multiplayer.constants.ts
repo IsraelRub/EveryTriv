@@ -51,3 +51,37 @@ export const MULTIPLAYER_VALIDATION = {
 		MAX: MULTIPLAYER_CONSTANTS.MAX_PLAYERS,
 	},
 } as const;
+
+/**
+ * Room status enum
+ * @enum RoomStatus
+ * @description Status of a multiplayer room
+ */
+export enum RoomStatus {
+	WAITING = 'waiting',
+	STARTING = 'starting',
+	PLAYING = 'playing',
+	FINISHED = 'finished',
+	CANCELLED = 'cancelled',
+}
+
+/**
+ * Player status enum
+ * @enum PlayerStatus
+ * @description Status of a player in multiplayer game
+ */
+export enum PlayerStatus {
+	WAITING = 'waiting',
+	READY = 'ready',
+	PLAYING = 'playing',
+	ANSWERED = 'answered',
+	DISCONNECTED = 'disconnected',
+	FINISHED = 'finished',
+}
+
+/**
+ * Multiplayer config alias
+ * @constant
+ * @description Alias for MULTIPLAYER_CONSTANTS for backward compatibility
+ */
+export const MULTIPLAYER_CONFIG = MULTIPLAYER_CONSTANTS;

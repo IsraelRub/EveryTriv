@@ -7,7 +7,7 @@
  * @used_by client/src/utils/customDifficulty.utils.ts, shared/validation
  */
 import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES } from '@shared/constants';
-import type { BaseValidationResult, GameDifficulty } from '@shared/types';
+import type { BaseValidationResult, CustomDifficultyString, GameDifficulty } from '@shared/types';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -37,13 +37,36 @@ export function toDifficultyLevel(difficulty: GameDifficulty): DifficultyLevel {
 }
 
 /**
+ * Restores DifficultyLevel to GameDifficulty
+ * Converts DifficultyLevel enum back to GameDifficulty (string)
+ * Optionally restores custom difficulty text from metadata
+ *
+ * @param difficulty The difficulty level to restore (DifficultyLevel)
+ * @param metadata Optional metadata containing original custom difficulty text
+ * @returns GameDifficulty The corresponding difficulty string
+ * @description Converts DifficultyLevel enum back to GameDifficulty string format
+ */
+export function restoreGameDifficulty(difficulty: DifficultyLevel, metadata?: string): GameDifficulty {
+	// If it's a custom difficulty and we have metadata, try to restore the original text
+	if (difficulty === DifficultyLevel.CUSTOM && metadata) {
+		if (isCustomDifficulty(metadata)) {
+			// isCustomDifficulty ensures metadata is CustomDifficultyString, which is part of GameDifficulty
+			return metadata as GameDifficulty;
+		}
+	}
+
+	// DifficultyLevel enum values are valid GameDifficulty values
+	return difficulty;
+}
+
+/**
  * Checks if the provided difficulty string represents a custom difficulty
  *
  * @param difficulty The difficulty string to check
  * @returns boolean True if the difficulty is custom, false otherwise
  * @description Determines if difficulty starts with the custom difficulty prefix
  */
-export function isCustomDifficulty(difficulty: string): boolean {
+export function isCustomDifficulty(difficulty: string): difficulty is CustomDifficultyString {
 	return difficulty.startsWith(CUSTOM_DIFFICULTY_PREFIX);
 }
 
@@ -60,6 +83,20 @@ export function isRegisteredDifficulty(difficulty: string): difficulty is Diffic
 }
 
 /**
+ * Type guard to check if a value is a DifficultyLevel enum (not a custom difficulty string)
+ *
+ * @param difficulty The difficulty value to check
+ * @returns boolean True if the difficulty is a DifficultyLevel enum value
+ * @description Type guard that checks if a value is specifically a DifficultyLevel enum, excluding custom difficulty strings
+ */
+export function isDifficultyLevel(difficulty: unknown): difficulty is DifficultyLevel {
+	if (typeof difficulty !== 'string') {
+		return false;
+	}
+	return isRegisteredDifficulty(difficulty) && !isCustomDifficulty(difficulty);
+}
+
+/**
  * Checks if a difficulty value is valid (registered or custom)
  *
  * @param difficulty The difficulty string to validate
@@ -68,6 +105,20 @@ export function isRegisteredDifficulty(difficulty: string): difficulty is Diffic
  */
 export function isValidDifficulty(difficulty: string): boolean {
 	return isRegisteredDifficulty(difficulty) || isCustomDifficulty(difficulty);
+}
+
+/**
+ * Type guard for GameDifficulty
+ *
+ * @param difficulty The difficulty value to check
+ * @returns boolean True if the difficulty is a valid GameDifficulty (DifficultyLevel or CustomDifficultyString)
+ * @description Type guard that checks if a value is a valid GameDifficulty type
+ */
+export function isGameDifficulty(difficulty: unknown): difficulty is GameDifficulty {
+	if (typeof difficulty !== 'string') {
+		return false;
+	}
+	return isValidDifficulty(difficulty);
 }
 
 /**

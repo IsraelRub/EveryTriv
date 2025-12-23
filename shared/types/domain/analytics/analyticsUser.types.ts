@@ -4,6 +4,7 @@
  * @module AnalyticsUserTypes
  * @description Structures describing user analytics queries, summaries, comparisons, and insights
  */
+import { ComparisonTarget } from '../../../constants';
 import type { ActivityEntry, DifficultyBreakdown, TopicsPlayed } from '../../core/data.types';
 import type { UserRankData } from '../game/game.types';
 
@@ -11,8 +12,8 @@ import type { UserRankData } from '../game/game.types';
  * User analytics query interface
  */
 export interface UserAnalyticsQuery {
-	startDate?: string;
-	endDate?: string;
+	startDate?: Date;
+	endDate?: Date;
 	includeGameHistory?: boolean;
 	includePerformance?: boolean;
 	includeTopicBreakdown?: boolean;
@@ -31,6 +32,7 @@ export interface UserAnalyticsRecord {
 	correctAnswers: number;
 	userId?: string;
 	favoriteTopic?: string;
+	mostPlayedTopic?: string;
 	averageTimePerQuestion?: number;
 	totalScore?: number;
 	topicsPlayed?: TopicsPlayed;
@@ -74,6 +76,7 @@ export interface CompleteUserAnalytics {
 	game: UserAnalyticsRecord;
 	performance: UserPerformanceMetrics;
 	ranking: UserRankData;
+	trends?: UserTrendPoint[];
 }
 
 /**
@@ -145,7 +148,7 @@ export interface UserComparisonMetrics {
  */
 export interface UserComparisonResult {
 	userId: string;
-	target: 'global' | 'user';
+	target: ComparisonTarget;
 	targetUserId?: string;
 	userMetrics: UserComparisonMetrics;
 	targetMetrics: UserComparisonMetrics;

@@ -4,7 +4,7 @@
  * @module UserTypes
  * @description Type definitions for user entities, authentication, and user management
  */
-import { DifficultyLevel, GameMode, UserRole, UserStatus } from '../../../constants';
+import { AuthProvider, DifficultyLevel, GameMode, ProfileVisibility, UserRole, UserStatus } from '../../../constants';
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseGameStatistics } from '../game/game.types';
 
@@ -20,6 +20,7 @@ export interface BasicUser {
 	role: UserRole;
 	firstName?: string;
 	lastName?: string;
+	avatar?: number;
 }
 
 /**
@@ -31,7 +32,7 @@ export interface BasicUser {
 export interface UserProfile extends BasicUser, BaseEntity {
 	firstName?: string;
 	lastName?: string;
-	avatar?: string;
+	avatar?: number;
 	preferences?: Partial<UserPreferences>;
 }
 
@@ -41,7 +42,7 @@ export interface UserProfile extends BasicUser, BaseEntity {
  * @description User privacy settings
  */
 export interface UserPrivacyPreferences {
-	profileVisibility?: 'public' | 'private' | 'friends';
+	profileVisibility?: ProfileVisibility;
 	showOnlineStatus?: boolean;
 	showActivity?: boolean;
 	showAchievements?: boolean;
@@ -76,9 +77,16 @@ export interface UserPreferences {
 }
 
 /**
- * Authentication provider types
+ * Avatar option interface
+ * @interface AvatarOption
+ * @description Avatar selection option
  */
-export type AuthProvider = 'local' | 'google';
+export interface AvatarOption {
+	id: number;
+	name?: string;
+	url?: string;
+	unlocked?: boolean;
+}
 
 /**
  * User interface
@@ -118,3 +126,35 @@ export interface UserStatistics extends BaseGameStatistics {
  * @used_by client/src/services/api.service.ts, server/src/features/user, client/src/views/settings/SettingsView.tsx
  */
 export type UpdateUserProfileData = Partial<Omit<UserProfile, 'id' | 'email' | 'role' | 'createdAt' | 'updatedAt'>>;
+
+/**
+ * Change password data interface
+ * @interface ChangePasswordData
+ * @description Data for changing user password
+ */
+export interface ChangePasswordData {
+	currentPassword: string;
+	newPassword: string;
+}
+
+/**
+ * Update credits data interface
+ * @interface UpdateCreditsData
+ * @description Data for updating user credits
+ */
+export interface UpdateCreditsData {
+	userId: string;
+	amount: number;
+	reason: string;
+}
+
+/**
+ * Deduct credits response interface
+ * @interface DeductCreditsResponse
+ * @description Response from deducting credits operation
+ */
+export interface DeductCreditsResponse {
+	success: boolean;
+	credits: number;
+	deducted: number;
+}

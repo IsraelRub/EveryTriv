@@ -5,7 +5,8 @@
  * @description Shared utility functions for storage operations
  * @used_by shared/services/storage
  */
-import { StorageOperationResult, StorageType } from '@shared/types';
+import { StorageType } from '@shared/constants';
+import type { StorageOperationResult } from '@shared/types';
 
 import { getErrorMessage } from '../core/error.utils';
 
@@ -23,7 +24,7 @@ export function createTimedResult<T>(
 	data?: T,
 	error?: string,
 	startTime?: number,
-	storageType: StorageType = 'persistent'
+	storageType: StorageType = StorageType.PERSISTENT
 ): StorageOperationResult<T> {
 	const duration = startTime ? Date.now() - startTime : undefined;
 	const result: StorageOperationResult<T> = {

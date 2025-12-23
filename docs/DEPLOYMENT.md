@@ -130,15 +130,9 @@ JWT_EXPIRES_IN=24h
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# AI Providers (ordered by priority - lower number = selected first)
-# Priority: 1 (highest) - Groq (free tier)
+# AI Provider - Groq (with multiple models support)
+# Priority: 1 (free tier models: llama-3.1-8b-instant, gpt-oss-20b)
 GROQ_API_KEY=your-groq-api-key
-# Priority: 2 - Gemini (cost: $0.075/M tokens)
-GEMINI_API_KEY=your-google-api-key
-# Priority: 3 - ChatGPT (cost: $0.15/M tokens)
-CHATGBT_API_KEY=your-openai-key
-# Priority: 4 (lowest) - Claude (cost: $0.25/M tokens)
-CLAUDE_API_KEY=your-anthropic-key
 
 # Stripe
 STRIPE_SECRET_KEY=your-stripe-key
@@ -149,6 +143,13 @@ CORS_ORIGIN=https://your-domain.com
 
 # Port
 PORT=3002
+
+# Logging (Optional)
+DATABASE_LOGGING=false
+ENABLE_DEBUG_LOGGING=false
+
+# Security (Optional)
+COOKIE_SECURE=true
 ```
 
 ### Frontend (.env)

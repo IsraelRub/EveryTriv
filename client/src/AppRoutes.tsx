@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
+import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+
+import { useQueryClient } from '@tanstack/react-query';
 
 import { UserRole } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
 import { mergeUserPreferences } from '@shared/utils';
 
-import { AudioKey } from '@/constants';
-import { ModalSize } from '@/constants/ui/size.constants';
-import { useAppDispatch, useAudio } from '@/hooks';
+import { AudioKey, ModalSize, ROUTES } from '@/constants';
 
 import {
 	CompleteProfile,
@@ -18,27 +17,33 @@ import {
 	OAuthCallback,
 	ProtectedRoute,
 	PublicRoute,
-} from './components';
-import { fetchUserData, setAuthenticated, setUser } from './redux/slices';
-import { audioService, authService, prefetchAuthenticatedQueries } from './services';
+} from '@/components';
+
+import { useAppDispatch, useAudio } from '@/hooks';
+
+import { audioService, authService, clientLogger as logger, prefetchAuthenticatedQueries } from '@/services';
+
+import { fetchUserData, setAuthenticated, setUser } from '@/redux/slices';
+
 import {
 	AdminDashboard,
-	AnalyticsView,
+	ContactView,
 	CustomDifficultyView,
-	GameHistory,
 	GameSessionView,
 	GameSummaryView,
 	HomeView,
-	LeaderboardView,
 	LoginView,
 	MultiplayerGameView,
 	MultiplayerLobbyView,
 	MultiplayerResultsView,
 	PaymentView,
+	PrivacyPolicyView,
 	RegistrationView,
+	StatisticsView,
+	TermsOfServiceView,
 	UnauthorizedView,
 	UserProfile,
-} from './views';
+} from '@/views';
 
 /**
  * Navigation tracking component for analytics and error logging
@@ -64,7 +69,7 @@ function NavigationTracker() {
 			type: 'spa_navigation',
 		});
 
-		if (location.pathname === '/auth/google') {
+		if (location.pathname === ROUTES.AUTH_GOOGLE) {
 			logger.navigationOAuth('Google', {
 				path: location.pathname,
 				timestamp: new Date().toISOString(),
@@ -72,28 +77,31 @@ function NavigationTracker() {
 		}
 
 		const routePatterns = [
-			'/',
-			'/game/play',
-			'/game/summary',
-			'/game/custom',
-			'/play',
-			'/start',
-			'/profile',
-			'/history',
-			'/leaderboard',
-			'/payment',
+			ROUTES.HOME,
+			ROUTES.GAME,
+			ROUTES.GAME_PLAY,
+			ROUTES.GAME_SUMMARY,
+			ROUTES.GAME_CUSTOM,
+			ROUTES.PLAY,
+			ROUTES.START,
+			ROUTES.PROFILE,
+			ROUTES.PAYMENT,
 			'/credits',
-			'/register',
-			'/login',
-			'/admin',
-			'/auth/callback',
-			'/complete-profile',
-			'/analytics',
-			'/multiplayer',
-			'/multiplayer/game/:roomId',
-			'/multiplayer/results/:roomId',
-			'/forgot-password',
-			'/unauthorized',
+			ROUTES.REGISTER,
+			ROUTES.LOGIN,
+			ROUTES.ADMIN,
+			ROUTES.AUTH_CALLBACK,
+			ROUTES.COMPLETE_PROFILE,
+			ROUTES.STATISTICS,
+			ROUTES.LEADERBOARD,
+			ROUTES.MULTIPLAYER,
+			ROUTES.MULTIPLAYER_GAME,
+			ROUTES.MULTIPLAYER_RESULTS,
+			ROUTES.PRIVACY,
+			ROUTES.TERMS,
+			ROUTES.CONTACT,
+			ROUTES.FORGOT_PASSWORD,
+			ROUTES.UNAUTHORIZED,
 		];
 
 		const isValidRoute = routePatterns.some(pattern => matchPath({ path: pattern, end: true }, location.pathname));
@@ -121,9 +129,10 @@ function NavigationTracker() {
 export default function AppRoutes() {
 	const dispatch = useAppDispatch();
 	const location = useLocation();
+	const queryClient = useQueryClient();
 
 	// Check if current route is an authentication page
-	const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
 
 	useEffect(() => {
 		const initAuth = async () => {
@@ -146,25 +155,29 @@ export default function AppRoutes() {
 						// Error already logged in queryClient.service.ts - no need to log again
 						await prefetchAuthenticatedQueries();
 					} else if (fetchUserData.rejected.match(result)) {
-						// Error already logged in auth.service.ts - no need to log again
+						// authService.logout() clears all auth data, localStorage, and Redux Persist
 						await authService.logout();
+						// Clear React Query cache to remove all user-specific cached data
+						queryClient.clear();
 						// Clear Redux state after logout
 						dispatch(setUser(null));
 						dispatch(setAuthenticated(false));
 						// Only redirect to login if not already on auth pages
 						if (!isAuthPage) {
-							window.location.href = '/login';
+							window.location.href = ROUTES.LOGIN;
 						}
 					}
 				} catch {
-					// Error already logged in auth.service.ts - no need to log again
+					// authService.logout() clears all auth data, localStorage, and Redux Persist
 					await authService.logout();
+					// Clear React Query cache to remove all user-specific cached data
+					queryClient.clear();
 					// Clear Redux state after logout
 					dispatch(setUser(null));
 					dispatch(setAuthenticated(false));
 					// Only redirect to login if not already on auth pages
 					if (!isAuthPage) {
-						window.location.href = '/login';
+						window.location.href = ROUTES.LOGIN;
 					}
 				}
 			}
@@ -174,7 +187,7 @@ export default function AppRoutes() {
 			// Silently handle any unhandled promise rejections from initAuth
 			// These are expected when user is not authenticated
 		});
-	}, [dispatch, isAuthPage]);
+	}, [dispatch, isAuthPage, queryClient]);
 
 	return (
 		<div className='app-shell'>
@@ -189,19 +202,25 @@ export default function AppRoutes() {
 			<main id='main-content' className='app-main' tabIndex={-1}>
 				<Routes>
 					{/* Public routes */}
-					<Route path='/' element={<HomeView />} />
-					<Route path='/play' element={<HomeView />} />
-					<Route path='/start' element={<HomeView />} />
-					<Route path='/leaderboard' element={<LeaderboardView />} />
+					<Route path={ROUTES.HOME} element={<HomeView />} />
+					<Route path={ROUTES.PLAY} element={<HomeView />} />
+					<Route path={ROUTES.START} element={<HomeView />} />
+					<Route path={ROUTES.STATISTICS} element={<StatisticsView />} />
+
+					{/* Legal and Info routes */}
+					<Route path={ROUTES.PRIVACY} element={<PrivacyPolicyView />} />
+					<Route path={ROUTES.TERMS} element={<TermsOfServiceView />} />
+					<Route path={ROUTES.CONTACT} element={<ContactView />} />
 
 					{/* Game routes */}
-					<Route path='/game/play' element={<GameSessionView />} />
-					<Route path='/game/summary' element={<GameSummaryView />} />
-					<Route path='/game/custom' element={<CustomDifficultyView />} />
+					<Route path={ROUTES.GAME} element={<Navigate to={ROUTES.GAME_PLAY} replace />} />
+					<Route path={ROUTES.GAME_PLAY} element={<GameSessionView />} />
+					<Route path={ROUTES.GAME_SUMMARY} element={<GameSummaryView />} />
+					<Route path={ROUTES.GAME_CUSTOM} element={<CustomDifficultyView />} />
 
 					{/* Multiplayer routes */}
 					<Route
-						path='/multiplayer'
+						path={ROUTES.MULTIPLAYER}
 						element={
 							<ProtectedRoute>
 								<MultiplayerLobbyView />
@@ -209,7 +228,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/multiplayer/game/:roomId'
+						path={ROUTES.MULTIPLAYER_GAME}
 						element={
 							<ProtectedRoute>
 								<MultiplayerGameView />
@@ -217,7 +236,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/multiplayer/results/:roomId'
+						path={ROUTES.MULTIPLAYER_RESULTS}
 						element={
 							<ProtectedRoute>
 								<MultiplayerResultsView />
@@ -227,7 +246,7 @@ export default function AppRoutes() {
 
 					{/* Protected routes - require authentication */}
 					<Route
-						path='/profile'
+						path={ROUTES.PROFILE}
 						element={
 							<ProtectedRoute>
 								<UserProfile />
@@ -235,15 +254,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/history'
-						element={
-							<ProtectedRoute>
-								<GameHistory />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path='/payment'
+						path={ROUTES.PAYMENT}
 						element={
 							<ProtectedRoute>
 								<ModalRouteWrapper modalSize={ModalSize.XL}>
@@ -253,7 +264,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/complete-profile'
+						path={ROUTES.COMPLETE_PROFILE}
 						element={
 							<ProtectedRoute>
 								<CompleteProfile />
@@ -261,15 +272,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/analytics'
-						element={
-							<ProtectedRoute>
-								<AnalyticsView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path='/admin'
+						path={ROUTES.ADMIN}
 						element={
 							<ProtectedRoute requiredRole={UserRole.ADMIN}>
 								<AdminDashboard />
@@ -279,7 +282,7 @@ export default function AppRoutes() {
 
 					{/* Public routes - redirect if authenticated */}
 					<Route
-						path='/login'
+						path={ROUTES.LOGIN}
 						element={
 							<PublicRoute>
 								<ModalRouteWrapper>
@@ -289,7 +292,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path='/register'
+						path={ROUTES.REGISTER}
 						element={
 							<PublicRoute>
 								<ModalRouteWrapper>
@@ -300,13 +303,13 @@ export default function AppRoutes() {
 					/>
 
 					{/* OAuth callback - no protection needed */}
-					<Route path='/auth/callback' element={<OAuthCallback />} />
+					<Route path={ROUTES.AUTH_CALLBACK} element={<OAuthCallback />} />
 
 					{/* Forgot password - placeholder route */}
-					<Route path='/forgot-password' element={<NotFound />} />
+					<Route path={ROUTES.FORGOT_PASSWORD} element={<NotFound />} />
 
 					{/* Unauthorized page */}
-					<Route path='/unauthorized' element={<UnauthorizedView />} />
+					<Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedView />} />
 
 					{/* 404 */}
 					<Route path='*' element={<NotFound />} />

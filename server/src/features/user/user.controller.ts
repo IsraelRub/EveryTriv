@@ -15,17 +15,19 @@ import {
 } from '@nestjs/common';
 
 import {
+	API_ROUTES,
 	CACHE_DURATION,
+	ERROR_CODES,
 	GameMode,
-	PAGINATION_LIMITS,
 	STRING_LIMITS,
 	UserRole,
 	UserStatus,
-	VALIDATION_ERRORS,
 } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { AdminUserData, BasicUser, TokenPayload } from '@shared/types';
+import type { AdminUserData, BasicUser } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
+import type { TokenPayload } from '@internal/types';
 
 import {
 	Cache,
@@ -42,6 +44,7 @@ import { DeductCreditsDto } from '../credits/dtos';
 import {
 	ChangePasswordDto,
 	SearchUsersDto,
+	SetAvatarDto,
 	UpdateSinglePreferenceDto,
 	UpdateUserCreditsDto,
 	UpdateUserFieldDto,
@@ -51,7 +54,7 @@ import {
 } from './dtos';
 import { UserService } from './user.service';
 
-@Controller('users')
+@Controller(API_ROUTES.USER.BASE)
 export class UserController {
 	constructor(
 		private readonly userService: UserService,
@@ -63,11 +66,11 @@ export class UserController {
 	 * @param user Current user token payload
 	 * @returns User profile data
 	 */
-	@Get('profile')
+	@Get(API_ROUTES.USER.PROFILE)
 	@NoCache()
 	async getUserProfile(@CurrentUser() user: TokenPayload | null) {
 		if (!user || !user.sub) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.getUserProfile(user.sub);
@@ -93,10 +96,10 @@ export class UserController {
 	 * @param body Credit deduction data
 	 * @returns Credit deduction result
 	 */
-	@Post('credits')
+	@Post(API_ROUTES.USER.CREDITS)
 	async deductCredits(@CurrentUserId() userId: string | null, @Body() body: DeductCreditsDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.creditsService.deductCredits(
@@ -131,13 +134,13 @@ export class UserController {
 	 * @param profileData Profile update data
 	 * @returns Updated user profile
 	 */
-	@Put('profile')
+	@Put(API_ROUTES.USER.PROFILE)
 	@UsePipes(UserDataPipe)
 	@RequireEmailVerified()
 	@RequireUserStatus('active')
 	async updateUserProfile(@CurrentUserId() userId: string | null, @Body() profileData: UpdateUserProfileDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.updateUserProfile(userId, profileData);
@@ -160,20 +163,53 @@ export class UserController {
 	}
 
 	/**
+	 * Set user avatar
+	 * @param userId Current user identifier
+	 * @param avatarData Avatar data with avatarId
+	 * @returns Updated user profile
+	 */
+	@Patch(API_ROUTES.USER.AVATAR)
+	@RequireEmailVerified()
+	@RequireUserStatus('active')
+	async setAvatar(@CurrentUserId() userId: string | null, @Body() avatarData: SetAvatarDto) {
+		if (!userId) {
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+		}
+		try {
+			const result = await this.userService.setAvatar(userId, avatarData.avatarId);
+
+			// Log API call for avatar update
+			logger.apiUpdate('user_avatar', {
+				userId,
+				avatar: avatarData.avatarId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Error setting user avatar', {
+				error: getErrorMessage(error),
+				userId,
+				avatar: avatarData.avatarId,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Search users
 	 * @param query Search query parameters
 	 * @returns Search results with matching users
 	 */
-	@Get('search')
+	@Get(API_ROUTES.USER.SEARCH)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache search results for 5 minutes
 	async searchUsers(@Query() query: SearchUsersDto) {
 		try {
-			const result = await this.userService.searchUsers(query.query, query.limit || PAGINATION_LIMITS.DEFAULT);
+			const result = await this.userService.searchUsers(query.query, query.limit);
 
 			// Log API call for user search
 			logger.apiRead('user_search', {
 				query: query.query,
-				limit: query.limit || PAGINATION_LIMITS.DEFAULT,
+				limit: query.limit,
 				resultsCount: result.totalResults,
 			});
 
@@ -182,7 +218,7 @@ export class UserController {
 			logger.userError('Error searching users', {
 				error: getErrorMessage(error),
 				query: query.query,
-				limit: query.limit || PAGINATION_LIMITS.DEFAULT,
+				limit: query.limit,
 			});
 			throw error;
 		}
@@ -193,10 +229,10 @@ export class UserController {
 	 * @param userId Current user identifier
 	 * @returns Account deletion result
 	 */
-	@Delete('account')
+	@Delete(API_ROUTES.USER.ACCOUNT)
 	async deleteUserAccount(@CurrentUserId() userId: string | null) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.deleteUserAccount(userId);
@@ -222,21 +258,17 @@ export class UserController {
 	 * @param passwordData Password change data
 	 * @returns Password change result
 	 */
-	@Put('change-password')
+	@Put(API_ROUTES.USER.CHANGE_PASSWORD)
 	async changePassword(@CurrentUserId() userId: string | null, @Body() passwordData: ChangePasswordDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!passwordData.currentPassword || !passwordData.newPassword) {
-				throw new HttpException('Current password and new password are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.CURRENT_PASSWORD_AND_NEW_PASSWORD_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.userService.changePassword(
-				userId,
-				passwordData.currentPassword,
-				passwordData.newPassword
-			);
+			const result = await this.userService.changePassword(userId, passwordData);
 
 			// Log API call for password change
 			logger.apiUpdate('user_password_change', {
@@ -259,10 +291,10 @@ export class UserController {
 	 * @param preferences User preferences data
 	 * @returns Updated user preferences
 	 */
-	@Put('preferences')
+	@Put(API_ROUTES.USER.PREFERENCES)
 	async updateUserPreferences(@CurrentUserId() userId: string | null, @Body() preferences: UpdateUserPreferencesDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.updateUserPreferences(userId, preferences);
@@ -291,18 +323,18 @@ export class UserController {
 	 * @param body Field update data
 	 * @returns Updated user field value
 	 */
-	@Patch('profile/:field')
+	@Patch(API_ROUTES.USER.PROFILE_FIELD)
 	async updateUserField(
 		@CurrentUserId() userId: string | null,
 		@Param('field') field: string,
 		@Body() body: UpdateUserFieldDto
 	) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!field || !body.value) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			// Validate field name before type cast
@@ -317,7 +349,6 @@ export class UserController {
 				'dailyFreeQuestions',
 				'remainingFreeQuestions',
 				'role',
-				'currentSubscriptionId',
 				'status',
 			];
 
@@ -352,18 +383,18 @@ export class UserController {
 	 * @param body Preference update data
 	 * @returns Updated preference value
 	 */
-	@Patch('preferences/:preference')
+	@Patch(API_ROUTES.USER.PREFERENCES_FIELD)
 	async updateSinglePreference(
 		@CurrentUserId() userId: string | null,
 		@Param('preference') preference: string,
 		@Body() body: UpdateSinglePreferenceDto
 	) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!preference || body.value === undefined) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateSinglePreference(userId, preference, body.value);
@@ -391,12 +422,12 @@ export class UserController {
 	 * @param id User identifier
 	 * @returns User data
 	 */
-	@Get(':id')
+	@Get(API_ROUTES.USER.GET_BY_ID)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getUserById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.getUserById(id);
@@ -422,15 +453,19 @@ export class UserController {
 	 * @param creditsData Credit update data
 	 * @returns Credit update result
 	 */
-	@Put('credits/:userId')
+	@Patch(API_ROUTES.USER.UPDATE_CREDITS)
 	@Roles(UserRole.ADMIN)
 	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_AMOUNT_AND_REASON, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_AMOUNT_AND_REASON, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.userService.updateUserCredits(userId, creditsData.amount, creditsData.reason);
+			const result = await this.userService.updateUserCredits({
+				userId,
+				amount: creditsData.amount,
+				reason: creditsData.reason,
+			});
 
 			// Log API call for credits update
 			logger.apiUpdate('user_credits_admin', {
@@ -455,12 +490,12 @@ export class UserController {
 	 * @param userId User identifier to delete
 	 * @returns User deletion result
 	 */
-	@Delete(':userId')
+	@Delete(API_ROUTES.USER.GET_BY_ID)
 	@Roles(UserRole.ADMIN)
 	async deleteUser(@Param('userId') userId: string) {
 		try {
 			if (!userId) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.deleteUserAccount(userId);
@@ -486,17 +521,17 @@ export class UserController {
 	 * @param statusData Status update data
 	 * @returns Updated user status
 	 */
-	@Patch(':userId/status')
+	@Patch(API_ROUTES.USER.UPDATE_STATUS)
 	@Roles(UserRole.ADMIN)
 	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const validStatuses = Object.values(UserStatus);
 			if (!validStatuses.includes(statusData.status)) {
-				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserStatus(userId, statusData.status);
@@ -525,7 +560,7 @@ export class UserController {
 	 * @param offset Optional pagination offset
 	 * @returns List of users with pagination metadata
 	 */
-	@Get('admin/all')
+	@Get(API_ROUTES.USER.ADMIN.ALL)
 	@Roles(UserRole.ADMIN)
 	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
 	async getAllUsers(
@@ -534,7 +569,7 @@ export class UserController {
 		@Query('offset') offset?: number
 	) {
 		if (!user || !user.sub) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
@@ -585,7 +620,7 @@ export class UserController {
 	 * @param statusData Status update data
 	 * @returns Updated user status information
 	 */
-	@Put('admin/:userId/status')
+	@Patch(API_ROUTES.USER.ADMIN.STATUS_BY_USER_ID)
 	@Roles(UserRole.ADMIN)
 	async adminUpdateUserStatus(
 		@CurrentUser() adminUser: BasicUser | null,
@@ -593,16 +628,16 @@ export class UserController {
 		@Body() statusData: UpdateUserStatusDto
 	) {
 		if (!adminUser || !adminUser.id) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException(VALIDATION_ERRORS.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const validStatuses = Object.values(UserStatus);
 			if (!validStatuses.includes(statusData.status)) {
-				throw new HttpException(VALIDATION_ERRORS.INVALID_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const updated = await this.userService.updateUserStatus(userId, statusData.status);

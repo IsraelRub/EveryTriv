@@ -6,39 +6,22 @@
  */
 
 /**
- * UI constants
- * @description Theme configuration, styling constants, and UI-related settings
+ * Core constants
+ * @description UI constants and core configuration
  */
-export * from './ui';
+export * from './core';
 
 /**
- * Audio constants
- * @description Audio settings, sound effects, and audio management configuration
+ * Domain constants
+ * @description Domain-specific constants (game, user)
  */
-export * from './audio.constants';
+export * from './domain';
 
 /**
- * Game constants
- * @description Game configuration, scoring constants, and game mode selection
+ * Infrastructure constants
+ * @description Infrastructure constants (storage, audio, services)
  */
-export * from './game.constants';
+export * from './infrastructure';
 
-/**
- * User constants
- * @description User-related constants, default values, and user configuration
- */
-export * from './user-defaults.constants';
-
-/**
- * Storage constants
- * @description Local storage keys, cache configuration, and storage settings
- */
-export * from './storage.constants';
-
-export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';
-
-/**
- * Services constants
- * @description Service-related constants and configuration
- */
-export * from './services/logger.constants';
+// Export CLIENT_STORAGE_KEYS alias for backward compatibility
+export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './infrastructure/storage.constants';

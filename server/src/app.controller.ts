@@ -8,7 +8,8 @@
 import { Controller, Get } from '@nestjs/common';
 
 import { API_VERSION, CACHE_DURATION } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { Cache, Public } from './common';
 

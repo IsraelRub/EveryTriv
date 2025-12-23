@@ -10,11 +10,13 @@ import { AuthenticationManager } from 'src/common/auth/authentication.manager';
 import { PasswordService } from 'src/common/auth/password.service';
 import { Repository } from 'typeorm';
 
-import { UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import { UserData } from '@shared/types';
+import { ERROR_CODES, UserRole } from '@shared/constants';
 
 import { UserEntity } from '@internal/entities';
+import { CacheService } from '@internal/modules/cache/cache.service';
+import { ServerStorageService } from '@internal/modules/storage/storage.service';
+import { serverLogger as logger } from '@internal/services';
+import type { UserData } from '@internal/types';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -24,7 +26,9 @@ export class AuthService {
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
 		private readonly authenticationManager: AuthenticationManager,
-		private readonly passwordService: PasswordService
+		private readonly passwordService: PasswordService,
+		private readonly cacheService: CacheService,
+		private readonly storageService: ServerStorageService
 	) {}
 
 	/**
@@ -45,7 +49,7 @@ export class AuthService {
 				: false;
 
 			if (!passwordMatches) {
-				throw new BadRequestException('Email already exists');
+				throw new BadRequestException(ERROR_CODES.EMAIL_ALREADY_REGISTERED);
 			}
 
 			const tokenPair = await this.authenticationManager.generateTokensForUser({
@@ -121,7 +125,7 @@ export class AuthService {
 			});
 
 			if (!user) {
-				throw new UnauthorizedException('Invalid credentials');
+				throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
 			// Use AuthenticationManager for authentication
@@ -137,12 +141,12 @@ export class AuthService {
 			);
 
 			if (authResult.error) {
-				throw new UnauthorizedException(authResult.error || 'Invalid credentials');
+				throw new UnauthorizedException(authResult.error || ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
 			// Type guard: we know these exist when there's no error
 			if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
-				throw new UnauthorizedException('Authentication result incomplete');
+				throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_RESULT_INCOMPLETE);
 			}
 
 			// Update lastLogin timestamp
@@ -174,12 +178,12 @@ export class AuthService {
 			const authResult = await this.authenticationManager.refreshAccessToken(refreshTokenDto.refreshToken);
 
 			if (authResult.error) {
-				throw new UnauthorizedException(authResult.error || 'Invalid refresh token');
+				throw new UnauthorizedException(authResult.error || ERROR_CODES.INVALID_REFRESH_TOKEN);
 			}
 
 			// Type guard: we know accessToken exists when there's no error
 			if (!authResult.accessToken) {
-				throw new UnauthorizedException('Authentication result incomplete');
+				throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_RESULT_INCOMPLETE);
 			}
 
 			return {
@@ -201,14 +205,28 @@ export class AuthService {
 	 */
 	async getCurrentUser(userId: string): Promise<Omit<UserData, 'passwordHash'> & { passwordHash?: string }> {
 		try {
+			logger.authDebug('getCurrentUser called', {
+				requestedUserId: userId,
+			});
+
 			const user = await this.userRepository.findOne({
 				where: { id: userId, isActive: true },
 				select: ['id', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
 			});
 
 			if (!user) {
-				throw new UnauthorizedException('User not found');
+				logger.authError('User not found in database', {
+					requestedUserId: userId,
+				});
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
+
+			logger.authDebug('User found in database', {
+				userId: user.id,
+				email: user.email,
+				role: user.role,
+				requestedUserId: userId,
+			});
 
 			return user;
 		} catch (error) {
@@ -224,13 +242,29 @@ export class AuthService {
 	 * @param userId User ID
 	 * @returns Success message
 	 */
-	async logout(userId: string): Promise<{ message: string }> {
+	async logout(userId: string): Promise<string> {
 		// Use AuthenticationManager for logout
 		await this.authenticationManager.logout(userId);
 
-		return {
-			message: 'Logged out successfully',
-		};
+		// Clear user-specific cache entries to prevent stale data on re-login
+		try {
+			await this.cacheService.invalidatePattern(`*:${userId}`);
+			await this.cacheService.invalidatePattern(`*:${userId}:*`);
+			logger.authInfo('User cache cleared on logout', { userId });
+		} catch (error) {
+			logger.authError('Failed to clear user cache on logout', { userId, error: String(error) });
+		}
+
+		// Clear user session data from Redis storage
+		try {
+			const sessionKey = `user_session:${userId}`;
+			await this.storageService.delete(sessionKey);
+			logger.authInfo('User session data cleared on logout', { userId });
+		} catch (error) {
+			logger.authError('Failed to clear user session data on logout', { userId, error: String(error) });
+		}
+
+		return 'Logged out successfully';
 	}
 
 	/**
@@ -274,7 +308,7 @@ export class AuthService {
 		avatar?: string;
 	}): Promise<AuthResponseDto> {
 		if (!profile.googleId) {
-			throw new BadRequestException('Google profile is missing identifier');
+			throw new BadRequestException(ERROR_CODES.GOOGLE_PROFILE_MISSING_IDENTIFIER);
 		}
 
 		const normalizedEmail = profile.email?.toLowerCase();
@@ -289,23 +323,17 @@ export class AuthService {
 			const lastName = profile.lastName;
 
 			logger.systemInfo('Creating new user from Google profile', {
-				data: {
-					googleId: profile.googleId,
-					email,
-					hasFirstName: !!firstName,
-					firstName: firstName || undefined,
-					hasLastName: !!lastName,
-					lastName: lastName || undefined,
-					hasAvatar: !!profile.avatar,
-				},
+				googleId: profile.googleId,
+				email,
 			});
 
+			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
+			// Avatar can only be set through the dedicated /users/avatar endpoint
 			user = this.userRepository.create({
 				email,
 				googleId: profile.googleId,
 				firstName: firstName || undefined,
 				lastName: lastName || undefined,
-				avatar: profile.avatar,
 				role: UserRole.USER,
 				isActive: true,
 				lastLogin: new Date(),
@@ -315,13 +343,6 @@ export class AuthService {
 
 			logger.systemInfo('User created from Google profile', {
 				userId: savedUser.id,
-				data: {
-					hasFirstName: !!savedUser.firstName,
-					firstName: savedUser.firstName || undefined,
-					hasLastName: !!savedUser.lastName,
-					lastName: savedUser.lastName || undefined,
-					hasAvatar: !!savedUser.avatar,
-				},
 			});
 
 			// Verify data was saved correctly
@@ -329,13 +350,8 @@ export class AuthService {
 			if (verifyUser) {
 				logger.systemInfo('Verified saved user data', {
 					userId: verifyUser.id,
-					data: {
-						hasFirstName: !!verifyUser.firstName,
-						firstName: verifyUser.firstName || undefined,
-						hasLastName: !!verifyUser.lastName,
-						lastName: verifyUser.lastName || undefined,
-						hasAvatar: !!verifyUser.avatar,
-					},
+					firstName: verifyUser.firstName || undefined,
+					lastName: verifyUser.lastName || undefined,
 				});
 			}
 		} else {
@@ -344,24 +360,19 @@ export class AuthService {
 
 			logger.systemInfo('Updating existing user from Google profile', {
 				userId: user.id,
-				data: {
-					currentFirstName: user.firstName || undefined,
-					currentLastName: user.lastName || undefined,
-					currentAvatar: user.avatar || undefined,
-					profileFirstName: profile.firstName || undefined,
-					profileLastName: profile.lastName || undefined,
-					profileAvatar: profile.avatar || undefined,
-				},
+				currentFirstName: user.firstName || undefined,
+				currentLastName: user.lastName || undefined,
+				avatar: user.avatar || undefined,
+				newFirstName: profile.firstName || undefined,
+				newLastName: profile.lastName || undefined,
 			});
 
 			if (!user.googleId) {
 				user.googleId = profile.googleId;
 				shouldPersist = true;
 			}
-			if (!user.avatar && profile.avatar) {
-				user.avatar = profile.avatar;
-				shouldPersist = true;
-			}
+			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
+			// Avatar can only be set through the dedicated /users/avatar endpoint
 			// Update firstName and lastName if they exist in profile and user doesn't have them
 			// This ensures we fill missing data from Google
 			// Also update if profile has data and user field is empty/null
@@ -370,10 +381,8 @@ export class AuthService {
 				shouldPersist = true;
 				logger.systemInfo('Updating firstName from Google profile', {
 					userId: user.id,
-					data: {
-						oldFirstName: user.firstName || undefined,
-						newFirstName: profile.firstName,
-					},
+					oldFirstName: user.firstName || undefined,
+					newFirstName: profile.firstName,
 				});
 			}
 			if (profile.lastName && (!user.lastName || user.lastName.trim() === '')) {
@@ -381,10 +390,8 @@ export class AuthService {
 				shouldPersist = true;
 				logger.systemInfo('Updating lastName from Google profile', {
 					userId: user.id,
-					data: {
-						oldLastName: user.lastName || undefined,
-						newLastName: profile.lastName,
-					},
+					oldLastName: user.lastName || undefined,
+					newLastName: profile.lastName,
 				});
 			}
 			// Always update lastLogin on successful login
@@ -395,19 +402,14 @@ export class AuthService {
 
 				logger.systemInfo('User updated from Google profile', {
 					userId: user.id,
-					data: {
-						hasFirstName: !!user.firstName,
-						firstName: user.firstName || undefined,
-						hasLastName: !!user.lastName,
-						lastName: user.lastName || undefined,
-						hasAvatar: !!user.avatar,
-					},
+					firstName: user.firstName || undefined,
+					lastName: user.lastName || undefined,
 				});
 			}
 		}
 
 		if (!user.isActive) {
-			throw new UnauthorizedException('User account is disabled');
+			throw new UnauthorizedException(ERROR_CODES.USER_ACCOUNT_DISABLED);
 		}
 
 		const tokenPair = await this.authenticationManager.generateTokensForUser({
@@ -430,12 +432,8 @@ export class AuthService {
 
 		logger.systemInfo('Google OAuth login response', {
 			userId: user.id,
-			data: {
-				hasFirstName: !!response.user.firstName,
-				firstName: response.user.firstName || undefined,
-				hasLastName: !!response.user.lastName,
-				lastName: response.user.lastName || undefined,
-			},
+			firstName: response.user.firstName || undefined,
+			lastName: response.user.lastName || undefined,
 		});
 
 		return response;

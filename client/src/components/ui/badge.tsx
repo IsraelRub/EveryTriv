@@ -1,6 +1,9 @@
 import { cva } from 'class-variance-authority';
 
+import { VariantBase } from '@/constants';
+
 import type { BadgeProps } from '@/types';
+
 import { cn } from '@/utils';
 
 const badgeVariants = cva(
@@ -15,7 +18,7 @@ const badgeVariants = cva(
 			},
 		},
 		defaultVariants: {
-			variant: 'default',
+			variant: VariantBase.DEFAULT,
 		},
 	}
 );

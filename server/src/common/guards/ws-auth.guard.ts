@@ -10,10 +10,11 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Socket } from 'socket.io';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { AUTH_CONSTANTS } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
 /**
@@ -56,7 +57,7 @@ export class WsAuthGuard implements CanActivate {
 
 		if (!token) {
 			logger.securityDenied('No authentication token provided for WebSocket connection');
-			throw new UnauthorizedException('Authentication token required');
+			throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED);
 		}
 
 		try {
@@ -80,7 +81,7 @@ export class WsAuthGuard implements CanActivate {
 			logger.securityDenied('Invalid authentication token for WebSocket', {
 				error: getErrorMessage(error),
 			});
-			throw new UnauthorizedException('Invalid authentication token');
+			throw new UnauthorizedException(ERROR_CODES.INVALID_AUTHENTICATION_TOKEN);
 		}
 	}
 }

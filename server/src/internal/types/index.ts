@@ -6,30 +6,32 @@
  * @author EveryTriv Team
  */
 
-/**
- * AI types
- * @description AI provider types and configuration
- * @exports {Object} AI types
- */
-export * from './ai.types';
+// =============================================================================
+// CORE TYPES - Basic data structures, utilities, errors, and responses
+// =============================================================================
 
 /**
- * Nest types
- * @description Nest types used across the server
- * @exports {Object} Nest types
+ * Core type definitions
+ * @description Core type definitions used across the server
  */
-export * from './nest.types';
+export * from './core';
+
+// =============================================================================
+// DOMAIN TYPES - Business logic and domain entities
+// =============================================================================
 
 /**
- * Multiplayer types
- * @description Multiplayer game types for WebSocket connections
- * @exports {Object} Multiplayer types
+ * Domain type definitions
+ * @description Domain type definitions for server-side business logic
  */
-export * from './multiplayer.types';
+export * from './domain';
+
+// =============================================================================
+// INFRASTRUCTURE TYPES - Technical contracts and infrastructure
+// =============================================================================
 
 /**
- * Trivia types
- * @description Server-side trivia question types and metadata
- * @exports {Object} Trivia types
+ * Infrastructure type definitions
+ * @description Infrastructure type definitions for server-side technical operations
  */
-export * from './trivia.types';
+export * from './infrastructure';

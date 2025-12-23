@@ -1,28 +1,34 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import { DeepPartial, Repository } from 'typeorm';
 
-import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, HTTP_ERROR_MESSAGES, UserRole, UserStatus } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import {
+	CACHE_DURATION,
+	DEFAULT_USER_PREFERENCES,
+	ERROR_CODES,
+	ERROR_MESSAGES,
+	UserRole,
+	UserStatus,
+} from '@shared/constants';
 import type {
 	AdminUserData,
-	AuditLogEntry,
 	BasicValue,
+	ChangePasswordData,
+	DeductCreditsResponse,
+	OffsetPagination,
+	UpdateCreditsData,
 	UpdateUserProfileData,
 	UserPreferences,
-	UserSearchCacheEntry,
 } from '@shared/types';
-import {
-	getErrorMessage,
-	isAuditLogEntry,
-	isUserSearchCacheEntry,
-	mergeUserPreferences,
-	normalizeText,
-} from '@shared/utils';
+import { getErrorMessage, mergeUserPreferences, normalizeText } from '@shared/utils';
+import { isAuditLogEntry, isUserSearchCacheEntry } from '@shared/utils/domain';
 
+import { WildcardPattern } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
+import { serverLogger as logger } from '@internal/services';
+import type { UserRegistrationData, UserSearchCacheEntry } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 
 import { AuthenticationManager, PasswordService, ValidationService } from '../../common';
@@ -59,7 +65,7 @@ export class UserService {
 
 			const user = await this.getUserByEmail(email);
 			if (!user || !user.isActive || !user.passwordHash) {
-				throw new UnauthorizedException('Invalid credentials');
+				throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
 			const authResult = await this.authenticationManager.authenticate(
@@ -74,12 +80,12 @@ export class UserService {
 			);
 
 			if (authResult.error) {
-				throw new UnauthorizedException(authResult.error ?? 'Invalid credentials');
+				throw new UnauthorizedException(authResult.error ?? ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
 			// Type guard: we know these exist when there's no error
 			if (!authResult.accessToken || !authResult.refreshToken) {
-				throw new UnauthorizedException('Authentication result incomplete');
+				throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_RESULT_INCOMPLETE);
 			}
 
 			// Update lastLogin timestamp
@@ -101,7 +107,7 @@ export class UserService {
 				logger.userWarn('Failed to store user session data', {
 					context: 'UserService',
 					userId: user.id,
-					error: result.error ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
+					error: result.error ?? ERROR_MESSAGES.general.UNKNOWN_ERROR,
 				});
 			}
 
@@ -133,7 +139,7 @@ export class UserService {
 	 * @param registerData Registration data
 	 * @returns Registration result
 	 */
-	async register(registerData: { email: string; password: string; firstName?: string; lastName?: string }) {
+	async register(registerData: UserRegistrationData) {
 		try {
 			logger.userInfo('User registration attempt', {
 				email: registerData.email,
@@ -141,7 +147,7 @@ export class UserService {
 
 			const existingEmail = await this.getUserByEmail(registerData.email);
 			if (existingEmail) {
-				throw new BadRequestException('Email already registered');
+				throw new BadRequestException(ERROR_CODES.EMAIL_ALREADY_REGISTERED);
 			}
 
 			const passwordHash = await this.passwordService.hashPassword(registerData.password);
@@ -195,19 +201,22 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
+			// Return in UserProfileResponseType format
 			return {
-				id: user.id,
-				email: user.email,
-				role: user.role,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				avatar: user.avatar,
-				preferences: user.preferences,
-				createdAt: user.createdAt,
-				updatedAt: user.updatedAt,
+				profile: {
+					id: user.id,
+					email: user.email,
+					role: user.role,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					avatar: user.avatar,
+					createdAt: user.createdAt,
+					updatedAt: user.updatedAt,
+				},
+				preferences: user.preferences || {},
 			};
 		} catch (error) {
 			logger.userError('Failed to get user profile', {
@@ -235,13 +244,13 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Update user fields
+			// Note: avatar is updated only through setAvatar() method (separate endpoint)
 			if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
 			if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
-			if (profileData.avatar !== undefined) user.avatar = profileData.avatar;
 			if (profileData.preferences !== undefined)
 				user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
 
@@ -252,22 +261,88 @@ export class UserService {
 			await this.cacheService.delete(`user:profile:${userId}`);
 			await this.cacheService.delete(`user:stats:${userId}`);
 
+			// Return in UserProfileResponseType format
 			return {
-				id: updatedUser.id,
-				email: updatedUser.email,
-				role: updatedUser.role,
-				firstName: updatedUser.firstName,
-				lastName: updatedUser.lastName,
-				avatar: updatedUser.avatar,
-				preferences: updatedUser.preferences,
-				createdAt: updatedUser.createdAt,
-				updatedAt: updatedUser.updatedAt,
+				profile: {
+					id: updatedUser.id,
+					email: updatedUser.email,
+					role: updatedUser.role,
+					firstName: updatedUser.firstName,
+					lastName: updatedUser.lastName,
+					avatar: updatedUser.avatar,
+					createdAt: updatedUser.createdAt,
+					updatedAt: updatedUser.updatedAt,
+				},
+				preferences: updatedUser.preferences || {},
 			};
 		} catch (error) {
 			logger.userError('Failed to update user profile', {
 				context: 'UserService',
 				error: getErrorMessage(error),
 				userId,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Set user avatar
+	 * @param userId User ID
+	 * @param avatarId Avatar ID (1-16)
+	 * @returns Updated user profile
+	 */
+	async setAvatar(userId: string, avatarId: number) {
+		try {
+			logger.userInfo('Setting user avatar', {
+				context: 'UserService',
+				userId,
+				avatar: avatarId,
+			});
+
+			// Validate avatar ID
+			if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 16) {
+				throw new BadRequestException(ERROR_CODES.AVATAR_ID_OUT_OF_RANGE);
+			}
+
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+			}
+
+			// Store avatarId as number
+			user.avatar = avatarId;
+			const updatedUser = await this.userRepository.save(user);
+
+			// Invalidate user profile cache
+			await this.cacheService.delete(`user:profile:${userId}`);
+			await this.cacheService.delete(`user:stats:${userId}`);
+
+			logger.userInfo('User avatar updated successfully', {
+				context: 'UserService',
+				userId,
+				avatar: avatarId,
+			});
+
+			// Return in UserProfileResponseType format
+			return {
+				profile: {
+					id: updatedUser.id,
+					email: updatedUser.email,
+					role: updatedUser.role,
+					firstName: updatedUser.firstName,
+					lastName: updatedUser.lastName,
+					avatar: updatedUser.avatar,
+					createdAt: updatedUser.createdAt,
+					updatedAt: updatedUser.updatedAt,
+				},
+				preferences: updatedUser.preferences || {},
+			};
+		} catch (error) {
+			logger.userError('Failed to set user avatar', {
+				context: 'UserService',
+				error: getErrorMessage(error),
+				userId,
+				avatar: avatarId,
 			});
 			throw error;
 		}
@@ -290,17 +365,17 @@ export class UserService {
 			// Normalize search query
 			const normalizedQuery = normalizeText(query);
 			if (!normalizedQuery || normalizedQuery.length < 2) {
-				throw new BadRequestException('Search query must be at least 2 characters long');
+				throw new BadRequestException(ERROR_CODES.SEARCH_QUERY_TOO_SHORT);
 			}
 
 			const cacheKey = `user:search:${normalizedQuery}:${limit}`;
 
-			return await this.cacheService.getOrSet<UserSearchCacheEntry>(
+			return await this.cacheService.getOrSet<import('@internal/types').UserSearchCacheEntry>(
 				cacheKey,
 				async () => {
 					const queryBuilder = this.userRepository.createQueryBuilder('user');
 					addSearchConditions(queryBuilder, 'user', ['email', 'firstName', 'lastName'], normalizedQuery, {
-						wildcardPattern: 'both',
+						wildcardPattern: WildcardPattern.BOTH,
 					});
 					queryBuilder
 						.andWhere('user.is_active = :isActive', { isActive: true })
@@ -340,7 +415,7 @@ export class UserService {
 	 * @param userId User ID
 	 * @returns Deletion result
 	 */
-	async deleteUserAccount(userId: string) {
+	async deleteUserAccount(userId: string): Promise<string> {
 		try {
 			logger.userInfo('Deleting user account', {
 				context: 'UserService',
@@ -349,7 +424,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Soft delete by setting is_active to false
@@ -361,9 +436,7 @@ export class UserService {
 			await this.cacheService.delete(`user:stats:${userId}`);
 			await this.cacheService.delete(`user:credits:${userId}`);
 
-			return {
-				message: 'Account deleted successfully',
-			};
+			return 'Account deleted successfully';
 		} catch (error) {
 			logger.userError('Failed to delete user account', {
 				context: 'UserService',
@@ -381,7 +454,7 @@ export class UserService {
 	 * @param newPassword New password
 	 * @returns Change result
 	 */
-	async changePassword(userId: string, currentPassword: string, newPassword: string) {
+	async changePassword(userId: string, changePasswordData: ChangePasswordData) {
 		try {
 			logger.userInfo('Changing user password', {
 				context: 'UserService',
@@ -390,20 +463,20 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Verify current password
 			if (!user.passwordHash) {
-				throw new BadRequestException('Password not set');
+				throw new BadRequestException(ERROR_CODES.PASSWORD_NOT_SET);
 			}
-			const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+			const isCurrentPasswordValid = await compare(changePasswordData.currentPassword, user.passwordHash);
 			if (!isCurrentPasswordValid) {
-				throw new UnauthorizedException('Current password is incorrect');
+				throw new UnauthorizedException(ERROR_CODES.CURRENT_PASSWORD_INCORRECT);
 			}
 
 			// Hash new password
-			const newPasswordHash = await bcrypt.hash(newPassword, 10);
+			const newPasswordHash = await hash(changePasswordData.newPassword, 10);
 
 			// Update password
 			user.passwordHash = newPasswordHash;
@@ -412,9 +485,7 @@ export class UserService {
 			// Clear user cache
 			await this.cacheService.delete(`user:profile:${userId}`);
 
-			return {
-				message: 'Password changed successfully',
-			};
+			return 'Password changed successfully';
 		} catch (error) {
 			logger.userError('Failed to change password', {
 				context: 'UserService',
@@ -440,7 +511,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Merge existing preferences with new ones (deep merge for privacy and game)
@@ -480,7 +551,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Apply updates
@@ -621,7 +692,7 @@ export class UserService {
 		email: string;
 		firstName?: string;
 		lastName?: string;
-		avatar?: string;
+		// Note: avatar is not saved from Google OAuth (it's a URL, not our avatarId 1-16)
 	}) {
 		try {
 			logger.userInfo('Creating Google user', {
@@ -629,12 +700,13 @@ export class UserService {
 				email: userData.email,
 			});
 
+			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
+			// Avatar can only be set through the dedicated /users/avatar endpoint
 			const user = this.userRepository.create({
 				googleId: userData.googleId,
 				email: userData.email,
 				firstName: userData.firstName,
 				lastName: userData.lastName,
-				avatar: userData.avatar,
 				role: UserRole.USER,
 			});
 
@@ -711,7 +783,7 @@ export class UserService {
 				logger.userWarn('Failed to store audit log', {
 					userId,
 					action,
-					error: result.error ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR,
+					error: result.error ?? ERROR_MESSAGES.general.UNKNOWN_ERROR,
 				});
 			}
 
@@ -758,7 +830,7 @@ export class UserService {
 				.slice(0, limit);
 
 			// Get audit entries
-			const auditLogs: AuditLogEntry[] = [];
+			const auditLogs: import('@internal/types').AuditLogEntry[] = [];
 			for (const key of auditKeys) {
 				const result = await this.storageService.get(key, isAuditLogEntry);
 				if (result.success && result.data) {
@@ -795,7 +867,7 @@ export class UserService {
 			});
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Field type mapping for validation
@@ -806,7 +878,7 @@ export class UserService {
 				email: { type: 'string' },
 				firstName: { type: 'string' },
 				lastName: { type: 'string' },
-				avatar: { type: 'string' },
+				avatar: { type: 'number' },
 				isActive: { type: 'boolean' },
 				credits: { type: 'number' },
 				purchasedCredits: { type: 'number' },
@@ -815,58 +887,58 @@ export class UserService {
 			};
 
 			// Handle special fields
-			if (field === 'role') {
-				const validRole = Object.values(UserRole).find(role => role === value);
-				if (validRole) {
-					user.role = validRole;
-				} else {
-					throw createValidationError('role', 'string');
-				}
-			} else if (field === 'currentSubscriptionId') {
-				if (typeof value === 'string' || value === null || value === undefined) {
-					user.currentSubscriptionId = typeof value === 'string' ? value : undefined;
-				} else {
-					throw createValidationError('currentSubscriptionId', 'string');
-				}
-			} else if (field === 'status') {
-				if (typeof value !== 'string') {
-					throw createValidationError('status', 'string');
-				}
-				const nextStatus = Object.values(UserStatus).find(statusOption => statusOption === value);
-				if (!nextStatus) {
-					throw createValidationError('status', 'string');
-				}
-				user.isActive = nextStatus === UserStatus.ACTIVE;
-			} else {
-				// Use field type mapping for standard fields
-				if (fieldTypeMap[field]) {
-					const fieldConfig = fieldTypeMap[field];
-
-					// Get target field name
-					const targetField = fieldConfig.fieldName || field;
-
-					// Use ValidationService to validate and set field based on type
-					switch (fieldConfig.type) {
-						case 'string':
-							this.validationService.validateAndSetStringField(
-								user,
-								targetField,
-								value,
-								fieldConfig.minLength,
-								fieldConfig.maxLength
-							);
-							break;
-						case 'number':
-							this.validationService.validateAndSetNumberField(user, targetField, value);
-							break;
-						case 'boolean':
-							this.validationService.validateAndSetBooleanField(user, targetField, value);
-							break;
-						default:
-							throw createValidationError(field, fieldConfig.type);
+			switch (field) {
+				case 'role': {
+					const validRole = Object.values(UserRole).find(role => role === value);
+					if (validRole) {
+						user.role = validRole;
+					} else {
+						throw createValidationError('role', 'string');
 					}
-				} else {
-					throw createValidationError(field, 'string');
+					break;
+				}
+				case 'status': {
+					if (typeof value !== 'string') {
+						throw createValidationError('status', 'string');
+					}
+					const nextStatus = Object.values(UserStatus).find(statusOption => statusOption === value);
+					if (!nextStatus) {
+						throw createValidationError('status', 'string');
+					}
+					user.isActive = nextStatus === UserStatus.ACTIVE;
+					break;
+				}
+				default: {
+					// Use field type mapping for standard fields
+					if (fieldTypeMap[field]) {
+						const fieldConfig = fieldTypeMap[field];
+
+						// Get target field name
+						const targetField = fieldConfig.fieldName || field;
+
+						// Use ValidationService to validate and set field based on type
+						switch (fieldConfig.type) {
+							case 'string':
+								this.validationService.validateAndSetStringField(
+									user,
+									targetField,
+									value,
+									fieldConfig.minLength,
+									fieldConfig.maxLength
+								);
+								break;
+							case 'number':
+								this.validationService.validateAndSetNumberField(user, targetField, value);
+								break;
+							case 'boolean':
+								this.validationService.validateAndSetBooleanField(user, targetField, value);
+								break;
+							default:
+								throw createValidationError(field, fieldConfig.type);
+						}
+					} else {
+						throw createValidationError(field, 'string');
+					}
 				}
 			}
 			const updatedUser = await this.userRepository.save(user);
@@ -900,7 +972,7 @@ export class UserService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Initialize preferences if not exists
@@ -932,27 +1004,25 @@ export class UserService {
 
 	/**
 	 * Update user credits
-	 * @param userId User ID
-	 * @param amount Amount to add/subtract
-	 * @param reason Reason for credit change
+	 * @param data Credit update data
 	 * @returns Updated user
 	 */
-	async updateUserCredits(userId: string, amount: number, reason: string): Promise<UserEntity> {
+	async updateUserCredits(data: UpdateCreditsData): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user credits', {
 				context: 'UserService',
-				userId,
-				amount,
-				reason,
+				userId: data.userId,
+				amount: data.amount,
+				reason: data.reason,
 			});
 
-			const user = await this.userRepository.findOne({ where: { id: userId } });
+			const user = await this.userRepository.findOne({ where: { id: data.userId } });
 			if (!user) {
 				throw createNotFoundError('User');
 			}
 
 			// Update credits
-			user.credits = (user.credits ?? 0) + amount;
+			user.credits = (user.credits ?? 0) + data.amount;
 
 			// Ensure credits don't go below 0
 			if (user.credits < 0) {
@@ -962,17 +1032,17 @@ export class UserService {
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user credits cache
-			await this.cacheService.delete(`user:credits:${userId}`);
-			await this.cacheService.delete(`user:stats:${userId}`);
+			await this.cacheService.delete(`user:credits:${data.userId}`);
+			await this.cacheService.delete(`user:stats:${data.userId}`);
 
 			// Log credit change
 			logger.userInfo('User credits updated', {
 				context: 'UserService',
-				userId,
-				oldCredits: (user.credits ?? 0) - amount,
+				userId: data.userId,
+				oldCredits: (user.credits ?? 0) - data.amount,
 				newCredits: updatedUser.credits,
-				change: amount,
-				reason,
+				change: data.amount,
+				reason: data.reason,
 			});
 
 			return updatedUser;
@@ -980,8 +1050,8 @@ export class UserService {
 			logger.userError('Failed to update user credits', {
 				context: 'UserService',
 				error: getErrorMessage(error),
-				userId,
-				amount,
+				userId: data.userId,
+				amount: data.amount,
 			});
 			throw error;
 		}
@@ -1007,10 +1077,14 @@ export class UserService {
 			}
 
 			// Update status by mapping to isActive field
-			if (status === UserStatus.ACTIVE) {
-				user.isActive = true;
-			} else if (status === UserStatus.SUSPENDED || status === UserStatus.BANNED) {
-				user.isActive = false;
+			switch (status) {
+				case UserStatus.ACTIVE:
+					user.isActive = true;
+					break;
+				case UserStatus.SUSPENDED:
+				case UserStatus.BANNED:
+					user.isActive = false;
+					break;
 			}
 
 			const updatedUser = await this.userRepository.save(user);
@@ -1043,15 +1117,7 @@ export class UserService {
 	 * @param limit Maximum number of users
 	 * @param offset Number of users to skip
 	 */
-	async getAllUsers(
-		limit: number = 50,
-		offset: number = 0
-	): Promise<{
-		users: AdminUserData[];
-		total: number;
-		limit: number;
-		offset: number;
-	}> {
+	async getAllUsers(limit: number = 50, offset: number = 0): Promise<{ users: AdminUserData[] } & OffsetPagination> {
 		const safeLimit = Math.min(Math.max(limit, 1), 200);
 		const safeOffset = Math.max(offset, 0);
 
@@ -1084,50 +1150,51 @@ export class UserService {
 	 * @param reason Reason for deduction
 	 * @returns Updated user credits
 	 */
-	async deductCredits(userId: string, amount: number, reason: string): Promise<{ credits: number; deducted: number }> {
+	async deductCredits(data: UpdateCreditsData): Promise<DeductCreditsResponse> {
 		try {
 			const user = await this.userRepository.findOne({
-				where: { id: userId },
+				where: { id: data.userId },
 				select: ['id', 'credits'],
 			});
 
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			const currentCredits = user.credits ?? 0;
-			if (currentCredits < amount) {
-				throw new BadRequestException('Insufficient credits');
+			if (currentCredits < data.amount) {
+				throw new BadRequestException(ERROR_CODES.INSUFFICIENT_CREDITS);
 			}
 
-			const newCredits = currentCredits - amount;
+			const newCredits = currentCredits - data.amount;
 			user.credits = newCredits;
 			await this.userRepository.save(user);
 
 			// Invalidate user credits cache
-			await this.cacheService.delete(`user:credits:${userId}`);
-			await this.cacheService.delete(`user:stats:${userId}`);
+			await this.cacheService.delete(`user:credits:${data.userId}`);
+			await this.cacheService.delete(`user:stats:${data.userId}`);
 
 			logger.userInfo('Credits deducted', {
 				context: 'UserService',
-				userId,
-				amount,
-				reason,
+				userId: data.userId,
+				amount: data.amount,
+				reason: data.reason,
 				previousCredits: currentCredits,
 				newCredits,
 			});
 
 			return {
+				success: true,
 				credits: newCredits,
-				deducted: amount,
+				deducted: data.amount,
 			};
 		} catch (error) {
 			logger.userError('Failed to deduct credits', {
 				context: 'UserService',
 				error: getErrorMessage(error),
-				userId,
-				amount,
-				reason,
+				userId: data.userId,
+				amount: data.amount,
+				reason: data.reason,
 			});
 			throw error;
 		}

@@ -51,6 +51,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*", "test/**/*", "test/jest.d.ts", "../client/src/constants/animation.constants.ts", "../shared/**/*"],
+  "include": ["src/**/*", "../client/src/constants/animation.constants.ts", "../shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }

@@ -7,10 +7,12 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { UserRole } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { AuthenticationResult, LoginCredentials, UserData } from '@shared/types';
+import { AuthenticationEvent, ERROR_CODES, LogLevel, UserRole } from '@shared/constants';
+import type { AuthCredentials, AuthenticationResult, TokenPair } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
+import type { UserData } from '@internal/types';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';
@@ -25,21 +27,16 @@ export class AuthenticationManager {
 	/**
 	 * Authenticate user with credentials
 	 */
-	async authenticate(credentials: LoginCredentials, userData: UserData): Promise<AuthenticationResult> {
+	async authenticate(credentials: AuthCredentials, userData: UserData): Promise<AuthenticationResult> {
 		try {
-			// Use enhanced logging
-			logger.logAuthenticationEnhanced('login', userData.id, credentials.email, {
-				context: 'AuthenticationManager',
-			});
-
 			// Check if user is active
 			if (!userData.isActive) {
-				logger.logSecurityEventEnhanced('User account is inactive', 'warn', {
+				logger.logSecurityEventEnhanced('User account is inactive', LogLevel.WARN, {
 					email: credentials.email,
 					userId: userData.id,
 				});
 				return {
-					error: 'Account is inactive',
+					error: ERROR_CODES.ACCOUNT_IS_INACTIVE,
 				};
 			}
 
@@ -47,12 +44,12 @@ export class AuthenticationManager {
 			const isPasswordValid = await this.passwordService.comparePassword(credentials.password, userData.passwordHash);
 
 			if (!isPasswordValid) {
-				logger.logSecurityEventEnhanced('Invalid password', 'warn', {
+				logger.logSecurityEventEnhanced('Invalid password', LogLevel.WARN, {
 					email: credentials.email,
 					userId: userData.id,
 				});
 				return {
-					error: 'Invalid credentials',
+					error: ERROR_CODES.INVALID_CREDENTIALS,
 				};
 			}
 
@@ -67,11 +64,11 @@ export class AuthenticationManager {
 					error: getErrorMessage(tokenError),
 				});
 				return {
-					error: 'Token generation failed',
+					error: ERROR_CODES.TOKEN_GENERATION_FAILED,
 				};
 			}
 
-			logger.logAuthenticationEnhanced('login', userData.id, credentials.email, {
+			logger.logAuthenticationEnhanced(AuthenticationEvent.LOGIN, userData.id, credentials.email, {
 				success: true,
 				role: userData.role,
 				context: 'AuthenticationManager',
@@ -93,7 +90,7 @@ export class AuthenticationManager {
 				error: getErrorMessage(error),
 			});
 			return {
-				error: 'Authentication failed',
+				error: ERROR_CODES.AUTHENTICATION_FAILED_GENERIC,
 			};
 		}
 	}
@@ -110,7 +107,7 @@ export class AuthenticationManager {
 			if (!tokenResult.isValid || !tokenResult.payload) {
 				logger.securityDenied('Invalid refresh token');
 				return {
-					error: 'Invalid refresh token',
+					error: ERROR_CODES.INVALID_REFRESH_TOKEN,
 				};
 			}
 
@@ -127,7 +124,7 @@ export class AuthenticationManager {
 					error: getErrorMessage(tokenError),
 				});
 				return {
-					error: 'Token generation failed',
+					error: ERROR_CODES.TOKEN_GENERATION_FAILED,
 				};
 			}
 
@@ -150,7 +147,7 @@ export class AuthenticationManager {
 				error: getErrorMessage(error),
 			});
 			return {
-				error: 'Token refresh failed',
+				error: ERROR_CODES.TOKEN_REFRESH_FAILED,
 			};
 		}
 	}
@@ -158,11 +155,7 @@ export class AuthenticationManager {
 	/**
 	 * Generate tokens for user
 	 */
-	async generateTokensForUser(user: {
-		id: string;
-		email: string;
-		role: UserRole;
-	}): Promise<{ accessToken: string; refreshToken: string }> {
+	async generateTokensForUser(user: { id: string; email: string; role: UserRole }): Promise<TokenPair> {
 		return await this.jwtTokenService.generateTokenForUser(user);
 	}
 

@@ -265,30 +265,6 @@ const reactConfig = {
 	},
 };
 
-const testConfig = {
-	...baseConfig,
-	languageOptions: {
-		...baseConfig.languageOptions,
-		globals: {
-			...baseConfig.languageOptions.globals,
-			// Jest globals
-			jest: 'readonly',
-			describe: 'readonly',
-			it: 'readonly',
-			test: 'readonly',
-			expect: 'readonly',
-			beforeEach: 'readonly',
-			afterEach: 'readonly',
-			beforeAll: 'readonly',
-			afterAll: 'readonly',
-		},
-	},
-	rules: {
-		...baseConfig.rules,
-		// Disable any check for test files
-		'@typescript-eslint/no-explicit-any': 'off',
-	},
-};
 
 module.exports = [
 	// Ignore patterns
@@ -305,9 +281,6 @@ module.exports = [
 			'**/dist-temp/**',
 			'**/logs/**',
 			'scripts/documentation/**/*.cjs',
-			'**/test/**',
-			'**/*.test.*',
-			'**/*.spec.*',
 			'server/src/main.ts',
 		],
 	},
@@ -501,21 +474,6 @@ module.exports = [
 					extensions: ['.js', '.jsx', '.ts', '.tsx'],
 				},
 			},
-		},
-	},
-
-	// Test configuration
-	{
-		files: ['**/*.spec.{ts,js}', '**/*.test.{ts,js}', '**/test/**/*.{ts,js}'],
-		...testConfig,
-		languageOptions: {
-			...testConfig.languageOptions,
-			parser: tsparser,
-		},
-		rules: {
-			...testConfig.rules,
-			// Ensure any is allowed in test files
-			'@typescript-eslint/no-explicit-any': 'off',
 		},
 	},
 

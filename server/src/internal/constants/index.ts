@@ -1,32 +1,34 @@
 /**
- * Server Constants Index - Reorganized Structure
- *
- * @module ServerConstants
- * @description Central export point for all server-side constants and configuration
- * @author EveryTriv Team
- * @used_by server/src/features, server/src/controllers, server/src/services
+ * Server Constants Index
+ * Central export point for all server-side constants and configuration
  */
 
-/**
- * Database constants
- * @description Database tables, Redis configuration, and connection settings
- */
-export * from './database';
+// =============================================================================
+// CORE CONSTANTS - Basic data structures, utilities, errors, and responses
+// =============================================================================
 
 /**
- * Auth constants
- * @description Authentication-related constants for server-side use
+ * Core constants
  */
-export * from './auth';
+export * from './core';
+
+// =============================================================================
+// DOMAIN CONSTANTS - Business logic and domain entities
+// =============================================================================
 
 /**
- * Public endpoints constants
- * @description Public endpoints that don't require authentication
+ * Domain constants
  */
-export * from './public-endpoints.constants';
+export * from './domain';
+
+// Explicit re-export for TypeScript resolution
+export { ProviderEventType, LLMResponseStatus, ProviderErrorType } from './domain/provider.constants';
+
+// =============================================================================
+// INFRASTRUCTURE CONSTANTS - Technical contracts and infrastructure
+// =============================================================================
 
 /**
- * AI Provider constants
- * @description AI provider names and priority mappings (server-only)
+ * Infrastructure constants
  */
-export * from './ai.constants';
+export * from './infrastructure';

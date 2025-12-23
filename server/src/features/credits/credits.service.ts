@@ -4,43 +4,30 @@ import { Repository } from 'typeorm';
 
 import {
 	CREDIT_PURCHASE_PACKAGES,
-	CreditSource,
 	CreditTransactionType,
+	ERROR_CODES,
 	GameMode,
-	PaymentMethod,
 	PaymentStatus,
-	SERVER_GAME_CONSTANTS,
 	UserRole,
-	VALIDATION_LIMITS,
+	VALIDATION_CONFIG,
 } from '@shared/constants';
-import { BaseCreditsService, serverLogger as logger } from '@shared/services';
 import type {
 	CanPlayResponse,
 	CreditBalance,
 	CreditPurchaseOption,
-	ManualPaymentDetails,
+	CreditsPurchaseRequest,
 	PaymentResult,
 } from '@shared/types';
-import {
-	calculateNewBalance,
-	ensureErrorObject,
-	isCreditBalanceCacheEntry,
-	isCreditPurchaseOptionArray,
-} from '@shared/utils';
+import { calculateNewBalance, ensureErrorObject } from '@shared/utils';
+import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@shared/utils/domain';
 
+import { CreditSource, SERVER_GAME_CONSTANTS } from '@internal/constants';
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
+import { BaseCreditsService, serverLogger as logger } from '@internal/services';
 
 import { ValidationService } from '../../common';
 import { PaymentService } from '../payment';
-
-type CreditsPurchaseRequest = {
-	packageId: string;
-	paymentMethod: PaymentMethod;
-	paypalOrderId?: string;
-	paypalPaymentId?: string;
-	manualPayment?: ManualPaymentDetails;
-};
 
 @Injectable()
 export class CreditsService extends BaseCreditsService {
@@ -57,7 +44,7 @@ export class CreditsService extends BaseCreditsService {
 	}
 
 	private assertQuestionsPerRequestWithinLimits(questionsPerRequest: number): void {
-		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+		const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 		if (
 			!Number.isFinite(questionsPerRequest) ||
 			(questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX))
@@ -75,7 +62,7 @@ export class CreditsService extends BaseCreditsService {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
-				throw new BadRequestException('Invalid user ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
 			const cacheKey = `credits:balance:${userId}`;
@@ -85,7 +72,7 @@ export class CreditsService extends BaseCreditsService {
 				async () => {
 					const user = await this.userRepository.findOne({ where: { id: userId } });
 					if (!user) {
-						throw new UnauthorizedException('User not found or authentication failed');
+						throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 					}
 
 					const credits = user.credits ?? 0;
@@ -164,19 +151,19 @@ export class CreditsService extends BaseCreditsService {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
-				throw new BadRequestException('Invalid user ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
 			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 
 			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
 			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Admin users can always play without credits
@@ -233,24 +220,24 @@ export class CreditsService extends BaseCreditsService {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
-				throw new BadRequestException('Invalid user ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
 			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 
 			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
 			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
 
 			const gameModeValidation = await this.validationService.validateInputContent(gameMode);
 			if (!gameModeValidation.isValid) {
-				throw new BadRequestException('Invalid game mode');
+				throw new BadRequestException(ERROR_CODES.INVALID_GAME_MODE);
 			}
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Admin users can play without deducting credits
@@ -399,12 +386,12 @@ export class CreditsService extends BaseCreditsService {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
-				throw new BadRequestException('Invalid user ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
 			// Validate limit
 			if (!limit || limit < 1 || limit > 100) {
-				throw new BadRequestException('Limit must be between 1 and 100');
+				throw new BadRequestException(ERROR_CODES.LIMIT_OUT_OF_RANGE);
 			}
 
 			const transactions = await this.creditTransactionRepository.find({
@@ -444,14 +431,14 @@ export class CreditsService extends BaseCreditsService {
 			// Extract credits from package ID
 			const creditsMatch = request.packageId.match(/package_(\d+)/);
 			if (!creditsMatch) {
-				throw new BadRequestException('Invalid package ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_PACKAGE_ID);
 			}
 
 			const credits = parseInt(creditsMatch[1]);
 			const packageInfo = CREDIT_PURCHASE_PACKAGES.find(pkg => pkg.credits === credits);
 
 			if (!packageInfo) {
-				throw new BadRequestException('Invalid credits package');
+				throw new BadRequestException(ERROR_CODES.INVALID_CREDITS_PACKAGE);
 			}
 
 			// Create payment session using PaymentService
@@ -459,7 +446,6 @@ export class CreditsService extends BaseCreditsService {
 				amount: packageInfo.price,
 				currency: 'USD',
 				description: `Credits purchase: ${credits} credits`,
-				numberOfPayments: 1,
 				type: 'credits_purchase',
 				metadata: {
 					packageId: request.packageId,
@@ -512,7 +498,7 @@ export class CreditsService extends BaseCreditsService {
 	private async applyCreditsPurchase(userId: string, credits: number, bonus: number): Promise<CreditBalance> {
 		const user = await this.userRepository.findOne({ where: { id: userId } });
 		if (!user) {
-			throw new UnauthorizedException('User not found or authentication failed');
+			throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 		}
 
 		const creditsToAdd = credits + bonus;
@@ -520,6 +506,43 @@ export class CreditsService extends BaseCreditsService {
 		user.purchasedCredits = (user.purchasedCredits ?? 0) + creditsToAdd;
 
 		await this.userRepository.save(user);
+
+		// Create transaction record for purchased credits
+		if (credits > 0) {
+			const purchaseTransaction = this.creditTransactionRepository.create({
+				userId,
+				type: CreditTransactionType.PURCHASE,
+				source: CreditSource.PURCHASED,
+				amount: credits,
+				balanceAfter: user.credits,
+				freeQuestionsAfter: user.remainingFreeQuestions,
+				purchasedCreditsAfter: user.purchasedCredits,
+				description: `Credits purchase: ${credits} credits`,
+				metadata: {
+					originalAmount: credits,
+				},
+			});
+			await this.creditTransactionRepository.save(purchaseTransaction);
+		}
+
+		// Create transaction record for bonus credits
+		if (bonus > 0) {
+			const bonusTransaction = this.creditTransactionRepository.create({
+				userId,
+				type: CreditTransactionType.PURCHASE,
+				source: CreditSource.BONUS,
+				amount: bonus,
+				balanceAfter: user.credits,
+				freeQuestionsAfter: user.remainingFreeQuestions,
+				purchasedCreditsAfter: user.purchasedCredits,
+				description: `Bonus credits: ${bonus} credits`,
+				metadata: {
+					originalAmount: bonus,
+					isBonus: true,
+				},
+			});
+			await this.creditTransactionRepository.save(bonusTransaction);
+		}
 
 		// Invalidate credits cache
 		await this.cacheService.delete(`credits:balance:${userId}`);
@@ -548,23 +571,23 @@ export class CreditsService extends BaseCreditsService {
 		try {
 			const userValidation = await this.validationService.validateInputContent(userId);
 			if (!userValidation.isValid) {
-				throw new BadRequestException('Invalid user ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
 			// Validate payment intent ID
 			const paymentValidation = await this.validationService.validateInputContent(paymentIntentId);
 			if (!paymentValidation.isValid) {
-				throw new BadRequestException('Invalid payment intent ID');
+				throw new BadRequestException(ERROR_CODES.INVALID_PAYMENT_INTENT_ID);
 			}
 
 			// Validate credits amount
 			if (!credits || credits <= 0 || credits > 10000) {
-				throw new BadRequestException('Invalid credits amount');
+				throw new BadRequestException(ERROR_CODES.INVALID_CREDITS_AMOUNT);
 			}
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException('User not found or authentication failed');
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Add credits to user's balance

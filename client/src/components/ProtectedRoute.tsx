@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import type { RootState } from '@/types';
-import type { ProtectedRouteProps } from '@/types/route.types';
+import { ROUTES } from '@/constants';
+
+import type { ProtectedRouteProps, RootState } from '@/types';
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
 	const navigate = useNavigate();
@@ -18,14 +19,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 			hasUnauthorizedRedirected.current = false;
 		} else if (!hasRedirected.current) {
 			hasRedirected.current = true;
-			navigate('/login', { state: { modal: true, returnUrl: location.pathname }, replace: true });
+			navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname }, replace: true });
 		}
 	}, [isAuthenticated, navigate, location.pathname]);
 
 	useEffect(() => {
 		if (isAuthenticated && requiredRole && currentUser?.role !== requiredRole && !hasUnauthorizedRedirected.current) {
 			hasUnauthorizedRedirected.current = true;
-			navigate('/unauthorized', { replace: true });
+			navigate(ROUTES.UNAUTHORIZED, { replace: true });
 		}
 	}, [isAuthenticated, requiredRole, currentUser?.role, navigate]);
 

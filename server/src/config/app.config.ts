@@ -5,8 +5,9 @@
  * @description Central configuration class for application settings
  * @used_by server/src/app, server/src/main, server/src/config
  */
-import { DEFAULT_PORTS, LOCALHOST_URLS, PAYPAL_ENVIRONMENTS } from '@shared/constants';
-import type { PayPalConfig, PayPalEnvironment } from '@shared/types';
+import { LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
+
+import type { PayPalConfig } from '@internal/types';
 
 /**
  * Application configuration class
@@ -15,11 +16,11 @@ import type { PayPalConfig, PayPalEnvironment } from '@shared/types';
  */
 export class AppConfig {
 	static get port() {
-		return parseInt(process.env.PORT || DEFAULT_PORTS.SERVER.toString(), 10);
+		return parseInt(process.env.PORT || LOCALHOST_CONFIG.ports.SERVER.toString(), 10);
 	}
 
 	static get nodeEnv() {
-		return process.env.NODE_ENV || 'development';
+		return process.env.NODE_ENV || 'production';
 	}
 
 	static get apiVersion() {
@@ -31,7 +32,7 @@ export class AppConfig {
 	}
 
 	static get corsOrigin() {
-		return process.env.CORS_ORIGIN || LOCALHOST_URLS.CLIENT;
+		return process.env.CORS_ORIGIN || LOCALHOST_CONFIG.urls.CLIENT;
 	}
 
 	static get cookieSecret() {
@@ -46,13 +47,13 @@ export class AppConfig {
 	static get database() {
 		return {
 			host: process.env.DATABASE_HOST || 'localhost',
-			port: parseInt(process.env.DATABASE_PORT || DEFAULT_PORTS.DATABASE.toString(), 10),
+			port: parseInt(process.env.DATABASE_PORT || LOCALHOST_CONFIG.ports.DATABASE.toString(), 10),
 			username: process.env.DATABASE_USERNAME || 'everytriv_user',
 			password: process.env.DATABASE_PASSWORD || 'test123',
 			name: process.env.DATABASE_NAME || 'everytriv',
 			schema: process.env.DATABASE_SCHEMA || 'public',
 			synchronize: false,
-			logging: process.env.NODE_ENV !== 'prod',
+			logging: process.env.DATABASE_LOGGING === 'true',
 			ssl: process.env.DATABASE_SSL === 'true',
 			pool: {
 				max: 20,
@@ -109,11 +110,9 @@ export class AppConfig {
 	}
 
 	static get paypal(): PayPalConfig {
-		const environmentValue = (process.env.PAYPAL_ENVIRONMENT ?? 'sandbox').toLowerCase();
+		const environmentValue = (process.env.PAYPAL_ENVIRONMENT ?? PayPalEnvironment.PRODUCTION).toLowerCase();
 		const environment: PayPalEnvironment =
-			environmentValue === PAYPAL_ENVIRONMENTS.PRODUCTION
-				? PAYPAL_ENVIRONMENTS.PRODUCTION
-				: PAYPAL_ENVIRONMENTS.SANDBOX;
+			environmentValue === PayPalEnvironment.PRODUCTION ? PayPalEnvironment.PRODUCTION : PayPalEnvironment.SANDBOX;
 
 		return {
 			clientId: process.env.PAYPAL_CLIENT_ID ?? '',

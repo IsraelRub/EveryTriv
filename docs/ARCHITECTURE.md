@@ -32,10 +32,9 @@ EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI
 - **WebSocket (Socket.IO)** - תקשורת בזמן אמת למרובה משתתפים
 
 ### AI ו-Infrastructure
-- **Groq** - פרובידר חינמי עם Llama 3.1 8B (priority 1 - נבחר ראשון)
-- **Gemini** - Google Gemini 1.5 Flash - $0.075/M tokens (priority 2)
-- **ChatGPT** - OpenAI GPT-4o-mini - $0.15/M tokens (priority 3)
-- **Claude** - Anthropic Claude 3.5 Haiku - $0.25/M tokens (priority 4)
+- **Groq** - פרובידר AI עם תמיכה במודלים מרובים (Llama, GPT-OSS, Mixtral, Gemma)
+  - מודלים חינמיים: llama-3.1-8b-instant, gpt-oss-20b (priority 1)
+  - מודלים נוספים: gpt-oss-120b, llama-3.1-70b-versatile (priority 2+)
 - **Docker** - containerization
 - **Docker Compose** - אורכיסטרציה
 
@@ -234,9 +233,9 @@ React Query מטפל במצב שרת (server state) עם cache אוטומטי ו
 
 #### מודול Game
 מודול משחק מטפל ב:
-- יצירת שאלות טריוויה באמצעות AI providers
-- ניהול ספקי AI לפי priority (עלות): Groq (חינמי), Gemini, ChatGPT, Claude
-- round-robin selection עם fallback אוטומטי
+- יצירת שאלות טריוויה באמצעות Groq AI provider
+- תמיכה במודלים מרובים דרך Groq (Llama, GPT-OSS, Mixtral, Gemma)
+- בחירת מודל לפי priority (חינמי = priority 1)
 - לוגיקת משחק וניקוד
 - היסטוריית משחקים
 
@@ -274,12 +273,10 @@ React Query מטפל במצב שרת (server state) עם cache אוטומטי ו
 
 #### שירותי AI
 - **BaseProvider** - ממשק בסיס לספקי AI
-- **GroqProvider** - אינטגרציה עם Groq (חינמי, priority 1)
-- **GeminiProvider** - אינטגרציה עם Gemini ($0.075/M, priority 2)
-- **ChatGPTProvider** - אינטגרציה עם ChatGPT ($0.15/M, priority 3)
-- **ClaudeProvider** - אינטגרציה עם Claude ($0.25/M, priority 4)
-- **ProvidersService** - ניהול ספקי AI עם round-robin ו-fallback
-- **ProvidersController** - API לניהול ספקים
+- **GroqProvider** - אינטגרציה עם Groq עם תמיכה במודלים מרובים
+  - מודלים חינמיים (priority 1): llama-3.1-8b-instant, gpt-oss-20b
+  - מודלים בתשלום (priority 2+): gpt-oss-120b, llama-3.1-70b-versatile, וכו'
+- **Models Configuration** - הגדרת מודלים עם priority, cost, rate limits
 
 לדיאגרמת AI Providers מפורטת, ראו: [דיאגרמות - AI Providers](./DIAGRAMS.md#דיאגרמת-ai-providers)
 
@@ -382,7 +379,7 @@ const queryBuilder = repository
 1. משתמש עונה על שאלה
 2. Frontend שולח תשובה ל-`POST /api/game/answer`
 3. Backend בודק נכונות תשובה
-4. ScoreCalculationService מחשב ניקוד לפי קושי וזמן
+4. `calculateAnswerScore` מ-`@shared/utils` מחשב ניקוד לפי קושי וזמן
 5. שומר טרנזקציית אשראי
 6. מעדכן סטטיסטיקות משתמש
 7. מחזיר תוצאה וניקוד ל-Frontend

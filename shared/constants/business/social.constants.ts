@@ -44,32 +44,38 @@ export const SHARE_PLATFORMS = [
 export const SOCIAL_LINKS = [
 	{
 		name: 'Facebook',
-		url: 'https://facebook.com/everytrivia',
+		url: 'https://www.facebook.com/',
 		hoverColor: 'hover:text-blue-500',
 		shareColor: 'bg-blue-600 hover:bg-blue-700',
 	},
 	{
 		name: 'Twitter',
-		url: 'https://twitter.com/everytrivia',
+		url: 'https://twitter.com/netanyahu',
 		hoverColor: 'hover:text-sky-400',
 		shareColor: 'bg-blue-400 hover:bg-blue-500',
 	},
 	{
-		name: 'Instagram',
-		url: 'https://instagram.com/everytrivia',
-		hoverColor: 'hover:text-pink-500',
-		shareColor: 'bg-pink-500 hover:bg-pink-600',
-	},
-	{
 		name: 'YouTube',
-		url: 'https://youtube.com/@everytrivia',
+		url: 'https://www.youtube.com/@amits24',
 		hoverColor: 'hover:text-red-500',
 		shareColor: 'bg-red-500 hover:bg-red-600',
 	},
 	{
 		name: 'LinkedIn',
-		url: 'https://linkedin.com/company/everytrivia',
+		url: 'https://www.linkedin.com/in/israel-rubinstein-1835612bb/',
 		hoverColor: 'hover:text-blue-600',
 		shareColor: 'bg-blue-700 hover:bg-blue-800',
+	},
+	{
+		name: 'Instagram',
+		url: 'https://www.instagram.com/idfonline/',
+		hoverColor: 'hover:text-pink-500',
+		shareColor: 'bg-pink-500 hover:bg-pink-600',
+	},
+	{
+		name: 'Telegram',
+		url: 'https://t.me/s/yinonews',
+		hoverColor: 'hover:text-blue-500',
+		shareColor: 'bg-blue-500 hover:bg-blue-600',
 	},
 ] as const;

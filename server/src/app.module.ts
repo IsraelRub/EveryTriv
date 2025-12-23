@@ -10,6 +10,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AUTH_CONSTANTS } from '@internal/constants';
 import { ClientLogsController, MiddlewareMetricsController } from '@internal/controllers';
 import { BulkOperationsMiddleware, DecoratorAwareMiddleware, RateLimitMiddleware } from '@internal/middleware';
 import { StorageModule } from '@internal/modules';
@@ -31,10 +32,8 @@ import {
 	GameModule,
 	MultiplayerModule,
 	PaymentModule,
-	SubscriptionModule,
 	UserModule,
 } from './features';
-import { AUTH_CONSTANTS } from './internal/constants';
 import { RedisModule } from './internal/modules/redis.module';
 
 @Module({
@@ -58,7 +57,6 @@ import { RedisModule } from './internal/modules/redis.module';
 		UserModule,
 		PaymentModule,
 		CreditsModule,
-		SubscriptionModule,
 	],
 	controllers: [AppController, ClientLogsController, MiddlewareMetricsController],
 	exports: [],

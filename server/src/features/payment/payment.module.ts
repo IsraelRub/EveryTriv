@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from '@internal/entities';
+import { PaymentHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
 import { PaymentDataPipe } from '../../common/pipes';
@@ -12,7 +12,7 @@ import { PaymentService } from './payment.service';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([PaymentHistoryEntity, SubscriptionEntity, UserEntity]),
+		TypeOrmModule.forFeature([PaymentHistoryEntity, UserEntity]),
 		CacheModule,
 		StorageModule,
 		forwardRef(() => AuthModule),

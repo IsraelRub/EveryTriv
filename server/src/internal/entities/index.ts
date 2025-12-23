@@ -35,13 +35,6 @@ export * from './paymentHistory.entity';
 export * from './creditTransaction.entity';
 
 /**
- * Subscription entity
- * @description Database entity for storing user subscription records
- * @used_by server/src/features/payment, server/src/repositories
- */
-export * from './subscription.entity';
-
-/**
  * Trivia entity
  * @description Database entity for storing trivia question records
  * @used_by server/src/features/game, server/src/repositories

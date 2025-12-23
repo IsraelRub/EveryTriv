@@ -14,7 +14,6 @@ import {
 	IsNumber,
 	IsOptional,
 	IsString,
-	IsUrl,
 	Matches,
 	Max,
 	MaxLength,
@@ -24,7 +23,9 @@ import {
 } from 'class-validator';
 
 import { UserStatus } from '@shared/constants';
-import { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
+import { BasicValue, UserPreferences } from '@shared/types';
+
+import type { CustomDifficultyItem } from '@internal/types';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -48,25 +49,6 @@ export class UpdateUserProfileDto {
 	@MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
 	@Matches(/^[a-zA-Z\s'-]+$/, { message: 'Last name can only contain letters, spaces, apostrophes, and hyphens' })
 	lastName?: string;
-
-	@ApiPropertyOptional({
-		description: 'Avatar URL - must be HTTPS and valid image format',
-		example: 'https://example.com/avatar.jpg',
-	})
-	@IsOptional()
-	@IsString()
-	@MaxLength(500, { message: 'Avatar URL cannot exceed 500 characters' })
-	@IsUrl(
-		{
-			protocols: ['https'],
-			require_protocol: true,
-		},
-		{ message: 'Avatar URL must be a valid HTTPS URL' }
-	)
-	@Matches(/\.(jpg|jpeg|png|gif|webp|svg)$/i, {
-		message: 'Avatar must be a valid image format (jpg, jpeg, png, gif, webp, svg)',
-	})
-	avatar?: string;
 
 	@ApiPropertyOptional({
 		description: 'User preferences',
@@ -95,13 +77,13 @@ export class SearchUsersDto {
 		example: 10,
 		minimum: 1,
 		maximum: 100,
+		default: 10,
 	})
-	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
 	@Max(100, { message: 'Limit cannot exceed 100' })
-	limit?: number = 10;
+	limit: number = 10;
 }
 
 export class UpdateUserFieldDto {
@@ -197,4 +179,18 @@ export class ChangePasswordDto {
 	@MinLength(6, { message: 'New password must be at least 6 characters long' })
 	@MaxLength(15, { message: 'New password cannot exceed 15 characters' })
 	newPassword!: string;
+}
+
+export class SetAvatarDto {
+	@ApiProperty({
+		description: 'Avatar ID (1-16)',
+		example: 1,
+		minimum: 1,
+		maximum: 16,
+	})
+	@IsNumber({}, { message: 'Avatar ID must be a number' })
+	@IsNotEmpty({ message: 'Avatar ID is required' })
+	@Min(1, { message: 'Avatar ID must be at least 1' })
+	@Max(16, { message: 'Avatar ID cannot exceed 16' })
+	avatarId!: number;
 }

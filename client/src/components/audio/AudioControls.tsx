@@ -5,6 +5,8 @@ import { ChevronDown, HeadphoneOff, Headphones, Volume2, VolumeX } from 'lucide-
 
 import { mergeUserPreferences } from '@shared/utils';
 
+import { AudioKey, ButtonSize, ButtonVariant, CLIENT_STORAGE_KEYS } from '@/constants';
+
 import {
 	Button,
 	DropdownMenu,
@@ -14,10 +16,11 @@ import {
 	DropdownMenuTrigger,
 	Slider,
 } from '@/components';
-import { AudioKey, ButtonSize, CLIENT_STORAGE_KEYS } from '@/constants';
+
 import { useUpdateUserPreferences, useUserProfile } from '@/hooks';
-import { audioService } from '@/services';
-import { storageService } from '@/services/storage.service';
+
+import { audioService, storageService } from '@/services';
+
 import type { AudioControlsProps, RootState } from '@/types';
 
 /**
@@ -98,7 +101,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 
 			// Load volume from storage
 			const storedVolume = await storageService.getNumber(CLIENT_STORAGE_KEYS.AUDIO_VOLUME);
-			if (storedVolume.success && typeof storedVolume.data === 'number') {
+			if (storedVolume.success && typeof storedVolume.data === 'number' && Number.isFinite(storedVolume.data)) {
 				setVolume(storedVolume.data);
 				audioService.setMasterVolume(storedVolume.data);
 			} else {
@@ -118,6 +121,15 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 		if (isAuthenticated && preferences) {
 			const mergedPreferences = mergeUserPreferences(null, preferences);
 			audioService.setUserPreferences(mergedPreferences);
+
+			// Start background music if user already interacted, music is enabled, and not muted
+			if (!isMuted && mergedPreferences.musicEnabled) {
+				audioService.markUserInteracted();
+				// Use requestAnimationFrame to ensure preferences are updated first
+				requestAnimationFrame(() => {
+					audioService.play(AudioKey.BACKGROUND_MUSIC);
+				});
+			}
 		} else if (!isAuthenticated) {
 			// For unauthenticated users, sync with local state
 			const localPreferences = {
@@ -126,8 +138,17 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 			};
 			const mergedPreferences = mergeUserPreferences(null, localPreferences);
 			audioService.setUserPreferences(mergedPreferences);
+
+			// Start background music if user already interacted, music is enabled, and not muted
+			if (!isMuted && mergedPreferences.musicEnabled) {
+				audioService.markUserInteracted();
+				// Use requestAnimationFrame to ensure preferences are updated first
+				requestAnimationFrame(() => {
+					audioService.play(AudioKey.BACKGROUND_MUSIC);
+				});
+			}
 		}
-	}, [preferences, isAuthenticated, soundEnabled, musicEnabled]);
+	}, [preferences, isAuthenticated, soundEnabled, musicEnabled, isMuted]);
 
 	const handleVolumeChange = useCallback(
 		async (values: number[]) => {
@@ -304,7 +325,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 	if (!showSlider) {
 		return (
 			<Button
-				variant='ghost'
+				variant={ButtonVariant.GHOST}
 				size={ButtonSize.ICON}
 				onClick={handleMuteToggle}
 				className={className}
@@ -320,7 +341,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 		<div className={`inline-flex items-center rounded-full bg-primary/10 overflow-hidden ${className}`}>
 			{/* Main button - wider part */}
 			<Button
-				variant='ghost'
+				variant={ButtonVariant.GHOST}
 				onClick={handleToggleAll}
 				className='h-8 rounded-none px-3 hover:bg-primary/20'
 				title={soundEnabled && musicEnabled ? 'Mute All' : 'Unmute All'}
@@ -338,7 +359,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 			<DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
 				<DropdownMenuTrigger asChild>
 					<Button
-						variant='ghost'
+						variant={ButtonVariant.GHOST}
 						size={ButtonSize.ICON}
 						className='h-8 w-8 rounded-none hover:bg-primary/20 shrink-0'
 						title='Audio Settings'

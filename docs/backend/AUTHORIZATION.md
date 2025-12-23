@@ -112,9 +112,10 @@ async getLeaderboard() {
 |------|------|-------|
 | `/auth/admin/users` | GET | רשימת כל המשתמשים |
 | `/users/admin/all` | GET | רשימת כל המשתמשים |
-| `/users/credits/:userId` | PUT | עדכון נקודות משתמש |
+| `/users/credits/:userId` | PATCH | עדכון נקודות משתמש |
 | `/users/:userId` | DELETE | מחיקת משתמש |
 | `/users/:userId/status` | PATCH | עדכון סטטוס משתמש |
+| `/users/admin/:userId/status` | PATCH | עדכון סטטוס משתמש (עם בדיקת אימות מפורשת) |
 | `/game/admin/statistics` | GET | סטטיסטיקות משחק |
 | `/game/admin/history/clear-all` | DELETE | מחיקת כל היסטוריית המשחקים |
 | `/storage/*` | GET/POST/DELETE | ניהול אחסון |
@@ -142,11 +143,21 @@ export class AuthController {
 ```typescript
 @Controller('users')
 export class UserController {
-  @Put('credits/:userId')
+  @Patch('credits/:userId')
   @Roles('admin')
   @AuditLog('admin:update-user-credits')
   async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
     // עדכון נקודות למנהלים בלבד
+  }
+
+  @Patch('admin/:userId/status')
+  @Roles('admin')
+  async adminUpdateUserStatus(
+    @CurrentUser() adminUser: BasicUser | null,
+    @Param('userId') userId: string,
+    @Body() statusData: UpdateUserStatusDto
+  ) {
+    // עדכון סטטוס משתמש למנהלים בלבד
   }
 }
 ```

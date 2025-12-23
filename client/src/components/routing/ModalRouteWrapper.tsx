@@ -1,9 +1,13 @@
 import { motion } from 'framer-motion';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ModalSize } from '@/constants/ui/size.constants';
+import { ModalSize } from '@/constants';
+
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
+
 import { useModalRoute } from '@/hooks';
-import type { ModalRouteProps } from '@/types/routing/modal.types';
+
+import type { ModalRouteProps } from '@/types';
+
 import { cn } from '@/utils';
 
 /**
@@ -35,6 +39,10 @@ export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalR
 						modalSize === ModalSize.FULL && 'sm:max-w-full'
 					)}
 				>
+					<DialogHeader className='sr-only'>
+						<DialogTitle>Dialog</DialogTitle>
+						<DialogDescription>Modal dialog</DialogDescription>
+					</DialogHeader>
 					{children}
 				</DialogContent>
 			</Dialog>
@@ -42,14 +50,14 @@ export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalR
 	}
 
 	// If not modal mode, render as full page
+	// Use layout prop to prevent unnecessary re-renders
 	return (
 		<motion.main
-			role='main'
-			aria-label='Page content'
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.4 }}
+			transition={{ duration: 0.4, ease: 'easeOut' }}
 			className='min-h-screen flex items-center justify-center px-4 py-12'
+			style={{ willChange: 'transform, opacity' }}
 		>
 			{children}
 		</motion.main>

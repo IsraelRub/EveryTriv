@@ -7,16 +7,15 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { serverLogger as logger } from '@shared/services';
-import type { UpdateUserProfileData, ValidationResult } from '@shared/types';
+import { ERROR_CODES } from '@shared/constants';
+import type { UpdateUserProfileData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { ValidationService } from '../validation';
+import { serverLogger as logger } from '@internal/services';
+import { validateName } from '@internal/validation/core';
 
 @Injectable()
 export class UserDataPipe implements PipeTransform {
-	constructor(private readonly validationService: ValidationService) {}
-
 	async transform(value: UpdateUserProfileData): Promise<UpdateUserProfileData> {
 		const startTime = Date.now();
 
@@ -28,19 +27,17 @@ export class UserDataPipe implements PipeTransform {
 
 			// Password validation is handled separately in auth service
 
-			// Validate first name if provided
+			// Validate first name if provided using shared validation function
 			if (value.firstName) {
-				const firstNameValidation: ValidationResult = await this.validationService.validateInputContent(
-					value.firstName
-				);
+				const firstNameValidation = validateName(value.firstName, 'First name');
 				if (!firstNameValidation.isValid) {
 					errors.push(...firstNameValidation.errors);
 				}
 			}
 
-			// Validate last name if provided
+			// Validate last name if provided using shared validation function
 			if (value.lastName) {
-				const lastNameValidation: ValidationResult = await this.validationService.validateInputContent(value.lastName);
+				const lastNameValidation = validateName(value.lastName, 'Last name');
 				if (!lastNameValidation.isValid) {
 					errors.push(...lastNameValidation.errors);
 				}
@@ -80,7 +77,7 @@ export class UserDataPipe implements PipeTransform {
 
 			logger.apiUpdateError('userDataValidation', getErrorMessage(error));
 
-			throw new BadRequestException('User data validation failed');
+			throw new BadRequestException(ERROR_CODES.USER_DATA_VALIDATION_FAILED);
 		}
 	}
 }

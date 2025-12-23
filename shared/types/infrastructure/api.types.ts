@@ -179,6 +179,34 @@ export interface UsersListResponse {
 	users: AdminUserData[];
 	success: boolean;
 	timestamp: string;
+	pagination?: {
+		total: number;
+		page?: number;
+		pageSize?: number;
+	};
+}
+
+/**
+ * Update user field response interface
+ * @interface UpdateUserFieldResponse
+ * @description Response from updating a user field
+ */
+export interface UpdateUserFieldResponse {
+	success: boolean;
+	message: string;
+	field: string;
+	value: unknown;
+}
+
+/**
+ * Refresh token response interface
+ * @interface RefreshTokenResponse
+ * @description Response from token refresh operation
+ */
+export interface RefreshTokenResponse {
+	accessToken: string;
+	refreshToken?: string;
+	expiresIn?: number;
 }
 
 // Middleware Metrics Summary

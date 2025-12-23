@@ -5,6 +5,10 @@
  * @description Type definitions for AI providers, models, and AI-related functionality
  * @used_by server/src/features/game/logic/providers/implementations
  */
+import {
+	LLMResponseStatus,
+	ProviderHealthStatus,
+} from '../../../server/src/internal/constants/domain/provider.constants';
 import type { BaseTimestamps, BasicValue } from '../core/data.types';
 import type { GameDifficulty } from './game/trivia.types';
 
@@ -32,7 +36,8 @@ export interface LLMTriviaResponse {
 	questions: LLMQuestion[];
 	explanation?: string;
 	content: string;
-	status: 'success' | 'error';
+	status: LLMResponseStatus;
+	validationSummary?: string;
 	metadata?: {
 		provider: string;
 		responseTime: number;
@@ -79,7 +84,7 @@ export interface ProviderStats extends BaseTimestamps {
 	successRate: number;
 	errorRate: number;
 	lastUsed: Date | null;
-	status: 'healthy' | 'unhealthy' | 'unavailable' | 'available';
+	status: ProviderHealthStatus;
 }
 
 /**
@@ -94,7 +99,6 @@ export interface PromptParams {
 	answerCount: number;
 	customInstructions?: string;
 	isCustomDifficulty?: boolean;
-	excludeQuestions?: string[];
 	options?: {
 		includeExplanation?: boolean;
 		includeHints?: boolean;

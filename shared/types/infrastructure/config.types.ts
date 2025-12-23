@@ -4,7 +4,7 @@
  * @description Application configuration related types
  */
 
-import type { PayPalEnvironment } from '../payment.types';
+import type { PayPalEnvironment } from '@shared/constants';
 
 // Database Configuration
 export interface DatabaseConfigType {

@@ -37,6 +37,17 @@ export enum UserStatus {
 }
 
 /**
+ * Profile visibility enumeration
+ * @enum ProfileVisibility
+ * @description Visibility options for user profiles
+ */
+export enum ProfileVisibility {
+	PUBLIC = 'public',
+	PRIVATE = 'private',
+	FRIENDS = 'friends',
+}
+
+/**
  * Default user preferences
  * @constant
  * @description Default user preferences shared between client and server
@@ -50,7 +61,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	musicEnabled: true,
 	animationsEnabled: true,
 	privacy: {
-		profileVisibility: 'private',
+		profileVisibility: ProfileVisibility.PRIVATE,
 		showOnlineStatus: true,
 		showActivity: true,
 		showAchievements: true,

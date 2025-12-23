@@ -5,20 +5,10 @@
  * @description Type definitions for multiplayer simultaneous trivia games
  * @used_by server/src/features/game/multiplayer, client/src/services/multiplayer.service.ts
  */
-import { GameMode } from '@shared/constants';
+import { DifficultyLevel, GameMode, PlayerStatus, RoomStatus } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
-
-/**
- * Player status in multiplayer game
- */
-export type PlayerStatus = 'waiting' | 'ready' | 'playing' | 'answered' | 'disconnected' | 'finished';
-
-/**
- * Room status
- */
-export type RoomStatus = 'waiting' | 'starting' | 'playing' | 'finished' | 'cancelled';
 
 /**
  * Player interface for multiplayer game
@@ -58,6 +48,7 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
  */
 export interface RoomConfig extends CreateRoomConfig {
 	timePerQuestion: number; // See MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION
+	mappedDifficulty?: DifficultyLevel; // Normalized difficulty level (set by controller/pipe)
 }
 
 /**
@@ -140,82 +131,40 @@ export type GameEventType =
 	| 'error';
 
 /**
- * Base game event interface
- * @interface GameEvent
- * @description Base structure for all game events
+ * Game event data map type
+ * @type GameEventDataMap
+ * @description Maps event types to their data structures
  */
-export interface GameEvent {
-	type: GameEventType;
-	roomId: string;
-	timestamp: Date;
-	data?: unknown;
-}
-
-/**
- * Player joined event
- */
-export interface PlayerJoinedEvent extends GameEvent {
-	type: 'player-joined';
-	data: {
+export type GameEventDataMap = {
+	'player-joined': {
 		player: Player;
 		players: Player[];
 	};
-}
-
-/**
- * Player left event
- */
-export interface PlayerLeftEvent extends GameEvent {
-	type: 'player-left';
-	data: {
+	'player-left': {
 		userId: string;
 		players: Player[];
 	};
-}
-
-/**
- * Game started event
- */
-export interface GameStartedEvent extends GameEvent {
-	type: 'game-started';
-	data: {
+	'player-ready': {
+		player: Player;
+		players: Player[];
+	};
+	'game-started': {
 		questions: TriviaQuestion[];
 		config: RoomConfig;
 	};
-}
-
-/**
- * Question started event
- */
-export interface QuestionStartedEvent extends GameEvent {
-	type: 'question-started';
-	data: {
+	'question-started': {
 		question: TriviaQuestion;
 		questionIndex: number;
 		timeLimit: number;
 	};
-}
-
-/**
- * Answer received event
- */
-export interface AnswerReceivedEvent extends GameEvent {
-	type: 'answer-received';
-	data: {
+	'answer-received': {
 		userId: string;
 		questionId: string;
 		isCorrect: boolean;
 		scoreEarned: number;
-		leaderboard: Player[];
+		leaderboard?: Player[];
 	};
-}
-
-/**
- * Question ended event
- */
-export interface QuestionEndedEvent extends GameEvent {
-	type: 'question-ended';
-	data: {
+	'question-ended': {
 		questionId: string;
 		correctAnswer: number;
 		results: Array<{
@@ -225,62 +174,90 @@ export interface QuestionEndedEvent extends GameEvent {
 		}>;
 		leaderboard: Player[];
 	};
-}
-
-/**
- * Game ended event
- */
-export interface GameEndedEvent extends GameEvent {
-	type: 'game-ended';
-	data: {
+	'game-ended': {
 		finalLeaderboard: Player[];
 		winner: Player | null;
 		gameDuration: number;
 	};
-}
-
-/**
- * Leaderboard update event
- */
-export interface LeaderboardUpdateEvent extends GameEvent {
-	type: 'leaderboard-update';
-	data: {
+	'leaderboard-update': {
 		leaderboard: Player[];
 	};
-}
-
-/**
- * Room updated event
- */
-export interface RoomUpdatedEvent extends GameEvent {
-	type: 'room-updated';
-	data: {
+	'room-updated': {
 		room: MultiplayerRoom;
 	};
+	error: {
+		message: string;
+		code: string;
+	};
+};
+
+/**
+ * Base game event interface
+ * @interface GameEvent
+ * @description Base structure for all game events with type-safe data
+ */
+export interface GameEvent<T extends GameEventType = GameEventType> {
+	type: T;
+	roomId: string;
+	timestamp: Date;
+	data: GameEventDataMap[T];
 }
 
 /**
- * Error event
+ * Type aliases for specific game events (for convenience and backward compatibility)
  */
-export interface ErrorEvent extends GameEvent {
-	type: 'error';
-	data: {
-		message: string;
-		code?: string;
-	};
-}
+export type PlayerJoinedEvent = GameEvent<'player-joined'>;
+export type PlayerLeftEvent = GameEvent<'player-left'>;
+export type PlayerReadyEvent = GameEvent<'player-ready'>;
+export type GameStartedEvent = GameEvent<'game-started'>;
+export type QuestionStartedEvent = GameEvent<'question-started'>;
+export type AnswerReceivedEvent = GameEvent<'answer-received'>;
+export type QuestionEndedEvent = GameEvent<'question-ended'>;
+export type GameEndedEvent = GameEvent<'game-ended'>;
+export type LeaderboardUpdateEvent = GameEvent<'leaderboard-update'>;
+export type RoomUpdatedEvent = GameEvent<'room-updated'>;
+export type ErrorEvent = GameEvent<'error'>;
 
 /**
  * Union type for all game events
  */
-export type MultiplayerGameEvent =
-	| PlayerJoinedEvent
-	| PlayerLeftEvent
-	| GameStartedEvent
-	| QuestionStartedEvent
-	| AnswerReceivedEvent
-	| QuestionEndedEvent
-	| GameEndedEvent
-	| LeaderboardUpdateEvent
-	| RoomUpdatedEvent
-	| ErrorEvent;
+export type MultiplayerGameEvent = GameEvent<GameEventType>;
+
+/**
+ * Create room response interface
+ * @interface CreateRoomResponse
+ * @description Response from creating a multiplayer room
+ */
+export interface CreateRoomResponse {
+	room: MultiplayerRoom;
+	code: string;
+}
+
+/**
+ * Submit answer response type
+ * @type SubmitAnswerResponse
+ * @description Alias for SubmitAnswerHttpResponse
+ */
+export type SubmitAnswerResponse = MultiplayerAnswerResult;
+
+/**
+ * Room state response interface
+ * @interface RoomStateResponse
+ * @description Response containing room state information
+ */
+export interface RoomStateResponse {
+	room: MultiplayerRoom;
+	gameState: GameState;
+}
+
+/**
+ * Multiplayer answer result interface
+ * @interface MultiplayerAnswerResult
+ * @description Result from submitting an answer in multiplayer game
+ */
+export interface MultiplayerAnswerResult {
+	room: MultiplayerRoom;
+	isCorrect: boolean;
+	scoreEarned: number;
+	leaderboard?: Player[];
+}

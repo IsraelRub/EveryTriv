@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { motion } from 'framer-motion';
 
@@ -6,9 +6,11 @@ import {
 	ANIMATION_COLORS,
 	ANIMATION_FONTS,
 	BACKGROUND_ANIMATION_CONFIG,
+	Easing,
 	TRIVIA_WORDS,
 	WORD_DIRECTIONS,
 } from '@/constants';
+
 import type { AnimatedWord, Position, WordDirection } from '@/types';
 
 /**
@@ -104,20 +106,23 @@ export function BackgroundAnimation() {
 	}, []);
 
 	// Replace word when animation completes
-	const handleAnimationComplete = (wordId: string) => {
+	// Use useCallback to prevent creating new function on every render
+	const handleAnimationComplete = useCallback((wordId: string) => {
 		setWords(prev => {
+			// Use functional update to avoid stale closure issues
 			const filtered = prev.filter(w => w.id !== wordId);
-			return [...filtered, generateWord()];
+			// Only add new word if we still have words in the array (prevent memory leaks)
+			if (filtered.length < BACKGROUND_ANIMATION_CONFIG.wordCount) {
+				return [...filtered, generateWord()];
+			}
+			return filtered;
 		});
-	};
+	}, []);
 
-	return (
-		<div
-			className='fixed inset-0 overflow-hidden pointer-events-none'
-			style={{ zIndex: BACKGROUND_ANIMATION_CONFIG.zIndex }}
-			aria-hidden='true'
-		>
-			{words.map(word => (
+	// Memoize word components to prevent unnecessary re-renders
+	const wordComponents = useMemo(
+		() =>
+			words.map(word => (
 				<motion.div
 					key={word.id}
 					initial={{
@@ -134,7 +139,7 @@ export function BackgroundAnimation() {
 					}}
 					transition={{
 						duration: word.duration,
-						ease: 'linear',
+						ease: Easing.LINEAR,
 						opacity: {
 							times: [
 								0,
@@ -160,7 +165,16 @@ export function BackgroundAnimation() {
 				>
 					{word.text}
 				</motion.div>
-			))}
+			)),
+		[words, handleAnimationComplete]
+	);
+
+	return (
+		<div
+			className='fixed inset-0 overflow-hidden pointer-events-none'
+			style={{ zIndex: BACKGROUND_ANIMATION_CONFIG.zIndex }}
+		>
+			{wordComponents}
 		</div>
 	);
 }

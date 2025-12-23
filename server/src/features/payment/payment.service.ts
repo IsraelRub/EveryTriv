@@ -2,7 +2,7 @@
  * Payment Service
  *
  * @module PaymentService
- * @description Service for handling payment operations and subscription management
+ * @description Service for handling payment operations (PayPal, Manual Credit, Payment History, Credit Purchase)
  * @used_by server/src/features/payment/payment.controller.ts
  */
 import { Injectable } from '@nestjs/common';
@@ -12,40 +12,30 @@ import { Repository } from 'typeorm';
 import {
 	CACHE_DURATION,
 	CREDIT_PURCHASE_PACKAGES,
-	PAYMENT_ERROR_MESSAGES,
+	ERROR_CODES,
+	ERROR_MESSAGES,
+	PaymentClientAction,
 	PaymentMethod,
 	PaymentStatus,
-	PlanType,
-	SUBSCRIPTION_PLANS,
-	SubscriptionStatus,
 	VALID_PAYMENT_METHODS,
 } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
 import type {
 	CreditBalance,
 	CreditPurchaseOption,
 	ManualPaymentDetails,
 	PaymentData,
 	PaymentResult,
-	PayPalConfig,
 	PayPalOrderRequest,
-	SubscriptionData,
-	SubscriptionPlanDetails,
-	SubscriptionPlans,
 } from '@shared/types';
-import {
-	generatePaymentIntentId,
-	getErrorMessage,
-	isCreditPurchaseOptionArray,
-	isSubscriptionPlans,
-	sanitizeCardNumber,
-} from '@shared/utils';
-import { detectCardBrand, extractLastFourDigits } from '@shared/utils/domain/payment.utils';
-import { isValidCardNumber } from '@shared/validation';
+import { generatePaymentIntentId, getErrorMessage, sanitizeCardNumber } from '@shared/utils';
+import { detectCardBrand, extractLastFourDigits, isCreditPurchaseOptionArray } from '@shared/utils/domain';
 
-import { PaymentHistoryEntity, SubscriptionEntity, UserEntity } from '@internal/entities';
+import { PaymentHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules/cache';
+import { serverLogger as logger } from '@internal/services';
+import type { PayPalConfig } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
+import { isValidCardNumber } from '@internal/validation/domain';
 
 import { AppConfig } from '../../config/app.config';
 
@@ -54,36 +44,10 @@ export class PaymentService {
 	constructor(
 		@InjectRepository(PaymentHistoryEntity)
 		private readonly paymentHistoryRepository: Repository<PaymentHistoryEntity>,
-		@InjectRepository(SubscriptionEntity)
-		private readonly subscriptionRepository: Repository<SubscriptionEntity>,
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
 		private readonly cacheService: CacheService
 	) {}
-
-	/**
-	 * Get available pricing plans
-	 * @returns Available subscription plans
-	 */
-	async getPricingPlans(): Promise<SubscriptionPlans> {
-		try {
-			logger.payment('Getting pricing plans');
-
-			const cachedPlans = await this.cacheService.get<SubscriptionPlans>('pricing_plans', isSubscriptionPlans);
-			if (cachedPlans.success && cachedPlans.data) {
-				return cachedPlans.data;
-			}
-
-			await this.cacheService.set('pricing_plans', SUBSCRIPTION_PLANS, CACHE_DURATION.VERY_LONG);
-
-			return SUBSCRIPTION_PLANS;
-		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to get pricing plans', {
-				error: getErrorMessage(error),
-			});
-			throw createServerError('retrieve pricing plans', error);
-		}
-	}
 
 	/**
 	 * Get credit purchase options
@@ -91,7 +55,7 @@ export class PaymentService {
 	 */
 	async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
 		try {
-			logger.payment('Getting credit purchase options');
+			logger.paymentInfo('Getting credit purchase options');
 
 			const cachedOptions = await this.cacheService.get<CreditPurchaseOption[]>(
 				'credit_purchase_options',
@@ -130,7 +94,7 @@ export class PaymentService {
 
 			this.ensureValidPaymentMethod(method);
 
-			logger.payment('Processing payment', {
+			logger.paymentInfo('Processing payment', {
 				userId,
 				paymentType: paymentData.type ?? 'unspecified',
 				paymentMethod: method,
@@ -177,14 +141,14 @@ export class PaymentService {
 
 			if (processingResult.status === PaymentStatus.COMPLETED) {
 				await this.handlePaymentSuccess(userId, paymentData);
-				logger.payment('Payment processed successfully', {
+				logger.paymentInfo('Payment processed successfully', {
 					userId,
 					id: paymentHistory.transactionId,
 					amount: paymentData.amount,
 					paymentMethod: method,
 				});
 			} else {
-				logger.payment('Payment requires additional action', {
+				logger.paymentInfo('Payment requires additional action', {
 					userId,
 					id: paymentHistory.transactionId,
 					status: processingResult.status,
@@ -204,7 +168,7 @@ export class PaymentService {
 				userId,
 				error: getErrorMessage(error),
 			});
-			throw createServerError('process payment', new Error(PAYMENT_ERROR_MESSAGES.PAYMENT_PROCESSING_FAILED));
+			throw createServerError('process payment', new Error(ERROR_CODES.PAYMENT_PROCESSING_FAILED));
 		}
 	}
 
@@ -270,7 +234,7 @@ export class PaymentService {
 				amount: normalizedAmount,
 				currency,
 				paymentMethod: PaymentMethod.MANUAL_CREDIT,
-				clientAction: 'manual_capture',
+				clientAction: PaymentClientAction.MANUAL_CAPTURE,
 				manualCaptureReference: paymentHistory.transactionId,
 				metadata: paymentHistory.metadata,
 			};
@@ -309,7 +273,7 @@ export class PaymentService {
 			amount: normalizedAmount,
 			currency,
 			paymentMethod: PaymentMethod.MANUAL_CREDIT,
-			clientAction: 'manual_capture',
+			clientAction: PaymentClientAction.MANUAL_CAPTURE,
 			manualCaptureReference: paymentHistory.transactionId,
 			metadata: paymentHistory.metadata,
 		};
@@ -341,7 +305,7 @@ export class PaymentService {
 				amount: normalizedAmount,
 				currency,
 				paymentMethod: PaymentMethod.PAYPAL,
-				clientAction: 'confirm_paypal',
+				clientAction: PaymentClientAction.CONFIRM_PAYPAL,
 				paypalOrderRequest: requestPayload,
 				metadata: paymentHistory.metadata,
 			};
@@ -366,7 +330,7 @@ export class PaymentService {
 			amount: normalizedAmount,
 			currency,
 			paymentMethod: PaymentMethod.PAYPAL,
-			clientAction: 'complete',
+			clientAction: PaymentClientAction.COMPLETE,
 			paypalOrderId: orderId,
 			metadata: paymentHistory.metadata,
 		};
@@ -400,43 +364,6 @@ export class PaymentService {
 		return {};
 	}
 
-	private buildPendingSubscription(
-		planType: PlanType,
-		paymentResult: PaymentResult,
-		method: PaymentMethod | undefined
-	): SubscriptionData {
-		const planDetailsRaw = SUBSCRIPTION_PLANS[planType];
-		const planDetails: SubscriptionPlanDetails | undefined = planDetailsRaw
-			? {
-					...planDetailsRaw,
-					features: [...planDetailsRaw.features],
-				}
-			: undefined;
-
-		const startDate = new Date();
-
-		return {
-			subscriptionId: null,
-			endDate: null,
-			billingCycle: planDetailsRaw?.interval ?? null,
-			planType,
-			status: SubscriptionStatus.PENDING,
-			startDate,
-			price: planDetails?.price ?? 0,
-			features: planDetails?.features ? [...planDetails.features] : [],
-			autoRenew: false,
-			nextBillingDate: undefined,
-			cancelledAt: undefined,
-			id: undefined,
-			planDetails,
-			paymentMethod: method,
-			paypalTransactionId: paymentResult.paypalOrderId,
-			paypalOrderId: paymentResult.paypalOrderId,
-			manualCaptureReference: paymentResult.manualCaptureReference,
-			paymentId: paymentResult.transactionId,
-		};
-	}
-
 	/**
 	 * Get payment history for user
 	 * @param userId User ID
@@ -446,7 +373,7 @@ export class PaymentService {
 	 */
 	async getPaymentHistory(userId: string, limit: number = 10, offset: number = 0): Promise<PaymentHistoryEntity[]> {
 		try {
-			logger.payment('Getting payment history', { userId, limit, offset });
+			logger.paymentInfo('Getting payment history', { userId, limit, offset });
 
 			const payments = await this.paymentHistoryRepository.find({
 				where: { userId: userId },
@@ -463,66 +390,7 @@ export class PaymentService {
 			});
 			throw createServerError(
 				'retrieve payment history',
-				new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_PAYMENT_HISTORY)
-			);
-		}
-	}
-
-	/**
-	 * Get subscription details for user
-	 * @param userId User ID
-	 * @returns Subscription details
-	 */
-	async getUserSubscription(userId: string): Promise<SubscriptionData | null> {
-		try {
-			logger.payment('Getting user subscription', { userId });
-
-			const subscription = await this.subscriptionRepository.findOne({
-				where: { userId: userId, status: SubscriptionStatus.ACTIVE },
-				order: { createdAt: 'DESC' },
-			});
-
-			if (!subscription) {
-				return null;
-			}
-
-			const planType = subscription.planType;
-			const planDetailsRaw = SUBSCRIPTION_PLANS[planType];
-			const planDetails: SubscriptionPlanDetails | undefined = planDetailsRaw
-				? {
-						...planDetailsRaw,
-						features: [...planDetailsRaw.features],
-					}
-				: subscription.metadata.planDetails;
-
-			return {
-				id: subscription.id,
-				subscriptionId: subscription.subscriptionExternalId,
-				planType,
-				planDetails,
-				status: subscription.status,
-				startDate: subscription.startDate ?? subscription.metadata.startDate ?? subscription.createdAt,
-				endDate: subscription.endDate ?? subscription.metadata.endDate ?? null,
-				billingCycle: subscription.metadata.billingCycle ?? null,
-				price: subscription.price ?? planDetails?.price ?? 0,
-				features:
-					subscription.features.length > 0
-						? [...subscription.features]
-						: planDetails?.features
-							? [...planDetails.features]
-							: [],
-				autoRenew: subscription.autoRenew,
-				nextBillingDate: subscription.nextBillingDate,
-				cancelledAt: subscription.cancelledAt ?? undefined,
-			};
-		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to get user subscription', {
-				userId,
-				error: getErrorMessage(error),
-			});
-			throw createServerError(
-				'retrieve subscription',
-				new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_RETRIEVE_SUBSCRIPTION)
+				new Error(ERROR_MESSAGES.payment.FAILED_TO_RETRIEVE_PAYMENT_HISTORY)
 			);
 		}
 	}
@@ -535,7 +403,7 @@ export class PaymentService {
 	 */
 	async purchaseCredits(userId: string, optionId: string): Promise<PaymentResult & { balance?: CreditBalance }> {
 		try {
-			logger.payment('Purchasing credits', { userId, id: optionId });
+			logger.paymentInfo('Purchasing credits', { userId, id: optionId });
 
 			const options = await this.getCreditPurchaseOptions();
 			const selectedOption = options.find(opt => opt.id === optionId);
@@ -577,7 +445,7 @@ export class PaymentService {
 			// Invalidate credits cache
 			await this.cacheService.delete(`credits:balance:${userId}`);
 
-			logger.payment('Credits purchased successfully', {
+			logger.paymentInfo('Credits purchased successfully', {
 				userId,
 				credits: creditsToAdd,
 				id: paymentResult.transactionId,
@@ -609,155 +477,7 @@ export class PaymentService {
 				id: optionId,
 				error: getErrorMessage(error),
 			});
-			throw createServerError('purchase credits', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_PURCHASE_CREDITS));
-		}
-	}
-
-	/**
-	 * Subscribe to a plan
-	 * @param userId User ID
-	 * @param planType Plan type
-	 * @param paymentData Payment data
-	 * @returns Subscription result
-	 */
-	async subscribeToPlan(userId: string, planType: PlanType, paymentData: PaymentData): Promise<SubscriptionData> {
-		try {
-			logger.payment('Subscribing to plan', { userId, planType });
-
-			// Validate plan type
-			if (!SUBSCRIPTION_PLANS[planType]) {
-				throw createValidationError('plan type', 'string');
-			}
-
-			// Process payment
-			const paymentResult = await this.processPayment(userId, {
-				...paymentData,
-				type: 'subscription',
-				metadata: { planType },
-			});
-
-			if (paymentResult.status !== PaymentStatus.COMPLETED) {
-				return this.buildPendingSubscription(planType, paymentResult, paymentData.method);
-			}
-
-			// Create subscription
-			const planDetailsRaw = SUBSCRIPTION_PLANS[planType];
-			const planDetails: SubscriptionPlanDetails | undefined = planDetailsRaw
-				? {
-						...planDetailsRaw,
-						features: [...planDetailsRaw.features],
-					}
-				: undefined;
-			const startDate = new Date();
-			const endDate = new Date();
-			endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
-
-			const subscription = this.subscriptionRepository.create({
-				userId,
-				status: SubscriptionStatus.ACTIVE,
-			});
-
-			subscription.subscriptionExternalId = this.generateSubscriptionId();
-			subscription.planType = planType;
-			subscription.startDate = startDate;
-			subscription.endDate = endDate;
-			subscription.autoRenew = true;
-			subscription.nextBillingDate = endDate;
-			subscription.paymentHistoryId = paymentResult.transactionId;
-			subscription.price = planDetails?.price ?? 0;
-			subscription.currency = planDetails?.currency ?? 'USD';
-			subscription.features = planDetails?.features ? [...planDetails.features] : [];
-			subscription.metadata = {
-				...subscription.metadata,
-				billingCycle: planDetailsRaw?.interval ?? 'monthly',
-			};
-
-			await this.subscriptionRepository.save(subscription);
-
-			// Add bonus scoring if any
-			if (planDetails?.creditBonus && planDetails.creditBonus > 0) {
-				const user = await this.userRepository.findOne({ where: { id: userId } });
-				if (user) {
-					user.credits = (user.credits ?? 0) + planDetails.creditBonus;
-					user.purchasedCredits = (user.purchasedCredits ?? 0) + planDetails.creditBonus;
-					await this.userRepository.save(user);
-					// Invalidate credits cache
-					await this.cacheService.delete(`credits:balance:${userId}`);
-				}
-			}
-
-			logger.payment('Subscription created successfully', {
-				userId,
-				planType,
-				id: paymentResult.transactionId,
-			});
-
-			return {
-				id: subscription.id,
-				subscriptionId: subscription.subscriptionExternalId,
-				planType: subscription.planType,
-				planDetails,
-				status: subscription.status,
-				startDate: subscription.startDate ?? startDate,
-				endDate: subscription.endDate ?? endDate,
-				billingCycle: subscription.metadata.billingCycle ?? null,
-				price: subscription.price ?? planDetails?.price ?? 0,
-				features:
-					subscription.features.length > 0
-						? [...subscription.features]
-						: planDetails?.features
-							? [...planDetails.features]
-							: [],
-				autoRenew: subscription.autoRenew,
-				nextBillingDate: subscription.nextBillingDate,
-				cancelledAt: subscription.cancelledAt,
-				paymentMethod: paymentData.method,
-				paypalTransactionId: paymentResult.paypalOrderId,
-				paypalOrderId: paymentResult.paypalOrderId,
-				manualCaptureReference: paymentResult.manualCaptureReference,
-				paymentId: paymentResult.transactionId,
-			};
-		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to subscribe to plan', {
-				userId,
-				planType,
-				error: getErrorMessage(error),
-			});
-			throw createServerError('create subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CREATE_SUBSCRIPTION));
-		}
-	}
-
-	/**
-	 * Cancel subscription
-	 * @param userId User ID
-	 * @returns Cancellation result
-	 */
-	async cancelSubscription(userId: string): Promise<boolean> {
-		try {
-			logger.payment('Cancelling subscription', { userId });
-
-			const subscription = await this.subscriptionRepository.findOne({
-				where: { userId: userId, status: SubscriptionStatus.ACTIVE },
-			});
-
-			if (!subscription) {
-				throw createNotFoundError('Active subscription');
-			}
-
-			subscription.status = SubscriptionStatus.CANCELLED;
-			subscription.autoRenew = false;
-			subscription.cancelledAt = new Date();
-			await this.subscriptionRepository.save(subscription);
-
-			logger.payment('Subscription cancelled successfully', { userId });
-
-			return true;
-		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to cancel subscription', {
-				userId,
-				error: getErrorMessage(error),
-			});
-			throw createServerError('cancel subscription', new Error(PAYMENT_ERROR_MESSAGES.FAILED_TO_CANCEL_SUBSCRIPTION));
+			throw createServerError('purchase credits', new Error(ERROR_CODES.FAILED_TO_PURCHASE_CREDITS));
 		}
 	}
 
@@ -765,13 +485,9 @@ export class PaymentService {
 	 * Handle successful payment
 	 * @param userId User ID
 	 * @param paymentData Payment data
-	 * @param paymentHistory Payment history record
 	 */
 	private async handlePaymentSuccess(userId: string, paymentData: PaymentData): Promise<void> {
 		switch (paymentData.type) {
-			case 'subscription':
-				// Subscription logic handled in subscribeToPlan
-				break;
 			case 'credits_purchase':
 				// Credits purchase logic handled in purchaseCredits
 				break;
@@ -779,7 +495,7 @@ export class PaymentService {
 				// Handle one-time payment
 				break;
 			default:
-				logger.payment('Unknown payment type', {
+				logger.paymentInfo('Unknown payment type', {
 					userId,
 					paymentType: paymentData.type,
 				});
@@ -797,9 +513,5 @@ export class PaymentService {
 	 */
 	private generateTransactionId(): string {
 		return generatePaymentIntentId();
-	}
-
-	private generateSubscriptionId(): string {
-		return `sub_${generatePaymentIntentId()}`;
 	}
 }

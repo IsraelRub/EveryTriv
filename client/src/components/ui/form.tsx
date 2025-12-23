@@ -20,7 +20,9 @@ import { Root as LabelRoot } from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
 
 import { Label } from '@/components';
+
 import type { FormFieldContextValue, FormItemContextValue } from '@/types';
+
 import { cn } from '@/utils';
 
 const FormFieldContext = createContext<FormFieldContextValue | undefined>(undefined);
@@ -87,17 +89,9 @@ const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentPropsWithout
 FormLabel.displayName = 'FormLabel';
 
 const FormControl = forwardRef<ElementRef<typeof Slot>, ComponentPropsWithoutRef<typeof Slot>>(({ ...props }, ref) => {
-	const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+	const { formItemId } = useFormField();
 
-	return (
-		<Slot
-			ref={ref}
-			id={formItemId}
-			aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
-			aria-invalid={!!error}
-			{...props}
-		/>
-	);
+	return <Slot ref={ref} id={formItemId} {...props} />;
 });
 FormControl.displayName = 'FormControl';
 

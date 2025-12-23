@@ -1,0 +1,63 @@
+import { motion } from 'framer-motion';
+import { Trophy } from 'lucide-react';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components';
+
+import type { LeaderboardTableProps } from '@/types';
+
+import { getAvatarUrl } from '@/utils';
+
+import { LeaderboardSkeleton } from './LeaderboardSkeleton';
+import { RankBadge } from './RankBadge';
+
+export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) {
+	if (isLoading) {
+		return <LeaderboardSkeleton />;
+	}
+
+	// Ensure entries is an array
+	const entriesArray = Array.isArray(entries) ? entries : [];
+
+	if (!entriesArray || entriesArray.length === 0) {
+		return (
+			<div className='text-center py-8 text-muted-foreground'>
+				<Trophy className='h-12 w-12 mx-auto mb-4 opacity-50' />
+				<p>No leaderboard data available yet</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className='space-y-2'>
+			{entriesArray.map((entry, index) => (
+				<motion.div
+					key={entry.userId}
+					initial={{ opacity: 0, x: -20 }}
+					animate={{ opacity: 1, x: 0 }}
+					transition={{ delay: index * 0.05 }}
+					className={`flex items-center gap-4 p-3 rounded-lg ${
+						index < 3 ? 'bg-muted/50' : 'hover:bg-muted/30'
+					} transition-colors`}
+				>
+					<RankBadge rank={entry.rank} />
+					<Avatar className='h-10 w-10'>
+						<AvatarImage src={getAvatarUrl(entry.avatar)} alt={entry.firstName || entry.email} />
+						<AvatarFallback>{entry.firstName?.charAt(0) || entry.email.charAt(0).toUpperCase()}</AvatarFallback>
+					</Avatar>
+					<div className='flex-1 min-w-0'>
+						<p className='font-medium truncate'>
+							{entry.firstName && entry.lastName ? `${entry.firstName} ${entry.lastName}` : entry.email.split('@')[0]}
+						</p>
+						<p className='text-sm text-muted-foreground'>
+							{entry.gamesPlayed} games • {Math.round(entry.successRate)}% success
+						</p>
+					</div>
+					<div className='text-right'>
+						<p className='font-bold text-lg'>{entry.score.toLocaleString()}</p>
+						<p className='text-xs text-muted-foreground'>points</p>
+					</div>
+				</motion.div>
+			))}
+		</div>
+	);
+}

@@ -8,23 +8,22 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { LOCALHOST_URLS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { AuthenticationEvent, ERROR_CODES, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 	constructor() {
 		const clientID = process.env.GOOGLE_CLIENT_ID || '';
 		const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
-		const callbackURL = `${process.env.SERVER_URL || LOCALHOST_URLS.SERVER}/auth/google/callback`;
+		const callbackURL = `${process.env.SERVER_URL || LOCALHOST_CONFIG.urls.SERVER}/auth/google/callback`;
 
 		// Validate OAuth credentials
 		if (!clientID || !clientSecret) {
 			logger.systemError('Google OAuth credentials are missing', {
 				data: {
-					hasClientID: !!clientID,
-					hasClientSecret: !!clientSecret,
 					callbackURL,
 				},
 			});
@@ -86,12 +85,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				if (this.isProfile(parsed)) {
 					return parsed;
 				}
-				throw new Error('Parsed Buffer is not a valid Profile');
+				throw new Error(ERROR_CODES.PARSED_BUFFER_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile Buffer as JSON', {
 					error: getErrorMessage(parseError),
 				});
-				throw new Error('Google profile is in invalid format (Buffer)');
+				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_BUFFER);
 			}
 		}
 
@@ -106,12 +105,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				if (this.isProfile(parsed)) {
 					return parsed;
 				}
-				throw new Error('Parsed string is not a valid Profile');
+				throw new Error(ERROR_CODES.PARSED_STRING_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile string as JSON', {
 					error: getErrorMessage(parseError),
 				});
-				throw new Error('Google profile is in invalid format (string)');
+				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_STRING);
 			}
 		}
 
@@ -119,7 +118,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			return value;
 		}
 
-		throw new Error('Google profile is in invalid format');
+		throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT);
 	}
 
 	async validate(accessToken: string, refreshToken: string, profile: Profile) {
@@ -127,15 +126,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Log all parameters for debugging
 			logger.systemInfo('Google OAuth validate called', {
 				data: {
-					hasAccessToken: !!accessToken,
-					accessTokenType: typeof accessToken,
 					accessTokenLength: accessToken ? String(accessToken).length : 0,
-					hasRefreshToken: !!refreshToken,
-					refreshTokenType: typeof refreshToken,
-					profileType: typeof profile,
-					isProfileBuffer: Buffer.isBuffer(profile),
-					isProfileString: typeof profile === 'string',
-					isProfileObject: typeof profile === 'object' && profile !== null && !Buffer.isBuffer(profile),
+					refreshTokenLength: refreshToken ? String(refreshToken).length : 0,
 				},
 			});
 
@@ -143,37 +135,38 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			const actualProfile = this.parseProfile(profile);
 
 			// Log profile details for debugging
+			// Profile from passport-google-oauth20 may have displayName property
+			const profileDisplayName =
+				'displayName' in actualProfile && typeof actualProfile.displayName === 'string'
+					? actualProfile.displayName
+					: undefined;
 			logger.systemInfo('Google OAuth profile received', {
 				id: actualProfile.id,
 				data: {
-					profileIdType: typeof actualProfile.id,
-					hasEmails: !!actualProfile.emails,
-					emailsCount: actualProfile.emails?.length || 0,
-					hasName: !!actualProfile.name,
+					emailsCount: actualProfile.emails?.length ?? 0,
 					nameGivenName: actualProfile.name?.givenName,
 					nameFamilyName: actualProfile.name?.familyName,
-					displayName: (actualProfile as { displayName?: string }).displayName,
-					hasPhotos: !!actualProfile.photos,
-					photosCount: actualProfile.photos?.length || 0,
+					displayName: profileDisplayName,
+					photosCount: actualProfile.photos?.length ?? 0,
 					profileKeys: Object.keys(actualProfile),
 				},
 			});
 
 			// Validate that profile.id exists
 			if (!actualProfile.id) {
-				logger.logSecurityEventEnhanced('Google OAuth profile missing ID', 'error', {
-					error: 'Profile ID is missing',
+				logger.logSecurityEventEnhanced('Google OAuth profile missing ID', LogLevel.ERROR, {
+					error: ERROR_CODES.PROFILE_ID_MISSING,
 					provider: 'google',
 					context: 'GoogleStrategy',
 					data: {
 						profileKeys: Object.keys(actualProfile),
 					},
 				});
-				throw new Error('Google profile ID is missing');
+				throw new Error(ERROR_CODES.GOOGLE_PROFILE_ID_MISSING);
 			}
 
 			// Use enhanced logging
-			logger.logAuthenticationEnhanced('login', 'google_user', actualProfile.id, {
+			logger.logAuthenticationEnhanced(AuthenticationEvent.LOGIN, 'google_user', actualProfile.id, {
 				email: actualProfile.emails?.[0]?.value || '',
 				provider: 'google',
 				context: 'GoogleStrategy',
@@ -188,7 +181,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
 			// If name is not split, try to parse from displayName
 			if (!firstName && !lastName) {
-				const displayName = (actualProfile as { displayName?: string }).displayName;
+				const displayName =
+					'displayName' in actualProfile && typeof actualProfile.displayName === 'string'
+						? actualProfile.displayName
+						: undefined;
 				if (displayName) {
 					const nameParts = displayName.trim().split(/\s+/);
 					if (nameParts.length > 0) {
@@ -212,22 +208,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			logger.systemInfo('Google OAuth validate returning user', {
 				googleId: user.googleId,
 				email: user.email,
-				hasFirstName: !!user.firstName,
-				hasLastName: !!user.lastName,
-				hasAvatar: !!user.avatar,
 				data: {
-					googleIdType: typeof user.googleId,
 					googleIdLength: user.googleId ? String(user.googleId).length : 0,
 					profileId: actualProfile.id,
-					profileIdType: typeof actualProfile.id,
 				},
-			});
-
-			// Log successful validation
-			logger.logAuthenticationEnhanced('login', 'google_user', actualProfile.id, {
-				email: actualProfile.emails?.[0]?.value || '',
-				provider: 'google',
-				context: 'GoogleStrategy',
 			});
 
 			return user;
@@ -241,7 +225,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				// Profile parsing failed, use 'unknown'
 			}
 
-			logger.logSecurityEventEnhanced('Google OAuth validation failed', 'error', {
+			logger.logSecurityEventEnhanced('Google OAuth validation failed', LogLevel.ERROR, {
 				error: getErrorMessage(error),
 				id: profileId,
 				provider: 'google',

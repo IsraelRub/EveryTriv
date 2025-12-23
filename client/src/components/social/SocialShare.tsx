@@ -4,20 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Copy, Facebook, Linkedin, MessageCircle, Send, Share2, Twitter, X, Zap } from 'lucide-react';
 
 import { DifficultyLevel, SHARE_PLATFORMS } from '@shared/constants';
-import { clientLogger as logger } from '@shared/services';
 import { calculatePercentage, getErrorMessage } from '@shared/utils';
 
+import { ButtonSize, ButtonVariant, ToastVariant } from '@/constants';
+
 import { Button } from '@/components';
-import { ButtonSize } from '@/constants';
+
 import { useToast } from '@/hooks';
 
-interface SocialShareProps {
-	score: number;
-	total: number;
-	topic?: string;
-	difficulty?: string;
-	className?: string;
-}
+import { clientLogger as logger } from '@/services';
+
+import type { SocialShareProps } from '@/types';
 
 const PLATFORM_ICONS: Record<string, typeof Twitter> = {
 	Twitter: Twitter,
@@ -81,7 +78,7 @@ export function SocialShare({
 			toast({
 				title: 'Failed to copy',
 				description: 'Could not copy to clipboard',
-				variant: 'destructive',
+				variant: ToastVariant.DESTRUCTIVE,
 			});
 		}
 	};
@@ -122,12 +119,16 @@ export function SocialShare({
 							exit={{ opacity: 0, scale: 0.95, y: 10 }}
 							transition={{ type: 'spring', duration: 0.3 }}
 							className='absolute top-full mt-2 right-0 bg-card border rounded-xl shadow-2xl p-6 w-80 z-50'
-							aria-label='Social Share Panel'
 						>
 							{/* Header */}
 							<div className='flex items-center justify-between mb-4'>
 								<h3 className='font-semibold'>Share Your Achievement!</h3>
-								<Button variant='ghost' size={ButtonSize.ICON} className='h-8 w-8' onClick={() => setIsOpen(false)}>
+								<Button
+									variant={ButtonVariant.GHOST}
+									size={ButtonSize.ICON}
+									className='h-8 w-8'
+									onClick={() => setIsOpen(false)}
+								>
 									<X className='h-4 w-4' />
 								</Button>
 							</div>
@@ -161,7 +162,7 @@ export function SocialShare({
 												transition={{ delay: index * 0.05 }}
 											>
 												<Button
-													variant='outline'
+													variant={ButtonVariant.OUTLINE}
 													className={`w-full ${platform.color} text-white border-0`}
 													onClick={() => handleShare(platform.url, platform.name)}
 												>
@@ -175,7 +176,7 @@ export function SocialShare({
 							</div>
 
 							{/* Copy Link */}
-							<Button variant='secondary' className='w-full' onClick={handleCopyLink}>
+							<Button variant={ButtonVariant.SECONDARY} className='w-full' onClick={handleCopyLink}>
 								{copied ? (
 									<>
 										<Check className='w-4 h-4 mr-2 text-green-500' />

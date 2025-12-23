@@ -1,2 +1,2 @@
 export { GameMode } from './GameMode';
-export { default as GameTimer } from './GameTimer';
+export { GameTimer } from './GameTimer';

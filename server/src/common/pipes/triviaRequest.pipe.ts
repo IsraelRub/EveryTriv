@@ -7,15 +7,14 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import {
-	CUSTOM_DIFFICULTY_PREFIX,
-	SERVER_GAME_CONSTANTS,
-	VALID_DIFFICULTIES,
-	VALIDATION_LIMITS,
-} from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import { GameDifficulty, TriviaRequest } from '@shared/types';
+import { VALIDATION_CONFIG } from '@shared/constants';
+import { TriviaRequest } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
+import { isGameDifficulty, toDifficultyLevel } from '@shared/validation';
+
+import { SERVER_GAME_CONSTANTS } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
+import { isNumber, isString } from '@internal/utils';
 
 import { TriviaRequestDto } from '../../features/game/dtos/triviaRequest.dto';
 import { ValidationService } from '../validation';
@@ -44,7 +43,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			const payload = this.buildTriviaPayload(value);
 
 			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST before validation
-			const { UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
 			const questionsPerRequestForValidation =
 				payload.questionsPerRequest === UNLIMITED ? maxQuestions : payload.questionsPerRequest;
@@ -272,7 +271,7 @@ export class TriviaRequestPipe implements PipeTransform {
 		if (
 			!this.isValidQuestionsPerRequest(questionsPerRequest) ||
 			!this.isNonEmptyString(topic) ||
-			!this.isGameDifficulty(difficulty)
+			!isGameDifficulty(difficulty)
 		) {
 			return false;
 		}
@@ -281,27 +280,15 @@ export class TriviaRequestPipe implements PipeTransform {
 	}
 
 	private isValidQuestionsPerRequest(value: unknown): value is number {
-		if (typeof value !== 'number' || !Number.isInteger(value)) {
+		if (!isNumber(value) || !Number.isInteger(value)) {
 			return false;
 		}
-		const { MIN, MAX, UNLIMITED } = VALIDATION_LIMITS.QUESTIONS;
+		const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
 		return value === UNLIMITED || (value >= MIN && value <= MAX);
 	}
 
 	private isNonEmptyString(value: unknown): value is string {
-		return typeof value === 'string' && value.trim().length > 0;
-	}
-
-	private isGameDifficulty(value: unknown): value is GameDifficulty {
-		if (typeof value !== 'string') {
-			return false;
-		}
-
-		if (VALID_DIFFICULTIES.some(difficulty => difficulty === value)) {
-			return true;
-		}
-
-		return value.startsWith(CUSTOM_DIFFICULTY_PREFIX) && value.length > CUSTOM_DIFFICULTY_PREFIX.length;
+		return isString(value) && value.trim().length > 0;
 	}
 
 	private areOptionalTriviaFieldsValid(candidate: Record<string, unknown>): boolean {
@@ -317,17 +304,18 @@ export class TriviaRequestPipe implements PipeTransform {
 	}
 
 	private isOptionalString(value: unknown): boolean {
-		return value === undefined || typeof value === 'string';
+		return value === undefined || isString(value);
 	}
 
 	private isOptionalNumber(value: unknown): boolean {
-		return value === undefined || (typeof value === 'number' && Number.isFinite(value));
+		return value === undefined || isNumber(value);
 	}
 
 	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
 		const dto = new TriviaRequestDto();
 		dto.topic = payload.topic;
 		dto.difficulty = payload.difficulty;
+		dto.mappedDifficulty = toDifficultyLevel(payload.difficulty);
 		dto.questionsPerRequest = questionsPerRequest;
 
 		if (payload.category !== undefined) {

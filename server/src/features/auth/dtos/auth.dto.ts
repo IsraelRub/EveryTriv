@@ -96,6 +96,7 @@ export class AuthResponseDto {
 		email: string;
 		firstName?: string;
 		lastName?: string;
+		avatar?: number;
 		role: string;
 	};
 }

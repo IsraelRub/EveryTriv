@@ -1,7 +1,9 @@
 import { Column, Entity, Index } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
-import type { Achievement, UserPreferences } from '@shared/types';
+import type { UserPreferences } from '@shared/types';
+
+import type { Achievement } from '@internal/types';
 
 import { BaseEntity } from './base.entity';
 
@@ -23,8 +25,8 @@ export class UserEntity extends BaseEntity {
 	@Column({ name: 'last_name', nullable: true })
 	lastName?: string;
 
-	@Column({ nullable: true })
-	avatar?: string;
+	@Column('int', { nullable: true })
+	avatar?: number;
 
 	@Column('int', { default: 100 })
 	credits: number = 100;
@@ -52,9 +54,6 @@ export class UserEntity extends BaseEntity {
 
 	@Column('jsonb', { default: {} })
 	preferences: Partial<UserPreferences> = {};
-
-	@Column({ name: 'current_subscription_id', nullable: true })
-	currentSubscriptionId?: string;
 
 	@Column('jsonb', { default: [] })
 	achievements: Achievement[];

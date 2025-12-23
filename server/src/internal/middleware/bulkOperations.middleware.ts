@@ -7,12 +7,12 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Response } from 'express';
 
-import { CACHE_DURATION, HTTP_METHODS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { CacheEntry } from '@shared/types';
+import { CACHE_DURATION, HttpMethod } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { NestRequest } from '../types';
+import { OptimizationLevel as OptimizationLevelEnum } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
+import type { CacheEntry, NestRequest } from '@internal/types';
 
 /**
  * Bulk Operations Middleware
@@ -21,7 +21,6 @@ import { NestRequest } from '../types';
 @Injectable()
 export class BulkOperationsMiddleware implements NestMiddleware {
 	private readonly MAX_BATCH_SIZE = 50;
-	// private readonly MAX_QUEUE_SIZE = 100; // Reserved for future use
 	private readonly BATCH_TIMEOUT = 1000; // 1 second
 
 	private operationQueue: Map<string, CacheEntry[]> = new Map();
@@ -129,7 +128,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 		}
 
 		// Extract from query parameters for GET requests
-		if (req.method === HTTP_METHODS.GET && req.query.ids) {
+		if (req.method === HttpMethod.GET && req.query.ids) {
 			const ids = Array.isArray(req.query.ids) ? req.query.ids : [req.query.ids];
 			return ids.map(id => ({
 				key: `bulk_${id}`,
@@ -179,16 +178,16 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 	 * @param req - Request object
 	 * @returns Optimization level
 	 */
-	private getOptimizationLevel(req: NestRequest): 'none' | 'basic' | 'aggressive' {
+	private getOptimizationLevel(req: NestRequest): OptimizationLevelEnum {
 		const batchSize = this.getBatchSize(req);
 
 		if (batchSize >= 20) {
-			return 'aggressive';
+			return OptimizationLevelEnum.AGGRESSIVE;
 		}
 		if (batchSize >= 5) {
-			return 'basic';
+			return OptimizationLevelEnum.BASIC;
 		}
-		return 'none';
+		return OptimizationLevelEnum.NONE;
 	}
 
 	/**

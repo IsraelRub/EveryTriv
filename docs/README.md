@@ -8,7 +8,7 @@
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - ארכיטקטורה כללית של הפרויקט
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - הנחיות פיתוח, workflow וכלים
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - פריסה והפעלה
-- **[TESTING.md](./TESTING.md)** - אסטרטגיית בדיקות
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - קבצי תצורה - מיקום, תפקיד והקשר
 - **[DIAGRAMS.md](./DIAGRAMS.md)** - דיאגרמות וזרימות
 
 ### מסד נתונים
@@ -71,6 +71,7 @@
 ### התחלה מהירה
 - [פיתוח](./DEVELOPMENT.md) - הוראות פיתוח
 - [פריסה](./DEPLOYMENT.md) - הוראות פריסה
+- [קבצי תצורה](./CONFIGURATION.md) - מיקום ותפקיד של כל קבצי התצורה
 - [מסד נתונים](./database/DATABASE_SETUP.md) - הגדרת מסד נתונים
 
 ### ארכיטקטורה
@@ -106,7 +107,6 @@
 - [קבועים](./shared/CONSTANTS.md)
 - [ולידציה](./shared/VALIDATION.md)
 
-### בדיקות ותחזוקה
-- [אסטרטגיית בדיקות](./TESTING.md)
+### תחזוקה
 - [לוגים וניטור](./shared/LOGGING_MONITORING.md)
 

@@ -1,10 +1,8 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { CACHE_DURATION } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { defaultValidators, StorageType } from '@shared/constants';
 import type {
-	CacheEntry,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
@@ -13,6 +11,10 @@ import type {
 	StorageValue,
 } from '@shared/types';
 import { createTimedResult, formatStorageError, getErrorMessage, isRecord } from '@shared/utils';
+
+import { CACHE_CONFIG, StorageOperation } from '@internal/constants';
+import { serverLogger as logger } from '@internal/services';
+import type { CacheEntry } from '@internal/types';
 
 import { deleteKeysByPattern, scanKeys } from '../../utils';
 
@@ -32,13 +34,8 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis | null) {
 		this.useRedis = !!this.redisClient;
 		this.config = {
-			prefix: 'everytriv_cache_',
-			defaultTtl: CACHE_DURATION.VERY_LONG,
-			enableCompression: false,
-			maxSize: 100 * 1024 * 1024, // 100MB for cache
-			type: 'cache',
-			enableMetrics: true,
-			enableSync: false,
+			...CACHE_CONFIG,
+			type: StorageType.CACHE,
 		};
 	}
 
@@ -55,7 +52,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	 * @returns Promise<StorageOperationResult<void>> Operation result with timing information
 	 * @description Stores value in either Redis or memory cache with optional expiration
 	 */
-	async set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>> {
+	async set(key: string, value: StorageValue, ttl?: number): Promise<StorageOperationResult<void>> {
 		const startTime = Date.now();
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
@@ -72,12 +69,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				ttl,
 			});
 
-			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
+			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('set', key, {
+			logger.cacheError(StorageOperation.SET, key, {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -100,7 +97,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		const startTime = Date.now();
 		try {
 			const prefixedKey = this.getPrefixedKey(key);
-			let value: StorageValue | null = null;
+			let value: StorageValue = null;
 
 			if (this.useRedis && this.redisClient) {
 				value = await this.getRedis(prefixedKey);
@@ -118,7 +115,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				});
 			}
 
-			const baseResult = createTimedResult<StorageValue | null>(true, value, undefined, startTime, 'cache');
+			const baseResult = createTimedResult<StorageValue | null>(true, value, undefined, startTime, StorageType.CACHE);
 
 			if (!validator) {
 				return baseResult;
@@ -135,12 +132,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				await this.delete(key);
 			}
 
-			return createTimedResult<T | null>(false, null, 'Cache entry failed validation', startTime, 'cache');
+			return createTimedResult<T | null>(false, null, 'Cache entry failed validation', startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('get', key, {
+			logger.cacheError(StorageOperation.GET, key, {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<T | null>(false, null, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<T | null>(false, null, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -157,19 +154,26 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		key: string,
 		factory: () => Promise<T>,
 		ttl: number | undefined,
-		validator: (value: StorageValue) => value is T
+		validator?: (value: StorageValue) => value is T
 	): Promise<T> {
 		try {
-			const cached = await this.get(key, validator);
-			if (cached.success && cached.data) {
-				return cached.data;
+			if (validator) {
+				const cached = await this.get(key, validator);
+				if (cached.success && cached.data) {
+					return cached.data;
+				}
+			} else {
+				const cached = await this.get(key);
+				if (cached.success && cached.data) {
+					return cached.data as T;
+				}
 			}
 
 			const value = await factory();
 			await this.set(key, value, ttl);
 			return value;
 		} catch (error) {
-			logger.cacheError('getOrSet', key, {
+			logger.cacheError(StorageOperation.GET_OR_SET, key, {
 				error: getErrorMessage(error),
 			});
 			throw error;
@@ -190,7 +194,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			}
 			return this.mgetMemory(keys);
 		} catch (error) {
-			logger.cacheError('mget', keys.join(','), {
+			logger.cacheError(StorageOperation.MGET, keys.join(','), {
 				error: getErrorMessage(error),
 			});
 			return keys.map(() => null);
@@ -204,7 +208,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	 * @returns Promise<void> Operation completion
 	 * @description Stores multiple values efficiently using batch operations
 	 */
-	async mset(keyValues: CacheEntry<StorageValue>[]): Promise<void> {
+	async mset(keyValues: CacheEntry[]): Promise<void> {
 		try {
 			if (this.useRedis && this.redisClient) {
 				await this.msetRedis(keyValues);
@@ -216,7 +220,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				keysCount: keyValues.length,
 			});
 		} catch (error) {
-			logger.cacheError('mset', 'multiple', {
+			logger.cacheError(StorageOperation.MSET, 'multiple', {
 				error: getErrorMessage(error),
 				keysCount: keyValues.length,
 			});
@@ -239,7 +243,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				return this.incrementMemory(key, amount);
 			}
 		} catch (error) {
-			logger.cacheError('increment', key, {
+			logger.cacheError(StorageOperation.INCREMENT, key, {
 				error: getErrorMessage(error),
 			});
 			return 0;
@@ -267,12 +271,18 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				deleted: deleted ? 1 : 0,
 			});
 
-			return createTimedResult<void>(deleted, undefined, deleted ? undefined : 'Key not found', startTime, 'cache');
+			return createTimedResult<void>(
+				deleted,
+				undefined,
+				deleted ? undefined : 'Key not found',
+				startTime,
+				StorageType.CACHE
+			);
 		} catch (error) {
-			logger.cacheError('delete', key, {
+			logger.cacheError(StorageOperation.DELETE, key, {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -293,12 +303,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				exists = this.existsMemory(prefixedKey);
 			}
 
-			return createTimedResult<boolean>(true, exists, undefined, startTime, 'cache');
+			return createTimedResult<boolean>(true, exists, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('exists', key, {
+			logger.cacheError(StorageOperation.EXISTS, key, {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<boolean>(false, false, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<boolean>(false, false, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -316,7 +326,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				return this.setTTLMemory(key, ttl);
 			}
 		} catch (error) {
-			logger.cacheError('setTTL', key, {
+			logger.cacheError(StorageOperation.SET_TTL, key, {
 				error: getErrorMessage(error),
 			});
 			return false;
@@ -337,7 +347,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				return this.getTTLMemory(prefixedKey);
 			}
 		} catch (error) {
-			logger.cacheError('getTTL', key, {
+			logger.cacheError(StorageOperation.GET_TTL, key, {
 				error: getErrorMessage(error),
 			});
 			return -1;
@@ -358,12 +368,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 
 			logger.systemInfo('Cache cleared', {});
 
-			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
+			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('clear', '', {
+			logger.cacheError(StorageOperation.CLEAR, '', {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -382,9 +392,9 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				stats = this.getStatsMemory();
 			}
 
-			return createTimedResult<StorageStats>(true, stats, undefined, startTime, 'cache');
+			return createTimedResult<StorageStats>(true, stats, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('getStats', '', {
+			logger.cacheError(StorageOperation.GET_STATS, '', {
 				error: getErrorMessage(error),
 			});
 			return createTimedResult<StorageStats>(
@@ -406,7 +416,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				},
 				formatStorageError(error),
 				startTime,
-				'cache'
+				StorageType.CACHE
 			);
 		}
 	}
@@ -425,12 +435,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				this.invalidatePatternMemory(pattern);
 			}
 
-			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
+			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('invalidatePattern', pattern, {
+			logger.cacheError(StorageOperation.INVALIDATE, pattern, {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -451,12 +461,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				keys = this.getKeysMemory();
 			}
 
-			return createTimedResult<string[]>(true, keys, undefined, startTime, 'cache');
+			return createTimedResult<string[]>(true, keys, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('getKeys', '', {
+			logger.cacheError(StorageOperation.GET_KEYS, '', {
 				error: getErrorMessage(error),
 			});
-			return createTimedResult<string[]>(false, [], formatStorageError(error), startTime, 'cache');
+			return createTimedResult<string[]>(false, [], formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -471,11 +481,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		const startTime = Date.now();
 		try {
 			const cleanupOptions = options ?? {};
-			const { removeExpired = true, maxAge, maxSize, dryRun = false, types = ['cache'] } = cleanupOptions;
+			const { removeExpired = true, maxAge, maxSize, dryRun = false, types = [StorageType.CACHE] } = cleanupOptions;
 
 			// Skip if cache type not in cleanup types
-			if (!types.includes('cache')) {
-				return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
+			if (!types.includes(StorageType.CACHE)) {
+				return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 			}
 
 			const keys = this.getKeysMemory();
@@ -527,13 +537,13 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				options: JSON.stringify(options),
 			});
 
-			return createTimedResult<void>(true, undefined, undefined, startTime, 'cache');
+			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
-			logger.cacheError('cleanup', '', {
+			logger.cacheError(StorageOperation.CLEANUP, '', {
 				error: getErrorMessage(error),
 				options: options ? JSON.stringify(options) : 'none',
 			});
-			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, 'cache');
+			return createTimedResult<void>(false, undefined, formatStorageError(error), startTime, StorageType.CACHE);
 		}
 	}
 
@@ -553,7 +563,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				return this.invalidatePatternMemory(prefixedPattern);
 			}
 		} catch (error) {
-			logger.cacheError('invalidatePattern', pattern, {
+			logger.cacheError(StorageOperation.INVALIDATE_PATTERN, pattern, {
 				error: getErrorMessage(error),
 			});
 			return 0;
@@ -674,7 +684,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		return keys.map(key => this.getMemory(key));
 	}
 
-	private msetMemory(keyValues: CacheEntry<StorageValue>[]): void {
+	private msetMemory(keyValues: CacheEntry[]): void {
 		keyValues.forEach(({ key, value, ttl }) => {
 			this.setMemory(key, value, ttl);
 		});
@@ -682,7 +692,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 
 	private incrementMemory(key: string, amount: number): number {
 		const currentValue = this.getMemory(key);
-		const current = typeof currentValue === 'number' ? currentValue : 0;
+		if (currentValue === null || currentValue === undefined) {
+			this.setMemory(key, amount);
+			return amount;
+		}
+		const current = defaultValidators.number(currentValue) ? (currentValue as number) : 0;
 		const newValue = current + amount;
 		this.setMemory(key, newValue);
 		return newValue;
@@ -792,7 +806,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		return values.map(value => (value ? JSON.parse(value) : null));
 	}
 
-	private async msetRedis(keyValues: CacheEntry<StorageValue>[]): Promise<void> {
+	private async msetRedis(keyValues: CacheEntry[]): Promise<void> {
 		if (!this.redisClient) return;
 		const pipeline = this.redisClient.pipeline();
 
@@ -827,7 +841,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				pattern,
 			});
 		} catch (error) {
-			logger.cacheError('invalidateOnStorageChange', pattern, {
+			logger.cacheError(StorageOperation.INVALIDATE_ON_STORAGE_CHANGE, pattern, {
 				error: getErrorMessage(error),
 			});
 		}
@@ -850,9 +864,9 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		}
 		if (
 			value === null ||
-			typeof value === 'string' ||
-			typeof value === 'number' ||
-			typeof value === 'boolean' ||
+			defaultValidators.string(value) ||
+			defaultValidators.number(value) ||
+			defaultValidators.boolean(value) ||
 			value instanceof Date ||
 			Array.isArray(value) ||
 			isRecord(value)
@@ -860,5 +874,53 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			return value;
 		}
 		return String(value);
+	}
+
+	/**
+	 * Get string value from cache with automatic runtime validation
+	 * @param key - Cache key
+	 * @returns Storage operation result with validated string
+	 */
+	async getString(key: string): Promise<StorageOperationResult<string | null>> {
+		return this.get(key, defaultValidators.string);
+	}
+
+	/**
+	 * Get number value from cache with automatic runtime validation
+	 * @param key - Cache key
+	 * @returns Storage operation result with validated number
+	 */
+	async getNumber(key: string): Promise<StorageOperationResult<number | null>> {
+		return this.get(key, defaultValidators.number);
+	}
+
+	/**
+	 * Get boolean value from cache with automatic runtime validation
+	 * @param key - Cache key
+	 * @returns Storage operation result with validated boolean
+	 */
+	async getBoolean(key: string): Promise<StorageOperationResult<boolean | null>> {
+		return this.get(key, defaultValidators.boolean);
+	}
+
+	/**
+	 * Get date value from cache with automatic runtime validation
+	 * @param key - Cache key
+	 * @returns Storage operation result with validated Date (converts ISO strings to Date objects)
+	 */
+	async getDate(key: string): Promise<StorageOperationResult<Date | null>> {
+		const startTime = Date.now();
+		const result = await this.get(key, defaultValidators.date);
+		if (result.success && result.data) {
+			// If date was stored as string, convert it to Date object
+			if (typeof result.data === 'string') {
+				return createTimedResult<Date | null>(true, new Date(result.data), undefined, startTime, StorageType.CACHE);
+			}
+			// result.data is already a Date (validated by defaultValidators.date)
+			if (result.data instanceof Date) {
+				return createTimedResult<Date | null>(true, result.data, undefined, startTime, StorageType.CACHE);
+			}
+		}
+		return createTimedResult<Date | null>(false, null, result.error, startTime, StorageType.CACHE);
 	}
 }

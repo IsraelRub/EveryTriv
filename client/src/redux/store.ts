@@ -12,7 +12,6 @@ import storage from 'redux-persist/lib/storage';
 import favoritesReducer from './slices/favoritesSlice';
 import gameModeReducer from './slices/gameModeSlice';
 import gameReducer from './slices/gameSlice';
-import statsReducer from './slices/statsSlice';
 import userReducer from './slices/userSlice';
 
 const userPersistConfig = {
@@ -40,7 +39,6 @@ const persistedGameModeReducer = persistReducer(gameModePersistConfig, gameModeR
 export const store = configureStore({
 	reducer: {
 		game: gameReducer,
-		stats: statsReducer,
 		favorites: persistedFavoritesReducer,
 		user: persistedUserReducer,
 		gameMode: persistedGameModeReducer,
@@ -48,9 +46,9 @@ export const store = configureStore({
 	middleware: getDefaultMiddleware =>
 		getDefaultMiddleware({
 			serializableCheck: {
-				ignoredActions: ['stats/setStats', 'persist/PERSIST', 'persist/REHYDRATE'],
+				ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
 				ignoredActionPaths: ['payload.created_at', 'payload.updated_at', 'payload.lastPlayed'],
-				ignoredPaths: ['stats.stats.lastPlayed', 'user.user.created_at', 'user.user.updated_at'],
+				ignoredPaths: ['user.user.created_at', 'user.user.updated_at'],
 			},
 		}),
 });

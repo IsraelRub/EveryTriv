@@ -6,32 +6,37 @@
  */
 import { Injectable } from '@nestjs/common';
 
-import { CUSTOM_DIFFICULTY_PREFIX, VALID_DIFFICULTIES, VALID_PLAN_TYPES } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import { VALID_DIFFICULTIES } from '@shared/constants';
 import type {
 	AnalyticsEventData,
 	GameDifficulty,
 	LanguageValidationOptions,
 	LanguageValidationResult,
-	PersonalPaymentData,
 	UpdateUserProfileData,
 	ValidationOptions,
 	ValidationResult,
 } from '@shared/types';
 import { getErrorMessage, isRecord, sanitizeCardNumber, sanitizeEmail, sanitizeInput } from '@shared/utils';
 import {
+	extractCustomDifficultyText,
 	isCustomDifficulty,
 	isRegisteredDifficulty,
-	performLocalLanguageValidationAsync,
 	validateCustomDifficultyText,
-	validateEmail,
-	validateInputContent,
-	validatePassword,
-	validateTopicLength,
 } from '@shared/validation';
 
 import { UserEntity } from '@internal/entities';
-import { createStringLengthValidationError, createValidationError } from '@internal/utils';
+import { serverLogger as logger } from '@internal/services';
+import type { PersonalPaymentData } from '@internal/types';
+import { createStringLengthValidationError, createValidationError, isNumber } from '@internal/utils';
+import {
+	performLocalLanguageValidationAsync,
+	validateEmail,
+	validateInputContent,
+	validateName,
+	validatePassword,
+	validateTopicLength,
+} from '@internal/validation/core';
+import { isValidCardNumber, validateGameAnswer as validateGameAnswerShared } from '@internal/validation/domain';
 
 import { LanguageToolService } from './languageTool.service';
 
@@ -248,10 +253,11 @@ export class ValidationService {
 			if (!difficulty) {
 				errors.push('Difficulty is required');
 			} else if (isCustomDifficulty(difficulty)) {
-				// Validate custom difficulty
-				const customText = difficulty.substring(CUSTOM_DIFFICULTY_PREFIX.length);
-				if (customText.length < 3) {
-					errors.push('Custom difficulty must be at least 3 characters long');
+				// Validate custom difficulty using shared validation function
+				const customText = extractCustomDifficultyText(difficulty);
+				const customDifficultyValidation = validateCustomDifficultyText(customText);
+				if (!customDifficultyValidation.isValid) {
+					errors.push(...customDifficultyValidation.errors);
 				}
 			} else {
 				if (!isRegisteredDifficulty(difficulty)) {
@@ -366,10 +372,6 @@ export class ValidationService {
 			const errors: string[] = [];
 
 			// Validate required fields
-			if (!paymentData.planType) {
-				errors.push('Plan type is required');
-			}
-
 			if (!paymentData.email) {
 				errors.push('Email is required');
 			} else {
@@ -379,18 +381,34 @@ export class ValidationService {
 				}
 			}
 
+			// Validate first name
 			if (!paymentData.firstName || paymentData.firstName.trim().length === 0) {
 				errors.push('First name is required');
+			} else {
+				const firstNameValidation = validateName(paymentData.firstName, 'First name');
+				if (!firstNameValidation.isValid) {
+					errors.push(...firstNameValidation.errors);
+				}
 			}
 
+			// Validate last name
 			if (!paymentData.lastName || paymentData.lastName.trim().length === 0) {
 				errors.push('Last name is required');
+			} else {
+				const lastNameValidation = validateName(paymentData.lastName, 'Last name');
+				if (!lastNameValidation.isValid) {
+					errors.push(...lastNameValidation.errors);
+				}
 			}
 
-			// Validate card details (basic validation)
-			const sanitizedCardNumber = sanitizeCardNumber(paymentData.cardNumber || '');
-			if (!sanitizedCardNumber || sanitizedCardNumber.length < 13) {
-				errors.push('Valid card number is required');
+			// Validate card details using shared validation function
+			if (!paymentData.cardNumber) {
+				errors.push('Card number is required');
+			} else {
+				const sanitizedCardNumber = sanitizeCardNumber(paymentData.cardNumber);
+				if (!isValidCardNumber(sanitizedCardNumber)) {
+					errors.push('Valid card number is required (12-19 digits)');
+				}
 			}
 
 			if (!paymentData.expiryDate || !/^\d{2}\/\d{2}$/.test(paymentData.expiryDate)) {
@@ -493,38 +511,12 @@ export class ValidationService {
 		try {
 			logger.validationDebug('game_answer', answer, 'validation_start');
 
-			const errors: string[] = [];
-
-			// Basic validation
-			if (!answer || answer.trim().length === 0) {
-				errors.push('Answer cannot be empty');
-			}
-
-			if (answer && answer.length > 1000) {
-				errors.push('Answer cannot exceed 1000 characters');
-			}
-
-			// Check for inappropriate content
-			const inappropriateWords = ['spam', 'fake', 'dummy'];
-			const lowerAnswer = answer.toLowerCase();
-			for (const word of inappropriateWords) {
-				if (lowerAnswer.includes(word)) {
-					errors.push('Answer contains inappropriate content');
-					break;
-				}
-			}
-
-			// Check for excessive repetition
-			const words = answer.split(/\s+/);
-			const wordCount = words.length;
-			const uniqueWords = new Set(words.map(w => w.toLowerCase()));
-			if (wordCount > 10 && uniqueWords.size < wordCount * 0.3) {
-				errors.push('Answer appears to have excessive repetition');
-			}
+			// Use shared validation function
+			const validationResult = validateGameAnswerShared(answer);
 
 			const result = {
-				isValid: errors.length === 0,
-				errors,
+				isValid: validationResult.isValid,
+				errors: validationResult.errors,
 			};
 
 			// Log validation result
@@ -565,23 +557,19 @@ export class ValidationService {
 
 			const errors: string[] = [];
 
-			// Validate first name
+			// Validate first name using shared validation function
 			if (profileData.firstName) {
-				if (profileData.firstName.length > 50) {
-					errors.push('First name cannot exceed 50 characters');
-				}
-				if (!/^[a-zA-Z\s'-]+$/.test(profileData.firstName)) {
-					errors.push('First name can only contain letters, spaces, apostrophes, and hyphens');
+				const firstNameValidation = validateName(profileData.firstName, 'First name');
+				if (!firstNameValidation.isValid) {
+					errors.push(...firstNameValidation.errors);
 				}
 			}
 
-			// Validate last name
+			// Validate last name using shared validation function
 			if (profileData.lastName) {
-				if (profileData.lastName.length > 50) {
-					errors.push('Last name cannot exceed 50 characters');
-				}
-				if (!/^[a-zA-Z\s'-]+$/.test(profileData.lastName)) {
-					errors.push('Last name can only contain letters, spaces, apostrophes, and hyphens');
+				const lastNameValidation = validateName(profileData.lastName, 'Last name');
+				if (!lastNameValidation.isValid) {
+					errors.push(...lastNameValidation.errors);
 				}
 			}
 
@@ -609,47 +597,6 @@ export class ValidationService {
 			return {
 				isValid: false,
 				errors: ['User profile validation failed'],
-			};
-		}
-	}
-
-	/**
-	 * Validate subscription plan
-	 * @param plan Plan name to validate
-	 * @param options Validation options
-	 * @returns Validation result
-	 */
-	async validateSubscriptionPlan(plan: string, options: ValidationOptions = {}): Promise<ValidationResult> {
-		try {
-			logger.validationDebug('subscription_plan', plan, 'validation_start');
-
-			const normalizedPlan = plan.toLowerCase();
-			const isValid = VALID_PLAN_TYPES.some(type => type === normalizedPlan);
-
-			const result = {
-				isValid,
-				errors: isValid ? [] : [`Invalid plan. Must be one of: ${VALID_PLAN_TYPES.join(', ')}`],
-			};
-
-			// Log validation result
-			if (result.isValid) {
-				logger.validationInfo('subscription_plan', plan, 'validation_success');
-			} else {
-				logger.validationWarn('subscription_plan', plan, 'validation_failed', {
-					...options,
-					errors: result.errors,
-				});
-			}
-
-			return result;
-		} catch (error) {
-			logger.validationError('subscription_plan', plan, 'validation_error', {
-				...options,
-				error: getErrorMessage(error),
-			});
-			return {
-				isValid: false,
-				errors: ['Subscription plan validation failed'],
 			};
 		}
 	}
@@ -843,7 +790,7 @@ export class ValidationService {
 	 * @param value Value to set
 	 */
 	validateAndSetNumberField(user: UserEntity, field: string, value: unknown): void {
-		if (typeof value !== 'number') {
+		if (!isNumber(value)) {
 			throw createValidationError(field, 'number');
 		}
 		Object.assign(user, { [field]: value });

@@ -53,3 +53,14 @@ export interface BasePagination {
 	hasNext: boolean;
 	hasPrev: boolean;
 }
+
+/**
+ * Offset pagination interface
+ * @interface OffsetPagination
+ * @description Pagination structure using offset/limit instead of page/limit
+ */
+export interface OffsetPagination {
+	offset: number;
+	limit: number;
+	total: number;
+}

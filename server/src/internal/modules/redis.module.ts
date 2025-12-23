@@ -10,7 +10,7 @@
 import { Global, Module, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 
-import { serverLogger as logger } from '@shared/services';
+import { serverLogger as logger } from '@internal/services';
 
 import { redisConfig } from '../../config/redis.config';
 
@@ -60,7 +60,7 @@ import { redisConfig } from '../../config/redis.config';
 					});
 				});
 
-				return redisClient as Redis;
+				return redisClient;
 			},
 		},
 	],

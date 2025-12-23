@@ -23,8 +23,8 @@ export interface SystemStats {
  * System statistics query parameters
  */
 export interface SystemStatsQuery {
-	startDate?: string;
-	endDate?: string;
+	startDate?: Date;
+	endDate?: Date;
 	includeInactive?: boolean;
 }
 

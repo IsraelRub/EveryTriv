@@ -6,8 +6,6 @@ import type {
 	CreditPurchaseOption,
 	DifficultyStats,
 	SavedGameConfiguration,
-	SubscriptionData,
-	SubscriptionPlans,
 	TopicAnalyticsRecord,
 	TriviaQuestion,
 	UserSearchCacheEntry,
@@ -81,36 +79,6 @@ export const isCreditPurchaseOptionArray = (value: unknown): value is CreditPurc
 				hasPrimitive(option.price, 'number')
 		)
 	);
-};
-
-export const isSubscriptionData = (value: unknown): value is SubscriptionData => {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	return (
-		hasPrimitive(value.planType, 'string') &&
-		hasPrimitive(value.status, 'string') &&
-		hasOptionalPrimitive(value.startDate, 'string') &&
-		hasOptionalPrimitive(value.endDate, 'string') &&
-		hasPrimitive(value.price, 'number') &&
-		Array.isArray(value.features)
-	);
-};
-
-export const isSubscriptionPlans = (value: unknown): value is SubscriptionPlans => {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	return ['basic', 'premium', 'pro'].every(planKey => {
-		const plan = value[planKey];
-		if (!isRecord(plan)) {
-			return false;
-		}
-
-		return hasPrimitive(plan.price, 'number') && Array.isArray(plan.features);
-	});
 };
 
 export const isTriviaQuestionArray = (value: unknown): value is TriviaQuestion[] => {

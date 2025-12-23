@@ -5,7 +5,14 @@
  * @description Type definitions for trivia questions, answers, and trivia-related entities
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode } from '@shared/constants';
+import {
+	CUSTOM_DIFFICULTY_PREFIX,
+	DifficultyLevel,
+	GameMode,
+	GameStatus,
+	TriviaQuestionReviewStatus,
+	TriviaQuestionSource,
+} from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
@@ -26,18 +33,16 @@ export type CustomDifficultyString = `${typeof CUSTOM_DIFFICULTY_PREFIX}${string
 export type GameDifficulty = DifficultyLevel | CustomDifficultyString;
 
 /**
- * Acceptable sources for trivia questions
- * @type TriviaQuestionSource
- * @description Sources that trivia questions can come from
+ * Base trivia parameters interface
+ * @interface BaseTriviaParams
+ * @description Base parameters for trivia generation requests
  */
-export type TriviaQuestionSource = 'ai' | 'user' | 'imported' | 'seeded' | 'system';
-
-/**
- * Review state for curated trivia questions
- * @type TriviaQuestionReviewStatus
- * @description Review status for trivia questions
- */
-export type TriviaQuestionReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+export interface BaseTriviaParams {
+	topic?: string;
+	difficulty?: GameDifficulty;
+	count?: number;
+	answerCount?: number;
+}
 
 /**
  * Structured metadata describing trivia question provenance and quality signals
@@ -67,6 +72,7 @@ export interface TriviaQuestionDetailsMetadata {
 	flaggedReasons?: string[];
 	popularityScore?: number;
 	averageAnswerTimeMs?: number;
+	mappedDifficulty?: DifficultyLevel;
 }
 
 /**
@@ -236,7 +242,7 @@ export interface TriviaSession {
 	answers: AnswerResult[];
 	startTime: Date;
 	endTime?: Date;
-	status: 'active' | 'completed' | 'abandoned';
+	status: GameStatus;
 	score: number;
 	timeLimit?: number;
 	maxQuestionsPerGame?: number;

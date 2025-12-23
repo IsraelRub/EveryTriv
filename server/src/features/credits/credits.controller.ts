@@ -1,9 +1,17 @@
 import { Body, Controller, ForbiddenException, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
-import { CACHE_DURATION, DEFAULT_USER_PREFERENCES, GameMode, PaymentMethod } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
+import {
+	API_ROUTES,
+	CACHE_DURATION,
+	DEFAULT_USER_PREFERENCES,
+	ERROR_CODES,
+	GameMode,
+	PaymentMethod,
+} from '@shared/constants';
 import type { ManualPaymentDetails } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { Cache, CurrentUserId, NoCache } from '../../common';
 import { CreditsService } from './credits.service';
@@ -15,7 +23,7 @@ import {
 	PurchaseCreditsDto,
 } from './dtos';
 
-@Controller('credits')
+@Controller(API_ROUTES.CREDITS.BASE)
 export class CreditsController {
 	constructor(private readonly creditsService: CreditsService) {}
 
@@ -24,11 +32,11 @@ export class CreditsController {
 	 * @param userId Current user identifier
 	 * @returns User credit balance
 	 */
-	@Get('balance')
+	@Get(API_ROUTES.CREDITS.BALANCE)
 	@NoCache()
 	async getCreditBalance(@CurrentUserId() userId: string | null) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.creditsService.getCreditBalance(userId);
@@ -52,7 +60,7 @@ export class CreditsController {
 	 * Get available credit packages
 	 * @returns Available credit packages
 	 */
-	@Get('packages')
+	@Get(API_ROUTES.CREDITS.PACKAGES)
 	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 1 hour - credit packages rarely change
 	async getCreditPackages() {
 		try {
@@ -76,17 +84,17 @@ export class CreditsController {
 	 * @param query Can play query parameters
 	 * @returns Can play result
 	 */
-	@Get('can-play')
+	@Get(API_ROUTES.CREDITS.CAN_PLAY)
 	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
 	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const questionsPerRequest = query.questionsPerRequest ?? DEFAULT_USER_PREFERENCES.game?.maxQuestionsPerGame ?? 5;
 
 			if (!questionsPerRequest || questionsPerRequest <= 0) {
-				throw new HttpException('Valid questions per request is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.VALID_QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const gameMode = query.gameMode ?? GameMode.QUESTION_LIMITED;
@@ -117,7 +125,7 @@ export class CreditsController {
 	 * @param body Credits deduction data
 	 * @returns Credits deduction result
 	 */
-	@Post('deduct')
+	@Post(API_ROUTES.CREDITS.DEDUCT)
 	async deductCredits(
 		@CurrentUserId() userId: string | null,
 		@Body() body: DeductCreditsDto,
@@ -125,7 +133,7 @@ export class CreditsController {
 		@Query('gameMode') gameModeParam?: GameMode
 	) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			logger.apiDebug('Deduct credits request received', {
@@ -147,7 +155,7 @@ export class CreditsController {
 						body,
 					},
 				});
-				throw new HttpException('questionsPerRequest is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const gameMode = body.gameMode ?? gameModeParam ?? GameMode.QUESTION_LIMITED;
@@ -182,16 +190,16 @@ export class CreditsController {
 	 * @param query Credit history query parameters
 	 * @returns Credit transaction history
 	 */
-	@Get('history')
+	@Get(API_ROUTES.CREDITS.HISTORY)
 	@Cache(CACHE_DURATION.SHORT + 90) // Cache for 2 minutes
 	async getCreditHistory(@CurrentUserId() userId: string | null, @Query() query: GetCreditHistoryDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
-			const limit = query.limit || 50;
+			const limit = query.limit;
 			if (limit > 100) {
-				throw new HttpException('Limit cannot exceed 100', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_100, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.creditsService.getCreditHistory(userId, limit);
@@ -220,14 +228,14 @@ export class CreditsController {
 	 * @param body Credits purchase data
 	 * @returns Credits purchase result
 	 */
-	@Post('purchase')
+	@Post(API_ROUTES.CREDITS.PURCHASE)
 	async purchaseCredits(@CurrentUserId() userId: string | null, @Body() body: PurchaseCreditsDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!body.packageId) {
-				throw new HttpException('Package ID is required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.PACKAGE_ID_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const manualPayment =
@@ -263,15 +271,15 @@ export class CreditsController {
 	 * @param body Credit purchase confirmation data
 	 * @returns Purchase confirmation result
 	 */
-	@Post('confirm-purchase')
+	@Post(API_ROUTES.CREDITS.CONFIRM_PURCHASE)
 	async confirmCreditPurchase(@CurrentUserId() userId: string | null, @Body() body: ConfirmCreditPurchaseDto) {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const paymentIdentifier = body.paymentIntentId ?? body.transactionId ?? body.paymentId;
 			if (!paymentIdentifier || !body.credits || body.credits <= 0) {
-				throw new HttpException('Payment intent ID and credits are required', HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_CODES.PAYMENT_INTENT_ID_AND_CREDITS_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = this.creditsService.confirmCreditPurchase(userId, paymentIdentifier, body.credits);

@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 
-import { AudioKey } from '@/constants';
 import {
+	AudioKey,
 	DEFAULT_TOAST_DURATION,
 	TOAST_ACTION_TYPES,
 	TOAST_LIMIT,
 	TOAST_REMOVE_DELAY,
-} from '@/constants/ui/toast.constants';
+	ToastVariant,
+} from '@/constants';
+
 import { audioService } from '@/services';
-import type { Action, State, Toast, ToasterToast } from '@/types/hooks/toast.types';
+
+import type { Action, State, Toast, ToasterToast } from '@/types';
 
 let count = 0;
 
@@ -35,7 +38,7 @@ const addToRemoveQueue = (toastId: string) => {
 	toastTimeouts.set(toastId, timeout);
 };
 
-export const reducer = (state: State, action: Action): State => {
+const reducer = (state: State, action: Action): State => {
 	switch (action.type) {
 		case TOAST_ACTION_TYPES.ADD_TOAST:
 			return {
@@ -167,19 +170,19 @@ function useToast() {
 // Helper functions for common toast types
 toast.success = (props: Omit<Toast, 'variant'>) => {
 	audioService.play(AudioKey.SUCCESS);
-	return toast({ ...props, variant: 'success' });
+	return toast({ ...props, variant: ToastVariant.SUCCESS });
 };
 toast.error = (props: Omit<Toast, 'variant'>) => {
 	audioService.play(AudioKey.ERROR);
-	return toast({ ...props, variant: 'destructive' });
+	return toast({ ...props, variant: ToastVariant.DESTRUCTIVE });
 };
 toast.warning = (props: Omit<Toast, 'variant'>) => {
 	audioService.play(AudioKey.WARNING);
-	return toast({ ...props, variant: 'warning' });
+	return toast({ ...props, variant: ToastVariant.WARNING });
 };
 toast.info = (props: Omit<Toast, 'variant'>) => {
 	audioService.play(AudioKey.NOTIFICATION);
-	return toast({ ...props, variant: 'info' });
+	return toast({ ...props, variant: ToastVariant.INFO });
 };
 
 export { useToast, toast };

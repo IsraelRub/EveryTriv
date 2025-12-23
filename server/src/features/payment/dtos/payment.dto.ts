@@ -6,21 +6,18 @@
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-	IsBoolean,
 	IsEnum,
-	IsIn,
 	IsNumber,
 	IsOptional,
 	IsString,
 	Matches,
-	Max,
 	MaxLength,
 	Min,
 	MinLength,
 	ValidateIf,
 } from 'class-validator';
 
-import { PaymentMethod, PlanType, VALID_PAYMENT_METHODS, VALID_PLAN_TYPES } from '@shared/constants';
+import { PaymentMethod, VALID_PAYMENT_METHODS } from '@shared/constants';
 
 export class PaymentMethodDetailsDto {
 	@ApiProperty({
@@ -102,38 +99,6 @@ export class PaymentMethodDetailsDto {
 
 export class CreatePaymentDto extends PaymentMethodDetailsDto {
 	@ApiPropertyOptional({
-		description: 'Plan type for subscription payments. Optional when providing direct amount.',
-		example: 'premium',
-		enum: VALID_PLAN_TYPES,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_PLAN_TYPES, {
-		message: `Plan type must be one of: ${VALID_PLAN_TYPES.join(', ')}`,
-	})
-	planType?: PlanType;
-
-	@ApiPropertyOptional({
-		description: 'Number of payments for the subscription (installments). Defaults to 1.',
-		example: 12,
-		minimum: 1,
-		maximum: 24,
-	})
-	@IsOptional()
-	@IsNumber({}, { message: 'Number of payments must be a number' })
-	@Min(1, { message: 'Number of payments must be at least 1' })
-	@Max(24, { message: 'Number of payments cannot exceed 24' })
-	numberOfPayments?: number;
-
-	@ApiPropertyOptional({
-		description: 'User agreement to terms and conditions. Defaults to true for OAuth-based flows.',
-		example: true,
-	})
-	@IsOptional()
-	@IsBoolean({ message: 'Agreement to terms must be a boolean value' })
-	agreeToTerms?: boolean;
-
-	@ApiPropertyOptional({
 		description: 'One-time payment amount (when not using predefined plans)',
 		example: 29.99,
 		minimum: 0.5,
@@ -154,7 +119,7 @@ export class CreatePaymentDto extends PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Payment description for transaction record',
-		example: 'Premium subscription',
+		example: 'Credits purchase',
 	})
 	@IsOptional()
 	@IsString()

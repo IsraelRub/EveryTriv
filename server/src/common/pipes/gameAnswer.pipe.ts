@@ -7,9 +7,10 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { serverLogger as logger } from '@shared/services';
 import { GameAnswerSubmission } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
+import { serverLogger as logger } from '@internal/services';
 
 import { ValidationService } from '../validation';
 
@@ -27,7 +28,8 @@ export class GameAnswerPipe implements PipeTransform {
 			const suggestions: string[] = [];
 
 			// Validate answer content (semantic/content rules)
-			if (value.answer && value.answer.trim().length > 0) {
+			// Only validate string answers, number answers are validated by type
+			if (typeof value.answer === 'string' && value.answer.trim().length > 0) {
 				const answerValidation = await this.validationService.validateInputContent(value.answer);
 				if (!answerValidation.isValid) {
 					errors.push(...answerValidation.errors);

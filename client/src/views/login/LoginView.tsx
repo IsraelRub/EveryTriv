@@ -1,9 +1,11 @@
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { getErrorMessage } from '@shared/utils';
+
+import { AudioKey, ButtonSize, ButtonVariant, ROUTES, VariantBase } from '@/constants';
 
 import {
 	Alert,
@@ -18,9 +20,12 @@ import {
 	Label,
 	Separator,
 } from '@/components';
-import { AudioKey, ButtonSize } from '@/constants';
+
 import { useAudio, useLogin, useModalRoute } from '@/hooks';
+
 import { authService } from '@/services';
+
+import { validateEmailFormat } from '@/utils/validation';
 
 /**
  * Login View
@@ -35,15 +40,64 @@ export function LoginView() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<{
+		email?: string;
+		password?: string;
+	}>({});
 
 	const isLoading = loginMutation.isPending;
 
-	const handleLogin = async (e: FormEvent) => {
+	const isFormValid = (): boolean => {
+		const emailValidation = validateEmailFormat(email);
+		return emailValidation.isValid && password.trim().length > 0;
+	};
+
+	const validateField = (name: string, value: string): string | null => {
+		if (name === 'email') {
+			if (!value.trim()) return 'Email is required';
+			if (!value.includes('@')) return 'Please enter a valid email address';
+		}
+		if (name === 'password') {
+			if (!value.trim()) return 'Password is required';
+		}
+		return null;
+	};
+
+	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		if (name === 'email') {
+			setEmail(value);
+		} else if (name === 'password') {
+			setPassword(value);
+		}
+		setError(null);
+
+		const fieldError = validateField(name, value);
+		setFieldErrors(prev => ({
+			...prev,
+			[name]: fieldError || undefined,
+		}));
+	};
+
+	const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setError(null);
 
-		if (!email.trim() || !password.trim()) {
-			setError('Please fill in all fields');
+		const emailError = validateField('email', email);
+		const passwordError = validateField('password', password);
+
+		const newFieldErrors: typeof fieldErrors = {};
+		if (emailError) newFieldErrors.email = emailError;
+		if (passwordError) newFieldErrors.password = passwordError;
+
+		setFieldErrors(newFieldErrors);
+
+		if (emailError || passwordError) {
+			audioService.play(AudioKey.ERROR);
+			return;
+		}
+
+		if (!isFormValid()) {
 			audioService.play(AudioKey.ERROR);
 			return;
 		}
@@ -58,7 +112,7 @@ export function LoginView() {
 			}
 		} catch (err) {
 			const errorMessage = getErrorMessage(err);
-			setError(errorMessage || 'Login failed. Please check your credentials.');
+			setError(errorMessage);
 			audioService.play(AudioKey.ERROR);
 		}
 	};
@@ -69,7 +123,7 @@ export function LoginView() {
 			await authService.initiateGoogleLogin();
 		} catch (err) {
 			const errorMessage = getErrorMessage(err);
-			setError(errorMessage || 'Failed to initiate Google login');
+			setError(errorMessage);
 		}
 	};
 
@@ -82,7 +136,7 @@ export function LoginView() {
 
 			<CardContent className='space-y-6'>
 				{error && (
-					<Alert variant='destructive'>
+					<Alert variant={VariantBase.DESTRUCTIVE}>
 						<AlertCircle className='h-4 w-4' />
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
@@ -93,14 +147,21 @@ export function LoginView() {
 						<Label htmlFor='email'>Email</Label>
 						<Input
 							id='email'
+							name='email'
 							type='email'
 							placeholder='your@email.com'
 							value={email}
-							onChange={e => setEmail(e.target.value)}
+							onChange={handleChange}
 							disabled={isLoading}
-							required
 							autoComplete='email'
+							className={fieldErrors.email ? 'border-destructive' : ''}
 						/>
+						{fieldErrors.email && (
+							<p className='text-sm text-destructive flex items-center gap-1'>
+								<AlertCircle className='h-3 w-3' />
+								{fieldErrors.email}
+							</p>
+						)}
 					</div>
 
 					<div className='space-y-2'>
@@ -108,7 +169,7 @@ export function LoginView() {
 							<Label htmlFor='password'>Password</Label>
 							<button
 								type='button'
-								onClick={() => navigate('/forgot-password')}
+								onClick={() => navigate(ROUTES.FORGOT_PASSWORD)}
 								className='text-xs text-primary hover:underline'
 							>
 								Forgot password?
@@ -116,17 +177,24 @@ export function LoginView() {
 						</div>
 						<Input
 							id='password'
+							name='password'
 							type='password'
 							placeholder='Enter your password'
 							value={password}
-							onChange={e => setPassword(e.target.value)}
+							onChange={handleChange}
 							disabled={isLoading}
-							required
 							autoComplete='current-password'
+							className={fieldErrors.password ? 'border-destructive' : ''}
 						/>
+						{fieldErrors.password && (
+							<p className='text-sm text-destructive flex items-center gap-1'>
+								<AlertCircle className='h-3 w-3' />
+								{fieldErrors.password}
+							</p>
+						)}
 					</div>
 
-					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading}>
+					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
 								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -149,7 +217,7 @@ export function LoginView() {
 
 				<Button
 					type='button'
-					variant='outline'
+					variant={ButtonVariant.OUTLINE}
 					className='w-full'
 					size={ButtonSize.LG}
 					onClick={handleGoogleLogin}
@@ -180,7 +248,7 @@ export function LoginView() {
 					<span className='text-muted-foreground'>Don't have an account? </span>
 					<button
 						type='button'
-						onClick={() => navigate('/register', { state: { modal: isModal } })}
+						onClick={() => navigate(ROUTES.REGISTER, { state: { modal: isModal } })}
 						className='text-primary font-medium hover:underline'
 					>
 						Sign up

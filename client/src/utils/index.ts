@@ -5,11 +5,26 @@
  * @description Central export file for all client-side utility functions and helpers
  */
 
-// Analytics utilities
-export * from './analytics.utils';
+/**
+ * Core utilities
+ * @description Generic utility functions
+ */
+export * from './core';
 
-// Class names utilities
-export * from './cn.utils';
+/**
+ * Domain utilities
+ * @description Domain-specific utility functions
+ */
+export * from './domain';
 
-// Format utilities (client-specific)
-export * from './format.utils';
+/**
+ * Infrastructure utilities
+ * @description Infrastructure utility functions
+ */
+export * from './infrastructure';
+
+/**
+ * Validation utilities
+ * @description Client-side validation utility functions
+ */
+export * from './validation';

@@ -8,10 +8,11 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-import { serverLogger as logger, TokenExtractionService } from '@shared/services';
+import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { AUTH_CONSTANTS } from '@internal/constants';
+import { serverLogger as logger, TokenExtractionService } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
 @Injectable()
@@ -40,7 +41,6 @@ export class AuthGuard implements CanActivate {
 			isPublic,
 			middlewarePublicFlag,
 			isHardcodedPublic,
-			hasDecoratorMetadata: !!request?.decoratorMetadata,
 		});
 
 		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
@@ -51,13 +51,19 @@ export class AuthGuard implements CanActivate {
 
 		if (!token) {
 			logger.securityDenied('No authentication token provided');
-			throw new UnauthorizedException('Authentication token required');
+			throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED);
 		}
 
 		try {
 			// Verify JWT token
 			const payload = await this.jwtService.verifyAsync(token, {
 				secret: AUTH_CONSTANTS.JWT_SECRET,
+			});
+
+			logger.authDebug('JWT token verified', {
+				userId: payload.sub,
+				email: payload.email,
+				role: payload.role,
 			});
 
 			// Attach user to request
@@ -74,7 +80,7 @@ export class AuthGuard implements CanActivate {
 			logger.securityDenied('Invalid authentication token', {
 				error: getErrorMessage(error),
 			});
-			throw new UnauthorizedException('Invalid authentication token');
+			throw new UnauthorizedException(ERROR_CODES.INVALID_AUTHENTICATION_TOKEN);
 		}
 	}
 }

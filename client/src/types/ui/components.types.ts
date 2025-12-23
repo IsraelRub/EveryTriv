@@ -7,15 +7,18 @@ import { type ButtonHTMLAttributes, type HTMLAttributes } from 'react';
 
 import { type VariantProps } from 'class-variance-authority';
 
-import { badgeVariants } from '@/components/ui/badge';
-import { ButtonSize } from '@/constants';
+import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
+
+import { badgeVariants } from '@/components';
 
 /**
  * Badge component props
  * @interface BadgeProps
  * @description Props for the Badge component from shadcn/ui
  */
-export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
+	variant?: VariantBase;
+}
 
 /**
  * Button component props
@@ -23,7 +26,7 @@ export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps
  * @description Props for the Button component from shadcn/ui
  */
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-	variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+	variant?: ButtonVariant;
 	size?: ButtonSize;
 	asChild?: boolean;
 }
@@ -36,5 +39,4 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export interface CloseButtonProps {
 	to?: string;
 	className?: string;
-	'aria-label'?: string;
 }

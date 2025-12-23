@@ -33,3 +33,30 @@ export const CACHE_TTL = {
 	CREDITS_BALANCE: 300, // 5 minutes (from server)
 	USER_ANALYTICS: 1800, // 30 minutes
 } as const;
+
+// Storage type enum (re-exported from types for convenience)
+export enum StorageType {
+	PERSISTENT = 'persistent',
+	CACHE = 'cache',
+	HYBRID = 'hybrid',
+}
+
+/**
+ * Storage get strategy enumeration
+ * @enum StorageGetStrategy
+ * @description Strategy for reading from storage
+ */
+export enum StorageGetStrategy {
+	CACHE_FIRST = 'cache-first',
+	PERSISTENT_FIRST = 'persistent-first',
+	BOTH = 'both',
+}
+
+// Default validators for storage values
+export const defaultValidators = {
+	string: (value: unknown): value is string => typeof value === 'string',
+	number: (value: unknown): value is number => typeof value === 'number' && !Number.isNaN(value),
+	boolean: (value: unknown): value is boolean => typeof value === 'boolean',
+	date: (value: unknown): value is Date =>
+		value instanceof Date || (typeof value === 'string' && !Number.isNaN(Date.parse(value))),
+} as const;

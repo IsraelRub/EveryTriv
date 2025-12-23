@@ -11,21 +11,19 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { LOCALHOST_URLS, MULTIPLAYER_CONSTANTS } from '@shared/constants';
-import { serverLogger as logger } from '@shared/services';
-import type { MultiplayerRoom, RoomConfig } from '@shared/types';
+import { API_ROUTES, ERROR_CODES, LOCALHOST_CONFIG, MULTIPLAYER_CONFIG } from '@shared/constants';
+import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { toDifficultyLevel } from '@shared/validation';
 
+import { serverLogger as logger } from '@internal/services';
 import type {
-	CreateRoomHttpResponse,
-	JoinRoomHttpResponse,
 	LeaveRoomHttpResponse,
 	MultiplayerConnectionInfo,
-	RoomDetailsHttpResponse,
-	RoomStateHttpResponse,
-	StartGameHttpResponse,
+	RoomHttpResponse,
 	SubmitAnswerHttpResponse,
 } from '@internal/types';
+import { isErrorWithStatus } from '@internal/utils';
 
 import { CurrentUserId, Public } from '../../../common';
 import { CreateRoomDto, JoinRoomDto, RoomActionDto, SubmitAnswerDto } from './dtos';
@@ -36,7 +34,7 @@ import { RoomService } from './room.service';
  * HTTP controller for multiplayer management
  * Provides REST endpoints that mirror WebSocket events for tools and monitoring
  */
-@Controller('multiplayer')
+@Controller(API_ROUTES.MULTIPLAYER.BASE)
 export class MultiplayerController {
 	private readonly roomCache = new Map<string, MultiplayerRoom>();
 
@@ -71,8 +69,8 @@ export class MultiplayerController {
 	/**
 	 * Create a new multiplayer room via HTTP proxy
 	 */
-	@Post('rooms')
-	async createRoom(@CurrentUserId() userId: string, @Body() body: CreateRoomDto): Promise<CreateRoomHttpResponse> {
+	@Post(API_ROUTES.MULTIPLAYER.ROOMS)
+	async createRoom(@CurrentUserId() userId: string, @Body() body: CreateRoomDto): Promise<CreateRoomResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
@@ -82,7 +80,8 @@ export class MultiplayerController {
 				questionsPerRequest: body.questionsPerRequest,
 				maxPlayers: body.maxPlayers,
 				gameMode: body.gameMode,
-				timePerQuestion: MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION,
+				timePerQuestion: MULTIPLAYER_CONFIG.TIME_PER_QUESTION,
+				mappedDifficulty: body.mappedDifficulty ?? toDifficultyLevel(body.difficulty),
 			};
 			const result = await this.multiplayerService.createRoom(userId, config);
 
@@ -109,8 +108,8 @@ export class MultiplayerController {
 	/**
 	 * Join an existing room
 	 */
-	@Post('rooms/join')
-	async joinRoom(@CurrentUserId() userId: string, @Body() body: JoinRoomDto): Promise<JoinRoomHttpResponse> {
+	@Post(API_ROUTES.MULTIPLAYER.ROOMS_JOIN)
+	async joinRoom(@CurrentUserId() userId: string, @Body() body: JoinRoomDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
@@ -140,7 +139,7 @@ export class MultiplayerController {
 	/**
 	 * Leave a room
 	 */
-	@Post('rooms/leave')
+	@Post(API_ROUTES.MULTIPLAYER.ROOMS_LEAVE)
 	async leaveRoom(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<LeaveRoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
@@ -163,7 +162,6 @@ export class MultiplayerController {
 			});
 
 			return {
-				roomId: body.roomId,
 				status,
 				remainingPlayers,
 				room: room ?? null,
@@ -181,8 +179,8 @@ export class MultiplayerController {
 	/**
 	 * Start a multiplayer game (host only)
 	 */
-	@Post('rooms/start')
-	async startGame(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<StartGameHttpResponse> {
+	@Post(API_ROUTES.MULTIPLAYER.ROOMS_START)
+	async startGame(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
@@ -212,7 +210,7 @@ export class MultiplayerController {
 	/**
 	 * Submit an answer via HTTP proxy
 	 */
-	@Post('rooms/answer')
+	@Post(API_ROUTES.MULTIPLAYER.ROOMS_ANSWER)
 	async submitAnswer(
 		@CurrentUserId() userId: string,
 		@Body() body: SubmitAnswerDto
@@ -243,10 +241,13 @@ export class MultiplayerController {
 
 			return {
 				roomId: body.roomId,
-				questionId: body.questionId,
-				isCorrect: result.isCorrect,
-				scoreEarned: result.scoreEarned,
-				leaderboard: result.leaderboard,
+				data: {
+					userId,
+					questionId: body.questionId,
+					isCorrect: result.isCorrect,
+					scoreEarned: result.scoreEarned,
+					leaderboard: result.leaderboard ?? [],
+				},
 			};
 		} catch (error) {
 			logger.gameError('Failed to submit multiplayer answer via HTTP', {
@@ -262,17 +263,17 @@ export class MultiplayerController {
 	/**
 	 * Get room details (participating users only)
 	 */
-	@Get('rooms/:roomId')
+	@Get(API_ROUTES.MULTIPLAYER.ROOMS_BY_ID)
 	async getRoomDetails(
 		@CurrentUserId() userId: string,
 		@Param('roomId', new ParseUUIDPipe()) roomId: string
-	): Promise<RoomDetailsHttpResponse> {
+	): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			this.ensureParticipant(room, userId);
@@ -296,17 +297,17 @@ export class MultiplayerController {
 	/**
 	 * Get current state of the room (questions, leaderboard, timers)
 	 */
-	@Get('rooms/:roomId/state')
+	@Get(API_ROUTES.MULTIPLAYER.ROOMS_STATE)
 	async getRoomState(
 		@CurrentUserId() userId: string,
 		@Param('roomId', new ParseUUIDPipe()) roomId: string
-	): Promise<RoomStateHttpResponse> {
+	): Promise<RoomStateResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			this.ensureParticipant(room, userId);
@@ -334,14 +335,14 @@ export class MultiplayerController {
 
 	private ensureAuthenticated(userId: string | null): asserts userId is string {
 		if (!userId) {
-			throw new ForbiddenException('Authentication required');
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 	}
 
 	private ensureParticipant(room: MultiplayerRoom, userId: string): void {
 		const isParticipant = room.players.some(player => player.userId === userId);
 		if (!isParticipant) {
-			throw new ForbiddenException('You are not part of this room');
+			throw new ForbiddenException(ERROR_CODES.NOT_PART_OF_ROOM);
 		}
 	}
 
@@ -351,7 +352,7 @@ export class MultiplayerController {
 			return this.appendNamespace(explicitUrl);
 		}
 
-		const serverUrl = (process.env.SERVER_URL ?? LOCALHOST_URLS.SERVER).replace(/\/$/, '');
+		const serverUrl = (process.env.SERVER_URL ?? LOCALHOST_CONFIG.urls.SERVER).replace(/\/$/, '');
 		const protocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
 		const host = serverUrl.replace(/^https?:\/\//, '');
 		return `${protocol}://${host}/multiplayer`;
@@ -389,9 +390,10 @@ export class MultiplayerController {
 			return error.getStatus() === HttpStatus.NOT_FOUND;
 		}
 
-		const normalizedError = error as { status?: number; statusCode?: number };
-		if (normalizedError?.status === HttpStatus.NOT_FOUND || normalizedError?.statusCode === HttpStatus.NOT_FOUND) {
-			return true;
+		if (isErrorWithStatus(error)) {
+			if (error.status === HttpStatus.NOT_FOUND || error.statusCode === HttpStatus.NOT_FOUND) {
+				return true;
+			}
 		}
 
 		const message = getErrorMessage(error).toLowerCase();

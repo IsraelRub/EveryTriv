@@ -11,11 +11,6 @@ import type { QuestionData } from '../../infrastructure/api.types';
 import type { GameDifficulty } from './trivia.types';
 
 /**
- * Game status types
- */
-export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';
-
-/**
  * Base game statistics interface
  * @interface BaseGameStatistics
  * @description Common game statistics fields shared across multiple interfaces
@@ -79,7 +74,7 @@ export interface LeaderboardEntry extends BaseScoreData {
 	email: string;
 	firstName?: string;
 	lastName?: string;
-	avatar?: string;
+	avatar?: number;
 	rank: number;
 	gamesPlayed: number;
 	lastPlayed: Date;
@@ -150,4 +145,126 @@ export interface GameModeConfig {
 		isPaused?: boolean;
 		lowTimeWarning?: boolean;
 	};
+}
+
+/**
+ * Game configuration interface
+ * @interface GameConfig
+ * @description Game configuration and setup
+ * Extends BaseTriviaParams with game mode specific settings
+ * @used_by client: client/src/hooks/layers/business/useGameLogic.ts, client/src/components/game-mode/GameMode.tsx
+ */
+export interface GameConfig {
+	mode: GameMode;
+	topic?: string;
+	difficulty?: GameDifficulty;
+	timeLimit?: number;
+	maxQuestionsPerGame?: number;
+	answerCount?: number;
+	settings?: {
+		showTimer?: boolean;
+		showProgress?: boolean;
+		allowBackNavigation?: boolean;
+	};
+}
+
+/**
+ * Leaderboard entry shape type alias
+ * @type LeaderboardEntryShape
+ * @description Type alias for LeaderboardEntry (for backward compatibility)
+ */
+export type LeaderboardEntryShape = LeaderboardEntry;
+
+/**
+ * Leaderboard response interface
+ * @interface LeaderboardResponse
+ * @description Response containing leaderboard entries and pagination
+ */
+export interface LeaderboardResponse {
+	leaderboard: LeaderboardEntry[];
+	pagination: {
+		limit: number;
+		offset: number;
+		total: number;
+	};
+	period: string;
+}
+
+/**
+ * Category statistics interface
+ * @interface CategoryStatistics
+ * @description Statistics for a category (topic or difficulty)
+ */
+export interface CategoryStatistics {
+	totalQuestionsAnswered: number;
+	correctAnswers: number;
+	score: number;
+	successRate: number;
+	lastPlayed: Date;
+}
+
+/**
+ * Leaderboard statistics interface
+ * @interface LeaderboardStats
+ * @description Statistics for leaderboard periods
+ */
+export interface LeaderboardStats {
+	activeUsers: number;
+	averageScore: number;
+	averageGames: number;
+}
+
+/**
+ * Admin game statistics interface
+ * @interface AdminGameStatistics
+ * @description Aggregated statistics for admin dashboard
+ */
+export interface AdminGameStatistics {
+	totalGames: number;
+	averageScore: number;
+	bestScore: number;
+	totalQuestionsAnswered: number;
+	correctAnswers: number;
+	accuracy: number;
+	activePlayers24h: number;
+	topics: Record<string, number>;
+	difficultyDistribution: Record<string, number>;
+	lastActivity: string | null;
+}
+
+/**
+ * Admin statistics raw interface
+ * @interface AdminStatisticsRaw
+ * @description Raw statistics from database query
+ */
+export interface AdminStatisticsRaw {
+	totalGames: number;
+	averageScore: number | null;
+	bestScore: number | null;
+	totalQuestionsAnswered: number;
+	correctAnswers: number;
+	lastActivity: Date | null;
+}
+
+/**
+ * Game history response interface
+ * @interface GameHistoryResponse
+ * @description Response containing user game history
+ */
+export interface GameHistoryResponse {
+	userId: string;
+	email: string;
+	totalGames: number;
+	games: GameHistoryEntry[];
+}
+
+/**
+ * Clear operation response interface
+ * @interface ClearOperationResponse
+ * @description Response from clear operations
+ */
+export interface ClearOperationResponse {
+	success: boolean;
+	message: string;
+	deletedCount?: number;
 }

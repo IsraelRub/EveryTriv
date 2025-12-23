@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { serverLogger as logger } from '@shared/services';
-import type { GameState, MultiplayerRoom, Player, RoomConfig } from '@shared/types';
+import { ERROR_CODES, PlayerStatus, RoomStatus } from '@shared/constants';
+import type { CreateRoomResponse, GameState, MultiplayerRoom, RoomConfig, SubmitAnswerResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import { serverLogger as logger } from '@internal/services';
+
 import { GameService } from '../game.service';
-import { GameStateService } from './game-state.service';
+import { GameStateService } from './gameState.service';
 import { MatchmakingService } from './matchmaking.service';
 import { RoomService } from './room.service';
 
@@ -29,7 +31,7 @@ export class MultiplayerService {
 	 * @param config Room configuration
 	 * @returns Created room with short code
 	 */
-	async createRoom(hostId: string, config: RoomConfig): Promise<{ room: MultiplayerRoom; code: string }> {
+	async createRoom(hostId: string, config: RoomConfig): Promise<CreateRoomResponse> {
 		try {
 			const room = await this.roomService.createRoom(hostId, config);
 			const code = this.matchmakingService.generateRoomCode(room.roomId);
@@ -94,7 +96,7 @@ export class MultiplayerService {
 			logger.gameInfo('Player left multiplayer room', {
 				roomId,
 				userId,
-				playerCount: room?.players.length || 0,
+				playerCount: room?.players.length ?? 0,
 			});
 
 			return room;
@@ -118,19 +120,19 @@ export class MultiplayerService {
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			if (room.hostId !== hostId) {
-				throw new BadRequestException('Only the host can start the game');
+				throw new BadRequestException(ERROR_CODES.ONLY_HOST_CAN_START);
 			}
 
-			if (room.status !== 'waiting') {
-				throw new BadRequestException('Game already started or finished');
+			if (room.status !== RoomStatus.WAITING) {
+				throw new BadRequestException(ERROR_CODES.GAME_ALREADY_STARTED_OR_FINISHED);
 			}
 
 			if (room.players.length < 2) {
-				throw new BadRequestException('Need at least 2 players to start');
+				throw new BadRequestException(ERROR_CODES.NEED_AT_LEAST_2_PLAYERS);
 			}
 
 			// Generate questions using GameService
@@ -138,7 +140,9 @@ export class MultiplayerService {
 				room.config.topic,
 				room.config.difficulty,
 				room.config.questionsPerRequest,
-				hostId
+				hostId,
+				undefined,
+				room.config.mappedDifficulty
 			);
 
 			// Initialize game with questions
@@ -171,7 +175,7 @@ export class MultiplayerService {
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
 			return this.gameStateService.getGameState(room);
@@ -199,15 +203,15 @@ export class MultiplayerService {
 		questionId: string,
 		answer: number,
 		timeSpent: number
-	): Promise<{ isCorrect: boolean; scoreEarned: number; leaderboard: Player[] }> {
+	): Promise<SubmitAnswerResponse> {
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
-			if (room.status !== 'playing') {
-				throw new BadRequestException('Game is not in playing state');
+			if (room.status !== RoomStatus.PLAYING) {
+				throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
 			}
 
 			const result = await this.gameStateService.submitAnswer(room, userId, questionId, answer, timeSpent);
@@ -216,6 +220,7 @@ export class MultiplayerService {
 			const gameState = this.gameStateService.getGameState(result.room);
 
 			return {
+				room: result.room,
 				isCorrect: result.isCorrect,
 				scoreEarned: result.scoreEarned,
 				leaderboard: gameState.leaderboard,
@@ -240,11 +245,11 @@ export class MultiplayerService {
 		try {
 			const room = await this.roomService.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException('Room not found');
+				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
-			if (room.status !== 'playing') {
-				throw new BadRequestException('Game is not in playing state');
+			if (room.status !== RoomStatus.PLAYING) {
+				throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
 			}
 
 			const updatedRoom = await this.gameStateService.nextQuestion(room);
@@ -273,12 +278,14 @@ export class MultiplayerService {
 	async allPlayersAnswered(roomId: string): Promise<boolean> {
 		try {
 			const room = await this.roomService.getRoom(roomId);
-			if (!room || room.status !== 'playing') {
+			if (!room || room.status !== RoomStatus.PLAYING) {
 				return false;
 			}
 
-			const activePlayers = room.players.filter(p => p.status !== 'disconnected');
-			const answeredPlayers = activePlayers.filter(p => p.status === 'answered' || p.currentAnswer !== undefined);
+			const activePlayers = room.players.filter(p => p.status !== PlayerStatus.DISCONNECTED);
+			const answeredPlayers = activePlayers.filter(
+				p => p.status === PlayerStatus.ANSWERED || p.currentAnswer !== undefined
+			);
 
 			return activePlayers.length > 0 && answeredPlayers.length === activePlayers.length;
 		} catch (error) {

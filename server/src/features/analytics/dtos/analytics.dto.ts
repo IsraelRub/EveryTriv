@@ -21,15 +21,10 @@ import {
 	MinLength,
 } from 'class-validator';
 
-import {
-	EventResult,
-	SortOrder,
-	TimePeriod,
-	VALID_EVENT_RESULTS,
-	VALID_SORT_ORDERS,
-	VALID_TIME_PERIODS,
-} from '@shared/constants';
-import { BasicValue } from '@shared/types';
+import { AnalyticsResult, ComparisonTarget, TimePeriod, VALID_TIME_PERIODS } from '@shared/constants';
+import type { BasicValue } from '@shared/types';
+
+const VALID_ANALYTICS_RESULTS = Object.values(AnalyticsResult);
 
 export class TrackEventDto {
 	@ApiProperty({
@@ -68,6 +63,7 @@ export class TrackEventDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Timestamp must be a valid date' })
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
 	timestamp?: Date;
 
 	@ApiPropertyOptional({
@@ -93,13 +89,13 @@ export class TrackEventDto {
 	@ApiPropertyOptional({
 		description: 'Result of the action',
 		example: 'success',
-		enum: VALID_EVENT_RESULTS,
+		enum: VALID_ANALYTICS_RESULTS,
 	})
 	@IsOptional()
-	@IsIn(VALID_EVENT_RESULTS, {
-		message: `Result must be one of: ${VALID_EVENT_RESULTS.join(', ')}`,
+	@IsIn(VALID_ANALYTICS_RESULTS, {
+		message: `Result must be one of: ${VALID_ANALYTICS_RESULTS.join(', ')}`,
 	})
-	result?: EventResult;
+	result?: AnalyticsResult;
 
 	@ApiPropertyOptional({
 		description: 'Duration of the action in milliseconds',
@@ -136,7 +132,8 @@ export class TopicAnalyticsQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	startDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'End date for topic analytics query',
@@ -144,7 +141,8 @@ export class TopicAnalyticsQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	endDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of topics to return',
@@ -156,57 +154,6 @@ export class TopicAnalyticsQueryDto {
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	limit?: number;
-
-	@ApiPropertyOptional({
-		description: 'Sort order for topics',
-		example: 'desc',
-		enum: VALID_SORT_ORDERS,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_SORT_ORDERS, {
-		message: `Order must be one of: ${VALID_SORT_ORDERS.join(', ')}`,
-	})
-	order?: SortOrder;
-}
-
-export class DifficultyAnalyticsQueryDto {
-	@ApiPropertyOptional({
-		description: 'Start date for difficulty analytics query',
-		example: '2024-01-01',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'End date for difficulty analytics query',
-		example: '2024-01-31',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
-
-	@ApiPropertyOptional({
-		description: 'Include custom difficulties in results',
-		example: true,
-	})
-	@IsOptional()
-	@Transform(({ value }) => value === true || value === 'true')
-	@IsBoolean({ message: 'Include custom difficulties must be a boolean value' })
-	includeCustom?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Group results by time period',
-		example: 'daily',
-		enum: VALID_TIME_PERIODS,
-	})
-	@IsOptional()
-	@IsString()
-	@IsIn(VALID_TIME_PERIODS, {
-		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
-	})
-	groupBy?: TimePeriod;
 }
 
 export class UserIdParamDto {
@@ -239,7 +186,8 @@ export class UserActivityQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	startDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'End date for activity range filter',
@@ -247,7 +195,8 @@ export class UserActivityQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	endDate?: Date;
 }
 
 export class UserTrendQueryDto {
@@ -257,7 +206,8 @@ export class UserTrendQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
-	startDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	startDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'End date for user trend analytics',
@@ -265,7 +215,8 @@ export class UserTrendQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
-	endDate?: string;
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	endDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'Group trend data by time period',
@@ -294,12 +245,12 @@ export class UserTrendQueryDto {
 export class UserComparisonQueryDto {
 	@ApiPropertyOptional({
 		description: 'Comparison target: global averages or another user',
-		example: 'global',
-		enum: ['global', 'user'],
+		example: ComparisonTarget.GLOBAL,
+		enum: ComparisonTarget,
 	})
 	@IsOptional()
-	@IsIn(['global', 'user'], { message: 'Target must be either global or user' })
-	target?: 'global' | 'user';
+	@IsIn(Object.values(ComparisonTarget), { message: 'Target must be either global or user' })
+	target?: ComparisonTarget;
 
 	@ApiPropertyOptional({
 		description: 'Target user ID when comparing two users',
@@ -308,6 +259,24 @@ export class UserComparisonQueryDto {
 	@IsOptional()
 	@IsString()
 	targetUserId?: string;
+
+	@ApiPropertyOptional({
+		description: 'Start date for comparison date range filter',
+		example: '2024-01-01',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'Start date must be a valid date' })
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	startDate?: Date;
+
+	@ApiPropertyOptional({
+		description: 'End date for comparison date range filter',
+		example: '2024-01-31',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'End date must be a valid date' })
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	endDate?: Date;
 }
 
 export class UserSummaryQueryDto {

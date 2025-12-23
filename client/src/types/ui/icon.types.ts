@@ -1,7 +1,8 @@
 import { CSSProperties, MouseEvent } from 'react';
 
-import { ComponentSize } from '../../constants';
-import { BaseComponentProps } from './base.types';
+import { ComponentSize, IconAnimationType, TextColor } from '@/constants';
+
+import { BaseComponentProps } from '@/types';
 
 /**
  * Icon Types
@@ -14,29 +15,15 @@ import { BaseComponentProps } from './base.types';
 export interface IconProps extends BaseComponentProps {
 	name: string;
 	size?: ComponentSize;
-	color?: IconColor;
+	color?: TextColor;
 	animation?: IconAnimation;
 	onClick?: (event: MouseEvent<SVGSVGElement>) => void;
 	style?: CSSProperties;
 }
 
-// Size and Color Types
-export type IconColor =
-	| 'inherit'
-	| 'primary'
-	| 'secondary'
-	| 'success'
-	| 'warning'
-	| 'error'
-	| 'info'
-	| 'muted'
-	| 'white'
-	| 'black'
-	| 'accent';
-
 // Icon Animation
 export interface IconAnimation {
-	type: 'bounce' | 'pulse' | 'rotate' | 'shake' | 'none';
+	type: IconAnimationType;
 	duration?: number;
 	delay?: number;
 	iterationCount?: number | 'infinite';

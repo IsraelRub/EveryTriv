@@ -496,45 +496,115 @@
 				hsl(var(--primary) / 0.2) 90deg 360deg
 			);
 		}
+		10% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 81deg,
+				hsl(var(--primary) / 0.2) 81deg 360deg
+			);
+		}
 		20% {
 			background: conic-gradient(
 				from 0deg,
-				hsl(var(--primary)) 0deg 60deg,
-				hsl(var(--primary) / 0.2) 60deg 360deg
+				hsl(var(--primary)) 0deg 72deg,
+				hsl(var(--primary) / 0.2) 72deg 360deg
+			);
+		}
+		30% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 63deg,
+				hsl(var(--primary) / 0.2) 63deg 360deg
 			);
 		}
 		40% {
 			background: conic-gradient(
 				from 0deg,
-				hsl(var(--primary)) 0deg 30deg,
-				hsl(var(--primary) / 0.2) 30deg 360deg
+				hsl(var(--primary)) 0deg 54deg,
+				hsl(var(--primary) / 0.2) 54deg 360deg
 			);
 		}
 		50% {
 			background: conic-gradient(
 				from 0deg,
-				hsl(var(--primary) / 0.2) 0deg 360deg
+				hsl(var(--primary)) 0deg 45deg,
+				hsl(var(--primary) / 0.2) 45deg 360deg
 			);
 		}
 		60% {
 			background: conic-gradient(
-				from 180deg,
-				hsl(var(--primary)) 180deg 210deg,
-				hsl(var(--primary) / 0.2) 210deg 540deg
+				from 0deg,
+				hsl(var(--primary)) 0deg 36deg,
+				hsl(var(--primary) / 0.2) 36deg 360deg
+			);
+		}
+		70% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 27deg,
+				hsl(var(--primary) / 0.2) 27deg 360deg
 			);
 		}
 		80% {
 			background: conic-gradient(
-				from 180deg,
-				hsl(var(--primary)) 180deg 240deg,
-				hsl(var(--primary) / 0.2) 240deg 540deg
+				from 0deg,
+				hsl(var(--primary)) 0deg 18deg,
+				hsl(var(--primary) / 0.2) 18deg 360deg
+			);
+		}
+		90% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 9deg,
+				hsl(var(--primary) / 0.2) 9deg 360deg
+			);
+		}
+		95% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary) / 0.2) 0deg 360deg
+			);
+		}
+		96% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 9deg,
+				hsl(var(--primary) / 0.2) 9deg 360deg
+			);
+		}
+		97% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 18deg,
+				hsl(var(--primary) / 0.2) 18deg 360deg
+			);
+		}
+		98% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 36deg,
+				hsl(var(--primary) / 0.2) 36deg 360deg
+			);
+		}
+		99% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 63deg,
+				hsl(var(--primary) / 0.2) 63deg 360deg
+			);
+		}
+		99.5% {
+			background: conic-gradient(
+				from 0deg,
+				hsl(var(--primary)) 0deg 76.5deg,
+				hsl(var(--primary) / 0.2) 76.5deg 360deg
 			);
 		}
 		100% {
 			background: conic-gradient(
-				from 180deg,
-				hsl(var(--primary)) 180deg 270deg,
-				hsl(var(--primary) / 0.2) 270deg 540deg
+				from 0deg,
+				hsl(var(--primary)) 0deg 90deg,
+				hsl(var(--primary) / 0.2) 90deg 360deg
 			);
 		}
 	}
@@ -585,27 +655,62 @@
 		transform-origin: center;
 	}
 
+	@keyframes spinnerRotate {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(-360deg);
+		}
+	}
+
+	@keyframes spinnerPulsing {
+		0% {
+			transform: rotate(0deg) scale(1);
+		}
+		25% {
+			transform: rotate(90deg) scale(1.15);
+		}
+		50% {
+			transform: rotate(180deg) scale(1.25);
+		}
+		75% {
+			transform: rotate(270deg) scale(1.15);
+		}
+		100% {
+			transform: rotate(360deg) scale(1);
+		}
+	}
+
 	.spinner-pulsing {
 		position: relative;
 		border-radius: 50%;
-		animation: spin 1s linear infinite;
+		animation: spinnerPulsing 1.5s ease-in-out infinite;
 		will-change: transform;
 		transform-origin: center;
-		background: conic-gradient(
-			from 0deg,
-			hsl(var(--primary)) 0deg 90deg,
-			hsl(var(--primary) / 0.2) 90deg 360deg
-		);
-		animation: spin 1s linear infinite, spinnerArc 2s ease-in-out infinite;
-		will-change: transform, background;
 	}
 
 	.spinner-pulsing::before {
 		content: '';
 		position: absolute;
+		inset: 0;
+		border-radius: 50%;
+		background: conic-gradient(
+			from 0deg,
+			hsl(var(--primary)) 0deg 90deg,
+			hsl(var(--primary) / 0.2) 90deg 360deg
+		);
+		animation: spinnerRotate 1s linear infinite, spinnerArc 2s ease-in-out infinite;
+		will-change: transform, background;
+	}
+
+	.spinner-pulsing::after {
+		content: '';
+		position: absolute;
 		inset: 4px;
 		border-radius: 50%;
 		background: hsl(var(--background));
+		z-index: 1;
 	}
 
 	.animate-pulse {
