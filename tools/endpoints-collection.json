@@ -1,14 +1,14 @@
 {
   "info": {
     "name": "EveryTriv API Collection",
-    "description": "🎯 **COMPLETE API COLLECTION FOR EVERYTRIV TRIVIA PLATFORM**\n\n**Platform Overview:**\nEveryTriv is a comprehensive trivia game platform featuring AI-powered question generation, real-time multiplayer capabilities, advanced analytics, and a complete user management system.\n\n**Key Features:**\n- 🤖 **AI-Powered Questions:** Groq AI provider with multiple models (Llama, GPT-OSS, Mixtral, Gemma)\n- 🎮 **Multiple Game Modes:** Classic, Time Attack, Custom Difficulty\n- 🏆 **Leaderboards:** Global, weekly, monthly rankings\n- 💰 **Credits System:** Earn and spend credits for gameplay\n- 📊 **Advanced Analytics:** User performance, game statistics, system metrics\n- 🔐 **Complete Auth:** JWT-based authentication with role management\n- 💳 **Payment Integration:** Stripe integration for premium features\n\n**Authentication:**\n- Most endpoints require JWT token in Authorization header\n- Admin endpoints require 'admin' role\n- Public endpoints marked with @Public() decorator\n\n**Rate Limiting:**\n- Login: 5 attempts per minute\n- Registration: 3 attempts per 5 minutes\n- Game actions: 20 per minute\n- Admin actions: 5 per minute\n\n**Base URL:** http://localhost:3002 (development)\n**API Version:** v1\n**Documentation:** See /docs for Swagger documentation",
+"description": "🎯 **COMPLETE API COLLECTION FOR EVERYTRIV TRIVIA PLATFORM**\n\n**Platform Overview:**\nEveryTriv is a comprehensive trivia game platform featuring AI-powered question generation, real-time multiplayer capabilities, advanced analytics, and a complete user management system.\n\n**Key Features:**\n- 🤖 **AI-Powered Questions:** Groq AI provider with multiple models (Llama, GPT-OSS, Mixtral, Gemma)\n- 🎮 **Multiple Game Modes:** Classic, Time Attack, Custom Difficulty\n- 🏆 **Leaderboards:** Global, weekly, monthly rankings\n- 💰 **Credits System:** Earn and spend credits for gameplay\n- 📊 **Advanced Analytics:** User performance, game statistics, system metrics\n- 🔐 **Complete Auth:** JWT-based authentication with role management\n- 💳 **Payment Integration:** Stripe integration for premium features\n\n**Authentication:**\n- Most endpoints require JWT token in Authorization header\n- Admin endpoints require 'admin' role\n- Public endpoints marked with @Public() decorator\n\n**Rate Limiting:**\n- Login: 5 attempts per minute\n- Registration: 3 attempts per 5 minutes\n- Game actions: 20 per minute\n- Admin actions: 5 per minute\n\n**Base URL:** http://localhost:3001 (development)\n**API Version:** v1\n**Documentation:** See /docs for Swagger documentation",
     "version": "2.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3002",
+      "value": "http://localhost:3001",
       "type": "string"
     },
     {
@@ -102,14 +102,15 @@
       "type": "string"
     },
     {
-      "key": "subscriptionId",
+      "key": "paymentId",
       "value": "",
       "type": "string"
     },
     {
-      "key": "paymentId",
-      "value": "",
-      "type": "string"
+      "key": "requestDelay",
+      "value": "100",
+      "type": "string",
+      "description": "Delay in milliseconds between requests (default: 100ms)"
     }
   ],
   "event": [
@@ -127,9 +128,33 @@
           "    pm.collectionVariables.set(key, value);",
           "};",
           "",
+          "// Calculate jitter value for retry delays (mirrors calculateJitter from shared/utils/core/retry.utils.ts)",
+          "// Adds randomness to delays to prevent thundering herd problem",
+          "const calculateJitter = (delay, options) => {",
+          "    if (!Number.isFinite(delay) || delay < 0) {",
+          "        return 0;",
+          "    }",
+          "    ",
+          "    const opts = options ?? {};",
+          "    const percentage = opts.percentage ?? 0.1; // 10% default",
+          "    const maxJitter = opts.maxJitter ?? 1000; // 1000ms default",
+          "    const fixedJitter = opts.fixedJitter;",
+          "    ",
+          "    // Fixed jitter takes precedence",
+          "    if (typeof fixedJitter === 'number' && Number.isFinite(fixedJitter) && fixedJitter >= 0) {",
+          "        return Math.random() * fixedJitter;",
+          "    }",
+          "    ",
+          "    // Calculate percentage-based jitter",
+          "    const percentageJitter = delay * Math.max(0, Math.min(1, percentage));",
+          "    const cappedJitter = Math.min(percentageJitter, maxJitter);",
+          "    ",
+          "    return Math.random() * cappedJitter;",
+          "};",
+          "",
           "// Ensure baseUrl exists",
           "if (!getVar('baseUrl')) {",
-          "    setVar('baseUrl', 'http://localhost:3002');",
+          "    setVar('baseUrl', 'http://localhost:3001');",
           "}",
           "",
           "let usesAdminToken = false;",
@@ -139,9 +164,41 @@
           "    }",
           "});",
           "",
+          "// Check if request needs admin token (has {{adminAccessToken}} in headers)",
+          "let needsAdminToken = false;",
+          "pm.request.headers.each(header => {",
+          "    if (header && header.value && typeof header.value === 'string' && header.value.includes('{{adminAccessToken}}')) {",
+          "        needsAdminToken = true;",
+          "    }",
+          "});",
+          "",
+          "// Replace {{adminAccessToken}} and {{userAccessToken}} in headers if tokens exist (do this early)",
+          "const existingAdminToken = getVar('adminAccessToken');",
+          "const existingUserToken = getVar('userAccessToken');",
+          "const existingAccessToken = getVar('accessToken');",
+          "",
+          "if (existingAdminToken) {",
+          "    pm.request.headers.each(header => {",
+          "        if (header && header.value && typeof header.value === 'string' && header.value.includes('{{adminAccessToken}}')) {",
+          "            header.value = header.value.replace(/\\{\\{adminAccessToken\\}\\}/g, existingAdminToken);",
+          "            needsAdminToken = true; // Mark as needing admin token",
+          "        }",
+          "    });",
+          "}",
+          "",
+          "// Replace {{userAccessToken}} with accessToken if available",
+          "const tokenToUse = existingUserToken || existingAccessToken;",
+          "if (tokenToUse) {",
+          "    pm.request.headers.each(header => {",
+          "        if (header && header.value && typeof header.value === 'string' && header.value.includes('{{userAccessToken}}')) {",
+          "            header.value = header.value.replace(/\\{\\{userAccessToken\\}\\}/g, tokenToUse);",
+          "        }",
+          "    });",
+          "}",
+          "",
           "// Inject Authorization header automatically when token exists and admin token not requested",
           "const accessToken = getVar('accessToken');",
-          "if (!usesAdminToken && accessToken && !pm.request.headers.has('Authorization')) {",
+          "if (!usesAdminToken && !needsAdminToken && accessToken && !pm.request.headers.has('Authorization')) {",
           "    pm.request.headers.add({",
           "        key: 'Authorization',",
           "        value: 'Bearer ' + accessToken",
@@ -157,11 +214,20 @@
           "    }",
           "};",
           "",
-          "if (usesAdminToken) {",
-          "    pm.request.headers.remove('X-Use-Admin-Token');",
+          "// Handle admin token requests (either via X-Use-Admin-Token header or {{adminAccessToken}} in Authorization)",
+          "if (usesAdminToken || needsAdminToken) {",
+          "    if (usesAdminToken) {",
+          "        pm.request.headers.remove('X-Use-Admin-Token');",
+          "    }",
           "    const adminToken = getVar('adminAccessToken');",
           "    if (adminToken) {",
           "        ensureAdminHeader(adminToken);",
+          "        // Replace {{adminAccessToken}} in headers if present",
+          "        pm.request.headers.each(header => {",
+          "            if (header && header.value && typeof header.value === 'string' && header.value.includes('{{adminAccessToken}}')) {",
+          "                header.value = header.value.replace(/\\{\\{adminAccessToken\\}\\}/g, adminToken);",
+          "            }",
+          "        });",
           "    } else {",
           "        const adminEmail = getVar('adminEmail');",
           "        const adminPassword = getVar('adminPassword');",
@@ -189,6 +255,12 @@
           "                        if (newAccessToken) {",
           "                            setVar('adminAccessToken', newAccessToken);",
           "                            ensureAdminHeader(newAccessToken);",
+          "                            // Replace {{adminAccessToken}} in headers",
+          "                            pm.request.headers.each(header => {",
+          "                                if (header && header.value && typeof header.value === 'string' && header.value.includes('{{adminAccessToken}}')) {",
+          "                                    header.value = header.value.replace(/\\{\\{adminAccessToken\\}\\}/g, newAccessToken);",
+          "                                }",
+          "                            });",
           "                        }",
           "",
           "                        if (newRefreshToken) {",
@@ -217,7 +289,6 @@
           "    { placeholder: 'user_id_here', value: getVar('userId') || getVar('registeredUserId') },",
           "    { placeholder: 'game_id_here', value: getVar('gameId') },",
           "    { placeholder: 'question_id_here', value: getVar('questionId') },",
-          "    { placeholder: 'subscription_id_here', value: getVar('subscriptionId') },",
           "    { placeholder: 'payment_id_here', value: getVar('paymentId') }",
           "];",
           "",
@@ -228,13 +299,27 @@
           "    }",
           "});",
           "",
-          "// Replace {{userId}} in URL with registeredUserId if userId is empty",
+          "// Replace {{userId}} in URL - Postman variables need explicit replacement in prerequest",
           "const finalUserId = getVar('userId') || getVar('registeredUserId');",
-          "if (finalUserId && updatedUrl.includes('{{userId}}')) {",
-          "    updatedUrl = updatedUrl.replace(/\\{\\{userId\\}\\}/g, finalUserId);",
+          "if (updatedUrl.includes('{{userId}}')) {",
+          "    if (finalUserId) {",
+          "        updatedUrl = updatedUrl.replace(/\\{\\{userId\\}\\}/g, finalUserId);",
+          "    } else {",
+          "        // For admin endpoints without userId, use placeholder",
+          "        updatedUrl = updatedUrl.replace(/\\{\\{userId\\}\\}/g, 'placeholder');",
+          "    }",
           "}",
           "",
-          "pm.request.url = updatedUrl;"
+          "pm.request.url = updatedUrl;",
+          "",
+          "// Add delay between requests to avoid rate limiting (429 errors)",
+          "// Note: Postman doesn't support synchronous delays, so we track last request time",
+          "// and rely on Newman/Postman runner's iteration delay or test script handling",
+          "// Apply jitter to base delay to prevent synchronized requests",
+          "const baseDelayMs = parseInt(getVar('requestDelay') || '100', 10);",
+          "const jitter = calculateJitter(baseDelayMs, { percentage: 0.05, maxJitter: 50 }); // 5% jitter, max 50ms for base delay",
+          "const delayMs = Math.round(baseDelayMs + jitter);",
+          "setVar('lastRequestTime', Date.now().toString());"
         ]
       }
     },
@@ -243,11 +328,37 @@
       "script": {
         "type": "text/javascript",
         "exec": [
+          "// Helper functions for shared collection variables",
+          "const getVar = key => (pm.collectionVariables ? pm.collectionVariables.get(key) : undefined);",
           "const setVar = (key, value) => {",
           "    if (!pm.collectionVariables || value === undefined || value === null) {",
           "        return;",
           "    }",
           "    pm.collectionVariables.set(key, value);",
+          "};",
+          "",
+          "// Calculate jitter value for retry delays (mirrors calculateJitter from shared/utils/core/retry.utils.ts)",
+          "// Adds randomness to retry delays to prevent thundering herd problem",
+          "const calculateJitter = (delay, options) => {",
+          "    if (!Number.isFinite(delay) || delay < 0) {",
+          "        return 0;",
+          "    }",
+          "    ",
+          "    const opts = options ?? {};",
+          "    const percentage = opts.percentage ?? 0.1; // 10% default",
+          "    const maxJitter = opts.maxJitter ?? 1000; // 1000ms default",
+          "    const fixedJitter = opts.fixedJitter;",
+          "    ",
+          "    // Fixed jitter takes precedence",
+          "    if (typeof fixedJitter === 'number' && Number.isFinite(fixedJitter) && fixedJitter >= 0) {",
+          "        return Math.random() * fixedJitter;",
+          "    }",
+          "    ",
+          "    // Calculate percentage-based jitter",
+          "    const percentageJitter = delay * Math.max(0, Math.min(1, percentage));",
+          "    const cappedJitter = Math.min(percentageJitter, maxJitter);",
+          "    ",
+          "    return Math.random() * cappedJitter;",
           "};",
           "",
           "const requestName = pm.request && pm.request.name ? pm.request.name : '';",
@@ -314,9 +425,6 @@
           "        if (responseJson.data && responseJson.data.id && pm.request.url && pm.request.url.path && pm.request.url.path.includes('game')) {",
           "            setVar('gameId', responseJson.data.id);",
           "        }",
-          "        if (responseJson.data && responseJson.data.subscriptionId) {",
-          "            setVar('subscriptionId', responseJson.data.subscriptionId);",
-          "        }",
           "        if (responseJson.data && responseJson.data.paymentId) {",
           "            setVar('paymentId', responseJson.data.paymentId);",
           "        }",
@@ -325,9 +433,6 @@
           "        }",
           "        if (responseJson.questionId) {",
           "            setVar('questionId', responseJson.questionId);",
-          "        }",
-          "        if (responseJson.subscriptionId) {",
-          "            setVar('subscriptionId', responseJson.subscriptionId);",
           "        }",
           "        if (responseJson.paymentId) {",
           "            setVar('paymentId', responseJson.paymentId);",
@@ -376,6 +481,67 @@
           "        }",
           "    } catch (e) {",
           "        // Ignore parsing errors",
+          "    }",
+          "}",
+          "",
+          "// Handle 429 Rate Limit errors - adjust delay automatically",
+          "if (pm.response.code === 429) {",
+          "    try {",
+          "        const responseJson = pm.response.json();",
+          "        const retryAfter = responseJson.retryAfter || responseJson.details?.retryAfter || responseJson.details?.remainingTime;",
+          "        const currentDelay = parseInt(getVar('requestDelay') || '100', 10);",
+          "        ",
+          "        // If server provided retryAfter, use it to calculate new delay",
+          "        if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {",
+          "            // Convert retryAfter (seconds) to milliseconds and add some buffer",
+          "            const baseDelay = Math.min((retryAfter * 1000) + 500, 10000);",
+          "            // Add jitter to prevent thundering herd (10% of delay, max 1000ms)",
+          "            const jitter = calculateJitter(baseDelay, { percentage: 0.1, maxJitter: 1000 });",
+          "            const suggestedDelay = Math.round(baseDelay + jitter);",
+          "            if (suggestedDelay > currentDelay) {",
+          "                setVar('requestDelay', suggestedDelay.toString());",
+          "                console.log(`Rate limited! Adjusted request delay to ${suggestedDelay}ms (base: ${baseDelay}ms, jitter: ${Math.round(jitter)}ms, retryAfter: ${retryAfter}s)`);",
+          "            }",
+          "        } else {",
+          "            // Exponential backoff: double the delay (max 5000ms)",
+          "            const baseDelay = Math.min(currentDelay * 2, 5000);",
+          "            // Add jitter to prevent synchronized retries (10% of delay, max 1000ms)",
+          "            const jitter = calculateJitter(baseDelay, { percentage: 0.1, maxJitter: 1000 });",
+          "            const newDelay = Math.round(baseDelay + jitter);",
+          "            if (newDelay > currentDelay) {",
+          "                setVar('requestDelay', newDelay.toString());",
+          "                console.log(`Rate limited! Increased request delay to ${newDelay}ms (base: ${baseDelay}ms, jitter: ${Math.round(jitter)}ms)`);",
+          "            }",
+          "        }",
+          "        ",
+          "        // Log rate limit headers if available",
+          "        const rateLimitRemaining = pm.response.headers.get('X-RateLimit-Remaining');",
+          "        const rateLimitReset = pm.response.headers.get('X-RateLimit-Reset');",
+          "        if (rateLimitRemaining !== null) {",
+          "            console.log(`Rate limit remaining: ${rateLimitRemaining}`);",
+          "        }",
+          "        if (rateLimitReset !== null) {",
+          "            console.log(`Rate limit resets at: ${rateLimitReset}`);",
+          "        }",
+          "    } catch (e) {",
+          "        // If parsing fails, just increase delay with jitter",
+          "        const currentDelay = parseInt(getVar('requestDelay') || '100', 10);",
+          "        const baseDelay = Math.min(currentDelay * 2, 5000);",
+          "        // Add jitter to prevent synchronized retries",
+          "        const jitter = calculateJitter(baseDelay, { percentage: 0.1, maxJitter: 1000 });",
+          "        const newDelay = Math.round(baseDelay + jitter);",
+          "        setVar('requestDelay', newDelay.toString());",
+          "        console.log(`Rate limited! Increased request delay to ${newDelay}ms (base: ${baseDelay}ms, jitter: ${Math.round(jitter)}ms, parsing error occurred)`);",
+          "    }",
+          "} else if (pm.response.code >= 200 && pm.response.code < 300) {",
+          "    // On success, gradually reduce delay (if it was increased due to rate limiting)",
+          "    const currentDelay = parseInt(getVar('requestDelay') || '100', 10);",
+          "    if (currentDelay > 100) {",
+          "        // Gradually reduce back to minimum (100ms) but not too fast",
+          "        const reducedDelay = Math.max(100, Math.floor(currentDelay * 0.9));",
+          "        if (reducedDelay < currentDelay) {",
+          "            setVar('requestDelay', reducedDelay.toString());",
+          "        }",
           "    }",
           "}"
         ]
@@ -544,14 +710,15 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "me"]
-            }
+            },
+            "description": "Get current authenticated user profile (protected endpoint)"
           }
         },
         {
@@ -654,7 +821,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "url": {
@@ -675,7 +842,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{userAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "body": {
@@ -1380,150 +1547,291 @@
       ]
     },
     {
-      "name": "🏆 Leaderboard",
-      "description": "🏆 **LEADERBOARD ENDPOINTS** - Rankings & Competition\n\n**Purpose:** Manage user rankings, leaderboards, and competitive features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global leaderboards, period rankings, leaderboard stats\n- 🔐 **Protected Endpoints:** User rankings, updates\n- 👑 **Admin Endpoints:** Leaderboard management\n\n**Key Features:**\n- Global leaderboard system\n- Period-based rankings (weekly, monthly)\n- Ranking updates and management\n- Competitive statistics\n- Performance tracking\n- Admin leaderboard management\n- Leaderboard statistics by period\n\n**Available Endpoints:**\n- Get User Ranking (GET)\n- Update User Ranking (POST)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET) - Public\n- Clear All Leaderboard (Admin) (DELETE)\n\n**Leaderboard Operations:**\n- User ranking retrieval\n- Global leaderboard access\n- Period-based rankings\n- Ranking updates\n- Competitive analytics\n- Leaderboard statistics\n- Admin leaderboard management",
+      "name": "👨‍👩‍👦‍👦 Multiplayer (WebSocket)",
+      "description": "👨‍👩‍👦‍👦 **MULTIPLAYER WEBSOCKET EVENTS** - Real-Time Simultaneous Trivia Games (Two Players)\n\n**Purpose:** Handle real-time multiplayer simultaneous trivia games via WebSocket connections for exactly 2 players\n\n**Connection:**\n- WebSocket URL: `ws://localhost:3001/multiplayer` (or `wss://` for HTTPS)\n- Authentication: JWT token required in connection handshake\n  - Via `auth.token` in connection options\n  - Via `query.token` in connection URL\n  - Via `Authorization: Bearer <token>` header\n\n**Authentication Requirements:**\n- 🔐 **All Events:** Require JWT authentication via WebSocket handshake\n\n**Key Features:**\n- Real-time simultaneous gameplay\n- Room-based game sessions (exactly 2 players)\n- Manual room creation with join codes\n- Live leaderboard updates\n- Question timer synchronization\n- Answer submission and scoring\n- Game state synchronization\n\n**Available WebSocket Events:**\n\n**Client → Server Events:**\n- `create-room` - Create a new multiplayer room\n- `join-room` - Join an existing room\n- `leave-room` - Leave current room\n- `start-game` - Start the game (host only)\n- `submit-answer` - Submit answer to current question\n\n**Server → Client Events:**\n- `room-created` - Room successfully created\n- `room-joined` - Successfully joined a room\n- `room-left` - Successfully left a room\n- `player-joined` - Another player joined the room\n- `player-left` - A player left the room\n- `game-started` - Game has started\n- `question-started` - New question has started\n- `answer-received` - Answer was received (confirmation)\n- `question-ended` - Current question has ended\n- `game-ended` - Game has finished\n- `leaderboard-update` - Leaderboard updated\n- `room-updated` - Room state updated\n- `error` - Error occurred\n\n**Connection Example (Socket.IO Client):**\n```javascript\nconst socket = io('ws://localhost:3001/multiplayer', {\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n});\n```\n\n**Event Flow (Two Players):**\n1. Player 1 connects to WebSocket with JWT token\n2. Player 1 creates a room\n3. Player 2 connects to WebSocket with JWT token\n4. Player 2 joins the room created by Player 1\n5. Player 1 starts the game (requires exactly 2 players)\n6. Questions are sent to both players simultaneously\n7. Both players submit answers\n8. Results and leaderboard updates are broadcast\n9. Game ends when all questions are answered\n10. Both players leave the room\n\n**Room Configuration:**\n- Topic: Trivia topic (e.g., \"Science\", \"History\")\n- Difficulty: Standard (easy/medium/hard) or custom\n- Question Count: 1-50 questions\n- Max Players: 2 players (fixed)\n- Game Mode: question-limited, time-limited, or unlimited\n- Time Per Question: Fixed 30 seconds for simultaneous games",
       "item": [
         {
-          "name": "Get User Ranking",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/user/ranking",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "user", "ranking"]
-            }
-          }
-        },
-        {
-          "name": "Update User Ranking",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/user/update",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "user", "update"]
-            }
-          }
-        },
-        {
-          "name": "Get Global Leaderboard",
+          "name": "WebSocket Connection Info",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/leaderboard/global?limit=10&offset=0",
+              "raw": "{{baseUrl}}/multiplayer",
               "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "global"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "10"
-                },
-                {
-                  "key": "offset",
-                  "value": "0"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Leaderboard by Period",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/period/weekly?limit=10&offset=0",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "period", "weekly"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "10"
-                },
-                {
-                  "key": "offset",
-                  "value": "0"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Leaderboard Stats",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/stats?period=weekly",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "stats"],
-              "query": [
-                {
-                  "key": "period",
-                  "value": "weekly",
-                  "description": "Time period: weekly, monthly, or yearly"
-                }
-              ]
+              "path": ["multiplayer"]
             },
-            "description": "Get leaderboard statistics for a specific period (public endpoint)"
+            "description": "WebSocket endpoint: ws://localhost:3001/multiplayer\n\n**Connection Requirements:**\n- Protocol: WebSocket (ws:// or wss://)\n- Namespace: /multiplayer\n- Authentication: JWT token required\n\n**Connection Options:**\n```javascript\n{\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n}\n```\n\n**Testing Note:**\n- WebSocket events require a real WebSocket client (not HTTP requests)\n- Use Socket.IO client library or WebSocket testing tools\n- Postman supports WebSocket testing in newer versions\n- For manual testing, use browser console or dedicated WebSocket clients"
           }
         },
         {
-          "name": "Clear All Leaderboard (Admin)",
+          "name": "Create Room (WebSocket Event)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Clears all leaderboard entries', () => {",
-                  "    if (pm.response.code === 429) {",
-                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
-                  "        pm.expect(pm.response.code).to.equal(429);",
-                  "    } else {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "        const response = pm.response.json();",
-                  "        pm.expect(response).to.be.an('object');",
-                  "        const payload = response.data || response;",
-                  "        if (payload.message) {",
-                  "            pm.expect(payload).to.have.property('message');",
-                  "            pm.expect(payload).to.have.property('deletedCount');",
-                  "            if (typeof payload.deletedCount === 'number') {",
-                  "                console.log('Deleted leaderboard records:', payload.deletedCount);",
-                  "            }",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "        const room = data && data.room ? data.room : null;",
+                  "",
+                  "        if (room && room.roomId) {",
+                  "            pm.collectionVariables.set('multiplayerRoomId', room.roomId);",
                   "        }",
+                  "",
+                  "        if (data && data.code) {",
+                  "            pm.collectionVariables.set('multiplayerRoomCode', data.code);",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture multiplayer room info', error);",
                   "    }",
-                  "});"
+                  "}"
                 ]
               }
             }
           ],
           "request": {
-            "method": "DELETE",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"Science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 10,\n  \"maxPlayers\": 2,\n  \"gameMode\": \"question-limited\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms`\n\nCreates a new multiplayer room using user token\n\n**WebSocket Event Mirrored:** `create-room`\n\n**Emit (Socket.IO):** `socket.emit('create-room', { topic, difficulty, questionsPerRequest, maxPlayers, gameMode })`\n\n**HTTP Response:** `{ room, code }`\n\n**WebSocket Response Events:**\n- `room-created` - Returns { room, code }\n- `player-joined` - Broadcast to all players\n- `error` - If creation fails\n\n**Room Code:** Short 6-character code for easy sharing (first 6 chars of room ID)"
+          }
+        },
+        {
+          "name": "Join Room (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "join"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/join`\n\nJoins an existing room using user token\n\n**WebSocket Event Mirrored:** `join-room`\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `room-joined` - Returns { room }\n- `player-joined` - Broadcast to all players in room\n- `error` - If join fails (room full, not found, etc.)"
+          }
+        },
+        {
+          "name": "Start Game (WebSocket Event)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "        const room = data && data.room ? data.room : null;",
+                  "",
+                  "        if (room && Array.isArray(room.questions) && room.questions.length > 0) {",
+                  "            const nextQuestion = room.questions[room.currentQuestionIndex || 0] || room.questions[0];",
+                  "            if (nextQuestion && nextQuestion.id) {",
+                  "                pm.collectionVariables.set('multiplayerQuestionId', nextQuestion.id);",
+                  "            }",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture multiplayer question info', error);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "start"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/start`\n\nStarts the game using user token (host only)\n\n**WebSocket Event Mirrored:** `start-game`\n\n**Emit:** `socket.emit('start-game', { roomId })`\n\n**Requirements:**\n- User must be the room host\n- Exactly 2 players required\n- Room status must be 'waiting'\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `game-started` - Broadcast to both players with { questions, config }\n- `question-started` - First question starts automatically\n- `error` - If start fails (not host, not exactly 2 players, etc.)"
+          }
+        },
+        {
+          "name": "Submit Answer (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\",\n  \"questionId\": \"{{multiplayerQuestionId}}\",\n  \"answer\": 0,\n  \"timeSpent\": 12\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "answer"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/answer`\n\nSubmits answer using user token\n\n**WebSocket Event Mirrored:** `submit-answer`\n\n**Emit:** `socket.emit('submit-answer', { roomId, questionId, answer, timeSpent })`\n\n**Parameters:**\n- `roomId`: Room UUID\n- `questionId`: Question UUID\n- `answer`: Answer index (0-3)\n- `timeSpent`: Time spent in seconds\n\n**HTTP Response:** `{ roomId, questionId, isCorrect, scoreEarned, leaderboard }`\n\n**WebSocket Response Events:**\n- `answer-received` - Confirmation with { userId, questionId, isCorrect, scoreEarned, leaderboard }\n- `leaderboard-update` - Leaderboard updated\n- `error` - If submission fails"
+          }
+        },
+        {
+          "name": "Submit Answer (WebSocket Event) - Second Player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\",\n  \"questionId\": \"{{multiplayerQuestionId}}\",\n  \"answer\": 1,\n  \"timeSpent\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "answer"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/answer`\n\nSubmits answer using user token (second player)\n\n**WebSocket Event Mirrored:** `submit-answer`\n\n**Emit:** `socket.emit('submit-answer', { roomId, questionId, answer, timeSpent })`\n\n**Parameters:**\n- `roomId`: Room UUID\n- `questionId`: Question UUID\n- `answer`: Answer index (0-3)\n- `timeSpent`: Time spent in seconds\n\n**HTTP Response:** `{ roomId, questionId, isCorrect, scoreEarned, leaderboard }`\n\n**WebSocket Response Events:**\n- `answer-received` - Confirmation with { userId, questionId, isCorrect, scoreEarned, leaderboard }\n- `leaderboard-update` - Leaderboard updated\n- `error` - If submission fails"
+          }
+        },
+        {
+          "name": "Get Room Details (HTTP Proxy)",
+          "request": {
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/leaderboard/admin/clear-all",
+              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "admin", "clear-all"]
-            }
+              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}"]
+            },
+            "description": "Returns the full multiplayer room document (`{ room }`) while both players are connected."
+          }
+        },
+        {
+          "name": "Get Room State (HTTP Proxy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}/state",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}", "state"]
+            },
+            "description": "Returns `{ room, gameState }` prior to disconnecting players so diagnostics stay valid."
+          }
+        },
+        {
+          "name": "Leave Room (WebSocket Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "leave"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\nLeaves the room using user token\n\n**WebSocket Event Mirrored:** `leave-room`\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
+          }
+        },
+        {
+          "name": "Leave Room (WebSocket Event) - Second Player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/multiplayer/rooms/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["multiplayer", "rooms", "leave"]
+            },
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\nLeaves the room using user token (second player)\n\n**WebSocket Event Mirrored:** `leave-room`\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
           }
         }
       ]
@@ -1812,6 +2120,155 @@
       ]
     },
     {
+      "name": "🏆 Leaderboard",
+      "description": "🏆 **LEADERBOARD ENDPOINTS** - Rankings & Competition\n\n**Purpose:** Manage user rankings, leaderboards, and competitive features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global leaderboards, period rankings, leaderboard stats\n- 🔐 **Protected Endpoints:** User rankings, updates\n- 👑 **Admin Endpoints:** Leaderboard management\n\n**Key Features:**\n- Global leaderboard system\n- Period-based rankings (weekly, monthly)\n- Ranking updates and management\n- Competitive statistics\n- Performance tracking\n- Admin leaderboard management\n- Leaderboard statistics by period\n\n**Available Endpoints:**\n- Get User Ranking (GET)\n- Update User Ranking (POST)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET) - Public\n- Clear All Leaderboard (Admin) (DELETE)\n\n**Leaderboard Operations:**\n- User ranking retrieval\n- Global leaderboard access\n- Period-based rankings\n- Ranking updates\n- Competitive analytics\n- Leaderboard statistics\n- Admin leaderboard management",
+      "item": [
+        {
+          "name": "Get User Ranking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/ranking",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "ranking"]
+            }
+          }
+        },
+        {
+          "name": "Update User Ranking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/user/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "user", "update"]
+            }
+          }
+        },
+        {
+          "name": "Get Global Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/global?limit=10&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "global"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard by Period",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/period/weekly?limit=10&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "period", "weekly"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/stats?period=weekly",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "weekly",
+                  "description": "Time period: weekly, monthly, or yearly"
+                }
+              ]
+            },
+            "description": "Get leaderboard statistics for a specific period (public endpoint)"
+          }
+        },
+        {
+          "name": "Clear All Leaderboard (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clears all leaderboard entries', () => {",
+                  "    if (pm.response.code === 429) {",
+                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "    } else {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response).to.be.an('object');",
+                  "        const payload = response.data || response;",
+                  "        if (payload.message) {",
+                  "            pm.expect(payload).to.have.property('message');",
+                  "            pm.expect(payload).to.have.property('deletedCount');",
+                  "            if (typeof payload.deletedCount === 'number') {",
+                  "                console.log('Deleted leaderboard records:', payload.deletedCount);",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard/admin/clear-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard", "admin", "clear-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "📊 Analytics",
       "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user stats management\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get User Performance (Admin) (GET)\n- Get User Activity (Admin) (GET)\n- Get User Insights (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Clear All User Stats (Admin) (DELETE)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user stats management\n- Global trends aggregation",
       "item": [
@@ -2035,7 +2492,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -2350,346 +2807,6 @@
               "host": ["{{baseUrl}}"],
               "path": ["client-logs", "batch"]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📋 Subscription Management",
-      "description": "📋 **SUBSCRIPTION MANAGEMENT ENDPOINTS** - Plans & Billing\n\n**Purpose:** Manage subscription plans, billing, and premium features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Available plans\n- 🔐 **Protected Endpoints:** Current subscription, creation, cancellation\n\n**Key Features:**\n- Subscription plan management\n- Billing and payment integration\n- Premium feature access\n- Subscription lifecycle management\n- Plan comparison and selection\n- Billing history tracking\n\n**Available Endpoints:**\n- Get Available Plans (GET)\n- Get Current Subscription (GET)\n- Create Subscription (POST)\n- Cancel Subscription (DELETE)\n\n**Subscription Operations:**\n- Plan browsing and selection\n- Subscription creation and management\n- Billing and payment processing\n- Premium feature access\n- Subscription cancellation\n- Billing history tracking",
-      "item": [
-        {
-          "name": "Get Available Plans",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/subscription/plans",
-              "host": ["{{baseUrl}}"],
-              "path": ["subscription", "plans"]
-            }
-          }
-        },
-        {
-          "name": "Get Current Subscription",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/subscription/current",
-              "host": ["{{baseUrl}}"],
-              "path": ["subscription", "current"]
-            }
-          }
-        },
-        {
-          "name": "Create Subscription",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"planType\": \"premium\",\n  \"billingCycle\": \"monthly\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\",\n  \"autoRenewal\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/subscription/create",
-              "host": ["{{baseUrl}}"],
-              "path": ["subscription", "create"]
-            }
-          }
-        },
-        {
-          "name": "Create Subscription (PayPal)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"planType\": \"premium\",\n  \"billingCycle\": \"monthly\",\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\",\n  \"paypalPaymentId\": \"PAYPAL_PAYMENT_ID_HERE\",\n  \"autoRenewal\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/subscription/create",
-              "host": ["{{baseUrl}}"],
-              "path": ["subscription", "create"]
-            }
-          }
-        },
-        {
-          "name": "Cancel Subscription",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/subscription/cancel",
-              "host": ["{{baseUrl}}"],
-              "path": ["subscription", "cancel"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "👨‍👩‍👦‍👦 Multiplayer (WebSocket)",
-      "description": "👨‍👩‍👦‍👦 **MULTIPLAYER WEBSOCKET EVENTS** - Real-Time Simultaneous Trivia Games\n\n**Purpose:** Handle real-time multiplayer simultaneous trivia games via WebSocket connections\n\n**Connection:**\n- WebSocket URL: `ws://localhost:3002/multiplayer` (or `wss://` for HTTPS)\n- Authentication: JWT token required in connection handshake\n  - Via `auth.token` in connection options\n  - Via `query.token` in connection URL\n  - Via `Authorization: Bearer <token>` header\n\n**Authentication Requirements:**\n- 🔐 **All Events:** Require JWT authentication via WebSocket handshake\n\n**Key Features:**\n- Real-time simultaneous gameplay\n- Room-based game sessions (2-4 players)\n- Manual room creation with join codes\n- Live leaderboard updates\n- Question timer synchronization\n- Answer submission and scoring\n- Game state synchronization\n\n**Available WebSocket Events:**\n\n**Client → Server Events:**\n- `create-room` - Create a new multiplayer room\n- `join-room` - Join an existing room\n- `leave-room` - Leave current room\n- `start-game` - Start the game (host only)\n- `submit-answer` - Submit answer to current question\n\n**Server → Client Events:**\n- `room-created` - Room successfully created\n- `room-joined` - Successfully joined a room\n- `room-left` - Successfully left a room\n- `player-joined` - Another player joined the room\n- `player-left` - A player left the room\n- `game-started` - Game has started\n- `question-started` - New question has started\n- `answer-received` - Answer was received (confirmation)\n- `question-ended` - Current question has ended\n- `game-ended` - Game has finished\n- `leaderboard-update` - Leaderboard updated\n- `room-updated` - Room state updated\n- `error` - Error occurred\n\n**Connection Example (Socket.IO Client):**\n```javascript\nconst socket = io('ws://localhost:3001/multiplayer', {\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n});\n```\n\n**Event Flow:**\n1. Connect to WebSocket with JWT token\n2. Create or join a room\n3. Wait for players (minimum 2)\n4. Host starts the game\n5. Questions are sent to all players simultaneously\n6. Players submit answers\n7. Results and leaderboard updates are broadcast\n8. Game ends when all questions are answered\n\n**Room Configuration:**\n- Topic: Trivia topic (e.g., \"Science\", \"History\")\n- Difficulty: Standard (easy/medium/hard) or custom\n- Question Count: 1-50 questions\n- Max Players: 2-4 players\n- Game Mode: question-limited, time-limited, or unlimited\n- Time Per Question: Fixed 30 seconds for simultaneous games",
-      "item": [
-        {
-          "name": "WebSocket Connection Info",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer"]
-            },
-            "description": "WebSocket endpoint: ws://localhost:3002/multiplayer\n\n**Connection Requirements:**\n- Protocol: WebSocket (ws:// or wss://)\n- Namespace: /multiplayer\n- Authentication: JWT token required\n\n**Connection Options:**\n```javascript\n{\n  auth: { token: 'YOUR_JWT_TOKEN' },\n  query: { token: 'YOUR_JWT_TOKEN' },\n  transports: ['websocket']\n}\n```\n\n**Testing Note:**\n- WebSocket events require a real WebSocket client (not HTTP requests)\n- Use Socket.IO client library or WebSocket testing tools\n- Postman supports WebSocket testing in newer versions\n- For manual testing, use browser console or dedicated WebSocket clients"
-          }
-        },
-        {
-          "name": "Create Room (WebSocket Event)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "    try {",
-                  "        const body = pm.response.json();",
-                  "        const data = body && body.data ? body.data : body;",
-                  "        const room = data && data.room ? data.room : null;",
-                  "",
-                  "        if (room && room.roomId) {",
-                  "            pm.collectionVariables.set('multiplayerRoomId', room.roomId);",
-                  "        }",
-                  "",
-                  "        if (data && data.code) {",
-                  "            pm.collectionVariables.set('multiplayerRoomCode', data.code);",
-                  "        }",
-                  "    } catch (error) {",
-                  "        console.warn('Failed to capture multiplayer room info', error);",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"topic\": \"Science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 10,\n  \"maxPlayers\": 4,\n  \"gameMode\": \"question-limited\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms"]
-            },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms`\n\n**WebSocket Event Mirrored:** `create-room`\n\n**Emit (Socket.IO):** `socket.emit('create-room', { topic, difficulty, questionsPerRequest, maxPlayers, gameMode })`\n\n**HTTP Response:** `{ room, code }`\n\n**WebSocket Response Events:**\n- `room-created` - Returns { room, code }\n- `player-joined` - Broadcast to all players\n- `error` - If creation fails\n\n**Room Code:** Short 6-character code for easy sharing (first 6 chars of room ID)"
-          }
-        },
-        {
-          "name": "Join Room (WebSocket Event)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{userAccessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/join",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "join"]
-            },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms/join`\n\n**Purpose:** Adds a second authenticated player (admin) so the room has at least two participants.\n\n**WebSocket Event Mirrored:** `join-room`\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `room-joined` - Returns { room }\n- `player-joined` - Broadcast to all players in room\n- `error` - If join fails (room full, not found, etc.)"
-          }
-        },
-        {
-          "name": "Start Game (WebSocket Event)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "    try {",
-                  "        const body = pm.response.json();",
-                  "        const data = body && body.data ? body.data : body;",
-                  "        const room = data && data.room ? data.room : null;",
-                  "",
-                  "        if (room && Array.isArray(room.questions) && room.questions.length > 0) {",
-                  "            const nextQuestion = room.questions[room.currentQuestionIndex || 0] || room.questions[0];",
-                  "            if (nextQuestion && nextQuestion.id) {",
-                  "                pm.collectionVariables.set('multiplayerQuestionId', nextQuestion.id);",
-                  "            }",
-                  "        }",
-                  "    } catch (error) {",
-                  "        console.warn('Failed to capture multiplayer question info', error);",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/start",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "start"]
-            },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms/start`\n\n**WebSocket Event Mirrored:** `start-game`\n\n**Emit:** `socket.emit('start-game', { roomId })`\n\n**Requirements:**\n- User must be the room host\n- Minimum 2 players required\n- Room status must be 'waiting'\n\n**HTTP Response:** `{ room }`\n\n**WebSocket Response Events:**\n- `game-started` - Broadcast to all players with { questions, config }\n- `question-started` - First question starts automatically\n- `error` - If start fails (not host, not enough players, etc.)"
-          }
-        },
-        {
-          "name": "Submit Answer (WebSocket Event)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\",\n  \"questionId\": \"{{multiplayerQuestionId}}\",\n  \"answer\": 0,\n  \"timeSpent\": 12\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/answer",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "answer"]
-            },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms/answer`\n\n**WebSocket Event Mirrored:** `submit-answer`\n\n**Emit:** `socket.emit('submit-answer', { roomId, questionId, answer, timeSpent })`\n\n**Parameters:**\n- `roomId`: Room UUID\n- `questionId`: Question UUID\n- `answer`: Answer index (0-3)\n- `timeSpent`: Time spent in seconds\n\n**HTTP Response:** `{ roomId, questionId, isCorrect, scoreEarned, leaderboard }`\n\n**WebSocket Response Events:**\n- `answer-received` - Confirmation with { userId, questionId, isCorrect, scoreEarned, leaderboard }\n- `leaderboard-update` - Leaderboard updated\n- `error` - If submission fails"
-          }
-        },
-        {
-          "name": "Get Room Details (HTTP Proxy)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}"]
-            },
-            "description": "Returns the full multiplayer room document (`{ room }`) while both players are connected."
-          }
-        },
-        {
-          "name": "Get Room State (HTTP Proxy)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/{{multiplayerRoomId}}/state",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "{{multiplayerRoomId}}", "state"]
-            },
-            "description": "Returns `{ room, gameState }` prior to disconnecting players so diagnostics stay valid."
-          }
-        },
-        {
-          "name": "Leave Room (WebSocket Event)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"roomId\": \"{{multiplayerRoomId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/multiplayer/rooms/leave",
-              "host": ["{{baseUrl}}"],
-              "path": ["multiplayer", "rooms", "leave"]
-            },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\n**WebSocket Event Mirrored:** `leave-room`\n\nThis call disconnects the admin player while leaving the original host in the room, so the game can finish cleanly.\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
           }
         }
       ]

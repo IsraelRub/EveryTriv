@@ -15,11 +15,8 @@ import type {
 	LogResourceErrorFn,
 } from '@shared/types';
 import { sanitizeLogMessage } from '@shared/utils';
-
 import { AudioKey, TOAST_ENABLED_METHODS } from '@/constants';
-
 import { toast } from '@/hooks';
-
 import { audioService } from '@/services';
 
 /**

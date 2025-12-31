@@ -1,7 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 
 import { audioService } from '@/services';
-
 import type { AudioProviderProps, AudioServiceInterface } from '@/types';
 
 const AudioContext = createContext<AudioServiceInterface | null>(null);

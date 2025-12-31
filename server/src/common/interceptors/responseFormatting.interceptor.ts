@@ -9,8 +9,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { isRecord } from '@shared/utils';
-
+import { calculateDuration, isRecord } from '@shared/utils';
 import type { NestRequest } from '@internal/types';
 
 /**
@@ -31,7 +30,7 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 
 		return next.handle().pipe(
 			map(data => {
-				const duration = Date.now() - startTime;
+				const duration = calculateDuration(startTime);
 
 				// Skip formatting for certain response types
 				if (this.shouldSkipFormatting(data, request)) {

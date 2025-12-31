@@ -4,6 +4,7 @@
  * @module CoreDataUtils
  * @description Basic data manipulation utilities shared between client and server
  */
+import type { CountRecord, TypeGuard } from '../../types/core/data.types';
 
 /**
  * Type guard to check if value is a record (object with string keys)
@@ -12,7 +13,7 @@
  * @description Safely narrows unknown to Record<string, unknown> without type assertions
  */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
+	return value != null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**
@@ -37,7 +38,7 @@ export function hasProperty<K extends string>(value: unknown, property: K): valu
 export function hasPropertyOfType<K extends string, T>(
 	value: unknown,
 	property: K,
-	typeGuard: (val: unknown) => val is T
+	typeGuard: TypeGuard<T>
 ): value is Record<K, T> & Record<string, unknown> {
 	return hasProperty(value, property) && typeGuard(value[property]);
 }
@@ -50,6 +51,50 @@ export function hasPropertyOfType<K extends string, T>(
  */
 export function isStringArray(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+/**
+ * Type guard to check if a value is a non-empty string
+ * @param value Value to check
+ * @returns True if value is a string and not empty (after trimming)
+ * @description Safely narrows unknown to string and ensures it's not empty or whitespace-only
+ */
+export function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Type guard factory for checking if a value is in an allowed array
+ * @param allowedValues Array of allowed values
+ * @returns Type guard function that checks if value is in the allowed array
+ * @description Creates a type guard that checks if a value is one of the allowed values
+ * @example
+ * const isGameMode = isOneOf(VALID_GAME_MODES);
+ * if (isGameMode(value)) {
+ *   // value is GameMode
+ * }
+ */
+export function isOneOf<T extends string>(allowedValues: readonly T[]): TypeGuard<T> {
+	return (value: unknown): value is T => {
+		if (typeof value !== 'string') {
+			return false;
+		}
+		return allowedValues.includes(value as T);
+	};
+}
+
+/**
+ * Normalize array to non-empty string array
+ * @param value Value to normalize
+ * @returns Array of non-empty strings, or undefined if array is empty or invalid
+ * @description Filters array to only non-empty strings, returns undefined if result is empty
+ */
+export function normalizeStringArray(value?: unknown): string[] | undefined {
+	if (!Array.isArray(value)) {
+		return undefined;
+	}
+	const normalized = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+	return normalized.length > 0 ? normalized : undefined;
 }
 
 /**
@@ -99,8 +144,8 @@ export function buildCountRecord<T>(
 	items: T[],
 	keySelector: (item: T) => string | null | undefined,
 	countSelector: (item: T) => number | null | undefined
-): Record<string, number> {
-	const record: Record<string, number> = {};
+): CountRecord {
+	const record: CountRecord = {};
 
 	for (const item of items) {
 		const key = keySelector(item);
@@ -124,7 +169,11 @@ export function shuffle<T>(arr: T[]): T[] {
 	const shuffled = [...arr];
 	for (let i = shuffled.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
-		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		const itemI = shuffled[i];
+		const itemJ = shuffled[j];
+		if (itemI != null && itemJ != null) {
+			[shuffled[i], shuffled[j]] = [itemJ, itemI];
+		}
 	}
 	return shuffled;
 }

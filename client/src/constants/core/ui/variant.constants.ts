@@ -29,7 +29,6 @@ export enum ButtonVariant {
 	OUTLINE = VariantBase.OUTLINE,
 	SECONDARY = VariantBase.SECONDARY,
 	GHOST = 'ghost',
-	LINK = 'link',
 }
 
 /**
@@ -56,4 +55,16 @@ export enum ToastVariant {
 	SUCCESS = 'success',
 	WARNING = 'warning',
 	INFO = 'info',
+}
+
+/**
+ * Spinner variant enum
+ * @enum {string} SpinnerVariant
+ * @description Variant options for Spinner components
+ * Different visual styles for different use cases
+ */
+export enum SpinnerVariant {
+	FULL_SCREEN = 'fullScreen',
+	BUTTON = 'button',
+	REFRESH = 'refresh',
 }

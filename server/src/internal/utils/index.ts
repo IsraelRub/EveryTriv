@@ -15,12 +15,6 @@ export * from './guards.utils';
 // Redis utilities
 export * from './redis.utils';
 
-// Type guards utilities (server-only)
-export * from './typeGuards.utils';
-
-// Provider error utilities (server-only)
-export * from './providerError.utils';
-
 // Domain utilities (server-only)
 export * from './domain';
 

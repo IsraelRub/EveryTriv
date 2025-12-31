@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import { motion } from 'framer-motion';
 
 import {
@@ -10,7 +9,6 @@ import {
 	TRIVIA_WORDS,
 	WORD_DIRECTIONS,
 } from '@/constants';
-
 import type { AnimatedWord, Position, WordDirection } from '@/types';
 
 /**
@@ -24,14 +22,18 @@ const randomBetween = (min: number, max: number): number => {
  * Selects a random item from an array
  */
 const randomItem = <T,>(array: readonly T[]): T => {
-	return array[Math.floor(Math.random() * array.length)];
+	const item = array[Math.floor(Math.random() * array.length)];
+	if (item == null) {
+		throw new Error('Array is empty or item not found');
+	}
+	return item;
 };
 
 /**
  * Calculates end position based on start position and direction
  */
 const calculateEndPosition = (start: Position, direction: WordDirection): Position => {
-	const offset = 120; // Percentage offset to ensure word goes off screen
+	const offset = BACKGROUND_ANIMATION_CONFIG.movementOffset;
 
 	switch (direction) {
 		case 'diagonal-up-right':
@@ -61,8 +63,8 @@ const calculateEndPosition = (start: Position, direction: WordDirection): Positi
 const generateWord = (): AnimatedWord => {
 	const direction = randomItem(WORD_DIRECTIONS);
 	const startPosition: Position = {
-		x: randomBetween(-20, 100),
-		y: randomBetween(-20, 100),
+		x: randomBetween(BACKGROUND_ANIMATION_CONFIG.minStartPosition, BACKGROUND_ANIMATION_CONFIG.maxStartPosition),
+		y: randomBetween(BACKGROUND_ANIMATION_CONFIG.minStartPosition, BACKGROUND_ANIMATION_CONFIG.maxStartPosition),
 	};
 	const endPosition = calculateEndPosition(startPosition, direction);
 
@@ -77,7 +79,7 @@ const generateWord = (): AnimatedWord => {
 		font: randomItem(ANIMATION_FONTS),
 		fontSize: randomBetween(BACKGROUND_ANIMATION_CONFIG.minFontSize, BACKGROUND_ANIMATION_CONFIG.maxFontSize),
 		maxOpacity: randomBetween(BACKGROUND_ANIMATION_CONFIG.minOpacity, BACKGROUND_ANIMATION_CONFIG.maxOpacity),
-		rotation: randomBetween(-15, 15),
+		rotation: randomBetween(BACKGROUND_ANIMATION_CONFIG.minRotation, BACKGROUND_ANIMATION_CONFIG.maxRotation),
 	};
 };
 
@@ -156,7 +158,7 @@ export function BackgroundAnimation() {
 						color: word.color,
 						fontFamily: word.font,
 						fontSize: `${word.fontSize}rem`,
-						fontWeight: 700,
+						fontWeight: BACKGROUND_ANIMATION_CONFIG.fontWeight,
 						willChange: 'transform, opacity',
 						transform: 'translateZ(0)',
 						backfaceVisibility: 'hidden',

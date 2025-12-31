@@ -5,7 +5,7 @@
  * @description Type definitions for analytics service query options and internal accumulators
  * @used_by server/src/features/analytics/analytics.service.ts
  */
-import type { HistoryFilterOptions, TopicsPlayed } from '@shared/types';
+import type { CountRecord, GameDifficulty, HistoryFilterOptions } from '@shared/types';
 
 /**
  * Activity query options for user activity
@@ -28,5 +28,11 @@ export interface TopicAnalyticsAccumulator {
 	correctAnswers: number;
 	totalTimeSpent: number;
 	lastPlayed: string | null;
-	difficultyBreakdown: TopicsPlayed;
+	difficultyBreakdown: CountRecord;
+}
+
+export interface DifficultyStatsRecord {
+	difficulty: GameDifficulty;
+	total: number;
+	correct: number;
 }

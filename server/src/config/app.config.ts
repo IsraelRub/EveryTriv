@@ -6,7 +6,6 @@
  * @used_by server/src/app, server/src/main, server/src/config
  */
 import { LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
-
 import type { PayPalConfig } from '@internal/types';
 
 /**

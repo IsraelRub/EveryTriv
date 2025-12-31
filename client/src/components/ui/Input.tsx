@@ -1,12 +1,10 @@
 import { forwardRef, useCallback, type ComponentProps, type FocusEvent } from 'react';
 
 import { AudioKey } from '@/constants';
-
 import { useAudio } from '@/hooks';
-
 import { cn } from '@/utils';
 
-const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(({ className, type, onFocus, ...props }, ref) => {
+export const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(({ className, type, onFocus, ...props }, ref) => {
 	const audioService = useAudio();
 
 	const handleFocus = useCallback(
@@ -31,5 +29,3 @@ const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(({ className
 	);
 });
 Input.displayName = 'Input';
-
-export { Input };

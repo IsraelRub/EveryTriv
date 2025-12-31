@@ -12,8 +12,7 @@ import type { Socket } from 'socket.io';
 
 import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 

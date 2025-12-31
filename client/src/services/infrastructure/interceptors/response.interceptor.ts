@@ -7,11 +7,8 @@
  */
 import type { ApiResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { clientLogger as logger } from '@/services';
-
 import type { ResponseInterceptor } from '@/types';
-
 import { BaseInterceptorManager } from './base.interceptor-manager';
 
 /**

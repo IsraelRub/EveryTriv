@@ -5,56 +5,19 @@ import { DeepPartial, Repository } from 'typeorm';
 import {
 	DifficultyLevel,
 	ERROR_CODES,
-	TriviaQuestionReviewStatus,
 	TriviaQuestionSource,
-	VALID_TRIVIA_QUESTION_REVIEW_STATUSES,
-	VALID_TRIVIA_SOURCES,
-	VALIDATION_CONFIG,
+	ALLOWED_TRIVIA_SOURCES,
+	defaultValidators,
+	ProviderHealthStatus,
 } from '@shared/constants';
-import type { GameDifficulty, TriviaAnswer, TriviaQuestionDetailsMetadata } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import type { AiProviderHealth, AiProviderStats, GameDifficulty, TriviaAnswer, TriviaQuestionDetailsMetadata } from '@shared/types';
+import { getErrorMessage, isNonEmptyString, isOneOf, normalizeStringArray } from '@shared/utils';
 import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
-
 import { TriviaEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 import type { PromptParams, ProviderTriviaGenerationResult, ServerTriviaQuestionInput } from '@internal/types';
-import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-
+import { createServerError, createValidationError } from '@internal/utils';
 import { GroqTriviaProvider } from './providers/groq';
-
-const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
-
-const isTriviaQuestionSource = (value: unknown): value is TriviaQuestionSource => {
-	if (typeof value !== 'string') {
-		return false;
-	}
-	for (const allowedSource of VALID_TRIVIA_SOURCES) {
-		if (value === allowedSource) {
-			return true;
-		}
-	}
-	return false;
-};
-
-const isTriviaQuestionReviewStatus = (value: unknown): value is TriviaQuestionReviewStatus => {
-	if (typeof value !== 'string') {
-		return false;
-	}
-	for (const allowedStatus of VALID_TRIVIA_QUESTION_REVIEW_STATUSES) {
-		if (value === allowedStatus) {
-			return true;
-		}
-	}
-	return false;
-};
-
-const normalizeStringArray = (value?: unknown): string[] | undefined => {
-	if (!Array.isArray(value)) {
-		return undefined;
-	}
-	const normalized = value.filter(isNonEmptyString);
-	return normalized.length > 0 ? normalized : undefined;
-};
 
 /**
  * Service for generating trivia questions using AI
@@ -86,12 +49,6 @@ export class TriviaGenerationService {
 	 */
 	async generateQuestion(params: PromptParams, userId?: string): Promise<TriviaEntity> {
 		try {
-			logger.gameTarget('Generating trivia question', {
-				topic: params.topic,
-				difficulty: params.difficulty,
-				userId: userId || 'anonymous',
-			});
-
 			// Try to generate question using Groq AI provider
 			const providerResult = await this.groqProvider.generateTriviaQuestion(params);
 			this.applyProviderMetadata(providerResult, params.difficulty);
@@ -99,173 +56,27 @@ export class TriviaGenerationService {
 			const question = this.convertAIQuestionToFormat(
 				providerResult.question,
 				params.topic,
-				params.mappedDifficulty ?? toDifficultyLevel(params.difficulty)
+				toDifficultyLevel(params.difficulty)
 			);
 
-			if (question) {
-				// Save to database
-				const triviaEntity = this.convertQuestionToEntity(question, userId);
-				const savedQuestion = await this.saveQuestion(triviaEntity);
-
-				logger.gameTarget('Question generated successfully', {
-					questionId: savedQuestion.id,
-					topic: params.topic,
-					difficulty: params.difficulty,
-				});
-
-				return savedQuestion;
+			if (!question || !question.question || question.answers.length === 0) {
+				throw createServerError('generate question with AI providers', new Error(ERROR_CODES.AI_PROVIDERS_FAILED));
 			}
 
-			// If AI generation fails, throw an error instead of using mock
-			throw createServerError('generate question with AI providers', new Error(ERROR_CODES.AI_PROVIDERS_FAILED));
+		const triviaEntity = this.convertQuestionToEntity(question, userId);
+		const savedQuestion = await this.saveQuestion(triviaEntity);
+
+		return savedQuestion;
 		} catch (error) {
 			logger.gameError('Failed to generate trivia question', {
 				error: getErrorMessage(error),
 				topic: params.topic,
 				difficulty: params.difficulty,
-				userId: userId || 'anonymous',
+				userId: userId ?? 'anonymous',
 			});
 
 			// Re-throw the error instead of falling back to mock
 			throw createServerError('generate trivia question', error);
-		}
-	}
-
-	/**
-	 * Generate multiple trivia questions
-	 * @param topic Topic for the questions
-	 * @param difficulty Difficulty level
-	 * @param count Number of questions to generate
-	 * @param userId User ID (optional)
-	 * @returns Array of generated questions
-	 */
-	async generateQuestions(topic: string, difficulty: GameDifficulty, count: number, userId?: string) {
-		try {
-			logger.gameTarget('Generating multiple trivia questions', {
-				topic,
-				difficulty,
-				count,
-				userId: userId || 'anonymous',
-			});
-
-			const questions = [];
-			const excludeQuestions: string[] = [];
-
-			for (let i = 0; i < count; i++) {
-				try {
-					const promptParams: PromptParams = {
-						topic,
-						difficulty,
-						answerCount: VALIDATION_CONFIG.limits.ANSWER_COUNT.DEFAULT,
-					};
-					const generatedQuestion = await this.generateQuestion(promptParams, userId);
-					questions.push(generatedQuestion);
-					if (generatedQuestion.question) {
-						const normalized = generatedQuestion.question.toLowerCase().trim();
-						if (!excludeQuestions.some(existing => existing.toLowerCase().trim() === normalized)) {
-							excludeQuestions.push(generatedQuestion.question);
-						}
-					}
-				} catch (error) {
-					logger.gameError('Failed to generate question', {
-						error: getErrorMessage(error),
-						attempt: i + 1,
-						topic,
-						difficulty,
-					});
-					// Continue with next question
-				}
-			}
-
-			return questions;
-		} catch (error) {
-			logger.gameError('Failed to generate multiple trivia questions', {
-				error: getErrorMessage(error),
-				topic,
-				difficulty,
-				count,
-				userId: userId || 'anonymous',
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get existing question by ID
-	 * @param questionId Question ID
-	 * @returns Trivia question
-	 */
-	async getQuestionById(questionId: string) {
-		try {
-			logger.gameTarget('Getting question by ID', {
-				questionId,
-			});
-
-			const question = await this.triviaRepository.findOne({ where: { id: questionId } });
-			if (!question) {
-				throw createNotFoundError('Question');
-			}
-
-			return {
-				id: question.id,
-				question: question.question,
-				answers: question.answers,
-				correctAnswerIndex: question.correctAnswerIndex,
-				topic: question.topic,
-				difficulty: question.difficulty,
-				metadata: question.metadata,
-				created_at: question.createdAt,
-			};
-		} catch (error) {
-			logger.gameError('Failed to get question by ID', {
-				error: getErrorMessage(error),
-				questionId,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get random questions by topic and difficulty
-	 * @param topic Topic
-	 * @param difficulty Difficulty level
-	 * @param count Number of questions
-	 * @returns Array of questions
-	 */
-	async getRandomQuestions(topic: string, difficulty: GameDifficulty, count: number) {
-		try {
-			logger.gameTarget('Getting random questions', {
-				topic,
-				difficulty,
-				count,
-			});
-
-			const queryBuilder = this.triviaRepository
-				.createQueryBuilder('trivia')
-				.where('trivia.topic = :topic', { topic })
-				.andWhere('trivia.difficulty = :difficulty', { difficulty })
-				.orderBy('RANDOM()')
-				.limit(count);
-			const questions = await queryBuilder.getMany();
-
-			return questions.map(question => ({
-				id: question.id,
-				question: question.question,
-				answers: question.answers,
-				correctAnswerIndex: question.correctAnswerIndex,
-				topic: question.topic,
-				difficulty: question.difficulty,
-				metadata: question.metadata,
-				created_at: question.createdAt,
-			}));
-		} catch (error) {
-			logger.gameError('Failed to get random questions', {
-				error: getErrorMessage(error),
-				topic,
-				difficulty,
-				count,
-			});
-			throw error;
 		}
 	}
 
@@ -281,18 +92,10 @@ export class TriviaGenerationService {
 		topic: string,
 		difficulty: GameDifficulty,
 		count: number,
-		excludeQuestionTexts: string[] = [],
-		mappedDifficulty?: DifficultyLevel
+		excludeQuestionTexts: string[] = []
 	): Promise<TriviaEntity[]> {
 		try {
-			logger.gameTarget('Getting available questions', {
-				topic,
-				difficulty,
-				count,
-				totalItems: excludeQuestionTexts.length,
-			});
-
-			const difficultyLevel = mappedDifficulty ?? toDifficultyLevel(difficulty);
+			const difficultyLevel = toDifficultyLevel(difficulty);
 			const queryBuilder = this.triviaRepository
 				.createQueryBuilder('trivia')
 				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
@@ -303,18 +106,11 @@ export class TriviaGenerationService {
 				queryBuilder.andWhere('LOWER(TRIM(trivia.question)) NOT IN (:...excludes)', { excludes: normalizedExcludes });
 			}
 
-			queryBuilder.orderBy('RANDOM()').limit(count);
+		queryBuilder.orderBy('RANDOM()').limit(count);
 
-			const questions = await queryBuilder.getMany();
+		const questions = await queryBuilder.getMany();
 
-			logger.gameTarget('Found available questions', {
-				topic,
-				difficulty,
-				requestedCount: count,
-				actualCount: questions.length,
-			});
-
-			return questions;
+		return questions;
 		} catch (error) {
 			logger.gameError('Failed to get available questions', {
 				error: getErrorMessage(error),
@@ -332,14 +128,9 @@ export class TriviaGenerationService {
 	 * @param difficulty Difficulty level
 	 * @returns True if questions exist, false otherwise
 	 */
-	async hasQuestionsForTopicAndDifficulty(
-		topic: string,
-		difficulty: GameDifficulty,
-		mappedDifficulty?: DifficultyLevel
-	): Promise<boolean> {
+	async hasQuestionsForTopicAndDifficulty(topic: string, difficulty: GameDifficulty): Promise<boolean> {
 		try {
-			// Use mappedDifficulty if available, otherwise normalize
-			const difficultyLevel = mappedDifficulty ?? toDifficultyLevel(difficulty);
+			const difficultyLevel = toDifficultyLevel(difficulty);
 			const count = await this.triviaRepository
 				.createQueryBuilder('trivia')
 				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
@@ -411,10 +202,8 @@ export class TriviaGenerationService {
 	): TriviaQuestionDetailsMetadata {
 		const base = metadataInput ?? {};
 		const generatedAt = isNonEmptyString(base.generatedAt) ? base.generatedAt : new Date().toISOString();
+		const isTriviaQuestionSource = isOneOf(ALLOWED_TRIVIA_SOURCES);
 		const source: TriviaQuestionSource = isTriviaQuestionSource(base.source) ? base.source : TriviaQuestionSource.AI;
-		const reviewStatus: TriviaQuestionReviewStatus | undefined = isTriviaQuestionReviewStatus(base.reviewStatus)
-			? base.reviewStatus
-			: undefined;
 		const fallbackExplanation = isNonEmptyString(explanation) ? explanation : undefined;
 
 		return {
@@ -423,43 +212,22 @@ export class TriviaGenerationService {
 			source,
 			providerName: isNonEmptyString(base.providerName) ? base.providerName : undefined,
 			difficulty: base.difficulty ?? difficulty,
-			difficultyScore:
-				typeof base.difficultyScore === 'number' && Number.isFinite(base.difficultyScore)
-					? base.difficultyScore
-					: undefined,
+			difficultyScore: defaultValidators.number(base.difficultyScore) ? base.difficultyScore : undefined,
 			customDifficultyDescription: isNonEmptyString(base.customDifficultyDescription)
 				? base.customDifficultyDescription
 				: undefined,
 			generatedAt,
-			importedAt: isNonEmptyString(base.importedAt) ? base.importedAt : undefined,
-			lastReviewedAt: isNonEmptyString(base.lastReviewedAt) ? base.lastReviewedAt : undefined,
-			reviewStatus,
 			language: isNonEmptyString(base.language) ? base.language : undefined,
 			explanation: isNonEmptyString(base.explanation) ? base.explanation : fallbackExplanation,
 			referenceUrls: normalizeStringArray(base.referenceUrls),
 			hints: normalizeStringArray(base.hints),
-			usageCount: typeof base.usageCount === 'number' && Number.isFinite(base.usageCount) ? base.usageCount : undefined,
-			correctAnswerCount:
-				typeof base.correctAnswerCount === 'number' && Number.isFinite(base.correctAnswerCount)
-					? base.correctAnswerCount
-					: undefined,
-			aiConfidenceScore:
-				typeof base.aiConfidenceScore === 'number' && Number.isFinite(base.aiConfidenceScore)
-					? base.aiConfidenceScore
-					: undefined,
-			safeContentScore:
-				typeof base.safeContentScore === 'number' && Number.isFinite(base.safeContentScore)
-					? base.safeContentScore
-					: undefined,
+			usageCount: defaultValidators.number(base.usageCount) ? base.usageCount : undefined,
+			correctAnswerCount: defaultValidators.number(base.correctAnswerCount) ? base.correctAnswerCount : undefined,
+			aiConfidenceScore: defaultValidators.number(base.aiConfidenceScore) ? base.aiConfidenceScore : undefined,
+			safeContentScore: defaultValidators.number(base.safeContentScore) ? base.safeContentScore : undefined,
 			flaggedReasons: normalizeStringArray(base.flaggedReasons),
-			popularityScore:
-				typeof base.popularityScore === 'number' && Number.isFinite(base.popularityScore)
-					? base.popularityScore
-					: undefined,
-			averageAnswerTimeMs:
-				typeof base.averageAnswerTimeMs === 'number' && Number.isFinite(base.averageAnswerTimeMs)
-					? base.averageAnswerTimeMs
-					: undefined,
+			popularityScore: defaultValidators.number(base.popularityScore) ? base.popularityScore : undefined,
+			averageAnswerTimeMs: defaultValidators.number(base.averageAnswerTimeMs) ? base.averageAnswerTimeMs : undefined,
 			mappedDifficulty: base.mappedDifficulty ?? undefined,
 		};
 	}
@@ -473,7 +241,7 @@ export class TriviaGenerationService {
 	private convertQuestionToEntity(questionData: ServerTriviaQuestionInput, userId?: string): DeepPartial<TriviaEntity> {
 		return {
 			question: questionData.question,
-			answers: questionData.answers.map((answer, index) => ({
+			answers: questionData.answers.map((answer: string, index: number) => ({
 				text: answer,
 				isCorrect: index === questionData.correctAnswerIndex,
 			})),
@@ -537,26 +305,16 @@ export class TriviaGenerationService {
 					triviaEntity.difficulty
 				);
 
-				if (existingQuestion) {
-					logger.gameTarget('Question already exists in database, returning existing', {
-						questionId: existingQuestion.id,
-						topic: existingQuestion.topic || 'unknown',
-					});
-
-					return existingQuestion;
+			if (existingQuestion) {
+				return existingQuestion;
 				}
 			}
 
-			// Question doesn't exist, create new one
-			const question = this.triviaRepository.create(triviaEntity);
-			const savedQuestion = await this.triviaRepository.save(question);
+		// Question doesn't exist, create new one
+		const question = this.triviaRepository.create(triviaEntity);
+		const savedQuestion = await this.triviaRepository.save(question);
 
-			logger.gameTarget('Question saved to database', {
-				questionId: savedQuestion.id,
-				topic: savedQuestion.topic || 'unknown',
-			});
-
-			return savedQuestion;
+		return savedQuestion;
 		} catch (error) {
 			logger.databaseError('Failed to save question to database', {
 				error: getErrorMessage(error),
@@ -587,6 +345,49 @@ export class TriviaGenerationService {
 					? metadata.customDifficultyDescription
 					: requestedDifficulty
 				: metadata.customDifficultyDescription,
+		};
+	}
+
+	/**
+	 * Get AI provider statistics
+	 * @returns AI provider statistics
+	 */
+	getProviderStats(): AiProviderStats {
+		const provider = this.groqProvider.provider;
+		const totalRequests = provider.errorCount + provider.successCount;
+
+		return {
+			totalProviders: 1,
+			currentProviderIndex: 0,
+			providers: [provider.name],
+			providerDetails: {
+				[provider.name]: {
+					status: provider.isAvailable ? ProviderHealthStatus.HEALTHY : ProviderHealthStatus.UNHEALTHY,
+					requests: totalRequests,
+					successes: provider.successCount,
+					failures: provider.errorCount,
+					successRate: totalRequests > 0 ? (provider.successCount / totalRequests) * 100 : 0,
+					errorRate: totalRequests > 0 ? (provider.errorCount / totalRequests) * 100 : 0,
+					averageResponseTime: provider.averageResponseTime,
+					lastUsed: provider.isAvailable ? new Date().toISOString() : undefined,
+				},
+			},
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	/**
+	 * Get AI provider health status
+	 * @returns AI provider health status
+	 */
+	getProviderHealth(): AiProviderHealth {
+		const provider = this.groqProvider.provider;
+
+		return {
+			status: provider.isAvailable ? ProviderHealthStatus.HEALTHY : ProviderHealthStatus.UNHEALTHY,
+			availableProviders: provider.isAvailable ? 1 : 0,
+			totalProviders: 1,
+			timestamp: new Date().toISOString(),
 		};
 	}
 }

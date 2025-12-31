@@ -72,8 +72,7 @@ server/src/features/payment/
 **דוגמת שימוש:**
 ```typescript
 @Post('create')
-@UsePipes(PaymentDataPipe)
-async createPayment(@CurrentUserId() userId: string, @Body() paymentData: CreatePaymentDto) {
+async createPayment(@CurrentUserId() userId: string, @Body(PaymentDataPipe) paymentData: CreatePaymentDto) {
   const paymentDataForService: PaymentData = {
     amount: paymentData.amount,
     currency: paymentData.currency ?? 'USD',

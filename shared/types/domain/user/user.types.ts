@@ -4,7 +4,7 @@
  * @module UserTypes
  * @description Type definitions for user entities, authentication, and user management
  */
-import { AuthProvider, DifficultyLevel, GameMode, ProfileVisibility, UserRole, UserStatus } from '../../../constants';
+import { AuthProvider, DifficultyLevel, GameMode, UserRole, UserStatus } from '../../../constants';
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseGameStatistics } from '../game/game.types';
 
@@ -42,7 +42,6 @@ export interface UserProfile extends BasicUser, BaseEntity {
  * @description User privacy settings
  */
 export interface UserPrivacyPreferences {
-	profileVisibility?: ProfileVisibility;
 	showOnlineStatus?: boolean;
 	showActivity?: boolean;
 	showAchievements?: boolean;
@@ -72,21 +71,11 @@ export interface UserPreferences {
 	soundEnabled: boolean;
 	musicEnabled: boolean;
 	animationsEnabled: boolean;
+	avatar?: number;
 	privacy: UserPrivacyPreferences;
 	game: UserGamePreferences;
 }
 
-/**
- * Avatar option interface
- * @interface AvatarOption
- * @description Avatar selection option
- */
-export interface AvatarOption {
-	id: number;
-	name?: string;
-	url?: string;
-	unlocked?: boolean;
-}
 
 /**
  * User interface

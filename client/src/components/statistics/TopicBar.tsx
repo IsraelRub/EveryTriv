@@ -1,5 +1,4 @@
 import { Progress } from '@/components';
-
 import type { TopicBarProps } from '@/types';
 
 export function TopicBar({ topic, count, maxCount }: TopicBarProps) {

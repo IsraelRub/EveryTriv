@@ -4,7 +4,7 @@
  * @module EmailValidation
  * @description Validation functions for email format and length constraints
  */
-import { VALIDATION_LIMITS } from '../../constants';
+import { VALIDATION_LENGTH } from '../../constants';
 import type { Position, ValidationResult } from '../../types';
 
 /**
@@ -27,13 +27,13 @@ export function validateEmail(email: string): ValidationResult {
 		};
 	}
 
-	if (email.length > VALIDATION_LIMITS.EMAIL.MAX_LENGTH) {
-		const position: Position = { start: VALIDATION_LIMITS.EMAIL.MAX_LENGTH, end: email.length };
+	if (email.length > VALIDATION_LENGTH.EMAIL.MAX) {
+		const position: Position = { start: VALIDATION_LENGTH.EMAIL.MAX, end: email.length };
 		return {
 			isValid: false,
-			errors: [`Email must not exceed ${VALIDATION_LIMITS.EMAIL.MAX_LENGTH} characters`],
+			errors: [`Email must not exceed ${VALIDATION_LENGTH.EMAIL.MAX} characters`],
 			position,
-			suggestion: `Please shorten your email to ${VALIDATION_LIMITS.EMAIL.MAX_LENGTH} characters or less`,
+			suggestion: `Please shorten your email to ${VALIDATION_LENGTH.EMAIL.MAX} characters or less`,
 		};
 	}
 

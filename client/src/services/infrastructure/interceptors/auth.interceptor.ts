@@ -6,9 +6,7 @@
  * @used_by client/src/services/api.service.ts
  */
 import { CLIENT_STORAGE_KEYS } from '@/constants';
-
 import { storageService } from '@/services';
-
 import type { EnhancedRequestConfig, RequestInterceptor } from '@/types';
 
 /**

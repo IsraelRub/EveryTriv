@@ -10,10 +10,8 @@ import {
 	DifficultyLevel,
 	GameMode,
 	GameStatus,
-	TriviaQuestionReviewStatus,
 	TriviaQuestionSource,
 } from '@shared/constants';
-
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
 
@@ -58,9 +56,6 @@ export interface TriviaQuestionDetailsMetadata {
 	difficultyScore?: number;
 	customDifficultyDescription?: string;
 	generatedAt?: string;
-	importedAt?: string;
-	lastReviewedAt?: string;
-	reviewStatus?: TriviaQuestionReviewStatus;
 	language?: string;
 	explanation?: string;
 	referenceUrls?: string[];
@@ -120,12 +115,12 @@ export interface BaseTriviaConfig {
 /**
  * Core trivia question structure used across input and payload types
  */
-export interface TriviaQuestionCore<TDifficulty = GameDifficulty> {
+export interface TriviaQuestionCore<GameDifficulty> {
 	question: string;
 	answers: string[];
 	correctAnswerIndex: number;
 	topic: string;
-	difficulty: TDifficulty;
+	difficulty: GameDifficulty;
 	metadata?: TriviaQuestionDetailsMetadata;
 }
 
@@ -135,7 +130,14 @@ export interface TriviaQuestionCore<TDifficulty = GameDifficulty> {
  * @description Trivia question with answers and metadata
  * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
  */
-export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionCore, 'answers'> {
+
+/**
+ * Trivia question payload interface for validation and submission flows
+ * @description Allows partial metadata while enforcing essential fields
+ */
+export type TriviaQuestionInput = TriviaQuestionCore<GameDifficulty>;
+
+export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionInput, 'answers'> {
 	answers: TriviaAnswer[];
 	category?: string;
 	explanation?: string;
@@ -145,15 +147,6 @@ export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionCore, 'an
 	timesAnswered?: number;
 	successRate?: number;
 }
-
-/**
- * Trivia question payload interface for validation and submission flows
- * @description Allows partial metadata while enforcing essential fields
- */
-export type TriviaQuestionInput<TDifficulty = GameDifficulty> = TriviaQuestionCore<TDifficulty>;
-
-export type TriviaQuestionPayload = Pick<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'> &
-	Partial<Omit<TriviaQuestionInput, 'question' | 'answers' | 'correctAnswerIndex'>>;
 
 /**
  * Base answer payload shared across submission and result structures

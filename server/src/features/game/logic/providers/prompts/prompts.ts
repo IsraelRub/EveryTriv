@@ -3,43 +3,69 @@
  * Centralized prompt management for all LLM providers
  */
 import { extractCustomDifficultyText } from '@shared/validation';
-
 import type { PromptParams } from '@internal/types';
 
-export class PromptTemplates {
-	/**
-	 * Generate trivia question prompt with advanced quality guidelines
-	 */
-	static generateTriviaQuestion(params: PromptParams): string {
-		const { topic, difficulty, answerCount, isCustomDifficulty } = params;
-		// Extract the actual difficulty text without the "custom:" prefix for AI
-		const difficultyDescription = isCustomDifficulty ? extractCustomDifficultyText(difficulty) : difficulty;
+/**
+ * Get difficulty-specific guidance for the AI
+ *
+ * Helper function for prompt generation. Provides contextual guidance based on difficulty level
+ * to help the AI generate questions at the appropriate complexity level.
+ *
+ * @param difficulty The difficulty level (easy/medium/hard or custom)
+ * @returns Guidance string for the AI, or empty string for custom difficulties
+ */
+function getDifficultyGuidance(difficulty: string): string {
+	switch (difficulty.toLowerCase().trim()) {
+		case 'easy':
+			return 'Use well-known, commonly known facts that most people would know. Simple, straightforward questions.';
+		case 'medium':
+			return 'Use moderately known facts that require some knowledge of the topic. Balance between common and specialized knowledge.';
+		case 'hard':
+			return 'Use specialized, less commonly known facts that require deeper knowledge or expertise in the topic.';
+		default:
+			return ''; // For custom difficulties, return empty string to let the AI interpret it
+	}
+}
 
-		return `You must emit exactly one JSON object describing a trivia question. Only emit the JSON—no markdown, code fences, comments, or explanations.
+/**
+ * Generate trivia question prompt
+ */
+export function generateTriviaQuestion(params: PromptParams): string {
+	const { topic, difficulty, answerCount, isCustomDifficulty } = params;
+	// Extract the actual difficulty text without the "custom:" prefix for AI
+	const difficultyDescription = isCustomDifficulty ? extractCustomDifficultyText(difficulty) : difficulty;
+
+	const difficultyGuidance = getDifficultyGuidance(difficultyDescription);
+
+	return `You must emit exactly one JSON object describing a trivia question. Only emit the JSON—no markdown, code fences, comments, or explanations.
 
 INPUT
 - Topic: "${topic}"
 - Difficulty request: "${difficultyDescription}"
-- Answer count: ${answerCount}
+- Answer count: ${answerCount}${difficultyGuidance ? `\n- Difficulty guidance: ${difficultyGuidance}` : ''}
 
 MANDATORY RULES
 1. Output must contain ONLY the fields "question" and "answers" in that order. Never include mappedDifficulty, excludeQuestions, explanations, or extra metadata.
-2. "question" must be a single factual sentence under 150 characters, end with "?", and be answerable without external context.
-3. "answers" must contain exactly ${answerCount} unique strings under 100 characters. The first string is the correct answer; the rest must be plausible but wrong.
-4. Do not reference or describe the excluded questions. Use them only to avoid duplicates.
-5. Produce only ASCII double quotes ("). No smart quotes or non-ASCII punctuation.
-6. If you cannot produce a compliant question, output {"question":"","answers":[]} with nothing else.
+2. "question" must be a single factual sentence under 150 characters, end with "?", and be answerable without external context. The question must be based on well-established, verifiable facts. Never invent or guess information.
+3. "answers" must contain exactly ${answerCount} unique strings under 100 characters. The first string is the correct answer; every incorrect answer must reference the same entity or concept as the question but still be wrong. All incorrect answers must be plausible but clearly incorrect.
+4. Prefer standard ASCII double quotes ("); if you emit smart quotes, they will be normalized downstream.
+5. If you cannot produce a compliant question with verified factual information, output {"question":"","answers":[]} with nothing else.
+
+QUALITY REQUIREMENTS
+- The correct answer must be factually accurate and verifiable
+- All answers should be roughly similar in length and format
+- Incorrect answers should be plausible distractors related to the topic
+- Avoid ambiguous wording that could make multiple answers seem correct
+- Ensure the question tests genuine knowledge, not trick wording
 
 OUTPUT FORMAT (NO CODE FENCE, NO EXTRA TEXT)
 {"question":"<question ending with ?>","answers":["<correct answer>","<wrong answer 1>", "..."]}
 
 Violating any rule makes the response invalid.`;
-	}
-
-	/**
-	 * Generate system prompt for providers
-	 */
-	static getSystemPrompt(): string {
-		return 'You are a trivia question generator that can handle both standard difficulty levels (easy, medium, hard) and custom difficulty descriptions.';
-	}
 }
+
+/**
+ * System prompt for trivia question generation providers
+ */
+export const SYSTEM_PROMPT =
+	'You are a trivia question generator that can handle standard (easy, medium, hard) and custom difficulty descriptions. Always provide factual, concise questions (<150 chars) with clear wording and balanced answer options. Keep answers aligned to the topic and ensure only one correct answer. Only use well-established, verifiable facts. Never invent, guess, or use uncertain information. If you are unsure about factual accuracy, return an empty question.';

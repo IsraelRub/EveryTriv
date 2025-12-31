@@ -6,4 +6,4 @@
 
 export * from './storage.constants';
 export * from './audio.constants';
-export * from './services';
+export * from './logger.constants';

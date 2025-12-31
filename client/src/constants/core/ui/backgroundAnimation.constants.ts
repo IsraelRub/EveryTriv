@@ -37,6 +37,36 @@ export const TRIVIA_WORDS = [
 	'Space',
 	'Ocean',
 	'Adventure',
+	'Religion',
+	'Anthropology',
+	'Archaeology',
+	'Linguistics',
+	'Geology',
+	'Botany',
+	'Zoology',
+	'Anatomy',
+	'Genetics',
+	'Neuroscience',
+	'Quantum',
+	'Robotics',
+	'Programming',
+	'Gaming',
+	'Comics',
+	'Television',
+	'Theater',
+	'Dance',
+	'Photography',
+	'Sculpture',
+	'Painting',
+	'Poetry',
+	'Novels',
+	'Biography',
+	'Military',
+	'Aviation',
+	'Maritime',
+	'Exploration',
+	'Discovery',
+	'Invention',
 ] as const;
 
 /**
@@ -52,20 +82,48 @@ export const ANIMATION_FONTS = [
 	'Trebuchet MS, sans-serif',
 	'Impact, fantasy',
 	'Comic Sans MS, cursive',
+	'var(--font-family-mono)',
+	'Palatino, serif',
+	'Garamond, serif',
+	'Book Antiqua, serif',
+	'Lucida Console, monospace',
+	'Lucida Sans Unicode, sans-serif',
+	'Tahoma, sans-serif',
+	'Century Gothic, sans-serif',
+	'Franklin Gothic Medium, sans-serif',
+	'Brush Script MT, cursive',
+	'Papyrus, fantasy',
 ] as const;
 
 /**
  * Color values from the project palette
+ * Focused on primary theme colors with variations for visual coherence
  */
 export const ANIMATION_COLORS = [
-	'hsl(217 91% 60%)', // primary
-	'hsl(292 84% 61%)', // secondary
-	'hsl(160 84% 39%)', // accent
-	'hsl(38 92% 50%)', // warning
-	'hsl(186 94% 42%)', // cyan
+	// Primary color variations (blue)
+	'hsl(217 91% 60%)', // primary-500
 	'hsl(214 100% 93%)', // primary-100
+	'hsl(212 96% 78%)', // primary-300
+	'hsl(224 76% 48%)', // primary-700
+	'hsl(226 57% 35%)', // primary-900
+
+	// Secondary color variations (purple)
+	'hsl(292 84% 61%)', // secondary-500
 	'hsl(295 100% 94%)', // secondary-100
-	'hsl(149 80% 90%)', // success-100
+	'hsl(291 93% 83%)', // secondary-300
+	'hsl(295 72% 40%)', // secondary-700
+	'hsl(296 63% 28%)', // secondary-900
+
+	// Accent color variations (green/teal)
+	'hsl(160 84% 39%)', // accent-500
+	'hsl(149 80% 90%)', // accent-100
+	'hsl(156 72% 67%)', // accent-300
+	'hsl(163 94% 24%)', // accent-700
+	'hsl(186 94% 42%)', // cyan (complementary to accent)
+
+	// Subtle muted variations for depth
+	'hsl(215 20% 65%)', // muted-foreground
+	'hsl(217 33% 17%)', // muted
 ] as const;
 
 /**
@@ -97,4 +155,10 @@ export const BACKGROUND_ANIMATION_CONFIG = {
 	fadeOutPercent: 10,
 	zIndex: 0,
 	spawnDelay: 200,
+	minRotation: -15,
+	maxRotation: 15,
+	movementOffset: 120,
+	minStartPosition: -20,
+	maxStartPosition: 100,
+	fontWeight: 700,
 } as const;

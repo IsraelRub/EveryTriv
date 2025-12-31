@@ -6,9 +6,7 @@
  * @used_by client/src/services/interceptors/*.interceptor.ts
  */
 import { generateInterceptorId, getErrorMessage } from '@shared/utils';
-
 import { clientLogger as logger } from '@/services';
-
 import type { InterceptorOptions, RegisteredInterceptor } from '@/types';
 
 /**

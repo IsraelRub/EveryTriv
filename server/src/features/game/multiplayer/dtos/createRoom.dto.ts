@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-import { DifficultyLevel, GameMode, VALID_GAME_MODES, VALIDATION_CONFIG } from '@shared/constants';
+import { DifficultyLevel, GameMode, VALID_GAME_MODES, VALIDATION_COUNT } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 /**
@@ -29,28 +29,26 @@ export class CreateRoomDto {
 	mappedDifficulty?: DifficultyLevel;
 
 	@ApiProperty({
-		description: `Number of questions per request (${VALIDATION_CONFIG.limits.QUESTIONS.MIN}-${VALIDATION_CONFIG.limits.QUESTIONS.MAX})`,
-		example: 10,
-		minimum: VALIDATION_CONFIG.limits.QUESTIONS.MIN,
-		maximum: VALIDATION_CONFIG.limits.QUESTIONS.MAX,
+		description: `Number of questions per request (${VALIDATION_COUNT.QUESTIONS.MIN}-${VALIDATION_COUNT.QUESTIONS.MAX})`,
+		minimum: VALIDATION_COUNT.QUESTIONS.MIN,
+		maximum: VALIDATION_COUNT.QUESTIONS.MAX,
 	})
 	@IsInt()
-	@Min(VALIDATION_CONFIG.limits.QUESTIONS.MIN)
-	@Max(VALIDATION_CONFIG.limits.QUESTIONS.MAX)
+	@Min(VALIDATION_COUNT.QUESTIONS.MIN)
+	@Max(VALIDATION_COUNT.QUESTIONS.MAX)
 	questionsPerRequest!: number;
 
 	@ApiProperty({
-		description: `Maximum number of players (${VALIDATION_CONFIG.limits.PLAYERS.MIN}-${VALIDATION_CONFIG.limits.PLAYERS.MAX})`,
-		example: VALIDATION_CONFIG.limits.PLAYERS.MAX,
-		minimum: VALIDATION_CONFIG.limits.PLAYERS.MIN,
-		maximum: VALIDATION_CONFIG.limits.PLAYERS.MAX,
+		description: `Maximum number of players (${VALIDATION_COUNT.PLAYERS.MIN}-${VALIDATION_COUNT.PLAYERS.MAX})`,
+		minimum: VALIDATION_COUNT.PLAYERS.MIN,
+		maximum: VALIDATION_COUNT.PLAYERS.MAX,
 	})
 	@IsInt()
-	@Min(VALIDATION_CONFIG.limits.PLAYERS.MIN)
-	@Max(VALIDATION_CONFIG.limits.PLAYERS.MAX)
+	@Min(VALIDATION_COUNT.PLAYERS.MIN)
+	@Max(VALIDATION_COUNT.PLAYERS.MAX)
 	maxPlayers!: number;
 
-	@ApiProperty({ description: 'Game mode', enum: VALID_GAME_MODES, example: GameMode.QUESTION_LIMITED })
+	@ApiProperty({ description: 'Game mode', enum: VALID_GAME_MODES })
 	@IsEnum(GameMode)
 	gameMode!: GameMode;
 }

@@ -1,23 +1,17 @@
 import { ChangeEvent, useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 
-import { VALIDATION_CONFIG } from '@shared/constants';
-import { getErrorMessage } from '@shared/utils';
-
-import { ButtonVariant, ROUTES } from '@/constants';
-
-import { Button, Card, CloseButton, Input, Label } from '@/components';
-
+import { VALIDATION_LENGTH } from '@shared/constants';
+import { getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { ButtonVariant, ROUTES, SpinnerSize, SpinnerVariant, VALIDATION_MESSAGES } from '@/constants';
+import { Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 import { useAppDispatch } from '@/hooks';
-
 import { authService, clientLogger as logger } from '@/services';
-
 import type { CompleteProfileProps } from '@/types';
-
 import { setUser } from '@/redux/slices';
+import { cn } from '@/utils';
 
 export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	const navigate = useNavigate();
@@ -35,36 +29,52 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	logger.userDebug('CompleteProfile component rendered');
 
 	const isFormValid = (): boolean => {
-		if (!firstName.trim() || firstName.trim().length < VALIDATION_CONFIG.limits.FIRST_NAME.MIN_LENGTH) return false;
-		if (firstName.trim().length > VALIDATION_CONFIG.limits.FIRST_NAME.MAX_LENGTH) return false;
-		if (lastName.trim().length > VALIDATION_CONFIG.limits.LAST_NAME.MAX_LENGTH) return false;
+		if (!isNonEmptyString(firstName)) {
+			return false;
+		}
+		if (
+			firstName.trim().length < VALIDATION_LENGTH.FIRST_NAME.MIN ||
+			firstName.trim().length > VALIDATION_LENGTH.FIRST_NAME.MAX
+		) {
+			return false;
+		}
+		if (isNonEmptyString(lastName) && lastName.trim().length > VALIDATION_LENGTH.LAST_NAME.MAX) {
+			return false;
+		}
 		return true;
 	};
 
 	const validateField = (name: string, value: string): string | null => {
-		if (name === 'firstName') {
-			if (!value.trim()) return 'First name is required';
-			if (value.trim().length < VALIDATION_CONFIG.limits.FIRST_NAME.MIN_LENGTH) {
-				return `First name must be at least ${VALIDATION_CONFIG.limits.FIRST_NAME.MIN_LENGTH} character`;
-			}
-			if (value.trim().length > VALIDATION_CONFIG.limits.FIRST_NAME.MAX_LENGTH) {
-				return `First name must not exceed ${VALIDATION_CONFIG.limits.FIRST_NAME.MAX_LENGTH} characters`;
-			}
-		}
-		if (name === 'lastName') {
-			if (value.trim().length > VALIDATION_CONFIG.limits.LAST_NAME.MAX_LENGTH) {
-				return `Last name must not exceed ${VALIDATION_CONFIG.limits.LAST_NAME.MAX_LENGTH} characters`;
-			}
+		switch (name) {
+			case 'firstName':
+				if (!value.trim()) return VALIDATION_MESSAGES.FIRST_NAME_REQUIRED;
+				if (value.trim().length < VALIDATION_LENGTH.FIRST_NAME.MIN) {
+					return VALIDATION_MESSAGES.FIRST_NAME_MIN_LENGTH(VALIDATION_LENGTH.FIRST_NAME.MIN);
+				}
+				if (value.trim().length > VALIDATION_LENGTH.FIRST_NAME.MAX) {
+					return VALIDATION_MESSAGES.FIRST_NAME_MAX_LENGTH(VALIDATION_LENGTH.FIRST_NAME.MAX);
+				}
+				break;
+
+			case 'lastName':
+				if (!value.trim()) return null;
+				if (value.trim().length > VALIDATION_LENGTH.LAST_NAME.MAX) {
+					return VALIDATION_MESSAGES.LAST_NAME_MAX_LENGTH(VALIDATION_LENGTH.LAST_NAME.MAX);
+				}
+				break;
 		}
 		return null;
 	};
 
 	const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
-		if (name === 'firstName') {
-			setFirstName(value);
-		} else if (name === 'lastName') {
-			setLastName(value);
+		switch (name) {
+			case 'firstName':
+				setFirstName(value);
+				break;
+			case 'lastName':
+				setLastName(value);
+				break;
 		}
 		setError(null);
 
@@ -176,7 +186,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 							onChange={handleChange}
 							placeholder='Enter your first name'
 							disabled={loading}
-							className={fieldErrors.firstName ? 'border-destructive' : ''}
+							className={cn(fieldErrors.firstName && 'border-destructive')}
 						/>
 						{fieldErrors.firstName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
@@ -194,7 +204,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 							onChange={handleChange}
 							placeholder='Enter your last name'
 							disabled={loading}
-							className={fieldErrors.lastName ? 'border-destructive' : ''}
+							className={cn(fieldErrors.lastName && 'border-destructive')}
 						/>
 						{fieldErrors.lastName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
@@ -207,10 +217,10 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					<div className='flex gap-4'>
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
 							{loading ? (
-								<span className='flex items-center justify-center'>
-									<span className='animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white border-r-white mr-2' />
+								<>
+									<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 									Saving...
-								</span>
+								</>
 							) : (
 								'Complete Profile'
 							)}

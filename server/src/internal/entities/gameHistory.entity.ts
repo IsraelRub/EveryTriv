@@ -2,7 +2,6 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { GameMode } from '@shared/constants';
 import type { QuestionData } from '@shared/types';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 

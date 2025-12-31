@@ -13,13 +13,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
-
-import { CustomDifficultyPipe, GameAnswerPipe, TriviaQuestionPipe, TriviaRequestPipe } from '../../common/pipes';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
 import { LeaderboardModule } from '../leaderboard';
 import { UserModule } from '../user';
+import { AiProvidersController } from './aiProviders.controller';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { TriviaGenerationService } from './logic/triviaGeneration.service';
@@ -35,12 +35,11 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
 		ValidationModule,
 		UserModule,
 	],
-	controllers: [GameController],
+	controllers: [GameController, AiProvidersController],
 	providers: [
 		GameService,
 		TriviaGenerationService,
 		CustomDifficultyPipe,
-		TriviaQuestionPipe,
 		GameAnswerPipe,
 		TriviaRequestPipe,
 	],

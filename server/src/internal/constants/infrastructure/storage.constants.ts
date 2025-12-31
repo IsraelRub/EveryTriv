@@ -4,7 +4,7 @@
  * @description Server-side storage constants
  */
 
-import { CACHE_TTL, StorageType } from '@shared/constants';
+import { CACHE_DURATION, StorageType } from '@shared/constants';
 
 /**
  * Storage configuration (server-only)
@@ -13,7 +13,7 @@ import { CACHE_TTL, StorageType } from '@shared/constants';
  */
 export const STORAGE_CONFIG = {
 	prefix: 'everytriv_',
-	defaultTtl: 3600, // 1 hour
+	defaultTtl: CACHE_DURATION.VERY_LONG,
 	maxSize: 5 * 1024 * 1024, // 5MB
 	enableCompression: false,
 	enableMetrics: true,
@@ -29,7 +29,7 @@ export const STORAGE_CONFIG = {
 
 export const CACHE_CONFIG = {
 	prefix: 'everytriv_cache_',
-	defaultTtl: CACHE_TTL.VERY_LONG,
+	defaultTtl: CACHE_DURATION.VERY_LONG,
 	maxSize: 100 * 1024 * 1024, // 100MB for cache
 	enableCompression: false,
 	enableMetrics: true,

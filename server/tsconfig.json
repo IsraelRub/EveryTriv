@@ -42,6 +42,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,

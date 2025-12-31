@@ -10,8 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger, TokenExtractionService } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 

@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
-import { CallbackStatus } from '@shared/constants';
+import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
-import { ButtonVariant, CLIENT_STORAGE_KEYS, OAuthErrorType, ROUTES, VariantBase } from '@/constants';
-
-import { Alert, AlertDescription, Button, Card } from '@/components';
-
+import { ButtonVariant, CLIENT_STORAGE_KEYS, ROUTES, SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
+import { Alert, AlertDescription, Button, Card, Spinner } from '@/components';
 import { useAppDispatch } from '@/hooks';
-
 import { authService, clientLogger as logger, storageService } from '@/services';
-
-import { setAuthenticated, setUser } from '@/redux/slices';
+import { setUser } from '@/redux/slices';
 
 /**
  * OAuth Callback Handler
@@ -95,7 +89,7 @@ export function OAuthCallback() {
 							logger.authError('Failed to store authentication token', {
 								success: storedToken.success,
 							});
-							throw new Error('Failed to store authentication token');
+							throw new Error(ERROR_MESSAGES.api.FAILED_TO_STORE_AUTH_TOKEN);
 						}
 						logger.authDebug('Token stored successfully');
 					}
@@ -110,12 +104,12 @@ export function OAuthCallback() {
 
 					if (!user) {
 						logger.authError('Failed to retrieve user data - user is null');
-						throw new Error('Failed to retrieve user data');
+						throw new Error(ERROR_MESSAGES.api.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
 					// Update Redux state
 					logger.authDebug('Setting user in Redux store');
-					dispatch(setAuthenticated(true));
+					// setUser already sets isAuthenticated = true
 					dispatch(setUser(user));
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
@@ -177,7 +171,7 @@ export function OAuthCallback() {
 			<Card className='w-full max-w-md p-8'>
 				{status === CallbackStatus.PROCESSING && (
 					<div className='text-center space-y-4'>
-						<div className='spinner-pulsing w-12 h-12 mx-auto' />
+						<Spinner variant={SpinnerVariant.FULL_SCREEN} size={SpinnerSize.XL} className='mx-auto' />
 						<div>
 							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
 							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>

@@ -4,12 +4,10 @@
  * @module GameStatisticsCard
  * @description Component for displaying game statistics in admin dashboard
  */
-import { Activity, BarChart3, GamepadIcon, RefreshCw, Target, Trophy } from 'lucide-react';
+import { Activity, BarChart3, GamepadIcon, Target, Trophy } from 'lucide-react';
 
-import { roundForDisplay } from '@shared/utils';
-
-import { ButtonSize, ButtonVariant, StatCardVariant, TextColor } from '@/constants';
-
+import { formatForDisplay } from '@shared/utils';
+import { ButtonSize, ButtonVariant, SpinnerSize, SpinnerVariant, StatCardVariant, TextColor } from '@/constants';
 import {
 	Button,
 	Card,
@@ -19,10 +17,11 @@ import {
 	CardTitle,
 	DistributionChart,
 	Skeleton,
+	Spinner,
 	StatCard,
 } from '@/components';
-
 import type { GameStatisticsCardProps } from '@/types';
+import { cn } from '@/utils';
 
 /**
  * Component for displaying game statistics
@@ -46,13 +45,13 @@ export function GameStatisticsCard({ data, isLoading = false, onRefresh }: GameS
 		{
 			icon: Target,
 			label: 'Average Score',
-			value: roundForDisplay(data?.averageScore ?? 0),
+			value: formatForDisplay(data?.averageScore ?? 0),
 			color: TextColor.GREEN_500,
 		},
 		{
 			icon: BarChart3,
 			label: 'Accuracy',
-			value: `${roundForDisplay(data?.accuracy ?? 0)}%`,
+			value: `${formatForDisplay(data?.accuracy ?? 0)}%`,
 			color: TextColor.PURPLE_500,
 		},
 		{
@@ -83,8 +82,8 @@ export function GameStatisticsCard({ data, isLoading = false, onRefresh }: GameS
 						</div>
 						{onRefresh && (
 							<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} onClick={onRefresh} disabled={isLoading}>
-								<RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-								Refresh
+								<Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} className={cn('mr-2', !isLoading && 'hidden')} />
+								{isLoading ? null : 'Refresh'}
 							</Button>
 						)}
 					</div>

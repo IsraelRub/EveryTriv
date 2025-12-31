@@ -2,11 +2,8 @@ import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components';
-
 import type { LeaderboardTableProps } from '@/types';
-
-import { getAvatarUrl } from '@/utils';
-
+import { cn, getAvatarUrl, getUserInitials } from '@/utils';
 import { LeaderboardSkeleton } from './LeaderboardSkeleton';
 import { RankBadge } from './RankBadge';
 
@@ -35,14 +32,15 @@ export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) 
 					initial={{ opacity: 0, x: -20 }}
 					animate={{ opacity: 1, x: 0 }}
 					transition={{ delay: index * 0.05 }}
-					className={`flex items-center gap-4 p-3 rounded-lg ${
+					className={cn(
+						'flex items-center gap-4 p-3 rounded-lg transition-colors',
 						index < 3 ? 'bg-muted/50' : 'hover:bg-muted/30'
-					} transition-colors`}
+					)}
 				>
 					<RankBadge rank={entry.rank} />
 					<Avatar className='h-10 w-10'>
 						<AvatarImage src={getAvatarUrl(entry.avatar)} alt={entry.firstName || entry.email} />
-						<AvatarFallback>{entry.firstName?.charAt(0) || entry.email.charAt(0).toUpperCase()}</AvatarFallback>
+						<AvatarFallback>{getUserInitials(entry.firstName, entry.lastName, entry.email)}</AvatarFallback>
 					</Avatar>
 					<div className='flex-1 min-w-0'>
 						<p className='font-medium truncate'>

@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { formatForDisplay } from '@shared/utils';
 import type { DistributionChartProps } from '@/types';
-
 import { ChartCard } from './ChartCard';
 
 /**
@@ -90,15 +89,15 @@ export function DistributionChart({
 						}}
 						formatter={(value: number, name: string) => {
 							if (name === 'value') {
-								return [value.toLocaleString(), valueLabel];
+								return [formatForDisplay(value), valueLabel];
 							}
 							if (name === 'comparisonValue') {
-								return [value.toLocaleString(), 'Global Average'];
+								return [formatForDisplay(value), 'Global Average'];
 							}
 							if (name === 'count') {
-								return [value.toLocaleString(), countLabel];
+								return [formatForDisplay(value, 0), countLabel];
 							}
-							return [value, name];
+							return [formatForDisplay(value), name];
 						}}
 					/>
 					{comparisonData && comparisonData.length > 0 && (

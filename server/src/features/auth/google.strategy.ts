@@ -10,7 +10,6 @@ import { Profile, Strategy } from 'passport-google-oauth20';
 
 import { AuthenticationEvent, ERROR_CODES, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
 
 @Injectable()

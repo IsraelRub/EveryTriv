@@ -5,6 +5,7 @@
  * @description Base analytics helpers including result enums, pagination metadata, and time statistics
  */
 import { ComparisonTarget, TrendPeriod } from '@shared/constants';
+import type { CorePagination } from '../../core';
 
 /**
  * Time statistics raw result interface (raw from database)
@@ -16,12 +17,15 @@ export interface TimeStat {
 }
 
 /**
- * Pagination metadata attached to analytics responses
+ * Analytics pagination metadata
+ * @interface AnalyticsPaginationMetadata
+ * @description Optional pagination metadata for analytics responses
+ * @extends Partial<CorePagination>
  */
-export interface AnalyticsPaginationMetadata {
-	total?: number;
+export interface AnalyticsPaginationMetadata extends Partial<CorePagination> {
+	/** Current page number (1-based) */
 	page?: number;
-	pageSize?: number;
+	/** Whether there are more items after current set */
 	hasMore?: boolean;
 }
 

@@ -1,12 +1,9 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 import { getErrorMessage } from '@shared/utils';
-
-import { AudioKey, ButtonSize, ButtonVariant, ROUTES, VariantBase } from '@/constants';
-
+import { AudioKey, ButtonSize, ButtonVariant, ROUTES, SpinnerSize, SpinnerVariant, VALIDATION_MESSAGES, VariantBase } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
@@ -19,12 +16,11 @@ import {
 	Input,
 	Label,
 	Separator,
+	Spinner,
 } from '@/components';
-
 import { useAudio, useModalRoute, useRegister } from '@/hooks';
-
 import { authService } from '@/services';
-
+import { cn } from '@/utils';
 import {
 	validateEmailFormat,
 	validatePasswordForm,
@@ -71,19 +67,19 @@ export function RegistrationView() {
 		if (name === 'email') {
 			const validation = validateEmailFormat(value);
 			if (!validation.isValid) {
-				return validation.errors[0] || 'Invalid email';
+				return validation.errors[0] || VALIDATION_MESSAGES.EMAIL_INVALID;
 			}
 		}
 		if (name === 'password') {
 			const validation = validatePasswordLength(value);
 			if (!validation.isValid) {
-				return validation.errors[0] || 'Invalid password';
+				return validation.errors[0] || VALIDATION_MESSAGES.PASSWORD_INVALID;
 			}
 		}
 		if (name === 'confirmPassword') {
 			const validation = validatePasswordMatch(formData.password, value);
 			if (!validation.isValid) {
-				return validation.errors[0] || 'Invalid password confirmation';
+				return validation.errors[0] || VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID;
 			}
 		}
 		return null;
@@ -274,7 +270,7 @@ export function RegistrationView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='email'
-							className={fieldErrors.email ? 'border-destructive' : ''}
+							className={cn(fieldErrors.email && 'border-destructive')}
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
@@ -297,7 +293,7 @@ export function RegistrationView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='new-password'
-							className={fieldErrors.password ? 'border-destructive' : ''}
+							className={cn(fieldErrors.password && 'border-destructive')}
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
@@ -321,7 +317,7 @@ export function RegistrationView() {
 								onChange={handleChange}
 								disabled={isLoading}
 								autoComplete='new-password'
-								className={fieldErrors.confirmPassword ? 'border-destructive' : ''}
+								className={cn(fieldErrors.confirmPassword && 'border-destructive')}
 							/>
 							{formData.confirmPassword &&
 								formData.password === formData.confirmPassword &&
@@ -340,7 +336,7 @@ export function RegistrationView() {
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
-								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+								<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 								Creating account...
 							</>
 						) : (

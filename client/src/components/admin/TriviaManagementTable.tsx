@@ -5,11 +5,9 @@
  * @description Component for managing trivia questions in admin dashboard
  */
 import { useState } from 'react';
-
 import { Search, Trash2 } from 'lucide-react';
 
 import { ButtonVariant, VariantBase } from '@/constants';
-
 import {
 	Badge,
 	Button,
@@ -27,9 +25,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components';
-
 import type { TriviaManagementTableProps } from '@/types';
-
 import { ConfirmClearDialog } from './ConfirmClearDialog';
 
 /**

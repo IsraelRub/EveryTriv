@@ -5,21 +5,16 @@
  */
 import type { LucideIcon } from 'lucide-react';
 
-import {
-	GameClientStatus as GameClientStatusEnum,
-	GameMode,
-	PlayerType as PlayerTypeEnum,
-	type GameMode as GameModeType,
-} from '@shared/constants';
+import { DifficultyLevel, GameClientStatus, GameMode, type GameMode as GameModeType } from '@shared/constants';
 import type {
 	BaseGameTopicDifficulty,
 	BaseTriviaParams,
+	CountRecord,
 	DifficultyBreakdown,
 	GameData,
 	GameDifficulty,
 	GameModeConfig,
 	QuestionData,
-	TopicsPlayed,
 	TriviaAnswer,
 	TriviaQuestion,
 } from '@shared/types';
@@ -35,14 +30,6 @@ export interface CustomSettings {
 	timePerQuestion: number;
 	difficultyValue: number;
 }
-
-/**
- * Player type for game selection
- * @type PlayerType
- * @description Type of player mode selection
- * @used_by client/src/views/home/HomeView.tsx
- */
-export type PlayerType = (typeof PlayerTypeEnum)[keyof typeof PlayerTypeEnum] | null;
 
 /**
  * Game configuration interface
@@ -100,7 +87,7 @@ export interface GameModeState {
  * @see GAME_STATE_CONFIG.initialClientState for default initial state
  */
 export interface ClientGameState {
-	status: (typeof GameClientStatusEnum)[keyof typeof GameClientStatusEnum];
+	status: GameClientStatus;
 	isPlaying?: boolean;
 	currentQuestion?: number;
 	gameQuestionCount?: number;
@@ -134,7 +121,7 @@ export interface ClientGameSessionStats {
 	averageTimePerQuestion: number;
 	correctStreak: number;
 	maxStreak: number;
-	topicsPlayed?: TopicsPlayed;
+	topicsPlayed?: CountRecord;
 	successRateByDifficulty?: DifficultyBreakdown;
 	questionsAnswered: number;
 	correctAnswers: number;
@@ -197,4 +184,31 @@ export interface GameSummaryStats {
 export interface DeductCreditsParams {
 	questionsPerRequest: number;
 	gameMode?: GameModeType;
+}
+
+/**
+ * Game settings form props interface
+ * @interface GameSettingsFormProps
+ * @description Props for the GameSettingsForm component
+ * @used_by client/src/components/game/GameSettingsForm.tsx
+ */
+export interface GameSettingsFormProps {
+	topic: string;
+	onTopicChange: (topic: string) => void;
+	selectedDifficulty: DifficultyLevel;
+	onDifficultyChange: (difficulty: DifficultyLevel) => void;
+	customDifficulty: string;
+	onCustomDifficultyChange: (customDifficulty: string) => void;
+	customDifficultyError: string;
+	onCustomDifficultyErrorChange: (error: string) => void;
+	answerCount: number;
+	onAnswerCountChange: (count: number) => void;
+	selectedMode?: GameMode;
+	maxQuestionsPerGame?: number;
+	onMaxQuestionsPerGameChange?: (count: number) => void;
+	timeLimit?: number;
+	onTimeLimitChange?: (limit: number) => void;
+	maxPlayers?: number;
+	onMaxPlayersChange?: (count: number) => void;
+	showMaxPlayers?: boolean;
 }

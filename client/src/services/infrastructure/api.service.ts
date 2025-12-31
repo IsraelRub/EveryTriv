@@ -7,6 +7,7 @@
 import {
 	API_ROUTES,
 	defaultValidators,
+	ERROR_MESSAGES,
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HttpMethod,
@@ -18,6 +19,7 @@ import {
 	AuthenticationResult,
 	BaseData,
 	BasicUser,
+	BasicValue,
 	ChangePasswordData,
 	ClientLogsRequest,
 	RefreshTokenResponse,
@@ -26,15 +28,11 @@ import {
 	UserPreferences,
 	UserProfileResponseType,
 } from '@shared/types';
-import { calculateRetryDelay, getErrorMessage, hasProperty, hasPropertyOfType, isRecord } from '@shared/utils';
-
-import { CLIENT_STORAGE_KEYS } from '@/constants';
-
+import { executeRetry, getErrorMessage, hasProperty, hasPropertyOfType, isNonEmptyString, isRecord } from '@shared/utils';
+import { CLIENT_STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
 import { clientLogger as logger, storageService } from '@/services';
-
-import type { ClientApiService, EnhancedRequestConfig, RequestTransformer, ResponseTransformer } from '@/types';
+import type { ClientApiService, EnhancedRequestConfig } from '@/types';
 import type { ApiError, ErrorResponseData, ServerAuthResponse } from '@/types/infrastructure';
-
 import {
 	authRequestInterceptor,
 	ErrorInterceptorManager,
@@ -46,7 +44,7 @@ import {
  * API Configuration Helper
  * @description Simple configuration helper for API URLs
  */
-class ApiConfig {
+export class ApiConfig {
 	static getBaseUrl(): string {
 		const envUrl = import.meta.env.VITE_API_BASE_URL;
 		return envUrl || LOCALHOST_CONFIG.urls.SERVER;
@@ -55,13 +53,9 @@ class ApiConfig {
 
 class ApiService implements ClientApiService {
 	private baseURL: string;
-	private retryAttempts: number = HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS;
-	private retryDelay: number = HTTP_CLIENT_CONFIG.RETRY_DELAY;
 	private requestInterceptors: RequestInterceptorManager;
 	private responseInterceptors: ResponseInterceptorManager;
 	private errorInterceptors: ErrorInterceptorManager;
-	private requestTransformers: RequestTransformer[] = [];
-	private responseTransformers: ResponseTransformer[] = [];
 	private activeRequests = new Map<string, Promise<ApiResponse<unknown>>>();
 
 	/**
@@ -93,13 +87,11 @@ class ApiService implements ClientApiService {
 				value instanceof Date
 			) {
 				result[key] = value;
-			} else if (Array.isArray(value) || isRecord(value)) {
-				if (isRecord(value)) {
-					const baseDataValue = this.convertToBaseData(value);
-					result[key] = JSON.stringify(baseDataValue);
-				} else {
-					result[key] = JSON.stringify(value);
-				}
+			} else if (Array.isArray(value)) {
+				result[key] = JSON.stringify(value);
+			} else if (isRecord(value)) {
+				const baseDataValue = this.convertToBaseData(value);
+				result[key] = JSON.stringify(baseDataValue);
 			}
 		}
 
@@ -116,9 +108,6 @@ class ApiService implements ClientApiService {
 		this.requestInterceptors.use(authRequestInterceptor, { priority: 0 });
 	}
 
-	private async sleep(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
-	}
 
 	/**
 	 * Create timeout abort controller
@@ -144,7 +133,7 @@ class ApiService implements ClientApiService {
 		return requestId || `${method}:${url}`;
 	}
 
-	private buildQueryString(params?: Record<string, string | number | boolean | undefined>): string {
+	private buildQueryString(params?: Record<string, BasicValue>): string {
 		if (!params) {
 			return '';
 		}
@@ -188,7 +177,7 @@ class ApiService implements ClientApiService {
 								resolve(response);
 								return;
 							}
-							reject(new Error('Invalid API response structure'));
+							reject(new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE));
 						})
 						.catch(reject);
 				});
@@ -260,8 +249,7 @@ class ApiService implements ClientApiService {
 			// Execute request interceptors (auth headers are added by authRequestInterceptor)
 			const interceptedConfig = await this.requestInterceptors.execute(enhancedConfig);
 
-			// Transform request data if provided
-			let transformedData: RequestData = data;
+			// Prepare request body if provided
 			let requestBody: string | undefined;
 
 			// Log initial data state
@@ -272,10 +260,7 @@ class ApiService implements ClientApiService {
 			});
 
 			if (data && (method === HttpMethod.POST || method === HttpMethod.PUT || method === HttpMethod.PATCH)) {
-				for (const transformer of this.requestTransformers) {
-					transformedData = await transformer(transformedData);
-				}
-				requestBody = JSON.stringify(transformedData);
+				requestBody = JSON.stringify(data);
 
 				// Debug logging for request body (runs in all environments)
 				logger.apiDebug('Request body prepared', {
@@ -283,7 +268,6 @@ class ApiService implements ClientApiService {
 					method,
 					data: {
 						originalData: data,
-						transformedData,
 						bodyString: requestBody,
 					},
 				});
@@ -354,20 +338,13 @@ class ApiService implements ClientApiService {
 
 			// Handle response with retry support for 401
 			// Create a function that will retry the full request (including interceptors)
+			// Pass the URL to the retry function so it can be used for auth endpoint detection
 			const originalRequestFn = async (): Promise<ApiResponse<T>> => {
 				// Re-execute the full request flow including interceptors
+				// This will create a new fullUrl, but it will be the same as the original
 				return this.executeRequestInternal<T>(url, method, config, data);
 			};
-			let apiResponse = await this.handleResponse<T>(response, method, originalRequestFn);
-
-			// Transform response data
-			if (apiResponse.data && this.responseTransformers.length > 0) {
-				let transformedData = apiResponse.data;
-				for (const transformer of this.responseTransformers) {
-					transformedData = await transformer(transformedData);
-				}
-				apiResponse = { ...apiResponse, data: transformedData };
-			}
+			let apiResponse = await this.handleResponse<T>(response, method, originalRequestFn, false, fullUrl);
 
 			// Execute response interceptors
 			const interceptedResponse = await this.responseInterceptors.execute(apiResponse);
@@ -404,65 +381,88 @@ class ApiService implements ClientApiService {
 		}
 	}
 
-	private async retryRequest<T>(
-		requestFn: () => Promise<ApiResponse<T>>,
-		attempt: number = 1
-	): Promise<ApiResponse<T>> {
-		try {
-			return await requestFn();
-		} catch (error) {
-			const errorMessage = getErrorMessage(error);
-			let statusCode: number = 0;
+	private async retryRequest<T>(requestFn: () => Promise<ApiResponse<T>>): Promise<ApiResponse<T>> {
+		const result = await executeRetry<ApiResponse<T>>(requestFn, {
+			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
+			baseDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY,
+			timeout: HTTP_CLIENT_CONFIG.TIMEOUT,
+			retryOnAuthError: false, // Don't retry on 401
+			retryOnRateLimit: false, // Don't retry on 429 (client-side)
+			retryOnServerError: true, // Retry on 5xx
+			retryOnNetworkError: true, // Retry on network errors
+			retryOptions: {
+				useExponentialBackoff: false, // Linear backoff for client
+				jitter: { maxJitter: 1000 },
+			},
+			shouldRetry: (error, statusCode) => {
+				// Never retry SessionExpiredError - user needs to re-authenticate
+				if (error instanceof Error && error.name === 'SessionExpiredError') {
+					return false;
+				}
 
-			if (hasPropertyOfType(error, 'statusCode', defaultValidators.number)) {
-				statusCode = error.statusCode;
-			}
+				// Check if error has isServerError property
+				const isServerErrorValue: boolean | undefined = hasPropertyOfType(
+					error,
+					'isServerError',
+					defaultValidators.boolean
+				)
+					? error.isServerError
+					: undefined;
 
-			const apiError: ApiError = {
-				message: errorMessage,
-				statusCode,
-				details: { error: errorMessage },
-			};
-
-			// Check if error has isServerError property with boolean type
-			const isServerErrorValue: boolean | undefined = hasPropertyOfType(
-				error,
-				'isServerError',
-				(value): value is boolean => typeof value === 'boolean'
-			)
-				? error.isServerError
-				: undefined;
-			const apiErrorWithFlags: ApiError & { isServerError?: boolean } = {
-				...apiError,
-				isServerError: isServerErrorValue,
-			};
-
-			const shouldRetry =
-				attempt < this.retryAttempts && (apiErrorWithFlags.isServerError === true || apiError.statusCode === 0);
-
-			if (shouldRetry) {
-				// Linear retry delay: baseDelay * attempt (not exponential)
-				const delay = calculateRetryDelay(this.retryDelay, attempt - 1, {
-					useExponentialBackoff: false,
-					jitter: { maxJitter: 1000 },
+				// Only retry on server errors (5xx) or network errors (statusCode 0)
+				return isServerErrorValue === true || statusCode === 0;
+			},
+			onRetry: (attempt, error, delay) => {
+				logger.apiDebug('Retrying request', {
+					attempt,
+					delay,
+					error: getErrorMessage(error),
 				});
-				await this.sleep(delay);
-				return this.retryRequest(requestFn, attempt + 1);
-			}
+			},
+			onError: (error, attempt, isFinal) => {
+				if (isFinal) {
+					logger.apiError('Request failed after retries', {
+						attempt,
+						error: getErrorMessage(error),
+					});
+				}
+			},
+		});
 
-			throw error;
-		}
+		return result.data;
+	}
+
+	/**
+	 * Clear authentication tokens and throw session expired error
+	 * @private
+	 */
+	private async clearTokensAndThrowSessionExpired(): Promise<never> {
+		await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+		await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+		const sessionExpiredError = new Error(ERROR_MESSAGES.api.SESSION_EXPIRED);
+		sessionExpiredError.name = 'SessionExpiredError';
+		throw sessionExpiredError;
 	}
 
 	private async handleResponse<T>(
 		response: Response,
 		method: HttpMethod,
 		originalRequest?: () => Promise<ApiResponse<T>>,
-		hasAttemptedRefresh: boolean = false
+		hasAttemptedRefresh: boolean = false,
+		requestUrl?: string
 	): Promise<ApiResponse<T>> {
 		if (!response.ok) {
 			// Handle 401 Unauthorized - try to refresh token (only once per request)
-			if (response.status === 401 && originalRequest && !hasAttemptedRefresh) {
+			// Skip token refresh for authentication endpoints (login, register, refresh, logout)
+			// These endpoints should not attempt token refresh as they are part of the auth flow
+			const urlToCheck = requestUrl || response.url;
+			const isAuthEndpoint = urlToCheck.includes('/auth/login') ||
+				urlToCheck.includes('/auth/register') ||
+				urlToCheck.includes('/auth/refresh') ||
+				urlToCheck.includes('/auth/logout') ||
+				urlToCheck.includes('/auth/google');
+
+			if (response.status === 401 && originalRequest && !hasAttemptedRefresh && !isAuthEndpoint) {
 				// Check if we have a refresh token before attempting refresh
 				const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
 				const hasRefreshToken = refreshTokenResult.success && !!refreshTokenResult.data;
@@ -474,13 +474,7 @@ class ApiService implements ClientApiService {
 						const retryResponse = await originalRequest();
 						// If retry also returns 401, don't try to refresh again
 						if (retryResponse.statusCode === 401) {
-							// Refresh failed, clear tokens
-							await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-							await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
-							// Throw error - AppRoutes will handle redirect to login
-							const sessionExpiredError = new Error('Session expired. Please login again.');
-							sessionExpiredError.name = 'SessionExpiredError';
-							throw sessionExpiredError;
+							await this.clearTokensAndThrowSessionExpired();
 						}
 						return retryResponse;
 					} catch (error) {
@@ -489,20 +483,11 @@ class ApiService implements ClientApiService {
 							throw error;
 						}
 						// Refresh failed, clear tokens
-						await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-						await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
-						// Throw error - AppRoutes will handle redirect to login
-						const sessionExpiredError = new Error('Session expired. Please login again.');
-						sessionExpiredError.name = 'SessionExpiredError';
-						throw sessionExpiredError;
+						await this.clearTokensAndThrowSessionExpired();
 					}
 				} else {
 					// No refresh token available, clear tokens and throw error
-					await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-					await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
-					const sessionExpiredError = new Error('Session expired. Please login again.');
-					sessionExpiredError.name = 'SessionExpiredError';
-					throw sessionExpiredError;
+					await this.clearTokensAndThrowSessionExpired();
 				}
 			}
 
@@ -521,8 +506,8 @@ class ApiService implements ClientApiService {
 						// Convert full JSON data to BaseData format for details
 						details = this.convertToBaseData(jsonData);
 					} else {
-						errorData = { message: 'Invalid error response format' };
-						details.message = 'Invalid error response format';
+						errorData = { message: ERROR_MESSAGES.api.INVALID_ERROR_RESPONSE_FORMAT };
+						details.message = ERROR_MESSAGES.api.INVALID_ERROR_RESPONSE_FORMAT;
 					}
 				} catch (parseError) {
 					errorData = { message: getErrorMessage(parseError) };
@@ -581,7 +566,7 @@ class ApiService implements ClientApiService {
 					: new Date().toISOString();
 			const apiResponse: ApiResponse<unknown> = {
 				data: responseData.data,
-				success: Boolean(responseData.success),
+				success: !!responseData.success,
 				statusCode: response.status,
 				timestamp: timestampValue,
 			};
@@ -590,7 +575,7 @@ class ApiService implements ClientApiService {
 				return apiResponse;
 			}
 
-			throw new Error('Invalid API response structure.');
+			throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
 		}
 
 		// Fallback for direct data responses
@@ -604,7 +589,7 @@ class ApiService implements ClientApiService {
 			return fallbackResponse;
 		}
 
-		throw new Error('Invalid API fallback response structure.');
+		throw new Error(ERROR_MESSAGES.api.INVALID_API_FALLBACK_RESPONSE_STRUCTURE);
 	}
 
 	async get<T>(url: string, config?: EnhancedRequestConfig): Promise<ApiResponse<T>> {
@@ -724,20 +709,19 @@ class ApiService implements ClientApiService {
 		const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
 		const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
 		if (!refreshToken) {
-			throw new Error('No refresh token available');
+			throw new Error(ERROR_MESSAGES.api.NO_REFRESH_TOKEN_AVAILABLE);
 		}
 
-		const response = await this.post<{ access_token: string }>(API_ROUTES.AUTH.REFRESH, {
+		const response = await this.post<RefreshTokenResponse>(API_ROUTES.AUTH.REFRESH, {
 			refreshToken,
 		});
 
-		// Convert server response format (access_token) to client format (accessToken)
-		const accessToken = response.data.access_token;
-		if (accessToken) {
-			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, accessToken);
+		// Store new access token
+		if (response.data.accessToken) {
+			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
 		}
 
-		return { accessToken };
+		return response.data;
 	}
 
 	async getCurrentUser(): Promise<BasicUser> {
@@ -764,7 +748,7 @@ class ApiService implements ClientApiService {
 	async updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType> {
 		// Validate required fields
 		if (!data || Object.keys(data).length === 0) {
-			throw new Error('Profile data is required');
+			throw new Error(ERROR_MESSAGES.validation.PROFILE_DATA_REQUIRED);
 		}
 
 		const response = await this.put<UserProfileResponseType>(API_ROUTES.USER.PROFILE, data);
@@ -774,7 +758,7 @@ class ApiService implements ClientApiService {
 	async setAvatar(avatarId: number): Promise<UserProfileResponseType> {
 		// Validate avatar ID
 		if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 16) {
-			throw new Error('Avatar ID must be between 1 and 16');
+			throw new Error(ERROR_MESSAGES.validation.AVATAR_ID_OUT_OF_RANGE);
 		}
 
 		const response = await this.patch<UserProfileResponseType>(API_ROUTES.USER.AVATAR, {
@@ -788,11 +772,11 @@ class ApiService implements ClientApiService {
 	 */
 	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
 		// Validate input
-		if (!query || query.trim().length === 0) {
-			throw new Error('Search query is required');
+		if (!isNonEmptyString(query)) {
+			throw new Error(ERROR_MESSAGES.validation.SEARCH_QUERY_REQUIRED);
 		}
 		if (limit < 1 || limit > 100) {
-			throw new Error('Limit must be between 1 and 100');
+			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 100));
 		}
 
 		const queryString = this.buildQueryString({
@@ -825,65 +809,12 @@ class ApiService implements ClientApiService {
 	async submitClientLogs(logs: ClientLogsRequest): Promise<string> {
 		// Validate logs
 		if (!logs || !logs.logs || !Array.isArray(logs.logs) || logs.logs.length === 0) {
-			throw new Error('Logs array is required and must not be empty');
+			throw new Error(ERROR_MESSAGES.validation.LOGS_ARRAY_REQUIRED);
 		}
 
 		const response = await this.post<string>(API_ROUTES.CLIENT_LOGS.BATCH, logs);
 		return response.data;
 	}
-
-	/**
-	 * Add request transformer
-	 * @param transformer Request transformer function
-	 */
-	addRequestTransformer(transformer: RequestTransformer): void {
-		this.requestTransformers.push(transformer);
-	}
-
-	/**
-	 * Remove request transformer
-	 * @param transformer Transformer function to remove
-	 */
-	removeRequestTransformer(transformer: RequestTransformer): void {
-		const index = this.requestTransformers.indexOf(transformer);
-		if (index !== -1) {
-			this.requestTransformers.splice(index, 1);
-		}
-	}
-
-	/**
-	 * Clear all request transformers
-	 */
-	clearRequestTransformers(): void {
-		this.requestTransformers = [];
-	}
-
-	/**
-	 * Add response transformer
-	 * @param transformer Response transformer function
-	 */
-	addResponseTransformer(transformer: ResponseTransformer): void {
-		this.responseTransformers.push(transformer);
-	}
-
-	/**
-	 * Remove response transformer
-	 * @param transformer Transformer function to remove
-	 */
-	removeResponseTransformer(transformer: ResponseTransformer): void {
-		const index = this.responseTransformers.indexOf(transformer);
-		if (index !== -1) {
-			this.responseTransformers.splice(index, 1);
-		}
-	}
-
-	/**
-	 * Clear all response transformers
-	 */
-	clearResponseTransformers(): void {
-		this.responseTransformers = [];
-	}
 }
 
-export { ApiConfig };
 export const apiService = new ApiService();

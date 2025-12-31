@@ -933,7 +933,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
-import { CustomDifficultyPipe, GameAnswerPipe, TriviaQuestionPipe, TriviaRequestPipe } from '../../common/pipes';
+import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
@@ -959,7 +959,6 @@ import { TriviaGenerationService } from './logic/triviaGeneration.service';
     GameService,
     TriviaGenerationService,
     CustomDifficultyPipe,
-    TriviaQuestionPipe,
     GameAnswerPipe,
     TriviaRequestPipe,
   ],
@@ -1022,8 +1021,7 @@ export class GameController {
   }
 
   @Post('answer')
-  @UsePipes(GameAnswerPipe)
-  async submitAnswer(@CurrentUserId() userId: string, @Body() body: SubmitAnswerDto) {
+  async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
     try {
       if (!body.questionId || !body.answer) {
         throw new HttpException('Question ID and answer are required', HttpStatus.BAD_REQUEST);

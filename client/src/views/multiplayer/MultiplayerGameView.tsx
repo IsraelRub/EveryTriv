@@ -1,24 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
-import { CheckCircle, Crown, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle, Crown, XCircle } from 'lucide-react';
 
 import { RoomStatus } from '@shared/constants';
 import { calculateElapsedSeconds } from '@shared/utils';
-
-import { VariantBase } from '@/constants';
-
-import { Avatar, AvatarFallback, Badge, Card, CardContent, CardHeader, CardTitle, GameTimer } from '@/components';
-
-import { useMultiplayer, useMultiplayerRoom } from '@/hooks';
+import { SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
+import { Avatar, AvatarFallback, Badge, Card, CardContent, CardHeader, CardTitle, GameTimer, Spinner } from '@/components';
+import { useMultiplayer } from '@/hooks';
+import { cn } from '@/utils';
 
 export function MultiplayerGameView() {
-	const { roomId } = useParams<{ roomId: string }>();
+	const { roomId } = useParams<string>();
 	const navigate = useNavigate();
 
-	const { room } = useMultiplayerRoom(roomId);
-	const { gameState, leaderboard, submitAnswer } = useMultiplayer();
+	const { room, gameState, leaderboard, submitAnswer } = useMultiplayer(roomId);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 	const [answered, setAnswered] = useState(false);
@@ -58,7 +54,7 @@ export function MultiplayerGameView() {
 		return (
 			<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-md mx-auto text-center space-y-4'>
-					<Loader2 className='h-12 w-12 animate-spin mx-auto text-primary' />
+					<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.XL} className='mx-auto text-primary' />
 					<h2 className='text-xl font-semibold'>Loading game...</h2>
 				</div>
 			</motion.main>
@@ -121,9 +117,11 @@ export function MultiplayerGameView() {
 												transition={{ delay: index * 0.05 }}
 												onClick={() => handleAnswerSelect(index)}
 												disabled={answered}
-												className={`p-3 text-left border-2 border-white rounded-lg transition-all h-full flex items-center ${styleClasses} ${
+												className={cn(
+													'p-3 text-left border-2 border-white rounded-lg transition-all h-full flex items-center',
+													styleClasses,
 													answered ? 'cursor-not-allowed' : 'cursor-pointer'
-												}`}
+												)}
 											>
 												<div className='flex items-center gap-3 w-full'>
 													<span className='flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center font-medium text-sm'>
@@ -179,10 +177,10 @@ export function MultiplayerGameView() {
 												initial={{ opacity: 0, x: 10 }}
 												animate={{ opacity: 1, x: 0 }}
 												transition={{ delay: index * 0.05 }}
-												className={`
-													flex items-center gap-2 p-2 rounded-lg
-													${index === 0 ? 'bg-yellow-500/30 ring-2 ring-yellow-500/50' : 'bg-muted/50'}
-												`}
+												className={cn(
+													'flex items-center gap-2 p-2 rounded-lg',
+													index === 0 ? 'bg-yellow-500/30 ring-2 ring-yellow-500/50' : 'bg-muted/50'
+												)}
 											>
 												<span className='font-bold text-sm w-5'>#{index + 1}</span>
 												<Avatar className='h-7 w-7'>

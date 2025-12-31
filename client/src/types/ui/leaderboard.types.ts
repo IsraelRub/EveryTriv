@@ -6,7 +6,6 @@
 import { ReactNode } from 'react';
 
 import type { LeaderboardEntry } from '@shared/types';
-
 import { MetricColor, TrendDirection } from '@/constants';
 
 /**

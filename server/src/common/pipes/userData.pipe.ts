@@ -9,8 +9,7 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ERROR_CODES } from '@shared/constants';
 import type { UpdateUserProfileData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import { validateName } from '@internal/validation/core';
 
@@ -58,7 +57,7 @@ export class UserDataPipe implements PipeTransform {
 			logger.apiUpdate('user_data_validation', {
 				isValid,
 				errorsCount: errors.length,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 			});
 
 			if (!isValid) {

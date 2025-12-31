@@ -1,33 +1,28 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { defaultValidators } from '@shared/constants';
 import type { BasicUser } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { CREDIT_BALANCE_DEFAULT_VALUES } from '@/constants';
+import { authService, queryClient } from '@/services';
+import { CreditBalancePayload, UserState } from '@/types';
 
-import { authService } from '@/services';
-
-import { CreditBalancePayload, ErrorPayload, LoadingPayload, UserState } from '@/types';
+// Auth query key - matches authKeys.currentUser() from hooks/useAuth
+const AUTH_CURRENT_USER_KEY = ['auth', 'current-user'] as const;
 
 export const fetchUserData = createAsyncThunk('user/fetchUserData', async (_, { rejectWithValue }) => {
 	try {
 		const user = await authService.getCurrentUser();
+		
+		// Update React Query cache to prevent duplicate API calls
+		// This ensures useCurrentUser hook uses cached data instead of making another API call
+		queryClient.setQueryData(AUTH_CURRENT_USER_KEY, user);
+		
 		return user;
 	} catch (error) {
 		return rejectWithValue(getErrorMessage(error));
 	}
 });
-
-export const updateUserProfile = createAsyncThunk(
-	'user/updateUserProfile',
-	async (userData: Partial<BasicUser>, { rejectWithValue }) => {
-		try {
-			return userData;
-		} catch (error) {
-			return rejectWithValue(getErrorMessage(error));
-		}
-	}
-);
 
 const initialState: UserState = {
 	currentUser: null,
@@ -42,16 +37,6 @@ const userStateSlice = createSlice({
 	name: 'user',
 	initialState,
 	reducers: {
-		setLoading: (state, action: PayloadAction<LoadingPayload>) => {
-			state.isLoading = action.payload.isLoading;
-		},
-		setError: (state, action: PayloadAction<ErrorPayload>) => {
-			state.error = action.payload.error;
-			state.isLoading = false;
-		},
-		clearError: state => {
-			state.error = null;
-		},
 		setAvatar: (state, action: PayloadAction<number | null>) => {
 			state.avatar = action.payload;
 		},
@@ -59,17 +44,18 @@ const userStateSlice = createSlice({
 			if (action.payload) {
 				state.currentUser = action.payload;
 				// Set avatar ID if it exists in user data
-				state.avatar =
-					action.payload.avatar && typeof action.payload.avatar === 'number' && Number.isFinite(action.payload.avatar)
-						? action.payload.avatar
-						: null;
+				state.avatar = defaultValidators.number(action.payload.avatar) ? action.payload.avatar : null;
 				state.isAuthenticated = true;
 			} else {
 				state.currentUser = null;
 				state.avatar = null;
 				state.isAuthenticated = false;
 			}
-			state.isLoading = false;
+			// Only set isLoading to false if fetchUserData is not pending
+			// This prevents race conditions where setUser is called while fetchUserData is still loading
+			if (!state.isLoading || action.payload === null) {
+				state.isLoading = false;
+			}
 			state.error = null;
 		},
 		setCreditBalance: (state, action: PayloadAction<CreditBalancePayload>) => {
@@ -138,21 +124,29 @@ const userStateSlice = createSlice({
 		updateAvatar: (state, action: PayloadAction<number | null>) => {
 			state.avatar = action.payload;
 		},
-		setAuthenticated: (state, action: PayloadAction<boolean>) => {
-			state.isAuthenticated = action.payload;
-		},
-		logout: state => {
-			state.currentUser = null;
-			state.avatar = null;
-			state.isLoading = false;
-			state.error = null;
-			state.isAuthenticated = false;
-		},
-		reset: () => initialState,
+	},
+	extraReducers: builder => {
+		builder
+			.addCase(fetchUserData.pending, state => {
+				state.isLoading = true;
+				state.error = null;
+			})
+			.addCase(fetchUserData.fulfilled, (state, action) => {
+				state.isLoading = false;
+				state.error = null;
+				if (action.payload) {
+					state.currentUser = action.payload;
+					state.avatar = defaultValidators.number(action.payload.avatar) ? action.payload.avatar : null;
+					state.isAuthenticated = true;
+				}
+			})
+			.addCase(fetchUserData.rejected, (state, action) => {
+				state.isLoading = false;
+				state.error = defaultValidators.string(action.payload) ? action.payload : 'Failed to fetch user data';
+			});
 	},
 });
 
-export const { setUser, setAvatar, updateAvatar, setCreditBalance, deductCredits, setAuthenticated } =
-	userStateSlice.actions;
+export const { setUser, setAvatar, updateAvatar, setCreditBalance, deductCredits } = userStateSlice.actions;
 
 export default userStateSlice.reducer;

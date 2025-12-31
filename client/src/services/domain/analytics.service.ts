@@ -6,7 +6,7 @@
  * @used_by client/src/views, client/src/components, client/src/hooks
  */
 
-import { AnalyticsResult as AnalyticsResultEnum, API_ROUTES } from '@shared/constants';
+import { AnalyticsResult, API_ROUTES, ERROR_MESSAGES } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	BasicValue,
@@ -25,12 +25,9 @@ import type {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
-import { calculatePercentage, getErrorMessage } from '@shared/utils';
-
+import { calculatePercentage, getErrorMessage, isNonEmptyString } from '@shared/utils';
 import { apiService, clientLogger as logger } from '@/services';
-
 import type { CurrentGameStats } from '@/types';
-
 import { calculateAverage } from '@/utils';
 
 /**
@@ -69,12 +66,11 @@ export class AnalyticsService {
 	 */
 	async getUserAnalytics(): Promise<CompleteUserAnalytics> {
 		try {
-			logger.userInfo('Getting user analytics');
-
+			logger.userInfo('Fetching user analytics');
 			const response = await apiService.get<CompleteUserAnalytics>(API_ROUTES.ANALYTICS.USER);
-
-			logger.userInfo('User analytics retrieved successfully');
-			return response.data;
+			const result = response.data;
+			logger.userInfo('User analytics fetched successfully', { userId: result.basic?.userId });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get user analytics', { error: getErrorMessage(error) });
 			throw error;
@@ -89,8 +85,6 @@ export class AnalyticsService {
 	 */
 	async getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData> {
 		try {
-			logger.userInfo('Getting popular topics');
-
 			const searchParams = new URLSearchParams();
 			if (query?.startDate)
 				searchParams.append(
@@ -107,10 +101,13 @@ export class AnalyticsService {
 				searchParams.append('includeTopicBreakdown', String(query.includeTopicBreakdown));
 			const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-			const response = await apiService.get<TopicStatsData>(`${API_ROUTES.ANALYTICS.TOPICS_POPULAR}${queryString}`);
-
-			logger.userInfo('Popular topics retrieved successfully');
-			return response.data;
+			logger.userInfo('Fetching popular topics', { query: query ? JSON.stringify(query) : undefined });
+			const response = await apiService.get<AnalyticsResponse<TopicStatsData>>(
+				`${API_ROUTES.ANALYTICS.TOPICS_POPULAR}${queryString}`
+			);
+			const result = response.data.data;
+			logger.userInfo('Popular topics fetched successfully', { totalTopics: result.topics.length });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get popular topics', { error: getErrorMessage(error) });
 			throw error;
@@ -124,12 +121,11 @@ export class AnalyticsService {
 	 */
 	async getGlobalDifficultyStats(): Promise<DifficultyBreakdown> {
 		try {
-			logger.userInfo('Getting global difficulty stats');
-
+			logger.userInfo('Fetching global difficulty stats');
 			const response = await apiService.get<DifficultyBreakdown>(API_ROUTES.ANALYTICS.DIFFICULTY_GLOBAL);
-
-			logger.userInfo('Global difficulty stats retrieved successfully');
-			return response.data;
+			const result = response.data;
+			logger.userInfo('Global difficulty stats fetched successfully');
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get global difficulty stats', { error: getErrorMessage(error) });
 			throw error;
@@ -143,12 +139,11 @@ export class AnalyticsService {
 	 */
 	async getGlobalStats(): Promise<GlobalStatsResponse> {
 		try {
-			logger.userInfo('Getting global stats');
-
+			logger.userInfo('Fetching real-time analytics');
 			const response = await apiService.get<GlobalStatsResponse>(API_ROUTES.ANALYTICS.GLOBAL_STATS);
-
-			logger.userInfo('Global stats retrieved successfully');
-			return response.data;
+			const result = response.data;
+			logger.userInfo('Real-time analytics fetched successfully');
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get global stats', { error: getErrorMessage(error) });
 			throw error;
@@ -163,8 +158,6 @@ export class AnalyticsService {
 	 */
 	async getGlobalTrends(params?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
 		try {
-			logger.userInfo('Getting global trends');
-
 			const searchParams = new URLSearchParams();
 			if (params?.startDate)
 				searchParams.append(
@@ -177,12 +170,13 @@ export class AnalyticsService {
 			if (params?.limit != null) searchParams.append('limit', String(params.limit));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
+			logger.userInfo('Fetching global trends', params ? { query: JSON.stringify(params) } : undefined);
 			const response = await apiService.get<AnalyticsResponse<UserTrendPoint[]>>(
 				`${API_ROUTES.ANALYTICS.GLOBAL_TRENDS}${query}`
 			);
-
-			logger.userInfo('Global trends retrieved successfully');
-			return response.data;
+			const result = response.data;
+			logger.userInfo('Global trends fetched successfully');
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get global trends', { error: getErrorMessage(error) });
 			throw error;
@@ -202,22 +196,18 @@ export class AnalyticsService {
 		timestamp?: string;
 		page?: string;
 		action?: string;
-		result?: (typeof AnalyticsResultEnum)[keyof typeof AnalyticsResultEnum];
+		result?: AnalyticsResult;
 		duration?: number;
 		value?: number;
 		properties?: Record<string, BasicValue>;
 	}): Promise<TrackEventResponse> {
 		// Validate event data
-		if (!eventData || !eventData.eventType || eventData.eventType.trim().length === 0) {
-			throw new Error('Event type is required');
+		if (!eventData || !isNonEmptyString(eventData.eventType)) {
+			throw new Error(ERROR_MESSAGES.validation.EVENT_TYPE_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Tracking analytics event', { eventType: eventData.eventType });
-
 			const response = await apiService.post<TrackEventResponse>(API_ROUTES.ANALYTICS.TRACK, eventData);
-
-			logger.userInfo('Analytics event tracked successfully');
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to track analytics event', {
@@ -236,14 +226,13 @@ export class AnalyticsService {
 	 */
 	async getUserPerformanceById(userId: string): Promise<AnalyticsResponse<UserPerformanceMetrics>> {
 		try {
-			logger.userInfo('Getting user performance by ID', { userId });
-
+			logger.userInfo('Fetching user performance by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserPerformanceMetrics>>(
 				API_ROUTES.ANALYTICS.USER_PERFORMANCE.replace(':userId', userId)
 			);
-
-			logger.userInfo('User performance retrieved successfully', { userId });
-			return response.data;
+			const result = response.data;
+			logger.userInfo('User performance fetched successfully', { userId });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get user performance', { error: getErrorMessage(error), userId });
 			throw error;
@@ -259,8 +248,6 @@ export class AnalyticsService {
 	 */
 	async getUserTrendsById(userId: string, params?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
 		try {
-			logger.userInfo('Getting user trends by ID', { userId });
-
 			const searchParams = new URLSearchParams();
 			if (params?.startDate)
 				searchParams.append(
@@ -273,12 +260,13 @@ export class AnalyticsService {
 			if (params?.limit != null) searchParams.append('limit', String(params.limit));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
+			logger.userInfo('Fetching user trends by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserTrendPoint[]>>(
 				`${API_ROUTES.ANALYTICS.USER_TRENDS.replace(':userId', userId)}${query}`
 			);
-
-			logger.userInfo('User trends retrieved successfully', { userId });
-			return response.data;
+			const result = response.data;
+			logger.userInfo('User trends fetched successfully', { userId });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get user trends', { error: getErrorMessage(error), userId });
 			throw error;
@@ -297,8 +285,6 @@ export class AnalyticsService {
 		params?: ComparisonQueryOptions
 	): Promise<AnalyticsResponse<UserComparisonResult>> {
 		try {
-			logger.userInfo('Comparing user performance by ID', { userId });
-
 			const searchParams = new URLSearchParams();
 			if (params?.target) searchParams.append('target', params.target);
 			if (params?.targetUserId) searchParams.append('targetUserId', params.targetUserId);
@@ -311,12 +297,13 @@ export class AnalyticsService {
 				searchParams.append('endDate', params.endDate instanceof Date ? params.endDate.toISOString() : params.endDate);
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
+			logger.userInfo('Fetching user comparison by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserComparisonResult>>(
 				`${API_ROUTES.ANALYTICS.USER_COMPARISON.replace(':userId', userId)}${query}`
 			);
-
-			logger.userInfo('User performance comparison retrieved successfully', { userId });
-			return response.data;
+			const result = response.data;
+			logger.userInfo('User comparison fetched successfully', { userId });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to compare user performance', { error: getErrorMessage(error), userId });
 			throw error;
@@ -335,18 +322,17 @@ export class AnalyticsService {
 		includeActivity: boolean = false
 	): Promise<AnalyticsResponse<UserSummaryData>> {
 		try {
-			logger.userInfo('Getting user summary by ID', { userId });
-
 			const searchParams = new URLSearchParams();
 			if (includeActivity) searchParams.append('includeActivity', 'true');
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
+			logger.userInfo('Fetching user summary by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserSummaryData>>(
 				`${API_ROUTES.ANALYTICS.USER_SUMMARY.replace(':userId', userId)}${query}`
 			);
-
-			logger.userInfo('User summary retrieved successfully', { userId });
-			return response.data;
+			const result = response.data;
+			logger.userInfo('User summary fetched successfully', { userId });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get user summary', { error: getErrorMessage(error), userId });
 			throw error;
@@ -361,13 +347,10 @@ export class AnalyticsService {
 	async clearAllUserStats(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing all user stats');
-
 			const response = await apiService.delete<ClearOperationResponse>(API_ROUTES.ANALYTICS.ADMIN_STATS_CLEAR_ALL);
-
-			logger.userInfo('All user stats cleared successfully', {
-				deletedCount: response.data.deletedCount,
-			});
-			return response.data;
+			const result = response.data;
+			logger.userInfo('All user stats cleared successfully', { deletedCount: result.deletedCount });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to clear all user stats', { error: getErrorMessage(error) });
 			throw error;

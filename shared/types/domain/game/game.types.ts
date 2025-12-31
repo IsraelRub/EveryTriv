@@ -6,7 +6,7 @@
  * @used_by client/src/components/game/TriviaGame.tsx, client/src/views/gameHistory
  */
 import { GameMode } from '../../../constants';
-import type { BaseEntity } from '../../core/data.types';
+import type { OffsetPagination, BaseEntity, CountRecord } from '../../core';
 import type { QuestionData } from '../../infrastructure/api.types';
 import type { GameDifficulty } from './trivia.types';
 
@@ -182,11 +182,7 @@ export type LeaderboardEntryShape = LeaderboardEntry;
  */
 export interface LeaderboardResponse {
 	leaderboard: LeaderboardEntry[];
-	pagination: {
-		limit: number;
-		offset: number;
-		total: number;
-	};
+	pagination: OffsetPagination;
 	period: string;
 }
 
@@ -227,8 +223,8 @@ export interface AdminGameStatistics {
 	correctAnswers: number;
 	accuracy: number;
 	activePlayers24h: number;
-	topics: Record<string, number>;
-	difficultyDistribution: Record<string, number>;
+	topics: CountRecord;
+	difficultyDistribution: CountRecord;
 	lastActivity: string | null;
 }
 
@@ -253,7 +249,6 @@ export interface AdminStatisticsRaw {
  */
 export interface GameHistoryResponse {
 	userId: string;
-	email: string;
 	totalGames: number;
 	games: GameHistoryEntry[];
 }

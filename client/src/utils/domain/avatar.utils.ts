@@ -1,4 +1,4 @@
-import { AVATAR_CONFIG } from '@/constants';
+import { VALIDATION_COUNT } from '@shared/constants';
 
 /**
  * Check if avatar ID is valid
@@ -6,7 +6,8 @@ import { AVATAR_CONFIG } from '@/constants';
  * @returns True if valid (1-16), false otherwise
  */
 export const isValidAvatarId = (id: number): boolean => {
-	return Number.isInteger(id) && id >= AVATAR_CONFIG.MIN_AVATAR_ID && id <= AVATAR_CONFIG.MAX_AVATAR_ID;
+	const { MIN, MAX } = VALIDATION_COUNT.AVATAR_ID;
+	return Number.isInteger(id) && id >= MIN && id <= MAX;
 };
 
 /**

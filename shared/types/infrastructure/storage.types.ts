@@ -6,8 +6,7 @@
  * @description Storage interfaces and data structures
  */
 import { StorageType } from '@shared/constants';
-
-import { BaseCacheEntry, BasicValue, StorageValue } from '../core/data.types';
+import { BaseCacheEntry, BasicValue, StorageValue, TypeGuard } from '../core/data.types';
 
 /**
  * storage service interface
@@ -18,10 +17,7 @@ import { BaseCacheEntry, BasicValue, StorageValue } from '../core/data.types';
 export interface StorageService {
 	set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
 	get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
-	get<T extends StorageValue>(
-		key: string,
-		validator: (value: StorageValue) => value is T
-	): Promise<StorageOperationResult<T | null>>;
+	get<T extends StorageValue>(key: string, validator: TypeGuard<T>): Promise<StorageOperationResult<T | null>>;
 	delete(key: string): Promise<StorageOperationResult<void>>;
 	exists(key: string): Promise<StorageOperationResult<boolean>>;
 	clear(): Promise<StorageOperationResult<void>>;
@@ -33,19 +29,12 @@ export interface StorageService {
 		key: string,
 		factory: () => Promise<T>,
 		ttl: number | undefined,
-		validator: (value: StorageValue) => value is T
+		validator: TypeGuard<T>
 	): Promise<T>;
 	setItem?<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
-	getItem?<T extends StorageValue>(
-		key: string,
-		validator: (value: StorageValue) => value is T
-	): Promise<StorageOperationResult<T | null>>;
+	getItem?<T extends StorageValue>(key: string, validator: TypeGuard<T>): Promise<StorageOperationResult<T | null>>;
 	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
-
-// StorageType is imported from @shared/constants above
-// Re-export here for convenience (it's an enum, not a type)
-export { StorageType };
 
 /**
  * Storage configuration interface

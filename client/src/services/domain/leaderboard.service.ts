@@ -12,11 +12,9 @@ import type {
 	LeaderboardEntry,
 	LeaderboardResponse,
 	LeaderboardStats,
-	OffsetPagination,
 	UserRankData,
 } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { apiService, clientLogger as logger } from '@/services';
 
 /**
@@ -35,21 +33,17 @@ class ClientLeaderboardService {
 	 */
 	async getGlobalLeaderboard(limit: number = 100, offset: number = 0): Promise<LeaderboardEntry[]> {
 		try {
-			logger.gameStatistics('Getting global leaderboard', { limit, offset });
-
+			logger.userInfo('Fetching global leaderboard', { limit, offset });
 			const query = new URLSearchParams();
 			if (limit != null) query.append('limit', String(limit));
 			if (offset != null) query.append('offset', String(offset));
 			const queryString = query.toString() ? `?${query.toString()}` : '';
 
 			const response = await apiService.get<LeaderboardResponse>(`${API_ROUTES.LEADERBOARD.GLOBAL}${queryString}`);
+			const result = response.data.leaderboard;
 
-			const leaderboard = response.data.leaderboard;
-
-			logger.gameStatistics('Global leaderboard retrieved successfully', {
-				entries: leaderboard.length,
-			});
-			return leaderboard;
+			logger.userInfo('Global leaderboard fetched successfully', { count: result.length });
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to get global leaderboard', { error: getErrorMessage(error), limit, offset });
 			throw error;
@@ -70,26 +64,17 @@ class ClientLeaderboardService {
 		offset: number = 0
 	): Promise<LeaderboardEntry[]> {
 		try {
-			logger.gameStatistics('Getting leaderboard by period', { period, limit, offset });
-
+			logger.userInfo('Fetching leaderboard by period', { period, limit, offset });
 			const query = new URLSearchParams();
 			if (limit != null) query.append('limit', String(limit));
 			if (offset != null) query.append('offset', String(offset));
 			const queryString = query.toString() ? `?${query.toString()}` : '';
 
-			const response = await apiService.get<{
-				period: string;
-				leaderboard: LeaderboardEntry[];
-				pagination: OffsetPagination;
-			}>(`${API_ROUTES.LEADERBOARD.PERIOD.replace(':period', period)}${queryString}`);
+			const response = await apiService.get<LeaderboardResponse>(`${API_ROUTES.LEADERBOARD.PERIOD.replace(':period', period)}${queryString}`);
+			const result = response.data.leaderboard;
 
-			const leaderboard = response.data.leaderboard;
-
-			logger.gameStatistics('Period leaderboard retrieved successfully', {
-				period,
-				entries: leaderboard.length,
-			});
-			return leaderboard;
+			logger.userInfo('Leaderboard fetched successfully', { period, count: result.length });
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to get leaderboard by period', {
 				error: getErrorMessage(error),
@@ -108,13 +93,11 @@ class ClientLeaderboardService {
 	 */
 	async getUserRanking(): Promise<UserRankData> {
 		try {
-			logger.gameStatistics('Getting user ranking');
-
+			logger.userInfo('Fetching user ranking');
 			const response = await apiService.get<UserRankData>(`${API_ROUTES.LEADERBOARD.USER_RANKING}`);
-			const userRank = response.data;
-
-			logger.gameStatistics('User ranking retrieved successfully', { rank: userRank.rank });
-			return userRank;
+			const result = response.data;
+			logger.userInfo('User ranking fetched successfully', { rank: result?.rank, score: result?.score });
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to get user ranking', { error: getErrorMessage(error) });
 			throw error;
@@ -128,13 +111,8 @@ class ClientLeaderboardService {
 	 */
 	async updateUserRanking(): Promise<UserRankData> {
 		try {
-			logger.gameStatistics('Updating user ranking');
-
 			const response = await apiService.post<UserRankData>(`${API_ROUTES.LEADERBOARD.USER_UPDATE}`);
-			const ranking = response.data;
-
-			logger.gameStatistics('User ranking updated successfully', { rank: ranking.rank });
-			return ranking;
+			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to update user ranking', { error: getErrorMessage(error) });
 			throw error;
@@ -149,15 +127,8 @@ class ClientLeaderboardService {
 	 */
 	async getLeaderboardStats(period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY): Promise<LeaderboardStats> {
 		try {
-			logger.gameStatistics('Getting leaderboard stats', { period });
-
 			const query = `?period=${period}`;
 			const response = await apiService.get<LeaderboardStats>(`${API_ROUTES.LEADERBOARD.STATS}${query}`);
-
-			logger.gameStatistics('Leaderboard stats retrieved successfully', {
-				period,
-				activeUsers: response.data.activeUsers,
-			});
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to get leaderboard stats', { error: getErrorMessage(error), period });
@@ -172,13 +143,7 @@ class ClientLeaderboardService {
 	 */
 	async clearAllLeaderboard(): Promise<ClearOperationResponse> {
 		try {
-			logger.gameStatistics('Clearing all leaderboard data');
-
 			const response = await apiService.delete<ClearOperationResponse>(`${API_ROUTES.LEADERBOARD.ADMIN_CLEAR_ALL}`);
-
-			logger.gameStatistics('All leaderboard data cleared successfully', {
-				deletedCount: response.data.deletedCount,
-			});
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to clear all leaderboard data', { error: getErrorMessage(error) });

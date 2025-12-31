@@ -2,13 +2,11 @@ import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@
 import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
 
-import { CACHE_DURATION, RATE_LIMIT_DEFAULTS } from '@shared/constants';
-import { ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
-
+import { CACHE_DURATION, RATE_LIMIT_DEFAULTS, TIME_PERIODS_MS } from '@shared/constants';
+import { calculateDuration, ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import { metricsService } from '@internal/services/metrics';
 import type { NestRequest } from '@internal/types';
-
 import { AppConfig } from '../../config/app.config';
 
 @Injectable()
@@ -100,14 +98,14 @@ export class RateLimitMiddleware implements NestMiddleware {
 				});
 
 				// Record metrics
-				const duration = Date.now() - startTime;
+				const duration = calculateDuration(startTime);
 				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
 
 				next();
 				return;
 			} catch (err) {
 				// Record error metrics
-				const duration = Date.now() - startTime;
+				const duration = calculateDuration(startTime);
 				const normalizedError = ensureErrorObject(err);
 				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
 
@@ -139,7 +137,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 			// Check burst limit first (first second)
 			const burstCount = await this.redis.incr(burstKey);
 			if (burstCount === 1) {
-				await this.redis.expire(burstKey, CACHE_DURATION.VERY_SHORT); // 1 minute burst window
+				await this.redis.expire(burstKey, CACHE_DURATION.VERY_SHORT);
 			}
 
 			if (burstCount > burstLimit) {
@@ -161,7 +159,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 							endpoint: req.path,
 							method: req.method,
 							ip: ip,
-							windowMs: 60000, // 1 minute burst window
+							windowMs: TIME_PERIODS_MS.MINUTE,
 						},
 						retryAfter: RATE_LIMIT_DEFAULTS.BURST_WINDOW_MS / 1000,
 						timestamp: new Date().toISOString(),
@@ -224,13 +222,13 @@ export class RateLimitMiddleware implements NestMiddleware {
 			});
 
 			// Record metrics
-			const duration = Date.now() - startTime;
+			const duration = calculateDuration(startTime);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
 
 			next();
 		} catch (err) {
 			// Record error metrics
-			const duration = Date.now() - startTime;
+			const duration = calculateDuration(startTime);
 			const normalizedError = ensureErrorObject(err);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
 

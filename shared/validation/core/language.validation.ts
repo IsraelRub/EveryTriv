@@ -4,7 +4,7 @@
  * @module LanguageValidation
  * @description Validation functions for spell checking and grammar validation
  */
-import { COMMON_MISSPELLINGS, GRAMMAR_PATTERNS, LANGUAGE_TOOL_CONSTANTS, VALIDATION_THRESHOLDS } from '../../constants';
+import { COMMON_MISSPELLINGS, GRAMMAR_PATTERNS, LANGUAGE_TOOL_CONSTANTS, LANGUAGE_VALIDATION_THRESHOLDS } from '../../constants';
 import type { LanguageValidationOptions, LanguageValidationResult } from '../../types';
 import { getErrorMessage } from '../../utils/core/error.utils';
 
@@ -125,7 +125,9 @@ function performLocalChecks(input: string): { errors: string[]; suggestions: str
 
 	const words = input.split(/\s+/);
 	for (let i = 0; i < words.length - 1; i++) {
-		if (words[i].toLowerCase() === words[i + 1].toLowerCase()) {
+		const currentWord = words[i];
+		const nextWord = words[i + 1];
+		if (currentWord != null && nextWord != null && currentWord.toLowerCase() === nextWord.toLowerCase()) {
 			errors.push('Repeated word detected');
 			suggestions.push('Consider removing the repeated word');
 			break;
@@ -133,13 +135,13 @@ function performLocalChecks(input: string): { errors: string[]; suggestions: str
 	}
 
 	const punctuationCount = (input.match(/[.!?]/g) ?? []).length;
-	if (punctuationCount > input.split(/\s+/).length * VALIDATION_THRESHOLDS.EXCESSIVE_PUNCTUATION) {
+	if (punctuationCount > input.split(/\s+/).length * LANGUAGE_VALIDATION_THRESHOLDS.EXCESSIVE_PUNCTUATION) {
 		errors.push('Excessive punctuation detected');
 		suggestions.push('Consider reducing the number of punctuation marks');
 	}
 
 	const wordsWithCaps = input.split(/\s+/).filter(word => word.length > 1 && word === word.toUpperCase());
-	if (wordsWithCaps.length > input.split(/\s+/).length * VALIDATION_THRESHOLDS.EXCESSIVE_CAPITALIZATION) {
+	if (wordsWithCaps.length > input.split(/\s+/).length * LANGUAGE_VALIDATION_THRESHOLDS.EXCESSIVE_CAPITALIZATION) {
 		errors.push('Excessive capitalization detected');
 		suggestions.push('Consider using normal capitalization');
 	}

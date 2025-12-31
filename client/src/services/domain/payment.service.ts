@@ -9,7 +9,7 @@
 import { API_ROUTES, PaymentMethod } from '@shared/constants';
 import type { PaymentResult } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
+import { VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
 
 /**
@@ -38,23 +38,12 @@ class ClientPaymentService {
 	}): Promise<PaymentResult> {
 		// Validate payment data
 		if (!paymentData.paymentMethod) {
-			throw new Error('Payment method is required');
+			throw new Error(VALIDATION_MESSAGES.FIELD_REQUIRED('Payment method'));
 		}
 
 		try {
-			logger.userInfo('Creating payment', {
-				amount: paymentData.amount,
-				paymentMethod: paymentData.paymentMethod,
-			});
-
 			const response = await apiService.post<PaymentResult>(API_ROUTES.PAYMENT.CREATE, paymentData);
-			const result = response.data;
-
-			logger.userInfo('Payment created successfully', {
-				paymentId: result.paymentId,
-				status: result.status,
-			});
-			return result;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to create payment', {
 				error: getErrorMessage(error),
@@ -70,15 +59,8 @@ class ClientPaymentService {
 	 */
 	async getPaymentHistory(): Promise<PaymentResult[]> {
 		try {
-			logger.userInfo('Getting payment history');
-
 			const response = await apiService.get<PaymentResult[]>(API_ROUTES.PAYMENT.HISTORY);
-			const history = response.data;
-
-			logger.userInfo('Payment history retrieved successfully', {
-				count: history.length,
-			});
-			return history;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get payment history', { error: getErrorMessage(error) });
 			throw error;

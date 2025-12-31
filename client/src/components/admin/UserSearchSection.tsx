@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-
 import {
 	Activity,
 	Award,
 	Clock,
 	Flame,
 	GamepadIcon,
-	RefreshCw,
 	Search,
 	Target,
 	TrendingUp,
@@ -15,11 +13,9 @@ import {
 } from 'lucide-react';
 
 import { ComparisonTarget, TimePeriod } from '@shared/constants';
-import { roundForDisplay } from '@shared/utils';
+import { formatForDisplay } from '@shared/utils';
 import { isTimePeriod } from '@shared/validation';
-
-import { ButtonVariant, StatCardVariant, TextColor, ToastVariant, VariantBase } from '@/constants';
-
+import { ButtonVariant, SpinnerSize, SpinnerVariant, StatCardVariant, TextColor, ToastVariant, VALIDATION_MESSAGES, VariantBase } from '@/constants';
 import {
 	Badge,
 	Button,
@@ -30,6 +26,7 @@ import {
 	CardTitle,
 	Input,
 	Skeleton,
+	Spinner,
 	StatCard,
 	Tabs,
 	TabsContent,
@@ -37,7 +34,6 @@ import {
 	TabsTrigger,
 	TrendChart,
 } from '@/components';
-
 import {
 	useGlobalStats,
 	useToast,
@@ -46,7 +42,6 @@ import {
 	useUserSummaryById,
 	useUserTrendsById,
 } from '@/hooks';
-
 import { formatPlayTime } from '@/utils';
 
 /**
@@ -91,7 +86,7 @@ export function UserSearchSection() {
 		if (!searchUserId.trim()) {
 			toast({
 				title: 'Error',
-				description: 'Please enter a user ID',
+				description: VALIDATION_MESSAGES.USER_ID_REQUIRED,
 				variant: ToastVariant.DESTRUCTIVE,
 			});
 			return;
@@ -136,7 +131,7 @@ export function UserSearchSection() {
 									onKeyDown={e => e.key === 'Enter' && handleSearch()}
 								/>
 								<Button onClick={handleSearch} disabled={userLoading}>
-									{userLoading ? <RefreshCw className='h-4 w-4 animate-spin' /> : 'Search'}
+									{userLoading ? <Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} /> : 'Search'}
 								</Button>
 								{activeUserId && (
 									<Button onClick={handleClear} variant={ButtonVariant.OUTLINE} disabled={userLoading}>
@@ -172,7 +167,7 @@ export function UserSearchSection() {
 							onKeyDown={e => e.key === 'Enter' && handleSearch()}
 						/>
 						<Button onClick={handleSearch} disabled={userLoading}>
-							{userLoading ? <RefreshCw className='h-4 w-4 animate-spin' /> : 'Search'}
+							{userLoading ? <Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} /> : 'Search'}
 						</Button>
 					</div>
 				</CardContent>
@@ -199,7 +194,7 @@ export function UserSearchSection() {
 							onKeyDown={e => e.key === 'Enter' && handleSearch()}
 						/>
 						<Button onClick={handleSearch} disabled={userLoading}>
-							{userLoading ? <RefreshCw className='h-4 w-4 animate-spin' /> : 'Search'}
+							{userLoading ? <Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} /> : 'Search'}
 						</Button>
 						{activeUserId && (
 							<Button onClick={handleClear} variant={ButtonVariant.OUTLINE} disabled={userLoading}>
@@ -240,7 +235,7 @@ export function UserSearchSection() {
 							<StatCard
 								icon={Target}
 								label='Success Rate'
-								value={`${roundForDisplay(performanceData?.consistencyScore ?? 0)}%`}
+								value={`${formatForDisplay(performanceData?.consistencyScore ?? 0)}%`}
 								color={TextColor.GREEN_500}
 								variant={StatCardVariant.VERTICAL}
 								isLoading={userLoading || performanceLoading}
@@ -338,7 +333,7 @@ export function UserSearchSection() {
 									<StatCard
 										icon={TrendingUp}
 										label='Improvement Rate'
-										value={`${roundForDisplay(performanceData.improvementRate ?? 0)}%`}
+										value={`${formatForDisplay(performanceData.improvementRate ?? 0)}%`}
 										color={TextColor.GREEN_500}
 										variant={StatCardVariant.VERTICAL}
 										isLoading={performanceLoading}
@@ -346,7 +341,7 @@ export function UserSearchSection() {
 									<StatCard
 										icon={Activity}
 										label='Consistency'
-										value={`${roundForDisplay(performanceData.consistencyScore ?? 0)}%`}
+										value={`${formatForDisplay(performanceData.consistencyScore ?? 0)}%`}
 										color={TextColor.BLUE_500}
 										variant={StatCardVariant.VERTICAL}
 										isLoading={performanceLoading}
@@ -415,9 +410,9 @@ export function UserSearchSection() {
 									<StatCard
 										icon={Target}
 										label='Success Rate'
-										value={`${roundForDisplay(comparisonData.userMetrics.successRate ?? 0)}%`}
-										subtext={`Global: ${roundForDisplay(globalStats.successRate ?? 0)}%`}
-										trend={`${roundForDisplay((comparisonData.differences.successRate ?? 0) * 100, 2)}%`}
+										value={`${formatForDisplay(comparisonData.userMetrics.successRate ?? 0)}%`}
+										subtext={`Global: ${formatForDisplay(globalStats.successRate ?? 0)}%`}
+										trend={`${formatForDisplay((comparisonData.differences.successRate ?? 0) * 100, 2)}%`}
 										trendUp={(comparisonData.differences.successRate ?? 0) > 0}
 										color={TextColor.BLUE_500}
 										variant={StatCardVariant.VERTICAL}
@@ -426,9 +421,9 @@ export function UserSearchSection() {
 									<StatCard
 										icon={Trophy}
 										label='Average Score'
-										value={roundForDisplay(comparisonData.userMetrics.averageScore ?? 0).toLocaleString()}
-										subtext={`Global: ${roundForDisplay(comparisonData.targetMetrics.averageScore ?? 0).toLocaleString()}`}
-										trend={`${roundForDisplay((comparisonData.differences.averageScore ?? 0) * 100, 2)}`}
+										value={formatForDisplay(comparisonData.userMetrics.averageScore ?? 0)}
+										subtext={`Global: ${formatForDisplay(comparisonData.targetMetrics.averageScore ?? 0)}`}
+										trend={`${formatForDisplay((comparisonData.differences.averageScore ?? 0) * 100, 2)}`}
 										trendUp={(comparisonData.differences.averageScore ?? 0) > 0}
 										color={TextColor.YELLOW_500}
 										variant={StatCardVariant.VERTICAL}
@@ -439,7 +434,7 @@ export function UserSearchSection() {
 										label='Total Games'
 										value={(comparisonData.userMetrics.totalGames ?? 0).toLocaleString()}
 										subtext={`Global: ${(comparisonData.targetMetrics.totalGames ?? 0).toLocaleString()}`}
-										trend={`${roundForDisplay((comparisonData.differences.totalGames ?? 0) * 100, 2)}`}
+										trend={`${formatForDisplay((comparisonData.differences.totalGames ?? 0) * 100, 2)}`}
 										trendUp={(comparisonData.differences.totalGames ?? 0) > 0}
 										color={TextColor.GREEN_500}
 										variant={StatCardVariant.VERTICAL}
@@ -450,7 +445,7 @@ export function UserSearchSection() {
 										label='Streak Days'
 										value={`${comparisonData.userMetrics.streakDays ?? 0}`}
 										subtext={`Global: ${comparisonData.targetMetrics.streakDays ?? 0}`}
-										trend={`${roundForDisplay(comparisonData.differences.streakDays ?? 0, 2)}`}
+										trend={`${formatForDisplay(comparisonData.differences.streakDays ?? 0, 2)}`}
 										trendUp={(comparisonData.differences.streakDays ?? 0) > 0}
 										color={TextColor.ORANGE_500}
 										variant={StatCardVariant.VERTICAL}
@@ -473,7 +468,7 @@ export function UserSearchSection() {
 											<div className='flex justify-between items-center'>
 												<span>Percentile</span>
 												<span className='font-medium'>
-													Top {roundForDisplay(comparisonData.userMetrics.percentile)}%
+													Top {formatForDisplay(comparisonData.userMetrics.percentile)}%
 												</span>
 											</div>
 										)}

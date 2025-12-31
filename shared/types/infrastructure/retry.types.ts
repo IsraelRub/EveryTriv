@@ -28,3 +28,34 @@ export interface RetryOptions {
 	retryAfter?: number;
 	jitter?: JitterOptions;
 }
+
+/**
+ * Retry configuration options
+ * @interface RetryConfig
+ * @description Configuration for retry service execution
+ */
+export interface RetryConfig {
+	maxRetries?: number;
+	baseDelay?: number;
+	timeout?: number;
+	retryOptions?: RetryOptions;
+	retryOnAuthError?: boolean;
+	retryOnRateLimit?: boolean;
+	retryOnServerError?: boolean;
+	retryOnNetworkError?: boolean;
+	shouldRetry?: (error: unknown, statusCode: number | null, attempt: number) => boolean;
+	onRetry?: (attempt: number, error: unknown, delay: number) => void;
+	onError?: (error: unknown, attempt: number, isFinal: boolean) => void;
+}
+
+/**
+ * Response from retry service
+ * @interface RetryResponse
+ * @description Response returned after successful retry execution
+ * @template T The type of data returned
+ */
+export interface RetryResponse<T> {
+	data: T;
+	attempts: number;
+	duration: number;
+}

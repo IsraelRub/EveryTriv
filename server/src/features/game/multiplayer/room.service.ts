@@ -1,13 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 
-import { ERROR_CODES, MULTIPLAYER_CONFIG, PlayerStatus, RoomStatus, VALIDATION_CONFIG } from '@shared/constants';
+import { CACHE_DURATION, ERROR_CODES, PlayerStatus, RoomStatus, VALIDATION_LENGTH, VALIDATION_COUNT } from '@shared/constants';
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-import { isMultiplayerRoom } from '@shared/utils/domain';
-
+import { getErrorMessage, isMultiplayerRoom } from '@shared/utils';
 import { UserEntity } from '@internal/entities';
 import { ServerStorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -19,15 +16,49 @@ import { serverLogger as logger } from '@internal/services';
  */
 @Injectable()
 export class RoomService {
-	private readonly ROOM_TTL = MULTIPLAYER_CONFIG.ROOM_TTL;
+	private readonly ROOM_TTL = CACHE_DURATION.MULTIPLAYER_ROOM;
 	private readonly ROOM_PREFIX = 'multiplayer:room:';
 	private readonly inMemoryRooms = new Map<string, MultiplayerRoom>();
+	private readonly ROOM_ID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
 		private readonly storageService: ServerStorageService
 	) {}
+
+	/**
+	 * Generate a unique short room ID
+	 * @returns Unique 8-character alphanumeric room ID
+	 */
+	private async generateUniqueRoomId(): Promise<string> {
+		const maxAttempts = 10;
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			const roomId = this.generateRandomRoomId();
+			const existingRoom = await this.getCachedRoom(roomId);
+			if (!existingRoom) {
+				// Also check Redis storage
+				const result = await this.storageService.get(this.getRoomKey(roomId));
+				if (!result.success || !result.data) {
+					return roomId;
+				}
+			}
+		}
+		// Fallback: add timestamp suffix for guaranteed uniqueness
+		return this.generateRandomRoomId();
+	}
+
+	/**
+	 * Generate a random room ID
+	 * @returns 8-character alphanumeric room ID
+	 */
+	private generateRandomRoomId(): string {
+		let result = '';
+		for (let i = 0; i < VALIDATION_LENGTH.ROOM_CODE.LENGTH; i++) {
+			result += this.ROOM_ID_CHARS.charAt(Math.floor(Math.random() * this.ROOM_ID_CHARS.length));
+		}
+		return result;
+	}
 
 	/**
 	 * Create a new multiplayer room
@@ -39,15 +70,15 @@ export class RoomService {
 		try {
 			// Validate configuration
 			if (
-				config.maxPlayers < VALIDATION_CONFIG.limits.PLAYERS.MIN ||
-				config.maxPlayers > VALIDATION_CONFIG.limits.PLAYERS.MAX
+				config.maxPlayers < VALIDATION_COUNT.PLAYERS.MIN ||
+				config.maxPlayers > VALIDATION_COUNT.PLAYERS.MAX
 			) {
 				throw new BadRequestException(
-					`Max players must be between ${VALIDATION_CONFIG.limits.PLAYERS.MIN} and ${VALIDATION_CONFIG.limits.PLAYERS.MAX}`
+					`Max players must be between ${VALIDATION_COUNT.PLAYERS.MIN} and ${VALIDATION_COUNT.PLAYERS.MAX}`
 				);
 			}
 
-			const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
+			const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 			if (
 				config.questionsPerRequest !== UNLIMITED &&
 				(config.questionsPerRequest < MIN || config.questionsPerRequest > MAX)
@@ -57,14 +88,14 @@ export class RoomService {
 				);
 			}
 
-			// Get host user
-			const host = await this.userRepository.findOne({ where: { id: hostId } });
-			if (!host) {
-				throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
-			}
+		// Get host user
+		const host = await this.userRepository.findOne({ where: { id: hostId } });
+		if (!host) {
+			throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
+		}
 
-			// Create room ID
-			const roomId = uuidv4();
+		// Create unique short room ID
+		const roomId = await this.generateUniqueRoomId();
 
 			// Create host player
 			const hostPlayer: Player = {
@@ -79,19 +110,18 @@ export class RoomService {
 				correctAnswers: 0,
 			};
 
-			// Create room
-			const room: MultiplayerRoom = {
-				id: roomId,
-				roomId,
-				hostId,
-				players: [hostPlayer],
-				config,
-				status: RoomStatus.WAITING,
-				currentQuestionIndex: 0,
-				questions: [],
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			};
+		// Create room
+		const room: MultiplayerRoom = {
+			roomId,
+			hostId,
+			players: [hostPlayer],
+			config,
+			status: RoomStatus.WAITING,
+			currentQuestionIndex: 0,
+			questions: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
 
 			await this.persistRoomSnapshot(room);
 
@@ -120,23 +150,34 @@ export class RoomService {
 
 	/**
 	 * Get room by ID
-	 * @param roomId Room ID
+	 * @param roomId Room ID (8-character alphanumeric code)
 	 * @returns Room or null if not found
 	 */
 	async getRoom(roomId: string): Promise<MultiplayerRoom | null> {
 		try {
-			const result = await this.storageService.get(this.getRoomKey(roomId));
+			// Normalize room ID to uppercase
+			const normalizedId = roomId.toUpperCase();
+
+			// Check in-memory cache first
+			const cachedRoom = this.getCachedRoom(normalizedId);
+			if (cachedRoom) {
+				return cachedRoom;
+			}
+
+			// Check Redis storage
+			const result = await this.storageService.get(this.getRoomKey(normalizedId));
 			if (result.success && result.data && isMultiplayerRoom(result.data)) {
 				this.cacheRoom(result.data);
 				return result.data;
 			}
-			return this.getCachedRoom(roomId);
+
+			return null;
 		} catch (error) {
 			logger.gameError('Failed to get multiplayer room', {
 				error: getErrorMessage(error),
 				roomId,
 			});
-			return this.getCachedRoom(roomId);
+			return this.getCachedRoom(roomId.toUpperCase());
 		}
 	}
 
@@ -153,17 +194,20 @@ export class RoomService {
 				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 			}
 
+			// Check if user is already in room first - before checking room status
+			// This allows rejoin even if game has started (PLAYING status)
+			// This prevents ROOM_FULL and ROOM_NOT_ACCEPTING_PLAYERS errors when user reconnects
+			if (room.players.some(p => p.userId === userId)) {
+				return room;
+			}
+
+			// Only check room status for new joins
 			if (room.status !== RoomStatus.WAITING) {
 				throw new BadRequestException(ERROR_CODES.ROOM_NOT_ACCEPTING_PLAYERS);
 			}
 
 			if (room.players.length >= room.config.maxPlayers) {
 				throw new BadRequestException(ERROR_CODES.ROOM_FULL);
-			}
-
-			// Check if user is already in room
-			if (room.players.some(p => p.userId === userId)) {
-				return room;
 			}
 
 			// Get user
@@ -232,8 +276,11 @@ export class RoomService {
 
 			// If host left during game, assign new host
 			if (room.hostId === userId && room.players.length > 0) {
-				room.hostId = room.players[0].userId;
-				room.players[0].isHost = true;
+				const newHost = room.players[0];
+				if (newHost != null) {
+					room.hostId = newHost.userId;
+					newHost.isHost = true;
+				}
 			}
 
 			// If room is empty, delete it

@@ -6,3 +6,4 @@
 
 export * from './analytics.utils';
 export * from './avatar.utils';
+export * from './user.utils';

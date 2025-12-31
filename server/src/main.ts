@@ -18,10 +18,11 @@ dotenv.config({ override: true });
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { json, urlencoded } from 'express';
 
-import { HttpMethod, LOCALHOST_CONFIG, MESSAGE_FORMATTERS } from '@shared/constants';
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { API_VERSION, HttpMethod, LOCALHOST_CONFIG, MESSAGE_FORMATTERS } from '@shared/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { getErrorMessage, getErrorStack } from '@shared/utils';
 
 import { AppModule } from './app.module';
@@ -84,9 +85,29 @@ async function bootstrap() {
 
 		// Enable JSON body parser - must be before other middleware
 		app.use(json({ limit: '10mb' }));
-		app.use(urlencoded({ extended: true, limit: '10mb' }));
+		app.use(urlencoded({ extended: true, limit: '10mb', type: 'application/x-www-form-urlencoded' }));
 
 		app.use(require('cookie-parser')());
+
+		// Swagger API Documentation
+		const config = new DocumentBuilder()
+			.setTitle('EveryTriv API')
+			.setDescription('API documentation for EveryTriv trivia game platform')
+			.setVersion(API_VERSION)
+			.addBearerAuth(
+				{
+					type: 'http',
+					scheme: 'bearer',
+					bearerFormat: 'JWT',
+					name: 'JWT',
+					description: 'Enter JWT token',
+					in: 'header',
+				},
+				'JWT-auth'
+			)
+			.build();
+		const document = SwaggerModule.createDocument(app, config);
+		SwaggerModule.setup('api', app, document);
 
 		await app.listen(AppConfig.port);
 

@@ -1,13 +1,9 @@
 import { motion } from 'framer-motion';
 
 import { ModalSize } from '@/constants';
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
-
 import { useModalRoute } from '@/hooks';
-
 import type { ModalRouteProps } from '@/types';
-
 import { cn } from '@/utils';
 
 /**

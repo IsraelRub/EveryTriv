@@ -28,17 +28,13 @@ export function calculateElapsedSeconds(startTime: number): number {
 }
 
 /**
- * Round number for display purposes
- * @param value Number to round
- * @param decimals Number of decimal places (default: 2)
- * @returns Rounded number
- * @description Rounds a number to specified decimal places and returns as number
- * @example roundForDisplay(3.14159) => 3.14
- * @example roundForDisplay(3.14159, 1) => 3.1
+ * Calculate duration in milliseconds from a start timestamp
+ * @param startTime Start time in milliseconds (from Date.now())
+ * @returns Duration in milliseconds
+ * @description Calculates the difference between current time and start time in milliseconds
+ * @example calculateDuration(Date.now() - 150) => 150
  */
-export function roundForDisplay(value: number, decimals: number = 2): number {
-	if (isNaN(value) || !isFinite(value)) {
-		return 0;
-	}
-	return Number(value.toFixed(decimals));
+export function calculateDuration(startTime: number): number {
+	return Date.now() - startTime;
 }
+

@@ -248,12 +248,7 @@ import type { BaseEntity } from '../../core/data.types';
 /**
  * Trivia question source type
  */
-export type TriviaQuestionSource = 'ai' | 'user' | 'imported' | 'seeded' | 'system';
-
-/**
- * Trivia question review status type
- */
-export type TriviaQuestionReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+export type TriviaQuestionSource = 'ai';
 
 /**
  * Trivia question interface
@@ -286,9 +281,6 @@ export interface TriviaQuestionDetailsMetadata {
   difficultyScore?: number;
   customDifficultyDescription?: string;
   generatedAt?: string;
-  importedAt?: string;
-  lastReviewedAt?: string;
-  reviewStatus?: TriviaQuestionReviewStatus; // משתמש ב-TriviaQuestionReviewStatus
   language?: string;
   explanation?: string;
   referenceUrls?: string[];
@@ -696,9 +688,17 @@ export type PaymentMethod = 'credit_card' | 'paypal' | 'stripe' | 'bank_transfer
 - דוגמאות שימוש בעת הצורך
 - הסברים על השימוש
 
+### 5. מדיניות Null/Undefined
+- שימוש עקבי ב-`null` ו-`undefined` לפי הקשר
+- `Type | null` לשדות DB עם `nullable: true`
+- `Type?` לשדות אופציונליים בממשקים ו-DTOs
+- `Type | undefined` לשדות computed/transient
+- ראה מדיניות מלאה: [`NULL_UNDEFINED_POLICY.md`](./NULL_UNDEFINED_POLICY.md)
+
 ## קישורים רלוונטיים
 
 - מבנה Shared Package: `./SHARED_PACKAGE.md`
 - Validation: `./VALIDATION.md`
 - Constants: `./CONSTANTS.md`
+- **מדיניות Null/Undefined:** [`NULL_UNDEFINED_POLICY.md`](./NULL_UNDEFINED_POLICY.md)
 - דיאגרמות: [דיאגרמת חבילה משותפת (Shared)](../DIAGRAMS.md#דיאגרמת-חבילה-משותפת-shared)

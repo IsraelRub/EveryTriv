@@ -1,15 +1,13 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, UsePipes } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
 import { API_ROUTES, CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
 import type { GameData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import type { TokenPayload } from '@internal/types';
-
 import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
 import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
-import { SubmitAnswerDto, TriviaRequestDto, ValidateCustomDifficultyDto } from './dtos';
+import { GameHistoryQueryDto, SubmitAnswerDto, TriviaRequestDto, ValidateCustomDifficultyDto } from './dtos';
 import { GameService } from './game.service';
 
 @Controller(API_ROUTES.GAME.BASE)
@@ -21,8 +19,8 @@ export class GameController {
 	 * @param id Question identifier
 	 * @returns Trivia question details
 	 */
-	@Get(API_ROUTES.GAME.TRIVIA_BY_ID)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Get('trivia/:id')
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getQuestionById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -51,9 +49,8 @@ export class GameController {
 	 * @param body Answer submission data
 	 * @returns Answer result with correctness and scoring
 	 */
-	@Post(API_ROUTES.GAME.ANSWER)
-	@UsePipes(GameAnswerPipe)
-	async submitAnswer(@CurrentUserId() userId: string, @Body() body: SubmitAnswerDto) {
+	@Post('answer')
+	async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
 		try {
 			if (!body.questionId || !body.answer) {
 				throw new HttpException(ERROR_CODES.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
@@ -84,18 +81,16 @@ export class GameController {
 	 * @param body Trivia request parameters
 	 * @returns Generated trivia questions
 	 */
-	@Post(API_ROUTES.GAME.TRIVIA)
+	@Post('trivia')
 	@NoCache()
-	@UsePipes(TriviaRequestPipe)
-	async getTriviaQuestions(@CurrentUserId() userId: string, @Body() body: TriviaRequestDto) {
+	async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPipe) body: TriviaRequestDto) {
 		try {
 			const result = await this.gameService.getTriviaQuestion(
 				body.topic,
 				body.difficulty,
 				body.questionsPerRequest,
 				userId,
-				body.answerCount,
-				body.mappedDifficulty
+				body.answerCount
 			);
 
 			logger.apiCreate('game_trivia_questions', {
@@ -120,21 +115,26 @@ export class GameController {
 	/**
 	 * Get user's game history
 	 * @param userId Current user identifier
+	 * @param query Query parameters for pagination
 	 * @returns User's game history with statistics
 	 */
-	@Get(API_ROUTES.GAME.HISTORY)
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
-	async getGameHistory(@CurrentUserId() userId: string) {
+	@Get('history')
+	@Cache(CACHE_DURATION.LONG, 'game_history')
+	async getGameHistory(@CurrentUserId() userId: string, @Query() query: GameHistoryQueryDto) {
 		const startTime = Date.now();
 
 		try {
-			const result = await this.gameService.getUserGameHistory(userId);
+			const limit = query.limit ?? 20;
+			const offset = query.offset ?? 0;
+			const result = await this.gameService.getUserGameHistory(userId, limit, offset);
 
 			// Log API call for game history request
 			logger.apiRead('game_history', {
 				userId: userId,
 				totalGames: result.totalGames,
-				duration: Date.now() - startTime,
+				limit,
+				offset,
+				duration: calculateDuration(startTime),
 			});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
@@ -155,7 +155,7 @@ export class GameController {
 	 * @param body Game data to save
 	 * @returns Saved game history entry
 	 */
-	@Post(API_ROUTES.GAME.HISTORY)
+	@Post('history')
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
 		try {
 			// Validate required fields
@@ -188,7 +188,7 @@ export class GameController {
 	 * @param gameId Game identifier to delete
 	 * @returns Deletion result
 	 */
-	@Delete(API_ROUTES.GAME.HISTORY_BY_ID)
+	@Delete('history/:gameId')
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
 		try {
 			if (!gameId || gameId.trim().length === 0) {
@@ -219,7 +219,7 @@ export class GameController {
 	 * @param userId Current user identifier
 	 * @returns Clear operation result
 	 */
-	@Delete(API_ROUTES.GAME.HISTORY)
+	@Delete('history')
 	async clearGameHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.gameService.clearUserGameHistory(userId);
@@ -244,9 +244,8 @@ export class GameController {
 	 * @param body Custom difficulty validation data
 	 * @returns Validated custom difficulty data
 	 */
-	@Post(API_ROUTES.GAME.VALIDATE_CUSTOM)
-	@UsePipes(CustomDifficultyPipe)
-	async validateCustomDifficulty(@Body() body: ValidateCustomDifficultyDto) {
+	@Post('validate-custom')
+	async validateCustomDifficulty(@Body(CustomDifficultyPipe) body: ValidateCustomDifficultyDto) {
 		try {
 			// The CustomDifficultyPipe handles all validation logic
 			// This method simply returns the result from the pipe
@@ -269,9 +268,9 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Game statistics summary
 	 */
-	@Get(API_ROUTES.GAME.ADMIN.STATISTICS)
+	@Get('admin/statistics')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getGameStatistics(@CurrentUser() user: TokenPayload) {
 		try {
 			const statistics = await this.gameService.getAdminStatistics();
@@ -298,7 +297,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Clear operation result with deleted count
 	 */
-	@Delete(API_ROUTES.GAME.ADMIN.HISTORY_CLEAR_ALL)
+	@Delete('admin/history/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
 		try {
@@ -330,9 +329,9 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns All trivia questions from database
 	 */
-	@Get(API_ROUTES.GAME.ADMIN.TRIVIA)
+	@Get('admin/trivia')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload) {
 		try {
 			const result = await this.gameService.getAllTriviaQuestions();
@@ -358,7 +357,7 @@ export class GameController {
 	 * @param user Current admin user token payload
 	 * @returns Clear operation result with deleted count
 	 */
-	@Delete(API_ROUTES.GAME.ADMIN.TRIVIA_CLEAR_ALL)
+	@Delete('admin/trivia/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
 		try {
@@ -391,8 +390,8 @@ export class GameController {
 	 * @param id Game identifier
 	 * @returns Game details
 	 */
-	@Get(API_ROUTES.GAME.BY_ID)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Get(':id')
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getGameById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -405,7 +404,10 @@ export class GameController {
 			// Prevent matching reserved route names
 			const reservedRoutes = ['trivia', 'history', 'admin', 'answer', 'validate-custom'];
 			if (reservedRoutes.includes(normalizedId.toLowerCase())) {
-				throw new HttpException(`Invalid game ID. '${normalizedId}' is a reserved route name.`, HttpStatus.BAD_REQUEST);
+				throw new HttpException(
+					`${ERROR_CODES.INVALID_GAME_ID_FORMAT}. '${normalizedId}' is a reserved route name.`,
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const result = await this.gameService.getGameById(normalizedId);

@@ -261,7 +261,7 @@ export interface GameSessionStats {
   averageTimePerQuestion: number;
   correctStreak: number;
   maxStreak: number;
-  topicsPlayed?: TopicsPlayed;
+  topicsPlayed?: CountRecord;
   successRateByDifficulty?: DifficultyBreakdown;
   questionsAnswered: number;
   correctAnswers: number;

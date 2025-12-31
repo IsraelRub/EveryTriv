@@ -4,8 +4,7 @@ import { DifficultyLevel } from '@shared/constants';
 /**
  * HTTP response for submitting an answer
  */
-import type { GameDifficulty, MultiplayerRoom, Player, TriviaQuestionInput } from '@shared/types';
-
+import type { GameDifficulty, MultiplayerRoom, Player, TriviaQuestionCore } from '@shared/types';
 import type { BaseCacheEntry } from '@internal/types';
 
 /**
@@ -113,9 +112,9 @@ export interface TriviaQuestionMetadata {
 /**
  * Server-side trivia question input type
  * @type ServerTriviaQuestionInput
- * @description Alias for TriviaQuestionInput with DifficultyLevel constraint
+ * @description Alias for TriviaQuestionCore with DifficultyLevel constraint
  */
-export type ServerTriviaQuestionInput = TriviaQuestionInput<DifficultyLevel>;
+export type ServerTriviaQuestionInput = TriviaQuestionCore<DifficultyLevel>;
 
 /**
  * Cached question entry for provider-level caches (server-only)

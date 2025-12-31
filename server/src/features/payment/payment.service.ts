@@ -5,7 +5,7 @@
  * @description Service for handling payment operations (PayPal, Manual Credit, Payment History, Credit Purchase)
  * @used_by server/src/features/payment/payment.controller.ts
  */
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -29,15 +29,14 @@ import type {
 } from '@shared/types';
 import { generatePaymentIntentId, getErrorMessage, sanitizeCardNumber } from '@shared/utils';
 import { detectCardBrand, extractLastFourDigits, isCreditPurchaseOptionArray } from '@shared/utils/domain';
-
 import { PaymentHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules/cache';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalConfig } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
 import { isValidCardNumber } from '@internal/validation/domain';
-
 import { AppConfig } from '../../config/app.config';
+import type { PaymentMethodDetailsDto } from './dtos/payment.dto';
 
 @Injectable()
 export class PaymentService {
@@ -55,8 +54,6 @@ export class PaymentService {
 	 */
 	async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
 		try {
-			logger.paymentInfo('Getting credit purchase options');
-
 			const cachedOptions = await this.cacheService.get<CreditPurchaseOption[]>(
 				'credit_purchase_options',
 				isCreditPurchaseOptionArray
@@ -89,18 +86,12 @@ export class PaymentService {
 			this.ensureValidPaymentAmount(paymentData.amount);
 			const normalizedAmount = this.normalizeAmount(paymentData.amount);
 			const currency = (paymentData.currency ?? 'USD').toUpperCase();
-			const transactionId = this.generateTransactionId();
+			const transactionId = generatePaymentIntentId();
 			const method = paymentData.method ?? PaymentMethod.MANUAL_CREDIT;
 
-			this.ensureValidPaymentMethod(method);
+		this.ensureValidPaymentMethod(method);
 
-			logger.paymentInfo('Processing payment', {
-				userId,
-				paymentType: paymentData.type ?? 'unspecified',
-				paymentMethod: method,
-			});
-
-			paymentHistory = this.paymentHistoryRepository.create({
+		paymentHistory = this.paymentHistoryRepository.create({
 				userId,
 				amount: normalizedAmount,
 				currency,
@@ -120,15 +111,9 @@ export class PaymentService {
 				originalCurrency: currency,
 			};
 
-			await this.paymentHistoryRepository.save(paymentHistory);
-			logger.databaseCreate('payment_history', {
-				id: paymentHistory.transactionId,
-				userId,
-				amount: paymentData.amount,
-				paymentMethod: method,
-			});
+		await this.paymentHistoryRepository.save(paymentHistory);
 
-			const processingResult = await this.processPaymentByMethod(
+		const processingResult = await this.processPaymentByMethod(
 				userId,
 				paymentHistory,
 				paymentData,
@@ -139,22 +124,9 @@ export class PaymentService {
 
 			await this.paymentHistoryRepository.save(paymentHistory);
 
-			if (processingResult.status === PaymentStatus.COMPLETED) {
-				await this.handlePaymentSuccess(userId, paymentData);
-				logger.paymentInfo('Payment processed successfully', {
-					userId,
-					id: paymentHistory.transactionId,
-					amount: paymentData.amount,
-					paymentMethod: method,
-				});
-			} else {
-				logger.paymentInfo('Payment requires additional action', {
-					userId,
-					id: paymentHistory.transactionId,
-					status: processingResult.status,
-					paymentMethod: method,
-				});
-			}
+		if (processingResult.status === PaymentStatus.COMPLETED) {
+		} else {
+		}
 
 			return processingResult;
 		} catch (error) {
@@ -353,7 +325,7 @@ export class PaymentService {
 
 		if (details.expiryDate) {
 			const match = details.expiryDate.match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
-			if (match) {
+			if (match && match[1] != null && match[2] != null) {
 				return {
 					expiryMonth: parseInt(match[1], 10),
 					expiryYear: 2000 + parseInt(match[2], 10),
@@ -373,8 +345,6 @@ export class PaymentService {
 	 */
 	async getPaymentHistory(userId: string, limit: number = 10, offset: number = 0): Promise<PaymentHistoryEntity[]> {
 		try {
-			logger.paymentInfo('Getting payment history', { userId, limit, offset });
-
 			const payments = await this.paymentHistoryRepository.find({
 				where: { userId: userId },
 				order: { createdAt: 'DESC' },
@@ -403,8 +373,6 @@ export class PaymentService {
 	 */
 	async purchaseCredits(userId: string, optionId: string): Promise<PaymentResult & { balance?: CreditBalance }> {
 		try {
-			logger.paymentInfo('Purchasing credits', { userId, id: optionId });
-
 			const options = await this.getCreditPurchaseOptions();
 			const selectedOption = options.find(opt => opt.id === optionId);
 
@@ -442,16 +410,10 @@ export class PaymentService {
 			user.purchasedCredits = (user.purchasedCredits ?? 0) + creditsToAdd;
 			await this.userRepository.save(user);
 
-			// Invalidate credits cache
-			await this.cacheService.delete(`credits:balance:${userId}`);
+		// Invalidate credits cache
+		await this.cacheService.delete(`credits:balance:${userId}`);
 
-			logger.paymentInfo('Credits purchased successfully', {
-				userId,
-				credits: creditsToAdd,
-				id: paymentResult.transactionId,
-			});
-
-			const creditsBalance = user.credits ?? 0;
+		const creditsBalance = user.credits ?? 0;
 			const purchasedCredits = user.purchasedCredits ?? 0;
 			const freeQuestions = user.remainingFreeQuestions ?? 0;
 			const totalCredits = creditsBalance + purchasedCredits + freeQuestions;
@@ -482,36 +444,41 @@ export class PaymentService {
 	}
 
 	/**
-	 * Handle successful payment
-	 * @param userId User ID
-	 * @param paymentData Payment data
+	 * Builds ManualPaymentDetails from a PaymentMethodDetailsDto
+	 * @param dto Payment DTO containing card details
+	 * @returns ManualPaymentDetails object
+	 * @throws BadRequestException if required card details are missing
 	 */
-	private async handlePaymentSuccess(userId: string, paymentData: PaymentData): Promise<void> {
-		switch (paymentData.type) {
-			case 'credits_purchase':
-				// Credits purchase logic handled in purchaseCredits
-				break;
-			case 'one_time':
-				// Handle one-time payment
-				break;
-			default:
-				logger.paymentInfo('Unknown payment type', {
-					userId,
-					paymentType: paymentData.type,
-				});
+	buildManualPaymentDetails(dto: PaymentMethodDetailsDto): ManualPaymentDetails {
+		if (!dto.cardNumber || !dto.cvv) {
+			throw new BadRequestException(ERROR_CODES.CARD_DETAILS_REQUIRED);
 		}
+		const { month, year } = this.parseExpiryDate(dto.expiryDate);
+		return {
+			cardNumber: dto.cardNumber,
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: dto.cvv,
+			cardHolderName: dto.cardHolderName ?? '',
+			postalCode: dto.postalCode,
+			expiryDate: dto.expiryDate,
+		};
 	}
 
 	/**
-	 * Simulate payment processing
-	 * @param paymentData Payment data
-	 * @returns Payment success status
+	 * Parses expiry date string (MM/YY format) into month and year numbers
+	 * @param expiryDate Expiry date in MM/YY format (e.g., "12/25")
+	 * @returns Object with month (1-12) and year (2000-based)
 	 */
-	/**
-	 * Generate transaction ID
-	 * @returns Transaction ID
-	 */
-	private generateTransactionId(): string {
-		return generatePaymentIntentId();
+	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
+		if (!expiryDate) {
+			return { month: 0, year: 0 };
+		}
+
+		const [monthPart, yearPart] = expiryDate.split('/');
+		const month = parseInt(monthPart ?? '0', 10);
+		const year = 2000 + parseInt(yearPart ?? '0', 10);
+
+		return { month, year };
 	}
 }

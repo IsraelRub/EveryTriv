@@ -19,13 +19,13 @@ export class SubmitAnswerDto {
 	@MinLength(1)
 	questionId!: string;
 
-	@ApiProperty({ description: 'Selected answer index (0-based)', example: 2, minimum: 0, maximum: 3 })
+	@ApiProperty({ description: 'Selected answer index (0-based)', minimum: 0, maximum: 3 })
 	@IsInt()
 	@Min(0)
 	@Max(3)
 	answer!: number;
 
-	@ApiProperty({ description: 'Time spent on question in seconds', example: 15.5, minimum: 0 })
+	@ApiProperty({ description: 'Time spent on question in seconds', minimum: 0 })
 	@IsNumber()
 	@Min(0)
 	timeSpent!: number;

@@ -4,6 +4,23 @@
  * @module UIConstants
  * @description Central export point for all UI-related constants and configuration
  * @used_by client/components, client/src/hooks, client/services
+ *
+ * @methodology Constants Methodology
+ * @description Guidelines for using enums vs as const:
+ *
+ * **Enums** - Use for simple string literal values that need:
+ * - Type safety and autocomplete
+ * - Compatibility with cva (class-variance-authority)
+ * - Clear namespace (e.g., ButtonVariant.DEFAULT)
+ * - Action types, field types, variant types
+ *
+ * Examples: ButtonVariant, ToastVariant, ToastActionType, FormFieldType
+ *
+ * **as const** - Use for complex structures:
+ * - Nested objects (ROUTES, NAVIGATION_LINKS)
+ * - Arrays
+ * - Configuration objects with mixed values (SCORING_DEFAULTS)
+ * - Objects that need spread syntax
  */
 
 /**
@@ -13,20 +30,19 @@
 export * from './form.constants';
 
 /**
+ * Validation messages
+ * @description Client-specific validation error messages for UI components
+ */
+export * from './validation-messages.constants';
+
+/**
  * Animation constants
  * @description Animation configuration and performance settings
  */
 export * from './animation.constants';
 export * from './backgroundAnimation.constants';
 export * from './navigation.constants';
-export * from './footer.constants';
-export * from './auth.constants';
-
-/**
- * Avatar constants
- * @description Avatar component size definitions, styling constants, and configuration
- */
-export * from './avatar.constants';
+export * from './social.constants';
 
 /**
  * Payment UI constants

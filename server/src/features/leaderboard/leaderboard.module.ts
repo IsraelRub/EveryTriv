@@ -13,7 +13,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule } from '@internal/modules';
-
 import { AuthModule } from '../auth';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';

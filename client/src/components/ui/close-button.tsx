@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom';
-
 import { X } from 'lucide-react';
 
 import type { CloseButtonProps } from '@/types';
-
 import { cn } from '@/utils';
 
 /**

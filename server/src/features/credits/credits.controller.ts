@@ -8,12 +8,10 @@ import {
 	GameMode,
 	PaymentMethod,
 } from '@shared/constants';
-import type { ManualPaymentDetails } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { Cache, CurrentUserId, NoCache } from '../../common';
+import { PaymentService } from '../payment/payment.service';
 import { CreditsService } from './credits.service';
 import {
 	CanPlayDto,
@@ -25,14 +23,17 @@ import {
 
 @Controller(API_ROUTES.CREDITS.BASE)
 export class CreditsController {
-	constructor(private readonly creditsService: CreditsService) {}
+	constructor(
+		private readonly creditsService: CreditsService,
+		private readonly paymentService: PaymentService
+	) {}
 
 	/**
 	 * Get user credit balance
 	 * @param userId Current user identifier
 	 * @returns User credit balance
 	 */
-	@Get(API_ROUTES.CREDITS.BALANCE)
+	@Get('balance')
 	@NoCache()
 	async getCreditBalance(@CurrentUserId() userId: string | null) {
 		if (!userId) {
@@ -60,8 +61,8 @@ export class CreditsController {
 	 * Get available credit packages
 	 * @returns Available credit packages
 	 */
-	@Get(API_ROUTES.CREDITS.PACKAGES)
-	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 1 hour - credit packages rarely change
+	@Get('packages')
+	@Cache(CACHE_DURATION.VERY_LONG)
 	async getCreditPackages() {
 		try {
 			const result = this.creditsService.getCreditPackages();
@@ -84,8 +85,8 @@ export class CreditsController {
 	 * @param query Can play query parameters
 	 * @returns Can play result
 	 */
-	@Get(API_ROUTES.CREDITS.CAN_PLAY)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Get('can-play')
+	@Cache(CACHE_DURATION.SHORT)
 	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
@@ -125,7 +126,7 @@ export class CreditsController {
 	 * @param body Credits deduction data
 	 * @returns Credits deduction result
 	 */
-	@Post(API_ROUTES.CREDITS.DEDUCT)
+	@Post('deduct')
 	async deductCredits(
 		@CurrentUserId() userId: string | null,
 		@Body() body: DeductCreditsDto,
@@ -190,8 +191,8 @@ export class CreditsController {
 	 * @param query Credit history query parameters
 	 * @returns Credit transaction history
 	 */
-	@Get(API_ROUTES.CREDITS.HISTORY)
-	@Cache(CACHE_DURATION.SHORT + 90) // Cache for 2 minutes
+	@Get('history')
+	@Cache(CACHE_DURATION.SHORT + 90)
 	async getCreditHistory(@CurrentUserId() userId: string | null, @Query() query: GetCreditHistoryDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
@@ -228,7 +229,7 @@ export class CreditsController {
 	 * @param body Credits purchase data
 	 * @returns Credits purchase result
 	 */
-	@Post(API_ROUTES.CREDITS.PURCHASE)
+	@Post('purchase')
 	async purchaseCredits(@CurrentUserId() userId: string | null, @Body() body: PurchaseCreditsDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
@@ -239,7 +240,7 @@ export class CreditsController {
 			}
 
 			const manualPayment =
-				body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.buildManualPaymentDetails(body) : undefined;
+				body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.paymentService.buildManualPaymentDetails(body) : undefined;
 			const result = await this.creditsService.purchaseCredits(userId, {
 				packageId: body.packageId,
 				paymentMethod: body.paymentMethod,
@@ -271,7 +272,7 @@ export class CreditsController {
 	 * @param body Credit purchase confirmation data
 	 * @returns Purchase confirmation result
 	 */
-	@Post(API_ROUTES.CREDITS.CONFIRM_PURCHASE)
+	@Post('confirm-purchase')
 	async confirmCreditPurchase(@CurrentUserId() userId: string | null, @Body() body: ConfirmCreditPurchaseDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
@@ -302,29 +303,4 @@ export class CreditsController {
 		}
 	}
 
-	private buildManualPaymentDetails(body: PurchaseCreditsDto): ManualPaymentDetails {
-		const { month, year } = this.parseExpiryDate(body.expiryDate);
-
-		return {
-			cardNumber: body.cardNumber ?? '',
-			expiryMonth: month,
-			expiryYear: year,
-			cvv: body.cvv ?? '',
-			cardHolderName: body.cardHolderName ?? '',
-			postalCode: body.postalCode,
-			expiryDate: body.expiryDate,
-		};
-	}
-
-	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
-		if (!expiryDate) {
-			return { month: 0, year: 0 };
-		}
-
-		const [monthPart, yearPart] = expiryDate.split('/');
-		const month = parseInt(monthPart ?? '0', 10);
-		const year = 2000 + parseInt(yearPart ?? '0', 10);
-
-		return { month, year };
-	}
 }

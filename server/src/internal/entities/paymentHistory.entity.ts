@@ -1,9 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
-
 import type { PaymentHistoryMetadata } from '@internal/types';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 

@@ -5,4 +5,3 @@
  */
 
 export * from './logger.types';
-export * from './storage.types';

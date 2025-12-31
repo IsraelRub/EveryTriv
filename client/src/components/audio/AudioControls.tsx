@@ -1,27 +1,23 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-
 import { ChevronDown, HeadphoneOff, Headphones, Volume2, VolumeX } from 'lucide-react';
 
 import { mergeUserPreferences } from '@shared/utils';
-
 import { AudioKey, ButtonSize, ButtonVariant, CLIENT_STORAGE_KEYS } from '@/constants';
-
 import {
 	Button,
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	Slider,
 } from '@/components';
-
 import { useUpdateUserPreferences, useUserProfile } from '@/hooks';
-
-import { audioService, storageService } from '@/services';
-
+import { audioService, clientLogger as logger, storageService } from '@/services';
 import type { AudioControlsProps, RootState } from '@/types';
+import { cn } from '@/utils';
 
 /**
  * Audio Controls Component
@@ -52,10 +48,10 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 				const storedSoundEnabled = await storageService.getBoolean(CLIENT_STORAGE_KEYS.AUDIO_SOUND_ENABLED);
 				const storedMusicEnabled = await storageService.getBoolean(CLIENT_STORAGE_KEYS.AUDIO_MUSIC_ENABLED);
 
-				if (storedSoundEnabled.success && typeof storedSoundEnabled.data === 'boolean') {
+				if (storedSoundEnabled.success && storedSoundEnabled.data !== undefined) {
 					setLocalSoundEnabled(storedSoundEnabled.data);
 				}
-				if (storedMusicEnabled.success && typeof storedMusicEnabled.data === 'boolean') {
+				if (storedMusicEnabled.success && storedMusicEnabled.data !== undefined) {
 					setLocalMusicEnabled(storedMusicEnabled.data);
 				}
 			}
@@ -78,7 +74,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 		const loadAudioSettings = async () => {
 			// Load muted state from storage first (storage is source of truth)
 			const storedMuted = await storageService.getBoolean(CLIENT_STORAGE_KEYS.AUDIO_MUTED);
-			if (storedMuted.success && typeof storedMuted.data === 'boolean') {
+			if (storedMuted.success && storedMuted.data !== undefined) {
 				// Storage has a value - use it as source of truth
 				setIsMuted(storedMuted.data);
 				// Sync audio service with storage value
@@ -101,7 +97,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 
 			// Load volume from storage
 			const storedVolume = await storageService.getNumber(CLIENT_STORAGE_KEYS.AUDIO_VOLUME);
-			if (storedVolume.success && typeof storedVolume.data === 'number' && Number.isFinite(storedVolume.data)) {
+			if (storedVolume.success && storedVolume.data !== undefined) {
 				setVolume(storedVolume.data);
 				audioService.setMasterVolume(storedVolume.data);
 			} else {
@@ -118,41 +114,28 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 
 	// Sync audio service with user preferences (authenticated) or local preferences (unauthenticated)
 	useEffect(() => {
-		if (isAuthenticated && preferences) {
-			const mergedPreferences = mergeUserPreferences(null, preferences);
-			audioService.setUserPreferences(mergedPreferences);
+		// Get preferences based on authentication status
+		const currentPreferences = isAuthenticated && preferences ? preferences : { soundEnabled, musicEnabled };
+		const mergedPreferences = mergeUserPreferences(null, currentPreferences);
+		audioService.setUserPreferences(mergedPreferences);
 
-			// Start background music if user already interacted, music is enabled, and not muted
-			if (!isMuted && mergedPreferences.musicEnabled) {
-				audioService.markUserInteracted();
-				// Use requestAnimationFrame to ensure preferences are updated first
-				requestAnimationFrame(() => {
-					audioService.play(AudioKey.BACKGROUND_MUSIC);
-				});
-			}
-		} else if (!isAuthenticated) {
-			// For unauthenticated users, sync with local state
-			const localPreferences = {
-				soundEnabled: soundEnabled,
-				musicEnabled: musicEnabled,
-			};
-			const mergedPreferences = mergeUserPreferences(null, localPreferences);
-			audioService.setUserPreferences(mergedPreferences);
-
-			// Start background music if user already interacted, music is enabled, and not muted
-			if (!isMuted && mergedPreferences.musicEnabled) {
-				audioService.markUserInteracted();
-				// Use requestAnimationFrame to ensure preferences are updated first
-				requestAnimationFrame(() => {
-					audioService.play(AudioKey.BACKGROUND_MUSIC);
-				});
-			}
+		// Start background music if user already interacted, music is enabled, and not muted
+		if (!isMuted && mergedPreferences.musicEnabled) {
+			audioService.markUserInteracted();
+			// Use requestAnimationFrame to ensure preferences are updated first
+			requestAnimationFrame(() => {
+				audioService.play(AudioKey.BACKGROUND_MUSIC);
+			});
 		}
 	}, [preferences, isAuthenticated, soundEnabled, musicEnabled, isMuted]);
 
 	const handleVolumeChange = useCallback(
 		async (values: number[]) => {
-			const newVolume = values[0];
+		const newVolume = values[0];
+		if (newVolume == null) {
+			logger.mediaWarn('Volume change received undefined value');
+			return;
+		}
 			setVolume(newVolume);
 			audioService.setMasterVolume(newVolume);
 
@@ -317,9 +300,8 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 		[preferences, updatePreferences, isMuted, isAuthenticated]
 	);
 
-	// Determine icons based on preferences
-	const MusicIcon = musicEnabled ? Headphones : HeadphoneOff;
-	const VolumeIcon = soundEnabled ? Volume2 : VolumeX;
+	// Determine main icon based on mute state
+	const MainVolumeIcon = isMuted ? VolumeX : Volume2;
 
 	// Simple button without slider
 	if (!showSlider) {
@@ -338,17 +320,19 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 
 	// Full controls with split button and dropdown
 	return (
-		<div className={`inline-flex items-center rounded-full bg-primary/10 overflow-hidden ${className}`}>
-			{/* Main button - wider part */}
+		<div className={cn('inline-flex items-center rounded-full bg-primary/10 overflow-hidden', className)}>
+			{/* Main button - mute/unmute toggle */}
 			<Button
 				variant={ButtonVariant.GHOST}
-				onClick={handleToggleAll}
-				className='h-8 rounded-none px-3 hover:bg-primary/20'
-				title={soundEnabled && musicEnabled ? 'Mute All' : 'Unmute All'}
+				onClick={handleMuteToggle}
+				className={cn('h-8 rounded-none px-3 hover:bg-primary/20 relative', isMuted && 'opacity-60')}
+				title={isMuted ? 'Unmute audio' : 'Mute audio'}
 			>
 				<div className='flex items-center gap-1.5'>
-					<MusicIcon className='h-4 w-4' />
-					<VolumeIcon className='h-4 w-4' />
+					<MainVolumeIcon className={cn('h-4 w-4', isMuted && 'text-muted-foreground')} />
+					{isMuted && (
+						<span className='absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive border border-background' />
+					)}
 				</div>
 			</Button>
 
@@ -362,7 +346,7 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 						variant={ButtonVariant.GHOST}
 						size={ButtonSize.ICON}
 						className='h-8 w-8 rounded-none hover:bg-primary/20 shrink-0'
-						title='Audio Settings'
+						title='Audio settings'
 					>
 						<ChevronDown className='h-4 w-4' />
 					</Button>
@@ -387,14 +371,58 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 
 						<DropdownMenuSeparator />
 
+						{/* Toggle All Button */}
+						<DropdownMenuItem
+							onClick={() => {
+								handleToggleAll();
+								setIsOpen(false);
+							}}
+							className='cursor-pointer'
+						>
+							<div className='flex items-center justify-between w-full'>
+								<span className='text-sm font-medium'>
+									{soundEnabled && musicEnabled ? 'Disable All Audio' : 'Enable All Audio'}
+								</span>
+								<div className='flex items-center gap-1.5'>
+									{soundEnabled && musicEnabled ? (
+										<>
+											<Headphones className='h-3.5 w-3.5 text-muted-foreground' />
+											<Volume2 className='h-3.5 w-3.5 text-muted-foreground' />
+										</>
+									) : (
+										<>
+											<HeadphoneOff className='h-3.5 w-3.5 text-muted-foreground' />
+											<VolumeX className='h-3.5 w-3.5 text-muted-foreground' />
+										</>
+									)}
+								</div>
+							</div>
+						</DropdownMenuItem>
+
+						<DropdownMenuSeparator />
+
 						{/* Sound Effects Toggle */}
 						<DropdownMenuCheckboxItem checked={soundEnabled} onCheckedChange={handleSoundEnabledChange}>
-							Sound Effects
+							<div className='flex items-center justify-between w-full'>
+								<span>Sound Effects</span>
+								{soundEnabled ? (
+									<Volume2 className='h-3.5 w-3.5 text-muted-foreground ml-2' />
+								) : (
+									<VolumeX className='h-3.5 w-3.5 text-muted-foreground ml-2' />
+								)}
+							</div>
 						</DropdownMenuCheckboxItem>
 
 						{/* Music Toggle */}
 						<DropdownMenuCheckboxItem checked={musicEnabled} onCheckedChange={handleMusicEnabledChange}>
-							Music
+							<div className='flex items-center justify-between w-full'>
+								<span>Music</span>
+								{musicEnabled ? (
+									<Headphones className='h-3.5 w-3.5 text-muted-foreground ml-2' />
+								) : (
+									<HeadphoneOff className='h-3.5 w-3.5 text-muted-foreground ml-2' />
+								)}
+							</div>
 						</DropdownMenuCheckboxItem>
 					</div>
 				</DropdownMenuContent>

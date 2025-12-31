@@ -1,17 +1,11 @@
 import { useSelector } from 'react-redux';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ERROR_CODES } from '@shared/constants';
-import type { BasicUser, UpdateUserProfileData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
-import { clientLogger as logger, userService } from '@/services';
-
+import { defaultValidators } from '@shared/constants';
+import type { UpdateUserProfileData } from '@shared/types';
+import { userService } from '@/services';
 import type { RootState } from '@/types';
-
-import { setAvatar, updateUserProfile } from '@/redux/slices';
-
+import { setAvatar } from '@/redux/slices';
 import { useAppDispatch } from './useRedux';
 
 /**
@@ -25,21 +19,14 @@ export const useUpdateUserProfile = () => {
 	return useMutation({
 		mutationFn: (data: UpdateUserProfileData) => userService.updateUserProfile(data),
 		onSuccess: profileResponse => {
-			// Extract user data from profile response for Redux
-			const profile = profileResponse.profile;
-			const userData: Partial<BasicUser> = {
-				id: profile.id,
-				email: profile.email,
-				role: profile.role,
-			};
-			dispatch(updateUserProfile(userData));
 			// Update avatar ID in Redux if present
-			if (profile.avatar && typeof profile.avatar === 'number' && Number.isFinite(profile.avatar)) {
-				dispatch(setAvatar(profile.avatar));
+			if (profileResponse.profile?.avatar && defaultValidators.number(profileResponse.profile.avatar)) {
+				dispatch(setAvatar(profileResponse.profile.avatar));
 			}
 			// Update query cache directly to ensure immediate UI update
 			queryClient.setQueryData(userKeys.profile(), profileResponse);
 			// Invalidate user-related queries to ensure fresh data on next fetch
+			// This will trigger useCurrentUser to refetch and update Redux via App.tsx
 			queryClient.invalidateQueries({ queryKey: userKeys.all });
 		},
 	});
@@ -58,12 +45,7 @@ export const useSetAvatar = () => {
 		onSuccess: profileResponse => {
 			// Extract avatar from profile response for Redux
 			if (!profileResponse || !profileResponse.profile) {
-				const error = new Error(
-					!profileResponse ? ERROR_CODES.PROFILE_RESPONSE_MISSING : ERROR_CODES.PROFILE_DATA_MISSING
-				);
-				logger.userError('Invalid profile response from setAvatar', {
-					error: getErrorMessage(error),
-				});
+				// Service already logs validation errors
 				return;
 			}
 			const profile = profileResponse.profile;

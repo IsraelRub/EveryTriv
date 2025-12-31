@@ -1,16 +1,14 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 
-import { AlertCircle, Loader2 } from 'lucide-react';
-
-import { getErrorMessage } from '@shared/utils';
-
-import { AudioKey, ButtonSize, ButtonVariant, ROUTES, VariantBase } from '@/constants';
-
+import { getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { AudioKey, ButtonSize, ButtonVariant, ROUTES, SpinnerSize, SpinnerVariant, VALIDATION_MESSAGES, VariantBase } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
 	Button,
+	Spinner,
 	Card,
 	CardContent,
 	CardDescription,
@@ -20,11 +18,9 @@ import {
 	Label,
 	Separator,
 } from '@/components';
-
 import { useAudio, useLogin, useModalRoute } from '@/hooks';
-
 import { authService } from '@/services';
-
+import { cn } from '@/utils';
 import { validateEmailFormat } from '@/utils/validation';
 
 /**
@@ -49,26 +45,31 @@ export function LoginView() {
 
 	const isFormValid = (): boolean => {
 		const emailValidation = validateEmailFormat(email);
-		return emailValidation.isValid && password.trim().length > 0;
+		return emailValidation.isValid && isNonEmptyString(password);
 	};
 
 	const validateField = (name: string, value: string): string | null => {
-		if (name === 'email') {
-			if (!value.trim()) return 'Email is required';
-			if (!value.includes('@')) return 'Please enter a valid email address';
-		}
-		if (name === 'password') {
-			if (!value.trim()) return 'Password is required';
+		switch (name) {
+			case 'email':
+				if (!value.trim()) return VALIDATION_MESSAGES.EMAIL_REQUIRED;
+				if (!value.includes('@')) return VALIDATION_MESSAGES.EMAIL_INVALID;
+				break;
+			case 'password':
+				if (!value.trim()) return VALIDATION_MESSAGES.PASSWORD_REQUIRED;
+				break;
 		}
 		return null;
 	};
 
 	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
-		if (name === 'email') {
-			setEmail(value);
-		} else if (name === 'password') {
-			setPassword(value);
+		switch (name) {
+			case 'email':
+				setEmail(value);
+				break;
+			case 'password':
+				setPassword(value);
+				break;
 		}
 		setError(null);
 
@@ -154,7 +155,7 @@ export function LoginView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='email'
-							className={fieldErrors.email ? 'border-destructive' : ''}
+							className={cn(fieldErrors.email && 'border-destructive')}
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
@@ -184,7 +185,7 @@ export function LoginView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='current-password'
-							className={fieldErrors.password ? 'border-destructive' : ''}
+							className={cn(fieldErrors.password && 'border-destructive')}
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
@@ -197,7 +198,7 @@ export function LoginView() {
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
-								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+								<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 								Signing in...
 							</>
 						) : (

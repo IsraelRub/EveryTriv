@@ -10,11 +10,10 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { ClientLogsController, MiddlewareMetricsController } from '@internal/controllers';
 import { BulkOperationsMiddleware, DecoratorAwareMiddleware, RateLimitMiddleware } from '@internal/middleware';
 import { StorageModule } from '@internal/modules';
-
 import { AppController } from './app.controller';
 import { GlobalExceptionFilter } from './common/globalException.filter';
 import { AuthGuard, RolesGuard } from './common/guards';
@@ -30,6 +29,7 @@ import {
 	CacheModule,
 	CreditsModule,
 	GameModule,
+	LeaderboardModule,
 	MultiplayerModule,
 	PaymentModule,
 	UserModule,
@@ -51,6 +51,7 @@ import { RedisModule } from './internal/modules/redis.module';
 		// Feature Modules - Direct imports instead of TriviaModule
 		AuthModule,
 		GameModule,
+		LeaderboardModule,
 		MultiplayerModule,
 		AnalyticsModule,
 		CacheModule,

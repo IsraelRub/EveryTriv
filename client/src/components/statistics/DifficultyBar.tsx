@@ -1,6 +1,6 @@
 import { Progress } from '@/components';
-
 import type { DifficultyBarProps } from '@/types';
+import { cn } from '@/utils';
 
 export function DifficultyBar({ difficulty, successRate, gamesPlayed, color, globalSuccessRate }: DifficultyBarProps) {
 	const difference = globalSuccessRate !== undefined ? successRate - globalSuccessRate : undefined;
@@ -17,9 +17,10 @@ export function DifficultyBar({ difficulty, successRate, gamesPlayed, color, glo
 							You: {Math.round(successRate)}% | Avg: {Math.round(globalSuccessRate)}%
 							{difference !== undefined && (
 								<span
-									className={`ml-1 ${
+									className={cn(
+										'ml-1',
 										isAboveAverage ? 'text-green-500' : isBelowAverage ? 'text-red-500' : 'text-muted-foreground'
-									}`}
+									)}
 								>
 									({isAboveAverage ? '+' : ''}
 									{Math.round(difference)}%)
@@ -34,7 +35,7 @@ export function DifficultyBar({ difficulty, successRate, gamesPlayed, color, glo
 					)}
 				</div>
 			</div>
-			<Progress value={successRate} className={`h-2 ${color}`} />
+			<Progress value={successRate} className={cn('h-2', color)} />
 		</div>
 	);
 }

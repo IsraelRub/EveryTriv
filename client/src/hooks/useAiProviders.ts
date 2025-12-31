@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
 import { adminService } from '@/services';
 
 /**
@@ -17,8 +18,8 @@ export const useAiProviderStats = () => {
 	return useQuery({
 		queryKey: ['aiProviderStats'],
 		queryFn: () => adminService.getAiProviderStats(),
-		staleTime: 2 * 60 * 1000, // 2 minutes - stats change frequently
-		gcTime: 5 * 60 * 1000, // 5 minutes
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
 	});
 };
 
@@ -30,8 +31,8 @@ export const useAiProviderHealth = () => {
 	return useQuery({
 		queryKey: ['aiProviderHealth'],
 		queryFn: () => adminService.getAiProviderHealth(),
-		staleTime: 30 * 1000, // 30 seconds - health changes frequently
-		gcTime: 2 * 60 * 1000, // 2 minutes
-		refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+		staleTime: 30 * 1000,
+		gcTime: TIME_PERIODS_MS.TWO_MINUTES,
+		refetchInterval: 30 * 1000,
 	});
 };

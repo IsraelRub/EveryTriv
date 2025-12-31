@@ -2,9 +2,8 @@
  * Groq Response Parser
  * Parser for Groq API responses
  */
-import { ERROR_CODES, ERROR_MESSAGES } from '@shared/constants';
-
-import { LLMResponseStatus } from '@internal/constants';
+import { ERROR_CODES, ERROR_MESSAGES, LLMResponseStatus } from '@shared/constants';
+import { isRecord } from '@shared/utils';
 import type { LLMResponse, LLMTriviaResponse, TriviaLLMJsonPayload } from '@internal/types';
 import { createValidationError } from '@internal/utils';
 
@@ -23,7 +22,11 @@ export class GroqResponseParser {
 		if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
 			throw createValidationError(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE, 'string');
 		}
-		const content = data.choices[0].message.content;
+		const firstChoice = data.choices[0];
+		if (firstChoice == null) {
+			throw createValidationError(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE, 'string');
+		}
+		const content = firstChoice.message.content;
 		return this.parseLLMContentToTriviaResponse(content, expectedAnswerCount);
 	}
 
@@ -67,11 +70,7 @@ export class GroqResponseParser {
 		let parsed: Record<string, unknown>;
 		try {
 			const result = JSON.parse(content);
-			if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
-				parsed = result;
-			} else {
-				parsed = {};
-			}
+			parsed = isRecord(result) ? result : {};
 		} catch {
 			throw createValidationError(`${this.providerName} response is not valid JSON`, 'string');
 		}
@@ -163,6 +162,7 @@ export class GroqResponseParser {
 		return normalized;
 	}
 
+	// The parser, not the prompt, owns ASCII normalization so downstream systems stay deterministic.
 	private normalizeContentQuotes(content: string): { normalizedContent: string; replacements: number } {
 		let replacements = 0;
 		const normalizedContent = content.replace(SMART_DOUBLE_QUOTES_REGEX, () => {

@@ -14,7 +14,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components';
-
 import type { ConfirmClearDialogProps } from '@/types';
 
 /**

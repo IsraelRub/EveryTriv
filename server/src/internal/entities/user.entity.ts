@@ -2,9 +2,7 @@ import { Column, Entity, Index } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
 import type { UserPreferences } from '@shared/types';
-
 import type { Achievement } from '@internal/types';
-
 import { BaseEntity } from './base.entity';
 
 @Entity('users')
@@ -24,9 +22,6 @@ export class UserEntity extends BaseEntity {
 
 	@Column({ name: 'last_name', nullable: true })
 	lastName?: string;
-
-	@Column('int', { nullable: true })
-	avatar?: number;
 
 	@Column('int', { default: 100 })
 	credits: number = 100;

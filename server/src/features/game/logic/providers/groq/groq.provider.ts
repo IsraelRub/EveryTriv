@@ -2,11 +2,19 @@
  * Groq Trivia Provider
  * Supports various Groq models (Llama, GPT-OSS, Mixtral, Gemma) through a single API
  */
-import { DifficultyLevel, ERROR_CODES, ERROR_MESSAGES, GROQ_DEFAULT_MODEL, VALIDATION_CONFIG } from '@shared/constants';
+import {
+	DifficultyLevel,
+	ERROR_CODES,
+	ERROR_MESSAGES,
+	GROQ_DEFAULT_MODEL,
+	GROQ_DEFAULT_MODEL_CONFIG,
+	GROQ_DEFAULT_REQUESTS_PER_MINUTE,
+	GROQ_DEFAULT_TOKENS_PER_MINUTE,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type { TriviaQuestion, TriviaQuestionDetailsMetadata } from '@shared/types';
-import { generateQuestionId, getErrorMessage, shuffle } from '@shared/utils';
-import { extractCustomDifficultyText, isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
-
+import { calculateDuration, generateQuestionId, getErrorMessage, shuffle } from '@shared/utils';
+import { extractCustomDifficultyText, isCustomDifficulty } from '@shared/validation';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	AIProviderInstance,
@@ -15,8 +23,7 @@ import type {
 	ProviderTriviaGenerationResult,
 } from '@internal/types';
 import { createServerError } from '@internal/utils';
-
-import { PromptTemplates } from '../prompts';
+import { generateTriviaQuestion } from '../prompts';
 import { GroqApiClient } from './groq.apiClient';
 import { GroqResponseParser } from './groq.responseParser';
 
@@ -40,10 +47,10 @@ export class GroqTriviaProvider {
 			version: '1.0',
 			capabilities: ['trivia-generation'],
 			rateLimit: {
-				requestsPerMinute: 30,
-				tokensPerMinute: 30000,
+				requestsPerMinute: GROQ_DEFAULT_REQUESTS_PER_MINUTE,
+				tokensPerMinute: GROQ_DEFAULT_TOKENS_PER_MINUTE,
 			},
-			costPerToken: 0,
+			costPerToken: GROQ_DEFAULT_MODEL_CONFIG?.cost ?? 0,
 			maxTokens: 8192,
 			lastUpdated: new Date(),
 		},
@@ -66,12 +73,12 @@ export class GroqTriviaProvider {
 
 		try {
 			// Get answer count with default value and clamp to valid range (3-5)
-			const answerCount = params.answerCount ?? VALIDATION_CONFIG.limits.ANSWER_COUNT.DEFAULT;
+			const answerCount = params.answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT;
 			const actualAnswerCount = Math.max(
-				VALIDATION_CONFIG.limits.ANSWER_COUNT.MIN,
-				Math.min(VALIDATION_CONFIG.limits.ANSWER_COUNT.MAX, answerCount)
+				VALIDATION_COUNT.ANSWER_COUNT.MIN,
+				Math.min(VALIDATION_COUNT.ANSWER_COUNT.MAX, answerCount)
 			);
-			const prompt = PromptTemplates.generateTriviaQuestion({
+			const prompt = generateTriviaQuestion({
 				...params,
 				answerCount: actualAnswerCount,
 				isCustomDifficulty: isCustomDifficulty(params.difficulty),
@@ -102,8 +109,10 @@ export class GroqTriviaProvider {
 				});
 			}
 
+			const { questions } = data;
+
 			// Check if AI returned null response (could not generate question)
-			if (!data.questions || data.questions.length === 0) {
+			if (!questions || questions.length === 0) {
 				logger.providerError(this.name, 'AI could not generate question', {
 					topic: params.topic,
 					difficulty: params.difficulty,
@@ -115,7 +124,10 @@ export class GroqTriviaProvider {
 			}
 
 			// Create trivia question object
-			const firstQuestion = data.questions[0];
+			const firstQuestion = questions[0];
+			if (!firstQuestion) {
+				throw createServerError('AI could not generate question', new Error(ERROR_CODES.AI_RETURNED_EMPTY_RESPONSE));
+			}
 			const question: TriviaQuestion = {
 				id: generateQuestionId(),
 				topic: params.topic,
@@ -164,10 +176,10 @@ export class GroqTriviaProvider {
 			}
 			question.correctAnswerIndex = correctAnswerIndex;
 
-			const mappedDifficulty = params.mappedDifficulty ?? toDifficultyLevel(params.difficulty);
-			question.metadata = this.applyMetadata(question.metadata, mappedDifficulty, params.difficulty);
+			const resolvedMappedDifficulty = this.resolveMappedDifficulty(params.difficulty);
+			question.metadata = this.applyMetadata(question.metadata, resolvedMappedDifficulty, params.difficulty);
 
-			const responseTime = Date.now() - startTime;
+			const responseTime = calculateDuration(startTime);
 			logger.providerSuccess(this.name, {
 				topic: params.topic,
 				difficulty: params.difficulty,
@@ -175,7 +187,7 @@ export class GroqTriviaProvider {
 			});
 			return {
 				question,
-				mappedDifficulty,
+				mappedDifficulty: resolvedMappedDifficulty,
 			};
 		} catch (error) {
 			logger.providerError(this.name, ERROR_MESSAGES.provider.AI_GENERATION_FAILED, {
@@ -187,6 +199,23 @@ export class GroqTriviaProvider {
 			// Re-throw the error instead of returning fallback question
 			throw createServerError('generate trivia question', error);
 		}
+	}
+
+	private resolveMappedDifficulty(requestedDifficulty: string): DifficultyLevel {
+		const normalized = requestedDifficulty.trim().toLowerCase();
+		if (normalized === DifficultyLevel.EASY) {
+			return DifficultyLevel.EASY;
+		}
+
+		if (normalized === DifficultyLevel.MEDIUM) {
+			return DifficultyLevel.MEDIUM;
+		}
+
+		if (normalized === DifficultyLevel.HARD) {
+			return DifficultyLevel.HARD;
+		}
+
+		return DifficultyLevel.MEDIUM;
 	}
 
 	private applyMetadata(

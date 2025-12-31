@@ -5,6 +5,7 @@
  * @description Client-side email validation functions
  */
 import type { BaseValidationResult } from '@shared/types';
+import { VALIDATION_MESSAGES } from '@/constants';
 
 /**
  * Validates email format (basic check)
@@ -17,9 +18,9 @@ export function validateEmailFormat(email: string): BaseValidationResult {
 	const errors: string[] = [];
 
 	if (!email || !email.trim()) {
-		errors.push('Email is required');
+		errors.push(VALIDATION_MESSAGES.EMAIL_REQUIRED);
 	} else if (!email.includes('@')) {
-		errors.push('Please enter a valid email address');
+		errors.push(VALIDATION_MESSAGES.EMAIL_INVALID);
 	}
 
 	return {

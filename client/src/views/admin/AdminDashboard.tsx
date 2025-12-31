@@ -1,14 +1,11 @@
 import { useState } from 'react';
-
 import { motion } from 'framer-motion';
-import { Activity, BarChart3, GamepadIcon, RefreshCw, Settings, TrendingUp, Trophy, Users } from 'lucide-react';
+import { Activity, BarChart3, GamepadIcon, Settings, TrendingUp, Trophy, Users } from 'lucide-react';
 
 import { LeaderboardPeriod, ProviderStatus as ProviderStatusEnum, TimePeriod } from '@shared/constants';
-import { isRecord, roundForDisplay } from '@shared/utils';
+import { formatForDisplay, isRecord } from '@shared/utils';
 import { isGameDifficulty, isLeaderboardPeriod } from '@shared/validation';
-
-import { ButtonVariant, StatCardVariant, TextColor, VariantBase } from '@/constants';
-
+import { ButtonVariant, SpinnerSize, SpinnerVariant, StatCardVariant, TextColor, VariantBase } from '@/constants';
 import {
 	Badge,
 	Button,
@@ -21,6 +18,7 @@ import {
 	DistributionChart,
 	GameStatisticsCard,
 	LeaderboardTable,
+	Spinner,
 	ManagementActions,
 	PieChart,
 	Skeleton,
@@ -34,7 +32,6 @@ import {
 	UserSearchSection,
 	UsersTable,
 } from '@/components';
-
 import {
 	useAiProviderHealth,
 	useAiProviderStats,
@@ -52,6 +49,7 @@ import {
 	usePopularTopics,
 	useRealTimeAnalytics,
 } from '@/hooks';
+import { cn } from '@/utils';
 
 export function AdminDashboard() {
 	const { data: globalStats, isLoading: statsLoading, refetch } = useGlobalStats();
@@ -79,7 +77,7 @@ export function AdminDashboard() {
 		{
 			icon: Trophy,
 			label: 'Success Rate',
-			value: `${roundForDisplay(globalStats?.successRate ?? 0)}%`,
+			value: `${formatForDisplay(globalStats?.successRate ?? 0)}%`,
 			color: TextColor.BLUE_500,
 		},
 		{
@@ -91,13 +89,13 @@ export function AdminDashboard() {
 		{
 			icon: Activity,
 			label: 'Average Game Time',
-			value: `${roundForDisplay((globalStats?.averageGameTime ?? 0) / 60)}m`,
+			value: `${formatForDisplay((globalStats?.averageGameTime ?? 0) / 60)}m`,
 			color: TextColor.YELLOW_500,
 		},
 		{
 			icon: TrendingUp,
 			label: 'Consistency',
-			value: `${roundForDisplay(globalStats?.consistency ?? 0)}%`,
+			value: `${formatForDisplay(globalStats?.consistency ?? 0)}%`,
 			color: TextColor.PURPLE_500,
 		},
 	];
@@ -111,8 +109,8 @@ export function AdminDashboard() {
 						<p className='text-muted-foreground'>Overview of platform statistics</p>
 					</div>
 					<Button variant={ButtonVariant.OUTLINE} onClick={() => refetch()} disabled={statsLoading}>
-						<RefreshCw className={`h-4 w-4 mr-2 ${statsLoading ? 'animate-spin' : ''}`} />
-						Refresh
+						<Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} className={cn('mr-2', !statsLoading && 'hidden')} />
+						{statsLoading ? null : 'Refresh'}
 					</Button>
 				</div>
 
@@ -191,11 +189,11 @@ export function AdminDashboard() {
 											? [
 													{
 														name: 'Success Rate',
-														value: roundForDisplay(globalStats.successRate ?? 0),
+														value: globalStats.successRate ?? 0,
 													},
 													{
 														name: 'Consistency',
-														value: roundForDisplay(globalStats.consistency ?? 0),
+														value: globalStats.consistency ?? 0,
 													},
 												]
 											: undefined
@@ -460,7 +458,7 @@ export function AdminDashboard() {
 											<Skeleton className='h-8 w-20' />
 										) : (
 											<div className='text-3xl font-bold text-green-500'>
-												{roundForDisplay(realTimeData?.successRate ?? 0)}%
+												{formatForDisplay(realTimeData?.successRate ?? 0)}%
 											</div>
 										)}
 									</CardContent>
@@ -498,7 +496,7 @@ export function AdminDashboard() {
 											<Skeleton className='h-8 w-20' />
 										) : (
 											<div className='text-3xl font-bold text-yellow-500'>
-												{roundForDisplay((realTimeData?.averageGameTime ?? 0) / 60)}m
+												{formatForDisplay((realTimeData?.averageGameTime ?? 0) / 60)}m
 											</div>
 										)}
 									</CardContent>
@@ -517,7 +515,7 @@ export function AdminDashboard() {
 											<Skeleton className='h-8 w-20' />
 										) : (
 											<div className='text-3xl font-bold text-purple-500'>
-												{roundForDisplay(realTimeData?.consistency ?? 0)}%
+												{formatForDisplay(realTimeData?.consistency ?? 0)}%
 											</div>
 										)}
 									</CardContent>
@@ -541,11 +539,11 @@ export function AdminDashboard() {
 											? [
 													{
 														name: 'Success Rate',
-														value: roundForDisplay(realTimeData.successRate ?? 0),
+														value: realTimeData.successRate ?? 0,
 													},
 													{
 														name: 'Consistency',
-														value: roundForDisplay(realTimeData.consistency ?? 0),
+														value: realTimeData.consistency ?? 0,
 													},
 												]
 											: undefined
@@ -843,8 +841,7 @@ export function AdminDashboard() {
 												icon={Activity}
 												label='Total Requests'
 												value={Object.values(aiProviderStats.providerDetails).reduce((sum, provider) => {
-													const p = provider as { requests?: number };
-													return sum + (p.requests ?? 0);
+													return sum + (provider.requests ?? 0);
 												}, 0)}
 												color={TextColor.YELLOW_500}
 												variant={StatCardVariant.VERTICAL}
@@ -893,19 +890,19 @@ export function AdminDashboard() {
 																		<div>
 																			<p className='text-sm text-muted-foreground'>Success Rate</p>
 																			<p className='text-lg font-bold'>
-																				{roundForDisplay(providerStats.successRate ?? 0)}%
+																				{formatForDisplay(providerStats.successRate ?? 0)}%
 																			</p>
 																		</div>
 																		<div>
 																			<p className='text-sm text-muted-foreground'>Avg Response Time</p>
 																			<p className='text-lg font-bold'>
-																				{roundForDisplay(providerStats.averageResponseTime ?? 0)}ms
+																				{formatForDisplay(providerStats.averageResponseTime ?? 0)}ms
 																			</p>
 																		</div>
 																		<div>
 																			<p className='text-sm text-muted-foreground'>Error Rate</p>
 																			<p className='text-lg font-bold text-red-500'>
-																				{roundForDisplay(providerStats.errorRate ?? 0)}%
+																				{formatForDisplay(providerStats.errorRate ?? 0)}%
 																			</p>
 																		</div>
 																		<div>

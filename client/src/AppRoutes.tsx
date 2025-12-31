@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import { useQueryClient } from '@tanstack/react-query';
-
 import { UserRole } from '@shared/constants';
 import { mergeUserPreferences } from '@shared/utils';
-
 import { AudioKey, ModalSize, ROUTES } from '@/constants';
-
 import {
+	BackgroundAnimation,
 	CompleteProfile,
 	Footer,
 	ModalRouteWrapper,
@@ -17,14 +14,11 @@ import {
 	OAuthCallback,
 	ProtectedRoute,
 	PublicRoute,
+	Toaster,
 } from '@/components';
-
 import { useAppDispatch, useAudio } from '@/hooks';
-
-import { audioService, authService, clientLogger as logger, prefetchAuthenticatedQueries } from '@/services';
-
-import { fetchUserData, setAuthenticated, setUser } from '@/redux/slices';
-
+import { audioService, authService, clientLogger as logger, prefetchAuthenticatedQueries, queryClient } from '@/services';
+import { fetchUserData, setUser } from '@/redux/slices';
 import {
 	AdminDashboard,
 	ContactView,
@@ -42,7 +36,6 @@ import {
 	StatisticsView,
 	TermsOfServiceView,
 	UnauthorizedView,
-	UserProfile,
 } from '@/views';
 
 /**
@@ -84,7 +77,6 @@ function NavigationTracker() {
 			ROUTES.GAME_CUSTOM,
 			ROUTES.PLAY,
 			ROUTES.START,
-			ROUTES.PROFILE,
 			ROUTES.PAYMENT,
 			'/credits',
 			ROUTES.REGISTER,
@@ -129,21 +121,41 @@ function NavigationTracker() {
 export default function AppRoutes() {
 	const dispatch = useAppDispatch();
 	const location = useLocation();
-	const queryClient = useQueryClient();
+	const initAuthRanRef = useRef(false);
 
 	// Check if current route is an authentication page
 	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
 
 	useEffect(() => {
+		// Prevent multiple runs of initAuth
+		if (initAuthRanRef.current) {
+			return;
+		}
+
+		initAuthRanRef.current = true;
+
+		const handleAuthFailure = async () => {
+			// authService.logout() clears all auth data, localStorage, and Redux Persist
+			await authService.logout();
+			// Clear React Query cache to remove all user-specific cached data
+			queryClient.clear();
+			// Clear Redux state after logout
+			// setUser(null) already sets isAuthenticated = false
+			dispatch(setUser(null));
+			// Only redirect to login if not already on auth pages
+			if (!isAuthPage) {
+				window.location.href = ROUTES.LOGIN;
+			}
+		};
+
 		const initAuth = async () => {
 			if (await authService.isAuthenticated()) {
 				try {
 					// Use the async thunk instead of manual API call
+					// extraReducers in userSlice will automatically update isAuthenticated and currentUser
 					const result = await dispatch(fetchUserData());
 					if (fetchUserData.fulfilled.match(result)) {
 						const user = result.payload;
-						dispatch(setUser(user));
-						dispatch(setAuthenticated(true));
 
 						// Set user preferences for audio service (if available)
 						if ('preferences' in user && user.preferences) {
@@ -155,30 +167,10 @@ export default function AppRoutes() {
 						// Error already logged in queryClient.service.ts - no need to log again
 						await prefetchAuthenticatedQueries();
 					} else if (fetchUserData.rejected.match(result)) {
-						// authService.logout() clears all auth data, localStorage, and Redux Persist
-						await authService.logout();
-						// Clear React Query cache to remove all user-specific cached data
-						queryClient.clear();
-						// Clear Redux state after logout
-						dispatch(setUser(null));
-						dispatch(setAuthenticated(false));
-						// Only redirect to login if not already on auth pages
-						if (!isAuthPage) {
-							window.location.href = ROUTES.LOGIN;
-						}
+						await handleAuthFailure();
 					}
 				} catch {
-					// authService.logout() clears all auth data, localStorage, and Redux Persist
-					await authService.logout();
-					// Clear React Query cache to remove all user-specific cached data
-					queryClient.clear();
-					// Clear Redux state after logout
-					dispatch(setUser(null));
-					dispatch(setAuthenticated(false));
-					// Only redirect to login if not already on auth pages
-					if (!isAuthPage) {
-						window.location.href = ROUTES.LOGIN;
-					}
+					await handleAuthFailure();
 				}
 			}
 		};
@@ -187,10 +179,11 @@ export default function AppRoutes() {
 			// Silently handle any unhandled promise rejections from initAuth
 			// These are expected when user is not authenticated
 		});
-	}, [dispatch, isAuthPage, queryClient]);
+	}, [dispatch, isAuthPage]);
 
 	return (
 		<div className='app-shell'>
+			<BackgroundAnimation />
 			<NavigationTracker />
 			<a
 				href='#main-content'
@@ -245,14 +238,6 @@ export default function AppRoutes() {
 					/>
 
 					{/* Protected routes - require authentication */}
-					<Route
-						path={ROUTES.PROFILE}
-						element={
-							<ProtectedRoute>
-								<UserProfile />
-							</ProtectedRoute>
-						}
-					/>
 					<Route
 						path={ROUTES.PAYMENT}
 						element={
@@ -316,6 +301,7 @@ export default function AppRoutes() {
 				</Routes>
 			</main>
 			{!isAuthPage && <Footer />}
+			<Toaster />
 		</div>
 	);
 }

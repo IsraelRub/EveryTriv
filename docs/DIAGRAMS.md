@@ -350,7 +350,7 @@ graph TB
         A[Decorators<br/>Public, Roles<br/>Cache, NoCache<br/>CurrentUser, CurrentUserId]
         B[Guards<br/>AuthGuard<br/>RolesGuard]
         C[Interceptors<br/>CacheInterceptor<br/>PerformanceInterceptor<br/>ResponseFormattingInterceptor]
-        D[Pipes<br/>UserDataPipe<br/>TriviaRequestPipe<br/>GameAnswerPipe<br/>CustomDifficultyPipe<br/>PaymentDataPipe<br/>TriviaQuestionPipe]
+        D[Pipes<br/>UserDataPipe<br/>TriviaRequestPipe<br/>GameAnswerPipe<br/>CustomDifficultyPipe<br/>PaymentDataPipe]
         E[Query Helpers<br/>DateRange<br/>GroupBy<br/>Search<br/>Random]
     end
 
@@ -921,6 +921,63 @@ graph TB
     K --> L[Trivia Prompt]
     K --> M[Custom Difficulty Prompt]
 ```
+
+## דיאגרמת זרימת Prompt - יצירת שאלת טריוויה
+
+```mermaid
+sequenceDiagram
+    participant TG as TriviaGenerationService
+    participant GP as GroqProvider
+    participant PT as PromptTemplates
+    participant AC as GroqApiClient
+    participant RP as GroqResponseParser
+    participant AI as Groq API
+
+    TG->>GP: generateTriviaQuestion(params)
+    
+    GP->>GP: Clamp answerCount (3-5)
+    GP->>PT: generateTriviaQuestion(params)
+    
+    Note over PT: Build dynamic prompt with:<br/>- Topic<br/>- Difficulty<br/>- Answer count<br/>- Difficulty guidance
+    PT->>PT: getDifficultyGuidance(difficulty)
+    PT->>GP: User prompt string
+    
+    GP->>AC: makeApiCall(userPrompt)
+    
+    Note over AC: Build API request with:<br/>- SYSTEM_PROMPT (system message)<br/>- User prompt (user message)<br/>- Model selection<br/>- Temperature: 0.7<br/>- Max tokens: 512
+    AC->>AC: selectModel() (priority-based)
+    AC->>AC: getProviderConfig(prompt)
+    AC->>AI: POST /chat/completions
+    
+    Note over AI: Process with LLM model
+    AI->>AC: JSON response with choices[0].message.content
+    
+    AC->>GP: LLMResponse (raw)
+    
+    GP->>RP: parseResponse(response, answerCount)
+    
+    Note over RP: Validate and parse:<br/>1. Extract content from choices<br/>2. Normalize quotes (smart → ASCII)<br/>3. Parse JSON<br/>4. Validate structure<br/>5. Sanitize question & answers<br/>6. Check format compliance
+    RP->>RP: parseAndValidatePayload(content)
+    RP->>RP: sanitizeQuestion()
+    RP->>RP: sanitizeAnswers()
+    
+    alt Valid response
+        RP->>GP: LLMTriviaResponse (parsed)
+        GP->>GP: Create TriviaQuestion object
+        GP->>GP: Shuffle answers (prevent position bias)
+        GP->>GP: Apply metadata
+        GP->>TG: ProviderTriviaGenerationResult
+    else Invalid/Empty response
+        RP->>GP: Error / Empty questions array
+        GP->>TG: Throw error
+    end
+```
+
+**רכיבים:**
+- **PromptTemplates**: יוצר prompts דינמיים עם הנחיות איכות וקושי
+- **SYSTEM_PROMPT**: קבוע - הנחיות כלליות ל-AI
+- **GroqApiClient**: מנהל את הקריאה ל-API עם retry logic ו-error handling
+- **GroqResponseParser**: מנתח ומאמת את התשובה מה-AI
 
 ## דיאגרמת Middleware Stack
 

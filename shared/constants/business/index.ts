@@ -7,12 +7,6 @@
  */
 
 /**
- * Social constants
- * @description Social media platforms and sharing functionality
- */
-export * from './social.constants';
-
-/**
  * Language constants
  * @description Language validation and LanguageTool API configuration
  */

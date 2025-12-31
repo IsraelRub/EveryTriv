@@ -1,6 +1,6 @@
 # Pipes - Common Structure
 
-תיעוד מפורט על Pipes ב-NestJS, כולל כל ה-Pipes הזמינים: TriviaRequestPipe, GameAnswerPipe, CustomDifficultyPipe, PaymentDataPipe, TriviaQuestionPipe, ו-UserDataPipe.
+תיעוד מפורט על Pipes ב-NestJS, כולל כל ה-Pipes הזמינים: TriviaRequestPipe, GameAnswerPipe, CustomDifficultyPipe, PaymentDataPipe, ו-UserDataPipe.
 
 ## סקירה כללית
 
@@ -13,7 +13,6 @@ Pipes ב-NestJS אחראים לוולידציה וטרנספורמציה של נ
 - `gameAnswer.pipe.ts` - Pipe לוולידציית תשובות משחק
 - `customDifficulty.pipe.ts` - Pipe לוולידציית קושי מותאם
 - `paymentData.pipe.ts` - Pipe לוולידציית נתוני תשלום
-- `triviaQuestion.pipe.ts` - Pipe לוולידציית שאלות טריוויה
 - `userData.pipe.ts` - Pipe לוולידציית נתוני משתמש
 
 **סדר ביצוע:**
@@ -124,9 +123,8 @@ if (!triviaValidation.isValid) {
 @Controller('game')
 export class GameController {
   @Post('answer')
-  @UsePipes(GameAnswerPipe)
   async submitAnswer(
-    @Body() body: GameAnswerSubmission,
+    @Body(GameAnswerPipe) body: GameAnswerSubmission,
     @CurrentUserId() userId: string
   ) {
     // body כבר עבר ולידציה
@@ -228,76 +226,6 @@ export class PaymentController {
 {
   paymentMethod: PaymentMethod.PAYPAL,
   paypalOrderId: "PAYPAL-ORDER-123456"
-}
-```
-
-## Trivia Question Pipe
-
-**מיקום:** `server/src/common/pipes/triviaQuestion.pipe.ts`
-
-**תפקיד:**
-- ולידציה של trivia question payload
-- בדיקת question, answers, correctAnswerIndex
-
-### ולידציות
-
-**1. Question Text:**
-- חייב להיות לא ריק
-- אורך: 10-1000 תווים
-- ולידציית תוכן דרך ValidationService
-
-**2. Answers:**
-- חייב להיות מערך עם 2-6 תשובות
-- כל תשובה: לא ריקה, מקסימום 200 תווים
-
-**3. Correct Answer Index:**
-- חייב להיות מספר
-- חייב להיות בטווח התשובות (0-based)
-
-**4. Difficulty (optional):**
-- אם קיים → ולידציה בסיסית
-
-**5. Topic (optional):**
-- אם קיים → ולידציה בסיסית (2-100 תווים)
-
-### דוגמאות שימוש
-
-```typescript
-@Controller('game')
-export class GameController {
-  @Post('custom-question')
-  async createCustomQuestion(
-    @Body(TriviaQuestionPipe) body: TriviaQuestionPayload
-  ) {
-    // body כבר עבר ולידציה
-    return this.gameService.createCustomQuestion(body);
-  }
-}
-```
-
-**ולידציות:**
-```typescript
-// ✅ תקין
-{
-  question: "What is the capital of France?",
-  answers: ["Paris", "London", "Berlin", "Madrid"],
-  correctAnswerIndex: 0,
-  difficulty: "easy",
-  topic: "Geography"
-}
-
-// ❌ שגיאה - correctAnswerIndex מחוץ לטווח
-{
-  question: "What is the capital of France?",
-  answers: ["Paris", "London"],
-  correctAnswerIndex: 5 // ← מחוץ לטווח (0-1)
-}
-
-// ❌ שגיאה - פחות מ-2 תשובות
-{
-  question: "What is the capital of France?",
-  answers: ["Paris"], // ← חייב להיות לפחות 2
-  correctAnswerIndex: 0
 }
 ```
 

@@ -1,13 +1,11 @@
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 
-import { Easing, StatCardVariant, VariantBase } from '@/constants';
-
+import { StatCardVariant, VariantBase } from '@/constants';
 import { Badge, Card, CardContent, Skeleton } from '@/components';
-
 import { useCountUp } from '@/hooks';
-
 import type { StatCardProps } from '@/types';
+import { cn } from '@/utils';
 
 export function StatCard({
 	icon: Icon,
@@ -27,10 +25,10 @@ export function StatCard({
 	// Determine if value is numeric and should use count-up animation
 	const isNumeric = typeof value === 'number';
 	const numericValue = isNumeric ? value : 0;
+	const countUpEnabled = countUp && isNumeric;
 	const animatedValue = useCountUp(numericValue, {
-		duration: countUpDuration,
-		enabled: countUp && isNumeric,
-		easing: Easing.EASE_OUT,
+		...(countUpDuration !== 2000 && { duration: countUpDuration }),
+		...(!countUpEnabled && { enabled: false }),
 	});
 
 	// Use animated value if count-up is enabled and value is numeric, otherwise use original value
@@ -54,7 +52,7 @@ export function StatCard({
 				<Card>
 					<CardContent className='pt-6'>
 						<div className='flex items-center gap-4'>
-							<div className={`p-3 rounded-lg ${color}`}>
+							<div className={cn('p-3 rounded-lg', color)}>
 								<Icon className='h-6 w-6 text-white' />
 							</div>
 							<div>
@@ -73,10 +71,10 @@ export function StatCard({
 			{variant === StatCardVariant.VERTICAL && (
 				<Card className='p-6'>
 					<div className='flex items-center justify-between mb-4'>
-						<Icon className={`w-8 h-8 ${color}`} />
+						<Icon className={cn('w-8 h-8', color)} />
 						{trend && (
 							<Badge variant={trendUp ? VariantBase.DEFAULT : VariantBase.SECONDARY} className='text-xs'>
-								<TrendingUp className={`h-3 w-3 mr-1 ${trendUp ? '' : 'rotate-180'}`} />
+								<TrendingUp className={cn('h-3 w-3 mr-1', !trendUp && 'rotate-180')} />
 								{trend}
 							</Badge>
 						)}
@@ -91,7 +89,7 @@ export function StatCard({
 
 			{variant === StatCardVariant.CENTERED && (
 				<div className='text-center p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors'>
-					<Icon className={`h-6 w-6 mx-auto mb-2 ${color}`} />
+					<Icon className={cn('h-6 w-6 mx-auto mb-2', color)} />
 					<p className='text-3xl font-bold'>
 						{typeof displayValue === 'number' ? displayValue.toLocaleString() : displayValue}
 						{suffix}

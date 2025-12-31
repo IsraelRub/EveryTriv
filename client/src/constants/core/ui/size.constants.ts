@@ -41,7 +41,21 @@ export type InteractiveSize = ComponentSize.SM | ComponentSize.MD | ComponentSiz
  * @description Size options specifically for Button components
  */
 export enum ButtonSize {
+	DEFAULT = 'default',
 	SM = ComponentSize.SM,
 	LG = ComponentSize.LG,
 	ICON = 'icon',
+}
+
+/**
+ * Spinner size enum
+ * @enum {string} SpinnerSize
+ * @description Size options specifically for Spinner components
+ */
+export enum SpinnerSize {
+	SM = ComponentSize.SM,
+	MD = ComponentSize.MD,
+	LG = ComponentSize.LG,
+	XL = ComponentSize.XL,
+	FULL = 'full',
 }

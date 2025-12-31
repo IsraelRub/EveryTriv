@@ -64,7 +64,7 @@
   - `totalGames` - משחקים כולל
   - `averageScore` - ניקוד ממוצע
   - `totalScore` - ניקוד כולל
-  - `topicsPlayed` - נושאים שניגנו (TopicsPlayed)
+  - `topicsPlayed` - נושאים שניגנו (CountRecord)
   - `difficultyStats` - סטטיסטיקות לפי קושי (DifficultyBreakdown)
   - `achievements` - הישגים (Achievement[])
 - `globalStats` - סטטיסטיקות גלובליות (UserStatsResponse | null)

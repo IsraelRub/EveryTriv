@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-
 import { motion } from 'framer-motion';
 
-import { AVAILABLE_AVATARS, ButtonVariant, ToastVariant } from '@/constants';
-
+import { VALIDATION_COUNT } from '@shared/constants';
+import { ButtonVariant, ToastVariant } from '@/constants';
 import {
 	Avatar,
 	AvatarImage,
@@ -15,14 +14,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
-
 import { useSetAvatar, useToast } from '@/hooks';
-
 import { clientLogger as logger } from '@/services';
-
 import type { AvatarSelectorProps } from '@/types';
-
-import { getAvatarUrl, isValidAvatarId } from '@/utils';
+import { cn, getAvatarUrl, isValidAvatarId } from '@/utils';
 
 export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSelectorProps) {
 	const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(currentAvatarId || null);
@@ -79,23 +74,24 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 				<div className='space-y-4 py-4'>
 					{/* Avatar Grid - 4x4 */}
 					<div className='grid grid-cols-4 gap-2'>
-						{AVAILABLE_AVATARS.map((avatar, index) => {
-							const isSelected = selectedAvatarId === avatar.id;
-							const isCurrent = currentAvatarId === avatar.id;
+						{Array.from({ length: VALIDATION_COUNT.AVATAR_ID.MAX }, (_, i) => i + 1).map((avatarId, index) => {
+							const isSelected = selectedAvatarId === avatarId;
+							const isCurrent = currentAvatarId === avatarId;
 
 							return (
 								<motion.button
-									key={avatar.id}
+									key={avatarId}
 									type='button'
-									onClick={() => setSelectedAvatarId(avatar.id)}
-									className={`relative h-20 w-20 rounded-full p-0 transition-all overflow-visible ${
+									onClick={() => setSelectedAvatarId(avatarId)}
+									className={cn(
+										'relative h-20 w-20 rounded-full p-0 transition-all overflow-visible',
 										// Current avatar always shows gray ring (outer ring)
 										isCurrent
 											? 'ring-2 ring-muted-foreground ring-offset-2'
 											: isSelected
 												? 'ring-3 ring-primary ring-offset-2'
 												: 'hover:ring-2 hover:ring-muted-foreground/50'
-									}`}
+									)}
 									initial={{ opacity: 0, scale: 0.8 }}
 									animate={{ opacity: 1, scale: 1 }}
 									transition={{
@@ -109,7 +105,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 									whileTap={{ scale: 0.95 }}
 								>
 									<Avatar className='h-full w-full'>
-										<AvatarImage src={getAvatarUrl(avatar.id)} alt={`Avatar ${avatar.id}`} />
+										<AvatarImage src={getAvatarUrl(avatarId)} alt={`Avatar ${avatarId}`} />
 									</Avatar>
 									{/* Blue ring for selected avatar (inner ring when both current and selected) */}
 									{isSelected && (

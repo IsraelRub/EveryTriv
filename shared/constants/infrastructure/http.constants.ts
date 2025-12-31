@@ -30,7 +30,6 @@ export const HTTP_CLIENT_CONFIG = {
 
 // HTTP timeout constants
 export const HTTP_TIMEOUTS = {
-	DEFAULT: 30000, // 30 seconds
 	QUESTION_GENERATION: 30000, // 30 seconds
 	AI_PROVIDER: 30000, // 30 seconds
 	UPLOAD: 60000, // 60 seconds
@@ -86,16 +85,20 @@ export const HTTP_ERROR_CODES = {
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 	TIMEOUT_ERROR: 'TIMEOUT_ERROR',
 	SERVER_ERROR: 'SERVER_ERROR',
-	DEFAULT: 'UNKNOWN_ERROR',
 } as const;
 
-// HTTP error messages
+/**
+ * HTTP error messages
+ * @constant
+ * @description HTTP-specific error messages
+ * @note These messages are aliases/references to ERROR_MESSAGES.general for HTTP-specific contexts
+ * @see ERROR_MESSAGES.general for the source of truth for error messages
+ */
 export const HTTP_ERROR_MESSAGES = {
-	NETWORK_ERROR: 'Network error occurred. Please check your connection.',
-	UNKNOWN_ERROR: 'An unknown error occurred.',
-	TIMEOUT_ERROR: 'Request timed out. Please try again.',
-	SERVER_ERROR: 'Server error occurred. Please try again later.',
-	DEFAULT: 'An unknown error occurred.',
+	NETWORK_ERROR: 'Network error occurred. Please check your connection.', // Same as ERROR_MESSAGES.general.NETWORK_ERROR
+	UNKNOWN_ERROR: 'An unknown error occurred.', // Same as ERROR_MESSAGES.general.UNKNOWN_ERROR
+	TIMEOUT_ERROR: 'Request timed out. Please try again.', // Same as ERROR_MESSAGES.general.TIMEOUT
+	SERVER_ERROR: 'Server error occurred. Please try again later.', // Similar to ERROR_MESSAGES.general.INTERNAL_SERVER_ERROR
 } as const;
 
 // HTTP log messages

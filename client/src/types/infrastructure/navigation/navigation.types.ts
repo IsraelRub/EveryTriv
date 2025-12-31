@@ -30,6 +30,7 @@ export interface NavigationLinks {
 	readonly admin: ReadonlyArray<NavigationLink>;
 	readonly footer: {
 		readonly quick: ReadonlyArray<NavigationLink>;
+		readonly legal: ReadonlyArray<NavigationLink>;
 	};
 }
 

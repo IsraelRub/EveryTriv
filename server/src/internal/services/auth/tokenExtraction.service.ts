@@ -5,7 +5,7 @@
  * @description service for extracting authentication tokens from requests
  * @author EveryTriv Team
  */
-import { AUTH_CONSTANTS, COOKIE_NAMES } from '@internal/constants';
+import { AUTH_CONSTANTS, COOKIE_NAMES } from '@shared/constants';
 import type { AuthenticationRequest } from '@internal/types';
 
 /**
@@ -33,7 +33,8 @@ export class TokenExtractionService {
 		}
 		// Priority 2: Cookie token
 		else if (cookies?.[COOKIE_NAMES.AUTH_TOKEN]) {
-			token = cookies[COOKIE_NAMES.AUTH_TOKEN];
+			const cookieToken = cookies[COOKIE_NAMES.AUTH_TOKEN];
+			token = cookieToken ?? null;
 		}
 		// Priority 3: Direct token in header (fallback)
 		else if (authHeaderString && !authHeaderString.startsWith('Bearer ')) {

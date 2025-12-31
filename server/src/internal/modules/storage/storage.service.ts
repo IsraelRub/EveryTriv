@@ -21,7 +21,7 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 
-import { CACHE_TTL, defaultValidators, StorageType } from '@shared/constants';
+import { CACHE_DURATION, defaultValidators, StorageType, TIME_PERIODS_MS } from '@shared/constants';
 import type {
 	StorageCleanupOptions,
 	StorageConfig,
@@ -31,14 +31,13 @@ import type {
 	StorageService,
 	StorageStats,
 	StorageValue,
+	TypeGuard,
 	UserProgressData,
 } from '@shared/types';
 import { formatStorageError, getErrorMessage } from '@shared/utils';
 import { createTimedResult } from '@shared/utils/infrastructure/storage.utils';
-
 import { STORAGE_CONFIG, StorageOperation } from '@internal/constants';
-import { isUserProgressData } from '@internal/utils/domain';
-
+import { isUserProgressData } from '@shared/utils/domain';
 import { StorageMetricsTracker } from '../../services';
 import { deleteKeysByPattern, scanKeys } from '../../utils';
 import { StorageUtils } from './utils';
@@ -141,7 +140,7 @@ export class ServerStorageService implements StorageService {
 				: 1,
 			checksum: this.generateChecksum(JSON.stringify(progress)),
 		};
-		await this.set(key, progressData, CACHE_TTL.VERY_LONG);
+		await this.set(key, progressData, CACHE_DURATION.EXTREME);
 	}
 
 	protected async loadUserProgress(userId: string): Promise<UserProgressData | null> {
@@ -174,11 +173,11 @@ export class ServerStorageService implements StorageService {
 	async get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
 	async get<T extends StorageValue>(
 		key: string,
-		validator: (value: StorageValue) => value is T
+		validator: TypeGuard<T>
 	): Promise<StorageOperationResult<T | null>>;
 	async get<T extends StorageValue>(
 		key: string,
-		validator?: (value: StorageValue) => value is T
+		validator?: TypeGuard<T>
 	): Promise<StorageOperationResult<StorageValue | null> | StorageOperationResult<T | null>> {
 		const startTime = Date.now();
 		try {
@@ -375,7 +374,7 @@ export class ServerStorageService implements StorageService {
 		key: string,
 		factory: () => Promise<T>,
 		ttl: number | undefined,
-		validator: (value: StorageValue) => value is T
+		validator: TypeGuard<T>
 	): Promise<T> {
 		const result = await this.get(key, validator);
 		if (result.success && result.data) {
@@ -472,7 +471,7 @@ export class ServerStorageService implements StorageService {
 
 					if (options.maxAge) {
 						const age = now.getTime() - metadata.createdAt.getTime();
-						if (age > options.maxAge * 1000) {
+						if (age > options.maxAge * TIME_PERIODS_MS.SECOND) {
 							shouldRemove = true;
 						}
 					}

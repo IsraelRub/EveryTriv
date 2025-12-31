@@ -2,20 +2,19 @@ import { Body, Controller, Post } from '@nestjs/common';
 
 import { API_ROUTES, LogLevel, MESSAGE_FORMATTERS } from '@shared/constants';
 import type { ClientLogsRequest } from '@shared/types';
-
 import { serverLogger as logger } from '@internal/services';
 
 @Controller(API_ROUTES.CLIENT_LOGS.BASE)
 export class ClientLogsController {
-	@Post(API_ROUTES.CLIENT_LOGS.BATCH)
+	@Post('batch')
 	async receiveClientLogs(@Body() request: ClientLogsRequest): Promise<string> {
 		const { logs, userId, sessionId } = request;
 
 		// Process each log entry
 		for (const logEntry of logs) {
 			const meta = {
-				userId: userId || logEntry.meta?.userId || 'anonymous',
-				sessionId: sessionId || logEntry.meta?.sessionId || 'no-session',
+				userId: userId ?? logEntry.meta?.userId ?? 'anonymous',
+				sessionId: sessionId ?? logEntry.meta?.sessionId ?? 'no-session',
 				timestamp:
 					logEntry.meta?.timestamp instanceof Date ? logEntry.meta.timestamp.toISOString() : new Date().toISOString(),
 			};

@@ -1,7 +1,6 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
 import {
-	AnalyticsResult,
 	API_ROUTES,
 	CACHE_DURATION,
 	ComparisonTarget,
@@ -10,10 +9,8 @@ import {
 } from '@shared/constants';
 import type { AnalyticsEventData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
 import type { TokenPayload } from '@internal/types';
-
 import { Cache, CurrentUser, CurrentUserId, Roles } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
 import { AnalyticsService } from './analytics.service';
@@ -39,33 +36,27 @@ export class AnalyticsController {
 	 * @param eventData Event tracking data
 	 * @returns Event tracking confirmation
 	 */
-	@Post(API_ROUTES.ANALYTICS.TRACK)
+	@Post('track')
 	async trackEvent(@Body() eventData: TrackEventDto) {
 		try {
 			if (!eventData.eventType) {
 				throw new HttpException(ERROR_CODES.EVENT_TYPE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-			// Convert DTO to service format - map EventResult to AnalyticsResult
-			const analyticsEventData: AnalyticsEventData = {
-				...eventData,
-				timestamp: eventData.timestamp || new Date(),
-				result: eventData.result
-					? eventData.result === 'success'
-						? AnalyticsResult.SUCCESS
-						: eventData.result === 'failure'
-							? AnalyticsResult.FAILURE
-							: AnalyticsResult.ERROR
-					: undefined,
-			};
+	// Convert DTO to service format - parse timestamp string to Date
+	const analyticsEventData: AnalyticsEventData = {
+		...eventData,
+		timestamp: eventData.timestamp ? new Date(eventData.timestamp) : new Date(),
+	};
 
-			await this.analyticsService.trackEvent(eventData.userId || '', analyticsEventData);
+		const result = await this.analyticsService.trackEvent(analyticsEventData);
 
-			logger.apiCreate('analytics_event_track', {
-				eventType: eventData.eventType,
-			});
+		logger.apiCreate('analytics_event_track', {
+			id: result.eventId,
+			eventType: eventData.eventType,
+		});
 
-			return { tracked: true };
+		return result;
 		} catch (error) {
 			logger.analyticsError('Error tracking analytics event', {
 				error: getErrorMessage(error),
@@ -80,8 +71,8 @@ export class AnalyticsController {
 	 * @param userId Current user identifier
 	 * @returns User analytics data
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER)
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	@Get('user')
+	@Cache(CACHE_DURATION.LONG)
 	async getAuthenticatedUserAnalytics(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.analyticsService.getUserAnalytics(userId);
@@ -105,9 +96,9 @@ export class AnalyticsController {
 	 * @param params User identifier parameter
 	 * @returns User performance metrics
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_PERFORMANCE)
+	@Get('user-performance/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getUserPerformance(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.analyticsService.getUserPerformance(params.userId);
@@ -132,9 +123,9 @@ export class AnalyticsController {
 	 * @param query Activity query parameters
 	 * @returns User activity entries
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_ACTIVITY)
+	@Get('user-activity/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT)
 	async getUserActivity(@Param() params: UserIdParamDto, @Query() query: UserActivityQueryDto) {
 		try {
 			const result = await this.analyticsService.getUserActivity(params.userId, query);
@@ -159,9 +150,9 @@ export class AnalyticsController {
 	 * @param params User identifier parameter
 	 * @returns User insights data
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_INSIGHTS)
+	@Get('user-insights/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getUserInsights(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.analyticsService.getUserInsights(params.userId);
@@ -185,9 +176,9 @@ export class AnalyticsController {
 	 * @param params User identifier parameter
 	 * @returns User achievements list
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_ACHIEVEMENTS)
+	@Get('user-achievements/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG)
 	async getUserAchievements(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.analyticsService.getUserAchievements(params.userId);
@@ -213,9 +204,9 @@ export class AnalyticsController {
 	 * @param query Trend query parameters
 	 * @returns User trend data
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_TRENDS)
+	@Get('user-trends/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT)
 	async getUserTrends(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
 		try {
 			const result = await this.analyticsService.getUserTrends(params.userId, query);
@@ -241,9 +232,9 @@ export class AnalyticsController {
 	 * @param query Comparison query parameters
 	 * @returns User comparison results
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_COMPARISON)
+	@Get('user-comparison/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async compareUser(@Param() params: UserIdParamDto, @Query() query: UserComparisonQueryDto) {
 		try {
 			const result = await this.analyticsService.compareUserPerformance(params.userId, query);
@@ -271,9 +262,9 @@ export class AnalyticsController {
 	 * @param query Summary query parameters
 	 * @returns User summary data
 	 */
-	@Get(API_ROUTES.ANALYTICS.USER_SUMMARY)
+	@Get('user-summary/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
 		try {
 			const result = await this.analyticsService.getUserSummary(params.userId, query?.includeActivity ?? false);
@@ -298,8 +289,8 @@ export class AnalyticsController {
 	 * @param query Topic analytics query parameters
 	 * @returns Popular topics statistics
 	 */
-	@Get(API_ROUTES.ANALYTICS.TOPICS_POPULAR)
-	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
+	@Get('topics/popular')
+	@Cache(CACHE_DURATION.VERY_LONG)
 	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
 		try {
 			const result = await this.analyticsService.getTopicStats(query);
@@ -322,9 +313,9 @@ export class AnalyticsController {
 	 * Get global difficulty statistics for comparison (public endpoint)
 	 * @returns Global difficulty statistics data
 	 */
-	@Get(API_ROUTES.ANALYTICS.DIFFICULTY_GLOBAL)
+	@Get('difficulty/global')
 	@Public()
-	@Cache(CACHE_DURATION.VERY_LONG) // Cache for 30 minutes
+	@Cache(CACHE_DURATION.VERY_LONG)
 	async getGlobalDifficultyStats() {
 		try {
 			const result = await this.analyticsService.getGlobalDifficultyStats();
@@ -344,9 +335,9 @@ export class AnalyticsController {
 	 * Get global statistics for comparison (public endpoint)
 	 * @returns Global statistics data
 	 */
-	@Get(API_ROUTES.ANALYTICS.GLOBAL_STATS)
+	@Get('global-stats')
 	@Public()
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG)
 	async getGlobalStats() {
 		try {
 			const result = await this.analyticsService.getGlobalStats();
@@ -367,9 +358,9 @@ export class AnalyticsController {
 	 * @param query Trend query parameters
 	 * @returns Global trend data
 	 */
-	@Get(API_ROUTES.ANALYTICS.GLOBAL_TRENDS)
+	@Get('global-trends')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getGlobalTrends(@Query() query: UserTrendQueryDto) {
 		try {
 			const result = await this.analyticsService.getGlobalTrends(query);
@@ -392,7 +383,7 @@ export class AnalyticsController {
 	 * @param user Current admin user token payload
 	 * @returns Clear operation result with deleted count
 	 */
-	@Delete(API_ROUTES.ANALYTICS.ADMIN_STATS_CLEAR_ALL)
+	@Delete('admin/stats/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllUserStats(@CurrentUser() user: TokenPayload) {
 		try {

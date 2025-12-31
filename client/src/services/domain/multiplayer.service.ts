@@ -7,23 +7,8 @@
  */
 import { io, Socket } from 'socket.io-client';
 
-import type {
-	AnswerReceivedEvent,
-	CreateRoomConfig,
-	CreateRoomResponse,
-	GameEndedEvent,
-	GameStartedEvent,
-	LeaderboardUpdateEvent,
-	PlayerJoinedEvent,
-	PlayerLeftEvent,
-	QuestionEndedEvent,
-	QuestionStartedEvent,
-	RoomStateResponse,
-	RoomUpdatedEvent,
-	WebSocketEventListener,
-} from '@shared/types';
+import type { CreateRoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { ApiConfig, clientLogger as logger } from '@/services';
 
 /**
@@ -228,25 +213,20 @@ class MultiplayerService {
 	 * Listen to server event
 	 * @param eventListener Event listener with event name and callback
 	 */
-	on<T = unknown>(eventListener: WebSocketEventListener<T>): void {
+	on(eventListener: { event: string; callback: (data: unknown) => void }): void {
 		if (!this.socket) {
 			// Store listener in queue to be registered when socket is created
-			// Create a wrapper callback that preserves type safety through the generic parameter
-			// Socket.io provides data as unknown at runtime, but the server contract guarantees it matches T
+			// Socket.io provides data as unknown at runtime
 			const wrappedCallback = (data: unknown): void => {
-				// The callback expects T, and we pass data which socket.io provides as unknown
-				// Type safety is maintained through the generic parameter T in the WebSocketEventListener
-				// This conversion is necessary because socket.io's type system uses unknown
-				eventListener.callback(data as T);
+				eventListener.callback(data);
 			};
 			this.pendingListeners.push({ event: eventListener.event, callback: wrappedCallback });
 			return;
 		}
 		// When socket exists, register directly
 		// Socket.io's on method accepts (event: string, callback: (data: unknown) => void)
-		// Create a wrapper that adapts our typed callback to socket.io's signature
 		const socketCallback = (data: unknown): void => {
-			eventListener.callback(data as T);
+			eventListener.callback(data);
 		};
 		this.socket.on(eventListener.event, socketCallback);
 	}
@@ -317,104 +297,169 @@ class MultiplayerService {
 	 * Listen to room created event
 	 * @param callback Event handler
 	 */
-	onRoomCreated(callback: (data: CreateRoomResponse) => void): void {
-		this.on<CreateRoomResponse>({ event: 'room-created', callback });
+	onRoomCreated(callback: (data: unknown) => void): void {
+		this.on({
+			event: 'room-created',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to room joined event
 	 * @param callback Event handler
 	 */
-	onRoomJoined(callback: (data: RoomStateResponse) => void): void {
-		this.on<RoomStateResponse>({ event: 'room-joined', callback });
+	onRoomJoined(callback: (data: unknown) => void): void {
+		this.on({
+			event: 'room-joined',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to room left event
 	 * @param callback Event handler
 	 */
-	onRoomLeft(callback: (data: { roomId: string }) => void): void {
-		this.on({ event: 'room-left', callback });
+	onRoomLeft(callback: (data: unknown) => void): void {
+		this.on({
+			event: 'room-left',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to player joined event
 	 * @param callback Event handler
 	 */
-	onPlayerJoined(callback: (event: PlayerJoinedEvent) => void): void {
-		this.on<PlayerJoinedEvent>({ event: 'player-joined', callback });
+	onPlayerJoined(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'player-joined',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to player left event
 	 * @param callback Event handler
 	 */
-	onPlayerLeft(callback: (event: PlayerLeftEvent) => void): void {
-		this.on<PlayerLeftEvent>({ event: 'player-left', callback });
+	onPlayerLeft(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'player-left',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to game started event
 	 * @param callback Event handler
 	 */
-	onGameStarted(callback: (event: GameStartedEvent) => void): void {
-		this.on<GameStartedEvent>({ event: 'game-started', callback });
+	onGameStarted(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'game-started',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to question started event
 	 * @param callback Event handler
 	 */
-	onQuestionStarted(callback: (event: QuestionStartedEvent) => void): void {
-		this.on<QuestionStartedEvent>({ event: 'question-started', callback });
+	onQuestionStarted(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'question-started',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to answer received event
 	 * @param callback Event handler
 	 */
-	onAnswerReceived(callback: (event: AnswerReceivedEvent) => void): void {
-		this.on<AnswerReceivedEvent>({ event: 'answer-received', callback });
+	onAnswerReceived(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'answer-received',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to question ended event
 	 * @param callback Event handler
 	 */
-	onQuestionEnded(callback: (event: QuestionEndedEvent) => void): void {
-		this.on<QuestionEndedEvent>({ event: 'question-ended', callback });
+	onQuestionEnded(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'question-ended',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to game ended event
 	 * @param callback Event handler
 	 */
-	onGameEnded(callback: (event: GameEndedEvent) => void): void {
-		this.on<GameEndedEvent>({ event: 'game-ended', callback });
+	onGameEnded(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'game-ended',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to leaderboard update event
 	 * @param callback Event handler
 	 */
-	onLeaderboardUpdate(callback: (event: LeaderboardUpdateEvent) => void): void {
-		this.on<LeaderboardUpdateEvent>({ event: 'leaderboard-update', callback });
+	onLeaderboardUpdate(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'leaderboard-update',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to room updated event
 	 * @param callback Event handler
 	 */
-	onRoomUpdated(callback: (event: RoomUpdatedEvent) => void): void {
-		this.on<RoomUpdatedEvent>({ event: 'room-updated', callback });
+	onRoomUpdated(callback: (event: unknown) => void): void {
+		this.on({
+			event: 'room-updated',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 
 	/**
 	 * Listen to error event
 	 * @param callback Event handler
 	 */
-	onError(callback: (error: { message: string; code?: string }) => void): void {
-		this.on<{ message: string; code?: string }>({ event: 'error', callback });
+	onError(callback: (error: unknown) => void): void {
+		this.on({
+			event: 'error',
+			callback: (data: unknown) => {
+				callback(data);
+			},
+		});
 	}
 }
 

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 
 import type { UserRole } from '@shared/constants';
-
 import { OptimizationLevel as OptimizationLevelEnum } from '@internal/constants';
 
 /**

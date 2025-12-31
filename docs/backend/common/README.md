@@ -68,7 +68,6 @@ server/src/common/
 - `gameAnswer.pipe.ts` - pipe ולידציית תשובות משחק
 - `customDifficulty.pipe.ts` - pipe ולידציית קושי מותאם
 - `paymentData.pipe.ts` - pipe ולידציית נתוני תשלום
-- `triviaQuestion.pipe.ts` - pipe ולידציית שאלות טריוויה
 - `userData.pipe.ts` - pipe ולידציית נתוני משתמש
 
 **תפקידים:**
@@ -121,7 +120,7 @@ server/src/common/
 ### Pipes
 - **מטרה:** טרנספורמציה ולידציה
 - **שימוש:** המרת נתונים, ולידציה
-- **דוגמה:** `@UsePipes(ValidationPipe)`
+- **דוגמה:** `@Body(ValidationPipe)`
 
 ### Filters
 - **מטרה:** טיפול בשגיאות

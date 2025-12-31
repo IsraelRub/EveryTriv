@@ -4,12 +4,6 @@
  * @description Server-specific language tool type definitions
  */
 
-import type { LanguageToolError, LanguageToolResponse } from '@shared/types';
-
-/**
- * Re-export shared language tool types for server use
- */
-export type { LanguageToolError, LanguageToolResponse };
 
 /**
  * Language tool check options interface

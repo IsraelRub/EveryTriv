@@ -8,10 +8,8 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from 
 
 import { CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger, metricsService } from '@internal/services';
 import { createStorageError } from '@internal/utils';
-
 import { Cache, Public, Roles } from '../../../common';
 import { ServerStorageService } from './storage.service';
 
@@ -25,7 +23,7 @@ export class StorageController {
 	 */
 	@Get('metrics')
 	@Public()
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - metrics don't change frequently
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getMetrics() {
 		try {
 			const metrics = metricsService.getMetrics();
@@ -72,7 +70,7 @@ export class StorageController {
 	 */
 	@Get('keys')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT)
 	async getKeys() {
 		try {
 			const result = await this.storageService.getKeys();
@@ -100,7 +98,7 @@ export class StorageController {
 	 */
 	@Get('item/:key')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.VERY_SHORT) // Cache for 30 seconds
+	@Cache(CACHE_DURATION.VERY_SHORT)
 	async getItem(@Param('key') key: string) {
 		try {
 			if (!key) {

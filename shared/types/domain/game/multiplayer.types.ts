@@ -6,8 +6,6 @@
  * @used_by server/src/features/game/multiplayer, client/src/services/multiplayer.service.ts
  */
 import { DifficultyLevel, GameMode, PlayerStatus, RoomStatus } from '@shared/constants';
-
-import type { BaseEntity } from '../../core/data.types';
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
 
 /**
@@ -47,7 +45,7 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
  * @description Complete room configuration (server-side, includes timePerQuestion)
  */
 export interface RoomConfig extends CreateRoomConfig {
-	timePerQuestion: number; // See MULTIPLAYER_CONSTANTS.TIME_PER_QUESTION
+	timePerQuestion: number; // See GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].timePerQuestion
 	mappedDifficulty?: DifficultyLevel; // Normalized difficulty level (set by controller/pipe)
 }
 
@@ -69,8 +67,9 @@ export interface PlayerScoreMap {
  * Multiplayer room interface
  * @interface MultiplayerRoom
  * @description Room state for multiplayer game
+ * @note Rooms are transient (cached, not persisted to database) so they don't extend BaseEntity
  */
-export interface MultiplayerRoom extends BaseEntity {
+export interface MultiplayerRoom {
 	roomId: string;
 	hostId: string;
 	players: Player[];
@@ -81,6 +80,8 @@ export interface MultiplayerRoom extends BaseEntity {
 	currentQuestionStartTime?: Date;
 	startTime?: Date;
 	endTime?: Date;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 /**
@@ -202,21 +203,6 @@ export interface GameEvent<T extends GameEventType = GameEventType> {
 	timestamp: Date;
 	data: GameEventDataMap[T];
 }
-
-/**
- * Type aliases for specific game events (for convenience and backward compatibility)
- */
-export type PlayerJoinedEvent = GameEvent<'player-joined'>;
-export type PlayerLeftEvent = GameEvent<'player-left'>;
-export type PlayerReadyEvent = GameEvent<'player-ready'>;
-export type GameStartedEvent = GameEvent<'game-started'>;
-export type QuestionStartedEvent = GameEvent<'question-started'>;
-export type AnswerReceivedEvent = GameEvent<'answer-received'>;
-export type QuestionEndedEvent = GameEvent<'question-ended'>;
-export type GameEndedEvent = GameEvent<'game-ended'>;
-export type LeaderboardUpdateEvent = GameEvent<'leaderboard-update'>;
-export type RoomUpdatedEvent = GameEvent<'room-updated'>;
-export type ErrorEvent = GameEvent<'error'>;
 
 /**
  * Union type for all game events

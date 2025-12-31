@@ -1,17 +1,12 @@
 import { forwardRef, useCallback, type MouseEvent } from 'react';
-
 import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
 
-import { AudioKey, ButtonVariant } from '@/constants';
-
+import { AudioKey, ButtonSize, ButtonVariant } from '@/constants';
 import { useAudio } from '@/hooks';
-
 import type { ButtonProps } from '@/types';
 
-import { cn } from '@/utils';
-
-const buttonVariants = cva(
+export const buttonVariants = cva(
 	'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
 	{
 		variants: {
@@ -21,23 +16,22 @@ const buttonVariants = cva(
 				[ButtonVariant.OUTLINE]: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
 				[ButtonVariant.SECONDARY]: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
 				[ButtonVariant.GHOST]: 'hover:bg-accent hover:text-accent-foreground',
-				[ButtonVariant.LINK]: 'text-primary underline-offset-4 hover:underline',
 			},
 			size: {
-				default: 'h-10 px-4 py-2',
-				sm: 'h-9 rounded-md px-3',
-				lg: 'h-11 rounded-md px-8',
-				icon: 'h-10 w-10',
+				[ButtonSize.DEFAULT]: 'h-10 px-4 py-2',
+				[ButtonSize.SM]: 'h-9 rounded-md px-3',
+				[ButtonSize.LG]: 'h-11 rounded-md px-8',
+				[ButtonSize.ICON]: 'h-10 w-10',
 			},
 		},
 		defaultVariants: {
 			variant: ButtonVariant.DEFAULT,
-			size: 'default',
+			size: ButtonSize.DEFAULT,
 		},
 	}
 );
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 	({ className, variant, size, asChild = false, onClick, onMouseEnter, ...props }, ref) => {
 		const audioService = useAudio();
 		const Comp = asChild ? Slot : 'button';
@@ -52,24 +46,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 			[onClick, audioService, asChild]
 		);
 
-		const handleMouseEnter = useCallback(
-			(e: MouseEvent<HTMLButtonElement>) => {
-				onMouseEnter?.(e);
-			},
-			[onMouseEnter]
-		);
-
 		return (
 			<Comp
-				className={cn(buttonVariants({ variant, size, className }))}
+				className={buttonVariants({ variant, size, className })}
 				ref={ref}
 				onClick={handleClick}
-				onMouseEnter={handleMouseEnter}
+				onMouseEnter={onMouseEnter}
 				{...props}
 			/>
 		);
 	}
 );
 Button.displayName = 'Button';
-
-export { Button, buttonVariants };

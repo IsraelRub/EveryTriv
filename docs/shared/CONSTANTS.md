@@ -210,33 +210,6 @@ export enum GameMode {
 export const VALID_GAME_MODES = Object.values(GameMode);
 
 /**
- * Credit operation types enumeration
- */
-export enum CreditOperation {
-  ADD = 'add',
-  DEDUCT = 'deduct',
-  SET = 'set',
-}
-
-/**
- * Array of all valid credit operations
- */
-export const VALID_CREDIT_OPERATIONS = Object.values(CreditOperation);
-
-/**
- * Sort Order Enum
- */
-export enum SortOrder {
-  ASC = 'asc',
-  DESC = 'desc',
-}
-
-/**
- * Array of all valid sort orders
- */
-export const VALID_SORT_ORDERS = Object.values(SortOrder);
-
-/**
  * Time Period Enum
  */
 export enum TimePeriod {
@@ -259,28 +232,12 @@ export enum LeaderboardPeriod {
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
   YEARLY = 'yearly',
-  TOPIC = 'topic',
 }
 
 /**
  * Array of all valid leaderboard periods
  */
 export const VALID_LEADERBOARD_PERIODS = Object.values(LeaderboardPeriod);
-
-/**
- * Event Result Enum
- */
-export enum EventResult {
-  SUCCESS = 'success',
-  FAILURE = 'failure',
-  ERROR = 'error',
-}
-
-/**
- * Array of all valid event results
- */
-export const VALID_EVENT_RESULTS = Object.values(EventResult);
-
 
 /**
  * Game state constants

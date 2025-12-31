@@ -45,10 +45,8 @@ export {
 	fetchUserData,
 	setAvatar,
 	updateAvatar,
-	setAuthenticated,
 	setCreditBalance,
 	setUser,
-	updateUserProfile,
 } from './userSlice';
 
 /**

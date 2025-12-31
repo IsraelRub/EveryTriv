@@ -4,8 +4,9 @@
  * @module ClientPasswordValidation
  * @description Client-side password validation functions
  */
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_LENGTH } from '@shared/constants';
 import type { BaseValidationResult } from '@shared/types';
+import { VALIDATION_MESSAGES } from '@/constants';
 
 /**
  * Validates password length requirements
@@ -17,13 +18,13 @@ export function validatePasswordLength(password: string): BaseValidationResult {
 	const errors: string[] = [];
 
 	if (!password) {
-		errors.push('Password is required');
+		errors.push(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
 	} else {
-		if (password.length < VALIDATION_CONFIG.limits.PASSWORD.MIN_LENGTH) {
-			errors.push(`Password must be at least ${VALIDATION_CONFIG.limits.PASSWORD.MIN_LENGTH} characters`);
+		if (password.length < VALIDATION_LENGTH.PASSWORD.MIN) {
+			errors.push(`Password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters`);
 		}
-		if (password.length > VALIDATION_CONFIG.limits.PASSWORD.MAX_LENGTH) {
-			errors.push(`Password must not exceed ${VALIDATION_CONFIG.limits.PASSWORD.MAX_LENGTH} characters`);
+		if (password.length > VALIDATION_LENGTH.PASSWORD.MAX) {
+			errors.push(`Password must not exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`);
 		}
 	}
 
@@ -44,9 +45,9 @@ export function validatePasswordMatch(password: string, confirmPassword: string)
 	const errors: string[] = [];
 
 	if (!confirmPassword) {
-		errors.push('Please confirm your password');
+		errors.push(VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_REQUIRED);
 	} else if (password && confirmPassword !== password) {
-		errors.push('Passwords do not match');
+		errors.push(VALIDATION_MESSAGES.PASSWORDS_DO_NOT_MATCH);
 	}
 
 	return {

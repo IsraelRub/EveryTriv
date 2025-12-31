@@ -6,7 +6,6 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
 
@@ -14,19 +13,12 @@ import { DifficultyLevel, GameMode } from '@shared/constants';
 import type { GameData, GameDifficulty } from '@shared/types';
 import { calculatePercentage } from '@shared/utils';
 import { isGameDifficulty } from '@shared/validation';
-
-import { AudioKey, ButtonSize, Easing, ROUTES } from '@/constants';
-
+import { AudioKey, ButtonSize, ROUTES } from '@/constants';
 import { Button, Card, SocialShare } from '@/components';
-
 import { useAppSelector, useCountUp, useSaveHistory, useUserAnalytics } from '@/hooks';
-
 import { audioService, clientLogger as logger } from '@/services';
-
 import type { GameSummaryStats } from '@/types';
-
-import { calculateGrade, formatTime, isGameSummaryNavigationState } from '@/utils';
-
+import { cn, calculateGrade, formatTime, isGameSummaryNavigationState } from '@/utils';
 import { selectCurrentGameMode, selectCurrentUser } from '@/redux/selectors';
 
 export function GameSummaryView() {
@@ -78,8 +70,8 @@ export function GameSummaryView() {
 	const [visibleStars, setVisibleStars] = useState(0);
 
 	// Animated counts for score and correct answers
-	const animatedScore = useCountUp(gameStats.score, { duration: 2000, easing: Easing.EASE_OUT });
-	const animatedCorrect = useCountUp(gameStats.correct, { duration: 2000, easing: Easing.EASE_OUT });
+	const animatedScore = useCountUp(gameStats.score);
+	const animatedCorrect = useCountUp(gameStats.correct);
 
 	// Track if game history has been saved to prevent duplicate saves
 	// Use a ref that tracks the last saved game state to detect new games
@@ -246,7 +238,7 @@ export function GameSummaryView() {
 									}}
 								>
 									<Star
-										className={`w-16 h-16 fill-current ${index < visibleStars ? 'text-yellow-500' : 'text-gray-400'}`}
+										className={cn('w-16 h-16 fill-current', index < visibleStars ? 'text-yellow-500' : 'text-gray-400')}
 									/>
 								</motion.div>
 							))}
@@ -305,9 +297,10 @@ export function GameSummaryView() {
 								{gameStats.questionsData.map((q, index) => (
 									<div
 										key={index}
-										className={`p-3 rounded-lg border-2 border-white ${
+										className={cn(
+											'p-3 rounded-lg border-2 border-white',
 											q.isCorrect ? 'bg-green-500/30 ring-2 ring-green-500/50' : 'bg-red-500/30 ring-2 ring-red-500/50'
-										}`}
+										)}
 									>
 										<div className='flex items-start gap-2'>
 											{q.isCorrect ? (

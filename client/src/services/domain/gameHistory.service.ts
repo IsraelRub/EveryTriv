@@ -6,11 +6,11 @@
  * @description Client-side game history and leaderboard management
  * @used_by client/views/game-history, client/components/stats, client/hooks
  */
-import { API_ROUTES, GAME_STATE_CONFIG, VALID_GAME_MODES } from '@shared/constants';
-import type { ClearOperationResponse, GameData, GameHistoryEntry } from '@shared/types';
-import { getErrorMessage, normalizeGameData } from '@shared/utils';
+import { API_ROUTES, ERROR_MESSAGES, GAME_STATE_CONFIG, VALID_GAME_MODES } from '@shared/constants';
+import type { ClearOperationResponse, GameData, GameHistoryEntry, GameHistoryResponse } from '@shared/types';
+import { getErrorMessage, hasProperty, isNonEmptyString, normalizeGameData } from '@shared/utils';
 import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
-
+import { VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
 
 /**
@@ -28,22 +28,16 @@ class ClientGameHistoryService {
 	 */
 	async saveGameResult(gameData: GameData): Promise<GameHistoryEntry> {
 		try {
-			logger.gameStatistics('Saving game result to history', {
-				score: gameData.score,
-				gameQuestionCount: gameData.gameQuestionCount,
-				correctAnswers: gameData.correctAnswers,
-			});
-
-			if (!gameData.userId || gameData.userId.trim() === '') {
-				throw new Error('User ID is required to save game history');
+			if (!isNonEmptyString(gameData.userId)) {
+				throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED_FOR_HISTORY);
 			}
 			const userId = gameData.userId;
 
 			if (!isValidDifficulty(gameData.difficulty)) {
-				throw new Error(`Invalid difficulty level: ${gameData.difficulty}`);
+				throw new Error(ERROR_MESSAGES.validation.INVALID_DIFFICULTY_LEVEL(gameData.difficulty));
 			}
 			if (!VALID_GAME_MODES.includes(gameData.gameMode)) {
-				throw new Error(`Invalid game mode: ${gameData.gameMode}`);
+				throw new Error(ERROR_MESSAGES.validation.INVALID_GAME_MODE(gameData.gameMode));
 			}
 
 			const createGameHistoryDto = normalizeGameData(gameData, {
@@ -69,7 +63,6 @@ class ClientGameHistoryService {
 				userId,
 			};
 
-			logger.gameStatistics('Game result saved successfully', { id: gameHistory.id });
 			return gameHistory;
 		} catch (error) {
 			logger.gameError('Failed to save game result', {
@@ -90,40 +83,26 @@ class ClientGameHistoryService {
 		try {
 			// Validate pagination parameters
 			if (limit && (limit < 1 || limit > 1000)) {
-				throw new Error('Limit must be between 1 and 1000');
+				throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 1000));
 			}
 			if (offset && offset < 0) {
-				throw new Error('Offset must be non-negative');
+				throw new Error(VALIDATION_MESSAGES.OFFSET_NON_NEGATIVE);
 			}
-
-			logger.gameStatistics('Getting user game history', { limit, offset });
 
 			const searchParams = new URLSearchParams();
 			if (limit != null) searchParams.append('limit', String(limit));
 			if (offset != null) searchParams.append('offset', String(offset));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-			const response = await apiService.get<{ games: GameHistoryEntry[] }>(`${API_ROUTES.GAME.HISTORY}${query}`);
+			const response = await apiService.get<GameHistoryResponse>(`${API_ROUTES.GAME.HISTORY}${query}`);
 			const responseData = response.data;
 
-			// Server returns { userId, email, totalGames, games: [...] }
-			// Extract games array from the response object
-			let gameHistory: GameHistoryEntry[] = [];
-			if (
-				responseData &&
-				typeof responseData === 'object' &&
-				'games' in responseData &&
-				Array.isArray(responseData.games)
-			) {
-				gameHistory = responseData.games;
-			} else if (Array.isArray(responseData)) {
-				gameHistory = responseData;
+			// Server returns GameHistoryResponse with games array
+			if (hasProperty(responseData, 'games') && Array.isArray(responseData.games)) {
+				return responseData.games;
 			}
 
-			logger.gameStatistics('User game history retrieved successfully', {
-				count: gameHistory.length,
-			});
-			return gameHistory;
+			return [];
 		} catch (error) {
 			logger.gameError('Failed to get user game history', { error: getErrorMessage(error), limit, offset });
 			throw error;
@@ -137,17 +116,16 @@ class ClientGameHistoryService {
 	 */
 	async deleteGameHistory(gameId: string): Promise<string> {
 		// Validate game ID
-		if (!gameId || gameId.trim().length === 0) {
-			throw new Error('Game ID is required');
+		if (!isNonEmptyString(gameId)) {
+			throw new Error(ERROR_MESSAGES.validation.GAME_ID_REQUIRED);
 		}
 
 		try {
-			logger.gameStatistics('Deleting game history', { gameId });
-
+			logger.userInfo('Deleting game history', { gameId });
 			const response = await apiService.delete<string>(API_ROUTES.GAME.HISTORY_BY_ID.replace(':gameId', gameId));
-
-			logger.gameStatistics('Game history deleted successfully', { gameId });
-			return response.data;
+			const result = response.data;
+			logger.userInfo('Game history deleted successfully', { message: result });
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to delete game history', {
 				error: getErrorMessage(error),
@@ -163,14 +141,11 @@ class ClientGameHistoryService {
 	 */
 	async clearGameHistory(): Promise<ClearOperationResponse> {
 		try {
-			logger.gameStatistics('Clearing all game history');
-
+			logger.userInfo('Clearing all game history');
 			const response = await apiService.delete<ClearOperationResponse>(API_ROUTES.GAME.HISTORY);
-
-			logger.gameStatistics('All game history cleared successfully', {
-				deletedCount: response.data.deletedCount,
-			});
-			return response.data;
+			const result = response.data;
+			logger.userInfo('All game history cleared successfully', { deletedCount: result.deletedCount });
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to clear game history', { error: getErrorMessage(error) });
 			throw error;

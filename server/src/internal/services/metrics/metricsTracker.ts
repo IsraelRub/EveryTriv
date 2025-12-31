@@ -6,8 +6,8 @@
  */
 import { StorageType } from '@shared/constants';
 import type { StorageMetrics } from '@shared/types';
-
 import { metricsService } from './metrics.service';
+import { calculateDuration } from '@shared/utils';
 
 /**
  * Storage Metrics Tracker
@@ -36,7 +36,7 @@ export class StorageMetricsTracker {
 			return;
 		}
 
-		const duration = Date.now() - startTime;
+		const duration = calculateDuration(startTime);
 		metricsService.trackOperation(operation, storageType, success, duration, size);
 	}
 }

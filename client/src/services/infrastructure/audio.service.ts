@@ -1,10 +1,7 @@
 import type { UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { AUDIO_DATA, AudioCategory, AudioKey } from '@/constants';
-
 import { clientLogger as logger } from '@/services';
-
 import { AudioServiceInterface } from '@/types';
 
 /**
@@ -22,6 +19,7 @@ export class AudioService implements AudioServiceInterface {
 	private masterVolume = 1;
 	private userInteracted = false;
 	private userPreferences: UserPreferences | null = null;
+	private failedPreloads: Set<AudioKey> = new Set();
 
 	constructor() {
 		this.preloadEssentialAudio();
@@ -90,15 +88,26 @@ export class AudioService implements AudioServiceInterface {
 	 * Preload a single audio file
 	 */
 	private preloadAudioInternal(key: AudioKey, src: string, config: { loop?: boolean }): void {
+		// Skip preload if this key already failed due to cache issues
+		if (this.failedPreloads.has(key)) {
+			return;
+		}
+
 		const audio = new Audio();
 		const finalVolume = this.calculateVolume(key);
 		audio.volume = this.isMuted ? 0 : finalVolume;
 		audio.loop = config.loop ?? false;
 
-		// Use 'auto' instead of 'metadata' to avoid cache issues
-		audio.preload = 'auto';
+		// Use 'none' to avoid cache issues - load on demand instead
+		audio.preload = 'none';
 
+		let errorHandled = false;
 		audio.addEventListener('error', err => {
+			if (errorHandled) {
+				return;
+			}
+			errorHandled = true;
+
 			const errorMessage = getErrorMessage(err);
 			if (err.target instanceof HTMLAudioElement) {
 				const error = err.target;
@@ -114,15 +123,12 @@ export class AudioService implements AudioServiceInterface {
 					errorMessage.includes('ERR_CACHE_READ_FAILURE') ||
 					errorMessage.includes('NotSupportedError')
 				) {
-					logger.mediaWarn(`Audio cache/format error for ${key}, will retry on demand: ${src}`, {
-						key,
-						src,
-						error: errorMessage,
-						audioErrorCode: errorCode,
-					});
-					// Don't fail completely - allow on-demand loading
-					// Clear the src and let it reload on demand
+					// Mark as failed preload to prevent retry loops
+					this.failedPreloads.add(key);
+					// Clear the src to prevent further attempts
 					audio.src = '';
+					// Remove from map to allow fresh load on demand
+					this.audioElements.delete(key);
 					return;
 				}
 
@@ -146,33 +152,8 @@ export class AudioService implements AudioServiceInterface {
 		const audioData = AUDIO_DATA[key];
 		this.volumes.set(key, audioData.volume);
 
-		// Set src and load after everything is set up
+		// Set src but don't call load() - let it load on demand
 		audio.src = src;
-
-		// Try to load, but don't fail if cache operation is not supported
-		try {
-			audio.load();
-		} catch (err) {
-			const errorMessage = getErrorMessage(err);
-			if (
-				errorMessage.includes('CACHE_OPERATION_NOT_SUPPORTED') ||
-				errorMessage.includes('ERR_CACHE_READ_FAILURE') ||
-				errorMessage.includes('NotSupportedError')
-			) {
-				logger.mediaWarn(`Audio preload skipped for ${key} due to cache limitation, will load on demand`, {
-					key,
-					src,
-				});
-				// Clear src to allow retry on demand
-				audio.src = '';
-			} else {
-				logger.mediaError(`Failed to preload audio: ${key}`, {
-					error: errorMessage,
-					key,
-					src,
-				});
-			}
-		}
 	}
 
 	/**
@@ -184,6 +165,7 @@ export class AudioService implements AudioServiceInterface {
 		if (!audio) {
 			const audioData = AUDIO_DATA[key];
 			if (audioData) {
+				this.failedPreloads.delete(key);
 				this.preloadAudioInternal(key, audioData.path, {
 					loop: audioData.loop,
 				});
@@ -195,15 +177,16 @@ export class AudioService implements AudioServiceInterface {
 		if (audio && !audio.src) {
 			const audioData = AUDIO_DATA[key];
 			if (audioData) {
-				audio.src = audioData.path;
-				try {
-					audio.load();
-				} catch (err) {
-					logger.mediaWarn(`Failed to reload audio on demand: ${key}`, {
-						key,
-						error: getErrorMessage(err),
-					});
-				}
+				// Create a fresh audio element to avoid cache issues
+				const freshAudio = new Audio();
+				freshAudio.preload = 'none';
+				freshAudio.volume = this.isMuted ? 0 : this.calculateVolume(key);
+				freshAudio.loop = audioData.loop;
+				freshAudio.src = audioData.path;
+
+				// Replace the old audio element
+				this.audioElements.set(key, freshAudio);
+				audio = freshAudio;
 			}
 		}
 
@@ -230,7 +213,7 @@ export class AudioService implements AudioServiceInterface {
 	 * Play a sound
 	 */
 	public play(key: AudioKey): void {
-		const audio = this.ensureAudioLoaded(key);
+		let audio = this.ensureAudioLoaded(key);
 		if (!audio) {
 			logger.mediaWarn(`Audio not found: ${key}`, {
 				key,
@@ -241,21 +224,38 @@ export class AudioService implements AudioServiceInterface {
 
 		// Check if audio is in error state and try to reload
 		if (audio.error && audio.error.code !== 0) {
-			// Try to reload the audio element
-			const audioData = AUDIO_DATA[key];
-			if (audioData) {
-				// Clear src first
-				audio.src = '';
-				audio.load();
-				audio.src = audioData.path;
+			// Check if it's a cache-related error
+			const errorCode = audio.error.code;
+			const isCacheError =
+				errorCode === 20 ||
+				errorCode === 4 ||
+				audio.error.message?.includes('CACHE_OPERATION_NOT_SUPPORTED') ||
+				audio.error.message?.includes('ERR_CACHE_READ_FAILURE') ||
+				audio.error.message?.includes('NotSupportedError');
 
-				try {
-					audio.load();
-				} catch (err) {
-					logger.mediaWarn(`Failed to reload audio: ${key}`, {
-						key,
-						error: getErrorMessage(err),
-					});
+			if (isCacheError) {
+				// For cache errors, create a fresh audio element
+				const audioData = AUDIO_DATA[key];
+				if (audioData) {
+					const freshAudio = new Audio();
+					freshAudio.preload = 'none';
+					freshAudio.volume = this.isMuted ? 0 : this.calculateVolume(key);
+					freshAudio.loop = audioData.loop;
+					freshAudio.src = audioData.path;
+
+					// Replace the old audio element
+					this.audioElements.set(key, freshAudio);
+					audio = freshAudio;
+				} else {
+					return;
+				}
+			} else {
+				// For other errors, try to reload
+				const audioData = AUDIO_DATA[key];
+				if (audioData) {
+					audio.src = '';
+					audio.src = audioData.path;
+				} else {
 					return;
 				}
 			}
@@ -393,13 +393,6 @@ export class AudioService implements AudioServiceInterface {
 			const finalVolume = this.calculateVolume(key);
 			audio.volume = finalVolume;
 		});
-
-		// Start background music if user already interacted and music is enabled
-		// If userPreferences is null, default to musicEnabled: true
-		const musicEnabled = this.userPreferences?.musicEnabled ?? true;
-		if (this.userInteracted && musicEnabled) {
-			this.play(AudioKey.BACKGROUND_MUSIC);
-		}
 	}
 
 	/**

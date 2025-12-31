@@ -5,13 +5,10 @@
  * @description Unified component for all management clear operations
  */
 import { useState } from 'react';
-
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
 import { ButtonVariant } from '@/constants';
-
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
-
 import { ConfirmClearDialog } from './ConfirmClearDialog';
 
 interface ClearOperation {

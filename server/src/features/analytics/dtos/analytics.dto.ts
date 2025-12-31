@@ -21,7 +21,7 @@ import {
 	MinLength,
 } from 'class-validator';
 
-import { AnalyticsResult, ComparisonTarget, TimePeriod, VALID_TIME_PERIODS } from '@shared/constants';
+import { AnalyticsResult, ComparisonTarget, TimePeriod, VALID_TIME_PERIODS, VALIDATION_COUNT } from '@shared/constants';
 import type { BasicValue } from '@shared/types';
 
 const VALID_ANALYTICS_RESULTS = Object.values(AnalyticsResult);
@@ -29,7 +29,6 @@ const VALID_ANALYTICS_RESULTS = Object.values(AnalyticsResult);
 export class TrackEventDto {
 	@ApiProperty({
 		description: 'Type of analytics event',
-		example: 'game_started',
 		minLength: 1,
 		maxLength: 100,
 	})
@@ -58,17 +57,15 @@ export class TrackEventDto {
 	sessionId?: string;
 
 	@ApiPropertyOptional({
-		description: 'Event timestamp (optional, will be set automatically)',
+		description: 'Event timestamp (optional, ISO-8601 string)',
 		example: '2024-01-01T00:00:00.000Z',
 	})
 	@IsOptional()
-	@IsDateString({}, { message: 'Timestamp must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
-	timestamp?: Date;
+	@IsDateString({}, { message: 'Timestamp must be a valid ISO date string' })
+	timestamp?: string;
 
 	@ApiPropertyOptional({
 		description: 'Page or screen where event occurred',
-		example: '/game/trivia',
 		maxLength: 200,
 	})
 	@IsOptional()
@@ -78,7 +75,6 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Action performed by user',
-		example: 'click',
 		maxLength: 100,
 	})
 	@IsOptional()
@@ -88,7 +84,6 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Result of the action',
-		example: 'success',
 		enum: VALID_ANALYTICS_RESULTS,
 	})
 	@IsOptional()
@@ -99,7 +94,6 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Duration of the action in milliseconds',
-		example: 1500,
 		minimum: 0,
 	})
 	@IsOptional()
@@ -146,13 +140,14 @@ export class TopicAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of topics to return',
-		example: 20,
 		minimum: 1,
-		maximum: 100,
+		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
+	@Min(1, { message: 'Limit must be at least 1' })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
 	limit?: number;
 }
 
@@ -169,7 +164,6 @@ export class UserIdParamDto {
 export class UserActivityQueryDto {
 	@ApiPropertyOptional({
 		description: 'Maximum number of activity entries to return',
-		example: 25,
 		minimum: 1,
 		maximum: 200,
 	})
@@ -220,7 +214,6 @@ export class UserTrendQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Group trend data by time period',
-		example: 'weekly',
 		enum: VALID_TIME_PERIODS,
 	})
 	@IsOptional()
@@ -232,20 +225,20 @@ export class UserTrendQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of timeline scoring to return',
-		example: 30,
 		minimum: 1,
 		maximum: 200,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
+	@Min(1, { message: 'Limit must be at least 1' })
+	@Max(200, { message: 'Limit cannot exceed 200' })
 	limit?: number;
 }
 
 export class UserComparisonQueryDto {
 	@ApiPropertyOptional({
 		description: 'Comparison target: global averages or another user',
-		example: ComparisonTarget.GLOBAL,
 		enum: ComparisonTarget,
 	})
 	@IsOptional()

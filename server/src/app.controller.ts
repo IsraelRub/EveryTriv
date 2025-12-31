@@ -8,9 +8,7 @@
 import { Controller, Get } from '@nestjs/common';
 
 import { API_VERSION, CACHE_DURATION } from '@shared/constants';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { Cache, Public } from './common';
 
 /**
@@ -25,7 +23,7 @@ export class AppController {
 	 */
 	@Get('/')
 	@Public()
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	getHello(): string {
 		logger.apiRead('app_root', {});
 		return 'EveryTriv API is running!';
@@ -36,7 +34,7 @@ export class AppController {
 	 */
 	@Get('/health')
 	@Public()
-	@Cache(CACHE_DURATION.VERY_SHORT) // Cache for 30 seconds
+	@Cache(CACHE_DURATION.VERY_SHORT)
 	getHealth(): { status: string; version: string } {
 		logger.apiRead('app_health', {
 			version: API_VERSION,

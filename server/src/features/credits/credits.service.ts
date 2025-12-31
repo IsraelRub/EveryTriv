@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
+	CACHE_DURATION,
 	CREDIT_PURCHASE_PACKAGES,
 	CreditTransactionType,
 	ERROR_CODES,
 	GameMode,
 	PaymentStatus,
 	UserRole,
-	VALIDATION_CONFIG,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
 	CanPlayResponse,
@@ -20,12 +21,10 @@ import type {
 } from '@shared/types';
 import { calculateNewBalance, ensureErrorObject } from '@shared/utils';
 import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@shared/utils/domain';
-
-import { CreditSource, SERVER_GAME_CONSTANTS } from '@internal/constants';
+import { CreditSource } from '@internal/constants';
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { BaseCreditsService, serverLogger as logger } from '@internal/services';
-
 import { ValidationService } from '../../common';
 import { PaymentService } from '../payment';
 
@@ -44,7 +43,7 @@ export class CreditsService extends BaseCreditsService {
 	}
 
 	private assertQuestionsPerRequestWithinLimits(questionsPerRequest: number): void {
-		const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
+		const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 		if (
 			!Number.isFinite(questionsPerRequest) ||
 			(questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX))
@@ -90,16 +89,9 @@ export class CreditsService extends BaseCreditsService {
 						nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 					};
 
-					logger.databaseInfo('Credit balance retrieved', {
-						userId,
-						credits: balance.totalCredits,
-						purchasedCredits: balance.purchasedCredits,
-						freeQuestions: balance.freeQuestions,
-						canPlayFree: balance.canPlayFree,
-					});
 					return balance;
 				},
-				1800,
+				CACHE_DURATION.THIRTY_MINUTES,
 				isCreditBalanceCacheEntry
 			);
 		} catch (error) {
@@ -128,10 +120,9 @@ export class CreditsService extends BaseCreditsService {
 						pricePerCredit: pkg.pricePerCredit,
 					}));
 
-					logger.databaseInfo('Credit packages retrieved', { count: packages.length });
 					return packages;
 				},
-				3600,
+				CACHE_DURATION.VERY_LONG,
 				isCreditPurchaseOptionArray
 			);
 		} catch (error) {
@@ -154,12 +145,28 @@ export class CreditsService extends BaseCreditsService {
 				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
-			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
+			// For TIME_LIMITED mode, validate time in seconds (30-300)
+			// For other modes, validate as questions (1-10 or -1)
+			if (gameMode === GameMode.TIME_LIMITED) {
+				const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
+				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < MIN || questionsPerRequest > MAX) {
+					throw new BadRequestException(
+						`Time limit must be between ${MIN} and ${MAX} seconds for TIME_LIMITED mode`
+					);
+				}
+			} else {
+				this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
+			}
 
-			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
-			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
+			// For TIME_LIMITED, use questionsPerRequest directly as time in seconds
+			// For other modes, convert UNLIMITED_QUESTIONS (-1) to MAX for credit calculation
+			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
+			const normalizedQuestionsPerRequest =
+				gameMode === GameMode.TIME_LIMITED
+					? questionsPerRequest
+					: questionsPerRequest === UNLIMITED
+						? MAX
+						: questionsPerRequest;
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
@@ -176,13 +183,14 @@ export class CreditsService extends BaseCreditsService {
 			const freeQuestions = user.remainingFreeQuestions ?? 0;
 			const totalAvailable = credits + purchasedCredits + freeQuestions;
 
-			// Check if user has free questions available
-			if (freeQuestions >= normalizedQuestionsPerRequest) {
+			// Calculate required credits based on game mode (uses new methodology)
+			// TIME_LIMITED = 10 fixed, QUESTION_LIMITED/UNLIMITED/MULTIPLAYER = 1 per question
+			const requiredCredits = this.calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
+
+			// Check if user has free questions available (free questions cover the required credits)
+			if (freeQuestions >= requiredCredits) {
 				return { canPlay: true, reason: 'Free questions available' };
 			}
-
-			// Calculate required credits based on game mode
-			const requiredCredits = this.calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
 
 			// Check if user has enough purchased credits
 			if (purchasedCredits >= requiredCredits) {
@@ -223,12 +231,28 @@ export class CreditsService extends BaseCreditsService {
 				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
 			}
 
-			this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
+			// For TIME_LIMITED mode, validate time in seconds (30-300)
+			// For other modes, validate as questions (1-10 or -1)
+			if (gameMode === GameMode.TIME_LIMITED) {
+				const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
+				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < MIN || questionsPerRequest > MAX) {
+					throw new BadRequestException(
+						`Time limit must be between ${MIN} and ${MAX} seconds for TIME_LIMITED mode`
+					);
+				}
+			} else {
+				this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
+			}
 
-			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST for credit calculation
-			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
-			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
-			const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? maxQuestions : questionsPerRequest;
+			// For TIME_LIMITED, use questionsPerRequest directly as time in seconds
+			// For other modes, convert UNLIMITED_QUESTIONS (-1) to MAX for credit calculation
+			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
+			const normalizedQuestionsPerRequest =
+				gameMode === GameMode.TIME_LIMITED
+					? questionsPerRequest
+					: questionsPerRequest === UNLIMITED
+						? MAX
+						: questionsPerRequest;
 
 			const gameModeValidation = await this.validationService.validateInputContent(gameMode);
 			if (!gameModeValidation.isValid) {
@@ -343,6 +367,8 @@ export class CreditsService extends BaseCreditsService {
 				reason: reason ?? 'not_provided',
 			});
 
+			await this.cacheService.delete(`credits:balance:${userId}`);
+
 			const finalCredits = user.credits ?? 0;
 			const finalPurchasedCredits = user.purchasedCredits ?? 0;
 			const finalFreeQuestions = user.remainingFreeQuestions ?? 0;
@@ -357,16 +383,6 @@ export class CreditsService extends BaseCreditsService {
 				canPlayFree: finalFreeQuestions > 0,
 				nextResetTime,
 			};
-
-			logger.databaseInfo('Credits deducted successfully', {
-				userId,
-				questionsPerRequest,
-				gameMode,
-				reason,
-				credits: balance.totalCredits,
-				purchasedCredits: balance.purchasedCredits,
-				freeQuestions: balance.freeQuestions,
-			});
 
 			return balance;
 		} catch (error) {
@@ -400,7 +416,6 @@ export class CreditsService extends BaseCreditsService {
 				take: limit,
 			});
 
-			logger.databaseInfo('Credit history retrieved', { userId, count: transactions.length });
 			return transactions;
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to get credit history', {
@@ -430,7 +445,7 @@ export class CreditsService extends BaseCreditsService {
 
 			// Extract credits from package ID
 			const creditsMatch = request.packageId.match(/package_(\d+)/);
-			if (!creditsMatch) {
+			if (!creditsMatch || creditsMatch[1] == null) {
 				throw new BadRequestException(ERROR_CODES.INVALID_PACKAGE_ID);
 			}
 
@@ -459,25 +474,8 @@ export class CreditsService extends BaseCreditsService {
 			});
 
 			if (paymentResult.status !== PaymentStatus.COMPLETED) {
-				logger.databaseInfo('Credits purchase pending completion', {
-					userId,
-					id: request.packageId,
-					credits,
-					price: packageInfo.price,
-					status: paymentResult.status,
-					paymentId: paymentResult.transactionId,
-				});
-
 				return paymentResult;
 			}
-
-			logger.databaseInfo('Credits purchase completed', {
-				userId,
-				id: request.packageId,
-				credits,
-				price: packageInfo.price,
-				paymentId: paymentResult.transactionId,
-			});
 
 			const bonus = 0;
 			const balance = await this.applyCreditsPurchase(userId, credits, bonus);
@@ -630,14 +628,6 @@ export class CreditsService extends BaseCreditsService {
 				nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
 			};
 
-			logger.databaseInfo('Credit purchase confirmed', {
-				userId,
-				id: paymentIntentId,
-				credits,
-				purchasedCredits: balance.purchasedCredits,
-				freeQuestions: balance.freeQuestions,
-			});
-
 			return balance;
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), 'Failed to confirm credit purchase', {
@@ -668,11 +658,6 @@ export class CreditsService extends BaseCreditsService {
 					user.remainingFreeQuestions = user.dailyFreeQuestions;
 					user.lastFreeQuestionsReset = new Date();
 					await this.userRepository.save(user);
-
-					logger.databaseInfo('Daily free questions reset', {
-						userId: user.id,
-						newFreeQuestions: user.remainingFreeQuestions,
-					});
 				}
 			}
 		} catch (error) {

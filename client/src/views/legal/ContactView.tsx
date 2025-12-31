@@ -1,12 +1,9 @@
 import { useState } from 'react';
-
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lucide-react';
 
-import { ButtonSize } from '@/constants';
-
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@/components';
-
+import { ButtonSize, SpinnerSize, SpinnerVariant } from '@/constants';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Textarea } from '@/components';
 import { useToast } from '@/hooks';
 
 export function ContactView() {
@@ -218,7 +215,7 @@ export function ContactView() {
 										<Button type='submit' size={ButtonSize.LG} className='w-full' disabled={isSubmitting}>
 											{isSubmitting ? (
 												<>
-													<Send className='mr-2 h-4 w-4 animate-spin' />
+													<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 													Sending...
 												</>
 											) : (

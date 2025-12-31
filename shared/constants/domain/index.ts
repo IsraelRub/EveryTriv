@@ -6,6 +6,7 @@
  * @used_by shared/constants/index.ts
  */
 
+export * from './ai.constants';
 export * from './analytics.constants';
 export * from './game.constants';
 export * from './user.constants';

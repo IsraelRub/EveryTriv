@@ -3,13 +3,12 @@ import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/constants';
-
 import type { ProtectedRouteProps, RootState } from '@/types';
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, currentUser } = useSelector((state: RootState) => state.user);
+	const { isAuthenticated, currentUser, isLoading } = useSelector((state: RootState) => state.user);
 	const hasRedirected = useRef(false);
 	const hasUnauthorizedRedirected = useRef(false);
 
@@ -17,11 +16,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 		if (isAuthenticated) {
 			hasRedirected.current = false;
 			hasUnauthorizedRedirected.current = false;
-		} else if (!hasRedirected.current) {
+		} else if (!isLoading && !hasRedirected.current) {
 			hasRedirected.current = true;
 			navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname }, replace: true });
 		}
-	}, [isAuthenticated, navigate, location.pathname]);
+	}, [isAuthenticated, isLoading, navigate, location.pathname]);
 
 	useEffect(() => {
 		if (isAuthenticated && requiredRole && currentUser?.role !== requiredRole && !hasUnauthorizedRedirected.current) {
@@ -30,7 +29,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 		}
 	}, [isAuthenticated, requiredRole, currentUser?.role, navigate]);
 
-	if (!isAuthenticated) {
+	if (isLoading || !isAuthenticated) {
 		return null;
 	}
 

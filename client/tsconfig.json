@@ -15,6 +15,8 @@
 
     "skipLibCheck": true,
     "strict": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist-temp",
     "downlevelIteration": true,

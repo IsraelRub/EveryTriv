@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { ShieldX } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
-
 import { Button, Card } from '@/components';
 
 export function UnauthorizedView() {

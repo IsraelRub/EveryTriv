@@ -2,14 +2,12 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
-
 import { WsAuthGuard } from '../../../common/guards';
 import { GameModule } from '../game.module';
 import { GameStateService } from './gameState.service';
-import { MatchmakingService } from './matchmaking.service';
 import { MultiplayerController } from './multiplayer.controller';
 import { MultiplayerGateway } from './multiplayer.gateway';
 import { MultiplayerService } from './multiplayer.service';
@@ -31,7 +29,7 @@ import { RoomService } from './room.service';
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
 	],
-	providers: [RoomService, GameStateService, MatchmakingService, MultiplayerService, MultiplayerGateway, WsAuthGuard],
+	providers: [RoomService, GameStateService, MultiplayerService, MultiplayerGateway, WsAuthGuard],
 	controllers: [MultiplayerController],
 	exports: [MultiplayerService, MultiplayerGateway],
 })

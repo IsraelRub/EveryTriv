@@ -3,7 +3,6 @@
  * @module ClientValidationTypes
  * @description Client-side validation type definitions
  */
-import { ClientValidationType as ClientValidationTypeEnum } from '@shared/constants';
 
 /**
  * Validation hook options interface
@@ -18,8 +17,3 @@ export interface ValidationHookOptions {
 	customValidator?: (value: string) => boolean;
 	errorMessage?: string;
 }
-
-/**
- * Client validation type
- */
-export type ClientValidationType = (typeof ClientValidationTypeEnum)[keyof typeof ClientValidationTypeEnum];

@@ -5,18 +5,13 @@
  * @description Reusable timer component for game sessions with countdown and elapsed time modes
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-
 import { motion } from 'framer-motion';
 
 import { calculateElapsedSeconds } from '@shared/utils';
-
 import { AudioKey } from '@/constants';
-
 import { audioService } from '@/services';
-
 import type { GameTimerProps } from '@/types';
-
-import { formatTime } from '@/utils';
+import { cn, formatTime } from '@/utils';
 
 export function GameTimer({
 	mode,
@@ -47,16 +42,17 @@ export function GameTimer({
 
 	// Countdown mode: count down from initialTime
 	const warningTimeThresholdRef = useRef<number | null>(null);
+	const timeoutTriggeredRef = useRef(false);
 	useEffect(() => {
 		if (mode !== 'countdown' || initialTime === undefined) return;
 
 		// Calculate warning threshold (15% of total time)
 		warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
+		timeoutTriggeredRef.current = false;
 
 		const interval = setInterval(() => {
 			setCurrentTime((prev: number) => {
 				if (prev <= 1) {
-					onTimeoutRef.current?.();
 					return 0;
 				}
 
@@ -81,6 +77,17 @@ export function GameTimer({
 
 		return () => clearInterval(interval);
 	}, [mode, initialTime]);
+
+	// Handle timeout separately to avoid calling navigate during render
+	useEffect(() => {
+		if (mode === 'countdown' && currentTime === 0 && !timeoutTriggeredRef.current && onTimeoutRef.current) {
+			timeoutTriggeredRef.current = true;
+			// Use setTimeout to defer the callback to avoid calling it during render
+			setTimeout(() => {
+				onTimeoutRef.current?.();
+			}, 0);
+		}
+	}, [mode, currentTime]);
 
 	// Elapsed mode: count up from startTime
 	useEffect(() => {
@@ -154,15 +161,15 @@ export function GameTimer({
 	})();
 
 	return (
-		<div className={`mb-6 ${className}`}>
+		<div className={cn('mb-6', className)}>
 			<div className='text-center mb-2'>
-				<div className={`text-2xl font-medium ${getTimerColor()}`}>{formatTime(currentTime)}</div>
+				<div className={cn('text-2xl font-medium', getTimerColor())}>{formatTime(currentTime)}</div>
 				<p className='text-sm text-muted-foreground mt-1'>{label || defaultLabel}</p>
 			</div>
 			{showProgressBar && (
 				<div className='relative h-4 bg-muted rounded-full overflow-hidden'>
 					<motion.div
-						className={`absolute inset-y-0 left-0 ${getBarColor()}`}
+						className={cn('absolute inset-y-0 left-0', getBarColor())}
 						initial={{ width: '100%' }}
 						animate={{
 							width: `${progress}%`,

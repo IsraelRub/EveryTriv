@@ -7,5 +7,6 @@
  * @used_by server/src/features/game, client/src/components/game
  */
 export * from './customDifficulty.dto';
+export * from './gameHistoryQuery.dto';
 export * from './submitAnswer.dto';
 export * from './triviaRequest.dto';

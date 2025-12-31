@@ -76,13 +76,6 @@ export class AddFullTextSearch1720000000000 implements MigrationInterface {
 				FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION
 			`);
 
-			// Drop unused columns and indexes if they exist (for existing databases)
-			console.log('Dropping unused search_vector columns and indexes if they exist');
-			await queryRunner.query(`DROP INDEX IF EXISTS "IDX_game_history_search"`);
-			await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trivia_search"`);
-			await queryRunner.query(`ALTER TABLE "game_history" DROP COLUMN IF EXISTS "search_vector"`);
-			await queryRunner.query(`ALTER TABLE "trivia" DROP COLUMN IF EXISTS "search_vector"`);
-
 			console.log('Migration completed successfully: AddFullTextSearch', {
 				migrationName: this.name,
 				operation: 'up',

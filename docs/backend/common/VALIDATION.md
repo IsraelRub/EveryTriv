@@ -527,9 +527,28 @@ logger.validationInfo('username', value, 'validation_success');
 // ולידציה ללא מעקב
 ```
 
+### 5. טיפול ב-null/undefined
+
+```typescript
+// ✅ טוב - שימוש ב-nullish coalescing
+const sanitized = sanitizeInput(value ?? '');
+const logFailures = options?.logFailures ?? true;
+
+// ✅ טוב - בדיקת null/undefined
+if (value == null) {
+  return { isValid: false, errors: ['Value is required'] };
+}
+
+// ❌ רע - שימוש ב-|| עבור ערכים שעשויים להיות 0/false
+const timeout = options?.timeout || 5000; // 0 יהפוך ל-5000!
+
+// ראה מדיניות מלאה: ../../shared/NULL_UNDEFINED_POLICY.md
+```
+
 ## הפניות
 
 - [Pipes](./PIPES.md) - איך Pipes משתמשים ב-ValidationService
 - [Shared Validation](../../shared/VALIDATION.md) - ולידציות משותפות מ-`@shared/validation`
 - [Shared Utils](../../shared/LOGGING_MONITORING.md) - פונקציות ולידציה מ-`@shared/utils`
+- **[Null/Undefined Policy](../../shared/NULL_UNDEFINED_POLICY.md)** - מדיניות טיפול ב-null ו-undefined
 - [Common Structure](./README.md) - סקירה כללית

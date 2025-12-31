@@ -4,7 +4,7 @@
  * @module ServerTriviaValidation
  * @description Server-side trivia validation functions
  */
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_LENGTH, VALIDATION_COUNT } from '@shared/constants';
 import type { BaseValidationResult, GameDifficulty, TriviaInputValidationResult } from '@shared/types';
 import {
 	extractCustomDifficultyText,
@@ -13,7 +13,6 @@ import {
 	isRegisteredDifficulty,
 	validateCustomDifficultyText,
 } from '@shared/validation/domain/difficulty.validation';
-
 import { validateTopicLength } from '@internal/validation/core';
 
 /**
@@ -36,7 +35,10 @@ export function validateTriviaInputQuick(topic: string, difficulty: string): Tri
 	if (!topicValidation.isValid) {
 		result.topic.isValid = false;
 		if (topicValidation.errors.length > 0) {
-			result.topic.errors.push(topicValidation.errors[0]);
+			const firstError = topicValidation.errors[0];
+			if (firstError != null) {
+				result.topic.errors.push(firstError);
+			}
 		}
 	}
 
@@ -89,12 +91,12 @@ export function validateTriviaQuestion(payload: TriviaQuestionValidationPayload)
 	if (!payload.question || payload.question.trim().length === 0) {
 		errors.push('Question text is required');
 	} else {
-		const { MIN_LENGTH, MAX_LENGTH } = VALIDATION_CONFIG.limits.TRIVIA_QUESTION;
-		if (payload.question.length < MIN_LENGTH) {
-			errors.push(`Question text must be at least ${MIN_LENGTH} characters long`);
+		const { MIN, MAX } = VALIDATION_LENGTH.QUESTION;
+		if (payload.question.length < MIN) {
+			errors.push(`Question text must be at least ${MIN} characters long`);
 		}
-		if (payload.question.length > MAX_LENGTH) {
-			errors.push(`Question text is too long (max ${MAX_LENGTH} characters)`);
+		if (payload.question.length > MAX) {
+			errors.push(`Question text is too long (max ${MAX} characters)`);
 		}
 	}
 
@@ -102,7 +104,7 @@ export function validateTriviaQuestion(payload: TriviaQuestionValidationPayload)
 	if (!payload.answers || !Array.isArray(payload.answers)) {
 		errors.push('Answers must be an array');
 	} else {
-		const { MIN, MAX } = VALIDATION_CONFIG.limits.ANSWER_COUNT;
+		const { MIN, MAX } = VALIDATION_COUNT.ANSWER_COUNT;
 		if (payload.answers.length < MIN) {
 			errors.push(`At least ${MIN} answers are required`);
 		}
@@ -111,7 +113,7 @@ export function validateTriviaQuestion(payload: TriviaQuestionValidationPayload)
 		}
 
 		// Validate each answer
-		const maxAnswerLength = VALIDATION_CONFIG.limits.TRIVIA_ANSWER.MAX_LENGTH;
+		const maxAnswerLength = VALIDATION_LENGTH.ANSWER.MAX;
 		for (let i = 0; i < payload.answers.length; i++) {
 			const answer = payload.answers[i];
 			if (!answer || typeof answer !== 'string' || answer.trim().length === 0) {

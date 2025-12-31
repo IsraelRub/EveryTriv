@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { defaultValidators, StorageType } from '@shared/constants';
+import { defaultValidators, StorageType, TIME_PERIODS_MS } from '@shared/constants';
 import type {
 	StorageCleanupOptions,
 	StorageConfig,
@@ -9,13 +9,12 @@ import type {
 	StorageService,
 	StorageStats,
 	StorageValue,
+	TypeGuard,
 } from '@shared/types';
-import { createTimedResult, formatStorageError, getErrorMessage, isRecord } from '@shared/utils';
-
+import { createTimedResult, formatStorageError, getErrorMessage } from '@shared/utils';
 import { CACHE_CONFIG, StorageOperation } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type { CacheEntry } from '@internal/types';
-
 import { deleteKeysByPattern, scanKeys } from '../../utils';
 
 /**
@@ -88,11 +87,11 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	async get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
 	async get<T extends StorageValue>(
 		key: string,
-		validator: (value: StorageValue) => value is T
+		validator: TypeGuard<T>
 	): Promise<StorageOperationResult<T | null>>;
 	async get<T extends StorageValue>(
 		key: string,
-		validator?: (value: StorageValue) => value is T
+		validator?: TypeGuard<T>
 	): Promise<StorageOperationResult<StorageValue | null> | StorageOperationResult<T | null>> {
 		const startTime = Date.now();
 		try {
@@ -154,7 +153,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		key: string,
 		factory: () => Promise<T>,
 		ttl: number | undefined,
-		validator?: (value: StorageValue) => value is T
+		validator?: TypeGuard<T>
 	): Promise<T> {
 		try {
 			if (validator) {
@@ -164,7 +163,12 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				}
 			} else {
 				const cached = await this.get(key);
-				if (cached.success && cached.data) {
+				if (cached.success && cached.data !== null) {
+					// When no validator is provided, we trust that the cached value matches T
+					// This is safe because getOrSet is called with a factory that returns T,
+					// and the value was stored by set() which accepts StorageValue
+					// TypeScript cannot infer that cached.data is T, but we know it is because
+					// it was stored by set() which accepts StorageValue, and T extends StorageValue
 					return cached.data as T;
 				}
 			}
@@ -514,7 +518,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				}
 
 				// Check max age
-				if (maxAge && entry.expiry && now - entry.expiry > maxAge * 1000) {
+				if (maxAge && entry.expiry && now - entry.expiry > maxAge * TIME_PERIODS_MS.SECOND) {
 					shouldRemove = true;
 				}
 
@@ -575,7 +579,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	 * @description Private methods for in-memory cache operations
 	 */
 	private setMemory(key: string, value: StorageValue, ttl?: number): void {
-		const expiry = ttl ? Date.now() + ttl * 1000 : null;
+		const expiry = ttl ? Date.now() + ttl * TIME_PERIODS_MS.SECOND : null;
 		this.memoryCache.set(key, { value, expiry });
 	}
 
@@ -615,7 +619,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		const entry = this.memoryCache.get(key);
 		if (!entry) return false;
 
-		entry.expiry = Date.now() + ttl * 1000;
+		entry.expiry = Date.now() + ttl * TIME_PERIODS_MS.SECOND;
 		return true;
 	}
 
@@ -624,7 +628,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		if (!entry) return -1;
 		if (!entry.expiry) return -2;
 
-		const remaining = Math.ceil((entry.expiry - Date.now()) / 1000);
+		const remaining = Math.ceil((entry.expiry - Date.now()) / TIME_PERIODS_MS.SECOND);
 		return remaining > 0 ? remaining : -1;
 	}
 
@@ -696,7 +700,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			this.setMemory(key, amount);
 			return amount;
 		}
-		const current = defaultValidators.number(currentValue) ? (currentValue as number) : 0;
+		const current = defaultValidators.number(currentValue) ? currentValue : 0;
 		const newValue = current + amount;
 		this.setMemory(key, newValue);
 		return newValue;
@@ -868,8 +872,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			defaultValidators.number(value) ||
 			defaultValidators.boolean(value) ||
 			value instanceof Date ||
-			Array.isArray(value) ||
-			isRecord(value)
+			(typeof value === 'object' && value !== null)
 		) {
 			return value;
 		}

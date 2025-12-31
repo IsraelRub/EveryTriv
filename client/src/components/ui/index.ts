@@ -21,6 +21,7 @@ export * from './scroll-area';
 export * from './select';
 export * from './separator';
 export * from './skeleton';
+export * from './spinner';
 export * from './slider';
 export * from './switch';
 export * from './table';

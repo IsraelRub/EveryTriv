@@ -3,11 +3,9 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
 import { StorageOperation } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import { createCacheError } from '@internal/utils';
-
 import { Cache, Roles } from '../../../common';
 import { CacheService } from './cache.service';
 
@@ -25,7 +23,7 @@ export class CacheController {
 	 */
 	@Get('stats')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes - stats don't change frequently
+	@Cache(CACHE_DURATION.MEDIUM)
 	@ApiOperation({ summary: 'Get cache statistics' })
 	@ApiResponse({ status: 200, description: 'Cache statistics retrieved successfully' })
 	async getStats() {
@@ -76,7 +74,7 @@ export class CacheController {
 	 */
 	@Get('exists/:key')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT)
 	@ApiOperation({ summary: 'Check if a key exists in cache' })
 	@ApiResponse({ status: 200, description: 'Key existence checked successfully' })
 	async checkKeyExists(@Param('key') key: string) {
@@ -113,7 +111,7 @@ export class CacheController {
 	 */
 	@Get('ttl/:key')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT) // Cache for 1 minute
+	@Cache(CACHE_DURATION.SHORT)
 	@ApiOperation({ summary: 'Get TTL for a cache key' })
 	@ApiResponse({ status: 200, description: 'TTL retrieved successfully' })
 	async getKeyTTL(@Param('key') key: string) {

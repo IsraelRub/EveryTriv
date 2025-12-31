@@ -11,13 +11,11 @@ import { PasswordService } from 'src/common/auth/password.service';
 import { Repository } from 'typeorm';
 
 import { ERROR_CODES, UserRole } from '@shared/constants';
-
 import { UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules/cache/cache.service';
 import { ServerStorageService } from '@internal/modules/storage/storage.service';
 import { serverLogger as logger } from '@internal/services';
 import type { UserData } from '@internal/types';
-
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
 @Injectable()
@@ -64,8 +62,9 @@ export class AuthService {
 				user: {
 					id: existingUser.id,
 					email: existingUser.email,
-					firstName: existingUser.firstName,
-					lastName: existingUser.lastName,
+					firstName: existingUser.firstName || undefined,
+					lastName: existingUser.lastName || undefined,
+					avatar: existingUser.preferences?.avatar,
 					role: existingUser.role,
 				},
 			};
@@ -103,8 +102,9 @@ export class AuthService {
 			user: {
 				id: savedUser.id,
 				email: savedUser.email,
-				firstName: savedUser.firstName,
-				lastName: savedUser.lastName,
+				firstName: savedUser.firstName || undefined,
+				lastName: savedUser.lastName || undefined,
+					avatar: savedUser.preferences?.avatar,
 				role: savedUser.role,
 			},
 		};
@@ -156,7 +156,14 @@ export class AuthService {
 			return {
 				access_token: authResult.accessToken,
 				refresh_token: authResult.refreshToken,
-				user: authResult.user,
+				user: {
+					id: user.id,
+					email: user.email,
+					firstName: user.firstName || undefined,
+					lastName: user.lastName || undefined,
+					avatar: user.preferences?.avatar,
+					role: user.role,
+				},
 			};
 		} catch (error) {
 			if (error instanceof UnauthorizedException) {
@@ -203,7 +210,9 @@ export class AuthService {
 	 * @returns User data without password hash
 	 * @throws UnauthorizedException if user not found
 	 */
-	async getCurrentUser(userId: string): Promise<Omit<UserData, 'passwordHash'> & { passwordHash?: string }> {
+	async getCurrentUser(userId: string): Promise<
+		Pick<UserEntity, 'id' | 'email' | 'firstName' | 'lastName' | 'role' | 'preferences' | 'createdAt'>
+	> {
 		try {
 			logger.authDebug('getCurrentUser called', {
 				requestedUserId: userId,
@@ -211,7 +220,7 @@ export class AuthService {
 
 			const user = await this.userRepository.findOne({
 				where: { id: userId, isActive: true },
-				select: ['id', 'email', 'firstName', 'lastName', 'role', 'avatar', 'createdAt'],
+				select: ['id', 'email', 'firstName', 'lastName', 'role', 'preferences', 'createdAt'],
 			});
 
 			if (!user) {
@@ -362,7 +371,7 @@ export class AuthService {
 				userId: user.id,
 				currentFirstName: user.firstName || undefined,
 				currentLastName: user.lastName || undefined,
-				avatar: user.avatar || undefined,
+				avatar: user.preferences?.avatar,
 				newFirstName: profile.firstName || undefined,
 				newLastName: profile.lastName || undefined,
 			});
@@ -424,8 +433,9 @@ export class AuthService {
 			user: {
 				id: user.id,
 				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
+				firstName: user.firstName || undefined,
+				lastName: user.lastName || undefined,
+				avatar: user.preferences?.avatar,
 				role: user.role,
 			},
 		};

@@ -5,8 +5,8 @@
  * @description Utility functions for routing and navigation
  * @used_by client/src/hooks, client/src/components/routing
  */
+import { defaultValidators } from '@shared/constants';
 import { isRecord } from '@shared/utils';
-
 import type { GameSummaryNavigationState, ModalRouteState } from '@/types';
 
 /**
@@ -19,8 +19,8 @@ export function isModalRouteState(value: unknown): value is ModalRouteState {
 		return false;
 	}
 	return (
-		(value.modal === undefined || typeof value.modal === 'boolean') &&
-		(value.returnUrl === undefined || typeof value.returnUrl === 'string')
+		(value.modal === undefined || defaultValidators.boolean(value.modal)) &&
+		(value.returnUrl === undefined || defaultValidators.string(value.returnUrl))
 	);
 }
 
@@ -34,17 +34,13 @@ export function isGameSummaryNavigationState(value: unknown): value is GameSumma
 		return false;
 	}
 	return (
-		typeof value.userId === 'string' &&
-		typeof value.score === 'number' &&
-		Number.isFinite(value.score) &&
-		typeof value.gameQuestionCount === 'number' &&
-		Number.isFinite(value.gameQuestionCount) &&
-		typeof value.correctAnswers === 'number' &&
-		Number.isFinite(value.correctAnswers) &&
-		typeof value.timeSpent === 'number' &&
-		Number.isFinite(value.timeSpent) &&
+		defaultValidators.string(value.userId) &&
+		defaultValidators.number(value.score) &&
+		defaultValidators.number(value.gameQuestionCount) &&
+		defaultValidators.number(value.correctAnswers) &&
+		defaultValidators.number(value.timeSpent) &&
 		Array.isArray(value.questionsData) &&
-		(value.difficulty === undefined || typeof value.difficulty === 'string') &&
-		(value.topic === undefined || typeof value.topic === 'string')
+		(value.difficulty === undefined || defaultValidators.string(value.difficulty)) &&
+		(value.topic === undefined || defaultValidators.string(value.topic))
 	);
 }

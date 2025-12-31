@@ -4,7 +4,7 @@
  * @module AnalyticsGameTypes
  * @description Structures for tracking game performance, topics, and difficulty analytics
  */
-import type { DifficultyBreakdown, TopicsPlayed } from '../../core/data.types';
+import type { CountRecord, DifficultyBreakdown } from '../../core/data.types';
 import type { BaseGameTopicDifficulty } from '../game/trivia.types';
 import type { TimeStat } from './analyticsCommon.types';
 
@@ -73,7 +73,7 @@ export interface GameStatsCore {
  */
 export interface GameStatsData extends GameStatsCore {
 	popularTopics: string[];
-	difficultyDistribution: TopicsPlayed;
+	difficultyDistribution: CountRecord;
 	timeStats: TimeStat;
 }
 

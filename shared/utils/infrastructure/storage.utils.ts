@@ -7,7 +7,6 @@
  */
 import { StorageType } from '@shared/constants';
 import type { StorageOperationResult } from '@shared/types';
-
 import { getErrorMessage } from '../core/error.utils';
 
 /**

@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, Ban, CreditCard, FileText, Mail, Shield, Users } from 'lucide-react';
 
 import { ROUTES } from '@/constants';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components';
 
 export function TermsOfServiceView() {

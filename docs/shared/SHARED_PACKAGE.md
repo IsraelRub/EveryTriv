@@ -146,7 +146,7 @@ HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR // 500
 #### validation.constants.ts
 קבועי ולידציה:
 ```typescript
-import { VALIDATION_RULES, VALIDATION_ERRORS } from '@shared/constants';
+import { VALIDATION_RULES, ERROR_MESSAGES } from '@shared/constants';
 
 // כללי ולידציה
 VALIDATION_RULES.USERNAME_MIN_LENGTH  // 3
@@ -155,8 +155,8 @@ VALIDATION_RULES.PASSWORD_MIN_LENGTH  // 6
 VALIDATION_RULES.EMAIL_PATTERN        // regex
 
 // הודעות שגיאה
-VALIDATION_ERRORS.REQUIRED            // 'Field is required'
-VALIDATION_ERRORS.INVALID_EMAIL       // 'Invalid email format'
+ERROR_MESSAGES.validation.REQUIRED            // 'This field is required'
+ERROR_MESSAGES.validation.INVALID_EMAIL       // 'Please enter a valid email address'
 ```
 
 ### Domain Constants

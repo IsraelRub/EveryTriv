@@ -1,17 +1,10 @@
 import { useSelector } from 'react-redux';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getErrorMessage } from '@shared/utils';
-
-import { CLIENT_STORAGE_KEYS } from '@/constants';
-
-import { authService, clientLogger as logger, storageService } from '@/services';
-
+import { TIME_PERIODS_MS } from '@shared/constants';
+import { authService, clientLogger as logger } from '@/services';
 import type { RootState, UserLoginRequest, UserRegisterRequest } from '@/types';
-
-import { setAuthenticated, setUser } from '@/redux/slices';
-
+import { setUser } from '@/redux/slices';
 import { useAppDispatch } from './useRedux';
 
 // Query keys
@@ -31,7 +24,7 @@ export const useCurrentUser = () => {
 	return useQuery({
 		queryKey: authKeys.currentUser(),
 		queryFn: () => authService.getCurrentUser(),
-		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 		enabled: isAuthenticated,
 	});
 };
@@ -53,23 +46,16 @@ export const useLogin = () => {
 		onSuccess: async data => {
 			// Verify token is stored before updating Redux state
 			// This prevents race condition where queries start before token is available
-			let tokenStored = false;
-			let attempts = 0;
-			const maxAttempts = 10;
-
-			while (!tokenStored && attempts < maxAttempts) {
-				const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-				tokenStored = tokenResult.success && !!tokenResult.data;
-				if (!tokenStored) {
-					await new Promise(resolve => setTimeout(resolve, 50));
-					attempts++;
-				}
-			}
+			const tokenStored = await authService.waitForTokenStorage();
 
 			// Only update Redux if token is stored successfully and user data exists
 			if (tokenStored && data.user) {
+				// Verify token matches user before updating Redux
+				const tokenMatches = await authService.verifyStoredTokenForUser(data.user.id);
+
+				if (tokenMatches) {
 				// Update Redux state for HOCs consistency
-				dispatch(setAuthenticated(true));
+					// setUser already sets isAuthenticated = true
 				dispatch(setUser(data.user));
 
 				logger.authInfo('Login successful - Redux state updated', {
@@ -86,17 +72,16 @@ export const useLogin = () => {
 				// Note: We don't use queryClient.clear() here to avoid clearing all queries
 				// which could cause issues with other queries that are still needed
 				queryClient.invalidateQueries({ queryKey: authKeys.all });
+				} else {
+					logger.authError('Token mismatch - not updating Redux', {
+						userId: data.user.id,
+					});
+				}
 			} else {
 				logger.authError('Login failed - token not stored or user data missing', {
 					success: tokenStored,
-					attempt: attempts,
 				});
 			}
-		},
-		onError: error => {
-			logger.authError('Login mutation failed', {
-				error: getErrorMessage(error),
-			});
 		},
 	});
 };
@@ -114,49 +99,24 @@ export const useRegister = () => {
 		onSuccess: async data => {
 			// Verify token is stored before updating Redux state
 			// This prevents race condition where queries start before token is available
-			let tokenStored = false;
-			let attempts = 0;
-			const maxAttempts = 10;
-
-			while (!tokenStored && attempts < maxAttempts) {
-				const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-				tokenStored = tokenResult.success && !!tokenResult.data;
-				if (!tokenStored) {
-					await new Promise(resolve => setTimeout(resolve, 50));
-					attempts++;
-				}
-			}
+			const tokenStored = await authService.waitForTokenStorage();
 
 			// Only update Redux if token is stored successfully and user data exists
 			if (tokenStored && data.user) {
 				// Verify the stored token matches the user we're setting
-				const storedTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-				const storedToken = storedTokenResult.success ? storedTokenResult.data : null;
-				let tokenUserId: string | undefined = undefined;
-				if (storedToken) {
-					try {
-						const tokenParts = storedToken.split('.');
-						if (tokenParts.length === 3) {
-							const payload = JSON.parse(atob(tokenParts[1]));
-							tokenUserId = payload.sub;
-						}
-					} catch {
-						// Ignore decode errors
-					}
-				}
+				const tokenMatches = await authService.verifyStoredTokenForUser(data.user.id);
 
 				logger.authInfo('Registration successful - verifying token before Redux update', {
 					success: true,
 					userId: data.user.id,
 					email: data.user.email,
-					tokenUserId,
-					tokenMatches: tokenUserId === data.user.id,
+					tokenMatches,
 				});
 
 				// Only update Redux if token matches user
-				if (tokenUserId === data.user.id) {
+				if (tokenMatches) {
 					// Update Redux state for HOCs consistency
-					dispatch(setAuthenticated(true));
+					// setUser already sets isAuthenticated = true
 					dispatch(setUser(data.user));
 
 					logger.authInfo('Registration successful - Redux state updated', {
@@ -176,20 +136,13 @@ export const useRegister = () => {
 				} else {
 					logger.authError('Token mismatch - not updating Redux', {
 						userId: data.user.id,
-						tokenUserId,
 					});
 				}
 			} else {
 				logger.authError('Registration failed - token not stored or user data missing', {
 					success: tokenStored,
-					attempt: attempts,
 				});
 			}
-		},
-		onError: error => {
-			logger.authError('Registration mutation failed', {
-				error: getErrorMessage(error),
-			});
 		},
 	});
 };

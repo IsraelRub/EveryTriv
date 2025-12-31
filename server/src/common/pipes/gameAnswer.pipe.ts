@@ -8,10 +8,8 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { GameAnswerSubmission } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
-
 import { ValidationService } from '../validation';
 
 @Injectable()
@@ -54,7 +52,7 @@ export class GameAnswerPipe implements PipeTransform {
 			logger.apiUpdate('game_answer_validation', {
 				isValid,
 				errorsCount: errors.length,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 			});
 
 			if (!isValid) {

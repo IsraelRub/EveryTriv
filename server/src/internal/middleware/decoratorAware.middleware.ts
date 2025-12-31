@@ -9,10 +9,9 @@ import { Reflector } from '@nestjs/core';
 import type { NextFunction, Response } from 'express';
 
 import { CACHE_DURATION, HttpMethod, UserRole } from '@shared/constants';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
-import type { NestRequest } from '@internal/types';
+import type { ApiResponseConfig, CacheConfig, NestRequest, RateLimitConfig } from '@internal/types';
 
 /**
  * Smart decorator-aware middleware that analyzes request patterns
@@ -48,7 +47,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 			};
 
 			// Log middleware performance
-			const duration = Date.now() - startTime;
+			const duration = calculateDuration(startTime);
 			logger.performance('middleware.decorator-aware', duration, {
 				path: req.path,
 				method: req.method,
@@ -110,17 +109,17 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		const requireAuth = this.reflector.get<boolean>('requireAuth', handler);
 		const roles = this.reflector.get<string[]>('roles', handler);
 		const permissions = this.reflector.get<string[]>('permissions', handler);
-		const rateLimit = this.reflector.get<{ limit: number; window: number }>('rateLimit', handler);
-		const cache = this.reflector.get<{ ttl: number; key?: string; disabled?: boolean }>('cache', handler);
+		const rateLimit = this.reflector.get<RateLimitConfig>('rateLimit', handler);
+		const cache = this.reflector.get<CacheConfig>('cache', handler);
 		const cacheTags = this.reflector.get<string[]>('cacheTags', handler);
-		const apiResponse = this.reflector.get<{ status: number; description: string }>('apiResponse', handler);
-		const apiResponses = this.reflector.get<{ status: number; description: string }[]>('apiResponses', handler);
+		const apiResponse = this.reflector.get<ApiResponseConfig>('apiResponse', handler);
+		const apiResponses = this.reflector.get<ApiResponseConfig[]>('apiResponses', handler);
 		const validationSchema = this.reflector.get<string | object>('validationSchema', handler);
 		const customValidation = this.reflector.get<(value: unknown) => boolean>('customValidation', handler);
 
 		return {
-			isPublic: isPublic || false,
-			requireAuth: requireAuth || false,
+			isPublic: isPublic ?? undefined,
+			requireAuth: requireAuth ?? undefined,
 			roles: roles ?? [],
 			permissions: permissions ?? [],
 			rateLimit: rateLimit ?? null,
@@ -168,7 +167,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		if (path.includes('/auth/login')) {
 			suggestedRateLimit = { limit: 5, window: 60 }; // 5 per minute for login
 		} else if (path.includes('/auth/register')) {
-			suggestedRateLimit = { limit: 3, window: 300 }; // 3 per 5 minutes for register
+			suggestedRateLimit = { limit: 3, window: CACHE_DURATION.MEDIUM };
 		} else if (method === HttpMethod.GET && !path.includes('/admin')) {
 			suggestedRateLimit = { limit: 100, window: 60 }; // 100 per minute for GET requests
 		}
@@ -176,7 +175,7 @@ export class DecoratorAwareMiddleware implements NestMiddleware {
 		// Smart cache suggestions
 		let suggestedCache: { ttl: number; key?: string } | null = null;
 		if (method === HttpMethod.GET && !path.includes('/auth') && !path.includes('/admin')) {
-			suggestedCache = { ttl: CACHE_DURATION.MEDIUM }; // 5 minutes cache for GET requests
+			suggestedCache = { ttl: CACHE_DURATION.MEDIUM };
 		}
 
 		return {

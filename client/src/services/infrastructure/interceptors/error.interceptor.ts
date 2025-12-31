@@ -7,7 +7,6 @@
  */
 import type { ErrorInterceptor } from '@/types';
 import type { ApiError } from '@/types/infrastructure';
-
 import { BaseInterceptorManager } from './base.interceptor-manager';
 
 /**

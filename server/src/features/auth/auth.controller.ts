@@ -8,13 +8,11 @@ import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import { API_ROUTES, CACHE_DURATION, LOCALHOST_CONFIG, UserRole } from '@shared/constants';
+import { API_ROUTES, CACHE_DURATION, LOCALHOST_CONFIG, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AdminUserData, BasicUser } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateHasMore, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import type { GoogleAuthRequest, TokenPayload } from '@internal/types';
-
 import {
 	Cache,
 	CurrentUser,
@@ -41,7 +39,7 @@ export class AuthController {
 	 * @param registerDto User registration data
 	 * @returns Authentication response with user data and tokens
 	 */
-	@Post(API_ROUTES.AUTH.REGISTER)
+	@Post('register')
 	@Public()
 	async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
 		try {
@@ -71,7 +69,7 @@ export class AuthController {
 	 * @param loginDto User login credentials (email)
 	 * @returns Authentication response with user data and tokens
 	 */
-	@Post(API_ROUTES.AUTH.LOGIN)
+	@Post('login')
 	@Public()
 	async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
 		try {
@@ -101,7 +99,7 @@ export class AuthController {
 	 * @param refreshTokenDto Refresh token data
 	 * @returns New token pair with access and refresh tokens
 	 */
-	@Post(API_ROUTES.AUTH.REFRESH)
+	@Post('refresh')
 	@Public()
 	async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
 		try {
@@ -126,7 +124,7 @@ export class AuthController {
 	 * @param user Current user token payload
 	 * @returns Current user data with full profile information
 	 */
-	@Get(API_ROUTES.AUTH.ME)
+	@Get('me')
 	@NoCache()
 	async getCurrentUser(@CurrentUser() user: TokenPayload): Promise<BasicUser> {
 		try {
@@ -167,14 +165,9 @@ export class AuthController {
 			if ('lastName' in fullUser && typeof fullUser.lastName === 'string' && fullUser.lastName) {
 				userData.lastName = fullUser.lastName;
 			}
-			// Add avatar if it exists
-			if (
-				'avatar' in fullUser &&
-				typeof fullUser.avatar === 'number' &&
-				Number.isFinite(fullUser.avatar) &&
-				fullUser.avatar
-			) {
-				userData.avatar = fullUser.avatar;
+			// Add avatar if it exists in preferences
+			if (fullUser.preferences?.avatar && typeof fullUser.preferences.avatar === 'number' && Number.isFinite(fullUser.preferences.avatar)) {
+				userData.avatar = fullUser.preferences.avatar;
 			}
 
 			logger.systemInfo('Returning user data', {
@@ -196,7 +189,7 @@ export class AuthController {
 	 * @param userId Current user identifier
 	 * @returns Logout confirmation message
 	 */
-	@Post(API_ROUTES.AUTH.LOGOUT)
+	@Post('logout')
 	async logout(@CurrentUserId() userId: string): Promise<string> {
 		try {
 			const result = await this.authService.logout(userId);
@@ -219,7 +212,7 @@ export class AuthController {
 	 * Google OAuth login
 	 * Initiates Google OAuth authentication flow
 	 */
-	@Get(API_ROUTES.AUTH.GOOGLE)
+	@Get('google')
 	@Public()
 	@UseGuards(PassportAuthGuard('google'))
 	async googleLogin() {
@@ -233,7 +226,7 @@ export class AuthController {
 	 * @param res Express response object for redirects
 	 * @returns Authentication response with user data and tokens or redirects on error
 	 */
-	@Get(API_ROUTES.AUTH.GOOGLE_CALLBACK)
+	@Get('google/callback')
 	@Public()
 	@UseGuards(PassportAuthGuard('google'))
 	async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
@@ -315,7 +308,7 @@ export class AuthController {
 				httpOnly: true,
 				secure: process.env.COOKIE_SECURE !== 'false',
 				sameSite: 'lax' as const,
-				maxAge: 15 * 60 * 1000, // 15 minutes
+				maxAge: 15 * TIME_PERIODS_MS.MINUTE,
 				path: '/',
 			};
 
@@ -324,7 +317,7 @@ export class AuthController {
 			if (result.refresh_token) {
 				res.cookie('refresh_token', result.refresh_token, {
 					...cookieOptions,
-					maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+					maxAge: TIME_PERIODS_MS.WEEK,
 				});
 			}
 
@@ -352,10 +345,10 @@ export class AuthController {
 	 * @param offset Optional pagination offset
 	 * @returns List of users with pagination metadata
 	 */
-	@Get(API_ROUTES.AUTH.ADMIN_USERS)
+	@Get('admin/users')
 	@UseGuards(LocalAuthGuard, RolesGuard)
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getAllUsers(
 		@CurrentUser() user: TokenPayload,
 		@Query('limit') limit?: number,
@@ -388,6 +381,7 @@ export class AuthController {
 					total: result.total,
 					limit: result.limit,
 					offset: result.offset,
+					hasMore: calculateHasMore(result.offset, result.users.length, result.total),
 				},
 				timestamp: new Date().toISOString(),
 			};

@@ -6,7 +6,7 @@
  * @description Client-side credits management and balance tracking
  * @used_by client/src/components/payment, client/src/views/user, client/src/hooks
  */
-import { API_ROUTES, GameMode, PaymentMethod, VALID_GAME_MODES } from '@shared/constants';
+import { API_ROUTES, GameMode, VALID_GAME_MODES } from '@shared/constants';
 import type {
 	CanPlayResponse,
 	CreditBalance,
@@ -15,12 +15,9 @@ import type {
 	CreditTransaction,
 } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
+import { VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
-
 import type { CreditsPurchaseResponse } from '@/types';
-
-import { formatTimeUntilReset } from '@/utils';
 
 /**
  * Main credits management service class
@@ -36,16 +33,8 @@ class ClientCreditsService {
 	 */
 	async getCreditBalance(): Promise<CreditBalance> {
 		try {
-			logger.userInfo('Getting credit balance');
-
 			const response = await apiService.get<CreditBalance>(API_ROUTES.CREDITS.BALANCE);
-			const balance = response.data;
-
-			logger.userInfo('Credit balance retrieved successfully', {
-				credits: balance.totalCredits,
-				purchasedCredits: balance.purchasedCredits,
-			});
-			return balance;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get credit balance', { error: getErrorMessage(error) });
 			throw error;
@@ -58,15 +47,8 @@ class ClientCreditsService {
 	 */
 	async getCreditPackages(): Promise<CreditPurchaseOption[]> {
 		try {
-			logger.userInfo('Getting credit packages');
-
 			const response = await apiService.get<CreditPurchaseOption[]>(API_ROUTES.CREDITS.PACKAGES);
-			const packages = response.data;
-
-			logger.userInfo('Credit packages retrieved successfully', {
-				count: packages.length,
-			});
-			return packages;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get credit packages', { error: getErrorMessage(error) });
 			throw error;
@@ -81,12 +63,10 @@ class ClientCreditsService {
 	async canPlay(questionsPerRequest: number): Promise<CanPlayResponse> {
 		// Validate questions per request
 		if (questionsPerRequest < 1 || questionsPerRequest > 50) {
-			throw new Error('Questions per request must be between 1 and 50');
+			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 50));
 		}
 
 		try {
-			logger.userInfo('Checking if user can play', { questionsPerRequest });
-
 			const searchParams = new URLSearchParams();
 			searchParams.append('questionsPerRequest', String(questionsPerRequest));
 			const query = `?${searchParams.toString()}`;
@@ -94,10 +74,6 @@ class ClientCreditsService {
 			const response = await apiService.get<CanPlayResponse>(`${API_ROUTES.CREDITS.CAN_PLAY}${query}`);
 			const result = response.data;
 
-			logger.userInfo('Can play check completed', {
-				canPlay: result.canPlay,
-				reason: result.reason,
-			});
 			return {
 				canPlay: result.canPlay,
 				reason: result.reason,
@@ -117,24 +93,17 @@ class ClientCreditsService {
 	async deductCredits(questionsPerRequest: number, gameMode: GameMode): Promise<CreditBalance> {
 		// Validate questions per request
 		if (questionsPerRequest < 1 || questionsPerRequest > 50) {
-			throw new Error('Questions per request must be between 1 and 50');
+			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 50));
 		}
 
 		try {
 			const normalizedGameMode = this.resolveGameMode(gameMode);
-			logger.userInfo('Deducting credits', { questionsPerRequest, gameMode: normalizedGameMode });
 
 			const response = await apiService.post<CreditBalance>(API_ROUTES.CREDITS.DEDUCT, {
 				questionsPerRequest,
 				gameMode: normalizedGameMode,
 			});
-			const newBalance = response.data;
-
-			logger.userInfo('Credits deducted successfully', {
-				newTotalCredits: newBalance.totalCredits,
-				newPurchasedCredits: newBalance.purchasedCredits,
-			});
-			return newBalance;
+			return response.data;
 		} catch (error) {
 			const normalizedGameMode = this.resolveGameMode(gameMode);
 			logger.userError('Failed to deduct credits', {
@@ -157,21 +126,8 @@ class ClientCreditsService {
 	 */
 	async purchaseCredits(request: CreditsPurchaseRequest): Promise<CreditsPurchaseResponse> {
 		try {
-			logger.userInfo('Purchasing credits package', {
-				id: request.packageId,
-				method: request.paymentMethod ?? PaymentMethod.MANUAL_CREDIT,
-			});
-
 			const response = await apiService.post<CreditsPurchaseResponse>(API_ROUTES.CREDITS.PURCHASE, request);
-			const result = response.data;
-
-			logger.userInfo('Credits purchase response received', {
-				id: request.packageId,
-				status: result.status,
-				method: request.paymentMethod,
-			});
-
-			return result;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to purchase credits', {
 				error: getErrorMessage(error),
@@ -189,15 +145,8 @@ class ClientCreditsService {
 	 */
 	async confirmCreditPurchase(paymentIntentId: string): Promise<CreditBalance> {
 		try {
-			logger.userInfo('Confirming credit purchase', { id: paymentIntentId });
-
 			const response = await apiService.post<CreditBalance>(API_ROUTES.CREDITS.CONFIRM_PURCHASE, { paymentIntentId });
-			const newBalance = response.data;
-
-			logger.userInfo('Credit purchase confirmed successfully', {
-				newCredits: newBalance.totalCredits,
-			});
-			return newBalance;
+			return response.data;
 		} catch (error) {
 			logger.userError('Failed to confirm credit purchase', { error: getErrorMessage(error), id: paymentIntentId });
 			throw error;
@@ -211,33 +160,21 @@ class ClientCreditsService {
 	 */
 	async getCreditHistory(limit?: number): Promise<CreditTransaction[]> {
 		try {
-			logger.userInfo('Getting credit history', { limit });
-
+			logger.userInfo('Fetching credit history', { limit });
 			const searchParams = new URLSearchParams();
 			if (limit != null) searchParams.append('limit', String(limit));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
 			const response = await apiService.get<CreditTransaction[]>(`${API_ROUTES.CREDITS.HISTORY}${query}`);
-			const history = response.data;
-
-			logger.userInfo('Credit history retrieved successfully', {
-				transactionsCount: history.length,
-			});
-			return history;
+			const result = response.data;
+			logger.userInfo('Credit history fetched successfully', { transactionsCount: result.length });
+			return result;
 		} catch (error) {
 			logger.userError('Failed to get credit history', { error: getErrorMessage(error), limit });
 			throw error;
 		}
 	}
 
-	/**
-	 * Format time until reset for display
-	 * @param resetTime Reset time date
-	 * @returns Formatted time string
-	 */
-	formatTimeUntilReset(resetTime: Date): string {
-		return formatTimeUntilReset(resetTime.getTime());
-	}
 }
 
 export const creditsService = new ClientCreditsService();

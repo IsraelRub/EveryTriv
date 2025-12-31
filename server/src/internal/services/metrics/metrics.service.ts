@@ -6,9 +6,7 @@
  */
 import { StorageType } from '@shared/constants';
 import type { BasicValue, StatsValue, StorageMetrics } from '@shared/types';
-
 import type { MiddlewareMetrics } from '@internal/types';
-
 import { serverLogger as logger } from '../logging';
 
 /**

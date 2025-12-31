@@ -9,8 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { UserRole } from '@shared/constants';
 import { getCurrentTimestampInSeconds, getErrorMessage } from '@shared/utils';
-
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	AuthenticationRequest,

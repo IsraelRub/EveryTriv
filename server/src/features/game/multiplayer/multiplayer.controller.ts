@@ -11,11 +11,10 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { API_ROUTES, ERROR_CODES, LOCALHOST_CONFIG, MULTIPLAYER_CONFIG } from '@shared/constants';
+import { API_ROUTES, defaultValidators, ERROR_CODES, GAME_MODE_DEFAULTS, GameMode, LOCALHOST_CONFIG } from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
-
 import { serverLogger as logger } from '@internal/services';
 import type {
 	LeaveRoomHttpResponse,
@@ -23,8 +22,6 @@ import type {
 	RoomHttpResponse,
 	SubmitAnswerHttpResponse,
 } from '@internal/types';
-import { isErrorWithStatus } from '@internal/utils';
-
 import { CurrentUserId, Public } from '../../../common';
 import { CreateRoomDto, JoinRoomDto, RoomActionDto, SubmitAnswerDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
@@ -69,7 +66,7 @@ export class MultiplayerController {
 	/**
 	 * Create a new multiplayer room via HTTP proxy
 	 */
-	@Post(API_ROUTES.MULTIPLAYER.ROOMS)
+	@Post('rooms')
 	async createRoom(@CurrentUserId() userId: string, @Body() body: CreateRoomDto): Promise<CreateRoomResponse> {
 		this.ensureAuthenticated(userId);
 
@@ -80,7 +77,7 @@ export class MultiplayerController {
 				questionsPerRequest: body.questionsPerRequest,
 				maxPlayers: body.maxPlayers,
 				gameMode: body.gameMode,
-				timePerQuestion: MULTIPLAYER_CONFIG.TIME_PER_QUESTION,
+				timePerQuestion: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].timePerQuestion,
 				mappedDifficulty: body.mappedDifficulty ?? toDifficultyLevel(body.difficulty),
 			};
 			const result = await this.multiplayerService.createRoom(userId, config);
@@ -108,7 +105,7 @@ export class MultiplayerController {
 	/**
 	 * Join an existing room
 	 */
-	@Post(API_ROUTES.MULTIPLAYER.ROOMS_JOIN)
+	@Post('rooms/join')
 	async joinRoom(@CurrentUserId() userId: string, @Body() body: JoinRoomDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
@@ -139,7 +136,7 @@ export class MultiplayerController {
 	/**
 	 * Leave a room
 	 */
-	@Post(API_ROUTES.MULTIPLAYER.ROOMS_LEAVE)
+	@Post('rooms/leave')
 	async leaveRoom(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<LeaveRoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
@@ -179,7 +176,7 @@ export class MultiplayerController {
 	/**
 	 * Start a multiplayer game (host only)
 	 */
-	@Post(API_ROUTES.MULTIPLAYER.ROOMS_START)
+	@Post('rooms/start')
 	async startGame(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
@@ -210,7 +207,7 @@ export class MultiplayerController {
 	/**
 	 * Submit an answer via HTTP proxy
 	 */
-	@Post(API_ROUTES.MULTIPLAYER.ROOMS_ANSWER)
+	@Post('rooms/answer')
 	async submitAnswer(
 		@CurrentUserId() userId: string,
 		@Body() body: SubmitAnswerDto
@@ -263,7 +260,7 @@ export class MultiplayerController {
 	/**
 	 * Get room details (participating users only)
 	 */
-	@Get(API_ROUTES.MULTIPLAYER.ROOMS_BY_ID)
+	@Get('rooms/:roomId')
 	async getRoomDetails(
 		@CurrentUserId() userId: string,
 		@Param('roomId', new ParseUUIDPipe()) roomId: string
@@ -297,7 +294,7 @@ export class MultiplayerController {
 	/**
 	 * Get current state of the room (questions, leaderboard, timers)
 	 */
-	@Get(API_ROUTES.MULTIPLAYER.ROOMS_STATE)
+	@Get('rooms/:roomId/state')
 	async getRoomState(
 		@CurrentUserId() userId: string,
 		@Param('roomId', new ParseUUIDPipe()) roomId: string
@@ -334,7 +331,7 @@ export class MultiplayerController {
 	}
 
 	private ensureAuthenticated(userId: string | null): asserts userId is string {
-		if (!userId) {
+		if (userId == null) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 	}
@@ -390,10 +387,15 @@ export class MultiplayerController {
 			return error.getStatus() === HttpStatus.NOT_FOUND;
 		}
 
-		if (isErrorWithStatus(error)) {
-			if (error.status === HttpStatus.NOT_FOUND || error.statusCode === HttpStatus.NOT_FOUND) {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			(('status' in error && defaultValidators.number(error.status) && error.status === HttpStatus.NOT_FOUND) ||
+				('statusCode' in error &&
+					defaultValidators.number(error.statusCode) &&
+					error.statusCode === HttpStatus.NOT_FOUND))
+		) {
 				return true;
-			}
 		}
 
 		const message = getErrorMessage(error).toLowerCase();

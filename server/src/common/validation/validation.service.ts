@@ -23,11 +23,11 @@ import {
 	isRegisteredDifficulty,
 	validateCustomDifficultyText,
 } from '@shared/validation';
-
 import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 import type { PersonalPaymentData } from '@internal/types';
-import { createStringLengthValidationError, createValidationError, isNumber } from '@internal/utils';
+import { createStringLengthValidationError, createValidationError } from '@internal/utils';
+import { defaultValidators } from '@shared/constants';
 import {
 	performLocalLanguageValidationAsync,
 	validateEmail,
@@ -37,7 +37,6 @@ import {
 	validateTopicLength,
 } from '@internal/validation/core';
 import { isValidCardNumber, validateGameAnswer as validateGameAnswerShared } from '@internal/validation/domain';
-
 import { LanguageToolService } from './languageTool.service';
 
 @Injectable()
@@ -326,9 +325,12 @@ export class ValidationService {
 			if (!creditsMatch) {
 				errors.push('Invalid package ID format');
 			} else {
-				const credits = parseInt(creditsMatch[1]);
+				const creditsStr = creditsMatch[1];
+				if (creditsStr != null) {
+					const credits = parseInt(creditsStr);
 				if (credits <= 0 || credits > 10000) {
 					errors.push('Invalid credits amount');
+					}
 				}
 			}
 
@@ -691,9 +693,11 @@ export class ValidationService {
 							const replacementSuggestions = match.replacements
 								.slice(0, 3)
 								.map(({ value: replacementValue }) => replacementValue)
-								.filter(replacementValue => replacementValue.trim().length > 0);
+								.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
 
+							if (replacementSuggestions.length > 0) {
 							suggestions.push(...replacementSuggestions);
+							}
 						}
 					}
 				}
@@ -790,7 +794,7 @@ export class ValidationService {
 	 * @param value Value to set
 	 */
 	validateAndSetNumberField(user: UserEntity, field: string, value: unknown): void {
-		if (!isNumber(value)) {
+		if (!defaultValidators.number(value)) {
 			throw createValidationError(field, 'number');
 		}
 		Object.assign(user, { [field]: value });

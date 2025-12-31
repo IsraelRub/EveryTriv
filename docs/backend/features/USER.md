@@ -127,11 +127,10 @@ async deductCredits(@CurrentUserId() userId: string, @Body() body: DeductCredits
 **דוגמת שימוש:**
 ```typescript
 @Put('profile')
-@UsePipes(UserDataPipe)
 @RequireEmailVerified()
 @RequireUserStatus('active')
-async updateUserProfile(@CurrentUserId() userId: string, @Body() profileData: UpdateUserProfileDto) {
-  const result = await this.userService.updateUserProfile(userId, profileData);
+async updateProfile(@CurrentUserId() userId: string, @Body(UserDataPipe) body: UpdateUserProfileData) {
+  const result = await this.userService.updateUserProfile(userId, body);
   return result;
 }
 ```

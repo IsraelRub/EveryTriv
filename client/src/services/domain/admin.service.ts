@@ -6,7 +6,7 @@
  * @description Client-side admin operations
  * @used_by client/src/views/admin, client/src/components/admin, client/src/hooks
  */
-import { API_ROUTES, UserStatus as UserStatusEnum } from '@shared/constants';
+import { API_ROUTES, ERROR_MESSAGES, UserStatus, VALID_USER_STATUSES } from '@shared/constants';
 import type {
 	AiProviderHealth,
 	AiProviderStats,
@@ -15,8 +15,8 @@ import type {
 	UpdateUserFieldResponse,
 	UsersListResponse,
 } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
 
 /**
@@ -35,22 +35,18 @@ class ClientAdminService {
 	 */
 	async updateUserField(field: string, value: BasicValue): Promise<UpdateUserFieldResponse> {
 		// Validate field and value
-		if (!field || field.trim().length === 0) {
-			throw new Error('Field name is required');
+		if (!isNonEmptyString(field)) {
+			throw new Error(ERROR_MESSAGES.validation.FIELD_NAME_REQUIRED);
 		}
 		if (!value) {
-			throw new Error('Value is required');
+			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Updating user field', { field });
-
 			const response = await apiService.patch<UpdateUserFieldResponse>(
 				API_ROUTES.USER.PROFILE_FIELD.replace(':field', field),
 				{ value }
 			);
-
-			logger.userInfo('User field updated successfully', { field });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to update user field', { error: getErrorMessage(error), field });
@@ -67,21 +63,17 @@ class ClientAdminService {
 	 */
 	async updateSinglePreference(preference: string, value: BasicValue): Promise<unknown> {
 		// Validate preference and value
-		if (!preference || preference.trim().length === 0) {
-			throw new Error('Preference name is required');
+		if (!isNonEmptyString(preference)) {
+			throw new Error(VALIDATION_MESSAGES.FIELD_REQUIRED('Preference name'));
 		}
 		if (!value) {
-			throw new Error('Value is required');
+			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Updating single preference', { preference });
-
 			const response = await apiService.patch(API_ROUTES.USER.PREFERENCES_FIELD.replace(':preference', preference), {
 				value,
 			});
-
-			logger.userInfo('Single preference updated successfully', { preference });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to update single preference', { error: getErrorMessage(error), preference });
@@ -97,16 +89,12 @@ class ClientAdminService {
 	 */
 	async getUserById(userId: string): Promise<unknown> {
 		// Validate user ID
-		if (!userId || userId.trim().length === 0) {
-			throw new Error('User ID is required');
+		if (!isNonEmptyString(userId)) {
+			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Getting user by ID', { userId });
-
 			const response = await apiService.get<unknown>(API_ROUTES.USER.BY_ID.replace(':id', userId));
-
-			logger.userInfo('User retrieved successfully', { userId });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get user by ID', { error: getErrorMessage(error), userId });
@@ -124,25 +112,19 @@ class ClientAdminService {
 	async getAllUsers(limit?: number, offset?: number): Promise<UsersListResponse> {
 		// Validate pagination parameters
 		if (limit && (limit < 1 || limit > 1000)) {
-			throw new Error('Limit must be between 1 and 1000');
+			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 1000));
 		}
 		if (offset && offset < 0) {
-			throw new Error('Offset must be non-negative');
+			throw new Error(VALIDATION_MESSAGES.OFFSET_NON_NEGATIVE);
 		}
 
 		try {
-			logger.userInfo('Getting all users', { limit, offset });
-
 			const searchParams = new URLSearchParams();
 			if (limit != null) searchParams.append('limit', String(limit));
 			if (offset != null) searchParams.append('offset', String(offset));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
 			const response = await apiService.get<UsersListResponse>(`${API_ROUTES.USER.ADMIN.ALL}${query}`);
-
-			logger.userInfo('All users retrieved successfully', {
-				count: response.data.users?.length || 0,
-			});
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get all users', { error: getErrorMessage(error), limit, offset });
@@ -157,11 +139,7 @@ class ClientAdminService {
 	 */
 	async getAiProviderStats(): Promise<AiProviderStats> {
 		try {
-			logger.userInfo('Getting AI provider stats');
-
 			const response = await apiService.get<AiProviderStats>(API_ROUTES.AI_PROVIDERS.STATS);
-
-			logger.userInfo('AI provider stats retrieved successfully');
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get AI provider stats', { error: getErrorMessage(error) });
@@ -176,14 +154,7 @@ class ClientAdminService {
 	 */
 	async getAiProviderHealth(): Promise<AiProviderHealth> {
 		try {
-			logger.userInfo('Getting AI provider health status');
-
 			const response = await apiService.get<AiProviderHealth>(API_ROUTES.AI_PROVIDERS.HEALTH);
-
-			logger.userInfo('AI provider health status retrieved successfully', {
-				status: response.data.status,
-				availableProviders: response.data.availableProviders,
-			});
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get AI provider health status', { error: getErrorMessage(error) });
@@ -201,25 +172,21 @@ class ClientAdminService {
 	 */
 	async updateUserCredits(data: UpdateCreditsData): Promise<string> {
 		// Validate parameters
-		if (!data.userId || data.userId.trim().length === 0) {
-			throw new Error('User ID is required');
+		if (!isNonEmptyString(data.userId)) {
+			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
 		}
 		if (data.amount === 0) {
-			throw new Error('Amount cannot be zero');
+			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
 		}
-		if (!data.reason || data.reason.trim().length === 0) {
-			throw new Error('Reason is required');
+		if (!isNonEmptyString(data.reason)) {
+			throw new Error(VALIDATION_MESSAGES.REASON_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Updating user credits', { userId: data.userId, amount: data.amount, reason: data.reason });
-
 			const response = await apiService.patch<string>(
 				API_ROUTES.USER.CREDITS_BY_USER_ID.replace(':userId', data.userId),
 				{ amount: data.amount, reason: data.reason }
 			);
-
-			logger.userInfo('User credits updated successfully', { userId: data.userId, amount: data.amount });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to update user credits', {
@@ -239,16 +206,12 @@ class ClientAdminService {
 	 */
 	async deleteUser(userId: string): Promise<unknown> {
 		// Validate user ID
-		if (!userId || userId.trim().length === 0) {
-			throw new Error('User ID is required');
+		if (!isNonEmptyString(userId)) {
+			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
 		}
 
 		try {
-			logger.userInfo('Deleting user', { userId });
-
 			const response = await apiService.delete<unknown>(API_ROUTES.USER.BY_USER_ID.replace(':userId', userId));
-
-			logger.userInfo('User deleted successfully', { userId });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to delete user', { error: getErrorMessage(error), userId });
@@ -263,27 +226,20 @@ class ClientAdminService {
 	 * @returns Update result
 	 * @throws {Error} When update fails
 	 */
-	async updateUserStatus(
-		userId: string,
-		status: (typeof UserStatusEnum)[keyof typeof UserStatusEnum]
-	): Promise<unknown> {
+	async updateUserStatus(userId: string, status: UserStatus): Promise<unknown> {
 		// Validate parameters
 		if (!userId || userId.trim().length === 0) {
-			throw new Error('User ID is required');
+			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
 		}
-		if (!['active', 'suspended', 'banned'].includes(status)) {
-			throw new Error('Status must be active, suspended, or banned');
+		if (!VALID_USER_STATUSES.includes(status)) {
+			throw new Error(VALIDATION_MESSAGES.STATUS_INVALID);
 		}
 
 		try {
-			logger.userInfo('Updating user status', { userId, status });
-
 			const response = await apiService.patch<unknown>(
 				API_ROUTES.USER.ADMIN.STATUS_BY_USER_ID.replace(':userId', userId),
 				{ status }
 			);
-
-			logger.userInfo('User status updated successfully', { userId, status });
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to update user status', { error: getErrorMessage(error), userId, status });

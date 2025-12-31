@@ -28,13 +28,6 @@ export * from './paymentData.pipe';
 export * from './userData.pipe';
 
 /**
- * Trivia question validation pipe
- * @description Pipe for validating trivia question data input
- * @used_by server/src/features/game, server/src/controllers
- */
-export * from './triviaQuestion.pipe';
-
-/**
  * Game answer validation pipe
  * @description Pipe for validating game answer submission data
  * @used_by server/src/features/game, server/src/controllers

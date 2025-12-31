@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
-import { AlertCircle, Copy, Crown, FileQuestion, Gamepad2, Hash, Loader2, Plus, Settings, Users } from 'lucide-react';
+import { Copy, Crown, Gamepad2, Info, Plus, Users } from 'lucide-react';
 
-import { DifficultyLevel, GAME_STATE_CONFIG, GameMode, MULTIPLAYER_CONFIG, PlayerStatus } from '@shared/constants';
-import type { CreateRoomConfig } from '@shared/types';
-
-import { ButtonSize, ButtonVariant, ROUTES, ToastVariant, VariantBase } from '@/constants';
-
+import {
+	CUSTOM_DIFFICULTY_PREFIX,
+	DifficultyLevel,
+	GAME_MODE_DEFAULTS,
+	GAME_STATE_CONFIG,
+	GameMode,
+	PlayerStatus,
+	RoomStatus,
+	VALIDATION_LENGTH,
+	VALIDATION_COUNT,
+} from '@shared/constants';
+import type { CreateRoomConfig, GameDifficulty } from '@shared/types';
+import { validateCustomDifficultyText } from '@shared/validation';
+import { ButtonSize, ButtonVariant, ROUTES, SCORING_DEFAULTS, SpinnerSize, SpinnerVariant, ToastVariant, VALIDATION_MESSAGES, VariantBase } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
@@ -23,14 +31,14 @@ import {
 	CardTitle,
 	Input,
 	Label,
-	NumberInput,
+	Spinner,
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
 } from '@/components';
-
-import { useMultiplayerRoom, useToast } from '@/hooks';
+import { GameSettingsForm } from '@/components/game';
+import { useMultiplayer, useToast } from '@/hooks';
 
 export function MultiplayerLobbyView() {
 	const navigate = useNavigate();
@@ -48,26 +56,57 @@ export function MultiplayerLobbyView() {
 		joinRoom,
 		leaveRoom,
 		startGame,
-	} = useMultiplayerRoom();
+	} = useMultiplayer();
 
 	const [joinRoomId, setJoinRoomId] = useState('');
+	const [customDifficulty, setCustomDifficulty] = useState('');
+	const [customDifficultyError, setCustomDifficultyError] = useState<string>('');
+	const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
+	const [answerCount, setAnswerCount] = useState<number>(SCORING_DEFAULTS.ANSWER_COUNT);
+
 	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
 		topic: GAME_STATE_CONFIG.defaults.topic,
 		difficulty: DifficultyLevel.MEDIUM,
-		questionsPerRequest: MULTIPLAYER_CONFIG.DEFAULT_QUESTIONS_PER_REQUEST,
-		maxPlayers: MULTIPLAYER_CONFIG.DEFAULT_MAX_PLAYERS,
+		questionsPerRequest: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].maxQuestionsPerGame ?? 10,
+		maxPlayers: VALIDATION_COUNT.PLAYERS.MAX,
 		gameMode: GameMode.QUESTION_LIMITED,
 	});
 
 	const handleCreateRoom = async () => {
-		await createRoom(gameSettings);
+		// Validate custom difficulty if selected
+		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
+			const trimmedCustomDifficulty = customDifficulty.trim();
+			const validation = validateCustomDifficultyText(trimmedCustomDifficulty);
+
+			if (!validation.isValid) {
+				setCustomDifficultyError(validation.errors[0] || VALIDATION_MESSAGES.CUSTOM_DIFFICULTY_INVALID);
+				return;
+			}
+
+			setCustomDifficultyError('');
+		}
+
+		// Format custom difficulty with prefix, or use standard difficulty
+		let finalDifficulty: GameDifficulty;
+		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
+			finalDifficulty = customDifficulty.trim()
+				? `${CUSTOM_DIFFICULTY_PREFIX}${customDifficulty.trim()}`
+				: DifficultyLevel.MEDIUM;
+		} else {
+			finalDifficulty = selectedDifficulty;
+		}
+
+		await createRoom({
+			...gameSettings,
+			difficulty: finalDifficulty,
+		});
 	};
 
 	const handleJoinRoom = async () => {
 		if (!joinRoomId.trim()) {
 			toast({
 				title: 'Error',
-				description: 'Please enter a room code',
+				description: VALIDATION_MESSAGES.ROOM_CODE_REQUIRED,
 				variant: ToastVariant.DESTRUCTIVE,
 			});
 			return;
@@ -106,11 +145,18 @@ export function MultiplayerLobbyView() {
 		}
 	}, [error, toast]);
 
+	// Navigate to game view if game has started
+	useEffect(() => {
+		if (room?.status === RoomStatus.PLAYING && room.roomId) {
+			navigate(`/multiplayer/game/${room.roomId}`);
+		}
+	}, [room?.status, room?.roomId, navigate]);
+
 	if (!isConnected) {
 		return (
 			<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-md mx-auto text-center space-y-4'>
-					<Loader2 className='h-12 w-12 animate-spin mx-auto text-primary' />
+					<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.XL} className='mx-auto text-primary' />
 					<h2 className='text-xl font-semibold'>Connecting to multiplayer server...</h2>
 					<p className='text-muted-foreground'>Please wait while we establish a connection</p>
 				</div>
@@ -149,7 +195,7 @@ export function MultiplayerLobbyView() {
 						<CardHeader>
 							<CardTitle className='flex items-center gap-2'>
 								<Users className='h-5 w-5' />
-								Players ({room.players?.length ?? 0}/{room.config?.maxPlayers || MULTIPLAYER_CONFIG.DEFAULT_MAX_PLAYERS}
+								Players ({room.players?.length ?? 0}/{room.config?.maxPlayers || VALIDATION_COUNT.PLAYERS.MAX}
 								)
 							</CardTitle>
 						</CardHeader>
@@ -180,12 +226,12 @@ export function MultiplayerLobbyView() {
 						</CardContent>
 					</Card>
 
-					{/* Game Settings Card */}
+					{/* Game Details Card */}
 					<Card>
 						<CardHeader>
 							<CardTitle className='flex items-center gap-2'>
-								<Settings className='h-5 w-5' />
-								Game Settings
+								<Info className='h-5 w-5' />
+							Game Details
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
@@ -221,7 +267,7 @@ export function MultiplayerLobbyView() {
 								onClick={handleStartGame}
 								disabled={!isReadyToStart || isLoading}
 							>
-								{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : <Gamepad2 className='h-4 w-4 mr-2' />}
+								{isLoading ? <Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' /> : <Gamepad2 className='h-4 w-4 mr-2' />}
 								Start Game
 							</Button>
 						)}
@@ -271,111 +317,31 @@ export function MultiplayerLobbyView() {
 								<CardDescription>Set up a game room and invite friends</CardDescription>
 							</CardHeader>
 							<CardContent className='space-y-6'>
-								{/* Topic */}
-								<div className='space-y-2'>
-									<Label htmlFor='topic' className='flex items-center gap-2'>
-										<Hash className='h-4 w-4 text-muted-foreground' />
-										Topic
-									</Label>
-									<Input
-										id='topic'
-										value={gameSettings.topic}
-										onChange={e => setGameSettings(prev => ({ ...prev, topic: e.target.value }))}
-										placeholder='Enter a topic...'
-									/>
-								</div>
-
-								{/* Settings Grid */}
-								<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-									{/* Difficulty */}
-									<div className='space-y-2'>
-										<Label className='flex items-center gap-2'>
-											<AlertCircle className='h-4 w-4 text-muted-foreground' />
-											Difficulty
-										</Label>
-										<div className='grid grid-cols-3 gap-2'>
-											<Button
-												type='button'
-												variant={
-													gameSettings.difficulty === DifficultyLevel.EASY
-														? ButtonVariant.DEFAULT
-														: ButtonVariant.OUTLINE
-												}
-												size={ButtonSize.SM}
-												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.EASY }))}
-												className='flex items-center justify-center gap-1'
-											>
-												<span className='w-2 h-2 rounded-full bg-green-500' />
-												Easy
-											</Button>
-											<Button
-												type='button'
-												variant={
-													gameSettings.difficulty === DifficultyLevel.MEDIUM
-														? ButtonVariant.DEFAULT
-														: ButtonVariant.OUTLINE
-												}
-												size={ButtonSize.SM}
-												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.MEDIUM }))}
-												className='flex items-center justify-center gap-1'
-											>
-												<span className='w-2 h-2 rounded-full bg-yellow-500' />
-												Medium
-											</Button>
-											<Button
-												type='button'
-												variant={
-													gameSettings.difficulty === DifficultyLevel.HARD
-														? ButtonVariant.DEFAULT
-														: ButtonVariant.OUTLINE
-												}
-												size={ButtonSize.SM}
-												onClick={() => setGameSettings(prev => ({ ...prev, difficulty: DifficultyLevel.HARD }))}
-												className='flex items-center justify-center gap-1'
-											>
-												<span className='w-2 h-2 rounded-full bg-red-500' />
-												Hard
-											</Button>
-										</div>
-									</div>
-
-									{/* Questions */}
-									<div className='space-y-2'>
-										<Label className='flex items-center gap-2'>
-											<FileQuestion className='h-4 w-4 text-muted-foreground' />
-											Questions
-										</Label>
-										<div className='flex justify-start'>
-											<NumberInput
-												value={gameSettings.questionsPerRequest}
-												onChange={value => setGameSettings(prev => ({ ...prev, questionsPerRequest: value }))}
-												min={5}
-												max={20}
-												step={5}
+								<GameSettingsForm
+									topic={gameSettings.topic}
+									onTopicChange={topic => setGameSettings(prev => ({ ...prev, topic }))}
+									selectedDifficulty={selectedDifficulty}
+									onDifficultyChange={difficulty => {
+										setSelectedDifficulty(difficulty);
+										setGameSettings(prev => ({ ...prev, difficulty }));
+									}}
+									customDifficulty={customDifficulty}
+									onCustomDifficultyChange={setCustomDifficulty}
+									customDifficultyError={customDifficultyError}
+									onCustomDifficultyErrorChange={setCustomDifficultyError}
+									answerCount={answerCount}
+									onAnswerCountChange={setAnswerCount}
+									maxQuestionsPerGame={gameSettings.questionsPerRequest}
+									onMaxQuestionsPerGameChange={value =>
+										setGameSettings(prev => ({ ...prev, questionsPerRequest: value }))
+									}
+									maxPlayers={gameSettings.maxPlayers}
+									onMaxPlayersChange={value => setGameSettings(prev => ({ ...prev, maxPlayers: value }))}
+									showMaxPlayers={true}
 											/>
-										</div>
-									</div>
-
-									{/* Max Players */}
-									<div className='space-y-2'>
-										<Label className='flex items-center gap-2'>
-											<Users className='h-4 w-4 text-muted-foreground' />
-											Max Players
-										</Label>
-										<div className='flex justify-start'>
-											<NumberInput
-												value={gameSettings.maxPlayers}
-												onChange={value => setGameSettings(prev => ({ ...prev, maxPlayers: value }))}
-												min={MULTIPLAYER_CONFIG.MIN_PLAYERS}
-												max={MULTIPLAYER_CONFIG.MAX_PLAYERS}
-												step={1}
-											/>
-										</div>
-									</div>
-								</div>
 
 								<Button className='w-full' size={ButtonSize.LG} onClick={handleCreateRoom} disabled={isLoading}>
-									{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : null}
+									{isLoading ? <Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' /> : null}
 									Create Room
 								</Button>
 							</CardContent>
@@ -400,12 +366,12 @@ export function MultiplayerLobbyView() {
 										onChange={e => setJoinRoomId(e.target.value.toUpperCase())}
 										placeholder='Enter room code...'
 										className='text-center text-lg font-mono uppercase'
-										maxLength={6}
+										maxLength={VALIDATION_LENGTH.ROOM_CODE.LENGTH}
 									/>
 								</div>
 
 								<Button className='w-full' size={ButtonSize.LG} onClick={handleJoinRoom} disabled={isLoading}>
-									{isLoading ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : null}
+									{isLoading ? <Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' /> : null}
 									Join Room
 								</Button>
 							</CardContent>

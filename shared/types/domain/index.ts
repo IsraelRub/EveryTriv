@@ -10,7 +10,6 @@
  * AI Domain Types
  * @description AI-related type definitions including providers, models, and responses
  */
-export * from './ai.types';
 export * from './ai';
 
 /**

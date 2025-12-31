@@ -1,12 +1,9 @@
 import { useState } from 'react';
-
 import { ChevronLeft, ChevronRight, User } from 'lucide-react';
 
 import type { AdminUserData } from '@shared/types';
 import { calculateCurrentPage, calculateTotalPages } from '@shared/utils';
-
 import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
-
 import {
 	Badge,
 	Button,
@@ -23,9 +20,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components';
-
 import { useAllUsers } from '@/hooks';
-
 import { formatDate } from '@/utils';
 
 /**
@@ -115,8 +110,8 @@ export function UsersTable() {
 													{user.role}
 												</Badge>
 											</TableCell>
-											<TableCell>{user.createdAt ? formatDate(user.createdAt) : '-'}</TableCell>
-											<TableCell>{user.lastLogin ? formatDate(user.lastLogin) : 'Never'}</TableCell>
+											<TableCell>{formatDate(user.createdAt)}</TableCell>
+											<TableCell>{formatDate(user.lastLogin, 'Never')}</TableCell>
 										</TableRow>
 									))}
 								</TableBody>

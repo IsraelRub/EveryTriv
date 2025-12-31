@@ -10,7 +10,6 @@ import type { GameMode, LogLevel, PaymentMethod, PlanType, UserRole, UserStatus 
 import type { BasicValue } from '../core';
 import type { GameDifficulty } from '../domain/game/trivia.types';
 import { User, UserPreferences } from '../domain/user/user.types';
-import type { ValidationContext } from '../domain/validation.types';
 
 // Base log entry interface
 export interface LogEntry {
@@ -293,7 +292,7 @@ export interface LogMeta {
 	confidence?: number;
 	config?: string;
 	connectTimeout?: number;
-	context?: LogContext | ValidationContext;
+	context?: LogContext;
 	correctAnswer?: number;
 	correctAnswers?: number;
 	count?: number;
@@ -429,6 +428,7 @@ export interface LogMeta {
 	questionId?: string;
 	queueSize?: number;
 	rank?: number;
+	questionsAnswered?: number;
 	reason?: string;
 	recommendationsCount?: number;
 	redirectTo?: string;

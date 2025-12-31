@@ -6,12 +6,9 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { UserRole } from '@shared/constants';
-
-import { gameService, clientLogger as logger } from '@/services';
-
+import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import { gameService } from '@/services';
 import { selectUserRole } from '@/redux/selectors';
-
 import { useAppSelector } from './useRedux';
 
 /**
@@ -27,16 +24,13 @@ export const useGameStatistics = (enabled?: boolean) => {
 		queryKey: ['adminGameStatistics'],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.gameInfo('Fetching game statistics');
-			const result = await gameService.getGameStatistics();
-			logger.gameInfo('Game statistics fetched successfully');
-			return result;
+			return gameService.getGameStatistics();
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : isAdmin,
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -52,14 +46,9 @@ export const useClearAllGameHistory = () => {
 	return useMutation({
 		mutationFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.gameInfo('Clearing all game history');
-			const result = await gameService.clearAllGameHistory();
-			logger.gameInfo('All game history cleared successfully', {
-				deletedCount: result.deletedCount,
-			});
-			return result;
+			return gameService.clearAllGameHistory();
 		},
 		onSuccess: () => {
 			// Invalidate related queries
@@ -83,18 +72,13 @@ export const useAllTriviaQuestions = (enabled?: boolean) => {
 		queryKey: ['adminAllTriviaQuestions'],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.gameInfo('Fetching all trivia questions');
-			const result = await gameService.getAllTriviaQuestions();
-			logger.gameInfo('All trivia questions fetched successfully', {
-				count: result.totalCount,
-			});
-			return result;
+			return gameService.getAllTriviaQuestions();
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : isAdmin,
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -110,14 +94,9 @@ export const useClearAllTrivia = () => {
 	return useMutation({
 		mutationFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.gameInfo('Clearing all trivia questions');
-			const result = await gameService.clearAllTrivia();
-			logger.gameInfo('All trivia questions cleared successfully', {
-				deletedCount: result.deletedCount,
-			});
-			return result;
+			return gameService.clearAllTrivia();
 		},
 		onSuccess: () => {
 			// Invalidate related queries

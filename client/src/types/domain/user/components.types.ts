@@ -5,15 +5,6 @@
  */
 
 /**
- * OAuth callback status type
- * @type CallbackStatus
- * @description Status of OAuth callback processing
- */
-import { CallbackStatus as CallbackStatusEnum } from '@shared/constants';
-
-export type CallbackStatus = (typeof CallbackStatusEnum)[keyof typeof CallbackStatusEnum];
-
-/**
  * Profile completion data
  * @interface ProfileCompletionData
  * @description Data passed to profile completion callback
@@ -46,12 +37,12 @@ export interface AvatarSelectorProps {
 }
 
 /**
- * Change password dialog component props
- * @interface ChangePasswordDialogProps
- * @description Props for the ChangePasswordDialog component
- * @used_by client/src/components/user/ChangePasswordDialog.tsx
+ * Profile edit dialog component props
+ * @interface ProfileEditDialogProps
+ * @description Props for the ProfileEditDialog component
+ * @used_by client/src/components/user/ProfileEditDialog.tsx
  */
-export interface ChangePasswordDialogProps {
+export interface ProfileEditDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }

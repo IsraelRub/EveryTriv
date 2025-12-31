@@ -7,7 +7,6 @@
  */
 import { CUSTOM_DIFFICULTY_PREFIX } from '@shared/constants';
 import type { TriviaInputValidationResult } from '@shared/types';
-
 import { validateTopicLength } from '../core/topic.validation';
 import { isCustomDifficulty, isRegisteredDifficulty } from './difficulty.validation';
 
@@ -33,7 +32,10 @@ export function validateTriviaInputQuick(topic: string, difficulty: string): Tri
 		const topicValidation = validateTopicLength(topic);
 		if (!topicValidation.isValid && topicValidation.errors.length > 0) {
 			result.topic.isValid = false;
-			result.topic.errors.push(topicValidation.errors[0]);
+			const firstError = topicValidation.errors[0];
+			if (firstError != null) {
+				result.topic.errors.push(firstError);
+			}
 		}
 	}
 

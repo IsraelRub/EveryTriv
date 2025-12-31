@@ -5,12 +5,12 @@
  * @description Provides access to the external LanguageTool API with retries, timeouts, and structured logging
  */
 import { Injectable } from '@nestjs/common';
-
+import type { LanguageToolResponse } from '@shared/types';
 import { ERROR_CODES, HttpMethod, LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
-import type { LanguageToolCheckOptions, LanguageToolResponse } from '@internal/types';
+import type { LanguageToolCheckOptions } from '@internal/types';
 
 @Injectable()
 export class LanguageToolService {

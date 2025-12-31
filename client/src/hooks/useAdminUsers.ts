@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
 import { adminService } from '@/services';
 
 /**
@@ -19,7 +20,7 @@ export const useAllUsers = (limit: number = 50, offset: number = 0) => {
 	return useQuery({
 		queryKey: ['adminUsers', limit, offset],
 		queryFn: () => adminService.getAllUsers(limit, offset),
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };

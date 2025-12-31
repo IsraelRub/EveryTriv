@@ -3,14 +3,12 @@ import { useEffect, useState } from 'react';
 import {
 	AudioKey,
 	DEFAULT_TOAST_DURATION,
-	TOAST_ACTION_TYPES,
 	TOAST_LIMIT,
 	TOAST_REMOVE_DELAY,
+	ToastActionType,
 	ToastVariant,
 } from '@/constants';
-
 import { audioService } from '@/services';
-
 import type { Action, State, Toast, ToasterToast } from '@/types';
 
 let count = 0;
@@ -30,7 +28,7 @@ const addToRemoveQueue = (toastId: string) => {
 	const timeout = setTimeout(() => {
 		toastTimeouts.delete(toastId);
 		dispatch({
-			type: TOAST_ACTION_TYPES.REMOVE_TOAST,
+			type: ToastActionType.REMOVE_TOAST,
 			toastId: toastId,
 		});
 	}, TOAST_REMOVE_DELAY);
@@ -40,19 +38,19 @@ const addToRemoveQueue = (toastId: string) => {
 
 const reducer = (state: State, action: Action): State => {
 	switch (action.type) {
-		case TOAST_ACTION_TYPES.ADD_TOAST:
+		case ToastActionType.ADD_TOAST:
 			return {
 				...state,
 				toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
 			};
 
-		case TOAST_ACTION_TYPES.UPDATE_TOAST:
+		case ToastActionType.UPDATE_TOAST:
 			return {
 				...state,
 				toasts: state.toasts.map(t => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
 			};
 
-		case TOAST_ACTION_TYPES.DISMISS_TOAST: {
+		case ToastActionType.DISMISS_TOAST: {
 			const { toastId } = action;
 
 			if (toastId) {
@@ -75,7 +73,7 @@ const reducer = (state: State, action: Action): State => {
 				),
 			};
 		}
-		case TOAST_ACTION_TYPES.REMOVE_TOAST:
+		case ToastActionType.REMOVE_TOAST:
 			if (action.toastId === undefined) {
 				return {
 					...state,
@@ -102,12 +100,12 @@ function dispatch(action: Action) {
 
 const autoDismissTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: Toast) {
+export function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: Toast) {
 	const id = genId();
 
 	const update = (props: ToasterToast) =>
 		dispatch({
-			type: TOAST_ACTION_TYPES.UPDATE_TOAST,
+			type: ToastActionType.UPDATE_TOAST,
 			toast: { ...props, id },
 		});
 	const dismiss = () => {
@@ -116,11 +114,11 @@ function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: Toast) {
 			clearTimeout(autoDismissTimeouts.get(id));
 			autoDismissTimeouts.delete(id);
 		}
-		dispatch({ type: TOAST_ACTION_TYPES.DISMISS_TOAST, toastId: id });
+		dispatch({ type: ToastActionType.DISMISS_TOAST, toastId: id });
 	};
 
 	dispatch({
-		type: TOAST_ACTION_TYPES.ADD_TOAST,
+		type: ToastActionType.ADD_TOAST,
 		toast: {
 			...props,
 			id,
@@ -147,7 +145,7 @@ function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: Toast) {
 	};
 }
 
-function useToast() {
+export function useToast() {
 	const [state, setState] = useState<State>(memoryState);
 
 	useEffect(() => {
@@ -163,7 +161,7 @@ function useToast() {
 	return {
 		...state,
 		toast,
-		dismiss: (toastId?: string) => dispatch({ type: TOAST_ACTION_TYPES.DISMISS_TOAST, toastId }),
+		dismiss: (toastId?: string) => dispatch({ type: ToastActionType.DISMISS_TOAST, toastId }),
 	};
 }
 
@@ -184,5 +182,3 @@ toast.info = (props: Omit<Toast, 'variant'>) => {
 	audioService.play(AudioKey.NOTIFICATION);
 	return toast({ ...props, variant: ToastVariant.INFO });
 };
-
-export { useToast, toast };

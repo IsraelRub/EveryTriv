@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
 
+import { APP_DESCRIPTION, APP_NAME } from '@shared/constants';
+
 export default function HomeTitle() {
 	return (
 		<motion.div
@@ -9,11 +11,9 @@ export default function HomeTitle() {
 			className='text-center space-y-4'
 		>
 			<h1 className='text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight py-3 -mt-20'>
-				EveryTriv
+				{APP_NAME}
 			</h1>
-			<p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
-				Challenge your knowledge with thousands of trivia questions across multiple categories
-			</p>
+			<p className='text-xl text-muted-foreground max-w-2xl mx-auto'>{APP_DESCRIPTION}</p>
 		</motion.div>
 	);
 }

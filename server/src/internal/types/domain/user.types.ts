@@ -36,7 +36,7 @@ export interface AuditLogEntry extends Record<string, unknown> {
 export interface CustomDifficultyItem {
 	description: string;
 	usageCount: number;
-	lastUsed: string;
+	lastUsed: Date;
 }
 
 /**

@@ -7,6 +7,16 @@
  */
 
 /**
+ * Type guard function for runtime validation
+ * @template T - The expected type
+ * @type TypeGuard
+ * @description Function that validates if a value is of type T
+ * Used for runtime type checking in storage services, validation, and type guards
+ * @used_by client/src/services/infrastructure/storage.service.ts, server/src/internal/modules/storage, shared/utils/domain
+ */
+export type TypeGuard<T> = (value: unknown) => value is T;
+
+/**
  * Generic value type for metadata and configuration
  * @type BasicValue
  * @description Union type for all possible metadata and configuration values
@@ -35,6 +45,20 @@ export type StorageValue = BasicValue | Record<string, unknown> | BasicValue[] |
  * @description Data type for API request bodies that supports both StorageValue and interfaces without index signatures
  */
 export type RequestData = StorageValue | unknown;
+
+/**
+ * Base data value type
+ * @type BaseDataValue
+ * @description Allowed value types in BaseData
+ */
+export type BaseDataValue = BasicValue | string[] | Date;
+
+/**
+ * Base data interface
+ * @interface BaseData
+ * @description Base interface for flexible data structures without recursive nesting
+ */
+export type BaseData = Record<string, BaseDataValue>;
 
 /**
  * Base timestamps interface with common timestamp fields
@@ -81,20 +105,6 @@ export interface SlowOperation {
 }
 
 /**
- * Base data value type
- * @type BaseDataValue
- * @description Allowed value types in BaseData
- */
-export type BaseDataValue = number | boolean | string | string[] | Date;
-
-/**
- * Base data interface
- * @interface BaseData
- * @description Base interface for flexible data structures without recursive nesting
- */
-export interface BaseData extends Record<string, BaseDataValue> {}
-
-/**
  * Common option interface for select components
  * @interface SelectOption
  * @description Standard option structure for dropdowns and selects
@@ -118,11 +128,12 @@ export interface ActivityEntry {
 }
 
 /**
- * Topics played interface
- * @interface TopicsPlayed
- * @description Type alias for topics played statistics
+ * Generic count record type
+ * @type CountRecord
+ * @description Generic type alias for string-to-number mappings (counts, scores, distributions, etc.)
+ * Used for topics, difficulties, players, and any other key-value count mappings
  */
-export type TopicsPlayed = Record<string, number>;
+export type CountRecord = Record<string, number>;
 
 /**
  * Difficulty statistics interface

@@ -47,7 +47,8 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Primary card number for manual credit payments (digits only)',
-		example: '4242424242424242',
+		minLength: 12,
+		maxLength: 19,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Card number must be a string of digits' })
@@ -68,7 +69,8 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'CVV code for manual credit payments',
-		example: '123',
+		minLength: 3,
+		maxLength: 4,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'CVV must be a string' })
@@ -79,7 +81,8 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Card holder name for manual credit payments',
-		example: 'Alex Green',
+		minLength: 2,
+		maxLength: 80,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Card holder name must be a string' })
@@ -89,7 +92,7 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Postal code associated with the card for manual credit payments',
-		example: '94107',
+		maxLength: 20,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Postal code must be a string' })
@@ -100,7 +103,6 @@ export class PaymentMethodDetailsDto {
 export class CreatePaymentDto extends PaymentMethodDetailsDto {
 	@ApiPropertyOptional({
 		description: 'One-time payment amount (when not using predefined plans)',
-		example: 29.99,
 		minimum: 0.5,
 	})
 	@IsOptional()
@@ -110,7 +112,7 @@ export class CreatePaymentDto extends PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Payment currency code (defaults to USD)',
-		example: 'USD',
+		maxLength: 10,
 	})
 	@IsOptional()
 	@IsString()
@@ -119,7 +121,7 @@ export class CreatePaymentDto extends PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Payment description for transaction record',
-		example: 'Credits purchase',
+		maxLength: 200,
 	})
 	@IsOptional()
 	@IsString()
@@ -128,7 +130,7 @@ export class CreatePaymentDto extends PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'Additional payment information',
-		example: 'Additional payment information',
+		maxLength: 500,
 	})
 	@IsOptional()
 	@IsString()

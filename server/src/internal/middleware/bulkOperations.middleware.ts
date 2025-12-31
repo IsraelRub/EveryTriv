@@ -7,9 +7,8 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Response } from 'express';
 
-import { CACHE_DURATION, HttpMethod } from '@shared/constants';
+import { CACHE_DURATION, HttpMethod, TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
 import { OptimizationLevel as OptimizationLevelEnum } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type { CacheEntry, NestRequest } from '@internal/types';
@@ -21,7 +20,7 @@ import type { CacheEntry, NestRequest } from '@internal/types';
 @Injectable()
 export class BulkOperationsMiddleware implements NestMiddleware {
 	private readonly MAX_BATCH_SIZE = 50;
-	private readonly BATCH_TIMEOUT = 1000; // 1 second
+	private readonly BATCH_TIMEOUT = TIME_PERIODS_MS.SECOND;
 
 	private operationQueue: Map<string, CacheEntry[]> = new Map();
 	private batchTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -133,7 +132,7 @@ export class BulkOperationsMiddleware implements NestMiddleware {
 			return ids.map(id => ({
 				key: `bulk_${id}`,
 				value: { id },
-				ttl: CACHE_DURATION.MEDIUM, // 5 minutes default TTL
+				ttl: CACHE_DURATION.MEDIUM,
 			}));
 		}
 

@@ -10,7 +10,6 @@ import { compare, hash } from 'bcrypt';
 
 import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
 import { createServerError } from '@internal/utils';
 

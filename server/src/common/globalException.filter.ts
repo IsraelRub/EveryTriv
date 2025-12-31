@@ -10,9 +10,7 @@ import {
 import type { Response } from 'express';
 
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { NestRequest } from '../internal/types';
 
 /**

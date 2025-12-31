@@ -1,9 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { CreditTransactionType } from '@shared/constants';
-
 import { CreditSource } from '@internal/constants';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 

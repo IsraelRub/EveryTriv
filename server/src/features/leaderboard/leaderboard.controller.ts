@@ -9,10 +9,8 @@ import {
 	VALID_LEADERBOARD_PERIODS,
 } from '@shared/constants';
 import type { LeaderboardEntry, LeaderboardResponse } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateHasMore, getErrorMessage, isOneOf } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
-
 import { Cache, CurrentUserId, NoCache, Roles } from '../../common';
 import { Public } from '../../common/decorators/auth.decorator';
 import { GetLeaderboardDto, GetLeaderboardStatsDto } from './dtos';
@@ -28,10 +26,6 @@ import { LeaderboardService } from './leaderboard.service';
 @Controller(API_ROUTES.LEADERBOARD.BASE)
 export class LeaderboardController {
 	constructor(private readonly leaderboardService: LeaderboardService) {}
-
-	private isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
-		return VALID_LEADERBOARD_PERIODS.some(period => period === value);
-	}
 
 	/**
 	 * Get user ranking
@@ -103,7 +97,7 @@ export class LeaderboardController {
 	 */
 	@Get('global')
 	@Public()
-	@Cache(CACHE_DURATION.LONG) // Cache for 10 minutes
+	@Cache(CACHE_DURATION.LONG)
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit;
@@ -126,7 +120,7 @@ export class LeaderboardController {
 				email: entry.user?.email || '',
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
-				avatar: entry.user?.avatar,
+				avatar: entry.user?.preferences?.avatar,
 				rank: entry.rank ?? index + offsetNum + 1,
 				score: entry.score,
 				averageScore: entry.userStats?.overallSuccessRate ?? 0,
@@ -145,6 +139,7 @@ export class LeaderboardController {
 					limit: limitNum,
 					offset: offsetNum,
 					total: leaderboard.length,
+					hasMore: calculateHasMore(offsetNum, leaderboardEntries.length, leaderboard.length),
 				},
 			};
 		} catch (error) {
@@ -165,13 +160,13 @@ export class LeaderboardController {
 	 */
 	@Get('period/:period')
 	@Public()
-	@Cache(CACHE_DURATION.EXTENDED) // Cache for 15 minutes
+	@Cache(CACHE_DURATION.EXTENDED)
 	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit;
 			const periodString = periodParam || query.type || LeaderboardPeriod.WEEKLY;
 
-			if (!this.isLeaderboardPeriod(periodString)) {
+			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
 				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 
@@ -193,7 +188,7 @@ export class LeaderboardController {
 				email: entry.user?.email || '',
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
-				avatar: entry.user?.avatar,
+				avatar: entry.user?.preferences?.avatar,
 				rank: entry.rank ?? index + 1,
 				score: entry.score,
 				averageScore: entry.userStats?.overallSuccessRate ?? 0,
@@ -212,6 +207,7 @@ export class LeaderboardController {
 					limit: limitNum,
 					offset: 0,
 					total: leaderboard.length,
+					hasMore: calculateHasMore(0, leaderboardEntries.length, leaderboard.length),
 				},
 				period: periodString,
 			};
@@ -233,12 +229,12 @@ export class LeaderboardController {
 	 */
 	@Get('stats')
 	@Public()
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
 		try {
 			const periodString = query.period;
 
-			if (!this.isLeaderboardPeriod(periodString)) {
+			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
 				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 

@@ -13,7 +13,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheModule } from '@internal/modules';
-
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AuthModule } from '../auth';
 import { PaymentModule } from '../payment';

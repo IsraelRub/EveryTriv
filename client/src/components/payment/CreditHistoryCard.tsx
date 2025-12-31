@@ -2,10 +2,8 @@ import { motion } from 'framer-motion';
 import { ArrowDown, ArrowUp, Calendar, CreditCard } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
-
 import type { CreditHistoryCardProps } from '@/types';
-
-import { formatDate } from '@/utils';
+import { cn, formatDate } from '@/utils';
 
 export function CreditHistoryCard({ transactions, isLoading }: CreditHistoryCardProps) {
 	if (isLoading) {
@@ -76,9 +74,10 @@ export function CreditHistoryCard({ transactions, isLoading }: CreditHistoryCard
 								>
 									<div className='flex items-center gap-3 flex-1'>
 										<div
-											className={`p-2 rounded-full ${
+											className={cn(
+												'p-2 rounded-full',
 												isCredit ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-											}`}
+											)}
 										>
 											{isCredit ? <ArrowUp className='h-4 w-4' /> : <ArrowDown className='h-4 w-4' />}
 										</div>
@@ -91,15 +90,16 @@ export function CreditHistoryCard({ transactions, isLoading }: CreditHistoryCard
 											)}
 											<div className='flex items-center gap-1 mt-1 text-xs text-muted-foreground'>
 												<Calendar className='h-3 w-3' />
-												{transaction.createdAt ? formatDate(transaction.createdAt) : 'N/A'}
+												{formatDate(transaction.createdAt, 'N/A')}
 											</div>
 										</div>
 									</div>
 									<div className='text-right'>
 										<p
-											className={`font-bold ${
+											className={cn(
+												'font-bold',
 												isCredit ? 'text-green-500' : isDebit ? 'text-red-500' : 'text-foreground'
-											}`}
+											)}
 										>
 											{isCredit ? '+' : '-'}
 											{amount} credits

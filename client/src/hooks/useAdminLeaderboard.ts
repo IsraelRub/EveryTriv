@@ -6,12 +6,9 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { UserRole } from '@shared/constants';
-
-import { leaderboardService, clientLogger as logger } from '@/services';
-
+import { ERROR_MESSAGES, UserRole } from '@shared/constants';
+import { leaderboardService, queryInvalidationService, clientLogger as logger } from '@/services';
 import { selectUserRole } from '@/redux/selectors';
-
 import { useAppSelector } from './useRedux';
 
 /**
@@ -26,7 +23,7 @@ export const useClearAllLeaderboard = () => {
 	return useMutation({
 		mutationFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
 			logger.gameStatistics('Clearing all leaderboard data');
 			const result = await leaderboardService.clearAllLeaderboard();
@@ -37,10 +34,7 @@ export const useClearAllLeaderboard = () => {
 		},
 		onSuccess: () => {
 			// Invalidate related queries
-			queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-			queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
-			queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
-			queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+			queryInvalidationService.invalidateLeaderboardQueries(queryClient);
 		},
 	});
 };

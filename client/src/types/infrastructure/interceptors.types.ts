@@ -5,8 +5,7 @@
  * @description Type definitions for HTTP request/response interceptors
  * @used_by client/src/services/api.service.ts, client/src/services/interceptors
  */
-import type { ApiResponse, RequestData } from '@shared/types';
-
+import type { ApiResponse } from '@shared/types';
 import type { ApiError } from './api.types';
 
 /**
@@ -44,19 +43,6 @@ export type ResponseInterceptor = <T>(response: ApiResponse<T>) => ApiResponse<T
  * @description Handles errors before they are thrown
  */
 export type ErrorInterceptor = (error: ApiError) => ApiError | Promise<ApiError>;
-
-/**
- * Request transformer function type
- * @description Transforms request data before sending
- */
-export type RequestTransformer = (data: RequestData) => RequestData | Promise<RequestData>;
-
-/**
- * Response transformer function type
- * @description Transforms response data after receiving
- * @template T Response data type
- */
-export type ResponseTransformer = <T>(data: T) => T | Promise<T>;
 
 /**
  * Interceptor registration options

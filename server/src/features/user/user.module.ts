@@ -13,10 +13,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthenticationManager, PasswordService } from 'src/common/auth';
 
-import { AUTH_CONSTANTS } from '@internal/constants';
+import { AUTH_CONSTANTS } from '@shared/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
-
 import { UserDataPipe } from '../../common/pipes';
 import { ValidationModule } from '../../common/validation/validation.module';
 import { AuthModule } from '../auth';

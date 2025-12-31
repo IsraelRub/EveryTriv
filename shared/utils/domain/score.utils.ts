@@ -5,6 +5,7 @@
  * @description A set of pure utility functions for score calculations that can be safely used
  * @used_by both client (browser) and server (Node). No NestJS or platform-specific deps.
  */
+import type { CountRecord } from '../../types/core/data.types';
 
 /**
  * Calculate score for a correct answer
@@ -24,7 +25,7 @@ export function calculateAnswerScore(
 ): number {
 	if (!isCorrect) return 0;
 
-	const baseScoreByDifficulty: Record<string, number> = {
+	const baseScoreByDifficulty: CountRecord = {
 		easy: 10,
 		medium: 20,
 		hard: 30,

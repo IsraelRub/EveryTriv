@@ -6,20 +6,18 @@
  */
 import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
 
-import { ERROR_CODES, UserRole } from '@shared/constants';
+import { ERROR_CODES, UserRole, defaultValidators } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
 import { MetricsService } from '@internal/services/metrics';
 import type { AllMiddlewareMetricsResponse, MiddlewareMetricsResponse } from '@internal/types';
-
 import { Roles } from '@common';
 
 /**
  * Type guard to check if metrics is a single middleware metrics object
  */
 function isMiddlewareMetrics(metrics: unknown): metrics is { requestCount: number } {
-	return isRecord(metrics) && typeof metrics.requestCount === 'number' && Number.isFinite(metrics.requestCount);
+	return isRecord(metrics) && defaultValidators.number(metrics.requestCount);
 }
 
 // MiddlewareMetrics type is used implicitly
@@ -57,13 +55,13 @@ export class MiddlewareMetricsController {
 			const middlewareNames = Object.keys(middlewareMetrics);
 			const totalRequests = middlewareNames.reduce((sum, name) => {
 				const metrics = middlewareMetrics[name];
-				return sum + metrics.requestCount;
+				return sum + (metrics?.requestCount ?? 0);
 			}, 0);
 			const averagePerformance =
 				middlewareNames.length > 0
 					? middlewareNames.reduce((sum, name) => {
 							const metrics = middlewareMetrics[name];
-							return sum + metrics.averageDuration;
+							return sum + (metrics?.averageDuration ?? 0);
 						}, 0) / middlewareNames.length
 					: 0;
 			const slowestMiddleware =
@@ -71,6 +69,9 @@ export class MiddlewareMetricsController {
 					? middlewareNames.reduce((slowest, current) => {
 							const currentMetrics = middlewareMetrics[current];
 							const slowestMetrics = middlewareMetrics[slowest];
+							if (currentMetrics == null || slowestMetrics == null) {
+								return slowest;
+							}
 							return currentMetrics.averageDuration > slowestMetrics.averageDuration ? current : slowest;
 						})
 					: 'N/A';
@@ -79,6 +80,9 @@ export class MiddlewareMetricsController {
 					? middlewareNames.reduce((most, current) => {
 							const currentMetrics = middlewareMetrics[current];
 							const mostMetrics = middlewareMetrics[most];
+							if (currentMetrics == null || mostMetrics == null) {
+								return most;
+							}
 							return currentMetrics.requestCount > mostMetrics.requestCount ? current : most;
 						})
 					: 'N/A';

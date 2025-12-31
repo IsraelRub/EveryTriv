@@ -28,3 +28,13 @@ export function formatCurrency(amount: number, currency: string = 'USD', locale:
 export function calculatePricePerCredit(price: number, credits: number): number {
 	return parseFloat((price / credits).toFixed(4));
 }
+
+/**
+Format number for display using browser default locale
+ * @param value Number to format
+ * @param decimals Number of decimal places (default: 2)
+ * @returns Formatted string ready for display using browser default locale
+ */
+export function formatForDisplay(value: number, decimals: number = 2): string {
+	return Number(value.toFixed(decimals)).toLocaleString();
+}

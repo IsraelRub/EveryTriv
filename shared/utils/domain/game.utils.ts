@@ -6,7 +6,7 @@
  * @used_by client/src/services/domain, server/src/features/game
  */
 import { DifficultyLevel, GameMode } from '../../constants';
-import type { GameData, GameDifficulty } from '../../types';
+import type { GameData } from '../../types';
 
 /**
  * Normalize GameData with default values
@@ -20,7 +20,7 @@ export function normalizeGameData(gameData: Partial<GameData>, defaults: Partial
 		score: gameData.score ?? 0,
 		gameQuestionCount: gameData.gameQuestionCount ?? 0,
 		correctAnswers: gameData.correctAnswers ?? 0,
-		difficulty: gameData.difficulty ?? defaults.difficulty ?? (DifficultyLevel.MEDIUM as GameDifficulty),
+		difficulty: gameData.difficulty ?? defaults.difficulty ?? DifficultyLevel.MEDIUM,
 		topic: gameData.topic ?? defaults.topic ?? 'General',
 		gameMode: gameData.gameMode ?? defaults.gameMode ?? GameMode.QUESTION_LIMITED,
 		timeSpent: gameData.timeSpent ?? 0,

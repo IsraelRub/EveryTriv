@@ -8,6 +8,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { persistReducer, persistStore } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
+import sessionStorage from 'redux-persist/lib/storage/session';
 
 import favoritesReducer from './slices/favoritesSlice';
 import gameModeReducer from './slices/gameModeSlice';
@@ -16,7 +17,7 @@ import userReducer from './slices/userSlice';
 
 const userPersistConfig = {
 	key: 'user',
-	storage,
+	storage: sessionStorage, // sessionStorage - independent per tab
 	whitelist: ['user'],
 };
 

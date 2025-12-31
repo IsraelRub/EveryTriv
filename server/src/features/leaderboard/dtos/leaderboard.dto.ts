@@ -8,12 +8,11 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
-import { LeaderboardPeriod, VALID_LEADERBOARD_PERIODS } from '@shared/constants';
+import { LeaderboardPeriod, VALID_LEADERBOARD_PERIODS, VALIDATION_COUNT } from '@shared/constants';
 
 export class GetLeaderboardDto {
 	@ApiPropertyOptional({
 		description: 'Leaderboard type',
-		example: 'global',
 		enum: VALID_LEADERBOARD_PERIODS,
 		default: LeaderboardPeriod.GLOBAL,
 	})
@@ -25,7 +24,6 @@ export class GetLeaderboardDto {
 
 	@ApiPropertyOptional({
 		description: 'Topic for topic-specific leaderboard',
-		example: 'science',
 		maxLength: 100,
 	})
 	@IsOptional()
@@ -35,20 +33,18 @@ export class GetLeaderboardDto {
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of entries to return',
-		example: 50,
 		minimum: 1,
-		maximum: 100,
+		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 50,
 	})
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(100, { message: 'Limit cannot exceed 100' })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
 	limit: number = 50;
 
 	@ApiPropertyOptional({
 		description: 'Starting position for pagination',
-		example: 0,
 		minimum: 0,
 		default: 0,
 	})
@@ -61,7 +57,6 @@ export class GetLeaderboardDto {
 export class GetLeaderboardStatsDto {
 	@ApiPropertyOptional({
 		description: 'Time period for statistics',
-		example: 'weekly',
 		enum: VALID_LEADERBOARD_PERIODS,
 		default: LeaderboardPeriod.WEEKLY,
 	})

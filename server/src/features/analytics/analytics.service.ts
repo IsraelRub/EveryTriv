@@ -1,19 +1,18 @@
 import { cpus, freemem, totalmem } from 'os';
-
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { CACHE_DURATION, ComparisonTarget, ERROR_CODES, TimePeriod } from '@shared/constants';
+import { CACHE_DURATION, ComparisonTarget, ERROR_CODES, TIME_PERIODS_MS, TimePeriod } from '@shared/constants';
 import type {
 	ActivityEntry,
-	AnalyticsAnswerData,
 	AnalyticsEventData,
 	AnalyticsResponse,
 	BusinessMetrics,
 	ClearOperationResponse,
 	ComparisonQueryOptions,
 	CompleteUserAnalytics,
+	CountRecord,
 	DifficultyBreakdown,
 	GameAnalyticsQuery,
 	GameStatsData,
@@ -23,7 +22,6 @@ import type {
 	SystemRecommendation,
 	TimeStat,
 	TopicAnalyticsRecord,
-	TopicsPlayed,
 	TopicStatsData,
 	TrendQueryOptions,
 	UserAnalyticsRecord,
@@ -36,7 +34,7 @@ import type {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
-import { buildCountRecord, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
+import { buildCountRecord, getErrorMessage, hasProperty, isRecord, isStringArray } from '@shared/utils';
 import {
 	isBusinessMetricsData,
 	isCompleteUserAnalyticsData,
@@ -44,7 +42,6 @@ import {
 	isTopicAnalyticsRecordArray,
 } from '@shared/utils/domain';
 import { isGameDifficulty } from '@shared/validation';
-
 import { SQL_CONDITIONS } from '@internal/constants';
 import {
 	GameHistoryEntity,
@@ -61,9 +58,10 @@ import type {
 	SecurityMetrics,
 	SystemPerformanceMetrics,
 	TopicAnalyticsAccumulator,
+	DifficultyStatsRecord,
 } from '@internal/types';
-import { createNotFoundError, isNumber } from '@internal/utils';
-
+import { createNotFoundError } from '@internal/utils';
+import { defaultValidators } from '@shared/constants';
 import { addDateRangeConditions } from '../../common/queries';
 import { LeaderboardService } from '../leaderboard';
 
@@ -125,27 +123,6 @@ export class AnalyticsService {
 	}
 
 	/**
-	 * Track analytics event
-	 * @param userId User ID
-	 * @param eventData Event data
-	 * @returns Promise<void>
-	 */
-	async trackEvent(userId: string, eventData: AnalyticsEventData): Promise<void> {
-		try {
-			logger.analyticsTrack(eventData.eventType, {
-				userId,
-			});
-
-			await this.saveEventToDatabase(userId, eventData);
-		} catch (error) {
-			logger.analyticsError('trackEvent', {
-				error: getErrorMessage(error),
-				userId,
-			});
-		}
-	}
-
-	/**
 	 * Get user statistics
 	 * @param userId User ID
 	 * @returns Promise<UserAnalyticsRecord>
@@ -173,8 +150,8 @@ export class AnalyticsService {
 				totalPlayTime: stats.totalPlayTime,
 				correctAnswers: stats.correctAnswers,
 				mostPlayedTopic: stats.mostPlayedTopic,
-				averageTimePerQuestion: stats.averageTimePerQuestion ?? 0,
-				totalScore: stats.totalScore ?? 0,
+				averageTimePerQuestion: stats.averageTimePerQuestion,
+				totalScore: stats.totalScore,
 				topicsPlayed: stats.topicsPlayed,
 				difficultyBreakdown: stats.difficultyBreakdown,
 				recentActivity: stats.recentActivity,
@@ -236,18 +213,13 @@ export class AnalyticsService {
 						.where(`game.difficulty ${SQL_CONDITIONS.IS_NOT_NULL}`)
 						.andWhere("game.difficulty != ''")
 						.groupBy('game.difficulty')
-						.getRawMany<{ difficulty: string; total: number; correct: number }>();
+						.getRawMany<DifficultyStatsRecord>();
 
 					const result: DifficultyBreakdown = {};
 					difficultyStats.forEach(stat => {
-						if (
-							stat?.difficulty &&
-							isGameDifficulty(stat.difficulty) &&
-							stat?.total !== undefined &&
-							stat?.correct !== undefined
-						) {
-							const total = stat.total ?? 0;
-							const correct = stat.correct ?? 0;
+						if (stat?.difficulty && isGameDifficulty(stat.difficulty) && stat.total != null && stat.correct != null) {
+							const total = stat.total;
+							const correct = stat.correct;
 							result[stat.difficulty] = {
 								total,
 								correct,
@@ -258,7 +230,7 @@ export class AnalyticsService {
 
 					return result;
 				},
-				1800,
+				CACHE_DURATION.THIRTY_MINUTES,
 				isDifficultyStatsRecord
 			);
 		} catch (error) {
@@ -273,19 +245,11 @@ export class AnalyticsService {
 	 * Track user answer
 	 * @param userId The user ID
 	 * @param questionId The question ID
-	 * @param answerData The answer data
 	 * @returns Promise<void>
 	 */
-	async trackUserAnswer(userId: string, questionId: string, answerData: AnalyticsAnswerData): Promise<void> {
+	async trackUserAnswer(userId: string, questionId: string): Promise<void> {
 		try {
-			logger.analyticsTrack('user_answer', {
-				userId,
-				questionId,
-				isCorrect: answerData.isCorrect,
-				timeSpent: answerData.timeSpent,
-			});
-
-			await this.updateQuestionStats(questionId);
+			await this.updateQuestionStats();
 		} catch (error) {
 			logger.analyticsError('trackUserAnswer', {
 				error: getErrorMessage(error),
@@ -301,11 +265,6 @@ export class AnalyticsService {
 	async getPerformanceMetrics(): Promise<SystemPerformanceMetrics> {
 		try {
 			await this.updatePerformanceMetrics();
-
-			logger.analyticsPerformance('get_performance_metrics', {
-				responseTime: this.performanceData.responseTime,
-				memoryUsage: this.performanceData.memoryUsage,
-			});
 
 			return this.performanceData;
 		} catch (error) {
@@ -323,8 +282,6 @@ export class AnalyticsService {
 		try {
 			const businessMetrics = await this.calculateBusinessMetrics();
 
-			logger.analyticsMetrics('business', {});
-
 			return businessMetrics;
 		} catch (error) {
 			logger.analyticsError('getBusinessMetrics', {
@@ -339,10 +296,6 @@ export class AnalyticsService {
 	 */
 	async getSecurityMetrics(): Promise<SecurityMetrics> {
 		try {
-			logger.analyticsMetrics('security', {
-				failedLogins: this.securityData.authentication.failedLogins,
-			});
-
 			return this.securityData;
 		} catch (error) {
 			logger.analyticsError('getSecurityMetrics', {
@@ -413,13 +366,9 @@ export class AnalyticsService {
 					estimatedImpact: 'Improved system reliability and user experience',
 					implementationEffort: 'medium',
 				});
-			}
+		}
 
-			logger.analyticsRecommendations({
-				recommendationsCount: recommendations.length,
-			});
-
-			return recommendations;
+		return recommendations;
 		} catch (error) {
 			logger.analyticsError('getSystemRecommendations', {
 				error: getErrorMessage(error),
@@ -431,31 +380,21 @@ export class AnalyticsService {
 	/**
 	 * Track authentication event
 	 */
-	trackAuthenticationEvent(success: boolean, userId?: string) {
+	trackAuthenticationEvent(success: boolean): void {
 		if (success) {
 			this.securityData.authentication.successfulLogins++;
 		} else {
 			this.securityData.authentication.failedLogins++;
 		}
-
-		logger.analyticsTrack('authentication_event', {
-			success,
-			userId: userId || 'unknown',
-		});
 	}
 
 	/**
 	 * Track authorization event
 	 */
-	trackAuthorizationEvent(authorized: boolean, userId?: string) {
+	trackAuthorizationEvent(authorized: boolean): void {
 		if (!authorized) {
 			this.securityData.authorization.unauthorizedAttempts++;
 		}
-
-		logger.analyticsTrack('authorization_event', {
-			authorized,
-			userId: userId || 'unknown',
-		});
 	}
 
 	/**
@@ -475,58 +414,56 @@ export class AnalyticsService {
 			this.failedRequests++;
 		}
 		this.performanceData.errorRate = (this.failedRequests / this.totalRequests) * 100;
+	}
 
-		logger.analyticsPerformance('performance_tracking', {
-			responseTime,
-			success,
-		});
+	/**
+	 * Track analytics event
+	 * @param eventData Analytics event data
+	 * @returns Tracking result
+	 */
+	async trackEvent(eventData: AnalyticsEventData): Promise<{ tracked: boolean; eventId?: string }> {
+		try {
+			const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+			const cacheKey = `analytics:event:${eventData.userId ?? 'anonymous'}:${eventId}`;
+
+			// Store event in cache with 30 days TTL
+			await this.cacheService.set(cacheKey, eventData, TIME_PERIODS_MS.MONTH / 1000);
+
+			// Also store in user activity list if userId is provided
+			if (eventData.userId != null) {
+				const userEventsKey = `analytics:events:${eventData.userId}`;
+				const existingEventsResult = await this.cacheService.get<string[]>(userEventsKey, isStringArray);
+				const eventsList = existingEventsResult.success && existingEventsResult.data != null ? existingEventsResult.data : [];
+				eventsList.push(eventId);
+				// Keep only last 1000 events per user
+				if (eventsList.length > 1000) {
+					eventsList.shift();
+				}
+				await this.cacheService.set(userEventsKey, eventsList, TIME_PERIODS_MS.MONTH / 1000);
+			}
+
+			logger.analyticsStats('Analytics event tracked', {
+				eventType: eventData.eventType,
+				userId: eventData.userId,
+			});
+
+			return { tracked: true, eventId };
+		} catch (error) {
+			logger.analyticsError('Failed to track analytics event', {
+				error: getErrorMessage(error),
+				eventType: eventData.eventType,
+				userId: eventData.userId,
+			});
+			throw error;
+		}
 	}
 
 	/**
 	 * Update question statistics
-	 * @param questionId The question ID
 	 * @returns Promise<void>
 	 */
-	private async updateQuestionStats(questionId: string): Promise<void> {
-		try {
-			logger.gameStatistics('Question statistics would be updated', {
-				questionId,
-			});
-
-			logger.gameStatistics('Question statistics updated', {
-				questionId,
-			});
-		} catch (error) {
-			logger.gameError('Failed to update question stats', {
-				error: getErrorMessage(error),
-				questionId,
-			});
-		}
-	}
-
-	/**
-	 * Save event to database
-	 * @param userId User ID
-	 * @param eventData Event data
-	 * @returns Promise<void>
-	 */
-	private async saveEventToDatabase(userId: string, eventData: AnalyticsEventData): Promise<void> {
-		try {
-			logger.analyticsTrack('event_save_attempt', {
-				userId,
-				eventType: eventData.eventType,
-			});
-
-			logger.analyticsTrack('event_saved', {
-				userId,
-				eventType: eventData.eventType,
-			});
-		} catch (error) {
-			logger.databaseError('Failed to save event to database', {
-				error: getErrorMessage(error),
-				userId,
-			});
-		}
+	private async updateQuestionStats(): Promise<void> {
+		// Question statistics tracking is handled at controller level
 	}
 
 	/**
@@ -583,7 +520,7 @@ export class AnalyticsService {
 			const topicCounts = await queryBuilder.getRawMany<{ topic: string; count: number }>();
 
 			// Build topicsPlayed from query results
-			const topicsPlayed: TopicsPlayed = {};
+			const topicsPlayed: CountRecord = {};
 			topicCounts.forEach(({ topic, count }) => {
 				if (topic && count != null) {
 					topicsPlayed[topic] = count;
@@ -624,7 +561,7 @@ export class AnalyticsService {
 			// Build difficultyBreakdown from all difficulties in game history
 			const difficultyBreakdown: DifficultyBreakdown = {};
 			difficultyStatsRaw.forEach(({ difficulty, total, correct }) => {
-				if (difficulty && isGameDifficulty(difficulty) && total != null && correct != null) {
+				if (difficulty != null && isGameDifficulty(difficulty) && total != null && correct != null) {
 					difficultyBreakdown[difficulty] = {
 						total,
 						correct,
@@ -677,11 +614,11 @@ export class AnalyticsService {
 
 			const totalCorrectAnswersRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'totalCorrect')
-				.getRawOne<{ totalCorrect: number }>();
+				.getRawOne<{ totalCorrect: number | null }>();
 
 			const totalQuestionsAskedRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('CAST(COALESCE(SUM(game.game_question_count), 0) AS INTEGER)', 'totalQuestionsAnswered')
-				.getRawOne<{ totalQuestionsAnswered: number }>();
+				.getRawOne<{ totalQuestionsAnswered: number | null }>();
 
 			const topicStatsRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('game.topic', 'topic')
@@ -714,7 +651,7 @@ export class AnalyticsService {
 				let whereClause = '';
 				if (sql.includes('WHERE')) {
 					const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$)/is);
-					if (whereMatch && whereMatch[1]) {
+					if (whereMatch?.[1] != null) {
 						let processedWhere = whereMatch[1].trim();
 						paramKeys.forEach((key, index) => {
 							processedWhere = processedWhere.replace(new RegExp(`:${key}\\b`, 'g'), `$${index + 1}`);
@@ -725,7 +662,8 @@ export class AnalyticsService {
 
 				const medianQuery = `SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "time_spent") AS "medianTime" FROM "game_history"${whereClause}`;
 				const medianResult = await this.gameHistoryRepo.query(medianQuery, paramValues);
-				medianTime = medianResult?.[0]?.medianTime ?? null;
+				const firstResult = medianResult?.[0];
+				medianTime = firstResult?.medianTime ?? null;
 			} catch (error) {
 				logger.analyticsError('calculateGameStats median calculation', {
 					error: getErrorMessage(error),
@@ -743,7 +681,7 @@ export class AnalyticsService {
 
 			const popularTopics = topicStatsRaw.map(stat => stat?.topic ?? '').filter(topic => topic !== '');
 
-			const difficultyDistribution: TopicsPlayed = buildCountRecord(
+			const difficultyDistribution: CountRecord = buildCountRecord(
 				difficultyStatsRaw,
 				stat => stat?.difficulty ?? null,
 				stat => stat?.total ?? 0
@@ -820,7 +758,7 @@ export class AnalyticsService {
 							totalGames: stat.totalGames,
 						}));
 				},
-				300,
+				CACHE_DURATION.MEDIUM,
 				isTopicAnalyticsRecordArray
 			);
 		} catch (error) {
@@ -901,7 +839,7 @@ export class AnalyticsService {
 						dailyActiveUsersQueryBuilder,
 						'game',
 						'createdAt',
-						new Date(Date.now() - 24 * 60 * 60 * 1000)
+						new Date(Date.now() - TIME_PERIODS_MS.DAY)
 					);
 					const dailyActiveUsersRaw = await dailyActiveUsersQueryBuilder.getRawOne<{ count: number }>();
 
@@ -912,7 +850,7 @@ export class AnalyticsService {
 						weeklyActiveUsersQueryBuilder,
 						'game',
 						'createdAt',
-						new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+						new Date(Date.now() - TIME_PERIODS_MS.WEEK)
 					);
 					const weeklyActiveUsersRaw = await weeklyActiveUsersQueryBuilder.getRawOne<{ count: number }>();
 
@@ -929,7 +867,7 @@ export class AnalyticsService {
 
 					const churnedUsers = await this.userRepo.count({
 						where: {
-							createdAt: LessThan(new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)),
+							createdAt: LessThan(new Date(Date.now() - TIME_PERIODS_MS.MONTH * 2)),
 							isActive: false,
 						},
 					});
@@ -952,11 +890,11 @@ export class AnalyticsService {
 							dau: dailyActiveUsersValue,
 							wau: weeklyActiveUsersValue,
 							mau: activeUsers,
-							avgSessionDuration: 1800,
+							avgSessionDuration: CACHE_DURATION.THIRTY_MINUTES,
 						},
 					};
 				},
-				1800,
+				CACHE_DURATION.THIRTY_MINUTES,
 				isBusinessMetricsData
 			);
 		} catch (error) {
@@ -1023,7 +961,7 @@ export class AnalyticsService {
 					});
 				}
 			},
-			5 * 60 * 1000
+			5 * TIME_PERIODS_MS.MINUTE
 		);
 	}
 
@@ -1034,10 +972,6 @@ export class AnalyticsService {
 	 */
 	async getUserAnalytics(userId: string): Promise<CompleteUserAnalytics> {
 		try {
-			logger.analyticsTrack('Getting user analytics', {
-				userId,
-			});
-
 			const cacheKey = `:user:analytics:${userId}`;
 
 			return await this.cacheService.getOrSet<CompleteUserAnalytics>(
@@ -1092,7 +1026,7 @@ export class AnalyticsService {
 							totalCredits,
 							createdAt: user.createdAt,
 							accountAge: user.createdAt
-								? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+								? Math.floor((Date.now() - user.createdAt.getTime()) / TIME_PERIODS_MS.DAY)
 								: 0,
 						},
 						game: {
@@ -1111,7 +1045,7 @@ export class AnalyticsService {
 								for (const [key, value] of Object.entries(entries)) {
 									if (isGameDifficulty(key)) {
 										const stats = value;
-										if (stats !== undefined) {
+										if (stats != null) {
 											breakdown[key] = {
 												total: stats.total,
 												correct: stats.correct,
@@ -1360,7 +1294,7 @@ export class AnalyticsService {
 			};
 		}
 
-		const lastPlayed = gameHistory[0]?.createdAt || new Date();
+		const lastPlayed = gameHistory[0]?.createdAt ?? new Date();
 
 		const streakData = this.calculateAdvancedStreak(gameHistory);
 
@@ -1373,11 +1307,11 @@ export class AnalyticsService {
 
 		const strongestTopic =
 			topicsWithMinGames.length > 0
-				? topicsWithMinGames.reduce((a, b) => (topicPerformance[a] > topicPerformance[b] ? a : b))
+				? topicsWithMinGames.reduce((a, b) => ((topicPerformance[a] ?? 0) > (topicPerformance[b] ?? 0) ? a : b))
 				: '';
 		const weakestTopic =
 			topicsWithMinGames.length > 0
-				? topicsWithMinGames.reduce((a, b) => (topicPerformance[a] < topicPerformance[b] ? a : b))
+				? topicsWithMinGames.reduce((a, b) => ((topicPerformance[a] ?? 0) < (topicPerformance[b] ?? 0) ? a : b))
 				: '';
 
 		const averageGameTime = this.calculateAverageGameTime(gameHistory);
@@ -1455,7 +1389,7 @@ export class AnalyticsService {
 	 * Build activity entries from history
 	 */
 	private buildUserActivityEntries(history: GameHistoryEntity[], limit?: number): ActivityEntry[] {
-		const effectiveLimit = isNumber(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
+		const effectiveLimit = defaultValidators.number(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
 		const boundedHistory = history.slice(0, effectiveLimit);
 
 		return boundedHistory.map(game => ({
@@ -1521,7 +1455,7 @@ export class AnalyticsService {
 		}
 	}
 
-	private getTopKey(counter: Record<string, number>): string | undefined {
+	private getTopKey(counter: CountRecord): string | undefined {
 		return Object.entries(counter).sort((a, b) => b[1] - a[1])[0]?.[0];
 	}
 
@@ -1538,7 +1472,7 @@ export class AnalyticsService {
 		let totalCorrect = 0;
 
 		gameHistory.forEach(game => {
-			const topic = game.topic || 'Unknown';
+			const topic = game.topic ?? 'Unknown';
 			let entry = topicsMap.get(topic);
 			if (!entry) {
 				entry = {
@@ -1562,7 +1496,7 @@ export class AnalyticsService {
 				entry.lastPlayed = playedAt;
 			}
 
-			const difficulty = game.difficulty || 'unknown';
+			const difficulty = game.difficulty ?? 'unknown';
 			entry.difficultyBreakdown[difficulty] = (entry.difficultyBreakdown[difficulty] ?? 0) + 1;
 
 			topicsMap.set(topic, entry);
@@ -1809,8 +1743,8 @@ export class AnalyticsService {
 				totalQuestionsAnswered: number;
 				correctAnswers: number;
 				count: number;
-				topicCounter: Record<string, number>;
-				difficultyCounter: Record<string, number>;
+				topicCounter: CountRecord;
+				difficultyCounter: CountRecord;
 			}
 		>();
 
@@ -1897,7 +1831,7 @@ export class AnalyticsService {
 		let targetType: ComparisonTarget = ComparisonTarget.GLOBAL;
 		let resolvedTargetUserId: string | undefined;
 
-		if (targetUserId && targetUserId !== userId) {
+		if (targetUserId != null && targetUserId !== userId) {
 			try {
 				const targetStats = await this.getUserStats(targetUserId);
 				const { history: targetHistory } = await this.fetchUserWithHistory(targetUserId);
@@ -1953,27 +1887,27 @@ export class AnalyticsService {
 			averageScore: userMetrics.averageScore - targetMetrics.averageScore,
 			totalGames: userMetrics.totalGames - targetMetrics.totalGames,
 			rank:
-				userMetrics.rank !== undefined && targetMetrics.rank !== undefined
+				userMetrics.rank != null && targetMetrics.rank != null
 					? userMetrics.rank - targetMetrics.rank
 					: undefined,
 			percentile:
-				userMetrics.percentile !== undefined && targetMetrics.percentile !== undefined
+				userMetrics.percentile != null && targetMetrics.percentile != null
 					? userMetrics.percentile - targetMetrics.percentile
 					: undefined,
 			bestStreak:
-				userMetrics.bestStreak !== undefined && targetMetrics.bestStreak !== undefined
+				userMetrics.bestStreak != null && targetMetrics.bestStreak != null
 					? userMetrics.bestStreak - targetMetrics.bestStreak
 					: undefined,
 			streakDays:
-				userMetrics.streakDays !== undefined && targetMetrics.streakDays !== undefined
+				userMetrics.streakDays != null && targetMetrics.streakDays != null
 					? userMetrics.streakDays - targetMetrics.streakDays
 					: undefined,
 			improvementRate:
-				userMetrics.improvementRate !== undefined && targetMetrics.improvementRate !== undefined
+				userMetrics.improvementRate != null && targetMetrics.improvementRate != null
 					? userMetrics.improvementRate - targetMetrics.improvementRate
 					: undefined,
 			consistencyScore:
-				userMetrics.consistencyScore !== undefined && targetMetrics.consistencyScore !== undefined
+				userMetrics.consistencyScore != null && targetMetrics.consistencyScore != null
 					? (userMetrics.consistencyScore ?? 0) - (targetMetrics.consistencyScore ?? 0)
 					: undefined,
 		};
@@ -2011,7 +1945,7 @@ export class AnalyticsService {
 			purchasedCredits,
 			totalCredits,
 			createdAt: user.createdAt,
-			accountAge: user.createdAt ? Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0,
+			accountAge: user.createdAt ? Math.floor((Date.now() - user.createdAt.getTime()) / TIME_PERIODS_MS.DAY) : 0,
 		};
 
 		const topTopics = progress.topics.slice(0, 3).map(topic => topic.topic);
@@ -2053,11 +1987,11 @@ export class AnalyticsService {
 	 * @param gameHistory Array of game history records
 	 * @returns Topic performance scores
 	 */
-	private calculateTopicPerformance(gameHistory: GameHistoryEntity[]): Record<string, number> {
+	private calculateTopicPerformance(gameHistory: GameHistoryEntity[]): CountRecord {
 		const topicStats: Record<string, { total: number; correct: number }> = {};
 
 		gameHistory.forEach(game => {
-			const topic = game.topic || 'Unknown';
+			const topic = game.topic ?? 'Unknown';
 			if (!topicStats[topic]) {
 				topicStats[topic] = { total: 0, correct: 0 };
 			}
@@ -2068,6 +2002,9 @@ export class AnalyticsService {
 		const topicPerformance = Object.fromEntries(
 			Object.keys(topicStats).map(topic => {
 				const stats = topicStats[topic];
+				if (stats == null) {
+					return [topic, 0];
+				}
 				return [topic, stats.total > 0 ? (stats.correct / stats.total) * 100 : 0];
 			})
 		);
@@ -2098,7 +2035,11 @@ export class AnalyticsService {
 
 		// Check current streak
 		for (let i = 0; i < sortedHistory.length; i++) {
-			const gameDate = new Date(sortedHistory[i].createdAt);
+			const game = sortedHistory[i];
+			if (game == null) {
+				break;
+			}
+			const gameDate = new Date(game.createdAt);
 			gameDate.setHours(0, 0, 0, 0);
 
 			const expectedDate = new Date(today);
@@ -2119,9 +2060,14 @@ export class AnalyticsService {
 			if (i === 0) {
 				tempStreak = 1;
 			} else {
-				const currentDate = new Date(uniqueDates[i]);
-				const previousDate = new Date(uniqueDates[i - 1]);
-				const dayDiff = (currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24);
+				const currentDateStr = uniqueDates[i];
+				const previousDateStr = uniqueDates[i - 1];
+				if (currentDateStr == null || previousDateStr == null) {
+					continue;
+				}
+				const currentDate = new Date(currentDateStr);
+				const previousDate = new Date(previousDateStr);
+				const dayDiff = (currentDate.getTime() - previousDate.getTime()) / TIME_PERIODS_MS.DAY;
 
 				if (dayDiff === 1) {
 					tempStreak++;
@@ -2228,7 +2174,9 @@ export class AnalyticsService {
 		// Calculate improvement trend
 		let improvement = 0;
 		for (let i = 1; i < segments.length; i++) {
-			improvement += segments[i] - segments[i - 1];
+			const current = segments[i] ?? 0;
+			const previous = segments[i - 1] ?? 0;
+			improvement += current - previous;
 		}
 
 		// Convert to learning curve score
@@ -2244,9 +2192,11 @@ export class AnalyticsService {
 	private calculateTrend(recentGames: GameHistoryEntity[]) {
 		if (recentGames.length < 3) return 0;
 
-		const successRates = recentGames.map(game =>
-			game.gameQuestionCount > 0 ? (game.correctAnswers / game.gameQuestionCount) * 100 : 0
-		);
+		const successRates = recentGames.map(game => {
+			const questionCount = game.gameQuestionCount ?? 0;
+			const correctAnswers = game.correctAnswers ?? 0;
+			return questionCount > 0 ? (correctAnswers / questionCount) * 100 : 0;
+		});
 
 		// Simple linear regression to find trend
 		let sumX = 0,
@@ -2256,9 +2206,10 @@ export class AnalyticsService {
 		const n = successRates.length;
 
 		for (let i = 0; i < n; i++) {
+			const rate = successRates[i] ?? 0;
 			sumX += i;
-			sumY += successRates[i];
-			sumXY += i * successRates[i];
+			sumY += rate;
+			sumXY += i * rate;
 			sumXX += i * i;
 		}
 
@@ -2323,23 +2274,19 @@ export class AnalyticsService {
 					};
 				},
 				CACHE_DURATION.LONG,
-				(data): data is GlobalStatsResponse => {
+				((data): data is GlobalStatsResponse => {
 					return (
 						isRecord(data) &&
 						hasProperty(data, 'successRate') &&
-						typeof data.successRate === 'number' &&
-						Number.isFinite(data.successRate) &&
+						defaultValidators.number(data.successRate) &&
 						hasProperty(data, 'averageGames') &&
-						typeof data.averageGames === 'number' &&
-						Number.isFinite(data.averageGames) &&
+						defaultValidators.number(data.averageGames) &&
 						hasProperty(data, 'averageGameTime') &&
-						typeof data.averageGameTime === 'number' &&
-						Number.isFinite(data.averageGameTime) &&
+						defaultValidators.number(data.averageGameTime) &&
 						hasProperty(data, 'consistency') &&
-						typeof data.consistency === 'number' &&
-						Number.isFinite(data.consistency)
+						defaultValidators.number(data.consistency)
 					);
-				}
+				})
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalStats', {
@@ -2401,8 +2348,8 @@ export class AnalyticsService {
 					totalQuestionsAnswered: number;
 					correctAnswers: number;
 					count: number;
-					topicCounter: Record<string, number>;
-					difficultyCounter: Record<string, number>;
+					topicCounter: CountRecord;
+					difficultyCounter: CountRecord;
 				}
 			>();
 
@@ -2468,12 +2415,9 @@ export class AnalyticsService {
 	 */
 	async clearAllUserStats(): Promise<ClearOperationResponse> {
 		try {
-			logger.userInfo('Clearing entire user stats dataset', {});
-
 			const totalBefore = await this.userStatsRepo.count();
 
 			if (totalBefore === 0) {
-				logger.userInfo('No user stats records to clear', {});
 				// Clear cache even if no records found
 				try {
 					await this.cacheService.invalidatePattern('user_stats:*');
@@ -2495,10 +2439,6 @@ export class AnalyticsService {
 				typeof deleteResult.affected === 'number' && Number.isFinite(deleteResult.affected)
 					? deleteResult.affected
 					: totalBefore;
-
-			logger.userInfo('All user stats cleared by admin', {
-				deletedCount,
-			});
 
 			// Clear cache after database deletion
 			try {

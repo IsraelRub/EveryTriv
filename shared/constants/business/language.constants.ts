@@ -55,7 +55,3 @@ export const GRAMMAR_PATTERNS = [
 	{ pattern: /\b(there)\s+(going)/, suggestion: 'Use "they\'re" (they are) instead of "there" (location)' },
 	{ pattern: /\b(their)\s+(going)/, suggestion: 'Use "they\'re" (they are) instead of "their" (possessive)' },
 ] as const;
-
-export const LANGUAGE_DETECTION = {
-	ENGLISH_CHARS: /[a-zA-Z]/,
-} as const;

@@ -22,7 +22,7 @@ export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
 
 /**
  * Mark endpoint as requiring specific user status
- * @param statuses Array of required user statuses
+ * @param statuses Array of required user statuses (from UserStatus enum)
  * @returns Method decorator that requires specific user status
  */
 export const RequireUserStatus = (...statuses: string[]) => SetMetadata('requireUserStatus', statuses);

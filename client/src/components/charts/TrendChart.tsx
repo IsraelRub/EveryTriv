@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { formatForDisplay } from '@shared/utils';
 import type { TrendChartProps } from '@/types';
-
 import { ChartCard } from './ChartCard';
 
 /**
@@ -83,12 +82,12 @@ export function TrendChart({ data, isLoading, height = 300, showSuccessRate = tr
 						}}
 						formatter={(value: number, name: string) => {
 							if (name === 'score') {
-								return [value.toLocaleString(), 'Score'];
+								return [formatForDisplay(value, 0), 'Score'];
 							}
 							if (name === 'successRate') {
-								return [`${value}%`, 'Success Rate'];
+								return [formatForDisplay(value), 'Success Rate'];
 							}
-							return [value, name];
+							return [formatForDisplay(value), name];
 						}}
 					/>
 					<Legend

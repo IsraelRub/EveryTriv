@@ -5,7 +5,6 @@
 import {
 	ERROR_CODES,
 	ERROR_MESSAGES,
-	GROQ_DEFAULT_MODEL,
 	GROQ_FREE_TIER_MODELS,
 	GROQ_MODELS,
 	HTTP_CLIENT_CONFIG,
@@ -13,13 +12,11 @@ import {
 	HTTP_TIMEOUTS,
 	HttpMethod,
 } from '@shared/constants';
-import { getErrorMessage, isRecord, RetryService } from '@shared/utils';
-
+import { executeRetry, getErrorMessage, isProviderAuthError, isRecord } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import type { LLMResponse, ProviderConfig } from '@internal/types';
-import { createAuthError, isProviderAuthError } from '@internal/utils';
-
-import { PromptTemplates } from '../prompts';
+import { createAuthError } from '@internal/utils';
+import { SYSTEM_PROMPT } from '../prompts';
 
 /**
  * Groq API Client
@@ -38,14 +35,15 @@ export class GroqApiClient {
 	 * Uses round-robin selection among priority 1 models if multiple available
 	 */
 	private selectModel(): string {
-		const freeTierModelsLength = GROQ_FREE_TIER_MODELS.length as number;
-		if (freeTierModelsLength === 0) {
-			return GROQ_DEFAULT_MODEL;
-		}
-
+		const freeTierModelsLength = GROQ_FREE_TIER_MODELS.length;
+		// GROQ_FREE_TIER_MODELS always has at least 2 models, so we can safely use it
 		// Round-robin selection among free tier models
 		const selectedModel = GROQ_FREE_TIER_MODELS[this.currentModelIndex % freeTierModelsLength];
 		this.currentModelIndex = (this.currentModelIndex + 1) % freeTierModelsLength;
+
+		if (selectedModel == null) {
+			throw new Error('No model available from GROQ_FREE_TIER_MODELS');
+		}
 
 		return selectedModel;
 	}
@@ -74,7 +72,7 @@ export class GroqApiClient {
 				messages: [
 					{
 						role: 'system',
-						content: PromptTemplates.getSystemPrompt(),
+						content: SYSTEM_PROMPT,
 					},
 					{ role: 'user', content: prompt },
 				],
@@ -116,8 +114,8 @@ export class GroqApiClient {
 			...(modelValue ? { model: modelValue } : {}),
 		});
 
-		// Use RetryService for unified retry logic
-		const result = await RetryService.execute<LLMResponse>(
+		// Use executeRetry for unified retry logic
+		const result = await executeRetry<LLMResponse>(
 			async () => {
 				const response = await globalThis.fetch(config.baseUrl, {
 					method: HttpMethod.POST,

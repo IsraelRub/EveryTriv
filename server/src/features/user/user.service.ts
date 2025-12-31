@@ -8,29 +8,31 @@ import {
 	DEFAULT_USER_PREFERENCES,
 	ERROR_CODES,
 	ERROR_MESSAGES,
+	TIME_PERIODS_MS,
 	UserRole,
 	UserStatus,
+	VALID_USER_STATUSES,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
 	AdminUserData,
+	AdminUsersListResponse,
 	BasicValue,
 	ChangePasswordData,
 	DeductCreditsResponse,
-	OffsetPagination,
 	UpdateCreditsData,
 	UpdateUserProfileData,
 	UserPreferences,
 } from '@shared/types';
 import { getErrorMessage, mergeUserPreferences, normalizeText } from '@shared/utils';
 import { isAuditLogEntry, isUserSearchCacheEntry } from '@shared/utils/domain';
-
 import { WildcardPattern } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { UserRegistrationData, UserSearchCacheEntry } from '@internal/types';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-
+import { isOneOf } from '@shared/utils';
 import { AuthenticationManager, PasswordService, ValidationService } from '../../common';
 import { addSearchConditions } from '../../common/queries';
 
@@ -100,7 +102,7 @@ export class UserService {
 					lastLogin: new Date().toISOString(),
 					accessToken: authResult.accessToken.substring(0, 20) + '...',
 				},
-				86400
+				CACHE_DURATION.EXTREME
 			);
 
 			if (!result.success) {
@@ -117,7 +119,7 @@ export class UserService {
 					email: user.email,
 					firstName: user.firstName,
 					lastName: user.lastName,
-					avatar: user.avatar,
+					avatar: user.preferences?.avatar,
 					role: user.role,
 				},
 				accessToken: authResult.accessToken,
@@ -141,10 +143,6 @@ export class UserService {
 	 */
 	async register(registerData: UserRegistrationData) {
 		try {
-			logger.userInfo('User registration attempt', {
-				email: registerData.email,
-			});
-
 			const existingEmail = await this.getUserByEmail(registerData.email);
 			if (existingEmail) {
 				throw new BadRequestException(ERROR_CODES.EMAIL_ALREADY_REGISTERED);
@@ -171,7 +169,7 @@ export class UserService {
 					email: user.email,
 					firstName: user.firstName,
 					lastName: user.lastName,
-					avatar: user.avatar,
+					avatar: user.preferences?.avatar,
 					role: user.role,
 				},
 				accessToken: tokenPair.accessToken,
@@ -194,30 +192,28 @@ export class UserService {
 	 */
 	async getUserProfile(userId: string) {
 		try {
-			logger.userInfo('Getting user profile', {
-				context: 'UserService',
-				userId,
-			});
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+		}
 
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
-			}
+		// Get avatar from preferences
+		const avatar = user.preferences?.avatar;
 
-			// Return in UserProfileResponseType format
-			return {
-				profile: {
-					id: user.id,
-					email: user.email,
-					role: user.role,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					avatar: user.avatar,
-					createdAt: user.createdAt,
-					updatedAt: user.updatedAt,
-				},
-				preferences: user.preferences || {},
-			};
+		// Return in UserProfileResponseType format
+		return {
+			profile: {
+				id: user.id,
+				email: user.email,
+				role: user.role,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				avatar: avatar,
+				createdAt: user.createdAt,
+				updatedAt: user.updatedAt,
+			},
+			preferences: user.preferences || {},
+		};
 		} catch (error) {
 			logger.userError('Failed to get user profile', {
 				context: 'UserService',
@@ -236,26 +232,21 @@ export class UserService {
 	 */
 	async updateUserProfile(userId: string, profileData: UpdateUserProfileData) {
 		try {
-			logger.userInfo('Updating user profile', {
-				context: 'UserService',
-				userId,
-				fields: Object.keys(profileData),
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Update user fields
-			// Note: avatar is updated only through setAvatar() method (separate endpoint)
-			if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
-			if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
-			if (profileData.preferences !== undefined)
-				user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
+		// Update user fields
+		// Note: avatar is updated only through setAvatar() method (separate endpoint)
+		if (profileData.firstName !== undefined) user.firstName = profileData.firstName;
+		if (profileData.lastName !== undefined) user.lastName = profileData.lastName;
+		if (profileData.preferences !== undefined) {
+			user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
+		}
 
-			// Save updated user
-			const updatedUser = await this.userRepository.save(user);
+		// Save updated user
+		const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user profile cache
 			await this.cacheService.delete(`user:profile:${userId}`);
@@ -269,7 +260,7 @@ export class UserService {
 					role: updatedUser.role,
 					firstName: updatedUser.firstName,
 					lastName: updatedUser.lastName,
-					avatar: updatedUser.avatar,
+					avatar: updatedUser.preferences?.avatar,
 					createdAt: updatedUser.createdAt,
 					updatedAt: updatedUser.updatedAt,
 				},
@@ -293,35 +284,24 @@ export class UserService {
 	 */
 	async setAvatar(userId: string, avatarId: number) {
 		try {
-			logger.userInfo('Setting user avatar', {
-				context: 'UserService',
-				userId,
-				avatar: avatarId,
-			});
-
 			// Validate avatar ID
-			if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 16) {
+			const { MIN, MAX } = VALIDATION_COUNT.AVATAR_ID;
+			if (!Number.isInteger(avatarId) || avatarId < MIN || avatarId > MAX) {
 				throw new BadRequestException(ERROR_CODES.AVATAR_ID_OUT_OF_RANGE);
 			}
 
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
-			}
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+		}
 
-			// Store avatarId as number
-			user.avatar = avatarId;
-			const updatedUser = await this.userRepository.save(user);
+		// Store avatarId as number in preferences
+		user.preferences = mergeUserPreferences(user.preferences, { avatar: avatarId });
+		const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user profile cache
 			await this.cacheService.delete(`user:profile:${userId}`);
 			await this.cacheService.delete(`user:stats:${userId}`);
-
-			logger.userInfo('User avatar updated successfully', {
-				context: 'UserService',
-				userId,
-				avatar: avatarId,
-			});
 
 			// Return in UserProfileResponseType format
 			return {
@@ -331,7 +311,7 @@ export class UserService {
 					role: updatedUser.role,
 					firstName: updatedUser.firstName,
 					lastName: updatedUser.lastName,
-					avatar: updatedUser.avatar,
+					avatar: updatedUser.preferences?.avatar,
 					createdAt: updatedUser.createdAt,
 					updatedAt: updatedUser.updatedAt,
 				},
@@ -356,12 +336,6 @@ export class UserService {
 	 */
 	async searchUsers(query: string, limit: number = 10): Promise<UserSearchCacheEntry> {
 		try {
-			logger.userInfo('Searching users', {
-				context: 'UserService',
-				query,
-				limit,
-			});
-
 			// Normalize search query
 			const normalizedQuery = normalizeText(query);
 			if (!normalizedQuery || normalizedQuery.length < 2) {
@@ -379,7 +353,7 @@ export class UserService {
 					});
 					queryBuilder
 						.andWhere('user.is_active = :isActive', { isActive: true })
-						.select(['user.id', 'user.email', 'user.firstName', 'user.lastName', 'user.avatar'])
+						.select(['user.id', 'user.email', 'user.firstName', 'user.lastName', 'user.preferences'])
 						.limit(limit);
 
 					const users = await queryBuilder.getMany();
@@ -391,7 +365,7 @@ export class UserService {
 							email: user.email,
 							firstName: user.firstName ?? null,
 							lastName: user.lastName ?? null,
-							avatar: user.avatar ?? null,
+							avatar: user.preferences?.avatar ?? null,
 							displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
 						})),
 						totalResults: users.length,
@@ -417,11 +391,6 @@ export class UserService {
 	 */
 	async deleteUserAccount(userId: string): Promise<string> {
 		try {
-			logger.userInfo('Deleting user account', {
-				context: 'UserService',
-				userId,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
@@ -456,11 +425,6 @@ export class UserService {
 	 */
 	async changePassword(userId: string, changePasswordData: ChangePasswordData) {
 		try {
-			logger.userInfo('Changing user password', {
-				context: 'UserService',
-				userId,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
@@ -504,19 +468,15 @@ export class UserService {
 	 */
 	async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>) {
 		try {
-			logger.userInfo('Updating user preferences', {
-				context: 'UserService',
-				userId,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Merge existing preferences with new ones (deep merge for privacy and game)
-			user.preferences = mergeUserPreferences(user.preferences, preferences);
-			await this.userRepository.save(user);
+		// Merge existing preferences with new ones (deep merge for privacy and game)
+		user.preferences = mergeUserPreferences(user.preferences, preferences);
+		
+		await this.userRepository.save(user);
 
 			// Invalidate user profile cache
 			await this.cacheService.delete(`user:profile:${userId}`);
@@ -543,12 +503,6 @@ export class UserService {
 	 */
 	async updateUser(userId: string, updates: DeepPartial<UserEntity>): Promise<UserEntity> {
 		try {
-			logger.userInfo('Updating user', {
-				context: 'UserService',
-				userId,
-				fields: Object.keys(updates),
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
@@ -580,11 +534,6 @@ export class UserService {
 	 */
 	async getUserByEmail(email: string) {
 		try {
-			logger.userInfo('Getting user by email', {
-				context: 'UserService',
-				email: email.substring(0, 10) + '...',
-			});
-
 			const user = await this.userRepository.findOne({ where: { email } });
 			return user;
 		} catch (error) {
@@ -604,11 +553,6 @@ export class UserService {
 	 */
 	async getUserById(userId: string) {
 		try {
-			logger.userInfo('Getting user by ID', {
-				context: 'UserService',
-				userId,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			return user;
 		} catch (error) {
@@ -628,11 +572,6 @@ export class UserService {
 	 */
 	async findByGoogleId(googleId: string) {
 		try {
-			logger.userInfo('Finding user by Google ID', {
-				context: 'UserService',
-				googleId: googleId.substring(0, 10) + '...',
-			});
-
 			const user = await this.userRepository.findOne({ where: { googleId } });
 			return user;
 		} catch (error) {
@@ -658,10 +597,6 @@ export class UserService {
 		role?: UserRole;
 	}) {
 		try {
-			logger.userInfo('Creating new user', {
-				email: userData.email,
-			});
-
 			const user = this.userRepository.create({
 				email: userData.email,
 				passwordHash: userData.passwordHash,
@@ -671,7 +606,6 @@ export class UserService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
-			logger.databaseCreate('user', { userId: savedUser.id, email: savedUser.email });
 			return savedUser;
 		} catch (error) {
 			logger.userError('Failed to create user', {
@@ -695,11 +629,6 @@ export class UserService {
 		// Note: avatar is not saved from Google OAuth (it's a URL, not our avatarId 1-16)
 	}) {
 		try {
-			logger.userInfo('Creating Google user', {
-				googleId: userData.googleId,
-				email: userData.email,
-			});
-
 			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
 			// Avatar can only be set through the dedicated /users/avatar endpoint
 			const user = this.userRepository.create({
@@ -711,7 +640,6 @@ export class UserService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
-			logger.databaseCreate('google_user', { userId: savedUser.id, email: savedUser.email });
 			return savedUser;
 		} catch (error) {
 			logger.userError('Failed to create Google user', {
@@ -731,11 +659,6 @@ export class UserService {
 	 */
 	async linkGoogleAccount(userId: string, googleId: string) {
 		try {
-			logger.userInfo('Linking Google account', {
-				userId,
-				googleId,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw createNotFoundError('User');
@@ -776,7 +699,7 @@ export class UserService {
 			const result = await this.storageService.set(
 				auditKey,
 				auditEntry,
-				2592000 // 30 days TTL for audit logs
+				TIME_PERIODS_MS.MONTH / 1000
 			);
 
 			if (!result.success) {
@@ -812,11 +735,6 @@ export class UserService {
 	 */
 	async getUserAuditLogs(userId: string, limit: number = 50) {
 		try {
-			logger.userInfo('Getting user audit logs', {
-				userId,
-				limit,
-			});
-
 			// Get all audit keys for this user
 			const keysResult = await this.storageService.getKeys();
 			if (!keysResult.success) {
@@ -860,11 +778,6 @@ export class UserService {
 	 */
 	async updateUserField(userId: string, field: string, value: BasicValue): Promise<UserEntity> {
 		try {
-			logger.userInfo('Updating user field', {
-				context: 'UserService',
-				userId,
-				field,
-			});
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
@@ -889,23 +802,21 @@ export class UserService {
 			// Handle special fields
 			switch (field) {
 				case 'role': {
-					const validRole = Object.values(UserRole).find(role => role === value);
-					if (validRole) {
-						user.role = validRole;
+					const isUserRole = isOneOf(Object.values(UserRole));
+					if (isUserRole(value)) {
+						user.role = value;
 					} else {
 						throw createValidationError('role', 'string');
 					}
 					break;
 				}
 				case 'status': {
-					if (typeof value !== 'string') {
+					const isValidStatus = isOneOf(VALID_USER_STATUSES);
+					if (isValidStatus(value)) {
+						user.isActive = value === UserStatus.ACTIVE;
+					} else {
 						throw createValidationError('status', 'string');
 					}
-					const nextStatus = Object.values(UserStatus).find(statusOption => statusOption === value);
-					if (!nextStatus) {
-						throw createValidationError('status', 'string');
-					}
-					user.isActive = nextStatus === UserStatus.ACTIVE;
 					break;
 				}
 				default: {
@@ -964,12 +875,6 @@ export class UserService {
 	 */
 	async updateSinglePreference(userId: string, preference: string, value: BasicValue): Promise<UserEntity> {
 		try {
-			logger.userInfo('Updating single preference', {
-				context: 'UserService',
-				userId,
-				preference,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
@@ -1009,13 +914,6 @@ export class UserService {
 	 */
 	async updateUserCredits(data: UpdateCreditsData): Promise<UserEntity> {
 		try {
-			logger.userInfo('Updating user credits', {
-				context: 'UserService',
-				userId: data.userId,
-				amount: data.amount,
-				reason: data.reason,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: data.userId } });
 			if (!user) {
 				throw createNotFoundError('User');
@@ -1034,16 +932,6 @@ export class UserService {
 			// Invalidate user credits cache
 			await this.cacheService.delete(`user:credits:${data.userId}`);
 			await this.cacheService.delete(`user:stats:${data.userId}`);
-
-			// Log credit change
-			logger.userInfo('User credits updated', {
-				context: 'UserService',
-				userId: data.userId,
-				oldCredits: (user.credits ?? 0) - data.amount,
-				newCredits: updatedUser.credits,
-				change: data.amount,
-				reason: data.reason,
-			});
 
 			return updatedUser;
 		} catch (error) {
@@ -1093,13 +981,6 @@ export class UserService {
 			await this.cacheService.delete(`user:profile:${userId}`);
 			await this.cacheService.delete(`user:stats:${userId}`);
 
-			// Log status change
-			logger.userInfo('User status updated', {
-				context: 'UserService',
-				userId,
-				newStatus: status,
-			});
-
 			return updatedUser;
 		} catch (error) {
 			logger.userError('Failed to update user status', {
@@ -1117,7 +998,7 @@ export class UserService {
 	 * @param limit Maximum number of users
 	 * @param offset Number of users to skip
 	 */
-	async getAllUsers(limit: number = 50, offset: number = 0): Promise<{ users: AdminUserData[] } & OffsetPagination> {
+	async getAllUsers(limit: number = 50, offset: number = 0): Promise<AdminUsersListResponse> {
 		const safeLimit = Math.min(Math.max(limit, 1), 200);
 		const safeOffset = Math.max(offset, 0);
 
@@ -1140,6 +1021,7 @@ export class UserService {
 			total,
 			limit: safeLimit,
 			offset: safeOffset,
+			hasMore: safeOffset + safeLimit < total,
 		};
 	}
 
@@ -1173,15 +1055,6 @@ export class UserService {
 			// Invalidate user credits cache
 			await this.cacheService.delete(`user:credits:${data.userId}`);
 			await this.cacheService.delete(`user:stats:${data.userId}`);
-
-			logger.userInfo('Credits deducted', {
-				context: 'UserService',
-				userId: data.userId,
-				amount: data.amount,
-				reason: data.reason,
-				previousCredits: currentCredits,
-				newCredits,
-			});
 
 			return {
 				success: true,

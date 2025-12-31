@@ -26,7 +26,6 @@ export class CreateInitialTables1690000000000 implements MigrationInterface {
 					"google_id" character varying,
 					"first_name" character varying,
 					"last_name" character varying,
-					"avatar" character varying,
 					"credits" integer NOT NULL DEFAULT '100',
 					"purchased_credits" integer NOT NULL DEFAULT '0',
 					"daily_free_questions" integer NOT NULL DEFAULT '20',
@@ -49,12 +48,6 @@ export class CreateInitialTables1690000000000 implements MigrationInterface {
 			await queryRunner.query(`CREATE INDEX "IDX_users_email" ON "users" ("email")`);
 			await queryRunner.query(`CREATE INDEX "IDX_users_google_id" ON "users" ("google_id")`);
 			await queryRunner.query(`CREATE INDEX "IDX_users_created_at" ON "users" ("created_at")`);
-
-			// Drop unused columns if they exist (for existing databases)
-			console.log('Dropping unused columns from users table if they exist');
-			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "reset_password_token"`);
-			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "reset_password_expires"`);
-			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "search_vector"`);
 
 			console.log('Migration completed successfully: CreateInitialTables', {
 				migrationName: this.name,

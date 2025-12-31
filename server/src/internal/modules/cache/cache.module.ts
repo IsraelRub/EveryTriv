@@ -9,7 +9,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
 import { serverLogger as logger } from '@internal/services';
-
 import { RedisModule } from '../redis.module';
 import { CacheController } from './cache.controller';
 import { CacheService } from './cache.service';

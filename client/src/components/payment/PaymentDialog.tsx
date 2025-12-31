@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-import { CreditCard, Loader2, Lock } from 'lucide-react';
+import { CreditCard, Lock } from 'lucide-react';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
 import type { PayPalOrderRequest } from '@shared/types';
 import { isPaymentMethod } from '@shared/validation';
-
-import { AudioKey, ButtonSize, ButtonVariant, ToastVariant } from '@/constants';
-
+import { AudioKey, ButtonSize, ButtonVariant, SpinnerSize, SpinnerVariant, ToastVariant } from '@/constants';
 import {
 	Button,
 	Card,
@@ -23,10 +20,9 @@ import {
 	Label,
 	RadioGroup,
 	RadioGroupItem,
+	Spinner,
 } from '@/components';
-
 import { useAudio, usePurchaseCredits, useToast } from '@/hooks';
-
 import type { CreditsPurchaseResponse, PaymentDialogProps } from '@/types';
 
 export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: PaymentDialogProps) {
@@ -308,11 +304,11 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					{selectedMethod === PaymentMethod.PAYPAL && (
 						<div className='space-y-2'>
 							<Label>PayPal Payment</Label>
-							{isProcessing ? (
-								<div className='flex items-center justify-center p-8 border rounded-lg'>
-									<Loader2 className='h-6 w-6 animate-spin text-primary' />
-								</div>
-							) : (
+						{isProcessing ? (
+							<div className='flex items-center justify-center p-8 border rounded-lg'>
+								<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.LG} className='text-primary' />
+							</div>
+						) : (
 								<div ref={setPaypalButtonContainer} className='min-h-[50px]' />
 							)}
 						</div>
@@ -325,7 +321,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Button className='w-full' onClick={handleManualPayment} disabled={isProcessing} size={ButtonSize.LG}>
 								{isProcessing ? (
 									<>
-										<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+										<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 										Processing...
 									</>
 								) : (

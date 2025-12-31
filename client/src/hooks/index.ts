@@ -127,7 +127,6 @@ export { AudioProvider, useAudio } from './useAudio';
  * @description Multiplayer game hooks
  */
 export { useMultiplayer } from './useMultiplayer';
-export { useMultiplayerRoom } from './useMultiplayerRoom';
 
 /**
  * Toast hooks
@@ -146,3 +145,15 @@ export { useModalRoute } from './useModalRoute';
  * @description Hook for animating numbers counting from 0 to target value
  */
 export { useCountUp } from './useCountUp';
+
+/**
+ * User synchronization hook
+ * @description Hook for synchronizing user state between Redux and server
+ */
+export { useUserSync } from './useUserSync';
+
+/**
+ * App initialization hook
+ * @description Hook for app initialization and global error handling
+ */
+export { useAppInitialization } from './useAppInitialization';

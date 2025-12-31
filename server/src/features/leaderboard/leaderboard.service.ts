@@ -2,16 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_DURATION, LeaderboardPeriod } from '@shared/constants';
+import { CACHE_DURATION, LeaderboardPeriod, TIME_PERIODS_MS } from '@shared/constants';
 import type { CategoryStatistics, ClearOperationResponse, LeaderboardStats } from '@shared/types';
 import { getErrorMessage, groupBy, isRecord } from '@shared/utils';
-
 import { GameHistoryEntity, LeaderboardEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { StreakData } from '@internal/types';
 import { createNotFoundError } from '@internal/utils';
-
 import { addDateRangeConditions } from '../../common/queries';
 
 /**
@@ -42,8 +40,6 @@ export class LeaderboardService {
 	 */
 	async updateUserRanking(userId: string): Promise<LeaderboardEntity> {
 		try {
-			logger.analyticsTrack('Updating user ranking', { userId });
-
 			// Get user data
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
@@ -215,7 +211,6 @@ export class LeaderboardService {
 							[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
 							[LeaderboardPeriod.YEARLY]: 'yearlyScore',
 							[LeaderboardPeriod.GLOBAL]: 'weeklyScore', // fallback
-							[LeaderboardPeriod.TOPIC]: 'weeklyScore', // fallback
 						};
 
 						const scoreField = scoreFieldMap[period];
@@ -317,7 +312,11 @@ export class LeaderboardService {
 		today.setHours(0, 0, 0, 0);
 
 		for (let i = 0; i < sortedHistory.length; i++) {
-			const gameDate = new Date(sortedHistory[i].createdAt);
+			const game = sortedHistory[i];
+			if (game == null) {
+				break;
+			}
+			const gameDate = new Date(game.createdAt);
 			gameDate.setHours(0, 0, 0, 0);
 
 			const expectedDate = new Date(today);
@@ -346,9 +345,9 @@ export class LeaderboardService {
 	 */
 	private calculateTimeBasedScores(gameHistory: GameHistoryEntity[]) {
 		const now = new Date();
-		const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-		const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-		const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+		const oneWeekAgo = new Date(now.getTime() - TIME_PERIODS_MS.WEEK);
+		const oneMonthAgo = new Date(now.getTime() - TIME_PERIODS_MS.MONTH);
+		const oneYearAgo = new Date(now.getTime() - TIME_PERIODS_MS.YEAR);
 
 		const weeklyGames = gameHistory.filter(game => game.createdAt >= oneWeekAgo);
 		const monthlyGames = gameHistory.filter(game => game.createdAt >= oneMonthAgo);
@@ -468,19 +467,18 @@ export class LeaderboardService {
 
 			// Update ranks
 			for (let i = 0; i < entries.length; i++) {
-				entries[i].rank = i + 1;
-				entries[i].totalUsers = entries.length;
-				entries[i].percentile = Math.round(((entries.length - i) / entries.length) * 100);
-				entries[i].lastRankUpdate = new Date();
+				const entry = entries[i];
+				if (entry != null) {
+					entry.rank = i + 1;
+					entry.totalUsers = entries.length;
+					entry.percentile = Math.round(((entries.length - i) / entries.length) * 100);
+					entry.lastRankUpdate = new Date();
+				}
 			}
 
-			// Save all updates
-			await this.leaderboardRepository.save(entries);
-
-			logger.analyticsTrack('Global rankings updated', {
-				totalUsers: entries.length,
-			});
-		} catch (error) {
+		// Save all updates
+		await this.leaderboardRepository.save(entries);
+	} catch (error) {
 			logger.analyticsError('updateGlobalRankings', {
 				error: getErrorMessage(error),
 			});
@@ -505,16 +503,16 @@ export class LeaderboardService {
 
 					switch (period) {
 						case LeaderboardPeriod.WEEKLY:
-							startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+							startDate = new Date(now.getTime() - TIME_PERIODS_MS.WEEK);
 							break;
 						case LeaderboardPeriod.MONTHLY:
-							startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+							startDate = new Date(now.getTime() - TIME_PERIODS_MS.MONTH);
 							break;
 						case LeaderboardPeriod.YEARLY:
-							startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+							startDate = new Date(now.getTime() - TIME_PERIODS_MS.YEAR);
 							break;
 						default:
-							startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+							startDate = new Date(now.getTime() - TIME_PERIODS_MS.WEEK);
 					}
 
 					// Get active users (users who played games in the period)
@@ -532,7 +530,6 @@ export class LeaderboardService {
 						[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
 						[LeaderboardPeriod.YEARLY]: 'yearlyScore',
 						[LeaderboardPeriod.GLOBAL]: 'weeklyScore', // fallback
-						[LeaderboardPeriod.TOPIC]: 'weeklyScore', // fallback
 					};
 
 					const scoreField = scoreFieldMap[period];
@@ -599,13 +596,10 @@ export class LeaderboardService {
 	 */
 	async clearAllLeaderboard(): Promise<ClearOperationResponse> {
 		try {
-			logger.analyticsTrack('Clearing entire leaderboard dataset', {});
-
 			const totalBefore = await this.leaderboardRepository.count();
 
-			if (totalBefore === 0) {
-				logger.analyticsTrack('No leaderboard records to clear', {});
-				// Clear cache even if no records found
+		if (totalBefore === 0) {
+			// Clear cache even if no records found
 				try {
 					await this.cacheService.invalidatePattern('leaderboard:*');
 				} catch (cacheError) {
@@ -620,14 +614,10 @@ export class LeaderboardService {
 				};
 			}
 
-			await this.leaderboardRepository.clear();
-			const deletedCount = totalBefore;
+		await this.leaderboardRepository.clear();
+		const deletedCount = totalBefore;
 
-			logger.analyticsTrack('All leaderboard cleared by admin', {
-				deletedCount,
-			});
-
-			// Clear cache after database deletion
+		// Clear cache after database deletion
 			try {
 				const cacheDeleted = await this.cacheService.invalidatePattern('leaderboard:*');
 				if (cacheDeleted > 0) {

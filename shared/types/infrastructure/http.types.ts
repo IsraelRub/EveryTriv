@@ -5,14 +5,10 @@
  * @module HttpTypes
  * @description HTTP client and request type definitions
  */
-import { HttpMethod } from '@shared/constants';
-
 import type { BaseData, StorageValue } from '../core/data.types';
 import type { HttpError } from '../core/error.types';
 import type { Logger } from './logging.types';
 
-// Re-export HttpMethod enum for convenience
-export { HttpMethod };
 
 // Define our own base request config for HTTP requests
 /**

@@ -7,8 +7,6 @@
  */
 import type { ProviderAuthError, ProviderErrorWithStatusCode, ProviderRateLimitError } from '@shared/types';
 
-import { isRecord } from './data.utils';
-
 /**
  * Type guard for authentication error
  */
@@ -17,11 +15,7 @@ export function isProviderAuthError(error: unknown): error is ProviderAuthError 
 		return false;
 	}
 
-	if (!isRecord(error)) {
-		return false;
-	}
-
-	return error.isAuthError === true;
+	return 'isAuthError' in error && error.isAuthError === true;
 }
 
 /**
@@ -32,11 +26,7 @@ export function isProviderRateLimitError(error: unknown): error is ProviderRateL
 		return false;
 	}
 
-	if (!isRecord(error)) {
-		return false;
-	}
-
-	return error.isRateLimitError === true;
+	return 'isRateLimitError' in error && error.isRateLimitError === true;
 }
 
 /**
@@ -47,9 +37,5 @@ export function isProviderErrorWithStatusCode(error: unknown): error is Provider
 		return false;
 	}
 
-	if (!isRecord(error)) {
-		return false;
-	}
-
-	return typeof error.statusCode === 'number';
+	return 'statusCode' in error && typeof error.statusCode === 'number';
 }

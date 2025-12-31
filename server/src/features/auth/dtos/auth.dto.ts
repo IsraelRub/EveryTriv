@@ -19,7 +19,6 @@ export class LoginDto {
 
 	@ApiProperty({
 		description: 'User password',
-		example: 'securePassword123',
 		minLength: 6,
 		maxLength: 15,
 	})
@@ -42,7 +41,6 @@ export class RegisterDto {
 
 	@ApiProperty({
 		description: 'Secure password',
-		example: 'SecurePassword123!',
 		minLength: 6,
 		maxLength: 15,
 	})
@@ -54,7 +52,6 @@ export class RegisterDto {
 
 	@ApiPropertyOptional({
 		description: 'First name',
-		example: 'First',
 		maxLength: 50,
 	})
 	@IsOptional()
@@ -65,7 +62,6 @@ export class RegisterDto {
 
 	@ApiPropertyOptional({
 		description: 'Last name',
-		example: 'Last',
 		maxLength: 50,
 	})
 	@IsOptional()

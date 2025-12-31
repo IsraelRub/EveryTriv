@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import type { GameState, MultiplayerRoom, Player } from '@shared/types';
+import type { CountRecord, GameState, MultiplayerRoom, Player } from '@shared/types';
 
 /**
  * DTO for game state response
@@ -24,10 +24,10 @@ export class GameStateDto implements GameState {
 	timeRemaining!: number;
 
 	@ApiProperty({ description: 'Players answers mapping' })
-	playersAnswers!: Record<string, number>;
+	playersAnswers!: CountRecord;
 
 	@ApiProperty({ description: 'Players scores mapping' })
-	playersScores!: Record<string, number>;
+	playersScores!: CountRecord;
 
 	@ApiProperty({ description: 'Current leaderboard' })
 	leaderboard!: Player[];

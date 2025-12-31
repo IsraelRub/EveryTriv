@@ -7,11 +7,10 @@
 import { useEffect, useState } from 'react';
 
 import { Easing } from '@/constants';
-
 import type { UseCountUpOptions } from '@/types';
 
 export function useCountUp(target: number, options: UseCountUpOptions = {}): number {
-	const { duration = 2000, enabled = true, easing = Easing.EASE_OUT } = options;
+	const { duration = 2000, enabled = true, easing = Easing.LINEAR } = options;
 	const [count, setCount] = useState(0);
 
 	useEffect(() => {

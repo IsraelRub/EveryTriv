@@ -1,15 +1,10 @@
 import { Link } from 'react-router-dom';
-
-import { Coins, Crown, Loader2, Plus } from 'lucide-react';
+import { Coins, Crown, Plus } from 'lucide-react';
 
 import { UserRole } from '@shared/constants';
-
-import { ROUTES, VariantBase } from '@/constants';
-
-import { Badge } from '@/components';
-
+import { ROUTES, SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
+import { Badge, Spinner } from '@/components';
 import { useAppSelector, useCreditBalance } from '@/hooks';
-
 import { selectUserRole } from '@/redux/selectors';
 
 /**
@@ -25,7 +20,7 @@ export function CreditBalance() {
 	if (isLoading) {
 		return (
 			<div className='flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50'>
-				<Loader2 className='w-4 h-4 animate-spin text-muted-foreground' />
+				<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='text-muted-foreground' />
 				<span className='text-sm text-muted-foreground'>Loading...</span>
 			</div>
 		);

@@ -1,19 +1,34 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { Award, Crown, Home, Medal, RotateCcw, Share2, Trophy } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
-
 import { Avatar, AvatarFallback, Button, Card, CardContent, CardHeader, CardTitle } from '@/components';
-
 import { useAppSelector, useMultiplayer, useToast } from '@/hooks';
-
 import type { RootState } from '@/types';
+import { cn } from '@/utils';
 
 const podiumColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-700'];
 const podiumIcons = [Crown, Medal, Award];
+
+/**
+ * Get text color class for rank position
+ * @param rank - Rank position (1-based)
+ * @returns Text color class for the rank
+ */
+function getRankColor(rank: number): string {
+	switch (rank) {
+		case 1:
+			return 'text-yellow-500';
+		case 2:
+			return 'text-gray-400';
+		case 3:
+			return 'text-amber-700';
+		default:
+			return 'text-muted-foreground';
+	}
+}
 
 export function MultiplayerResultsView() {
 	const navigate = useNavigate();
@@ -63,19 +78,6 @@ export function MultiplayerResultsView() {
 		}
 	};
 
-	const getRankColor = (rank: number) => {
-		switch (rank) {
-			case 1:
-				return 'text-yellow-500';
-			case 2:
-				return 'text-gray-400';
-			case 3:
-				return 'text-amber-700';
-			default:
-				return 'text-muted-foreground';
-		}
-	};
-
 	return (
 		<motion.main
 			initial={{ opacity: 0, scale: 0.95 }}
@@ -121,6 +123,11 @@ export function MultiplayerResultsView() {
 							if (!player) return null;
 
 							const PodiumIcon = podiumIcons[podiumIndex];
+						if (PodiumIcon == null) {
+							console.warn(`Missing podium icon for index ${podiumIndex}`);
+							return null;
+						}
+						
 							const heights = ['h-32', 'h-40', 'h-24'];
 
 							return (
@@ -137,10 +144,11 @@ export function MultiplayerResultsView() {
 									<span className='text-sm font-medium mt-1 max-w-20 truncate'>{player.displayName || 'Player'}</span>
 									<span className='text-xs text-muted-foreground'>{player.score} pts</span>
 									<div
-										className={`
-											w-20 ${heights[displayIndex]} ${podiumColors[podiumIndex]}
-											rounded-t-lg flex items-center justify-center mt-2
-										`}
+										className={cn(
+											'w-20 rounded-t-lg flex items-center justify-center mt-2',
+											heights[displayIndex],
+											podiumColors[podiumIndex]
+										)}
 									>
 										<PodiumIcon className='h-8 w-8 text-white' />
 									</div>
@@ -165,12 +173,12 @@ export function MultiplayerResultsView() {
 									initial={{ opacity: 0, x: -20 }}
 									animate={{ opacity: 1, x: 0 }}
 									transition={{ delay: 0.5 + index * 0.1 }}
-									className={`
-										flex items-center gap-4 p-4 rounded-lg
-										${isCurrentUser ? 'bg-primary/30 ring-2 ring-primary/60' : 'bg-muted/50'}
-									`}
+									className={cn(
+										'flex items-center gap-4 p-4 rounded-lg',
+										isCurrentUser ? 'bg-primary/30 ring-2 ring-primary/60' : 'bg-muted/50'
+									)}
 								>
-									<span className={`text-3xl font-bold w-12 ${getRankColor(index + 1)}`}>#{index + 1}</span>
+									<span className={cn('text-3xl font-bold w-12', getRankColor(index + 1))}>#{index + 1}</span>
 									<Avatar className='h-10 w-10'>
 										<AvatarFallback>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
 									</Avatar>

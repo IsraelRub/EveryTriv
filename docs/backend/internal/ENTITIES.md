@@ -71,7 +71,6 @@ export class UserEntity extends BaseEntity {
 **פרטים אישיים:**
 - `firstName` (string, nullable) - שם פרטי
 - `lastName` (string, nullable) - שם משפחה
-- `avatar` (string, nullable) - תמונת פרופיל
 
 **נקודות ואשראי:**
 - `credits` (int, default: 100) - אשראי למשחקים
@@ -85,7 +84,7 @@ export class UserEntity extends BaseEntity {
 - `role` (UserRole enum, default: USER) - תפקיד משתמש (USER, ADMIN)
 
 **העדפות והישגים:**
-- `preferences` (jsonb, default: {}) - העדפות משתמש (UserPreferences)
+- `preferences` (jsonb, default: {}) - העדפות משתמש (UserPreferences, כולל avatar: number 1-16)
 - `currentSubscriptionId` (string, nullable) - מזהה מנוי נוכחי
 - `achievements` (jsonb, default: []) - הישגים (Achievement[])
 

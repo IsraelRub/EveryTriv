@@ -6,7 +6,6 @@
  * @used_by client/src/services/api.service.ts
  */
 import type { EnhancedRequestConfig, RequestInterceptor } from '@/types';
-
 import { BaseInterceptorManager } from './base.interceptor-manager';
 
 /**

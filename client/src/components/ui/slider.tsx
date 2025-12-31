@@ -1,10 +1,9 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react';
-
 import * as SliderPrimitive from '@radix-ui/react-slider';
 
 import { cn } from '@/utils';
 
-const Slider = forwardRef<
+export const Slider = forwardRef<
 	ElementRef<typeof SliderPrimitive.Root>,
 	ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
 >(({ className, ...props }, ref) => (
@@ -20,5 +19,3 @@ const Slider = forwardRef<
 	</SliderPrimitive.Root>
 ));
 Slider.displayName = SliderPrimitive.Root.displayName;
-
-export { Slider };

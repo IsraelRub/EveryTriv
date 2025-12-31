@@ -6,17 +6,16 @@
 import { InputHTMLAttributes, ReactNode, type ComponentProps } from 'react';
 import type { FieldPath, FieldValues } from 'react-hook-form';
 
+import { ClientValidationType } from '@shared/constants';
 import type { LanguageValidationOptions } from '@shared/types';
-
-import { FORM_FIELD_TYPES, InteractiveSize } from '@/constants';
-
-import type { ClientValidationType, SelectOption, ValidationHookOptions } from '@/types/core';
+import { FormFieldType, InteractiveSize } from '@/constants';
+import type { SelectOption, ValidationHookOptions } from '@/types';
 
 // Form-related types
 export interface FormField {
 	name: string;
 	label: string;
-	type: (typeof FORM_FIELD_TYPES)[keyof typeof FORM_FIELD_TYPES];
+	type: FormFieldType;
 	validationType: ClientValidationType;
 	required?: boolean;
 	placeholder?: string;
@@ -94,7 +93,7 @@ export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' |
  * Password field errors interface
  * @interface PasswordFieldErrors
  * @description Error messages for password-related form fields
- * @used_by client/src/views/user/UserProfile.tsx, client/src/components/user/ChangePasswordDialog.tsx
+ * @used_by client/src/components/user/ProfileEditDialog.tsx
  */
 export interface PasswordFieldErrors {
 	currentPassword?: string;

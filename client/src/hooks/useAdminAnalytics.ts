@@ -6,7 +6,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { UserRole } from '@shared/constants';
+import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	ComparisonQueryOptions,
@@ -16,11 +16,8 @@ import type {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
-
-import { analyticsService, clientLogger as logger } from '@/services';
-
+import { analyticsService } from '@/services';
 import { selectUserRole } from '@/redux/selectors';
-
 import { useAppSelector } from './useRedux';
 
 /**
@@ -38,16 +35,13 @@ export const useUserSummaryById = (userId: string, includeActivity: boolean = fa
 		queryKey: ['adminUserSummary', userId, includeActivity],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.userInfo('Fetching user summary by ID', { userId });
-			const result = await analyticsService.getUserSummaryById(userId, includeActivity);
-			logger.userInfo('User summary fetched successfully', { userId });
-			return result;
+			return analyticsService.getUserSummaryById(userId, includeActivity);
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -65,16 +59,13 @@ export const useUserPerformanceById = (userId: string, enabled?: boolean) => {
 		queryKey: ['adminUserPerformance', userId],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.userInfo('Fetching user performance by ID', { userId });
-			const result = await analyticsService.getUserPerformanceById(userId);
-			logger.userInfo('User performance fetched successfully', { userId });
-			return result;
+			return analyticsService.getUserPerformanceById(userId);
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -94,18 +85,13 @@ export const useUserTrendsById = (userId: string, params?: TrendQueryOptions, en
 		queryKey: ['adminUserTrends', userId, params],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.userInfo('Fetching user trends by ID', { userId });
-			const result = await analyticsService.getUserTrendsById(userId, params);
-			logger.userInfo('User trends fetched successfully', {
-				userId,
-			});
-			return result;
+			return analyticsService.getUserTrendsById(userId, params);
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: 1 * 60 * 1000,
-		gcTime: 5 * 60 * 1000,
+		staleTime: TIME_PERIODS_MS.MINUTE,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
 	});
 };
 
@@ -124,16 +110,13 @@ export const useUserComparisonById = (userId: string, params?: ComparisonQueryOp
 		queryKey: ['adminUserComparison', userId, params],
 		queryFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.userInfo('Fetching user comparison by ID', { userId });
-			const result = await analyticsService.compareUserPerformanceById(userId, params);
-			logger.userInfo('User comparison fetched successfully', { userId });
-			return result;
+			return analyticsService.compareUserPerformanceById(userId, params);
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -149,14 +132,9 @@ export const useClearAllUserStats = () => {
 	return useMutation({
 		mutationFn: async () => {
 			if (!isAdmin) {
-				throw new Error('Access denied: Admin role required');
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			logger.userInfo('Clearing all user stats');
-			const result = await analyticsService.clearAllUserStats();
-			logger.userInfo('All user stats cleared successfully', {
-				deletedCount: result.deletedCount,
-			});
-			return result;
+			return analyticsService.clearAllUserStats();
 		},
 		onSuccess: () => {
 			// Invalidate related queries

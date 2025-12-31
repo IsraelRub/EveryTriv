@@ -5,9 +5,8 @@
  */
 import type { ReactNode } from 'react';
 
-import { TOAST_ACTION_TYPES } from '@/constants';
-
-import type { ToastActionElement, ToastProps } from '@/components';
+import { ToastActionType } from '@/constants';
+import type { ToastActionElement, ToastProps } from '@/types';
 
 /**
  * Toaster toast type
@@ -28,19 +27,19 @@ export type ToasterToast = ToastProps & {
  */
 export type Action =
 	| {
-			type: (typeof TOAST_ACTION_TYPES)['ADD_TOAST'];
+			type: ToastActionType.ADD_TOAST;
 			toast: ToasterToast;
 	  }
 	| {
-			type: (typeof TOAST_ACTION_TYPES)['UPDATE_TOAST'];
+			type: ToastActionType.UPDATE_TOAST;
 			toast: Partial<ToasterToast>;
 	  }
 	| {
-			type: (typeof TOAST_ACTION_TYPES)['DISMISS_TOAST'];
+			type: ToastActionType.DISMISS_TOAST;
 			toastId?: ToasterToast['id'];
 	  }
 	| {
-			type: (typeof TOAST_ACTION_TYPES)['REMOVE_TOAST'];
+			type: ToastActionType.REMOVE_TOAST;
 			toastId?: ToasterToast['id'];
 	  };
 

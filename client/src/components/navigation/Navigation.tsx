@@ -1,14 +1,12 @@
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
-
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BarChart3, LogOut, Shield, User } from 'lucide-react';
+import { LogOut, Shield, User } from 'lucide-react';
 
-import { UserRole } from '@shared/constants';
-
+import { APP_NAME, UserRole } from '@shared/constants';
 import { ButtonSize, ButtonVariant, NAVIGATION_LINKS, ROUTES } from '@/constants';
-
 import {
 	AudioControls,
 	Avatar,
@@ -22,18 +20,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	NavLink,
+	ProfileEditDialog,
 } from '@/components';
-
 import { useAppDispatch, useAppSelector } from '@/hooks';
-
 import { authService } from '@/services';
-
 import type { NavigationLink, RootState } from '@/types';
-
-import { getAvatarUrl } from '@/utils';
-
+import { getAvatarUrl, getUserInitials } from '@/utils';
 import { selectUserRole } from '@/redux/selectors';
-import { setAuthenticated, setUser } from '@/redux/slices';
+import { setUser } from '@/redux/slices';
 
 export function Navigation() {
 	const navigate = useNavigate();
@@ -44,9 +38,10 @@ export function Navigation() {
 	const { isAuthenticated, currentUser, avatar } = useSelector((state: RootState) => state.user);
 	const userRole = useAppSelector(selectUserRole);
 	const isAdmin = userRole === UserRole.ADMIN;
+	const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
-	const publicNavItems = [{ to: ROUTES.STATISTICS, label: 'Statistics' }];
-
+	const mainNavItems = NAVIGATION_LINKS.main;
+	const authenticatedNavItems = isAuthenticated ? NAVIGATION_LINKS.authenticated : [];
 	const adminNavItems = isAdmin ? NAVIGATION_LINKS.admin : [];
 
 	const handleSignIn = () => {
@@ -60,7 +55,7 @@ export function Navigation() {
 			// Clear React Query cache to remove all user-specific cached data
 			queryClient.clear();
 			// Clear Redux state
-			dispatch(setAuthenticated(false));
+			// setUser(null) already sets isAuthenticated = false
 			dispatch(setUser(null));
 			navigate(ROUTES.HOME);
 		} catch (error) {
@@ -69,12 +64,6 @@ export function Navigation() {
 		}
 	};
 
-	const getUserInitials = () => {
-		if (currentUser?.email) {
-			return currentUser.email.charAt(0).toUpperCase();
-		}
-		return 'U';
-	};
 
 	return (
 		<motion.nav
@@ -88,26 +77,49 @@ export function Navigation() {
 						<NavLink to={ROUTES.HOME} className='flex items-center gap-2 text-2xl font-bold text-foreground'>
 							<img
 								src='/assets/logo.svg'
-								alt='EveryTriv Logo'
+								alt={`${APP_NAME} Logo`}
 								className='h-8 w-8 flex-shrink-0 object-contain'
 								width={32}
 								height={32}
 							/>
-							EveryTriv
+							{APP_NAME}
 						</NavLink>
 
-						{/* Navigation Links */}
-						{publicNavItems.map(item => (
-							<NavLink
-								key={item.to}
-								to={item.to}
-								className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1'
-								activeClassName='text-foreground'
-							>
-								<BarChart3 className='h-4 w-4' />
-								{item.label}
-							</NavLink>
-						))}
+						{/* Main Navigation Links */}
+						{mainNavItems.length > 0 && (
+							<>
+								<div className='h-4 w-px bg-border' />
+								{mainNavItems.map((item: NavigationLink) => (
+									<NavLink
+										key={item.path}
+										to={item.path}
+										className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+										activeClassName='text-foreground'
+									>
+										{item.label}
+									</NavLink>
+								))}
+							</>
+						)}
+
+						{/* Authenticated Navigation Links */}
+						{authenticatedNavItems.length > 0 && (
+							<>
+								<div className='h-4 w-px bg-border' />
+								{authenticatedNavItems.map((item: NavigationLink) => (
+									<NavLink
+										key={item.path}
+										to={item.path}
+										className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+										activeClassName='text-foreground'
+									>
+										{item.label}
+									</NavLink>
+								))}
+							</>
+						)}
+
+						{/* Admin Navigation Links */}
 						{adminNavItems.length > 0 && (
 							<>
 								<div className='h-4 w-px bg-border' />
@@ -131,16 +143,6 @@ export function Navigation() {
 						{/* Audio Controls */}
 						<AudioControls />
 
-						{/* Statistics Link */}
-						<NavLink
-							to={ROUTES.STATISTICS}
-							className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent'
-							activeClassName='text-foreground bg-accent'
-						>
-							<BarChart3 className='h-4 w-4' />
-							<span className='hidden sm:inline'>Statistics</span>
-						</NavLink>
-
 						{/* Credits Display */}
 						{isAuthenticated && <CreditBalance />}
 
@@ -150,7 +152,9 @@ export function Navigation() {
 									<Button variant={ButtonVariant.GHOST} className='relative h-9 w-9 rounded-full'>
 										<Avatar className='h-9 w-9'>
 											<AvatarImage src={getAvatarUrl(avatar)} alt='User' />
-											<AvatarFallback>{getUserInitials()}</AvatarFallback>
+											<AvatarFallback>
+												{getUserInitials(currentUser?.firstName, currentUser?.lastName, currentUser?.email)}
+											</AvatarFallback>
 										</Avatar>
 									</Button>
 								</DropdownMenuTrigger>
@@ -161,7 +165,7 @@ export function Navigation() {
 										</div>
 									</div>
 									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)} className='gap-1'>
+									<DropdownMenuItem onClick={() => setIsProfileDialogOpen(true)} className='gap-1'>
 										<User className='h-4 w-4' />
 										Profile
 									</DropdownMenuItem>
@@ -180,6 +184,9 @@ export function Navigation() {
 					</div>
 				</div>
 			</div>
+
+			{/* Profile Edit Dialog */}
+			<ProfileEditDialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen} />
 		</motion.nav>
 	);
 }

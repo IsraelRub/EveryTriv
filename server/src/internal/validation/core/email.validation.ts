@@ -4,7 +4,7 @@
  * @module ServerEmailValidation
  * @description Server-side email validation functions
  */
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_LENGTH } from '@shared/constants';
 import type { TextPosition, ValidationResult } from '@shared/types';
 
 /**
@@ -27,13 +27,13 @@ export function validateEmail(email: string): ValidationResult {
 		};
 	}
 
-	if (email.length > VALIDATION_CONFIG.limits.EMAIL.MAX_LENGTH) {
-		const position: TextPosition = { start: VALIDATION_CONFIG.limits.EMAIL.MAX_LENGTH, end: email.length };
+	if (email.length > VALIDATION_LENGTH.EMAIL.MAX) {
+		const position: TextPosition = { start: VALIDATION_LENGTH.EMAIL.MAX, end: email.length };
 		return {
 			isValid: false,
-			errors: [`Email must not exceed ${VALIDATION_CONFIG.limits.EMAIL.MAX_LENGTH} characters`],
+			errors: [`Email must not exceed ${VALIDATION_LENGTH.EMAIL.MAX} characters`],
 			position,
-			suggestion: `Please shorten your email to ${VALIDATION_CONFIG.limits.EMAIL.MAX_LENGTH} characters or less`,
+			suggestion: `Please shorten your email to ${VALIDATION_LENGTH.EMAIL.MAX} characters or less`,
 		};
 	}
 

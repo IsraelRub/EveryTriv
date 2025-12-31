@@ -138,7 +138,7 @@ export abstract class BaseLoggerService implements Logger {
 	performance(operation: string, duration: number, meta?: LogMeta): void {
 		const message = `${operation} (${duration}ms)`;
 
-		if (duration > PERFORMANCE_THRESHOLDS.VERY_SLOW) {
+		if (duration > PERFORMANCE_THRESHOLDS.CRITICAL) {
 			this.error(MESSAGE_FORMATTERS.performance.critical(message), meta);
 		} else if (duration > PERFORMANCE_THRESHOLDS.SLOW) {
 			this.warn(MESSAGE_FORMATTERS.performance.slow(message), meta);

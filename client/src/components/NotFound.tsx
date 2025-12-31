@@ -1,12 +1,9 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 
 import { ButtonSize, ROUTES } from '@/constants';
-
 import { Button, Card } from '@/components';
-
 import { clientLogger as logger } from '@/services';
 
 export function NotFound() {

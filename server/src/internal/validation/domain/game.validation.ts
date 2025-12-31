@@ -4,7 +4,7 @@
  * @module ServerGameValidation
  * @description Server-side game validation functions
  */
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_LENGTH } from '@shared/constants';
 import type { BaseValidationResult } from '@shared/types';
 
 /**
@@ -24,7 +24,7 @@ export function validateGameAnswer(answer: string): BaseValidationResult {
 		};
 	}
 
-	const maxLength = VALIDATION_CONFIG.limits.GAME_ANSWER.MAX_LENGTH;
+	const maxLength = VALIDATION_LENGTH.ANSWER.MAX;
 	if (answer.length > maxLength) {
 		return {
 			isValid: false,

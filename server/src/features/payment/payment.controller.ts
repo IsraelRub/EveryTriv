@@ -1,11 +1,9 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, UsePipes } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/common';
 
 import { API_ROUTES, CACHE_DURATION, ERROR_CODES, PaymentMethod } from '@shared/constants';
-import type { ManualPaymentDetails, PaymentData } from '@shared/types';
+import type { PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { Cache, CurrentUserId } from '../../common';
 import { PaymentDataPipe } from '../../common/pipes';
 import { CreatePaymentDto } from './dtos';
@@ -21,9 +19,8 @@ export class PaymentController {
 	 * @param paymentData Payment creation data
 	 * @returns Payment processing result
 	 */
-	@Post(API_ROUTES.PAYMENT.CREATE)
-	@UsePipes(PaymentDataPipe)
-	async createPayment(@CurrentUserId() userId: string, @Body() paymentData: CreatePaymentDto) {
+	@Post('create')
+	async createPayment(@CurrentUserId() userId: string, @Body(PaymentDataPipe) paymentData: CreatePaymentDto) {
 		try {
 			const amount = paymentData.amount;
 			const description = paymentData.description;
@@ -34,7 +31,7 @@ export class PaymentController {
 
 			const manualPayment =
 				paymentData.paymentMethod === PaymentMethod.MANUAL_CREDIT
-					? this.buildManualPaymentDetails(paymentData)
+					? this.paymentService.buildManualPaymentDetails(paymentData)
 					: undefined;
 			const paymentDataForService: PaymentData = {
 				amount,
@@ -74,8 +71,8 @@ export class PaymentController {
 	 * @param userId Current user identifier
 	 * @returns Payment history list
 	 */
-	@Get(API_ROUTES.PAYMENT.HISTORY)
-	@Cache(CACHE_DURATION.MEDIUM) // Cache for 5 minutes
+	@Get('history')
+	@Cache(CACHE_DURATION.MEDIUM)
 	async getPaymentHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.paymentService.getPaymentHistory(userId);
@@ -96,28 +93,4 @@ export class PaymentController {
 		}
 	}
 
-	private buildManualPaymentDetails(dto: CreatePaymentDto): ManualPaymentDetails {
-		const { month, year } = this.parseExpiryDate(dto.expiryDate);
-		return {
-			cardNumber: dto.cardNumber ?? '',
-			expiryMonth: month,
-			expiryYear: year,
-			cvv: dto.cvv ?? '',
-			cardHolderName: dto.cardHolderName ?? '',
-			postalCode: dto.postalCode,
-			expiryDate: dto.expiryDate,
-		};
-	}
-
-	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
-		if (!expiryDate) {
-			return { month: 0, year: 0 };
-		}
-
-		const [monthPart, yearPart] = expiryDate.split('/');
-		const month = parseInt(monthPart ?? '0', 10);
-		const year = 2000 + parseInt(yearPart ?? '0', 10);
-
-		return { month, year };
-	}
 }

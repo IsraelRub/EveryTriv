@@ -2,7 +2,6 @@ import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 
 import { ROUTES } from '@/constants';
-
 import type { PublicRouteProps, RootState } from '@/types';
 
 export function PublicRoute({ children }: PublicRouteProps) {

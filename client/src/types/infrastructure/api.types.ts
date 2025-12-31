@@ -13,12 +13,12 @@ import type {
 	ClientLogsRequest,
 	CreditBalance,
 	PaymentResult,
+	RefreshTokenResponse,
 	RequestData,
 	UpdateUserProfileData,
 	UserPreferences,
 	UserProfileResponseType,
 } from '@shared/types';
-
 import type { EnhancedRequestConfig } from './interceptors.types';
 
 /**
@@ -78,7 +78,7 @@ export interface ClientApiService {
 	login(credentials: AuthCredentials): Promise<AuthenticationResult>;
 	register(credentials: AuthCredentials): Promise<AuthenticationResult>;
 	logout(): Promise<void>;
-	refreshToken(): Promise<{ accessToken: string }>;
+	refreshToken(): Promise<RefreshTokenResponse>;
 
 	// User methods
 	getCurrentUser(): Promise<BasicUser>;

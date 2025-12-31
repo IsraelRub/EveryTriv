@@ -4,7 +4,6 @@
  * @description Redux state management types
  */
 import type { BasicUser, CreditBalance, GameHistoryEntry, LeaderboardEntry } from '@shared/types';
-
 import type { ClientGameState, GameModeState } from '../../domain/game';
 import { BaseReduxState } from './async.types';
 

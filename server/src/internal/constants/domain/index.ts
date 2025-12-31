@@ -3,4 +3,3 @@
  */
 
 export * from './domain.constants';
-export * from './provider.constants';

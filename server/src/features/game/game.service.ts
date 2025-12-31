@@ -3,14 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
+	CACHE_DURATION,
 	DEFAULT_USER_PREFERENCES,
 	DifficultyLevel,
 	ERROR_CODES,
 	ERROR_MESSAGES,
 	GAME_MODES_CONFIG,
 	GameMode,
+	GameStatus,
 	HTTP_TIMEOUTS,
-	VALIDATION_CONFIG,
+	TIME_PERIODS_MS,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
 	AdminGameStatistics,
@@ -22,28 +25,25 @@ import type {
 	GameHistoryResponse,
 	QuestionData,
 	TriviaQuestion,
-	UserAnalyticsRecord,
 } from '@shared/types';
 import {
 	buildCountRecord,
 	calculateAnswerScore,
 	checkAnswerCorrectness,
-	createAnalyticsAnswerData,
 	createAnswerResult,
 	createQuestionData,
 	getErrorMessage,
 	normalizeGameData,
 } from '@shared/utils';
 import { isSavedGameConfiguration } from '@shared/utils/domain';
-import { isDifficultyLevel, restoreGameDifficulty, toDifficultyLevel } from '@shared/validation';
-
-import { SERVER_GAME_CONSTANTS, SQL_CONDITIONS } from '@internal/constants';
+import { isRegisteredDifficulty, restoreGameDifficulty, toDifficultyLevel } from '@shared/validation';
+import { SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, ServerStorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PromptParams } from '@internal/types';
+import { UUID_REGEX } from '@internal/constants';
 import { createNotFoundError, createServerError, createValidationError } from '@internal/utils';
-
 import { addDateRangeConditions, createGroupByQuery } from '../../common/queries';
 import { AnalyticsService } from '../analytics';
 import { LeaderboardService } from '../leaderboard';
@@ -91,14 +91,9 @@ export class GameService {
 						}
 					}
 				}
-			}
+		}
 
-			logger.gameTarget('Retrieved user seen questions', {
-				userId,
-				totalItems: seenQuestions.size,
-			});
-
-			return seenQuestions;
+		return seenQuestions;
 		} catch (error) {
 			logger.gameError('Failed to get user seen questions', {
 				error: getErrorMessage(error),
@@ -133,38 +128,27 @@ export class GameService {
 		difficulty: GameDifficulty,
 		questionsPerRequest: number = 1,
 		userId?: string,
-		answerCount?: number,
-		mappedDifficulty?: DifficultyLevel
+		answerCount?: number
 	) {
 		// Note: questionsPerRequest is already validated and converted by TriviaRequestPipe
 		// For unlimited mode (-1), we request questions in batches to allow continuous gameplay
-		const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
-		const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
+		const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
 
-		// For unlimited mode, request questions in batches (maxQuestions per request)
+		// For unlimited mode, request questions in batches (MAX per request)
 		// This allows continuous gameplay while respecting server limits
 		// Note: In unlimited mode, the client should request 1 question at a time for subsequent requests
 		// to avoid unnecessary credit deductions. The initial request uses -1 to indicate unlimited mode.
 		const normalizedQuestionsPerRequest =
-			questionsPerRequest === UNLIMITED ? maxQuestions : Math.min(questionsPerRequest, maxQuestions);
+			questionsPerRequest === UNLIMITED ? MAX : Math.min(questionsPerRequest, MAX);
 
-		if (questionsPerRequest > maxQuestions && questionsPerRequest !== UNLIMITED) {
-			logger.gameError(
-				`Questions per request ${questionsPerRequest} exceeds limit ${maxQuestions}, using ${normalizedQuestionsPerRequest}`,
-				{
-					requestedCount: questionsPerRequest,
-					maxQuestions,
-					actualCount: normalizedQuestionsPerRequest,
-				}
-			);
-		}
-
-		if (questionsPerRequest === UNLIMITED) {
-			logger.gameInfo('Unlimited mode: requesting questions in batches', {
-				batchSize: normalizedQuestionsPerRequest,
-				topic,
-				difficulty,
-			});
+		if (questionsPerRequest > MAX && questionsPerRequest !== UNLIMITED) {
+		logger.gameError(
+			`Questions per request ${questionsPerRequest} exceeds limit ${MAX}, using ${normalizedQuestionsPerRequest}`,
+			{
+				requestedCount: questionsPerRequest,
+				actualCount: normalizedQuestionsPerRequest,
+			}
+		);
 		}
 
 		try {
@@ -172,35 +156,26 @@ export class GameService {
 			const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
 			const excludeQuestionTexts = Array.from(userSeenQuestions);
 
-			// Check if questions exist in database for this topic and difficulty
-			const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(
-				topic,
-				difficulty,
-				mappedDifficulty
-			);
+		// Check if questions exist in database for this topic and difficulty
+		const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(
+			topic,
+			difficulty
+		);
 
-			logger.gameTarget('Checking for available questions', {
-				topic,
-				difficulty,
-				exists: hasExistingQuestions,
-				totalItems: excludeQuestionTexts.length,
-				requestedCount: normalizedQuestionsPerRequest,
-			});
-
-			// Try to get existing questions first
+		// Try to get existing questions first
 			let availableQuestions: TriviaEntity[] = [];
 			if (hasExistingQuestions) {
 				availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
 					topic,
 					difficulty,
 					normalizedQuestionsPerRequest * 2,
-					excludeQuestionTexts,
-					mappedDifficulty
+					excludeQuestionTexts
 				);
 			}
 
 			const questions: TriviaQuestion[] = [];
 			const excludeQuestions: string[] = [...excludeQuestionTexts];
+			// All duplicate prevention happens here on the server—LLM prompts never manage exclusion lists.
 			const appendExcludeQuestion = (value?: string) => {
 				if (!value) {
 					return;
@@ -248,17 +223,10 @@ export class GameService {
 				appendExcludeQuestion(questionEntity.question);
 			}
 
-			// Generate new questions if we don't have enough
-			const remainingCount = normalizedQuestionsPerRequest - questions.length;
-			if (remainingCount > 0) {
-				logger.gameTarget('Generating additional questions', {
-					topic,
-					difficulty,
-					actualCount: questions.length,
-					remaining: remainingCount,
-				});
-
-				for (let i = 0; i < remainingCount; i++) {
+		// Generate new questions if we don't have enough
+		const remainingCount = normalizedQuestionsPerRequest - questions.length;
+		if (remainingCount > 0) {
+			for (let i = 0; i < remainingCount; i++) {
 					let question: TriviaQuestion | null = null;
 					let retries = 0;
 
@@ -267,8 +235,7 @@ export class GameService {
 							const promptParams: PromptParams = {
 								topic,
 								difficulty,
-								answerCount: answerCount ?? VALIDATION_CONFIG.limits.ANSWER_COUNT.DEFAULT,
-								mappedDifficulty: mappedDifficulty ?? toDifficultyLevel(difficulty),
+								answerCount: answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
 							};
 							const generationResult = await Promise.race([
 								this.triviaGenerationService.generateQuestion(promptParams, userId),
@@ -350,22 +317,12 @@ export class GameService {
 				});
 			}
 
-			const fromCache = false;
+		const fromCache = false;
 
-			if (!fromCache && userId) {
-				await this.analyticsService.trackEvent(userId, {
-					eventType: 'game',
-					userId,
-					timestamp: new Date(),
-					action: 'question_requested',
-					properties: { topic, difficulty, questionsPerRequest: normalizedQuestionsPerRequest },
-				});
-			}
-
-			return {
-				questions: questions || [],
-				fromCache,
-			};
+		return {
+			questions: questions || [],
+			fromCache,
+		};
 		} catch (error) {
 			logger.gameError('Failed to generate trivia questions', {
 				error: getErrorMessage(error),
@@ -389,15 +346,14 @@ export class GameService {
 				throw new BadRequestException(ERROR_CODES.QUESTION_ID_REQUIRED);
 			}
 
-			// Validate UUID format
-			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-			if (!uuidRegex.test(questionId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
-			}
+		// Validate UUID format
+		if (!UUID_REGEX.test(questionId)) {
+			throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
+		}
 
-			const question = await this.triviaRepository.findOne({
-				where: { id: questionId },
-			});
+		const question = await this.triviaRepository.findOne({
+			where: { id: questionId },
+		});
 
 			if (!question) {
 				throw createNotFoundError('Question');
@@ -426,22 +382,19 @@ export class GameService {
 				throw new BadRequestException(ERROR_CODES.QUESTION_ID_REQUIRED);
 			}
 
-			// Validate UUID format
-			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-			if (!uuidRegex.test(questionId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
-			}
+		// Validate UUID format
+		if (!UUID_REGEX.test(questionId)) {
+			throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
+		}
 
-			const question = await this.getQuestionById(questionId);
-			if (!question) {
-				throw createNotFoundError('Question');
-			}
+		const question = await this.getQuestionById(questionId);
+		if (!question) {
+			throw createNotFoundError('Question');
+		}
 
-			const isCorrect = checkAnswerCorrectness(question, answer);
+		const isCorrect = checkAnswerCorrectness(question, answer);
 
-			// Use mappedDifficulty from metadata if available, otherwise normalize
-			const difficultyLevel = question.metadata?.mappedDifficulty ?? toDifficultyLevel(question.difficulty);
-			const score = calculateAnswerScore(difficultyLevel, timeSpent, 0, isCorrect);
+			const score = calculateAnswerScore(toDifficultyLevel(question.difficulty), timeSpent, 0, isCorrect);
 
 			const questionData = createQuestionData(question, answer, isCorrect, timeSpent);
 
@@ -455,13 +408,12 @@ export class GameService {
 				timeSpent,
 				creditsUsed: 0,
 				questionsData: [questionData],
-			});
+		});
 
-			const analyticsData = createAnalyticsAnswerData(questionData, question.topic, question.difficulty);
-			await this.analyticsService.trackUserAnswer(userId, questionId, analyticsData);
+		await this.analyticsService.trackUserAnswer(userId, questionId);
 
-			return createAnswerResult(questionId, question, answer, isCorrect, timeSpent, score, 0);
-		} catch (error) {
+		return createAnswerResult(questionId, question, answer, isCorrect, timeSpent, score, 0);
+	} catch (error) {
 			throw createServerError('submit answer', error);
 		}
 	}
@@ -492,9 +444,9 @@ export class GameService {
 			{
 				...gameData,
 				startedAt: new Date().toISOString(),
-				status: 'active',
+				status: GameStatus.IN_PROGRESS,
 			},
-			3600
+			CACHE_DURATION.VERY_LONG
 		);
 
 		if (!result.success) {
@@ -504,13 +456,6 @@ export class GameService {
 			});
 		}
 		try {
-			logger.gameInfo('Saving game history', {
-				userId,
-				score: gameData.score,
-				correctAnswers: gameData.correctAnswers,
-				gameQuestionCount: gameData.gameQuestionCount,
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw createNotFoundError('User');
@@ -533,10 +478,12 @@ export class GameService {
 			});
 
 			const savedHistory = await this.gameHistoryRepository.save(gameHistory);
-			logger.databaseCreate('game_history', {
-				id: savedHistory.id,
-				userId,
-				score: gameData.score,
+
+			this.cacheService.delete(`cache:game_history:${userId}`).catch(error => {
+				logger.cacheError('Failed to invalidate game history cache', `cache:game_history:${userId}`, {
+					error: getErrorMessage(error),
+					userId,
+				});
 			});
 
 			// Update user stats and leaderboard asynchronously (don't block response)
@@ -555,21 +502,12 @@ export class GameService {
 				});
 			});
 
+			const { user: _user, questionsData: _questionsData, updatedAt: _updatedAt, ...rest } = savedHistory;
 			return {
-				id: savedHistory.id,
+				...rest,
 				gameId: savedHistory.id,
-				userId: savedHistory.userId,
-				score: savedHistory.score,
-				gameQuestionCount: savedHistory.gameQuestionCount,
-				correctAnswers: savedHistory.correctAnswers,
 				incorrectAnswers,
 				successRate: (savedHistory.correctAnswers / savedHistory.gameQuestionCount) * 100,
-				difficulty: savedHistory.difficulty,
-				topic: savedHistory.topic,
-				gameMode: savedHistory.gameMode,
-				timeSpent: savedHistory.timeSpent,
-				creditsUsed: savedHistory.creditsUsed,
-				created_at: savedHistory.createdAt,
 			};
 		} catch (error) {
 			logger.gameError('Failed to save game history', {
@@ -587,93 +525,41 @@ export class GameService {
 	 * @param limit Number of records to return
 	 * @returns User game history
 	 */
-	async getUserGameHistory(userId: string, limit: number = 20): Promise<GameHistoryResponse> {
+	async getUserGameHistory(userId: string, limit: number = 20, offset: number = 0): Promise<GameHistoryResponse> {
 		try {
-			logger.gameInfo('Getting user game history', {
-				userId,
-				limit,
+			// Get total count of games for this user
+			const totalGames = await this.gameHistoryRepository.count({
+				where: { userId },
 			});
-
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
 
 			const gameHistory = await this.gameHistoryRepository.find({
 				where: { userId },
 				order: { createdAt: 'DESC' },
 				take: limit,
+				skip: offset,
 			});
 
 			const games: GameHistoryEntry[] = gameHistory.map(game => {
-				// Convert difficulty from DifficultyLevel (stored in DB) to GameDifficulty
-				// game.difficulty is stored as DifficultyLevel enum value
-				// All new data is normalized via toDifficultyLevel, so it should always be valid
-				const difficulty: DifficultyLevel = isDifficultyLevel(game.difficulty)
-					? game.difficulty
-					: DifficultyLevel.MEDIUM;
+				const difficulty = isRegisteredDifficulty(game.difficulty) ? game.difficulty : DifficultyLevel.MEDIUM;
 				const restoredDifficulty = restoreGameDifficulty(difficulty);
 
+				const { user: _user, difficulty: _difficulty, ...rest } = game;
 				return {
-					id: game.id,
-					createdAt: game.createdAt,
-					updatedAt: game.updatedAt,
-					topic: game.topic,
+					...rest,
 					difficulty: restoredDifficulty,
-					gameMode: game.gameMode,
-					userId: game.userId,
-					score: game.score,
-					questionsData: game.questionsData,
-					correctAnswers: game.correctAnswers,
-					gameQuestionCount: game.gameQuestionCount,
 					...(game.timeSpent !== undefined && { timeSpent: game.timeSpent }),
-					creditsUsed: game.creditsUsed,
 				};
 			});
 
 			return {
 				userId,
-				email: user.email,
-				totalGames: games.length,
+				totalGames,
 				games,
 			};
 		} catch (error) {
 			logger.gameError('Failed to get user game history', {
 				error: getErrorMessage(error),
 				userId,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get user statistics for analytics - delegates to AnalyticsService
-	 * @param userId User ID
-	 * @returns User analytics data
-	 */
-	async getUserGameStats(userId: string): Promise<UserAnalyticsRecord> {
-		try {
-			return await this.analyticsService.getUserStats(userId);
-		} catch (error) {
-			throw createServerError('get user analytics', error);
-		}
-	}
-
-	/**
-	 * Get global game statistics - delegates to AnalyticsService
-	 * @returns Global game statistics
-	 */
-	async getGlobalGameStats() {
-		try {
-			logger.gameInfo('Getting global game stats', {
-				timeframe: 'all_time',
-			});
-
-			return await this.analyticsService.getSystemInsights();
-		} catch (error) {
-			logger.gameError('Failed to get global game stats', {
-				error: getErrorMessage(error),
-				timeframe: 'all_time',
 			});
 			throw error;
 		}
@@ -690,39 +576,24 @@ export class GameService {
 				throw new BadRequestException(ERROR_CODES.GAME_ID_REQUIRED);
 			}
 
-			// Validate UUID format
-			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-			if (!uuidRegex.test(gameId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_GAME_ID_FORMAT);
-			}
+		// Validate UUID format
+		if (!UUID_REGEX.test(gameId)) {
+			throw new BadRequestException(ERROR_CODES.INVALID_GAME_ID_FORMAT);
+		}
 
-			logger.gameInfo('Getting game by ID', {
-				id: gameId,
-			});
-
-			const game = await this.gameHistoryRepository.findOne({
-				where: { id: gameId },
-			});
+		const game = await this.gameHistoryRepository.findOne({
+			where: { id: gameId },
+		});
 
 			if (!game) {
 				throw createNotFoundError('Game');
 			}
 
+			const { user: _user, ...rest } = game;
 			return {
-				id: game.id,
+				...rest,
 				gameId: game.id,
-				userId: game.userId,
-				score: game.score,
-				gameQuestionCount: game.gameQuestionCount,
-				correctAnswers: game.correctAnswers,
 				successRate: (game.correctAnswers / game.gameQuestionCount) * 100,
-				difficulty: game.difficulty,
-				topic: game.topic,
-				gameMode: game.gameMode,
-				timeSpent: game.timeSpent,
-				creditsUsed: game.creditsUsed,
-				questionsData: game.questionsData,
-				created_at: game.createdAt,
 			};
 		} catch (error) {
 			logger.gameError('Failed to get game by ID', {
@@ -806,12 +677,6 @@ export class GameService {
 	 */
 	async deductCredits(userId: string, credits: number) {
 		try {
-			logger.gameInfo('Deducting credits from user', {
-				userId,
-				credits,
-				reason: 'Game loss',
-			});
-
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw createNotFoundError('User');
@@ -860,11 +725,6 @@ export class GameService {
 		}
 	) {
 		try {
-			logger.gameInfo('Saving game configuration', {
-				userId,
-				config: JSON.stringify(config),
-			});
-
 			const configKey = `game_config:${userId}`;
 			const result = await this.storageService.set(
 				configKey,
@@ -904,10 +764,6 @@ export class GameService {
 	 */
 	async getGameConfiguration(userId: string) {
 		try {
-			logger.gameInfo('Getting game configuration', {
-				userId,
-			});
-
 			const configKey = `game_config:${userId}`;
 			const result = await this.storageService.get(configKey, isSavedGameConfiguration);
 
@@ -947,11 +803,6 @@ export class GameService {
 	 */
 	async deleteGameHistory(userId: string, gameId: string): Promise<ClearOperationResponse> {
 		try {
-			logger.gameInfo('Deleting game history', {
-				userId,
-				id: gameId,
-			});
-
 			const gameHistory = await this.gameHistoryRepository.findOne({
 				where: { id: gameId, userId },
 			});
@@ -961,11 +812,6 @@ export class GameService {
 			}
 
 			await this.gameHistoryRepository.remove(gameHistory);
-
-			logger.gameInfo('Game history deleted', {
-				id: gameId,
-				userId,
-			});
 
 			// Clear cache
 			await this.cacheService.delete(`game_history:${userId}`);
@@ -992,10 +838,6 @@ export class GameService {
 	 */
 	async clearUserGameHistory(userId: string): Promise<ClearOperationResponse> {
 		try {
-			logger.gameInfo('Clearing all game history', {
-				userId,
-			});
-
 			// Get count before deletion
 			const count = await this.gameHistoryRepository.count({
 				where: { userId },
@@ -1013,11 +855,6 @@ export class GameService {
 				typeof deleteResult.affected === 'number' && Number.isFinite(deleteResult.affected)
 					? deleteResult.affected
 					: count;
-
-			logger.gameInfo('All game history deleted', {
-				userId,
-				deletedCount,
-			});
 
 			// Clear cache
 			await this.cacheService.delete(`game_history:${userId}`);
@@ -1069,7 +906,7 @@ export class GameService {
 				activePlayersQueryBuilder,
 				'game',
 				'createdAt',
-				new Date(Date.now() - 24 * 60 * 60 * 1000)
+				new Date(Date.now() - TIME_PERIODS_MS.DAY)
 			);
 			const activePlayersRaw = await activePlayersQueryBuilder.getRawOne<{ count: number }>();
 
@@ -1115,12 +952,9 @@ export class GameService {
 	 */
 	async clearAllGameHistory(): Promise<ClearOperationResponse> {
 		try {
-			logger.gameInfo('Clearing entire game history dataset', {});
-
 			const totalBefore = await this.gameHistoryRepository.count();
 
 			if (totalBefore === 0) {
-				logger.gameInfo('No game history records to clear', {});
 				// Clear cache even if no records found
 				try {
 					await this.cacheService.invalidatePattern('game_history:*');
@@ -1138,10 +972,6 @@ export class GameService {
 
 			await this.gameHistoryRepository.clear();
 			const deletedCount = totalBefore;
-
-			logger.gameInfo('All game history cleared by admin', {
-				deletedCount,
-			});
 
 			// Clear cache after database deletion
 			try {
@@ -1175,14 +1005,8 @@ export class GameService {
 	 */
 	async getAllTriviaQuestions() {
 		try {
-			logger.gameInfo('Getting all trivia questions', {});
-
 			const questions = await this.triviaRepository.find({
 				order: { createdAt: 'DESC' },
-			});
-
-			logger.apiRead('game_admin_get_all_trivia', {
-				count: questions.length,
 			});
 
 			return {
@@ -1214,12 +1038,9 @@ export class GameService {
 	 */
 	async clearAllTrivia(): Promise<ClearOperationResponse> {
 		try {
-			logger.gameInfo('Clearing entire trivia dataset', {});
-
 			const totalBefore = await this.triviaRepository.count();
 
 			if (totalBefore === 0) {
-				logger.gameInfo('No trivia records to clear', {});
 				// Clear cache even if no records found
 				try {
 					await this.cacheService.invalidatePattern('trivia:*');
@@ -1237,10 +1058,6 @@ export class GameService {
 
 			await this.triviaRepository.clear();
 			const deletedCount = totalBefore;
-
-			logger.gameInfo('All trivia cleared by admin', {
-				deletedCount,
-			});
 
 			// Clear cache after database deletion
 			try {

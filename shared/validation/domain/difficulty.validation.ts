@@ -51,7 +51,7 @@ export function restoreGameDifficulty(difficulty: DifficultyLevel, metadata?: st
 	if (difficulty === DifficultyLevel.CUSTOM && metadata) {
 		if (isCustomDifficulty(metadata)) {
 			// isCustomDifficulty ensures metadata is CustomDifficultyString, which is part of GameDifficulty
-			return metadata as GameDifficulty;
+			return metadata;
 		}
 	}
 

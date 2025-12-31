@@ -6,10 +6,20 @@
  * @used_by client/src/views/registration, client/src/components/forms
  */
 import { ClientValidationType, DifficultyLevel } from '@shared/constants';
-
-import { FORM_FIELD_TYPES } from '@/constants/core';
-
 import type { FormField } from '@/types';
+
+/**
+ * Form field type enum
+ * @enum {string} FormFieldType
+ * @description Input types used in form fields
+ */
+export enum FormFieldType {
+	TEXT = 'text',
+	EMAIL = 'email',
+	PASSWORD = 'password',
+	TEXTAREA = 'textarea',
+	SELECT = 'select',
+}
 
 /**
  * Registration form field configurations
@@ -21,7 +31,7 @@ export const REGISTRATION_FIELDS: FormField[] = [
 	{
 		name: 'email',
 		label: 'Email',
-		type: FORM_FIELD_TYPES.EMAIL,
+		type: FormFieldType.EMAIL,
 		validationType: ClientValidationType.EMAIL,
 		required: true,
 		placeholder: 'Enter your email',
@@ -29,7 +39,7 @@ export const REGISTRATION_FIELDS: FormField[] = [
 	{
 		name: 'password',
 		label: 'Password',
-		type: FORM_FIELD_TYPES.PASSWORD,
+		type: FormFieldType.PASSWORD,
 		validationType: ClientValidationType.PASSWORD,
 		required: true,
 		placeholder: 'Enter your password',
@@ -37,7 +47,7 @@ export const REGISTRATION_FIELDS: FormField[] = [
 	{
 		name: 'confirmPassword',
 		label: 'Confirm Password',
-		type: FORM_FIELD_TYPES.PASSWORD,
+		type: FormFieldType.PASSWORD,
 		validationType: ClientValidationType.PASSWORD,
 		required: true,
 		placeholder: 'Confirm your password',

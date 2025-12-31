@@ -1,9 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/constants';
-
 import type { UseModalRouteReturn } from '@/types';
-
 import { isModalRouteState } from '@/utils';
 
 /**

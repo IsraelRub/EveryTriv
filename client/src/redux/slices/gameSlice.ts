@@ -1,9 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { GAME_STATE_CONFIG, GameClientStatus } from '@shared/constants';
-import { TriviaQuestion } from '@shared/types';
-
-import { ErrorPayload, GameSliceState, LoadingPayload, ScoreUpdatePayload } from '@/types';
+import { GAME_STATE_CONFIG } from '@shared/constants';
+import {GameSliceState, ScoreUpdatePayload } from '@/types';
 
 const initialState: GameSliceState = {
 	state: GAME_STATE_CONFIG.initialClientState,
@@ -17,36 +15,6 @@ const gameStateSlice = createSlice({
 	name: 'game',
 	initialState,
 	reducers: {
-		setLoading: (state, action: PayloadAction<LoadingPayload>) => {
-			state.state.status = action.payload.isLoading ? GameClientStatus.LOADING : GameClientStatus.IDLE;
-			state.state.loading = action.payload.isLoading;
-		},
-		setError: (state, action: PayloadAction<ErrorPayload>) => {
-			state.error = action.payload.error;
-			state.state.status = GameClientStatus.ERROR;
-			state.state.error = action.payload.error ?? undefined;
-		},
-		clearError: state => {
-			state.error = null;
-			state.state.error = undefined;
-		},
-		setTrivia: (state, action: PayloadAction<TriviaQuestion>) => {
-			if (!state.state.data) {
-				state.state.data = {
-					questions: [],
-					answers: [],
-					score: 0,
-					currentQuestionIndex: 0,
-					startTime: new Date(),
-				};
-			}
-			if (!state.state.data.questions) {
-				state.state.data.questions = [];
-			}
-			state.state.data.questions = [action.payload];
-			state.state.status = GameClientStatus.PLAYING;
-			state.state.error = undefined;
-		},
 		updateScore: (state, action: PayloadAction<ScoreUpdatePayload>) => {
 			if (!state.state.data) return;
 

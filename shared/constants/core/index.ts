@@ -31,13 +31,7 @@ export * from './error.constants';
 export * from './auth.constants';
 
 /**
- * Server-specific game constants
- * @description Server-only game configuration and limits
+ * Time constants
+ * @description Time conversion constants in milliseconds
  */
-export * from './game-server.constants';
-
-/**
- * Performance constants
- * @description Cache durations, rate limits, and performance thresholds
- */
-export * from './performance.constants';
+export * from './time.constants';

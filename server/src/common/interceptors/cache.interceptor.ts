@@ -13,11 +13,10 @@ import { tap } from 'rxjs/operators';
 
 import type { StorageValue } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-
 import { CacheService } from '@internal/modules/cache/cache.service';
 import { serverLogger as logger } from '@internal/services';
 import type { CacheConfig, NestRequest } from '@internal/types';
-import { isBoolean, isNumber, isString } from '@internal/utils';
+import { defaultValidators } from '@shared/constants';
 
 const isExpressResponse = (value: unknown): value is Response =>
 	isRecord(value) && typeof value.status === 'function' && typeof value.setHeader === 'function';
@@ -31,7 +30,7 @@ const isCacheableValue = (value: unknown): value is StorageValue => {
 		return false;
 	}
 
-	if (isString(value) || isNumber(value) || isBoolean(value)) {
+	if (defaultValidators.string(value) || defaultValidators.number(value) || defaultValidators.boolean(value)) {
 		return true;
 	}
 

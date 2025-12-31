@@ -1,18 +1,13 @@
 import { useSelector } from 'react-redux';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { GameMode, UserRole } from '@shared/constants';
+import { GameMode, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { CreditBalance, CreditsPurchaseRequest, CreditTransaction } from '@shared/types';
 import { calculateNewBalance, calculateRequiredCredits, getErrorMessage } from '@shared/utils';
-
 import { creditsService, clientLogger as logger } from '@/services';
-
 import type { DeductCreditsParams, RootState } from '@/types';
-
 import { selectCanPlayFree, selectUserCreditBalance, selectUserRole } from '@/redux/selectors';
 import { deductCredits, setCreditBalance } from '@/redux/slices';
-
 import { useAppDispatch, useAppSelector } from './useRedux';
 
 // Query keys
@@ -40,11 +35,12 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 		};
 	}
 
-	// Calculate required credits based on game mode
+	// Calculate required credits based on game mode (uses new methodology)
+	// TIME_LIMITED = 10 fixed, QUESTION_LIMITED/UNLIMITED/MULTIPLAYER = 1 per question
 	const requiredCredits = calculateRequiredCredits(questionsPerRequest, gameMode);
 
-	// Check if user has free questions available
-	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= questionsPerRequest;
+	// Check if user has free questions available (free questions cover the required credits)
+	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= requiredCredits;
 
 	// Calculate if user can play based on Redux state
 	const canPlay = hasFreeQuestions || (creditBalance?.totalCredits ?? 0) >= requiredCredits;
@@ -156,7 +152,7 @@ export const useCreditBalance = () => {
 			);
 			return balance;
 		},
-		staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 		enabled: isAuthenticated, // Only fetch when user is authenticated
 	});
 };
@@ -169,7 +165,7 @@ export const useCreditPackages = () => {
 	return useQuery({
 		queryKey: creditsKeys.packages(),
 		queryFn: () => creditsService.getCreditPackages(),
-		staleTime: 10 * 60 * 1000, // Consider stale after 10 minutes
+		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 
@@ -197,15 +193,8 @@ export const usePurchaseCredits = () => {
 export const useCreditHistory = (limit?: number) => {
 	return useQuery<CreditTransaction[]>({
 		queryKey: creditsKeys.history(limit ?? 50),
-		queryFn: async () => {
-			logger.userInfo('Fetching credit history', { limit });
-			const result = await creditsService.getCreditHistory(limit);
-			logger.userInfo('Credit history fetched successfully', {
-				transactionsCount: result.length,
-			});
-			return result;
-		},
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes
+		queryFn: () => creditsService.getCreditHistory(limit),
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };

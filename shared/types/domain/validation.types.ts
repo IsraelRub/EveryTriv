@@ -5,8 +5,6 @@
  * @module ValidationTypes
  * @description Validation interfaces and data structures with enhanced type safety
  */
-import { ValidationSeverity } from '../../constants';
-import type { BaseData } from '../core/data.types';
 
 /**
  * Position information for UI highlighting
@@ -49,48 +47,6 @@ export interface ValidationResult extends BaseValidationResult {
 }
 
 /**
- * Validation error with position information
- */
-export interface ValidationError {
-	message: string;
-	code: string;
-	field?: string;
-	position?: {
-		start: number;
-		end: number;
-	};
-	severity: ValidationSeverity;
-}
-
-/**
- * Validation context for providing additional information
- */
-export interface ValidationContext {
-	userId?: string;
-	session?: BaseData;
-	options?: {
-		strict?: boolean;
-		includeWarnings?: boolean;
-		customRules?: BaseData;
-	};
-}
-
-/**
- * Validation type for form fields
- */
-export type ValidationType =
-	| 'password'
-	| 'email'
-	| 'topic'
-	| 'customDifficulty'
-	| 'game_answer'
-	| 'user_profile'
-	| 'payment_data'
-	| 'trivia_question'
-	| 'trivia_request'
-	| 'language_validation';
-
-/**
  * Unified validation options interface
  * @interface ValidationOptions
  * @description Options for validation decorators, interceptors, and middleware
@@ -121,15 +77,6 @@ export interface ValidationOptions {
  */
 export interface CustomDifficultyRequest {
 	customText: string;
-}
-
-/**
- * Extended pipe validation result with additional data
- * @interface ExtendedPipeValidationResult
- * @description Pipe validation result with additional context
- */
-export interface PipeValidationWithSuggestion extends BaseValidationResult {
-	suggestion?: string;
 }
 
 /**
@@ -207,25 +154,3 @@ export interface LanguageValidationResult extends BaseValidationResult {
 	confidence?: number;
 }
 
-/**
- * Language tool configuration interface
- * @interface LanguageToolConfig
- * @description Configuration for LanguageTool service
- */
-export interface LanguageToolConfig {
-	baseUrl: string;
-	apiKey?: string;
-	timeout?: number;
-	maxRetries?: number;
-}
-
-/**
- * Language validation request interface
- * @interface ValidateLanguageRequest
- * @description Request payload for language validation
- * @used_by client/src/services/api.service.ts
- */
-export interface ValidateLanguageRequest {
-	text: string;
-	options?: LanguageValidationOptions;
-}

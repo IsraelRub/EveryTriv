@@ -7,5 +7,4 @@ export * from './login';
 export * from './multiplayer';
 export * from './payment';
 export * from './registration';
-export * from './user';
 export * from './unauthorized';

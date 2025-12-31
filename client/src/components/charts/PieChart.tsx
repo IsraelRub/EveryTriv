@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-
 import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
+import { formatForDisplay } from '@shared/utils';
 import type { PieChartProps } from '@/types';
-
 import { ChartCard } from './ChartCard';
 
 const DEFAULT_COLORS = [
@@ -85,7 +84,7 @@ export function PieChart({
 							border: '1px solid hsl(var(--border))',
 							borderRadius: '8px',
 						}}
-						formatter={(value: number) => [value.toLocaleString(), 'Count']}
+						formatter={(value: number) => [formatForDisplay(value, 0), 'Count']}
 					/>
 					<Legend wrapperStyle={{ direction: 'rtl', paddingTop: '20px' }} formatter={value => value} />
 				</RechartsPieChart>

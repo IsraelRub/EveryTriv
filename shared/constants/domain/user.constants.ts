@@ -7,7 +7,7 @@
  */
 
 import type { UserPreferences } from '../../types';
-import { DifficultyLevel, GameMode } from './game.constants';
+import { DEFAULT_GAME_CONFIG, GameMode } from './game.constants';
 
 /**
  * User roles enumeration
@@ -36,16 +36,7 @@ export enum UserStatus {
 	PENDING_VERIFICATION = 'pending_verification',
 }
 
-/**
- * Profile visibility enumeration
- * @enum ProfileVisibility
- * @description Visibility options for user profiles
- */
-export enum ProfileVisibility {
-	PUBLIC = 'public',
-	PRIVATE = 'private',
-	FRIENDS = 'friends',
-}
+export const VALID_USER_STATUSES = Object.values(UserStatus);
 
 /**
  * Default user preferences
@@ -61,24 +52,12 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	musicEnabled: true,
 	animationsEnabled: true,
 	privacy: {
-		profileVisibility: ProfileVisibility.PRIVATE,
 		showOnlineStatus: true,
 		showActivity: true,
 		showAchievements: true,
 	},
 	game: {
-		defaultDifficulty: DifficultyLevel.MEDIUM,
-		defaultTopic: 'general',
+		...DEFAULT_GAME_CONFIG,
 		defaultGameMode: GameMode.QUESTION_LIMITED,
-		timeLimit: 30,
-		maxQuestionsPerGame: 10,
 	},
-};
-
-/**
- * Legacy password fallbacks for backward compatibility scenarios
- * Maps current hashed password defaults to the legacy password users might enter
- */
-export const LEGACY_PASSWORD_FALLBACKS: Record<string, string> = {
-	'AdminPass123!': 'OldPass123!',
 };

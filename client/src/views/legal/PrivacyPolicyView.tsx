@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { Database, Eye, Lock, Mail, Shield } from 'lucide-react';
 
 import { ROUTES } from '@/constants';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components';
 
 export function PrivacyPolicyView() {

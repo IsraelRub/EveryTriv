@@ -367,3 +367,14 @@ export const MESSAGE_FORMATTERS = {
 	storage: createDomainFormatters(LOG_DOMAINS.STORAGE),
 	trivia: createDomainFormatters(LOG_DOMAINS.TRIVIA),
 } as const;
+
+/**
+ * Performance threshold constants (in milliseconds)
+ * @constant
+ * @description Performance thresholds for monitoring and alerts
+ */
+export const PERFORMANCE_THRESHOLDS = {
+	ACCEPTABLE: 500, // 500ms - acceptable response time
+	SLOW: 1000, // 1s - slow response time
+	CRITICAL: 3000, // 3s - critical/very slow response time
+} as const;

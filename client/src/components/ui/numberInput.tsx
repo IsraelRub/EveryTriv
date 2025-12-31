@@ -1,17 +1,13 @@
 import { forwardRef, useCallback } from 'react';
-
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant } from '@/constants';
-
 import type { NumberInputProps } from '@/types';
-
 import { cn } from '@/utils';
-
 import { Button } from './button';
 import { Input } from './input';
 
-const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
+export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 	({ className, value, onChange, min, max, step = 1, disabled, ...props }, ref) => {
 		const handleIncrement = useCallback(() => {
 			if (disabled) return;
@@ -92,5 +88,3 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 	}
 );
 NumberInput.displayName = 'NumberInput';
-
-export { NumberInput };

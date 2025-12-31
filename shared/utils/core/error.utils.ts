@@ -5,7 +5,7 @@
  * @description Centralized error handling utilities for consistent error processing
  * @used_by server/src/features, client/src/services, shared/services
  */
-import { HTTP_ERROR_MESSAGES, NEST_EXCEPTION_NAMES } from '../../constants';
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_ERROR_MESSAGES, NEST_EXCEPTION_NAMES } from '../../constants';
 import type { HttpError, NestExceptionName } from '../../types';
 import { hasProperty, isRecord } from './data.utils';
 
@@ -114,23 +114,31 @@ export function getErrorMessage(error: unknown): string {
 			return error.message ?? HTTP_ERROR_MESSAGES.NETWORK_ERROR;
 		}
 
-		if (errorName === 'JsonWebTokenError' || errorName === 'TokenExpiredError' || errorName === 'NotBeforeError') {
-			return 'Authentication failed. Please log in again.';
+		switch (errorName) {
+			case 'JsonWebTokenError':
+			case 'TokenExpiredError':
+			case 'NotBeforeError':
+				return ERROR_MESSAGES.general.AUTHENTICATION_FAILED;
+
+			case 'QueryFailedError':
+			case 'ConnectionTimeoutError':
+				return ERROR_MESSAGES.general.DATABASE_OPERATION_FAILED;
+
+			case 'RedisError':
+				return ERROR_MESSAGES.general.CACHE_OPERATION_FAILED;
+
+			default:
+				break;
 		}
 
 		// Handle validation errors (check message content)
 		if (normalizedMessage.includes('validation') || normalizedMessage.includes('invalid')) {
-			return 'Invalid input data. Please check your information and try again.';
+			return ERROR_MESSAGES.general.INVALID_INPUT_DATA;
 		}
 
-		// Handle database/connection errors
-		if (errorName === 'QueryFailedError' || errorName === 'ConnectionTimeoutError') {
-			return 'Database operation failed. Please try again later.';
-		}
-
-		// Handle Redis/cache errors
-		if (errorName === 'RedisError' || normalizedMessage.includes('redis') || normalizedMessage.includes('cache')) {
-			return 'Cache operation failed. Please try again.';
+		// Handle Redis/cache errors (check message content)
+		if (normalizedMessage.includes('redis') || normalizedMessage.includes('cache')) {
+			return ERROR_MESSAGES.general.CACHE_OPERATION_FAILED;
 		}
 
 		// Handle timeout errors (check message content)
@@ -140,27 +148,27 @@ export function getErrorMessage(error: unknown): string {
 
 		// Handle rate limiting errors (check message content)
 		if (normalizedMessage.includes('rate limit') || normalizedMessage.includes('too many requests')) {
-			return 'Too many requests. Please wait a moment and try again.';
+			return ERROR_MESSAGES.general.RATE_LIMIT_EXCEEDED;
 		}
 
 		// Handle memory/resource errors
 		if (normalizedMessage.includes('memory') || normalizedMessage.includes('out of memory')) {
-			return 'Insufficient resources. Please try again later.';
+			return ERROR_MESSAGES.general.INSUFFICIENT_RESOURCES;
 		}
 
 		// Handle file system errors
 		if (normalizedMessage.includes('enoent') || normalizedMessage.includes('file not found')) {
-			return 'Required file not found. Please contact support.';
+			return ERROR_MESSAGES.general.FILE_NOT_FOUND;
 		}
 
 		// Handle permission errors
 		if (normalizedMessage.includes('eacces') || normalizedMessage.includes('permission denied')) {
-			return 'Permission denied. Please contact support.';
+			return ERROR_MESSAGES.general.PERMISSION_DENIED;
 		}
 
 		// Handle NestJS exceptions
 		if (isNestExceptionName(errorName)) {
-			return error.message ?? 'Request failed. Please try again.';
+			return error.message ?? ERROR_MESSAGES.general.REQUEST_FAILED;
 		}
 
 		const nestedDetail = extractNestedErrorMessage(error);
@@ -216,12 +224,50 @@ export function getErrorType(error: unknown): string {
 }
 
 /**
+ * Extract error code from error if it matches ERROR_CODES
+ * @param error The error to extract code from
+ * @returns Error code if found, undefined otherwise
+ */
+export function getErrorCode(error: unknown): string | undefined {
+	if (error instanceof Error) {
+		const message = error.message;
+		if (typeof message === 'string') {
+			const errorCodeValues = Object.values(ERROR_CODES);
+			if (errorCodeValues.includes(message as typeof ERROR_CODES[keyof typeof ERROR_CODES])) {
+				return message;
+			}
+		}
+	}
+	if (typeof error === 'string') {
+		const errorCodeValues = Object.values(ERROR_CODES);
+		if (errorCodeValues.includes(error as typeof ERROR_CODES[keyof typeof ERROR_CODES])) {
+			return error;
+		}
+	}
+	return undefined;
+}
+
+/**
  * Ensure error is an Error object for logging with stack traces
  * @param error The error to normalize
  * @returns Error object suitable for errorWithStack logging
+ * @description Preserves all properties from the original error, including statusCode, response, etc.
  */
 export function ensureErrorObject(error: unknown): Error {
-	return error instanceof Error ? error : new Error(getErrorMessage(error));
+	if (error instanceof Error) {
+		return error;
+	}
+
+	// Create new Error with message
+	const errorMessage = getErrorMessage(error);
+	const newError = new Error(errorMessage);
+
+	// Preserve all properties from the original error if it's a record
+	if (isRecord(error)) {
+		Object.assign(newError, error);
+	}
+
+	return newError;
 }
 
 /**

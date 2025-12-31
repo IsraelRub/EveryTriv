@@ -7,15 +7,12 @@
  */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_COUNT } from '@shared/constants';
 import { TriviaRequest } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import { calculateDuration, getErrorMessage, isNonEmptyString, isRecord } from '@shared/utils';
 import { isGameDifficulty, toDifficultyLevel } from '@shared/validation';
-
-import { SERVER_GAME_CONSTANTS } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
-import { isNumber, isString } from '@internal/utils';
-
+import { defaultValidators } from '@shared/constants';
 import { TriviaRequestDto } from '../../features/game/dtos/triviaRequest.dto';
 import { ValidationService } from '../validation';
 
@@ -42,11 +39,10 @@ export class TriviaRequestPipe implements PipeTransform {
 
 			const payload = this.buildTriviaPayload(value);
 
-			// Convert UNLIMITED_QUESTIONS (-1) to MAX_QUESTIONS_PER_REQUEST before validation
-			const { UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
-			const maxQuestions = SERVER_GAME_CONSTANTS.MAX_QUESTIONS_PER_REQUEST;
+			// Convert UNLIMITED_QUESTIONS (-1) to MAX before validation
+			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
 			const questionsPerRequestForValidation =
-				payload.questionsPerRequest === UNLIMITED ? maxQuestions : payload.questionsPerRequest;
+				payload.questionsPerRequest === UNLIMITED ? MAX : payload.questionsPerRequest;
 
 			const errors: string[] = [];
 			const suggestions: string[] = [];
@@ -83,7 +79,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			logger.apiUpdate('trivia_request_validation', {
 				isValid: errors.length === 0,
 				errorsCount: errors.length,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 			});
 
 			if (errors.length > 0) {
@@ -270,7 +266,7 @@ export class TriviaRequestPipe implements PipeTransform {
 		const { questionsPerRequest, topic, difficulty } = candidate;
 		if (
 			!this.isValidQuestionsPerRequest(questionsPerRequest) ||
-			!this.isNonEmptyString(topic) ||
+			!isNonEmptyString(topic) ||
 			!isGameDifficulty(difficulty)
 		) {
 			return false;
@@ -280,16 +276,13 @@ export class TriviaRequestPipe implements PipeTransform {
 	}
 
 	private isValidQuestionsPerRequest(value: unknown): value is number {
-		if (!isNumber(value) || !Number.isInteger(value)) {
+		if (!defaultValidators.number(value) || !Number.isInteger(value)) {
 			return false;
 		}
-		const { MIN, MAX, UNLIMITED } = VALIDATION_CONFIG.limits.QUESTIONS;
+		const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 		return value === UNLIMITED || (value >= MIN && value <= MAX);
 	}
 
-	private isNonEmptyString(value: unknown): value is string {
-		return isString(value) && value.trim().length > 0;
-	}
 
 	private areOptionalTriviaFieldsValid(candidate: Record<string, unknown>): boolean {
 		const optionalChecks: boolean[] = [
@@ -304,11 +297,11 @@ export class TriviaRequestPipe implements PipeTransform {
 	}
 
 	private isOptionalString(value: unknown): boolean {
-		return value === undefined || isString(value);
+		return value == null || defaultValidators.string(value);
 	}
 
 	private isOptionalNumber(value: unknown): boolean {
-		return value === undefined || isNumber(value);
+		return value == null || defaultValidators.number(value);
 	}
 
 	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {

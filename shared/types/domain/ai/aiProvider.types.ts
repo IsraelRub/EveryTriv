@@ -17,7 +17,7 @@ export interface ProviderDetails {
 	successRate?: number;
 	averageResponseTime?: number;
 	errorRate?: number;
-	lastUsed?: string | number | Date;
+	lastUsed?: string;
 }
 
 /**

@@ -7,7 +7,7 @@
  * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
  */
 import { GameMode } from '../../constants';
-import type { BaseApiResponse, BaseData, BasePagination } from '../core';
+import type { BaseApiResponse, BaseData, OffsetPagination, PagePagination } from '../core';
 import type { BasicUser, GameDifficulty, MiddlewareMetrics } from '../domain';
 
 /**
@@ -41,7 +41,7 @@ export interface PaymentResponse {
  * @description Additional metadata for API responses including pagination
  * @used_by server: server/src/features/game/game.controller.ts (pagination), client: client/src/services/api.service.ts (ApiService methods)
  */
-export interface ApiMetadata extends Partial<BasePagination> {
+export interface ApiMetadata extends Partial<PagePagination> {
 	timestamp?: string;
 	processingTime?: number;
 }
@@ -172,18 +172,27 @@ export interface AdminUserData extends BasicUser {
 	lastLogin?: string;
 }
 
-// Users List Response
+/**
+ * Users list response interface
+ * @interface UsersListResponse
+ * @description Response containing list of users with optional offset-based pagination
+ */
 export interface UsersListResponse {
 	message: string;
 	adminUser: AdminUserData;
 	users: AdminUserData[];
 	success: boolean;
 	timestamp: string;
-	pagination?: {
-		total: number;
-		page?: number;
-		pageSize?: number;
-	};
+	pagination?: OffsetPagination;
+}
+
+/**
+ * Admin users list response with offset pagination
+ * @interface AdminUsersListResponse
+ * @description Response containing list of admin users with offset-based pagination
+ */
+export interface AdminUsersListResponse extends OffsetPagination {
+	users: AdminUserData[];
 }
 
 /**

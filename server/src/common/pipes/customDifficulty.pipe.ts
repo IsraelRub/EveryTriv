@@ -9,10 +9,8 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ERROR_CODES } from '@shared/constants';
 import type { CustomDifficultyRequest, ValidationOptions } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
-
 import { ValidationService } from '../validation';
 
 @Injectable()
@@ -34,7 +32,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 			logger.apiUpdate('customDifficulty_validation', {
 				isValid: validationResult.isValid,
 				errorsCount: validationResult.errors.length,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 			});
 
 			if (!validationResult.isValid) {

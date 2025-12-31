@@ -1,7 +1,6 @@
 import { CSSProperties, MouseEvent } from 'react';
 
 import { ComponentSize, IconAnimationType, TextColor } from '@/constants';
-
 import { BaseComponentProps } from '@/types';
 
 /**

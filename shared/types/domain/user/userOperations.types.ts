@@ -15,7 +15,7 @@ import type { UserPreferences, UserProfile } from './user.types';
 export interface CustomDifficultyItem {
 	description: string;
 	usageCount: number;
-	lastUsed: string;
+	lastUsed: Date;
 }
 
 /**

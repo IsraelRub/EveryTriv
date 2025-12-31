@@ -4,7 +4,7 @@
  * @module PasswordValidation
  * @description Validation functions for password security requirements
  */
-import { VALIDATION_LIMITS } from '../../constants';
+import { VALIDATION_LENGTH } from '../../constants';
 import type { PasswordValidationResult } from '../../types';
 
 /**
@@ -14,8 +14,8 @@ import type { PasswordValidationResult } from '../../types';
  * Performs password validation including length requirements
  */
 export function validatePassword(password: string): PasswordValidationResult {
-	const hasMinLength = Boolean(password && password.length >= VALIDATION_LIMITS.PASSWORD.MIN_LENGTH);
-	const hasMaxLength = Boolean(password && password.length <= VALIDATION_LIMITS.PASSWORD.MAX_LENGTH);
+	const hasMinLength = !!password && password.length >= VALIDATION_LENGTH.PASSWORD.MIN;
+	const hasMaxLength = !!password && password.length <= VALIDATION_LENGTH.PASSWORD.MAX;
 
 	const errors: string[] = [];
 	const checks = {
@@ -23,11 +23,11 @@ export function validatePassword(password: string): PasswordValidationResult {
 	};
 
 	if (!password || !hasMinLength) {
-		errors.push(`Password must be at least ${VALIDATION_LIMITS.PASSWORD.MIN_LENGTH} characters long`);
+		errors.push(`Password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`);
 	}
 
 	if (password && !hasMaxLength) {
-		errors.push(`Password must not exceed ${VALIDATION_LIMITS.PASSWORD.MAX_LENGTH} characters`);
+		errors.push(`Password must not exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`);
 	}
 
 	return {

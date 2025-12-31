@@ -22,15 +22,13 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { UserStatus } from '@shared/constants';
+import { UserStatus, VALID_USER_STATUSES, VALIDATION_COUNT } from '@shared/constants';
 import { BasicValue, UserPreferences } from '@shared/types';
-
 import type { CustomDifficultyItem } from '@internal/types';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'First name',
-		example: 'First',
 		maxLength: 50,
 	})
 	@IsOptional()
@@ -41,7 +39,6 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Last name',
-		example: 'Last',
 		maxLength: 50,
 	})
 	@IsOptional()
@@ -62,7 +59,6 @@ export class UpdateUserProfileDto {
 export class SearchUsersDto {
 	@ApiProperty({
 		description: 'Search query',
-		example: 'john',
 		minLength: 1,
 		maxLength: 100,
 	})
@@ -74,15 +70,14 @@ export class SearchUsersDto {
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of results',
-		example: 10,
 		minimum: 1,
-		maximum: 100,
+		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 10,
 	})
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(100, { message: 'Limit cannot exceed 100' })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
 	limit: number = 10;
 }
 
@@ -140,7 +135,7 @@ export class UpdateSinglePreferenceDto {
 export class UpdateUserCreditsDto {
 	@ApiProperty({
 		description: 'Amount of credits to update',
-		example: 100,
+		minimum: 1,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
 	@Min(1, { message: 'Amount must be greater than 0' })
@@ -160,10 +155,9 @@ export class UpdateUserCreditsDto {
 export class UpdateUserStatusDto {
 	@ApiProperty({
 		description: 'User status',
-		example: 'active',
-		enum: ['active', 'suspended', 'banned'],
+		enum: VALID_USER_STATUSES,
 	})
-	@IsIn(Object.values(UserStatus), { message: 'Status must be a valid user status' })
+	@IsIn(VALID_USER_STATUSES, { message: 'Status must be a valid user status' })
 	status: UserStatus;
 }
 
@@ -183,14 +177,13 @@ export class ChangePasswordDto {
 
 export class SetAvatarDto {
 	@ApiProperty({
-		description: 'Avatar ID (1-16)',
-		example: 1,
-		minimum: 1,
-		maximum: 16,
+		description: `Avatar ID (${VALIDATION_COUNT.AVATAR_ID.MIN}-${VALIDATION_COUNT.AVATAR_ID.MAX})`,
+		minimum: VALIDATION_COUNT.AVATAR_ID.MIN,
+		maximum: VALIDATION_COUNT.AVATAR_ID.MAX,
 	})
 	@IsNumber({}, { message: 'Avatar ID must be a number' })
 	@IsNotEmpty({ message: 'Avatar ID is required' })
-	@Min(1, { message: 'Avatar ID must be at least 1' })
-	@Max(16, { message: 'Avatar ID cannot exceed 16' })
+	@Min(VALIDATION_COUNT.AVATAR_ID.MIN, { message: `Avatar ID must be at least ${VALIDATION_COUNT.AVATAR_ID.MIN}` })
+	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, { message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}` })
 	avatarId!: number;
 }

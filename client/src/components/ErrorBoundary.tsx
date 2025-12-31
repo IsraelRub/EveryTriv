@@ -1,15 +1,10 @@
 import { Component, ErrorInfo } from 'react';
-
 import { AlertCircle } from 'lucide-react';
 
 import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
-
 import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
-
 import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
-
 import { clientLogger as logger, storageService } from '@/services';
-
 import type { ErrorBoundaryProps, ExtendedErrorBoundaryState } from '@/types';
 
 const MAX_RETRIES = 2;

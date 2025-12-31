@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { CheckCircle, CreditCard, Gamepad2, Wallet } from 'lucide-react';
 
 import { CREDIT_PURCHASE_PACKAGES } from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
-
 import { ButtonVariant, ROUTES } from '@/constants';
-
 import {
 	Badge,
 	Button,
@@ -32,7 +29,6 @@ import {
 	TabsList,
 	TabsTrigger,
 } from '@/components';
-
 import { useCreditBalance, useCreditHistory, useCreditPackages, useModalRoute } from '@/hooks';
 
 function BalanceCard({ balance, isLoading }: { balance: number; isLoading: boolean }) {

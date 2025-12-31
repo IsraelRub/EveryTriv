@@ -15,19 +15,16 @@ import {
 	FormProvider as Form,
 	useFormContext,
 } from 'react-hook-form';
-
 import { Root as LabelRoot } from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
 
 import { Label } from '@/components';
-
 import type { FormFieldContextValue, FormItemContextValue } from '@/types';
-
 import { cn } from '@/utils';
 
 const FormFieldContext = createContext<FormFieldContextValue | undefined>(undefined);
 
-const FormField = <
+export const FormField = <
 	TFieldValues extends FieldValues = FieldValues,
 	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
@@ -40,7 +37,7 @@ const FormField = <
 	);
 };
 
-const useFormField = () => {
+export const useFormField = () => {
 	const fieldContext = useContext(FormFieldContext);
 	const itemContext = useContext(FormItemContext);
 	const { getFieldState, formState } = useFormContext();
@@ -68,7 +65,7 @@ const useFormField = () => {
 
 const FormItemContext = createContext<FormItemContextValue | undefined>(undefined);
 
-const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
+export const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
 	const id = useId();
 
 	return (
@@ -79,7 +76,7 @@ const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ c
 });
 FormItem.displayName = 'FormItem';
 
-const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentPropsWithoutRef<typeof LabelRoot>>(
+export const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentPropsWithoutRef<typeof LabelRoot>>(
 	({ className, ...props }, ref) => {
 		const { error, formItemId } = useFormField();
 
@@ -88,14 +85,14 @@ const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentPropsWithout
 );
 FormLabel.displayName = 'FormLabel';
 
-const FormControl = forwardRef<ElementRef<typeof Slot>, ComponentPropsWithoutRef<typeof Slot>>(({ ...props }, ref) => {
+export const FormControl = forwardRef<ElementRef<typeof Slot>, ComponentPropsWithoutRef<typeof Slot>>(({ ...props }, ref) => {
 	const { formItemId } = useFormField();
 
 	return <Slot ref={ref} id={formItemId} {...props} />;
 });
 FormControl.displayName = 'FormControl';
 
-const FormDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
+export const FormDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
 	({ className, ...props }, ref) => {
 		const { formDescriptionId } = useFormField();
 
@@ -104,7 +101,7 @@ const FormDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
 );
 FormDescription.displayName = 'FormDescription';
 
-const FormMessage = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
+export const FormMessage = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
 	({ className, children, ...props }, ref) => {
 		const { error, formMessageId } = useFormField();
 		const body = error ? String(error?.message) : children;
@@ -122,4 +119,4 @@ const FormMessage = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagrap
 );
 FormMessage.displayName = 'FormMessage';
 
-export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
+export { Form };

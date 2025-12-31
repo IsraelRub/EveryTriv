@@ -9,8 +9,7 @@ import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
 import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
-import { getErrorMessage } from '@shared/utils';
-
+import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import { metricsService } from '@internal/services/metrics';
 
@@ -21,7 +20,7 @@ import { metricsService } from '@internal/services/metrics';
 @Injectable()
 export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	private readonly SLOW_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.SLOW;
-	private readonly VERY_SLOW_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.VERY_SLOW;
+	private readonly CRITICAL_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.CRITICAL;
 
 	/**
 	 * Intercept requests and monitor performance
@@ -44,7 +43,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 
 		return next.handle().pipe(
 			tap(_data => {
-				const duration = Date.now() - startTime;
+				const duration = calculateDuration(startTime);
 				const endMemory = process.memoryUsage();
 				const memoryDelta = endMemory.heapUsed - startMemory.heapUsed;
 
@@ -68,7 +67,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 				});
 			}),
 			catchError(error => {
-				const duration = Date.now() - startTime;
+				const duration = calculateDuration(startTime);
 
 				// Track error performance
 				this.trackErrorPerformance(endpoint, method, duration, error, userId);
@@ -147,7 +146,7 @@ export class PerformanceMonitoringInterceptor implements NestInterceptor {
 	 * @param userId - User ID
 	 */
 	private alertSlowRequest(endpoint: string, method: string, duration: number, userId: string): void {
-		const severity = duration > this.VERY_SLOW_REQUEST_THRESHOLD ? 'critical' : 'warning';
+		const severity = duration > this.CRITICAL_REQUEST_THRESHOLD ? 'critical' : 'warning';
 
 		logger.performance(`request.${severity}`, duration, {
 			endpoint,

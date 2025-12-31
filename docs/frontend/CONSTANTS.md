@@ -14,7 +14,7 @@ client/src/constants/
 │   ├── game-client.constants.ts    # קבועי משחק לקוח
 │   ├── game-mode.constants.ts      # קבועי מצב משחק
 │   ├── game-state.constants.ts     # קבועי מצב משחק
-│   ├── mode.constants.ts           # קבועי מצבי משחק (GAME_MODES, POPULAR_TOPICS)
+│   ├── mode.constants.ts           # קבועי מצבי משחק (GAME_MODES)
 │   └── index.ts                    # ייצוא מאוחד
 ├── services/                       # קבועי Services
 │   └── logger.constants.ts         # קבועי Logger Service (TOAST_ENABLED_METHODS)
@@ -227,23 +227,17 @@ export const GAME_MODES: GameModeOption[] = [
 **SINGLE_PLAYER_MODES:**
 אותו כמו `GAME_MODES` אבל ללא מצב multiplayer.
 
-**POPULAR_TOPICS:**
+**BASIC_TOPICS:**
 ```typescript
-export const POPULAR_TOPICS = [
+export const BASIC_TOPICS = [
   'General Knowledge',
   'Science',
   'History',
   'Geography',
-  'Sports',
-  'Movies & TV',
-  'Music',
-  'Technology',
-  'Art & Literature',
-  'Food & Cooking',
 ] as const;
 ```
 
-רשימת נושאים פופולריים לבחירה מהירה במשחק.
+רשימת נושאים בסיסיים שתמיד זמינים לבחירה, ללא תלות בנתוני אנליטיקה. נושאים אלה מוצגים תמיד בדיאלוג בחירת הנושא.
 
 ## Services Constants
 
@@ -477,11 +471,9 @@ export const NAVIGATION_LINKS = {
   main: [
     { label: 'Start Game', path: '/' },
     { label: 'Leaderboard', path: '/leaderboard' },
-    { label: 'Premium', path: '/payment' },
   ],
   authenticated: [
     { label: 'Game History', path: '/history' },
-    { label: 'Profile', path: '/profile' },
     { label: 'Analytics', path: '/analytics' },
   ],
   admin: [{ label: 'Admin Dashboard', path: '/admin' }],
@@ -490,8 +482,6 @@ export const NAVIGATION_LINKS = {
       { label: 'Start Game', path: '/' },
       { label: 'Game History', path: '/history' },
       { label: 'Leaderboard', path: '/leaderboard' },
-      { label: 'Profile', path: '/profile' },
-      { label: 'Premium', path: '/payment' },
       { label: 'Analytics', path: '/analytics' },
     ],
   },
@@ -506,7 +496,6 @@ export const ROUTE_PATHS = {
   LEADERBOARD: '/leaderboard',
   PAYMENT: '/payment',
   HISTORY: '/history',
-  PROFILE: '/profile',
   ANALYTICS: '/analytics',
   LOGIN: '/login',
   REGISTER: '/register',

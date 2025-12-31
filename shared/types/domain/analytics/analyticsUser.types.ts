@@ -5,7 +5,7 @@
  * @description Structures describing user analytics queries, summaries, comparisons, and insights
  */
 import { ComparisonTarget } from '../../../constants';
-import type { ActivityEntry, DifficultyBreakdown, TopicsPlayed } from '../../core/data.types';
+import type { ActivityEntry, CountRecord, DifficultyBreakdown } from '../../core/data.types';
 import type { UserRankData } from '../game/game.types';
 
 /**
@@ -35,7 +35,7 @@ export interface UserAnalyticsRecord {
 	mostPlayedTopic?: string;
 	averageTimePerQuestion?: number;
 	totalScore?: number;
-	topicsPlayed?: TopicsPlayed;
+	topicsPlayed?: CountRecord;
 	difficultyBreakdown?: DifficultyBreakdown;
 	recentActivity?: ActivityEntry[];
 }
@@ -90,7 +90,7 @@ export interface UserProgressTopic {
 	successRate: number;
 	averageResponseTime: number;
 	lastPlayed: string | null;
-	difficultyBreakdown: TopicsPlayed;
+	difficultyBreakdown: CountRecord;
 }
 
 /**

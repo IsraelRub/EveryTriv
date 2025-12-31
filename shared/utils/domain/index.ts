@@ -7,7 +7,6 @@
  */
 
 export * from './answer.utils';
-export * from './analytics.utils';
 export * from './credits.utils';
 export * from './game.utils';
 export * from './payment.utils';

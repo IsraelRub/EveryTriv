@@ -1,14 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { ERROR_CODES, PlayerStatus, RoomStatus } from '@shared/constants';
+import { ERROR_CODES, PlayerStatus, RoomStatus, VALIDATION_COUNT } from '@shared/constants';
 import type { CreateRoomResponse, GameState, MultiplayerRoom, RoomConfig, SubmitAnswerResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { GameService } from '../game.service';
 import { GameStateService } from './gameState.service';
-import { MatchmakingService } from './matchmaking.service';
 import { RoomService } from './room.service';
 
 /**
@@ -21,7 +18,6 @@ export class MultiplayerService {
 	constructor(
 		private readonly roomService: RoomService,
 		private readonly gameStateService: GameStateService,
-		private readonly matchmakingService: MatchmakingService,
 		private readonly gameService: GameService
 	) {}
 
@@ -29,20 +25,19 @@ export class MultiplayerService {
 	 * Create a new multiplayer room
 	 * @param hostId User ID of the room host
 	 * @param config Room configuration
-	 * @returns Created room with short code
+	 * @returns Created room with room code (roomId is the code)
 	 */
 	async createRoom(hostId: string, config: RoomConfig): Promise<CreateRoomResponse> {
 		try {
 			const room = await this.roomService.createRoom(hostId, config);
-			const code = this.matchmakingService.generateRoomCode(room.roomId);
 
-			logger.gameInfo('Multiplayer room created with code', {
+			logger.gameInfo('Multiplayer room created', {
 				roomId: room.roomId,
-				code,
 				hostId,
 			});
 
-			return { room, code };
+			// roomId is now the short code directly
+			return { room, code: room.roomId };
 		} catch (error) {
 			logger.gameError('Failed to create multiplayer room', {
 				error: getErrorMessage(error),
@@ -65,13 +60,7 @@ export class MultiplayerService {
 	async joinRoom(roomId: string, userId: string): Promise<MultiplayerRoom> {
 		try {
 			const room = await this.roomService.joinRoom(roomId, userId);
-
-			logger.gameInfo('Player joined multiplayer room', {
-				roomId,
-				userId,
-				playerCount: room.players.length,
-			});
-
+			
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to join multiplayer room', {
@@ -131,7 +120,7 @@ export class MultiplayerService {
 				throw new BadRequestException(ERROR_CODES.GAME_ALREADY_STARTED_OR_FINISHED);
 			}
 
-			if (room.players.length < 2) {
+			if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
 				throw new BadRequestException(ERROR_CODES.NEED_AT_LEAST_2_PLAYERS);
 			}
 
@@ -141,8 +130,7 @@ export class MultiplayerService {
 				room.config.difficulty,
 				room.config.questionsPerRequest,
 				hostId,
-				undefined,
-				room.config.mappedDifficulty
+				undefined
 			);
 
 			// Initialize game with questions

@@ -2,7 +2,6 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { DifficultyLevel } from '@shared/constants';
 import type { TriviaAnswer, TriviaQuestionDetailsMetadata } from '@shared/types';
-
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 

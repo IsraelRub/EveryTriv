@@ -5,7 +5,6 @@
  * @description Structures for tracking analytics events, metadata, and answer-level telemetry
  */
 import { AnalyticsEnvironment, AnalyticsResult } from '@shared/constants';
-
 import type { BasicValue } from '../../core/data.types';
 import type { BaseGameTopicDifficulty, GameDifficulty } from '../game/trivia.types';
 

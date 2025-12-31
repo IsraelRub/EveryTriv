@@ -34,14 +34,6 @@
 
 ```typescript
 <Route
-  path='/profile'
-  element={
-    <ProtectedRoute>
-      <UserProfile />
-    </ProtectedRoute>
-  }
-/>
-<Route
   path='/history'
   element={
     <ProtectedRoute>
@@ -153,7 +145,6 @@
 | /game/play | GameSessionView | לא | - | מסך משחק פעיל |
 | /game/summary | GameSummaryView | לא | - | סיכום משחק |
 | /game/custom | CustomDifficultyView | לא | - | קושי מותאם |
-| /profile | UserProfile | כן | - | פרופיל משתמש |
 | /history | GameHistory | כן | - | היסטוריית משחקים |
 | /payment | PaymentView | כן | - | תשלומים |
 | /credits | CreditsView | כן | - | קרדיטים |
@@ -204,7 +195,6 @@ import CreditsView from './views/credits/CreditsView';
 import { RegistrationView } from './views/registration';
 import SettingsView from './views/settings/SettingsView';
 import UnauthorizedView from './views/unauthorized/UnauthorizedView';
-import UserProfile from './views/user';
 
 export default function AppRoutes() {
   const dispatch = useAppDispatch();
@@ -293,7 +283,6 @@ function NavigationTracker() {
       '/game/custom',
       '/play',
       '/start',
-      '/profile',
       '/history',
       '/leaderboard',
       '/payment',

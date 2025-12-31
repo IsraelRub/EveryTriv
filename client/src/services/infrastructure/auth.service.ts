@@ -6,23 +6,18 @@
  * @description Client-side authentication service with token management
  * @used_by client/hooks/api/useAuth.ts, client/views/registration/RegistrationView.tsx, client/components/auth/OAuthCallback.tsx
  */
-import { API_ROUTES, UserRole } from '@shared/constants';
+import { API_ROUTES, ERROR_MESSAGES, UserRole } from '@shared/constants';
 import type {
 	AuthCredentials,
 	AuthenticationResult,
 	BasicUser,
 	ChangePasswordData,
-	User,
 	UserProfileResponseType,
 } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import { getErrorMessage } from '@shared/utils';
 import { ensureErrorObject } from '@shared/utils/core/error.utils';
-
 import { CLIENT_STORAGE_KEYS } from '@/constants';
-
-import { ApiConfig, apiService, clientLogger as logger, storageService } from '@/services';
-
-import { persistor } from '@/redux/store';
+import { ApiConfig, apiService, clientLogger as logger, storageService, userService } from '@/services';
 
 /**
  * Main authentication service class
@@ -32,7 +27,7 @@ import { persistor } from '@/redux/store';
  */
 class AuthService {
 	private readonly TOKEN_KEY = CLIENT_STORAGE_KEYS.AUTH_TOKEN;
-	private readonly USER_KEY = CLIENT_STORAGE_KEYS.AUTH_USER;
+
 
 	/**
 	 * Authenticate user with credentials
@@ -128,7 +123,7 @@ class AuthService {
 			if (token) {
 				try {
 					const tokenParts = token.split('.');
-					if (tokenParts.length === 3) {
+					if (tokenParts.length === 3 && tokenParts[1] != null) {
 						const payload = JSON.parse(atob(tokenParts[1]));
 						tokenUserId = payload.sub;
 						tokenEmail = payload.email;
@@ -155,8 +150,8 @@ class AuthService {
 				serverUserId: user.id,
 			});
 
-			// Update stored user data
-			await storageService.set(this.USER_KEY, user);
+			// Note: User data is stored in sessionStorage via Redux Persist, not in localStorage
+			// Redux state will be updated by the calling hook/component
 
 			return {
 				...user,
@@ -178,17 +173,14 @@ class AuthService {
 
 			const response = await apiService.refreshToken();
 
-			// Get current user data to construct full response
-			const user = await this.getStoredUser();
-			if (!user) {
-				throw new Error('No user data found');
-			}
+			// Get current user data from server (user state is in sessionStorage via Redux Persist)
+			const user = await this.getCurrentUser();
 
 			// Get existing refresh token from storage
 			const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
 			const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
 			if (!refreshToken) {
-				throw new Error('No refresh token available');
+				throw new Error(ERROR_MESSAGES.api.NO_REFRESH_TOKEN_AVAILABLE);
 			}
 
 			const fullResponse: AuthenticationResult = {
@@ -197,8 +189,8 @@ class AuthService {
 				refreshToken,
 			};
 
-			// Update auth data
-			await this.setAuthData(fullResponse);
+			// Note: User data is stored in sessionStorage via Redux Persist, not here
+			// Token is already stored by apiService.refreshToken()
 
 			logger.authTokenRefresh('Token refreshed successfully');
 			return fullResponse;
@@ -226,66 +218,69 @@ class AuthService {
 	}
 
 	/**
-	 * Get user from storage
-	 * @returns Stored user data or null if not found
-	 */
-	async getStoredUser(): Promise<User | null> {
-		// Type guard for User
-		const isUser = (value: unknown): value is User => {
-			if (!isRecord(value)) return false;
-			return (
-				typeof value.id === 'string' &&
-				typeof value.email === 'string' &&
-				typeof value.status === 'string' &&
-				typeof value.emailVerified === 'boolean' &&
-				typeof value.authProvider === 'string' &&
-				typeof value.credits === 'number' &&
-				Number.isFinite(value.credits) &&
-				typeof value.purchasedCredits === 'number' &&
-				Number.isFinite(value.purchasedCredits) &&
-				typeof value.totalCredits === 'number' &&
-				Number.isFinite(value.totalCredits) &&
-				typeof value.score === 'number' &&
-				Number.isFinite(value.score)
-			);
-		};
-		const result = await storageService.get<User>(this.USER_KEY, isUser);
-		return result.success && result.data ? result.data : null;
-	}
-
-	/**
 	 * Get auth state
-	 * @returns Current authentication state with user and token
+	 * @returns Current authentication state with token
+	 * Note: User data is stored in sessionStorage via Redux Persist, not in localStorage
+	 * Use Redux state to get user data instead
 	 */
 	async getAuthState(): Promise<{
 		isAuthenticated: boolean;
-		user: User | null;
 		token: string | null;
 	}> {
 		const token = await this.getToken();
-		const user = await this.getStoredUser();
 
 		return {
-			isAuthenticated: !!token && !!user,
-			user,
+			isAuthenticated: !!token,
 			token,
 		};
 	}
 
 	/**
 	 * Store authentication data
-	 * Note: Token is already stored by apiService.register/login(), only store user data here
+	 * Note: Token is already stored by apiService.register/login()
+	 * User data is stored in sessionStorage via Redux Persist, not here
 	 */
 	private async setAuthData(authResponse: AuthenticationResult): Promise<void> {
 		// Token is already stored by apiService.register/login() with 'access_token' key
-		// Only store user data here to avoid duplication
+		// User data is stored in sessionStorage via Redux Persist by the calling hook/component
+		// No need to store user data here to avoid duplication
 		if (authResponse.user) {
-			await storageService.set(this.USER_KEY, authResponse.user);
-			logger.authInfo('User data stored in auth service', {
+			logger.authInfo('Authentication data ready - user will be stored in Redux/sessionStorage', {
 				userId: authResponse.user.id,
 				email: authResponse.user.email,
 			});
 		}
+	}
+
+	/**
+	 * Wait for token to be stored (with polling)
+	 * Used to ensure token is available before updating Redux state
+	 * @param maxAttempts Maximum number of polling attempts (default: 10)
+	 * @param delayMs Delay between attempts in milliseconds (default: 50)
+	 * @returns True if token was stored, false otherwise
+	 */
+	async waitForTokenStorage(maxAttempts: number = 10, delayMs: number = 50): Promise<boolean> {
+		let attempts = 0;
+		while (attempts < maxAttempts) {
+			const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+			if (tokenResult.success && !!tokenResult.data) {
+				return true;
+			}
+			await new Promise(resolve => setTimeout(resolve, delayMs));
+			attempts++;
+		}
+		return false;
+	}
+
+	/**
+	 * Verify stored token matches user
+	 * Used to ensure token and user data are consistent before updating Redux
+	 * @param userId User ID to verify against
+	 * @returns True if token matches user, false otherwise
+	 */
+	async verifyStoredTokenForUser(userId: string): Promise<boolean> {
+		const { authSyncService } = await import('@/services');
+		return authSyncService.verifyStoredTokenMatchesUser(userId);
 	}
 
 	/**
@@ -321,7 +316,7 @@ class AuthService {
 			logger.authProfileUpdate('Completing user profile');
 
 			// Note: avatar is set through dedicated /users/avatar endpoint, not through profile update
-			const profileResponse = await apiService.updateUserProfile({
+			const profileResponse = await userService.updateUserProfile({
 				firstName: profileData.firstName,
 				lastName: profileData.lastName,
 			});
@@ -330,27 +325,6 @@ class AuthService {
 			return profileResponse;
 		} catch (error) {
 			logger.authError('Profile completion failed', { error: getErrorMessage(error) });
-			throw error;
-		}
-	}
-
-	/**
-	 * Update user profile
-	 */
-	async updateUserProfile(profileData: {
-		firstName?: string;
-		lastName?: string;
-		email?: string;
-	}): Promise<UserProfileResponseType> {
-		try {
-			logger.authProfileUpdate('Updating user profile');
-
-			const profileResponse = await apiService.updateUserProfile(profileData);
-
-			logger.authProfileUpdate('Profile updated successfully');
-			return profileResponse;
-		} catch (error) {
-			logger.authError('Profile update failed', { error: getErrorMessage(error) });
 			throw error;
 		}
 	}
@@ -376,10 +350,9 @@ class AuthService {
 	 * Clear authentication data and all user-specific data
 	 */
 	private async clearAuthData(): Promise<void> {
-		// Clear all auth-related storage keys
+		// Clear all auth-related storage keys from localStorage
 		await storageService.delete(this.TOKEN_KEY); // 'access_token'
 		await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN); // 'refresh_token'
-		await storageService.delete(this.USER_KEY); // 'auth_user'
 
 		// Clear all user-specific data from localStorage
 		await storageService.delete(CLIENT_STORAGE_KEYS.USER_ID);
@@ -391,17 +364,13 @@ class AuthService {
 		await storageService.delete(CLIENT_STORAGE_KEYS.CUSTOM_DIFFICULTY_HISTORY);
 		await storageService.delete(CLIENT_STORAGE_KEYS.SCORE_HISTORY);
 
-		// Clear Redux Persist storage (user, favorites, gameMode)
-		// This ensures no user data remains in localStorage after logout
-		try {
-			await persistor.purge();
-		} catch {
-			// If persistor is not available, manually clear Redux Persist keys
-			// Redux Persist stores data with keys: persist:user, persist:favorites, persist:gameMode
-			await storageService.delete('persist:user');
-			await storageService.delete('persist:favorites');
-			await storageService.delete('persist:gameMode');
-		}
+		// Clear Redux Persist storage manually to avoid non-serializable action
+		// persist:user is in sessionStorage (cleared automatically when tab closes)
+		// persist:favorites and persist:gameMode are in localStorage
+		await storageService.delete('persist:favorites');
+		await storageService.delete('persist:gameMode');
+		// Note: persist:user is in sessionStorage and will be cleared when tab closes
+		// We can't delete from sessionStorage here because storageService only handles localStorage
 
 		// Note: Audio preferences are kept (volume, muted, etc.) as they are user device preferences, not account-specific
 		// Session storage (sessionStorage) is automatically cleared when browser tab/window is closed

@@ -46,7 +46,6 @@ export const DIFFICULTY_MULTIPLIERS = {
 	[DifficultyLevel.EASY]: 1,
 	[DifficultyLevel.MEDIUM]: 1.5,
 	[DifficultyLevel.HARD]: 2,
-	CUSTOM_DEFAULT: 1.3,
 	BONUS_MULTIPLIER: 1.2,
 	STREAK_MULTIPLIER: 1.1,
 	PERFECT_SCORE_MULTIPLIER: 1.5,
@@ -95,45 +94,6 @@ export enum GameMode {
 export const VALID_GAME_MODES = Object.values(GameMode);
 
 /**
- * Credit operation types enumeration
- * @enum {string} CreditOperation
- * @description Operations that can be performed on user credits
- * @used_by server/src/features/user, server/src/features/scoring, shared/validation
- */
-export enum CreditOperation {
-	ADD = 'add',
-	DEDUCT = 'deduct',
-	SET = 'set',
-}
-
-/**
- * Array of all valid credit operations
- * @constant
- * @description Complete list of supported credit operations
- * @used_by shared/validation, server/src/validation, client/forms
- */
-export const VALID_CREDIT_OPERATIONS = Object.values(CreditOperation);
-
-/**
- * Sort Order Enum
- * @enum SortOrder
- * @description Sort order options for queries and lists
- * @used_by server/src/features/analytics, server/src/features/leaderboard, shared/types
- */
-export enum SortOrder {
-	ASC = 'asc',
-	DESC = 'desc',
-}
-
-/**
- * Array of all valid sort orders
- * @constant
- * @description Complete list of supported sort orders
- * @used_by server/src/validation, client/forms, server/src/features/analytics
- */
-export const VALID_SORT_ORDERS = Object.values(SortOrder);
-
-/**
  * Time Period Enum
  * @enum TimePeriod
  * @description Time period options for analytics grouping
@@ -165,7 +125,6 @@ export enum LeaderboardPeriod {
 	WEEKLY = 'weekly',
 	MONTHLY = 'monthly',
 	YEARLY = 'yearly',
-	TOPIC = 'topic',
 }
 
 /**
@@ -175,26 +134,6 @@ export enum LeaderboardPeriod {
  * @used_by server/src/validation, client/forms, server/src/features/leaderboard
  */
 export const VALID_LEADERBOARD_PERIODS = Object.values(LeaderboardPeriod);
-
-/**
- * Event Result Enum
- * @enum EventResult
- * @description Event result options for analytics tracking
- * @used_by server/src/features/analytics, shared/types
- */
-export enum EventResult {
-	SUCCESS = 'success',
-	FAILURE = 'failure',
-	ERROR = 'error',
-}
-
-/**
- * Array of all valid event results
- * @constant
- * @description Complete list of supported event results
- * @used_by server/src/validation, client/forms, server/src/features/analytics
- */
-export const VALID_EVENT_RESULTS = Object.values(EventResult);
 
 // Custom difficulty keywords for detection
 export const CUSTOM_DIFFICULTY_KEYWORDS = {
@@ -212,6 +151,57 @@ export const CUSTOM_DIFFICULTY_KEYWORDS = {
 		'technology',
 		'politics',
 	],
+} as const;
+
+/**
+ * Credit costs configuration per game mode
+ * @constant
+ * @description Defines how credits are charged for each game mode
+ * @used_by shared/utils/domain/credits.utils.ts, server/src/internal/services/credits/baseCredits.service.ts
+ */
+/**
+ * Credits per 30 seconds for TIME_LIMITED mode
+ * 30 seconds = 5 credits, 60 seconds = 10 credits, 120 seconds = 20 credits
+ */
+export const TIME_LIMITED_CREDITS_PER_30_SECONDS = 5;
+
+export const CREDIT_COSTS = {
+	[GameMode.QUESTION_LIMITED]: {
+		/** Cost per question (1 credit = 1 question) */
+		costPerQuestion: 1,
+		/** No fixed cost - calculated based on questions */
+		fixedCost: undefined,
+		/** Charge before game starts */
+		chargeAfterGame: false,
+	},
+	[GameMode.TIME_LIMITED]: {
+		/** Not used - cost is calculated based on time */
+		costPerQuestion: undefined,
+		/** No fixed cost - calculated based on time selected */
+		fixedCost: undefined,
+		/** Credits per 30 seconds (5 credits = 30 seconds, 10 credits = 60 seconds) */
+		creditsPer30Seconds: TIME_LIMITED_CREDITS_PER_30_SECONDS,
+		/** Charge before game starts */
+		chargeAfterGame: false,
+	},
+	[GameMode.UNLIMITED]: {
+		/** Cost per question (1 credit = 1 question) */
+		costPerQuestion: 1,
+		/** No fixed cost - calculated based on questions */
+		fixedCost: undefined,
+		/** Charge before each question (real-time deduction) */
+		chargeAfterGame: false,
+	},
+	[GameMode.MULTIPLAYER]: {
+		/** Cost per question (1 credit = 1 question) */
+		costPerQuestion: 1,
+		/** No fixed cost - calculated based on questions */
+		fixedCost: undefined,
+		/** Charge before game starts */
+		chargeAfterGame: false,
+		/** Only the host pays for the game */
+		hostPaysOnly: true,
+	},
 } as const;
 
 /**
@@ -236,6 +226,7 @@ export const GAME_MODE_DEFAULTS = {
 	[GameMode.MULTIPLAYER]: {
 		timeLimit: 60, // 1 minute
 		maxQuestionsPerGame: 10, // 10 questions
+		timePerQuestion: 30, // 30 seconds per question
 	},
 } as const;
 
@@ -262,7 +253,7 @@ export const GAME_MODES_CONFIG = {
 	},
 	[GameMode.UNLIMITED]: {
 		name: 'Unlimited',
-		description: 'Play as long as you want',
+		description: 'Play until your credits run out',
 		showQuestionLimit: false,
 		showTimeLimit: false,
 		defaults: GAME_MODE_DEFAULTS[GameMode.UNLIMITED],
@@ -293,15 +284,25 @@ export enum GameClientStatus {
 /**
  * Player type enum
  * @enum PlayerType
- * @description Type of player in multiplayer games and game mode selection
+ * @description Type of player for game mode selection
  */
 export enum PlayerType {
-	HOST = 'host',
-	GUEST = 'guest',
-	SPECTATOR = 'spectator',
 	SINGLE = 'single',
 	MULTIPLAYER = 'multiplayer',
 }
+
+/**
+ * Default game configuration values
+ * @constant
+ * @description Base game configuration values shared between game state and user preferences
+ * @used_by GAME_STATE_DEFAULTS and DEFAULT_USER_PREFERENCES.game
+ */
+export const DEFAULT_GAME_CONFIG = {
+	defaultDifficulty: DifficultyLevel.MEDIUM,
+	defaultTopic: 'General Knowledge',
+	maxQuestionsPerGame: 10,
+	timeLimit: 30,
+} as const;
 
 /**
  * Game state constants
@@ -320,10 +321,24 @@ export const GAME_STATE_DEFAULTS = {
 	IS_GAME_PAUSED: false,
 	IS_GAME_OVER: false,
 	QUESTION_INDEX: 0,
-	TOTAL_QUESTIONS: 10, // Default for question-limited mode
-	DIFFICULTY: DifficultyLevel.EASY,
-	TOPIC: 'General Knowledge',
+	// Game configuration values - shared with DEFAULT_USER_PREFERENCES.game for consistency
+	TOTAL_QUESTIONS: DEFAULT_GAME_CONFIG.maxQuestionsPerGame,
+	DIFFICULTY: DEFAULT_GAME_CONFIG.defaultDifficulty,
+	TOPIC: DEFAULT_GAME_CONFIG.defaultTopic,
 } as const;
+
+/**
+ * Basic topics for game selection
+ * @constant
+ * @description Core topics that are always available for selection, regardless of analytics data
+ * @used_by client/src/components/game/GameMode.tsx
+ */
+export const BASIC_TOPICS = [
+	GAME_STATE_DEFAULTS.TOPIC,
+	'Science',
+	'History',
+	'Geography',
+] as const;
 
 /**
  * Game state configuration
@@ -411,10 +426,7 @@ export const GAME_STATE_CONFIG = {
  * @description Status of game sessions
  */
 export enum GameStatus {
-	WAITING = 'waiting',
 	IN_PROGRESS = 'in_progress',
-	COMPLETED = 'completed',
-	ABANDONED = 'abandoned',
 }
 
 /**
@@ -424,39 +436,9 @@ export enum GameStatus {
  */
 export enum TriviaQuestionSource {
 	AI = 'ai',
-	USER = 'user',
-	IMPORTED = 'imported',
-	SEEDED = 'seeded',
-	SYSTEM = 'system',
 }
 
-/**
- * Trivia question review status enumeration
- * @enum TriviaQuestionReviewStatus
- * @description Review status for trivia questions
- */
-export enum TriviaQuestionReviewStatus {
-	PENDING = 'pending',
-	APPROVED = 'approved',
-	REJECTED = 'rejected',
-	FLAGGED = 'flagged',
-}
-
-/**
- * Array of all valid trivia question sources
- * @constant
- * @description Complete list of supported trivia question sources
- * @used_by server/src/features/game/logic, shared/validation
- */
-export const VALID_TRIVIA_SOURCES = Object.values(TriviaQuestionSource);
-
-/**
- * Array of all valid trivia question review statuses
- * @constant
- * @description Complete list of supported trivia question review statuses
- * @used_by server/src/features/game/logic, shared/validation
- */
-export const VALID_TRIVIA_QUESTION_REVIEW_STATUSES = Object.values(TriviaQuestionReviewStatus);
+export const ALLOWED_TRIVIA_SOURCES = Object.values(TriviaQuestionSource);
 
 /**
  * Provider status enum
@@ -465,11 +447,6 @@ export const VALID_TRIVIA_QUESTION_REVIEW_STATUSES = Object.values(TriviaQuestio
  */
 export enum ProviderStatus {
 	ACTIVE = 'active',
-	INACTIVE = 'inactive',
-	ERROR = 'error',
-	DISABLED = 'disabled',
-	ENABLED = 'enabled',
-	UNAVAILABLE = 'unavailable',
 	HEALTHY = 'healthy',
 	UNHEALTHY = 'unhealthy',
 }
@@ -479,14 +456,14 @@ export enum ProviderStatus {
  * @constant
  * @description Default Groq model to use when no free tier models are available
  */
-export const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
+export const GROQ_DEFAULT_MODEL = 'gpt-oss-20b';
 
 /**
  * Groq free tier models
  * @constant
  * @description List of Groq models available in free tier (priority 1)
  */
-export const GROQ_FREE_TIER_MODELS = ['llama-3.1-8b-instant', 'gpt-oss-20b'] as const;
+export const GROQ_FREE_TIER_MODELS = ['gpt-oss-20b', 'llama-3.1-8b-instant'] as const;
 
 /**
  * Groq models configuration
@@ -497,15 +474,6 @@ export const GROQ_MODELS: Record<
 	string,
 	{ priority: number; cost: number; name: string; rateLimit?: { requestsPerMinute: number; requestsPerDay?: number } }
 > = {
-	'llama-3.1-8b-instant': {
-		priority: 1,
-		cost: 0,
-		name: 'llama-3.1-8b-instant',
-		rateLimit: {
-			requestsPerMinute: 30,
-			requestsPerDay: 14400,
-		},
-	},
 	'gpt-oss-20b': {
 		priority: 1,
 		cost: 0,
@@ -513,6 +481,15 @@ export const GROQ_MODELS: Record<
 		rateLimit: {
 			requestsPerMinute: 8,
 			requestsPerDay: 1000,
+		},
+	},
+	'llama-3.1-8b-instant': {
+		priority: 1,
+		cost: 0,
+		name: 'llama-3.1-8b-instant',
+		rateLimit: {
+			requestsPerMinute: 30,
+			requestsPerDay: 14400,
 		},
 	},
 	'gpt-oss-120b': {
@@ -526,3 +503,25 @@ export const GROQ_MODELS: Record<
 		name: 'llama-3.1-70b-versatile',
 	},
 } as const;
+
+/**
+ * Groq default model configuration details
+ * @constant
+ * @description Derived configuration for the default Groq model
+ */
+export const GROQ_DEFAULT_MODEL_CONFIG = GROQ_MODELS[GROQ_DEFAULT_MODEL];
+
+/**
+ * Default Groq requests per minute
+ * @constant
+ * @description Rate-limit metadata derived from the default Groq model
+ */
+export const GROQ_DEFAULT_REQUESTS_PER_MINUTE =
+	GROQ_DEFAULT_MODEL_CONFIG?.rateLimit?.requestsPerMinute ?? 30;
+
+/**
+ * Default Groq tokens per minute
+ * @constant
+ * @description Aggregate throttling limit used by providers
+ */
+export const GROQ_DEFAULT_TOKENS_PER_MINUTE = 30000;

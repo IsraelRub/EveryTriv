@@ -132,9 +132,6 @@ export class UserEntity extends BaseEntity {
   @Column({ name: 'last_name', nullable: true })
   lastName?: string;             // שם משפחה
 
-  @Column({ nullable: true })
-  avatar?: string;               // תמונת פרופיל
-
   @Column('int', { default: 100 })
   credits: number = 100;         // נקודות זכות (ברירת מחדל: 100)
 
@@ -157,7 +154,7 @@ export class UserEntity extends BaseEntity {
   role: UserRole = UserRole.USER; // תפקיד (user, admin, guest, premium)
 
   @Column('jsonb', { default: {} })
-  preferences: Partial<UserPreferences> = {}; // העדפות משתמש
+  preferences: Partial<UserPreferences> = {}; // העדפות משתמש (כולל avatar: number 1-16)
 
   @Column({ name: 'current_subscription_id', nullable: true })
   currentSubscriptionId?: string; // מזהה מנוי נוכחי

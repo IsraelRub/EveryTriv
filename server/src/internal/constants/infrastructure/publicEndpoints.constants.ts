@@ -10,4 +10,12 @@
  * List of public endpoints that skip authentication
  * @description These endpoints are accessible without authentication
  */
-export const PUBLIC_ENDPOINTS = ['/leaderboard/global', '/leaderboard/period', '/health', '/status'] as const;
+export const PUBLIC_ENDPOINTS = [
+	'/leaderboard/global',
+	'/leaderboard/period',
+	'/health',
+	'/status',
+	'/auth/login',
+	'/auth/register',
+	'/auth/refresh',
+] as const;

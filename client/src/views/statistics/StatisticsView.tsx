@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import {
 	AlertTriangle,
@@ -11,7 +10,6 @@ import {
 	Clock,
 	Flame,
 	GamepadIcon,
-	Loader2,
 	Medal,
 	Target,
 	Timer,
@@ -21,22 +19,22 @@ import {
 	User,
 } from 'lucide-react';
 
-import { LeaderboardPeriod } from '@shared/constants';
+import { LeaderboardPeriod, defaultValidators } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
-import { roundForDisplay } from '@shared/utils';
+import { formatForDisplay } from '@shared/utils';
 import { isGameDifficulty, isLeaderboardPeriod } from '@shared/validation';
-
 import {
 	BgColor,
 	ButtonSize,
 	ButtonVariant,
 	ROUTES,
+	SpinnerSize,
+	SpinnerVariant,
 	StatCardVariant,
 	TextColor,
 	ToastVariant,
 	VariantBase,
 } from '@/constants';
-
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -63,6 +61,7 @@ import {
 	PieChart,
 	Skeleton,
 	StatCard,
+	Spinner,
 	Table,
 	TableBody,
 	TableCell,
@@ -76,7 +75,6 @@ import {
 	TopicBar,
 	TrendChart,
 } from '@/components';
-
 import {
 	useClearGameHistory,
 	useDeleteGameHistory,
@@ -90,10 +88,26 @@ import {
 	useUserProfile,
 	useUserRanking,
 } from '@/hooks';
-
 import type { DistributionDataPoint, PieChartDataPoint, RootState } from '@/types';
+import { cn, formatDate, formatDuration, formatPlayTime, getAvatarUrl, getUserInitials } from '@/utils';
 
-import { formatDate, formatDuration, formatPlayTime, getAvatarUrl, getDifficultyBadgeColor } from '@/utils';
+/**
+ * Get badge color classes for difficulty level
+ * @param difficulty - Difficulty level string
+ * @returns Combined class string for difficulty badge
+ */
+function getDifficultyBadgeColor(difficulty?: string): string {
+	switch (difficulty?.toLowerCase()) {
+		case 'easy':
+			return cn('bg-green-500/10', 'text-green-500', 'border-green-500/30');
+		case 'medium':
+			return cn('bg-yellow-500/10', 'text-yellow-500', 'border-yellow-500/30');
+		case 'hard':
+			return cn('bg-red-500/10', 'text-red-500', 'border-red-500/30');
+		default:
+			return cn('bg-muted', 'text-muted-foreground');
+	}
+}
 
 export function StatisticsView() {
 	const navigate = useNavigate();
@@ -130,15 +144,6 @@ export function StatisticsView() {
 		return currentUser?.email?.split('@')[0] || 'User';
 	};
 
-	const getUserInitials = () => {
-		if (profile?.firstName) {
-			return profile.firstName.charAt(0).toUpperCase();
-		}
-		if (currentUser?.email) {
-			return currentUser.email.charAt(0).toUpperCase();
-		}
-		return 'U';
-	};
 
 	const gameStats = analytics?.game;
 	const performanceStats = analytics?.performance;
@@ -188,7 +193,7 @@ export function StatisticsView() {
 	// Calculate history stats
 	const totalGames = records.length;
 	const totalScore = records.reduce((sum, r) => sum + (r.score ?? 0), 0);
-	const avgScore = totalGames > 0 ? roundForDisplay(totalScore / totalGames) : 0;
+	const avgScore = totalGames > 0 ? totalScore / totalGames : 0;
 	const bestScore = records.length > 0 ? Math.max(...records.map(r => r.score ?? 0)) : 0;
 
 	// Use user-specific data from analytics instead of global data
@@ -203,7 +208,7 @@ export function StatisticsView() {
 				topics: Object.entries(gameStats.topicsPlayed)
 					.map(([topic, count]) => ({
 						topic,
-						totalGames: typeof count === 'number' && Number.isFinite(count) ? count : 0,
+						totalGames: defaultValidators.number(count) ? count : 0,
 					}))
 					.filter(t => t.totalGames > 0)
 					.sort((a, b) => b.totalGames - a.totalGames),
@@ -254,7 +259,9 @@ export function StatisticsView() {
 											<div className='flex items-center gap-4 mb-4'>
 												<Avatar className='h-16 w-16 border-2 border-primary/20'>
 													<AvatarImage src={avatarUrl} alt={getDisplayName()} />
-													<AvatarFallback className='text-xl'>{getUserInitials()}</AvatarFallback>
+													<AvatarFallback className='text-xl'>
+														{getUserInitials(profile?.firstName, profile?.lastName, currentUser?.email)}
+													</AvatarFallback>
 												</Avatar>
 												<div>
 													<CardTitle className='text-2xl flex items-center gap-2'>
@@ -301,7 +308,7 @@ export function StatisticsView() {
 												<StatCard
 													icon={Target}
 													label='Success Rate'
-													value={`${roundForDisplay(gameStats?.successRate ?? 0)}%`}
+													value={`${formatForDisplay(gameStats?.successRate ?? 0)}%`}
 													subtext={`${gameStats?.correctAnswers ?? 0}/${gameStats?.totalQuestionsAnswered ?? 0} correct`}
 													color={BgColor.GREEN_500}
 												/>
@@ -355,7 +362,7 @@ export function StatisticsView() {
 											<CardContent className='space-y-4'>
 												<div className='flex justify-between items-center'>
 													<span>Average Score</span>
-													<span className='font-bold'>{roundForDisplay(gameStats?.averageScore ?? 0)}</span>
+													<span className='font-bold'>{formatForDisplay(gameStats?.averageScore ?? 0)}</span>
 												</div>
 												<div className='flex justify-between items-center'>
 													<span>Best Score</span>
@@ -391,7 +398,7 @@ export function StatisticsView() {
 												</div>
 												<div className='flex justify-between items-center'>
 													<span>Improvement Rate</span>
-													<span className='font-bold'>{roundForDisplay(performanceStats?.improvementRate ?? 0)}%</span>
+													<span className='font-bold'>{formatForDisplay(performanceStats?.improvementRate ?? 0)}%</span>
 												</div>
 											</CardContent>
 										</Card>
@@ -797,7 +804,7 @@ export function StatisticsView() {
 														<CardDescription>Average Score</CardDescription>
 													</CardHeader>
 													<CardContent>
-														<div className='text-3xl font-bold'>{avgScore}</div>
+														<div className='text-3xl font-bold'>{formatForDisplay(avgScore)}</div>
 													</CardContent>
 												</Card>
 												<Card className='border-muted/50 bg-muted/10'>
@@ -859,16 +866,17 @@ export function StatisticsView() {
 													</TableRow>
 												</TableHeader>
 												<TableBody>
-													{records.map(record => (
+													{records.map(record => {
+														return (
 														<TableRow key={record.id}>
 															<TableCell className='font-medium'>
-																{record.createdAt ? formatDate(record.createdAt) : '-'}
+																	{formatDate(record.createdAt)}
 															</TableCell>
 															<TableCell>{record.topic || 'General'}</TableCell>
 															<TableCell>
 																<Badge
 																	variant={VariantBase.OUTLINE}
-																	className={getDifficultyBadgeColor(record.difficulty || '')}
+																	className={getDifficultyBadgeColor(record.difficulty)}
 																>
 																	{record.difficulty || 'Unknown'}
 																</Badge>
@@ -889,14 +897,15 @@ export function StatisticsView() {
 																	disabled={deleteHistory.isPending}
 																>
 																	{deleteHistory.isPending && deleteId === record.id ? (
-																		<Loader2 className='h-4 w-4 animate-spin' />
+																		<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} />
 																	) : (
 																		<Trash2 className='h-4 w-4' />
 																	)}
 																</Button>
 															</TableCell>
 														</TableRow>
-													))}
+														);
+													})}
 												</TableBody>
 											</Table>
 										</CardContent>
@@ -941,7 +950,7 @@ export function StatisticsView() {
 												>
 													{clearHistory.isPending ? (
 														<>
-															<Loader2 className='h-4 w-4 mr-2 animate-spin' />
+															<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
 															Clearing...
 														</>
 													) : (
@@ -994,7 +1003,7 @@ export function StatisticsView() {
 											<div>
 												<p className='text-2xl font-bold'>{userRanking.score?.toLocaleString() ?? 0} pts</p>
 												<p className='text-sm text-muted-foreground'>
-													Top {roundForDisplay(userRanking.percentile ?? 0)}% of {userRanking.totalUsers ?? 0} players
+													Top {formatForDisplay(userRanking.percentile ?? 0)}% of {userRanking.totalUsers ?? 0} players
 												</p>
 											</div>
 										</div>

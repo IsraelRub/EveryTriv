@@ -79,6 +79,14 @@ const baseConfig = {
 		'curly': ['error', 'multi-line'],
 		'no-duplicate-imports': 'error',
 
+		// Null/Undefined handling (modern approach)
+		'@typescript-eslint/prefer-nullish-coalescing': ['error', {
+			ignoreConditionalTests: false,
+			ignoreMixedLogicalExpressions: false,
+		}],
+		'@typescript-eslint/prefer-optional-chain': 'error',
+		'@typescript-eslint/no-unnecessary-type-assertion': 'error',
+
 		// Import rules (import/order removed - handled by Prettier)
 		'import/no-duplicates': 'error',
 		'import/no-unresolved': 'error',
@@ -431,6 +439,14 @@ module.exports = [
 			'eqeqeq': ['error', 'always', { null: 'ignore' }],
 			'curly': ['error', 'multi-line'],
 			'no-duplicate-imports': 'error',
+
+			// Null/Undefined handling (modern approach)
+			'@typescript-eslint/prefer-nullish-coalescing': ['error', {
+				ignoreConditionalTests: false,
+				ignoreMixedLogicalExpressions: false,
+			}],
+			'@typescript-eslint/prefer-optional-chain': 'error',
+			'@typescript-eslint/no-unnecessary-type-assertion': 'error',
 
 			// Import rules (import/order removed - handled by Prettier)
 			'import/no-duplicates': 'error',

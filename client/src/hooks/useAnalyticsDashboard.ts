@@ -4,8 +4,10 @@
  * @module UseAnalyticsDashboard
  * @description React Query hooks for analytics dashboard functionality
  */
+import { useSelector } from 'react-redux';
 import { useQuery } from '@tanstack/react-query';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
 import type {
 	CompleteUserAnalytics,
 	DifficultyBreakdown,
@@ -14,26 +16,22 @@ import type {
 	UserAnalyticsQuery,
 	UserTrendPoint,
 } from '@shared/types';
-
-import { analyticsService, clientLogger as logger } from '@/services';
+import { analyticsService } from '@/services';
+import type { RootState } from '@/types';
 
 /**
  * Hook for getting user analytics
  * @returns Query result with user analytics
  */
 export const useUserAnalytics = () => {
+	const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+
 	return useQuery<CompleteUserAnalytics>({
 		queryKey: ['UserAnalytics'],
-		queryFn: async () => {
-			logger.userInfo('Fetching user analytics');
-			const result = await analyticsService.getUserAnalytics();
-			logger.userInfo('user analytics fetched successfully', {
-				userId: result.basic?.userId,
-			});
-			return result;
-		},
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		queryFn: () => analyticsService.getUserAnalytics(),
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+		enabled: isAuthenticated,
 	});
 };
 
@@ -43,18 +41,14 @@ export const useUserAnalytics = () => {
  * @returns Query result with popular topics data
  */
 export const usePopularTopics = (query?: UserAnalyticsQuery) => {
+	const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+
 	return useQuery({
 		queryKey: ['popularTopics', query],
-		queryFn: async () => {
-			logger.userInfo('Fetching popular topics', { query: query ? JSON.stringify(query) : undefined });
-			const result = await analyticsService.getPopularTopics(query);
-			logger.userInfo('Popular topics fetched successfully', {
-				totalTopics: result.topics.length,
-			});
-			return result;
-		},
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
+		queryFn: () => analyticsService.getPopularTopics(query),
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+		enabled: isAuthenticated,
 	});
 };
 
@@ -65,14 +59,9 @@ export const usePopularTopics = (query?: UserAnalyticsQuery) => {
 export const useGlobalDifficultyStats = () => {
 	return useQuery<DifficultyBreakdown>({
 		queryKey: ['globalDifficultyStats'],
-		queryFn: async () => {
-			logger.userInfo('Fetching global difficulty stats');
-			const result = await analyticsService.getGlobalDifficultyStats();
-			logger.userInfo('Global difficulty stats fetched successfully');
-			return result;
-		},
-		staleTime: 10 * 60 * 1000, // 10 minutes
-		gcTime: 30 * 60 * 1000, // 30 minutes
+		queryFn: () => analyticsService.getGlobalDifficultyStats(),
+		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
 	});
 };
 
@@ -83,14 +72,9 @@ export const useGlobalDifficultyStats = () => {
 export const useRealTimeAnalytics = () => {
 	return useQuery<GlobalStatsResponse>({
 		queryKey: ['realTimeAnalytics'],
-		queryFn: async () => {
-			logger.userInfo('Fetching real-time analytics');
-			const result = await analyticsService.getGlobalStats();
-			logger.userInfo('Real-time analytics fetched successfully');
-			return result;
-		},
+		queryFn: () => analyticsService.getGlobalStats(),
 		staleTime: 30 * 1000,
-		gcTime: 2 * 60 * 1000,
+		gcTime: TIME_PERIODS_MS.TWO_MINUTES,
 		refetchInterval: 30 * 1000,
 	});
 };
@@ -102,14 +86,9 @@ export const useRealTimeAnalytics = () => {
 export const useGlobalStats = () => {
 	return useQuery({
 		queryKey: ['globalStats'],
-		queryFn: async () => {
-			logger.userInfo('Fetching global stats');
-			const result = await analyticsService.getGlobalStats();
-			logger.userInfo('Global stats fetched successfully');
-			return result;
-		},
-		staleTime: 10 * 60 * 1000, // 10 minutes
-		gcTime: 30 * 60 * 1000, // 30 minutes
+		queryFn: () => analyticsService.getGlobalStats(),
+		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
 	});
 };
 
@@ -122,12 +101,10 @@ export const useGlobalTrends = (query?: TrendQueryOptions) => {
 	return useQuery<UserTrendPoint[]>({
 		queryKey: ['globalTrends', query],
 		queryFn: async () => {
-			logger.userInfo('Fetching global trends', query ? { query: JSON.stringify(query) } : undefined);
 			const result = await analyticsService.getGlobalTrends(query);
-			logger.userInfo('Global trends fetched successfully');
 			return result.data || [];
 		},
-		staleTime: 10 * 60 * 1000, // 10 minutes
-		gcTime: 30 * 60 * 1000, // 30 minutes
+		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
 	});
 };

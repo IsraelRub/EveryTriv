@@ -1,10 +1,8 @@
 /**
  * Server Core Constants Index
  * @module ServerCoreConstants
- * @description Core constants for server-side operations
+ * @description Core constants for server-side operations (server-only)
+ * @note Most constants are now in @shared/constants. Only truly server-specific constants remain here.
  */
 
-export * from './auth.constants';
 export * from './error.constants';
-export * from './game.constants';
-export * from './performance.constants';

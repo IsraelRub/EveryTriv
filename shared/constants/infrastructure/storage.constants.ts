@@ -16,47 +16,34 @@ export const STORAGE_CONFIG = {
 	ENABLE_METRICS: true,
 } as const;
 
-// Cache TTL values
-export const CACHE_TTL = {
-	// General TTL presets
-	SHORT: 300, // 5 minutes
-	MEDIUM: 1800, // 30 minutes
-	LONG: 3600, // 1 hour
-	VERY_LONG: 86400, // 24 hours
-
-	// Specific cache keys
-	TRIVIA_QUESTIONS: 3600, // 1 hour (from server)
-	USER_PROFILE: 1800, // 30 minutes (from server)
-	GAME_HISTORY: 7200, // 2 hours (from server)
-	LEADERBOARD: 300, // 5 minutes
-	USER_STATS: 3600, // 1 hour (from server)
-	CREDITS_BALANCE: 300, // 5 minutes (from server)
-	USER_ANALYTICS: 1800, // 30 minutes
-} as const;
-
-// Storage type enum (re-exported from types for convenience)
+// Storage type enum
 export enum StorageType {
 	PERSISTENT = 'persistent',
 	CACHE = 'cache',
-	HYBRID = 'hybrid',
 }
 
 /**
- * Storage get strategy enumeration
- * @enum StorageGetStrategy
- * @description Strategy for reading from storage
+ * Cache duration constants (in seconds)
+ * @constant
+ * @description Standard cache durations for different types of data
  */
-export enum StorageGetStrategy {
-	CACHE_FIRST = 'cache-first',
-	PERSISTENT_FIRST = 'persistent-first',
-	BOTH = 'both',
-}
+export const CACHE_DURATION = {
+	VERY_SHORT: 30, // 30 seconds
+	SHORT: 60, // 1 minute
+	MEDIUM: 300, // 5 minutes
+	LONG: 600, // 10 minutes
+	EXTENDED: 900, // 15 minutes
+	THIRTY_MINUTES: 1800, // 30 minutes
+	VERY_LONG: 3600, // 1 hour
+	EXTREME: 86400, // 1 day
 
-// Default validators for storage values
-export const defaultValidators = {
-	string: (value: unknown): value is string => typeof value === 'string',
-	number: (value: unknown): value is number => typeof value === 'number' && !Number.isNaN(value),
-	boolean: (value: unknown): value is boolean => typeof value === 'boolean',
-	date: (value: unknown): value is Date =>
-		value instanceof Date || (typeof value === 'string' && !Number.isNaN(Date.parse(value))),
+	// Specific cache keys
+	TRIVIA_QUESTIONS: 3600, // 1 hour
+	USER_PROFILE: 1800, // 30 minutes
+	GAME_HISTORY: 7200, // 2 hours
+	LEADERBOARD: 300, // 5 minutes
+	USER_STATS: 3600, // 1 hour
+	CREDITS_BALANCE: 300, // 5 minutes
+	USER_ANALYTICS: 1800, // 30 minutes
+	MULTIPLAYER_ROOM: 3600, // 1 hour
 } as const;

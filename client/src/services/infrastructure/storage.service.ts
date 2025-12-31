@@ -5,10 +5,8 @@
  * @used_by client/src/services, client/src/utils, client/src/components
  */
 import { defaultValidators } from '@shared/constants';
-import type { StorageOperationResult } from '@shared/types';
+import type { StorageOperationResult, TypeGuard } from '@shared/types';
 import { isStringArray } from '@shared/utils';
-
-import type { TypeGuard } from '@/types';
 
 class ClientStorageService {
 	/**

@@ -9,14 +9,12 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ERROR_CODES, PaymentMethod } from '@shared/constants';
 import type { ValidationResult } from '@shared/types';
-import { isRecord, sanitizeCardNumber } from '@shared/utils';
+import { calculateDuration, isRecord, sanitizeCardNumber } from '@shared/utils';
 import { isPaymentMethod } from '@shared/validation';
-
 import { serverLogger as logger } from '@internal/services';
 import type { PersonalPaymentData } from '@internal/types';
 import { validateName } from '@internal/validation/core';
 import { isValidCardNumber } from '@internal/validation/domain';
-
 import type { CreatePaymentDto } from '../../features/payment/dtos/payment.dto';
 
 @Injectable()
@@ -44,7 +42,7 @@ export class PaymentDataPipe implements PipeTransform {
 			logger.apiUpdate('payment_data_validation', {
 				isValid: true,
 				errorsCount: 0,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 				method: paymentMethod,
 			});
 			return value;
@@ -55,7 +53,7 @@ export class PaymentDataPipe implements PipeTransform {
 			logger.apiUpdate('payment_data_validation', {
 				isValid: true,
 				errorsCount: 0,
-				duration: Date.now() - startTime,
+				duration: calculateDuration(startTime),
 				method: paymentMethod,
 			});
 			return value;
@@ -74,7 +72,7 @@ export class PaymentDataPipe implements PipeTransform {
 		logger.apiUpdate('payment_data_validation', {
 			isValid: validationResult.isValid,
 			errorsCount: validationResult.errors.length,
-			duration: Date.now() - startTime,
+			duration: calculateDuration(startTime),
 			method: paymentMethod,
 		});
 
@@ -128,12 +126,12 @@ export class PaymentDataPipe implements PipeTransform {
 				const currentYear = currentDate.getFullYear() % 100;
 				const currentMonth = currentDate.getMonth() + 1;
 
-				if (parseInt(month) < 1 || parseInt(month) > 12) {
+				if (month != null && (parseInt(month) < 1 || parseInt(month) > 12)) {
 					errors.push('Month must be between 01 and 12');
 					suggestions.push('Enter a valid month (01-12)');
 				}
 
-				if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
+				if (month != null && year != null && (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth))) {
 					errors.push('Card has expired');
 					suggestions.push('Please use a card that has not expired');
 				}

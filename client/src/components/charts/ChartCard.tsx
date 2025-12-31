@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
-
 import type { ChartCardProps } from '@/types';
 
 /**

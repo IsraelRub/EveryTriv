@@ -21,25 +21,25 @@ export const API_ENDPOINTS_BASE = {
 		ADMIN_USERS: '/auth/admin/users',
 	},
 	USER: {
-		BASE: '/user',
-		PROFILE: '/user/profile',
-		CREDITS: '/user/credits',
-		STATS: '/user/stats',
-		AVATAR: '/user/avatar',
-		SEARCH: '/user/search',
-		ACCOUNT: '/user/account',
-		CHANGE_PASSWORD: '/user/change-password',
-		PREFERENCES: '/user/preferences',
-		PROFILE_FIELD: '/user/profile/:field',
-		PREFERENCES_FIELD: '/user/preferences/:preference',
+		BASE: '/users',
+		PROFILE: '/users/profile',
+		CREDITS: '/users/credits',
+		STATS: '/users/stats',
+		AVATAR: '/users/avatar',
+		SEARCH: '/users/search',
+		ACCOUNT: '/users/account',
+		CHANGE_PASSWORD: '/users/change-password',
+		PREFERENCES: '/users/preferences',
+		PROFILE_FIELD: '/users/profile/:field',
+		PREFERENCES_FIELD: '/users/preferences/:preference',
 		GET_BY_ID: '/users/:id',
 		UPDATE_CREDITS: '/users/credits/:userId',
 		UPDATE_STATUS: '/users/:userId/status',
 		UPDATE_FIELD: (field: string) => `/users/profile/${field}`,
 		UPDATE_PREFERENCE: (preference: string) => `/users/preferences/${preference}`,
 		ADMIN: {
-			ALL: '/user/admin/all',
-			STATUS_BY_USER_ID: '/user/admin/:userId/status',
+			ALL: '/users/admin/all',
+			STATUS_BY_USER_ID: '/users/admin/:userId/status',
 		},
 	},
 	TRIVIA: {
@@ -98,7 +98,7 @@ export const API_ENDPOINTS = {
 	},
 	USER: {
 		...API_ENDPOINTS_BASE.USER,
-		CREDITS_DEDUCT: '/user/credits/deduct',
+		CREDITS_DEDUCT: '/users/credits/deduct',
 		UPDATE_FIELD: (field: string) => `/users/profile/${field}`,
 		UPDATE_PREFERENCE: (preference: string) => `/users/preferences/${preference}`,
 		GET_BY_ID: '/users/:id',
@@ -221,5 +221,7 @@ export const RATE_LIMIT_DEFAULTS = {
 	BURST_MESSAGE: 'Rate limit exceeded, please slow down',
 } as const;
 
-// Alias for API_ROUTES (backward compatibility)
+// API_ROUTES: For backward compatibility, uses full paths (same as API_ENDPOINTS)
+// Server controllers should use relative paths by removing the base path
+// Example: @Controller('/auth') + @Post('login') instead of @Post('/auth/login')
 export const API_ROUTES = API_ENDPOINTS;

@@ -4,7 +4,7 @@
  * @module ServerNameValidation
  * @description Server-side name validation functions
  */
-import { VALIDATION_CONFIG } from '@shared/constants';
+import { VALIDATION_LENGTH } from '@shared/constants';
 import type { BaseValidationResult } from '@shared/types';
 
 /**
@@ -24,19 +24,19 @@ export function validateName(name: string, fieldName: string = 'Name'): BaseVali
 		};
 	}
 
-	const { MIN_LENGTH, MAX_LENGTH } = VALIDATION_CONFIG.limits.FIRST_NAME;
+	const { MIN, MAX } = VALIDATION_LENGTH.FIRST_NAME;
 
-	if (trimmed.length < MIN_LENGTH) {
+	if (trimmed.length < MIN) {
 		return {
 			isValid: false,
-			errors: [`${fieldName} must be at least ${MIN_LENGTH} character${MIN_LENGTH > 1 ? 's' : ''} long`],
+			errors: [`${fieldName} must be at least ${MIN} character${MIN > 1 ? 's' : ''} long`],
 		};
 	}
 
-	if (trimmed.length > MAX_LENGTH) {
+	if (trimmed.length > MAX) {
 		return {
 			isValid: false,
-			errors: [`${fieldName} cannot exceed ${MAX_LENGTH} characters`],
+			errors: [`${fieldName} cannot exceed ${MAX} characters`],
 		};
 	}
 

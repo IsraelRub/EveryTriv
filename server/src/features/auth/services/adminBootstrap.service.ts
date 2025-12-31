@@ -8,12 +8,10 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { UserRole } from '@shared/constants';
+import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import { ensureErrorObject } from '@shared/utils';
-
 import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
-
 import { PasswordService } from '../../../common/auth';
 import { AppConfig } from '../../../config/app.config';
 
@@ -30,7 +28,7 @@ export class AdminBootstrapService implements OnModuleInit {
 	 */
 	async onModuleInit(): Promise<void> {
 		const maxRetries = 5;
-		const retryDelay = 2000;
+		const retryDelay = TIME_PERIODS_MS.TWO_SECONDS;
 
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {

@@ -9,6 +9,7 @@
 - [דיאגרמת זרימת נתונים - יצירת שאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---יצירת-שאלה)
 - [דיאגרמת זרימת נתונים - תשובה לשאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---תשובה-לשאלה)
 - [דיאגרמת זרימת Custom Difficulty](../../DIAGRAMS.md#דיאגרמת-זרימת-custom-difficulty)
+- [דיאגרמת זרימת Prompt - יצירת שאלת טריוויה](../../DIAGRAMS.md#דיאגרמת-זרימת-prompt---יצירת-שאלת-טריוויה)
 
 ## אחריות
 
@@ -32,7 +33,7 @@
 טיפוסים משותפים נמצאים ב-`@shared/types`:
 - `TriviaQuestion` - שאלת טריוויה
 - `TriviaQuestionInput` - קלט שאלה
-- `TriviaQuestionDetailsMetadata` - metadata מפורט (כולל `TriviaQuestionSource` ו-`TriviaQuestionReviewStatus`)
+- `TriviaQuestionDetailsMetadata` - metadata מפורט (כולל `TriviaQuestionSource`)
 
 ## מבנה מודול
 
@@ -51,10 +52,12 @@ server/src/features/game/
 │   │   │   └── index.ts
 │   │   ├── groq/               # Groq provider עם תמיכה במודלים מרובים
 │   │   │   ├── groq.provider.ts      # Groq provider implementation
+│   │   │   ├── groq.apiClient.ts     # API client עם retry logic
+│   │   │   ├── groq.responseParser.ts # Parser ו-validation של תשובות
 │   │   │   ├── models.ts             # הגדרת מודלים (priority, cost, rate limits)
 │   │   │   └── index.ts
 │   │   ├── prompts/            # Prompts ל-AI
-│   │   │   ├── prompts.ts
+│   │   │   ├── prompts.ts      # Prompt templates עם הנחיות איכות
 │   │   │   └── index.ts
 │   │   └── index.ts
 │   └── index.ts
@@ -63,6 +66,34 @@ server/src/features/game/
 ├── game.module.ts              # Module
 └── index.ts
 ```
+
+## יצירת Prompt ושגרת יצירת שאלות
+
+הלוגיקה של יצירת שאלות טריוויה עוברת דרך מספר שלבים:
+
+1. **Prompt Generation** (`prompts.ts`):
+   - `generateTriviaQuestion()` - יוצר prompt דינמי לפי פרמטרים (נושא, קושי, מספר תשובות)
+   - `SYSTEM_PROMPT` - prompt קבוע עם הנחיות כלליות ל-AI
+   - `getDifficultyGuidance()` - מספק הנחיות ספציפיות לפי רמת קושי
+
+2. **Provider** (`groq.provider.ts`):
+   - מקבל פרמטרים ומייצר prompt
+   - שולח ל-API client
+   - מנתח תשובה דרך ResponseParser
+   - יוצר אובייקט TriviaQuestion
+
+3. **API Client** (`groq.apiClient.ts`):
+   - בונה בקשת API עם SYSTEM_PROMPT + User Prompt
+   - בוחר מודל לפי priority
+   - מטפל ב-retry logic ו-error handling
+
+4. **Response Parser** (`groq.responseParser.ts`):
+   - מנתח ומאמת את התשובה מה-API
+   - בודק פורמט JSON
+   - מנרמל quotes (smart → ASCII)
+   - בודק תקינות שאלה ותשובות
+
+לפירוט מלא של הזרימה, ראו: [דיאגרמת זרימת Prompt - יצירת שאלת טריוויה](../../DIAGRAMS.md#דיאגרמת-זרימת-prompt---יצירת-שאלת-טריוויה)
 
 ## API Endpoints
 
@@ -128,8 +159,7 @@ async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPip
 **דוגמת שימוש:**
 ```typescript
 @Post('answer')
-@UsePipes(GameAnswerPipe)
-async submitAnswer(@CurrentUserId() userId: string, @Body() body: SubmitAnswerDto) {
+async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
   const result = await this.gameService.submitAnswer(
     body.questionId,
     body.answer,
@@ -214,8 +244,7 @@ async getGameHistory(@CurrentUserId() userId: string) {
 ```typescript
 @Post('validate-custom-difficulty')
 @Public()
-@UsePipes(CustomDifficultyPipe)
-async validateCustomDifficulty(@Body() body: ValidateCustomDifficultyDto) {
+async validateCustomDifficulty(@Body(CustomDifficultyPipe) body: ValidateCustomDifficultyDto) {
   const result = await this.gameService.validateCustomDifficulty(body.text);
   return result;
 }
@@ -441,6 +470,8 @@ export class GameService {
 **Priority 1 - מודלים חינמיים/זמינים ב-free tier:**
 - **llama-3.1-8b-instant** - חינמי לחלוטין ($0), 30 req/min, 14,400 req/day
 - **gpt-oss-20b** - זמין ב-free tier (1,000 requests/day), 8 req/min
+
+> המודל הדיפולטי במערכת הוא **gpt-oss-20b** לטובת איכות גבוהה יותר, כאשר **llama-3.1-8b-instant** משמש כגיבוי במקרי Rate limit או עומס.
 
 **Priority 2+ - מודלים בתשלום:**
 - **gpt-oss-120b** - $0.15/$0.75 per M tokens

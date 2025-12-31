@@ -1,20 +1,17 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAttributes } from 'react';
-
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
 import { ButtonVariant } from '@/constants';
-
 import { buttonVariants } from '@/components';
-
 import { cn } from '@/utils';
 
-const AlertDialog = AlertDialogPrimitive.Root;
+export const AlertDialog = AlertDialogPrimitive.Root;
 
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
+export const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
-const AlertDialogPortal = AlertDialogPrimitive.Portal;
+export const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
-const AlertDialogOverlay = forwardRef<
+export const AlertDialogOverlay = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Overlay>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
@@ -29,7 +26,7 @@ const AlertDialogOverlay = forwardRef<
 ));
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
-const AlertDialogContent = forwardRef<
+export const AlertDialogContent = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
@@ -47,17 +44,17 @@ const AlertDialogContent = forwardRef<
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
-const AlertDialogHeader = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
+export const AlertDialogHeader = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
 	<div className={cn('flex flex-col space-y-2 text-center sm:text-left', className)} {...props} />
 );
 AlertDialogHeader.displayName = 'AlertDialogHeader';
 
-const AlertDialogFooter = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
+export const AlertDialogFooter = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
 	<div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)} {...props} />
 );
 AlertDialogFooter.displayName = 'AlertDialogFooter';
 
-const AlertDialogTitle = forwardRef<
+export const AlertDialogTitle = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Title>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
@@ -65,7 +62,7 @@ const AlertDialogTitle = forwardRef<
 ));
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
 
-const AlertDialogDescription = forwardRef<
+export const AlertDialogDescription = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Description>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
@@ -73,36 +70,22 @@ const AlertDialogDescription = forwardRef<
 ));
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
-const AlertDialogAction = forwardRef<
+export const AlertDialogAction = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Action>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
 >(({ className, ...props }, ref) => (
-	<AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props} />
+	<AlertDialogPrimitive.Action ref={ref} className={buttonVariants({ className })} {...props} />
 ));
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 
-const AlertDialogCancel = forwardRef<
+export const AlertDialogCancel = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Cancel>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
 >(({ className, ...props }, ref) => (
 	<AlertDialogPrimitive.Cancel
 		ref={ref}
-		className={cn(buttonVariants({ variant: ButtonVariant.OUTLINE }), 'mt-2 sm:mt-0', className)}
+		className={cn(buttonVariants({ variant: ButtonVariant.OUTLINE, className }), 'mt-2 sm:mt-0')}
 		{...props}
 	/>
 ));
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
-
-export {
-	AlertDialog,
-	AlertDialogPortal,
-	AlertDialogOverlay,
-	AlertDialogTrigger,
-	AlertDialogContent,
-	AlertDialogHeader,
-	AlertDialogFooter,
-	AlertDialogTitle,
-	AlertDialogDescription,
-	AlertDialogAction,
-	AlertDialogCancel,
-};

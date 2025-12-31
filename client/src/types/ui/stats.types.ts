@@ -1,7 +1,6 @@
 import { type ElementType } from 'react';
 
 import type { GameDifficulty, LeaderboardEntry } from '@shared/types';
-
 import { BgColor, Easing, StatCardVariant, TextColor } from '@/constants';
 
 /**

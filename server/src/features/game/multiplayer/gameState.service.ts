@@ -10,9 +10,7 @@ import type {
 } from '@shared/types';
 import { calculateAnswerScore, checkAnswerCorrectness, getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
-
 import { serverLogger as logger } from '@internal/services';
-
 import { RoomService } from './room.service';
 
 /**
@@ -32,11 +30,13 @@ export class GameStateService {
 	 */
 	async initializeGame(room: MultiplayerRoom, questions: TriviaQuestion[]): Promise<MultiplayerRoom> {
 		try {
-			room.questions = questions;
-			room.currentQuestionIndex = 0;
-			room.status = RoomStatus.PLAYING;
-			room.startTime = new Date();
-			room.currentQuestionStartTime = new Date(); // Set start time for first question
+			Object.assign(room, {
+				questions,
+				currentQuestionIndex: 0,
+				status: RoomStatus.PLAYING,
+				startTime: new Date(),
+				currentQuestionStartTime: new Date(),
+			});
 
 			// Reset all players to playing state
 			room.players.forEach(player => {

@@ -1,35 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import {
 	AlertCircle,
-	BookOpen,
-	CheckSquare,
 	Clock,
 	CreditCard,
 	Crown,
-	FileQuestion,
-	Hash,
 	Infinity,
 	ListOrdered,
-	Star,
 } from 'lucide-react';
 
 import {
+	CREDIT_COSTS,
 	CUSTOM_DIFFICULTY_PREFIX,
 	DifficultyLevel,
 	GAME_MODES_CONFIG,
 	GAME_STATE_CONFIG,
 	GameMode as GameModeEnum,
 	UserRole,
-	VALIDATION_CONFIG,
 } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 import { validateCustomDifficultyText } from '@shared/validation';
-
-import { ButtonSize, ButtonVariant, POPULAR_TOPICS, ROUTES, SCORING_DEFAULTS, VariantBase } from '@/constants';
-
+import { calculateRequiredCredits } from '@shared/utils';
+import {
+	ButtonVariant,
+	ROUTES,
+	SCORING_DEFAULTS,
+	VALIDATION_MESSAGES,
+	VariantBase,
+} from '@/constants';
 import {
 	Alert,
 	AlertDescription,
@@ -42,18 +41,10 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	Input,
-	Label,
-	NumberInput,
-	Textarea,
 } from '@/components';
-
-import { useAppSelector, useCanPlay, usePopularTopics, useUserAnalytics } from '@/hooks';
-
+import { GameSettingsForm } from './GameSettingsForm';
+import { useAppSelector, useCanPlay } from '@/hooks';
 import type { GameConfig, GameModeOption } from '@/types';
-
-import { formatTimeDisplay } from '@/utils';
-
 import { selectUserRole } from '@/redux/selectors';
 
 // Icon mapping for game modes
@@ -89,7 +80,7 @@ export function GameMode({
 	onModeSelect?: (mode: GameModeEnum, settings?: GameConfig) => void;
 }): JSX.Element {
 	const navigate = useNavigate();
-	const [selectedMode, setSelectedMode] = useState<GameModeEnum | null>(null);
+	const [selectedMode, setSelectedMode] = useState<GameModeEnum | undefined>(undefined);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [noCreditsDialogOpen, setNoCreditsDialogOpen] = useState(false);
 
@@ -109,32 +100,52 @@ export function GameMode({
 	// Credit check
 	const userRole = useAppSelector(selectUserRole);
 	const isAdmin = userRole === UserRole.ADMIN;
-	// Calculate the correct question count for credit check
-	// Convert undefined to UNLIMITED (-1) for API (canPlay needs a number)
-	const creditCheckQuestionLimit =
-		selectedMode && GAME_MODES_CONFIG[selectedMode].showQuestionLimit
-			? maxQuestionsPerGame
-			: VALIDATION_CONFIG.limits.QUESTIONS.UNLIMITED;
-	const { data: canPlay } = useCanPlay(creditCheckQuestionLimit, selectedMode ?? GameModeEnum.QUESTION_LIMITED);
 
-	// Analytics hooks
-	const { data: analytics } = useUserAnalytics();
-	const { data: popularTopicsData } = usePopularTopics();
+	// Calculate the value for credit check based on game mode:
+	// - TIME_LIMITED: Uses timeLimit in seconds (5 credits per 30 seconds)
+	// - QUESTION_LIMITED: Uses maxQuestionsPerGame (1 credit per question)
+	// - UNLIMITED: Uses 1 credit for first question (real-time deduction)
+	const getCreditCheckValue = (): number => {
+		if (!selectedMode) return maxQuestionsPerGame;
 
-	// Extract user-specific topics
-	const mostPlayedTopic = analytics?.game?.mostPlayedTopic;
-	const topicsPlayed = analytics?.game?.topicsPlayed;
-	const userTopics = topicsPlayed
-		? Object.entries(topicsPlayed)
-				.sort(([, a], [, b]) => b - a)
-				.slice(0, 5)
-				.map(([topic]) => topic)
-		: [];
+		const costConfig = CREDIT_COSTS[selectedMode];
 
-	// Extract popular topics
-	const popularTopics: string[] = popularTopicsData?.topics?.slice(0, 5).map(t => t.topic) || [
-		...POPULAR_TOPICS.slice(0, 5),
-	];
+		// If mode charges after game, return 0 to allow starting
+		// Note: UNLIMITED mode now charges in real-time, so it requires 1 credit minimum
+		if (costConfig?.chargeAfterGame) {
+			return 0;
+		}
+
+		// For UNLIMITED mode, require 1 credit minimum (for first question)
+		if (selectedMode === GameModeEnum.UNLIMITED) {
+			return 1;
+		}
+
+		// For TIME_LIMITED, use timeLimit (seconds) for credit calculation
+		if (selectedMode === GameModeEnum.TIME_LIMITED) {
+			return timeLimit;
+		}
+
+		// Otherwise, use the question count (e.g., QUESTION_LIMITED)
+		return maxQuestionsPerGame;
+	};
+
+	const creditCheckValue = getCreditCheckValue();
+	const { data: canPlay } = useCanPlay(creditCheckValue, selectedMode ?? GameModeEnum.QUESTION_LIMITED);
+
+	// Calculate the actual credit cost to display to the user
+	const getDisplayedCreditCost = (): number => {
+		if (!selectedMode) return maxQuestionsPerGame;
+
+		// For TIME_LIMITED, use timeLimit (seconds) for calculation
+		if (selectedMode === GameModeEnum.TIME_LIMITED) {
+			return calculateRequiredCredits(timeLimit, selectedMode);
+		}
+
+		return calculateRequiredCredits(maxQuestionsPerGame, selectedMode);
+	};
+	const displayedCreditCost = getDisplayedCreditCost();
+
 
 	const handleModeClick = (mode: GameModeEnum) => {
 		// Set default values based on mode
@@ -174,7 +185,7 @@ export function GameMode({
 			const validation = validateCustomDifficultyText(trimmedCustomDifficulty);
 
 			if (!validation.isValid) {
-				setCustomDifficultyError(validation.errors[0] || 'Invalid custom difficulty');
+				setCustomDifficultyError(validation.errors[0] || VALIDATION_MESSAGES.CUSTOM_DIFFICULTY_INVALID);
 				return;
 			}
 
@@ -269,240 +280,57 @@ export function GameMode({
 						<DialogDescription>Customize your game settings before starting</DialogDescription>
 					</DialogHeader>
 
+					{/* Credit Cost Display */}
+					{!isAdmin && selectedMode && (
+						<div className='my-2 p-3 rounded-lg bg-muted/50 border'>
+							<div className='flex items-center justify-between'>
+								<span className='text-sm text-muted-foreground flex items-center gap-2'>
+									<CreditCard className='h-4 w-4' />
+									Credit Cost:
+								</span>
+								<span className='font-semibold'>
+									{selectedMode === GameModeEnum.UNLIMITED ? (
+										<span className='text-muted-foreground text-xs'>Charged after game (1 credit/question)</span>
+									) : (
+										<>
+											{displayedCreditCost} {displayedCreditCost === 1 ? 'credit' : 'credits'}
+											{selectedMode === GameModeEnum.TIME_LIMITED && (
+												<span className='text-xs text-muted-foreground ml-1'>(fixed)</span>
+											)}
+										</>
+									)}
+								</span>
+							</div>
+						</div>
+					)}
+
 					{/* Credit Warning */}
 					{!isAdmin && !canPlay && (
 						<Alert variant={VariantBase.DESTRUCTIVE} className='my-2'>
 							<AlertCircle className='h-4 w-4' />
 							<AlertDescription>
-								Not enough credits. You need {creditCheckQuestionLimit} credits to play.
+								Not enough credits. You need {displayedCreditCost} credits to play.
 							</AlertDescription>
 						</Alert>
 					)}
 
-					<div className='space-y-6 py-4'>
-						{/* Topic Selection */}
-						<div className='space-y-3'>
-							<Label className='flex items-center gap-2'>
-								<Hash className='h-4 w-4 text-muted-foreground' />
-								Topic
-							</Label>
-							<Input
-								placeholder='Enter a topic or leave empty for random...'
-								value={topic}
-								onChange={e => setTopic(e.target.value)}
-							/>
-
-							{/* Your Most Played Topic */}
-							{mostPlayedTopic && mostPlayedTopic !== 'None' && (
-								<div className='space-y-2'>
-									<Label className='text-xs text-muted-foreground'>Your Most Played</Label>
-									<Button
-										type='button'
-										variant={topic === mostPlayedTopic ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-										size={ButtonSize.SM}
-										className='w-full justify-start bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/20'
-										onClick={() => setTopic(topic === mostPlayedTopic ? '' : mostPlayedTopic)}
-									>
-										<Star className='h-3 w-3 mr-2 text-indigo-500' />
-										{mostPlayedTopic}
-									</Button>
-								</div>
-							)}
-
-							{/* Your Topics */}
-							{userTopics.length > 0 && (
-								<div className='space-y-2'>
-									<Label className='text-xs text-muted-foreground'>Your Topics</Label>
-									<div className='flex flex-wrap gap-2'>
-										{userTopics.map(t => {
-											const gameCount = topicsPlayed?.[t] ?? 0;
-											return (
-												<Button
-													key={t}
-													type='button'
-													variant={topic === t ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-													size={ButtonSize.SM}
-													className='text-xs h-7'
-													onClick={() => setTopic(topic === t ? '' : t)}
-												>
-													<BookOpen className='h-3 w-3 mr-1' />
-													{t} ({gameCount} {gameCount === 1 ? 'game' : 'games'})
-												</Button>
-											);
-										})}
-									</div>
-								</div>
-							)}
-
-							{/* Popular Topics */}
-							<div className='space-y-2'>
-								<Label className='text-xs text-muted-foreground'>Popular Topics</Label>
-								<div className='flex flex-wrap gap-2'>
-									{popularTopics.map(t => (
-										<Button
-											key={t}
-											type='button'
-											variant={topic === t ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-											size={ButtonSize.SM}
-											className='text-xs h-7'
-											onClick={() => setTopic(topic === t ? '' : t)}
-										>
-											<BookOpen className='h-3 w-3 mr-1' />
-											{t}
-										</Button>
-									))}
-								</div>
-							</div>
-						</div>
-
-						{/* Difficulty Selection */}
-						<div className='space-y-3'>
-							<Label className='flex items-center gap-2'>
-								<AlertCircle className='h-4 w-4 text-muted-foreground' />
-								Difficulty
-							</Label>
-							<div className='grid grid-cols-4 gap-2'>
-								<Button
-									type='button'
-									variant={selectedDifficulty === DifficultyLevel.EASY ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-									size={ButtonSize.SM}
-									onClick={() => setSelectedDifficulty(DifficultyLevel.EASY)}
-									className='flex items-center justify-center gap-2'
-								>
-									<span className='w-2 h-2 rounded-full bg-green-500' />
-									Easy
-								</Button>
-								<Button
-									type='button'
-									variant={
-										selectedDifficulty === DifficultyLevel.MEDIUM ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE
-									}
-									size={ButtonSize.SM}
-									onClick={() => setSelectedDifficulty(DifficultyLevel.MEDIUM)}
-									className='flex items-center justify-center gap-2'
-								>
-									<span className='w-2 h-2 rounded-full bg-yellow-500' />
-									Medium
-								</Button>
-								<Button
-									type='button'
-									variant={selectedDifficulty === DifficultyLevel.HARD ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-									size={ButtonSize.SM}
-									onClick={() => setSelectedDifficulty(DifficultyLevel.HARD)}
-									className='flex items-center justify-center gap-2'
-								>
-									<span className='w-2 h-2 rounded-full bg-red-500' />
-									Hard
-								</Button>
-								<Button
-									type='button'
-									variant={
-										selectedDifficulty === DifficultyLevel.CUSTOM ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE
-									}
-									size={ButtonSize.SM}
-									onClick={() => setSelectedDifficulty(DifficultyLevel.CUSTOM)}
-									className='flex items-center justify-center gap-2'
-								>
-									<span className='w-2 h-2 rounded-full bg-purple-500' />
-									Custom
-								</Button>
-							</div>
-							{/* Custom Difficulty Input */}
-							{selectedDifficulty === DifficultyLevel.CUSTOM && (
-								<div className='space-y-2'>
-									<Textarea
-										placeholder="Describe your custom difficulty...&#10;Example: 'Questions about advanced quantum physics for PhD students'"
-										value={customDifficulty}
-										onChange={e => {
-											setCustomDifficulty(e.target.value);
-											// Clear error when user starts typing
-											if (customDifficultyError) {
-												setCustomDifficultyError('');
-											}
-										}}
-										className='min-h-[80px]'
-									/>
-									{customDifficultyError && (
-										<Alert variant={VariantBase.DESTRUCTIVE} className='py-2'>
-											<AlertCircle className='h-4 w-4' />
-											<AlertDescription className='text-xs'>{customDifficultyError}</AlertDescription>
-										</Alert>
-									)}
-									<p className='text-xs text-muted-foreground'>
-										The AI will generate questions based on your description
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* Settings Grid - Questions/Time and Answer Count */}
-						<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-							{/* Question Limit (for Question Mode) */}
-							{selectedMode && GAME_MODES_CONFIG[selectedMode].showQuestionLimit && (
-								<div className='space-y-3'>
-									<Label className='flex items-center gap-2'>
-										<FileQuestion className='h-4 w-4 text-muted-foreground' />
-										Number of Questions
-									</Label>
-									<div className='flex justify-start'>
-										<NumberInput
-											value={maxQuestionsPerGame}
-											onChange={setMaxQuestionsPerGame}
-											min={VALIDATION_CONFIG.limits.QUESTIONS.MIN}
-											max={VALIDATION_CONFIG.limits.QUESTIONS.MAX}
-											step={VALIDATION_CONFIG.limits.QUESTIONS.STEP}
-										/>
-									</div>
-								</div>
-							)}
-
-							{/* Time Limit (for Time Attack) */}
-							{selectedMode && GAME_MODES_CONFIG[selectedMode].showTimeLimit && (
-								<div className='space-y-3'>
-									<Label className='flex items-center gap-2'>
-										<Clock className='h-4 w-4 text-muted-foreground' />
-										Time Limit (seconds)
-									</Label>
-									<div className='flex justify-start'>
-										<NumberInput
-											value={timeLimit}
-											onChange={setTimeLimit}
-											min={VALIDATION_CONFIG.limits.TIME_LIMIT.MIN}
-											max={VALIDATION_CONFIG.limits.TIME_LIMIT.MAX}
-											step={VALIDATION_CONFIG.limits.TIME_LIMIT.STEP}
-										/>
-									</div>
-									<p className='text-xs text-muted-foreground'>{formatTimeDisplay(timeLimit)}</p>
-								</div>
-							)}
-
-							{/* Answer Count Selection */}
-							<div className='space-y-3'>
-								<Label className='flex items-center gap-2'>
-									<CheckSquare className='h-4 w-4 text-muted-foreground' />
-									Number of Answer Choices
-								</Label>
-								<div className='flex justify-start'>
-									<NumberInput
-										value={answerCount}
-										onChange={setAnswerCount}
-										min={VALIDATION_CONFIG.limits.ANSWER_COUNT.MIN}
-										max={VALIDATION_CONFIG.limits.ANSWER_COUNT.MAX}
-										step={VALIDATION_CONFIG.limits.ANSWER_COUNT.STEP}
-									/>
-								</div>
-							</div>
-						</div>
-
-						{/* Unlimited Mode Info */}
-						{selectedMode === GameModeEnum.UNLIMITED && (
-							<div className='p-4 rounded-lg bg-muted/50 text-center'>
-								<p className='text-sm text-muted-foreground'>
-									Play without limits! Answer questions until you decide to stop.
-								</p>
-							</div>
-						)}
-					</div>
+					<GameSettingsForm
+						topic={topic}
+						onTopicChange={setTopic}
+						selectedDifficulty={selectedDifficulty}
+						onDifficultyChange={setSelectedDifficulty}
+						customDifficulty={customDifficulty}
+						onCustomDifficultyChange={setCustomDifficulty}
+						customDifficultyError={customDifficultyError}
+						onCustomDifficultyErrorChange={setCustomDifficultyError}
+						answerCount={answerCount}
+						onAnswerCountChange={setAnswerCount}
+						selectedMode={selectedMode}
+						maxQuestionsPerGame={maxQuestionsPerGame}
+						onMaxQuestionsPerGameChange={setMaxQuestionsPerGame}
+						timeLimit={timeLimit}
+						onTimeLimitChange={setTimeLimit}
+					/>
 
 					<DialogFooter className='gap-2 sm:gap-0'>
 						<Button variant={ButtonVariant.OUTLINE} onClick={() => setDialogOpen(false)}>
@@ -529,7 +357,7 @@ export function GameMode({
 					</DialogHeader>
 					<div className='py-4'>
 						<p className='text-sm text-muted-foreground mb-4'>
-							You need <span className='font-bold text-foreground'>{creditCheckQuestionLimit}</span> credits for this
+							You need <span className='font-bold text-foreground'>{displayedCreditCost}</span> credits for this
 							game.
 						</p>
 					</div>

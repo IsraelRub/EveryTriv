@@ -9,9 +9,7 @@ import { BadRequestException, Module } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
 import { ERROR_CODES } from '@shared/constants';
-
 import { MetricsService } from '@internal/services/metrics';
-
 import { RedisModule } from '../redis.module';
 import { StorageController } from './storage.controller';
 import { ServerStorageService } from './storage.service';
