@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import {
@@ -9,18 +9,12 @@ import {
 	TRIVIA_WORDS,
 	WORD_DIRECTIONS,
 } from '@/constants';
-import type { AnimatedWord, Position, WordDirection } from '@/types';
+import type { AnimatedWord, ScreenPosition, WordDirection } from '@/types';
 
-/**
- * Generates a random number between min and max
- */
 const randomBetween = (min: number, max: number): number => {
 	return Math.random() * (max - min) + min;
 };
 
-/**
- * Selects a random item from an array
- */
 const randomItem = <T,>(array: readonly T[]): T => {
 	const item = array[Math.floor(Math.random() * array.length)];
 	if (item == null) {
@@ -29,10 +23,7 @@ const randomItem = <T,>(array: readonly T[]): T => {
 	return item;
 };
 
-/**
- * Calculates end position based on start position and direction
- */
-const calculateEndPosition = (start: Position, direction: WordDirection): Position => {
+const calculateEndPosition = (start: ScreenPosition, direction: WordDirection): ScreenPosition => {
 	const offset = BACKGROUND_ANIMATION_CONFIG.movementOffset;
 
 	switch (direction) {
@@ -57,12 +48,9 @@ const calculateEndPosition = (start: Position, direction: WordDirection): Positi
 	}
 };
 
-/**
- * Generates a random animated word configuration
- */
 const generateWord = (): AnimatedWord => {
 	const direction = randomItem(WORD_DIRECTIONS);
-	const startPosition: Position = {
+	const startPosition: ScreenPosition = {
 		x: randomBetween(BACKGROUND_ANIMATION_CONFIG.minStartPosition, BACKGROUND_ANIMATION_CONFIG.maxStartPosition),
 		y: randomBetween(BACKGROUND_ANIMATION_CONFIG.minStartPosition, BACKGROUND_ANIMATION_CONFIG.maxStartPosition),
 	};
@@ -83,27 +71,32 @@ const generateWord = (): AnimatedWord => {
 	};
 };
 
-/**
- * BackgroundAnimation Component
- * Displays animated trivia words moving diagonally across the background
- */
 export function BackgroundAnimation() {
 	const [words, setWords] = useState<AnimatedWord[]>([]);
+	const timeoutRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
 	// Initialize words on mount
 	useEffect(() => {
-		const initialWords: AnimatedWord[] = [];
+		const timeouts = new Set<NodeJS.Timeout>();
 
 		// Stagger the initial word creation
 		for (let i = 0; i < BACKGROUND_ANIMATION_CONFIG.wordCount; i++) {
-			setTimeout(() => {
+			const timeoutId = setTimeout(() => {
 				const word = generateWord();
 				setWords(prev => [...prev, word]);
 			}, i * BACKGROUND_ANIMATION_CONFIG.spawnDelay);
+			timeouts.add(timeoutId);
 		}
 
+		timeoutRef.current = timeouts;
+
 		return () => {
-			initialWords.length = 0;
+			timeoutRef.current.forEach(id => {
+				if (id) {
+					clearTimeout(id);
+				}
+			});
+			timeoutRef.current.clear();
 		};
 	}, []);
 

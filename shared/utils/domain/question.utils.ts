@@ -1,34 +1,22 @@
-/**
- * Question Utilities
- *
- * @module QuestionUtils
- * @description Utility functions for question data creation and manipulation
- * @used_by client/src/views/game, server/src/features/game
- */
-import type { QuestionData, TriviaQuestion } from '../../types';
+import type { QuestionData, QuestionDataWithQuestion, TriviaQuestion } from '../../types';
+import { getCorrectAnswerIndex } from './answer.utils';
 
-/**
- * Create QuestionData from question and answer information
- * @param question The trivia question
- * @param userAnswer User's answer (string or number index)
- * @param isCorrect Whether the answer is correct
- * @param timeSpent Time spent answering in seconds
- * @returns QuestionData object
- */
 export function createQuestionData(
 	question: TriviaQuestion,
-	userAnswer: string | number,
+	userAnswer: number,
 	isCorrect: boolean,
 	timeSpent: number
-): QuestionData {
-	const correctAnswerText = question.answers[question.correctAnswerIndex]?.text || '';
-	const userAnswerText = typeof userAnswer === 'number' ? question.answers[userAnswer]?.text || '' : userAnswer;
-
+): QuestionDataWithQuestion {
 	return {
 		question: question.question,
-		userAnswer: userAnswerText,
-		correctAnswer: correctAnswerText,
+		questionId: question.id,
+		userAnswerIndex: userAnswer >= 0 ? userAnswer : -1,
+		correctAnswerIndex: getCorrectAnswerIndex(question),
 		isCorrect,
 		timeSpent,
 	};
+}
+
+export function hasQuestionAccess(data: QuestionData): data is QuestionDataWithQuestion {
+	return 'questionId' in data && 'userAnswerIndex' in data && 'correctAnswerIndex' in data;
 }

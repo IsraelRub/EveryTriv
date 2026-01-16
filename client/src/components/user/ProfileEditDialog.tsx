@@ -1,13 +1,16 @@
-import { ChangeEvent, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Key } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Edit, Key } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant, ToastVariant, VALIDATION_MESSAGES } from '@/constants';
+import { validateFirstName, validateLastName } from '@shared/validation';
+
+import { ButtonVariant } from '@/constants';
 import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
 	AvatarSelector,
 	Button,
+	ChangePasswordDialog,
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -15,39 +18,24 @@ import {
 	DialogTitle,
 	Input,
 	Label,
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
 } from '@/components';
-import { useAppSelector, useChangePassword, useToast, useUpdateUserProfile, useUserProfile } from '@/hooks';
-import type { PasswordFieldErrors, ProfileEditDialogProps, RootState } from '@/types';
-import { cn, getAvatarUrl, getUserInitials } from '@/utils';
-import { validatePasswordForm, validatePasswordLength, validatePasswordMatch } from '@/utils/validation';
+import { useCurrentUserData, useUpdateUserProfile, useUserProfile } from '@/hooks';
+import type { ProfileEditDialogProps } from '@/types';
+import { getAvatarUrl, getUserInitials } from '@/utils';
 
 export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps) {
-	const [activeTab, setActiveTab] = useState('profile');
 	const [isEditing, setIsEditing] = useState(false);
 	const [editData, setEditData] = useState({ firstName: '', lastName: '' });
-	const [showPasswordForm, setShowPasswordForm] = useState(false);
-	const [passwordData, setPasswordData] = useState({
-		currentPassword: '',
-		newPassword: '',
-		confirmPassword: '',
-	});
-	const [passwordFieldErrors, setPasswordFieldErrors] = useState<PasswordFieldErrors>({});
 	const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+	const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
 
-	const { currentUser, avatar: reduxAvatar } = useAppSelector((state: RootState) => state.user);
-	const { data: userProfile, isLoading: profileLoading } = useUserProfile();
+	const currentUser = useCurrentUserData();
+	const { data: userProfile, isLoading } = useUserProfile();
 	const updateProfile = useUpdateUserProfile();
-	const changePassword = useChangePassword();
-	const { toast } = useToast();
 
 	const profile = userProfile?.profile;
-	const isLoading = profileLoading;
-	// Avatar field stores avatarId as number - prioritize Redux state for immediate updates
-	const currentAvatarId = reduxAvatar ?? profile?.avatar ?? undefined;
+	// Avatar field stores avatarId as number - get from profile
+	const currentAvatarId = profile?.avatar ?? undefined;
 	// Memoize avatar URL to ensure it updates when avatar changes
 	const avatarUrl = useMemo(() => {
 		return getAvatarUrl(currentAvatarId);
@@ -55,120 +43,32 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 
 	const handleEditStart = () => {
 		setEditData({
-			firstName: profile?.firstName || '',
-			lastName: profile?.lastName || '',
+			firstName: profile?.firstName ?? '',
+			lastName: profile?.lastName ?? '',
 		});
 		setIsEditing(true);
 	};
 
-	const handlePasswordFormToggle = () => {
-		setShowPasswordForm(!showPasswordForm);
-		if (!showPasswordForm) {
-			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-			setPasswordFieldErrors({});
-		}
-	};
-
-	const validatePasswordField = (name: string, value: string): string | null => {
-		if (name === 'currentPassword') {
-			if (!value.trim()) return VALIDATION_MESSAGES.CURRENT_PASSWORD_REQUIRED;
-		}
-		if (name === 'newPassword') {
-			const validation = validatePasswordLength(value);
-			if (!validation.isValid) {
-				return validation.errors[0] || VALIDATION_MESSAGES.PASSWORD_INVALID;
-			}
-		}
-		if (name === 'confirmPassword') {
-			const validation = validatePasswordMatch(passwordData.newPassword, value);
-			if (!validation.isValid) {
-				return validation.errors[0] || VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID;
-			}
-		}
-		return null;
-	};
-
-	const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = e.target;
-		setPasswordData(prev => ({
-			...prev,
-			[name]: value,
-		}));
-
-		const fieldError = validatePasswordField(name, value);
-		setPasswordFieldErrors(prev => ({
-			...prev,
-			[name]: fieldError || undefined,
-		}));
-
-		if (name === 'newPassword' && passwordData.confirmPassword) {
-			const confirmError = validatePasswordField('confirmPassword', passwordData.confirmPassword);
-			setPasswordFieldErrors(prev => ({
-				...prev,
-				confirmPassword: confirmError || undefined,
-			}));
-		}
-	};
-
-	const isPasswordFormValid = (): boolean => {
-		if (!passwordData.currentPassword.trim()) return false;
-		const passwordValidation = validatePasswordForm({
-			newPassword: passwordData.newPassword,
-			confirmPassword: passwordData.confirmPassword,
-		});
-		return passwordValidation.isValid;
-	};
-
 	const handleSave = async () => {
+		// Validate before saving
+		const firstNameValidation = validateFirstName(editData.firstName);
+		const lastNameValidation = validateLastName(editData.lastName, false);
+
+		if (!firstNameValidation.isValid || !lastNameValidation.isValid) {
+			// Validation errors are handled by server, but we can prevent submission
+			// The server will return proper error messages
+			return;
+		}
+
 		try {
+			// Always send lastName, even if empty (server will convert empty string to null)
 			await updateProfile.mutateAsync({
-				firstName: editData.firstName,
-				lastName: editData.lastName,
+				firstName: editData.firstName.trim(),
+				lastName: editData.lastName.trim(),
 			});
 			setIsEditing(false);
 		} catch {
 			// Error handled by mutation
-		}
-	};
-
-	const handlePasswordSave = async () => {
-		const currentPasswordError = validatePasswordField('currentPassword', passwordData.currentPassword);
-		const newPasswordError = validatePasswordField('newPassword', passwordData.newPassword);
-		const confirmPasswordError = validatePasswordField('confirmPassword', passwordData.confirmPassword);
-
-		const newFieldErrors: typeof passwordFieldErrors = {};
-		if (currentPasswordError) newFieldErrors.currentPassword = currentPasswordError;
-		if (newPasswordError) newFieldErrors.newPassword = newPasswordError;
-		if (confirmPasswordError) newFieldErrors.confirmPassword = confirmPasswordError;
-
-		setPasswordFieldErrors(newFieldErrors);
-
-		if (currentPasswordError || newPasswordError || confirmPasswordError) {
-			return;
-		}
-
-		if (!isPasswordFormValid()) {
-			return;
-		}
-
-		try {
-			await changePassword.mutateAsync({
-				currentPassword: passwordData.currentPassword,
-				newPassword: passwordData.newPassword,
-			});
-			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-			setPasswordFieldErrors({});
-			setShowPasswordForm(false);
-			toast({
-				title: 'Password Changed',
-				description: 'Your password has been updated successfully.',
-			});
-		} catch {
-			toast({
-				title: 'Error',
-				description: 'Failed to change password. Please check your current password.',
-				variant: ToastVariant.DESTRUCTIVE,
-			});
 		}
 	};
 
@@ -179,18 +79,14 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 		if (profile?.firstName) {
 			return profile.firstName;
 		}
-		return currentUser?.email?.split('@')[0] || 'User';
+		return currentUser?.email?.split('@')[0] ?? 'User';
 	};
 
 	const handleDialogClose = (shouldClose: boolean) => {
 		if (shouldClose) {
 			// Reset all state when closing
 			setIsEditing(false);
-			setShowPasswordForm(false);
 			setEditData({ firstName: '', lastName: '' });
-			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-			setPasswordFieldErrors({});
-			setActiveTab('profile');
 		}
 		onOpenChange(shouldClose);
 	};
@@ -198,196 +94,100 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 	return (
 		<>
 			<Dialog open={open} onOpenChange={handleDialogClose}>
-				<DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+				<DialogContent className='max-w-2xl max-h-[90vh]'>
 					<DialogHeader>
 						<DialogTitle>Edit Profile</DialogTitle>
-						<DialogDescription>Manage your profile information and password</DialogDescription>
+						<DialogDescription>Manage your profile information</DialogDescription>
 					</DialogHeader>
 
 					{isLoading ? (
 						<div className='py-8 text-center text-muted-foreground'>Loading profile...</div>
 					) : (
 						<div className='space-y-6 py-4'>
-							{/* Profile Header */}
-							<div className='flex items-center gap-4'>
-								<div className='relative'>
-									<Avatar className='h-20 w-20'>
-										<AvatarImage key={currentAvatarId} src={avatarUrl} alt={getDisplayName()} />
-										<AvatarFallback className='text-2xl'>
-											{getUserInitials(profile?.firstName, profile?.lastName, currentUser?.email)}
-										</AvatarFallback>
-									</Avatar>
-									<Button
-										variant={ButtonVariant.OUTLINE}
-										size={ButtonSize.SM}
-										className='absolute -bottom-1 -right-1 h-6 w-6 rounded-full p-0'
-										onClick={() => setShowAvatarSelector(true)}
-									>
-										<svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-											<path
-												strokeLinecap='round'
-												strokeLinejoin='round'
-												strokeWidth={2}
-												d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-											/>
-										</svg>
-									</Button>
+							{/* Two Column Layout */}
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+								{/* Left Column: Avatar and Name */}
+								<div className='flex items-center gap-4'>
+									<div className='relative'>
+										<Avatar className='h-20 w-20'>
+											<AvatarImage key={currentAvatarId} src={avatarUrl} />
+											<AvatarFallback className='text-2xl'>
+												{getUserInitials(profile?.firstName, profile?.lastName, currentUser?.email)}
+											</AvatarFallback>
+										</Avatar>
+										<Button
+											variant={ButtonVariant.DEFAULT}
+											className='absolute -bottom-1 -right-1 h-6 w-6 !rounded-full !p-0 !aspect-square flex items-center justify-center'
+											onClick={() => setShowAvatarSelector(true)}
+										>
+											<svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+												<path
+													strokeLinecap='round'
+													strokeLinejoin='round'
+													strokeWidth={2}
+													d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+												/>
+											</svg>
+										</Button>
+									</div>
+									<div className='flex flex-col'>
+										<h3 className='text-xl font-semibold'>{getDisplayName()}</h3>
+										<p className='text-sm text-muted-foreground'>{currentUser?.email}</p>
+									</div>
 								</div>
-								<div>
-									<h3 className='text-xl font-semibold'>{getDisplayName()}</h3>
-									<p className='text-sm text-muted-foreground'>{currentUser?.email}</p>
-								</div>
+
+								{/* Right Column: Buttons */}
+								{!isEditing && (
+									<div className='flex flex-col gap-3 justify-center items-center md:items-start'>
+										<Button variant={ButtonVariant.DEFAULT} onClick={handleEditStart} className='w-full md:w-auto'>
+											<Edit className='h-4 w-4 mr-2' />
+											Edit Profile
+										</Button>
+										<Button
+											variant={ButtonVariant.DEFAULT}
+											onClick={() => setShowChangePasswordDialog(true)}
+											className='w-full md:w-auto'
+										>
+											<Key className='h-4 w-4 mr-2' />
+											Change Password
+										</Button>
+									</div>
+								)}
 							</div>
 
-							{/* Tabs */}
-							<Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-								<TabsList className='grid w-full grid-cols-2'>
-									<TabsTrigger value='profile'>Profile</TabsTrigger>
-									<TabsTrigger value='password'>
-										<Key className='h-4 w-4 mr-2' />
-										Password
-									</TabsTrigger>
-								</TabsList>
-
-								{/* Profile Tab */}
-								<TabsContent value='profile' className='mt-6'>
-									{isEditing ? (
-										<div className='space-y-4'>
-											<div className='flex gap-2'>
-												<div className='flex-1'>
-													<Label htmlFor='firstName'>First Name</Label>
-													<Input
-														id='firstName'
-														value={editData.firstName}
-														onChange={e => setEditData(prev => ({ ...prev, firstName: e.target.value }))}
-														placeholder='First name'
-													/>
-												</div>
-												<div className='flex-1'>
-													<Label htmlFor='lastName'>Last Name</Label>
-													<Input
-														id='lastName'
-														value={editData.lastName}
-														onChange={e => setEditData(prev => ({ ...prev, lastName: e.target.value }))}
-														placeholder='Last name'
-													/>
-												</div>
-											</div>
-											<div className='flex gap-2'>
-												<Button variant={ButtonVariant.OUTLINE} onClick={() => setIsEditing(false)}>
-													Cancel
-												</Button>
-												<Button onClick={handleSave} disabled={updateProfile.isPending}>
-													{updateProfile.isPending ? 'Saving...' : 'Save'}
-												</Button>
-											</div>
+							{/* Profile Information Section */}
+							{isEditing && (
+								<div className='space-y-4 pt-4 border-t'>
+									<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+										<div className='space-y-2'>
+											<Label htmlFor='firstName'>First Name</Label>
+											<Input
+												id='firstName'
+												value={editData.firstName}
+												onChange={e => setEditData(prev => ({ ...prev, firstName: e.target.value }))}
+												placeholder='First name'
+											/>
 										</div>
-									) : (
-										<div className='space-y-4'>
-											<div className='space-y-2'>
-												<Label>First Name</Label>
-												<div className='text-sm text-muted-foreground'>
-													{profile?.firstName || 'Not set'}
-												</div>
-											</div>
-											<div className='space-y-2'>
-												<Label>Last Name</Label>
-												<div className='text-sm text-muted-foreground'>{profile?.lastName || 'Not set'}</div>
-											</div>
-											<div className='flex justify-end'>
-												<Button variant={ButtonVariant.OUTLINE} onClick={handleEditStart}>
-													Edit Profile
-												</Button>
-											</div>
+										<div className='space-y-2'>
+											<Label htmlFor='lastName'>Last Name</Label>
+											<Input
+												id='lastName'
+												value={editData.lastName}
+												onChange={e => setEditData(prev => ({ ...prev, lastName: e.target.value }))}
+												placeholder='Last name'
+											/>
 										</div>
-									)}
-								</TabsContent>
-
-								{/* Password Tab */}
-								<TabsContent value='password' className='mt-6'>
-									{!showPasswordForm ? (
-										<div className='space-y-4'>
-											<p className='text-muted-foreground'>Click the button below to change your password.</p>
-											<Button onClick={handlePasswordFormToggle} variant={ButtonVariant.OUTLINE}>
-												<Key className='h-4 w-4 mr-2' />
-												Change Password
-											</Button>
-										</div>
-									) : (
-										<div className='space-y-4'>
-											<div className='space-y-2'>
-												<Label htmlFor='current-password'>Current Password</Label>
-												<Input
-													id='current-password'
-													name='currentPassword'
-													type='password'
-													value={passwordData.currentPassword}
-													onChange={handlePasswordChange}
-													className={cn(passwordFieldErrors.currentPassword && 'border-destructive')}
-													placeholder='Enter current password'
-												/>
-												{passwordFieldErrors.currentPassword && (
-													<p className='text-sm text-destructive flex items-center gap-1'>
-														<AlertCircle className='h-3 w-3' />
-														{passwordFieldErrors.currentPassword}
-													</p>
-												)}
-											</div>
-											<div className='space-y-2'>
-												<Label htmlFor='new-password'>New Password</Label>
-												<Input
-													id='new-password'
-													name='newPassword'
-													type='password'
-													value={passwordData.newPassword}
-													onChange={handlePasswordChange}
-													className={cn(passwordFieldErrors.newPassword && 'border-destructive')}
-													placeholder='Enter new password'
-												/>
-												{passwordFieldErrors.newPassword && (
-													<p className='text-sm text-destructive flex items-center gap-1'>
-														<AlertCircle className='h-3 w-3' />
-														{passwordFieldErrors.newPassword}
-													</p>
-												)}
-											</div>
-											<div className='space-y-2'>
-												<Label htmlFor='confirm-password'>Confirm New Password</Label>
-												<div className='relative'>
-													<Input
-														id='confirm-password'
-														name='confirmPassword'
-														type='password'
-														value={passwordData.confirmPassword}
-														onChange={handlePasswordChange}
-														className={cn(passwordFieldErrors.confirmPassword && 'border-destructive')}
-														placeholder='Confirm new password'
-													/>
-													{passwordData.confirmPassword &&
-														passwordData.newPassword === passwordData.confirmPassword &&
-														!passwordFieldErrors.confirmPassword && (
-															<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
-														)}
-												</div>
-												{passwordFieldErrors.confirmPassword && (
-													<p className='text-sm text-destructive flex items-center gap-1'>
-														<AlertCircle className='h-3 w-3' />
-														{passwordFieldErrors.confirmPassword}
-													</p>
-												)}
-											</div>
-											<div className='flex gap-2'>
-												<Button variant={ButtonVariant.OUTLINE} onClick={handlePasswordFormToggle}>
-													Cancel
-												</Button>
-												<Button onClick={handlePasswordSave} disabled={changePassword.isPending}>
-													{changePassword.isPending ? 'Changing...' : 'Change Password'}
-												</Button>
-											</div>
-										</div>
-									)}
-								</TabsContent>
-							</Tabs>
+									</div>
+									<div className='flex gap-2 pt-2'>
+										<Button variant={ButtonVariant.OUTLINE} onClick={() => setIsEditing(false)}>
+											Cancel
+										</Button>
+										<Button onClick={handleSave} disabled={updateProfile.isPending}>
+											{updateProfile.isPending ? 'Saving...' : 'Save'}
+										</Button>
+									</div>
+								</div>
+							)}
 						</div>
 					)}
 				</DialogContent>
@@ -399,7 +199,9 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 				onOpenChange={setShowAvatarSelector}
 				currentAvatarId={currentAvatarId ?? undefined}
 			/>
+
+			{/* Change Password Dialog */}
+			<ChangePasswordDialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog} />
 		</>
 	);
 }
-

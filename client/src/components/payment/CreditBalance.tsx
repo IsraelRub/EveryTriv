@@ -2,25 +2,20 @@ import { Link } from 'react-router-dom';
 import { Coins, Crown, Plus } from 'lucide-react';
 
 import { UserRole } from '@shared/constants';
-import { ROUTES, SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
-import { Badge, Spinner } from '@/components';
-import { useAppSelector, useCreditBalance } from '@/hooks';
-import { selectUserRole } from '@/redux/selectors';
 
-/**
- * Credit Balance Display Component
- * Shows user's credit balance with link to payment page
- * Admins see "Unlimited" badge instead of credit count
- */
+import { ROUTES, SpinnerSize, VariantBase } from '@/constants';
+import { Badge, Spinner } from '@/components';
+import { useCreditBalance, useUserRole } from '@/hooks';
+
 export function CreditBalance() {
 	const { data: creditBalance, isLoading } = useCreditBalance();
-	const userRole = useAppSelector(selectUserRole);
+	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;
 
 	if (isLoading) {
 		return (
 			<div className='flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50'>
-				<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='text-muted-foreground' />
+				<Spinner size={SpinnerSize.SM} variant='loader' className='text-muted-foreground' />
 				<span className='text-sm text-muted-foreground'>Loading...</span>
 			</div>
 		);

@@ -1,15 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MinLength } from 'class-validator';
+import { IsString, Length, Matches } from 'class-validator';
 
-/**
- * DTO for joining a multiplayer room
- * @class JoinRoomDto
- * @description Data transfer object for joining an existing multiplayer game room
- */
 export class JoinRoomDto {
-	@ApiProperty({ description: 'Room ID to join', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Room ID to join (8 alphanumeric characters)',
+		example: 'ABC12345',
+	})
 	@IsString()
-	@IsUUID()
-	@MinLength(1)
+	@Length(8, 8)
+	@Matches(/^[A-Z0-9]{8}$/, {
+		message: 'Room ID must be exactly 8 alphanumeric characters (A-Z, 0-9)',
+	})
 	roomId!: string;
 }

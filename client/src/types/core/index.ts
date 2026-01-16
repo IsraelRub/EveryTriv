@@ -1,11 +1,5 @@
-/**
- * Core Types Index
- * @module CoreTypes
- * @description Central export for all core types (Redux, hooks, base UI)
- */
-
-export * from './redux';
-export * from './hooks';
-export * from './ui';
-export * from './ui.types';
+export * from './redux.types';
+export * from './hooks.types';
+export * from './ui-base.types';
 export * from './validation.types';
+export * from './pagination.types';

@@ -1,11 +1,3 @@
-/**
- * Background Animation Constants
- * Constants for animated background words effect
- */
-
-/**
- * Trivia topic words to display in the background
- */
 export const TRIVIA_WORDS = [
 	'History',
 	'Science',
@@ -69,9 +61,6 @@ export const TRIVIA_WORDS = [
 	'Invention',
 ] as const;
 
-/**
- * Font families for animated words
- */
 export const ANIMATION_FONTS = [
 	'var(--font-family-sans)',
 	'Georgia, serif',
@@ -95,10 +84,6 @@ export const ANIMATION_FONTS = [
 	'Papyrus, fantasy',
 ] as const;
 
-/**
- * Color values from the project palette
- * Focused on primary theme colors with variations for visual coherence
- */
 export const ANIMATION_COLORS = [
 	// Primary color variations (blue)
 	'hsl(217 91% 60%)', // primary-500
@@ -126,9 +111,6 @@ export const ANIMATION_COLORS = [
 	'hsl(217 33% 17%)', // muted
 ] as const;
 
-/**
- * Diagonal directions for word movement
- */
 export const WORD_DIRECTIONS = [
 	'diagonal-up-right',
 	'diagonal-up-left',
@@ -140,9 +122,6 @@ export const WORD_DIRECTIONS = [
 	'vertical-down',
 ] as const;
 
-/**
- * Background animation configuration
- */
 export const BACKGROUND_ANIMATION_CONFIG = {
 	wordCount: 18,
 	minDuration: 15,

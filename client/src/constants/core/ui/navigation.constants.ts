@@ -1,9 +1,5 @@
 import type { NavigationLinks } from '@/types';
 
-/**
- * Application route constants
- * @description Centralized route paths for the entire application
- */
 export const ROUTES = {
 	// Public routes
 	HOME: '/',
@@ -21,7 +17,6 @@ export const ROUTES = {
 	GAME: '/game',
 	GAME_PLAY: '/game/play',
 	GAME_SUMMARY: '/game/summary',
-	GAME_CUSTOM: '/game/custom',
 
 	// Multiplayer routes
 	MULTIPLAYER: '/multiplayer',

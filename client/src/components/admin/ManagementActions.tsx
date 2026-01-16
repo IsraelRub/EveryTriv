@@ -1,44 +1,14 @@
-/**
- * Management Actions Component
- *
- * @module ManagementActions
- * @description Unified component for all management clear operations
- */
 import { useState } from 'react';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 import { ButtonVariant } from '@/constants';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
+import type { ClearOperation } from '@/types';
 import { ConfirmClearDialog } from './ConfirmClearDialog';
 
-interface ClearOperation {
-	id: string;
-	title: string;
-	description: string;
-	itemName: string;
-	currentCount?: number;
-	onClear: () => void;
-	isLoading?: boolean;
-	icon: typeof AlertTriangle;
-}
-
-interface ManagementActionsProps {
-	operations: ClearOperation[];
-}
-
-/**
- * Unified component for all management actions
- * @param props Component props
- * @returns Management actions component
- */
-export function ManagementActions({ operations }: ManagementActionsProps) {
+export function ManagementActions({ operations }: { operations: ClearOperation[] }) {
 	const [openDialog, setOpenDialog] = useState<string | null>(null);
 	const [selectedOperation, setSelectedOperation] = useState<ClearOperation | null>(null);
-
-	const handleOpenDialog = (operation: ClearOperation) => {
-		setSelectedOperation(operation);
-		setOpenDialog(operation.id);
-	};
 
 	const handleConfirm = () => {
 		if (selectedOperation) {
@@ -70,9 +40,12 @@ export function ManagementActions({ operations }: ManagementActionsProps) {
 								)}
 								<Button
 									variant={ButtonVariant.DESTRUCTIVE}
-									onClick={() => handleOpenDialog(operation)}
+									onClick={() => {
+										setSelectedOperation(operation);
+										setOpenDialog(operation.id);
+									}}
 									disabled={
-										operation.isLoading || (operation.currentCount !== undefined && operation.currentCount === 0)
+										operation.isLoading ?? (operation.currentCount !== undefined && operation.currentCount === 0)
 									}
 									className='w-full'
 								>

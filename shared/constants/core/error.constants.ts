@@ -1,13 +1,3 @@
-/**
- * Error constants for EveryTriv
- * Used by both client and server
- *
- * @module ErrorConstants
- * @description Error messages and error handling constants
- * @used_by server/src/features/game/logic/providers/management, client/src/components/error
- */
-
-// Error codes for application errors
 export const ERROR_CODES = {
 	AI_PROVIDERS_FAILED: 'AI_PROVIDERS_FAILED',
 	NETWORK_ERROR: 'NETWORK_ERROR',
@@ -51,6 +41,7 @@ export const ERROR_CODES = {
 	INVALID_GAME_MODE: 'INVALID_GAME_MODE',
 	INVALID_QUESTION_ID_FORMAT: 'INVALID_QUESTION_ID_FORMAT',
 	INVALID_GAME_ID_FORMAT: 'INVALID_GAME_ID_FORMAT',
+	INVALID_ROOM_ID_FORMAT: 'INVALID_ROOM_ID_FORMAT',
 	FAILED_TO_SAVE_CONFIG: 'FAILED_TO_SAVE_CONFIG',
 	INVALID_QUESTION_FORMAT: 'INVALID_QUESTION_FORMAT',
 	INVALID_QUESTION_FORMAT_FROM_AI: 'INVALID_QUESTION_FORMAT_FROM_AI',
@@ -103,6 +94,9 @@ export const ERROR_CODES = {
 	NOT_PART_OF_ROOM: 'NOT_PART_OF_ROOM',
 	PLAYER_NOT_FOUND_IN_ROOM: 'PLAYER_NOT_FOUND_IN_ROOM',
 	QUESTION_NOT_FOUND_OR_NOT_CURRENT: 'QUESTION_NOT_FOUND_OR_NOT_CURRENT',
+	TIMER_ERROR: 'TIMER_ERROR',
+	CACHE_SYNC_ERROR: 'CACHE_SYNC_ERROR',
+	REDIS_ERROR: 'REDIS_ERROR',
 	// Game
 	QUESTION_ID_REQUIRED: 'QUESTION_ID_REQUIRED',
 	QUESTION_ID_AND_ANSWER_REQUIRED: 'QUESTION_ID_AND_ANSWER_REQUIRED',
@@ -130,31 +124,8 @@ export const ERROR_CODES = {
 	API_KEY_NOT_CONFIGURED: 'API_KEY_NOT_CONFIGURED',
 } as const;
 
-/**
- * Error messages organized by category
- * @constant
- * @description Structured error messages for different application domains
- *
- * @methodology Error Messages Usage Guidelines
- * @description When to use each category:
- *
- * **ERROR_MESSAGES.general.*** - General application errors, used by both client and server
- * - Use for: Authentication failures, network errors, database errors, cache errors
- * - Examples: AUTHENTICATION_FAILED, NETWORK_ERROR, DATABASE_OPERATION_FAILED
- *
- * **ERROR_MESSAGES.api.*** - API-specific errors (client-side API calls)
- * - Use for: Invalid API responses, session expiration, API structure errors, API operation failures
- * - Examples: INVALID_API_RESPONSE_STRUCTURE, SESSION_EXPIRED, FAILED_TO_STORE_AUTH_TOKEN
- *
- * **ERROR_MESSAGES.validation.*** - Server-side validation errors
- * - Use for: Validation errors from server (not UI validation), input validation errors
- * - Examples: INVALID_EMAIL, REQUIRED, USER_ID_REQUIRED, AVATAR_ID_OUT_OF_RANGE
- *
- * **ERROR_MESSAGES.[category].*** - Domain-specific errors
- * - Use for: Payment, game, provider, storage, cache, timeout, analytics errors
- *
- * @used_by server/src/features, shared/utils, client/src/services
- */
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
 export const ERROR_MESSAGES = {
 	general: {
 		UNKNOWN_ERROR: 'An unknown error occurred.',
@@ -197,15 +168,11 @@ export const ERROR_MESSAGES = {
 		INVALID_PAYMENT_AMOUNT: 'Invalid payment amount',
 		PAYMENT_PROCESSING_FAILED: 'Payment processing failed',
 		FAILED_TO_RETRIEVE_PAYMENT_HISTORY: 'Failed to retrieve payment history',
-		FAILED_TO_RETRIEVE_SUBSCRIPTION: 'Failed to retrieve subscription details',
 		INVALID_CREDIT_OPTION: 'Invalid credit purchase option',
 		PAYMENT_FAILED: 'Payment failed',
 		USER_NOT_FOUND: 'User not found',
 		FAILED_TO_PURCHASE_CREDITS: 'Failed to purchase credits',
 		INVALID_PLAN_TYPE: 'Invalid plan type',
-		FAILED_TO_CREATE_SUBSCRIPTION: 'Failed to create subscription',
-		NO_ACTIVE_SUBSCRIPTION: 'No active subscription found',
-		FAILED_TO_CANCEL_SUBSCRIPTION: 'Failed to cancel subscription',
 	},
 	provider: {
 		INVALID_CLAUDE_RESPONSE: 'Invalid Claude response format',
@@ -285,12 +252,6 @@ export const ERROR_MESSAGES = {
 	},
 } as const;
 
-/**
- * NestJS exception names array
- * @constant
- * @description Array of NestJS exception names used for error handling
- * @used_by shared/utils/error.utils.ts
- */
 export const NEST_EXCEPTION_NAMES = [
 	'BadGatewayException',
 	'BadRequestException',
@@ -316,3 +277,11 @@ export const NEST_EXCEPTION_NAMES = [
 	'UnprocessableEntityException',
 	'UnsupportedMediaTypeException',
 ] as const;
+
+export const NEST_EXCEPTION_NAME_SET = new Set<string>(NEST_EXCEPTION_NAMES);
+
+export const MAX_NESTED_ERROR_DEPTH = 5;
+
+export const HTTP_TIMEOUT_ERROR_CODES_SET = new Set<string>(['ECONNABORTED', 'ETIMEDOUT']);
+
+export const HTTP_NETWORK_ERROR_CODES_SET = new Set<string>(['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET']);

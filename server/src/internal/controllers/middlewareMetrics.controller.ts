@@ -1,40 +1,25 @@
-/**
- * Middleware Metrics Controller
- *
- * @module MiddlewareMetricsController
- * @description Controller for accessing middleware performance metrics
- */
 import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
 
-import { ERROR_CODES, UserRole, defaultValidators } from '@shared/constants';
+import { ERROR_CODES, UserRole, VALIDATORS } from '@shared/constants';
+import type { AllMetricsResponse, MetricsResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-import { serverLogger as logger } from '@internal/services';
-import { MetricsService } from '@internal/services/metrics';
-import type { AllMiddlewareMetricsResponse, MiddlewareMetricsResponse } from '@internal/types';
+
+import { serverLogger as logger, MetricsService } from '@internal/services';
 import { Roles } from '@common';
 
-/**
- * Type guard to check if metrics is a single middleware metrics object
- */
 function isMiddlewareMetrics(metrics: unknown): metrics is { requestCount: number } {
-	return isRecord(metrics) && defaultValidators.number(metrics.requestCount);
+	return isRecord(metrics) && VALIDATORS.number(metrics.requestCount);
 }
 
 // MiddlewareMetrics type is used implicitly
 
-/**
- * Controller for middleware metrics management
- */
 @Controller('admin/middleware-metrics')
-export class MiddlewareMetricsController {
+export class MetricsController {
 	constructor(private readonly metricsService: MetricsService) {}
 
-	/**
-	 * Get all middleware metrics
-	 */
 	@Get()
 	@Roles(UserRole.ADMIN)
-	async getAllMetrics(): Promise<AllMiddlewareMetricsResponse | MiddlewareMetricsResponse> {
+	async getAllMetrics(): Promise<AllMetricsResponse | MetricsResponse> {
 		try {
 			const allMetrics = this.metricsService.getMetrics();
 			const middlewareMetrics = this.metricsService.getMiddlewareMetrics();
@@ -47,7 +32,7 @@ export class MiddlewareMetricsController {
 			// Type guard to ensure we have the correct type
 			if (isMiddlewareMetrics(middlewareMetrics)) {
 				// Single middleware metrics
-				// Return only the data - ResponseFormattingInterceptor will handle the response structure
+				// Return only the data - ResponseFormatter will handle the response structure
 				return middlewareMetrics;
 			}
 
@@ -64,28 +49,28 @@ export class MiddlewareMetricsController {
 							return sum + (metrics?.averageDuration ?? 0);
 						}, 0) / middlewareNames.length
 					: 0;
-			const slowestMiddleware =
-				middlewareNames.length > 0
-					? middlewareNames.reduce((slowest, current) => {
-							const currentMetrics = middlewareMetrics[current];
-							const slowestMetrics = middlewareMetrics[slowest];
-							if (currentMetrics == null || slowestMetrics == null) {
-								return slowest;
-							}
-							return currentMetrics.averageDuration > slowestMetrics.averageDuration ? current : slowest;
-						})
-					: 'N/A';
-			const mostUsedMiddleware =
-				middlewareNames.length > 0
-					? middlewareNames.reduce((most, current) => {
-							const currentMetrics = middlewareMetrics[current];
-							const mostMetrics = middlewareMetrics[most];
-							if (currentMetrics == null || mostMetrics == null) {
-								return most;
-							}
-							return currentMetrics.requestCount > mostMetrics.requestCount ? current : most;
-						})
-					: 'N/A';
+			let slowestMiddleware = 'N/A';
+			if (middlewareNames.length > 0) {
+				let maxDuration = 0;
+				for (const name of middlewareNames) {
+					const metrics = middlewareMetrics[name];
+					if (metrics != null && metrics.averageDuration > maxDuration) {
+						maxDuration = metrics.averageDuration;
+						slowestMiddleware = name;
+					}
+				}
+			}
+			let mostUsedMiddleware = 'N/A';
+			if (middlewareNames.length > 0) {
+				let maxRequests = 0;
+				for (const name of middlewareNames) {
+					const metrics = middlewareMetrics[name];
+					if (metrics != null && metrics.requestCount > maxRequests) {
+						maxRequests = metrics.requestCount;
+						mostUsedMiddleware = name;
+					}
+				}
+			}
 
 			const summary = {
 				totalMiddlewares: middlewareNames.length,
@@ -97,7 +82,7 @@ export class MiddlewareMetricsController {
 
 			logger.systemInfo('Middleware metrics accessed', {
 				totalMiddlewares: summary.totalMiddlewares,
-				totalRequests: summary.totalRequests,
+				requestCounts: { total: summary.totalRequests },
 			});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
@@ -108,19 +93,16 @@ export class MiddlewareMetricsController {
 			};
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			throw error;
 		}
 	}
 
-	/**
-	 * Get metrics for specific middleware
-	 */
 	@Get(':middlewareName')
 	@Roles(UserRole.ADMIN)
-	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MiddlewareMetricsResponse> {
+	async getMiddlewareMetrics(@Param('middlewareName') middlewareName: string): Promise<MetricsResponse> {
 		try {
 			const metrics = this.metricsService.getMiddlewareMetrics(middlewareName);
 
@@ -132,7 +114,7 @@ export class MiddlewareMetricsController {
 
 			logger.systemInfo('Middleware metrics accessed', {
 				middleware: middlewareName,
-				requestCount,
+				requestCounts: { current: requestCount },
 			});
 
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
@@ -140,16 +122,13 @@ export class MiddlewareMetricsController {
 		} catch (error) {
 			logger.systemError('Failed to get middleware metrics', {
 				middleware: middlewareName,
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			throw error;
 		}
 	}
 
-	/**
-	 * Reset metrics for specific middleware
-	 */
 	@Delete(':middlewareName')
 	@Roles(UserRole.ADMIN)
 	async resetMiddlewareMetrics(@Param('middlewareName') middlewareName: string) {
@@ -167,16 +146,13 @@ export class MiddlewareMetricsController {
 		} catch (error) {
 			logger.systemError('Failed to reset middleware metrics', {
 				middleware: middlewareName,
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			throw error;
 		}
 	}
 
-	/**
-	 * Reset all middleware metrics
-	 */
 	@Delete()
 	@Roles(UserRole.ADMIN)
 	async resetAllMetrics() {
@@ -189,7 +165,7 @@ export class MiddlewareMetricsController {
 			return { reset: true };
 		} catch (error) {
 			logger.systemError('Failed to reset all middleware metrics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			throw error;

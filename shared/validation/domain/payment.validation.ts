@@ -1,52 +1,6 @@
-/**
- * Payment-related validation utilities
- *
- * @module PaymentValidation
- * @description Shared validation functions for payment processing and transaction validation
- * @author EveryTriv Team
- */
-import type { BaseValidationResult } from '../../types';
+import type { ValidationResult } from '../../types';
 import { sanitizeCardNumber } from '../../utils/infrastructure/sanitization.utils';
 
-/**
- * Validates payment amount and currency constraints
- *
- * @param amount The payment amount to validate
- * @param currency The currency code for validation (defaults to USD)
- * @returns PaymentValidationResult Validation result with errors and warnings
- * @description Checks payment amount limits, currency-specific rules, and provides warnings for large amounts
- */
-export function validatePaymentAmount(amount: number, currency: string = 'USD'): BaseValidationResult {
-	const errors: string[] = [];
-	const warnings: string[] = [];
-
-	if (!amount || amount <= 0) {
-		errors.push('Payment amount must be greater than 0');
-	}
-
-	if (amount > 10000) {
-		errors.push('Payment amount must be less than 10000');
-	}
-
-	if (currency === 'USD' && amount > 1000) {
-		warnings.push('Large payment amount detected');
-	}
-
-	return {
-		isValid: errors.length === 0,
-		errors,
-		warnings,
-	};
-}
-
-/**
- * Validates credit card number using Luhn algorithm and length constraints
- *
- * @param rawNumber The credit card number string to validate
- * @returns boolean True if the card number passes validation (Luhn algorithm and length 12-19)
- * @description Validates credit card number using Luhn algorithm and checks length constraints.
- * Card numbers must be between 12 and 19 digits long and pass the Luhn checksum validation.
- */
 export function isValidCardNumber(rawNumber: string): boolean {
 	const digits = sanitizeCardNumber(rawNumber);
 	if (digits.length < 12 || digits.length > 19) {
@@ -76,4 +30,108 @@ export function isValidCardNumber(rawNumber: string): boolean {
 	}
 
 	return sum % 10 === 0;
+}
+
+export function validateExpiryDate(expiryDate: string): ValidationResult {
+	const errors: string[] = [];
+	let suggestion: string | undefined;
+
+	if (!expiryDate || typeof expiryDate !== 'string' || expiryDate.trim().length === 0) {
+		errors.push('Expiry date is required');
+		suggestion = 'Please enter your card expiry date';
+		return {
+			isValid: false,
+			errors,
+			suggestion,
+		};
+	}
+
+	const expiryPattern = /^(0[1-9]|1[0-2])\/\d{2}$/;
+	if (!expiryPattern.test(expiryDate)) {
+		errors.push('Expiry date must be in MM/YY format');
+		suggestion = 'Use MM/YY format (e.g., 12/25 for December 2025)';
+		return {
+			isValid: false,
+			errors,
+			suggestion,
+		};
+	}
+
+	const [month, year] = expiryDate.split('/');
+	const currentDate = new Date();
+	const currentYear = currentDate.getFullYear() % 100;
+	const currentMonth = currentDate.getMonth() + 1;
+
+	if (month != null) {
+		const monthNum = parseInt(month, 10);
+		if (monthNum < 1 || monthNum > 12) {
+			errors.push('Month must be between 01 and 12');
+			suggestion = 'Enter a valid month (01-12)';
+			return {
+				isValid: false,
+				errors,
+				suggestion,
+			};
+		}
+	}
+
+	if (month != null && year != null) {
+		const monthNum = parseInt(month, 10);
+		const yearNum = parseInt(year, 10);
+		if (yearNum < currentYear || (yearNum === currentYear && monthNum < currentMonth)) {
+			errors.push('Card has expired');
+			suggestion = 'Please use a card that has not expired';
+			return {
+				isValid: false,
+				errors,
+				suggestion,
+			};
+		}
+	}
+
+	return {
+		isValid: true,
+		errors: [],
+	};
+}
+
+export function validateCVV(cvv: string): ValidationResult {
+	const errors: string[] = [];
+	let suggestion: string | undefined;
+
+	if (!cvv || typeof cvv !== 'string' || cvv.trim().length === 0) {
+		errors.push('CVV is required');
+		suggestion = 'Please enter your 3-4 digit CVV';
+		return {
+			isValid: false,
+			errors,
+			suggestion,
+		};
+	}
+
+	const cleanCvv = cvv.replace(/\s+/g, '');
+	if (cleanCvv.length < 3 || cleanCvv.length > 4) {
+		errors.push('CVV must be 3-4 digits');
+		suggestion = 'Enter the 3-4 digit security code on the back of your card';
+		return {
+			isValid: false,
+			errors,
+			suggestion,
+		};
+	}
+
+	if (!/^\d+$/.test(cleanCvv)) {
+		errors.push('CVV can only contain digits');
+		suggestion = 'Remove any letters or special characters from your CVV';
+		return {
+			isValid: false,
+			errors,
+			suggestion,
+		};
+	}
+
+	return {
+		isValid: true,
+		errors: [],
+	};
 }

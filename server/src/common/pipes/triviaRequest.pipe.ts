@@ -1,32 +1,20 @@
-/**
- * Trivia Request Validation Pipe
- *
- * @module TriviaRequestPipe
- * @description Pipe for validating trivia request data
- * @used_by server/src/features/game, server/src/controllers
- */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { VALIDATION_COUNT } from '@shared/constants';
+import { VALIDATION_COUNT, VALIDATORS } from '@shared/constants';
 import { TriviaRequest } from '@shared/types';
-import { calculateDuration, getErrorMessage, isNonEmptyString, isRecord } from '@shared/utils';
-import { isGameDifficulty, toDifficultyLevel } from '@shared/validation';
+import { getErrorMessage, isNonEmptyString, isRecord } from '@shared/utils';
+import { toDifficultyLevel } from '@shared/validation';
+
 import { serverLogger as logger } from '@internal/services';
-import { defaultValidators } from '@shared/constants';
-import { TriviaRequestDto } from '../../features/game/dtos/triviaRequest.dto';
-import { ValidationService } from '../validation';
+import { TriviaRequestDto } from '@features/game/dtos';
 
 @Injectable()
 export class TriviaRequestPipe implements PipeTransform {
-	constructor(private readonly validationService: ValidationService) {}
-
 	async transform(value: unknown): Promise<TriviaRequestDto> {
-		const startTime = Date.now();
-
 		try {
 			// Debug: Log what we receive
 			const isStringValue = typeof value === 'string';
-			logger.validationDebug('trivia_request', '[REDACTED]', 'validation_start', {
+			logger.validationDebug('trivia_request', '[REDACTED]', 'transformation_start', {
 				type: typeof value,
 				data: {
 					isObject: isRecord(value),
@@ -39,74 +27,30 @@ export class TriviaRequestPipe implements PipeTransform {
 
 			const payload = this.buildTriviaPayload(value);
 
-			// Convert UNLIMITED_QUESTIONS (-1) to MAX before validation
+			// Convert UNLIMITED_QUESTIONS (-1) to MAX for DTO validation
+			// The DTO validator expects MAX when UNLIMITED is provided
 			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
 			const questionsPerRequestForValidation =
 				payload.questionsPerRequest === UNLIMITED ? MAX : payload.questionsPerRequest;
 
-			const errors: string[] = [];
-			const suggestions: string[] = [];
-
-			// Validate trivia request using service (business rules)
-			if (errors.length === 0) {
-				const triviaValidation = await this.validationService.validateTriviaRequest(
-					payload.topic,
-					payload.difficulty,
-					questionsPerRequestForValidation
-				);
-
-				if (!triviaValidation.isValid) {
-					errors.push(...triviaValidation.errors);
-					// Add suggestions based on common trivia request issues
-					if (triviaValidation.errors.some(e => e.includes('topic'))) {
-						suggestions.push('Try a more popular topic like "Science", "History", "Sports", or "Geography"');
-					}
-					if (triviaValidation.errors.some(e => e.includes('difficulty'))) {
-						suggestions.push('Start with "easy" difficulty if you\'re unsure');
-					}
-				}
-			}
-
-			if (errors.length === 0) {
-				logger.validationInfo('trivia_request', '[REDACTED]', 'validation_success');
-			} else {
-				logger.validationWarn('trivia_request', '[REDACTED]', 'validation_failed', {
-					errors,
-				});
-			}
-
-			// Log API call
-			logger.apiUpdate('trivia_request_validation', {
-				isValid: errors.length === 0,
-				errorsCount: errors.length,
-				duration: calculateDuration(startTime),
-			});
-
-			if (errors.length > 0) {
-				throw new BadRequestException({
-					message: 'Invalid trivia request',
-					errors,
-					suggestion: suggestions.length > 0 ? suggestions[0] : undefined,
-				});
-			}
-
 			// Create and return TriviaRequestDto with converted questionsPerRequest
+			// Validation will be handled by NestJS ValidationPipe using DTO decorators
 			return this.createTriviaRequestDto(payload, questionsPerRequestForValidation);
 		} catch (error) {
 			const errorMessage = getErrorMessage(error);
 
-			logger.validationError('trivia_request', '[REDACTED]', 'validation_error', {
-				error: errorMessage,
+			logger.validationError('trivia_request', '[REDACTED]', 'transformation_error', {
+				errorInfo: { message: errorMessage },
 			});
 
-			logger.apiUpdateError('triviaRequestValidation', errorMessage);
+			logger.apiUpdateError('triviaRequestTransformation', errorMessage);
 
 			if (error instanceof BadRequestException) {
 				throw error;
 			}
 
 			throw new BadRequestException({
-				message: 'Trivia request validation failed',
+				message: 'Trivia request transformation failed',
 				errors: [errorMessage],
 			});
 		}
@@ -186,7 +130,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			},
 		});
 
-		// NestJS already parses JSON body, so value should be an object
+		// Framework typically parses JSON body, so value should be an object
 		// Handle edge cases where value might be a string (shouldn't happen in normal flow)
 		if (typeof value === 'string') {
 			// Empty string or whitespace - invalid
@@ -219,7 +163,7 @@ export class TriviaRequestPipe implements PipeTransform {
 				} catch (error) {
 					// If parsing fails, throw a more descriptive error
 					logger.validationError('trivia_request', '[REDACTED]', 'normalize_json_parse_failed', {
-						error: getErrorMessage(error),
+						errorInfo: { message: getErrorMessage(error) },
 						data: {
 							preview: value.substring(0, 100),
 						},
@@ -264,10 +208,11 @@ export class TriviaRequestPipe implements PipeTransform {
 		}
 
 		const { questionsPerRequest, topic, difficulty } = candidate;
+		// Basic type checks - business validation happens in DTO
 		if (
 			!this.isValidQuestionsPerRequest(questionsPerRequest) ||
 			!isNonEmptyString(topic) ||
-			!isGameDifficulty(difficulty)
+			typeof difficulty !== 'string'
 		) {
 			return false;
 		}
@@ -276,13 +221,12 @@ export class TriviaRequestPipe implements PipeTransform {
 	}
 
 	private isValidQuestionsPerRequest(value: unknown): value is number {
-		if (!defaultValidators.number(value) || !Number.isInteger(value)) {
+		if (!VALIDATORS.number(value) || !Number.isInteger(value)) {
 			return false;
 		}
 		const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 		return value === UNLIMITED || (value >= MIN && value <= MAX);
 	}
-
 
 	private areOptionalTriviaFieldsValid(candidate: Record<string, unknown>): boolean {
 		const optionalChecks: boolean[] = [
@@ -291,17 +235,18 @@ export class TriviaRequestPipe implements PipeTransform {
 			this.isOptionalString(candidate.gameMode),
 			this.isOptionalNumber(candidate.timeLimit),
 			this.isOptionalNumber(candidate.maxQuestionsPerGame),
+			this.isOptionalNumber(candidate.answerCount),
 		];
 
 		return optionalChecks.every(Boolean);
 	}
 
 	private isOptionalString(value: unknown): boolean {
-		return value == null || defaultValidators.string(value);
+		return value == null || VALIDATORS.string(value);
 	}
 
 	private isOptionalNumber(value: unknown): boolean {
-		return value == null || defaultValidators.number(value);
+		return value == null || VALIDATORS.number(value);
 	}
 
 	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
@@ -329,6 +274,10 @@ export class TriviaRequestPipe implements PipeTransform {
 
 		if (payload.maxQuestionsPerGame !== undefined) {
 			dto.maxQuestionsPerGame = payload.maxQuestionsPerGame;
+		}
+
+		if (payload.answerCount !== undefined) {
+			dto.answerCount = payload.answerCount;
 		}
 
 		return dto;

@@ -1,39 +1,27 @@
-/**
- * Input content validation utilities
- *
- * @module InputValidation
- * @description Validation functions for input content security and content filtering
- */
+import { VALIDATION_LENGTH } from '@shared/constants';
+
 import type { Position, ValidationResult } from '../../types';
 
-/**
- * Validates input content for security and content filtering
- * @param input The input string to validate
- * @returns Promise resolving to validation result with position information and suggestions
- * Performs comprehensive content validation including length checks,
- * harmful content detection, and security filtering to prevent XSS attacks
- */
 export async function validateInputContent(input: string): Promise<ValidationResult> {
-	const minLength = 1;
-	const maxLength = 1000;
+	const { MIN, MAX } = VALIDATION_LENGTH.INPUT;
 
-	if (!input || input.trim().length < minLength) {
+	if (!input || input.trim().length < MIN) {
 		const position: Position = { start: 0, end: input?.length ?? 0 };
 		return {
 			isValid: false,
-			errors: [`Input must be at least ${minLength} characters long`],
+			errors: [`Input must be at least ${MIN} characters long`],
 			position,
 			suggestion: 'Please provide some content',
 		};
 	}
 
-	if (input.length > maxLength) {
-		const position: Position = { start: maxLength, end: input.length };
+	if (input.length > MAX) {
+		const position: Position = { start: MAX, end: input.length };
 		return {
 			isValid: false,
-			errors: [`Input must not exceed ${maxLength} characters`],
+			errors: [`Input must not exceed ${MAX} characters`],
 			position,
-			suggestion: `Please shorten your input to ${maxLength} characters or less`,
+			suggestion: `Please shorten your input to ${MAX} characters or less`,
 		};
 	}
 

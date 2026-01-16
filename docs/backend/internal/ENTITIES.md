@@ -1,6 +1,6 @@
 # Entities - Internal Structure
 
-תיעוד מפורט על כל ה-TypeORM Entities במערכת, כולל BaseEntity ו-9 entities נוספים.
+תיעוד מפורט על כל ה-TypeORM Entities במערכת, כולל BaseEntity ו-8 entities נוספים.
 
 ## סקירה כללית
 
@@ -14,9 +14,8 @@ Entities ב-NestJS משמשות לייצוג טבלאות במסד נתונים 
 - `trivia.entity.ts` - ישות שאלת טריוויה
 - `gameHistory.entity.ts` - ישות היסטוריית משחק
 - `userStats.entity.ts` - ישות סטטיסטיקות משתמש
-- `pointTransaction.entity.ts` - ישות עסקת נקודות
+- `creditTransaction.entity.ts` - ישות עסקת נקודות
 - `paymentHistory.entity.ts` - ישות היסטוריית תשלום
-- `subscription.entity.ts` - ישות מנוי
 - `leaderboard.entity.ts` - ישות לוח תוצאות
 
 ## BaseEntity
@@ -85,7 +84,6 @@ export class UserEntity extends BaseEntity {
 
 **העדפות והישגים:**
 - `preferences` (jsonb, default: {}) - העדפות משתמש (UserPreferences, כולל avatar: number 1-16)
-- `currentSubscriptionId` (string, nullable) - מזהה מנוי נוכחי
 - `achievements` (jsonb, default: []) - הישגים (Achievement[])
 
 ### אינדקסים
@@ -450,7 +448,6 @@ usageTransaction.metadata = {
 **Computed Properties (מטא-דאטה):**
 - `completedAt` (Date | undefined, getter/setter) - תאריך השלמה
 - `failedAt` (Date | undefined, getter/setter) - תאריך כשלון
-- `subscriptionId` (string | undefined, getter/setter) - מזהה מנוי
 - `originalAmount` (number | undefined, getter/setter) - סכום מקורי
 - `originalCurrency` (string | undefined, getter/setter) - מטבע מקורי
 
@@ -473,71 +470,15 @@ payment.amount = 1000; // $10.00 (בסנטים)
 payment.currency = 'USD';
 payment.status = PaymentStatus.PENDING;
 payment.paymentMethod = PaymentMethod.MANUAL_CREDIT;
-payment.description = 'Subscription payment';
+payment.description = 'Credit purchase payment';
 
 // עדכון סטטוס לאחר אישור
 payment.status = PaymentStatus.COMPLETED;
 payment.completedAt = new Date();
-payment.subscriptionId = subscriptionId;
 
 // עדכון מטא-דאטה
 payment.originalAmount = 10.00;
 payment.originalCurrency = 'USD';
-```
-
-## SubscriptionEntity
-
-**מיקום:** `server/src/internal/entities/subscription.entity.ts`
-
-**תפקיד:**
-- ייצוג מנוי
-- שמירת פרטי מנוי, תוכנית, ותקופות
-
-### שדות
-
-**קשר למשתמש:**
-- `userId` (string, indexed) - מזהה משתמש
-- `user` (ManyToOne → UserEntity, CASCADE delete) - קשר למשתמש
-
-**פרטי מנוי:**
-- `subscriptionExternalId` (varchar, default: '') - מזהה מנוי חיצוני (מ-PayPal/Stripe)
-- `planId` (varchar) - מזהה תוכנית
-- `status` (SubscriptionStatus enum, default: PENDING, private) - סטטוס מנוי
-
-**תקופות:**
-- `periodStart` (timestamp, nullable, private) - תחילת תקופה
-- `periodEnd` (timestamp, nullable, private) - סיום תקופה
-- `cancelAtPeriodEnd` (boolean, default: false) - ביטול בסיום תקופה
-
-**מטא-דאטה:**
-- `metadata` (jsonb, default: {}, private) - מטא-דאטה נוספת (SubscriptionMetadata)
-
-**Computed Properties:**
-- Getters/Setters ל-status, periodStart, periodEnd, metadata, וכו'
-
-### אינדקסים
-
-- `userId` - index
-
-### קשרים
-
-- `user` (ManyToOne) → `UserEntity` (CASCADE delete) - משתמש בעל המנוי
-
-### דוגמאות שימוש
-
-```typescript
-// יצירת מנוי חדש
-const subscription = new SubscriptionEntity();
-subscription.userId = userId;
-subscription.subscriptionExternalId = 'sub_123456';
-subscription.planId = 'premium';
-subscription.status = SubscriptionStatus.ACTIVE;
-subscription.periodStart = new Date();
-subscription.periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 ימים
-
-// ביטול מנוי בסיום תקופה
-subscription.cancelAtPeriodEnd = true;
-subscription.status = SubscriptionStatus.CANCELED;
 ```
 
 ## LeaderboardEntity

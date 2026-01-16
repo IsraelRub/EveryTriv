@@ -743,7 +743,6 @@ export class UserService {
       'dailyFreeQuestions',
       'remainingFreeQuestions',
       'role',
-      'currentSubscriptionId',
       'status',
     ];
 
@@ -772,19 +771,13 @@ export class UserService {
       remainingFreeQuestions: { type: 'number' },
     };
 
-    // Handle special fields (role, currentSubscriptionId, status)
+    // Handle special fields (role, status)
     if (field === 'role') {
       const validRole = Object.values(UserRole).find(role => role === value);
       if (validRole) {
         user.role = validRole;
       } else {
         throw createValidationError('role', 'string');
-      }
-    } else if (field === 'currentSubscriptionId') {
-      if (typeof value === 'string' || value === null || value === undefined) {
-        user.currentSubscriptionId = typeof value === 'string' ? value : undefined;
-      } else {
-        throw createValidationError('currentSubscriptionId', 'string');
       }
     } else if (field === 'status') {
       if (typeof value !== 'string') {

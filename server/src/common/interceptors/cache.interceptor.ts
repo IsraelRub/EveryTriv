@@ -1,40 +1,27 @@
-/**
- * Cache Interceptor for NestJS Controllers
- *
- * @module CacheInterceptor
- * @description Interceptor that implements caching based on @Cache decorator metadata
- * @author EveryTriv Team
- */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
+import { HttpMethod, VALIDATORS } from '@shared/constants';
 import type { StorageValue } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-import { CacheService } from '@internal/modules/cache/cache.service';
+
+import { StorageOperation } from '@internal/constants';
+import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { CacheConfig, NestRequest } from '@internal/types';
-import { defaultValidators } from '@shared/constants';
 
 const isExpressResponse = (value: unknown): value is Response =>
-	isRecord(value) && typeof value.status === 'function' && typeof value.setHeader === 'function';
+	isRecord(value) && VALIDATORS.function(value.status) && VALIDATORS.function(value.setHeader);
 
 const isCacheableValue = (value: unknown): value is StorageValue => {
-	if (value === null) {
-		return true;
-	}
-
 	if (value === undefined) {
 		return false;
 	}
 
-	if (defaultValidators.string(value) || defaultValidators.number(value) || defaultValidators.boolean(value)) {
-		return true;
-	}
-
-	if (value instanceof Date) {
+	if (value === null || Object.values(VALIDATORS).some(validator => validator(value))) {
 		return true;
 	}
 
@@ -49,10 +36,6 @@ const isCacheableValue = (value: unknown): value is StorageValue => {
 	return false;
 };
 
-/**
- * Cache Interceptor
- * @description Intercepts HTTP requests and implements caching based on @Cache decorator
- */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
 	constructor(
@@ -60,25 +43,16 @@ export class CacheInterceptor implements NestInterceptor {
 		private readonly reflector: Reflector
 	) {}
 
-	/**
-	 * Intercept HTTP requests and implement caching
-	 * @param context Execution context
-	 * @param next Call handler
-	 * @returns Observable with cached or fresh data
-	 */
 	async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
 		const request = context.switchToHttp().getRequest<NestRequest>();
 
-		// Read cache decorator metadata directly from handler (most reliable)
+		// Read cache decorator metadata directly from handler
 		const handler = context.getHandler();
-		const decoratorCache = this.reflector.get<CacheConfig>('cache', handler);
-
-		// Use decorator metadata if available, otherwise fall back to middleware metadata
-		const cacheMetadata = decoratorCache ?? request.decoratorMetadata?.cache;
+		const cacheMetadata = this.reflector.get<CacheConfig>('cache', handler);
 
 		// If no cache metadata or caching is disabled, proceed normally
 		// Also skip caching if ttl is 0 (NoCache decorator)
-		if (!cacheMetadata || cacheMetadata.disabled || cacheMetadata.ttl === 0) {
+		if (!cacheMetadata || (cacheMetadata.disabled ?? false) || cacheMetadata.ttl === 0) {
 			return next.handle();
 		}
 
@@ -161,8 +135,8 @@ export class CacheInterceptor implements NestInterceptor {
 							url: request.originalUrl,
 						});
 					} catch (error) {
-						logger.cacheError('set', cacheKey, {
-							error: getErrorMessage(error),
+						logger.cacheError(StorageOperation.SET, cacheKey, {
+							errorInfo: { message: getErrorMessage(error) },
 							ttl: cacheMetadata.ttl,
 							key: cacheMetadata.key,
 							tags: cacheMetadata.tags,
@@ -171,8 +145,8 @@ export class CacheInterceptor implements NestInterceptor {
 				})
 			);
 		} catch (error) {
-			logger.cacheError('get', cacheKey, {
-				error: getErrorMessage(error),
+			logger.cacheError(StorageOperation.GET, cacheKey, {
+				errorInfo: { message: getErrorMessage(error) },
 				ttl: cacheMetadata.ttl,
 				key: cacheMetadata.key,
 				tags: cacheMetadata.tags,
@@ -183,15 +157,9 @@ export class CacheInterceptor implements NestInterceptor {
 		}
 	}
 
-	/**
-	 * Generate cache key from request
-	 * @param request HTTP request object
-	 * @param customKey Custom key from decorator
-	 * @returns Generated cache key
-	 */
 	private generateCacheKey(request: NestRequest, customKey?: string): string {
 		// Get user ID from request if available (for user-specific caching)
-		const userId = request.user?.sub ?? request.user?.id ?? 'anonymous';
+		const userId = request.user?.sub ?? 'anonymous';
 
 		if (customKey) {
 			// Include userId in custom keys to make them user-specific
@@ -199,7 +167,7 @@ export class CacheInterceptor implements NestInterceptor {
 		}
 
 		// Generate key from request details
-		const method = request.method?.toLowerCase() ?? 'get';
+		const method = (request.method ?? HttpMethod.GET).toLowerCase();
 		const url = request.originalUrl ?? request.url ?? '/';
 		const query = request.query ? JSON.stringify(request.query) : '';
 		const params = request.params ? JSON.stringify(request.params) : '';

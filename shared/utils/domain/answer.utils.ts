@@ -1,53 +1,30 @@
-/**
- * Answer Utilities
- *
- * @module AnswerUtils
- * @description Utility functions for answer validation and result creation
- * @used_by client/src/views/game, server/src/features/game
- */
 import type { AnswerResult, TriviaQuestion } from '../../types';
 
-/**
- * Check if user's answer is correct
- * @param question The trivia question
- * @param userAnswer User's answer (string or number index)
- * @returns Whether the answer is correct
- */
-export function checkAnswerCorrectness(question: TriviaQuestion, userAnswer: string | number): boolean {
-	if (typeof userAnswer === 'number') {
-		return userAnswer === question.correctAnswerIndex;
+export function getCorrectAnswerIndex(question: TriviaQuestion): number {
+	// Use stored correctAnswerIndex if available (for performance and consistency with DB)
+	if (question.correctAnswerIndex !== undefined && question.correctAnswerIndex >= 0) {
+		return question.correctAnswerIndex;
 	}
-	const correctAnswerText = question.answers[question.correctAnswerIndex]?.text || '';
-	return userAnswer.toLowerCase().trim() === correctAnswerText.toLowerCase().trim();
+	// Fallback: calculate dynamically from answers (for backward compatibility)
+	return question.answers.findIndex(answer => answer.isCorrect);
 }
 
-/**
- * Create AnswerResult from question and answer information
- * @param questionId Question identifier
- * @param question The trivia question
- * @param userAnswer User's answer (string or number index)
- * @param isCorrect Whether the answer is correct
- * @param timeSpent Time spent answering in seconds
- * @param scoreEarned Score earned for this answer
- * @param totalScore Total score so far (default: 0)
- * @returns AnswerResult object
- */
+export function checkAnswerCorrectness(question: TriviaQuestion, userAnswer: number): boolean {
+	const correctIndex = getCorrectAnswerIndex(question);
+	return userAnswer === correctIndex;
+}
+
 export function createAnswerResult(
 	questionId: string,
-	question: TriviaQuestion,
-	userAnswer: string | number,
+	userAnswer: number,
 	isCorrect: boolean,
 	timeSpent: number,
 	scoreEarned: number,
 	totalScore: number = 0
 ): AnswerResult {
-	const correctAnswerText = question.answers[question.correctAnswerIndex]?.text || '';
-	const userAnswerText = typeof userAnswer === 'number' ? question.answers[userAnswer]?.text || '' : userAnswer;
-
 	return {
 		questionId,
-		userAnswer: userAnswerText,
-		correctAnswer: correctAnswerText,
+		userAnswerIndex: userAnswer >= 0 ? userAnswer : -1,
 		isCorrect,
 		timeSpent,
 		scoreEarned,

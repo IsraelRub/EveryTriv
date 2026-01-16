@@ -1,8 +1,10 @@
-# Leaderboard Module - EveryTriv
+# Leaderboard Feature - EveryTriv
 
 ## סקירה כללית
 
-מודול לוח התוצאות מספק את כל הפונקציונליות הקשורה לדירוג משתמשים ולטבלאות ציון, כולל לוח כללי, לוחות לפי תקופות זמן, ודירוג משתמשים בודדים.
+הלידרבאורד הוא חלק ממודול האנליזה ומספק את כל הפונקציונליות הקשורה לדירוג משתמשים ולטבלאות ציון, כולל לוח כללי, לוחות לפי תקופות זמן, ודירוג משתמשים בודדים.
+
+**הערה:** הלידרבאורד משולב במודול האנליזה (`AnalyticsModule`) ולא מודול נפרד. ראה [Analytics Module](./ANALYTICS.md) למידע נוסף.
 
 לקשר לדיאגרמות: [דיאגרמת מודולי Backend](../../DIAGRAMS.md#דיאגרמת-מודולי-backend)
 
@@ -13,17 +15,18 @@
 - לוחות לפי תקופות זמן (שבועי, חודשי, שנתי)
 - ניהול מנהלי (מנהלים בלבד)
 
-## מבנה מודול
+## מבנה בתוך Analytics Module
 
 ```
-server/src/features/leaderboard/
-├── dtos/                       # Data Transfer Objects
-│   ├── getLeaderboard.dto.ts   # DTO לשליפת לוח תוצאות
-│   └── index.ts
-├── leaderboard.controller.ts   # Controller
-├── leaderboard.service.ts      # Service
-├── leaderboard.module.ts       # Module
-└── index.ts
+server/src/features/analytics/
+├── dtos/
+│   └── leaderboard/            # Leaderboard DTOs
+│       ├── leaderboard.dto.ts
+│       └── index.ts
+├── leaderboard.controller.ts   # Leaderboard Controller
+├── services/
+│   └── ranking-analytics.service.ts  # RankingAnalyticsService
+└── analytics.module.ts          # כולל LeaderboardController ו-RankingAnalyticsService
 ```
 
 ## API Endpoints
@@ -65,7 +68,7 @@ LeaderboardEntity
 ```typescript
 @Post('user/update')
 async updateUserRanking(@CurrentUserId() userId: string) {
-  const ranking = await this.leaderboardService.updateUserRanking(userId);
+  const ranking = await this.rankingAnalyticsService.updateUserRanking(userId);
   return ranking;
 }
 ```
@@ -102,7 +105,10 @@ async updateUserRanking(@CurrentUserId() userId: string) {
 async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
   const limitNum = query.limit || 100;
   const offsetNum = query.offset ?? 0;
-  const leaderboard = await this.leaderboardService.getGlobalLeaderboard(limitNum, offsetNum);
+  const leaderboard = await this.rankingAnalyticsService.getGlobalLeaderboard({
+    limit: limitNum,
+    offset: offsetNum,
+  });
   return {
     leaderboard,
     pagination: {
@@ -177,23 +183,21 @@ async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() quer
 ```typescript
 @Delete('admin/clear-all')
 @Roles(UserRole.ADMIN)
-async clearAllLeaderboard(@CurrentUser() user: TokenPayload) {
-  const result = await this.leaderboardService.clearAllLeaderboard();
-  return {
-    cleared: true,
-    deletedCount: result.deletedCount,
-    message: result.message,
-  };
+async clearAllLeaderboard(@CurrentUserId() userId: string) {
+  const result = await this.rankingAnalyticsService.clearAllLeaderboard();
+  return result;
 }
 ```
 
 ## Service Methods
 
-### LeaderboardService
+### RankingAnalyticsService
+
+השירות מנוהל על ידי `RankingAnalyticsService` בתוך מודול האנליזה.
 
 ```typescript
 @Injectable()
-export class LeaderboardService {
+export class RankingAnalyticsService {
   constructor(
     @InjectRepository(LeaderboardEntity)
     private readonly leaderboardRepository: Repository<LeaderboardEntity>,

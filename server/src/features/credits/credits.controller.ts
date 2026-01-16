@@ -1,38 +1,24 @@
 import { Body, Controller, ForbiddenException, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 
 import {
-	API_ROUTES,
-	CACHE_DURATION,
+	API_ENDPOINTS,
 	DEFAULT_USER_PREFERENCES,
 	ERROR_CODES,
 	GameMode,
-	PaymentMethod,
+	TIME_DURATIONS_SECONDS,
 } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
+
 import { serverLogger as logger } from '@internal/services';
+
 import { Cache, CurrentUserId, NoCache } from '../../common';
-import { PaymentService } from '../payment/payment.service';
 import { CreditsService } from './credits.service';
-import {
-	CanPlayDto,
-	ConfirmCreditPurchaseDto,
-	DeductCreditsDto,
-	GetCreditHistoryDto,
-	PurchaseCreditsDto,
-} from './dtos';
+import { CanPlayDto, DeductCreditsDto, GetCreditHistoryDto } from './dtos';
 
-@Controller(API_ROUTES.CREDITS.BASE)
+@Controller(API_ENDPOINTS.CREDITS.BASE)
 export class CreditsController {
-	constructor(
-		private readonly creditsService: CreditsService,
-		private readonly paymentService: PaymentService
-	) {}
+	constructor(private readonly creditsService: CreditsService) {}
 
-	/**
-	 * Get user credit balance
-	 * @param userId Current user identifier
-	 * @returns User credit balance
-	 */
 	@Get('balance')
 	@NoCache()
 	async getCreditBalance(@CurrentUserId() userId: string | null) {
@@ -42,7 +28,6 @@ export class CreditsController {
 		try {
 			const result = await this.creditsService.getCreditBalance(userId);
 
-			// Log API call for balance check
 			logger.apiRead('credits_balance', {
 				userId,
 			});
@@ -50,49 +35,39 @@ export class CreditsController {
 			return result;
 		} catch (error) {
 			logger.userError('Error getting credit balance', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get available credit packages
-	 * @returns Available credit packages
-	 */
+	// Retrieves available credit packages
 	@Get('packages')
-	@Cache(CACHE_DURATION.VERY_LONG)
+	@Cache(TIME_DURATIONS_SECONDS.HOUR)
 	async getCreditPackages() {
 		try {
 			const result = this.creditsService.getCreditPackages();
 
-			// Log API call for packages request
 			logger.apiRead('credits_packages', {});
 
 			return result;
 		} catch (error) {
 			logger.userError('Error getting credit packages', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Check if user can play with given question count
-	 * @param userId Current user identifier
-	 * @param query Can play query parameters
-	 * @returns Can play result
-	 */
 	@Get('can-play')
-	@Cache(CACHE_DURATION.SHORT)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 		try {
-			const questionsPerRequest = query.questionsPerRequest ?? DEFAULT_USER_PREFERENCES.game?.maxQuestionsPerGame ?? 5;
+			const questionsPerRequest = query.questionsPerRequest ?? DEFAULT_USER_PREFERENCES.game.maxQuestionsPerGame;
 
 			if (!questionsPerRequest || questionsPerRequest <= 0) {
 				throw new HttpException(ERROR_CODES.VALID_QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
@@ -101,7 +76,6 @@ export class CreditsController {
 			const gameMode = query.gameMode ?? GameMode.QUESTION_LIMITED;
 			const result = await this.creditsService.canPlay(userId, questionsPerRequest, gameMode);
 
-			// Log API call for can-play check
 			logger.apiRead('credits_can_play', {
 				userId,
 				questionsPerRequest,
@@ -112,7 +86,7 @@ export class CreditsController {
 			return result;
 		} catch (error) {
 			logger.userError('Error checking can play', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				questionsPerRequest: query.questionsPerRequest,
 			});
@@ -120,12 +94,6 @@ export class CreditsController {
 		}
 	}
 
-	/**
-	 * Deduct credits from user
-	 * @param userId Current user identifier
-	 * @param body Credits deduction data
-	 * @returns Credits deduction result
-	 */
 	@Post('deduct')
 	async deductCredits(
 		@CurrentUserId() userId: string | null,
@@ -163,7 +131,6 @@ export class CreditsController {
 
 			const result = await this.creditsService.deductCredits(userId, questionsPerRequest, gameMode, body.reason);
 
-			// Log API call for credits deduction with IP and User Agent
 			logger.apiUpdate('credits_deduct', {
 				userId,
 				questionsPerRequest,
@@ -175,7 +142,7 @@ export class CreditsController {
 			return result;
 		} catch (error) {
 			logger.userError('Error deducting credits', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				questionsPerRequest: body.questionsPerRequest,
 				gameMode: body.gameMode,
@@ -185,14 +152,8 @@ export class CreditsController {
 		}
 	}
 
-	/**
-	 * Get user credit transaction history
-	 * @param userId Current user identifier
-	 * @param query Credit history query parameters
-	 * @returns Credit transaction history
-	 */
 	@Get('history')
-	@Cache(CACHE_DURATION.SHORT + 90)
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getCreditHistory(@CurrentUserId() userId: string | null, @Query() query: GetCreditHistoryDto) {
 		if (!userId) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
@@ -205,7 +166,6 @@ export class CreditsController {
 
 			const result = await this.creditsService.getCreditHistory(userId, limit);
 
-			// Log API call for credits history request
 			logger.apiRead('credits_history', {
 				userId,
 				limit,
@@ -215,92 +175,11 @@ export class CreditsController {
 			return result;
 		} catch (error) {
 			logger.userError('Error getting credit history', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				limit: query.limit,
 			});
 			throw error;
 		}
 	}
-
-	/**
-	 * Purchase credits package
-	 * @param userId Current user identifier
-	 * @param body Credits purchase data
-	 * @returns Credits purchase result
-	 */
-	@Post('purchase')
-	async purchaseCredits(@CurrentUserId() userId: string | null, @Body() body: PurchaseCreditsDto) {
-		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
-		}
-		try {
-			if (!body.packageId) {
-				throw new HttpException(ERROR_CODES.PACKAGE_ID_REQUIRED, HttpStatus.BAD_REQUEST);
-			}
-
-			const manualPayment =
-				body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.paymentService.buildManualPaymentDetails(body) : undefined;
-			const result = await this.creditsService.purchaseCredits(userId, {
-				packageId: body.packageId,
-				paymentMethod: body.paymentMethod,
-				paypalOrderId: body.paypalOrderId,
-				paypalPaymentId: body.paypalPaymentId,
-				manualPayment,
-			});
-
-			// Log API call for credits purchase
-			logger.apiCreate('credits_purchase', {
-				userId,
-				id: body.packageId,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Error purchasing credits', {
-				error: getErrorMessage(error),
-				userId,
-				id: body.packageId,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Confirm credit purchase
-	 * @param userId Current user identifier
-	 * @param body Credit purchase confirmation data
-	 * @returns Purchase confirmation result
-	 */
-	@Post('confirm-purchase')
-	async confirmCreditPurchase(@CurrentUserId() userId: string | null, @Body() body: ConfirmCreditPurchaseDto) {
-		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
-		}
-		try {
-			const paymentIdentifier = body.paymentIntentId ?? body.transactionId ?? body.paymentId;
-			if (!paymentIdentifier || !body.credits || body.credits <= 0) {
-				throw new HttpException(ERROR_CODES.PAYMENT_INTENT_ID_AND_CREDITS_REQUIRED, HttpStatus.BAD_REQUEST);
-			}
-
-			const result = this.creditsService.confirmCreditPurchase(userId, paymentIdentifier, body.credits);
-
-			// Log API call for purchase confirmation
-			logger.apiUpdate('credits_purchase_confirm', {
-				userId,
-				id: paymentIdentifier,
-				credits: body.credits,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Error confirming credit purchase', {
-				error: getErrorMessage(error),
-				userId,
-				id: body.paymentIntentId ?? body.transactionId ?? body.paymentId,
-			});
-			throw error;
-		}
-	}
-
 }

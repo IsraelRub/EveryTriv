@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { LogOut, Shield, User } from 'lucide-react';
 
 import { APP_NAME, UserRole } from '@shared/constants';
+
 import { ButtonSize, ButtonVariant, NAVIGATION_LINKS, ROUTES } from '@/constants';
 import {
 	AudioControls,
@@ -22,23 +22,24 @@ import {
 	NavLink,
 	ProfileEditDialog,
 } from '@/components';
-import { useAppDispatch, useAppSelector } from '@/hooks';
+import { useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
 import { authService } from '@/services';
-import type { NavigationLink, RootState } from '@/types';
+import type { NavigationLink } from '@/types';
 import { getAvatarUrl, getUserInitials } from '@/utils';
-import { selectUserRole } from '@/redux/selectors';
-import { setUser } from '@/redux/slices';
 
 export function Navigation() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const dispatch = useAppDispatch();
 	const queryClient = useQueryClient();
 
-	const { isAuthenticated, currentUser, avatar } = useSelector((state: RootState) => state.user);
-	const userRole = useAppSelector(selectUserRole);
+	const isAuthenticated = useIsAuthenticated();
+	const currentUser = useCurrentUserData();
+	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;
 	const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+
+	// Get avatar from currentUser
+	const avatar = currentUser?.avatar ?? null;
 
 	const mainNavItems = NAVIGATION_LINKS.main;
 	const authenticatedNavItems = isAuthenticated ? NAVIGATION_LINKS.authenticated : [];
@@ -54,16 +55,12 @@ export function Navigation() {
 			await authService.logout();
 			// Clear React Query cache to remove all user-specific cached data
 			queryClient.clear();
-			// Clear Redux state
-			// setUser(null) already sets isAuthenticated = false
-			dispatch(setUser(null));
 			navigate(ROUTES.HOME);
 		} catch (error) {
 			// Error already logged in auth.service.ts - no need to log again
 			void error;
 		}
 	};
-
 
 	return (
 		<motion.nav
@@ -75,13 +72,7 @@ export function Navigation() {
 				<div className='flex h-16 items-center justify-between'>
 					<div className='flex items-center gap-6'>
 						<NavLink to={ROUTES.HOME} className='flex items-center gap-2 text-2xl font-bold text-foreground'>
-							<img
-								src='/assets/logo.svg'
-								alt={`${APP_NAME} Logo`}
-								className='h-8 w-8 flex-shrink-0 object-contain'
-								width={32}
-								height={32}
-							/>
+							<img src='/assets/logo.svg' className='h-8 w-8 flex-shrink-0 object-contain' width={32} height={32} />
 							{APP_NAME}
 						</NavLink>
 
@@ -149,9 +140,12 @@ export function Navigation() {
 						{isAuthenticated ? (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
-									<Button variant={ButtonVariant.GHOST} className='relative h-9 w-9 rounded-full'>
-										<Avatar className='h-9 w-9'>
-											<AvatarImage src={getAvatarUrl(avatar)} alt='User' />
+									<Button
+										variant={ButtonVariant.GHOST}
+										className='relative h-9 w-9 !rounded-full p-0 hover:ring-2 hover:ring-ring'
+									>
+										<Avatar className='h-9 w-9 pointer-events-none'>
+											<AvatarImage src={getAvatarUrl(avatar)} />
 											<AvatarFallback>
 												{getUserInitials(currentUser?.firstName, currentUser?.lastName, currentUser?.email)}
 											</AvatarFallback>

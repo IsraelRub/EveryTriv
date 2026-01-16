@@ -1,1 +1,0 @@
-export { RegistrationView } from './RegistrationView';

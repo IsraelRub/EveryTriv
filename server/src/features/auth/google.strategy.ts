@@ -1,23 +1,20 @@
-/**
- * Google OAuth Strategy
- *
- * @module GoogleStrategy
- * @description Google OAuth authentication strategy
- */
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { AuthenticationEvent, ERROR_CODES, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
+import { AuthenticationEvent, ERROR_CODES, LogLevel } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
+
 import { serverLogger as logger } from '@internal/services';
+
+import { LOCALHOST_CONFIG } from '../../config/localhost.config';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 	constructor() {
-		const clientID = process.env.GOOGLE_CLIENT_ID || '';
-		const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
-		const callbackURL = `${process.env.SERVER_URL || LOCALHOST_CONFIG.urls.SERVER}/auth/google/callback`;
+		const clientID = process.env.GOOGLE_CLIENT_ID ?? '';
+		const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? '';
+		const callbackURL = `${process.env.SERVER_URL ?? LOCALHOST_CONFIG.urls.SERVER}/auth/google/callback`;
 
 		// Validate OAuth credentials
 		if (!clientID || !clientSecret) {
@@ -59,9 +56,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		});
 	}
 
-	/**
-	 * Type guard to check if value is a valid Profile
-	 */
 	private isProfile(value: unknown): value is Profile {
 		if (!isRecord(value)) {
 			return false;
@@ -69,9 +63,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		return typeof value.id === 'string';
 	}
 
-	/**
-	 * Parse profile from Buffer or string to Profile object
-	 */
 	private parseProfile(value: unknown): Profile {
 		if (Buffer.isBuffer(value)) {
 			logger.systemError('Google OAuth profile received as Buffer - attempting to parse', {
@@ -87,7 +78,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				throw new Error(ERROR_CODES.PARSED_BUFFER_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile Buffer as JSON', {
-					error: getErrorMessage(parseError),
+					errorInfo: { message: getErrorMessage(parseError) },
 				});
 				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_BUFFER);
 			}
@@ -107,7 +98,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				throw new Error(ERROR_CODES.PARSED_STRING_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile string as JSON', {
-					error: getErrorMessage(parseError),
+					errorInfo: { message: getErrorMessage(parseError) },
 				});
 				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_STRING);
 			}
@@ -154,7 +145,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Validate that profile.id exists
 			if (!actualProfile.id) {
 				logger.logSecurityEventEnhanced('Google OAuth profile missing ID', LogLevel.ERROR, {
-					error: ERROR_CODES.PROFILE_ID_MISSING,
+					errorInfo: { message: ERROR_CODES.PROFILE_ID_MISSING },
 					provider: 'google',
 					context: 'GoogleStrategy',
 					data: {
@@ -166,7 +157,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
 			// Use enhanced logging
 			logger.logAuthenticationEnhanced(AuthenticationEvent.LOGIN, 'google_user', actualProfile.id, {
-				email: actualProfile.emails?.[0]?.value || '',
+				emails: { current: actualProfile.emails?.[0]?.value ?? '' },
 				provider: 'google',
 				context: 'GoogleStrategy',
 			});
@@ -197,16 +188,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
 			const user = {
 				googleId: actualProfile.id,
-				email: actualProfile.emails?.[0]?.value || '',
-				firstName: firstName || undefined,
-				lastName: lastName || undefined,
+				email: actualProfile.emails?.[0]?.value ?? '',
+				firstName: firstName ?? undefined,
+				lastName: lastName ?? undefined,
 				avatar: actualProfile.photos?.[0]?.value,
 			};
 
 			// Log the user object being returned
 			logger.systemInfo('Google OAuth validate returning user', {
 				googleId: user.googleId,
-				email: user.email,
+				emails: { current: user.email },
 				data: {
 					googleIdLength: user.googleId ? String(user.googleId).length : 0,
 					profileId: actualProfile.id,
@@ -219,13 +210,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			let profileId = 'unknown';
 			try {
 				const parsed = this.parseProfile(profile);
-				profileId = parsed.id || 'unknown';
+				profileId = parsed.id ?? 'unknown';
 			} catch {
 				// Profile parsing failed, use 'unknown'
 			}
 
 			logger.logSecurityEventEnhanced('Google OAuth validation failed', LogLevel.ERROR, {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				id: profileId,
 				provider: 'google',
 				context: 'GoogleStrategy',

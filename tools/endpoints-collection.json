@@ -551,7 +551,7 @@
   "item": [
     {
       "name": "🏠 App & Health",
-      "description": "🏠 **APPLICATION HEALTH & BASIC ENDPOINTS**\n\n**Purpose:** Monitor application health, get basic information, and verify system status\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** All health and info endpoints\n\n**Key Features:**\n- Application health monitoring\n- System information retrieval\n- Basic connectivity testing\n- Service status verification\n\n**Available Endpoints:**\n- Health Check (GET)\n- App Info (GET)\n\n**Use Cases:**\n- System monitoring\n- Health checks\n- Basic connectivity testing\n- Service verification",
+      "description": "🏠 **APPLICATION HEALTH & BASIC ENDPOINTS**\n\n**Purpose:** Monitor application health, get basic information, and verify system status\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** All health and info endpoints\n\n**Key Features:**\n- Application health monitoring\n- System information retrieval\n- Basic connectivity testing\n- Service status verification\n- Database health checks\n- System metrics monitoring\n\n**Available Endpoints:**\n- Health Check (GET) - Detailed health check with database and system metrics\n- Health Liveness (GET) - Lightweight liveness check for container orchestration\n- Health Readiness (GET) - Readiness check with database connectivity\n- App Info (GET) - Basic application information\n\n**Use Cases:**\n- System monitoring\n- Health checks for Docker/Kubernetes\n- Load balancer health checks\n- Basic connectivity testing\n- Service verification",
       "item": [
         {
           "name": "App Info",
@@ -571,9 +571,33 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/health",
+              "raw": "{{baseUrl}}/api/health",
               "host": ["{{baseUrl}}"],
-          "path": ["health"]
+              "path": ["api", "health"]
+            }
+          }
+        },
+        {
+          "name": "Health Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/liveness",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health", "liveness"]
+            }
+          }
+        },
+        {
+          "name": "Health Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/readiness",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health", "readiness"]
             }
           }
         }
@@ -1175,7 +1199,7 @@
     },
     {
       "name": "🎮 Game Management",
-      "description": "🎮 **GAME MANAGEMENT ENDPOINTS** - Trivia Game Logic & History\n\n**Purpose:** Handle trivia game operations, question generation, answer submission, and game history\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Question retrieval, game info\n- 🔐 **Protected Endpoints:** Answer submission, game history, validation\n- 👑 **Admin Endpoints:** Game statistics, history management, trivia management\n\n**Key Features:**\n- AI-powered question generation\n- Multiple difficulty levels\n- Custom difficulty validation\n- Game history tracking\n- Answer submission and scoring\n- Performance analytics\n- Admin game management\n- Admin trivia management\n\n**Available Endpoints:**\n- Generate Trivia Questions (POST)\n- Get Trivia Question by ID (GET)\n- Submit Answer (POST)\n- Save Game History (POST)\n- Get Game by ID (GET)\n- Get Game History (GET)\n- Delete Game History (DELETE)\n- Clear Game History (DELETE)\n- Validate Custom Difficulty (POST)\n- Get Game Statistics (Admin) (GET)\n- Get All Trivia Questions (Admin) (GET)\n- Clear All Game History (Admin) (DELETE)\n- Clear All Trivia Questions (Admin) (DELETE)\n\n**Game Operations:**\n- Question generation and retrieval\n- Answer submission and validation\n- Game history management\n- Performance tracking\n- Admin game management\n- Statistics and analytics",
+      "description": "🎮 **GAME MANAGEMENT ENDPOINTS** - Trivia Game Logic & History\n\n**Purpose:** Handle trivia game operations, question generation, answer submission, and game history\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Question retrieval, game info\n- 🔐 **Protected Endpoints:** Answer submission, game history, validation, game sessions\n- 👑 **Admin Endpoints:** See Admin Management section for /admin/* endpoints\n\n**Key Features:**\n- AI-powered question generation\n- Multiple difficulty levels\n- Custom difficulty validation\n- Game history tracking\n- Answer submission and scoring\n- Game session management\n- Performance analytics\n\n**Available Endpoints:**\n- Generate Trivia Questions (POST)\n- Get Trivia Question by ID (GET)\n- Submit Answer (POST)\n- Start Game Session (POST)\n- Submit Answer to Session (POST)\n- Finalize Game Session (POST)\n- Save Game History (POST)\n- Get Game by ID (GET)\n- Get Game History (GET)\n- Delete Game History (DELETE)\n- Validate Custom Difficulty (POST)\n\n**Game Operations:**\n- Question generation and retrieval\n- Answer submission and validation\n- Game session management\n- Game history management\n- Performance tracking\n- Statistics and analytics\n\n**Note:** Admin endpoints (statistics, trivia management) have been moved to /admin/* - see Admin Management section",
       "item": [
         {
           "name": "Generate Trivia Questions",
@@ -1257,7 +1281,7 @@
           }
         },
         {
-          "name": "Submit Answer",
+          "name": "Start Game Session",
           "request": {
             "method": "POST",
             "header": [
@@ -1272,13 +1296,66 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"answer\": \"{{questionAnswer}}\",\n  \"timeSpent\": 15\n}"
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"topic\": \"science\",\n  \"difficulty\": \"medium\",\n  \"gameMode\": \"question-limited\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/game/answer",
+              "raw": "{{baseUrl}}/game/session/start",
               "host": ["{{baseUrl}}"],
-              "path": ["game", "answer"]
-            }
+              "path": ["game", "session", "start"]
+            },
+            "description": "Starts a new game session for the current user"
+          }
+        },
+        {
+          "name": "Submit Answer to Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"questionId\": \"{{questionId}}\",\n  \"answer\": 0,\n  \"timeSpent\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/session/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "session", "answer"]
+            },
+            "description": "Submits an answer to an active game session"
+          }
+        },
+        {
+          "name": "Finalize Game Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/session/finalize",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "session", "finalize"]
+            },
+            "description": "Finalizes a game session and saves it to history"
           }
         },
         {
@@ -1378,23 +1455,6 @@
           }
         },
         {
-          "name": "Clear Game History",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/game/history",
-              "host": ["{{baseUrl}}"],
-              "path": ["game", "history"]
-            }
-          }
-        },
-        {
           "name": "Validate Custom Difficulty",
           "request": {
             "method": "POST",
@@ -1418,130 +1478,37 @@
               "path": ["game", "validate-custom"]
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "🤖 AI Providers",
+      "description": "🤖 **AI PROVIDERS ENDPOINTS** - AI Provider Statistics & Health\n\n**Purpose:** Monitor AI provider status, statistics, and health\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** All AI provider endpoints\n\n**Key Features:**\n- AI provider statistics\n- Health status monitoring\n- Provider availability tracking\n\n**Available Endpoints:**\n- Get AI Provider Stats (GET)\n- Get AI Provider Health (GET)\n\n**AI Provider Operations:**\n- Statistics retrieval\n- Health monitoring\n- Provider availability tracking",
+      "item": [
         {
-          "name": "Get Game Statistics (Admin)",
+          "name": "Get AI Provider Stats",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/game/admin/statistics",
+              "raw": "{{baseUrl}}/ai-providers/stats",
               "host": ["{{baseUrl}}"],
-              "path": ["game", "admin", "statistics"]
-            }
-          }
-        },
-        {
-          "name": "Clear All Game History (Admin)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Clears game history for all users', () => {",
-                  "    if (pm.response.code === 429) {",
-                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
-                  "        pm.expect(pm.response.code).to.equal(429);",
-                  "    } else {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "        const response = pm.response.json();",
-                  "        pm.expect(response).to.be.an('object');",
-                  "        const payload = response.data || response;",
-                  "        if (payload.message) {",
-                  "            pm.expect(payload).to.have.property('message');",
-                  "            pm.expect(payload).to.have.property('deletedCount');",
-                  "            if (typeof payload.deletedCount === 'number') {",
-                  "                console.log('Deleted game history records:', payload.deletedCount);",
-                  "            }",
-                  "        }",
-                  "    }",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/game/admin/history/clear-all",
-              "host": ["{{baseUrl}}"],
-              "path": ["game", "admin", "history", "clear-all"]
-            }
-          }
-        },
-        {
-          "name": "Get All Trivia Questions (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/game/admin/trivia",
-              "host": ["{{baseUrl}}"],
-              "path": ["game", "admin", "trivia"]
+              "path": ["ai-providers", "stats"]
             },
-            "description": "Get all trivia questions from the database (admin only)"
+            "description": "Get AI provider statistics"
           }
         },
         {
-          "name": "Clear All Trivia Questions (Admin)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Clears all trivia questions', () => {",
-                  "    if (pm.response.code === 429) {",
-                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
-                  "        pm.expect(pm.response.code).to.equal(429);",
-                  "    } else {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "        const response = pm.response.json();",
-                  "        pm.expect(response).to.be.an('object');",
-                  "        const payload = response.data || response;",
-                  "        if (payload.message) {",
-                  "            pm.expect(payload).to.have.property('message');",
-                  "            pm.expect(payload).to.have.property('deletedCount');",
-                  "            if (typeof payload.deletedCount === 'number') {",
-                  "                console.log('Deleted trivia questions:', payload.deletedCount);",
-                  "            }",
-                  "        }",
-                  "    }",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "name": "Get AI Provider Health",
           "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/game/admin/trivia/clear-all",
+              "raw": "{{baseUrl}}/ai-providers/health",
               "host": ["{{baseUrl}}"],
-              "path": ["game", "admin", "trivia", "clear-all"]
-            }
+              "path": ["ai-providers", "health"]
+            },
+            "description": "Get AI provider health status"
           }
         }
       ]
@@ -1601,7 +1568,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1618,6 +1585,40 @@
         },
         {
           "name": "Join Room (WebSocket Event)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "        const room = data && data.room ? data.room : null;",
+                  "",
+                  "        if (room && room.roomId) {",
+                  "            pm.collectionVariables.set('multiplayerRoomId', room.roomId);",
+                  "        }",
+                  "",
+                  "        // Verify that join was successful and room has 2 players",
+                  "        if (room && Array.isArray(room.players)) {",
+                  "            pm.test('Room should have exactly 2 players before starting game', function () {",
+                  "                pm.expect(room.players.length).to.equal(2);",
+                  "            });",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to capture multiplayer room info', error);",
+                  "    }",
+                  "} else {",
+                  "    pm.test('Join room should succeed', function () {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1656,6 +1657,14 @@
                   "        const data = body && body.data ? body.data : body;",
                   "        const room = data && data.room ? data.room : null;",
                   "",
+                  "        // Verify game started successfully",
+                  "        pm.test('Game should start successfully', function () {",
+                  "            pm.expect(room).to.not.be.null;",
+                  "            pm.expect(room.status).to.equal('playing');",
+                  "            pm.expect(Array.isArray(room.questions)).to.be.true;",
+                  "            pm.expect(room.questions.length).to.be.greaterThan(0);",
+                  "        });",
+                  "",
                   "        if (room && Array.isArray(room.questions) && room.questions.length > 0) {",
                   "            const nextQuestion = room.questions[room.currentQuestionIndex || 0] || room.questions[0];",
                   "            if (nextQuestion && nextQuestion.id) {",
@@ -1664,6 +1673,37 @@
                   "        }",
                   "    } catch (error) {",
                   "        console.warn('Failed to capture multiplayer question info', error);",
+                  "    }",
+                  "} else {",
+                  "    // If start game fails, check the reason",
+                  "    if (pm.response.code === 400) {",
+                  "        try {",
+                  "            const body = pm.response.json();",
+                  "            const message = body && body.message ? body.message : '';",
+                  "            const details = body && body.details ? body.details : {};",
+                  "            const errorCode = details.type || details.errorCode || '';",
+                  "            ",
+                  "            if (message.includes('2 players') || message.includes('NEED_AT_LEAST_2_PLAYERS') || errorCode === 'NEED_AT_LEAST_2_PLAYERS') {",
+                  "                console.warn('Start game failed: Need at least 2 players. Make sure Join Room succeeded and room has exactly 2 players.');",
+                  "                console.warn('Response body:', JSON.stringify(body, null, 2));",
+                  "            } else if (message.includes('host') || errorCode === 'ONLY_HOST_CAN_START') {",
+                  "                console.warn('Start game failed: Only host can start the game.');",
+                  "            } else if (message.includes('started') || errorCode === 'GAME_ALREADY_STARTED_OR_FINISHED') {",
+                  "                console.warn('Start game failed: Game already started or finished.');",
+                  "            } else {",
+                  "                console.warn('Start game failed with 400:', JSON.stringify(body, null, 2));",
+                  "            }",
+                  "        } catch (error) {",
+                  "            console.warn('Failed to parse error response', error);",
+                  "            console.warn('Response text:', pm.response.text());",
+                  "        }",
+                  "    }",
+                  "    ",
+                  "    // Only fail the test if we don't have a clear reason for the failure",
+                  "    if (pm.response.code !== 200 && pm.response.code !== 201) {",
+                  "        pm.test('Start game should succeed when 2 players are in room', function () {",
+                  "            pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "        });",
                   "    }",
                   "}"
                 ]
@@ -1679,7 +1719,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1696,6 +1736,42 @@
         },
         {
           "name": "Submit Answer (WebSocket Event)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Verify that questionId is set before submitting answer",
+                  "const questionId = pm.collectionVariables.get('multiplayerQuestionId');",
+                  "if (!questionId) {",
+                  "    pm.test('Question ID should be set before submitting answer', function () {",
+                  "        pm.expect(questionId).to.not.be.undefined;",
+                  "    });",
+                  "}",
+                  "",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const data = body && body.data ? body.data : body;",
+                  "",
+                  "        pm.test('Answer should be submitted successfully', function () {",
+                  "            pm.expect(data).to.not.be.null;",
+                  "            pm.expect(data.isCorrect).to.be.a('boolean');",
+                  "            pm.expect(data.scoreEarned).to.be.a('number');",
+                  "        });",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to parse answer response', error);",
+                  "    }",
+                  "} else {",
+                  "    pm.test('Submit answer should succeed when game is playing', function () {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1705,7 +1781,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1753,7 +1829,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -1771,7 +1847,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -1793,7 +1869,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1805,7 +1881,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["multiplayer", "rooms", "leave"]
             },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\nLeaves the room using user token\n\n**WebSocket Event Mirrored:** `leave-room`\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
+            "description": "**REST Proxy:** `POST /multiplayer/rooms/leave`\n\nLeaves the room using user token (host/admin)\n\n**WebSocket Event Mirrored:** `leave-room`\n\n**HTTP Response:** `{ roomId, status, remainingPlayers }`\n\n**WebSocket Response Events:**\n- `room-left` - Returns { roomId }\n- `player-left` - Broadcast to remaining players\n- `error` - If leave fails"
           }
         },
         {
@@ -1945,56 +2021,6 @@
           }
         },
         {
-          "name": "Purchase Credits",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-            "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/credits/purchase",
-              "host": ["{{baseUrl}}"],
-              "path": ["credits", "purchase"]
-            }
-          }
-        },
-        {
-          "name": "Confirm Credit Purchase",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"paymentIntentId\": \"pi_demo_123\",\n  \"credits\": 100\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/credits/confirm-purchase",
-              "host": ["{{baseUrl}}"],
-              "path": ["credits", "confirm-purchase"]
-            }
-          }
-        },
-        {
           "name": "Deduct User Credits",
           "request": {
             "method": "POST",
@@ -2048,7 +2074,7 @@
     },
     {
       "name": "💳 Payment System",
-      "description": "💳 **PAYMENT SYSTEM ENDPOINTS** - Payment Processing & Transactions\n\n**Purpose:** Handle payment processing, transaction management, and financial operations\n\n**Authentication Requirements:**\n- 🔐 **Protected Endpoints:** All payment operations require authentication\n\n**Key Features:**\n- Payment processing\n- Transaction history\n- Financial tracking\n- Payment validation\n- Receipt management\n- Refund processing\n\n**Available Endpoints:**\n- Create Payment (POST)\n- Get Payment History (GET)\n\n**Payment Operations:**\n- Payment creation and processing\n- Transaction history retrieval\n- Payment validation\n- Financial tracking\n- Receipt management\n- Refund processing",
+      "description": "💳 **PAYMENT SYSTEM ENDPOINTS** - Payment Processing & Transactions\n\n**Purpose:** Handle payment processing, transaction management, and financial operations\n\n**Authentication Requirements:**\n- 🔐 **Protected Endpoints:** All payment operations require authentication\n\n**Key Features:**\n- Payment processing\n- Transaction history\n- Financial tracking\n- Payment validation\n- Credit purchases\n- Receipt management\n- Refund processing\n\n**Available Endpoints:**\n- Create Payment (POST)\n- Get Payment History (GET)\n- Purchase Credits (POST)\n\n**Payment Operations:**\n- Payment creation and processing\n- Transaction history retrieval\n- Credit purchase with payment\n- Payment validation\n- Financial tracking\n- Receipt management\n- Refund processing",
       "item": [
         {
           "name": "Create Payment",
@@ -2116,56 +2142,72 @@
               "path": ["payment", "history"]
             }
           }
+        },
+        {
+          "name": "Purchase Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/purchase-credits",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "purchase-credits"]
+            }
+          }
+        },
+        {
+          "name": "Purchase Credits (PayPal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/purchase-credits",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "purchase-credits"]
+            }
+          }
         }
       ]
     },
     {
       "name": "🏆 Leaderboard",
-      "description": "🏆 **LEADERBOARD ENDPOINTS** - Rankings & Competition\n\n**Purpose:** Manage user rankings, leaderboards, and competitive features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global leaderboards, period rankings, leaderboard stats\n- 🔐 **Protected Endpoints:** User rankings, updates\n- 👑 **Admin Endpoints:** Leaderboard management\n\n**Key Features:**\n- Global leaderboard system\n- Period-based rankings (weekly, monthly)\n- Ranking updates and management\n- Competitive statistics\n- Performance tracking\n- Admin leaderboard management\n- Leaderboard statistics by period\n\n**Available Endpoints:**\n- Get User Ranking (GET)\n- Update User Ranking (POST)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET) - Public\n- Clear All Leaderboard (Admin) (DELETE)\n\n**Leaderboard Operations:**\n- User ranking retrieval\n- Global leaderboard access\n- Period-based rankings\n- Ranking updates\n- Competitive analytics\n- Leaderboard statistics\n- Admin leaderboard management",
+      "description": "🏆 **LEADERBOARD ENDPOINTS** - Rankings & Competition\n\n**Purpose:** Manage user rankings, leaderboards, and competitive features\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global leaderboards, period rankings, leaderboard stats\n- 🔐 **Protected Endpoints:** User rankings, updates\n- 👑 **Admin Endpoints:** Leaderboard management\n\n**Key Features:**\n- Global leaderboard system\n- Period-based rankings (weekly, monthly)\n- Ranking updates and management\n- Competitive statistics\n- Performance tracking\n- Admin leaderboard management\n- Leaderboard statistics by period\n\n**Available Endpoints:**\n- Get User Ranking (GET)\n- Update User Ranking (POST)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET) - Public\n\n**Leaderboard Operations:**\n- User ranking retrieval\n- Global leaderboard access\n- Period-based rankings\n- Ranking updates\n- Competitive analytics\n- Leaderboard statistics\n- Admin leaderboard management",
       "item": [
-        {
-          "name": "Get User Ranking",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/user/ranking",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "user", "ranking"]
-            }
-          }
-        },
-        {
-          "name": "Update User Ranking",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/user/update",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "user", "update"]
-            }
-          }
-        },
         {
           "name": "Get Global Leaderboard",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/leaderboard/global?limit=10&offset=0",
+              "raw": "{{baseUrl}}/analytics/leaderboard/global?limit=10&offset=0",
               "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "global"],
+              "path": ["analytics", "leaderboard", "global"],
               "query": [
                 {
                   "key": "limit",
@@ -2185,9 +2227,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/leaderboard/period/weekly?limit=10&offset=0",
+              "raw": "{{baseUrl}}/analytics/leaderboard/period/weekly?limit=10&offset=0",
               "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "period", "weekly"],
+              "path": ["analytics", "leaderboard", "period", "weekly"],
               "query": [
                 {
                   "key": "limit",
@@ -2207,9 +2249,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/leaderboard/stats?period=weekly",
+              "raw": "{{baseUrl}}/analytics/leaderboard/stats?period=weekly",
               "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "stats"],
+              "path": ["analytics", "leaderboard", "stats"],
               "query": [
                 {
                   "key": "period",
@@ -2220,57 +2262,12 @@
             },
             "description": "Get leaderboard statistics for a specific period (public endpoint)"
           }
-        },
-        {
-          "name": "Clear All Leaderboard (Admin)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Clears all leaderboard entries', () => {",
-                  "    if (pm.response.code === 429) {",
-                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
-                  "        pm.expect(pm.response.code).to.equal(429);",
-                  "    } else {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "        const response = pm.response.json();",
-                  "        pm.expect(response).to.be.an('object');",
-                  "        const payload = response.data || response;",
-                  "        if (payload.message) {",
-                  "            pm.expect(payload).to.have.property('message');",
-                  "            pm.expect(payload).to.have.property('deletedCount');",
-                  "            if (typeof payload.deletedCount === 'number') {",
-                  "                console.log('Deleted leaderboard records:', payload.deletedCount);",
-                  "            }",
-                  "        }",
-                  "    }",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/leaderboard/admin/clear-all",
-              "host": ["{{baseUrl}}"],
-              "path": ["leaderboard", "admin", "clear-all"]
-            }
-          }
         }
       ]
     },
     {
       "name": "📊 Analytics",
-      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user stats management\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get User Performance (Admin) (GET)\n- Get User Activity (Admin) (GET)\n- Get User Insights (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Clear All User Stats (Admin) (DELETE)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user stats management\n- Global trends aggregation",
+      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user analytics\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get User Statistics (Admin) (GET)\n- Get User Performance (Admin) (GET)\n- Get User Progress (Admin) (GET)\n- Get User Activity (Admin) (GET)\n- Get User Insights (Admin) (GET)\n- Get User Recommendations (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Get Business Metrics (Admin) (GET)\n- Get System Performance Metrics (Admin) (GET)\n- Get System Security Metrics (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user analytics\n- Global trends aggregation",
       "item": [
         {
           "name": "Track Analytics Event",
@@ -2288,7 +2285,7 @@
             ],
             "body": {
               "mode": "raw",
-            "raw": "{\n  \"eventType\": \"game_start\",\n  \"userId\": \"{{userId}}\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"properties\": {\n    \"topic\": \"science\",\n    \"difficulty\": \"medium\"\n  }\n}"
+            "raw": "{\n  \"eventType\": \"game-start\",\n  \"userId\": \"{{userId}}\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"properties\": {\n    \"topic\": \"science\",\n    \"difficulty\": \"medium\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/analytics/track",
@@ -2316,6 +2313,24 @@
           }
         },
         {
+          "name": "Get User Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/statistics/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "statistics", "{{userId}}"]
+            },
+            "description": "Get user statistics by ID (Admin only)"
+          }
+        },
+        {
           "name": "Get User Performance (Admin)",
           "request": {
             "method": "GET",
@@ -2326,11 +2341,51 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-performance/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/performance/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-performance", "{{userId}}"]
+              "path": ["analytics", "user", "performance", "{{userId}}"]
             },
             "description": "Get user performance metrics by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Progress (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/progress/{{userId}}?startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&limit=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "progress", "{{userId}}"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date for progress analysis (ISO format)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31",
+                  "description": "End date for progress analysis (ISO format)"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "daily",
+                  "description": "Group by period: daily, weekly, monthly"
+                },
+                {
+                  "key": "limit",
+                  "value": "30",
+                  "description": "Maximum number of data points to return"
+                }
+              ]
+            },
+            "description": "Get user progress analytics by ID with optional date range and grouping (Admin only)"
           }
         },
         {
@@ -2344,9 +2399,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-activity/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/activity/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-activity", "{{userId}}"]
+              "path": ["analytics", "user", "activity", "{{userId}}"]
             },
             "description": "Get detailed user activity by ID (Admin only)"
           }
@@ -2362,11 +2417,29 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-insights/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/insights/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-insights", "{{userId}}"]
+              "path": ["analytics", "user", "insights", "{{userId}}"]
             },
             "description": "Get user insights by ID (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Recommendations (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/recommendations/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "recommendations", "{{userId}}"]
+            },
+            "description": "Get personalized recommendations for user by ID (Admin only)"
           }
         },
         {
@@ -2380,9 +2453,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-achievements/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/achievements/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-achievements", "{{userId}}"]
+              "path": ["analytics", "user", "achievements", "{{userId}}"]
             },
             "description": "Get user achievements by ID (Admin only)"
           }
@@ -2398,9 +2471,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-trends/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/trends/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-trends", "{{userId}}"]
+              "path": ["analytics", "user", "trends", "{{userId}}"]
             },
             "description": "Get user trend timeline by ID (Admin only)"
           }
@@ -2416,9 +2489,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-comparison/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/comparison/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-comparison", "{{userId}}"]
+              "path": ["analytics", "user", "comparison", "{{userId}}"]
             },
             "description": "Compare user metrics with another user or global averages (Admin only)"
           }
@@ -2434,9 +2507,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user-summary/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/summary/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user-summary", "{{userId}}"]
+              "path": ["analytics", "user", "summary", "{{userId}}"]
             },
             "description": "Get user summary by ID (Admin only)"
           }
@@ -2452,9 +2525,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/topics/popular",
+              "raw": "{{baseUrl}}/analytics/global/topics/popular",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "topics", "popular"]
+              "path": ["analytics", "global", "topics", "popular"]
             },
             "description": "Get popular topics statistics (protected endpoint)"
           }
@@ -2465,9 +2538,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/analytics/difficulty/global",
+              "raw": "{{baseUrl}}/analytics/global/difficulty",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "difficulty", "global"]
+              "path": ["analytics", "global", "difficulty"]
             },
             "description": "Get global difficulty statistics for comparison (public endpoint)"
           }
@@ -2478,9 +2551,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/analytics/global-stats",
+              "raw": "{{baseUrl}}/analytics/global/stats",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "global-stats"]
+              "path": ["analytics", "global", "stats"]
             },
             "description": "Get global statistics for comparison (public endpoint)"
           }
@@ -2496,45 +2569,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/global-trends",
+              "raw": "{{baseUrl}}/analytics/global/trends",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "global-trends"]
+              "path": ["analytics", "global", "trends"]
             },
             "description": "Get global trends aggregated from all users (admin only endpoint)"
           }
         },
         {
-          "name": "Clear All User Stats (Admin)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Clears all user stats', () => {",
-                  "    if (pm.response.code === 429) {",
-                  "        console.log('Rate limited - this is expected when running multiple requests quickly');",
-                  "        pm.expect(pm.response.code).to.equal(429);",
-                  "    } else {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "        const response = pm.response.json();",
-                  "        pm.expect(response).to.be.an('object');",
-                  "        const payload = response.data || response;",
-                  "        if (payload.message) {",
-                  "            pm.expect(payload).to.have.property('message');",
-                  "            pm.expect(payload).to.have.property('deletedCount');",
-                  "            if (typeof payload.deletedCount === 'number') {",
-                  "                console.log('Deleted user stats records:', payload.deletedCount);",
-                  "            }",
-                  "        }",
-                  "    }",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "name": "Get Business Metrics (Admin)",
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
@@ -2542,17 +2587,132 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/admin/stats/clear-all",
+              "raw": "{{baseUrl}}/analytics/business/metrics",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "admin", "stats", "clear-all"]
-            }
+              "path": ["analytics", "business", "metrics"]
+            },
+            "description": "Get business metrics including revenue, user growth, and engagement (Admin only)"
+          }
+        },
+        {
+          "name": "Get System Performance Metrics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/system/performance",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "system", "performance"]
+            },
+            "description": "Get system performance metrics including response time, memory, CPU, and throughput (Admin only)"
+          }
+        },
+        {
+          "name": "Get System Security Metrics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/system/security",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "system", "security"]
+            },
+            "description": "Get system security metrics including authentication, authorization, and data security (Admin only)"
+          }
+        },
+        {
+          "name": "Get System Recommendations (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/system/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "system", "recommendations"]
+            },
+            "description": "Get system recommendations for performance and security improvements (Admin only)"
+          }
+        },
+        {
+          "name": "Get System Insights (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/system/insights",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "system", "insights"]
+            },
+            "description": "Get comprehensive system insights including performance, security, user behavior, and health metrics (Admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👑 Admin Management",
+      "description": "👑 **ADMIN MANAGEMENT ENDPOINTS** - Administrative Operations\n\n**Purpose:** Centralized admin endpoints for managing game data, statistics, and system operations\n\n**Authentication Requirements:**\n- 👑 **All Endpoints:** Require admin role (Bearer token with admin role)\n\n**Key Features:**\n- Game statistics and management\n- Trivia question management\n- Game history management\n- User statistics management\n- System administration\n\n**Available Endpoints:**\n- Get Game Statistics (GET)\n- Get All Trivia Questions (GET)\n\n**Admin Operations:**\n- Game data management\n- Trivia question management\n- Statistics management\n- System administration",
+      "item": [
+        {
+          "name": "Get Game Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "statistics"]
+            },
+            "description": "Get game statistics (admin only)"
+          }
+        },
+        {
+          "name": "Get All Trivia Questions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/trivia",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "trivia"]
+            },
+            "description": "Get all trivia questions from the database (admin only)"
           }
         }
       ]
     },
     {
       "name": "💾 Storage Management",
-      "description": "💾 **STORAGE MANAGEMENT ENDPOINTS** - Data Storage & Management\n\n**Purpose:** Manage application storage, data persistence, and storage operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Storage metrics (read-only)\n- 👑 **Admin Endpoints:** Storage operations, data management, key access\n\n**Key Features:**\n- Storage metrics and monitoring\n- Data storage and retrieval\n- Storage key management\n- Storage clearing and maintenance\n- Performance monitoring\n\n**Available Endpoints:**\n- Get Storage Metrics (GET) - Public\n- Reset Storage Metrics (POST) - Admin\n- Get Storage Keys (GET) - Admin\n- Get Storage Item (GET) - Admin\n- Clear Storage (DELETE) - Admin\n\n**Storage Operations:**\n- Get storage metrics (public)\n- Retrieve storage items (admin)\n- List storage keys (admin)\n- Clear storage data (admin)\n- Reset storage metrics (admin)\n- Data persistence management",
+      "description": "💾 **STORAGE MANAGEMENT ENDPOINTS** - Data Storage & Management\n\n**Purpose:** Manage application storage, data persistence, and storage operations\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Storage metrics (read-only)\n- 👑 **Admin Endpoints:** Storage operations, data management, key access\n\n**Key Features:**\n- Storage metrics and monitoring\n- Data storage and retrieval\n- Storage key management\n- Performance monitoring\n\n**Available Endpoints:**\n- Get Storage Metrics (GET) - Public\n- Reset Storage Metrics (POST) - Admin\n- Get Storage Keys (GET) - Admin\n- Get Storage Item (GET) - Admin\n\n**Storage Operations:**\n- Get storage metrics (public)\n- Retrieve storage items (admin)\n- List storage keys (admin)\n- Reset storage metrics (admin)\n- Data persistence management",
       "item": [
         {
           "name": "Get Storage Metrics",
@@ -2616,29 +2776,12 @@
               "path": ["storage", "item", "key_name"]
             }
           }
-        },
-        {
-          "name": "Clear Storage",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/storage/clear",
-              "host": ["{{baseUrl}}"],
-              "path": ["storage", "clear"]
-            }
-          }
         }
       ]
     },
     {
       "name": "🗄️ Cache Management",
-      "description": "🗄️ **CACHE MANAGEMENT ENDPOINTS** - Cache System & Performance\n\n**Purpose:** Manage cache system, performance optimization, and cache operations\n\n**Authentication Requirements:**\n- 👑 **Admin Endpoints:** All cache operations require admin privileges\n\n**Key Features:**\n- Cache statistics and monitoring\n- Cache clearing and management\n- Key existence checking\n- TTL (Time To Live) management\n- Performance optimization\n- Cache health monitoring\n\n**Available Endpoints:**\n- Get Cache Stats (GET) - Admin\n- Clear Cache (DELETE) - Admin\n- Check Cache Key Exists (GET) - Admin\n- Get Cache TTL (GET) - Admin\n\n**Cache Operations:**\n- Cache statistics retrieval (admin)\n- Cache clearing and management (admin)\n- Key existence validation (admin)\n- TTL monitoring (admin)\n- Performance optimization\n- Cache health tracking",
+      "description": "🗄️ **CACHE MANAGEMENT ENDPOINTS** - Cache System & Performance\n\n**Purpose:** Manage cache system, performance optimization, and cache operations\n\n**Authentication Requirements:**\n- 👑 **Admin Endpoints:** All cache operations require admin privileges\n\n**Key Features:**\n- Cache statistics and monitoring\n- Key existence checking\n- TTL (Time To Live) management\n- Rate limit status monitoring\n- Performance optimization\n- Cache health monitoring\n\n**Available Endpoints:**\n- Get Cache Stats (GET) - Admin\n- Check Cache Key Exists (GET) - Admin\n- Get Cache TTL (GET) - Admin\n- Get Rate Limit Status (GET) - Admin\n\n**Cache Operations:**\n- Cache statistics retrieval (admin)\n- Key existence validation (admin)\n- TTL monitoring (admin)\n- Rate limit status tracking (admin)\n- Performance optimization\n- Cache health tracking",
       "item": [
         {
           "name": "Get Cache Stats",
@@ -2654,23 +2797,6 @@
               "raw": "{{baseUrl}}/cache/stats",
               "host": ["{{baseUrl}}"],
               "path": ["cache", "stats"]
-            }
-          }
-        },
-        {
-          "name": "Clear Cache",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/cache/clear",
-              "host": ["{{baseUrl}}"],
-              "path": ["cache", "clear"]
             }
           }
         },
@@ -2706,6 +2832,24 @@
               "host": ["{{baseUrl}}"],
               "path": ["cache", "ttl", "key_name"]
             }
+          }
+        },
+        {
+          "name": "Get Rate Limit Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cache/rate-limit-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["cache", "rate-limit-status"]
+            },
+            "description": "Get current rate limit status for the requesting IP, including burst and window limits with remaining requests and TTL information (Admin only)"
           }
         }
       ]
@@ -2779,33 +2923,6 @@
               "raw": "{{baseUrl}}/admin/middleware-metrics",
               "host": ["{{baseUrl}}"],
               "path": ["admin", "middleware-metrics"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📝 Client Logs",
-      "description": "📝 **CLIENT LOGS ENDPOINTS** - Client-Side Logging & Monitoring\n\n**Purpose:** Handle client-side logging, error tracking, and user behavior monitoring\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Log submission (for error tracking)\n\n**Key Features:**\n- Client-side log collection\n- Error tracking and monitoring\n- User behavior analytics\n- Performance logging\n- Debug information collection\n- Real-time log processing\n\n**Available Endpoints:**\n- Submit Client Logs (POST)\n\n**Logging Operations:**\n- Client log submission\n- Error tracking and monitoring\n- User behavior analytics\n- Performance logging\n- Debug information collection\n- Real-time log processing",
-      "item": [
-        {
-          "name": "Submit Client Logs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"logs\": [\n    {\n      \"level\": \"info\",\n      \"message\": \"User clicked button\",\n      \"timestamp\": \"2024-01-01T00:00:00Z\",\n      \"context\": {\n        \"userId\": \"user123\",\n        \"action\": \"button_click\"\n      }\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/client-logs/batch",
-              "host": ["{{baseUrl}}"],
-              "path": ["client-logs", "batch"]
             }
           }
         }

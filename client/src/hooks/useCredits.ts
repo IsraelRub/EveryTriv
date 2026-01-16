@@ -1,29 +1,17 @@
-import { useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, TIME_PERIODS_MS, UserRole } from '@shared/constants';
-import type { CreditBalance, CreditsPurchaseRequest, CreditTransaction } from '@shared/types';
+import type { CreditBalance, CreditsPurchaseRequest, PaymentResult } from '@shared/types';
 import { calculateNewBalance, calculateRequiredCredits, getErrorMessage } from '@shared/utils';
-import { creditsService, clientLogger as logger } from '@/services';
-import type { DeductCreditsParams, RootState } from '@/types';
-import { selectCanPlayFree, selectUserCreditBalance, selectUserRole } from '@/redux/selectors';
-import { deductCredits, setCreditBalance } from '@/redux/slices';
-import { useAppDispatch, useAppSelector } from './useRedux';
 
-// Query keys
-const creditsKeys = {
-	all: ['credits'] as const,
-	balance: () => [...creditsKeys.all, 'balance'] as const,
-	packages: () => [...creditsKeys.all, 'packages'] as const,
-	canPlay: (questionsPerRequest: number, gameMode: GameMode) =>
-		[...creditsKeys.all, 'can-play', questionsPerRequest, gameMode] as const,
-	history: (limit: number) => [...creditsKeys.all, 'history', limit] as const,
-};
+import { QUERY_KEYS } from '@/constants';
+import { creditsService, clientLogger as logger, paymentService } from '@/services';
+import type { DeductCreditsParams } from '@/types';
+import { useIsAuthenticated, useUserRole } from './useAuth';
 
 export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode = GameMode.QUESTION_LIMITED) => {
-	const creditBalance = useAppSelector(selectUserCreditBalance);
-	const canPlayFree = useAppSelector(selectCanPlayFree);
-	const userRole = useAppSelector(selectUserRole);
+	const { data: creditBalance } = useCreditBalance();
+	const userRole = useUserRole();
 
 	// Admin users can always play without credits
 	if (userRole === UserRole.ADMIN) {
@@ -40,9 +28,10 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 	const requiredCredits = calculateRequiredCredits(questionsPerRequest, gameMode);
 
 	// Check if user has free questions available (free questions cover the required credits)
+	const canPlayFree = creditBalance?.canPlayFree ?? false;
 	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= requiredCredits;
 
-	// Calculate if user can play based on Redux state
+	// Calculate if user can play based on React Query state
 	const canPlay = hasFreeQuestions || (creditBalance?.totalCredits ?? 0) >= requiredCredits;
 
 	return {
@@ -53,14 +42,9 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 	};
 };
 
-/**
- * Hook for deducting credits
- * @returns Mutation for deducting credits based on question count and game mode
- */
 export const useDeductCredits = () => {
 	const queryClient = useQueryClient();
-	const dispatch = useAppDispatch();
-	const userRole = useAppSelector(selectUserRole);
+	const userRole = useUserRole();
 
 	return useMutation({
 		mutationFn: ({ questionsPerRequest, gameMode }: DeductCreditsParams) =>
@@ -68,28 +52,45 @@ export const useDeductCredits = () => {
 		onMutate: async ({ questionsPerRequest, gameMode }: DeductCreditsParams) => {
 			// Skip optimistic update for admin users (server handles it)
 			if (userRole === UserRole.ADMIN) {
-				return { previousBalance: queryClient.getQueryData(creditsKeys.balance()) };
+				return { previousBalance: queryClient.getQueryData(QUERY_KEYS.credits.balance()) };
 			}
 			// Cancel any outgoing refetches
 			try {
-				await queryClient.cancelQueries({ queryKey: creditsKeys.balance() });
+				await queryClient.cancelQueries({ queryKey: QUERY_KEYS.credits.balance() });
 			} catch (error) {
 				// Ignore errors when canceling queries
 				// Use logger at a low level to avoid noise
 				logger.apiDebug('Error canceling queries', {
-					error: getErrorMessage(error),
+					errorInfo: { message: getErrorMessage(error) },
 				});
 			}
 
 			// Snapshot the previous value
-			const previousBalance = queryClient.getQueryData(creditsKeys.balance());
+			const previousBalance = queryClient.getQueryData(QUERY_KEYS.credits.balance());
 
 			// Normalize game mode
 			const normalizedGameMode = gameMode ?? GameMode.QUESTION_LIMITED;
 
 			// Optimistically update the balance using shared deduction logic
-			queryClient.setQueryData(creditsKeys.balance(), (old: CreditBalance | undefined) => {
-				if (!old) {
+			queryClient.setQueryData(QUERY_KEYS.credits.balance(), (old: unknown): CreditBalance => {
+				// Simple type guard for CreditBalance
+				const isCreditBalance = (value: unknown): value is CreditBalance => {
+					return (
+						typeof value === 'object' &&
+						value !== null &&
+						'totalCredits' in value &&
+						'credits' in value &&
+						'purchasedCredits' in value &&
+						'freeQuestions' in value &&
+						'dailyLimit' in value &&
+						'canPlayFree' in value &&
+						'nextResetTime' in value &&
+						'userId' in value
+					);
+				};
+
+				const current = isCreditBalance(old) ? old : undefined;
+				if (!current) {
 					return {
 						totalCredits: 0,
 						credits: 0,
@@ -98,11 +99,12 @@ export const useDeductCredits = () => {
 						dailyLimit: 0,
 						canPlayFree: false,
 						nextResetTime: new Date().toISOString(),
+						userId: '',
 					};
 				}
 
 				// Use shared deduction logic to ensure consistency with server
-				const deductionResult = calculateNewBalance(old, questionsPerRequest, normalizedGameMode);
+				const deductionResult = calculateNewBalance(current, questionsPerRequest, normalizedGameMode);
 				return deductionResult.newBalance;
 			});
 
@@ -111,90 +113,55 @@ export const useDeductCredits = () => {
 		onError: (_err, _variables, context) => {
 			// Rollback on error
 			if (context?.previousBalance) {
-				queryClient.setQueryData(creditsKeys.balance(), context.previousBalance);
+				queryClient.setQueryData(QUERY_KEYS.credits.balance(), context.previousBalance);
 			}
 		},
-		onSettled: (_, __, { questionsPerRequest }) => {
-			// Skip Redux update for admin users (server doesn't deduct credits)
-			if (userRole !== UserRole.ADMIN) {
-				// Update Redux state
-				dispatch(deductCredits(questionsPerRequest));
-			}
+		onSettled: () => {
 			// Always refetch after error or success to get latest balance from server
-			queryClient.invalidateQueries({ queryKey: creditsKeys.all });
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.all });
 		},
 	});
 };
 
-/**
- * Hook for getting user credit balance
- * @returns Query result with credit balance data
- */
 export const useCreditBalance = () => {
-	const { isAuthenticated } = useSelector((state: RootState) => state.user);
-	const dispatch = useAppDispatch();
+	const isAuthenticated = useIsAuthenticated();
 
 	return useQuery({
-		queryKey: creditsKeys.balance(),
-		queryFn: async () => {
-			const balance = await creditsService.getCreditBalance();
-			// Update Redux state when balance is fetched
-			dispatch(
-				setCreditBalance({
-					balance: balance.totalCredits,
-					freeQuestions: balance.freeQuestions ?? 0,
-					purchasedCredits: balance.purchasedCredits ?? 0,
-					dailyLimit: balance.dailyLimit,
-					nextResetTime: balance.nextResetTime,
-					// Store as ISO string to keep Redux state serializable
-					lastUpdated: new Date().toISOString(),
-				})
-			);
-			return balance;
-		},
-		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		queryKey: QUERY_KEYS.credits.balance(),
+		queryFn: () => creditsService.getCreditBalance(),
+		staleTime: TIME_PERIODS_MS.HOUR,
 		enabled: isAuthenticated, // Only fetch when user is authenticated
 	});
 };
 
-/**
- * Hook for getting credit packages
- * @returns Query result with available credit packages
- */
 export const useCreditPackages = () => {
 	return useQuery({
-		queryKey: creditsKeys.packages(),
+		queryKey: QUERY_KEYS.credits.packages(),
 		queryFn: () => creditsService.getCreditPackages(),
-		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
+		staleTime: TIME_PERIODS_MS.HOUR,
 	});
 };
 
-/**
- * Hook for purchasing credits
- * @returns Mutation for purchasing credits package
- */
 export const usePurchaseCredits = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (request: CreditsPurchaseRequest) => creditsService.purchaseCredits(request),
+		mutationFn: (request: CreditsPurchaseRequest) => paymentService.purchaseCredits(request),
 		onSuccess: () => {
-			// Invalidate balance query
-			queryClient.invalidateQueries({ queryKey: creditsKeys.balance() });
+			// Invalidate balance after purchase
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.balance() });
 		},
 	});
 };
 
-/**
- * Hook for getting credit history
- * @param limit Optional limit for number of transactions to fetch
- * @returns Query result with credit transaction history
- */
-export const useCreditHistory = (limit?: number) => {
-	return useQuery<CreditTransaction[]>({
-		queryKey: creditsKeys.history(limit ?? 50),
-		queryFn: () => creditsService.getCreditHistory(limit),
-		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
-		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+export const usePaymentHistory = () => {
+	const isAuthenticated = useIsAuthenticated();
+
+	return useQuery<PaymentResult[]>({
+		queryKey: QUERY_KEYS.credits.paymentHistory(),
+		queryFn: () => paymentService.getPaymentHistory(),
+		staleTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+		gcTime: TIME_PERIODS_MS.HOUR,
+		enabled: isAuthenticated,
 	});
 };

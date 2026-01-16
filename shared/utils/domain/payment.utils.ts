@@ -1,10 +1,3 @@
-/**
- * Payment utility helpers shared across platforms
- *
- * @module PaymentUtils
- * @description Utility functions for payment processing (card brand detection, digit extraction)
- * Note: Validation functions are in @shared/validation, sanitization is in @shared/utils
- */
 import { sanitizeCardNumber } from '../infrastructure/sanitization.utils';
 
 const CARD_BRAND_PATTERNS: { name: string; pattern: RegExp }[] = [
@@ -16,22 +9,12 @@ const CARD_BRAND_PATTERNS: { name: string; pattern: RegExp }[] = [
 	{ name: 'jcb', pattern: /^(?:2131|1800|35\d{3})\d{3,}$/ },
 ];
 
-/**
- * Detects credit card brand from card number
- * @param rawNumber The raw card number string
- * @returns Card brand name (visa, mastercard, amex, etc.) or 'unknown'
- */
 export function detectCardBrand(rawNumber: string): string {
 	const digits = sanitizeCardNumber(rawNumber);
 	const brand = CARD_BRAND_PATTERNS.find(entry => entry.pattern.test(digits));
 	return brand ? brand.name : 'unknown';
 }
 
-/**
- * Extracts last four digits from card number
- * @param rawNumber The raw card number string
- * @returns Last four digits as string
- */
 export function extractLastFourDigits(rawNumber: string): string {
 	const digits = sanitizeCardNumber(rawNumber);
 	return digits.slice(-4);

@@ -1,19 +1,14 @@
-/**
- * Client API service
- * Handles HTTP requests to the server and returns typed DTOs
- * @module ClientApiService
- * @used_by client/src/hooks/api/**, client/src/views/**
- */
 import {
-	API_ROUTES,
-	defaultValidators,
+	API_ENDPOINTS,
+	ERROR_CODES,
 	ERROR_MESSAGES,
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HttpMethod,
-	LOCALHOST_CONFIG,
+	VALIDATORS,
 } from '@shared/constants';
-import {
+import type {
+	ApiError,
 	ApiResponse,
 	AuthCredentials,
 	AuthenticationResult,
@@ -21,57 +16,44 @@ import {
 	BasicUser,
 	BasicValue,
 	ChangePasswordData,
-	ClientLogsRequest,
+	ErrorResponseData,
 	RefreshTokenResponse,
 	RequestData,
 	UpdateUserProfileData,
 	UserPreferences,
 	UserProfileResponseType,
 } from '@shared/types';
-import { executeRetry, getErrorMessage, hasProperty, hasPropertyOfType, isNonEmptyString, isRecord } from '@shared/utils';
-import { CLIENT_STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
-import { clientLogger as logger, storageService } from '@/services';
-import type { ClientApiService, EnhancedRequestConfig } from '@/types';
-import type { ApiError, ErrorResponseData, ServerAuthResponse } from '@/types/infrastructure';
 import {
-	authRequestInterceptor,
-	ErrorInterceptorManager,
-	RequestInterceptorManager,
-	ResponseInterceptorManager,
-} from './interceptors';
+	getErrorMessage,
+	hasProperty,
+	hasPropertyOfType,
+	isNonEmptyString,
+	isRecord,
+	parseErrorResponseData,
+} from '@shared/utils';
 
-/**
- * API Configuration Helper
- * @description Simple configuration helper for API URLs
- */
+import { STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
+import { clientLogger as logger, storageService } from '@/services';
+import type { AuthResponse, EnhancedRequestConfig } from '@/types';
+import { LOCALHOST_CONFIG } from '@/config/localhost.config';
+import { authRequestInterceptor, InterceptorsService } from './interceptors.service';
+
 export class ApiConfig {
 	static getBaseUrl(): string {
 		const envUrl = import.meta.env.VITE_API_BASE_URL;
-		return envUrl || LOCALHOST_CONFIG.urls.SERVER;
+		return envUrl ?? LOCALHOST_CONFIG.urls.SERVER;
 	}
 }
 
-class ApiService implements ClientApiService {
+class ApiService {
 	private baseURL: string;
-	private requestInterceptors: RequestInterceptorManager;
-	private responseInterceptors: ResponseInterceptorManager;
-	private errorInterceptors: ErrorInterceptorManager;
+	private readonly interceptors: InterceptorsService;
 	private activeRequests = new Map<string, Promise<ApiResponse<unknown>>>();
 
-	/**
-	 * Type guard to check if response data matches expected type
-	 * This is a runtime check that validates the structure
-	 */
 	private isValidApiResponse<T>(response: ApiResponse<unknown>): response is ApiResponse<T> {
 		return hasProperty(response, 'data') && hasProperty(response, 'success');
 	}
 
-	/**
-	 * Convert complex data structure to BaseData format
-	 * Recursively processes nested objects and arrays, converting them to JSON strings
-	 * @param data Data to convert
-	 * @returns BaseData object with primitive values and stringified complex types
-	 */
 	private convertToBaseData(data: unknown): BaseData {
 		const result: BaseData = {};
 
@@ -80,12 +62,7 @@ class ApiService implements ClientApiService {
 		}
 
 		for (const [key, value] of Object.entries(data)) {
-			if (
-				defaultValidators.string(value) ||
-				defaultValidators.number(value) ||
-				defaultValidators.boolean(value) ||
-				value instanceof Date
-			) {
+			if (VALIDATORS.string(value) || VALIDATORS.number(value) || VALIDATORS.boolean(value) || value instanceof Date) {
 				result[key] = value;
 			} else if (Array.isArray(value)) {
 				result[key] = JSON.stringify(value);
@@ -100,20 +77,12 @@ class ApiService implements ClientApiService {
 
 	constructor() {
 		this.baseURL = ApiConfig.getBaseUrl();
-		this.requestInterceptors = new RequestInterceptorManager();
-		this.responseInterceptors = new ResponseInterceptorManager();
-		this.errorInterceptors = new ErrorInterceptorManager();
+		this.interceptors = new InterceptorsService();
 
-		// Register auth request interceptor with highest priority (runs first)
-		this.requestInterceptors.use(authRequestInterceptor, { priority: 0 });
+		// Register auth request interceptor
+		this.interceptors.useRequest(authRequestInterceptor);
 	}
 
-
-	/**
-	 * Create timeout abort controller
-	 * @param timeoutMs Timeout in milliseconds
-	 * @returns AbortController that will abort after timeout
-	 */
 	private createTimeoutController(timeoutMs: number): AbortController {
 		const controller = new AbortController();
 		setTimeout(() => {
@@ -122,15 +91,8 @@ class ApiService implements ClientApiService {
 		return controller;
 	}
 
-	/**
-	 * Generate request key for deduplication
-	 * @param url Request URL
-	 * @param method HTTP method
-	 * @param requestId Optional request ID
-	 * @returns Unique request key
-	 */
 	private getRequestKey(url: string, method: HttpMethod, requestId?: string): string {
-		return requestId || `${method}:${url}`;
+		return requestId ?? `${method}:${url}`;
 	}
 
 	private buildQueryString(params?: Record<string, BasicValue>): string {
@@ -149,14 +111,6 @@ class ApiService implements ClientApiService {
 		return query ? `?${query}` : '';
 	}
 
-	/**
-	 * Execute request with all interceptors and features
-	 * @param url Request URL
-	 * @param method HTTP method
-	 * @param config Request configuration
-	 * @param data Request body data
-	 * @returns API response
-	 */
 	private async executeRequest<T>(
 		url: string,
 		method: HttpMethod,
@@ -184,13 +138,8 @@ class ApiService implements ClientApiService {
 			}
 		}
 
-		// Create request function with retry logic
-		const requestFn = async (): Promise<ApiResponse<T>> => {
-			return this.executeRequestInternal<T>(url, method, config, data);
-		};
-
-		// Wrap with retry if not skipped
-		const requestPromise = config.skipRetry ? requestFn() : this.retryRequest(requestFn);
+		// Execute request directly (retry logic is handled by QueryClient)
+		const requestPromise = this.executeRequestInternal<T>(url, method, config, data, false);
 
 		// Store active request for deduplication
 		if (!config.skipDeduplication) {
@@ -204,19 +153,12 @@ class ApiService implements ClientApiService {
 		return requestPromise;
 	}
 
-	/**
-	 * Internal request execution with interceptors
-	 * @param url Request URL
-	 * @param method HTTP method
-	 * @param config Request configuration
-	 * @param data Request body data
-	 * @returns API response
-	 */
 	private async executeRequestInternal<T>(
 		url: string,
 		method: HttpMethod,
 		config: EnhancedRequestConfig = {},
-		data?: RequestData
+		data?: RequestData,
+		hasAttemptedRefresh: boolean = false
 	): Promise<ApiResponse<T>> {
 		try {
 			// Merge timeout with signal
@@ -230,7 +172,7 @@ class ApiService implements ClientApiService {
 				// Create a combined controller that aborts when either signal aborts
 				const combinedController = new AbortController();
 				const abortIfNeeded = () => {
-					if (config.signal?.aborted || timeoutController.signal.aborted) {
+					if (config.signal?.aborted ?? timeoutController.signal.aborted) {
 						combinedController.abort();
 					}
 				};
@@ -247,7 +189,7 @@ class ApiService implements ClientApiService {
 			};
 
 			// Execute request interceptors (auth headers are added by authRequestInterceptor)
-			const interceptedConfig = await this.requestInterceptors.execute(enhancedConfig);
+			const interceptedConfig = await this.interceptors.executeRequest(enhancedConfig);
 
 			// Prepare request body if provided
 			let requestBody: string | undefined;
@@ -341,13 +283,19 @@ class ApiService implements ClientApiService {
 			// Pass the URL to the retry function so it can be used for auth endpoint detection
 			const originalRequestFn = async (): Promise<ApiResponse<T>> => {
 				// Re-execute the full request flow including interceptors
-				// This will create a new fullUrl, but it will be the same as the original
-				return this.executeRequestInternal<T>(url, method, config, data);
+				// Mark as refresh attempted to prevent infinite loop
+				return this.executeRequestInternal<T>(url, method, config, data, true);
 			};
-			let apiResponse = await this.handleResponse<T>(response, method, originalRequestFn, false, fullUrl);
+			const apiResponse = await this.handleResponse<T>(
+				response,
+				method,
+				originalRequestFn,
+				hasAttemptedRefresh,
+				fullUrl
+			);
 
-			// Execute response interceptors
-			const interceptedResponse = await this.responseInterceptors.execute(apiResponse);
+			// Execute response interceptors with generic type support
+			const interceptedResponse = await this.interceptors.executeResponse<T>(apiResponse);
 
 			return interceptedResponse;
 		} catch (error) {
@@ -358,7 +306,7 @@ class ApiService implements ClientApiService {
 			let details: BaseData = { error: errorMessage };
 
 			if (isRecord(error)) {
-				const hasStatusCode = hasPropertyOfType(error, 'statusCode', defaultValidators.number);
+				const hasStatusCode = hasPropertyOfType(error, 'statusCode', VALIDATORS.number);
 				if (hasStatusCode) {
 					statusCode = error.statusCode;
 				}
@@ -375,70 +323,15 @@ class ApiService implements ClientApiService {
 			};
 
 			// Execute error interceptors
-			const interceptedError = await this.errorInterceptors.execute(apiError);
+			const interceptedError = await this.interceptors.executeError(apiError);
 
 			throw interceptedError;
 		}
 	}
 
-	private async retryRequest<T>(requestFn: () => Promise<ApiResponse<T>>): Promise<ApiResponse<T>> {
-		const result = await executeRetry<ApiResponse<T>>(requestFn, {
-			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
-			baseDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY,
-			timeout: HTTP_CLIENT_CONFIG.TIMEOUT,
-			retryOnAuthError: false, // Don't retry on 401
-			retryOnRateLimit: false, // Don't retry on 429 (client-side)
-			retryOnServerError: true, // Retry on 5xx
-			retryOnNetworkError: true, // Retry on network errors
-			retryOptions: {
-				useExponentialBackoff: false, // Linear backoff for client
-				jitter: { maxJitter: 1000 },
-			},
-			shouldRetry: (error, statusCode) => {
-				// Never retry SessionExpiredError - user needs to re-authenticate
-				if (error instanceof Error && error.name === 'SessionExpiredError') {
-					return false;
-				}
-
-				// Check if error has isServerError property
-				const isServerErrorValue: boolean | undefined = hasPropertyOfType(
-					error,
-					'isServerError',
-					defaultValidators.boolean
-				)
-					? error.isServerError
-					: undefined;
-
-				// Only retry on server errors (5xx) or network errors (statusCode 0)
-				return isServerErrorValue === true || statusCode === 0;
-			},
-			onRetry: (attempt, error, delay) => {
-				logger.apiDebug('Retrying request', {
-					attempt,
-					delay,
-					error: getErrorMessage(error),
-				});
-			},
-			onError: (error, attempt, isFinal) => {
-				if (isFinal) {
-					logger.apiError('Request failed after retries', {
-						attempt,
-						error: getErrorMessage(error),
-					});
-				}
-			},
-		});
-
-		return result.data;
-	}
-
-	/**
-	 * Clear authentication tokens and throw session expired error
-	 * @private
-	 */
 	private async clearTokensAndThrowSessionExpired(): Promise<never> {
-		await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-		await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+		await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
+		await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
 		const sessionExpiredError = new Error(ERROR_MESSAGES.api.SESSION_EXPIRED);
 		sessionExpiredError.name = 'SessionExpiredError';
 		throw sessionExpiredError;
@@ -455,8 +348,9 @@ class ApiService implements ClientApiService {
 			// Handle 401 Unauthorized - try to refresh token (only once per request)
 			// Skip token refresh for authentication endpoints (login, register, refresh, logout)
 			// These endpoints should not attempt token refresh as they are part of the auth flow
-			const urlToCheck = requestUrl || response.url;
-			const isAuthEndpoint = urlToCheck.includes('/auth/login') ||
+			const urlToCheck = requestUrl ?? response.url;
+			const isAuthEndpoint =
+				urlToCheck.includes('/auth/login') ||
 				urlToCheck.includes('/auth/register') ||
 				urlToCheck.includes('/auth/refresh') ||
 				urlToCheck.includes('/auth/logout') ||
@@ -464,14 +358,27 @@ class ApiService implements ClientApiService {
 
 			if (response.status === 401 && originalRequest && !hasAttemptedRefresh && !isAuthEndpoint) {
 				// Check if we have a refresh token before attempting refresh
-				const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+				const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
 				const hasRefreshToken = refreshTokenResult.success && !!refreshTokenResult.data;
 
 				if (hasRefreshToken) {
 					try {
+						// Refresh the token
 						await this.refreshToken();
-						// Retry the original request with new token (mark as refresh attempted to prevent infinite loop)
+
+						// Verify token was stored before retrying request
+						// Add a small delay to ensure token is fully stored
+						await new Promise(resolve => setTimeout(resolve, 50));
+
+						const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+						if (!tokenResult.success || !tokenResult.data) {
+							await this.clearTokensAndThrowSessionExpired();
+						}
+
+						// Retry the original request with new token
+						// The originalRequest function will mark hasAttemptedRefresh=true to prevent infinite loop
 						const retryResponse = await originalRequest();
+
 						// If retry also returns 401, don't try to refresh again
 						if (retryResponse.statusCode === 401) {
 							await this.clearTokensAndThrowSessionExpired();
@@ -495,15 +402,13 @@ class ApiService implements ClientApiService {
 			let details: BaseData = {};
 			const contentType = response.headers.get('content-type');
 
-			if (contentType && contentType.includes('application/json')) {
+			if (contentType?.includes('application/json')) {
 				try {
 					const jsonData = await response.json();
+					// Use shared error parsing utility
+					errorData = parseErrorResponseData(jsonData);
+					// Convert full JSON data to BaseData format for details
 					if (isRecord(jsonData)) {
-						errorData = {
-							message: typeof jsonData.message === 'string' ? jsonData.message : undefined,
-							error: typeof jsonData.error === 'string' ? jsonData.error : undefined,
-						};
-						// Convert full JSON data to BaseData format for details
 						details = this.convertToBaseData(jsonData);
 					} else {
 						errorData = { message: ERROR_MESSAGES.api.INVALID_ERROR_RESPONSE_FORMAT };
@@ -526,9 +431,10 @@ class ApiService implements ClientApiService {
 			const isClientError =
 				response.status >= HTTP_STATUS_CODES.BAD_REQUEST && response.status < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
 
-			// Enhanced error message with more context
+			// Prioritize code field over message for error handling (code is more reliable)
+			// Enhanced error message with more context (fallback to message if code not available)
 			const errorMessage = getErrorMessage(
-				errorData.message ?? errorData.error ?? `HTTP ${response.status}: ${response.statusText}`
+				errorData.code ?? errorData.message ?? errorData.error ?? `HTTP ${response.status}: ${response.statusText}`
 			);
 
 			const errorResponse: ApiError & {
@@ -536,14 +442,17 @@ class ApiService implements ClientApiService {
 				isClientError: boolean;
 				url: string;
 				method: string;
+				responseHeaders?: Headers;
 			} = {
 				message: errorMessage,
+				code: errorData.code,
 				statusCode: response.status,
 				details: details,
 				isServerError,
 				isClientError,
 				url: response.url,
 				method: method,
+				responseHeaders: response.headers, // Pass headers for Retry-After extraction
 			};
 			throw errorResponse;
 		}
@@ -551,7 +460,7 @@ class ApiService implements ClientApiService {
 		const contentType = response.headers.get('content-type');
 		let responseData: unknown;
 
-		if (contentType && contentType.includes('application/json')) {
+		if (contentType?.includes('application/json')) {
 			responseData = await response.json();
 		} else {
 			// Handle non-JSON responses
@@ -583,6 +492,7 @@ class ApiService implements ClientApiService {
 			data: responseData,
 			success: true,
 			statusCode: response.status,
+			timestamp: new Date().toISOString(),
 		};
 
 		if (this.isValidApiResponse<T>(fallbackResponse)) {
@@ -614,22 +524,22 @@ class ApiService implements ClientApiService {
 
 	// Auth methods
 	async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
-		const response = await this.post<ServerAuthResponse>(API_ROUTES.AUTH.LOGIN, credentials);
+		const response = await this.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, credentials);
 
-		// Convert server response format (access_token) to client format (accessToken)
+		// Server response is already in camelCase format
 		const serverResponse = response.data;
 		const authResult: AuthenticationResult = {
 			user: serverResponse.user,
-			accessToken: serverResponse.access_token,
-			refreshToken: serverResponse.refresh_token,
+			accessToken: serverResponse.accessToken,
+			refreshToken: serverResponse.refreshToken,
 		};
 
 		// Store tokens securely using centralized constants
 		if (authResult.accessToken) {
-			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
 		}
 		if (authResult.refreshToken) {
-			await storageService.set(CLIENT_STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
 		}
 
 		return authResult;
@@ -646,22 +556,22 @@ class ApiService implements ClientApiService {
 		if (credentials.lastName) registerPayload.lastName = credentials.lastName;
 
 		logger.authRegister('Calling register API', {
-			email: credentials.email,
+			emails: { current: credentials.email },
 		});
 
-		const response = await this.post<ServerAuthResponse>(API_ROUTES.AUTH.REGISTER, registerPayload);
+		const response = await this.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, registerPayload);
 
-		// Convert server response format (access_token) to client format (accessToken)
+		// Server response is already in camelCase format
 		const serverResponse = response.data;
 		const authResult: AuthenticationResult = {
 			user: serverResponse.user,
-			accessToken: serverResponse.access_token,
-			refreshToken: serverResponse.refresh_token,
+			accessToken: serverResponse.accessToken,
+			refreshToken: serverResponse.refreshToken,
 		};
 
 		logger.authRegister('Register API response received', {
 			userId: authResult.user?.id,
-			email: authResult.user?.email,
+			emails: { current: authResult.user?.email },
 		});
 
 		// Store tokens securely using centralized constants
@@ -669,23 +579,23 @@ class ApiService implements ClientApiService {
 		// to ensure they're available immediately for subsequent requests
 		if (authResult.accessToken) {
 			// Clear any existing token first to prevent conflicts
-			await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
+			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
 
 			// Verify token was stored correctly
-			const storedTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+			const storedTokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 			const storedToken = storedTokenResult.success ? storedTokenResult.data : null;
 
 			logger.authInfo('Access token stored', {
 				valueLength: authResult.accessToken.length,
 				userId: authResult.user?.id,
-				email: authResult.user?.email,
+				emails: { current: authResult.user?.email },
 				tokenMatches: storedToken === authResult.accessToken,
 			});
 		}
 		if (authResult.refreshToken) {
-			await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
-			await storageService.set(CLIENT_STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
+			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
 			logger.authInfo('Refresh token stored');
 		}
 
@@ -694,54 +604,78 @@ class ApiService implements ClientApiService {
 
 	async logout(): Promise<void> {
 		try {
-			await this.post(API_ROUTES.AUTH.LOGOUT);
+			// Skip retry for logout - if it fails (e.g., token expired), just clear local tokens
+			await this.post(API_ENDPOINTS.AUTH.LOGOUT, undefined);
 		} catch (error) {
 			// Continue with logout even if server request fails
-			logger.apiWarn('Logout request failed, but clearing local tokens', { error: getErrorMessage(error) });
+			// This is expected when token is expired/invalid
+			const errorMessage = getErrorMessage(error);
+			// Extract error code if available (prioritize code over message)
+			const errorCode = isRecord(error) && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+
+			// Check auth errors using ERROR_CODES constants (prioritize code, fallback to message)
+			const isAuthError =
+				errorCode === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
+				errorCode === ERROR_CODES.USER_NOT_AUTHENTICATED ||
+				errorCode === ERROR_CODES.UNAUTHORIZED ||
+				// Fallback to message checks for backward compatibility
+				errorMessage === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
+				errorMessage.includes('Session expired') ||
+				errorMessage.includes('401');
+
+			if (isAuthError) {
+				logger.apiDebug('Logout request failed due to expired/invalid token (expected)', {
+					errorInfo: { message: errorMessage, code: errorCode },
+				});
+			} else {
+				logger.apiWarn('Logout request failed, but clearing local tokens', {
+					errorInfo: { message: errorMessage, code: errorCode },
+				});
+			}
 		} finally {
 			// Always clear local tokens
-			await storageService.delete(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
-			await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+			await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
+			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
 		}
 	}
 
 	async refreshToken(): Promise<RefreshTokenResponse> {
-		const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+		const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
 		const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
 		if (!refreshToken) {
 			throw new Error(ERROR_MESSAGES.api.NO_REFRESH_TOKEN_AVAILABLE);
 		}
 
-		const response = await this.post<RefreshTokenResponse>(API_ROUTES.AUTH.REFRESH, {
+		const response = await this.post<RefreshTokenResponse>(API_ENDPOINTS.AUTH.REFRESH, {
 			refreshToken,
 		});
 
 		// Store new access token
 		if (response.data.accessToken) {
-			await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
+			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
 		}
 
 		return response.data;
 	}
 
 	async getCurrentUser(): Promise<BasicUser> {
-		const response = await this.get<BasicUser>(API_ROUTES.AUTH.ME);
+		const response = await this.get<BasicUser>(API_ENDPOINTS.AUTH.ME);
 		return response.data;
 	}
 
 	async isAuthenticated(): Promise<boolean> {
-		const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 		return tokenResult.success && !!tokenResult.data;
 	}
 
 	async getAuthToken(): Promise<string | null> {
-		const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 		return tokenResult.success && tokenResult.data ? tokenResult.data : null;
 	}
 
 	// User methods
 	async getUserProfile(): Promise<UserProfileResponseType> {
-		const response = await this.get<UserProfileResponseType>(API_ROUTES.USER.PROFILE);
+		const response = await this.get<UserProfileResponseType>(API_ENDPOINTS.USER.PROFILE);
 		return response.data;
 	}
 
@@ -751,7 +685,7 @@ class ApiService implements ClientApiService {
 			throw new Error(ERROR_MESSAGES.validation.PROFILE_DATA_REQUIRED);
 		}
 
-		const response = await this.put<UserProfileResponseType>(API_ROUTES.USER.PROFILE, data);
+		const response = await this.put<UserProfileResponseType>(API_ENDPOINTS.USER.PROFILE, data);
 		return response.data;
 	}
 
@@ -761,15 +695,12 @@ class ApiService implements ClientApiService {
 			throw new Error(ERROR_MESSAGES.validation.AVATAR_ID_OUT_OF_RANGE);
 		}
 
-		const response = await this.patch<UserProfileResponseType>(API_ROUTES.USER.AVATAR, {
+		const response = await this.patch<UserProfileResponseType>(API_ENDPOINTS.USER.AVATAR, {
 			avatarId,
 		});
 		return response.data;
 	}
 
-	/**
-	 * Search users
-	 */
 	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
 		// Validate input
 		if (!isNonEmptyString(query)) {
@@ -784,35 +715,24 @@ class ApiService implements ClientApiService {
 			limit,
 		});
 
-		const response = await this.get<BasicUser[]>(`${API_ROUTES.USER.SEARCH}${queryString}`);
+		const response = await this.get<BasicUser[]>(`${API_ENDPOINTS.USER.SEARCH}${queryString}`);
 		return response.data;
 	}
 
 	// User preferences methods
 	async updateUserPreferences(preferences: Partial<UserPreferences>): Promise<void> {
-		const response = await this.put<void>(API_ROUTES.USER.PREFERENCES, preferences);
+		const response = await this.put<void>(API_ENDPOINTS.USER.PREFERENCES, preferences);
 		return response.data;
 	}
 
 	// Account management methods
 	async deleteUserAccount(): Promise<string> {
-		const response = await this.delete<string>(API_ROUTES.USER.ACCOUNT);
+		const response = await this.delete<string>(API_ENDPOINTS.USER.ACCOUNT);
 		return response.data;
 	}
 
 	async changePassword(changePasswordData: ChangePasswordData): Promise<string> {
-		const response = await this.put<string>(API_ROUTES.USER.CHANGE_PASSWORD, changePasswordData);
-		return response.data;
-	}
-
-	// Submit client logs
-	async submitClientLogs(logs: ClientLogsRequest): Promise<string> {
-		// Validate logs
-		if (!logs || !logs.logs || !Array.isArray(logs.logs) || logs.logs.length === 0) {
-			throw new Error(ERROR_MESSAGES.validation.LOGS_ARRAY_REQUIRED);
-		}
-
-		const response = await this.post<string>(API_ROUTES.CLIENT_LOGS.BATCH, logs);
+		const response = await this.put<string>(API_ENDPOINTS.USER.CHANGE_PASSWORD, changePasswordData);
 		return response.data;
 	}
 }

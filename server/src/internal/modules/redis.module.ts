@@ -1,17 +1,8 @@
-/**
- * Redis Module
- *
- * @module RedisModule
- * @description Global Redis module providing Redis client configuration and connection management
- * @used_by server/src/features, server/src/internal/modules, server/src/controllers
- * @global
- * @provides REDIS_CLIENT
- */
 import { Global, Module, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 
+import { redisConfig } from '@config';
 import { serverLogger as logger } from '@internal/services';
-import { redisConfig } from '../../config/redis.config';
 
 @Global()
 @Module({
@@ -38,7 +29,7 @@ import { redisConfig } from '../../config/redis.config';
 
 				redisClient.on('error', (err: Error) => {
 					logger.systemError(`Redis client error: ${err.message}`, {
-						error: err.message,
+						errorInfo: { message: err.message },
 						host: redisConfig.host,
 						port: redisConfig.port,
 					});

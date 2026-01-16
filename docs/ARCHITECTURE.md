@@ -108,7 +108,6 @@ EveryTriv/
 │   │   │   │   └── types/    # טיפוסי משחק
 │   │   │   ├── credits/      # מערכת אשראי
 │   │   │   ├── payment/      # תשלומים
-│   │   │   ├── subscription/ # מנויים
 │   │   │   ├── analytics/    # אנליטיקה
 │   │   │   └── leaderboard/  # לוח תוצאות
 │   │   ├── internal/         # קוד פנימי משותף
@@ -164,18 +163,26 @@ EveryTriv/
 ### ניהול מצב (State Management)
 
 #### Redux Toolkit
-המערכת משתמשת ב-Redux Toolkit לניהול מצב גלובלי. ה-store כולל את ה-slices הבאים:
-- `gameSlice` - מצב המשחק הנוכחי
-- `userSlice` - פרטי משתמש ואימות (persisted)
-- `statsSlice` - סטטיסטיקות משחק
-- `favoritesSlice` - נושאים מועדפים (persisted)
-- `gameModeSlice` - מצב משחק והגדרות (persisted)
+המערכת משתמשת ב-Redux Toolkit לניהול מצב UI מקומי וסשן משחק. ה-store כולל:
+- `gameModeSlice` - מצב משחק והגדרות (persisted ב-localStorage)
+- `gameSessionSlice` - מצב סשן משחק פעיל (לא persisted - session only)
+- `multiplayerSlice` - מצב משחק מרובה משתתפים (לא persisted - session only)
+- `audioSettingsSlice` - הגדרות אודיו (persisted ב-localStorage)
+- `uiPreferencesSlice` - העדפות UI (persisted ב-sessionStorage)
+
+**שינוי ארכיטקטוני:** כל מצב שמגיע מהשרת (server state) מנוהל על ידי React Query בלבד. Redux משמש למצב UI מקומי שצריך persist ולמצב סשן משחק.
+- מצב המשחק עצמו (game session) מנוהל ב-`useState` מקומי - זה session state זמני שלא צריך להיות global
+- מצב משתמש, סטטיסטיקות - מנוהלים ב-React Query
+- מועדפים - לא קיימים כרגע באפליקציה
 
 לדיאגרמת Redux מפורטת, ראו: [דיאגרמות - Redux State](./DIAGRAMS.md#דיאגרמת-redux-state)
 
 #### React Query
-React Query מטפל במצב שרת (server state) עם cache אוטומטי ו-invalidation:
-- `useCurrentUser` - פרטי משתמש נוכחי
+React Query הוא ה-Source of Truth היחיד למצב שרת (server state) עם cache אוטומטי ו-invalidation:
+- `useCurrentUser` - פרטי משתמש נוכחי (מחליף Redux userSlice)
+- `useCreditBalance` - יתרת קרדיטים (מחליף Redux creditBalance)
+- `useIsAuthenticated` - מצב אימות (מחליף Redux isAuthenticated)
+- `useUserRole` - תפקיד משתמש (מחליף Redux userRole)
 - `useTrivia` - שאלות טריוויה
 - `useUserStats` - סטטיסטיקות משתמש
 - `useGameHistory` - היסטוריית משחקים
@@ -259,15 +266,9 @@ React Query מטפל במצב שרת (server state) עם cache אוטומטי ו
 
 #### מודול Payment
 מודול תשלומים מטפל ב:
-- אינטגרציה עם Stripe
-- ניהול תשלומים ומנויים
+- אינטגרציה עם PayPal
+- ניהול תשלומים
 - webhooks
-
-#### מודול Subscription
-מודול מנויים מטפל ב:
-- ניהול מנויים והרשאות פרימיום
-- עדכון מצב מנוי
-- הגבלות לפי תוכנית
 
 ### שירותים משותפים
 
@@ -331,7 +332,6 @@ const queryBuilder = repository
 - **leaderboard** - לוח תוצאות
 - **payment_history** - היסטוריית תשלומים
 - **credit_transactions** - עסקאות אשראי
-- **subscriptions** - מנויים
 
 #### אינדקסים
 
@@ -377,7 +377,7 @@ const queryBuilder = repository
 לדיאגרמת זרימת נתונים מפורטת, ראו: [דיאגרמות - תשובה לשאלה](./DIAGRAMS.md#דיאגרמת-זרימת-נתונים---תשובה-לשאלה)
 
 1. משתמש עונה על שאלה
-2. Frontend שולח תשובה ל-`POST /api/game/answer`
+2. Frontend שולח תשובה ל-`POST /api/game/session/answer`
 3. Backend בודק נכונות תשובה
 4. `calculateAnswerScore` מ-`@shared/utils` מחשב ניקוד לפי קושי וזמן
 5. שומר טרנזקציית אשראי

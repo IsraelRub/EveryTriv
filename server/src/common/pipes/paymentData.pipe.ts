@@ -1,21 +1,13 @@
-/**
- * Payment Data Validation Pipe
- *
- * @module PaymentDataPipe
- * @description Pipe for validating payment data input with comprehensive validation
- * @used_by server/src/features/payment, server/src/controllers
- */
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { ERROR_CODES, PaymentMethod } from '@shared/constants';
 import type { ValidationResult } from '@shared/types';
 import { calculateDuration, isRecord, sanitizeCardNumber } from '@shared/utils';
-import { isPaymentMethod } from '@shared/validation';
+import { isPaymentMethod, isValidCardNumber, validateCVV, validateExpiryDate, validateName } from '@shared/validation';
+
 import { serverLogger as logger } from '@internal/services';
 import type { PersonalPaymentData } from '@internal/types';
-import { validateName } from '@internal/validation/core';
-import { isValidCardNumber } from '@internal/validation/domain';
-import type { CreatePaymentDto } from '../../features/payment/dtos/payment.dto';
+import type { CreatePaymentDto } from '@features/payment/dtos';
 
 @Injectable()
 export class PaymentDataPipe implements PipeTransform {
@@ -111,51 +103,37 @@ export class PaymentDataPipe implements PipeTransform {
 			}
 		}
 
-		// Validate expiry date
+		// Validate expiry date using shared validation function
 		if (!data.expiryDate || typeof data.expiryDate !== 'string') {
 			errors.push('Expiry date is required');
 			suggestions.push('Please enter your card expiry date');
 		} else {
-			const expiryPattern = /^(0[1-9]|1[0-2])\/\d{2}$/;
-			if (!expiryPattern.test(data.expiryDate)) {
-				errors.push('Expiry date must be in MM/YY format');
-				suggestions.push('Use MM/YY format (e.g., 12/25 for December 2025)');
-			} else {
-				const [month, year] = data.expiryDate.split('/');
-				const currentDate = new Date();
-				const currentYear = currentDate.getFullYear() % 100;
-				const currentMonth = currentDate.getMonth() + 1;
-
-				if (month != null && (parseInt(month) < 1 || parseInt(month) > 12)) {
-					errors.push('Month must be between 01 and 12');
-					suggestions.push('Enter a valid month (01-12)');
-				}
-
-				if (month != null && year != null && (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth))) {
-					errors.push('Card has expired');
-					suggestions.push('Please use a card that has not expired');
+			const expiryValidation = validateExpiryDate(data.expiryDate);
+			if (!expiryValidation.isValid) {
+				errors.push(...expiryValidation.errors);
+				if (expiryValidation.suggestion) {
+					suggestions.push(expiryValidation.suggestion);
 				}
 			}
 		}
 
-		// Validate CVV
+		// Validate CVV using shared validation function
 		if (!data.cvv || typeof data.cvv !== 'string') {
 			errors.push('CVV is required');
 			suggestions.push('Please enter your 3-4 digit CVV');
 		} else {
-			const cleanCvv = data.cvv.replace(/\s+/g, '');
-			if (cleanCvv.length < 3 || cleanCvv.length > 4) {
-				errors.push('CVV must be 3-4 digits');
-				suggestions.push('Enter the 3-4 digit security code on the back of your card');
-			} else if (!/^\d+$/.test(cleanCvv)) {
-				errors.push('CVV can only contain digits');
-				suggestions.push('Remove any letters or special characters from your CVV');
+			const cvvValidation = validateCVV(data.cvv);
+			if (!cvvValidation.isValid) {
+				errors.push(...cvvValidation.errors);
+				if (cvvValidation.suggestion) {
+					suggestions.push(cvvValidation.suggestion);
+				}
 			}
 		}
 
 		// Validate cardholder name if provided using shared validation function
 		if (data.cardHolderName) {
-			const nameValidation = validateName(data.cardHolderName, 'Cardholder name');
+			const nameValidation = validateName(data.cardHolderName, { fieldName: 'Cardholder name' });
 			if (!nameValidation.isValid) {
 				errors.push(...nameValidation.errors);
 				suggestions.push('Enter the full name as it appears on your card');

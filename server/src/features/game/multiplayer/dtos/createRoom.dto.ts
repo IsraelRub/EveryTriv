@@ -4,11 +4,6 @@ import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } f
 import { DifficultyLevel, GameMode, VALID_GAME_MODES, VALIDATION_COUNT } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
-/**
- * DTO for creating a multiplayer room
- * @class CreateRoomDto
- * @description Data transfer object for creating a new multiplayer game room
- */
 export class CreateRoomDto {
 	@ApiProperty({ description: 'Trivia topic', example: 'Science' })
 	@IsString()
@@ -16,7 +11,10 @@ export class CreateRoomDto {
 	@MaxLength(100)
 	topic!: string;
 
-	@ApiProperty({ description: 'Difficulty level (standard or custom)', example: 'medium' })
+	@ApiProperty({
+		description: 'Difficulty level (standard or custom)',
+		example: 'medium',
+	})
 	@IsString()
 	difficulty!: GameDifficulty;
 

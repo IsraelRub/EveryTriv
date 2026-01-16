@@ -5,8 +5,20 @@ import { CheckCircle, Crown, XCircle } from 'lucide-react';
 
 import { RoomStatus } from '@shared/constants';
 import { calculateElapsedSeconds } from '@shared/utils';
-import { SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
-import { Avatar, AvatarFallback, Badge, Card, CardContent, CardHeader, CardTitle, GameTimer, Spinner } from '@/components';
+
+import { SpinnerSize, VariantBase } from '@/constants';
+import {
+	AnswerButton,
+	Avatar,
+	AvatarFallback,
+	Badge,
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+	GameTimer,
+	Spinner,
+} from '@/components';
 import { useMultiplayer } from '@/hooks';
 import { cn } from '@/utils';
 
@@ -14,22 +26,25 @@ export function MultiplayerGameView() {
 	const { roomId } = useParams<string>();
 	const navigate = useNavigate();
 
-	const { room, gameState, leaderboard, submitAnswer } = useMultiplayer(roomId);
+	const { room, gameState, leaderboard, submitAnswer, loadingStep, displayMessage } = useMultiplayer(roomId);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 	const [answered, setAnswered] = useState(false);
-	const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
 
 	const currentQuestion = gameState?.currentQuestion;
 	const questionIndex = gameState?.currentQuestionIndex ?? 0;
 	const gameQuestionCount = gameState?.gameQuestionCount ?? 0;
-	const timePerQuestion = gameState?.timeRemaining || 30;
+	const timePerQuestion = room?.config.timePerQuestion ?? 30;
+	const questionStartTime = gameState?.currentQuestionStartTime
+		? new Date(gameState.currentQuestionStartTime).getTime()
+		: undefined;
+	const serverStartTimestamp = gameState?.serverStartTimestamp;
+	const serverEndTimestamp = gameState?.serverEndTimestamp;
 
 	// Reset state when question changes
 	useEffect(() => {
 		setSelectedAnswer(null);
 		setAnswered(false);
-		setQuestionStartTime(Date.now());
 	}, [gameState?.currentQuestionIndex]);
 
 	// Navigate to results when game ends
@@ -45,8 +60,8 @@ export function MultiplayerGameView() {
 		setSelectedAnswer(answerIndex);
 		setAnswered(true);
 
-		// Calculate time spent from question start
-		const timeSpent = calculateElapsedSeconds(questionStartTime);
+		// Calculate time spent from question start (server timestamp)
+		const timeSpent = questionStartTime ? calculateElapsedSeconds(questionStartTime) : 0;
 		submitAnswer(roomId, currentQuestion.id, answerIndex, timeSpent);
 	};
 
@@ -54,8 +69,15 @@ export function MultiplayerGameView() {
 		return (
 			<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen py-12 px-4'>
 				<div className='max-w-md mx-auto text-center space-y-4'>
-					<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.XL} className='mx-auto text-primary' />
-					<h2 className='text-xl font-semibold'>Loading game...</h2>
+					<Spinner size={SpinnerSize.XL} variant='loader' className='mx-auto text-primary' />
+					<motion.h2
+						key={loadingStep}
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						className='text-xl font-semibold'
+					>
+						{displayMessage}
+					</motion.h2>
 				</div>
 			</motion.main>
 		);
@@ -75,7 +97,15 @@ export function MultiplayerGameView() {
 										Question {questionIndex + 1} of {gameQuestionCount}
 									</Badge>
 								</div>
-								<GameTimer mode='countdown' initialTime={timePerQuestion} key={questionIndex} label='Time Remaining' />
+								<GameTimer
+									mode='countdown'
+									initialTime={timePerQuestion}
+									startTime={questionStartTime}
+									serverStartTimestamp={serverStartTimestamp}
+									serverEndTimestamp={serverEndTimestamp}
+									key={questionIndex}
+									label='Time Remaining'
+								/>
 							</CardContent>
 						</Card>
 
@@ -83,68 +113,22 @@ export function MultiplayerGameView() {
 						<Card className='flex-1 flex flex-col min-h-0 mb-3'>
 							<CardContent className='pt-4 pb-4 flex-1 flex flex-col min-h-0'>
 								<h2 className='text-xl font-bold mb-4 leading-tight flex-shrink-0'>
-									{currentQuestion?.question || 'Loading question...'}
+									{currentQuestion?.question ?? 'Loading question...'}
 								</h2>
 								<div className='grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 min-h-0'>
 									{currentQuestion?.answers?.map((answer, index) => {
-										const isSelected = selectedAnswer === index;
-										const showResult = answered && gameState?.playersAnswers;
-										const isCorrect = answer.isCorrect;
-										const isWrong = showResult && isSelected && !isCorrect;
-
-										let styleClasses = '';
-										if (!showResult) {
-											if (isSelected) {
-												styleClasses = 'bg-blue-500/50 ring-2 ring-blue-500/70';
-											} else {
-												styleClasses = 'hover:bg-accent hover:scale-[1.02] active:scale-[0.98]';
-											}
-										} else {
-											if (isCorrect) {
-												styleClasses = 'bg-green-500/40 ring-2 ring-green-500/70';
-											} else if (isWrong) {
-												styleClasses = 'bg-red-500/40 ring-2 ring-red-500/70';
-											} else {
-												styleClasses = 'opacity-50';
-											}
-										}
-
+										const showResult = Boolean(answered && gameState?.playersAnswers);
 										return (
-											<motion.button
+											<AnswerButton
 												key={index}
-												initial={{ opacity: 0, y: 10 }}
-												animate={{ opacity: 1, y: 0 }}
-												transition={{ delay: index * 0.05 }}
-												onClick={() => handleAnswerSelect(index)}
-												disabled={answered}
-												className={cn(
-													'p-3 text-left border-2 border-white rounded-lg transition-all h-full flex items-center',
-													styleClasses,
-													answered ? 'cursor-not-allowed' : 'cursor-pointer'
-												)}
-											>
-												<div className='flex items-center gap-3 w-full'>
-													<span className='flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center font-medium text-sm'>
-														{String.fromCharCode(65 + index)}
-													</span>
-													<span className='flex-1 text-base leading-tight'>{answer.text}</span>
-													{showResult && isCorrect && (
-														<motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className='flex-shrink-0'>
-															<CheckCircle className='h-4 w-4 text-green-500' />
-														</motion.span>
-													)}
-													{isWrong && (
-														<motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className='flex-shrink-0'>
-															<XCircle className='h-4 w-4 text-red-500' />
-														</motion.span>
-													)}
-													{isSelected && !showResult && (
-														<motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className='flex-shrink-0'>
-															<div className='h-4 w-4 rounded-full border-2 border-primary' />
-														</motion.span>
-													)}
-												</div>
-											</motion.button>
+												answer={answer}
+												index={index}
+												answered={answered}
+												selectedAnswer={selectedAnswer}
+												currentQuestion={currentQuestion}
+												onClick={handleAnswerSelect}
+												showResult={showResult}
+											/>
 										);
 									})}
 								</div>
@@ -184,10 +168,11 @@ export function MultiplayerGameView() {
 											>
 												<span className='font-bold text-sm w-5'>#{index + 1}</span>
 												<Avatar className='h-7 w-7'>
-													<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
+													<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
 												</Avatar>
 												<div className='flex-1 min-w-0'>
 													<div className='flex items-center gap-1'>
+														{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
 														<span className='font-medium text-sm truncate'>{player.displayName || 'Player'}</span>
 														{index === 0 && <Crown className='h-3 w-3 text-yellow-500 flex-shrink-0' />}
 													</div>
@@ -201,8 +186,9 @@ export function MultiplayerGameView() {
 												<div key={player.userId} className='flex items-center gap-2 p-2 rounded-lg bg-muted/50'>
 													<span className='font-bold text-sm w-5'>#{index + 1}</span>
 													<Avatar className='h-7 w-7'>
-														<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
+														<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
 													</Avatar>
+													{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
 													<span className='font-medium text-sm truncate'>{player.displayName || 'Player'}</span>
 													<span className='font-bold text-muted-foreground ml-auto text-sm'>0</span>
 												</div>
@@ -229,6 +215,7 @@ export function MultiplayerGameView() {
 												) : (
 													<XCircle className='h-3.5 w-3.5 text-muted-foreground flex-shrink-0' />
 												)}
+												{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
 												<span className='text-xs'>{player.displayName || 'Player'}</span>
 											</div>
 										);

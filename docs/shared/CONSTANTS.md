@@ -15,7 +15,7 @@ shared/constants/
 │   ├── auth.constants.ts      # קבועי אימות
 │   ├── error.constants.ts     # קבועי שגיאות
 │   ├── game-server.constants.ts # קבועי משחק שרת
-│   ├── performance.constants.ts # קבועי ביצועים
+│   ├── time.constants.ts      # קבועי זמן (TTL, משכי cache, וכו')
 │   ├── validation.constants.ts # קבועי ולידציה
 │   └── index.ts
 ├── domain/                    # ערכים דומייניים
@@ -41,7 +41,7 @@ shared/constants/
 
 ## Core Constants
 
-**הערה:** קבועי משחק נמצאים ב-`domain/game.constants.ts` ולא ב-`core/`. קבצי ה-core כוללים רק קבועי API, אימות, שגיאות, ביצועים וולידציה.
+**הערה:** קבועי משחק נמצאים ב-`domain/game.constants.ts` ולא ב-`core/`. קבצי ה-core כוללים רק קבועי API, אימות, שגיאות, זמן וולידציה.
 
 ### api.constants.ts
 
@@ -50,61 +50,39 @@ shared/constants/
  * Shared API constants for EveryTriv
  */
 
-// Base API endpoints structure
-export const API_ENDPOINTS_BASE = {
+// Complete API endpoints structure
+export const API_ENDPOINTS = {
   AUTH: {
+    BASE: '/auth',
+    ME: '/auth/me',
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
     GOOGLE: '/auth/google',
-    PROFILE: '/auth/profile',
+    GOOGLE_CALLBACK: '/auth/google/callback',
+    ADMIN_USERS: '/auth/admin/users',
   },
   USER: {
-    PROFILE: '/user/profile',
-    CREDITS: '/user/credits',
-    STATS: '/user/stats',
-    UPDATE_FIELD: (field: string) => `/users/profile/${field}`,
-    UPDATE_PREFERENCE: (preference: string) => `/users/preferences/${preference}`,
-    GET_BY_ID: (id: string) => `/users/${id}`,
-    UPDATE_CREDITS: (userId: string) => `/users/credits/${userId}`,
-    UPDATE_STATUS: (userId: string) => `/users/${userId}/status`,
-  },
-  TRIVIA: {
-    GENERATE: '/trivia/generate',
-    VALIDATE: '/trivia/validate',
-    HISTORY: '/trivia/history',
-  },
-  GAME_HISTORY: {
-    CREATE: '/game-history',
-    GET_ALL: '/game-history',
-    LEADERBOARD: '/game-history/leaderboard',
-    DELETE: (id: string) => `/game-history/${id}`,
-    CLEAR: '/game-history',
-  },
-  SUBSCRIPTION: {
-    PLANS: '/subscription/plans',
-    CURRENT: '/subscription/current',
-    CREATE: '/subscription/create',
-    CANCEL: '/subscription/cancel',
-  },
-  PAYMENT: {
-    HISTORY: '/payment/history',
-    CREATE: '/payment/create',
-  },
-  POINTS: {
-    GET: '/credits',
-    BALANCE: '/credits/balance',
-    HISTORY: '/credits/history',
-  },
-} as const;
-
-// Complete API endpoints
-export const API_ENDPOINTS = {
-  ...API_ENDPOINTS_BASE,
-  AUTH: {
-    ...API_ENDPOINTS_BASE.AUTH,
-    ME: '/auth/me',
+    BASE: '/users',
+    PROFILE: '/users/profile',
+    AVATAR: '/users/avatar',
+    SEARCH: '/users/search',
+    ACCOUNT: '/users/account',
+    CHANGE_PASSWORD: '/users/change-password',
+    PREFERENCES: '/users/preferences',
+    PROFILE_FIELD: '/users/profile/:field',
+    PREFERENCES_FIELD: '/users/preferences/:preference',
+    GET_BY_ID: '/users/:id',
+    BY_ID: '/users/:id',
+    BY_USER_ID: '/users/:userId',
+    UPDATE_CREDITS: '/users/credits/:userId',
+    CREDITS_BY_USER_ID: '/users/credits/:userId',
+    UPDATE_STATUS: '/users/:userId/status',
+    ADMIN: {
+      ALL: '/users/admin/all',
+      STATUS_BY_USER_ID: '/users/admin/:userId/status',
+    },
   },
   // ... additional endpoints
 } as const;
@@ -133,8 +111,6 @@ export const RATE_LIMIT_DEFAULTS = {
   MAX_REQUESTS_PER_WINDOW: 200,
   BURST_LIMIT: 50,
   BURST_WINDOW_MS: 10000,
-  CLIENT_LOGS_MAX_REQUESTS: 50,
-  CLIENT_LOGS_BURST_LIMIT: 10,
   MESSAGE: 'Too many requests, please try again later',
   BURST_MESSAGE: 'Rate limit exceeded, please slow down',
 } as const;
@@ -168,32 +144,9 @@ export enum DifficultyLevel {
 export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
 
 /**
- * Scoring multipliers for different difficulty levels
+ * Set of all valid difficulty levels for fast lookup
  */
-export const DIFFICULTY_MULTIPLIERS = {
-  [DifficultyLevel.EASY]: 1,
-  [DifficultyLevel.MEDIUM]: 1.5,
-  [DifficultyLevel.HARD]: 2,
-  CUSTOM_DEFAULT: 1.3,
-  BONUS_MULTIPLIER: 1.2,
-  STREAK_MULTIPLIER: 1.1,
-  PERFECT_SCORE_MULTIPLIER: 1.5,
-} as const;
-
-/**
- * Custom difficulty multipliers based on detected keywords
- */
-export const CUSTOM_DIFFICULTY_MULTIPLIERS = {
-  [DifficultyLevel.EASY]: 1.0,
-  [DifficultyLevel.MEDIUM]: 1.5,
-  [DifficultyLevel.HARD]: 2.0,
-  [DifficultyLevel.CUSTOM]: 1.3,
-} as const;
-
-/**
- * Valid requested questions options per game
- */
-export const VALID_REQUESTED_QUESTIONS = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50] as const;
+export const VALID_DIFFICULTIES_SET = new Set<string>(VALID_DIFFICULTIES);
 
 /**
  * Game mode enumeration
@@ -260,36 +213,46 @@ export const GAME_STATE_DEFAULTS = {
 } as const;
 ```
 
-### performance.constants.ts
+### time.constants.ts
 
 ```typescript
 /**
- * Performance-related constants
+ * Time-related constants for cache TTL, storage TTL, intervals, delays, and animation durations
  */
 
-/**
- * Cache duration constants (in seconds)
- */
-export const CACHE_DURATION = {
-  VERY_SHORT: 30,   // 30 seconds
-  SHORT: 60,        // 1 minute
-  MEDIUM: 300,      // 5 minutes
-  LONG: 600,        // 10 minutes
-  VERY_LONG: 3600,  // 1 hour
+// Time durations in seconds
+export const TIME_DURATIONS_SECONDS = {
+  // Very short durations (for intervals, delays, animations)
+  SECOND: 1,
+  TWO_SECONDS: 2,
+  THREE_SECONDS: 3,
+  FIVE_SECONDS: 5,
+  EIGHT_SECONDS: 8,
+  
+  // Short durations
+  THIRTY_SECONDS: 30,
+  MINUTE: 60,
+  TWO_MINUTES: 120,
+  FIVE_MINUTES: 300,
+  TEN_MINUTES: 600,
+  FIFTEEN_MINUTES: 900,
+  THIRTY_MINUTES: 1800,
+  
+  // Medium durations
+  HOUR: 3600,
+  TWO_HOURS: 7200,
+  
+  // Long durations
+  DAY: 86400,
+  WEEK: 604800,
+  MONTH: 2592000,
+  YEAR: 31536000,
 } as const;
 
-/**
- * Cache TTL constants (in seconds)
- */
-export const CACHE_TTL = {
-  SHORT: 300,         // 5 minutes
-  MEDIUM: 1800,       // 30 minutes
-  LONG: 3600,         // 1 hour
-  TRIVIA_QUESTIONS: 3600, // 1 hour
-  USER_PROFILE: 1800,     // 30 minutes
-  LEADERBOARD: 300,       // 5 minutes
+// Time periods in milliseconds
+export const TIME_PERIODS_MS = {
+  // ... (converted from TIME_DURATIONS_SECONDS)
 } as const;
-```
 
 ## Domain Constants
 
@@ -332,26 +295,6 @@ export enum UserStatus {
 /**
  * Points-related constants
  */
-
-/**
- * Point transaction types
- */
-export enum PointTransactionType {
-  EARNED = 'earned',
-  SPENT = 'spent',
-  PURCHASED = 'purchased',
-  BONUS = 'bonus',
-}
-
-/**
- * Point sources
- */
-export enum PointSource {
-  GAME = 'game',
-  PURCHASE = 'purchase',
-  BONUS = 'bonus',
-  REFUND = 'refund',
-}
 ```
 
 ### payment.constants.ts
@@ -379,25 +322,8 @@ export enum PlanType {
   PREMIUM = 'premium',
   PRO = 'pro',
 }
-
-/**
- * Subscription status enumeration
- */
-export enum SubscriptionStatus {
-  ACTIVE = 'active',
-  CANCELLED = 'cancelled',
-  EXPIRED = 'expired',
-  PENDING = 'pending',
-}
-
-/**
- * Billing cycle enumeration
- */
-export enum BillingCycle {
-  MONTHLY = 'monthly',
-  YEARLY = 'yearly',
-}
 ```
+
 
 ## Infrastructure Constants
 
@@ -452,13 +378,12 @@ export const HTTP_TIMEOUTS = {
 /**
  * Storage keys (client-side)
  * @description Centralized storage key constants for client
- * @note Defined in client/src/constants/storage.constants.ts and exported as CLIENT_STORAGE_KEYS from client/src/constants/index.ts
+ * @note Defined in client/src/constants/infrastructure/storage.constants.ts
  * @note Not exported from shared/constants - this is client-only
  * 
  * Storage keys are defined in the client package, not in shared constants:
- * - File: `client/src/constants/storage.constants.ts`
+ * - File: `client/src/constants/infrastructure/storage.constants.ts`
  * - Export name: `STORAGE_KEYS`
- * - Re-exported as: `CLIENT_STORAGE_KEYS` from `client/src/constants/index.ts`
  * 
  * Available keys include:
  * - AUTH_TOKEN, REFRESH_TOKEN, AUTH_USER
@@ -486,27 +411,6 @@ export const HTTP_TIMEOUTS = {
  */
 export const APP_NAME = 'EveryTriv';
 
-/**
- * Application description constant
- */
-export const APP_DESCRIPTION = 'Smart Trivia Platform with Custom Difficulty Levels';
-
-/**
- * Contact information and branding constants
- */
-export const CONTACT_INFO = {
-  email: 'support@everytrivia.com',
-  website: 'everytrivia.com',
-  description: 'Smart Trivia Platform',
-  tagline: 'Challenge your knowledge with our AI-powered trivia platform',
-  features: ['Custom difficulty levels', 'Unlimited topics', 'Competitive gameplay', 'AI-powered questions'],
-  metadata: {
-    version: '2.0.0',
-    releaseDate: '2024-01-01',
-    apiVersion: 'v1',
-    maintenanceWindow: 'Sundays 2-4 AM UTC',
-  },
-} as const;
 ```
 
 ## עקרונות עיצוב

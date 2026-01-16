@@ -13,12 +13,12 @@ import { calculateRequiredCredits } from '@shared/utils';
 import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
 import { Alert, AlertDescription, Button, Input, Label, NumberInput, Textarea } from '@/components';
 import { usePopularTopics, useUserAnalytics } from '@/hooks';
-import { formatTimeDisplay } from '@/utils';
 import type { GameSettingsFormProps } from '@/types';
 
 export function GameSettingsForm({
 	topic,
 	onTopicChange,
+	topicError,
 	selectedDifficulty,
 	onDifficultyChange,
 	customDifficulty,
@@ -51,16 +51,11 @@ export function GameSettingsForm({
 		: [];
 
 	// Extract popular topics from analytics data
-	const popularTopics: string[] = popularTopicsData?.topics?.slice(0, 5).map(t => t.topic) || [];
+	const popularTopics: string[] = popularTopicsData?.topics?.slice(0, 5).map(t => t.topic) ?? [];
 
 	// Determine visibility based on selectedMode or default behavior
-	const shouldShowQuestionLimit = selectedMode 
-		? GAME_MODES_CONFIG[selectedMode]?.showQuestionLimit 
-		: showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
-	const shouldShowTimeLimit = selectedMode 
-		? GAME_MODES_CONFIG[selectedMode]?.showTimeLimit 
-		: false; // Never show time limit in multiplayer
-
+	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
+	const shouldShowTimeLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showTimeLimit : false; // Never show time limit in multiplayer
 
 	return (
 		<div className='space-y-6 py-4'>
@@ -75,6 +70,12 @@ export function GameSettingsForm({
 					value={topic}
 					onChange={e => onTopicChange(e.target.value)}
 				/>
+				{topicError && (
+					<Alert variant={VariantBase.DESTRUCTIVE} className='py-2'>
+						<AlertCircle className='h-4 w-4' />
+						<AlertDescription className='text-xs'>{topicError}</AlertDescription>
+					</Alert>
+				)}
 
 				{/* Your Most Played Topic */}
 				{mostPlayedTopic && mostPlayedTopic !== 'None' && (
@@ -278,32 +279,34 @@ export function GameSettingsForm({
 							/>
 						</div>
 						<p className='text-xs text-muted-foreground'>
-							{formatTimeDisplay(timeLimit)}
+							{timeLimit < 60
+								? `${timeLimit}s`
+								: timeLimit < 3600
+									? `${Math.floor(timeLimit / 60)}m`
+									: `${Math.floor(timeLimit / 3600)}h`}
 							{selectedMode && (
-								<span className='ml-2'>
-									• Fixed cost: {CREDIT_COSTS[selectedMode]?.fixedCost ?? 10} credits
-								</span>
+								<span className='ml-2'>• Fixed cost: {CREDIT_COSTS[selectedMode]?.fixedCost ?? 10} credits</span>
 							)}
 						</p>
 					</div>
 				)}
 
 				{/* Answer Count Selection - Always shown */}
-					<div className='space-y-3'>
-						<Label className='flex items-center gap-2'>
-							<CheckSquare className='h-4 w-4 text-muted-foreground' />
-							Number of Answer Choices
-						</Label>
-						<div className='flex justify-start'>
-							<NumberInput
-								value={answerCount}
-								onChange={onAnswerCountChange}
-								min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
-								max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
-								step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
-							/>
-						</div>
+				<div className='space-y-3'>
+					<Label className='flex items-center gap-2'>
+						<CheckSquare className='h-4 w-4 text-muted-foreground' />
+						Number of Answer Choices
+					</Label>
+					<div className='flex justify-start'>
+						<NumberInput
+							value={answerCount}
+							onChange={onAnswerCountChange}
+							min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
+							max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
+							step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
+						/>
 					</div>
+				</div>
 
 				{/* Max Players (for multiplayer) */}
 				{showMaxPlayers && maxPlayers !== undefined && onMaxPlayersChange && (
@@ -328,10 +331,11 @@ export function GameSettingsForm({
 			{/* Unlimited Mode Info */}
 			{selectedMode === GameModeEnum.UNLIMITED && (
 				<div className='p-4 rounded-lg bg-muted/50 text-center'>
-					<p className='text-sm text-muted-foreground'>Play until your credits run out. Each question costs 1 credit.</p>
+					<p className='text-sm text-muted-foreground'>
+						Play until your credits run out. Each question costs 1 credit.
+					</p>
 				</div>
 			)}
 		</div>
 	);
 }
-

@@ -8,7 +8,6 @@
 - [דיאגרמת זרימת משחק מלא](../../DIAGRAMS.md#דיאגרמת-זרימת-משחק-מלא)
 - [דיאגרמת זרימת נתונים - יצירת שאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---יצירת-שאלה)
 - [דיאגרמת זרימת נתונים - תשובה לשאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---תשובה-לשאלה)
-- [דיאגרמת זרימת Custom Difficulty](../../DIAGRAMS.md#דיאגרמת-זרימת-custom-difficulty)
 - [דיאגרמת זרימת Prompt - יצירת שאלת טריוויה](../../DIAGRAMS.md#דיאגרמת-זרימת-prompt---יצירת-שאלת-טריוויה)
 
 ## אחריות
@@ -26,8 +25,7 @@
 
 טיפוסים ספציפיים לשרת נמצאים ב-`@internal/types`:
 - `TriviaQuestionMetadata` - metadata עבור שאלות שנוצרו
-- `ServerTriviaQuestionInput` - קלט שאלה עבור השרת
-- `QuestionCacheEntry` - ערך cache עבור שאלות
+- `QuestionCacheEntry` - ערך cache עבור שאלות (משתמש ב-`TriviaQuestion`)
 - `QuestionCacheMap` - מפה של מפתחות שאלות לערכי cache
 
 טיפוסים משותפים נמצאים ב-`@shared/types`:
@@ -41,7 +39,6 @@
 server/src/features/game/
 ├── dtos/                       # Data Transfer Objects
 │   ├── customDifficulty.dto.ts # DTO לקושי מותאם
-│   ├── submitAnswer.dto.ts     # DTO לשליחת תשובה
 │   ├── triviaRequest.dto.ts    # DTO לבקשת טריוויה
 │   └── index.ts
 ├── logic/                      # לוגיקת יצירת טריוויה
@@ -128,43 +125,6 @@ async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPip
     body.difficulty,
     body.requestedQuestions,
     userId
-  );
-  return result;
-}
-```
-
-### POST /game/answer
-
-שליחת תשובה לשאלה.
-
-**Request Body:**
-```typescript
-{
-  questionId: string;      // מזהה השאלה
-  answer: number;          // אינדקס התשובה הנבחרת
-  timeSpent?: number;      // זמן שעבר בשניות
-}
-```
-
-**Response:**
-```typescript
-{
-  isCorrect: boolean;
-  correctAnswer: number;
-  scoreEarned: number;
-  explanation?: string;
-}
-```
-
-**דוגמת שימוש:**
-```typescript
-@Post('answer')
-async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
-  const result = await this.gameService.submitAnswer(
-    body.questionId,
-    body.answer,
-    userId,
-    body.timeSpent
   );
   return result;
 }
@@ -364,44 +324,6 @@ export class GameService {
   }
 
   /**
-   * Submit answer
-   */
-  async submitAnswer(
-    questionId: string,
-    answer: number,
-    userId: string,
-    timeSpent?: number
-  ): Promise<AnswerResult> {
-    const question = await this.triviaRepository.findOne({ where: { id: questionId } });
-    if (!question) {
-      throw new NotFoundException('Question not found');
-    }
-
-    const isCorrect = answer === question.correctAnswerIndex;
-    const difficulty = toDifficultyLevel(question.difficulty);
-    const scoreEarned = isCorrect
-      ? calculateAnswerScore(difficulty, timeSpent || 30, 0, true)
-      : 0;
-
-    if (isCorrect && userId) {
-      await this.analyticsService.trackEvent(userId, {
-        eventType: 'game',
-        userId,
-        timestamp: new Date(),
-        action: 'answer_correct',
-        properties: { questionId, scoreEarned, timeSpent },
-      });
-    }
-
-    return {
-      isCorrect,
-      correctAnswer: question.correctAnswerIndex,
-      scoreEarned,
-      explanation: question.explanation,
-    };
-  }
-
-  /**
    * Get user game history
    */
   async getUserGameHistory(userId: string): Promise<{
@@ -440,11 +362,11 @@ export class GameService {
     return {
       id: question.id,
       question: question.question,
-      options: question.options,
+      options: question.answers,
       correctAnswer: question.correctAnswerIndex,
       topic: question.topic,
       difficulty: question.difficulty,
-      explanation: question.explanation,
+      explanation: question.metadata?.explanation,
       createdAt: question.createdAt,
       updatedAt: question.updatedAt,
     };
@@ -555,5 +477,4 @@ GROQ_API_KEY=your-groq-api-key
   - [דיאגרמת זרימת משחק מלא](../../DIAGRAMS.md#דיאגרמת-זרימת-משחק-מלא)
   - [דיאגרמת זרימת נתונים - יצירת שאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---יצירת-שאלה)
   - [דיאגרמת זרימת נתונים - תשובה לשאלה](../../DIAGRAMS.md#דיאגרמת-זרימת-נתונים---תשובה-לשאלה)
-  - [דיאגרמת זרימת Custom Difficulty](../../DIAGRAMS.md#דיאגרמת-זרימת-custom-difficulty)
 

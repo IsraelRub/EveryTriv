@@ -1,4 +1,4 @@
-import { forwardRef, useCallback } from 'react';
+import { ChangeEvent, forwardRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant } from '@/constants';
@@ -22,7 +22,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 		}, [value, step, min, onChange, disabled]);
 
 		const handleInputChange = useCallback(
-			(e: React.ChangeEvent<HTMLInputElement>) => {
+			(e: ChangeEvent<HTMLInputElement>) => {
 				if (disabled) return;
 				const inputValue = e.target.value;
 				if (inputValue === '') {
@@ -32,20 +32,16 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 				const numValue = Number.parseInt(inputValue, 10);
 				if (Number.isNaN(numValue)) return;
 
-				let finalValue = numValue;
-				if (min !== undefined && finalValue < min) {
-					finalValue = min;
-				}
-				if (max !== undefined && finalValue > max) {
-					finalValue = max;
-				}
-				onChange(finalValue);
+				let clampedValue = numValue;
+				if (min !== undefined) clampedValue = Math.max(min, clampedValue);
+				if (max !== undefined) clampedValue = Math.min(max, clampedValue);
+				onChange(clampedValue);
 			},
 			[min, max, onChange, disabled, value]
 		);
 
-		const isDecrementDisabled = disabled || (min !== undefined && value <= min);
-		const isIncrementDisabled = disabled || (max !== undefined && value >= max);
+		const isDecrementDisabled = disabled ?? (min !== undefined && value <= min);
+		const isIncrementDisabled = disabled ?? (max !== undefined && value >= max);
 
 		return (
 			<div className={cn('inline-flex items-center gap-2', className)}>

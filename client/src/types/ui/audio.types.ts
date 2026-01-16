@@ -1,18 +1,7 @@
-/**
- * Audio Types
- * @module AudioTypes
- * @description Audio-related types and interfaces
- */
-import type { ReactNode } from 'react';
+import type { MutableRefObject } from 'react';
 
-import type { UserPreferences } from '@shared/types';
-import type { AudioCategory, AudioKey } from '@/constants';
+import type { AudioCategory } from '@/constants';
 
-/**
- * Audio Data Interface
- * @interface AudioData
- * @description Structure for audio file configuration
- */
 export interface AudioData {
 	category: AudioCategory;
 	path: string;
@@ -20,43 +9,24 @@ export interface AudioData {
 	volume: number;
 }
 
-/**
- * Audio Service Interface
- * @interface AudioServiceInterface
- * @description Core interface for audio management throughout the application
- */
-export interface AudioServiceInterface {
-	readonly isEnabled: boolean;
-	readonly volume: number;
-	setUserPreferences: (preferences: UserPreferences | null) => void;
-	markUserInteracted: () => void;
-	play: (key: AudioKey) => void;
-	stop: (key: AudioKey) => void;
-	stopAll: () => void;
-	mute: () => void;
-	unmute: () => void;
-	toggleMute: () => boolean;
-	setMasterVolume: (volume: number) => void;
-	playAchievementSound: (score: number, total: number, previousScore: number) => void;
-	setVolume: (volume: number) => void;
-}
-
-/**
- * Audio Controls Component Props
- * @interface AudioControlsProps
- * @description Props for the main audio controls component
- */
 export interface AudioControlsProps {
 	className?: string;
 	showSlider?: boolean;
 }
 
-/**
- * Audio Provider Props
- * @interface AudioProviderProps
- * @description Props for the audio context provider component
- */
-export interface AudioProviderProps {
-	children: ReactNode;
-	service?: AudioServiceInterface;
+export interface UseAudioPreferencesProps {
+	soundEnabled: boolean;
+	musicEnabled: boolean;
+	isMuted: boolean;
+}
+
+export interface UseAudioSyncProps {
+	volume: number;
+	isMuted: boolean;
+	soundEnabled: boolean;
+	musicEnabled: boolean;
+	isInitialized: boolean;
+	isInitializedRef: MutableRefObject<boolean>;
+	preferences?: { soundEnabled?: boolean; musicEnabled?: boolean } | null;
+	isAuthenticated: boolean;
 }

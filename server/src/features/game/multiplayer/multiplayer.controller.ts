@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	ForbiddenException,
@@ -7,14 +8,14 @@ import {
 	HttpStatus,
 	NotFoundException,
 	Param,
-	ParseUUIDPipe,
 	Post,
 } from '@nestjs/common';
 
-import { API_ROUTES, defaultValidators, ERROR_CODES, GAME_MODE_DEFAULTS, GameMode, LOCALHOST_CONFIG } from '@shared/constants';
+import { API_ENDPOINTS, ERROR_CODES, GAME_MODE_DEFAULTS, GameMode, VALIDATORS } from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { toDifficultyLevel } from '@shared/validation';
+import { isRoomId, toDifficultyLevel } from '@shared/validation';
+
 import { serverLogger as logger } from '@internal/services';
 import type {
 	LeaveRoomHttpResponse,
@@ -22,27 +23,18 @@ import type {
 	RoomHttpResponse,
 	SubmitAnswerHttpResponse,
 } from '@internal/types';
-import { CurrentUserId, Public } from '../../../common';
-import { CreateRoomDto, JoinRoomDto, RoomActionDto, SubmitAnswerDto } from './dtos';
-import { MultiplayerService } from './multiplayer.service';
-import { RoomService } from './room.service';
 
-/**
- * HTTP controller for multiplayer management
- * Provides REST endpoints that mirror WebSocket events for tools and monitoring
- */
-@Controller(API_ROUTES.MULTIPLAYER.BASE)
+import { CurrentUserId, Public } from '../../../common';
+import { LOCALHOST_CONFIG } from '../../../config/localhost.config';
+import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
+import { MultiplayerService } from './multiplayer.service';
+
+@Controller(API_ENDPOINTS.MULTIPLAYER.BASE)
 export class MultiplayerController {
 	private readonly roomCache = new Map<string, MultiplayerRoom>();
 
-	constructor(
-		private readonly multiplayerService: MultiplayerService,
-		private readonly roomService: RoomService
-	) {}
+	constructor(private readonly multiplayerService: MultiplayerService) {}
 
-	/**
-	 * Get WebSocket connection details
-	 */
 	@Get()
 	@Public()
 	getConnectionInfo(): MultiplayerConnectionInfo {
@@ -63,9 +55,6 @@ export class MultiplayerController {
 		};
 	}
 
-	/**
-	 * Create a new multiplayer room via HTTP proxy
-	 */
 	@Post('rooms')
 	async createRoom(@CurrentUserId() userId: string, @Body() body: CreateRoomDto): Promise<CreateRoomResponse> {
 		this.ensureAuthenticated(userId);
@@ -94,7 +83,7 @@ export class MultiplayerController {
 			return result;
 		} catch (error) {
 			logger.gameError('Failed to create multiplayer room via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				topic: body.topic,
 			});
@@ -102,58 +91,57 @@ export class MultiplayerController {
 		}
 	}
 
-	/**
-	 * Join an existing room
-	 */
 	@Post('rooms/join')
 	async joinRoom(@CurrentUserId() userId: string, @Body() body: JoinRoomDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
+		// Normalize roomId to uppercase
+		const normalizedRoomId = body.roomId.toUpperCase();
+
 		try {
-			const room = await this.executeWithRoomRestore(body.roomId, () =>
-				this.multiplayerService.joinRoom(body.roomId, userId)
+			const room = await this.executeWithRoomRestore(normalizedRoomId, () =>
+				this.multiplayerService.joinRoom(normalizedRoomId, userId)
 			);
 
 			this.roomCache.set(room.roomId, room);
 
 			logger.apiUpdate('multiplayer_room_join', {
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 				playerCount: room.players.length,
 			});
 
 			return { room };
 		} catch (error) {
 			logger.gameError('Failed to join multiplayer room via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Leave a room
-	 */
 	@Post('rooms/leave')
 	async leaveRoom(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<LeaveRoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
-			const room = await this.multiplayerService.leaveRoom(body.roomId, userId);
+			// Normalize roomId to uppercase
+			const normalizedRoomId = body.roomId.toUpperCase();
+			const room = await this.multiplayerService.leaveRoom(normalizedRoomId, userId);
 			const remainingPlayers = room?.players.length ?? 0;
 			const status = room ? ('player-left' as const) : ('room-closed' as const);
 
 			if (room) {
 				this.roomCache.set(room.roomId, room);
 			} else {
-				this.roomCache.delete(body.roomId);
+				this.roomCache.delete(normalizedRoomId);
 			}
 
 			logger.apiUpdate('multiplayer_room_leave', {
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 				playerCount: remainingPlayers,
 				status,
 			});
@@ -165,79 +153,78 @@ export class MultiplayerController {
 			};
 		} catch (error) {
 			logger.gameError('Failed to leave multiplayer room via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId: body.roomId,
+				roomId: body.roomId.toUpperCase(),
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Start a multiplayer game (host only)
-	 */
 	@Post('rooms/start')
 	async startGame(@CurrentUserId() userId: string, @Body() body: RoomActionDto): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
+		// Normalize roomId to uppercase
+		const normalizedRoomId = body.roomId.toUpperCase();
+
 		try {
-			const room = await this.executeWithRoomRestore(body.roomId, () =>
-				this.multiplayerService.startGame(body.roomId, userId)
+			const room = await this.executeWithRoomRestore(normalizedRoomId, () =>
+				this.multiplayerService.startGame(normalizedRoomId, userId)
 			);
 
 			this.roomCache.set(room.roomId, room);
 
 			logger.apiUpdate('multiplayer_room_start', {
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 				playerCount: room.players.length,
 			});
 
 			return { room };
 		} catch (error) {
 			logger.gameError('Failed to start multiplayer game via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Submit an answer via HTTP proxy
-	 */
 	@Post('rooms/answer')
 	async submitAnswer(
 		@CurrentUserId() userId: string,
-		@Body() body: SubmitAnswerDto
+		@Body() body: MultiplayerSubmitAnswerDto
 	): Promise<SubmitAnswerHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
+			// Normalize roomId to uppercase
+			const normalizedRoomId = body.roomId.toUpperCase();
 			const result = await this.multiplayerService.submitAnswer(
-				body.roomId,
+				normalizedRoomId,
 				userId,
 				body.questionId,
 				body.answer,
 				body.timeSpent
 			);
 
-			const cachedRoom = await this.roomService.getRoom(body.roomId);
+			const cachedRoom = await this.multiplayerService.getRoom(normalizedRoomId);
 			if (cachedRoom) {
-				this.roomCache.set(body.roomId, cachedRoom);
+				this.roomCache.set(normalizedRoomId, cachedRoom);
 			}
 
 			logger.apiUpdate('multiplayer_answer_submit', {
 				userId,
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 				questionId: body.questionId,
 				isCorrect: result.isCorrect,
 				scoreEarned: result.scoreEarned,
 			});
 
 			return {
-				roomId: body.roomId,
+				roomId: normalizedRoomId,
 				data: {
 					userId,
 					questionId: body.questionId,
@@ -248,83 +235,68 @@ export class MultiplayerController {
 			};
 		} catch (error) {
 			logger.gameError('Failed to submit multiplayer answer via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId: body.roomId,
+				roomId: body.roomId.toUpperCase(),
 				questionId: body.questionId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get room details (participating users only)
-	 */
 	@Get('rooms/:roomId')
-	async getRoomDetails(
-		@CurrentUserId() userId: string,
-		@Param('roomId', new ParseUUIDPipe()) roomId: string
-	): Promise<RoomHttpResponse> {
+	async getRoomDetails(@CurrentUserId() userId: string, @Param('roomId') roomId: string): Promise<RoomHttpResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			// Validate roomId format (8 alphanumeric characters)
+			const normalizedRoomId = roomId.toUpperCase();
+			if (!isRoomId(normalizedRoomId)) {
+				throw new BadRequestException(ERROR_CODES.INVALID_ROOM_ID_FORMAT);
 			}
 
-			this.ensureParticipant(room, userId);
+			const room = await this.multiplayerService.getRoomDetails(normalizedRoomId, userId);
 
 			logger.apiRead('multiplayer_room_details', {
 				userId,
-				roomId,
+				roomId: normalizedRoomId,
 			});
 
 			return { room };
 		} catch (error) {
 			logger.gameError('Failed to fetch multiplayer room via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId,
+				roomId: roomId.toUpperCase(),
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get current state of the room (questions, leaderboard, timers)
-	 */
 	@Get('rooms/:roomId/state')
-	async getRoomState(
-		@CurrentUserId() userId: string,
-		@Param('roomId', new ParseUUIDPipe()) roomId: string
-	): Promise<RoomStateResponse> {
+	async getRoomState(@CurrentUserId() userId: string, @Param('roomId') roomId: string): Promise<RoomStateResponse> {
 		this.ensureAuthenticated(userId);
 
 		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			// Validate roomId format (8 alphanumeric characters)
+			const normalizedRoomId = roomId.toUpperCase();
+			if (!isRoomId(normalizedRoomId)) {
+				throw new BadRequestException(ERROR_CODES.INVALID_ROOM_ID_FORMAT);
 			}
 
-			this.ensureParticipant(room, userId);
-
-			const gameState = await this.multiplayerService.getGameState(roomId);
+			const result = await this.multiplayerService.getRoomState(normalizedRoomId, userId);
 
 			logger.apiRead('multiplayer_room_state', {
 				userId,
-				roomId,
+				roomId: normalizedRoomId,
 			});
 
-			return {
-				room,
-				gameState,
-			};
+			return result;
 		} catch (error) {
 			logger.gameError('Failed to fetch multiplayer room state via HTTP', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				roomId,
+				roomId: roomId.toUpperCase(),
 			});
 			throw error;
 		}
@@ -333,13 +305,6 @@ export class MultiplayerController {
 	private ensureAuthenticated(userId: string | null): asserts userId is string {
 		if (userId == null) {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
-		}
-	}
-
-	private ensureParticipant(room: MultiplayerRoom, userId: string): void {
-		const isParticipant = room.players.some(player => player.userId === userId);
-		if (!isParticipant) {
-			throw new ForbiddenException(ERROR_CODES.NOT_PART_OF_ROOM);
 		}
 	}
 
@@ -367,8 +332,10 @@ export class MultiplayerController {
 			if (this.shouldAttemptRoomRestore(error)) {
 				const snapshot = this.roomCache.get(roomId);
 				if (snapshot) {
-					logger.gameInfo('Restoring HTTP multiplayer room snapshot', { roomId });
-					await this.roomService.restoreRoom(snapshot);
+					logger.gameInfo('Restoring HTTP multiplayer room snapshot', {
+						roomId,
+					});
+					await this.multiplayerService.restoreRoom(snapshot);
 					return operation();
 				} else {
 					logger.gameInfo('No cached multiplayer room snapshot found for HTTP retry', { roomId });
@@ -390,12 +357,10 @@ export class MultiplayerController {
 		if (
 			typeof error === 'object' &&
 			error !== null &&
-			(('status' in error && defaultValidators.number(error.status) && error.status === HttpStatus.NOT_FOUND) ||
-				('statusCode' in error &&
-					defaultValidators.number(error.statusCode) &&
-					error.statusCode === HttpStatus.NOT_FOUND))
+			(('status' in error && VALIDATORS.number(error.status) && error.status === HttpStatus.NOT_FOUND) ||
+				('statusCode' in error && VALIDATORS.number(error.statusCode) && error.statusCode === HttpStatus.NOT_FOUND))
 		) {
-				return true;
+			return true;
 		}
 
 		const message = getErrorMessage(error).toLowerCase();

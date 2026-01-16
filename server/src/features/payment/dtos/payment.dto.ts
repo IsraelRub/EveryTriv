@@ -1,9 +1,3 @@
-/**
- * Payment DTOs
- *
- * @module PaymentDTOs
- * @description Data Transfer Objects for payment processing
- */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsEnum,
@@ -34,7 +28,9 @@ export class PaymentMethodDetailsDto {
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.PAYPAL && dto.paypalOrderId !== undefined)
 	@IsString({ message: 'PayPal order ID must be a string' })
-	@MinLength(10, { message: 'PayPal order ID must be at least 10 characters long' })
+	@MinLength(10, {
+		message: 'PayPal order ID must be at least 10 characters long',
+	})
 	paypalOrderId?: string;
 
 	@ApiPropertyOptional({
@@ -42,7 +38,9 @@ export class PaymentMethodDetailsDto {
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.PAYPAL && dto.paypalPaymentId !== undefined)
 	@IsString({ message: 'PayPal payment ID must be a string' })
-	@MinLength(10, { message: 'PayPal payment ID must be at least 10 characters long' })
+	@MinLength(10, {
+		message: 'PayPal payment ID must be at least 10 characters long',
+	})
 	paypalPaymentId?: string;
 
 	@ApiPropertyOptional({

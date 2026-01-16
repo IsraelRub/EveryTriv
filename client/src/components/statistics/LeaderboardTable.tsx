@@ -4,8 +4,8 @@ import { Trophy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components';
 import type { LeaderboardTableProps } from '@/types';
 import { cn, getAvatarUrl, getUserInitials } from '@/utils';
-import { LeaderboardSkeleton } from './LeaderboardSkeleton';
 import { RankBadge } from './RankBadge';
+import { LeaderboardSkeleton } from './skeleton';
 
 export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) {
 	if (isLoading) {
@@ -39,7 +39,7 @@ export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) 
 				>
 					<RankBadge rank={entry.rank} />
 					<Avatar className='h-10 w-10'>
-						<AvatarImage src={getAvatarUrl(entry.avatar)} alt={entry.firstName || entry.email} />
+						<AvatarImage src={getAvatarUrl(entry.avatar)} />
 						<AvatarFallback>{getUserInitials(entry.firstName, entry.lastName, entry.email)}</AvatarFallback>
 					</Avatar>
 					<div className='flex-1 min-w-0'>

@@ -1,78 +1,59 @@
 import { Injectable } from '@nestjs/common';
 
-import { ERROR_CODES, PlayerStatus, RoomStatus } from '@shared/constants';
+import { ERROR_CODES, PlayerStatus, QuestionState, RoomStatus } from '@shared/constants';
 import type {
 	GameState,
 	MultiplayerAnswerResult,
 	MultiplayerRoom,
 	PlayerAnswerMap,
+	QuestionEndResult,
 	TriviaQuestion,
 } from '@shared/types';
-import { calculateAnswerScore, checkAnswerCorrectness, getErrorMessage } from '@shared/utils';
+import { calculateAnswerScore, checkAnswerCorrectness, getCorrectAnswerIndex, getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
+
 import { serverLogger as logger } from '@internal/services';
+
 import { RoomService } from './room.service';
 
-/**
- * Service for managing game state in multiplayer games
- * @class GameStateService
- * @description Handles game state, questions, answers, and scoring
- */
 @Injectable()
 export class GameStateService {
 	constructor(private readonly roomService: RoomService) {}
 
-	/**
-	 * Initialize game state with questions
-	 * @param room Room to initialize
-	 * @param questions Questions for the game
-	 * @returns Updated room
-	 */
 	async initializeGame(room: MultiplayerRoom, questions: TriviaQuestion[]): Promise<MultiplayerRoom> {
-		try {
-			Object.assign(room, {
-				questions,
-				currentQuestionIndex: 0,
-				status: RoomStatus.PLAYING,
-				startTime: new Date(),
-				currentQuestionStartTime: new Date(),
-			});
+		Object.assign(room, {
+			questions,
+			currentQuestionIndex: 0,
+			status: RoomStatus.PLAYING,
+			questionState: QuestionState.IDLE,
+			startTime: new Date(),
+			currentQuestionStartTime: new Date(),
+		});
 
-			// Reset all players to playing state
-			room.players.forEach(player => {
-				player.status = PlayerStatus.PLAYING;
-				player.score = 0;
-				player.answersSubmitted = 0;
-				player.correctAnswers = 0;
-				player.currentAnswer = undefined;
-				player.timeSpent = undefined;
-			});
+		// Reset all players to playing state
+		room.players.forEach(player => {
+			player.status = PlayerStatus.PLAYING;
+			player.score = 0;
+			player.answersSubmitted = 0;
+			player.correctAnswers = 0;
+			player.currentAnswer = undefined;
+			player.timeSpent = undefined;
+		});
 
-			await this.roomService.updateRoom(room.roomId, room);
+		const { version, ...updates } = room;
+		const updatedRoom = await this.roomService.updateRoom(room.roomId, updates);
 
-			logger.gameInfo('Multiplayer game initialized', {
-				roomId: room.roomId,
-				gameQuestionCount: questions.length,
-				playerCount: room.players.length,
-			});
+		logger.gameInfo('Multiplayer game initialized', {
+			roomId: updatedRoom.roomId,
+			gameQuestionCount: questions.length,
+			playerCount: updatedRoom.players.length,
+		});
 
-			return room;
-		} catch (error) {
-			logger.gameError('Failed to initialize multiplayer game', {
-				error: getErrorMessage(error),
-				roomId: room.roomId,
-			});
-			throw error;
-		}
+		return updatedRoom;
 	}
 
-	/**
-	 * Get current game state
-	 * @param room Room
-	 * @returns Current game state
-	 */
 	getGameState(room: MultiplayerRoom): GameState {
-		const currentQuestion = room.questions[room.currentQuestionIndex] || null;
+		const currentQuestion = room.questions[room.currentQuestionIndex] ?? null;
 		const timeRemaining = this.calculateTimeRemaining(room);
 
 		// Build players answers map
@@ -105,18 +86,10 @@ export class GameStateService {
 			playersScores,
 			leaderboard,
 			startedAt: room.startTime,
+			currentQuestionStartTime: room.currentQuestionStartTime,
 		};
 	}
 
-	/**
-	 * Submit answer for a player
-	 * @param room Room
-	 * @param userId User ID
-	 * @param questionId Question ID
-	 * @param answer Answer index
-	 * @param timeSpent Time spent in seconds
-	 * @returns Updated room and answer result
-	 */
 	async submitAnswer(
 		room: MultiplayerRoom,
 		userId: string,
@@ -124,84 +97,222 @@ export class GameStateService {
 		answer: number,
 		timeSpent: number
 	): Promise<MultiplayerAnswerResult> {
-		try {
-			const player = room.players.find(p => p.userId === userId);
-			if (!player) {
-				throw new Error(ERROR_CODES.PLAYER_NOT_FOUND_IN_ROOM);
-			}
+		const player = room.players.find(p => p.userId === userId);
+		if (!player) {
+			throw new Error(ERROR_CODES.PLAYER_NOT_FOUND_IN_ROOM);
+		}
 
-			const currentQuestion = room.questions[room.currentQuestionIndex];
-			if (!currentQuestion || currentQuestion.id !== questionId) {
+		const currentQuestion = room.questions[room.currentQuestionIndex];
+		if (currentQuestion?.id !== questionId) {
+			throw new Error(ERROR_CODES.QUESTION_NOT_FOUND_OR_NOT_CURRENT);
+		}
+
+		// Check if question has expired (server-authoritative timestamp check)
+		if (room.currentQuestionStartTime && room.status === RoomStatus.PLAYING) {
+			const now = Date.now();
+			const questionEndTime = room.currentQuestionStartTime.getTime() + room.config.timePerQuestion * 1000;
+			if (now >= questionEndTime) {
 				throw new Error(ERROR_CODES.QUESTION_NOT_FOUND_OR_NOT_CURRENT);
 			}
+		}
 
-			// Check if already answered
-			if (player.status === PlayerStatus.ANSWERED) {
-				return {
-					room,
-					isCorrect: answer === currentQuestion.correctAnswerIndex,
-					scoreEarned: 0,
-				};
-			}
+		// Check if already answered
+		if (player.status === PlayerStatus.ANSWERED) {
+			const correctIndex = getCorrectAnswerIndex(currentQuestion);
+			return {
+				room,
+				isCorrect: answer === correctIndex,
+				scoreEarned: 0,
+			};
+		}
 
-			// Check answer using shared utility
-			const isCorrect = checkAnswerCorrectness(currentQuestion, answer);
+		// Check answer using shared utility
+		const isCorrect = checkAnswerCorrectness(currentQuestion, answer);
 
-			// Calculate score using shared utils
+		// Calculate score using shared utils
+		const difficulty =
+			currentQuestion.metadata?.mappedDifficulty ??
+			room.config.mappedDifficulty ??
+			toDifficultyLevel(currentQuestion.difficulty);
+		const streak = player.correctAnswers; // Use current correct answers as streak
+		const scoreEarned = calculateAnswerScore(difficulty, timeSpent, streak, isCorrect);
+
+		// Update player
+		player.currentAnswer = answer;
+		player.timeSpent = timeSpent;
+		player.status = PlayerStatus.ANSWERED;
+		player.answersSubmitted++;
+		if (isCorrect) {
+			player.score += scoreEarned;
+			player.correctAnswers++;
+		}
+
+		room.updatedAt = new Date();
+
+		await this.roomService.updateRoom(room.roomId, room);
+
+		logger.gameInfo('Answer submitted in multiplayer game', {
+			roomId: room.roomId,
+			userId,
+			questionId,
+			isCorrect,
+			scoreEarned,
+		});
+
+		return {
+			room,
+			isCorrect,
+			scoreEarned,
+		};
+	}
+
+	private transitionQuestionState(room: MultiplayerRoom, newState: QuestionState): boolean {
+		const currentState = room.questionState ?? QuestionState.IDLE;
+
+		const validTransitions: Record<QuestionState, QuestionState[]> = {
+			[QuestionState.IDLE]: [QuestionState.STARTING],
+			[QuestionState.STARTING]: [QuestionState.ACTIVE],
+			[QuestionState.ACTIVE]: [QuestionState.ENDING],
+			[QuestionState.ENDING]: [QuestionState.ENDED],
+			[QuestionState.ENDED]: [QuestionState.STARTING, QuestionState.IDLE],
+		};
+
+		const allowedStates = validTransitions[currentState] ?? [];
+		if (!allowedStates.includes(newState)) {
+			logger.gameError('Invalid question state transition', {
+				roomId: room.roomId,
+				currentState,
+				newState,
+			});
+			return false;
+		}
+
+		room.questionState = newState;
+		room.version = (room.version ?? 0) + 1;
+		return true;
+	}
+
+	startQuestion(room: MultiplayerRoom): boolean {
+		return this.transitionQuestionState(room, QuestionState.STARTING);
+	}
+
+	activateQuestion(room: MultiplayerRoom): boolean {
+		return this.transitionQuestionState(room, QuestionState.ACTIVE);
+	}
+
+	endQuestion(room: MultiplayerRoom): boolean {
+		const currentState = room.questionState ?? QuestionState.IDLE;
+		if (currentState !== QuestionState.ACTIVE) {
+			logger.gameInfo('Question already ended or not active', {
+				roomId: room.roomId,
+				currentState,
+			});
+			return false;
+		}
+		return this.transitionQuestionState(room, QuestionState.ENDING);
+	}
+
+	completeQuestion(room: MultiplayerRoom): boolean {
+		return this.transitionQuestionState(room, QuestionState.ENDED);
+	}
+
+	async startQuestionFlow(roomId: string, room: MultiplayerRoom): Promise<MultiplayerRoom | null> {
+		if (!this.startQuestion(room)) {
+			return null;
+		}
+
+		const questionStartTime = new Date();
+		await this.roomService.updateRoom(roomId, {
+			currentQuestionStartTime: questionStartTime,
+		});
+
+		const currentRoom = await this.roomService.getRoom(roomId);
+		if (!currentRoom) {
+			return null;
+		}
+
+		if (!this.activateQuestion(currentRoom)) {
+			return null;
+		}
+
+		await this.roomService.updateRoom(roomId, currentRoom);
+
+		return currentRoom;
+	}
+
+	async endQuestionFlow(roomId: string, room: MultiplayerRoom): Promise<QuestionEndResult | null> {
+		if (!this.endQuestion(room)) {
+			return null;
+		}
+
+		await this.roomService.updateRoom(roomId, room);
+
+		const currentRoom = await this.roomService.getRoom(roomId);
+		if (!currentRoom) {
+			return null;
+		}
+
+		const endResult = await this.endQuestionWithResults(currentRoom);
+		await this.roomService.updateRoom(roomId, endResult.room);
+
+		return endResult;
+	}
+
+	async endQuestionWithResults(room: MultiplayerRoom): Promise<QuestionEndResult> {
+		const currentQuestion = room.questions[room.currentQuestionIndex];
+		if (!currentQuestion) {
+			throw new Error(ERROR_CODES.QUESTION_NOT_FOUND_OR_NOT_CURRENT);
+		}
+
+		const correctIndex = getCorrectAnswerIndex(currentQuestion);
+		const results = room.players.map(player => {
+			const isCorrect = player.currentAnswer === correctIndex;
 			const difficulty =
 				currentQuestion.metadata?.mappedDifficulty ??
 				room.config.mappedDifficulty ??
 				toDifficultyLevel(currentQuestion.difficulty);
-			const streak = player.correctAnswers; // Use current correct answers as streak
-			const scoreEarned = calculateAnswerScore(difficulty, timeSpent, streak, isCorrect);
-
-			// Update player
-			player.currentAnswer = answer;
-			player.timeSpent = timeSpent;
-			player.status = PlayerStatus.ANSWERED;
-			player.answersSubmitted++;
-			if (isCorrect) {
-				player.score += scoreEarned;
-				player.correctAnswers++;
-			}
-
-			room.updatedAt = new Date();
-
-			await this.roomService.updateRoom(room.roomId, room);
-
-			logger.gameInfo('Answer submitted in multiplayer game', {
-				roomId: room.roomId,
-				userId,
-				questionId,
-				isCorrect,
-				scoreEarned,
-			});
+			const streak = isCorrect ? player.correctAnswers - 1 : player.correctAnswers;
+			const scoreEarned = calculateAnswerScore(difficulty, player.timeSpent ?? 0, streak, isCorrect);
 
 			return {
-				room,
+				userId: player.userId,
 				isCorrect,
 				scoreEarned,
 			};
-		} catch (error) {
-			logger.gameError('Failed to submit answer in multiplayer game', {
-				error: getErrorMessage(error),
-				roomId: room.roomId,
-				userId,
-			});
-			throw error;
-		}
+		});
+
+		const gameState = this.getGameState(room);
+		this.completeQuestion(room);
+
+		return {
+			results,
+			leaderboard: gameState.leaderboard,
+			room,
+		};
 	}
 
-	/**
-	 * Move to next question
-	 * @param room Room
-	 * @returns Updated room
-	 */
+	allPlayersAnswered(room: MultiplayerRoom): boolean {
+		if (room.status !== RoomStatus.PLAYING) {
+			return false;
+		}
+
+		const activePlayers = room.players.filter(
+			player => player.status !== PlayerStatus.DISCONNECTED && player.status !== PlayerStatus.FINISHED
+		);
+
+		if (activePlayers.length === 0) {
+			return false;
+		}
+
+		return activePlayers.every(player => player.status === PlayerStatus.ANSWERED);
+	}
+
 	async nextQuestion(room: MultiplayerRoom): Promise<MultiplayerRoom> {
 		try {
-			// Check if game is finished before incrementing
 			if (room.currentQuestionIndex >= room.questions.length - 1) {
 				room.status = RoomStatus.FINISHED;
+				room.questionState = QuestionState.IDLE;
+				room.version = (room.version ?? 0) + 1;
 				room.endTime = new Date();
 				room.players.forEach(player => {
 					if (player.status !== PlayerStatus.DISCONNECTED) {
@@ -209,12 +320,12 @@ export class GameStateService {
 					}
 				});
 			} else {
-				// Move to next question
 				room.currentQuestionIndex++;
-				room.currentQuestionStartTime = new Date(); // Set start time for new question
+				room.questionState = QuestionState.IDLE;
+				room.version = (room.version ?? 0) + 1;
+				room.currentQuestionStartTime = new Date();
 				room.updatedAt = new Date();
 
-				// Reset players for next question
 				room.players.forEach(player => {
 					if (player.status !== PlayerStatus.DISCONNECTED && player.status !== PlayerStatus.FINISHED) {
 						player.status = PlayerStatus.PLAYING;
@@ -229,18 +340,13 @@ export class GameStateService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to move to next question', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId: room.roomId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Calculate time remaining for current question
-	 * @param room Room
-	 * @returns Time remaining in seconds
-	 */
 	private calculateTimeRemaining(room: MultiplayerRoom): number {
 		if (!room.currentQuestionStartTime || room.status !== RoomStatus.PLAYING) {
 			return room.config.timePerQuestion;

@@ -16,9 +16,11 @@
   "importOrder": [
     "^react$",
     "^react-(.*)$",
-    "^(?!(@shared|@internal|@features|@common|@/|react$|react-|\\.)).*$",
+    "^(?!(@shared|@config|@internal|@features|@common|@/|react$|react-|\\.)).*$",
     "",
     "^@shared",
+    "",
+    "^@config",
     "^@internal",
     "^@features",
     "^@common",

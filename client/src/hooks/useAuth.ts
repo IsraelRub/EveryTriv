@@ -1,79 +1,92 @@
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
+
+import { QUERY_KEYS, STORAGE_KEYS } from '@/constants';
 import { authService, clientLogger as logger } from '@/services';
-import type { RootState, UserLoginRequest, UserRegisterRequest } from '@/types';
-import { setUser } from '@/redux/slices';
-import { useAppDispatch } from './useRedux';
+import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
+import { store } from '@/redux/store';
 
-// Query keys
-export const authKeys = {
-	all: ['auth'] as const,
-	currentUser: () => [...authKeys.all, 'current-user'] as const,
-};
-
-/**
- * Hook for getting current authenticated user
- * @returns Query result with current user data
- */
-export const useCurrentUser = () => {
-	// Use Redux state instead of local state for consistency with HOCs
-	const { isAuthenticated } = useSelector((state: RootState) => state.user);
-
-	return useQuery({
-		queryKey: authKeys.currentUser(),
-		queryFn: () => authService.getCurrentUser(),
-		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
-		enabled: isAuthenticated,
+function useHasToken(): boolean {
+	const [hasToken, setHasToken] = useState<boolean>(() => {
+		// Initialize synchronously from localStorage
+		try {
+			const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+			return !!token;
+		} catch {
+			return false;
+		}
 	});
-};
 
-/**
- * Hook for user login
- * @returns Mutation for user login with credentials
- */
+	useEffect(() => {
+		// Check token synchronously from localStorage
+		const checkToken = () => {
+			try {
+				const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+				setHasToken(!!token);
+			} catch {
+				setHasToken(false);
+			}
+		};
+
+		// Listen for storage changes from other windows/tabs
+		const handleStorageChange = (e: StorageEvent) => {
+			if (e.key === STORAGE_KEYS.AUTH_TOKEN) {
+				checkToken();
+			}
+		};
+
+		// Listen for custom events from the same window (when token is set/removed)
+		const handleTokenChange = () => {
+			checkToken();
+		};
+
+		window.addEventListener('storage', handleStorageChange);
+		window.addEventListener('auth-token-changed', handleTokenChange);
+
+		return () => {
+			window.removeEventListener('storage', handleStorageChange);
+			window.removeEventListener('auth-token-changed', handleTokenChange);
+		};
+	}, []);
+
+	return hasToken;
+}
+
+// ============================================================================
+// Authentication Mutations (Login/Register)
+// ============================================================================
+
 export const useLogin = () => {
 	const queryClient = useQueryClient();
-	const dispatch = useAppDispatch();
 
 	return useMutation({
-		mutationFn: (credentials: UserLoginRequest) =>
-			authService.login({
-				email: credentials.email,
-				password: credentials.password,
-			}),
+		mutationFn: (credentials: AuthCredentials) => authService.login(credentials),
 		onSuccess: async data => {
-			// Verify token is stored before updating Redux state
+			// Verify token is stored before invalidating queries
 			// This prevents race condition where queries start before token is available
 			const tokenStored = await authService.waitForTokenStorage();
 
-			// Only update Redux if token is stored successfully and user data exists
 			if (tokenStored && data.user) {
-				// Verify token matches user before updating Redux
+				// Verify token matches user
 				const tokenMatches = await authService.verifyStoredTokenForUser(data.user.id);
 
 				if (tokenMatches) {
-				// Update Redux state for HOCs consistency
-					// setUser already sets isAuthenticated = true
-				dispatch(setUser(data.user));
+					logger.authInfo('Login successful', {
+						success: true,
+						userId: data.user.id,
+						emails: { current: data.user.email },
+					});
 
-				logger.authInfo('Login successful - Redux state updated', {
-					success: true,
-					userId: data.user.id,
-					email: data.user.email,
-				});
+					// Update React Query cache with user data
+					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
 
-				// Small delay to ensure Redux state is fully updated before triggering queries
-				await new Promise(resolve => setTimeout(resolve, 50));
-
-				// Invalidate auth-related queries after token is stored and Redux state is updated
-				// This ensures queries have access to the token when they execute
-				// Note: We don't use queryClient.clear() here to avoid clearing all queries
-				// which could cause issues with other queries that are still needed
-				queryClient.invalidateQueries({ queryKey: authKeys.all });
+					// Invalidate auth-related queries to trigger refetch
+					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
 				} else {
-					logger.authError('Token mismatch - not updating Redux', {
+					logger.authError('Token mismatch', {
 						userId: data.user.id,
 					});
 				}
@@ -86,55 +99,42 @@ export const useLogin = () => {
 	});
 };
 
-/**
- * Hook for user registration
- * @returns Mutation for user registration with credentials
- */
 export const useRegister = () => {
 	const queryClient = useQueryClient();
-	const dispatch = useAppDispatch();
 
 	return useMutation({
-		mutationFn: (credentials: UserRegisterRequest) => authService.register(credentials),
+		mutationFn: (credentials: AuthCredentials & { firstName?: string; lastName?: string }) =>
+			authService.register(credentials),
 		onSuccess: async data => {
-			// Verify token is stored before updating Redux state
+			// Verify token is stored before invalidating queries
 			// This prevents race condition where queries start before token is available
 			const tokenStored = await authService.waitForTokenStorage();
 
-			// Only update Redux if token is stored successfully and user data exists
 			if (tokenStored && data.user) {
-				// Verify the stored token matches the user we're setting
+				// Verify the stored token matches the user
 				const tokenMatches = await authService.verifyStoredTokenForUser(data.user.id);
 
-				logger.authInfo('Registration successful - verifying token before Redux update', {
+				logger.authInfo('Registration successful - verifying token', {
 					success: true,
 					userId: data.user.id,
-					email: data.user.email,
+					emails: { current: data.user.email },
 					tokenMatches,
 				});
 
-				// Only update Redux if token matches user
 				if (tokenMatches) {
-					// Update Redux state for HOCs consistency
-					// setUser already sets isAuthenticated = true
-					dispatch(setUser(data.user));
-
-					logger.authInfo('Registration successful - Redux state updated', {
+					logger.authInfo('Registration successful', {
 						success: true,
 						userId: data.user.id,
-						email: data.user.email,
+						emails: { current: data.user.email },
 					});
 
-					// Small delay to ensure Redux state is fully updated before triggering queries
-					await new Promise(resolve => setTimeout(resolve, 50));
+					// Update React Query cache with user data
+					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
 
-					// Invalidate auth-related queries after token is stored and Redux state is updated
-					// This ensures queries have access to the token when they execute
-					// Note: We don't use queryClient.clear() here to avoid clearing all queries
-					// which could cause issues with other queries that are still needed
-					queryClient.invalidateQueries({ queryKey: authKeys.all });
+					// Invalidate auth-related queries to trigger refetch
+					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
 				} else {
-					logger.authError('Token mismatch - not updating Redux', {
+					logger.authError('Token mismatch', {
 						userId: data.user.id,
 					});
 				}
@@ -146,3 +146,78 @@ export const useRegister = () => {
 		},
 	});
 };
+
+// ============================================================================
+// Authentication State Hooks
+// ============================================================================
+
+export const useCurrentUser = () => {
+	const hasToken = useHasToken();
+
+	return useQuery({
+		queryKey: QUERY_KEYS.auth.currentUser(),
+		queryFn: () => authService.getCurrentUser(),
+		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
+		retry: false, // Don't retry on auth errors
+		enabled: hasToken, // Only fetch if token exists to prevent unnecessary 401 errors
+	});
+};
+
+export const useIsAuthenticated = (): boolean => {
+	const hasToken = useHasToken();
+	const { data: currentUser, isSuccess, isError, isLoading } = useCurrentUser();
+
+	// User is authenticated if:
+	// 1. Token exists AND
+	// 2. We successfully fetched user data
+	// If query failed with error, user is not authenticated
+	if (!hasToken) {
+		return false;
+	}
+
+	// If query is still loading and we have a token, wait for it to complete
+	if (isLoading) {
+		return false; // Don't consider authenticated until query completes
+	}
+
+	// If query completed successfully with user data, user is authenticated
+	return isSuccess && !isError && currentUser !== null && currentUser !== undefined;
+};
+
+export const useUserRole = (): UserRole | undefined => {
+	const { data: currentUser } = useCurrentUser();
+	return currentUser?.role ?? UserRole.USER;
+};
+
+export const useCurrentUserData = (): BasicUser | null => {
+	const { data: currentUser } = useCurrentUser();
+	return currentUser ?? null;
+};
+
+// ============================================================================
+// Account Management
+// ============================================================================
+
+export const useChangePassword = () => {
+	return useMutation({
+		mutationFn: (passwordData: ChangePasswordData) => authService.changePassword(passwordData),
+	});
+};
+
+// ============================================================================
+// Logout Handler
+// ============================================================================
+
+export function useAuthLogoutHandler(): void {
+	useEffect(() => {
+		const unregisterCallback = authService.registerLogoutCallback(() => {
+			store.dispatch(resetGameSession());
+			store.dispatch(resetMultiplayer());
+			store.dispatch(resetLeaderboardPeriod());
+		});
+
+		return () => {
+			unregisterCallback();
+		};
+	}, []);
+}

@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
 import { Share2 } from 'lucide-react';
 
+import { isSocialLinkItem } from '@shared/utils';
+
 import { NAVIGATION_LINKS, SOCIAL_DATA } from '@/constants';
 import { NavLink } from '@/components';
-import { cn, isSocialLinkItem } from '@/utils';
+import { cn } from '@/utils';
 
 export default function Footer() {
 	const currentYear = new Date().getFullYear();
@@ -16,9 +18,9 @@ export default function Footer() {
 				<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
 					<div className='flex flex-col gap-2'>
 						<h5 className='text-sm font-semibold text-muted-foreground mb-2'>Follow Us:</h5>
-						<div className='grid grid-cols-3 gap-4'>
+						<div className='grid grid-cols-3 gap-3'>
 							{socialLinks.map(link => {
-								const Icon = link.icon || Share2;
+								const Icon = link.icon ?? Share2;
 								return (
 									<a
 										key={link.name}

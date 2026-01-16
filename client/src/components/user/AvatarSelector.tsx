@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import { VALIDATION_COUNT } from '@shared/constants';
-import { ButtonVariant, ToastVariant } from '@/constants';
+
+import { ButtonVariant } from '@/constants';
 import {
 	Avatar,
 	AvatarImage,
@@ -14,39 +15,31 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
-import { useSetAvatar, useToast } from '@/hooks';
+import { useSetAvatar } from '@/hooks';
 import { clientLogger as logger } from '@/services';
 import type { AvatarSelectorProps } from '@/types';
 import { cn, getAvatarUrl, isValidAvatarId } from '@/utils';
 
 export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSelectorProps) {
-	const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(currentAvatarId || null);
+	const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(currentAvatarId ?? null);
 	const setAvatar = useSetAvatar();
-	const { toast } = useToast();
 
 	// Reset selected avatar when dialog opens/closes or currentAvatarId changes
 	useEffect(() => {
 		if (open) {
-			setSelectedAvatarId(currentAvatarId || null);
+			setSelectedAvatarId(currentAvatarId ?? null);
 		}
 	}, [open, currentAvatarId]);
 
 	const handleSave = async () => {
 		if (!selectedAvatarId || !isValidAvatarId(selectedAvatarId)) {
-			toast({
-				title: 'Error',
-				description: 'Please select an avatar',
-				variant: ToastVariant.DESTRUCTIVE,
-			});
+			logger.userError('Please select an avatar', { avatar: selectedAvatarId ?? undefined });
 			return;
 		}
 
 		try {
 			await setAvatar.mutateAsync(selectedAvatarId);
-			toast({
-				title: 'Success',
-				description: 'Avatar updated successfully',
-			});
+			logger.userSuccess('Avatar updated successfully', { avatar: selectedAvatarId });
 			onOpenChange(false);
 		} catch (error) {
 			const errorMessage =
@@ -55,12 +48,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 					: typeof error === 'object' && error !== null && 'message' in error
 						? String(error.message)
 						: 'Failed to update avatar';
-			logger.userError('Failed to update avatar', { error: errorMessage, avatar: selectedAvatarId });
-			toast({
-				title: 'Error',
-				description: errorMessage,
-				variant: ToastVariant.DESTRUCTIVE,
-			});
+			logger.userError('Failed to update avatar', { errorInfo: { message: errorMessage }, avatar: selectedAvatarId });
 		}
 	};
 
@@ -105,7 +93,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 									whileTap={{ scale: 0.95 }}
 								>
 									<Avatar className='h-full w-full'>
-										<AvatarImage src={getAvatarUrl(avatarId)} alt={`Avatar ${avatarId}`} />
+										<AvatarImage src={getAvatarUrl(avatarId)} />
 									</Avatar>
 									{/* Blue ring for selected avatar (inner ring when both current and selected) */}
 									{isSelected && (

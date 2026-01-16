@@ -1,21 +1,20 @@
-/**
- * Auth Service
- *
- * @module AuthService
- * @description Authentication service with login, register, and token management
- */
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { compare, hash } from 'bcrypt';
 import { AuthenticationManager } from 'src/common/auth/authentication.manager';
+import { JwtTokenService } from 'src/common/auth/jwt-token.service';
 import { PasswordService } from 'src/common/auth/password.service';
 import { Repository } from 'typeorm';
 
-import { ERROR_CODES, UserRole } from '@shared/constants';
+import { ERROR_CODES, ERROR_MESSAGES, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
+import type { ChangePasswordData, UserData } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
+
 import { UserEntity } from '@internal/entities';
-import { CacheService } from '@internal/modules/cache/cache.service';
-import { ServerStorageService } from '@internal/modules/storage/storage.service';
+import { CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import type { UserData } from '@internal/types';
+import { createNotFoundError } from '@internal/utils';
+
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
 @Injectable()
@@ -24,19 +23,13 @@ export class AuthService {
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
 		private readonly authenticationManager: AuthenticationManager,
+		private readonly jwtTokenService: JwtTokenService,
 		private readonly passwordService: PasswordService,
 		private readonly cacheService: CacheService,
-		private readonly storageService: ServerStorageService
+		private readonly storageService: StorageService
 	) {}
 
-	/**
-	 * Register a new user
-	 * @param registerDto User registration data
-	 * @returns Authentication response with tokens and user data
-	 * @throws BadRequestException if email already exists
-	 */
 	async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-		// Check if email already exists
 		const existingUser = await this.userRepository.findOne({
 			where: { email: registerDto.email },
 		});
@@ -50,34 +43,33 @@ export class AuthService {
 				throw new BadRequestException(ERROR_CODES.EMAIL_ALREADY_REGISTERED);
 			}
 
-			const tokenPair = await this.authenticationManager.generateTokensForUser({
-				id: existingUser.id,
-				email: existingUser.email,
-				role: existingUser.role,
-			});
+			const tokenPair = await this.jwtTokenService.generateTokenPair(
+				existingUser.id,
+				existingUser.email,
+				existingUser.role
+			);
 
 			return {
-				access_token: tokenPair.accessToken,
-				refresh_token: tokenPair.refreshToken,
+				accessToken: tokenPair.accessToken,
+				refreshToken: tokenPair.refreshToken,
 				user: {
 					id: existingUser.id,
 					email: existingUser.email,
-					firstName: existingUser.firstName || undefined,
-					lastName: existingUser.lastName || undefined,
+					firstName: existingUser.firstName ?? undefined,
+					lastName: existingUser.lastName ?? undefined,
 					avatar: existingUser.preferences?.avatar,
 					role: existingUser.role,
 				},
 			};
 		}
 
-		// Determine role for new user: first registered user becomes admin
-		const adminExists = await this.userRepository.existsBy({ role: UserRole.ADMIN });
+		const adminExists = await this.userRepository.existsBy({
+			role: UserRole.ADMIN,
+		});
 		const roleForNewUser = adminExists ? UserRole.USER : UserRole.ADMIN;
 
-		// Hash password using PasswordService
 		const hashedPassword = await this.passwordService.hashPassword(registerDto.password);
 
-		// Create user
 		const user = this.userRepository.create({
 			email: registerDto.email,
 			passwordHash: hashedPassword,
@@ -89,78 +81,95 @@ export class AuthService {
 
 		const savedUser = await this.userRepository.save(user);
 
-		// Generate tokens using AuthenticationManager
-		const tokenPair = await this.authenticationManager.generateTokensForUser({
-			id: savedUser.id,
-			email: savedUser.email,
-			role: savedUser.role,
-		});
+		const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
 		return {
-			access_token: tokenPair.accessToken,
-			refresh_token: tokenPair.refreshToken,
+			accessToken: tokenPair.accessToken,
+			refreshToken: tokenPair.refreshToken,
 			user: {
 				id: savedUser.id,
 				email: savedUser.email,
-				firstName: savedUser.firstName || undefined,
-				lastName: savedUser.lastName || undefined,
-					avatar: savedUser.preferences?.avatar,
+				firstName: savedUser.firstName ?? undefined,
+				lastName: savedUser.lastName ?? undefined,
+				avatar: savedUser.preferences?.avatar,
 				role: savedUser.role,
 			},
 		};
 	}
 
-	/**
-	 * Login user
-	 * @param loginDto User login credentials (email)
-	 * @returns Authentication response with tokens and user data
-	 * @throws UnauthorizedException if credentials are invalid
-	 * @throws BadRequestException if email is not provided
-	 */
 	async login(loginDto: LoginDto): Promise<AuthResponseDto> {
 		try {
-			// Find user by email
 			const user = await this.userRepository.findOne({
 				where: { email: loginDto.email, isActive: true },
 			});
 
 			if (!user) {
+				logger.securityDenied('Login failed - user not found', {
+					emails: { current: loginDto.email },
+				});
 				throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
-			// Use AuthenticationManager for authentication
+			if (!user.passwordHash) {
+				logger.securityDenied('Login failed - user has no password (OAuth only)', {
+					emails: { current: loginDto.email },
+					userId: user.id,
+				});
+				throw new UnauthorizedException(ERROR_CODES.INVALID_CREDENTIALS);
+			}
+
 			const authResult = await this.authenticationManager.authenticate(
 				{ email: user.email, password: loginDto.password },
 				{
 					id: user.id,
 					email: user.email,
-					passwordHash: user.passwordHash || '',
+					passwordHash: user.passwordHash ?? '',
 					role: user.role,
 					isActive: user.isActive,
 				}
 			);
 
 			if (authResult.error) {
-				throw new UnauthorizedException(authResult.error || ERROR_CODES.INVALID_CREDENTIALS);
+				throw new UnauthorizedException(authResult.error ?? ERROR_CODES.INVALID_CREDENTIALS);
 			}
 
-			// Type guard: we know these exist when there's no error
 			if (!authResult.accessToken || !authResult.refreshToken || !authResult.user) {
 				throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_RESULT_INCOMPLETE);
 			}
 
-			// Update lastLogin timestamp
 			user.lastLogin = new Date();
 			await this.userRepository.save(user);
 
+			// Store user session data
+			const sessionKey = `user_session:${user.id}`;
+			const sessionResult = await this.storageService.set(
+				sessionKey,
+				{
+					userId: user.id,
+					lastLogin: new Date().toISOString(),
+					accessToken: authResult.accessToken.substring(0, 20) + '...',
+				},
+				TIME_DURATIONS_SECONDS.TWO_HOURS
+			);
+
+			if (!sessionResult.success) {
+				logger.userWarn('Failed to store user session data', {
+					context: 'AUTH',
+					userId: user.id,
+					errorInfo: {
+						message: sessionResult.error ?? ERROR_MESSAGES.general.UNKNOWN_ERROR,
+					},
+				});
+			}
+
 			return {
-				access_token: authResult.accessToken,
-				refresh_token: authResult.refreshToken,
+				accessToken: authResult.accessToken,
+				refreshToken: authResult.refreshToken,
 				user: {
 					id: user.id,
 					email: user.email,
-					firstName: user.firstName || undefined,
-					lastName: user.lastName || undefined,
+					firstName: user.firstName ?? undefined,
+					lastName: user.lastName ?? undefined,
 					avatar: user.preferences?.avatar,
 					role: user.role,
 				},
@@ -173,28 +182,20 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Refresh access token
-	 * @param refreshTokenDto Refresh token data
-	 * @returns New access token
-	 * @throws UnauthorizedException if refresh token is invalid
-	 */
 	async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<RefreshTokenResponseDto> {
 		try {
-			// Use AuthenticationManager for token refresh
 			const authResult = await this.authenticationManager.refreshAccessToken(refreshTokenDto.refreshToken);
 
 			if (authResult.error) {
-				throw new UnauthorizedException(authResult.error || ERROR_CODES.INVALID_REFRESH_TOKEN);
+				throw new UnauthorizedException(authResult.error ?? ERROR_CODES.INVALID_REFRESH_TOKEN);
 			}
 
-			// Type guard: we know accessToken exists when there's no error
 			if (!authResult.accessToken) {
 				throw new UnauthorizedException(ERROR_CODES.AUTHENTICATION_RESULT_INCOMPLETE);
 			}
 
 			return {
-				access_token: authResult.accessToken,
+				accessToken: authResult.accessToken,
 			};
 		} catch (error) {
 			if (error instanceof UnauthorizedException) {
@@ -204,18 +205,14 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Get current user
-	 * @param userId User ID
-	 * @returns User data without password hash
-	 * @throws UnauthorizedException if user not found
-	 */
-	async getCurrentUser(userId: string): Promise<
-		Pick<UserEntity, 'id' | 'email' | 'firstName' | 'lastName' | 'role' | 'preferences' | 'createdAt'>
-	> {
+	async getCurrentUser(
+		userId: string
+	): Promise<Pick<UserEntity, 'id' | 'email' | 'firstName' | 'lastName' | 'role' | 'preferences' | 'createdAt'>> {
 		try {
 			logger.authDebug('getCurrentUser called', {
-				requestedUserId: userId,
+				userIds: {
+					requested: userId,
+				},
 			});
 
 			const user = await this.userRepository.findOne({
@@ -225,16 +222,20 @@ export class AuthService {
 
 			if (!user) {
 				logger.authError('User not found in database', {
-					requestedUserId: userId,
+					userIds: {
+						requested: userId,
+					},
 				});
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			logger.authDebug('User found in database', {
 				userId: user.id,
-				email: user.email,
+				emails: { current: user.email },
 				role: user.role,
-				requestedUserId: userId,
+				userIds: {
+					requested: userId,
+				},
 			});
 
 			return user;
@@ -246,22 +247,20 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Logout user (invalidate tokens)
-	 * @param userId User ID
-	 * @returns Success message
-	 */
 	async logout(userId: string): Promise<string> {
 		// Use AuthenticationManager for logout
 		await this.authenticationManager.logout(userId);
 
 		// Clear user-specific cache entries to prevent stale data on re-login
 		try {
-			await this.cacheService.invalidatePattern(`*:${userId}`);
-			await this.cacheService.invalidatePattern(`*:${userId}:*`);
+			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_1(userId));
+			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_2(userId));
 			logger.authInfo('User cache cleared on logout', { userId });
 		} catch (error) {
-			logger.authError('Failed to clear user cache on logout', { userId, error: String(error) });
+			logger.authError('Failed to clear user cache on logout', {
+				userId,
+				errorInfo: { message: String(error) },
+			});
 		}
 
 		// Clear user session data from Redis storage
@@ -270,18 +269,15 @@ export class AuthService {
 			await this.storageService.delete(sessionKey);
 			logger.authInfo('User session data cleared on logout', { userId });
 		} catch (error) {
-			logger.authError('Failed to clear user session data on logout', { userId, error: String(error) });
+			logger.authError('Failed to clear user session data on logout', {
+				userId,
+				errorInfo: { message: String(error) },
+			});
 		}
 
 		return 'Logged out successfully';
 	}
 
-	/**
-	 * Validate user credentials
-	 * @param email Email
-	 * @param password Password
-	 * @returns User data if valid, null otherwise
-	 */
 	async validateUser(email: string, password: string): Promise<Omit<UserData, 'passwordHash'> | null> {
 		const user = await this.userRepository.findOne({
 			where: { email, isActive: true },
@@ -305,10 +301,6 @@ export class AuthService {
 		return null;
 	}
 
-	/**
-	 * Login or register user via Google OAuth profile
-	 * @param profile Google profile payload
-	 */
 	async loginWithGoogle(profile: {
 		googleId: string;
 		email?: string;
@@ -333,16 +325,14 @@ export class AuthService {
 
 			logger.systemInfo('Creating new user from Google profile', {
 				googleId: profile.googleId,
-				email,
+				emails: { current: email },
 			});
 
-			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
-			// Avatar can only be set through the dedicated /users/avatar endpoint
 			user = this.userRepository.create({
 				email,
 				googleId: profile.googleId,
-				firstName: firstName || undefined,
-				lastName: lastName || undefined,
+				firstName: firstName ?? undefined,
+				lastName: lastName ?? undefined,
 				role: UserRole.USER,
 				isActive: true,
 				lastLogin: new Date(),
@@ -354,44 +344,58 @@ export class AuthService {
 				userId: savedUser.id,
 			});
 
-			// Verify data was saved correctly
-			const verifyUser = await this.userRepository.findOne({ where: { id: savedUser.id } });
+			const verifyUser = await this.userRepository.findOne({
+				where: { id: savedUser.id },
+			});
 			if (verifyUser) {
 				logger.systemInfo('Verified saved user data', {
 					userId: verifyUser.id,
-					firstName: verifyUser.firstName || undefined,
-					lastName: verifyUser.lastName || undefined,
+
+					nameChanges: {
+						current: {
+							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+							firstName: verifyUser.firstName || undefined,
+							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+							lastName: verifyUser.lastName || undefined,
+						},
+					},
 				});
 			}
 		} else {
-			// Ensure googleId stored and update avatar/full name if missing
 			let shouldPersist = false;
 
 			logger.systemInfo('Updating existing user from Google profile', {
 				userId: user.id,
-				currentFirstName: user.firstName || undefined,
-				currentLastName: user.lastName || undefined,
+				nameChanges: {
+					current: {
+						firstName: user.firstName ?? undefined,
+						lastName: user.lastName ?? undefined,
+					},
+					new: {
+						firstName: profile.firstName ?? undefined,
+						lastName: profile.lastName ?? undefined,
+					},
+				},
 				avatar: user.preferences?.avatar,
-				newFirstName: profile.firstName || undefined,
-				newLastName: profile.lastName || undefined,
 			});
 
 			if (!user.googleId) {
 				user.googleId = profile.googleId;
 				shouldPersist = true;
 			}
-			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
-			// Avatar can only be set through the dedicated /users/avatar endpoint
-			// Update firstName and lastName if they exist in profile and user doesn't have them
-			// This ensures we fill missing data from Google
-			// Also update if profile has data and user field is empty/null
 			if (profile.firstName && (!user.firstName || user.firstName.trim() === '')) {
 				user.firstName = profile.firstName;
 				shouldPersist = true;
 				logger.systemInfo('Updating firstName from Google profile', {
 					userId: user.id,
-					oldFirstName: user.firstName || undefined,
-					newFirstName: profile.firstName,
+					nameChanges: {
+						old: {
+							firstName: user.firstName ?? undefined,
+						},
+						new: {
+							firstName: profile.firstName,
+						},
+					},
 				});
 			}
 			if (profile.lastName && (!user.lastName || user.lastName.trim() === '')) {
@@ -399,11 +403,16 @@ export class AuthService {
 				shouldPersist = true;
 				logger.systemInfo('Updating lastName from Google profile', {
 					userId: user.id,
-					oldLastName: user.lastName || undefined,
-					newLastName: profile.lastName,
+					nameChanges: {
+						old: {
+							lastName: user.lastName ?? undefined,
+						},
+						new: {
+							lastName: profile.lastName,
+						},
+					},
 				});
 			}
-			// Always update lastLogin on successful login
 			user.lastLogin = new Date();
 			shouldPersist = true;
 			if (shouldPersist) {
@@ -411,8 +420,12 @@ export class AuthService {
 
 				logger.systemInfo('User updated from Google profile', {
 					userId: user.id,
-					firstName: user.firstName || undefined,
-					lastName: user.lastName || undefined,
+					nameChanges: {
+						current: {
+							firstName: user.firstName ?? undefined,
+							lastName: user.lastName ?? undefined,
+						},
+					},
 				});
 			}
 		}
@@ -421,19 +434,17 @@ export class AuthService {
 			throw new UnauthorizedException(ERROR_CODES.USER_ACCOUNT_DISABLED);
 		}
 
-		const tokenPair = await this.authenticationManager.generateTokensForUser({
-			id: user.id,
-			email: user.email,
-			role: user.role,
-		});
+		const tokenPair = await this.jwtTokenService.generateTokenPair(user.id, user.email, user.role);
 
 		const response = {
-			access_token: tokenPair.accessToken,
-			refresh_token: tokenPair.refreshToken,
+			accessToken: tokenPair.accessToken,
+			refreshToken: tokenPair.refreshToken,
 			user: {
 				id: user.id,
 				email: user.email,
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				firstName: user.firstName || undefined,
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				lastName: user.lastName || undefined,
 				avatar: user.preferences?.avatar,
 				role: user.role,
@@ -442,10 +453,128 @@ export class AuthService {
 
 		logger.systemInfo('Google OAuth login response', {
 			userId: user.id,
-			firstName: response.user.firstName || undefined,
-			lastName: response.user.lastName || undefined,
+			nameChanges: {
+				current: {
+					firstName: response.user.firstName ?? undefined,
+					lastName: response.user.lastName ?? undefined,
+				},
+			},
 		});
 
 		return response;
+	}
+
+	async changePassword(userId: string, changePasswordData: ChangePasswordData) {
+		try {
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+			}
+
+			// Verify current password
+			if (!user.passwordHash) {
+				throw new BadRequestException(ERROR_CODES.PASSWORD_NOT_SET);
+			}
+			const isCurrentPasswordValid = await compare(changePasswordData.currentPassword, user.passwordHash);
+			if (!isCurrentPasswordValid) {
+				throw new UnauthorizedException(ERROR_CODES.CURRENT_PASSWORD_INCORRECT);
+			}
+
+			// Hash new password
+			const newPasswordHash = await hash(changePasswordData.newPassword, 10);
+
+			// Update password
+			user.passwordHash = newPasswordHash;
+			await this.userRepository.save(user);
+
+			// Clear user cache
+			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+
+			return 'Password changed successfully';
+		} catch (error) {
+			logger.authError('Failed to change password', {
+				context: 'AUTH',
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	async createUser(userData: {
+		email: string;
+		passwordHash: string;
+		firstName?: string;
+		lastName?: string;
+		role?: UserRole;
+	}) {
+		try {
+			const user = this.userRepository.create({
+				email: userData.email,
+				passwordHash: userData.passwordHash,
+				firstName: userData.firstName,
+				lastName: userData.lastName,
+				role: userData.role ?? UserRole.USER,
+			});
+
+			const savedUser = await this.userRepository.save(user);
+			return savedUser;
+		} catch (error) {
+			logger.authError('Failed to create user', {
+				emails: { current: userData.email },
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	async createGoogleUser(userData: {
+		googleId: string;
+		email: string;
+		firstName?: string;
+		lastName?: string;
+		// Note: avatar is not saved from Google OAuth (it's a URL, not our avatarId 1-16)
+	}) {
+		try {
+			// Note: We don't save avatar from Google OAuth (it's a URL, not our avatarId 1-16)
+			// Avatar can only be set through the dedicated /users/avatar endpoint
+			const user = this.userRepository.create({
+				googleId: userData.googleId,
+				email: userData.email,
+				firstName: userData.firstName,
+				lastName: userData.lastName,
+				role: UserRole.USER,
+			});
+
+			const savedUser = await this.userRepository.save(user);
+			return savedUser;
+		} catch (error) {
+			logger.authError('Failed to create Google user', {
+				googleId: userData.googleId,
+				emails: { current: userData.email },
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	async linkGoogleAccount(userId: string, googleId: string) {
+		try {
+			const user = await this.userRepository.findOne({ where: { id: userId } });
+			if (!user) {
+				throw createNotFoundError('User');
+			}
+
+			user.googleId = googleId;
+			const updatedUser = await this.userRepository.save(user);
+			return updatedUser;
+		} catch (error) {
+			logger.authError('Failed to link Google account', {
+				userId,
+				googleId,
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
 	}
 }

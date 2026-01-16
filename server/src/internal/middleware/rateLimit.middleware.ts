@@ -2,12 +2,12 @@ import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@
 import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
 
-import { CACHE_DURATION, RATE_LIMIT_DEFAULTS, TIME_PERIODS_MS } from '@shared/constants';
+import { RATE_LIMIT_DEFAULTS, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
-import { serverLogger as logger } from '@internal/services';
-import { metricsService } from '@internal/services/metrics';
+
+import { AppConfig } from '@config';
+import { serverLogger as logger, metricsService } from '@internal/services';
 import type { NestRequest } from '@internal/types';
-import { AppConfig } from '../../config/app.config';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -17,127 +17,75 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 	constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {}
 
+	private isLocalhost(ip: string): boolean {
+		if (!ip || ip === 'unknown') {
+			return false;
+		}
+		const normalizedIp = ip.toLowerCase().trim();
+		// Check for various localhost formats
+		return (
+			normalizedIp === '127.0.0.1' ||
+			normalizedIp === '::1' ||
+			normalizedIp === '::ffff:127.0.0.1' ||
+			normalizedIp === 'localhost' ||
+			normalizedIp.startsWith('127.') ||
+			normalizedIp.startsWith('::ffff:127.') ||
+			normalizedIp === '::' ||
+			normalizedIp.startsWith('::ffff:') ||
+			// Also check if it's undefined or empty (might happen in some cases)
+			normalizedIp === ''
+		);
+	}
+
 	async use(req: NestRequest, res: Response, next: NextFunction) {
 		if (!AppConfig.features.rateLimitingEnabled) {
-			next();
-			return;
-		}
-
-		const startTime = Date.now();
-		const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-
-		// Skip rate limiting if Redis is not available
-		if (!this.redis) {
-			logger.systemError('Redis not available for rate limiting - skipping rate limit check');
 			return next();
 		}
 
-		// Check for decorator-based rate limiting first
-		const decoratorRateLimit = req.decoratorMetadata?.rateLimit;
+		const startTime = Date.now();
+		// Try multiple ways to get the IP address
+		const xForwardedFor = req.headers['x-forwarded-for'];
+		const xRealIp = req.headers['x-real-ip'];
+		const forwardedIp = typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0]?.trim() : undefined;
+		const realIp = typeof xRealIp === 'string' ? xRealIp : undefined;
+		const ip =
+			req.ip ?? req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? forwardedIp ?? realIp ?? 'unknown';
 
-		if (decoratorRateLimit) {
-			// Use decorator-based rate limiting
-			const { limit, window } = decoratorRateLimit;
-			const key = `decorator_ratelimit:${ip}:${req.path}:${limit}:${window}`;
+		// Bypass rate limiting for localhost (development/testing)
+		// This allows local API tests to run without hitting rate limits
+		// Production IPs will still be rate limited
+		const shouldBypass =
+			AppConfig.features.bypassRateLimitForLocalhost !== false &&
+			(this.isLocalhost(ip) || AppConfig.nodeEnv === 'development' || process.env.NODE_ENV === 'development');
 
-			try {
-				// Check current request count
-				const requests = await this.redis.incr(key);
-
-				// Set expiration on first request
-				if (requests === 1) {
-					await this.redis.expire(key, window);
-				}
-
-				// Check if limit exceeded
-				if (requests > limit) {
-					const ttl = await this.redis.ttl(key);
-
-					logger.securityDenied('Decorator rate limit exceeded', {
-						ip,
-						path: req.path,
-						requests,
-						limit,
-						window,
-						ttl,
-					});
-
-					throw new HttpException(
-						{
-							status: HttpStatus.TOO_MANY_REQUESTS,
-							message: `Rate limit exceeded. Maximum ${limit} requests per ${window} seconds.`,
-							details: {
-								currentRequests: requests,
-								limit,
-								windowSeconds: window,
-								remainingTime: ttl,
-								endpoint: req.path,
-								method: req.method,
-								ip: ip,
-							},
-							retryAfter: ttl,
-							timestamp: new Date().toISOString(),
-						},
-						HttpStatus.TOO_MANY_REQUESTS
-					);
-				}
-
-				// Add rate limit headers
-				res.header('X-RateLimit-Limit', limit.toString());
-				res.header('X-RateLimit-Remaining', Math.max(0, limit - requests).toString());
-				res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + window).toString());
-
-				// Log successful rate limit check
-				logger.security('access', 'Decorator rate limit check passed', {
-					ip,
-					path: req.path,
-					requests,
-					limit,
-					window,
-					remaining: limit - requests,
-				});
-
-				// Record metrics
-				const duration = calculateDuration(startTime);
-				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
-
-				next();
-				return;
-			} catch (err) {
-				// Record error metrics
-				const duration = calculateDuration(startTime);
-				const normalizedError = ensureErrorObject(err);
-				metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
-
-				if (err instanceof HttpException) {
-					throw err;
-				}
-
-				logger.systemError(normalizedError, 'Decorator rate limit middleware error', {
-					ip,
-					path: req.path,
-				});
-
-				// Don't pass errors to next() in middleware
-				next();
-				return;
-			}
+		if (shouldBypass) {
+			logger.security('access', 'Rate limit bypassed for localhost/development', {
+				ip,
+				path: req.path,
+				nodeEnv: AppConfig.nodeEnv,
+			});
+			const duration = calculateDuration(startTime);
+			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
+			return next();
 		}
 
-		// Fall back to default rate limiting
-		const key = `ratelimit:${ip}:${req.path}`;
-		const burstKey = `ratelimit:burst:${ip}`;
+		if (!this.redis) {
+			logger.systemError('Redis not available for rate limiting - skipping rate limit check');
+			const duration = calculateDuration(startTime);
+			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
+			return next();
+		}
 
-		// Special handling for client-logs endpoint
-		const isClientLogs = req.path?.startsWith('/client-logs') || false;
-		const maxRequests = isClientLogs ? RATE_LIMIT_DEFAULTS.CLIENT_LOGS_MAX_REQUESTS : this.MAX_REQUESTS_PER_WINDOW;
-		const burstLimit = isClientLogs ? RATE_LIMIT_DEFAULTS.CLIENT_LOGS_BURST_LIMIT : this.BURST_LIMIT;
+		const key = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ip, req.path);
+		const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ip);
+
+		const maxRequests = this.MAX_REQUESTS_PER_WINDOW;
+		const burstLimit = this.BURST_LIMIT;
 
 		try {
-			// Check burst limit first (first second)
 			const burstCount = await this.redis.incr(burstKey);
 			if (burstCount === 1) {
-				await this.redis.expire(burstKey, CACHE_DURATION.VERY_SHORT);
+				await this.redis.expire(burstKey, TIME_DURATIONS_SECONDS.THIRTY_SECONDS);
 			}
 
 			if (burstCount > burstLimit) {
@@ -168,7 +116,6 @@ export class RateLimitMiddleware implements NestMiddleware {
 				);
 			}
 
-			// Check window-based rate limit
 			const requests = await this.redis.incr(key);
 
 			if (requests === 1) {
@@ -181,7 +128,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 				logger.securityDenied('Rate limit exceeded', {
 					ip,
 					path: req.path,
-					requests,
+					requestCounts: { current: requests },
 					limit: maxRequests,
 					ttl,
 				});
@@ -199,7 +146,6 @@ export class RateLimitMiddleware implements NestMiddleware {
 							endpoint: req.path,
 							method: req.method,
 							ip: ip,
-							isClientLogs,
 						},
 						retryAfter: ttl,
 						timestamp: new Date().toISOString(),
@@ -208,26 +154,22 @@ export class RateLimitMiddleware implements NestMiddleware {
 				);
 			}
 
-			// Add rate limit headers
 			res.header('X-RateLimit-Limit', maxRequests.toString());
 			res.header('X-RateLimit-Remaining', Math.max(0, maxRequests - requests).toString());
 			res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + this.WINDOW_SIZE_IN_SECONDS).toString());
 
-			// Log successful rate limit check
 			logger.security('access', 'Rate limit check passed', {
 				ip,
 				path: req.path,
-				requests,
+				requestCounts: { current: requests },
 				remaining: maxRequests - requests,
 			});
 
-			// Record metrics
 			const duration = calculateDuration(startTime);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
 
 			next();
 		} catch (err) {
-			// Record error metrics
 			const duration = calculateDuration(startTime);
 			const normalizedError = ensureErrorObject(err);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, false, normalizedError);
@@ -236,12 +178,12 @@ export class RateLimitMiddleware implements NestMiddleware {
 				throw err;
 			}
 
-			logger.systemError(normalizedError, 'Rate limit middleware error', {
+			logger.systemError(normalizedError, {
+				contextMessage: 'Rate limit middleware error',
 				ip,
 				path: req.path,
 			});
 
-			// Don't pass errors to next() in middleware
 			next();
 		}
 	}

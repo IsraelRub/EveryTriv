@@ -9,17 +9,18 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
-import { serverLogger as logger } from '@internal/services';
-import { NestRequest } from '../internal/types';
+import type { ErrorResponse } from '@shared/types';
+import {
+	getErrorMessage,
+	getErrorStack,
+	getErrorType,
+	isValidationErrorResponse,
+	parseValidationErrorResponse,
+} from '@shared/utils';
 
-/**
- * Type guard to check if response is a validation error response
- * Ensures presence of an errors field, and optionally a message field.
- */
-function isValidationErrorResponse(response: unknown): response is { errors: unknown; message?: unknown } {
-	return isRecord(response) && 'errors' in response;
-}
+import { serverLogger as logger } from '@internal/services';
+
+import { NestRequest } from '../internal/types';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -36,30 +37,37 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		if (exception instanceof HttpException && status === HttpStatus.BAD_REQUEST) {
 			const exceptionResponse = exception.getResponse();
 			if (isValidationErrorResponse(exceptionResponse)) {
-				// Debug: Log validation error details
-				const errorMessage = typeof exceptionResponse.message === 'string' ? exceptionResponse.message : undefined;
-				const errorArray = Array.isArray(exceptionResponse.errors) ? exceptionResponse.errors : undefined;
-				logger.validationError('global_validation_error', '[REDACTED]', 'validation_failed', {
-					path: request.url ?? 'unknown',
-					method: request.method || 'unknown',
-					message: errorMessage,
-					errors: errorArray,
-					body: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
-				});
+				// Use shared utility to parse validation error response
+				const validationError = parseValidationErrorResponse(exceptionResponse);
 
-				// This is a validation error with detailed error information
-				const validationMessage =
-					typeof exceptionResponse.message === 'string' && exceptionResponse.message.trim().length > 0
-						? exceptionResponse.message
-						: 'Validation failed';
+				if (validationError) {
+					// Debug: Log validation error details
+					const errorMessage = typeof validationError.message === 'string' ? validationError.message : undefined;
+					const errorArray = Array.isArray(validationError.errors) ? validationError.errors : undefined;
+					logger.validationError('global_validation_error', '[REDACTED]', 'validation_failed', {
+						path: request.url ?? 'unknown',
+						method: request.method ?? 'unknown',
+						errorInfo: {
+							message: errorMessage,
+							messages: errorArray,
+						},
+						body: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
+					});
 
-				return response.status(status).json({
-					statusCode: status,
-					path: request.url ?? 'unknown',
-					message: validationMessage,
-					errors: exceptionResponse.errors,
-					timestamp: new Date().toISOString(),
-				});
+					// This is a validation error with detailed error information
+					const validationMessage =
+						typeof validationError.message === 'string' && validationError.message.trim().length > 0
+							? validationError.message
+							: 'Validation failed';
+
+					return response.status(status).json({
+						statusCode: status,
+						path: request.url ?? 'unknown',
+						message: validationMessage,
+						errors: validationError.errors,
+						timestamp: new Date().toISOString(),
+					});
+				}
 			}
 		}
 
@@ -71,11 +79,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 			// Log server errors (5xx) as ERROR
 			logger.systemError(`Global Exception: ${errorMessage}`, {
 				status,
+				httpStatus: {
+					code: status,
+				},
 				path: request.url ?? 'unknown',
 				method: request.method || 'unknown',
-				userAgent: request.headers?.['user-agent'] || 'unknown',
-				ip: request.ip || 'unknown',
-				errorType,
+				userAgent: request.headers?.['user-agent'] ?? 'unknown',
+				ip: request.ip ?? 'unknown',
+				errorInfo: {
+					type: errorType,
+					message: errorMessage,
+				},
 				stack: getErrorStack(exception),
 				timestamp: new Date().toISOString(),
 			});
@@ -85,7 +99,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		// Check if this is a frontend request (not an API request)
 		// Frontend requests typically don't have Accept: application/json header
 		// Also check if the request method is GET (typical for page navigation)
-		const acceptHeader = request.headers.accept || '';
+		const acceptHeader = request.headers.accept ?? '';
 		const isApiRequest =
 			acceptHeader.includes('application/json') || request.url?.startsWith('/api/') || request.method !== 'GET';
 
@@ -99,14 +113,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		}
 
 		// Send sanitized error response (no stack traces or sensitive info)
-		interface ErrorResponse {
-			statusCode: number;
-			path: string;
-			message: string | string[];
-			timestamp: string;
-			errorType?: string;
-		}
-
 		const errorResponse: ErrorResponse = {
 			statusCode: status,
 			path: request.url ?? 'unknown',

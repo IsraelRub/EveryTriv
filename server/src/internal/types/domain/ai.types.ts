@@ -1,30 +1,11 @@
-/**
- * AI Types (server-only)
- * AI provider and LLM type definitions
- */
 import { DifficultyLevel, LLMResponseStatus, ProviderStatus } from '@shared/constants';
-import type { BaseTimestamps, BasicValue, BaseTriviaConfig, TriviaQuestion } from '@shared/types';
+import type { BaseTimestamps, BaseTriviaConfig, BasicValue, TriviaAnswer, TriviaQuestion } from '@shared/types';
 
-/**
- * LLM question format (simplified, without topic/difficulty which are added later)
- * @interface LLMQuestion
- * @description Question format returned by LLM providers
- */
 export interface LLMQuestion {
 	question: string;
-	answers: string[];
-	correctAnswerIndex: number;
+	answers: TriviaAnswer[];
 }
 
-/**
- * LLM trivia response interface
- * @interface LLMTriviaResponse
- * @description Trivia-specific response from LLM providers with enhanced metadata
- * Uses LLMQuestion (with answers: string[]) instead of TriviaQuestion (with answers: TriviaAnswer[])
- * because LLM providers return simple string arrays for answers
- * Topic and difficulty are added later in base.provider.ts
- * @used_by server/src/features/game/logic/providers/implementations
- */
 export interface LLMTriviaResponse {
 	questions: LLMQuestion[];
 	explanation?: string;
@@ -41,22 +22,11 @@ export interface LLMTriviaResponse {
 	};
 }
 
-/**
- * Raw LLM JSON payload that providers must emit
- */
 export interface TriviaLLMJsonPayload {
 	question: string;
 	answers: string[];
 }
 
-/**
- * Provider configuration interface
- * @interface ProviderConfig
- * @description Provider configuration for trivia generation.
- * Priority determines selection order (lower number = higher priority, selected first).
- * Providers are prioritized by cost: free providers (priority 1) are selected before paid ones.
- * @used_by server/src/features/game/logic/providers/implementations
- */
 export interface ProviderConfig {
 	name: string;
 	apiKey: string;
@@ -64,18 +34,11 @@ export interface ProviderConfig {
 	timeout: number;
 	maxRetries: number;
 	enabled: boolean;
-	/** Priority level (1 = highest priority, selected first). Lower number = higher priority */
 	priority: number;
 	headers?: Record<string, string>;
 	body?: Record<string, unknown>;
 }
 
-/**
- * Provider stats interface
- * @interface ProviderStats
- * @description Provider statistics
- * @used_by server/src/features/game/logic/providers/management/providers.service.ts
- */
 export interface ProviderStats extends BaseTimestamps {
 	providerName: string;
 	requests: number;
@@ -88,12 +51,6 @@ export interface ProviderStats extends BaseTimestamps {
 	status: ProviderStatus;
 }
 
-/**
- * Prompt parameters interface
- * @interface PromptParams
- * @description Parameters for prompt generation with enhanced options
- * @used_by server/src/features/game/logic/prompts/prompts.ts
- */
 export interface PromptParams extends BaseTriviaConfig {
 	answerCount: number;
 	customInstructions?: string;
@@ -106,12 +63,6 @@ export interface PromptParams extends BaseTriviaConfig {
 	};
 }
 
-/**
- * LLM Response Parsing interface
- * @interface LLMResponse
- * @description Response parsing for different LLM providers
- * @used_by server/src/features/game/logic/providers/implementations
- */
 export interface LLMResponse {
 	content: string;
 	data?: {
@@ -127,15 +78,9 @@ export interface LLMResponse {
 	};
 }
 
-/**
- * AI Provider Instance interface
- * @interface AIProviderInstance
- * @description Provider instance for trivia generation
- */
 export interface AIProviderInstance {
 	name: string;
 	config: {
-		providerName: string;
 		model: string;
 		version: string;
 		capabilities: string[];
@@ -155,10 +100,7 @@ export interface AIProviderInstance {
 	currentLoad: number;
 }
 
-/**
- * Provider trivia generation result
- */
 export interface ProviderTriviaGenerationResult {
-	question: TriviaQuestion;
+	question: Omit<TriviaQuestion, 'id'>;
 	mappedDifficulty?: DifficultyLevel;
 }

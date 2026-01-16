@@ -1,13 +1,3 @@
-/**
- * System and business analytics type definitions
- *
- * @module AnalyticsSystemTypes
- * @description Structures for system-level analytics, insights, recommendations, and business metrics
- */
-
-/**
- * System statistics interface
- */
 export interface SystemStats {
 	totalUsers: number;
 	activeUsers24h: number;
@@ -19,18 +9,12 @@ export interface SystemStats {
 	errorRate: number;
 }
 
-/**
- * System statistics query parameters
- */
 export interface SystemStatsQuery {
 	startDate?: Date;
 	endDate?: Date;
 	includeInactive?: boolean;
 }
 
-/**
- * System insights interface
- */
 export interface SystemInsights {
 	performanceInsights: string[];
 	securityInsights: string[];
@@ -41,18 +25,12 @@ export interface SystemInsights {
 	timestamp: Date;
 }
 
-/**
- * Business metrics revenue interface
- */
 export interface BusinessMetricsRevenue {
 	total: number;
 	mrr: number;
 	arpu: number;
 }
 
-/**
- * Business metrics users interface
- */
 export interface BusinessMetricsUsers {
 	total: number;
 	active: number;
@@ -60,9 +38,6 @@ export interface BusinessMetricsUsers {
 	churnRate: number;
 }
 
-/**
- * Business metrics engagement interface
- */
 export interface BusinessMetricsEngagement {
 	dau: number;
 	wau: number;
@@ -70,18 +45,12 @@ export interface BusinessMetricsEngagement {
 	avgSessionDuration: number;
 }
 
-/**
- * Business metrics interface
- */
 export interface BusinessMetrics {
 	revenue: BusinessMetricsRevenue;
 	users: BusinessMetricsUsers;
 	engagement: BusinessMetricsEngagement;
 }
 
-/**
- * System recommendation interface
- */
 export interface SystemRecommendation {
 	id: string;
 	type: string;

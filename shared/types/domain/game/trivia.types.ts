@@ -1,10 +1,4 @@
-/**
- * Trivia-related types for EveryTriv
- *
- * @module TriviaTypes
- * @description Type definitions for trivia questions, answers, and trivia-related entities
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
- */
+// Trivia-related types for EveryTriv.
 import {
 	CUSTOM_DIFFICULTY_PREFIX,
 	DifficultyLevel,
@@ -12,29 +6,14 @@ import {
 	GameStatus,
 	TriviaQuestionSource,
 } from '@shared/constants';
+
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
 
-/**
- * Custom difficulty string type
- * @type CustomDifficultyString
- * @description String that represents a custom difficulty with the custom: prefix
- */
 export type CustomDifficultyString = `${typeof CUSTOM_DIFFICULTY_PREFIX}${string}`;
 
-/**
- * Game difficulty type union
- * @type GameDifficulty
- * @description Union type for both standard difficulty levels and custom difficulties
- * @used_by server/src/features/game/logic, client/src/components/game, shared/validation
- */
 export type GameDifficulty = DifficultyLevel | CustomDifficultyString;
 
-/**
- * Base trivia parameters interface
- * @interface BaseTriviaParams
- * @description Base parameters for trivia generation requests
- */
 export interface BaseTriviaParams {
 	topic?: string;
 	difficulty?: GameDifficulty;
@@ -42,11 +21,6 @@ export interface BaseTriviaParams {
 	answerCount?: number;
 }
 
-/**
- * Structured metadata describing trivia question provenance and quality signals
- * @interface TriviaQuestionDetailsMetadata
- * @description Metadata for trivia questions
- */
 export interface TriviaQuestionDetailsMetadata {
 	category?: string;
 	tags?: string[];
@@ -70,12 +44,6 @@ export interface TriviaQuestionDetailsMetadata {
 	mappedDifficulty?: DifficultyLevel;
 }
 
-/**
- * Trivia answer interface
- * @interface TriviaAnswer
- * @description Trivia answer with metadata
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
- */
 export interface TriviaAnswer {
 	text: string;
 	isCorrect: boolean;
@@ -84,27 +52,11 @@ export interface TriviaAnswer {
 	questionId?: string;
 }
 
-/**
- * Trivia question interface
- * @interface TriviaQuestion
- * @description Trivia question with answers and metadata
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
- */
-/**
- * Base interface for topic and difficulty
- * @interface BaseGameTopicDifficulty
- * @description Common structure for interfaces that contain topic and difficulty
- */
 export interface BaseGameTopicDifficulty {
 	topic: string;
 	difficulty: GameDifficulty;
 }
 
-/**
- * Base interface for trivia configuration
- * @interface BaseTriviaConfig
- * @description Common structure for trivia request configurations
- */
 export interface BaseTriviaConfig {
 	topic: string;
 	difficulty: GameDifficulty;
@@ -112,56 +64,31 @@ export interface BaseTriviaConfig {
 	gameMode?: GameMode;
 }
 
-/**
- * Core trivia question structure used across input and payload types
- */
-export interface TriviaQuestionCore<GameDifficulty> {
+export type TriviaQuestionInput = Omit<TriviaQuestion, 'id' | 'createdAt' | 'updatedAt'>;
+
+export interface TriviaQuestion extends BaseEntity {
 	question: string;
-	answers: string[];
+	answers: TriviaAnswer[];
 	correctAnswerIndex: number;
 	topic: string;
 	difficulty: GameDifficulty;
 	metadata?: TriviaQuestionDetailsMetadata;
-}
-
-/**
- * Trivia question interface
- * @interface TriviaQuestion
- * @description Trivia question with answers and metadata
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx
- */
-
-/**
- * Trivia question payload interface for validation and submission flows
- * @description Allows partial metadata while enforcing essential fields
- */
-export type TriviaQuestionInput = TriviaQuestionCore<GameDifficulty>;
-
-export interface TriviaQuestion extends BaseEntity, Omit<TriviaQuestionInput, 'answers'> {
-	answers: TriviaAnswer[];
-	category?: string;
-	explanation?: string;
-	source?: string;
-	tags?: string[];
 	rating?: number;
 	timesAnswered?: number;
 	successRate?: number;
 }
 
-/**
- * Base answer payload shared across submission and result structures
- */
 export interface BaseAnswerPayload {
 	questionId: string;
 	timeSpent: number;
 }
 
-/**
- * Trivia request interface
- * @interface TriviaRequest
- * @description Request payload for trivia questions
- * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts
- */
+export interface BaseAnswerData {
+	questionId: string;
+	userAnswerIndex: number;
+	isCorrect: boolean;
+}
+
 export interface TriviaRequest extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	category?: string;
@@ -171,20 +98,10 @@ export interface TriviaRequest extends BaseTriviaConfig {
 	answerCount?: number;
 }
 
-/**
- * Game answer submission data
- * @interface GameAnswerSubmission
- * @description Payload for submitting an answer during gameplay
- */
 export interface GameAnswerSubmission extends BaseAnswerPayload {
-	answer: string;
+	answer: number;
 }
 
-/**
- * Trivia input validation result
- * @interface TriviaInputValidationResult
- * @description Aggregated validation results for trivia topic and difficulty inputs
- */
 export interface TriviaInputValidationResult {
 	topic: BaseValidationResult;
 	difficulty: BaseValidationResult;
@@ -194,39 +111,19 @@ export interface TriviaInputValidationResult {
 	};
 }
 
-/**
- * Trivia response interface
- * @interface TriviaResponse
- * @description Response payload for trivia questions from the server
- * @used_by client/src/services/api.service.ts, client/src/hooks/api/useTrivia.ts, server/src/features/game/game.service.ts
- */
 export interface TriviaResponse {
 	questions: TriviaQuestion[];
 	fromCache: boolean;
 }
 
-/**
- * Answer result interface
- * @interface AnswerResult
- * @description Result of answering a trivia question
- * @used_by client/src/components/game/TriviaForm.tsx, client/src/components/game/TriviaGame.tsx, server/src/features/game/game.service.ts
- */
-export interface AnswerResult extends BaseAnswerPayload {
-	userAnswer: string;
-	correctAnswer: string;
-	isCorrect: boolean;
+export interface AnswerResult extends BaseAnswerData {
+	timeSpent: number;
 	scoreEarned: number;
 	totalScore: number;
 	explanation?: string;
 	feedback: string;
 }
 
-/**
- * Trivia session interface
- * @interface TriviaSession
- * @description Trivia game session
- * @used_by client/src/components/game/TriviaGame.tsx, client/src/hooks/layers/business/useGameMode.ts
- */
 export interface TriviaSession {
 	sessionId: string;
 	userId: string;

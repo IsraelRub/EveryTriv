@@ -1,21 +1,3 @@
-/**
- * HTTP client constants for EveryTriv
- * Used by both client and server
- *
- * @module HttpConstants
- * @description HTTP configuration and status code constants
- * @used_by client/src/services, shared/services
- */
-import { ENV_FALLBACKS, ENV_VAR_NAMES, LOCALHOST_URLS } from './localhost.constants';
-
-// API base URL configuration
-export const API_BASE_URL = {
-	DEVELOPMENT: LOCALHOST_URLS.SERVER,
-	PRODUCTION: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
-	STAGING: process.env[ENV_VAR_NAMES.API_BASE_URL] || ENV_FALLBACKS.API_BASE_URL,
-} as const;
-
-// HTTP client configuration
 export const HTTP_CLIENT_CONFIG = {
 	TIMEOUT: 30000, // 30 seconds
 	RETRY_ATTEMPTS: 3,
@@ -28,14 +10,12 @@ export const HTTP_CLIENT_CONFIG = {
 	},
 } as const;
 
-// HTTP timeout constants
 export const HTTP_TIMEOUTS = {
 	QUESTION_GENERATION: 30000, // 30 seconds
 	AI_PROVIDER: 30000, // 30 seconds
 	UPLOAD: 60000, // 60 seconds
 } as const;
 
-// HTTP status codes
 export const HTTP_STATUS_CODES = {
 	OK: 200,
 	CREATED: 201,
@@ -55,21 +35,6 @@ export const HTTP_STATUS_CODES = {
 	SERVER_ERROR_MAX: 599,
 } as const;
 
-// HTTP methods
-export const HTTP_METHODS = {
-	GET: 'GET',
-	POST: 'POST',
-	PUT: 'PUT',
-	PATCH: 'PATCH',
-	DELETE: 'DELETE',
-	OPTIONS: 'OPTIONS',
-} as const;
-
-/**
- * HTTP Method Enum
- * @enum HttpMethod
- * @description HTTP methods as enum for type safety
- */
 export enum HttpMethod {
 	GET = 'GET',
 	POST = 'POST',
@@ -79,34 +44,9 @@ export enum HttpMethod {
 	OPTIONS = 'OPTIONS',
 }
 
-// HTTP error codes
-export const HTTP_ERROR_CODES = {
-	NETWORK_ERROR: 'NETWORK_ERROR',
-	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
-	TIMEOUT_ERROR: 'TIMEOUT_ERROR',
-	SERVER_ERROR: 'SERVER_ERROR',
-} as const;
-
-/**
- * HTTP error messages
- * @constant
- * @description HTTP-specific error messages
- * @note These messages are aliases/references to ERROR_MESSAGES.general for HTTP-specific contexts
- * @see ERROR_MESSAGES.general for the source of truth for error messages
- */
 export const HTTP_ERROR_MESSAGES = {
 	NETWORK_ERROR: 'Network error occurred. Please check your connection.', // Same as ERROR_MESSAGES.general.NETWORK_ERROR
 	UNKNOWN_ERROR: 'An unknown error occurred.', // Same as ERROR_MESSAGES.general.UNKNOWN_ERROR
 	TIMEOUT_ERROR: 'Request timed out. Please try again.', // Same as ERROR_MESSAGES.general.TIMEOUT
 	SERVER_ERROR: 'Server error occurred. Please try again later.', // Similar to ERROR_MESSAGES.general.INTERNAL_SERVER_ERROR
-} as const;
-
-// HTTP log messages
-export const HTTP_LOG_MESSAGES = {
-	REQUEST: 'HTTP Request',
-	REQUEST_ERROR: 'HTTP Request Error',
-	RESPONSE: 'HTTP Response',
-	RESPONSE_ERROR: 'HTTP Response Error',
-	RETRY_ATTEMPT: 'HTTP Retry Attempt',
-	RETRY_FAILED: 'HTTP Retry Failed',
 } as const;

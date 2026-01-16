@@ -37,7 +37,6 @@ shared/
 │   │   └── index.ts
 │   ├── payment.types.ts
 │   ├── points.types.ts
-│   ├── subscription.types.ts
 │   └── language.types.ts
 ├── constants/            # קבועים משותפים
 │   ├── business/         # קבועי עסק
@@ -128,11 +127,13 @@ shared/
 import { API_ENDPOINTS, HTTP_STATUS_CODES } from '@shared/constants';
 
 // נקודות קצה API
-API_ENDPOINTS.AUTH.REGISTER    // '/auth/register'
-API_ENDPOINTS.AUTH.LOGIN       // '/auth/login'
-API_ENDPOINTS.GAME.TRIVIA      // '/game/trivia'
-API_ENDPOINTS.GAME.ANSWER      // '/game/answer'
-API_ENDPOINTS.USERS.PROFILE    // '/users/profile'
+API_ENDPOINTS.AUTH.REGISTER          // '/auth/register'
+API_ENDPOINTS.AUTH.LOGIN             // '/auth/login'
+API_ENDPOINTS.GAME.TRIVIA            // '/game/trivia'
+API_ENDPOINTS.GAME.SESSION_START     // '/game/session/start'
+API_ENDPOINTS.GAME.SESSION_ANSWER    // '/game/session/answer'
+API_ENDPOINTS.GAME.SESSION_FINALIZE  // '/game/session/finalize'
+API_ENDPOINTS.USERS.PROFILE          // '/users/profile'
 
 // קודי סטטוס HTTP
 HTTP_STATUS_CODES.OK           // 200
@@ -279,91 +280,6 @@ PERFORMANCE_THRESHOLDS.VERY_SLOW   // 5000ms
 
 ## Services
 
-### Logging Services
-
-#### clientLogger.service.ts
-Logger ללקוח - שימוש ב-console של הדפדפן:
-```typescript
-import { clientLogger as logger } from '@shared/services';
-
-// לוגים בסיסיים
-logger.info('משחק התחיל', { topic: 'history', difficulty: 'medium' });
-logger.error('שגיאה במשחק', { error: getErrorMessage(error), questionId: '123' });
-logger.warn('אזהרה', { message: 'נקודות נמוכות' });
-logger.debug('מידע debug', { state: gameState });
-
-// לוגים ספציפיים למשתמש
-logger.userInfo('משתמש התחבר', { userId: '123', username: 'user' });
-logger.userError('שגיאה בפרופיל', { userId: '123', field: 'email' });
-logger.userWarn('אזהרה למשתמש', { userId: '123' });
-logger.logUserActivity('user123', 'login', { timestamp: new Date() });
-
-// לוגים ספציפיים ל-API
-logger.apiCreate('game_created', { gameId: '123', userId: 'user123' });
-logger.apiRead('user_profile', { userId: 'user123' });
-logger.apiUpdate('user_profile', { userId: 'user123', fields: ['firstName'] });
-logger.apiDelete('game_history', { gameId: '123' });
-logger.apiError('API error', { endpoint: '/game/trivia', statusCode: 500 });
-
-// לוגים ספציפיים למשחק
-logger.gameInfo('משחק התחיל', { topic: 'history', difficulty: 'medium' });
-logger.gameError('שגיאה במשחק', { error: getErrorMessage(error), questionId: '123' });
-logger.gameWarn('אזהרה במשחק', { message: 'זמן עבר' });
-
-// לוגים ספציפיים לביצועים
-logger.performance('question_generation', 1500, { topic: 'history' });
-
-// לוגים ספציפיים למטמון
-logger.cacheSet('trivia:history:medium', { topic: 'history' });
-logger.cacheHit('trivia:history:medium');
-logger.cacheMiss('trivia:history:medium');
-logger.cacheInfo('Cache cleared', { keys: 10 });
-
-// לוגים ספציפיים לאבטחה
-logger.securityLogin('User login', { userId: 'user123' });
-logger.securityLogout('User logout', { userId: 'user123' });
-logger.securityDenied('Access denied', { userId: 'user123', endpoint: '/admin' });
-logger.authRegister('User registered', { userId: 'user123', username: 'user' });
-logger.authError('Auth error', { error: getErrorMessage(error) });
-logger.authInfo('Auth info', { message: 'Token refreshed' });
-logger.authTokenRefresh('Token refresh', { userId: 'user123' });
-logger.authLogout('User logout', { userId: 'user123' });
-logger.authDebug('Auth debug', { token: 'token...' });
-```
-
-#### serverLogger.service.ts
-Logger לשרת - שימוש ב-file system ולוגים מובנים:
-```typescript
-import { serverLogger as logger } from '@shared/services';
-
-// כל ה-methods של clientLogger זמינים גם כאן
-// בנוסף, יש תמיכה ב-performance tracking
-
-// Performance tracking
-logger.startPerformanceTracking('generate_question');
-// ... code ...
-const duration = logger.endPerformanceTracking('generate_question', { topic: 'history' });
-
-// לוגים מובנים
-logger.databaseError(error, 'Failed to save game', { gameId: '123' });
-logger.databaseInfo('Database connected', { host: 'localhost' });
-logger.databaseWarn('Slow query detected', { query: 'SELECT * FROM games', duration: 5000 });
-
-// לוגים ספציפיים לאחסון
-logger.storageError('Storage error', { key: 'user:123', operation: 'set' });
-logger.storageWarn('Storage warning', { key: 'user:123' });
-
-// לוגים ספציפיים לתשלומים
-logger.payment('Payment processed', { paymentId: 'pay_123', amount: 10.00 });
-logger.paymentFailed('pay_123', 'Payment failed', { error: getErrorMessage(error) });
-
-// Validation logs
-logger.validationInfo('Validation passed', { field: 'email', value: 'user@example.com' });
-logger.validationWarn('Validation warning', { field: 'password', issue: 'weak' });
-logger.validationError('Validation error', { field: 'username', error: 'already exists' });
-logger.validationDebug('Validation debug', { field: 'email', checks: ['format', 'length'] });
-```
-
 ### Score Utilities
 
 #### score.utils.ts
@@ -434,46 +350,6 @@ const recommendation = calculateOptimalPackage(
 
 Storage services are available through `BaseStorageService` and `MetricsService`. 
 For caching strategies, use `CacheStrategyService` from the cache module.
-
-### Infrastructure Services
-
-#### tokenExtraction.service.ts
-שירות לחילוץ טוקנים מבקשות HTTP:
-```typescript
-import { TokenExtractionService } from '@shared/services';
-
-// חילוץ טוקן מה-Authorization header או cookies
-const token = TokenExtractionService.extractToken(
-  request.headers.authorization,
-  request.cookies
-);
-
-if (token) {
-  // טוקן נמצא, המשך עם אימות
-  const user = await verifyToken(token);
-}
-```
-
-#### cache.service.ts
-שירות מטמון - ניהול מטמון Redis:
-```typescript
-import { CacheStrategyService } from '@shared/services';
-
-// יצירת instance (בשימוש בשרת)
-const cacheService = new CacheStrategyService(
-  cacheStorage,       // StorageService
-  persistentStorage   // StorageService
-);
-
-// Get value with cache strategy
-const result = await cacheService.get('key', 'cache-first');
-
-// Set value in cache
-await cacheService.set('key', value, ttl, 'cache-first');
-
-// Delete value from cache
-await cacheService.delete('key');
-```
 
 ## Utils
 
@@ -626,7 +502,7 @@ import {
   generateSessionId,
   generateUserId,
   generatePaymentIntentId,
-  generateQuestionId
+  generateInterceptorId
 } from '@shared/utils';
 
 // יצירת ID רנדומלי
@@ -645,8 +521,8 @@ const userId = generateUserId(); // 'user_...'
 // יצירת payment intent ID
 const paymentId = generatePaymentIntentId(); // 'pi_...'
 
-// יצירת question ID
-const questionId = generateQuestionId(); // 'q_...'
+// יצירת interceptor ID
+const interceptorId = generateInterceptorId(); // 'interceptor_...'
 ```
 
 #### sanitization.utils.ts

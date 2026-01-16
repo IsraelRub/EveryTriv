@@ -1,28 +1,5 @@
-/**
- * Common Interceptors Index
- *
- * @module CommonInterceptors
- * @description Central export point for all common interceptors
- * @used_by server/src/features, server/src/controllers, server/src/app, server/repositories
- */
-
-/**
- * Cache interceptor
- * @description Interceptor for implementing caching based on @Cache decorator
- * @used_by server/src/features, server/src/controllers
- */
 export * from './cache.interceptor';
 
-/**
- * Response formatting interceptor
- * @description Interceptor for standardizing API response format
- * @used_by server/src/app, server/src/controllers
- */
 export * from './responseFormatting.interceptor';
 
-/**
- * Performance monitoring interceptor
- * @description Interceptor for tracking request performance metrics
- * @used_by server/src/app, server/src/controllers
- */
 export * from './performanceMonitoring.interceptor';

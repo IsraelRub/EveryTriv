@@ -1,17 +1,3 @@
-/**
- * Payment and Subscription Constants for EveryTriv
- *
- * @module PaymentConstants
- * @description Payment-related enums and constants shared between client and server
- * @used_by server/src/features/payment, client/src/views/payment, shared/types
- */
-
-/**
- * Payment Status Enum
- * @enum PaymentStatus
- * @description Payment transaction statuses
- * @used_by server/src/features/payment, shared/types/domain/payment.types.ts
- */
 export enum PaymentStatus {
 	PENDING = 'pending',
 	COMPLETED = 'completed',
@@ -20,33 +6,33 @@ export enum PaymentStatus {
 	REQUIRES_ACTION = 'requires_action',
 }
 
-/**
- * Payment Method Enum
- * @enum PaymentMethod
- * @description Supported payment methods
- * @used_by server/src/features/payment, shared/types/domain/payment.types.ts
- */
 export enum PaymentMethod {
 	MANUAL_CREDIT = 'manual_credit',
 	PAYPAL = 'paypal',
 }
 
-export const PAYPAL_ENVIRONMENTS = {
-	PRODUCTION: 'production',
-	SANDBOX: 'sandbox',
-} as const;
-
-/**
- * PayPal Environment Enum
- * @enum PayPalEnvironment
- * @description PayPal environment types
- */
 export enum PayPalEnvironment {
 	PRODUCTION = 'production',
 	SANDBOX = 'sandbox',
 }
 
-// Payment client action enum
+export enum PayPalOrderStatus {
+	CREATED = 'CREATED',
+	SAVED = 'SAVED',
+	APPROVED = 'APPROVED',
+	VOIDED = 'VOIDED',
+	COMPLETED = 'COMPLETED',
+	PAYER_ACTION_REQUIRED = 'PAYER_ACTION_REQUIRED',
+}
+
+export enum PayPalCaptureStatus {
+	COMPLETED = 'COMPLETED',
+	DECLINED = 'DECLINED',
+	PARTIALLY_REFUNDED = 'PARTIALLY_REFUNDED',
+	PENDING = 'PENDING',
+	REFUNDED = 'REFUNDED',
+}
+
 export enum PaymentClientAction {
 	COMPLETE = 'complete',
 	MANUAL_CAPTURE = 'manual_capture',
@@ -60,54 +46,21 @@ export const MANUAL_CREDIT_SUPPORTED_CARD_LENGTHS = {
 
 export const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
 
-/**
- * Subscription Status Enum
- * @enum SubscriptionStatus
- * @description Subscription statuses
- * @used_by server/src/features/payment, shared/types/domain/subscription.types.ts
- */
-export enum SubscriptionStatus {
-	ACTIVE = 'active',
-	CANCELLED = 'cancelled',
-	PENDING = 'pending',
-}
+export const VALID_PAYMENT_METHODS_SET = new Set<string>(VALID_PAYMENT_METHODS);
 
-/**
- * Plan Type Enum
- * @enum PlanType
- * @description Subscription plan types
- * @used_by server/src/features/subscription, server/src/features/payment, shared/types
- */
 export enum PlanType {
 	BASIC = 'basic',
 	PREMIUM = 'premium',
 	PRO = 'pro',
 }
 
-/**
- * Array of all valid plan types
- * @constant
- * @description Complete list of supported plan types
- * @used_by server/src/validation, client/forms, server/src/features/subscription
- */
 export const VALID_PLAN_TYPES = Object.values(PlanType);
 
-/**
- * Request source enumeration
- * @enum RequestSource
- * @description Source of payment requests
- */
 export enum RequestSource {
 	WEB = 'web',
 	API = 'api',
 }
 
-/**
- * Credit packages - single source of truth
- * @constant
- * @description All credit packages with consistent pricing
- * @used_by server/src/features/payment, client/src/views/payment
- */
 export const CREDIT_PURCHASE_PACKAGES = [
 	{ id: 'package_50', credits: 50, price: 2.99, tier: 'basic' },
 	{ id: 'package_100', credits: 100, price: 4.99, tier: 'basic' },
@@ -122,56 +75,48 @@ export const CREDIT_PURCHASE_PACKAGES = [
 	supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	pricePerCredit: pkg.price / pkg.credits,
 	priceDisplay: `$${pkg.price.toFixed(2)}`,
+	currency: 'USD',
+	bonus: 0,
 }));
 
-/**
- * Subscription pricing plans
- * @constant
- * @description Available subscription plans and pricing
- * @used_by server/src/features/payment, client/src/views/payment
- */
-export const SUBSCRIPTION_PLANS = {
-	basic: {
-		price: 9.99,
-		currency: 'USD',
-		interval: 'month',
-		features: ['Unlimited trivia questions', 'Basic analytics', 'Email support'],
-		creditBonus: 100,
-		maxQuestionsPerGame: 1000,
-		paypalProductId: 'everytriv_subscription_basic',
-		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
-	},
-	premium: {
-		price: 19.99,
-		currency: 'USD',
-		interval: 'month',
-		features: [
-			'Unlimited trivia questions',
-			'Advanced analytics',
-			'Priority support',
-			'Custom difficulty levels',
-			'Export functionality',
-		],
-		creditBonus: 250,
-		maxQuestionsPerGame: undefined, // Unlimited questions for premium subscription
-		paypalProductId: 'everytriv_subscription_premium',
-		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
-	},
-	pro: {
-		name: 'Pro Plan',
-		price: 39.99,
-		currency: 'USD',
-		interval: 'month',
-		features: [
-			'Everything in Premium',
-			'API access',
-			'White-label options',
-			'Dedicated support',
-			'Custom integrations',
-		],
-		creditBonus: 500,
-		maxQuestionsPerGame: undefined, // Unlimited questions for pro subscription
-		paypalProductId: 'everytriv_subscription_pro',
-		supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
-	},
+export const CREDIT_PURCHASE_PACKAGES_BY_ID = new Map<string, (typeof CREDIT_PURCHASE_PACKAGES)[number]>(
+	CREDIT_PURCHASE_PACKAGES.map(pkg => [pkg.id, pkg])
+);
+
+export const CREDIT_PURCHASE_PACKAGES_BY_CREDITS = new Map<number, (typeof CREDIT_PURCHASE_PACKAGES)[number]>(
+	CREDIT_PURCHASE_PACKAGES.map(pkg => [pkg.credits, pkg])
+);
+
+export const PAYPAL_API_BASE_URLS = {
+	SANDBOX: 'https://api.sandbox.paypal.com',
+	PRODUCTION: 'https://api.paypal.com',
+} as const;
+
+export const PAYPAL_API_ENDPOINTS = {
+	OAUTH_TOKEN: '/v1/oauth2/token',
+	ORDERS: '/v2/checkout/orders',
+	WEBHOOK_VERIFY: '/v1/notifications/verify-webhook-signature',
+} as const;
+
+export const PAYPAL_ORDER_STATUSES = {
+	CREATED: 'CREATED',
+	SAVED: 'SAVED',
+	APPROVED: 'APPROVED',
+	VOIDED: 'VOIDED',
+	COMPLETED: 'COMPLETED',
+	PAYER_ACTION_REQUIRED: 'PAYER_ACTION_REQUIRED',
+} as const;
+
+export const PAYPAL_WEBHOOK_EVENTS = {
+	PAYMENT_CAPTURE_COMPLETED: 'PAYMENT.CAPTURE.COMPLETED',
+	PAYMENT_CAPTURE_DENIED: 'PAYMENT.CAPTURE.DENIED',
+	PAYMENT_CAPTURE_REFUNDED: 'PAYMENT.CAPTURE.REFUNDED',
+	PAYMENT_CAPTURE_PENDING: 'PAYMENT.CAPTURE.PENDING',
+} as const;
+
+export const PAYPAL_RETRY_CONFIG = {
+	MAX_RETRIES: 3,
+	INITIAL_DELAY_MS: 1000,
+	MAX_DELAY_MS: 10000,
+	BACKOFF_MULTIPLIER: 2,
 } as const;

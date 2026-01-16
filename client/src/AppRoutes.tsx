@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { UserRole } from '@shared/constants';
 import { mergeUserPreferences } from '@shared/utils';
-import { AudioKey, ModalSize, ROUTES } from '@/constants';
+
+import { ModalSize, ROUTES, SpinnerSize } from '@/constants';
 import {
 	BackgroundAnimation,
 	CompleteProfile,
@@ -14,15 +15,14 @@ import {
 	OAuthCallback,
 	ProtectedRoute,
 	PublicRoute,
+	Spinner,
 	Toaster,
 } from '@/components';
-import { useAppDispatch, useAudio } from '@/hooks';
-import { audioService, authService, clientLogger as logger, prefetchAuthenticatedQueries, queryClient } from '@/services';
-import { fetchUserData, setUser } from '@/redux/slices';
+import { useCurrentUser, useNavigationAnalytics } from '@/hooks';
+import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import {
 	AdminDashboard,
 	ContactView,
-	CustomDifficultyView,
 	GameSessionView,
 	GameSummaryView,
 	HomeView,
@@ -38,90 +38,14 @@ import {
 	UnauthorizedView,
 } from '@/views';
 
-/**
- * Navigation tracking component for analytics and error logging
- *
- * @component NavigationTracker
- * @description Tracks page navigation, OAuth flows, and unknown routes for analytics
- * @returns null Renders nothing, only handles side effects
- */
-function NavigationTracker() {
-	const location = useLocation();
-	const audioService = useAudio();
-	const prevPathnameRef = useRef<string | null>(null);
-
-	useEffect(() => {
-		if (prevPathnameRef.current !== null && prevPathnameRef.current !== location.pathname) {
-			audioService.play(AudioKey.PAGE_CHANGE);
-		}
-		prevPathnameRef.current = location.pathname;
-
-		logger.navigationPage(location.pathname, {
-			search: location.search,
-			timestamp: new Date().toISOString(),
-			type: 'spa_navigation',
-		});
-
-		if (location.pathname === ROUTES.AUTH_GOOGLE) {
-			logger.navigationOAuth('Google', {
-				path: location.pathname,
-				timestamp: new Date().toISOString(),
-			});
-		}
-
-		const routePatterns = [
-			ROUTES.HOME,
-			ROUTES.GAME,
-			ROUTES.GAME_PLAY,
-			ROUTES.GAME_SUMMARY,
-			ROUTES.GAME_CUSTOM,
-			ROUTES.PLAY,
-			ROUTES.START,
-			ROUTES.PAYMENT,
-			'/credits',
-			ROUTES.REGISTER,
-			ROUTES.LOGIN,
-			ROUTES.ADMIN,
-			ROUTES.AUTH_CALLBACK,
-			ROUTES.COMPLETE_PROFILE,
-			ROUTES.STATISTICS,
-			ROUTES.LEADERBOARD,
-			ROUTES.MULTIPLAYER,
-			ROUTES.MULTIPLAYER_GAME,
-			ROUTES.MULTIPLAYER_RESULTS,
-			ROUTES.PRIVACY,
-			ROUTES.TERMS,
-			ROUTES.CONTACT,
-			ROUTES.FORGOT_PASSWORD,
-			ROUTES.UNAUTHORIZED,
-		];
-
-		const isValidRoute = routePatterns.some(pattern => matchPath({ path: pattern, end: true }, location.pathname));
-		const isAuthRoute = location.pathname.startsWith('/auth/');
-
-		if (!isValidRoute && !isAuthRoute) {
-			logger.navigationUnknownRoute(location.pathname, {
-				referrer: document.referrer,
-				timestamp: new Date().toISOString(),
-				type: 'unknown_route',
-			});
-		}
-	}, [location]);
-
-	return null;
-}
-
-/**
- * Main routing component for the application
- *
- * @component AppRoutes
- * @description Handles all application routing, authentication initialization, and navigation tracking
- * @returns JSX.Element The rendered application with routing and navigation
- */
 export default function AppRoutes() {
-	const dispatch = useAppDispatch();
 	const location = useLocation();
 	const initAuthRanRef = useRef(false);
+	const { data: currentUser, isError, isLoading: isUserLoading } = useCurrentUser();
+	const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+
+	// Track navigation analytics
+	useNavigationAnalytics();
 
 	// Check if current route is an authentication page
 	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
@@ -134,65 +58,83 @@ export default function AppRoutes() {
 
 		initAuthRanRef.current = true;
 
-		const handleAuthFailure = async () => {
-			// authService.logout() clears all auth data, localStorage, and Redux Persist
-			await authService.logout();
-			// Clear React Query cache to remove all user-specific cached data
-			queryClient.clear();
-			// Clear Redux state after logout
-			// setUser(null) already sets isAuthenticated = false
-			dispatch(setUser(null));
-			// Only redirect to login if not already on auth pages
-			if (!isAuthPage) {
-				window.location.href = ROUTES.LOGIN;
-			}
-		};
-
 		const initAuth = async () => {
-			if (await authService.isAuthenticated()) {
-				try {
-					// Use the async thunk instead of manual API call
-					// extraReducers in userSlice will automatically update isAuthenticated and currentUser
-					const result = await dispatch(fetchUserData());
-					if (fetchUserData.fulfilled.match(result)) {
-						const user = result.payload;
-
-						// Set user preferences for audio service (if available)
-						if ('preferences' in user && user.preferences) {
-							const mergedPreferences = mergeUserPreferences(null, user.preferences);
-							audioService.setUserPreferences(mergedPreferences);
-						}
-
-						// Prefetch authenticated-only data
-						// Error already logged in queryClient.service.ts - no need to log again
-						await prefetchAuthenticatedQueries();
-					} else if (fetchUserData.rejected.match(result)) {
-						await handleAuthFailure();
-					}
-				} catch {
-					await handleAuthFailure();
+			setIsInitializingAuth(true);
+			try {
+				const isAuthenticated = await authService.isAuthenticated();
+				if (!isAuthenticated) {
+					setIsInitializingAuth(false);
+					return;
 				}
+
+				// Wait for user query to complete (either success or error)
+				// The useCurrentUser hook will handle the query automatically
+				// We just need to wait for it to finish loading
+			} catch {
+				// If authentication check fails, treat as not authenticated
+				setIsInitializingAuth(false);
 			}
 		};
 
 		initAuth().catch(() => {
 			// Silently handle any unhandled promise rejections from initAuth
 			// These are expected when user is not authenticated
+			setIsInitializingAuth(false);
 		});
-	}, [dispatch, isAuthPage]);
+	}, [isAuthPage]);
+
+	// Handle user data when it's loaded
+	useEffect(() => {
+		if (!isUserLoading && initAuthRanRef.current) {
+			if (currentUser) {
+				// Set user preferences for audio service (if available)
+				if ('preferences' in currentUser && currentUser.preferences) {
+					const mergedPreferences = mergeUserPreferences(null, currentUser.preferences);
+					audioService.setUserPreferences(mergedPreferences);
+				}
+
+				// Prefetch authenticated-only data
+				prefetchAuthenticatedQueries().catch(() => {
+					// Silently handle prefetch errors
+				});
+
+				setIsInitializingAuth(false);
+			} else if (isError) {
+				// User query failed - handle auth failure
+				const handleAuthFailure = async () => {
+					await authService.logout();
+					queryClient.clear();
+					if (!isAuthPage) {
+						window.location.href = ROUTES.LOGIN;
+					}
+				};
+				handleAuthFailure().finally(() => {
+					setIsInitializingAuth(false);
+				});
+			} else if (!isUserLoading) {
+				// Query completed but no user data - not authenticated
+				setIsInitializingAuth(false);
+			}
+		}
+	}, [currentUser, isError, isUserLoading, isAuthPage]);
+
+	// Show loading indicator during auth initialization
+	if (isInitializingAuth) {
+		return (
+			<div className='app-shell'>
+				<BackgroundAnimation />
+				<main id='main-content' className='app-main flex items-center justify-center min-h-screen'>
+					<Spinner size={SpinnerSize.LG} variant='loader' />
+				</main>
+			</div>
+		);
+	}
 
 	return (
 		<div className='app-shell'>
 			<BackgroundAnimation />
-			<NavigationTracker />
-			<a
-				href='#main-content'
-				className='sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:block'
-			>
-				Skip to main content
-			</a>
 			{!isAuthPage && <Navigation />}
-			<main id='main-content' className='app-main' tabIndex={-1}>
+			<main id='main-content' className='app-main'>
 				<Routes>
 					{/* Public routes */}
 					<Route path={ROUTES.HOME} element={<HomeView />} />
@@ -209,7 +151,6 @@ export default function AppRoutes() {
 					<Route path={ROUTES.GAME} element={<Navigate to={ROUTES.GAME_PLAY} replace />} />
 					<Route path={ROUTES.GAME_PLAY} element={<GameSessionView />} />
 					<Route path={ROUTES.GAME_SUMMARY} element={<GameSummaryView />} />
-					<Route path={ROUTES.GAME_CUSTOM} element={<CustomDifficultyView />} />
 
 					{/* Multiplayer routes */}
 					<Route

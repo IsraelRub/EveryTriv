@@ -1,12 +1,7 @@
-/**
- * Configuration Types
- * @module ConfigTypes
- * @description Application configuration related types
- */
+// Configuration Types.
 
 import type { PayPalEnvironment } from '@shared/constants';
 
-// Database Configuration
 export interface DatabaseConfigType {
 	host: string;
 	port: number;
@@ -25,14 +20,12 @@ export interface DatabaseConfigType {
 	};
 }
 
-// JWT Configuration
 export interface JwtConfig {
 	secret: string;
 	expiresIn: string;
 	refreshExpiresIn: string;
 }
 
-// PayPal configuration
 export interface PayPalConfig {
 	clientId: string;
 	clientSecret: string;
@@ -40,10 +33,8 @@ export interface PayPalConfig {
 	environment: PayPalEnvironment;
 }
 
-// Redis Configuration - imported from redis.types.ts
 export type { RedisConfig } from './redis.types';
 
-// Vite Proxy Configuration
 export interface ViteProxyConfig {
 	target: string;
 	changeOrigin: boolean;
@@ -52,7 +43,6 @@ export interface ViteProxyConfig {
 	configure?: (proxy: unknown, options: unknown) => void;
 }
 
-// Application Configuration Interface
 export interface AppConfigInterface {
 	port: number;
 	nodeEnv: string;

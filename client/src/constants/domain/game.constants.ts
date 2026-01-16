@@ -1,8 +1,3 @@
-/**
- * Client Game Constants
- * Client-side constants: SCORING_DEFAULTS
- */
-
 import { DifficultyLevel, VALIDATION_COUNT } from '@shared/constants';
 
 export const SCORING_DEFAULTS = {
@@ -14,4 +9,3 @@ export const SCORING_DEFAULTS = {
 	STREAK_MULTIPLIER: 0.1,
 	TIME_BONUS_MULTIPLIER: 0.5,
 } as const;
-

@@ -1,70 +1,59 @@
-/**
- * UI Component Types
- * @module UIComponentTypes
- * @description Type definitions for shadcn/ui components
- */
 import {
+	ReactNode,
 	type ButtonHTMLAttributes,
 	type ComponentPropsWithoutRef,
 	type HTMLAttributes,
 	type ReactElement,
+	type SVGProps,
 } from 'react';
+import { type LinkProps } from 'react-router-dom';
 import * as ToastPrimitive from '@radix-ui/react-toast';
 import { type VariantProps } from 'class-variance-authority';
 
-import { ButtonSize, ButtonVariant, SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
-import { badgeVariants, spinnerVariants, toastVariants } from '@/components';
+import { ButtonSize, ButtonVariant, SpinnerSize, VariantBase } from '@/constants';
+import { badgeVariants, toastVariants } from '@/components';
 
-/**
- * Badge component props
- * @interface BadgeProps
- * @description Props for the Badge component from shadcn/ui
- */
 export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
 	variant?: VariantBase;
 }
 
-/**
- * Button component props
- * @interface ButtonProps
- * @description Props for the Button component from shadcn/ui
- */
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: ButtonVariant;
 	size?: ButtonSize;
 	asChild?: boolean;
 }
 
-/**
- * CloseButton component props
- * @interface CloseButtonProps
- * @description Props for the CloseButton component - a reusable close button that navigates to a specified route
- */
 export interface CloseButtonProps {
 	to?: string;
 	className?: string;
+	onClose?: () => void;
 }
 
-/**
- * Toast component props
- * @type ToastProps
- * @description Props for the Toast component from shadcn/ui
- */
+export interface BackToHomeButtonProps extends Omit<ButtonProps, 'onClick' | 'children'> {
+	text?: string;
+}
+
+export interface LinkButtonProps extends Omit<LinkProps, 'className'> {
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	className?: string;
+	children: ReactNode;
+}
+
 export type ToastProps = ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & VariantProps<typeof toastVariants>;
 
-/**
- * Toast action element type
- * @type ToastActionElement
- * @description Type for Toast action element
- */
 export type ToastActionElement = ReactElement<typeof ToastPrimitive.Action>;
 
-/**
- * Spinner component props
- * @interface SpinnerProps
- * @description Props for the Spinner component
- */
-export interface SpinnerProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof spinnerVariants> {
-	variant?: SpinnerVariant;
+interface BaseSpinnerProps {
 	size?: SpinnerSize;
 }
+
+export interface SVGSpinnerProps extends SVGProps<SVGSVGElement>, BaseSpinnerProps {
+	variant?: 'loader' | 'refresh';
+}
+
+export interface FullScreenSpinnerProps extends HTMLAttributes<HTMLDivElement>, BaseSpinnerProps {
+	variant: 'fullscreen';
+}
+
+export type SpinnerProps = SVGSpinnerProps | FullScreenSpinnerProps;

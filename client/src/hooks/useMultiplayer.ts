@@ -1,15 +1,9 @@
-/**
- * Multiplayer Hook
- *
- * @module useMultiplayer
- * @description Hook for managing multiplayer game WebSocket connection and state
- * @used_by client/src/views/multiplayer
- */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ERROR_CODES, RoomStatus } from '@shared/constants';
-import type { CreateRoomConfig, GameState, MultiplayerRoom, Player } from '@shared/types';
+import type { CreateRoomConfig, MultiplayerRoom } from '@shared/types';
 import {
+	calculateClockOffset,
 	getErrorMessage,
 	isAnswerReceivedEvent,
 	isCreateRoomResponse,
@@ -23,35 +17,46 @@ import {
 	isRecord,
 	isRoomStateResponse,
 	isRoomUpdatedEvent,
+	validateClockOffset,
 } from '@shared/utils';
-import { authService, multiplayerService } from '@/services';
-import { selectCurrentUser } from '@/redux/selectors';
-import { useAppSelector } from './useRedux';
 
-/**
- * Hook for multiplayer game functionality
- * @param roomId Optional room ID for auto-join functionality
- * @returns Multiplayer game state and methods
- */
+import { GameLoadingStep } from '@/constants';
+import { authService, clientLogger as logger, multiplayerService } from '@/services';
+import {
+	selectIsConnected,
+	selectMultiplayerError,
+	selectMultiplayerGameState,
+	selectMultiplayerLeaderboard,
+	selectMultiplayerLoading,
+	selectMultiplayerRoom,
+} from '@/redux/selectors';
+import {
+	setConnectionStatus,
+	setError,
+	setMultiplayerLoading,
+	setRoom,
+	updateGameState,
+	updateLeaderboard,
+} from '@/redux/slices';
+import { store } from '@/redux/store';
+import { useCurrentUserData } from './useAuth';
+import { useAppDispatch, useAppSelector } from './useRedux';
+
 export const useMultiplayer = (roomId?: string) => {
-	const [isConnected, setIsConnected] = useState(false);
-	const [room, setRoom] = useState<MultiplayerRoom | null>(null);
-	const [gameState, setGameState] = useState<GameState | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [leaderboard, setLeaderboard] = useState<Player[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
+	const dispatch = useAppDispatch();
+	const isConnected = useAppSelector(selectIsConnected);
+	const room = useAppSelector(selectMultiplayerRoom);
+	const gameState = useAppSelector(selectMultiplayerGameState);
+	const error = useAppSelector(selectMultiplayerError);
+	const leaderboard = useAppSelector(selectMultiplayerLeaderboard);
+	const isLoading = useAppSelector(selectMultiplayerLoading);
 	const tokenRef = useRef<string | null>(null);
-	const roomRef = useRef<MultiplayerRoom | null>(null);
 	const isConnectingRef = useRef(false);
 	const hasSetupListenersRef = useRef(false);
 	const isLoadingRef = useRef(false);
 
-	const currentUser = useAppSelector(selectCurrentUser);
+	const currentUser = useCurrentUserData();
 
-	/**
-	 * Setup event listeners (defined before connect to avoid circular dependency)
-	 * Only sets up listeners once to prevent duplicates
-	 */
 	const setupEventListeners = useCallback(() => {
 		// Prevent setting up listeners multiple times
 		if (hasSetupListenersRef.current) {
@@ -63,82 +68,95 @@ export const useMultiplayer = (roomId?: string) => {
 		// Room events
 		multiplayerService.onRoomCreated((data: unknown) => {
 			if (isCreateRoomResponse(data)) {
-				setRoom(data.room);
-				roomRef.current = data.room;
-				setError(null);
+				dispatch(setRoom(data.room));
+				dispatch(setError(null));
 			}
 		});
 
 		multiplayerService.onRoomJoined((data: unknown) => {
 			if (isRoomStateResponse(data)) {
-				setRoom(data.room);
-				roomRef.current = data.room;
-				setGameState(data.gameState);
+				dispatch(setRoom(data.room));
+				dispatch(updateGameState(data.gameState));
 			}
 		});
 
 		multiplayerService.onRoomLeft((data: unknown) => {
 			if (isRecord(data) && 'roomId' in data && typeof data.roomId === 'string') {
-				setRoom(null);
-				roomRef.current = null;
-				setGameState(null);
+				dispatch(setRoom(null));
+				dispatch(updateGameState(null));
 			}
 		});
 
 		// Player events
 		multiplayerService.onPlayerJoined((event: unknown) => {
 			if (isPlayerJoinedEvent(event)) {
-				setRoom(prev => {
-					if (!prev || prev.roomId !== event.roomId) return prev;
-					const updatedRoom = {
-						...prev,
-						players: event.data.players,
-					};
-					roomRef.current = updatedRoom;
-					return updatedRoom;
-				});
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				const updatedRoom = {
+					...currentRoom,
+					players: event.data.players,
+				};
+				dispatch(setRoom(updatedRoom));
 			}
 		});
 
 		multiplayerService.onPlayerLeft((event: unknown) => {
 			if (isPlayerLeftEvent(event)) {
-				setRoom(prev => {
-					if (!prev || prev.roomId !== event.roomId) return prev;
-					const updatedRoom = {
-						...prev,
-						players: event.data.players,
-					};
-					roomRef.current = updatedRoom;
-					return updatedRoom;
-				});
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				const updatedRoom = {
+					...currentRoom,
+					players: event.data.players,
+				};
+				dispatch(setRoom(updatedRoom));
 			}
 		});
 
 		// Game events
 		multiplayerService.onGameStarted((event: unknown) => {
 			if (isGameStartedEvent(event)) {
-				setRoom(prev => {
-					if (!prev || prev.roomId !== event.roomId) return prev;
-					const updatedRoom: MultiplayerRoom = {
-						...prev,
-						questions: event.data.questions,
-						status: RoomStatus.PLAYING,
-						startTime: new Date(),
-					};
-					roomRef.current = updatedRoom;
-					return updatedRoom;
-				});
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				const updatedRoom: MultiplayerRoom = {
+					...currentRoom,
+					questions: event.data.questions,
+					status: RoomStatus.PLAYING,
+					startTime: new Date(),
+				};
+				dispatch(setRoom(updatedRoom));
 			}
 		});
 
 		multiplayerService.onQuestionStarted((event: unknown) => {
 			if (isQuestionStartedEvent(event)) {
-				setGameState(prev => {
-					// Get gameQuestionCount from room ref (current value) if available, otherwise use previous value or 0
-					const gameQuestionCount = roomRef.current?.questions?.length ?? prev?.gameQuestionCount ?? 0;
+				const state = store.getState();
+				const currentGameState = selectMultiplayerGameState(state);
+				const currentRoom = selectMultiplayerRoom(state);
+				const gameQuestionCount = currentRoom?.questions?.length ?? currentGameState?.gameQuestionCount ?? 0;
 
-					if (!prev || prev.roomId !== event.roomId) {
-						return {
+				// Clock sync check - use room.currentQuestionStartTime if available
+				// The server sets currentQuestionStartTime in the room when starting a question
+				if (currentRoom?.currentQuestionStartTime) {
+					const serverTimestamp = new Date(currentRoom.currentQuestionStartTime).getTime();
+					const offset = calculateClockOffset(serverTimestamp);
+					if (!validateClockOffset(offset)) {
+						logger.systemError('Significant clock offset detected', {
+							duration: offset,
+							roomId: event.roomId,
+						});
+					}
+				}
+
+				// Update gameState with currentQuestionStartTime from room if available
+				const questionStartTime = currentRoom?.currentQuestionStartTime;
+
+				// Extract server timestamps from event data
+				const serverStartTimestamp = 'serverStartTimestamp' in event.data ? event.data.serverStartTimestamp : undefined;
+				const serverEndTimestamp = 'serverEndTimestamp' in event.data ? event.data.serverEndTimestamp : undefined;
+
+				if (!currentGameState || currentGameState.roomId !== event.roomId) {
+					dispatch(
+						updateGameState({
 							roomId: event.roomId,
 							currentQuestion: event.data.question,
 							currentQuestionIndex: event.data.questionIndex,
@@ -147,16 +165,25 @@ export const useMultiplayer = (roomId?: string) => {
 							playersAnswers: {},
 							playersScores: {},
 							leaderboard: [],
-						};
-					}
-					return {
-						...prev,
-						currentQuestion: event.data.question,
-						currentQuestionIndex: event.data.questionIndex,
-						gameQuestionCount,
-						timeRemaining: event.data.timeLimit,
-					};
-				});
+							...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
+							...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
+							...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
+						})
+					);
+				} else {
+					dispatch(
+						updateGameState({
+							...currentGameState,
+							currentQuestion: event.data.question,
+							currentQuestionIndex: event.data.questionIndex,
+							gameQuestionCount,
+							timeRemaining: event.data.timeLimit,
+							...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
+							...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
+							...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
+						})
+					);
+				}
 			}
 		});
 
@@ -164,80 +191,78 @@ export const useMultiplayer = (roomId?: string) => {
 			if (isAnswerReceivedEvent(event)) {
 				// Update leaderboard if provided
 				if (event.data.leaderboard) {
-					setLeaderboard(event.data.leaderboard);
+					dispatch(updateLeaderboard(event.data.leaderboard));
 				}
 
-				setGameState(prev => {
-					if (!prev || prev.roomId !== event.roomId) return prev;
-					return {
-						...prev,
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				dispatch(
+					updateGameState({
+						...currentGameState,
 						playersAnswers: {
-							...prev.playersAnswers,
+							...currentGameState.playersAnswers,
 							[event.data.userId]: event.data.isCorrect ? 1 : 0,
 						},
 						playersScores: {
-							...prev.playersScores,
+							...currentGameState.playersScores,
 							[event.data.userId]: event.data.scoreEarned,
 						},
 						// Update leaderboard in gameState if provided
-						leaderboard: event.data.leaderboard ?? prev.leaderboard,
-					};
-				});
+						leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
+					})
+				);
 			}
 		});
 
 		multiplayerService.onQuestionEnded((event: unknown) => {
 			if (isQuestionEndedEvent(event)) {
-				setLeaderboard(event.data.leaderboard);
+				dispatch(updateLeaderboard(event.data.leaderboard));
 			}
 		});
 
 		multiplayerService.onGameEnded((event: unknown) => {
 			if (isGameEndedEvent(event)) {
-				setLeaderboard(event.data.finalLeaderboard);
-				setRoom(prev => {
-					if (!prev || prev.roomId !== event.roomId) return prev;
-					return {
-						...prev,
+				dispatch(updateLeaderboard(event.data.finalLeaderboard));
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				dispatch(
+					setRoom({
+						...currentRoom,
 						status: RoomStatus.FINISHED,
 						endTime: new Date(),
-					};
-				});
+					})
+				);
 			}
 		});
 
 		multiplayerService.onLeaderboardUpdate((event: unknown) => {
 			if (isLeaderboardUpdateEvent(event)) {
-				setLeaderboard(event.data.leaderboard);
+				dispatch(updateLeaderboard(event.data.leaderboard));
 			}
 		});
 
 		multiplayerService.onRoomUpdated((event: unknown) => {
 			if (isRoomUpdatedEvent(event)) {
-				setRoom(event.data.room);
-				roomRef.current = event.data.room;
+				dispatch(setRoom(event.data.room));
 			}
 		});
 
 		multiplayerService.onError((error: unknown) => {
 			if (isRecord(error) && 'message' in error && typeof error.message === 'string') {
 				const errorCode = 'code' in error && typeof error.code === 'string' ? error.code : undefined;
-				setError(getErrorMessage(error));
+				dispatch(setError(getErrorMessage(error)));
 
 				// Handle specific error codes
 				if (errorCode === ERROR_CODES.GAME_CANCELLED || errorCode === ERROR_CODES.ROOM_NOT_FOUND) {
 					// Reset room and game state when game is cancelled or room not found
-					setRoom(null);
-					setGameState(null);
-					setLeaderboard([]);
+					dispatch(setRoom(null));
+					dispatch(updateGameState(null));
+					dispatch(updateLeaderboard([]));
 				}
 			}
 		});
-	}, []);
+	}, [dispatch]);
 
-	/**
-	 * Connect to multiplayer server
-	 */
 	const connect = useCallback(async () => {
 		// Prevent multiple simultaneous connection attempts
 		if (isConnectingRef.current) {
@@ -246,7 +271,7 @@ export const useMultiplayer = (roomId?: string) => {
 
 		// Check if already connected
 		if (multiplayerService.isConnected()) {
-			setIsConnected(true);
+			dispatch(setConnectionStatus(true));
 			return;
 		}
 
@@ -255,7 +280,7 @@ export const useMultiplayer = (roomId?: string) => {
 
 			const token = await authService.getToken();
 			if (!token) {
-				setError(getErrorMessage(ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED));
+				dispatch(setError(getErrorMessage(ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED)));
 				isConnectingRef.current = false;
 				return;
 			}
@@ -268,61 +293,61 @@ export const useMultiplayer = (roomId?: string) => {
 			setupEventListeners();
 
 			socket.on('connect', () => {
-				setIsConnected(true);
-				setError(null);
+				dispatch(setConnectionStatus(true));
+				dispatch(setError(null));
 				isConnectingRef.current = false;
 			});
 
 			socket.on('disconnect', () => {
-				setIsConnected(false);
+				dispatch(setConnectionStatus(false));
 				isConnectingRef.current = false;
 			});
 
 			socket.on('connect_error', err => {
-				setIsConnected(false);
+				dispatch(setConnectionStatus(false));
 				isConnectingRef.current = false;
-				setError(getErrorMessage(err));
+				dispatch(setError(getErrorMessage(err)));
 			});
 		} catch (err) {
-			setError(getErrorMessage(err));
+			dispatch(setError(getErrorMessage(err)));
 			isConnectingRef.current = false;
 		}
-	}, [setupEventListeners]);
+	}, [setupEventListeners, dispatch]);
 
-	/**
-	 * Disconnect from multiplayer server
-	 */
 	const disconnect = useCallback(() => {
 		multiplayerService.disconnect();
-		setIsConnected(false);
-		setRoom(null);
-		setGameState(null);
-		setLeaderboard([]);
-		setError(null);
+		dispatch(setConnectionStatus(false));
+		dispatch(setRoom(null));
+		dispatch(updateGameState(null));
+		dispatch(updateLeaderboard([]));
+		dispatch(setError(null));
 		isConnectingRef.current = false;
+	}, [dispatch]);
+
+	useEffect(() => {
+		return () => {
+			multiplayerService.cleanup();
+		};
 	}, []);
 
-	/**
-	 * Create a room
-	 */
-	const createRoom = useCallback((config: CreateRoomConfig) => {
-		setIsLoading(true);
-		isLoadingRef.current = true;
-		multiplayerService.createRoom(config);
-	}, []);
+	const createRoom = useCallback(
+		(config: CreateRoomConfig) => {
+			dispatch(setMultiplayerLoading(true));
+			isLoadingRef.current = true;
+			multiplayerService.createRoom(config);
+		},
+		[dispatch]
+	);
 
-	/**
-	 * Join a room
-	 */
-	const joinRoom = useCallback((targetRoomId: string) => {
-		setIsLoading(true);
-		multiplayerService.joinRoom(targetRoomId);
-		setIsLoading(false);
-	}, []);
+	const joinRoom = useCallback(
+		(targetRoomId: string) => {
+			dispatch(setMultiplayerLoading(true));
+			multiplayerService.joinRoom(targetRoomId);
+			dispatch(setMultiplayerLoading(false));
+		},
+		[dispatch]
+	);
 
-	/**
-	 * Leave a room
-	 */
 	const leaveRoom = useCallback(
 		(targetRoomId?: string) => {
 			const roomIdToLeave = targetRoomId ?? room?.roomId;
@@ -333,9 +358,6 @@ export const useMultiplayer = (roomId?: string) => {
 		[room]
 	);
 
-	/**
-	 * Start the game
-	 */
 	const startGame = useCallback(
 		(targetRoomId?: string) => {
 			const roomIdToStart = targetRoomId ?? room?.roomId;
@@ -346,9 +368,6 @@ export const useMultiplayer = (roomId?: string) => {
 		[room]
 	);
 
-	/**
-	 * Submit an answer
-	 */
 	const submitAnswer = useCallback((roomId: string, questionId: string, answer: number, timeSpent: number) => {
 		multiplayerService.submitAnswer(roomId, questionId, answer, timeSpent);
 	}, []);
@@ -373,11 +392,11 @@ export const useMultiplayer = (roomId?: string) => {
 
 	// Stop loading when room is created or error occurs during room creation
 	useEffect(() => {
-		if (isLoadingRef.current && (room || error)) {
-			setIsLoading(false);
+		if (isLoadingRef.current && (room ?? error)) {
+			dispatch(setMultiplayerLoading(false));
 			isLoadingRef.current = false;
 		}
-	}, [room, error]);
+	}, [room, error, dispatch]);
 
 	// roomCode is now the same as roomId
 	const roomCode = room?.roomId ?? null;
@@ -390,6 +409,40 @@ export const useMultiplayer = (roomId?: string) => {
 
 	// Check if room is ready to start
 	const isReadyToStart = (room?.players?.length ?? 0) >= 2 && room?.status === RoomStatus.WAITING;
+
+	// ============================================================================
+	// Loading State Management
+	// ============================================================================
+
+	const [loadingStep, setLoadingStep] = useState<GameLoadingStep | null>(null);
+
+	useEffect(() => {
+		if (!isConnected) {
+			if (isLoading) {
+				setLoadingStep(GameLoadingStep.AUTHENTICATING);
+			} else {
+				setLoadingStep(GameLoadingStep.CONNECTING_TO_SOCKET);
+			}
+		} else {
+			if (!room) {
+				if (isLoading) {
+					setLoadingStep(GameLoadingStep.JOINING_ROOM);
+				} else {
+					setLoadingStep(null);
+				}
+			} else if (!gameState) {
+				if (room.status === RoomStatus.PLAYING) {
+					setLoadingStep(GameLoadingStep.LOADING_MULTIPLAYER_QUESTIONS);
+				} else {
+					setLoadingStep(GameLoadingStep.WAITING_FOR_GAME_STATE);
+				}
+			} else {
+				setLoadingStep(null);
+			}
+		}
+	}, [room, gameState, isConnected, isLoading]);
+
+	const displayMessage = loadingStep ?? GameLoadingStep.CONNECTING_TO_SOCKET;
 
 	return {
 		isConnected,
@@ -409,5 +462,8 @@ export const useMultiplayer = (roomId?: string) => {
 		leaveRoom,
 		startGame,
 		submitAnswer,
+		// Loading state
+		loadingStep,
+		displayMessage,
 	};
 };

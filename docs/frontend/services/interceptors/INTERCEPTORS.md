@@ -9,18 +9,14 @@
 ## מבנה תיקיית Interceptors
 
 ```
-client/src/services/interceptors/
-├── base.interceptor-manager.ts    # Base class לכל ה-interceptor managers
-├── request.interceptor.ts          # Request interceptor manager
-├── response.interceptor.ts        # Response interceptor manager
-├── error.interceptor.ts           # Error interceptor manager
-├── auth.interceptor.ts            # Auth request interceptor
-└── index.ts                       # ייצוא מאוחד
+client/src/services/infrastructure/interceptors/
+├── interceptors.ts    # כל ה-interceptor managers ו-auth interceptor
+└── index.ts           # ייצוא מאוחד
 ```
 
 ## BaseInterceptorManager
 
-### base.interceptor-manager.ts
+### interceptors.ts (BaseInterceptorManager)
 
 Abstract class בסיסי המספק פונקציונליות משותפת לכל ה-interceptor managers.
 
@@ -66,7 +62,7 @@ const result = await manager.execute(config);
 **Behavior:**
 - ביצוע לפי סדר עדיפות (נמוך יותר = מוקדם יותר)
 - דילוג על interceptors מושבתים (`enabled: false`)
-- טיפול בשגיאות לפי `shouldThrowOnError()`
+- טיפול בשגיאות: Error interceptors ממשיכים עם השגיאה, אחרים זורקים
 
 #### `getCount(): number`
 קבלת מספר ה-interceptors הרשומים:
@@ -82,15 +78,14 @@ const count = manager.getCount();
 #### `executeInterceptor(interceptor: TInterceptor, input: TInput): Promise<TOutput>`
 ביצוע interceptor בודד
 
-#### `getErrorContext(): string`
-מחזיר את שם ההקשר לשגיאות (לדוגמה: `'Request'`, `'Response'`, `'Error'`)
+#### `errorContext: string` (readonly property)
+שם ההקשר לשגיאות (לדוגמה: `'Request'`, `'Response'`, `'Error'`)
 
 **Error Handling:**
 
-#### `shouldThrowOnError(): boolean`
-קובע אם לשגיאות יש לזרוק שגיאה או להמשיך:
-- `true` (default) - זורק שגיאה
-- `false` - ממשיך עם השגיאה המקורית
+הטיפול בשגיאות מבוסס על `errorContext` property:
+- אם `errorContext === 'Error'` - ממשיך עם השגיאה המקורית (לא זורק)
+- אחרת - זורק שגיאה
 
 ## RequestInterceptorManager
 
@@ -130,7 +125,7 @@ type RequestInterceptor = (
 
 ## ResponseInterceptorManager
 
-### response.interceptor.ts
+### interceptors.ts (ResponseInterceptorManager)
 
 מנהל interceptors לתגובות HTTP (אחרי קבלת response מהשרת).
 
@@ -179,7 +174,7 @@ type ResponseInterceptor = <T>(
 
 **ID Prefix:** `'err'`
 
-**Override:** `shouldThrowOnError()` - מחזיר `false` (לא זורק שגיאה, ממשיך עם השגיאה המקורית)
+**Error Handling:** `errorContext = 'Error'`, ולכן לא זורק שגיאות אלא ממשיך עם השגיאה המקורית
 
 **Usage:**
 ```typescript
@@ -207,7 +202,7 @@ type ErrorInterceptor = (
 
 ## authRequestInterceptor
 
-### auth.interceptor.ts
+### interceptors.ts (authRequestInterceptor)
 
 Interceptor פונקציונלי (לא class) המוסיף את ה-Authorization header לבקשות HTTP.
 
@@ -217,7 +212,7 @@ Interceptor פונקציונלי (לא class) המוסיף את ה-Authorization
 
 **Features:**
 - מוסיף `Authorization: Bearer {token}` header
-- משתמש ב-`CLIENT_STORAGE_KEYS.AUTH_TOKEN` לאחסון הטוקן
+- משתמש ב-`STORAGE_KEYS.AUTH_TOKEN` לאחסון הטוקן
 - תומך ב-`skipAuth` flag לדילוג על אימות
 
 **Usage:**
@@ -246,7 +241,7 @@ export const authRequestInterceptor: RequestInterceptor = async (
   }
 
   // Get auth token from storage
-  const tokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+  const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
   const token = tokenResult.success ? tokenResult.data : null;
 
   // Add Authorization header if token exists
@@ -266,7 +261,7 @@ export const authRequestInterceptor: RequestInterceptor = async (
 
 **Configuration:**
 - **skipAuth:** אם `true`, ה-interceptor לא מוסיף את ה-Authorization header
-- **Token Source:** `CLIENT_STORAGE_KEYS.AUTH_TOKEN` מ-localStorage
+- **Token Source:** `STORAGE_KEYS.AUTH_TOKEN` מ-localStorage
 
 ## שימוש ב-API Service
 

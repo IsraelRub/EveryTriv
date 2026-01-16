@@ -2,19 +2,16 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Share2, Zap } from 'lucide-react';
 
-import { APP_NAME, DifficultyLevel } from '@shared/constants';
-import { calculatePercentage, getErrorMessage } from '@shared/utils';
-import { ButtonVariant, SOCIAL_DATA, ToastVariant } from '@/constants';
+import { APP_NAME, DifficultyLevel, TIME_PERIODS_MS } from '@shared/constants';
+import { calculatePercentage, getErrorMessage, isSocialSharePlatform } from '@shared/utils';
+import { getDifficultyDisplayText } from '@shared/validation';
+
+import { ButtonVariant, SOCIAL_DATA } from '@/constants';
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
-import { useToast } from '@/hooks';
 import { clientLogger as logger } from '@/services';
 import type { SocialShareProps } from '@/types';
-import { cn, isSocialSharePlatform } from '@/utils';
+import { cn } from '@/utils';
 
-/**
- * Social Share Component
- * Allows users to share their game results on social media
- */
 export function SocialShare({
 	score,
 	total,
@@ -24,51 +21,44 @@ export function SocialShare({
 }: SocialShareProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
-	const { toast } = useToast();
 
 	const percentage = calculatePercentage(score ?? 0, total ?? 0);
-	const scoreText = `Just scored ${score}/${total} (${percentage}%) on ${topic} ${difficulty} difficulty in ${APP_NAME}!`;
+	const difficultyDisplay = getDifficultyDisplayText(difficulty);
 
-	const shareUrl = `${window.location.origin}?challenge=${encodeURIComponent(topic)}&difficulty=${difficulty}`;
+	// Create engaging share text - professional but friendly
+	const scoreText = `I scored ${score}/${total} (${percentage}%) on ${topic} ${difficultyDisplay} difficulty in ${APP_NAME}! Think you can beat my score?`;
+
+	// Create share URL that links to home page (challenge parameters can be handled later)
+	const shareUrl = window.location.origin;
 
 	const shareablePlatforms = SOCIAL_DATA.filter(isSocialSharePlatform);
 
-	const socialPlatforms = shareablePlatforms.map(platform => ({
-		...platform,
-		url: platform.getShareUrl(scoreText, shareUrl),
-		color: platform.shareColor,
-		Icon: platform.icon || Share2,
-	}));
+	const socialPlatforms = shareablePlatforms.map(platform => {
+		const originalPlatform = SOCIAL_DATA.find(p => p.name === platform.name);
+		return {
+			...platform,
+			url: platform.getShareUrl(scoreText, shareUrl),
+			color: platform.shareColor,
+			Icon: originalPlatform?.icon ?? Share2,
+		};
+	});
 
 	const handleShare = (url: string, platformName: string) => {
 		window.open(url, '_blank', 'width=600,height=400');
 		setIsOpen(false);
-
-		toast({
-			title: 'Sharing...',
-			description: `Opening ${platformName} to share your score`,
-		});
+		logger.userInfo(`Sharing score on ${platformName}`, { platform: platformName, score, gameQuestionCount: total });
 	};
 
 	const handleCopyLink = async () => {
 		try {
-			await navigator.clipboard.writeText(`${scoreText} ${shareUrl}`);
+			// Copy only the text without URL (platforms handle URLs separately)
+			await navigator.clipboard.writeText(scoreText);
 			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-
-			toast({
-				title: 'Copied!',
-				description: 'Link copied to clipboard',
-			});
+			setTimeout(() => setCopied(false), TIME_PERIODS_MS.TWO_SECONDS);
+			logger.userSuccess('Link copied to clipboard');
 		} catch (error) {
 			logger.userError('Failed to copy link to clipboard', {
-				error: getErrorMessage(error),
-			});
-
-			toast({
-				title: 'Failed to copy',
-				description: 'Could not copy to clipboard',
-				variant: ToastVariant.DESTRUCTIVE,
+				errorInfo: { message: getErrorMessage(error) },
 			});
 		}
 	};
@@ -94,7 +84,10 @@ export function SocialShare({
 				<DialogContent className='max-w-md'>
 					<DialogHeader>
 						<DialogTitle>Share Your Achievement!</DialogTitle>
-						<DialogDescription>Share your score with friends on social media</DialogDescription>
+						<DialogDescription className='flex items-center justify-center gap-1.5'>
+							<Zap className='w-4 h-4 text-yellow-500' />
+							Challenge your friends to beat your score!
+						</DialogDescription>
 					</DialogHeader>
 
 					{/* Score Summary */}
@@ -111,6 +104,21 @@ export function SocialShare({
 							</div>
 						</div>
 					</div>
+
+					{/* Copy Link - Moved up for better UX */}
+					<Button variant={ButtonVariant.SECONDARY} className='w-full mb-4' onClick={handleCopyLink}>
+						{copied ? (
+							<>
+								<Check className='w-4 h-4 mr-2 text-green-500' />
+								Copied!
+							</>
+						) : (
+							<>
+								<Copy className='w-4 h-4 mr-2' />
+								Copy to Clipboard
+							</>
+						)}
+					</Button>
 
 					{/* Social Platforms */}
 					<div className='space-y-2 mb-4'>
@@ -137,29 +145,6 @@ export function SocialShare({
 								);
 							})}
 						</div>
-					</div>
-
-					{/* Copy Link */}
-					<Button variant={ButtonVariant.SECONDARY} className='w-full' onClick={handleCopyLink}>
-						{copied ? (
-							<>
-								<Check className='w-4 h-4 mr-2 text-green-500' />
-								Copied!
-							</>
-						) : (
-							<>
-								<Copy className='w-4 h-4 mr-2' />
-								Copy to Clipboard
-							</>
-						)}
-					</Button>
-
-					{/* Challenge Friends */}
-					<div className='mt-4 pt-4 border-t'>
-						<p className='text-xs text-muted-foreground text-center flex items-center justify-center gap-1'>
-							<Zap className='w-3 h-3' />
-							Challenge your friends to beat your score!
-						</p>
 					</div>
 				</DialogContent>
 			</Dialog>

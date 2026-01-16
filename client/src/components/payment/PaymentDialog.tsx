@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CreditCard, Lock } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, CreditCard, Lock } from 'lucide-react';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
 import type { PayPalOrderRequest } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 import { isPaymentMethod } from '@shared/validation';
-import { AudioKey, ButtonSize, ButtonVariant, SpinnerSize, SpinnerVariant, ToastVariant } from '@/constants';
+
+import { ButtonSize, ButtonVariant, SpinnerSize, VariantBase } from '@/constants';
 import {
+	Alert,
+	AlertDescription,
 	Button,
 	Card,
 	CardContent,
@@ -22,120 +26,58 @@ import {
 	RadioGroupItem,
 	Spinner,
 } from '@/components';
-import { useAudio, usePurchaseCredits, useToast } from '@/hooks';
-import type { CreditsPurchaseResponse, PaymentDialogProps } from '@/types';
+import { usePurchaseCredits } from '@/hooks';
+import { clientLogger as logger } from '@/services';
+import type { CreditsPurchaseResponse, PaymentDialogProps, PayPalButtonInstance } from '@/types';
 
 export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: PaymentDialogProps) {
-	const { toast } = useToast();
-	const audioService = useAudio();
 	const purchaseCredits = usePurchaseCredits();
 	const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.PAYPAL);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [paypalButtonContainer, setPaypalButtonContainer] = useState<HTMLDivElement | null>(null);
-	const paypalButtonRef = useRef<{
-		render: (container: string | HTMLElement) => Promise<void>;
-		close: () => void;
-	} | null>(null);
+	const paypalButtonRef = useRef<PayPalButtonInstance | null>(null);
+	const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
 	const [paypalOrderRequest, setPaypalOrderRequest] = useState<PayPalOrderRequest | null>(null);
+
+	// Memoize total credits calculation
+	const totalCredits = useMemo(() => pkg.credits + (pkg.bonus ?? 0), [pkg.credits, pkg.bonus]);
 
 	const handlePaymentSuccess = useCallback(
 		(result: CreditsPurchaseResponse) => {
-			const totalCredits = pkg.credits + (pkg.bonus ?? 0);
-			audioService.play(AudioKey.SUCCESS);
-			toast({
-				title: 'Payment Successful',
-				description: result.message || 'Credits have been added to your account.',
+			logger.paymentSuccess(result.message ?? 'Credits have been added to your account.', {
+				packageId: pkg.id,
+				credits: totalCredits,
 			});
 			onSuccess(totalCredits);
 			onOpenChange(false);
 		},
-		[pkg.credits, pkg.bonus, audioService, toast, onSuccess, onOpenChange]
+		[totalCredits, pkg.id, onSuccess, onOpenChange]
 	);
 
-	const initializePayPal = useCallback(async () => {
-		try {
-			setIsProcessing(true);
-			const result = await purchaseCredits.mutateAsync({
-				packageId: pkg.id,
-				paymentMethod: PaymentMethod.PAYPAL,
-			});
-
-			if (result.status === PaymentStatus.REQUIRES_ACTION && result.paypalOrderRequest) {
-				setPaypalOrderRequest(result.paypalOrderRequest);
-				loadPayPalScript(result.paypalOrderRequest.clientId, result.paypalOrderRequest.environment);
-			} else if (result.status === PaymentStatus.COMPLETED) {
-				handlePaymentSuccess(result);
-			} else {
-				throw new Error(result.message || 'Failed to initialize PayPal');
-			}
-		} catch (error) {
-			audioService.play(AudioKey.ERROR);
-			toast({
-				title: 'Payment Error',
-				description: error instanceof Error ? error.message : 'Failed to initialize payment',
-				variant: ToastVariant.DESTRUCTIVE,
-			});
-			setIsProcessing(false);
+	// Cleanup PayPal button and script
+	const cleanupPayPal = useCallback(() => {
+		if (paypalButtonRef.current) {
+			paypalButtonRef.current.close();
+			paypalButtonRef.current = null;
 		}
-	}, [pkg.id, purchaseCredits, audioService, toast, handlePaymentSuccess]);
-
-	useEffect(() => {
-		if (!open) {
-			if (paypalButtonRef.current) {
-				paypalButtonRef.current.close();
-				paypalButtonRef.current = null;
-			}
-			setPaypalOrderRequest(null);
-			setIsProcessing(false);
-			setSelectedMethod(PaymentMethod.PAYPAL);
-			return;
+		if (paypalScriptRef.current?.parentNode) {
+			paypalScriptRef.current.parentNode.removeChild(paypalScriptRef.current);
+			paypalScriptRef.current = null;
 		}
+	}, []);
 
-		if (selectedMethod === PaymentMethod.PAYPAL && paypalButtonContainer && !paypalOrderRequest) {
-			initializePayPal();
-		}
-
-		return () => {
-			if (paypalButtonRef.current) {
-				paypalButtonRef.current.close();
-				paypalButtonRef.current = null;
-			}
-		};
-	}, [open, selectedMethod, paypalButtonContainer, paypalOrderRequest, initializePayPal]);
-
-	const loadPayPalScript = (clientId: string, environment: string) => {
-		if (window.paypal) {
-			renderPayPalButton();
-			return;
-		}
-
-		const script = document.createElement('script');
-		const env = environment === 'production' ? '' : 'sandbox';
-		script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD${env ? `&buyer-country=US` : ''}`;
-		script.async = true;
-		script.onload = () => {
-			renderPayPalButton();
-		};
-		script.onerror = () => {
-			audioService.play(AudioKey.ERROR);
-			toast({
-				title: 'PayPal Error',
-				description: 'Failed to load PayPal SDK',
-				variant: ToastVariant.DESTRUCTIVE,
-			});
-			setIsProcessing(false);
-		};
-		document.body.appendChild(script);
-	};
-
-	const renderPayPalButton = () => {
+	// Render PayPal button - must be defined before loadPayPalScript
+	const renderPayPalButton = useCallback(() => {
 		if (!window.paypal || !paypalButtonContainer) {
 			setIsProcessing(false);
 			return;
 		}
 
+		// Clean up existing button before creating new one
 		if (paypalButtonRef.current) {
 			paypalButtonRef.current.close();
+			paypalButtonRef.current = null;
 		}
 
 		if (!paypalOrderRequest) {
@@ -153,16 +95,16 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 									value: paypalOrderRequest.amount,
 									currency_code: paypalOrderRequest.currencyCode,
 								},
-								description: pkg.description || `${pkg.credits} Credits`,
+								description: pkg.description ?? `${pkg.credits} Credits`,
 							},
 						],
 					});
 				} catch (error) {
-					audioService.play(AudioKey.ERROR);
-					toast({
-						title: 'Payment Error',
-						description: error instanceof Error ? error.message : 'Failed to create PayPal order',
-						variant: ToastVariant.DESTRUCTIVE,
+					logger.paymentFailed(pkg.id, getErrorMessage(error), {
+						errorInfo: { message: getErrorMessage(error) },
+						packageId: pkg.id,
+						paymentMethod: PaymentMethod.PAYPAL,
+						operation: 'createOrder',
 					});
 					throw error;
 				}
@@ -179,26 +121,31 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					if (result.status === PaymentStatus.COMPLETED) {
 						handlePaymentSuccess(result);
 					} else {
-						throw new Error(result.message || 'Payment not completed');
+						throw new Error(result.message ?? 'Payment not completed');
 					}
 				} catch (error) {
-					audioService.play(AudioKey.ERROR);
-					toast({
-						title: 'Payment Failed',
-						description: error instanceof Error ? error.message : 'Failed to complete payment',
-						variant: ToastVariant.DESTRUCTIVE,
+					const errorMsg = getErrorMessage(error);
+					logger.paymentFailed(pkg.id, errorMsg, {
+						errorInfo: { message: errorMsg },
+						packageId: pkg.id,
+						paymentMethod: PaymentMethod.PAYPAL,
+						orderId: data.orderID,
+						operation: 'onApprove',
 					});
+					setErrorMessage(errorMsg);
 				} finally {
 					setIsProcessing(false);
 				}
 			},
 			onError: (err: Error) => {
-				audioService.play(AudioKey.ERROR);
-				toast({
-					title: 'PayPal Error',
-					description: err.message || 'An error occurred with PayPal',
-					variant: ToastVariant.DESTRUCTIVE,
+				const errorMsg = err.message ?? 'An error occurred with PayPal';
+				logger.paymentFailed(pkg.id, errorMsg, {
+					errorInfo: { message: errorMsg },
+					packageId: pkg.id,
+					paymentMethod: PaymentMethod.PAYPAL,
+					operation: 'onError',
 				});
+				setErrorMessage(errorMsg);
 				setIsProcessing(false);
 			},
 			onCancel: () => {
@@ -211,9 +158,99 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			paypalButtonRef.current = button;
 			setIsProcessing(false);
 		}
-	};
+	}, [
+		paypalButtonContainer,
+		paypalOrderRequest,
+		pkg.id,
+		pkg.description,
+		pkg.credits,
+		purchaseCredits,
+		handlePaymentSuccess,
+	]);
 
-	const handleManualPayment = async () => {
+	// Load PayPal SDK script - must be defined before initializePayPal
+	const loadPayPalScript = useCallback(
+		(clientId: string, environment: string) => {
+			// Check if PayPal SDK is already loaded
+			if (window.paypal) {
+				renderPayPalButton();
+				return;
+			}
+
+			// Check if script is already being loaded - wait for it to complete
+			if (paypalScriptRef.current) {
+				// Script is loading, attach listener to existing script
+				const existingScript = paypalScriptRef.current;
+				const originalOnload = existingScript.onload;
+				existingScript.onload = (event: Event) => {
+					if (originalOnload && typeof originalOnload === 'function') {
+						try {
+							// Call original handler with event (HTMLScriptElement.onload always expects Event parameter)
+							originalOnload.call(existingScript, event);
+						} catch {
+							// Ignore errors from original handler
+						}
+					}
+					renderPayPalButton();
+				};
+				return;
+			}
+
+			const script = document.createElement('script');
+			const env = environment === 'production' ? '' : 'sandbox';
+			script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD${env ? `&buyer-country=US` : ''}`;
+			script.async = true;
+			script.onload = () => {
+				renderPayPalButton();
+			};
+			script.onerror = () => {
+				const errorMsg = 'Failed to load PayPal SDK. Please check your internet connection and try again.';
+				logger.paymentFailed(pkg.id, errorMsg, {
+					errorInfo: { message: errorMsg },
+					packageId: pkg.id,
+					paymentMethod: PaymentMethod.PAYPAL,
+				});
+				setErrorMessage(errorMsg);
+				setIsProcessing(false);
+				paypalScriptRef.current = null;
+			};
+			document.body.appendChild(script);
+			paypalScriptRef.current = script;
+		},
+		[pkg.id, renderPayPalButton]
+	);
+
+	// Initialize PayPal payment flow
+	const initializePayPal = useCallback(async () => {
+		try {
+			setIsProcessing(true);
+			const result = await purchaseCredits.mutateAsync({
+				packageId: pkg.id,
+				paymentMethod: PaymentMethod.PAYPAL,
+			});
+
+			if (result.status === PaymentStatus.REQUIRES_ACTION && result.paypalOrderRequest) {
+				setPaypalOrderRequest(result.paypalOrderRequest);
+				loadPayPalScript(result.paypalOrderRequest.clientId, result.paypalOrderRequest.environment);
+			} else if (result.status === PaymentStatus.COMPLETED) {
+				handlePaymentSuccess(result);
+			} else {
+				throw new Error(result.message ?? 'Failed to initialize PayPal');
+			}
+		} catch (error) {
+			const errorMsg = getErrorMessage(error);
+			logger.paymentFailed(pkg.id, errorMsg, {
+				errorInfo: { message: errorMsg },
+				packageId: pkg.id,
+				paymentMethod: PaymentMethod.PAYPAL,
+			});
+			setErrorMessage(errorMsg);
+			setIsProcessing(false);
+		}
+	}, [pkg.id, purchaseCredits, handlePaymentSuccess, loadPayPalScript]);
+
+	// Handle manual payment method
+	const handleManualPayment = useCallback(async () => {
 		setIsProcessing(true);
 		try {
 			const result = await purchaseCredits.mutateAsync({
@@ -224,21 +261,52 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			if (result.status === PaymentStatus.COMPLETED) {
 				handlePaymentSuccess(result);
 			} else {
-				throw new Error(result.message || 'Payment not completed');
+				throw new Error(result.message ?? 'Payment not completed');
 			}
 		} catch (error) {
-			audioService.play(AudioKey.ERROR);
-			toast({
-				title: 'Payment Failed',
-				description: error instanceof Error ? error.message : 'Failed to process payment',
-				variant: ToastVariant.DESTRUCTIVE,
+			const errorMsg = getErrorMessage(error);
+			logger.paymentFailed(pkg.id, errorMsg, {
+				errorInfo: { message: errorMsg },
+				packageId: pkg.id,
+				paymentMethod: PaymentMethod.MANUAL_CREDIT,
+				operation: 'handleManualPayment',
 			});
+			setErrorMessage(errorMsg);
 		} finally {
 			setIsProcessing(false);
 		}
-	};
+	}, [pkg.id, purchaseCredits, handlePaymentSuccess]);
 
-	const totalCredits = pkg.credits + (pkg.bonus ?? 0);
+	// Handle payment method selection change
+	const handlePaymentMethodChange = useCallback((value: string) => {
+		if (isPaymentMethod(value)) {
+			setSelectedMethod(value);
+			setErrorMessage(null); // Clear error when changing payment method
+		}
+	}, []);
+
+	// Effect to manage PayPal initialization and cleanup
+	useEffect(() => {
+		if (!open) {
+			// Cleanup when dialog closes
+			cleanupPayPal();
+			setPaypalOrderRequest(null);
+			setIsProcessing(false);
+			setErrorMessage(null);
+			setSelectedMethod(PaymentMethod.PAYPAL);
+			return;
+		}
+
+		// Initialize PayPal when dialog opens and PayPal method is selected
+		if (selectedMethod === PaymentMethod.PAYPAL && paypalButtonContainer && !paypalOrderRequest) {
+			initializePayPal();
+		}
+
+		// Cleanup on unmount
+		return () => {
+			cleanupPayPal();
+		};
+	}, [open, selectedMethod, paypalButtonContainer, paypalOrderRequest, initializePayPal, cleanupPayPal]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -249,6 +317,14 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 				</DialogHeader>
 
 				<div className='space-y-6 py-4'>
+					{/* Error Message */}
+					{errorMessage && (
+						<Alert variant={VariantBase.DESTRUCTIVE}>
+							<AlertCircle className='h-4 w-4' />
+							<AlertDescription>{errorMessage}</AlertDescription>
+						</Alert>
+					)}
+
 					{/* Package Summary */}
 					<Card>
 						<CardHeader>
@@ -257,7 +333,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 						<CardContent className='space-y-2'>
 							<div className='flex justify-between'>
 								<span className='text-muted-foreground'>Package:</span>
-								<span className='font-medium'>{pkg.description || `${pkg.credits} Credits`}</span>
+								<span className='font-medium'>{pkg.description ?? `${pkg.credits} Credits`}</span>
 							</div>
 							{pkg.bonus && pkg.bonus > 0 && (
 								<div className='flex justify-between text-green-600'>
@@ -275,14 +351,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					{/* Payment Method Selection */}
 					<div className='space-y-4'>
 						<Label className='text-base font-semibold'>Payment Method</Label>
-						<RadioGroup
-							value={selectedMethod}
-							onValueChange={value => {
-								if (isPaymentMethod(value)) {
-									setSelectedMethod(value);
-								}
-							}}
-						>
+						<RadioGroup value={selectedMethod} onValueChange={handlePaymentMethodChange}>
 							<div className='flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer'>
 								<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
 								<Label htmlFor='paypal' className='flex-1 cursor-pointer flex items-center gap-2'>
@@ -304,11 +373,11 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					{selectedMethod === PaymentMethod.PAYPAL && (
 						<div className='space-y-2'>
 							<Label>PayPal Payment</Label>
-						{isProcessing ? (
-							<div className='flex items-center justify-center p-8 border rounded-lg'>
-								<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.LG} className='text-primary' />
-							</div>
-						) : (
+							{isProcessing ? (
+								<div className='flex items-center justify-center p-8 border rounded-lg'>
+									<Spinner size={SpinnerSize.LG} variant='loader' className='text-primary' />
+								</div>
+							) : (
 								<div ref={setPaypalButtonContainer} className='min-h-[50px]' />
 							)}
 						</div>
@@ -321,7 +390,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Button className='w-full' onClick={handleManualPayment} disabled={isProcessing} size={ButtonSize.LG}>
 								{isProcessing ? (
 									<>
-										<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
+										<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
 										Processing...
 									</>
 								) : (

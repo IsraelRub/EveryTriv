@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
 	AlertTriangle,
@@ -19,22 +17,12 @@ import {
 	User,
 } from 'lucide-react';
 
-import { LeaderboardPeriod, defaultValidators } from '@shared/constants';
+import { LeaderboardPeriod, VALIDATORS } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 import { formatForDisplay } from '@shared/utils';
 import { isGameDifficulty, isLeaderboardPeriod } from '@shared/validation';
-import {
-	BgColor,
-	ButtonSize,
-	ButtonVariant,
-	ROUTES,
-	SpinnerSize,
-	SpinnerVariant,
-	StatCardVariant,
-	TextColor,
-	ToastVariant,
-	VariantBase,
-} from '@/constants';
+
+import { BgColor, ButtonSize, ButtonVariant, SpinnerSize, StatCardVariant, TextColor, VariantBase } from '@/constants';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -47,21 +35,22 @@ import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
+	BackToHomeButton,
 	Badge,
+	Bar,
 	Button,
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	DifficultyBar,
 	DistributionChart,
 	LeaderboardTable,
 	OverviewSkeleton,
 	PieChart,
 	Skeleton,
-	StatCard,
 	Spinner,
+	StatCard,
 	Table,
 	TableBody,
 	TableCell,
@@ -72,30 +61,31 @@ import {
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-	TopicBar,
 	TrendChart,
 } from '@/components';
 import {
+	useAppDispatch,
+	useAppSelector,
 	useClearGameHistory,
+	useCurrentUserData,
 	useDeleteGameHistory,
 	useGameHistory,
 	useGlobalDifficultyStats,
 	useGlobalLeaderboard,
+	useIsAuthenticated,
 	useLeaderboardByPeriod,
+	useLeaderboardStats,
+	useNavigationClose,
 	usePopularTopics,
-	useToast,
 	useUserAnalytics,
 	useUserProfile,
-	useUserRanking,
 } from '@/hooks';
-import type { DistributionDataPoint, PieChartDataPoint, RootState } from '@/types';
-import { cn, formatDate, formatDuration, formatPlayTime, getAvatarUrl, getUserInitials } from '@/utils';
+import { clientLogger as logger } from '@/services';
+import type { DistributionDataPoint, PieChartDataPoint } from '@/types';
+import { cn, formatDate, formatPlayTime, getAvatarUrl, getUserInitials } from '@/utils';
+import { selectLeaderboardPeriod } from '@/redux/selectors';
+import { setLeaderboardPeriod } from '@/redux/slices';
 
-/**
- * Get badge color classes for difficulty level
- * @param difficulty - Difficulty level string
- * @returns Combined class string for difficulty badge
- */
 function getDifficultyBadgeColor(difficulty?: string): string {
 	switch (difficulty?.toLowerCase()) {
 		case 'easy':
@@ -110,10 +100,12 @@ function getDifficultyBadgeColor(difficulty?: string): string {
 }
 
 export function StatisticsView() {
-	const navigate = useNavigate();
-	const { toast } = useToast();
-	const { isAuthenticated, currentUser, avatar: reduxAvatar } = useSelector((state: RootState) => state.user);
-	const [leaderboardTab, setLeaderboardTab] = useState<LeaderboardPeriod>(LeaderboardPeriod.GLOBAL);
+	const dispatch = useAppDispatch();
+	const { handleClose } = useNavigationClose();
+	const isAuthenticated = useIsAuthenticated();
+	const currentUser = useCurrentUserData();
+	const avatar = currentUser?.avatar ?? null;
+	const leaderboardTab = useAppSelector(selectLeaderboardPeriod);
 	const [showClearDialog, setShowClearDialog] = useState(false);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -122,14 +114,14 @@ export function StatisticsView() {
 	const { data: popularTopicsData } = usePopularTopics();
 	const { data: globalData, isLoading: globalLoading } = useGlobalLeaderboard();
 	const { data: weeklyData, isLoading: weeklyLoading } = useLeaderboardByPeriod(LeaderboardPeriod.WEEKLY);
-	const { data: userRanking, isLoading: rankLoading } = useUserRanking();
 	const { data: historyData, isLoading: historyLoading, error: historyError } = useGameHistory(50, 0);
 	const deleteHistory = useDeleteGameHistory();
 	const clearHistory = useClearGameHistory();
 	const { data: userProfile } = useUserProfile();
+	const { data: leaderboardStats } = useLeaderboardStats(leaderboardTab);
 
 	const profile = userProfile?.profile;
-	const currentAvatarId = reduxAvatar ?? profile?.avatar ?? undefined;
+	const currentAvatarId = avatar ?? profile?.avatar ?? undefined;
 	const avatarUrl = useMemo(() => {
 		return getAvatarUrl(currentAvatarId);
 	}, [currentAvatarId]);
@@ -141,9 +133,8 @@ export function StatisticsView() {
 		if (profile?.firstName) {
 			return profile.firstName;
 		}
-		return currentUser?.email?.split('@')[0] || 'User';
+		return currentUser?.email?.split('@')[0] ?? 'User';
 	};
-
 
 	const gameStats = analytics?.game;
 	const performanceStats = analytics?.performance;
@@ -157,15 +148,11 @@ export function StatisticsView() {
 	const handleDelete = async (gameId: string) => {
 		try {
 			await deleteHistory.mutateAsync(gameId);
-			toast({
-				title: 'Game Deleted',
-				description: 'The game record has been removed from your history.',
-			});
-		} catch {
-			toast({
-				title: 'Error',
-				description: 'Failed to delete game record.',
-				variant: ToastVariant.DESTRUCTIVE,
+			logger.userSuccess('The game record has been removed from your history.', { gameId });
+		} catch (error) {
+			logger.userError('Failed to delete game record.', {
+				errorInfo: { message: error instanceof Error ? error.message : 'Unknown error' },
+				gameId,
 			});
 		} finally {
 			setDeleteId(null);
@@ -175,15 +162,12 @@ export function StatisticsView() {
 	const handleClearAll = async () => {
 		try {
 			const result = await clearHistory.mutateAsync();
-			toast({
-				title: 'History Cleared',
-				description: `${result.deletedCount} game records have been removed.`,
+			logger.userSuccess(`${result.deletedCount} game records have been removed.`, {
+				deletedCount: result.deletedCount,
 			});
-		} catch {
-			toast({
-				title: 'Error',
-				description: 'Failed to clear game history.',
-				variant: ToastVariant.DESTRUCTIVE,
+		} catch (error) {
+			logger.userError('Failed to clear game history.', {
+				errorInfo: { message: error instanceof Error ? error.message : 'Unknown error' },
 			});
 		} finally {
 			setShowClearDialog(false);
@@ -194,7 +178,7 @@ export function StatisticsView() {
 	const totalGames = records.length;
 	const totalScore = records.reduce((sum, r) => sum + (r.score ?? 0), 0);
 	const avgScore = totalGames > 0 ? totalScore / totalGames : 0;
-	const bestScore = records.length > 0 ? Math.max(...records.map(r => r.score ?? 0)) : 0;
+	const bestScore = records.reduce((max, r) => Math.max(max, r.score ?? 0), 0);
 
 	// Use user-specific data from analytics instead of global data
 	const userDifficultyData = gameStats?.difficultyBreakdown
@@ -208,7 +192,7 @@ export function StatisticsView() {
 				topics: Object.entries(gameStats.topicsPlayed)
 					.map(([topic, count]) => ({
 						topic,
-						totalGames: defaultValidators.number(count) ? count : 0,
+						totalGames: VALIDATORS.number(count) ? count : 0,
 					}))
 					.filter(t => t.totalGames > 0)
 					.sort((a, b) => b.totalGames - a.totalGames),
@@ -258,7 +242,7 @@ export function StatisticsView() {
 										<CardHeader>
 											<div className='flex items-center gap-4 mb-4'>
 												<Avatar className='h-16 w-16 border-2 border-primary/20'>
-													<AvatarImage src={avatarUrl} alt={getDisplayName()} />
+													<AvatarImage src={avatarUrl} />
 													<AvatarFallback className='text-xl'>
 														{getUserInitials(profile?.firstName, profile?.lastName, currentUser?.email)}
 													</AvatarFallback>
@@ -542,7 +526,7 @@ export function StatisticsView() {
 												const globalSuccessRate = globalStats?.successRate;
 
 												return (
-													<DifficultyBar
+													<Bar
 														key={difficulty}
 														difficulty={difficulty}
 														successRate={stats.successRate ?? 0}
@@ -684,16 +668,11 @@ export function StatisticsView() {
 										</div>
 									) : userTopicsData?.topics && userTopicsData.topics.length > 0 ? (
 										(() => {
-											const maxCount = Math.max(...userTopicsData.topics.map(t => t.totalGames));
+											const maxCount = userTopicsData.topics.reduce((max, t) => Math.max(max, t.totalGames), 0);
 											return userTopicsData.topics
 												.slice(0, 10)
 												.map(topic => (
-													<TopicBar
-														key={topic.topic}
-														topic={topic.topic}
-														count={topic.totalGames}
-														maxCount={maxCount}
-													/>
+													<Bar key={topic.topic} topic={topic.topic} count={topic.totalGames} maxCount={maxCount} />
 												));
 										})()
 									) : (
@@ -750,7 +729,7 @@ export function StatisticsView() {
 										<p className='text-muted-foreground mb-6'>
 											Unable to fetch your game history. Please try again later.
 										</p>
-										<Button onClick={() => navigate(ROUTES.HOME)}>Return Home</Button>
+										<BackToHomeButton />
 									</CardContent>
 								</Card>
 							) : records.length === 0 ? (
@@ -761,7 +740,7 @@ export function StatisticsView() {
 										<p className='text-muted-foreground mb-6'>
 											Start playing trivia games to build your history and track your progress!
 										</p>
-										<Button size={ButtonSize.LG} onClick={() => navigate(ROUTES.HOME)}>
+										<Button size={ButtonSize.LG} onClick={handleClose}>
 											Play Now
 										</Button>
 									</CardContent>
@@ -868,42 +847,53 @@ export function StatisticsView() {
 												<TableBody>
 													{records.map(record => {
 														return (
-														<TableRow key={record.id}>
-															<TableCell className='font-medium'>
-																	{formatDate(record.createdAt)}
-															</TableCell>
-															<TableCell>{record.topic || 'General'}</TableCell>
-															<TableCell>
-																<Badge
-																	variant={VariantBase.OUTLINE}
-																	className={getDifficultyBadgeColor(record.difficulty)}
-																>
-																	{record.difficulty || 'Unknown'}
-																</Badge>
-															</TableCell>
-															<TableCell>
-																<span className='font-bold text-primary'>{record.score ?? 0}</span>
-															</TableCell>
-															<TableCell>
-																{record.correctAnswers ?? 0}/{record.gameQuestionCount ?? 0}
-															</TableCell>
-															<TableCell>{formatDuration(record.timeSpent ?? 0)}</TableCell>
-															<TableCell>
-																<Button
-																	variant={ButtonVariant.GHOST}
-																	size={ButtonSize.ICON}
-																	className='h-8 w-8 text-muted-foreground hover:text-destructive'
-																	onClick={() => setDeleteId(record.id)}
-																	disabled={deleteHistory.isPending}
-																>
-																	{deleteHistory.isPending && deleteId === record.id ? (
-																		<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} />
-																	) : (
-																		<Trash2 className='h-4 w-4' />
-																	)}
-																</Button>
-															</TableCell>
-														</TableRow>
+															<TableRow key={record.id}>
+																<TableCell className='font-medium'>{formatDate(record.createdAt)}</TableCell>
+																<TableCell>{record.topic ?? 'General'}</TableCell>
+																<TableCell>
+																	<Badge
+																		variant={VariantBase.OUTLINE}
+																		className={getDifficultyBadgeColor(record.difficulty)}
+																	>
+																		{record.difficulty ?? 'Unknown'}
+																	</Badge>
+																</TableCell>
+																<TableCell>
+																	<span className='font-bold text-primary'>{record.score ?? 0}</span>
+																</TableCell>
+																<TableCell>
+																	{record.correctAnswers ?? 0}/{record.gameQuestionCount ?? 0}
+																</TableCell>
+																<TableCell>
+																	{(() => {
+																		const seconds = record.timeSpent ?? 0;
+																		if (!seconds) return '-';
+																		const hours = Math.floor(seconds / 3600);
+																		const minutes = Math.floor((seconds % 3600) / 60);
+																		const secs = seconds % 60;
+																		const parts: string[] = [];
+																		if (hours > 0) parts.push(`${hours}h`);
+																		if (minutes > 0) parts.push(`${minutes}m`);
+																		if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+																		return parts.join(' ');
+																	})()}
+																</TableCell>
+																<TableCell>
+																	<Button
+																		variant={ButtonVariant.GHOST}
+																		size={ButtonSize.ICON}
+																		className='h-8 w-8 text-muted-foreground hover:text-destructive'
+																		onClick={() => setDeleteId(record.id)}
+																		disabled={deleteHistory.isPending}
+																	>
+																		{deleteHistory.isPending && deleteId === record.id ? (
+																			<Spinner size={SpinnerSize.SM} variant='loader' />
+																		) : (
+																			<Trash2 className='h-4 w-4' />
+																		)}
+																	</Button>
+																</TableCell>
+															</TableRow>
 														);
 													})}
 												</TableBody>
@@ -950,7 +940,7 @@ export function StatisticsView() {
 												>
 													{clearHistory.isPending ? (
 														<>
-															<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
+															<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
 															Clearing...
 														</>
 													) : (
@@ -977,37 +967,31 @@ export function StatisticsView() {
 							</CardHeader>
 						</Card>
 
-						{isAuthenticated && userRanking && (
-							<Card className='border-primary/50 bg-primary/5'>
-								<CardHeader className='pb-3'>
+						{/* Leaderboard Statistics */}
+						{leaderboardStats && (
+							<Card className='border-muted bg-muted/20'>
+								<CardHeader>
 									<CardTitle className='text-lg flex items-center gap-2'>
-										<User className='h-5 w-5 text-primary' />
-										Your Ranking
+										<BarChart3 className='h-5 w-5 text-primary' />
+										Leaderboard Statistics ({leaderboardTab === LeaderboardPeriod.GLOBAL ? 'Global' : leaderboardTab})
 									</CardTitle>
-									<CardDescription>Your current position in the global leaderboard</CardDescription>
+									<CardDescription>Statistics for the selected leaderboard period</CardDescription>
 								</CardHeader>
 								<CardContent>
-									{rankLoading ? (
-										<div className='flex items-center gap-4'>
-											<Skeleton className='h-12 w-12 rounded-full' />
-											<div className='space-y-2'>
-												<Skeleton className='h-6 w-24' />
-												<Skeleton className='h-4 w-32' />
-											</div>
+									<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+										<div className='space-y-1'>
+											<p className='text-sm text-muted-foreground'>Active Users</p>
+											<p className='text-2xl font-bold'>{leaderboardStats.activeUsers?.toLocaleString() ?? 0}</p>
 										</div>
-									) : (
-										<div className='flex items-center gap-4'>
-											<div className='h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center'>
-												<span className='text-2xl font-bold text-primary'>#{userRanking.rank}</span>
-											</div>
-											<div>
-												<p className='text-2xl font-bold'>{userRanking.score?.toLocaleString() ?? 0} pts</p>
-												<p className='text-sm text-muted-foreground'>
-													Top {formatForDisplay(userRanking.percentile ?? 0)}% of {userRanking.totalUsers ?? 0} players
-												</p>
-											</div>
+										<div className='space-y-1'>
+											<p className='text-sm text-muted-foreground'>Average Score</p>
+											<p className='text-2xl font-bold'>{leaderboardStats.averageScore?.toFixed(0) ?? 0}</p>
 										</div>
-									)}
+										<div className='space-y-1'>
+											<p className='text-sm text-muted-foreground'>Average Games</p>
+											<p className='text-2xl font-bold'>{leaderboardStats.averageGames?.toFixed(1) ?? 0}</p>
+										</div>
+									</div>
 								</CardContent>
 							</Card>
 						)}
@@ -1027,7 +1011,7 @@ export function StatisticsView() {
 							value={leaderboardTab}
 							onValueChange={value => {
 								if (isLeaderboardPeriod(value)) {
-									setLeaderboardTab(value);
+									dispatch(setLeaderboardPeriod(value));
 								}
 							}}
 							className='w-full'

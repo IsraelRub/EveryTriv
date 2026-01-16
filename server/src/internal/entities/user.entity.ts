@@ -1,8 +1,8 @@
 import { Column, Entity, Index } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
-import type { UserPreferences } from '@shared/types';
-import type { Achievement } from '@internal/types';
+import type { Achievement, UserPreferences } from '@shared/types';
+
 import { BaseEntity } from './base.entity';
 
 @Entity('users')

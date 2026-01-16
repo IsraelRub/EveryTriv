@@ -2,7 +2,11 @@
 
 ## סקירה כללית
 
-ארכיטקטורת Hooks ב-EveryTriv מבוססת על React Query לניהול מצב שרת ו-Redux Toolkit לניהול מצב מקומי. המערכת מאורגנת לפי תחומי אחריות, כאשר כל hook מטפל בהיבט ספציפי של האפליקציה.
+ארכיטקטורת Hooks ב-EveryTriv מבוססת על React Query לניהול מצב שרת ו-Redux Toolkit לניהול מצב מקומי (UI state בלבד).
+
+**שינוי ארכיטקטוני חשוב:** כל מצב שמגיע מהשרת (server state) מנוהל על ידי React Query בלבד. Redux משמש רק למצב UI מקומי (game session state, modals, temporary preferences). אין עוד synchronization בין Redux ל-React Query - React Query הוא ה-Source of Truth היחיד למצב שרת.
+
+המערכת מאורגנת לפי תחומי אחריות, כאשר כל hook מטפל בהיבט ספציפי של האפליקציה.
 
 ## מבנה תיקיית Hooks
 
@@ -15,7 +19,6 @@ client/src/hooks/
 ├── useUserStats.ts                 # סטטיסטיקות משתמש
 ├── useLeaderboardFeatures.ts       # תכונות לוח מובילים
 ├── useAccountManagement.ts         # ניהול חשבון
-├── useSubscriptionManagement.ts    # ניהול מנויים
 ├── useUserPreferences.ts           # עדכון העדפות משתמש
 ├── useAnalyticsDashboard.ts        # דשבורד אנליטיקס
 ├── useAdminAnalytics.ts            # אנליטיקה של אדמין
@@ -63,6 +66,9 @@ const authKeys = {
   all: ['auth'] as const,
   currentUser: () => [...authKeys.all, 'current-user'] as const,
 };
+
+// Note: useCurrentUser hook returns full React Query result (data, isError, isSuccess, etc.)
+// For simple data access, use useCurrentUserData() hook instead
 
 // User Query Keys
 const userKeys = {
@@ -130,25 +136,6 @@ const { data, isLoading, error, refetch } = useGameHistory(20, 0);
 //   games: GameHistoryEntry[],
 //   totalGames: number
 // }
-```
-
-##### useSaveHistory
-שמירת תוצאות משחק:
-```typescript
-import { useSaveHistory } from '@hooks';
-
-const { mutate, isLoading } = useSaveHistory();
-
-mutate({
-  score: 100,
-  totalQuestions: 10,
-  correctAnswers: 8,
-  topic: 'history',
-  difficulty: 'medium',
-  gameMode: GameMode.QUESTION_LIMITED,
-  timeSpent: 300,
-  questionsData: [...]
-});
 ```
 
 ##### useDeleteGameHistory
@@ -463,33 +450,6 @@ export const useGameHistory = (limit: number = 20, offset: number = 0) => {
     queryKey: ['game-history', limit, offset],
     queryFn: () => gameHistoryService.getUserGameHistory(limit, offset),
     staleTime: 5 * 60 * 1000, // Consider stale after 5 minutes
-  });
-};
-
-// Hook לשמירת היסטוריית משחקים
-export const useSaveHistory = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: GameData) => gameHistoryService.saveGameResult(data),
-    onMutate: async newHistory => {
-      await queryClient.cancelQueries({ queryKey: ['game-history'] });
-      const previousHistory = queryClient.getQueryData(['game-history']);
-      queryClient.setQueryData(['game-history'], (old: GameHistoryEntry[] | undefined) => {
-        if (!old) return [newHistory];
-        return [newHistory, ...old];
-      });
-      return { previousHistory };
-    },
-    onError: (_err, _newHistory, context) => {
-      if (context?.previousHistory) {
-        queryClient.setQueryData(['game-history'], context.previousHistory);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['game-history'] });
-      queryClient.invalidateQueries({ queryKey: ['global-leaderboard'] });
-    },
   });
 };
 

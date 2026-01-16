@@ -1,18 +1,3 @@
-/**
- * Shared sanitization utilities for EveryTriv
- * Used by both client and server for data cleaning and security
- *
- * @module SanitizationUtils
- * @description Data cleaning and security utilities
- * @used_by server/src/common/validation, shared/services/logging, server/src/features/user/user.service.ts
- */
-
-/**
- * Sanitize input text by removing HTML tags and limiting length
- * @param input The input to sanitize
- * @param maxLength Maximum length (default: 1000)
- * @returns string Sanitized input
- */
 export function sanitizeInput(input: string, maxLength: number = 1000): string {
 	return input
 		.trim()
@@ -20,11 +5,6 @@ export function sanitizeInput(input: string, maxLength: number = 1000): string {
 		.substring(0, maxLength);
 }
 
-/**
- * Sanitize log message by removing sensitive information
- * @param message The message to sanitize
- * @returns string Sanitized message
- */
 export function sanitizeLogMessage(message: string): string {
 	return message
 		.replace(/password["\s]*[:=]["\s]*[^"\s,}]+/gi, 'password: ***')
@@ -33,29 +13,14 @@ export function sanitizeLogMessage(message: string): string {
 		.replace(/secret["\s]*[:=]["\s]*[^"\s,}]+/gi, 'secret: ***');
 }
 
-/**
- * Sanitize email address
- * @param email Email to sanitize
- * @returns string Sanitized email
- */
 export function sanitizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
-/**
- * Sanitize card number by removing spaces and non-digit characters
- * @param cardNumber Card number to sanitize
- * @returns string Sanitized card number
- */
 export function sanitizeCardNumber(cardNumber: string): string {
 	return cardNumber.replace(/\s/g, '').replace(/\D/g, '');
 }
 
-/**
- * Normalize text by removing extra spaces and converting to lowercase
- * @param text Text to normalize
- * @returns string Normalized text
- */
 export function normalizeText(text: string): string {
 	return text
 		.trim()

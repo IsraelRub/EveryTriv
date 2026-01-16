@@ -1,17 +1,12 @@
-/**
- * Form Types
- * @module FormTypes
- * @description Form-related types and interfaces
- */
 import { InputHTMLAttributes, ReactNode, type ComponentProps } from 'react';
 import type { FieldPath, FieldValues } from 'react-hook-form';
 
 import { ClientValidationType } from '@shared/constants';
-import type { LanguageValidationOptions } from '@shared/types';
-import { FormFieldType, InteractiveSize } from '@/constants';
-import type { SelectOption, ValidationHookOptions } from '@/types';
+import type { LanguageValidationOptions, SelectOption } from '@shared/types';
 
-// Form-related types
+import { FormFieldType, InteractiveSize } from '@/constants';
+import type { ValidationHookOptions } from '@/types';
+
 export interface FormField {
 	name: string;
 	label: string;
@@ -38,7 +33,6 @@ export interface ValidatedFormProps<T extends Record<string, string>> {
 	showValidationSummary?: boolean;
 }
 
-// ValidatedInputProps interface
 export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size'> {
 	validationType?: ClientValidationType;
 	initialValue?: string;
@@ -54,11 +48,6 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
 	className?: string;
 }
 
-/**
- * Form field context value type
- * @type FormFieldContextValue
- * @description Context value for form field
- */
 export type FormFieldContextValue<
 	TFieldValues extends FieldValues = FieldValues,
 	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
@@ -66,21 +55,10 @@ export type FormFieldContextValue<
 	name: TName;
 };
 
-/**
- * Form item context value interface
- * @interface FormItemContextValue
- * @description Context value for form item
- */
 export interface FormItemContextValue {
 	id: string;
 }
 
-/**
- * Number input component props
- * @interface NumberInputProps
- * @description Props for the NumberInput component
- * @used_by client/src/components/ui/numberInput.tsx
- */
 export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange'> {
 	value: number;
 	onChange: (value: number) => void;
@@ -89,14 +67,28 @@ export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' |
 	step?: number;
 }
 
-/**
- * Password field errors interface
- * @interface PasswordFieldErrors
- * @description Error messages for password-related form fields
- * @used_by client/src/components/user/ProfileEditDialog.tsx
- */
-export interface PasswordFieldErrors {
+export type BaseFormFieldErrors<T extends Record<string, string> = Record<string, string>> = {
+	[K in keyof T]?: string;
+};
+
+export interface PasswordFieldErrors extends BaseFormFieldErrors {
 	currentPassword?: string;
 	newPassword?: string;
 	confirmPassword?: string;
+}
+
+export interface RegistrationFieldErrors extends BaseFormFieldErrors {
+	email?: string;
+	password?: string;
+	confirmPassword?: string;
+}
+
+export interface LoginFieldErrors extends BaseFormFieldErrors {
+	email?: string;
+	password?: string;
+}
+
+export interface ProfileFieldErrors extends BaseFormFieldErrors {
+	firstName?: string;
+	lastName?: string;
 }

@@ -1,28 +1,17 @@
-/**
- * AI Providers Controller
- *
- * @module AiProvidersController
- * @description Controller for AI provider statistics and health endpoints
- * @used_by server/app
- */
 import { Controller, Get } from '@nestjs/common';
 
-import { API_ROUTES, ProviderHealthStatus } from '@shared/constants';
+import { API_ENDPOINTS, ProviderHealthStatus } from '@shared/constants';
 import type { AiProviderHealth, AiProviderStats } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
 
-import { TriviaGenerationService } from './logic/triviaGeneration.service';
+import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.service';
 
-@Controller(API_ROUTES.AI_PROVIDERS.BASE)
+@Controller(API_ENDPOINTS.AI_PROVIDERS.BASE)
 export class AiProvidersController {
 	constructor(private readonly triviaGenerationService: TriviaGenerationService) {}
 
-	/**
-	 * Get AI provider statistics
-	 * @returns AI provider statistics
-	 */
 	@Get('stats')
 	async getStats(): Promise<AiProviderStats> {
 		try {
@@ -35,16 +24,12 @@ export class AiProvidersController {
 			return stats;
 		} catch (error) {
 			logger.apiError('Failed to get AI provider stats', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get AI provider health status
-	 * @returns AI provider health status
-	 */
 	@Get('health')
 	async getHealth(): Promise<AiProviderHealth> {
 		try {
@@ -58,7 +43,7 @@ export class AiProvidersController {
 			return health;
 		} catch (error) {
 			logger.apiError('Failed to get AI provider health', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			const health: AiProviderHealth = {

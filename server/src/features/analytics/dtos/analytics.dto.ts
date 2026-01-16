@@ -1,9 +1,3 @@
-/**
- * Analytics DTOs
- *
- * @module AnalyticsDTOs
- * @description Data Transfer Objects for analytics tracking and queries
- */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
@@ -18,25 +12,37 @@ import {
 	Max,
 	MaxLength,
 	Min,
-	MinLength,
 } from 'class-validator';
 
-import { AnalyticsResult, ComparisonTarget, TimePeriod, VALID_TIME_PERIODS, VALIDATION_COUNT } from '@shared/constants';
+import {
+	AnalyticsAction,
+	AnalyticsEventType,
+	AnalyticsPageName,
+	AnalyticsResult,
+	ComparisonTarget,
+	LeaderboardPeriod,
+	TimePeriod,
+	VALID_LEADERBOARD_PERIODS,
+	VALID_TIME_PERIODS,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type { BasicValue } from '@shared/types';
 
 const VALID_ANALYTICS_RESULTS = Object.values(AnalyticsResult);
+const VALID_ANALYTICS_EVENT_TYPES = Object.values(AnalyticsEventType);
+const VALID_ANALYTICS_PAGE_NAMES = Object.values(AnalyticsPageName);
+const VALID_ANALYTICS_ACTIONS = Object.values(AnalyticsAction);
 
 export class TrackEventDto {
 	@ApiProperty({
 		description: 'Type of analytics event',
-		minLength: 1,
-		maxLength: 100,
+		enum: VALID_ANALYTICS_EVENT_TYPES,
 	})
-	@IsString()
 	@IsNotEmpty({ message: 'Event type is required' })
-	@MinLength(1, { message: 'Event type must be at least 1 character long' })
-	@MaxLength(100, { message: 'Event type cannot exceed 100 characters' })
-	eventType: string;
+	@IsIn(VALID_ANALYTICS_EVENT_TYPES, {
+		message: `Event type must be one of: ${VALID_ANALYTICS_EVENT_TYPES.join(', ')}`,
+	})
+	eventType: AnalyticsEventType;
 
 	@ApiPropertyOptional({
 		description: 'User ID (optional, will be set from authenticated user)',
@@ -66,21 +72,23 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Page or screen where event occurred',
-		maxLength: 200,
+		enum: VALID_ANALYTICS_PAGE_NAMES,
 	})
 	@IsOptional()
-	@IsString()
-	@MaxLength(200, { message: 'Page cannot exceed 200 characters' })
-	page?: string;
+	@IsIn(VALID_ANALYTICS_PAGE_NAMES, {
+		message: `Page must be one of: ${VALID_ANALYTICS_PAGE_NAMES.join(', ')}`,
+	})
+	page?: AnalyticsPageName;
 
 	@ApiPropertyOptional({
 		description: 'Action performed by user',
-		maxLength: 100,
+		enum: VALID_ANALYTICS_ACTIONS,
 	})
 	@IsOptional()
-	@IsString()
-	@MaxLength(100, { message: 'Action cannot exceed 100 characters' })
-	action?: string;
+	@IsIn(VALID_ANALYTICS_ACTIONS, {
+		message: `Action must be one of: ${VALID_ANALYTICS_ACTIONS.join(', ')}`,
+	})
+	action?: AnalyticsAction;
 
 	@ApiPropertyOptional({
 		description: 'Result of the action',
@@ -147,7 +155,9 @@ export class TopicAnalyticsQueryDto {
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
+	})
 	limit?: number;
 }
 
@@ -199,7 +209,6 @@ export class UserTrendQueryDto {
 		example: '2024-01-01',
 	})
 	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
 	@Transform(({ value }) => (value ? new Date(value) : undefined))
 	startDate?: Date;
 
@@ -208,7 +217,6 @@ export class UserTrendQueryDto {
 		example: '2024-05-31',
 	})
 	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
 	@Transform(({ value }) => (value ? new Date(value) : undefined))
 	endDate?: Date;
 
@@ -242,7 +250,9 @@ export class UserComparisonQueryDto {
 		enum: ComparisonTarget,
 	})
 	@IsOptional()
-	@IsIn(Object.values(ComparisonTarget), { message: 'Target must be either global or user' })
+	@IsIn(Object.values(ComparisonTarget), {
+		message: 'Target must be either global or user',
+	})
 	target?: ComparisonTarget;
 
 	@ApiPropertyOptional({
@@ -281,4 +291,63 @@ export class UserSummaryQueryDto {
 	@Transform(({ value }) => value === true || value === 'true')
 	@IsBoolean({ message: 'includeActivity must be a boolean value' })
 	includeActivity?: boolean;
+}
+
+export class GetLeaderboardDto {
+	@ApiPropertyOptional({
+		description: 'Leaderboard type',
+		enum: VALID_LEADERBOARD_PERIODS,
+		default: LeaderboardPeriod.GLOBAL,
+	})
+	@IsString()
+	@IsIn(VALID_LEADERBOARD_PERIODS, {
+		message: `Type must be one of: ${VALID_LEADERBOARD_PERIODS.join(', ')}`,
+	})
+	type: LeaderboardPeriod = LeaderboardPeriod.GLOBAL;
+
+	@ApiPropertyOptional({
+		description: 'Topic for topic-specific leaderboard',
+		maxLength: 100,
+	})
+	@IsOptional()
+	@IsString()
+	@MaxLength(100, { message: 'Topic cannot exceed 100 characters' })
+	topic?: string;
+
+	@ApiPropertyOptional({
+		description: 'Maximum number of entries to return',
+		minimum: 1,
+		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
+		default: 50,
+	})
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Limit must be a number' })
+	@Min(1, { message: 'Limit must be at least 1' })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
+	})
+	limit: number = 50;
+
+	@ApiPropertyOptional({
+		description: 'Starting position for pagination',
+		minimum: 0,
+		default: 0,
+	})
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Offset must be a number' })
+	@Min(0, { message: 'Offset must be at least 0' })
+	offset: number = 0;
+}
+
+export class GetLeaderboardStatsDto {
+	@ApiPropertyOptional({
+		description: 'Time period for statistics',
+		enum: VALID_LEADERBOARD_PERIODS,
+		default: LeaderboardPeriod.WEEKLY,
+	})
+	@IsString()
+	@IsIn(VALID_LEADERBOARD_PERIODS, {
+		message: `Period must be one of: ${VALID_LEADERBOARD_PERIODS.join(', ')}`,
+	})
+	period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY;
 }

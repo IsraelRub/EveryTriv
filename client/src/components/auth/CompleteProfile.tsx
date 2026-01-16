@@ -3,65 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 
-import { VALIDATION_LENGTH } from '@shared/constants';
-import { getErrorMessage, isNonEmptyString } from '@shared/utils';
-import { ButtonVariant, ROUTES, SpinnerSize, SpinnerVariant, VALIDATION_MESSAGES } from '@/constants';
+import { getErrorMessage } from '@shared/utils';
+import { validateFirstName, validateLastName } from '@shared/validation';
+
+import { QUERY_KEYS, ROUTES, SpinnerSize } from '@/constants';
 import { Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
-import { useAppDispatch } from '@/hooks';
-import { authService, clientLogger as logger } from '@/services';
-import type { CompleteProfileProps } from '@/types';
-import { setUser } from '@/redux/slices';
+import { authService, clientLogger as logger, queryClient } from '@/services';
+import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
 import { cn } from '@/utils';
 
 export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	const navigate = useNavigate();
-	const dispatch = useAppDispatch();
 
 	const [firstName, setFirstName] = useState('');
 	const [lastName, setLastName] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [fieldErrors, setFieldErrors] = useState<{
-		firstName?: string;
-		lastName?: string;
-	}>({});
+	const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
 
 	logger.userDebug('CompleteProfile component rendered');
 
-	const isFormValid = (): boolean => {
-		if (!isNonEmptyString(firstName)) {
+	const isFormValid = useCallback((): boolean => {
+		const firstNameValidation = validateFirstName(firstName);
+		if (!firstNameValidation.isValid) {
 			return false;
 		}
-		if (
-			firstName.trim().length < VALIDATION_LENGTH.FIRST_NAME.MIN ||
-			firstName.trim().length > VALIDATION_LENGTH.FIRST_NAME.MAX
-		) {
-			return false;
-		}
-		if (isNonEmptyString(lastName) && lastName.trim().length > VALIDATION_LENGTH.LAST_NAME.MAX) {
+		const lastNameValidation = validateLastName(lastName, false);
+		if (!lastNameValidation.isValid) {
 			return false;
 		}
 		return true;
-	};
+	}, [firstName, lastName]);
 
 	const validateField = (name: string, value: string): string | null => {
 		switch (name) {
-			case 'firstName':
-				if (!value.trim()) return VALIDATION_MESSAGES.FIRST_NAME_REQUIRED;
-				if (value.trim().length < VALIDATION_LENGTH.FIRST_NAME.MIN) {
-					return VALIDATION_MESSAGES.FIRST_NAME_MIN_LENGTH(VALIDATION_LENGTH.FIRST_NAME.MIN);
-				}
-				if (value.trim().length > VALIDATION_LENGTH.FIRST_NAME.MAX) {
-					return VALIDATION_MESSAGES.FIRST_NAME_MAX_LENGTH(VALIDATION_LENGTH.FIRST_NAME.MAX);
-				}
-				break;
+			case 'firstName': {
+				const validation = validateFirstName(value);
+				return validation.isValid ? null : (validation.errors[0] ?? null);
+			}
 
-			case 'lastName':
-				if (!value.trim()) return null;
-				if (value.trim().length > VALIDATION_LENGTH.LAST_NAME.MAX) {
-					return VALIDATION_MESSAGES.LAST_NAME_MAX_LENGTH(VALIDATION_LENGTH.LAST_NAME.MAX);
-				}
-				break;
+			case 'lastName': {
+				const validation = validateLastName(value, false);
+				return validation.isValid ? null : (validation.errors[0] ?? null);
+			}
 		}
 		return null;
 	};
@@ -81,7 +65,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 		const fieldError = validateField(name, value);
 		setFieldErrors(prev => ({
 			...prev,
-			[name]: fieldError || undefined,
+			[name]: fieldError ?? undefined,
 		}));
 	}, []);
 
@@ -103,6 +87,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				setFieldErrors(newFieldErrors);
 
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				if (firstNameError || lastNameError) {
 					setLoading(false);
 					return;
@@ -124,9 +109,10 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					userId: profileResponse.profile?.id,
 				});
 
-				// Update Redux state with new user data
+				// Update React Query cache with new user data
 				if (profileResponse.profile) {
-					dispatch(setUser(profileResponse.profile));
+					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), profileResponse.profile);
+					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
 				}
 
 				// Call optional onComplete callback
@@ -140,20 +126,15 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 			} catch (err) {
 				const message = getErrorMessage(err);
 				logger.userError('Profile completion failed', {
-					error: message,
+					errorInfo: { message },
 				});
 				setError(message);
 			} finally {
 				setLoading(false);
 			}
 		},
-		[firstName, lastName, dispatch, navigate, onComplete]
+		[firstName, lastName, navigate, onComplete, isFormValid]
 	);
-
-	const handleSkip = useCallback(() => {
-		logger.userInfo('User skipped profile completion');
-		navigate(ROUTES.HOME, { replace: true });
-	}, [navigate]);
 
 	return (
 		<motion.div
@@ -218,15 +199,12 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
 							{loading ? (
 								<>
-									<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
+									<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
 									Saving...
 								</>
 							) : (
 								'Complete Profile'
 							)}
-						</Button>
-						<Button type='button' variant={ButtonVariant.OUTLINE} onClick={handleSkip} disabled={loading}>
-							Skip
 						</Button>
 					</div>
 				</form>

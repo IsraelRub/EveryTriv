@@ -1,32 +1,18 @@
-/**
- * JWT Token Service - Centralized JWT token management
- *
- * @module JwtTokenService
- * @description JWT token generation and validation service
- */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { UserRole } from '@shared/constants';
+import type { AuthenticationRequest, TokenPair, TokenPayload, TokenValidationResult } from '@shared/types';
 import { getCurrentTimestampInSeconds, getErrorMessage } from '@shared/utils';
-import { AUTH_CONSTANTS } from '@shared/constants';
+
+import { AppConfig } from '@config';
 import { serverLogger as logger } from '@internal/services';
-import type {
-	AuthenticationRequest,
-	TokenPair,
-	TokenPayload,
-	TokenUserData,
-	TokenValidationResult,
-} from '@internal/types';
 import { createServerError } from '@internal/utils';
 
 @Injectable()
 export class JwtTokenService {
 	constructor(private readonly jwtService: JwtService) {}
 
-	/**
-	 * Generate access token
-	 */
 	async generateAccessToken(userId: string, email: string, role: UserRole, expiresIn: string = '1h'): Promise<string> {
 		try {
 			const payload: TokenPayload = {
@@ -36,13 +22,13 @@ export class JwtTokenService {
 			};
 
 			const token = await this.jwtService.signAsync(payload, {
-				secret: AUTH_CONSTANTS.JWT_SECRET,
+				secret: AppConfig.jwt.secret,
 				expiresIn,
 			});
 
 			logger.securityLogin('Access token generated', {
 				userId,
-				email,
+				emails: { current: email },
 				role,
 				expiresIn,
 			});
@@ -51,16 +37,13 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate access token', {
 				userId,
-				email,
-				error: getErrorMessage(error),
+				emails: { current: email },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createServerError('generate access token', error);
 		}
 	}
 
-	/**
-	 * Generate refresh token
-	 */
 	async generateRefreshToken(userId: string, email: string, role: UserRole, expiresIn: string = '7d'): Promise<string> {
 		try {
 			const payload: TokenPayload = {
@@ -70,13 +53,13 @@ export class JwtTokenService {
 			};
 
 			const token = await this.jwtService.signAsync(payload, {
-				secret: AUTH_CONSTANTS.JWT_SECRET,
+				secret: AppConfig.jwt.secret,
 				expiresIn,
 			});
 
 			logger.securityLogin('Refresh token generated', {
 				userId,
-				email,
+				emails: { current: email },
 				role,
 				expiresIn,
 			});
@@ -85,16 +68,13 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate refresh token', {
 				userId,
-				email,
-				error: getErrorMessage(error),
+				emails: { current: email },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createServerError('generate refresh token', error);
 		}
 	}
 
-	/**
-	 * Generate token pair (access + refresh)
-	 */
 	async generateTokenPair(
 		userId: string,
 		email: string,
@@ -110,7 +90,7 @@ export class JwtTokenService {
 
 			logger.securityLogin('Token pair generated', {
 				userId,
-				email,
+				emails: { current: email },
 				role,
 			});
 
@@ -121,25 +101,22 @@ export class JwtTokenService {
 		} catch (error) {
 			logger.securityError('Failed to generate token pair', {
 				userId,
-				email,
-				error: getErrorMessage(error),
+				emails: { current: email },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createServerError('generate token pair', error);
 		}
 	}
 
-	/**
-	 * Verify and decode token
-	 */
 	async verifyToken(token: string): Promise<TokenValidationResult> {
 		try {
 			const payload: TokenPayload = await this.jwtService.verifyAsync<TokenPayload>(token, {
-				secret: AUTH_CONSTANTS.JWT_SECRET,
+				secret: AppConfig.jwt.secret,
 			});
 
 			logger.securityLogin('Token verified successfully', {
 				userId: payload.sub,
-				email: payload.email,
+				emails: { current: payload.email },
 			});
 
 			return {
@@ -148,7 +125,7 @@ export class JwtTokenService {
 			};
 		} catch (error) {
 			logger.securityDenied('Token verification failed', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 
 			return {
@@ -158,9 +135,6 @@ export class JwtTokenService {
 		}
 	}
 
-	/**
-	 * Extract token from request headers
-	 */
 	extractTokenFromRequest(request: AuthenticationRequest): string | null {
 		try {
 			// Check Authorization header
@@ -169,8 +143,8 @@ export class JwtTokenService {
 				return authHeader.substring(7);
 			}
 
-			// Check cookies (support both access_token and auth_token for backward compatibility)
-			const cookieToken = request.cookies?.access_token || request.cookies?.auth_token;
+			// Check cookies for access token
+			const cookieToken = request.cookies?.access_token;
 			if (cookieToken) {
 				return cookieToken;
 			}
@@ -183,27 +157,21 @@ export class JwtTokenService {
 			return null;
 		} catch (error) {
 			logger.securityError('Failed to extract token from request', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			return null;
 		}
 	}
 
-	/**
-	 * Get user from token
-	 */
 	async getUserFromToken(token: string): Promise<TokenPayload | null> {
 		const result = await this.verifyToken(token);
-		return result.isValid ? result.payload || null : null;
+		return result.isValid ? (result.payload ?? null) : null;
 	}
 
-	/**
-	 * Check if token is expired
-	 */
 	isTokenExpired(token: string): boolean {
 		try {
 			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
-			if (!decoded || !decoded.exp) {
+			if (!decoded?.exp) {
 				return true;
 			}
 
@@ -211,35 +179,25 @@ export class JwtTokenService {
 			return decoded.exp < currentTime;
 		} catch (error) {
 			logger.securityError('Failed to check token expiration', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			return true;
 		}
 	}
 
-	/**
-	 * Get token expiration time
-	 */
 	getTokenExpiration(token: string): Date | null {
 		try {
 			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
-			if (!decoded || !decoded.exp) {
+			if (!decoded?.exp) {
 				return null;
 			}
 
 			return new Date(decoded.exp * 1000);
 		} catch (error) {
 			logger.securityError('Failed to get token expiration', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			return null;
 		}
-	}
-
-	/**
-	 * Generate token for specific user data
-	 */
-	async generateTokenForUser(user: TokenUserData): Promise<TokenPair> {
-		return this.generateTokenPair(user.id, user.email, user.role);
 	}
 }

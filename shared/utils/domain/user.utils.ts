@@ -1,19 +1,6 @@
-/**
- * User Utilities
- *
- * @module UserUtils
- * @description Utility functions for user preferences management
- */
 import { DEFAULT_USER_PREFERENCES } from '@shared/constants';
 import type { UserPreferences } from '@shared/types';
 
-/**
- * Merge two user preferences objects with deep merge for privacy and game
- * Performs deep merge for privacy and game preferences to avoid shallow merge issues
- * @param basePreferences Base preferences (existing preferences)
- * @param newPreferences New preferences to merge in
- * @returns Merged preferences
- */
 export function mergeUserPreferences(
 	basePreferences: Partial<UserPreferences> | null | undefined,
 	newPreferences: Partial<UserPreferences> | null | undefined

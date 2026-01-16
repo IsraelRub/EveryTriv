@@ -28,12 +28,14 @@
     "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix"
   },
   "dependencies": {
+    "@nestjs/axios": "^3.0.1",
     "@nestjs/common": "^11.1.5",
     "@nestjs/core": "^11.1.5",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.5",
     "@nestjs/platform-socket.io": "^11.1.5",
+    "@nestjs/schedule": "^6.1.0",
     "@nestjs/swagger": "^7.3.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.5",
@@ -41,7 +43,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
-    "@types/uuid": "^10.0.0",
+    "axios": "^1.7.7",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -55,8 +57,7 @@
     "rxjs": "^7.8.2",
     "socket.io": "^4.7.5",
     "tsconfig-paths": "^4.2.0",
-    "typeorm": "^0.3.25",
-    "uuid": "^10.0.0"
+    "typeorm": "^0.3.25"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.7",

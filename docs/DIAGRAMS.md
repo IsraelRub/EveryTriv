@@ -13,7 +13,6 @@ graph LR
         C --> E[HomeView]
         C --> F[GameSessionView]
         C --> G[GameSummaryView]
-        C --> H[CustomDifficultyView]
         C --> I[UserProfile]
         C --> J[GameHistory]
         C --> K[AnalyticsView]
@@ -32,10 +31,6 @@ graph LR
         D --> X[AudioControls]
         D --> Y[ProtectedRoute]
         A --> Z[Redux Store]
-        Z --> AA[gameSlice]
-        Z --> AB[userSlice]
-        Z --> AC[statsSlice]
-        Z --> AD[favoritesSlice]
         Z --> AE[gameModeSlice]
         A --> AF[React Query]
         A --> AG[Services]
@@ -67,7 +62,6 @@ graph LR
         BB --> BE[Game Types]
         BB --> BF[User Types]
         BB --> BG[Analytics Types]
-        BB --> BH[Subscription Types]
         BB --> BI[Language Types]
         BC --> BJ[Data Types]
         BC --> BK[Error Types]
@@ -115,7 +109,6 @@ graph LR
         BVA --> CEB[User Utils]
         BVA --> CFB[Credits Utils]
         BVA --> CGB[Payment Utils]
-        BVA --> CHB[Subscription Utils]
         BVA --> CIB[Entity Guards]
         BWA --> CJB[ID Utils]
         BWA --> CKB[Storage Utils]
@@ -133,7 +126,6 @@ graph LR
         DJ --> DM[UserModule]
         DJ --> DN[CreditsModule]
         DJ --> DO[PaymentModule]
-        DJ --> DP[SubscriptionModule]
         DJ --> DQ[LeaderboardModule]
         DJ --> DR[AnalyticsModule]
         DL --> DQ
@@ -247,7 +239,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     U->>F: שליחת תשובה
-    F->>G: POST /api/game/answer
+    F->>G: POST /api/game/session/answer
     G->>G: בדיקת נכונות
     G->>P: חישוב ניקוד
     P->>P: חישוב לפי קושי וזמן
@@ -271,7 +263,6 @@ graph TB
         D --> F
         B --> G[PaymentModule]
         D --> G
-        G --> H[SubscriptionModule]
     end
 
     subgraph "Common Layer"
@@ -405,8 +396,7 @@ graph LR
         E4[UserStatsEntity]
         E5[LeaderboardEntity]
         E6[PaymentHistoryEntity]
-        E7[SubscriptionEntity]
-        E8[CreditTransactionEntity]
+        E7[CreditTransactionEntity]
         BE[BaseEntity<br/>id, createdAt, updatedAt]
     end
 
@@ -417,8 +407,7 @@ graph LR
         R4[UserStatsRepository]
         R5[LeaderboardRepository]
         R6[PaymentRepository]
-        R7[SubscriptionRepository]
-        R8[CreditTransactionRepository]
+        R7[CreditTransactionRepository]
     end
 
     subgraph "Internal Layer - Modules"
@@ -434,8 +423,7 @@ graph LR
     end
 
     subgraph "Internal Layer - Controllers"
-        C1[ClientLogsController<br/>Client Logs]
-        C2[MiddlewareMetricsController<br/>Metrics]
+        C1[MiddlewareMetricsController<br/>Metrics]
     end
 
     subgraph "Internal Layer - Constants"
@@ -547,7 +535,6 @@ graph LR
         A[HomeView]
         B[GameSessionView]
         C[GameSummaryView]
-        D[CustomDifficultyView]
         E[UserProfile]
         F[GameHistory]
         G[AnalyticsView]
@@ -624,7 +611,6 @@ erDiagram
     USERS ||--o{ GAME_HISTORY : "plays"
     USERS ||--o{ USER_STATS : "has"
     USERS ||--o{ PAYMENT_HISTORY : "makes"
-    USERS ||--o{ SUBSCRIPTIONS : "subscribes"
     USERS ||--o{ CREDIT_TRANSACTIONS : "transacts"
     USERS ||--o{ LEADERBOARD : "ranks"
 
@@ -702,24 +688,8 @@ erDiagram
         string payment_method
         string payment_status
         string plan_type
-        string subscription_id
         jsonb metadata
         timestamp created_at
-    }
-
-    SUBSCRIPTIONS {
-        uuid id PK
-        uuid user_id FK
-        string subscription_id UK
-        string plan_type
-        string status
-        timestamp current_period_start
-        timestamp current_period_end
-        boolean cancel_at_period_end
-        timestamp canceled_at
-        jsonb metadata
-        timestamp created_at
-        timestamp updated_at
     }
 
     CREDIT_TRANSACTIONS {
@@ -782,8 +752,6 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> HomeView: כניסה לאפליקציה
-    HomeView --> CustomDifficultyView: יצירת קושי מותאם
-    CustomDifficultyView --> HomeView: חזרה
     HomeView --> GameConfig: בחירת נושא וקושי
     GameConfig --> GameSession: התחלת משחק
     GameSession --> Question: טעינת שאלה
@@ -811,7 +779,6 @@ graph LR
         A --> D[Game Types]
         A --> E[User Types]
         A --> F[Analytics Types]
-        A --> G[Subscription Types]
         A --> H[Language Types]
         B --> I[Data Types]
         B --> J[Error Types]
@@ -879,7 +846,6 @@ graph LR
         BD --> BM[User Utils]
         BD --> BN[Credits Utils]
         BD --> BO[Payment Utils]
-        BD --> BP[Subscription Utils]
         BD --> BQ[Entity Guards]
         BE --> BR[ID Utils]
         BE --> BS[Storage Utils]
@@ -1004,60 +970,53 @@ graph TB
 ## דיאגרמת Redux State
 
 ```mermaid
-graph LR
-    A[Redux Store] --> B[gameSlice]
-    A --> C[userSlice]
-    A --> D[statsSlice]
-    A --> E[favoritesSlice]
-    A --> F[gameModeSlice]
+graph TB
+    A[Redux Store] --> B[gameModeSlice]
+    A --> C[gameSessionSlice]
+    A --> D[multiplayerSlice]
+    A --> E[audioSettingsSlice]
+    A --> F[uiPreferencesSlice]
     
-    B --> G[state]
-    G --> H[status]
-    G --> I[isPlaying]
-    G --> J[currentQuestion]
-    G --> K[totalQuestions]
-    G --> L[questions]
-    G --> M[answers]
-    G --> N[loading]
-    G --> O[data]
-    O --> P[score]
-    O --> Q[currentQuestionIndex]
-    O --> R[startTime]
-    B --> S[gameHistory]
-    B --> T[leaderboard]
-    B --> U[isLoading]
-    B --> V[error]
+    B --> B1[currentMode]
+    B --> B2[currentTopic]
+    B --> B3[currentDifficulty]
+    B --> B4[currentSettings]
+    B --> B5[isLoading]
+    B --> B6[error]
     
-    C --> W[currentUser]
-    C --> X[username]
-    C --> Y[avatar]
-    C --> Z[creditBalance]
-    C --> AA[isLoading]
-    C --> AB[error]
-    C --> AC[isAuthenticated]
-    Z --> AD[purchasedCredits]
-    Z --> AE[freeCredits]
-    Z --> AF[totalCredits]
+    C --> C1[gameId]
+    C --> C2[currentQuestionIndex]
+    C --> C3[score]
+    C --> C4[questions]
+    C --> C5[loading]
+    C --> C6[timeSpent]
     
-    D --> AG[stats]
-    D --> AH[globalStats]
-    D --> AI[leaderboard]
-    D --> AJ[isLoading]
-    D --> AK[error]
-    AG --> AL[topicsPlayed]
-    AG --> AM[successRateByDifficulty]
-    AG --> AN[streaks]
+    D --> D1[isConnected]
+    D --> D2[room]
+    D --> D3[gameState]
+    D --> D4[leaderboard]
+    D --> D5[error]
+    D --> D6[isLoading]
     
-    E --> AO[topics]
+    E --> E1[volume]
+    E --> E2[isMuted]
+    E --> E3[soundEnabled]
+    E --> E4[musicEnabled]
+    E --> E5[isInitialized]
     
-    F --> AP[selectedMode]
-    F --> AQ[currentTopic]
-    F --> AR[currentDifficulty]
-    F --> AS[customDifficulty]
+    F --> F1[leaderboardPeriod]
     
-    C --> AT[redux-persist]
-    E --> AT
-    F --> AT
+    B -.->|persisted| G[localStorage]
+    E -.->|persisted| G
+    F -.->|persisted| H[sessionStorage]
+    
+    style B fill:#e1f5ff
+    style C fill:#ffe1e1
+    style D fill:#e1ffe1
+    style E fill:#fff4e1
+    style F fill:#f4e1ff
+    style G fill:#e1e1e1
+    style H fill:#e1e1e1
 ```
 
 ## דיאגרמת React Query Cache
@@ -1136,12 +1095,11 @@ sequenceDiagram
     participant U as User
     participant F as Frontend
     participant P as PaymentService
-    participant S as Stripe
-    participant SUB as SubscriptionService
+    participant S as PayPal
     participant DB as PostgreSQL
 
-    U->>F: בחירת תוכנית
-    F->>P: POST /api/payment/create-session
+    U->>F: בחירת חבילת נקודות
+    F->>P: POST /api/payment/create
     P->>S: יצירת session
     S->>P: Session ID
     P->>F: החזרת Session ID
@@ -1171,7 +1129,6 @@ graph LR
     subgraph "Protected Views"
         F[GameSessionView]
         G[GameSummaryView]
-        H[CustomDifficultyView]
         I[UserProfile]
         J[GameHistory]
         K[AnalyticsView]
@@ -1288,7 +1245,6 @@ graph TB
         BP[AudioControls]
         BQ[FeatureErrorBoundary]
         BR[ErrorBoundary]
-        BS[SubscriptionPlans]
         BT[ValidatedForm]
         BU[GameMode]
         BV[IconLibrary]
@@ -1342,7 +1298,7 @@ graph LR
     end
 
     subgraph "Game Hooks"
-        GAME[Game Hooks<br/>useTrivia, useGameTimer<br/>useSaveHistory, useCanPlay<br/>useDeductCredits]
+        GAME[Game Hooks<br/>useTrivia, useGameTimer<br/>useFinalizeGameSession, useCanPlay<br/>useDeductCredits]
     end
 
     subgraph "User Hooks"
@@ -1351,10 +1307,6 @@ graph LR
 
     subgraph "Credits Hooks"
         CREDITS[Credits Hooks<br/>useCredits, useCreditBalance<br/>useCreditHistory]
-    end
-
-    subgraph "Subscription Hooks"
-        SUB[Subscription Hooks<br/>useSubscriptionManagement<br/>useCreateSubscription<br/>useCancelSubscription]
     end
 
     subgraph "Account Management Hooks"
@@ -1494,7 +1446,6 @@ graph LR
     subgraph "Game Routes"
         J[game/play - GameSessionView]
         K[game/summary - GameSummaryView]
-        L[game/custom - CustomDifficultyView]
     end
 
     subgraph "Protected Routes"
@@ -1533,35 +1484,6 @@ graph LR
     W --> X[NavigationBrand]
     W --> Y[NavigationActions]
     W --> Z[NavigationMenu]
-```
-
-## דיאגרמת זרימת Custom Difficulty
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant CV as CustomDifficultyView
-    participant CDS as customDifficulty.service
-    participant SS as storage.service
-    participant AS as api.service
-    participant BE as Backend
-
-    U->>CV: יצירת קושי מותאם
-    CV->>CDS: saveCustomDifficulty
-    CDS->>SS: שמירה ב-localStorage
-    SS->>CDS: אישור שמירה
-    CDS->>AS: POST /api/game/custom-difficulty
-    AS->>BE: שליחת קושי מותאם
-    BE->>AS: אישור שמירה
-    AS->>CDS: אישור מהשרת
-    CDS->>CV: עדכון רשימת קשיים
-    CV->>U: הצגת קשיים שמורים
-    U->>CV: בחירת קושי מותאם
-    CV->>CDS: loadCustomDifficulty
-    CDS->>SS: קריאה מ-localStorage
-    SS->>CDS: החזרת קושי
-    CDS->>CV: עדכון מצב
-    CV->>U: מעבר למשחק
 ```
 
 ## דיאגרמת זרימת Analytics
@@ -1662,7 +1584,7 @@ graph TB
         E4[UserStatsEntity]
         E5[LeaderboardEntity]
         E6[PaymentHistoryEntity]
-        E7[SubscriptionEntity]
+        E7[CreditTransactionEntity]
     end
 
     subgraph "TypeORM Repositories Layer"
@@ -1672,7 +1594,7 @@ graph TB
         R4[UserStatsRepository]
         R5[LeaderboardRepository]
         R6[PaymentRepository]
-        R7[SubscriptionRepository]
+        R7[CreditTransactionRepository]
     end
 
     subgraph "TypeORM QueryBuilder (Complex Queries Only)"
@@ -1690,7 +1612,6 @@ graph TB
         S4[LeaderboardService]
         S5[CreditsService]
         S6[PaymentService]
-        S7[SubscriptionService]
     end
 
     subgraph "Controllers Layer (HTTP Handling)"
@@ -1700,11 +1621,10 @@ graph TB
         C4[LeaderboardController]
         C5[CreditsController]
         C6[PaymentController]
-        C7[SubscriptionController]
     end
 
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
+        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment]
     end
 
     DB --> E1
@@ -1785,7 +1705,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment<br/>/subscription]
+        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment]
     end
 
     subgraph "API Service Layer (HTTP Client)"
@@ -1845,7 +1765,7 @@ graph TB
     end
 
     subgraph "Frontend - State Management Layer"
-        RS[Redux Store<br/>gameSlice<br/>userSlice<br/>statsSlice<br/>favoritesSlice<br/>gameModeSlice]
+        RS[Redux Store<br/>gameModeSlice]
         RQ[React Query Hooks<br/>useAuth<br/>useTrivia<br/>useUser<br/>useCredits<br/>etc.]
         QC[React Query Client<br/>Cache Management]
     end

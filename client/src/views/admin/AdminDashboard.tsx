@@ -1,77 +1,70 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, BarChart3, GamepadIcon, Settings, TrendingUp, Trophy, Users } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, DollarSign, GamepadIcon, TrendingUp, Trophy, Users } from 'lucide-react';
 
-import { LeaderboardPeriod, ProviderStatus as ProviderStatusEnum, TimePeriod } from '@shared/constants';
-import { formatForDisplay, isRecord } from '@shared/utils';
-import { isGameDifficulty, isLeaderboardPeriod } from '@shared/validation';
-import { ButtonVariant, SpinnerSize, SpinnerVariant, StatCardVariant, TextColor, VariantBase } from '@/constants';
+import { LeaderboardPeriod } from '@shared/constants';
+import { formatForDisplay } from '@shared/utils';
+import { isLeaderboardPeriod } from '@shared/validation';
+
+import { ButtonVariant, SpinnerSize, StatCardVariant, TextColor } from '@/constants';
 import {
-	Badge,
 	Button,
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	DifficultyBar,
 	DistributionChart,
 	GameStatisticsCard,
 	LeaderboardTable,
-	Spinner,
-	ManagementActions,
+	PerformanceAnalysisSection,
 	PieChart,
+	PlatformTrendsSection,
+	ProviderManagementSection,
 	Skeleton,
+	Spinner,
 	StatCard,
+	SystemHealthSection,
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-	TrendChart,
 	TriviaManagementTable,
 	UserSearchSection,
 	UsersTable,
 } from '@/components';
 import {
-	useAiProviderHealth,
-	useAiProviderStats,
 	useAllTriviaQuestions,
-	useClearAllGameHistory,
-	useClearAllLeaderboard,
+	useAppDispatch,
+	useAppSelector,
+	useBusinessMetrics,
 	useClearAllTrivia,
-	useClearAllUserStats,
 	useGameStatistics,
-	useGlobalDifficultyStats,
 	useGlobalLeaderboard,
 	useGlobalStats,
-	useGlobalTrends,
 	useLeaderboardByPeriod,
 	usePopularTopics,
 	useRealTimeAnalytics,
 } from '@/hooks';
 import { cn } from '@/utils';
+import { selectLeaderboardPeriod } from '@/redux/selectors';
+import { setLeaderboardPeriod } from '@/redux/slices';
 
 export function AdminDashboard() {
 	const { data: globalStats, isLoading: statsLoading, refetch } = useGlobalStats();
 	const { data: realTimeData, isLoading: realTimeLoading } = useRealTimeAnalytics();
 	const { data: topicsData, isLoading: topicsLoading } = usePopularTopics();
-	const { data: globalDifficultyStats, isLoading: difficultyLoading } = useGlobalDifficultyStats();
 	const { data: globalData, isLoading: globalLoading } = useGlobalLeaderboard();
 	const { data: weeklyData, isLoading: weeklyLoading } = useLeaderboardByPeriod(LeaderboardPeriod.WEEKLY);
-	const { data: globalTrends, isLoading: trendsLoading } = useGlobalTrends({ groupBy: TimePeriod.DAILY, limit: 30 });
-	const { data: aiProviderStats, isLoading: aiProviderStatsLoading } = useAiProviderStats();
-	const { data: aiProviderHealth, isLoading: aiProviderHealthLoading } = useAiProviderHealth();
 	const {
 		data: gameStatistics,
 		isLoading: gameStatisticsLoading,
 		refetch: refetchGameStatistics,
 	} = useGameStatistics();
 	const { data: triviaQuestions, isLoading: triviaQuestionsLoading } = useAllTriviaQuestions();
-	const clearGameHistory = useClearAllGameHistory();
 	const clearTrivia = useClearAllTrivia();
-	const clearUserStats = useClearAllUserStats();
-	const clearLeaderboard = useClearAllLeaderboard();
-	const [leaderboardTab, setLeaderboardTab] = useState<LeaderboardPeriod>(LeaderboardPeriod.GLOBAL);
+	const { data: businessMetrics, isLoading: businessMetricsLoading } = useBusinessMetrics();
+	const dispatch = useAppDispatch();
+	const leaderboardTab = useAppSelector(selectLeaderboardPeriod);
 
 	const stats = [
 		{
@@ -83,7 +76,7 @@ export function AdminDashboard() {
 		{
 			icon: GamepadIcon,
 			label: 'Average Games',
-			value: globalStats?.averageGames?.toLocaleString() || '0',
+			value: globalStats?.averageGames?.toLocaleString() ?? '0',
 			color: TextColor.GREEN_500,
 		},
 		{
@@ -109,7 +102,7 @@ export function AdminDashboard() {
 						<p className='text-muted-foreground'>Overview of platform statistics</p>
 					</div>
 					<Button variant={ButtonVariant.OUTLINE} onClick={() => refetch()} disabled={statsLoading}>
-						<Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} className={cn('mr-2', !statsLoading && 'hidden')} />
+						<Spinner size={SpinnerSize.SM} variant='refresh' className={cn('mr-2', !statsLoading && 'hidden')} />
 						{statsLoading ? null : 'Refresh'}
 					</Button>
 				</div>
@@ -129,7 +122,7 @@ export function AdminDashboard() {
 				</div>
 
 				<Tabs defaultValue='overview' className='w-full'>
-					<TabsList className='grid w-full grid-cols-9'>
+					<TabsList className='grid w-full grid-cols-11'>
 						<TabsTrigger value='overview'>Overview</TabsTrigger>
 						<TabsTrigger value='realtime'>Real-time</TabsTrigger>
 						<TabsTrigger value='performance'>Performance</TabsTrigger>
@@ -137,173 +130,17 @@ export function AdminDashboard() {
 						<TabsTrigger value='leaderboard'>Leaderboard</TabsTrigger>
 						<TabsTrigger value='games'>Games</TabsTrigger>
 						<TabsTrigger value='users'>Users</TabsTrigger>
+						<TabsTrigger value='business'>Business</TabsTrigger>
 						<TabsTrigger value='system'>System</TabsTrigger>
 						<TabsTrigger value='ai-providers'>AI Providers</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value='overview' className='mt-6 space-y-8'>
-						{/* Overview Statistics Section */}
-						<Card className='border-primary/20 bg-primary/5'>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-									<BarChart3 className='h-6 w-6 text-primary' />
-									Overview Statistics
-								</CardTitle>
-								<CardDescription>Global platform statistics and trends overview</CardDescription>
-							</CardHeader>
-						</Card>
-
-						{/* Trends Chart Section */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<TrendingUp className='h-5 w-5' />
-									Platform Trends
-								</CardTitle>
-								<CardDescription>Historical trends and performance metrics over time</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<TrendChart
-									data={globalTrends}
-									isLoading={trendsLoading}
-									height={350}
-									showSuccessRate={true}
-									className='col-span-full'
-								/>
-							</CardContent>
-						</Card>
-
-						{/* Distribution Chart Section */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<BarChart3 className='h-5 w-5' />
-									Key Metrics Distribution
-								</CardTitle>
-								<CardDescription>Success rate and consistency metrics breakdown</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<DistributionChart
-									data={
-										globalStats
-											? [
-													{
-														name: 'Success Rate',
-														value: globalStats.successRate ?? 0,
-													},
-													{
-														name: 'Consistency',
-														value: globalStats.consistency ?? 0,
-													},
-												]
-											: undefined
-									}
-									isLoading={statsLoading}
-									height={300}
-									xAxisLabel='Metric'
-									yAxisLabel='Percentage (%)'
-									valueLabel='Percentage'
-									color='hsl(var(--primary))'
-								/>
-							</CardContent>
-						</Card>
+						<PlatformTrendsSection stats={stats} statsLoading={statsLoading} />
 					</TabsContent>
 
 					<TabsContent value='performance' className='mt-6 space-y-8'>
-						{/* Performance Analysis Section */}
-						<Card className='border-primary/20 bg-primary/5'>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-									<BarChart3 className='h-6 w-6 text-primary' />
-									Performance Analysis
-								</CardTitle>
-								<CardDescription>Global performance metrics and difficulty-level analysis</CardDescription>
-							</CardHeader>
-						</Card>
-
-						{/* Performance Distribution Chart */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<TrendingUp className='h-5 w-5' />
-									Performance by Difficulty Level
-								</CardTitle>
-								<CardDescription>Success rate distribution across different difficulty levels</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<DistributionChart
-									data={
-										globalDifficultyStats
-											? Object.entries(globalDifficultyStats).map(([difficulty, stats]) => ({
-													name: difficulty,
-													value: stats?.successRate ?? 0,
-													count: stats?.total ?? 0,
-												}))
-											: undefined
-									}
-									isLoading={difficultyLoading}
-									height={350}
-									xAxisLabel='Difficulty Level'
-									yAxisLabel='Success Rate'
-									valueLabel='Success Rate'
-									countLabel='Games'
-									color='hsl(var(--primary))'
-								/>
-							</CardContent>
-						</Card>
-
-						{/* Performance Details */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<BarChart3 className='h-5 w-5' />
-									Performance by Difficulty
-								</CardTitle>
-								<CardDescription>Global performance across different difficulty levels</CardDescription>
-							</CardHeader>
-							<CardContent className='space-y-6'>
-								{difficultyLoading ? (
-									<div className='space-y-4'>
-										{[...Array(4)].map((_, i) => (
-											<div key={i} className='space-y-2'>
-												<Skeleton className='h-4 w-full' />
-												<Skeleton className='h-2 w-full' />
-											</div>
-										))}
-									</div>
-								) : globalDifficultyStats && Object.keys(globalDifficultyStats).length > 0 ? (
-									Object.entries(globalDifficultyStats)
-										.filter(([difficulty]) => isGameDifficulty(difficulty))
-										.map(([difficulty, stats], index) => {
-											if (!isGameDifficulty(difficulty)) return null;
-											const difficultyStats = stats;
-											return (
-												<DifficultyBar
-													key={difficulty}
-													difficulty={difficulty}
-													successRate={difficultyStats?.successRate ?? 0}
-													gamesPlayed={difficultyStats?.total ?? 0}
-													color={
-														index === 0
-															? '[&>div]:bg-green-500'
-															: index === 1
-																? '[&>div]:bg-yellow-500'
-																: index === 2
-																	? '[&>div]:bg-orange-500'
-																	: '[&>div]:bg-red-500'
-													}
-												/>
-											);
-										})
-										.filter((item): item is JSX.Element => item !== null)
-								) : (
-									<div className='text-center py-8 text-muted-foreground'>
-										<BarChart3 className='h-12 w-12 mx-auto mb-4 opacity-50' />
-										<p>No difficulty statistics available yet</p>
-									</div>
-								)}
-							</CardContent>
-						</Card>
+						<PerformanceAnalysisSection />
 					</TabsContent>
 
 					<TabsContent value='topics' className='mt-6 space-y-8'>
@@ -391,7 +228,7 @@ export function AdminDashboard() {
 							value={leaderboardTab}
 							onValueChange={value => {
 								if (isLeaderboardPeriod(value)) {
-									setLeaderboardTab(value);
+									dispatch(setLeaderboardPeriod(value));
 								}
 							}}
 							className='w-full'
@@ -650,286 +487,165 @@ export function AdminDashboard() {
 						</Card>
 					</TabsContent>
 
-					<TabsContent value='system' className='mt-6 space-y-8'>
-						{/* System Management Section */}
+					<TabsContent value='business' className='mt-6 space-y-8'>
+						{/* Business Metrics Section */}
 						<Card className='border-primary/20 bg-primary/5'>
 							<CardHeader>
 								<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-									<Settings className='h-6 w-6 text-primary' />
-									System Management
+									<DollarSign className='h-6 w-6 text-primary' />
+									Business Metrics
 								</CardTitle>
-								<CardDescription>Manage system data and perform administrative operations</CardDescription>
+								<CardDescription>Revenue, user growth, and engagement metrics</CardDescription>
 							</CardHeader>
 						</Card>
 
-						{/* System Operations */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<Settings className='h-5 w-5' />
-									Data Management
-								</CardTitle>
-								<CardDescription>Clear all data types from the system</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<ManagementActions
-									operations={[
-										{
-											id: 'clear-game-history',
-											title: 'Clear Game History',
-											description: 'Delete all game history records from the system',
-											itemName: 'Game History',
-											currentCount: gameStatistics?.totalGames,
-											onClear: () => clearGameHistory.mutate(),
-											isLoading: clearGameHistory.isPending,
-											icon: GamepadIcon,
-										},
-										{
-											id: 'clear-trivia',
-											title: 'Clear Trivia Questions',
-											description: 'Delete all trivia questions from the database',
-											itemName: 'Trivia Questions',
-											currentCount: triviaQuestions?.totalCount,
-											onClear: () => clearTrivia.mutate(),
-											isLoading: clearTrivia.isPending,
-											icon: GamepadIcon,
-										},
-										{
-											id: 'clear-user-stats',
-											title: 'Clear User Stats',
-											description: 'Delete all user analytics and statistics',
-											itemName: 'User Stats',
-											onClear: () => clearUserStats.mutate(),
-											isLoading: clearUserStats.isPending,
-											icon: Activity,
-										},
-										{
-											id: 'clear-leaderboard',
-											title: 'Clear Leaderboard',
-											description: 'Reset all leaderboard rankings and scores',
-											itemName: 'Leaderboard',
-											onClear: () => clearLeaderboard.mutate(),
-											isLoading: clearLeaderboard.isPending,
-											icon: Trophy,
-										},
-									]}
-								/>
-							</CardContent>
-						</Card>
-					</TabsContent>
-
-					<TabsContent value='ai-providers' className='mt-6 space-y-8'>
-						{/* AI Provider Management Section */}
-						<Card className='border-primary/20 bg-primary/5'>
-							<CardHeader>
-								<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-									<Activity className='h-6 w-6 text-primary' />
-									AI Provider Management
-								</CardTitle>
-								<CardDescription>Monitor and manage AI provider health, statistics, and performance</CardDescription>
-							</CardHeader>
-						</Card>
-
-						{/* Health Status Card */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<Activity className='h-5 w-5' />
-									AI Provider Health Status
-								</CardTitle>
-								<CardDescription>Real-time health monitoring of AI providers</CardDescription>
-							</CardHeader>
-							<CardContent>
-								{aiProviderHealthLoading ? (
-									<Skeleton className='h-24 w-full' />
-								) : aiProviderHealth ? (
-									<div className='flex items-center justify-between'>
-										<div>
-											<div className='flex items-center gap-2 mb-2'>
-												<Badge
-													variant={
-														aiProviderHealth.status === ProviderStatusEnum.HEALTHY
-															? VariantBase.DEFAULT
-															: aiProviderHealth.status === ProviderStatusEnum.UNHEALTHY
-																? VariantBase.DESTRUCTIVE
-																: VariantBase.SECONDARY
-													}
-												>
-													{aiProviderHealth.status.toUpperCase()}
-												</Badge>
-												<span className='text-sm text-muted-foreground'>
-													Last checked: {new Date(aiProviderHealth.timestamp).toLocaleTimeString()}
-												</span>
-											</div>
-											<div className='grid grid-cols-2 gap-4 mt-4'>
-												<div>
-													<p className='text-sm text-muted-foreground'>Available Providers</p>
-													<p className='text-2xl font-bold text-green-500'>{aiProviderHealth.availableProviders}</p>
-												</div>
-												<div>
-													<p className='text-sm text-muted-foreground'>Total Providers</p>
-													<p className='text-2xl font-bold'>{aiProviderHealth.totalProviders}</p>
-												</div>
-											</div>
-											{aiProviderHealth.error && (
-												<div className='mt-4 p-3 bg-destructive/10 border border-destructive rounded-md'>
-													<p className='text-sm text-destructive'>{aiProviderHealth.error}</p>
-												</div>
-											)}
-										</div>
-									</div>
-								) : (
-									<div className='text-center py-8 text-muted-foreground'>
-										<Activity className='h-12 w-12 mx-auto mb-4 opacity-50' />
-										<p>No health status available</p>
-									</div>
-								)}
-							</CardContent>
-						</Card>
-
-						{/* AI Providers Statistics */}
-						<Card className='border-muted bg-muted/20'>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<BarChart3 className='h-5 w-5' />
-									AI Providers Statistics
-								</CardTitle>
-								<CardDescription>Overview of AI provider performance and status</CardDescription>
-							</CardHeader>
-							<CardContent>
-								{aiProviderStatsLoading ? (
-									<div className='space-y-4'>
-										{[...Array(3)].map((_, i) => (
-											<Skeleton key={i} className='h-24 w-full' />
-										))}
-									</div>
-								) : aiProviderStats ? (
-									<div className='space-y-6'>
-										<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+						{/* Business Metrics Cards */}
+						{businessMetricsLoading ? (
+							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
+								{[...Array(4)].map((_, i) => (
+									<Skeleton key={i} className='h-32 w-full' />
+								))}
+							</div>
+						) : businessMetrics ? (
+							<>
+								{/* Revenue Metrics */}
+								<Card className='border-muted bg-muted/20'>
+									<CardHeader>
+										<CardTitle className='flex items-center gap-2'>
+											<DollarSign className='h-5 w-5' />
+											Revenue Metrics
+										</CardTitle>
+										<CardDescription>Financial performance and revenue indicators</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 											<StatCard
-												icon={Activity}
-												label='Total Providers'
-												value={aiProviderStats.totalProviders}
+												icon={DollarSign}
+												label='Total Revenue'
+												value={`$${formatForDisplay(businessMetrics.revenue.total)}`}
+												color={TextColor.GREEN_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+											<StatCard
+												icon={TrendingUp}
+												label='Monthly Recurring Revenue (MRR)'
+												value={`$${formatForDisplay(businessMetrics.revenue.mrr)}`}
+												color={TextColor.BLUE_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+											<StatCard
+												icon={Users}
+												label='Average Revenue Per User (ARPU)'
+												value={`$${formatForDisplay(businessMetrics.revenue.arpu)}`}
+												color={TextColor.PURPLE_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* User Metrics */}
+								<Card className='border-muted bg-muted/20'>
+									<CardHeader>
+										<CardTitle className='flex items-center gap-2'>
+											<Users className='h-5 w-5' />
+											User Metrics
+										</CardTitle>
+										<CardDescription>User growth and retention metrics</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+											<StatCard
+												icon={Users}
+												label='Total Users'
+												value={businessMetrics.users.total.toLocaleString()}
 												color={TextColor.BLUE_500}
 												variant={StatCardVariant.VERTICAL}
 											/>
 											<StatCard
 												icon={Activity}
-												label='Current Provider'
-												value={aiProviderStats.providers[aiProviderStats.currentProviderIndex] || 'N/A'}
+												label='Active Users'
+												value={businessMetrics.users.active.toLocaleString()}
 												color={TextColor.GREEN_500}
 												variant={StatCardVariant.VERTICAL}
 											/>
 											<StatCard
-												icon={Activity}
-												label='Active Providers'
-												value={
-													Object.values(aiProviderStats.providerDetails).filter((provider: unknown) => {
-														if (isRecord(provider) && typeof provider.status === 'string') {
-															return (
-																provider.status === ProviderStatusEnum.HEALTHY ||
-																provider.status === ProviderStatusEnum.ACTIVE
-															);
-														}
-														return false;
-													}).length
-												}
+												icon={TrendingUp}
+												label='New This Month'
+												value={businessMetrics.users.newThisMonth.toLocaleString()}
 												color={TextColor.PURPLE_500}
 												variant={StatCardVariant.VERTICAL}
 											/>
 											<StatCard
-												icon={Activity}
-												label='Total Requests'
-												value={Object.values(aiProviderStats.providerDetails).reduce((sum, provider) => {
-													return sum + (provider.requests ?? 0);
-												}, 0)}
+												icon={AlertTriangle}
+												label='Churn Rate'
+												value={`${formatForDisplay(businessMetrics.users.churnRate)}%`}
+												color={TextColor.RED_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* Engagement Metrics */}
+								<Card className='border-muted bg-muted/20'>
+									<CardHeader>
+										<CardTitle className='flex items-center gap-2'>
+											<Activity className='h-5 w-5' />
+											Engagement Metrics
+										</CardTitle>
+										<CardDescription>User engagement and activity indicators</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+											<StatCard
+												icon={Users}
+												label='Daily Active Users (DAU)'
+												value={businessMetrics.engagement.dau.toLocaleString()}
+												color={TextColor.BLUE_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+											<StatCard
+												icon={Users}
+												label='Weekly Active Users (WAU)'
+												value={businessMetrics.engagement.wau.toLocaleString()}
+												color={TextColor.GREEN_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+											<StatCard
+												icon={Users}
+												label='Monthly Active Users (MAU)'
+												value={businessMetrics.engagement.mau.toLocaleString()}
+												color={TextColor.PURPLE_500}
+												variant={StatCardVariant.VERTICAL}
+											/>
+											<StatCard
+												icon={BarChart3}
+												label='Avg Session Duration'
+												value={`${formatForDisplay(businessMetrics.engagement.avgSessionDuration / 60)}m`}
 												color={TextColor.YELLOW_500}
 												variant={StatCardVariant.VERTICAL}
 											/>
 										</div>
+									</CardContent>
+								</Card>
+							</>
+						) : (
+							<Card>
+								<CardContent className='p-6 text-center text-muted-foreground'>
+									<DollarSign className='h-12 w-12 mx-auto mb-4 opacity-50' />
+									<p>No business metrics available</p>
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
 
-										<Card className='border-muted/50 bg-muted/10'>
-											<CardHeader>
-												<CardTitle>Provider Details</CardTitle>
-												<CardDescription>Individual provider statistics</CardDescription>
-											</CardHeader>
-											<CardContent>
-												<div className='space-y-4'>
-													{Object.entries(aiProviderStats.providerDetails).map(([name, providerStats]) => {
-														return (
-															<Card key={name}>
-																<CardHeader className='pb-3'>
-																	<div className='flex items-center justify-between'>
-																		<CardTitle className='text-lg'>{name}</CardTitle>
-																		<Badge
-																			variant={
-																				providerStats.status === ProviderStatusEnum.HEALTHY ||
-																				providerStats.status === ProviderStatusEnum.ACTIVE
-																					? VariantBase.DEFAULT
-																					: VariantBase.DESTRUCTIVE
-																			}
-																		>
-																			{providerStats.status || 'unknown'}
-																		</Badge>
-																	</div>
-																</CardHeader>
-																<CardContent>
-																	<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Requests</p>
-																			<p className='text-lg font-bold'>{providerStats.requests ?? 0}</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Successes</p>
-																			<p className='text-lg font-bold text-green-500'>{providerStats.successes ?? 0}</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Failures</p>
-																			<p className='text-lg font-bold text-red-500'>{providerStats.failures ?? 0}</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Success Rate</p>
-																			<p className='text-lg font-bold'>
-																				{formatForDisplay(providerStats.successRate ?? 0)}%
-																			</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Avg Response Time</p>
-																			<p className='text-lg font-bold'>
-																				{formatForDisplay(providerStats.averageResponseTime ?? 0)}ms
-																			</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Error Rate</p>
-																			<p className='text-lg font-bold text-red-500'>
-																				{formatForDisplay(providerStats.errorRate ?? 0)}%
-																			</p>
-																		</div>
-																		<div>
-																			<p className='text-sm text-muted-foreground'>Last Used</p>
-																			<p className='text-lg font-bold'>
-																				{providerStats.lastUsed
-																					? new Date(providerStats.lastUsed).toLocaleString()
-																					: 'Never'}
-																			</p>
-																		</div>
-																	</div>
-																</CardContent>
-															</Card>
-														);
-													})}
-												</div>
-											</CardContent>
-										</Card>
-									</div>
-								) : (
-									<div className='text-center py-8 text-muted-foreground'>
-										<Activity className='h-12 w-12 mx-auto mb-4 opacity-50' />
-										<p>No AI provider statistics available</p>
-									</div>
-								)}
-							</CardContent>
-						</Card>
+					<TabsContent value='system' className='mt-6 space-y-8'>
+						<SystemHealthSection />
+					</TabsContent>
+
+					<TabsContent value='ai-providers' className='mt-6 space-y-8'>
+						<ProviderManagementSection />
 					</TabsContent>
 				</Tabs>
 			</div>

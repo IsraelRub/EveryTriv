@@ -1,16 +1,6 @@
-/**
- * Payment Types (server-only)
- * @module ServerPaymentTypes
- * @description Payment-related type definitions
- */
 import { PayPalEnvironment } from '@shared/constants';
 import type { PaymentMetadata } from '@shared/types';
 
-/**
- * PayPal configuration interface
- * @interface PayPalConfig
- * @description PayPal payment gateway configuration
- */
 export interface PayPalConfig {
 	clientId: string;
 	clientSecret: string;
@@ -18,11 +8,6 @@ export interface PayPalConfig {
 	environment: PayPalEnvironment;
 }
 
-/**
- * Personal payment data interface for payment forms (server-only)
- * @interface PersonalPaymentData
- * @description Payment data with personal information and full card details
- */
 export interface PersonalPaymentData {
 	firstName: string;
 	lastName: string;
@@ -37,15 +22,9 @@ export interface PersonalPaymentData {
 	paypalPaymentId?: string;
 }
 
-/**
- * Payment history metadata interface
- * @interface PaymentHistoryMetadata
- * @description Extended payment metadata for payment history entity
- * Extends shared PaymentMetadata with additional history-specific fields
- */
 export interface PaymentHistoryMetadata extends PaymentMetadata {
-	completedAt?: string;
-	failedAt?: string;
 	originalAmount?: number;
 	originalCurrency?: string;
+	paypalOrderStatus?: string;
+	webhookEventId?: string;
 }

@@ -1,15 +1,3 @@
-/**
- * Client Configuration Types
- * @module ClientConfigTypes
- * @description Client-side configuration type definitions
- */
-
-/**
- * Vite Proxy Configuration interface
- * @interface ViteProxyConfig
- * @description Configuration for Vite development server proxy
- * @used_by client/vite.config.ts
- */
 export interface ViteProxyConfig {
 	target: string;
 	changeOrigin: boolean;

@@ -1,10 +1,3 @@
-/**
- * WebSocket Authentication Guard
- *
- * @module WsAuthGuard
- * @description Guard that validates JWT tokens for WebSocket connections
- * @used_by server/src/features/game/multiplayer/multiplayer.gateway.ts
- */
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -12,14 +5,11 @@ import type { Socket } from 'socket.io';
 
 import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-import { AUTH_CONSTANTS } from '@shared/constants';
+
+import { AppConfig } from '@config';
 import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
-/**
- * WebSocket Authentication Guard
- * Validates JWT tokens for WebSocket connections
- */
 @Injectable()
 export class WsAuthGuard implements CanActivate {
 	constructor(
@@ -36,7 +26,7 @@ export class WsAuthGuard implements CanActivate {
 		const request = client.handshake;
 
 		// Check if endpoint is public using centralized function
-		const isHardcodedPublic = isPublicEndpoint(request.url || '');
+		const isHardcodedPublic = isPublicEndpoint(request.url ?? '');
 
 		// Debug logging
 		logger.authDebug('WsAuthGuard check', {
@@ -52,7 +42,7 @@ export class WsAuthGuard implements CanActivate {
 
 		// Extract token from handshake query params or authorization header
 		const token =
-			request.auth?.token || request.headers?.authorization?.replace('Bearer ', '') || request.query?.token || null;
+			request.auth?.token ?? request.headers?.authorization?.replace('Bearer ', '') ?? request.query?.token ?? null;
 
 		if (!token) {
 			logger.securityDenied('No authentication token provided for WebSocket connection');
@@ -62,7 +52,7 @@ export class WsAuthGuard implements CanActivate {
 		try {
 			// Verify JWT token
 			const payload = await this.jwtService.verifyAsync(token, {
-				secret: AUTH_CONSTANTS.JWT_SECRET,
+				secret: AppConfig.jwt.secret,
 			});
 
 			// Attach user to client data
@@ -78,7 +68,7 @@ export class WsAuthGuard implements CanActivate {
 			return true;
 		} catch (error) {
 			logger.securityDenied('Invalid authentication token for WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw new UnauthorizedException(ERROR_CODES.INVALID_AUTHENTICATION_TOKEN);
 		}

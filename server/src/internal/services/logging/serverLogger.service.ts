@@ -1,12 +1,13 @@
-import { LogLevel } from '@shared/constants';
+import { LogLevel, VALIDATORS } from '@shared/constants';
 import { BaseLoggerService } from '@shared/services';
 import type {
-	EnhancedLoggerInterface,
+	EnhancedLogger,
 	LogAuthEnhancedFn,
 	LoggerConfigUpdate,
 	LogMessageFn,
 	LogMeta,
 	LogSecurityEnhancedFn,
+	TraceStorage,
 } from '@shared/types';
 import { hasProperty, hasPropertyOfType, isRecord, sanitizeLogMessage } from '@shared/utils';
 
@@ -26,98 +27,7 @@ if (typeof process !== 'undefined' && process.versions?.node) {
 	}
 }
 
-type TraceStorage = {
-	enterWith(value: string): void;
-	getStore(): string | undefined;
-};
-
-type AsyncLocalStorageConstructor = new () => TraceStorage;
-
-const isEnterWithFunction = (candidate: unknown): candidate is (value: string) => void => {
-	return typeof candidate === 'function';
-};
-
-const isGetStoreFunction = (candidate: unknown): candidate is () => string | undefined => {
-	return typeof candidate === 'function';
-};
-
-const isAsyncLocalStorageConstructor = (value: unknown): value is AsyncLocalStorageConstructor => {
-	if (typeof value !== 'function') {
-		return false;
-	}
-
-	const prototypeCandidate: unknown = value.prototype;
-	if (!isRecord(prototypeCandidate)) {
-		return false;
-	}
-
-	const hasEnterWith = hasPropertyOfType(prototypeCandidate, 'enterWith', isEnterWithFunction);
-	const hasGetStore = hasPropertyOfType(prototypeCandidate, 'getStore', isGetStoreFunction);
-
-	return hasEnterWith && hasGetStore;
-};
-
-const loadAsyncLocalStorage = (): AsyncLocalStorageConstructor | undefined => {
-	if (typeof process === 'undefined' || !process.versions?.node || !asyncHooks) {
-		return undefined;
-	}
-
-	try {
-		const moduleCandidate: unknown = asyncHooks;
-		if (!hasProperty(moduleCandidate, 'AsyncLocalStorage')) {
-			return undefined;
-		}
-
-		const constructorCandidate = moduleCandidate.AsyncLocalStorage;
-		if (isAsyncLocalStorageConstructor(constructorCandidate)) {
-			return constructorCandidate;
-		}
-	} catch {
-		return undefined;
-	}
-
-	return undefined;
-};
-
-const createTraceStorage = (): TraceStorage => {
-	const asyncLocalStorageConstructor = loadAsyncLocalStorage();
-	if (asyncLocalStorageConstructor) {
-		const storageInstance = new asyncLocalStorageConstructor();
-		return {
-			enterWith(value: string): void {
-				storageInstance.enterWith(value);
-			},
-			getStore(): string | undefined {
-				const store = storageInstance.getStore();
-				if (typeof store === 'string' && store.length > 0) {
-					return store;
-				}
-
-				return undefined;
-			},
-		};
-	}
-
-	let activeTraceId: string | undefined;
-
-	return {
-		enterWith(value: string): void {
-			activeTraceId = value;
-		},
-		getStore(): string | undefined {
-			return activeTraceId;
-		},
-	};
-};
-
-/**
- * Server Logger Implementation
- *
- * @module ServerLogger
- * @description Server-specific logger implementation with file logging
- * Extends BaseLoggerService with server-specific logging behavior
- */
-export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInterface {
+export class ServerLoggerService extends BaseLoggerService implements EnhancedLogger {
 	private readonly traceStorage: TraceStorage;
 	private logDir: string;
 	private logFile: string;
@@ -127,7 +37,7 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 	constructor(config?: LoggerConfigUpdate) {
 		super(config);
 
-		this.traceStorage = createTraceStorage();
+		this.traceStorage = ServerLoggerService.createTraceStorage();
 
 		// Initialize server-specific config defaults
 		this.config = {
@@ -142,7 +52,7 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 		this.errorCounts = new Map();
 
 		// Guard: avoid Node-only APIs when bundled in browser accidentally
-		if (typeof process === 'undefined' || !path || typeof path.join !== 'function') {
+		if (typeof process === 'undefined' || !path || !VALIDATORS.function(path.join)) {
 			this.logDir = '';
 			this.logFile = '';
 			return;
@@ -235,18 +145,12 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 		}
 	}
 
-	/**
-	 * Start performance tracking for an operation
-	 */
 	public startPerformanceTracking(operationId: string): void {
 		this.performanceMetrics.set(operationId, {
 			startTime: Date.now(),
 		});
 	}
 
-	/**
-	 * End performance tracking and log the duration
-	 */
 	public endPerformanceTracking(operationId: string, meta?: LogMeta): number {
 		const metric = this.performanceMetrics.get(operationId);
 		if (!metric) {
@@ -278,9 +182,6 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 		return duration;
 	}
 
-	/**
-	 * Log security events with enhanced context
-	 */
 	public logSecurityEventEnhanced: LogSecurityEnhancedFn = (message, level, context) => {
 		if (!this.config.enableSecurityLogging) return;
 
@@ -301,9 +202,6 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 		}
 	};
 
-	/**
-	 * Log authentication events
-	 */
 	public logAuthenticationEnhanced: LogAuthEnhancedFn = (event, userId, email, metadata) => {
 		const context = {
 			userId,
@@ -343,6 +241,76 @@ export class ServerLogger extends BaseLoggerService implements EnhancedLoggerInt
 			traceId: activeTraceId,
 		};
 	}
+
+	private static isAsyncLocalStorageConstructor(value: unknown): value is new () => TraceStorage {
+		if (!VALIDATORS.function(value)) {
+			return false;
+		}
+
+		const prototypeCandidate: unknown = value.prototype;
+		if (!isRecord(prototypeCandidate)) {
+			return false;
+		}
+
+		return (
+			hasPropertyOfType(prototypeCandidate, 'enterWith', VALIDATORS.function) &&
+			hasPropertyOfType(prototypeCandidate, 'getStore', VALIDATORS.function)
+		);
+	}
+
+	private static loadAsyncLocalStorageConstructor(): (new () => TraceStorage) | undefined {
+		if (typeof process === 'undefined' || !process.versions?.node || !asyncHooks) {
+			return undefined;
+		}
+
+		try {
+			const moduleCandidate: unknown = asyncHooks;
+			if (!hasProperty(moduleCandidate, 'AsyncLocalStorage')) {
+				return undefined;
+			}
+
+			const constructorCandidate = moduleCandidate.AsyncLocalStorage;
+			if (ServerLoggerService.isAsyncLocalStorageConstructor(constructorCandidate)) {
+				return constructorCandidate;
+			}
+		} catch {
+			return undefined;
+		}
+
+		return undefined;
+	}
+
+	private static createTraceStorage(): TraceStorage {
+		const asyncLocalStorageConstructor = ServerLoggerService.loadAsyncLocalStorageConstructor();
+
+		if (asyncLocalStorageConstructor) {
+			const storageInstance = new asyncLocalStorageConstructor();
+			return {
+				enterWith(value: string): void {
+					storageInstance.enterWith(value);
+				},
+				getStore(): string | undefined {
+					const store = storageInstance.getStore();
+					if (typeof store === 'string' && store.length > 0) {
+						return store;
+					}
+
+					return undefined;
+				},
+			};
+		}
+
+		// Fallback: use simple variable storage
+		let activeTraceId: string | undefined;
+		return {
+			enterWith(value: string): void {
+				activeTraceId = value;
+			},
+			getStore(): string | undefined {
+				return activeTraceId;
+			},
+		};
+	}
 }
 
-export const serverLogger = new ServerLogger();
+export const serverLogger = new ServerLoggerService();

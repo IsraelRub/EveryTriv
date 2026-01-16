@@ -9,8 +9,13 @@
 
 ```
 client/src/utils/
-├── cn.utils.ts                     # פונקציות class names (cn)
-├── format.utils.ts                 # פונקציות עיצוב (כולל זמן)
+├── core/
+│   ├── cn.utils.ts                 # פונקציות class names (cn)
+│   ├── format.utils.ts             # פונקציות עיצוב (כולל זמן)
+│   └── index.ts                    # ייצוא מאוחד
+├── domain/                         # פונקציות domain-specific
+├── infrastructure/                 # פונקציות infrastructure
+├── validation/                     # פונקציות validation
 └── index.ts                        # ייצוא מאוחד
 ```
 
@@ -19,37 +24,6 @@ client/src/utils/
 ### format.utils.ts
 
 פונקציות עיצוב ופורמט:
-
-**formatNumber:**
-```typescript
-export function formatNumber(
-  num: number, 
-  decimals: number = 1, 
-  includeSuffix: boolean = true
-): string
-```
-
-מעצב מספר עם סיומת K/M:
-```typescript
-formatNumber(1234); // "1.2K"
-formatNumber(1234567); // "1.2M"
-formatNumber(1234, 0, false); // "1234"
-```
-
-**formatScore:**
-```typescript
-export function formatScore(
-  score: number, 
-  showPlus: boolean = true
-): string
-```
-
-מעצב ניקוד:
-```typescript
-formatScore(100); // "+100.0"
-formatScore(-50); // "50.0"
-formatScore(100, false); // "100.0"
-```
 
 **formatTime:**
 ```typescript
@@ -74,16 +48,28 @@ formatTimeDisplay(120); // "2m"
 formatTimeDisplay(7200); // "2h"
 ```
 
-**formatTimeUntilReset:**
+**formatDate:**
 ```typescript
-export function formatTimeUntilReset(resetTime: number): string
+export function formatDate(date: Date | string | null | undefined, defaultValue: string = '-'): string
 ```
 
-מעצב זמן עד איפוס (לדוגמה, איפוס יומי):
+מעצב תאריך לקריאה:
 ```typescript
-const resetTime = Date.now() + 3600000; // שעה מהיום
-formatTimeUntilReset(resetTime); // "1h 0m"
-formatTimeUntilReset(Date.now() - 1000); // "Reset now"
+formatDate(new Date('2024-01-15')); // "Jan 15, 2024"
+formatDate('2024-01-15'); // "Jan 15, 2024"
+formatDate(null); // "-"
+```
+
+**formatDuration:**
+```typescript
+export function formatDuration(seconds: number): string
+```
+
+מעצב משך זמן בפורמט קריא:
+```typescript
+formatDuration(3665); // "1h 1m 5s"
+formatDuration(330); // "5m 30s"
+formatDuration(30); // "30s"
 ```
 
 ## Class Names Utils
@@ -131,9 +117,8 @@ import {
   cn,
   formatTime,
   formatTimeDisplay,
-  formatTimeUntilReset,
-  formatNumber,
-  formatScore
+  formatDate,
+  formatDuration
 } from '@utils';
 ```
 
@@ -174,19 +159,12 @@ const buttonClass = cn(
 
 ### עיצוב זמן
 ```typescript
-import { formatTime, formatTimeDisplay, formatTimeUntilReset } from '@utils';
+import { formatTime, formatTimeDisplay, formatDate, formatDuration } from '@utils';
 
 const gameTime = formatTime(125); // "02:05"
 const displayTime = formatTimeDisplay(3661); // "1h"
-const resetTime = formatTimeUntilReset(Date.now() + 3600000); // "1h 0m"
-```
-
-### עיצוב מספרים
-```typescript
-import { formatNumber, formatScore } from '@utils';
-
-const points = formatNumber(1234); // "1.2K"
-const score = formatScore(100); // "+100.0"
+const date = formatDate(new Date()); // "Jan 15, 2024"
+const duration = formatDuration(3665); // "1h 1m 5s"
 ```
 
 ## קישורים רלוונטיים

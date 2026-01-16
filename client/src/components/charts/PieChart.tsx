@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { formatForDisplay } from '@shared/utils';
+
 import type { PieChartProps } from '@/types';
 import { ChartCard } from './ChartCard';
 
@@ -19,9 +20,6 @@ const DEFAULT_COLORS = [
 	'hsl(var(--chart-5))',
 ];
 
-/**
- * Pie chart component for displaying proportional data (topics distribution, etc.)
- */
 export function PieChart({
 	data,
 	isLoading,

@@ -53,17 +53,6 @@ client/src/types/
 
 טיפוסי API service ו-responses:
 
-**SubscriptionCreationResponse:**
-```typescript
-export interface SubscriptionCreationResponse {
-  subscriptionId?: string | null;
-  planType?: PlanType;
-  billingCycle?: BillingCycle;
-  status?: string;
-  paymentId?: string;
-}
-```
-
 **ManualPaymentPayload:**
 ```typescript
 export interface ManualPaymentPayload {
@@ -103,13 +92,12 @@ Interface מלא עם כל ה-methods של API service:
 - Game history methods: `saveGameHistory`, `getUserGameHistory`, `deleteGameHistory`, `clearGameHistory`
 - Leaderboard methods: `getLeaderboardEntries`, `getUserRank`, `getUserStats`, `updateUserRanking`, `getLeaderboardByPeriod`
 - Credits methods: `getCreditBalance`, `getCreditPackages`, `canPlayCredits`, `deductCredits`, `getCreditHistory`, `confirmCreditPurchase`, `purchaseCredits`
-- Trivia methods: `getTrivia`, `submitAnswer`, `getTriviaQuestionById`, `getGameById`, `validateCustomDifficulty`
+- Trivia methods: `getTrivia`, `getTriviaQuestionById`, `getGameById`, `validateCustomDifficulty`
+- Game session methods: `startGameSession`, `submitAnswerToSession`, `finalizeGameSession`
 - Analytics methods: `getUserAnalytics`, `getPopularTopics`, `getDifficultyStats`, `trackAnalyticsEvent`, `getUserStatisticsById`, `getUserPerformanceById`, `getUserProgressById`, `getUserActivityById`, `getUserInsightsById`, `getUserRecommendationsById`, `getUserAchievementsById`, `getUserTrendsById`, `compareUserPerformanceById`, `getUserSummaryById`
 - User preferences methods: `updateUserPreferences`
 - Account management methods: `deleteUserAccount`, `updateUserField`, `updateSinglePreference`, `getUserById`, `updateUserCredits`, `deleteUser`, `updateUserStatus`
-- Subscription methods: `createSubscription`, `cancelSubscription`, `getSubscriptionPlans`, `getCurrentSubscription`
 - Payment methods: `createPayment`, `getPaymentHistory`
-- Client logs methods: `submitClientLogs`
 
 ## Game Types
 
@@ -337,43 +325,21 @@ export type ClientValidationType = 'password' | 'email' | 'topic' | 'customDiffi
 ```
 ```
 
-**GameSliceState:**
-```typescript
-export interface GameSliceState extends BaseReduxState {
-  state: ClientGameState;
-  gameHistory: GameHistoryEntry[];
-  leaderboard: LeaderboardEntry[];
-}
-```
-
-**StatsState:**
-```typescript
-export interface StatsState extends BaseReduxState {
-  stats: UserStatsResponse | null;
-  globalStats: UserStatsResponse | null;
-  leaderboard: LeaderboardEntry[];
-}
-```
-
-**FavoritesState:**
-```typescript
-export interface FavoritesState extends BaseReduxState {
-  topics: string[];
-  difficulties: string[];
-  games: string[];
-  favoriteTopics: string[];
-}
-```
-
 **RootState:**
 ```typescript
 export interface RootState {
-  user: UserState;
-  game: GameSliceState;
   gameMode: GameModeState;
-  stats: StatsState;
-  favorites: FavoritesState;
 }
+```
+
+**הערה:** יש 5 slices:
+- `gameModeSlice` - מצב משחק והגדרות (persisted)
+- `gameSessionSlice` - סשן משחק פעיל (לא persisted)
+- `multiplayerSlice` - משחק מרובה משתתפים (לא persisted)
+- `audioSettingsSlice` - הגדרות אודיו (persisted)
+- `uiPreferencesSlice` - העדפות UI (persisted ב-sessionStorage)
+
+מצב משתמש/סטטיסטיקות מנוהלים ב-React Query.
 ```
 
 ### redux/actions.types.ts
@@ -420,13 +386,7 @@ export interface ScoreUpdatePayload {
 
 טיפוסי Async Operations:
 
-**BaseReduxState:**
-```typescript
-export interface BaseReduxState {
-  isLoading: boolean;
-  error: string | null;
-}
-```
+**הערה:** `BaseReduxState` הוסר - לא היה בשימוש.
 
 **LoadingPayload:**
 ```typescript

@@ -1,13 +1,8 @@
-/**
- * Game Statistics Card Component
- *
- * @module GameStatisticsCard
- * @description Component for displaying game statistics in admin dashboard
- */
 import { Activity, BarChart3, GamepadIcon, Target, Trophy } from 'lucide-react';
 
 import { formatForDisplay } from '@shared/utils';
-import { ButtonSize, ButtonVariant, SpinnerSize, SpinnerVariant, StatCardVariant, TextColor } from '@/constants';
+
+import { ButtonSize, ButtonVariant, SpinnerSize, StatCardVariant, TextColor } from '@/constants';
 import {
 	Button,
 	Card,
@@ -23,11 +18,6 @@ import {
 import type { GameStatisticsCardProps } from '@/types';
 import { cn } from '@/utils';
 
-/**
- * Component for displaying game statistics
- * @param props Component props
- * @returns Game statistics card component
- */
 export function GameStatisticsCard({ data, isLoading = false, onRefresh }: GameStatisticsCardProps) {
 	const stats = [
 		{
@@ -82,7 +72,7 @@ export function GameStatisticsCard({ data, isLoading = false, onRefresh }: GameS
 						</div>
 						{onRefresh && (
 							<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} onClick={onRefresh} disabled={isLoading}>
-								<Spinner variant={SpinnerVariant.REFRESH} size={SpinnerSize.SM} className={cn('mr-2', !isLoading && 'hidden')} />
+								<Spinner size={SpinnerSize.SM} variant='refresh' className={cn('mr-2', !isLoading && 'hidden')} />
 								{isLoading ? null : 'Refresh'}
 							</Button>
 						)}

@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { ChangeEvent, FormEvent, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lucide-react';
 
-import { ButtonSize, SpinnerSize, SpinnerVariant } from '@/constants';
+import { TIME_PERIODS_MS } from '@shared/constants';
+
+import { ButtonSize, SpinnerSize } from '@/constants';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Textarea } from '@/components';
-import { useToast } from '@/hooks';
+import { clientLogger as logger } from '@/services';
 
 export function ContactView() {
-	const { toast } = useToast();
 	const [formData, setFormData] = useState({
 		name: '',
 		email: '',
@@ -17,29 +18,30 @@ export function ContactView() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isSubmitted, setIsSubmitted] = useState(false);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		setIsSubmitting(true);
 
 		// Simulate form submission
-		await new Promise(resolve => setTimeout(resolve, 1000));
+		await new Promise(resolve => setTimeout(resolve, TIME_PERIODS_MS.SECOND));
 
 		setIsSubmitting(false);
 		setIsSubmitted(true);
 
-		toast({
-			title: 'Message Sent!',
-			description: 'Thank you for contacting us. We will get back to you soon.',
+		logger.userSuccess('Thank you for contacting us. We will get back to you soon.', {
+			name: formData.name,
+			contactEmail: formData.email,
+			contactSubject: formData.subject,
 		});
 
 		// Reset form after 3 seconds
 		setTimeout(() => {
 			setFormData({ name: '', email: '', subject: '', message: '' });
 			setIsSubmitted(false);
-		}, 3000);
+		}, TIME_PERIODS_MS.THREE_SECONDS);
 	};
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+	const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
 		setFormData(prev => ({
 			...prev,
 			[e.target.name]: e.target.value,
@@ -215,7 +217,7 @@ export function ContactView() {
 										<Button type='submit' size={ButtonSize.LG} className='w-full' disabled={isSubmitting}>
 											{isSubmitting ? (
 												<>
-													<Spinner variant={SpinnerVariant.BUTTON} size={SpinnerSize.SM} className='mr-2' />
+													<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
 													Sending...
 												</>
 											) : (

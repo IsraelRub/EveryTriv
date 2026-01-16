@@ -5,18 +5,19 @@ import { cn } from '@/utils';
 
 export const Tabs = TabsPrimitive.Root;
 
-export const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, ComponentPropsWithoutRef<typeof TabsPrimitive.List>>(
-	({ className, ...props }, ref) => (
-		<TabsPrimitive.List
-			ref={ref}
-			className={cn(
-				'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
-				className
-			)}
-			{...props}
-		/>
-	)
-);
+export const TabsList = forwardRef<
+	ElementRef<typeof TabsPrimitive.List>,
+	ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+	<TabsPrimitive.List
+		ref={ref}
+		className={cn(
+			'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+			className
+		)}
+		{...props}
+	/>
+));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
 export const TabsTrigger = forwardRef<

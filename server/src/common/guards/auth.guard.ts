@@ -1,16 +1,11 @@
-/**
- * Authentication Guard
- *
- * @module AuthGuard
- * @description Guard that validates JWT tokens and extracts user information
- */
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
 import { ERROR_CODES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-import { AUTH_CONSTANTS } from '@shared/constants';
+
+import { AppConfig } from '@config';
 import { serverLogger as logger, TokenExtractionService } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
@@ -22,27 +17,20 @@ export class AuthGuard implements CanActivate {
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		// Check if endpoint is marked as public via decorators
 		const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [context.getHandler(), context.getClass()]);
 
 		const request = context.switchToHttp().getRequest();
 
-		// Fallback: also honor decorator-aware middleware metadata if present
-		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
+		const isHardcodedPublic = isPublicEndpoint(request.path ?? '');
 
-		// Check if endpoint is public using centralized function
-		const isHardcodedPublic = isPublicEndpoint(request.path || '');
-
-		// Debug logging
 		logger.authDebug('AuthGuard check', {
 			path: request.path,
 			method: request.method,
 			isPublic,
-			middlewarePublicFlag,
 			isHardcodedPublic,
 		});
 
-		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
+		if (isPublic || isHardcodedPublic) {
 			logger.authDebug('Public endpoint - skipping auth check');
 			return true;
 		}
@@ -54,18 +42,16 @@ export class AuthGuard implements CanActivate {
 		}
 
 		try {
-			// Verify JWT token
 			const payload = await this.jwtService.verifyAsync(token, {
-				secret: AUTH_CONSTANTS.JWT_SECRET,
+				secret: AppConfig.jwt.secret,
 			});
 
 			logger.authDebug('JWT token verified', {
 				userId: payload.sub,
-				email: payload.email,
+				emails: { current: payload.email },
 				role: payload.role,
 			});
 
-			// Attach user to request
 			request.user = payload;
 			request.userRole = payload.role;
 
@@ -77,7 +63,7 @@ export class AuthGuard implements CanActivate {
 			return true;
 		} catch (error) {
 			logger.securityDenied('Invalid authentication token', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw new UnauthorizedException(ERROR_CODES.INVALID_AUTHENTICATION_TOKEN);
 		}

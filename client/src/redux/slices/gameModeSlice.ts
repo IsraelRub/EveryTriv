@@ -1,7 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { DifficultyLevel, GAME_MODES_CONFIG, GAME_STATE_CONFIG } from '@shared/constants';
-import type { GameConfig } from '@/types';
+import { DifficultyLevel, GAME_MODES_CONFIG } from '@shared/constants';
+import type { GameConfig } from '@shared/types';
+
+import { GAME_STATE_CONFIG } from '@/constants';
 
 export const gameModeStateSlice = createSlice({
 	name: 'gameMode',
@@ -12,8 +14,8 @@ export const gameModeStateSlice = createSlice({
 			const defaults = GAME_MODES_CONFIG[mode].defaults;
 
 			state.currentMode = mode;
-			state.currentTopic = topic || '';
-			state.currentDifficulty = difficulty || DifficultyLevel.EASY;
+			state.currentTopic = topic ?? '';
+			state.currentDifficulty = difficulty ?? DifficultyLevel.EASY;
 			state.currentSettings = {
 				mode: state.currentMode,
 				topic: state.currentTopic,

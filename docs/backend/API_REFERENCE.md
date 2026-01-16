@@ -16,7 +16,6 @@ Production: https://api.your-domain.com
 - `/points` - נקודות
 - `/leaderboard` - לוח תוצאות
 - `/payment` - תשלומים
-- `/subscription` - מנויים
 - `/analytics` - אנליטיקה
 
 ## Authentication
@@ -205,37 +204,6 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### POST /game/answer
-שליחת תשובה
-
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Request:**
-```json
-{
-  "questionId": "string",
-  "answer": "string",
-  "timeSpent": 15000
-}
-```
-
-**Response:**
-```json
-{
-  "questionId": "string",
-  "userAnswer": "string",
-  "correctAnswer": "string",
-  "isCorrect": true,
-  "timeSpent": 15000,
-  "scoreEarned": 100,
-  "totalScore": 100,
-  "feedback": "Correct answer!"
-}
-```
-
 #### GET /game/history
 היסטוריית משחקים
 
@@ -262,9 +230,10 @@ Authorization: Bearer <jwt_token>
       "questionsData": [
         {
           "question": "string",
-          "userAnswer": "string",
-          "correctAnswer": "string",
-          "isCorrect": true,
+          "questionId": "uuid",
+          "userAnswerIndex": 0,
+          "correctAnswerIndex": 2,
+          "isCorrect": false,
           "timeSpent": 30
         }
       ],
@@ -415,37 +384,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 #### POST /payment/webhook
-Webhook של Stripe
-
-### Subscription
-
-#### GET /subscription/plans
-קבלת תוכניות מנוי
-
-**Response:**
-```json
-{
-  "plans": [
-    {
-      "type": "premium",
-      "price": 9.99,
-      "features": []
-    }
-  ]
-}
-```
-
-#### GET /subscription/current
-קבלת מנוי נוכחי
-
-**Response:**
-```json
-{
-  "planType": "premium",
-  "status": "active",
-  "currentPeriodEnd": "2024-02-01T00:00:00Z"
-}
-```
+Webhook של PayPal
 
 ### Analytics
 

@@ -228,20 +228,6 @@ const result = await validationService.validateUserProfile({
 // { isValid: true, errors: [] }
 ```
 
-#### 13. validateSubscriptionPlan(plan: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של subscription plan.
-
-**ולידציות:**
-- Plan חייב להיות אחד מ-VALID_PLAN_TYPES
-- בדיקה case-insensitive
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateSubscriptionPlan('premium');
-// { isValid: true, errors: [] }
-```
-
 #### 14. validateCreditsAmount(amount: number)
 
 **תפקיד:** ולידציה של סכום קרדיטים.

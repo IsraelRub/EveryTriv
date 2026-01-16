@@ -1,38 +1,50 @@
-/**
- * Error Handling Utilities
- *
- * @module ErrorUtils
- * @description Centralized error handling utilities for consistent error processing
- * @used_by server/src/features, client/src/services, shared/services
- */
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_ERROR_MESSAGES, NEST_EXCEPTION_NAMES } from '../../constants';
-import type { HttpError, NestExceptionName } from '../../types';
+import {
+	ERROR_MESSAGES,
+	HTTP_ERROR_MESSAGES,
+	HTTP_NETWORK_ERROR_CODES_SET,
+	HTTP_TIMEOUT_ERROR_CODES_SET,
+	MAX_NESTED_ERROR_DEPTH,
+	NEST_EXCEPTION_NAME_SET,
+	VALIDATORS,
+} from '../../constants';
+import type { ProviderAuthError, ProviderErrorWithStatusCode, ProviderRateLimitError } from '../../types';
 import { hasProperty, isRecord } from './data.utils';
 
-const NEST_EXCEPTION_NAME_SET = new Set<string>(NEST_EXCEPTION_NAMES);
-
-const isNestExceptionName = (value: string): value is NestExceptionName => NEST_EXCEPTION_NAME_SET.has(value);
-
-const isHttpError = (error: Error): error is HttpError => {
+export function isErrorWithResponseStatus(error: unknown): error is { response?: { status?: number } } {
 	if (!isRecord(error)) {
 		return false;
 	}
 
-	const hasResponse = isRecord(error.response);
-	const hasConfig = isRecord(error.config);
-	const hasCode = typeof error.code === 'string';
+	if (!('response' in error)) {
+		return false;
+	}
 
-	return hasResponse || hasConfig || hasCode;
-};
+	const response = error.response;
+	if (response === undefined) {
+		return true;
+	}
 
-const MAX_NESTED_ERROR_DEPTH = 5;
+	if (!isRecord(response)) {
+		return false;
+	}
+
+	return !('status' in response) || VALIDATORS.number(response.status) || response.status === undefined;
+}
+
+export function isErrorWithCode(error: unknown): error is { code?: string } {
+	if (!isRecord(error)) {
+		return false;
+	}
+
+	return !('code' in error) || VALIDATORS.string(error.code) || error.code === undefined;
+}
 
 const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | null => {
 	if (depth > MAX_NESTED_ERROR_DEPTH || value == null) {
 		return null;
 	}
 
-	if (typeof value === 'string') {
+	if (VALIDATORS.string(value)) {
 		const trimmed = value.trim();
 		return trimmed.length > 0 ? trimmed : null;
 	}
@@ -48,19 +60,18 @@ const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | 
 	}
 
 	if (isRecord(value)) {
-		const recordValue = value;
 		const prioritizedKeys: readonly string[] = ['message', 'error', 'detail', 'description', 'errors'];
 
 		for (const key of prioritizedKeys) {
-			if (key in recordValue) {
-				const prioritizedValue = extractNestedErrorMessage(recordValue[key], depth + 1);
+			if (key in value) {
+				const prioritizedValue = extractNestedErrorMessage(value[key], depth + 1);
 				if (prioritizedValue) {
 					return prioritizedValue;
 				}
 			}
 		}
 
-		for (const entryValue of Object.values(recordValue)) {
+		for (const entryValue of Object.values(value)) {
 			const nestedResult = extractNestedErrorMessage(entryValue, depth + 1);
 			if (nestedResult) {
 				return nestedResult;
@@ -71,117 +82,169 @@ const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | 
 	return null;
 };
 
-/**
- * Enhanced error message extraction with specific error type handling
- * @param error The error to extract message from
- * @returns The error message with enhanced context or 'Unknown error' as fallback
- */
+// Structured error code mapping for Error instances
+const ERROR_CODE_MAP: Record<string, string> = {
+	JsonWebTokenError: ERROR_MESSAGES.general.AUTHENTICATION_FAILED,
+	TokenExpiredError: ERROR_MESSAGES.general.AUTHENTICATION_FAILED,
+	NotBeforeError: ERROR_MESSAGES.general.AUTHENTICATION_FAILED,
+	QueryFailedError: ERROR_MESSAGES.general.DATABASE_OPERATION_FAILED,
+	ConnectionTimeoutError: ERROR_MESSAGES.general.DATABASE_OPERATION_FAILED,
+	RedisError: ERROR_MESSAGES.general.CACHE_OPERATION_FAILED,
+};
+
+// Structured error pattern mapping for message content
+const ERROR_PATTERN_MAP: { pattern: RegExp; message: string }[] = [
+	{ pattern: /validation/i, message: ERROR_MESSAGES.general.INVALID_INPUT_DATA },
+	{ pattern: /redis|cache/i, message: ERROR_MESSAGES.general.CACHE_OPERATION_FAILED },
+	{ pattern: /timeout/i, message: HTTP_ERROR_MESSAGES.TIMEOUT_ERROR },
+	{ pattern: /rate limit|too many requests/i, message: ERROR_MESSAGES.general.RATE_LIMIT_EXCEEDED },
+	{ pattern: /memory|out of memory/i, message: ERROR_MESSAGES.general.INSUFFICIENT_RESOURCES },
+	{ pattern: /enoent|file not found/i, message: ERROR_MESSAGES.general.FILE_NOT_FOUND },
+	{ pattern: /eacces|permission denied/i, message: ERROR_MESSAGES.general.PERMISSION_DENIED },
+];
+
+const isErrorCode = (message: string): boolean => {
+	return message === message.toUpperCase() && /^[A-Z_]+$/.test(message);
+};
+
+const getHttpErrorMessage = (error: Error & { code?: string; response?: unknown }): string | null => {
+	const errorCode = VALIDATORS.string(error.code) ? error.code : undefined;
+
+	// Check timeout/network error codes first
+	if (errorCode && HTTP_TIMEOUT_ERROR_CODES_SET.has(errorCode)) {
+		return HTTP_ERROR_MESSAGES.TIMEOUT_ERROR;
+	}
+	if (errorCode && HTTP_NETWORK_ERROR_CODES_SET.has(errorCode)) {
+		return HTTP_ERROR_MESSAGES.NETWORK_ERROR;
+	}
+
+	// Extract response data
+	const response = isRecord(error.response) ? error.response : undefined;
+	const responseData = response && 'data' in response && isRecord(response.data) ? response.data : undefined;
+
+	// Try response data fields in priority order
+	if (responseData) {
+		if ('message' in responseData && VALIDATORS.string(responseData.message)) {
+			return responseData.message;
+		}
+		if ('error' in responseData && VALIDATORS.string(responseData.error)) {
+			return responseData.error;
+		}
+		const nestedMessage = extractNestedErrorMessage(responseData);
+		if (nestedMessage) {
+			return nestedMessage;
+		}
+	}
+
+	// Try response statusText
+	if (response && 'statusText' in response && VALIDATORS.string(response.statusText)) {
+		return response.statusText;
+	}
+
+	// Try response status
+	if (response && 'status' in response && VALIDATORS.number(response.status)) {
+		return HTTP_ERROR_MESSAGES.SERVER_ERROR;
+	}
+
+	return null;
+};
+
+const getErrorInstanceMessage = (error: Error): string => {
+	const errorName = error.constructor.name;
+	const message = error.message ?? '';
+	const normalizedMessage = message.toLowerCase();
+
+	// Check if it's an HTTP error
+	const hasHttpErrorProperties =
+		isRecord(error) &&
+		(isRecord(error.response) || isRecord(error.config) || VALIDATORS.string(error.code)) &&
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		(error.code || error.response);
+
+	if (hasHttpErrorProperties && error instanceof Error) {
+		const httpError: Error & { code?: string; response?: unknown } = error;
+		if ('code' in error && VALIDATORS.string(error.code)) {
+			httpError.code = error.code;
+		}
+		if ('response' in error) {
+			httpError.response = error.response;
+		}
+		const httpMessage = getHttpErrorMessage(httpError);
+		if (httpMessage) {
+			return httpMessage;
+		}
+		return error.message ?? HTTP_ERROR_MESSAGES.NETWORK_ERROR;
+	}
+
+	// Check error code mapping (Error types)
+	if (ERROR_CODE_MAP[errorName]) {
+		return ERROR_CODE_MAP[errorName];
+	}
+
+	// Check if message is an error code (uppercase with underscores)
+	if (isErrorCode(message)) {
+		return message;
+	}
+
+	// Check error pattern mapping (message content)
+	for (const { pattern, message: mappedMessage } of ERROR_PATTERN_MAP) {
+		if (pattern.test(normalizedMessage)) {
+			return mappedMessage;
+		}
+	}
+
+	// Handle NestJS exceptions
+	if (NEST_EXCEPTION_NAME_SET.has(errorName)) {
+		return error.message ?? ERROR_MESSAGES.general.REQUEST_FAILED;
+	}
+
+	// Try nested error message
+	const nestedDetail = extractNestedErrorMessage(error);
+	if (nestedDetail && nestedDetail !== message) {
+		return nestedDetail;
+	}
+
+	// Default Error
+	return error.message ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR;
+};
+
+const getRecordErrorMessage = (error: Record<string, unknown>): string | null => {
+	// Check if message property exists and is a string
+	if ('message' in error && VALIDATORS.string(error.message)) {
+		const message = error.message;
+		// Check if message is an error code (uppercase with underscores)
+		if (isErrorCode(message)) {
+			return message;
+		}
+		// Check if message contains "validation" (but not error codes)
+		if (message.toLowerCase().includes('validation')) {
+			return ERROR_MESSAGES.general.INVALID_INPUT_DATA;
+		}
+		// Return the message as-is
+		return message;
+	}
+
+	// Try nested message
+	const nestedMessage = extractNestedErrorMessage(error);
+	if (nestedMessage) {
+		// Check if nested message is an error code
+		if (isErrorCode(nestedMessage)) {
+			return nestedMessage;
+		}
+		return nestedMessage;
+	}
+
+	return null;
+};
+
 export function getErrorMessage(error: unknown): string {
 	// Handle Error instances
 	if (error instanceof Error) {
-		const errorName = error.constructor.name;
-		const message = error.message ?? '';
-		const normalizedMessage = message.toLowerCase();
-
-		// Handle HTTP errors with network-specific properties
-		if (isHttpError(error) && (error.code || error.response)) {
-			// Handle specific error codes
-			if (['ECONNABORTED', 'ETIMEDOUT'].includes(error.code ?? '')) {
-				return HTTP_ERROR_MESSAGES.TIMEOUT_ERROR;
-			}
-			if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code ?? '')) {
-				return HTTP_ERROR_MESSAGES.NETWORK_ERROR;
-			}
-
-			// Handle response errors
-			const responseData = error.response?.data;
-			if (responseData?.message) {
-				return responseData.message;
-			} else if (responseData?.error) {
-				return responseData.error;
-			}
-			const responseMessage = extractNestedErrorMessage(responseData);
-			if (responseMessage) {
-				return responseMessage;
-			}
-			if (error.response?.statusText) {
-				return error.response.statusText;
-			}
-			if (error.response?.status) {
-				return HTTP_ERROR_MESSAGES.SERVER_ERROR;
-			}
-
-			return error.message ?? HTTP_ERROR_MESSAGES.NETWORK_ERROR;
-		}
-
-		switch (errorName) {
-			case 'JsonWebTokenError':
-			case 'TokenExpiredError':
-			case 'NotBeforeError':
-				return ERROR_MESSAGES.general.AUTHENTICATION_FAILED;
-
-			case 'QueryFailedError':
-			case 'ConnectionTimeoutError':
-				return ERROR_MESSAGES.general.DATABASE_OPERATION_FAILED;
-
-			case 'RedisError':
-				return ERROR_MESSAGES.general.CACHE_OPERATION_FAILED;
-
-			default:
-				break;
-		}
-
-		// Handle validation errors (check message content)
-		if (normalizedMessage.includes('validation') || normalizedMessage.includes('invalid')) {
-			return ERROR_MESSAGES.general.INVALID_INPUT_DATA;
-		}
-
-		// Handle Redis/cache errors (check message content)
-		if (normalizedMessage.includes('redis') || normalizedMessage.includes('cache')) {
-			return ERROR_MESSAGES.general.CACHE_OPERATION_FAILED;
-		}
-
-		// Handle timeout errors (check message content)
-		if (normalizedMessage.includes('timeout')) {
-			return HTTP_ERROR_MESSAGES.TIMEOUT_ERROR;
-		}
-
-		// Handle rate limiting errors (check message content)
-		if (normalizedMessage.includes('rate limit') || normalizedMessage.includes('too many requests')) {
-			return ERROR_MESSAGES.general.RATE_LIMIT_EXCEEDED;
-		}
-
-		// Handle memory/resource errors
-		if (normalizedMessage.includes('memory') || normalizedMessage.includes('out of memory')) {
-			return ERROR_MESSAGES.general.INSUFFICIENT_RESOURCES;
-		}
-
-		// Handle file system errors
-		if (normalizedMessage.includes('enoent') || normalizedMessage.includes('file not found')) {
-			return ERROR_MESSAGES.general.FILE_NOT_FOUND;
-		}
-
-		// Handle permission errors
-		if (normalizedMessage.includes('eacces') || normalizedMessage.includes('permission denied')) {
-			return ERROR_MESSAGES.general.PERMISSION_DENIED;
-		}
-
-		// Handle NestJS exceptions
-		if (isNestExceptionName(errorName)) {
-			return error.message ?? ERROR_MESSAGES.general.REQUEST_FAILED;
-		}
-
-		const nestedDetail = extractNestedErrorMessage(error);
-		if (nestedDetail && nestedDetail !== message) {
-			return nestedDetail;
-		}
-
-		// Default Error
-		return error.message ?? HTTP_ERROR_MESSAGES.UNKNOWN_ERROR;
+		return getErrorInstanceMessage(error);
 	}
 
 	// Handle string errors
-	if (typeof error === 'string') {
+	if (VALIDATORS.string(error)) {
 		return error;
 	}
 
@@ -192,9 +255,9 @@ export function getErrorMessage(error: unknown): string {
 
 	// Handle objects with error-like properties
 	if (isRecord(error)) {
-		const nestedMessage = extractNestedErrorMessage(error);
-		if (nestedMessage) {
-			return nestedMessage;
+		const recordMessage = getRecordErrorMessage(error);
+		if (recordMessage) {
+			return recordMessage;
 		}
 	}
 
@@ -202,11 +265,6 @@ export function getErrorMessage(error: unknown): string {
 	return 'Unknown error occurred.';
 }
 
-/**
- * Get error stack trace if available
- * @param error The error to extract stack from
- * @returns The stack trace or 'No stack trace available' as fallback
- */
 export function getErrorStack(error: unknown): string {
 	if (error instanceof Error) {
 		return error.stack ?? 'No stack trace available';
@@ -214,45 +272,10 @@ export function getErrorStack(error: unknown): string {
 	return 'No stack trace available';
 }
 
-/**
- * Get error type for logging
- * @param error The error to process
- * @returns Error type string
- */
 export function getErrorType(error: unknown): string {
 	return error instanceof Error ? error.constructor.name : typeof error;
 }
 
-/**
- * Extract error code from error if it matches ERROR_CODES
- * @param error The error to extract code from
- * @returns Error code if found, undefined otherwise
- */
-export function getErrorCode(error: unknown): string | undefined {
-	if (error instanceof Error) {
-		const message = error.message;
-		if (typeof message === 'string') {
-			const errorCodeValues = Object.values(ERROR_CODES);
-			if (errorCodeValues.includes(message as typeof ERROR_CODES[keyof typeof ERROR_CODES])) {
-				return message;
-			}
-		}
-	}
-	if (typeof error === 'string') {
-		const errorCodeValues = Object.values(ERROR_CODES);
-		if (errorCodeValues.includes(error as typeof ERROR_CODES[keyof typeof ERROR_CODES])) {
-			return error;
-		}
-	}
-	return undefined;
-}
-
-/**
- * Ensure error is an Error object for logging with stack traces
- * @param error The error to normalize
- * @returns Error object suitable for errorWithStack logging
- * @description Preserves all properties from the original error, including statusCode, response, etc.
- */
 export function ensureErrorObject(error: unknown): Error {
 	if (error instanceof Error) {
 		return error;
@@ -270,12 +293,6 @@ export function ensureErrorObject(error: unknown): Error {
 	return newError;
 }
 
-/**
- * Extract validation errors from API error response
- * Handles nested error structures from NestJS BadRequestException and similar error formats
- * @param error The error object to extract validation errors from
- * @returns Array of validation error messages
- */
 export function extractValidationErrors(error: unknown): string[] {
 	const errors: string[] = [];
 
@@ -310,27 +327,27 @@ export function extractValidationErrors(error: unknown): string[] {
 
 	if (Array.isArray(rawErrors)) {
 		for (const item of rawErrors) {
-			if (typeof item === 'string') {
+			if (VALIDATORS.string(item)) {
 				errors.push(item);
-			} else if (hasProperty(item, 'message') && typeof item.message === 'string') {
+			} else if (hasProperty(item, 'message') && VALIDATORS.string(item.message)) {
 				errors.push(item.message);
 			} else if (hasProperty(item, 'constraints') && isRecord(item.constraints)) {
 				const constraints = item.constraints;
 				for (const constraintValue of Object.values(constraints)) {
-					if (typeof constraintValue === 'string') {
+					if (VALIDATORS.string(constraintValue)) {
 						errors.push(constraintValue);
 					}
 				}
 			}
 		}
-	} else if (typeof rawErrors === 'string') {
+	} else if (VALIDATORS.string(rawErrors)) {
 		try {
 			const parsed = JSON.parse(rawErrors);
 			if (Array.isArray(parsed)) {
 				for (const item of parsed) {
-					if (typeof item === 'string') {
+					if (VALIDATORS.string(item)) {
 						errors.push(item);
-					} else if (hasProperty(item, 'message') && typeof item.message === 'string') {
+					} else if (hasProperty(item, 'message') && VALIDATORS.string(item.message)) {
 						errors.push(item.message);
 					}
 				}
@@ -343,23 +360,26 @@ export function extractValidationErrors(error: unknown): string[] {
 	return errors;
 }
 
-/**
- * Format validation errors into a user-friendly message
- * @param error The error object to extract and format validation errors from
- * @param baseMessage Optional base message to prepend
- * @returns Formatted error message string
- */
-export function formatValidationErrorMessage(error: unknown, baseMessage?: string): string {
-	const validationErrors = extractValidationErrors(error);
-
-	if (validationErrors.length === 0) {
-		return baseMessage ?? getErrorMessage(error);
+export function isProviderAuthError(error: unknown): error is ProviderAuthError {
+	if (!(error instanceof Error)) {
+		return false;
 	}
 
-	const errorsText = validationErrors.join('; ');
-	if (baseMessage) {
-		return `${baseMessage}: ${errorsText}`;
+	return 'isAuthError' in error && error.isAuthError === true;
+}
+
+export function isProviderRateLimitError(error: unknown): error is ProviderRateLimitError {
+	if (!(error instanceof Error)) {
+		return false;
 	}
 
-	return `Validation failed: ${errorsText}`;
+	return 'isRateLimitError' in error && error.isRateLimitError === true;
+}
+
+export function isProviderErrorWithStatusCode(error: unknown): error is ProviderErrorWithStatusCode {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	return 'statusCode' in error && VALIDATORS.number(error.statusCode);
 }

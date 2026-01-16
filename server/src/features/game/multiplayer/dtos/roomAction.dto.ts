@@ -1,15 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MinLength } from 'class-validator';
+import { IsString, Length, Matches } from 'class-validator';
 
-/**
- * DTO for room actions that require only a room identifier
- * @class RoomActionDto
- * @description Used for leave/start operations over HTTP
- */
 export class RoomActionDto {
-	@ApiProperty({ description: 'Room ID', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Room ID (8 alphanumeric characters)',
+		example: 'ABC12345',
+	})
 	@IsString()
-	@IsUUID()
-	@MinLength(1)
+	@Length(8, 8)
+	@Matches(/^[A-Z0-9]{8}$/, {
+		message: 'Room ID must be exactly 8 alphanumeric characters (A-Z, 0-9)',
+	})
 	roomId!: string;
 }

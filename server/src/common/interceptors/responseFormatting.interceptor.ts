@@ -1,29 +1,13 @@
-/**
- * Response Formatting Interceptor
- *
- * @module ResponseFormattingInterceptor
- * @description Interceptor that standardizes API response format across all endpoints
- * @author EveryTriv Team
- */
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { calculateDuration, isRecord } from '@shared/utils';
+
 import type { NestRequest } from '@internal/types';
 
-/**
- * Response Formatting Interceptor
- * @description Automatically formats all API responses with consistent structure
- */
 @Injectable()
-export class ResponseFormattingInterceptor implements NestInterceptor {
-	/**
-	 * Intercept responses and format them consistently
-	 * @param context - Execution context
-	 * @param next - Call handler
-	 * @returns Observable with formatted response
-	 */
+export class ResponseFormatter implements NestInterceptor {
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const request = context.switchToHttp().getRequest();
 		const startTime = Date.now();
@@ -44,20 +28,14 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 					timestamp: new Date().toISOString(),
 					meta: {
 						duration,
-						endpoint: request.path || 'unknown',
-						method: request.method || 'unknown',
+						endpoint: request.path ?? 'unknown',
+						method: request.method ?? 'unknown',
 					},
 				};
 			})
 		);
 	}
 
-	/**
-	 * Determine if response formatting should be skipped
-	 * @param data - Response data
-	 * @param request - HTTP request
-	 * @returns True if formatting should be skipped
-	 */
 	private shouldSkipFormatting(data: unknown, request: NestRequest): boolean {
 		if (isRecord(data)) {
 			// Skip formatting if response already has a success field (like AuthenticationResult)
@@ -75,7 +53,7 @@ export class ResponseFormattingInterceptor implements NestInterceptor {
 		}
 
 		// 8. Health check endpoints
-		if (request.path === '/health' || request.path === '/status') {
+		if (request.path === '/status' || request.path?.startsWith('/api/health')) {
 			return true;
 		}
 

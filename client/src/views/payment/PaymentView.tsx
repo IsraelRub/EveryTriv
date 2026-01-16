@@ -1,11 +1,17 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, CreditCard, Gamepad2, Wallet } from 'lucide-react';
 
-import { CREDIT_PURCHASE_PACKAGES } from '@shared/constants';
+import {
+	AnalyticsAction,
+	AnalyticsEventType,
+	AnalyticsPageName,
+	CREDIT_PURCHASE_PACKAGES,
+	PaymentStatus,
+} from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
-import { ButtonVariant, ROUTES } from '@/constants';
+
+import { ButtonVariant, PaymentTab, VariantBase } from '@/constants';
 import {
 	Badge,
 	Button,
@@ -15,7 +21,6 @@ import {
 	CardFooter,
 	CardHeader,
 	CardTitle,
-	CreditHistoryCard,
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -29,7 +34,13 @@ import {
 	TabsList,
 	TabsTrigger,
 } from '@/components';
-import { useCreditBalance, useCreditHistory, useCreditPackages, useModalRoute } from '@/hooks';
+import {
+	useCreditBalance,
+	useCreditPackages,
+	useNavigationClose,
+	usePaymentHistory,
+	useTrackAnalyticsEvent,
+} from '@/hooks';
 
 function BalanceCard({ balance, isLoading }: { balance: number; isLoading: boolean }) {
 	return (
@@ -76,7 +87,7 @@ function CreditPackageCard({
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
 						<CreditCard className='h-5 w-5' />
-						{pkg.description || `${pkg.credits} Credits`}
+						{pkg.description ?? `${pkg.credits} Credits`}
 					</CardTitle>
 					<CardDescription>
 						{pkg.credits} credits
@@ -98,8 +109,7 @@ function CreditPackageCard({
 }
 
 export function PaymentView() {
-	const navigate = useNavigate();
-	const { isModal, closeModal } = useModalRoute();
+	const { handleClose } = useNavigationClose();
 	const [selectedPackage, setSelectedPackage] = useState<CreditPurchaseOption | null>(null);
 	const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 	const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -107,13 +117,14 @@ export function PaymentView() {
 
 	const { data: creditBalance, isLoading: balanceLoading } = useCreditBalance();
 	const { data: creditPackages, isLoading: packagesLoading } = useCreditPackages();
-	const { data: creditHistory, isLoading: historyLoading } = useCreditHistory(20);
+	const { data: paymentHistory, isLoading: paymentHistoryLoading } = usePaymentHistory();
+	const trackAnalyticsEvent = useTrackAnalyticsEvent();
 
 	const balance = creditBalance?.totalCredits ?? 0;
 
 	// Use packages from API or fallback to shared constants
 	const packages: CreditPurchaseOption[] =
-		creditPackages ||
+		creditPackages ??
 		CREDIT_PURCHASE_PACKAGES.map(pkg => ({
 			id: pkg.id,
 			credits: pkg.credits,
@@ -128,9 +139,32 @@ export function PaymentView() {
 		setShowPaymentDialog(true);
 	};
 
-	const handlePaymentSuccess = (credits: number) => {
+	// Track page view analytics
+	useEffect(() => {
+		trackAnalyticsEvent.mutate({
+			eventType: AnalyticsEventType.PAGE_VIEW,
+			page: AnalyticsPageName.PAYMENT,
+			action: AnalyticsAction.VIEW,
+		});
+	}, [trackAnalyticsEvent]);
+
+	const handlePaymentSuccess = (credits: number, packageId?: string, amount?: number) => {
 		setPurchasedCredits(credits);
 		setShowSuccessDialog(true);
+		// Track analytics event for purchase
+		if (selectedPackage) {
+			trackAnalyticsEvent.mutate({
+				eventType: AnalyticsEventType.PURCHASE_CREDITS,
+				page: AnalyticsPageName.PAYMENT,
+				action: AnalyticsAction.PURCHASE_SUCCESS,
+				value: amount ?? selectedPackage.price,
+				properties: {
+					packageId: packageId ?? selectedPackage.id,
+					credits: credits,
+					price: amount ?? selectedPackage.price,
+				},
+			});
+		}
 	};
 
 	return (
@@ -146,13 +180,13 @@ export function PaymentView() {
 						<BalanceCard balance={balance} isLoading={balanceLoading} />
 					</div>
 
-					<Tabs defaultValue='credits' className='w-full'>
+					<Tabs defaultValue={PaymentTab.CREDITS} className='w-full'>
 						<TabsList className='grid w-full max-w-md mx-auto grid-cols-2'>
-							<TabsTrigger value='credits'>Buy Credits</TabsTrigger>
-							<TabsTrigger value='history'>History</TabsTrigger>
+							<TabsTrigger value={PaymentTab.CREDITS}>Buy Credits</TabsTrigger>
+							<TabsTrigger value={PaymentTab.PAYMENT_HISTORY}>Payment History</TabsTrigger>
 						</TabsList>
 
-						<TabsContent value='credits' className='mt-8'>
+						<TabsContent value={PaymentTab.CREDITS} className='mt-8'>
 							{packagesLoading ? (
 								<div className='grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden'>
 									{[...Array(3)].map((_, i) => (
@@ -184,9 +218,75 @@ export function PaymentView() {
 							)}
 						</TabsContent>
 
-						<TabsContent value='history' className='mt-8'>
+						<TabsContent value={PaymentTab.PAYMENT_HISTORY} className='mt-8'>
 							<div className='max-w-2xl mx-auto'>
-								<CreditHistoryCard transactions={creditHistory} isLoading={historyLoading} />
+								{paymentHistoryLoading ? (
+									<Card>
+										<CardHeader>
+											<CardTitle>Payment History</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className='space-y-4'>
+												{[...Array(3)].map((_, i) => (
+													<Skeleton key={i} className='h-16 w-full' />
+												))}
+											</div>
+										</CardContent>
+									</Card>
+								) : paymentHistory && paymentHistory.length > 0 ? (
+									<Card>
+										<CardHeader>
+											<CardTitle>Payment History</CardTitle>
+											<CardDescription>Your payment transaction history</CardDescription>
+										</CardHeader>
+										<CardContent>
+											<div className='space-y-4'>
+												{paymentHistory.map((payment, index) => (
+													<Card
+														key={payment.paymentId ?? payment.transactionId ?? `payment-${index}`}
+														className='border'
+													>
+														<CardContent className='pt-6'>
+															<div className='flex justify-between items-start'>
+																<div className='space-y-1'>
+																	<p className='font-medium'>
+																		{payment.amount != null ? `$${(payment.amount / 100).toFixed(2)}` : 'N/A'}
+																		{payment.currency && ` ${payment.currency}`}
+																	</p>
+																	<p className='text-sm text-muted-foreground'>{payment.paymentMethod}</p>
+																	{payment.message && (
+																		<p className='text-sm text-muted-foreground'>{payment.message}</p>
+																	)}
+																</div>
+																<Badge
+																	variant={
+																		payment.status === PaymentStatus.COMPLETED
+																			? VariantBase.DEFAULT
+																			: payment.status === PaymentStatus.FAILED
+																				? VariantBase.DESTRUCTIVE
+																				: VariantBase.SECONDARY
+																	}
+																>
+																	{payment.status}
+																</Badge>
+															</div>
+														</CardContent>
+													</Card>
+												))}
+											</div>
+										</CardContent>
+									</Card>
+								) : (
+									<Card>
+										<CardHeader>
+											<CardTitle>Payment History</CardTitle>
+											<CardDescription>Your payment transaction history</CardDescription>
+										</CardHeader>
+										<CardContent>
+											<p className='text-center text-muted-foreground py-8'>No payment history found</p>
+										</CardContent>
+									</Card>
+								)}
 							</div>
 						</TabsContent>
 					</Tabs>
@@ -237,11 +337,7 @@ export function PaymentView() {
 						<Button
 							onClick={() => {
 								setShowSuccessDialog(false);
-								if (isModal) {
-									closeModal();
-								} else {
-									navigate(ROUTES.HOME);
-								}
+								handleClose();
 							}}
 						>
 							<Gamepad2 className='w-4 h-4 mr-2' />

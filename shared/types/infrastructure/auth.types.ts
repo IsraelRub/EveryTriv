@@ -1,15 +1,10 @@
-/**
- * Authentication Types
- * @module AuthTypes
- * @description Authentication and authorization related types
- */
+// Authentication Types.
 // Import BasicUser from domain
 import type { Request } from 'express';
 
 import { UserRole } from '../../constants';
 import type { BasicUser } from '../domain/user';
 
-// Authentication Result
 export interface AuthenticationResult {
 	user?: BasicUser;
 	accessToken?: string;
@@ -18,19 +13,11 @@ export interface AuthenticationResult {
 	error?: string;
 }
 
-// Login Credentials
-export interface LoginCredentials {
-	email: string;
-	password: string;
-}
-
-// Authentication Credentials
 export interface AuthCredentials {
 	email: string;
 	password: string;
 }
 
-// User Data
 export interface UserData {
 	id: string;
 	email: string;
@@ -39,7 +26,6 @@ export interface UserData {
 	isActive: boolean;
 }
 
-// Token Payload
 export interface TokenPayload {
 	sub: string;
 	email: string;
@@ -48,27 +34,23 @@ export interface TokenPayload {
 	exp?: number;
 }
 
-// Token Pair
 export interface TokenPair {
 	accessToken: string;
 	refreshToken: string;
 }
 
-// Token Validation Result
 export interface TokenValidationResult {
 	isValid: boolean;
 	error?: string;
 	payload?: TokenPayload;
 }
 
-// Request Types for Authentication
 export interface AuthenticationRequest {
 	headers?: Record<string, string | string[] | undefined>;
 	cookies?: Record<string, string | undefined>;
 	authToken?: string;
 }
 
-// Auth Request (for authenticated endpoints)
 export interface AuthRequest {
 	user: BasicUser;
 }
@@ -85,7 +67,6 @@ export interface GoogleAuthRequest extends Request {
 	user?: GoogleAuthPayload;
 }
 
-// JWT Decoded Token
 export interface JWTDecodedToken {
 	sub: string;
 	email: string;

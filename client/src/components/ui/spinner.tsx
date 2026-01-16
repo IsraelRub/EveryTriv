@@ -1,17 +1,13 @@
+import { forwardRef, type SVGProps } from 'react';
 import { cva } from 'class-variance-authority';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, type LucideIcon } from 'lucide-react';
 
-import { SpinnerSize, SpinnerVariant } from '@/constants';
+import { SpinnerSize } from '@/constants';
+import type { FullScreenSpinnerProps, SpinnerProps, SVGSpinnerProps } from '@/types';
 import { cn } from '@/utils';
-import type { SpinnerProps } from '@/types';
 
-export const spinnerVariants = cva('', {
+export const spinnerSizeVariants = cva('', {
 	variants: {
-		variant: {
-			[SpinnerVariant.FULL_SCREEN]: 'spinner-pulsing',
-			[SpinnerVariant.BUTTON]: '',
-			[SpinnerVariant.REFRESH]: '',
-		},
 		size: {
 			[SpinnerSize.SM]: 'h-4 w-4',
 			[SpinnerSize.MD]: 'h-5 w-5',
@@ -21,28 +17,82 @@ export const spinnerVariants = cva('', {
 		},
 	},
 	defaultVariants: {
-		variant: SpinnerVariant.BUTTON,
 		size: SpinnerSize.MD,
 	},
 });
 
-/**
- * Spinner Component
- * @description Unified spinner component for loading states throughout the application
- */
-export function Spinner({ variant = SpinnerVariant.BUTTON, size = SpinnerSize.MD, className }: SpinnerProps) {
-	switch (variant) {
-		
-		case SpinnerVariant.FULL_SCREEN:
-			return <div className={cn(spinnerVariants({ variant, size }), className)} />;
+const iconMap: Record<'loader' | 'refresh', LucideIcon> = {
+	loader: Loader2,
+	refresh: RefreshCw,
+};
 
-		case SpinnerVariant.BUTTON:
-			return <Loader2 className={cn(spinnerVariants({ variant, size }), 'animate-spin', className)} />;
-				
-		case SpinnerVariant.REFRESH:
-			return <RefreshCw className={cn(spinnerVariants({ variant, size }), 'animate-spin', className)} />;
-
-		default:
-			throw new Error(`Invalid spinner variant: ${variant}`);
+function handleRefCallback<T extends SVGSVGElement | HTMLDivElement>(
+	ref: React.Ref<SVGSVGElement | HTMLDivElement>,
+	instance: T | null
+): void {
+	if (typeof ref === 'function') {
+		ref(instance);
+	} else if (ref && typeof ref === 'object' && ref !== null && 'current' in ref) {
+		const refObject: { current: SVGSVGElement | HTMLDivElement | null } = ref;
+		refObject.current = instance;
 	}
 }
+
+function isFullScreenSpinnerProps(props: SpinnerProps): props is FullScreenSpinnerProps {
+	return 'variant' in props && props.variant === 'fullscreen';
+}
+
+function isSVGSpinnerProps(props: SpinnerProps): props is SVGSpinnerProps {
+	return (
+		!('variant' in props) ||
+		(props.variant !== 'fullscreen' && (props.variant === 'loader' || props.variant === 'refresh'))
+	);
+}
+
+export const Spinner = forwardRef<SVGSVGElement | HTMLDivElement, SpinnerProps>((props, ref) => {
+	const { size, className, variant = 'loader' } = props;
+
+	if (isFullScreenSpinnerProps(props)) {
+		const { variant: _variant, size: _size, className: _className, ...divProps } = props;
+		const divRef: React.Ref<HTMLDivElement> = (instance: HTMLDivElement | null) => {
+			handleRefCallback(ref, instance);
+		};
+		return (
+			<div
+				ref={divRef}
+				className={cn(spinnerSizeVariants({ size: size ?? SpinnerSize.FULL }), 'spinner-pulsing', className)}
+				{...divProps}
+			/>
+		);
+	}
+
+	if (isSVGSpinnerProps(props)) {
+		const { variant: _variant, size: _size, className: _className, ...svgProps } = props;
+		const Icon = variant === 'loader' || variant === 'refresh' ? iconMap[variant] : iconMap['loader'];
+		const svgRef: React.Ref<SVGSVGElement> = (instance: SVGSVGElement | null) => {
+			handleRefCallback(ref, instance);
+		};
+		return (
+			<Icon
+				ref={svgRef}
+				className={cn(spinnerSizeVariants({ size: size ?? SpinnerSize.MD }), 'animate-spin', className)}
+				{...svgProps}
+			/>
+		);
+	}
+
+	// Fallback - should never happen due to type system, but provides safety
+	const Icon = iconMap['loader'];
+	const svgProps: SVGProps<SVGSVGElement> = {};
+	const fallbackSvgRef: React.Ref<SVGSVGElement> = (instance: SVGSVGElement | null) => {
+		handleRefCallback(ref, instance);
+	};
+	return (
+		<Icon
+			ref={fallbackSvgRef}
+			className={cn(spinnerSizeVariants({ size: size ?? SpinnerSize.MD }), 'animate-spin', className)}
+			{...svgProps}
+		/>
+	);
+});
+Spinner.displayName = 'Spinner';

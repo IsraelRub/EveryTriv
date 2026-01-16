@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { User } from 'lucide-react';
 
 import type { AdminUserData } from '@shared/types';
-import { calculateCurrentPage, calculateTotalPages } from '@shared/utils';
-import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
+import { calculateTotalPages } from '@shared/utils';
+
+import { DEFAULT_ITEMS_PER_PAGE, VariantBase } from '@/constants';
 import {
 	Badge,
-	Button,
 	Card,
 	CardContent,
 	CardDescription,
@@ -18,25 +18,26 @@ import {
 	TableCell,
 	TableHead,
 	TableHeader,
+	TablePagination,
 	TableRow,
 } from '@/components';
 import { useAllUsers } from '@/hooks';
 import { formatDate } from '@/utils';
 
-/**
- * Users Table Component
- * Displays a table of all users with pagination
- */
 export function UsersTable() {
-	const [limit] = useState(50);
+	const [limit] = useState(DEFAULT_ITEMS_PER_PAGE);
 	const [offset, setOffset] = useState(0);
 
 	const { data, isLoading, error } = useAllUsers(limit, offset);
 
 	const users = data?.users ?? [];
 	const totalUsers = data?.pagination?.total ?? users.length;
-	const currentPage = calculateCurrentPage(offset, limit);
 	const totalPages = calculateTotalPages(totalUsers, limit);
+
+	const startIndex = offset;
+	const endIndex = Math.min(offset + limit, totalUsers);
+	const hasNextPage = offset + limit < totalUsers;
+	const hasPreviousPage = offset > 0;
 
 	const handlePreviousPage = () => {
 		if (offset > 0) {
@@ -92,6 +93,18 @@ export function UsersTable() {
 				) : (
 					<>
 						<div className='overflow-x-auto'>
+							<TablePagination
+								totalPages={totalPages}
+								totalItems={totalUsers}
+								startIndex={startIndex}
+								endIndex={endIndex}
+								hasNextPage={hasNextPage}
+								hasPreviousPage={hasPreviousPage}
+								onNextPage={handleNextPage}
+								onPreviousPage={handlePreviousPage}
+								isLoading={isLoading}
+								itemsLabel='users'
+							/>
 							<Table>
 								<TableHeader>
 									<TableRow>
@@ -117,34 +130,6 @@ export function UsersTable() {
 								</TableBody>
 							</Table>
 						</div>
-
-						{totalPages > 1 && (
-							<div className='flex items-center justify-between mt-4'>
-								<div className='text-sm text-muted-foreground'>
-									Page {currentPage} of {totalPages}
-								</div>
-								<div className='flex gap-2'>
-									<Button
-										variant={ButtonVariant.OUTLINE}
-										size={ButtonSize.SM}
-										onClick={handlePreviousPage}
-										disabled={offset === 0 || isLoading}
-									>
-										<ChevronLeft className='h-4 w-4 mr-1' />
-										Previous
-									</Button>
-									<Button
-										variant={ButtonVariant.OUTLINE}
-										size={ButtonSize.SM}
-										onClick={handleNextPage}
-										disabled={offset + limit >= totalUsers || isLoading}
-									>
-										Next
-										<ChevronRight className='h-4 w-4 ml-1' />
-									</Button>
-								</div>
-							</div>
-						)}
 					</>
 				)}
 			</CardContent>

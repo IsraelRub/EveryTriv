@@ -3,8 +3,9 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-import { LOCALHOST_CONFIG } from '../shared/constants';
-import type { ViteProxyConfig } from './src/types/infrastructure';
+import { APP_NAME, HttpMethod } from '../shared/constants';
+import { LOCALHOST_CONFIG } from './src/config/localhost.config';
+import type { ViteProxyConfig } from './src/types';
 
 
 export default defineConfig({
@@ -34,7 +35,7 @@ export default defineConfig({
 				// API requests: POST/PUT/DELETE or requests with Accept: application/json header
 				bypass: (req) => {
 					const isFrontendRequest =
-						req.method === 'GET' && !req.headers?.accept?.includes('application/json');
+						req.method === HttpMethod.GET && !req.headers?.accept?.includes('application/json');
 
 					if (isFrontendRequest) {
 						// Let Vite handle it (SPA routing) - React Router will handle 404
@@ -88,6 +89,6 @@ export default defineConfig({
 	define: {
 		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
 		'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || LOCALHOST_CONFIG.urls.SERVER),
-		'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || 'EveryTriv'),
+		'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || APP_NAME),
 	},
 });

@@ -1,85 +1,57 @@
-/**
- * Shared ID generation utilities for EveryTriv
- * Used by both client and server for generating unique identifiers
- *
- * @module IdUtils
- * @description Unique identifier generation utilities
- * @used_by shared/services/logging, client/src/utils/user.util.ts, server/src/features/game/logic/providers/management, server/src/features/payment
- */
+import {
+	GENERATED_INTERCEPTOR_ID_PREFIX,
+	GENERATED_PAYMENT_INTENT_ID_PREFIX,
+	GENERATED_USER_ID_PREFIX,
+} from '@shared/constants';
+import type { GeneratedInterceptorId, GeneratedPaymentIntentId, GeneratedUserId } from '@shared/types';
 
-/**
- * Generate a random ID using base36 encoding
- * @param length Length of the generated ID
- * @returns Random alphanumeric string ID
- * @description Creates a random identifier using base36 encoding for URL-safe IDs
- * @default 13
- */
 export function generateId(length: number = 13): string {
 	return Math.random()
 		.toString(36)
 		.substring(2, 2 + length);
 }
 
-/**
- * Generate a trace ID for logging and debugging
- * @returns Unique trace ID (30 characters)
- * @description Creates a long unique identifier for tracing requests across services
- */
 export function generateTraceId(): string {
 	return generateId(15) + generateId(15);
 }
 
-/**
- * Generate a session ID for user sessions
- * @returns Unique session ID with timestamp prefix
- * @description Creates a session identifier that includes timestamp for ordering
- */
 export function generateSessionId(): string {
 	return Date.now().toString(36) + generateId(15);
 }
 
-/**
- * Generate a user ID for anonymous users
- * @returns Unique user ID with 'user_' prefix
- * @description Creates an identifier for anonymous or guest users
- */
-export function generateUserId(): string {
-	return 'user_' + generateId(10);
+function createGeneratedUserId(suffix: string): GeneratedUserId {
+	return `${GENERATED_USER_ID_PREFIX}${suffix}`;
 }
 
-/**
- * Generate a payment intent ID for Stripe integration
- * @returns Unique payment intent ID with 'pi_' prefix
- * @description Creates Stripe-compatible payment intent identifier
- */
-export function generatePaymentIntentId(): string {
-	return 'pi_' + generateId(20);
+export function generateUserId(): GeneratedUserId {
+	return createGeneratedUserId(generateId(10));
 }
 
-/**
- * Generate a question ID for trivia questions
- * @returns Unique question ID with timestamp and random suffix
- * @description Creates an identifier for trivia questions that includes creation time
- */
-export function generateQuestionId(): string {
-	return 'q_' + Date.now() + '_' + generateId(10);
+function createGeneratedPaymentIntentId(suffix: string): GeneratedPaymentIntentId {
+	return `${GENERATED_PAYMENT_INTENT_ID_PREFIX}${suffix}`;
 }
 
-/**
- * Generate a subscription ID
- * @returns Unique subscription ID with 'sub_' prefix, timestamp, and random suffix
- * @description Creates an identifier for user subscriptions
- */
-export function generateSubscriptionId(): string {
-	return `sub_${Date.now()}_${generateId(9)}`;
+export function generatePaymentIntentId(): GeneratedPaymentIntentId {
+	return createGeneratedPaymentIntentId(generateId(20));
 }
 
-/**
- * Generate an interceptor ID with custom prefix
- * @param prefix Prefix for the interceptor ID
- * @returns Unique interceptor ID with prefix, timestamp, and random suffix
- * @description Creates an identifier for interceptors with a custom prefix
- */
-export function generateInterceptorId(prefix: string): string {
-	return `${prefix}_${Date.now()}_${generateId(9)}`;
+function createGeneratedInterceptorIdWithDefault(timestamp: number, suffix: string): GeneratedInterceptorId {
+	return `${GENERATED_INTERCEPTOR_ID_PREFIX}${timestamp}_${suffix}`;
+}
+
+function createGeneratedInterceptorIdWithCustom(prefix: string, timestamp: number, suffix: string): string {
+	return `${prefix}${timestamp}_${suffix}`;
+}
+
+export function generateInterceptorId(): GeneratedInterceptorId;
+
+export function generateInterceptorId(prefix: string): string;
+
+export function generateInterceptorId(
+	prefix: string = GENERATED_INTERCEPTOR_ID_PREFIX
+): GeneratedInterceptorId | string {
+	if (prefix === GENERATED_INTERCEPTOR_ID_PREFIX) {
+		return createGeneratedInterceptorIdWithDefault(Date.now(), generateId(9));
+	}
+	return createGeneratedInterceptorIdWithCustom(prefix, Date.now(), generateId(9));
 }

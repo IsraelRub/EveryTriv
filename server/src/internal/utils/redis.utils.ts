@@ -1,19 +1,5 @@
-/**
- * Redis utility functions
- *
- * @module RedisUtils
- * @description Utility functions for Redis operations
- * @used_by server/src/internal/modules/cache, server/src/internal/modules/storage
- */
 import type { Redis } from 'ioredis';
 
-/**
- * Scan Redis keys using cursor to avoid blocking
- * @param redisClient Redis client instance
- * @param pattern Pattern to match keys (e.g., 'prefix:*')
- * @param count Batch size for SCAN operation (default: 100)
- * @returns Array of matching keys
- */
 export async function scanKeys(redisClient: Redis | null, pattern: string, count: number = 100): Promise<string[]> {
 	if (!redisClient) return [];
 
@@ -29,13 +15,6 @@ export async function scanKeys(redisClient: Redis | null, pattern: string, count
 	return keys;
 }
 
-/**
- * Delete Redis keys by pattern using SCAN and pipeline
- * @param redisClient Redis client instance
- * @param pattern Pattern to match keys (e.g., 'prefix:*')
- * @param count Batch size for SCAN operation (default: 100)
- * @returns Number of deleted keys
- */
 export async function deleteKeysByPattern(
 	redisClient: Redis | null,
 	pattern: string,
@@ -47,7 +26,6 @@ export async function deleteKeysByPattern(
 
 	if (keys.length === 0) return 0;
 
-	// Use pipeline for batch deletion
 	const pipeline = redisClient.pipeline();
 	for (const key of keys) {
 		pipeline.del(key);

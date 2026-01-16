@@ -1,23 +1,11 @@
-/**
- * User Module
- *
- * @module UserModule
- * @description User management module handling user authentication, profiles, and account operations
- * @used_by server/src/app, server/src/controllers
- * @dependencies TypeOrmModule, JwtModule, AuthModule, CacheModule, LoggerModule, StorageModule
- * @provides UserService
- * @entities UserEntity
- */
-import { forwardRef, Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthenticationManager, PasswordService } from 'src/common/auth';
+import { AuthModule as CommonAuthModule } from 'src/common/auth';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
-import { CacheModule, StorageModule } from '@internal/modules';
+import { CacheModule, StorageModule, UserCoreModule } from '@internal/modules';
+
 import { UserDataPipe } from '../../common/pipes';
-import { ValidationModule } from '../../common/validation/validation.module';
 import { AuthModule } from '../auth';
 import { CreditsModule } from '../credits';
 import { UserController } from './user.controller';
@@ -25,19 +13,16 @@ import { UserService } from './user.service';
 
 @Module({
 	imports: [
+		CommonAuthModule,
+		AuthModule,
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity]),
-		forwardRef(() => AuthModule),
+		UserCoreModule,
 		CreditsModule,
 		CacheModule,
 		StorageModule,
-		ValidationModule,
-		JwtModule.register({
-			secret: AUTH_CONSTANTS.JWT_SECRET,
-			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
-		}),
 	],
 	controllers: [UserController],
-	providers: [UserService, UserDataPipe, AuthenticationManager, PasswordService],
+	providers: [UserService, UserDataPipe],
 	exports: [UserService],
 })
 export class UserModule {}

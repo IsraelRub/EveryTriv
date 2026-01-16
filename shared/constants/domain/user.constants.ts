@@ -1,20 +1,6 @@
-/**
- * User Constants for EveryTriv
- *
- * @module UserConstants
- * @description User-related enums and constants shared between client and server
- * @used_by server/src/features/user, client/src/components/user, shared/types
- */
-
 import type { UserPreferences } from '../../types';
 import { DEFAULT_GAME_CONFIG, GameMode } from './game.constants';
 
-/**
- * User roles enumeration
- * @enum {string} UserRole
- * @description Available user roles in the system
- * @used_by server/src/features/user/user.service.ts, server/src/features/auth/auth.service.ts
- */
 export enum UserRole {
 	ADMIN = 'admin',
 	GUEST = 'guest',
@@ -22,12 +8,6 @@ export enum UserRole {
 	PREMIUM = 'premium',
 }
 
-/**
- * User status enumeration
- * @enum {string} UserStatus
- * @description Available user statuses in the system
- * @used_by server/src/features/user/user.service.ts, server/src/features/auth/auth.service.ts
- */
 export enum UserStatus {
 	ACTIVE = 'active',
 	INACTIVE = 'inactive',
@@ -38,12 +18,8 @@ export enum UserStatus {
 
 export const VALID_USER_STATUSES = Object.values(UserStatus);
 
-/**
- * Default user preferences
- * @constant
- * @description Default user preferences shared between client and server
- * @used_by client/src/utils/user.utils.ts, server/src/features/user/user.service.ts
- */
+export const VALID_USER_STATUSES_SET = new Set<string>(VALID_USER_STATUSES);
+
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	// Required base fields
 	emailNotifications: true,

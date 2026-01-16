@@ -1,9 +1,3 @@
-/**
- * Auth DTOs
- *
- * @module AuthDTOs
- * @description Data Transfer Objects for authentication
- */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
@@ -57,7 +51,9 @@ export class RegisterDto {
 	@IsOptional()
 	@IsString()
 	@MaxLength(50, { message: 'First name cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z\s'-]+$/, { message: 'First name can only contain letters, spaces, apostrophes, and hyphens' })
+	@Matches(/^[a-zA-Z\s'-]+$/, {
+		message: 'First name can only contain letters, spaces, apostrophes, and hyphens',
+	})
 	firstName?: string;
 
 	@ApiPropertyOptional({
@@ -67,7 +63,9 @@ export class RegisterDto {
 	@IsOptional()
 	@IsString()
 	@MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z\s'-]+$/, { message: 'Last name can only contain letters, spaces, apostrophes, and hyphens' })
+	@Matches(/^[a-zA-Z\s'-]+$/, {
+		message: 'Last name can only contain letters, spaces, apostrophes, and hyphens',
+	})
 	lastName?: string;
 }
 
@@ -76,13 +74,13 @@ export class AuthResponseDto {
 		description: 'Access token',
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
-	access_token: string;
+	accessToken: string;
 
 	@ApiPropertyOptional({
 		description: 'Refresh token',
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
-	refresh_token?: string;
+	refreshToken?: string;
 
 	@ApiProperty({
 		description: 'User information',
@@ -112,5 +110,5 @@ export class RefreshTokenResponseDto {
 		description: 'New access token',
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
-	access_token: string;
+	accessToken: string;
 }

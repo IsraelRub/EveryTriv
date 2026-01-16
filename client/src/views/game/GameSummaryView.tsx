@@ -1,69 +1,72 @@
-/**
- * Game Summary View
- *
- * @module GameSummaryView
- * @description Displays game completion summary with score, statistics, and question breakdown
- */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
 
-import { DifficultyLevel, GameMode } from '@shared/constants';
-import type { GameData, GameDifficulty } from '@shared/types';
-import { calculatePercentage } from '@shared/utils';
-import { isGameDifficulty } from '@shared/validation';
-import { AudioKey, ButtonSize, ROUTES } from '@/constants';
-import { Button, Card, SocialShare } from '@/components';
-import { useAppSelector, useCountUp, useSaveHistory, useUserAnalytics } from '@/hooks';
+import { DifficultyLevel } from '@shared/constants';
+import { calculatePercentage, hasQuestionAccess } from '@shared/utils';
+
+import { AudioKey, TextColor } from '@/constants';
+import { BackToHomeButton, Card, SocialShare } from '@/components';
+import {
+	useAppSelector,
+	useCountUp,
+	useCurrentUserData,
+	useGameFinalization,
+	useNavigationClose,
+	useUserAnalytics,
+} from '@/hooks';
 import { audioService, clientLogger as logger } from '@/services';
-import type { GameSummaryStats } from '@/types';
-import { cn, calculateGrade, formatTime, isGameSummaryNavigationState } from '@/utils';
-import { selectCurrentGameMode, selectCurrentUser } from '@/redux/selectors';
+import type { GameKey, GameSummaryStats } from '@/types';
+import { cn, formatTime, getAnswerLetter } from '@/utils';
+import {
+	selectCorrectAnswers,
+	selectCurrentDifficulty,
+	selectCurrentTopic,
+	selectGameId,
+	selectGameQuestionCount,
+	selectGameScore,
+	selectQuestionsData,
+	selectTimeSpent,
+} from '@/redux/selectors';
 
 export function GameSummaryView() {
-	const navigate = useNavigate();
-	const location = useLocation();
-	const saveHistoryMutation = useSaveHistory();
-	const currentGameMode = useAppSelector(selectCurrentGameMode);
-	const currentUser = useAppSelector(selectCurrentUser);
+	const { handleClose } = useNavigationClose();
+	const { finalizeGameSession } = useGameFinalization();
+	const currentTopic = useAppSelector(selectCurrentTopic);
+	const currentDifficulty = useAppSelector(selectCurrentDifficulty);
+	const score = useAppSelector(selectGameScore);
+	const correctAnswers = useAppSelector(selectCorrectAnswers);
+	const gameQuestionCount = useAppSelector(selectGameQuestionCount);
+	const timeSpent = useAppSelector(selectTimeSpent);
+	const questionsData = useAppSelector(selectQuestionsData);
+	const currentUser = useCurrentUserData();
 	const { data: analytics } = useUserAnalytics();
 
-	// Get game data from navigation state
-	const gameState = isGameSummaryNavigationState(location.state) ? location.state : null;
-
+	// Get game data from Redux
 	const gameStats = useMemo((): GameSummaryStats => {
-		if (!gameState) {
-			return {
-				score: 0,
-				correct: 0,
-				total: 0,
-				time: '0:00',
-				percentage: 0,
-				topic: 'Unknown',
-				difficulty: DifficultyLevel.MEDIUM,
-				questionsData: [],
-			};
-		}
-
-		const time = formatTime(gameState.timeSpent);
-		const percentage = calculatePercentage(gameState.correctAnswers, gameState.gameQuestionCount);
+		const total = gameQuestionCount ?? 0;
+		const time = formatTime(timeSpent);
+		const percentage = calculatePercentage(correctAnswers, total);
 
 		return {
-			score: gameState.score,
-			correct: gameState.correctAnswers,
-			total: gameState.gameQuestionCount,
+			score,
+			correct: correctAnswers,
+			total,
 			time,
 			percentage,
-			topic: gameState.topic || 'General',
-			difficulty: gameState.difficulty || DifficultyLevel.MEDIUM,
-			questionsData: gameState.questionsData || [],
+			topic: currentTopic ?? 'General',
+			difficulty: currentDifficulty ?? DifficultyLevel.MEDIUM,
+			questionsData: questionsData ?? [],
 		};
-	}, [gameState]);
+	}, [score, correctAnswers, gameQuestionCount, timeSpent, currentTopic, currentDifficulty, questionsData]);
 
 	// Calculate grade with stars
 	const grade = useMemo(() => {
-		return calculateGrade(gameStats.percentage);
+		const percentage = gameStats.percentage;
+		if (percentage >= 90) return { stars: 3, color: TextColor.GREEN_500 };
+		if (percentage >= 80) return { stars: 2, color: TextColor.BLUE_500 };
+		if (percentage >= 70) return { stars: 1, color: TextColor.YELLOW_500 };
+		return { stars: 0, color: TextColor.RED_500 };
 	}, [gameStats.percentage]);
 
 	// Track which stars have appeared
@@ -73,9 +76,9 @@ export function GameSummaryView() {
 	const animatedScore = useCountUp(gameStats.score);
 	const animatedCorrect = useCountUp(gameStats.correct);
 
-	// Track if game history has been saved to prevent duplicate saves
-	// Use a ref that tracks the last saved game state to detect new games
-	const lastSavedGameRef = useRef<{ score: number; gameQuestionCount: number } | null>(null);
+	// Track if game has been finalized to prevent duplicate finalization
+	// Use a ref that tracks the last finalized game state to detect new games
+	const lastFinalizedGameRef = useRef<GameKey | null>(null);
 
 	// Animate stars appearing one by one
 	useEffect(() => {
@@ -101,87 +104,56 @@ export function GameSummaryView() {
 		};
 	}, [grade.stars]);
 
-	// Save game history on mount (only once per game)
+	// Get gameId from Redux
+	const gameId = useAppSelector(selectGameId);
+
+	// Finalize game session on mount (idempotent - safe to call multiple times)
 	useEffect(() => {
-		if (!gameState) {
-			logger.gameInfo('No game state found, redirecting to home');
-			navigate(ROUTES.HOME);
+		// Check if we have valid game data from Redux
+		if (!gameId || score === 0 || gameQuestionCount === 0) {
+			logger.gameInfo('No game state found in Redux, redirecting to home');
+			handleClose();
 			return;
 		}
 
-		// Only save if user is authenticated
+		// Only finalize if user is authenticated
 		if (!currentUser?.id) {
-			logger.gameInfo('User not authenticated, skipping game history save');
+			logger.gameInfo('User not authenticated, skipping game session finalization');
 			return;
 		}
 
-		// Check if this game has already been saved by comparing with last saved game
 		const currentGameKey = {
-			score: gameState.score,
-			gameQuestionCount: gameState.gameQuestionCount,
+			score,
+			gameQuestionCount: gameQuestionCount ?? 0,
 		};
-		const lastSaved = lastSavedGameRef.current;
+
+		// If the game has already been finalized, skip finalization again
+		const lastFinalized = lastFinalizedGameRef.current;
 		if (
-			lastSaved &&
-			lastSaved.score === currentGameKey.score &&
-			lastSaved.gameQuestionCount === currentGameKey.gameQuestionCount
+			lastFinalized &&
+			lastFinalized.score === currentGameKey.score &&
+			lastFinalized.gameQuestionCount === currentGameKey.gameQuestionCount
 		) {
 			return;
 		}
 
-		// Mark as saved immediately to prevent race conditions
-		lastSavedGameRef.current = currentGameKey;
+		// Mark as finalized immediately to prevent duplicate finalization
+		lastFinalizedGameRef.current = currentGameKey;
 
-		// Save to history
-		// DifficultyLevel.MEDIUM is already GameDifficulty (DifficultyLevel is part of GameDifficulty union)
-		// Use isGameDifficulty type guard to ensure type safety
-		const difficulty: GameDifficulty =
-			gameState.difficulty && isGameDifficulty(gameState.difficulty) ? gameState.difficulty : DifficultyLevel.MEDIUM;
-		const gameData: GameData = {
-			userId: currentUser.id,
-			score: gameState.score,
-			gameQuestionCount: gameState.gameQuestionCount,
-			correctAnswers: gameState.correctAnswers,
-			topic: gameState.topic || 'General',
-			difficulty,
-			gameMode: currentGameMode || GameMode.QUESTION_LIMITED,
-			timeSpent: gameState.timeSpent,
-			creditsUsed: 0,
-			questionsData: gameState.questionsData,
-		};
-
-		// Double-check before calling mutate to prevent duplicate saves
-		// This is a safety check in case the useEffect runs again before the mutation completes
-		if (
-			lastSavedGameRef.current &&
-			lastSavedGameRef.current.score === currentGameKey.score &&
-			lastSavedGameRef.current.gameQuestionCount === currentGameKey.gameQuestionCount
-		) {
-			return;
-		}
-
-		saveHistoryMutation.mutate(gameData, {
-			onSuccess: () => {
-				logger.gameInfo('Game saved to history', {
-					score: gameState.score,
-					correctAnswers: gameState.correctAnswers,
-				});
-			},
+		// Finalize game session (idempotent - safe to call even if already finalized)
+		finalizeGameSession({
+			navigateToSummary: false, // Already on summary page
+			trackAnalytics: true,
 			onError: error => {
 				// Reset flag on error to allow retry
-				lastSavedGameRef.current = null;
-				logger.gameError('Failed to save game to history', { error: String(error) });
+				lastFinalizedGameRef.current = null;
+				logger.gameError('Failed to finalize game session', { errorInfo: { message: String(error) } });
 			},
 		});
-	}, [gameState, currentGameMode, currentUser?.id, navigate, saveHistoryMutation]);
-
-	const handleGoHome = () => {
-		audioService.play(AudioKey.BUTTON_CLICK);
-		navigate(ROUTES.HOME);
-	};
+	}, [gameId, score, gameQuestionCount, currentUser?.id, finalizeGameSession, handleClose]);
 
 	// Redirect if no game state
-	if (!gameState) {
+	if (!gameId || score === 0) {
 		return null;
 	}
 
@@ -311,10 +283,15 @@ export function GameSummaryView() {
 											<div className='flex-1 min-w-0'>
 												<p className='text-sm font-medium truncate'>{q.question}</p>
 												{!q.isCorrect && (
-													<p className='text-xs text-muted-foreground mt-1'>Correct: {q.correctAnswer}</p>
+													<p className='text-xs text-muted-foreground mt-1'>
+														Correct:{' '}
+														{hasQuestionAccess(q)
+															? `Answer ${getAnswerLetter(q.correctAnswerIndex)}`
+															: q.correctAnswerText}
+													</p>
 												)}
 											</div>
-											<span className='text-xs text-muted-foreground'>{q.timeSpent}s</span>
+											<span className='text-xs text-muted-foreground'>{q.timeSpent ?? 'N/A'}s</span>
 										</div>
 									</div>
 								))}
@@ -344,9 +321,7 @@ export function GameSummaryView() {
 						transition={{ delay: 0.8 }}
 						className='flex gap-4 justify-center'
 					>
-						<Button size={ButtonSize.LG} onClick={handleGoHome}>
-							Back to Home
-						</Button>
+						<BackToHomeButton />
 					</motion.div>
 				</Card>
 			</div>

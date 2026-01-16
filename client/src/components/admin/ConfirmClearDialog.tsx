@@ -1,9 +1,3 @@
-/**
- * Confirm Clear Dialog Component
- *
- * @module ConfirmClearDialog
- * @description Reusable confirmation dialog for destructive clear operations
- */
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,11 +10,6 @@ import {
 } from '@/components';
 import type { ConfirmClearDialogProps } from '@/types';
 
-/**
- * Reusable confirmation dialog for destructive clear operations
- * @param props Component props
- * @returns Confirmation dialog component
- */
 export function ConfirmClearDialog({
 	open,
 	onOpenChange,

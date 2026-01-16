@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
+
 import { StatCardVariant, VariantBase } from '@/constants';
 import { Badge, Card, CardContent, Skeleton } from '@/components';
 import { useCountUp } from '@/hooks';
@@ -27,7 +29,7 @@ export function StatCard({
 	const numericValue = isNumeric ? value : 0;
 	const countUpEnabled = countUp && isNumeric;
 	const animatedValue = useCountUp(numericValue, {
-		...(countUpDuration !== 2000 && { duration: countUpDuration }),
+		...(countUpDuration !== TIME_PERIODS_MS.TWO_SECONDS && { duration: countUpDuration }),
 		...(!countUpEnabled && { enabled: false }),
 	});
 

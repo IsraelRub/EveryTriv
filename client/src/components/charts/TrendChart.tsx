@@ -2,13 +2,10 @@ import { useMemo } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { formatForDisplay } from '@shared/utils';
+
 import type { TrendChartProps } from '@/types';
 import { ChartCard } from './ChartCard';
 
-/**
- * Line chart component for displaying user trends over time
- * Shows score and optionally success rate
- */
 export function TrendChart({ data, isLoading, height = 300, showSuccessRate = true, className }: TrendChartProps) {
 	const chartData = useMemo(() => {
 		if (!data || data.length === 0) return [];

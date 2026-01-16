@@ -15,31 +15,29 @@ import {
 	GAME_MODE_DEFAULTS,
 	GameMode,
 	HttpMethod,
-	LOCALHOST_CONFIG,
+	MultiplayerEvent,
 	PlayerStatus,
 	RoomStatus,
 	TIME_PERIODS_MS,
 } from '@shared/constants';
 import type { GameEventDataMap, GameEventType, MultiplayerGameEvent, MultiplayerRoom } from '@shared/types';
-import { calculateAnswerScore, getErrorCode, getErrorMessage } from '@shared/utils';
+import { getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
+
 import { serverLogger as logger } from '@internal/services';
-import type { RoomTimerMap, TypedSocket } from '@internal/types';
+import type { TypedSocket } from '@internal/types';
+
 import { WsCurrentUserId } from '../../../common/decorators';
 import { WsAuthGuard } from '../../../common/guards';
-import { CreateRoomDto, JoinRoomDto, SubmitAnswerDto } from './dtos';
+import { LOCALHOST_CONFIG } from '../../../config/localhost.config';
+import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
-import { RoomService } from './room.service';
+import { QuestionSchedulerService } from './questionScheduler.service';
 
-/**
- * WebSocket Gateway for multiplayer games
- * @class MultiplayerGateway
- * @description Handles all WebSocket events for multiplayer simultaneous trivia games
- */
 @WebSocketGateway({
 	namespace: '/multiplayer',
 	cors: {
-		origin: [process.env.CLIENT_URL || LOCALHOST_CONFIG.urls.CLIENT, 'http://localhost:5173', 'http://localhost:3001'],
+		origin: [process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT, 'http://localhost:5173', 'http://localhost:3001'],
 		methods: [HttpMethod.GET, HttpMethod.POST],
 		credentials: true,
 	},
@@ -51,20 +49,13 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 	@WebSocketServer()
 	server!: Server;
 
-	private readonly roomTimers: RoomTimerMap = {};
+	private readonly endingRooms = new Set<string>();
 
 	constructor(
 		private readonly multiplayerService: MultiplayerService,
-		private readonly roomService: RoomService
+		private readonly questionScheduler: QuestionSchedulerService
 	) {}
 
-	/**
-	 * Create a game event
-	 * @param type Event type
-	 * @param roomId Room ID
-	 * @param data Event data matching the event type
-	 * @returns Game event with type safety
-	 */
 	private createGameEvent<T extends GameEventType>(
 		type: T,
 		roomId: string,
@@ -78,9 +69,6 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		};
 	}
 
-	/**
-	 * Handle client connection
-	 */
 	async handleConnection(client: TypedSocket) {
 		const hasAuthToken = !!client.handshake.auth?.token;
 		const hasQueryToken = !!client.handshake.query?.token;
@@ -89,7 +77,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		logger.gameInfo('WebSocket client attempting connection to multiplayer gateway', {
 			clientId: client.id,
 			url: client.handshake.url,
-			userId: userId || undefined,
+			userId: userId ?? undefined,
 			hasAuthToken,
 			hasQueryToken,
 		});
@@ -97,7 +85,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		// Handle reconnection - find rooms user is in and send current state
 		logger.gameInfo('Client connected to multiplayer gateway', {
 			clientId: client.id,
-			userId: userId || undefined,
+			userId: userId ?? undefined,
 		});
 
 		if (userId) {
@@ -105,17 +93,14 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		}
 	}
 
-	/**
-	 * Handle client disconnection
-	 */
 	async handleDisconnect(client: TypedSocket) {
 		try {
 			const roomId = client.data.roomId;
 			const userId = client.data.userId;
 
 			// Cleanup timers if room exists
-			if (roomId && this.roomTimers[roomId]) {
-				this.cleanupRoomTimers(roomId);
+			if (roomId) {
+				this.questionScheduler.cancelSchedule(roomId);
 			}
 
 			if (roomId && userId) {
@@ -128,7 +113,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 						// All players disconnected - cancel game
 						await this.handleAllPlayersDisconnected(roomId);
 					} else {
-						const event = this.createGameEvent('player-left', roomId, { userId, players: room.players });
+						const event = this.createGameEvent(MultiplayerEvent.PLAYER_LEFT, roomId, { userId, players: room.players });
 						this.broadcastToRoom(roomId, event);
 					}
 				}
@@ -141,15 +126,12 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Error handling disconnect', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				clientId: client.id,
 			});
 		}
 	}
 
-	/**
-	 * Create a new multiplayer room
-	 */
 	@SubscribeMessage('create-room')
 	async handleCreateRoom(
 		@WsCurrentUserId() userId: string,
@@ -184,11 +166,11 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			// Broadcast player joined
 			const firstPlayer = room.players[0];
 			if (firstPlayer != null) {
-			const playerJoinedEvent = this.createGameEvent('player-joined', room.roomId, {
+				const playerJoinedEvent = this.createGameEvent(MultiplayerEvent.PLAYER_JOINED, room.roomId, {
 					player: firstPlayer,
-				players: room.players,
-			});
-			this.broadcastToRoom(room.roomId, playerJoinedEvent);
+					players: room.players,
+				});
+				this.broadcastToRoom(room.roomId, playerJoinedEvent);
 			}
 
 			logger.gameInfo('Room created via WebSocket', {
@@ -197,20 +179,15 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Failed to create room via WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
-			const errorCode = getErrorCode(error);
 			client.emit('error', {
 				message: getErrorMessage(error),
-				...(errorCode && { code: errorCode }),
 			});
 		}
 	}
 
-	/**
-	 * Join an existing room
-	 */
 	@SubscribeMessage('join-room')
 	async handleJoinRoom(
 		@WsCurrentUserId() userId: string,
@@ -223,7 +200,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			}
 
 			// Store player count before join to detect if this is a new join
-			const roomBeforeJoin = await this.roomService.getRoom(data.roomId);
+			const roomBeforeJoin = await this.multiplayerService.getRoom(data.roomId);
 			const playerCountBeforeJoin = roomBeforeJoin?.players.length ?? 0;
 
 			const room = await this.multiplayerService.joinRoom(data.roomId, userId);
@@ -239,37 +216,32 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			// Only broadcast player joined if this was a new join (player count increased)
 			const isNewJoin = room.players.length > playerCountBeforeJoin;
 			if (isNewJoin) {
-			const joinedPlayer = room.players.find(p => p.userId === userId);
-			if (joinedPlayer) {
-				const playerJoinedEvent = this.createGameEvent('player-joined', room.roomId, {
-					player: joinedPlayer,
-					players: room.players,
-				});
-				this.broadcastToRoom(room.roomId, playerJoinedEvent);
-			}
+				const joinedPlayer = room.players.find(p => p.userId === userId);
+				if (joinedPlayer) {
+					const playerJoinedEvent = this.createGameEvent(MultiplayerEvent.PLAYER_JOINED, room.roomId, {
+						player: joinedPlayer,
+						players: room.players,
+					});
+					this.broadcastToRoom(room.roomId, playerJoinedEvent);
+				}
 				// Log only for new joins - rejoin logging is handled in roomService
-			logger.gameInfo('Player joined room via WebSocket', {
-				roomId: room.roomId,
-				userId,
-			});
+				logger.gameInfo('Player joined room via WebSocket', {
+					roomId: room.roomId,
+					userId,
+				});
 			}
 		} catch (error) {
 			logger.gameError('Failed to join room via WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				roomId: data.roomId,
 			});
-			const errorCode = getErrorCode(error);
 			client.emit('error', {
 				message: getErrorMessage(error),
-				...(errorCode && { code: errorCode }),
 			});
 		}
 	}
 
-	/**
-	 * Leave a room
-	 */
 	@SubscribeMessage('leave-room')
 	async handleLeaveRoom(
 		@WsCurrentUserId() userId: string,
@@ -294,7 +266,10 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 
 			// Broadcast player left if room still exists
 			if (room) {
-				const playerLeftEvent = this.createGameEvent('player-left', data.roomId, { userId, players: room.players });
+				const playerLeftEvent = this.createGameEvent(MultiplayerEvent.PLAYER_LEFT, data.roomId, {
+					userId,
+					players: room.players,
+				});
 				this.broadcastToRoom(data.roomId, playerLeftEvent);
 			}
 
@@ -304,21 +279,16 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Failed to leave room via WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				roomId: data.roomId,
 			});
-			const errorCode = getErrorCode(error);
 			client.emit('error', {
 				message: getErrorMessage(error),
-				...(errorCode && { code: errorCode }),
 			});
 		}
 	}
 
-	/**
-	 * Start the game (host only)
-	 */
 	@SubscribeMessage('start-game')
 	async handleStartGame(
 		@WsCurrentUserId() userId: string,
@@ -333,7 +303,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			const room = await this.multiplayerService.startGame(data.roomId, userId);
 
 			// Broadcast game started
-			const gameStartedEvent = this.createGameEvent('game-started', data.roomId, {
+			const gameStartedEvent = this.createGameEvent(MultiplayerEvent.GAME_STARTED, data.roomId, {
 				questions: room.questions,
 				config: room.config,
 			});
@@ -348,25 +318,20 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Failed to start game via WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				roomId: data.roomId,
 			});
-			const errorCode = getErrorCode(error);
 			client.emit('error', {
 				message: getErrorMessage(error),
-				...(errorCode && { code: errorCode }),
 			});
 		}
 	}
 
-	/**
-	 * Submit an answer
-	 */
 	@SubscribeMessage('submit-answer')
 	async handleSubmitAnswer(
 		@WsCurrentUserId() userId: string,
-		@MessageBody() data: SubmitAnswerDto,
+		@MessageBody() data: MultiplayerSubmitAnswerDto,
 		@ConnectedSocket() client: TypedSocket
 	) {
 		try {
@@ -383,7 +348,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			);
 
 			// Broadcast answer received
-			const answerReceivedEvent = this.createGameEvent('answer-received', data.roomId, {
+			const answerReceivedEvent = this.createGameEvent(MultiplayerEvent.ANSWER_RECEIVED, data.roomId, {
 				userId,
 				questionId: data.questionId,
 				isCorrect: result.isCorrect,
@@ -393,7 +358,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			this.broadcastToRoom(data.roomId, answerReceivedEvent);
 
 			// Update leaderboard
-			const leaderboardUpdateEvent = this.createGameEvent('leaderboard-update', data.roomId, {
+			const leaderboardUpdateEvent = this.createGameEvent(MultiplayerEvent.LEADERBOARD_UPDATE, data.roomId, {
 				leaderboard: result.leaderboard ?? [],
 			});
 			this.broadcastToRoom(data.roomId, leaderboardUpdateEvent);
@@ -406,185 +371,108 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Failed to submit answer via WebSocket', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				roomId: data.roomId,
 			});
-			const errorCode = getErrorCode(error);
 			client.emit('error', {
 				message: getErrorMessage(error),
-				...(errorCode && { code: errorCode }),
 			});
 		}
 	}
 
-	/**
-	 * Start a question (internal method)
-	 */
 	private async startQuestion(room: MultiplayerRoom) {
-		// Check if question already ended or game finished
 		if (room.status !== RoomStatus.PLAYING) {
 			return;
 		}
 
-		const question = room.questions[room.currentQuestionIndex];
-		if (!question) {
+		const questionData = await this.multiplayerService.startQuestion(room.roomId);
+		if (!questionData) {
 			return;
 		}
 
-		// Update room with question start time in Redis
-		const questionStartTime = new Date();
-		await this.roomService.updateRoom(room.roomId, {
-			currentQuestionStartTime: questionStartTime,
-		});
-
-		// Broadcast question started
-		const questionStartedEvent = this.createGameEvent('question-started', room.roomId, {
-			question,
-			questionIndex: room.currentQuestionIndex,
-			timeLimit: room.config.timePerQuestion,
-		});
+		const questionStartedEvent = this.createGameEvent(MultiplayerEvent.QUESTION_STARTED, room.roomId, questionData);
 		this.broadcastToRoom(room.roomId, questionStartedEvent);
 
-		// Cleanup existing timers for this room
-		if (this.roomTimers[room.roomId]) {
-			this.cleanupRoomTimers(room.roomId);
-		}
-
-		// Set timeout to end question
-		const timeoutId = setTimeout(async () => {
-			const timer = this.roomTimers[room.roomId];
-			if (timer != null) {
-				clearInterval(timer.checkInterval);
-				delete this.roomTimers[room.roomId];
-			}
-			await this.endQuestion(room.roomId);
-		}, room.config.timePerQuestion * TIME_PERIODS_MS.SECOND);
-
-		// Check periodically if all players answered (every 1 second)
-		const checkInterval = setInterval(async () => {
-			const currentRoom = await this.multiplayerService.getRoom(room.roomId);
-			if (!currentRoom || currentRoom.status !== RoomStatus.PLAYING) {
-				clearInterval(checkInterval);
-				const timer = this.roomTimers[room.roomId];
-				if (timer != null) {
-					clearTimeout(timer.timeoutId);
-					delete this.roomTimers[room.roomId];
-				}
-				return;
-			}
-
-			const allAnswered = await this.multiplayerService.allPlayersAnswered(room.roomId);
-			if (allAnswered) {
-				clearInterval(checkInterval);
-				const timer = this.roomTimers[room.roomId];
-				if (timer != null) {
-					clearTimeout(timer.timeoutId);
-					delete this.roomTimers[room.roomId];
-				}
+		this.questionScheduler.scheduleAnswerCheck(
+			room.roomId,
+			TIME_PERIODS_MS.SECOND,
+			async () => {
+				return await this.multiplayerService.checkAllPlayersAnswered(room.roomId);
+			},
+			async () => {
 				await this.endQuestion(room.roomId);
 			}
-		}, TIME_PERIODS_MS.SECOND);
-
-		// Store timers for cleanup
-		this.roomTimers[room.roomId] = { checkInterval, timeoutId };
+		);
 	}
 
-	/**
-	 * End current question (internal method)
-	 */
 	private async endQuestion(roomId: string) {
+		if (this.endingRooms.has(roomId)) {
+			return;
+		}
+
 		try {
-			const room = await this.multiplayerService.getRoom(roomId);
-			if (!room || room.status !== RoomStatus.PLAYING) {
+			this.endingRooms.add(roomId);
+
+			const endResult = await this.multiplayerService.endQuestion(roomId);
+			if (!endResult) {
+				this.endingRooms.delete(roomId);
 				return;
 			}
-
-			const currentQuestion = room.questions[room.currentQuestionIndex];
-			if (!currentQuestion) {
-				return;
-			}
-
-			// Get results for all players
-			const results = room.players.map(player => {
-				const isCorrect = player.currentAnswer === currentQuestion.correctAnswerIndex;
-				// Calculate score using the same method as submitAnswer for consistency
-				// Use the streak value that was used when the answer was submitted
-				// (correctAnswers - 1 if answer was correct, since it was incremented after scoring)
-				const streak = isCorrect ? player.correctAnswers - 1 : player.correctAnswers;
-				const difficulty =
-					currentQuestion.metadata?.mappedDifficulty ??
-					room.config.mappedDifficulty ??
-					toDifficultyLevel(currentQuestion.difficulty);
-				const scoreEarned = calculateAnswerScore(difficulty, player.timeSpent || 0, streak, isCorrect);
-				return {
-					userId: player.userId,
-					isCorrect,
-					scoreEarned,
-				};
-			});
-
-			// Get updated game state for leaderboard
-			const gameState = await this.multiplayerService.getGameState(roomId);
 
 			// Broadcast question ended
-			const questionEndedEvent = this.createGameEvent('question-ended', roomId, {
-				questionId: currentQuestion.id,
-				correctAnswer: currentQuestion.correctAnswerIndex,
-				results,
-				leaderboard: gameState.leaderboard,
+			const questionEndedEvent = this.createGameEvent(MultiplayerEvent.QUESTION_ENDED, roomId, {
+				questionId: endResult.questionId,
+				correctAnswer: endResult.correctAnswer,
+				results: endResult.results,
+				leaderboard: endResult.leaderboard,
 			});
 			this.broadcastToRoom(roomId, questionEndedEvent);
 
-			// Cleanup timers for current question
-			this.cleanupRoomTimers(roomId);
+			this.questionScheduler.cancelSchedule(roomId);
 
-			// Move to next question or end game (automatic, no host required)
 			const updatedRoom = await this.multiplayerService.nextQuestion(roomId);
 
 			if (updatedRoom.status === RoomStatus.FINISHED) {
-				// Cleanup all timers
-				this.cleanupRoomTimers(roomId);
+				this.questionScheduler.cancelSchedule(roomId);
 
-				// Broadcast game ended
 				const finalGameState = await this.multiplayerService.getGameState(roomId);
-				const winner = finalGameState.leaderboard[0] || null;
+				const winner = finalGameState.leaderboard[0] ?? null;
 				const gameDuration =
 					updatedRoom.endTime && updatedRoom.startTime
 						? updatedRoom.endTime.getTime() - updatedRoom.startTime.getTime()
 						: 0;
 
-				const gameEndedEvent = this.createGameEvent('game-ended', roomId, {
+				const gameEndedEvent = this.createGameEvent(MultiplayerEvent.GAME_ENDED, roomId, {
 					finalLeaderboard: finalGameState.leaderboard,
 					winner,
 					gameDuration,
 				});
 				this.broadcastToRoom(roomId, gameEndedEvent);
 			} else {
-				// Start next question after a short delay
 				setTimeout(() => {
 					this.startQuestion(updatedRoom).catch(error => {
 						logger.gameError('Failed to start next question', {
-							error: getErrorMessage(error),
+							errorInfo: { message: getErrorMessage(error) },
 							roomId,
 						});
 					});
 				}, TIME_PERIODS_MS.TWO_SECONDS);
 			}
+
+			this.endingRooms.delete(roomId);
 		} catch (error) {
 			logger.gameError('Failed to end question', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 			});
+			this.endingRooms.delete(roomId);
 		}
 	}
 
-	/**
-	 * Handle reconnection - find rooms user is in and send current state
-	 */
 	private async handleReconnection(client: TypedSocket, userId: string): Promise<void> {
 		try {
-			const rooms = await this.roomService.findRoomsByUserId(userId);
+			const rooms = await this.multiplayerService.findRoomsByUserId(userId);
 			for (const room of rooms) {
 				// Rejoin socket to room
 				client.join(room.roomId);
@@ -600,15 +488,12 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			}
 		} catch (error) {
 			logger.gameError('Failed to handle reconnection', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 		}
 	}
 
-	/**
-	 * Send current game state to a client
-	 */
 	private async sendGameStateToClient(client: TypedSocket, room: MultiplayerRoom): Promise<void> {
 		try {
 			const gameState = await this.multiplayerService.getGameState(room.roomId);
@@ -618,47 +503,35 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 
 			// If there's a current question, send question-started event
-			if (room.status === RoomStatus.PLAYING && gameState.currentQuestion) {
-				const questionStartedEvent = this.createGameEvent('question-started', room.roomId, {
+			if (room.status === RoomStatus.PLAYING && gameState.currentQuestion && room.currentQuestionStartTime) {
+				const serverStartTimestamp = room.currentQuestionStartTime.getTime();
+				const serverEndTimestamp = serverStartTimestamp + room.config.timePerQuestion * 1000;
+				const questionStartedEvent = this.createGameEvent(MultiplayerEvent.QUESTION_STARTED, room.roomId, {
 					question: gameState.currentQuestion,
 					questionIndex: gameState.currentQuestionIndex,
 					timeLimit: room.config.timePerQuestion,
+					serverStartTimestamp,
+					serverEndTimestamp,
 				});
 				client.emit('question-started', questionStartedEvent.data);
 			}
 		} catch (error) {
 			logger.gameError('Failed to send game state to client', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId: room.roomId,
 			});
 		}
 	}
 
-	/**
-	 * Cleanup timers for a room
-	 */
-	private cleanupRoomTimers(roomId: string): void {
-		const timer = this.roomTimers[roomId];
-		if (timer) {
-			clearInterval(timer.checkInterval);
-			clearTimeout(timer.timeoutId);
-			delete this.roomTimers[roomId];
-		}
-	}
-
-	/**
-	 * Handle case when all players disconnected
-	 */
 	private async handleAllPlayersDisconnected(roomId: string): Promise<void> {
 		try {
-			// Cleanup timers
-			this.cleanupRoomTimers(roomId);
+			this.questionScheduler.cancelSchedule(roomId);
 
 			// Update room status to cancelled
-			await this.roomService.updateRoomStatus(roomId, RoomStatus.CANCELLED);
+			await this.multiplayerService.cancelGame(roomId);
 
 			// Broadcast game cancelled as error event
-			const errorEvent = this.createGameEvent('error', roomId, {
+			const errorEvent = this.createGameEvent(MultiplayerEvent.ERROR, roomId, {
 				message: 'Game cancelled: All players disconnected',
 				code: ERROR_CODES.GAME_CANCELLED,
 			});
@@ -667,15 +540,12 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			logger.gameInfo('Game cancelled - all players disconnected', { roomId });
 		} catch (error) {
 			logger.gameError('Failed to handle all players disconnected', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 			});
 		}
 	}
 
-	/**
-	 * Broadcast event to all clients in a room
-	 */
 	private broadcastToRoom(roomId: string, event: MultiplayerGameEvent) {
 		this.server.to(roomId).emit(event.type, event);
 	}

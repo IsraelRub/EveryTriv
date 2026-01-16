@@ -45,7 +45,6 @@ shared/types/
 ├── language.types.ts          # טיפוסי שפה
 ├── payment.types.ts           # טיפוסי תשלום
 ├── points.types.ts            # טיפוסי נקודות
-├── subscription.types.ts      # טיפוסי מנויים
 └── index.ts                   # ייצוא מרכזי
 ```
 
@@ -149,10 +148,6 @@ import { DifficultyLevel, GameMode } from '@shared/constants';
 import type { BaseEntity } from '../../core/data.types';
 import type { QuestionData } from '../../infrastructure/api.types';
 
-/**
- * Game status types
- */
-export type GameStatus = 'waiting' | 'in_progress' | 'completed' | 'abandoned';
 
 /**
  * Base game statistics interface
@@ -245,10 +240,6 @@ export interface UserStatsData {
 import { DifficultyLevel } from '@shared/constants';
 import type { BaseEntity } from '../../core/data.types';
 
-/**
- * Trivia question source type
- */
-export type TriviaQuestionSource = 'ai';
 
 /**
  * Trivia question interface
@@ -259,14 +250,10 @@ export interface TriviaQuestion extends BaseEntity {
   correctAnswerIndex: number;
   topic: string;
   difficulty: GameDifficulty;
-  category?: string;
-  explanation?: string;
-  source?: string;
-  tags?: string[];
+  metadata?: TriviaQuestionDetailsMetadata;
   rating?: number;
   timesAnswered?: number;
   successRate?: number;
-  metadata?: TriviaQuestionDetailsMetadata;
 }
 
 /**
@@ -275,7 +262,7 @@ export interface TriviaQuestion extends BaseEntity {
 export interface TriviaQuestionDetailsMetadata {
   category?: string;
   tags?: string[];
-  source?: TriviaQuestionSource; // משתמש ב-TriviaQuestionSource
+  source?: TriviaQuestionSource;
   providerName?: string;
   difficulty?: GameDifficulty;
   difficultyScore?: number;
@@ -292,6 +279,7 @@ export interface TriviaQuestionDetailsMetadata {
   flaggedReasons?: string[];
   popularityScore?: number;
   averageAnswerTimeMs?: number;
+  mappedDifficulty?: DifficultyLevel;
 }
 ```
 
@@ -379,24 +367,17 @@ export interface UserPreferences {
 }
 
 /**
- * Authentication provider types
- */
-export type AuthProvider = 'local' | 'google';
-
-/**
  * User interface (complete entity)
  */
 export interface User extends UserProfile {
   status: UserStatus;
   emailVerified: boolean;
   lastLogin?: Date;
-  authProvider: AuthProvider;
   credits: number;
   purchasedCredits: number;
   totalCredits: number;
   dailyFreeQuestions: number;
   remainingFreeQuestions: number;
-  currentSubscriptionId?: string;
   achievements: Achievement[];
   stats: BaseGameStatistics;
 }
@@ -512,17 +493,10 @@ export interface LoggerConfigUpdate {
 /**
  * Enhanced logger interface
  */
-export interface EnhancedLoggerInterface {
-  error(message: string, meta?: LogMeta): void;
-  warn(message: string, meta?: LogMeta): void;
-  info(message: string, meta?: LogMeta): void;
-  debug(message: string, meta?: LogMeta): void;
-  // Domain-specific methods
-  userError(message: string, meta?: LogMeta): void;
-  userInfo(message: string, meta?: LogMeta): void;
-  apiError(message: string, meta?: LogMeta): void;
-  gameError(message: string, meta?: LogMeta): void;
-  // ... additional methods
+export interface EnhancedLogger {
+  // Enhanced logging methods
+  logSecurityEventEnhanced(message: string, level: LogLevel, context?: LogMeta): void;
+  logAuthenticationEnhanced(action: string, userId: string, email: string, context?: LogMeta): void;
 }
 ```
 
@@ -579,19 +553,6 @@ export interface CreditBalance {
 }
 
 /**
- * Point transaction interface
- */
-export interface PointTransaction {
-  id: string;
-  userId: string;
-  amount: number;
-  type: 'earned' | 'spent' | 'purchased';
-  source: string;
-  description?: string;
-  createdAt: Date;
-}
-
-/**
  * Point purchase option interface
  */
 export interface CreditPurchaseOption {
@@ -600,47 +561,6 @@ export interface CreditPurchaseOption {
   price: number;
   currency: string;
   bonus?: number;
-}
-```
-
-## Subscription Types
-
-### subscription.types.ts
-
-```typescript
-/**
- * Subscription plan details interface
- * @description Details for each subscription plan
- */
-export interface SubscriptionPlanDetails {
-  name?: string;
-  price: number;
-  currency?: string;
-  interval?: string;
-  features: string[] | readonly string[];
-  pointBonus?: number;
-  questionLimit?: number;
-  paypalProductId?: string;
-}
-
-/**
- * Available subscription plans
- * @type SubscriptionPlans
- * @description Type derived from SUBSCRIPTION_PLANS constant
- */
-export type SubscriptionPlans = typeof SUBSCRIPTION_PLANS;
-
-/**
- * Subscription data interface
- */
-export interface SubscriptionData {
-  id: string;
-  userId: string;
-  planId: string;
-  status: 'active' | 'cancelled' | 'expired';
-  startDate: Date;
-  endDate?: Date;
-  autoRenew: boolean;
 }
 ```
 

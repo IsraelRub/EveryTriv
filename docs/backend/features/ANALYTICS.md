@@ -15,6 +15,7 @@
 - ניתוח מגמות
 - מדדי ביצועים ומערכת
 - תובנות וממליצים מותאמים אישית
+- **לידרבאורד ודירוגים**: חישוב דירוגים, לוחות תוצאות לפי תקופות זמן, וניהול דירוגי משתמשים
 
 ## מבנה מודול
 
@@ -29,10 +30,20 @@ server/src/features/analytics/
 │   ├── userIdParam.dto.ts
 │   ├── userSummaryQuery.dto.ts
 │   ├── userTrendQuery.dto.ts
+│   ├── leaderboard/              # Leaderboard DTOs
+│   │   ├── leaderboard.dto.ts
+│   │   └── index.ts
 │   └── index.ts
-├── analytics.controller.ts        # Controller
-├── analytics.service.ts          # Service
-├── analytics.module.ts           # Module
+├── services/                      # Analytics Services
+│   ├── analytics-tracker.service.ts
+│   ├── business-analytics.service.ts
+│   ├── global-analytics.service.ts
+│   ├── ranking-analytics.service.ts  # Leaderboard & Rankings
+│   ├── system-analytics.service.ts
+│   └── user-analytics.service.ts
+├── analytics.controller.ts        # Analytics Controller
+├── leaderboard.controller.ts     # Leaderboard Controller
+├── analytics.module.ts           # Module (includes both controllers)
 └── index.ts
 ```
 
@@ -280,7 +291,30 @@ AnalyticsResponse<DifficultyStatsData>
 }
 ```
 
+## Leaderboard Endpoints
+
+הלידרבאורד הוא חלק ממודול האנליזה. ראה [Leaderboard Feature](./LEADERBOARD.md) למידע מפורט על כל ה-endpoints של הלידרבאורד.
+
+**Endpoints עיקריים:**
+- `GET /leaderboard/user/ranking` - דירוג משתמש נוכחי
+- `GET /leaderboard/global` - לוח תוצאות כללי
+- `GET /leaderboard/period/:period` - לוח תוצאות לפי תקופה
+- `GET /leaderboard/stats` - סטטיסטיקות לידרבאורד
+- `POST /leaderboard/user/update` - עדכון דירוג משתמש
+- `DELETE /leaderboard/admin/clear-all` - מחיקת כל הלידרבאורד (Admin)
+
 ## Service Methods
+
+### Analytics Services
+
+המודול כולל מספר שירותים:
+
+- **AnalyticsTrackerService** - מעקב אחר אירועים
+- **UserAnalyticsService** - אנליטיקה של משתמשים
+- **GlobalAnalyticsService** - אנליטיקה גלובלית
+- **BusinessAnalyticsService** - אנליטיקה עסקית
+- **SystemAnalyticsService** - אנליטיקה של המערכת
+- **RankingAnalyticsService** - דירוגים ולידרבאורד (ראה [Leaderboard Feature](./LEADERBOARD.md))
 
 ### AnalyticsService
 
@@ -542,6 +576,9 @@ export class AnalyticsService implements OnModuleInit {
 | התקדמות משתמש | `analytics:progress:{userId}` | 300s | עדכון אוטומטי |
 | נושאים פופולריים | `analytics:topics:popular` | 1800s | עדכון אוטומטי |
 | סטטיסטיקות קושי | `analytics:difficulty:stats` | 1800s | עדכון אוטומטי |
+| דירוג משתמש | `leaderboard:user:{userId}` | 300s | עדכון בעת שינוי |
+| לוח כללי | `leaderboard:global:{limit}:{offset}` | 600s | עדכון אוטומטי |
+| לוח לפי תקופה | `leaderboard:{period}:{limit}` | 900s | עדכון אוטומטי |
 
 ## אבטחה
 - קבלת אירועים רק ממשתמשים מאומתים

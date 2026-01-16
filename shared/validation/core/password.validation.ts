@@ -1,18 +1,6 @@
-/**
- * Password validation utilities
- *
- * @module PasswordValidation
- * @description Validation functions for password security requirements
- */
 import { VALIDATION_LENGTH } from '../../constants';
-import type { PasswordValidationResult } from '../../types';
+import type { BaseValidationResult, PasswordValidationResult } from '../../types';
 
-/**
- * Validates password security requirements
- * @param password The password string to validate
- * @returns Password validation result with detailed compliance checks
- * Performs password validation including length requirements
- */
 export function validatePassword(password: string): PasswordValidationResult {
 	const hasMinLength = !!password && password.length >= VALIDATION_LENGTH.PASSWORD.MIN;
 	const hasMaxLength = !!password && password.length <= VALIDATION_LENGTH.PASSWORD.MAX;
@@ -34,5 +22,20 @@ export function validatePassword(password: string): PasswordValidationResult {
 		isValid: errors.length === 0,
 		errors,
 		checks,
+	};
+}
+
+export function validatePasswordMatch(password: string, confirmPassword: string): BaseValidationResult {
+	const errors: string[] = [];
+
+	if (!confirmPassword) {
+		errors.push('Please confirm your password');
+	} else if (password && confirmPassword !== password) {
+		errors.push('Passwords do not match');
+	}
+
+	return {
+		isValid: errors.length === 0,
+		errors,
 	};
 }

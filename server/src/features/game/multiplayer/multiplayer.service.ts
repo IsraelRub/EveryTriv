@@ -1,18 +1,25 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { ERROR_CODES, PlayerStatus, RoomStatus, VALIDATION_COUNT } from '@shared/constants';
-import type { CreateRoomResponse, GameState, MultiplayerRoom, RoomConfig, SubmitAnswerResponse } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { ERROR_CODES, RoomStatus, VALIDATION_COUNT } from '@shared/constants';
+import type {
+	CreateRoomResponse,
+	GameState,
+	MultiplayerAnswerResult,
+	MultiplayerRoom,
+	Player,
+	QuestionResult,
+	RoomConfig,
+	RoomStateResponse,
+	TriviaQuestion,
+} from '@shared/types';
+import { getCorrectAnswerIndex } from '@shared/utils';
+
 import { serverLogger as logger } from '@internal/services';
+
 import { GameService } from '../game.service';
 import { GameStateService } from './gameState.service';
 import { RoomService } from './room.service';
 
-/**
- * Main service for multiplayer game functionality
- * @class MultiplayerService
- * @description Orchestrates all multiplayer game operations
- */
 @Injectable()
 export class MultiplayerService {
 	constructor(
@@ -21,276 +28,236 @@ export class MultiplayerService {
 		private readonly gameService: GameService
 	) {}
 
-	/**
-	 * Create a new multiplayer room
-	 * @param hostId User ID of the room host
-	 * @param config Room configuration
-	 * @returns Created room with room code (roomId is the code)
-	 */
 	async createRoom(hostId: string, config: RoomConfig): Promise<CreateRoomResponse> {
-		try {
-			const room = await this.roomService.createRoom(hostId, config);
+		const room = await this.roomService.createRoom(hostId, config);
 
-			logger.gameInfo('Multiplayer room created', {
-				roomId: room.roomId,
-				hostId,
-			});
+		logger.gameInfo('Multiplayer room created', {
+			roomId: room.roomId,
+			hostId,
+		});
 
-			// roomId is now the short code directly
-			return { room, code: room.roomId };
-		} catch (error) {
-			logger.gameError('Failed to create multiplayer room', {
-				error: getErrorMessage(error),
-				hostId,
-				topic: config.topic,
-				difficulty: config.difficulty,
-				questionsPerRequest: config.questionsPerRequest,
-				maxPlayers: config.maxPlayers,
-			});
-			throw error;
-		}
+		return { room, code: room.roomId };
 	}
 
-	/**
-	 * Join a room
-	 * @param roomId Room ID
-	 * @param userId User ID joining
-	 * @returns Updated room
-	 */
 	async joinRoom(roomId: string, userId: string): Promise<MultiplayerRoom> {
-		try {
-			const room = await this.roomService.joinRoom(roomId, userId);
-			
-			return room;
-		} catch (error) {
-			logger.gameError('Failed to join multiplayer room', {
-				error: getErrorMessage(error),
-				roomId,
-				userId,
-			});
-			throw error;
-		}
+		return this.roomService.joinRoom(roomId, userId);
 	}
 
-	/**
-	 * Leave a room
-	 * @param roomId Room ID
-	 * @param userId User ID leaving
-	 * @returns Updated room or null if deleted
-	 */
 	async leaveRoom(roomId: string, userId: string): Promise<MultiplayerRoom | null> {
-		try {
-			const room = await this.roomService.leaveRoom(roomId, userId);
+		const room = await this.roomService.leaveRoom(roomId, userId);
 
-			logger.gameInfo('Player left multiplayer room', {
-				roomId,
-				userId,
-				playerCount: room?.players.length ?? 0,
-			});
+		logger.gameInfo('Player left multiplayer room', {
+			roomId,
+			userId,
+			playerCount: room?.players.length ?? 0,
+		});
 
-			return room;
-		} catch (error) {
-			logger.gameError('Failed to leave multiplayer room', {
-				error: getErrorMessage(error),
-				roomId,
-				userId,
-			});
-			throw error;
-		}
+		return room;
 	}
 
-	/**
-	 * Start a multiplayer game
-	 * @param roomId Room ID
-	 * @param hostId Host user ID (must be host to start)
-	 * @returns Initialized room with questions
-	 */
 	async startGame(roomId: string, hostId: string): Promise<MultiplayerRoom> {
-		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
-			}
-
-			if (room.hostId !== hostId) {
-				throw new BadRequestException(ERROR_CODES.ONLY_HOST_CAN_START);
-			}
-
-			if (room.status !== RoomStatus.WAITING) {
-				throw new BadRequestException(ERROR_CODES.GAME_ALREADY_STARTED_OR_FINISHED);
-			}
-
-			if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
-				throw new BadRequestException(ERROR_CODES.NEED_AT_LEAST_2_PLAYERS);
-			}
-
-			// Generate questions using GameService
-			const triviaResult = await this.gameService.getTriviaQuestion(
-				room.config.topic,
-				room.config.difficulty,
-				room.config.questionsPerRequest,
-				hostId,
-				undefined
-			);
-
-			// Initialize game with questions
-			const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);
-
-			logger.gameInfo('Multiplayer game started', {
-				roomId,
-				hostId,
-				gameQuestionCount: triviaResult.questions.length,
-				playerCount: initializedRoom.players.length,
-			});
-
-			return initializedRoom;
-		} catch (error) {
-			logger.gameError('Failed to start multiplayer game', {
-				error: getErrorMessage(error),
-				roomId,
-				hostId,
-			});
-			throw error;
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
+			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 		}
+
+		if (room.hostId !== hostId) {
+			throw new BadRequestException(ERROR_CODES.ONLY_HOST_CAN_START);
+		}
+
+		if (room.status !== RoomStatus.WAITING) {
+			throw new BadRequestException(ERROR_CODES.GAME_ALREADY_STARTED_OR_FINISHED);
+		}
+
+		if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
+			throw new BadRequestException(ERROR_CODES.NEED_AT_LEAST_2_PLAYERS);
+		}
+
+		const triviaResult = await this.gameService.getTriviaQuestion({
+			topic: room.config.topic,
+			difficulty: room.config.difficulty,
+			questionsPerRequest: room.config.questionsPerRequest,
+			userId: hostId,
+			answerCount: undefined,
+		});
+
+		const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);
+
+		logger.gameInfo('Multiplayer game started', {
+			roomId,
+			hostId,
+			gameQuestionCount: triviaResult.questions.length,
+			playerCount: initializedRoom.players.length,
+		});
+
+		return initializedRoom;
 	}
 
-	/**
-	 * Get current game state
-	 * @param roomId Room ID
-	 * @returns Current game state
-	 */
 	async getGameState(roomId: string): Promise<GameState> {
-		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
-			}
-
-			return this.gameStateService.getGameState(room);
-		} catch (error) {
-			logger.gameError('Failed to get game state', {
-				error: getErrorMessage(error),
-				roomId,
-			});
-			throw error;
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
+			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 		}
+
+		return this.gameStateService.getGameState(room);
 	}
 
-	/**
-	 * Submit answer
-	 * @param roomId Room ID
-	 * @param userId User ID
-	 * @param questionId Question ID
-	 * @param answer Answer index
-	 * @param timeSpent Time spent in seconds
-	 * @returns Answer result
-	 */
 	async submitAnswer(
 		roomId: string,
 		userId: string,
 		questionId: string,
 		answer: number,
 		timeSpent: number
-	): Promise<SubmitAnswerResponse> {
-		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
-			}
-
-			if (room.status !== RoomStatus.PLAYING) {
-				throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
-			}
-
-			const result = await this.gameStateService.submitAnswer(room, userId, questionId, answer, timeSpent);
-
-			// Get updated leaderboard
-			const gameState = this.gameStateService.getGameState(result.room);
-
-			return {
-				room: result.room,
-				isCorrect: result.isCorrect,
-				scoreEarned: result.scoreEarned,
-				leaderboard: gameState.leaderboard,
-			};
-		} catch (error) {
-			logger.gameError('Failed to submit answer', {
-				error: getErrorMessage(error),
-				roomId,
-				userId,
-				questionId,
-			});
-			throw error;
+	): Promise<MultiplayerAnswerResult> {
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
+			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 		}
+
+		if (room.status !== RoomStatus.PLAYING) {
+			throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
+		}
+
+		const result = await this.gameStateService.submitAnswer(room, userId, questionId, answer, timeSpent);
+		const gameState = this.gameStateService.getGameState(result.room);
+
+		return {
+			room: result.room,
+			isCorrect: result.isCorrect,
+			scoreEarned: result.scoreEarned,
+			leaderboard: gameState.leaderboard,
+		};
 	}
 
-	/**
-	 * Move to next question (called automatically when timer expires or all players answered)
-	 * @param roomId Room ID
-	 * @returns Updated room
-	 */
 	async nextQuestion(roomId: string): Promise<MultiplayerRoom> {
-		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
-			}
-
-			if (room.status !== RoomStatus.PLAYING) {
-				throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
-			}
-
-			const updatedRoom = await this.gameStateService.nextQuestion(room);
-
-			logger.gameInfo('Moved to next question', {
-				roomId,
-				currentQuestionIndex: updatedRoom.currentQuestionIndex,
-				gameQuestionCount: updatedRoom.questions.length,
-			});
-
-			return updatedRoom;
-		} catch (error) {
-			logger.gameError('Failed to move to next question', {
-				error: getErrorMessage(error),
-				roomId,
-			});
-			throw error;
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
+			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 		}
+
+		if (room.status !== RoomStatus.PLAYING) {
+			throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
+		}
+
+		return await this.gameStateService.nextQuestion(room);
 	}
 
-	/**
-	 * Check if all players have answered the current question
-	 * @param roomId Room ID
-	 * @returns True if all players answered
-	 */
-	async allPlayersAnswered(roomId: string): Promise<boolean> {
-		try {
-			const room = await this.roomService.getRoom(roomId);
-			if (!room || room.status !== RoomStatus.PLAYING) {
-				return false;
-			}
+	async startQuestion(roomId: string): Promise<{
+		question: TriviaQuestion;
+		questionIndex: number;
+		timeLimit: number;
+		serverStartTimestamp: number;
+		serverEndTimestamp: number;
+	} | null> {
+		const room = await this.roomService.getRoom(roomId);
+		if (!room || room.status !== RoomStatus.PLAYING) {
+			return null;
+		}
 
-			const activePlayers = room.players.filter(p => p.status !== PlayerStatus.DISCONNECTED);
-			const answeredPlayers = activePlayers.filter(
-				p => p.status === PlayerStatus.ANSWERED || p.currentAnswer !== undefined
-			);
+		const question = room.questions[room.currentQuestionIndex];
+		if (!question) {
+			return null;
+		}
 
-			return activePlayers.length > 0 && answeredPlayers.length === activePlayers.length;
-		} catch (error) {
-			logger.gameError('Failed to check if all players answered', {
-				error: getErrorMessage(error),
-				roomId,
-			});
+		const updatedRoom = await this.gameStateService.startQuestionFlow(roomId, room);
+		if (!updatedRoom) {
+			return null;
+		}
+
+		// Calculate server timestamps as authoritative source
+		const serverStartTimestamp = Date.now();
+		const serverEndTimestamp = serverStartTimestamp + updatedRoom.config.timePerQuestion * 1000;
+
+		return {
+			question,
+			questionIndex: updatedRoom.currentQuestionIndex,
+			timeLimit: updatedRoom.config.timePerQuestion,
+			serverStartTimestamp,
+			serverEndTimestamp,
+		};
+	}
+
+	async endQuestion(roomId: string): Promise<{
+		questionId: string;
+		correctAnswer: number;
+		results: QuestionResult[];
+		leaderboard: Player[];
+		updatedRoom: MultiplayerRoom;
+	} | null> {
+		const room = await this.roomService.getRoom(roomId);
+		if (!room || room.status !== RoomStatus.PLAYING) {
+			return null;
+		}
+
+		const currentQuestion = room.questions[room.currentQuestionIndex];
+		if (!currentQuestion) {
+			return null;
+		}
+
+		const endResult = await this.gameStateService.endQuestionFlow(roomId, room);
+		if (!endResult) {
+			return null;
+		}
+
+		return {
+			questionId: currentQuestion.id,
+			correctAnswer: getCorrectAnswerIndex(currentQuestion),
+			results: endResult.results,
+			leaderboard: endResult.leaderboard,
+			updatedRoom: endResult.room,
+		};
+	}
+
+	async checkAllPlayersAnswered(roomId: string): Promise<boolean> {
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
 			return false;
 		}
+		return this.gameStateService.allPlayersAnswered(room);
 	}
 
-	/**
-	 * Get room by ID
-	 * @param roomId Room ID
-	 * @returns Room or null
-	 */
+	async findRoomsByUserId(userId: string): Promise<MultiplayerRoom[]> {
+		return this.roomService.findRoomsByUserId(userId);
+	}
+
 	async getRoom(roomId: string): Promise<MultiplayerRoom | null> {
 		return this.roomService.getRoom(roomId);
+	}
+
+	async restoreRoom(room: MultiplayerRoom): Promise<void> {
+		return this.roomService.restoreRoom(room);
+	}
+
+	async cancelGame(roomId: string): Promise<MultiplayerRoom> {
+		return this.roomService.updateRoomStatus(roomId, RoomStatus.CANCELLED);
+	}
+
+	private validateParticipant(room: MultiplayerRoom | null, userId: string): asserts room is MultiplayerRoom {
+		if (!room) {
+			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+		}
+
+		const isParticipant = room.players.some(player => player.userId === userId);
+		if (!isParticipant) {
+			throw new ForbiddenException(ERROR_CODES.NOT_PART_OF_ROOM);
+		}
+	}
+
+	async getRoomDetails(roomId: string, userId: string): Promise<MultiplayerRoom> {
+		const room = await this.roomService.getRoom(roomId);
+		this.validateParticipant(room, userId);
+		return room;
+	}
+
+	async getRoomState(roomId: string, userId: string): Promise<RoomStateResponse> {
+		const room = await this.roomService.getRoom(roomId);
+		this.validateParticipant(room, userId);
+
+		const gameState = await this.getGameState(roomId);
+
+		return {
+			room,
+			gameState,
+		};
 	}
 }

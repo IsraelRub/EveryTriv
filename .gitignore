@@ -61,6 +61,7 @@ coverage/
 # Optional npm cache directory
 .npm
 .pnpm-store/
+.pnpm-cache/
 
 # Optional eslint cache
 .eslintcache
@@ -77,6 +78,8 @@ coverage/
 # Output of 'npm pack'
 *.tgz
 
+# Generated/Output files
+repomix-output.*
 
 # Temporary folders
 tmp/

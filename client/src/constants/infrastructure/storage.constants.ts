@@ -1,9 +1,3 @@
-/**
- * Storage Constants
- *
- * @module StorageConstants
- * @description Centralized storage key constants to avoid conflicts and ensure consistency
- */
 export const STORAGE_KEYS = {
 	// Authentication (localStorage - persistent)
 	AUTH_TOKEN: 'access_token',

@@ -214,14 +214,14 @@ import { clientLogger as logger } from '@shared/services';
 import type { AuthCredentials, AuthenticationResult, BasicUser, User, UserProfileResponseType } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { ensureErrorObject } from '@shared/utils/core/error.utils';
-import { CLIENT_STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
 import { isUser } from '../utils/data.utils';
 import { ApiConfig, apiService } from './api.service';
 import { storageService } from './storage.service';
 
 class AuthService {
-  private readonly TOKEN_KEY = CLIENT_STORAGE_KEYS.AUTH_TOKEN;
-  private readonly USER_KEY = CLIENT_STORAGE_KEYS.AUTH_USER;
+  private readonly TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
+  private readonly USER_KEY = STORAGE_KEYS.AUTH_USER;
 
   async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
     try {
@@ -289,7 +289,7 @@ class AuthService {
       if (!user) {
         throw new Error('No user data found');
       }
-      const refreshTokenResult = await storageService.getString(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+      const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
       const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
       if (!refreshToken) {
         throw new Error('No refresh token available');
@@ -404,7 +404,7 @@ class AuthService {
 
   private async clearAuthData(): Promise<void> {
     await storageService.delete(this.TOKEN_KEY);
-    await storageService.delete(CLIENT_STORAGE_KEYS.REFRESH_TOKEN);
+    await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
     await storageService.delete(this.USER_KEY);
   }
 }
@@ -742,55 +742,6 @@ import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
 import { apiService } from './api.service';
 
 class ClientGameHistoryService {
-  async saveGameResult(gameData: GameData): Promise<GameHistoryEntry> {
-    try {
-      logger.gameStatistics('Saving game result to history', {
-        score: gameData.score,
-        totalQuestions: gameData.totalQuestions,
-        correctAnswers: gameData.correctAnswers,
-      });
-
-      if (!gameData.userId || gameData.userId.trim() === '') {
-        throw new Error('User ID is required to save game history');
-      }
-
-      if (!isValidDifficulty(gameData.difficulty)) {
-        throw new Error(`Invalid difficulty level: ${gameData.difficulty}`);
-      }
-
-      if (!VALID_GAME_MODES.includes(gameData.gameMode)) {
-        throw new Error(`Invalid game mode: ${gameData.gameMode}`);
-      }
-
-      await apiService.saveGameHistory(gameData);
-
-      const gameHistory: GameHistoryEntry = {
-        id: `game_${Date.now()}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        topic: gameData.topic || GAME_STATE_DEFAULTS.TOPIC,
-        difficulty: toDifficultyLevel(gameData.difficulty),
-        gameMode: gameData.gameMode,
-        score: gameData.score,
-        totalQuestions: gameData.totalQuestions,
-        correctAnswers: gameData.correctAnswers,
-        timeSpent: gameData.timeSpent ?? 0,
-        creditsUsed: gameData.creditsUsed ?? 0,
-        questionsData: gameData.questionsData ?? [],
-        userId: gameData.userId,
-      };
-
-      logger.gameStatistics('Game result saved successfully', { id: gameHistory.id });
-      return gameHistory;
-    } catch (error) {
-      logger.gameError('Failed to save game result', {
-        error: getErrorMessage(error),
-        gameData,
-      });
-      throw error;
-    }
-  }
-
   async getUserGameHistory(limit: number = 20, offset: number = 0): Promise<GameHistoryEntry[]> {
     try {
       logger.gameStatistics('Getting user game history', { limit, offset });
@@ -1058,7 +1009,6 @@ import type {
 } from '@shared/types';
 import { getErrorMessage, hasPropertyOfType } from '@shared/utils';
 
-import type { SubscriptionCreationResponse } from '../types';
 import { apiService } from './api.service';
 
 class ClientUserService {
@@ -1112,54 +1062,6 @@ class ClientUserService {
       return response;
     } catch (error) {
       logger.userError('Failed to delete user account', { error: getErrorMessage(error) });
-      throw error;
-    }
-  }
-
-  async createSubscription(plan: PlanType, billingCycle?: BillingCycle): Promise<SubscriptionCreationResponse> {
-    try {
-      logger.userInfo('Creating subscription', { planType: plan, billingCycle });
-      const response = await apiService.createSubscription(plan, billingCycle);
-      const normalizedBillingCycle = Object.values(BillingCycle).find(cycle => cycle === response.billingCycle);
-      const paymentId = hasPropertyOfType(response, 'paymentId', (value): value is string => typeof value === 'string')
-        ? response.paymentId
-        : undefined;
-
-      const subscriptionPayload: SubscriptionCreationResponse = {
-        subscriptionId: response.subscriptionId,
-        planType: response.planType,
-        billingCycle: normalizedBillingCycle,
-        status: response.status,
-        paymentId,
-      };
-
-      logger.userInfo('Subscription created successfully', {
-        id: subscriptionPayload.subscriptionId ?? undefined,
-        planType: subscriptionPayload.planType,
-        billingCycle: subscriptionPayload.billingCycle,
-      });
-      return subscriptionPayload;
-    } catch (error) {
-      logger.userError('Failed to create subscription', {
-        error: getErrorMessage(error),
-        planType: plan,
-        billingCycle,
-      });
-      throw error;
-    }
-  }
-
-  async cancelSubscription(): Promise<{ success: boolean; message: string }> {
-    try {
-      logger.userInfo('Canceling subscription');
-      const response = await apiService.cancelSubscription();
-      logger.userInfo('Subscription canceled successfully', {
-        success: response.success,
-        message: response.message,
-      });
-      return response;
-    } catch (error) {
-      logger.userError('Failed to cancel subscription', { error: getErrorMessage(error) });
       throw error;
     }
   }
@@ -1306,7 +1208,7 @@ export const calculateScore = (
 ```typescript
 import { isCustomDifficulty } from '@shared/validation';
 
-import { CLIENT_STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
 import type { HistoryItem } from '../types';
 import { storageService } from './storage.service';
 
@@ -1334,8 +1236,8 @@ function isHistoryItemArray(value: unknown): value is HistoryItem[] {
 }
 
 class CustomDifficultyService {
-  private readonly CUSTOM_DIFFICULTIES_KEY = CLIENT_STORAGE_KEYS.CUSTOM_DIFFICULTIES;
-  private readonly HISTORY_KEY = CLIENT_STORAGE_KEYS.CUSTOM_DIFFICULTY_HISTORY;
+  private readonly CUSTOM_DIFFICULTIES_KEY = STORAGE_KEYS.CUSTOM_DIFFICULTIES;
+  private readonly HISTORY_KEY = STORAGE_KEYS.CUSTOM_DIFFICULTY_HISTORY;
   private readonly MAX_HISTORY_ITEMS = 50;
 
   async getCustomDifficulties(): Promise<string[]> {

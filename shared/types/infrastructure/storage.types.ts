@@ -1,19 +1,8 @@
-/**
- * Storage-related types for EveryTriv
- * Shared between client and server
- *
- * @module StorageTypes
- * @description Storage interfaces and data structures
- */
+// Storage-related types for EveryTriv.
 import { StorageType } from '@shared/constants';
+
 import { BaseCacheEntry, BasicValue, StorageValue, TypeGuard } from '../core/data.types';
 
-/**
- * storage service interface
- * @interface StorageService
- * @description interface for both persistent storage and caching
- * @used_by client/src/services/storage/storage.service.ts
- */
 export interface StorageService {
 	set<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
 	get(key: string): Promise<StorageOperationResult<StorageValue | null>>;
@@ -36,12 +25,6 @@ export interface StorageService {
 	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
 
-/**
- * Storage configuration interface
- * @interface StorageConfig
- * @description Configuration settings for storage services
- * @used_by shared/services/storage (BaseStorageService), server/src/internal/modules/storage/storage.service.ts (ServerStorageService)
- */
 export interface StorageConfig {
 	prefix: string;
 	defaultTtl?: number;
@@ -52,12 +35,6 @@ export interface StorageConfig {
 	enableSync?: boolean;
 }
 
-/**
- * Storage operation result interface
- * @interface StorageOperationResult
- * @description Result of storage operations
- * @used_by shared/services/storage (BaseStorageService)
- */
 export interface StorageOperationResult<T = StorageItemMetadata> {
 	success: boolean;
 	data?: T;
@@ -67,23 +44,11 @@ export interface StorageOperationResult<T = StorageItemMetadata> {
 	storageType?: StorageType;
 }
 
-/**
- * Storage statistics result interface
- * @interface StorageStatsResult
- * @description Result of storage statistics operations
- * @used_by shared/services/storage (StorageManagerService)
- */
 export interface StorageStatsResult {
 	persistent: StorageStats | null;
 	cache: StorageStats | null;
 }
 
-/**
- * Storage item metadata interface
- * @interface StorageItemMetadata
- * @description Metadata for stored items
- * @used_by shared/services/storage (BaseStorageService)
- */
 export interface StorageItemMetadata extends BaseCacheEntry {
 	size: number;
 	ttl?: number;
@@ -100,135 +65,150 @@ export interface StorageItemMetadata extends BaseCacheEntry {
 	writeTime?: number;
 }
 
+export type CacheEntry = Record<string, unknown>;
+
 export interface StorageStatsItem {
 	items: number;
 	size: number;
 }
 
-/**
- * Storage statistics interface
- * @interface StorageStats
- * @description Storage service statistics
- * @used_by shared/services/storage (BaseStorageService)
- */
 export interface StorageStats {
 	totalItems: number;
 	totalSize: number;
-	expiredItems: number;
-	hitRate: number;
-	averageItemSize: number;
-	utilization: number;
-	opsPerSecond: number;
-	avgResponseTime: number;
-	typeBreakdown: {
-		persistent: StorageStatsItem;
-		cache: StorageStatsItem;
-		hybrid: StorageStatsItem;
+	itemsByType: Record<string, StorageStatsItem>;
+	oldestItem?: Date;
+	newestItem?: Date;
+	averageSize: number;
+	largestItem?: {
+		key: string;
+		size: number;
 	};
+	smallestItem?: {
+		key: string;
+		size: number;
+	};
+	expiredItems: number;
+	compressionRatio?: number;
+	hitRate?: number;
+	missRate?: number;
+	evictionCount?: number;
+	accessPatterns?: Record<string, number>;
+	storageType: StorageType;
+	avgResponseTime?: number;
+	utilization?: number;
+	opsPerSecond?: number;
+	typeBreakdown?: Record<StorageType, { items: number; size: number }>;
 }
 
-/**
- * Storage cleanup options interface
- * @interface StorageCleanupOptions
- * @description Options for storage cleanup operations
- * @used_by shared/services/storage (BaseStorageService)
- */
 export interface StorageCleanupOptions {
-	removeExpired?: boolean;
 	maxAge?: number;
 	maxSize?: number;
+	excludePatterns?: string[];
+	includeExpired?: boolean;
+	force?: boolean;
+	removeExpired?: boolean;
 	dryRun?: boolean;
 	types?: StorageType[];
 }
 
-/**
- * Storage migration options interface
- * @interface StorageMigrationOptions
- * @description Options for storage migration operations
- * @used_by shared/services/storage (BaseStorageService)
- */
 export interface StorageMigrationOptions {
-	source: StorageConfig;
-	target: StorageConfig;
-	preserveOriginal?: boolean;
-	batchSize?: number;
-	validate?: boolean;
-}
-
-/**
- * Storage sync options interface
- * @interface StorageSyncOptions
- * @description Options for storage synchronization
- * @used_by shared/services/storage
- */
-export interface StorageSyncOptions {
-	syncToClient?: boolean;
-	syncToServer?: boolean;
-	interval?: number;
+	sourceType: StorageType;
+	targetType: StorageType;
 	keys?: string[];
-	syncMetadata?: boolean;
+	patterns?: string[];
+	validate?: boolean;
+	backup?: boolean;
 }
 
-export interface StorageMetricsItem {
-	operations: number;
-	errors: number;
-	size: number;
+export interface StorageSyncOptions {
+	keys?: string[];
+	patterns?: string[];
+	userId?: string;
+	force?: boolean;
+	validate?: boolean;
+	timeout?: number;
+	retry?: {
+		maxRetries?: number;
+		delay?: number;
+	};
+	onProgress?: (progress: StorageSyncProgress) => void;
+	onError?: (error: Error) => void;
+	onComplete?: (result: StorageSyncResult) => void;
 }
 
-export interface StorageMetricsOperation {
-	set: number;
-	get: number;
-	delete: number;
-	exists: number;
-	clear: number;
-	getKeys: number;
-	invalidate: number;
-	getOrSet: number;
-	getStats: number;
-	cleanup: number;
+export interface StorageSyncProgress {
+	current: number;
+	total: number;
+	percentage: number;
+	currentKey?: string;
+	status: 'syncing' | 'validating' | 'completed' | 'error';
 }
 
-/**
- * Storage metrics interface
- * @interface StorageMetrics
- * @description metrics for storage operations
- * @used_by shared/services/storage
- */
+export interface StorageSyncResult {
+	success: boolean;
+	synced: number;
+	failed: number;
+	errors?: string[];
+	duration: number;
+}
+
 export interface StorageMetrics {
-	operations: StorageMetricsOperation;
-	errors: StorageMetricsOperation;
-	totalOps: number;
-	totalErrors: number;
+	operations: {
+		get: number;
+		set: number;
+		delete: number;
+		clear: number;
+		exists?: number;
+		getKeys?: number;
+		invalidate?: number;
+		getOrSet?: number;
+		getStats?: number;
+		cleanup?: number;
+	};
 	performance: {
-		avgResponseTime: number;
-		opsPerSecond: number;
+		averageGetTime: number;
+		averageSetTime: number;
+		averageDeleteTime: number;
+		avgResponseTime?: number;
+		opsPerSecond?: number;
+		hitRate?: number;
+		missRate?: number;
+	};
+	errors: {
+		total: number;
+		byType: Record<string, number>;
+		get?: number;
+		set?: number;
+		delete?: number;
+		clear?: number;
+		exists?: number;
+		getKeys?: number;
+		invalidate?: number;
+		getOrSet?: number;
+		getStats?: number;
+		cleanup?: number;
+	};
+	storage: {
+		totalSize: number;
+		itemCount: number;
 		hitRate: number;
 		missRate: number;
 	};
-	storageTypes: {
-		persistent: StorageMetricsItem;
-		cache: StorageMetricsItem;
-		hybrid: StorageMetricsItem;
-	};
-	uptime: {
+	storageTypes?: Record<
+		StorageType,
+		{
+			operations: number;
+			errors: number;
+			size: number;
+		}
+	>;
+	uptime?: {
 		ms: number;
 		seconds: number;
 		minutes: number;
 		hours: number;
 	};
-
-	middleware?: {
-		[middlewareName: string]: {
-			requestCount: number;
-			totalDuration: number;
-			averageDuration: number;
-			minDuration: number;
-			maxDuration: number;
-			errorCount: number;
-			lastExecuted: Date;
-			lastErrorMessage?: string;
-			lastErrorName?: string;
-			lastErrorTimestamp?: Date;
-		};
-	};
+	totalOps?: number;
+	totalErrors?: number;
+	middleware?: Record<string, unknown>;
 }

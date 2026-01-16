@@ -308,14 +308,14 @@ export const STORAGE_KEYS = {
 } as const;
 ```
 
-**CLIENT_STORAGE_KEYS:**
-Re-export של `STORAGE_KEYS` כ-`CLIENT_STORAGE_KEYS` (מ-index.ts)
+**STORAGE_KEYS:**
+מפתחות אחסון מרכזיים
 
 **Usage:**
 ```typescript
-import { CLIENT_STORAGE_KEYS } from '@constants';
+import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
 
-const token = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+const token = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 ```
 
 ## UI Constants
@@ -642,13 +642,12 @@ export * from './game';
 export * from './services';
 export * from './user-defaults.constants';
 export * from './storage.constants';
-export { STORAGE_KEYS as CLIENT_STORAGE_KEYS } from './storage.constants';
 ```
 
 **Usage:**
 ```typescript
 import { 
-  CLIENT_STORAGE_KEYS, 
+  STORAGE_KEYS,
   AudioKey, 
   ButtonVariant,
   ComponentSize,
@@ -674,7 +673,6 @@ import {
 - Barrel exports ב-index.ts
 
 ### 4. Re-exports
-- `CLIENT_STORAGE_KEYS` הוא re-export של `STORAGE_KEYS`
 - כל ה-constants נגישים דרך `@constants`
 
 ## קישורים רלוונטיים

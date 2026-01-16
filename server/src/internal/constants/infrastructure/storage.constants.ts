@@ -1,19 +1,8 @@
-/**
- * Server Infrastructure Storage Constants
- * @module ServerInfrastructureStorageConstants
- * @description Server-side storage constants
- */
+import { StorageType, TIME_DURATIONS_SECONDS } from '@shared/constants';
 
-import { CACHE_DURATION, StorageType } from '@shared/constants';
-
-/**
- * Storage configuration (server-only)
- * @constant
- * @description Storage configuration for server-side storage operations
- */
-export const STORAGE_CONFIG = {
+export const SERVER_STORAGE_CONFIG = {
 	prefix: 'everytriv_',
-	defaultTtl: CACHE_DURATION.VERY_LONG,
+	defaultTtl: TIME_DURATIONS_SECONDS.HOUR,
 	maxSize: 5 * 1024 * 1024, // 5MB
 	enableCompression: false,
 	enableMetrics: true,
@@ -21,15 +10,9 @@ export const STORAGE_CONFIG = {
 	type: StorageType.PERSISTENT,
 } as const;
 
-/**
- * Cache configuration (server-only)
- * @constant
- * @description Cache configuration for server-side cache operations
- */
-
 export const CACHE_CONFIG = {
 	prefix: 'everytriv_cache_',
-	defaultTtl: CACHE_DURATION.VERY_LONG,
+	defaultTtl: TIME_DURATIONS_SECONDS.HOUR,
 	maxSize: 100 * 1024 * 1024, // 100MB for cache
 	enableCompression: false,
 	enableMetrics: true,
@@ -37,11 +20,6 @@ export const CACHE_CONFIG = {
 	type: StorageType.CACHE,
 } as const;
 
-/**
- * Storage operation types enum (server-only)
- * @enum StorageOperation
- * @description All available storage and cache operations
- */
 export enum StorageOperation {
 	SET = 'set',
 	GET = 'get',

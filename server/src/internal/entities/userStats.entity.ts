@@ -1,15 +1,8 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, VersionColumn } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
-/**
- * User Stats Entity
- *
- * @entity UserStatsEntity
- * @description Entity for storing user game statistics and performance metrics
- * @used_by server/src/features/analytics, server/src/features/game
- */
 @Entity('user_stats')
 export class UserStatsEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
@@ -34,11 +27,15 @@ export class UserStatsEntity extends BaseEntity {
 	@Column('int', { name: 'incorrect_answers', default: 0 })
 	incorrectAnswers: number = 0;
 
-	@Column('decimal', { name: 'overall_success_rate', precision: 5, scale: 2, default: 0 })
+	@Column('decimal', {
+		name: 'overall_success_rate',
+		precision: 5,
+		scale: 2,
+		default: 0,
+	})
 	@Index()
 	overallSuccessRate: number = 0;
 
-	// Streak Statistics
 	@Column('int', { name: 'current_streak', default: 0 })
 	currentStreak: number = 0;
 
@@ -51,7 +48,6 @@ export class UserStatsEntity extends BaseEntity {
 	@Column('int', { name: 'consecutive_days_played', default: 0 })
 	consecutiveDaysPlayed: number = 0;
 
-	// Topic Statistics (JSONB for flexibility)
 	@Column('jsonb', { name: 'topic_stats', default: {} })
 	topicStats: Record<
 		string,
@@ -64,7 +60,6 @@ export class UserStatsEntity extends BaseEntity {
 		}
 	> = {};
 
-	// Difficulty Statistics (JSONB for flexibility)
 	@Column('jsonb', { name: 'difficulty_stats', default: {} })
 	difficultyStats: Record<
 		string,
@@ -77,7 +72,6 @@ export class UserStatsEntity extends BaseEntity {
 		}
 	> = {};
 
-	// Time-based Statistics
 	@Column('int', { name: 'weekly_score', default: 0 })
 	@Index()
 	weeklyScore: number = 0;
@@ -99,16 +93,18 @@ export class UserStatsEntity extends BaseEntity {
 	@Column('timestamp', { name: 'last_yearly_reset', nullable: true })
 	lastYearlyReset?: Date;
 
-	// Performance Metrics
 	@Column('int', { name: 'average_time_per_question', default: 0 })
-	averageTimePerQuestion: number = 0; // in seconds
+	averageTimePerQuestion: number = 0;
 
 	@Column('int', { name: 'total_play_time', default: 0 })
-	totalPlayTime: number = 0; // in seconds
+	totalPlayTime: number = 0;
 
 	@Column('int', { name: 'best_game_score', default: 0 })
 	bestGameScore: number = 0;
 
 	@Column('timestamp', { name: 'best_game_date', nullable: true })
 	bestGameDate?: Date;
+
+	@VersionColumn({ name: 'version' })
+	version!: number;
 }

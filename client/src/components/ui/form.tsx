@@ -85,11 +85,13 @@ export const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentProps
 );
 FormLabel.displayName = 'FormLabel';
 
-export const FormControl = forwardRef<ElementRef<typeof Slot>, ComponentPropsWithoutRef<typeof Slot>>(({ ...props }, ref) => {
-	const { formItemId } = useFormField();
+export const FormControl = forwardRef<ElementRef<typeof Slot>, ComponentPropsWithoutRef<typeof Slot>>(
+	({ ...props }, ref) => {
+		const { formItemId } = useFormField();
 
-	return <Slot ref={ref} id={formItemId} {...props} />;
-});
+		return <Slot ref={ref} id={formItemId} {...props} />;
+	}
+);
 FormControl.displayName = 'FormControl';
 
 export const FormDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(

@@ -1,20 +1,24 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
 import {
-	API_ROUTES,
-	CACHE_DURATION,
+	API_ENDPOINTS,
 	ComparisonTarget,
 	ERROR_CODES,
+	LeaderboardPeriod,
+	TIME_DURATIONS_SECONDS,
 	UserRole,
+	VALID_LEADERBOARD_PERIODS,
 } from '@shared/constants';
-import type { AnalyticsEventData } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import type { AnalyticsEventData, LeaderboardEntry, LeaderboardResponse } from '@shared/types';
+import { calculateHasMore, getErrorMessage, isOneOf } from '@shared/utils';
+
+import { UserStatsEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
-import type { TokenPayload } from '@internal/types';
-import { Cache, CurrentUser, CurrentUserId, Roles } from '../../common';
-import { Public } from '../../common/decorators/auth.decorator';
-import { AnalyticsService } from './analytics.service';
+
+import { Cache, CurrentUserId, Public, Roles } from '../../common';
 import {
+	GetLeaderboardDto,
+	GetLeaderboardStatsDto,
 	TopicAnalyticsQueryDto,
 	TrackEventDto,
 	UserActivityQueryDto,
@@ -23,19 +27,26 @@ import {
 	UserSummaryQueryDto,
 	UserTrendQueryDto,
 } from './dtos';
+import {
+	AnalyticsTrackerService,
+	BusinessAnalyticsService,
+	GlobalAnalyticsService,
+	LeaderboardAnalyticsService,
+	SystemAnalyticsService,
+	UserAnalyticsService,
+} from './services';
 
-/**
- * Analytics controller for tracking user behavior and retrieving analytics data
- */
-@Controller(API_ROUTES.ANALYTICS.BASE)
+@Controller(API_ENDPOINTS.ANALYTICS.BASE)
 export class AnalyticsController {
-	constructor(private readonly analyticsService: AnalyticsService) {}
+	constructor(
+		private readonly userAnalyticsService: UserAnalyticsService,
+		private readonly globalAnalyticsService: GlobalAnalyticsService,
+		private readonly businessAnalyticsService: BusinessAnalyticsService,
+		private readonly systemAnalyticsService: SystemAnalyticsService,
+		private readonly analyticsTrackerService: AnalyticsTrackerService,
+		private readonly leaderboardAnalyticsService: LeaderboardAnalyticsService
+	) {}
 
-	/**
-	 * Track analytics event
-	 * @param eventData Event tracking data
-	 * @returns Event tracking confirmation
-	 */
 	@Post('track')
 	async trackEvent(@Body() eventData: TrackEventDto) {
 		try {
@@ -43,39 +54,33 @@ export class AnalyticsController {
 				throw new HttpException(ERROR_CODES.EVENT_TYPE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-	// Convert DTO to service format - parse timestamp string to Date
-	const analyticsEventData: AnalyticsEventData = {
-		...eventData,
-		timestamp: eventData.timestamp ? new Date(eventData.timestamp) : new Date(),
-	};
+			const analyticsEventData: AnalyticsEventData = {
+				...eventData,
+				timestamp: eventData.timestamp ? new Date(eventData.timestamp) : new Date(),
+			};
 
-		const result = await this.analyticsService.trackEvent(analyticsEventData);
+			const result = await this.analyticsTrackerService.trackEvent(analyticsEventData);
 
-		logger.apiCreate('analytics_event_track', {
-			id: result.eventId,
-			eventType: eventData.eventType,
-		});
+			logger.apiCreate('analytics_event_track', {
+				id: result.eventId,
+				eventType: eventData.eventType,
+			});
 
-		return result;
+			return result;
 		} catch (error) {
 			logger.analyticsError('Error tracking analytics event', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				eventType: eventData.eventType,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get analytics for the authenticated user
-	 * @param userId Current user identifier
-	 * @returns User analytics data
-	 */
 	@Get('user')
-	@Cache(CACHE_DURATION.LONG)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getAuthenticatedUserAnalytics(@CurrentUserId() userId: string) {
 		try {
-			const result = await this.analyticsService.getUserAnalytics(userId);
+			const result = await this.userAnalyticsService.getUserAnalytics(userId);
 
 			logger.apiRead('analytics_user', {
 				userId,
@@ -84,24 +89,42 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user analytics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get user performance metrics (Admin only)
-	 * @param params User identifier parameter
-	 * @returns User performance metrics
-	 */
-	@Get('user-performance/:userId')
+	// ==================== User Analytics Endpoints ====================
+
+	@Get('user/statistics/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserStatistics(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUserStatistics(params.userId);
+
+			logger.apiRead('analytics_user_statistics', {
+				userId: params.userId,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user statistics', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/performance/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserPerformance(@Param() params: UserIdParamDto) {
 		try {
-			const result = await this.analyticsService.getUserPerformance(params.userId);
+			const result = await this.userAnalyticsService.getUserPerformance(params.userId);
 
 			logger.apiRead('analytics_user_performance', {
 				userId: params.userId,
@@ -110,25 +133,47 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user performance', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get detailed user activity (Admin only)
-	 * @param params User identifier parameter
-	 * @param query Activity query parameters
-	 * @returns User activity entries
-	 */
-	@Get('user-activity/:userId')
+	@Get('user/progress/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserProgress(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
+		try {
+			const result = await this.userAnalyticsService.getUserProgress({
+				userId: params.userId,
+				query,
+			});
+
+			logger.apiRead('analytics_user_progress', {
+				userId: params.userId,
+				query: Object.keys(query ?? {}),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user progress', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/activity/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getUserActivity(@Param() params: UserIdParamDto, @Query() query: UserActivityQueryDto) {
 		try {
-			const result = await this.analyticsService.getUserActivity(params.userId, query);
+			const result = await this.userAnalyticsService.getUserActivity({
+				userId: params.userId,
+				query,
+			});
 
 			logger.apiRead('analytics_user_activity', {
 				userId: params.userId,
@@ -138,24 +183,19 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user activity', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get user insights (Admin only)
-	 * @param params User identifier parameter
-	 * @returns User insights data
-	 */
-	@Get('user-insights/:userId')
+	@Get('user/insights/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserInsights(@Param() params: UserIdParamDto) {
 		try {
-			const result = await this.analyticsService.getUserInsights(params.userId);
+			const result = await this.userAnalyticsService.getUserInsights(params.userId);
 
 			logger.apiRead('analytics_user_insights', {
 				userId: params.userId,
@@ -164,24 +204,41 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user insights', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get user achievements (Admin only)
-	 * @param params User identifier parameter
-	 * @returns User achievements list
-	 */
-	@Get('user-achievements/:userId')
+	@Get('user/recommendations/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.LONG)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserRecommendations(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUserRecommendations(params.userId);
+
+			logger.apiRead('analytics_user_recommendations', {
+				userId: params.userId,
+				recommendationsCount: result.data?.length ?? 0,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting user recommendations', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/achievements/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserAchievements(@Param() params: UserIdParamDto) {
 		try {
-			const result = await this.analyticsService.getUserAchievements(params.userId);
+			const result = await this.userAnalyticsService.getUserAchievements(params.userId);
 
 			logger.apiRead('analytics_user_achievements', {
 				userId: params.userId,
@@ -191,25 +248,22 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user achievements', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get user trend timeline (Admin only)
-	 * @param params User identifier parameter
-	 * @param query Trend query parameters
-	 * @returns User trend data
-	 */
-	@Get('user-trends/:userId')
+	@Get('user/trends/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getUserTrends(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
 		try {
-			const result = await this.analyticsService.getUserTrends(params.userId, query);
+			const result = await this.userAnalyticsService.getUserTrends({
+				userId: params.userId,
+				query,
+			});
 
 			logger.apiRead('analytics_user_trends', {
 				userId: params.userId,
@@ -219,55 +273,52 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user trends', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Compare user metrics with another user or global averages (Admin only)
-	 * @param params User identifier parameter
-	 * @param query Comparison query parameters
-	 * @returns User comparison results
-	 */
-	@Get('user-comparison/:userId')
+	@Get('user/comparison/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async compareUser(@Param() params: UserIdParamDto, @Query() query: UserComparisonQueryDto) {
 		try {
-			const result = await this.analyticsService.compareUserPerformance(params.userId, query);
+			const result = await this.userAnalyticsService.compareUserPerformance(params.userId, query, () =>
+				this.globalAnalyticsService.getGameStatsForComparison()
+			);
 
 			logger.apiRead('analytics_user_comparison', {
 				userId: params.userId,
-				targetUserId: query?.targetUserId,
+				userIds: {
+					target: query?.targetUserId,
+				},
 				type: query?.target ?? ComparisonTarget.GLOBAL,
 			});
 
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error comparing users', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
-				targetUserId: query?.targetUserId,
+				userIds: {
+					target: query?.targetUserId,
+				},
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get user summary (Admin only)
-	 * @param params User identifier parameter
-	 * @param query Summary query parameters
-	 * @returns User summary data
-	 */
-	@Get('user-summary/:userId')
+	@Get('user/summary/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
 		try {
-			const result = await this.analyticsService.getUserSummary(params.userId, query?.includeActivity ?? false);
+			const result = await this.userAnalyticsService.getUserSummary({
+				userId: params.userId,
+				includeActivity: query?.includeActivity ?? false,
+			});
 
 			logger.apiRead('analytics_user_summary', {
 				userId: params.userId,
@@ -277,23 +328,20 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting user summary', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get popular topics
-	 * @param query Topic analytics query parameters
-	 * @returns Popular topics statistics
-	 */
-	@Get('topics/popular')
-	@Cache(CACHE_DURATION.VERY_LONG)
+	// ==================== Global Analytics Endpoints ====================
+
+	@Get('global/topics/popular')
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
 		try {
-			const result = await this.analyticsService.getTopicStats(query);
+			const result = await this.globalAnalyticsService.getTopicStats(query);
 
 			logger.apiRead('analytics_popular_topics', {
 				query: Object.keys(query),
@@ -302,68 +350,55 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting popular topics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				query: Object.keys(query),
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get global difficulty statistics for comparison (public endpoint)
-	 * @returns Global difficulty statistics data
-	 */
-	@Get('difficulty/global')
+	@Get('global/difficulty')
 	@Public()
-	@Cache(CACHE_DURATION.VERY_LONG)
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getGlobalDifficultyStats() {
 		try {
-			const result = await this.analyticsService.getGlobalDifficultyStats();
+			const result = await this.globalAnalyticsService.getGlobalDifficultyStats();
 
 			logger.apiRead('analytics_global_difficulty_stats', {});
 
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting global difficulty stats', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get global statistics for comparison (public endpoint)
-	 * @returns Global statistics data
-	 */
-	@Get('global-stats')
+	@Get('global/stats')
 	@Public()
-	@Cache(CACHE_DURATION.LONG)
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getGlobalStats() {
 		try {
-			const result = await this.analyticsService.getGlobalStats();
+			const result = await this.globalAnalyticsService.getGlobalStats();
 
 			logger.apiRead('analytics_global_stats', {});
 
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting global stats', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get global trends (Admin only)
-	 * @param query Trend query parameters
-	 * @returns Global trend data
-	 */
-	@Get('global-trends')
+	@Get('global/trends')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIVE_MINUTES)
 	async getGlobalTrends(@Query() query: UserTrendQueryDto) {
 		try {
-			const result = await this.analyticsService.getGlobalTrends(query);
+			const result = await this.globalAnalyticsService.getGlobalTrends(query);
 
 			logger.apiRead('analytics_global_trends', {
 				query: Object.keys(query ?? {}),
@@ -372,35 +407,281 @@ export class AnalyticsController {
 			return result;
 		} catch (error) {
 			logger.analyticsError('Error getting global trends', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Admin endpoint - delete all user stats (admin only)
-	 * @param user Current admin user token payload
-	 * @returns Clear operation result with deleted count
-	 */
-	@Delete('admin/stats/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllUserStats(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.analyticsService.clearAllUserStats();
+	// ==================== Business Analytics Endpoints ====================
 
-			logger.apiDelete('analytics_admin_clear_all_user_stats', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
+	@Get('business/metrics')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
+	async getBusinessMetrics() {
+		try {
+			const result = await this.businessAnalyticsService.getBusinessMetrics();
+
+			logger.apiRead('analytics_business_metrics', {});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting business metrics', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	// ==================== System Analytics Endpoints ====================
+
+	@Get('system/performance')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
+	async getSystemPerformanceMetrics() {
+		try {
+			const result = await this.systemAnalyticsService.getPerformanceMetrics();
+
+			logger.apiRead('analytics_system_performance', {});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting system performance metrics', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	@Get('system/security')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
+	async getSystemSecurityMetrics() {
+		try {
+			const result = await this.systemAnalyticsService.getSecurityMetrics();
+
+			logger.apiRead('analytics_system_security', {});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting system security metrics', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	@Get('system/recommendations')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
+	async getSystemRecommendations() {
+		try {
+			const result = await this.systemAnalyticsService.getSystemRecommendations();
+
+			logger.apiRead('analytics_system_recommendations', {
+				recommendationsCount: result.length,
 			});
 
 			return result;
 		} catch (error) {
-			logger.userError('Failed to clear all user stats', {
-				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
+			logger.analyticsError('Error getting system recommendations', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	@Get('system/insights')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
+	async getSystemInsights() {
+		try {
+			const result = this.systemAnalyticsService.getSystemInsights();
+
+			logger.apiRead('analytics_system_insights', {
+				status: result.status,
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Error getting system insights', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
+	// ==================== Leaderboard Endpoints ====================
+
+	@Get('leaderboard/global')
+	@Public()
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
+		try {
+			const limitNum = query.limit;
+			const offsetNum = query.offset;
+
+			if (limitNum > 1000) {
+				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
+			}
+
+			const leaderboard = await this.leaderboardAnalyticsService.getGlobalLeaderboard({
+				limit: limitNum,
+				offset: offsetNum,
+			});
+
+			logger.apiRead('leaderboard_global', {
+				limit: limitNum,
+				offset: offsetNum,
+				resultsCount: leaderboard.length,
+			});
+
+			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
+				userId: entry.userId,
+				email: entry.user?.email || '',
+				firstName: entry.user?.firstName,
+				lastName: entry.user?.lastName,
+				avatar: entry.user?.preferences?.avatar,
+				rank: index + offsetNum + 1,
+				score: entry.weeklyScore,
+				averageScore: entry.overallSuccessRate ?? 0,
+				bestScore: entry.bestGameScore ?? 0,
+				gamesPlayed: entry.totalGames ?? 0,
+				lastPlayed: entry.lastPlayDate ?? entry.createdAt,
+				successRate: entry.overallSuccessRate ?? 0,
+				totalGames: entry.totalGames ?? 0,
+				totalQuestionsAnswered: entry.totalQuestionsAnswered ?? 0,
+				totalPlayTime: entry.totalPlayTime ?? 0,
+			}));
+
+			return {
+				leaderboard: leaderboardEntries,
+				pagination: {
+					limit: limitNum,
+					offset: offsetNum,
+					total: leaderboard.length,
+					hasMore: calculateHasMore(offsetNum, leaderboardEntries.length, leaderboard.length),
+				},
+			};
+		} catch (error) {
+			logger.userError('Error getting global leaderboard', {
+				errorInfo: { message: getErrorMessage(error) },
+				limit: query.limit,
+				offset: query.offset,
+			});
+			throw error;
+		}
+	}
+
+	@Get('leaderboard/period/:period')
+	@Public()
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
+		try {
+			const limitNum = query.limit;
+			const periodString = periodParam || query.type || LeaderboardPeriod.WEEKLY;
+
+			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
+				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
+			}
+
+			if (limitNum > 1000) {
+				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
+			}
+
+			const leaderboard = await this.leaderboardAnalyticsService.getLeaderboardByPeriod({
+				period: periodString,
+				limit: limitNum,
+			});
+
+			logger.apiRead('leaderboard_period', {
+				period: periodString,
+				limit: limitNum,
+				resultsCount: leaderboard.length,
+			});
+
+			const scoreFieldMap: Record<LeaderboardPeriod, keyof UserStatsEntity> = {
+				[LeaderboardPeriod.WEEKLY]: 'weeklyScore',
+				[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
+				[LeaderboardPeriod.YEARLY]: 'yearlyScore',
+				[LeaderboardPeriod.GLOBAL]: 'weeklyScore',
+			};
+			const scoreField = scoreFieldMap[periodString] || 'weeklyScore';
+
+			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => {
+				const scoreValue =
+					scoreField === 'weeklyScore'
+						? entry.weeklyScore
+						: scoreField === 'monthlyScore'
+							? entry.monthlyScore
+							: scoreField === 'yearlyScore'
+								? entry.yearlyScore
+								: entry.weeklyScore;
+				return {
+					userId: entry.userId,
+					email: entry.user?.email || '',
+					firstName: entry.user?.firstName,
+					lastName: entry.user?.lastName,
+					avatar: entry.user?.preferences?.avatar,
+					rank: index + 1,
+					score: scoreValue ?? 0,
+					averageScore: entry.overallSuccessRate ?? 0,
+					bestScore: entry.bestGameScore ?? 0,
+					gamesPlayed: entry.totalGames ?? 0,
+					lastPlayed: entry.lastPlayDate ?? entry.createdAt,
+					successRate: entry.overallSuccessRate ?? 0,
+					totalGames: entry.totalGames ?? 0,
+					totalQuestionsAnswered: entry.totalQuestionsAnswered ?? 0,
+					totalPlayTime: entry.totalPlayTime ?? 0,
+				};
+			});
+
+			const response: LeaderboardResponse = {
+				leaderboard: leaderboardEntries,
+				pagination: {
+					limit: limitNum,
+					offset: 0,
+					total: leaderboard.length,
+					hasMore: calculateHasMore(0, leaderboardEntries.length, leaderboard.length),
+				},
+				period: periodString,
+			};
+			return response;
+		} catch (error) {
+			logger.userError('Error getting period leaderboard', {
+				errorInfo: { message: getErrorMessage(error) },
+				period: periodParam || query.type || 'weekly',
+				limit: query.limit,
+			});
+			throw error;
+		}
+	}
+
+	@Get('leaderboard/stats')
+	@Public()
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
+		try {
+			const periodString = query.period;
+
+			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
+				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
+			}
+
+			const stats = await this.leaderboardAnalyticsService.getLeaderboardStats(periodString);
+
+			logger.apiRead('leaderboard_stats', {
+				period: periodString,
+				activeUsers: stats.activeUsers,
+				averageScore: stats.averageScore,
+				averageGames: stats.averageGames,
+			});
+
+			return stats;
+		} catch (error) {
+			logger.userError('Error getting leaderboard stats', {
+				errorInfo: { message: getErrorMessage(error) },
+				period: query.period,
 			});
 			throw error;
 		}

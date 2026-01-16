@@ -1,23 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
-import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType } from '@shared/constants';
+import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType, TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-import { ButtonVariant, CLIENT_STORAGE_KEYS, ROUTES, SpinnerSize, SpinnerVariant, VariantBase } from '@/constants';
-import { Alert, AlertDescription, Button, Card, Spinner } from '@/components';
-import { useAppDispatch } from '@/hooks';
-import { authService, clientLogger as logger, storageService } from '@/services';
-import { setUser } from '@/redux/slices';
 
-/**
- * OAuth Callback Handler
- * @description Handles OAuth authentication callback from Google/other providers
- */
+import { ButtonVariant, QUERY_KEYS, ROUTES, SpinnerSize, STORAGE_KEYS, VariantBase } from '@/constants';
+import { Alert, AlertDescription, BackToHomeButton, Button, Card, Spinner } from '@/components';
+import { authService, clientLogger as logger, queryClient, storageService } from '@/services';
+
 export function OAuthCallback() {
 	const navigate = useNavigate();
-	const dispatch = useAppDispatch();
 	const [searchParams] = useSearchParams();
 
 	const [status, setStatus] = useState<CallbackStatus>(CallbackStatus.PROCESSING);
@@ -44,9 +38,11 @@ export function OAuthCallback() {
 
 				logger.authDebug('OAuth callback received', {
 					success: success === 'true',
-					token: token || undefined,
-					error: error || undefined,
-					errorDescription: errorDescription || undefined,
+					token: token ?? undefined,
+					errorInfo: {
+						message: error ?? undefined,
+						description: errorDescription ?? undefined,
+					},
 				});
 
 				// Handle error in callback
@@ -56,8 +52,10 @@ export function OAuthCallback() {
 					const userMessage = getErrorMessage(oauthErrorObj);
 
 					logger.authError('OAuth error received', {
-						error,
-						errorDescription: errorDescription || undefined,
+						errorInfo: {
+							message: error,
+							description: errorDescription ?? undefined,
+						},
 						errorType: error === OAuthErrorType.INVALID_CLIENT ? 'configuration' : 'authentication',
 					});
 
@@ -70,7 +68,7 @@ export function OAuthCallback() {
 						const errorParam =
 							error === OAuthErrorType.INVALID_CLIENT ? OAuthErrorType.INVALID_CLIENT : OAuthErrorType.OAUTH_FAILED;
 						navigate(`${ROUTES.LOGIN}?error=${errorParam}`, { replace: true });
-					}, 5000);
+					}, TIME_PERIODS_MS.FIVE_SECONDS);
 					return;
 				}
 
@@ -81,10 +79,10 @@ export function OAuthCallback() {
 					// Store token if provided
 					if (token) {
 						logger.authDebug('Storing authentication token');
-						await storageService.set(CLIENT_STORAGE_KEYS.AUTH_TOKEN, token);
+						await storageService.set(STORAGE_KEYS.AUTH_TOKEN, token);
 
 						// Verify token was stored
-						const storedToken = await storageService.getString(CLIENT_STORAGE_KEYS.AUTH_TOKEN);
+						const storedToken = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 						if (!storedToken.success || !storedToken.data) {
 							logger.authError('Failed to store authentication token', {
 								success: storedToken.success,
@@ -99,7 +97,7 @@ export function OAuthCallback() {
 					const user = await authService.getCurrentUser();
 					logger.authDebug('User data received', {
 						userId: user?.id,
-						email: user?.email || undefined,
+						emails: { current: user?.email ?? undefined },
 					});
 
 					if (!user) {
@@ -107,31 +105,29 @@ export function OAuthCallback() {
 						throw new Error(ERROR_MESSAGES.api.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
-					// Update Redux state
-					logger.authDebug('Setting user in Redux store');
-					// setUser already sets isAuthenticated = true
-					dispatch(setUser(user));
+					// Update React Query cache with user data
+					logger.authDebug('Setting user in React Query cache');
+					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), user);
+					// Invalidate auth queries to trigger refetch
+					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
-					setStatus(CallbackStatus.SUCCESS);
 
-					// Redirect after short delay
-					setTimeout(() => {
-						// Check if user needs to complete profile
-						const needsProfile = !user.firstName;
-						const redirectTo = needsProfile ? ROUTES.COMPLETE_PROFILE : ROUTES.HOME;
+					// Check if user needs to complete profile
+					const needsProfile = !user.firstName;
+					const redirectTo = needsProfile ? ROUTES.COMPLETE_PROFILE : ROUTES.HOME;
 
-						logger.authDebug('Redirecting user', {
-							needsProfile,
-							redirectTo,
-						});
+					logger.authDebug('Redirecting user', {
+						needsProfile,
+						redirectTo,
+					});
 
-						if (needsProfile) {
-							navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
-						} else {
-							navigate(ROUTES.HOME, { replace: true });
-						}
-					}, 1500);
+					// Redirect immediately without showing success screen
+					if (needsProfile) {
+						navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
+					} else {
+						navigate(ROUTES.HOME, { replace: true });
+					}
 				} else {
 					// No success flag and no token
 					logger.authError('OAuth callback without success parameter or token', { params });
@@ -141,12 +137,12 @@ export function OAuthCallback() {
 
 					setTimeout(() => {
 						navigate(`${ROUTES.LOGIN}?error=${OAuthErrorType.NO_TOKEN}`, { replace: true });
-					}, 3000);
+					}, TIME_PERIODS_MS.THREE_SECONDS);
 				}
 			} catch (error) {
 				const message = getErrorMessage(error);
 				logger.authError('Unexpected error in OAuth callback', {
-					error: message,
+					errorInfo: { message },
 					stack: error instanceof Error ? error.stack : undefined,
 				});
 				setErrorMessage(message);
@@ -160,7 +156,7 @@ export function OAuthCallback() {
 		};
 
 		handleOAuthCallback();
-	}, [searchParams, dispatch, navigate]);
+	}, [searchParams, navigate]);
 
 	return (
 		<motion.main
@@ -171,28 +167,12 @@ export function OAuthCallback() {
 			<Card className='w-full max-w-md p-8'>
 				{status === CallbackStatus.PROCESSING && (
 					<div className='text-center space-y-4'>
-						<Spinner variant={SpinnerVariant.FULL_SCREEN} size={SpinnerSize.XL} className='mx-auto' />
+						<Spinner size={SpinnerSize.XL} variant='fullscreen' className='mx-auto' />
 						<div>
 							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
 							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>
 						</div>
 					</div>
-				)}
-
-				{status === CallbackStatus.SUCCESS && (
-					<motion.div
-						initial={{ scale: 0.8, opacity: 0 }}
-						animate={{ scale: 1, opacity: 1 }}
-						className='text-center space-y-4'
-					>
-						<div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto'>
-							<CheckCircle2 className='w-10 h-10 text-green-600' />
-						</div>
-						<div>
-							<h2 className='text-xl font-semibold mb-2'>Sign In Successful!</h2>
-							<p className='text-muted-foreground'>Redirecting you to the app...</p>
-						</div>
-					</motion.div>
 				)}
 
 				{status === CallbackStatus.ERROR && (
@@ -229,9 +209,7 @@ export function OAuthCallback() {
 								<Button onClick={() => window.location.reload()} variant={ButtonVariant.DEFAULT}>
 									Try Again
 								</Button>
-								<Button onClick={() => navigate(ROUTES.HOME)} variant={ButtonVariant.OUTLINE}>
-									Go Home
-								</Button>
+								<BackToHomeButton variant={ButtonVariant.OUTLINE} />
 							</div>
 						</div>
 					</div>

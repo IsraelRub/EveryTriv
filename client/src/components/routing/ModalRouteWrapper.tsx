@@ -6,12 +6,6 @@ import { useModalRoute } from '@/hooks';
 import type { ModalRouteProps } from '@/types';
 import { cn } from '@/utils';
 
-/**
- * Modal Route Wrapper Component
- * @description Wraps views to display them either as modals or full pages based on location.state
- * @param {ModalRouteProps} props - Component props
- * @returns {JSX.Element} Rendered component
- */
 export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalRouteProps): JSX.Element {
 	const { isModal, closeModal } = useModalRoute();
 
@@ -35,7 +29,7 @@ export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalR
 						modalSize === ModalSize.FULL && 'sm:max-w-full'
 					)}
 				>
-					<DialogHeader className='sr-only'>
+					<DialogHeader>
 						<DialogTitle>Dialog</DialogTitle>
 						<DialogDescription>Modal dialog</DialogDescription>
 					</DialogHeader>

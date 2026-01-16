@@ -44,7 +44,9 @@
     "webdb:start:public": "webdb --port 22071",
     "db:admin": "npm run webdb:start",
     "imports:check": "npx tsc-alias -p server/tsconfig.json -v && npx tsc-alias -p shared/tsconfig.json -v",
-    "imports:fix": "npx tsc-alias -p server/tsconfig.json -v && npx tsc-alias -p shared/tsconfig.json -v"
+    "imports:fix": "npx tsc-alias -p server/tsconfig.json -v && npx tsc-alias -p shared/tsconfig.json -v",
+    "empty-dirs": "powershell -Command \"@('client/src','server/src','shared') | ForEach-Object { $e = Get-ChildItem $_ -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { (Get-ChildItem $_.FullName -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0 }; if ($e) { Write-Host \"Empty dirs in $_:\"; $e.FullName; exit 1 } }\"",
+    "repomix": "npx repomix --style plain -o repomix-output.txt"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
@@ -59,6 +61,7 @@
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "knip": "^5.63.0",
     "newman": "^6.2.1",
     "prettier": "^3.6.2",

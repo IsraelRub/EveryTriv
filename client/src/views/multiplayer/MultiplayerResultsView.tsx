@@ -1,22 +1,16 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Award, Crown, Home, Medal, RotateCcw, Share2, Trophy } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
-import { Avatar, AvatarFallback, Button, Card, CardContent, CardHeader, CardTitle } from '@/components';
-import { useAppSelector, useMultiplayer, useToast } from '@/hooks';
-import type { RootState } from '@/types';
+import { Avatar, AvatarFallback, Button, Card, CardContent, CardHeader, CardTitle, LinkButton } from '@/components';
+import { useCurrentUserData, useMultiplayer, useNavigationClose } from '@/hooks';
+import { clientLogger as logger } from '@/services';
 import { cn } from '@/utils';
 
 const podiumColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-700'];
 const podiumIcons = [Crown, Medal, Award];
 
-/**
- * Get text color class for rank position
- * @param rank - Rank position (1-based)
- * @returns Text color class for the rank
- */
 function getRankColor(rank: number): string {
 	switch (rank) {
 		case 1:
@@ -31,11 +25,10 @@ function getRankColor(rank: number): string {
 }
 
 export function MultiplayerResultsView() {
-	const navigate = useNavigate();
-	const { toast } = useToast();
+	const { handleClose } = useNavigationClose();
 
 	const { leaderboard, room, disconnect } = useMultiplayer();
-	const { currentUser } = useAppSelector((state: RootState) => state.user);
+	const currentUser = useCurrentUserData();
 
 	const results = leaderboard.length > 0 ? leaderboard : [];
 	const winner = results[0];
@@ -48,15 +41,6 @@ export function MultiplayerResultsView() {
 		};
 	}, []);
 
-	const handlePlayAgain = () => {
-		navigate(ROUTES.MULTIPLAYER);
-	};
-
-	const handleGoHome = () => {
-		disconnect();
-		navigate(ROUTES.HOME);
-	};
-
 	const handleShare = async () => {
 		const shareText = `I just played EveryTriv multiplayer! ${isWinner ? '🏆 I won!' : `Final score: ${results.find(r => r.userId === currentUser?.id)?.score ?? 0}`}`;
 
@@ -68,13 +52,15 @@ export function MultiplayerResultsView() {
 				});
 			} else {
 				await navigator.clipboard.writeText(shareText);
-				toast({
-					title: 'Copied!',
-					description: 'Result copied to clipboard',
+				logger.userSuccess('Result copied to clipboard');
+			}
+		} catch (error) {
+			// User cancelled share or error occurred
+			if (error instanceof Error && error.name !== 'AbortError') {
+				logger.userError('Failed to share result', {
+					errorInfo: { message: error.message },
 				});
 			}
-		} catch {
-			// User cancelled share or error occurred
 		}
 	};
 
@@ -109,7 +95,7 @@ export function MultiplayerResultsView() {
 							transition={{ delay: 0.4 }}
 							className='text-xl text-muted-foreground'
 						>
-							Winner: <span className='font-bold text-primary'>{winner.displayName || 'Player'}</span> with{' '}
+							Winner: <span className='font-bold text-primary'>{winner.displayName ?? 'Player'}</span> with{' '}
 							<span className='font-bold'>{winner.score}</span> points
 						</motion.p>
 					)}
@@ -123,11 +109,10 @@ export function MultiplayerResultsView() {
 							if (!player) return null;
 
 							const PodiumIcon = podiumIcons[podiumIndex];
-						if (PodiumIcon == null) {
-							console.warn(`Missing podium icon for index ${podiumIndex}`);
-							return null;
-						}
-						
+							if (PodiumIcon == null) {
+								return null;
+							}
+
 							const heights = ['h-32', 'h-40', 'h-24'];
 
 							return (
@@ -139,9 +124,9 @@ export function MultiplayerResultsView() {
 									className='flex flex-col items-center'
 								>
 									<Avatar className='h-12 w-12 border-2 border-background shadow-lg'>
-										<AvatarFallback>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
+										<AvatarFallback>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
 									</Avatar>
-									<span className='text-sm font-medium mt-1 max-w-20 truncate'>{player.displayName || 'Player'}</span>
+									<span className='text-sm font-medium mt-1 max-w-20 truncate'>{player.displayName ?? 'Player'}</span>
 									<span className='text-xs text-muted-foreground'>{player.score} pts</span>
 									<div
 										className={cn(
@@ -180,11 +165,11 @@ export function MultiplayerResultsView() {
 								>
 									<span className={cn('text-3xl font-bold w-12', getRankColor(index + 1))}>#{index + 1}</span>
 									<Avatar className='h-10 w-10'>
-										<AvatarFallback>{player.displayName?.charAt(0) || 'P'}</AvatarFallback>
+										<AvatarFallback>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
 									</Avatar>
 									<div className='flex-1'>
 										<div className='font-semibold flex items-center gap-2'>
-											{player.displayName || 'Player'}
+											{player.displayName ?? 'Player'}
 											{isCurrentUser && <span className='text-xs text-muted-foreground'>(You)</span>}
 										</div>
 										<div className='text-sm text-muted-foreground'>{player.correctAnswers ?? 0} correct answers</div>
@@ -216,11 +201,11 @@ export function MultiplayerResultsView() {
 									<div className='text-sm text-muted-foreground'>Questions</div>
 								</div>
 								<div>
-									<div className='text-2xl font-bold capitalize'>{room.config?.difficulty || 'Medium'}</div>
+									<div className='text-2xl font-bold capitalize'>{room.config?.difficulty ?? 'Medium'}</div>
 									<div className='text-sm text-muted-foreground'>Difficulty</div>
 								</div>
 								<div>
-									<div className='text-2xl font-bold'>{room.config?.topic || 'General'}</div>
+									<div className='text-2xl font-bold'>{room.config?.topic ?? 'General'}</div>
 									<div className='text-sm text-muted-foreground'>Topic</div>
 								</div>
 							</div>
@@ -230,17 +215,24 @@ export function MultiplayerResultsView() {
 
 				{/* Action Buttons */}
 				<div className='flex flex-col sm:flex-row gap-4'>
-					<Button className='flex-1' size={ButtonSize.LG} onClick={handlePlayAgain}>
+					<LinkButton to={ROUTES.MULTIPLAYER} className='flex-1' size={ButtonSize.LG}>
 						<RotateCcw className='h-4 w-4 mr-2' />
 						Play Again
-					</Button>
+					</LinkButton>
 					<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleShare}>
 						<Share2 className='h-4 w-4 mr-2' />
 						Share Result
 					</Button>
-					<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleGoHome}>
+					<Button
+						variant={ButtonVariant.OUTLINE}
+						size={ButtonSize.LG}
+						onClick={() => {
+							disconnect();
+							handleClose();
+						}}
+					>
 						<Home className='h-4 w-4 mr-2' />
-						Home
+						Back to Home
 					</Button>
 				</div>
 			</div>

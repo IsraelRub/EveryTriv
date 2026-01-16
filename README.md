@@ -18,7 +18,7 @@
 
 תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
 
-- Backend Features: `docs/backend/features/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Credits, Payment, Subscription)
+- Backend Features: `docs/backend/features/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Credits, Payment)
 - Frontend Structure: `docs/frontend/` (State, Hooks, Services, Components, Routing)
 - Shared Layer: `docs/shared/` (Types, Validation, Constants, Utilities)
 
@@ -94,10 +94,3 @@ Frontend Hooks בשכבות (API / Business / UI / Utils): ראה `docs/frontend
 ## 📚 קונסיסטנטיות טיפוסים
 
 כל שימוש בנתונים בין לקוח ושרת עובר דרך טיפוסים משותפים ב-`shared/types`. ראה `docs/shared/TYPES.md`.
-
-## 📄 רישיון
-
-MIT (ראה `LICENSE`).
-
----
-מסמך זה סטטי: אין בו היסטוריית "עדכונים" או סעיפי "תכונות עתידיות". לעיון רוחבי: `docs/README.md`.

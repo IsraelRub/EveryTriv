@@ -1,33 +1,13 @@
-/**
- * API and HTTP type definitions for EveryTriv
- * Shared between client and server
- *
- * @module ApiTypes
- * @description API response structures and HTTP communication interfaces
- * @used_by client: client/src/services/api.service.ts (ApiService), server: server/src/controllers, shared: shared/services
- */
+// API and HTTP type definitions for EveryTriv.
 import { GameMode } from '../../constants';
 import type { BaseApiResponse, BaseData, OffsetPagination, PagePagination } from '../core';
 import type { BasicUser, GameDifficulty, MiddlewareMetrics } from '../domain';
+import type { BaseAnswerData } from '../domain/game/trivia.types';
 
-/**
- * Standard API response wrapper interface
- * @interface ApiResponse
- * @description Generic wrapper for all API responses with optional metadata
- * Use SuccessResponse<T> for simple success responses without metadata
- * Use ApiResponse<T> for responses that may include metadata (pagination, processing time, etc.)
- * @template T The type of the response data
- * @used_by server: server/src/features/game/game.controller.ts (getTrivia response), client: client/src/services/api.service.ts (ApiService methods), shared/services/logging (HttpClient responses))
- */
 export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
 	metadata?: ApiMetadata;
 }
 
-/**
- * Payment response interface
- * @interface PaymentResponse
- * @description Response for payment operations
- */
 export interface PaymentResponse {
 	success: boolean;
 	paymentUrl?: string;
@@ -35,23 +15,11 @@ export interface PaymentResponse {
 	error?: string;
 }
 
-/**
- * API metadata interface
- * @interface ApiMetadata
- * @description Additional metadata for API responses including pagination
- * @used_by server: server/src/features/game/game.controller.ts (pagination), client: client/src/services/api.service.ts (ApiService methods)
- */
 export interface ApiMetadata extends Partial<PagePagination> {
 	timestamp?: string;
 	processingTime?: number;
 }
 
-/**
- * API error response interface
- * @interface ApiError
- * @description Standard error response structure
- * @used_by server: server/src/common/globalException.filter.ts (error responses), client: client/src/services/api.service.ts (error handling), shared/services/logging (error handling)
- */
 export interface ApiError {
 	message: string;
 	code?: string;
@@ -60,12 +28,6 @@ export interface ApiError {
 	details?: BaseData;
 }
 
-/**
- * Error response data interface
- * @interface ErrorResponseData
- * @description Error data structure from API error responses
- * @used_by client/src/services/api.service.ts
- */
 export type ErrorDetail = string | string[] | Record<string, string | string[]>;
 
 export interface ErrorResponseData {
@@ -74,87 +36,63 @@ export interface ErrorResponseData {
 	detail?: string;
 	description?: string;
 	errors?: ErrorDetail;
+	code?: string;
 }
 
-/**
- * HTTP status codes enum
- * @enum HttpStatusCode
- * @description Common HTTP status codes used in the application
- * @used_by server: server/src/common/filters/http-exception.filter.ts (error responses), client: client/src/services/api.service.ts (error handling)
- */
+export interface ErrorResponse {
+	statusCode: number;
+	path: string;
+	message: string | string[];
+	timestamp: string;
+	errorType?: string;
+	code?: string;
+}
 
-/**
- * Base DTO for amount-based operations
- * @interface AmountDto
- * @description Base interface for operations involving amounts
- */
+export interface ValidationErrorResponse extends ErrorResponse {
+	errors?: string[] | Record<string, string | string[]>;
+}
+
 export interface AmountDto {
 	amount: number;
 }
 
-/**
- * Base DTO for purchase operations with identifier
- * @interface PurchaseDto
- * @description Base interface for purchase operations
- */
 export interface PurchaseDto {
 	identifier: string;
 	paymentMethodId: string;
 }
 
-/**
- * DTO for confirming credit purchase
- * @interface ConfirmCreditPurchaseDto
- * @description Request payload for confirming credit purchase
- * @used_by client/src/services/api.service.ts (confirmCreditPurchase), client/src/services/credits.service.ts (confirmCreditPurchase)
- */
 export interface ConfirmCreditPurchaseDto {
 	paymentIntentId: string;
 }
 
-/**
- * Purchase response interface
- * @interface PurchaseResponse
- * @description Response for purchase operations
- * @used_by client/src/services/api.service.ts (purchaseCreditPackage), client/src/services/credits.service.ts (purchaseCredits)
- */
 export interface PurchaseResponse {
 	status: string;
 	id: string;
 }
 
-/**
- * Deduct credits request interface
- * @interface DeductCreditsRequest
- * @description Request payload for deducting credits
- * @used_by client/src/services/api.service.ts (deductCredits), client/src/services/credits.service.ts (deductCredits)
- */
 export interface DeductCreditsRequest {
 	questionsPerRequest: number;
 	gameMode: GameMode;
 }
 
-/**
- * Individual question data structure
- * @interface QuestionData
- * @description Represents a single question's data in game history
- */
-export interface QuestionData {
+export interface QuestionDataWithQuestion extends BaseAnswerData {
 	question: string;
-	userAnswer: string;
-	correctAnswer: string;
+	correctAnswerIndex: number;
+	timeSpent: number;
+}
+
+export interface QuestionDataWithoutQuestion {
+	question: string;
 	isCorrect: boolean;
+	userAnswerText: string;
+	correctAnswerText: string;
 	timeSpent?: number;
 }
 
-/**
- * DTO for creating game history record
- * @interface CreateGameHistoryDto
- * @description Complete game session data for history storage
- * @used_by client/src/services/api.service.ts (saveHistory, saveGameHistory)
- */
+export type QuestionData = QuestionDataWithQuestion | QuestionDataWithoutQuestion;
+
 export interface GameData {
-	userId?: string;
+	userId: string;
 	score: number;
 	gameQuestionCount: number;
 	correctAnswers: number;
@@ -164,19 +102,14 @@ export interface GameData {
 	timeSpent: number;
 	creditsUsed: number;
 	questionsData: QuestionData[];
+	clientMutationId?: string;
 }
 
-// Admin User Data
 export interface AdminUserData extends BasicUser {
 	createdAt: string;
 	lastLogin?: string;
 }
 
-/**
- * Users list response interface
- * @interface UsersListResponse
- * @description Response containing list of users with optional offset-based pagination
- */
 export interface UsersListResponse {
 	message: string;
 	adminUser: AdminUserData;
@@ -186,20 +119,10 @@ export interface UsersListResponse {
 	pagination?: OffsetPagination;
 }
 
-/**
- * Admin users list response with offset pagination
- * @interface AdminUsersListResponse
- * @description Response containing list of admin users with offset-based pagination
- */
 export interface AdminUsersListResponse extends OffsetPagination {
 	users: AdminUserData[];
 }
 
-/**
- * Update user field response interface
- * @interface UpdateUserFieldResponse
- * @description Response from updating a user field
- */
 export interface UpdateUserFieldResponse {
 	success: boolean;
 	message: string;
@@ -207,18 +130,12 @@ export interface UpdateUserFieldResponse {
 	value: unknown;
 }
 
-/**
- * Refresh token response interface
- * @interface RefreshTokenResponse
- * @description Response from token refresh operation
- */
 export interface RefreshTokenResponse {
 	accessToken: string;
 	refreshToken?: string;
 	expiresIn?: number;
 }
 
-// Middleware Metrics Summary
 export interface MiddlewareMetricsSummary {
 	totalMiddlewares: number;
 	totalRequests: number;
@@ -227,12 +144,10 @@ export interface MiddlewareMetricsSummary {
 	mostUsedMiddleware: string;
 }
 
-// All Middleware Metrics Response
-export interface AllMiddlewareMetricsResponse {
+export interface AllMetricsResponse {
 	summary: MiddlewareMetricsSummary;
 	metrics: Record<string, MiddlewareMetrics> | MiddlewareMetrics;
 	storageMetrics: unknown;
 }
 
-// Middleware Metrics Response
-export type MiddlewareMetricsResponse = MiddlewareMetrics | Record<string, MiddlewareMetrics>;
+export type MetricsResponse = MiddlewareMetrics | Record<string, MiddlewareMetrics>;

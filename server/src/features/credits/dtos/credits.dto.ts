@@ -1,9 +1,3 @@
-/**
- * Credits DTOs
- *
- * @module CreditsDTOs
- * @description Data Transfer Objects for credits management
- */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
@@ -19,7 +13,8 @@ import {
 	ValidateIf,
 } from 'class-validator';
 
-import { GameMode, VALID_GAME_MODES, VALIDATION_LENGTH, VALIDATION_COUNT } from '@shared/constants';
+import { GameMode, VALID_GAME_MODES, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
 export class DeductCreditsDto {
@@ -85,7 +80,9 @@ export class DeductCreditsDto {
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(VALIDATION_LENGTH.REASON.MAX, { message: `Reason cannot exceed ${VALIDATION_LENGTH.REASON.MAX} characters` })
+	@MaxLength(VALIDATION_LENGTH.REASON.MAX, {
+		message: `Reason cannot exceed ${VALIDATION_LENGTH.REASON.MAX} characters`,
+	})
 	reason?: string;
 }
 
@@ -102,50 +99,6 @@ export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 	packageId: string;
 }
 
-export class ConfirmCreditPurchaseDto {
-	@ApiPropertyOptional({
-		description: 'Payment intent ID from payment processor',
-		minLength: 1,
-		maxLength: 100,
-	})
-	@IsOptional()
-	@IsString()
-	@MinLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN, { message: 'Payment intent ID must be at least 1 character long' })
-	@MaxLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX, { message: 'Payment intent ID cannot exceed 100 characters' })
-	paymentIntentId?: string;
-
-	@ApiPropertyOptional({
-		description: 'Transaction identifier (alias for paymentIntentId)',
-		minLength: VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN,
-		maxLength: VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX,
-	})
-	@IsOptional()
-	@IsString()
-	@MinLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN, { message: `Transaction ID must be at least ${VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN} characters long` })
-	@MaxLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX, { message: `Transaction ID cannot exceed ${VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX} characters` })
-	transactionId?: string;
-
-	@ApiPropertyOptional({
-		description: 'Payment identifier returned from payment provider',
-		minLength: 1,
-		maxLength: 100,
-	})
-	@IsOptional()
-	@IsString()
-	@MinLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN, { message: `Payment ID must be at least ${VALIDATION_LENGTH.PAYMENT_INTENT_ID.MIN} characters long` })
-	@MaxLength(VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX, { message: `Payment ID cannot exceed ${VALIDATION_LENGTH.PAYMENT_INTENT_ID.MAX} characters` })
-	paymentId?: string;
-
-	@ApiProperty({
-		description: 'Number of credits purchased',
-		minimum: VALIDATION_COUNT.CREDITS.MIN,
-	})
-	@Transform(({ value }) => parseInt(value, 10))
-	@IsNumber({}, { message: 'Credits must be a number' })
-	@Min(VALIDATION_COUNT.CREDITS.MIN, { message: `Credits must be at least ${VALIDATION_COUNT.CREDITS.MIN}` })
-	credits: number;
-}
-
 export class GetCreditHistoryDto {
 	@ApiPropertyOptional({
 		description: 'Maximum number of transactions to return',
@@ -155,8 +108,12 @@ export class GetCreditHistoryDto {
 	})
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, { message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}` })
-	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
+	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
+	})
 	limit: number = VALIDATION_COUNT.LEADERBOARD.DEFAULT;
 }
 

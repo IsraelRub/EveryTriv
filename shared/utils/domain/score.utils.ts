@@ -1,22 +1,5 @@
-/**
- * Score Utilities (pure functions, browser-safe)
- *
- * @module ScoreUtils
- * @description A set of pure utility functions for score calculations that can be safely used
- * @used_by both client (browser) and server (Node). No NestJS or platform-specific deps.
- */
-import type { CountRecord } from '../../types/core/data.types';
+import { BASE_SCORE_BY_DIFFICULTY } from '@shared/constants';
 
-/**
- * Calculate score for a correct answer
- * @param difficulty Difficulty level (string - for client use)
- * @param timeSpentMs Time spent in milliseconds
- * @param streak Current streak
- * @param isCorrect Whether answer was correct
- * @returns Calculated score
- * @description Client-side version that accepts string difficulty.
- * Server should use ScoreCalculationService.calculateAnswerScore() with DifficultyLevel enum.
- */
 export function calculateAnswerScore(
 	difficulty: string,
 	timeSpentMs: number,
@@ -25,13 +8,9 @@ export function calculateAnswerScore(
 ): number {
 	if (!isCorrect) return 0;
 
-	const baseScoreByDifficulty: CountRecord = {
-		easy: 10,
-		medium: 20,
-		hard: 30,
-	};
-
-	const baseScore = baseScoreByDifficulty[difficulty.toLowerCase()] ?? 10;
+	const baseScore =
+		BASE_SCORE_BY_DIFFICULTY[difficulty.toLowerCase() as keyof typeof BASE_SCORE_BY_DIFFICULTY] ??
+		BASE_SCORE_BY_DIFFICULTY.easy;
 
 	const timeInSeconds = timeSpentMs / 1000;
 	const timeBonus = Math.max(0, 10 - Math.floor(timeInSeconds));

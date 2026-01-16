@@ -1,27 +1,7 @@
-/**
- * Analytics types for server-side analytics service
- *
- * @module ServerAnalyticsTypes
- * @description Type definitions for analytics service query options and internal accumulators
- * @used_by server/src/features/analytics/analytics.service.ts
- */
-import type { CountRecord, GameDifficulty, HistoryFilterOptions } from '@shared/types';
+import type { CountRecord, GameDifficulty, TrendQueryOptions } from '@shared/types';
 
-/**
- * Activity query options for user activity
- * @interface ActivityQueryOptions
- * @description Options for querying user activity with date range and limit
- * @extends HistoryFilterOptions
- */
-export interface ActivityQueryOptions extends HistoryFilterOptions {
-	limit?: number;
-}
+import type { GameHistoryEntity, UserEntity } from '@internal/entities';
 
-/**
- * Topic analytics accumulator for internal calculations
- * @interface TopicAnalyticsAccumulator
- * @description Internal accumulator type for building topic analytics data
- */
 export interface TopicAnalyticsAccumulator {
 	gamesPlayed: number;
 	totalQuestionsAnswered: number;
@@ -35,4 +15,33 @@ export interface DifficultyStatsRecord {
 	difficulty: GameDifficulty;
 	total: number;
 	correct: number;
+}
+
+export interface GetUserSummaryParams {
+	userId: string;
+	includeActivity: boolean;
+}
+
+export interface GetUserAnalyticsParams {
+	userId: string;
+	query?: TrendQueryOptions;
+}
+
+export interface UserWithHistoryResult {
+	user: UserEntity;
+	history: GameHistoryEntity[];
+}
+
+export interface TopicCountRecord {
+	topic: string;
+	count: number;
+}
+
+export interface NumericQueryResult {
+	value: number | null;
+}
+
+export interface UserIdSuccessRateRecord {
+	userId: string;
+	successRate: number;
 }

@@ -92,9 +92,8 @@ export const AppDataSource = new DataSource({
     __dirname + '/../internal/entities/userStats.entity.ts',
     __dirname + '/../internal/entities/gameHistory.entity.ts',
     __dirname + '/../internal/entities/trivia.entity.ts',
-    __dirname + '/../internal/entities/subscription.entity.ts',
     __dirname + '/../internal/entities/paymentHistory.entity.ts',
-    __dirname + '/../internal/entities/pointTransaction.entity.ts',
+    __dirname + '/../internal/entities/creditTransaction.entity.ts',
     __dirname + '/../internal/entities/leaderboard.entity.ts',
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
@@ -155,9 +154,6 @@ export class UserEntity extends BaseEntity {
 
   @Column('jsonb', { default: {} })
   preferences: Partial<UserPreferences> = {}; // העדפות משתמש (כולל avatar: number 1-16)
-
-  @Column({ name: 'current_subscription_id', nullable: true })
-  currentSubscriptionId?: string; // מזהה מנוי נוכחי
 
   @Column('jsonb', { default: [] })
   achievements: Achievement[];   // הישגים
@@ -277,10 +273,11 @@ export class GameHistoryEntity extends BaseEntity {
 ```typescript
 interface QuestionData {
   question: string;              // טקסט השאלה
-  userAnswer: string;            // תשובת המשתמש
-  correctAnswer: string;         // התשובה הנכונה
+  questionId: string;            // מזהה השאלה
+  userAnswerIndex: number;      // אינדקס התשובה שנבחרה (0-3, -1 = timeout)
+  correctAnswerIndex: number;   // אינדקס התשובה הנכונה (0-3)
   isCorrect: boolean;            // האם התשובה נכונה
-  timeSpent: number;             // זמן שהושקע במילישניות
+  timeSpent?: number;            // זמן שהושקע בשניות (optional)
 }
 ```
 
@@ -409,7 +406,7 @@ export class PaymentHistoryEntity extends BaseEntity {
   metadata: PaymentHistoryMetadata = {}; // מטא-דאטה
 
   // Getters/Setters for metadata fields:
-  // completedAt, failedAt, subscriptionId, originalAmount, originalCurrency
+  // completedAt, failedAt, originalAmount, originalCurrency
 
   // BaseEntity fields: id, createdAt, updatedAt
 }
@@ -420,63 +417,12 @@ export class PaymentHistoryEntity extends BaseEntity {
 interface PaymentHistoryMetadata extends PaymentMetadata {
   completedAt?: string;          // תאריך השלמה
   failedAt?: string;             // תאריך כישלון
-  subscriptionId?: string;       // מזהה מנוי
   originalAmount?: number;       // סכום מקורי
   originalCurrency?: string;     // מטבע מקורי
 }
 ```
 
-### SubscriptionEntity
-ישות מנוי (`subscriptions`):
-```typescript
-@Entity('subscriptions')
-export class SubscriptionEntity extends BaseEntity {
-  @Column({ name: 'user_id' })
-  @Index()
-  userId!: string;               // מזהה משתמש (required, FK)
-
-  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;             // קשר למשתמש
-
-  @Column({ name: 'subscription_id', type: 'varchar' })
-  subscriptionExternalId: string = ''; // מזהה מנוי חיצוני (Stripe subscription ID)
-
-  @Column({ name: 'plan_id', type: 'varchar' })
-  planId: string = '';           // מזהה תוכנית
-
-  @Column({ name: 'status', type: 'varchar', default: SubscriptionStatus.PENDING })
-  status: SubscriptionStatus = SubscriptionStatus.PENDING; // סטטוס (pending, active, canceled)
-
-  @Column({ name: 'current_period_start', type: 'timestamp', nullable: true })
-  startDate?: Date;              // תחילת תקופה נוכחית
-
-  @Column({ name: 'current_period_end', type: 'timestamp', nullable: true })
-  endDate?: Date;                // סוף תקופה נוכחית
-
-  @Column({ name: 'cancel_at_period_end', type: 'boolean', default: false })
-  cancelAtPeriodEnd: boolean = false; // האם לבטל בסוף תקופה
-
-  @Column('jsonb', { default: () => "'{}'::jsonb" })
-  metadata: SubscriptionMetadata = {}; // מטא-דאטה
-
-  // Getters/Setters for metadata fields:
-  // planType (PlanType), price, currency, autoRenew, nextBillingDate,
-  // paymentHistoryId, features (string[]), cancelledAt
-
-  // BaseEntity fields: id, createdAt, updatedAt
-}
-```
-
-**SubscriptionMetadata Structure:**
-```typescript
-interface SubscriptionMetadata extends Partial<SubscriptionData> {
-  currency?: string;             // מטבע
-  paymentHistoryId?: string;     // מזהה היסטוריית תשלום
-}
-```
-
-### PointTransactionEntity
+### CreditTransactionEntity
 ישות עסקת נקודות (`point_transactions`):
 ```typescript
 @Entity('point_transactions')

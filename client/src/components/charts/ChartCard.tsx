@@ -3,9 +3,6 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
 import type { ChartCardProps } from '@/types';
 
-/**
- * Wrapper component for charts with consistent styling and loading/empty states
- */
 export function ChartCard({
 	title,
 	description,

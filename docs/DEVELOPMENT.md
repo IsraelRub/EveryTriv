@@ -696,190 +696,50 @@ export const useUserStats = () => {
 ### Redux Toolkit
 
 #### מבנה Store
-ה-Redux Store מורכב מ-5 slices עיקריים:
-- `game` - מצב המשחק הנוכחי (לא persisted)
-- `user` - מצב המשתמש (persisted)
-- `stats` - סטטיסטיקות משחק (לא persisted)
-- `favorites` - נושאים מועדפים (persisted)
-- `gameMode` - מצב משחק והגדרות (persisted)
+ה-Redux Store כולל 5 slices:
+- `gameMode` - מצב משחק והגדרות (persisted ב-localStorage)
+- `gameSession` - מצב סשן משחק פעיל (לא persisted - session only)
+- `multiplayer` - מצב משחק מרובה משתתפים (לא persisted - session only)
+- `audioSettings` - הגדרות אודיו (persisted ב-localStorage)
+- `uiPreferences` - העדפות UI (persisted ב-sessionStorage)
 
-#### מבנה slice מומלץ - Game Slice
+**הערה:** מצב משתמש וסטטיסטיקות מנוהלים ב-React Query.
+
+#### מבנה slice - GameMode Slice
 ```typescript
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TriviaQuestion } from '@shared/types';
-import { ClientGameState, GameSliceState, LoadingPayload, ErrorPayload, ScoreUpdatePayload } from '../../types';
+import { DifficultyLevel, GAME_MODES_CONFIG } from '@shared/constants';
+import type { GameConfig } from '@shared/types';
+import { GAME_STATE_CONFIG } from '@/constants';
 
-const initialGameState: ClientGameState = {
-  status: 'idle',
-  isPlaying: false,
-  currentQuestion: 0,
-  totalQuestions: 0,
-  questions: [],
-  answers: [],
-  loading: false,
-};
-
-const initialState: GameSliceState = {
-  state: initialGameState,
-  gameHistory: [],
-  leaderboard: [],
-  isLoading: false,
-  error: null,
-};
-
-const gameSlice = createSlice({
-  name: 'game',
-  initialState,
+export const gameModeStateSlice = createSlice({
+  name: 'gameMode',
+  initialState: GAME_STATE_CONFIG.initialGameModeState,
   reducers: {
-    setLoading: (state, action: PayloadAction<LoadingPayload>) => {
-      state.state.status = action.payload.isLoading ? 'loading' : 'idle';
-      state.state.loading = action.payload.isLoading;
-    },
-    setError: (state, action: PayloadAction<ErrorPayload>) => {
-      state.error = action.payload.error;
-      state.state.status = 'error';
-      state.state.error = action.payload.error ?? undefined;
-    },
-    clearError: (state) => {
-      state.error = null;
-      state.state.error = undefined;
-    },
-    setTrivia: (state, action: PayloadAction<TriviaQuestion>) => {
-      if (!state.state.data) {
-        state.state.data = {
-          questions: [],
-          answers: [],
-          score: 0,
-          currentQuestionIndex: 0,
-          startTime: new Date(),
-        };
-      }
-      if (!state.state.data.questions) {
-        state.state.data.questions = [];
-      }
-      state.state.data.questions = [action.payload];
-      state.state.status = 'playing';
-      state.state.error = undefined;
-    },
-    updateScore: (state, action: PayloadAction<ScoreUpdatePayload>) => {
-      if (!state.state.data) return;
-      const currentQuestion = state.state.data.questions?.[state.state.data.currentQuestionIndex];
-      if (!currentQuestion) return;
-      
-      if (!state.state.stats) {
-        state.state.stats = {
-          currentScore: 0,
-          maxScore: 0,
-          successRate: 0,
-          averageTimePerQuestion: 0,
-          correctStreak: 0,
-          maxStreak: 0,
-          questionsAnswered: 0,
-          correctAnswers: 0,
-          totalGames: 0,
-        };
-      }
-      
-      if (action.payload.correct && state.state.stats && state.state.data) {
-        const totalTime = action.payload.totalTime ?? 30;
-        const timeSpent = action.payload.timeSpent ?? 0;
-        const streak = state.state.stats.correctStreak ?? 0;
-        const scoreEarned = calculateScore(currentQuestion, totalTime, timeSpent, streak, true);
-        
-        state.state.data.score += scoreEarned;
-        state.state.stats.currentScore += scoreEarned;
-        state.state.stats.correctStreak += 1;
-        state.state.stats.maxStreak = Math.max(state.state.stats.maxStreak, state.state.stats.correctStreak);
-      } else {
-        if (state.state.stats) {
-          state.state.stats.correctStreak = 0;
-        }
-      }
-    },
-    resetGame: () => initialState,
-  },
-});
+    setGameMode: (state, action: PayloadAction<GameConfig>) => {
+      const { mode, topic, difficulty, maxQuestionsPerGame, timeLimit, answerCount } = action.payload;
+      const defaults = GAME_MODES_CONFIG[mode].defaults;
 
-export const { updateScore, resetGame } = gameSlice.actions;
-export default gameSlice.reducer;
-```
-
-#### מבנה slice מומלץ - User Slice
-```typescript
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { BasicUser } from '@shared/types';
-import { UserState, LoadingPayload, ErrorPayload, CreditBalancePayload } from '../../types';
-import { authService } from '../../services';
-import { CREDIT_BALANCE_DEFAULT_VALUES } from '../../constants';
-
-export const fetchUserData = createAsyncThunk('user/fetchUserData', async (_, { rejectWithValue }) => {
-  try {
-    const user = await authService.getCurrentUser();
-    return user;
-  } catch (error) {
-    return rejectWithValue(getErrorMessage(error));
-  }
-});
-
-const initialState: UserState = {
-  currentUser: null,
-  username: '',
-  avatar: '',
-  creditBalance: CREDIT_BALANCE_DEFAULT_VALUES,
-  isLoading: false,
-  error: null,
-  isAuthenticated: false,
-};
-
-const userSlice = createSlice({
-  name: 'user',
-  initialState,
-  reducers: {
-    setUser: (state, action: PayloadAction<BasicUser | null>) => {
-      if (action.payload) {
-        state.currentUser = action.payload;
-        state.username = action.payload.username;
-        state.avatar = '';
-        state.isAuthenticated = true;
-      } else {
-        state.currentUser = null;
-        state.username = '';
-        state.avatar = '';
-        state.isAuthenticated = false;
-      }
-      state.isLoading = false;
-      state.error = null;
-    },
-    setCreditBalance: (state, action: PayloadAction<CreditBalancePayload>) => {
-      const freeQuestions = action.payload.freeCredits;
-      const dailyLimit = action.payload.dailyLimit ?? state.creditBalance?.dailyLimit ?? 20;
-      const nextResetTime = action.payload.nextResetTime ?? state.creditBalance?.nextResetTime ?? null;
-
-      state.creditBalance = {
-        totalCredits: action.payload.balance,
-        freeQuestions,
-        purchasedCredits: action.payload.purchasedCredits,
-        dailyLimit,
-        canPlayFree: freeQuestions > 0,
-        nextResetTime,
+      state.currentMode = mode;
+      state.currentTopic = topic ?? '';
+      state.currentDifficulty = difficulty ?? DifficultyLevel.EASY;
+      state.currentSettings = {
+        mode: state.currentMode,
+        topic: state.currentTopic,
+        difficulty: state.currentDifficulty,
+        maxQuestionsPerGame: maxQuestionsPerGame ?? defaults.maxQuestionsPerGame,
+        timeLimit: timeLimit ?? defaults.timeLimit,
+        answerCount: answerCount,
       };
-    },
-    setAuthenticated: (state, action: PayloadAction<boolean>) => {
-      state.isAuthenticated = action.payload;
-    },
-    logout: (state) => {
-      state.currentUser = null;
-      state.username = '';
-      state.avatar = '';
       state.isLoading = false;
-      state.error = null;
-      state.isAuthenticated = false;
+      state.error = undefined;
     },
+    resetGameMode: () => GAME_STATE_CONFIG.initialGameModeState,
   },
 });
 
-export const { setUser, setCreditBalance, setAuthenticated } = userSlice.actions;
-export default userSlice.reducer;
+export const { setGameMode, resetGameMode } = gameModeStateSlice.actions;
+export default gameModeStateSlice.reducer;
 ```
 
 #### Redux Persist Configuration
@@ -887,18 +747,12 @@ export default userSlice.reducer;
 import { configureStore } from '@reduxjs/toolkit';
 import { persistReducer, persistStore } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
-
-const userPersistConfig = {
-  key: 'user',
-  storage,
-  whitelist: ['user'],
-};
-
-const favoritesPersistConfig = {
-  key: 'favorites',
-  storage,
-  whitelist: ['favorites'],
-};
+import storageSession from 'redux-persist/lib/storage/session';
+import gameModeReducer from './slices/gameModeSlice';
+import gameSessionReducer from './slices/gameSessionSlice';
+import multiplayerReducer from './slices/multiplayerSlice';
+import audioSettingsReducer from './slices/audioSettingsSlice';
+import uiPreferencesReducer from './slices/uiPreferencesSlice';
 
 const gameModePersistConfig = {
   key: 'gameMode',
@@ -906,23 +760,61 @@ const gameModePersistConfig = {
   whitelist: ['currentSettings'],
 };
 
+const audioSettingsPersistConfig = {
+  key: 'audioSettings',
+  storage,
+  whitelist: ['volume', 'isMuted', 'soundEnabled', 'musicEnabled'],
+};
+
+const uiPreferencesPersistConfig = {
+  key: 'uiPreferences',
+  storage: storageSession,
+  whitelist: ['leaderboardPeriod'],
+};
+
+const persistedGameModeReducer = persistReducer(gameModePersistConfig, gameModeReducer);
+const persistedAudioSettingsReducer = persistReducer(audioSettingsPersistConfig, audioSettingsReducer);
+const persistedUIPreferencesReducer = persistReducer(uiPreferencesPersistConfig, uiPreferencesReducer);
+
+const gameModePersistConfig = {
+  key: 'gameMode',
+  storage,
+  whitelist: ['currentSettings'],
+};
+
+const persistedGameModeReducer = persistReducer(gameModePersistConfig, gameModeReducer);
+
 export const store = configureStore({
   reducer: {
-    game: gameReducer,
-    stats: statsReducer,
-    favorites: persistReducer(favoritesPersistConfig, favoritesReducer),
-    user: persistReducer(userPersistConfig, userReducer),
-    gameMode: persistReducer(gameModePersistConfig, gameModeReducer),
+    gameMode: persistedGameModeReducer,
+    gameSession: gameSessionReducer,
+    multiplayer: multiplayerReducer,
+    audioSettings: persistedAudioSettingsReducer,
+    uiPreferences: persistedUIPreferencesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['stats/setStats', 'persist/PERSIST', 'persist/REHYDRATE'],
-        ignoredActionPaths: ['payload.created_at', 'payload.updated_at', 'payload.lastPlayed'],
-        ignoredPaths: ['stats.stats.lastPlayed', 'user.user.created_at', 'user.user.updated_at'],
+        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+        ignoredActionPaths: [
+          'payload.created_at',
+          'payload.updated_at',
+          'payload.lastPlayed',
+          'payload.joinedAt',
+          'payload.lastActivity',
+          'payload.createdAt',
+          'payload.updatedAt',
+          'payload.startTime',
+          'payload.endTime',
+          'payload.currentQuestionStartTime',
+          'payload.startedAt',
+        ],
       },
     }),
 });
+
+export type AppDispatch = typeof store.dispatch;
+export const persistor = persistStore(store);
 ```
 
 ### NestJS Backend
@@ -975,7 +867,6 @@ import { serverLogger as logger } from '@shared/services';
 import { getErrorMessage } from '@shared/utils';
 import { Cache, CurrentUserId, NoCache } from '../../common';
 import { GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
-import { SubmitAnswerDto } from './dtos/submitAnswer.dto';
 import { TriviaRequestDto } from './dtos/triviaRequest.dto';
 import { GameService } from './game.service';
 
@@ -1015,37 +906,6 @@ export class GameController {
         userId,
         topic: body.topic,
         difficulty: body.difficulty,
-      });
-      throw error;
-    }
-  }
-
-  @Post('answer')
-  async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
-    try {
-      if (!body.questionId || !body.answer) {
-        throw new HttpException('Question ID and answer are required', HttpStatus.BAD_REQUEST);
-      }
-
-      const result = await this.gameService.submitAnswer(
-        body.questionId,
-        body.answer,
-        userId,
-        body.timeSpent
-      );
-
-      logger.apiUpdate('game_answer_submit', {
-        userId,
-        questionId: body.questionId,
-        timeSpent: body.timeSpent,
-      });
-
-      return result;
-    } catch (error) {
-      logger.gameError('Error submitting answer', {
-        error: getErrorMessage(error),
-        userId,
-        questionId: body.questionId,
       });
       throw error;
     }
@@ -1137,15 +997,6 @@ export class GameService {
       throw error;
     }
   }
-
-  async submitAnswer(
-    questionId: string,
-    answer: string,
-    userId: string,
-    timeSpent: number
-  ): Promise<AnswerResult> {
-    // Implementation details
-  }
 }
 ```
 
@@ -1228,7 +1079,9 @@ GET  /api/auth/google/callback
 #### משחק (Game)
 ```http
 POST /api/game/trivia
-POST /api/game/answer
+POST /api/game/session/start
+POST /api/game/session/answer
+POST /api/game/session/finalize
 GET  /api/game/history
 ```
 
@@ -1245,13 +1098,6 @@ GET  /api/users/achievements
 POST /api/payment/create-session
 POST /api/payment/webhook
 GET  /api/payment/history
-```
-
-#### מנויים (Subscriptions)
-```http
-GET  /api/subscription/current
-POST /api/subscription/cancel
-GET  /api/subscription/history
 ```
 
 #### קרדיטים (Credits)

@@ -244,11 +244,11 @@ export class AuthService {
       }
 
       // Login existing user
-      const tokenPair = await this.authenticationManager.generateTokensForUser({
-        id: existingUser.id,
-        email: existingUser.email,
-        role: existingUser.role,
-      });
+      const tokenPair = await this.jwtTokenService.generateTokenPair(
+        existingUser.id,
+        existingUser.email,
+        existingUser.role
+      );
 
       return {
         access_token: tokenPair.accessToken,
@@ -283,11 +283,7 @@ export class AuthService {
     const savedUser = await this.userRepository.save(user);
 
     // Generate tokens
-    const tokenPair = await this.authenticationManager.generateTokensForUser({
-      id: savedUser.id,
-      email: savedUser.email,
-      role: savedUser.role,
-    });
+    const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
     return {
       access_token: tokenPair.accessToken,
@@ -384,11 +380,7 @@ export class AuthService {
       }
     }
 
-    const tokenPair = await this.authenticationManager.generateTokensForUser({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const tokenPair = await this.jwtTokenService.generateTokenPair(user.id, user.email, user.role);
 
     return {
       access_token: tokenPair.accessToken,

@@ -11,6 +11,7 @@ const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsparser = require('@typescript-eslint/parser');
 const importPlugin = require('eslint-plugin-import');
 const reactPlugin = require('eslint-plugin-react');
+const reactHooksPlugin = require('eslint-plugin-react-hooks');
 const prettier = require('eslint-config-prettier');
 
 
@@ -189,6 +190,7 @@ const reactConfig = {
 		'@typescript-eslint': tseslint,
 		'import': importPlugin,
 		'react': reactPlugin,
+		'react-hooks': reactHooksPlugin,
 	},
 	settings: {
 		react: { version: 'detect' },
@@ -268,6 +270,9 @@ const reactConfig = {
 			'forbid': ['>', '}']
 		}],
 		'react/jsx-uses-react': 'error',
+		// React Hooks rules
+		'react-hooks/rules-of-hooks': 'error',
+		'react-hooks/exhaustive-deps': 'warn',
 		// Disable redeclare rule for client
 		'no-redeclare': 'off',
 	},
@@ -290,6 +295,9 @@ module.exports = [
 			'**/logs/**',
 			'scripts/documentation/**/*.cjs',
 			'server/src/main.ts',
+			'server/scripts/**/*.js',
+			'**/postcss.config.js',
+			'**/vite.config.ts',
 		],
 	},
 	// Server configuration
@@ -299,6 +307,9 @@ module.exports = [
 		languageOptions: {
 			...baseConfig.languageOptions,
 			parser: tsparser,
+			parserOptions: {
+				project: 'server/tsconfig.json',
+			},
 		},
 		settings: {
 			...baseConfig.settings,
@@ -388,6 +399,7 @@ module.exports = [
 			},
 			parserOptions: {
 				ecmaFeatures: { jsx: true },
+				project: 'client/tsconfig.json',
 			},
 			parser: tsparser,
 		},
@@ -395,6 +407,7 @@ module.exports = [
 			'@typescript-eslint': tseslint,
 			'import': importPlugin,
 			'react': reactPlugin,
+			'react-hooks': reactHooksPlugin,
 		},
 		settings: {
 			react: { version: 'detect' },
@@ -461,6 +474,9 @@ module.exports = [
 				'forbid': ['>', '}']
 			}],
 			'react/jsx-uses-react': 'error',
+			// React Hooks rules
+			'react-hooks/rules-of-hooks': 'error',
+			'react-hooks/exhaustive-deps': 'warn',
 			// Disable redeclare rule for client
 			'no-redeclare': 'off',
 		},
@@ -473,6 +489,9 @@ module.exports = [
 		languageOptions: {
 			...baseConfig.languageOptions,
 			parser: tsparser,
+			parserOptions: {
+				project: 'shared/tsconfig.json',
+			},
 			globals: {
 				...baseConfig.languageOptions.globals,
 				File: 'readonly',

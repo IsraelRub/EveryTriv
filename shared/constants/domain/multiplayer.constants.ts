@@ -1,17 +1,3 @@
-/**
- * Multiplayer Game Constants
- *
- * @module MultiplayerConstants
- * @description Constants for multiplayer trivia games
- * @used_by server/src/features/game/multiplayer, client/src/views/multiplayer
- */
-
-
-/**
- * Room status enum
- * @enum RoomStatus
- * @description Status of a multiplayer room
- */
 export enum RoomStatus {
 	WAITING = 'waiting',
 	STARTING = 'starting',
@@ -20,11 +6,6 @@ export enum RoomStatus {
 	CANCELLED = 'cancelled',
 }
 
-/**
- * Player status enum
- * @enum PlayerStatus
- * @description Status of a player in multiplayer game
- */
 export enum PlayerStatus {
 	WAITING = 'waiting',
 	READY = 'ready',
@@ -32,4 +13,48 @@ export enum PlayerStatus {
 	ANSWERED = 'answered',
 	DISCONNECTED = 'disconnected',
 	FINISHED = 'finished',
+}
+
+export enum MultiplayerEvent {
+	// Socket connection events
+	CONNECT = 'connect',
+	DISCONNECT = 'disconnect',
+	CONNECT_ERROR = 'connect_error',
+	ERROR = 'error',
+
+	// Room events
+	ROOM_CREATED = 'room-created',
+	ROOM_JOINED = 'room-joined',
+	ROOM_LEFT = 'room-left',
+	ROOM_UPDATED = 'room-updated',
+
+	// Player events
+	PLAYER_JOINED = 'player-joined',
+	PLAYER_LEFT = 'player-left',
+	PLAYER_READY = 'player-ready',
+
+	// Game events
+	GAME_STARTED = 'game-started',
+	QUESTION_STARTED = 'question-started',
+	ANSWER_RECEIVED = 'answer-received',
+	QUESTION_ENDED = 'question-ended',
+	GAME_ENDED = 'game-ended',
+
+	// Leaderboard
+	LEADERBOARD_UPDATE = 'leaderboard-update',
+
+	// Emit events (client to server)
+	CREATE_ROOM = 'create-room',
+	JOIN_ROOM = 'join-room',
+	LEAVE_ROOM = 'leave-room',
+	START_GAME = 'start-game',
+	SUBMIT_ANSWER = 'submit-answer',
+}
+
+export enum QuestionState {
+	IDLE = 'idle',
+	STARTING = 'starting',
+	ACTIVE = 'active',
+	ENDING = 'ending',
+	ENDED = 'ended',
 }

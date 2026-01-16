@@ -1,32 +1,30 @@
-/**
- * Game Session View
- *
- * @module GameSessionView
- * @description Full game session with multiple questions, scoring, and progress tracking
- */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import {
+	AnalyticsAction,
+	AnalyticsEventType,
+	AnalyticsPageName,
 	ERROR_MESSAGES,
 	GAME_MODES_CONFIG,
-	GAME_STATE_CONFIG,
 	GameMode,
+	TIME_PERIODS_MS,
 	UserRole,
 	VALIDATION_COUNT,
 } from '@shared/constants';
-import type { QuestionData, TriviaQuestion } from '@shared/types';
+import type { TriviaQuestion } from '@shared/types';
 import {
-	calculateAnswerScore,
 	calculateElapsedSeconds,
 	calculateRequiredCredits,
 	createQuestionData,
+	getCorrectAnswerIndex,
 	getErrorMessage,
 	isRecord,
 	shouldChargeAfterGame,
 } from '@shared/utils';
-import { AudioKey, ButtonSize, ButtonVariant, ROUTES, SpinnerSize, SpinnerVariant } from '@/constants';
+import { getDifficultyDisplayText } from '@shared/validation';
+
+import { AudioKey, ButtonSize, ButtonVariant, GAME_STATE_DEFAULTS, GameLoadingStep, SpinnerSize } from '@/constants';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -36,35 +34,79 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
+	AnswerButton,
+	BackToHomeButton,
 	Button,
 	Card,
+	GameStats,
 	GameTimer,
 	Progress,
 	Spinner,
 } from '@/components';
-import { useAppDispatch, useAppSelector, useDeductCredits, useTriviaQuestionMutation } from '@/hooks';
-import { audioService, clientLogger as logger } from '@/services';
-import { cn } from '@/utils';
 import {
+	useAppDispatch,
+	useAppSelector,
+	useCreditBalance,
+	useCurrentUserData,
+	useDeductCredits,
+	useGameFinalization,
+	useGameSessionNavigation,
+	useStartGameSession,
+	useSubmitAnswerToSession,
+	useTrackAnalyticsEvent,
+	useTriviaQuestionMutation,
+	useUserRole,
+} from '@/hooks';
+import { audioService, clientLogger as logger } from '@/services';
+import { getAnswerLetter } from '@/utils';
+import {
+	selectAnswered,
+	selectCorrectAnswers,
+	selectCreditsDeducted,
 	selectCurrentDifficulty,
 	selectCurrentGameMode,
+	selectCurrentQuestion,
+	selectCurrentQuestionIndex,
 	selectCurrentSettings,
 	selectCurrentTopic,
-	selectCurrentUser,
-	selectUserCreditBalance,
-	selectUserRole,
+	selectGameId,
+	selectGameLoading,
+	selectGameLoadingStep,
+	selectGameQuestionCount,
+	selectGameQuestions,
+	selectGameScore,
+	selectGameStartTime,
+	selectIsGameFinalized,
+	selectLastScoreEarned,
+	selectSelectedAnswer,
+	selectStreak,
 } from '@/redux/selectors';
-import { updateScore } from '@/redux/slices';
+import {
+	addQuestionData,
+	finalizeGame,
+	moveToNextQuestion as moveToNextQuestionAction,
+	resetGameSession,
+	selectAnswer,
+	setAnswered,
+	setCreditsDeducted,
+	setLoading,
+	setQuestionIndex,
+	setQuestions,
+	setQuestionsData,
+	startGameSession,
+	updateScore,
+	updateTimeSpent,
+} from '@/redux/slices';
 
 export function GameSessionView() {
-	const navigate = useNavigate();
+	const { handleClose, resumeBackgroundMusic, startGameMusic, endGameMusic } = useGameSessionNavigation();
+	const currentUser = useCurrentUserData();
 	const dispatch = useAppDispatch();
-	const currentUser = useAppSelector(selectCurrentUser);
 	const currentTopic = useAppSelector(selectCurrentTopic);
 	const currentDifficulty = useAppSelector(selectCurrentDifficulty);
 	const currentGameMode = useAppSelector(selectCurrentGameMode);
 	const currentSettings = useAppSelector(selectCurrentSettings);
-	const userRole = useAppSelector(selectUserRole);
+	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;
 
 	// Game mode configuration
@@ -76,30 +118,43 @@ export function GameSessionView() {
 	const maxQuestionsPerGame =
 		currentSettings?.maxQuestionsPerGame ?? GAME_MODES_CONFIG[currentGameMode]?.defaults.maxQuestionsPerGame;
 
-	const totalGameTime = isTimeLimited
-		? currentSettings?.timeLimit || 60 // Default 60 seconds for time-limited mode
-		: undefined;
+	const timeLimit = currentSettings?.timeLimit ?? 60;
 
 	// Credit deduction
 	const deductCredits = useDeductCredits();
-	const [creditsDeducted, setCreditsDeducted] = useState(false);
 
-	// Game state
-	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-	const [gameQuestionCount] = useState<number | undefined>(
-		isQuestionLimited && maxQuestionsPerGame !== undefined && maxQuestionsPerGame !== null
-			? maxQuestionsPerGame
-			: undefined
-	);
-	const [score, setScore] = useState(0);
-	const [correctAnswers, setCorrectAnswers] = useState(0);
-	const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [gameStartTime] = useState(Date.now());
-	const [questionsData, setQuestionsData] = useState<QuestionData[]>([]);
-	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-	const [answered, setAnswered] = useState(false);
-	const [streak, setStreak] = useState(0);
+	// Game state from Redux
+	const gameId = useAppSelector(selectGameId);
+	const currentQuestionIndex = useAppSelector(selectCurrentQuestionIndex);
+	const gameQuestionCount = useAppSelector(selectGameQuestionCount);
+	const score = useAppSelector(selectGameScore);
+	const correctAnswers = useAppSelector(selectCorrectAnswers);
+	const questions = useAppSelector(selectGameQuestions);
+	const loading = useAppSelector(selectGameLoading);
+	const loadingStep = useAppSelector(selectGameLoadingStep);
+	const gameStartTime = useAppSelector(selectGameStartTime);
+	const selectedAnswer = useAppSelector(selectSelectedAnswer);
+	const answered = useAppSelector(selectAnswered);
+	const streak = useAppSelector(selectStreak);
+	const isGameFinalized = useAppSelector(selectIsGameFinalized);
+	const creditsDeducted = useAppSelector(selectCreditsDeducted);
+	const lastScoreEarned = useAppSelector(selectLastScoreEarned);
+	const currentQuestion = useAppSelector(selectCurrentQuestion);
+
+	// Initialize game session on mount if not already initialized
+	useEffect(() => {
+		if (!gameId) {
+			const newGameId = crypto.randomUUID();
+			const initialGameQuestionCount =
+				isQuestionLimited && maxQuestionsPerGame !== undefined && maxQuestionsPerGame !== null
+					? maxQuestionsPerGame
+					: undefined;
+			dispatch(startGameSession({ gameId: newGameId, gameQuestionCount: initialGameQuestionCount }));
+		} else if (gameStartTime === null) {
+			// If gameId exists but gameStartTime is null, update it
+			dispatch(startGameSession({ gameId, gameQuestionCount }));
+		}
+	}, [gameId, gameStartTime, gameQuestionCount, dispatch, isQuestionLimited, maxQuestionsPerGame]);
 
 	// Modal state
 	const [showExitDialog, setShowExitDialog] = useState(false);
@@ -107,22 +162,44 @@ export function GameSessionView() {
 	const [errorMessage, setErrorMessage] = useState('');
 	const [showCreditsWarning, setShowCreditsWarning] = useState(false);
 
+	// Prevent infinite loop: track if questions are already loaded or loading
+	const questionsLoadedRef = useRef(false);
+	const isLoadingRef = useRef(false);
+
+	// Track finalization state with ref to avoid stale closure issues in cleanup
+	const isGameFinalizedRef = useRef(false);
+	const gameStateRef = useRef({
+		gameId: '',
+		questionsLength: 0,
+		loading: true,
+		score: 0,
+		correctAnswers: 0,
+		currentQuestionIndex: 0,
+	});
+
 	// Credit balance tracking
-	const creditBalance = useAppSelector(selectUserCreditBalance);
+	const { data: creditBalance } = useCreditBalance();
 
 	const triviaMutation = useTriviaQuestionMutation();
+	const startGameSessionMutation = useStartGameSession();
+	const submitAnswerToSessionMutation = useSubmitAnswerToSession();
+	const { finalizeGameSession } = useGameFinalization();
+	const trackAnalyticsEvent = useTrackAnalyticsEvent();
 
-	const currentQuestion = useMemo(() => {
-		if (!questions || questions.length === 0 || currentQuestionIndex >= questions.length) {
-			return null;
-		}
-		const question = questions[currentQuestionIndex];
-		// Validate question structure
-		if (!question || !question.answers || !Array.isArray(question.answers)) {
-			return null;
-		}
-		return question;
-	}, [questions, currentQuestionIndex]);
+	// Sync refs with Redux state
+	useEffect(() => {
+		isGameFinalizedRef.current = isGameFinalized;
+		gameStateRef.current = {
+			gameId: gameId ?? '',
+			questionsLength: questions.length,
+			loading,
+			score,
+			correctAnswers,
+			currentQuestionIndex,
+		};
+	}, [isGameFinalized, gameId, questions.length, loading, score, correctAnswers, currentQuestionIndex]);
+
+	// currentQuestion is now from Redux selector
 
 	const progress = isQuestionLimited && gameQuestionCount ? ((currentQuestionIndex + 1) / gameQuestionCount) * 100 : 0;
 
@@ -137,7 +214,7 @@ export function GameSessionView() {
 		if (isAdmin || isChargeAfterGame || creditsDeducted || questions.length === 0 || deductCredits.isPending) {
 			// For charge-after-game modes, mark as "deducted" to skip this effect
 			if (isChargeAfterGame && !creditsDeducted && questions.length > 0) {
-				setCreditsDeducted(true);
+				dispatch(setCreditsDeducted(true));
 			}
 			return;
 		}
@@ -146,13 +223,13 @@ export function GameSessionView() {
 		// - TIME_LIMITED: 5 credits per 30 seconds (use totalGameTime in seconds)
 		// - UNLIMITED: 1 credit for the first question
 		// - Others: 1 credit per question (total for all questions)
-		const gameMode = currentGameMode || GameMode.QUESTION_LIMITED;
+		const gameMode = currentGameMode ?? GameMode.QUESTION_LIMITED;
 
 		// For TIME_LIMITED, send time in seconds (server expects time for credit calculation)
 		// For UNLIMITED, send 1 (first question only)
 		// For others, send question count
 		const valueForDeduction = isTimeLimited
-			? (totalGameTime ?? 60) // Time in seconds for TIME_LIMITED mode
+			? timeLimit // Time in seconds for TIME_LIMITED mode
 			: isUnlimited
 				? 1 // 1 credit for first question in UNLIMITED mode
 				: (maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.MAX); // Question count
@@ -165,7 +242,7 @@ export function GameSessionView() {
 		});
 
 		// Mark as deducted immediately to prevent duplicate calls
-		setCreditsDeducted(true);
+		dispatch(setCreditsDeducted(true));
 		deductCredits.mutate(
 			{
 				questionsPerRequest: valueForDeduction,
@@ -177,7 +254,7 @@ export function GameSessionView() {
 				},
 				onError: error => {
 					const message = getErrorMessage(error);
-					logger.gameError('Failed to deduct credits', { error: message });
+					logger.gameError('Failed to deduct credits', { errorInfo: { message } });
 					// Show error to user and navigate back
 					audioService.play(AudioKey.ERROR);
 					setErrorMessage(message);
@@ -185,47 +262,125 @@ export function GameSessionView() {
 				},
 			}
 		);
-	}, [isAdmin, isChargeAfterGame, creditsDeducted, questions.length, currentGameMode, maxQuestionsPerGame, totalGameTime, isTimeLimited, isUnlimited, deductCredits.isPending]);
+	}, [
+		isAdmin,
+		isChargeAfterGame,
+		creditsDeducted,
+		questions.length,
+		currentGameMode,
+		maxQuestionsPerGame,
+		timeLimit,
+		isTimeLimited,
+		isUnlimited,
+		deductCredits.isPending,
+		deductCredits,
+		dispatch,
+	]);
 
+	// Reset loading flags when key dependencies change (allows reload for new game settings)
+	useEffect(() => {
+		questionsLoadedRef.current = false;
+		isLoadingRef.current = false;
+		// Reset game session when settings change (only if game was already started)
+		if (gameId && questions.length > 0) {
+			dispatch(resetGameSession());
+		}
+	}, [currentTopic, currentDifficulty, currentGameMode, dispatch, gameId, questions.length]);
 
 	// Load initial questions
 	useEffect(() => {
+		// Prevent infinite loop: skip if already loading or if questions are already loaded
+		if (isLoadingRef.current || (questionsLoadedRef.current && questions.length > 0)) {
+			return;
+		}
+
 		const loadQuestions = async () => {
+			// Mark as loading immediately to prevent React Strict Mode double-invocation
+			if (isLoadingRef.current) {
+				return;
+			}
+			isLoadingRef.current = true;
+
 			try {
-				setLoading(true);
+				dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.CONNECTING }));
+				// Clear any previous error state
+				setErrorMessage('');
+				setShowErrorDialog(false);
+
 				// Convert undefined to UNLIMITED (-1) for API (questionsPerRequest must be a number)
 				const questionsPerRequestForAPI = maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.UNLIMITED;
 				logger.gameInfo('Loading trivia questions', {
-					topic: currentTopic || GAME_STATE_CONFIG.defaults.topic,
+					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
 					difficulty: currentDifficulty || 'medium',
 					questionsPerRequest: questionsPerRequestForAPI,
 				});
 
+				dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.FETCHING_QUESTIONS }));
 				const response = await triviaMutation.mutateAsync({
-					topic: currentTopic || GAME_STATE_CONFIG.defaults.topic,
+					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
 					difficulty: currentDifficulty || 'medium',
 					questionsPerRequest: questionsPerRequestForAPI,
-					userId: currentUser?.id || '',
-					answerCount: currentSettings?.answerCount,
+					...(currentUser?.id ? { userId: currentUser.id } : {}),
+					...(currentSettings?.answerCount !== undefined ? { answerCount: currentSettings.answerCount } : {}),
 				});
 
 				// API returns an object with questions array and fromCache flag
 				if (response && isRecord(response) && 'questions' in response) {
-					const questionsData = response.questions;
-
 					// Validate we got an array of questions
-					if (Array.isArray(questionsData) && questionsData.length > 0) {
+					if (Array.isArray(response.questions) && response.questions.length > 0) {
+						dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.VALIDATING_QUESTIONS }));
 						// Validate each question has required fields
-						const validQuestions = questionsData.filter(
+						const validQuestions = response.questions.filter(
 							(q): q is TriviaQuestion =>
 								isRecord(q) && typeof q.question === 'string' && Array.isArray(q.answers) && q.answers.length > 0
 						);
 
 						if (validQuestions.length > 0) {
-							setQuestions(validQuestions);
-							// Don't override gameQuestionCount - it's already set to the user's selected question count
+							// Limit questions to gameQuestionCount if in QUESTION_LIMITED mode
 							// The server may return more questions than requested, but we only play the requested amount
-							logger.gameInfo('Questions loaded successfully', { count: validQuestions.length });
+							const limitedQuestions =
+								isQuestionLimited && gameQuestionCount !== undefined && gameQuestionCount !== null
+									? validQuestions.slice(0, gameQuestionCount)
+									: validQuestions;
+
+							dispatch(setQuestions({ questions: limitedQuestions }));
+							// Mark as loaded to prevent reload
+							questionsLoadedRef.current = true;
+							// Don't override gameQuestionCount - it's already set to the user's selected question count
+							logger.gameInfo('Questions loaded successfully', {
+								count: limitedQuestions.length,
+								...(gameQuestionCount !== undefined && { questionsPerRequest: gameQuestionCount }),
+								resultsCount: validQuestions.length,
+							});
+
+							// Start game session on server
+							if (currentUser?.id && gameId) {
+								dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.INITIALIZING_SESSION }));
+								startGameSessionMutation.mutate({
+									gameId,
+									topic: currentTopic ?? 'General',
+									difficulty: currentDifficulty ?? 'medium',
+									gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
+								});
+								// Track analytics event for game start
+								dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.TRACKING_ANALYTICS }));
+								trackAnalyticsEvent.mutate({
+									eventType: AnalyticsEventType.GAME_START,
+									page: AnalyticsPageName.GAME_SESSION,
+									action: AnalyticsAction.GAME_STARTED,
+									sessionId: gameId,
+									properties: {
+										topic: currentTopic ?? 'General',
+										difficulty: currentDifficulty ?? 'medium',
+										gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
+										questionCount: limitedQuestions.length,
+									},
+								});
+							}
+
+							dispatch(setLoading({ loading: true, loadingStep: GameLoadingStep.LOADING_AUDIO }));
+							startGameMusic();
+							dispatch(setLoading({ loading: false, loadingStep: GameLoadingStep.READY }));
 						} else {
 							throw new Error(ERROR_MESSAGES.api.NO_VALID_QUESTIONS_IN_RESPONSE);
 						}
@@ -235,18 +390,18 @@ export function GameSessionView() {
 				} else {
 					throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
 				}
-
-				setLoading(false);
-				audioService.stop(AudioKey.BACKGROUND_MUSIC);
-				audioService.play(AudioKey.GAME_START);
-				audioService.play(AudioKey.GAME_MUSIC);
 			} catch (error) {
 				const message = getErrorMessage(error);
-				logger.gameError('Failed to load questions', { error: message });
+				logger.gameError('Failed to load questions', { errorInfo: { message } });
 				audioService.play(AudioKey.ERROR);
 				setErrorMessage(message);
 				setShowErrorDialog(true);
-				setTimeout(() => navigate(ROUTES.HOME), 3000);
+				dispatch(setLoading({ loading: false, loadingStep: GameLoadingStep.CONNECTING }));
+				// Don't mark as loaded on error - allow retry if dependencies change
+				setTimeout(() => handleClose(), TIME_PERIODS_MS.THREE_SECONDS);
+			} finally {
+				// Reset loading flag
+				isLoadingRef.current = false;
 			}
 		};
 
@@ -254,20 +409,37 @@ export function GameSessionView() {
 
 		// Cleanup on unmount
 		return () => {
-			audioService.stop(AudioKey.GAME_MUSIC);
-			// AudioControls will handle background music based on preferences
+			// Resume background music when component unmounts
+			// This handles cases where component unmounts without handleClose (e.g., navigation away)
+			resumeBackgroundMusic();
 		};
-	}, []);
-
-	// Use ref to store the latest handleGameTimeout function
-	const handleGameTimeoutRef = useRef<() => void>();
+	}, [
+		currentUser?.id,
+		currentTopic,
+		currentDifficulty,
+		currentGameMode,
+		gameId,
+		startGameSessionMutation,
+		triviaMutation,
+		maxQuestionsPerGame,
+		currentSettings?.answerCount,
+		gameQuestionCount,
+		handleClose,
+		resumeBackgroundMusic,
+		startGameMusic,
+		isQuestionLimited,
+		questions.length,
+		trackAnalyticsEvent,
+		dispatch,
+	]);
 
 	const handleGameTimeout = useCallback(() => {
-		audioService.stop(AudioKey.GAME_MUSIC);
-		audioService.play(AudioKey.GAME_END);
-		// AudioControls will handle background music based on preferences
+		// Mark as finalized to prevent auto-finalization on unmount
+		dispatch(finalizeGame());
 
-		const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
+		endGameMusic();
+
+		const totalTimeSpent = calculateElapsedSeconds(gameStartTime ?? Date.now());
 		const questionsAnswered = currentQuestionIndex + 1;
 
 		logger.gameInfo('Game time expired', {
@@ -276,47 +448,29 @@ export function GameSessionView() {
 			timeSpent: totalTimeSpent,
 		});
 
-		navigate(ROUTES.GAME_SUMMARY, {
-			state: {
-				userId: currentUser?.id || '',
-				score,
-				gameQuestionCount: questionsAnswered,
-				correctAnswers,
-				topic: currentTopic,
-				difficulty: currentDifficulty,
-				timeSpent: totalTimeSpent,
-				questionsData,
-			},
-		});
-	}, [
-		score,
-		correctAnswers,
-		currentQuestionIndex,
-		gameStartTime,
-		questionsData,
-		currentTopic,
-		currentDifficulty,
-		currentUser?.id,
-		navigate,
-	]);
+		// Update Redux state with final data
+		dispatch(updateTimeSpent(totalTimeSpent));
+		dispatch(setQuestionIndex(questionsAnswered));
 
-	// Update ref when handleGameTimeout changes
-	useEffect(() => {
-		handleGameTimeoutRef.current = handleGameTimeout;
-	}, [handleGameTimeout]);
+		// Finalize game session before navigating
+		finalizeGameSession({
+			navigateToSummary: true,
+			trackAnalytics: false, // Will be tracked in summary view
+			logContext: 'timeout',
+		});
+	}, [score, correctAnswers, currentQuestionIndex, gameStartTime, finalizeGameSession, endGameMusic, dispatch]);
 
 	const recordQuestionData = useCallback(
 		(isCorrect: boolean, timeSpent: number) => {
 			if (!currentQuestion) return;
 
-			// Convert selectedAnswer to appropriate format for createQuestionData
-			const userAnswer: string | number =
-				selectedAnswer !== null ? selectedAnswer : isCorrect ? currentQuestion.correctAnswerIndex : 'Timeout';
+			// Use selectedAnswer if available, otherwise use -1 to indicate no answer (timeout)
+			const userAnswer: number = selectedAnswer ?? -1;
 
 			const questionData = createQuestionData(currentQuestion, userAnswer, isCorrect, timeSpent);
-			setQuestionsData(prev => [...prev, questionData]);
+			dispatch(addQuestionData(questionData));
 		},
-		[currentQuestion, selectedAnswer]
+		[currentQuestion, selectedAnswer, dispatch]
 	);
 
 	const moveToNextQuestion = useCallback(
@@ -331,40 +485,58 @@ export function GameSessionView() {
 			logger.gameInfo('Checking game completion', {
 				currentQuestionIndex,
 				nextQuestionIndex,
-				gameQuestionCount,
+				...(gameQuestionCount !== undefined && { gameQuestionCount }),
 				isQuestionLimited,
 				shouldEndGame,
+				sessionId: gameId ?? undefined,
 			});
 
 			if (shouldEndGame) {
-				// Game over - navigate to summary
-				audioService.stop(AudioKey.GAME_MUSIC);
-				audioService.play(AudioKey.GAME_END);
-				// AudioControls will handle background music based on preferences
+				// Game over - finalize session on server and navigate to summary
+				endGameMusic();
 
-				const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
-				const finalScore = wasCorrect ? score + scoreEarned : score;
-				const finalCorrectAnswers = wasCorrect ? correctAnswers + 1 : correctAnswers;
+				// Finalize game session on server (server calculates final score)
+				dispatch(finalizeGame());
+				if (!gameId) return;
+				finalizeGameSession({
+					navigateToSummary: true,
+					trackAnalytics: false, // Will be tracked in summary view
+					logContext: 'question limit reached',
+					onSuccess: savedHistory => {
+						if (savedHistory) {
+							const totalTimeSpent = calculateElapsedSeconds(gameStartTime ?? Date.now());
 
-				logger.gameInfo('Game completed', {
-					score: finalScore,
-					correctAnswers: finalCorrectAnswers,
-					gameQuestionCount,
-					timeSpent: totalTimeSpent,
-				});
+							logger.gameInfo('Game completed and finalized', {
+								score: savedHistory.score,
+								correctAnswers: savedHistory.correctAnswers,
+								gameQuestionCount: savedHistory.gameQuestionCount,
+								timeSpent: totalTimeSpent,
+							});
 
-				navigate(ROUTES.GAME_SUMMARY, {
-					state: {
-						userId: currentUser?.id || '',
-						score: finalScore,
-						gameQuestionCount: gameQuestionCount ?? questions.length,
-						correctAnswers: finalCorrectAnswers,
-						topic: currentTopic,
-						difficulty: currentDifficulty,
-						timeSpent: totalTimeSpent,
-						questionsData,
+							// Update Redux state with final data before navigation
+							dispatch(
+								updateScore({
+									score: savedHistory.score,
+									correctAnswers: savedHistory.correctAnswers,
+									streak,
+									lastScoreEarned: lastScoreEarned ?? 0,
+								})
+							);
+							dispatch(updateTimeSpent(savedHistory.timeSpent ?? totalTimeSpent));
+							if (savedHistory.questionsData) {
+								dispatch(setQuestionsData(savedHistory.questionsData));
+							}
+						}
 					},
+					onError: error => {
+						const message = getErrorMessage(error);
+						audioService.play(AudioKey.ERROR);
+						setErrorMessage(message);
+						setShowErrorDialog(true);
+					},
+					playErrorSound: true,
 				});
+				return;
 			} else if (isUnlimited && !isAdmin) {
 				// For UNLIMITED mode, deduct credit for the next question
 				// Check if user has enough credits before proceeding
@@ -372,10 +544,10 @@ export function GameSessionView() {
 
 				if (currentTotalCredits <= 0) {
 					// No credits left - end game
-					audioService.stop(AudioKey.GAME_MUSIC);
-					audioService.play(AudioKey.GAME_END);
+					dispatch(finalizeGame());
+					endGameMusic();
 
-					const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
+					const totalTimeSpent = calculateElapsedSeconds(gameStartTime ?? Date.now());
 					const finalScore = wasCorrect ? score + scoreEarned : score;
 					const finalCorrectAnswers = wasCorrect ? correctAnswers + 1 : correctAnswers;
 
@@ -385,17 +557,23 @@ export function GameSessionView() {
 						questionsAnswered: nextQuestionIndex,
 					});
 
-					navigate(ROUTES.GAME_SUMMARY, {
-						state: {
-							userId: currentUser?.id || '',
+					// Update Redux state with final data
+					dispatch(
+						updateScore({
 							score: finalScore,
-							gameQuestionCount: nextQuestionIndex,
 							correctAnswers: finalCorrectAnswers,
-							topic: currentTopic,
-							difficulty: currentDifficulty,
-							timeSpent: totalTimeSpent,
-							questionsData,
-						},
+							streak: wasCorrect ? streak + 1 : 0,
+							lastScoreEarned: wasCorrect ? scoreEarned : 0,
+						})
+					);
+					dispatch(updateTimeSpent(totalTimeSpent));
+					dispatch(setQuestionIndex(nextQuestionIndex));
+
+					// Finalize game session before navigating
+					finalizeGameSession({
+						navigateToSummary: true,
+						trackAnalytics: false, // Will be tracked in summary view
+						logContext: 'no credits remaining',
 					});
 					return;
 				}
@@ -418,47 +596,47 @@ export function GameSessionView() {
 							// If no credits left after deduction, end game after this question
 							if (remainingCredits <= 0) {
 								// Continue to next question, but it will be the last one
-								setCurrentQuestionIndex(prev => prev + 1);
-								setSelectedAnswer(null);
-								setAnswered(false);
+								dispatch(moveToNextQuestionAction());
 							} else {
 								// Move to next question
-								setCurrentQuestionIndex(prev => prev + 1);
-								setSelectedAnswer(null);
-								setAnswered(false);
+								dispatch(moveToNextQuestionAction());
 							}
 						},
 						onError: error => {
 							const message = getErrorMessage(error);
-							logger.gameError('Failed to deduct credits for next question', { error: message });
+							logger.gameError('Failed to deduct credits for next question', { errorInfo: { message } });
 							// If deduction fails due to insufficient credits, end game
-							audioService.stop(AudioKey.GAME_MUSIC);
-							audioService.play(AudioKey.GAME_END);
+							dispatch(finalizeGame());
+							endGameMusic();
 
-							const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
+							const totalTimeSpent = calculateElapsedSeconds(gameStartTime ?? Date.now());
 							const finalScore = wasCorrect ? score + scoreEarned : score;
 							const finalCorrectAnswers = wasCorrect ? correctAnswers + 1 : correctAnswers;
 
-							navigate(ROUTES.GAME_SUMMARY, {
-								state: {
-									userId: currentUser?.id || '',
+							// Update Redux state with final data
+							dispatch(
+								updateScore({
 									score: finalScore,
-									gameQuestionCount: nextQuestionIndex,
 									correctAnswers: finalCorrectAnswers,
-									topic: currentTopic,
-									difficulty: currentDifficulty,
-									timeSpent: totalTimeSpent,
-									questionsData,
-								},
+									streak: wasCorrect ? streak + 1 : 0,
+									lastScoreEarned: wasCorrect ? scoreEarned : 0,
+								})
+							);
+							dispatch(updateTimeSpent(totalTimeSpent));
+							dispatch(setQuestionIndex(nextQuestionIndex));
+
+							// Finalize game session before navigating
+							finalizeGameSession({
+								navigateToSummary: true,
+								trackAnalytics: false, // Will be tracked in summary view
+								logContext: 'credit deduction failed',
 							});
 						},
 					}
 				);
 			} else {
 				// Next question - reset state
-				setCurrentQuestionIndex(prev => prev + 1);
-				setSelectedAnswer(null);
-				setAnswered(false);
+				dispatch(moveToNextQuestionAction());
 			}
 		},
 		[
@@ -467,17 +645,17 @@ export function GameSessionView() {
 			isAdmin,
 			currentQuestionIndex,
 			gameQuestionCount,
-			questions.length,
 			gameStartTime,
 			score,
 			correctAnswers,
-			currentTopic,
-			currentDifficulty,
-			questionsData,
 			creditBalance,
 			deductCredits,
-			currentUser?.id,
-			navigate,
+			finalizeGameSession,
+			gameId,
+			dispatch,
+			streak,
+			lastScoreEarned,
+			endGameMusic,
 		]
 	);
 
@@ -485,100 +663,171 @@ export function GameSessionView() {
 		(answerIndex: number) => {
 			if (answered) return;
 			audioService.play(AudioKey.BUTTON_CLICK);
-			setSelectedAnswer(answerIndex);
+			dispatch(selectAnswer(answerIndex));
 		},
-		[answered]
+		[answered, dispatch]
 	);
 
 	const handleSubmit = useCallback(() => {
 		if (answered || selectedAnswer === null || !currentQuestion) return;
 
-		setAnswered(true);
-		const isCorrect = selectedAnswer === currentQuestion.correctAnswerIndex;
-		const timeSpent = 30; // Default time for scoring calculation (in seconds)
+		// Capture questionId and answer before mutation to prevent race conditions
+		const submittingQuestionId = currentQuestion.id;
+		const submittingAnswer = selectedAnswer;
+		const submittingQuestionIndex = currentQuestionIndex;
 
-		if (isCorrect) {
-			const newStreak = streak + 1;
-			setStreak(newStreak);
+		dispatch(setAnswered(true));
+		// Calculate actual time spent (in seconds)
+		const timeSpent = Math.max(
+			1,
+			Math.floor(
+				(Date.now() - (gameStartTime ?? Date.now()) - submittingQuestionIndex * TIME_PERIODS_MS.THIRTY_SECONDS) / 1000
+			)
+		);
 
-			const scoreEarned = calculateAnswerScore(currentQuestion.difficulty, timeSpent, newStreak - 1, true);
+		// Submit answer to server session - server calculates score
+		if (!gameId) return;
+		submitAnswerToSessionMutation.mutate(
+			{
+				gameId,
+				questionId: submittingQuestionId,
+				answer: submittingAnswer,
+				timeSpent,
+			},
+			{
+				onSuccess: result => {
+					// Verify we're still on the same question before processing success
+					if (currentQuestionIndex !== submittingQuestionIndex) {
+						logger.gameInfo('Answer submission succeeded but question already changed', {
+							currentQuestionIndex,
+							questionId: submittingQuestionId,
+						});
+						return;
+					}
 
-			setScore(prev => prev + scoreEarned);
-			setCorrectAnswers(prev => prev + 1);
+					const isCorrect = result.isCorrect;
+					const scoreEarned = result.scoreEarned;
+					const sessionScore = result.sessionScore;
 
-			// Update Redux state
-			dispatch(
-				updateScore({
-					score: scoreEarned,
-					timeSpent,
-					isCorrect: true,
-				})
-			);
+					// Update Redux state with server-calculated values
+					const newStreak = isCorrect ? streak + 1 : 0;
+					const newCorrectAnswers = isCorrect ? correctAnswers + 1 : correctAnswers;
 
-			audioService.play(AudioKey.CORRECT_ANSWER);
-			logger.gameInfo('Correct answer', {
-				questionId: currentQuestion.id,
-				score: scoreEarned,
-			});
+					dispatch(
+						updateScore({
+							score: sessionScore,
+							correctAnswers: newCorrectAnswers,
+							streak: newStreak,
+							lastScoreEarned: scoreEarned,
+						})
+					);
 
-			recordQuestionData(true, timeSpent);
+					if (isCorrect) {
+						audioService.play(AudioKey.CORRECT_ANSWER);
+					} else {
+						audioService.play(AudioKey.WRONG_ANSWER);
+					}
 
-			setTimeout(() => {
-				moveToNextQuestion(true, scoreEarned);
-			}, 1500);
-		} else {
-			setStreak(0);
+					logger.gameInfo(isCorrect ? 'Correct answer' : 'Incorrect answer', {
+						questionId: submittingQuestionId,
+						scoreEarned,
+						sessionScore,
+						isCorrect,
+					});
 
-			// Update Redux state for incorrect answer
-			dispatch(
-				updateScore({
-					score: 0,
-					timeSpent,
-					isCorrect: false,
-				})
-			);
+					recordQuestionData(isCorrect, timeSpent);
 
-			audioService.play(AudioKey.WRONG_ANSWER);
-			logger.gameInfo('Incorrect answer', {
-				questionId: currentQuestion.id,
-				selectedAnswer: selectedAnswer.toString(),
-				correctAnswer: currentQuestion.correctAnswerIndex,
-			});
+					setTimeout(() => {
+						moveToNextQuestion(isCorrect, scoreEarned);
+						// Clear last score earned after moving to next question
+						dispatch(
+							updateScore({
+								score: sessionScore,
+								correctAnswers: newCorrectAnswers,
+								streak: newStreak,
+								lastScoreEarned: 0,
+							})
+						);
+					}, 1500);
+				},
+				onError: error => {
+					// Verify we're still on the same question before showing error
+					if (currentQuestionIndex !== submittingQuestionIndex) {
+						logger.gameInfo('Answer submission failed but question already changed', {
+							currentQuestionIndex,
+							questionId: submittingQuestionId,
+							errorInfo: { message: getErrorMessage(error) },
+						});
+						// Don't show error dialog if question already changed
+						dispatch(setAnswered(false));
+						return;
+					}
 
-			recordQuestionData(false, timeSpent);
-
-			setTimeout(() => {
-				moveToNextQuestion(false, 0);
-			}, 1500);
-		}
+					const message = getErrorMessage(error);
+					logger.gameError('Failed to submit answer to session', {
+						errorInfo: { message },
+						questionId: submittingQuestionId,
+					});
+					audioService.play(AudioKey.ERROR);
+					setErrorMessage(message);
+					setShowErrorDialog(true);
+					// Reset answered state to allow retry
+					dispatch(setAnswered(false));
+				},
+			}
+		);
 	}, [
 		answered,
 		selectedAnswer,
 		currentQuestion,
+		currentQuestionIndex,
+		gameId,
 		gameStartTime,
 		streak,
-		dispatch,
+		correctAnswers,
 		recordQuestionData,
 		moveToNextQuestion,
+		submitAnswerToSessionMutation,
+		dispatch,
 	]);
 
 	const handleExitGame = useCallback(() => {
-		audioService.stop(AudioKey.GAME_MUSIC);
-		// AudioControls will handle background music based on preferences
+		// Mark as finalized to prevent auto-finalization
+		dispatch(finalizeGame());
 		logger.gameInfo('User exited game', {
 			currentQuestionIndex: currentQuestionIndex + 1,
 			score,
 			correctAnswers,
 		});
-		navigate(ROUTES.HOME);
-	}, [currentQuestionIndex, score, correctAnswers, navigate]);
+
+		// Finalize game session if game has started (has questions and not loading)
+		if (gameId && questions.length > 0 && !loading) {
+			finalizeGameSession({
+				navigateToSummary: false, // User is exiting, don't navigate
+				trackAnalytics: false, // Don't track analytics on exit
+				logContext: 'user exit',
+			});
+		}
+
+		handleClose();
+	}, [
+		currentQuestionIndex,
+		score,
+		correctAnswers,
+		handleClose,
+		gameId,
+		questions.length,
+		loading,
+		finalizeGameSession,
+		dispatch,
+	]);
 
 	// Handle finishing the game in UNLIMITED mode (user chooses to end)
 	const handleFinishUnlimitedGame = useCallback(() => {
-		audioService.stop(AudioKey.GAME_MUSIC);
-		audioService.play(AudioKey.GAME_END);
+		dispatch(finalizeGame());
+		endGameMusic();
 
-		const totalTimeSpent = calculateElapsedSeconds(gameStartTime);
+		const totalTimeSpent = calculateElapsedSeconds(gameStartTime ?? Date.now());
 		const questionsAnswered = currentQuestionIndex + 1;
 
 		logger.gameInfo('User finished UNLIMITED game', {
@@ -587,48 +836,17 @@ export function GameSessionView() {
 			questionsPerRequest: questionsAnswered,
 		});
 
-		navigate(ROUTES.GAME_SUMMARY, {
-			state: {
-				userId: currentUser?.id || '',
-				score,
-				gameQuestionCount: questionsAnswered,
-				correctAnswers,
-				topic: currentTopic,
-				difficulty: currentDifficulty,
-				timeSpent: totalTimeSpent,
-				questionsData,
-			},
+		// Update Redux state with final data
+		dispatch(updateTimeSpent(totalTimeSpent));
+		dispatch(setQuestionIndex(questionsAnswered));
+
+		// Finalize game session before navigating
+		finalizeGameSession({
+			navigateToSummary: true,
+			trackAnalytics: false, // Will be tracked in summary view
+			logContext: 'user finished',
 		});
-	}, [
-		score,
-		correctAnswers,
-		currentQuestionIndex,
-		gameStartTime,
-		questionsData,
-		currentTopic,
-		currentDifficulty,
-		currentUser?.id,
-		navigate,
-	]);
-
-	const getAnswerStyle = useCallback(
-		(index: number) => {
-			if (!answered) {
-				return selectedAnswer === index
-					? cn('bg-blue-500/50', 'ring-2', 'ring-blue-500/70')
-					: 'hover:bg-accent/50';
-			}
-
-			if (index === currentQuestion?.correctAnswerIndex) {
-				return cn('bg-green-500/40', 'ring-2', 'ring-green-500/70');
-			}
-			if (index === selectedAnswer) {
-				return cn('bg-red-500/40', 'ring-2', 'ring-red-500/70');
-			}
-			return 'opacity-50';
-		},
-		[answered, selectedAnswer, currentQuestion?.correctAnswerIndex]
-	);
+	}, [score, correctAnswers, currentQuestionIndex, gameStartTime, finalizeGameSession, dispatch, endGameMusic]);
 
 	// Loading state
 	if (loading) {
@@ -639,8 +857,15 @@ export function GameSessionView() {
 				className='min-h-screen flex items-center justify-center'
 			>
 				<div className='text-center'>
-					<Spinner variant={SpinnerVariant.FULL_SCREEN} size={SpinnerSize.FULL} className='mx-auto mb-4' />
-					<p className='text-xl text-foreground'>Loading your trivia questions...</p>
+					<Spinner size={SpinnerSize.FULL} variant='fullscreen' className='mx-auto mb-4' />
+					<motion.p
+						key={loadingStep}
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						className='text-xl text-foreground'
+					>
+						{loadingStep}
+					</motion.p>
 				</div>
 			</motion.main>
 		);
@@ -658,7 +883,7 @@ export function GameSessionView() {
 					<p className='text-xl text-foreground mb-4'>
 						{!questions || questions.length === 0 ? 'No questions available' : 'Loading question...'}
 					</p>
-					<Button onClick={() => navigate(ROUTES.HOME)}>Return Home</Button>
+					<BackToHomeButton />
 				</div>
 			</motion.main>
 		);
@@ -669,16 +894,21 @@ export function GameSessionView() {
 			<div className='container mx-auto px-4 max-w-4xl h-screen flex flex-col'>
 				{/* Header Section - Compact */}
 				<div className='flex-shrink-0 mb-4'>
-					{/* Game Timer - persists across all questions */}
-					<GameTimer
-						key='game-timer'
-						mode={isTimeLimited ? 'countdown' : 'elapsed'}
-						initialTime={isTimeLimited ? totalGameTime : undefined}
-						startTime={gameStartTime}
-						onTimeout={isTimeLimited ? handleGameTimeout : undefined}
-						label={isTimeLimited ? 'Game Time' : 'Time Elapsed'}
-						showProgressBar={isTimeLimited}
-					/>
+					{/* Game Timer with Stats - persists across all questions */}
+					<div className='flex items-center justify-between gap-4 mb-3'>
+						<GameTimer
+							key='game-timer'
+							mode={isTimeLimited ? 'countdown' : 'elapsed'}
+							initialTime={isTimeLimited ? timeLimit : undefined}
+							startTime={gameStartTime ?? undefined}
+							onTimeout={isTimeLimited ? handleGameTimeout : undefined}
+							label={isTimeLimited ? 'Game Time' : 'Time Elapsed'}
+							showProgressBar={isTimeLimited}
+							className='flex-1'
+						/>
+						{/* Game Stats - Only for UNLIMITED mode */}
+						{isUnlimited && <GameStats currentQuestionIndex={currentQuestionIndex} />}
+					</div>
 
 					{/* Progress Bar - Only for QUESTION_LIMITED mode */}
 					{isQuestionLimited && (
@@ -696,9 +926,9 @@ export function GameSessionView() {
 					{/* Game Info - Compact */}
 					<div className='mb-3 text-center'>
 						<div className='flex items-center justify-center gap-2 text-xs text-muted-foreground flex-wrap'>
-							<span>Topic: {currentTopic || GAME_STATE_CONFIG.defaults.topic}</span>
+							<span>Topic: {currentTopic ?? GAME_STATE_DEFAULTS.TOPIC}</span>
 							<span className='text-muted-foreground/50'>•</span>
-							<span>Difficulty: {currentDifficulty || GAME_STATE_CONFIG.defaults.difficulty}</span>
+							<span>Difficulty: {getDifficultyDisplayText(currentDifficulty ?? GAME_STATE_DEFAULTS.DIFFICULTY)}</span>
 							{streak > 1 && (
 								<>
 									<span className='text-muted-foreground/50'>•</span>
@@ -722,26 +952,16 @@ export function GameSessionView() {
 						Array.isArray(currentQuestion.answers) &&
 						currentQuestion.answers.length > 0 ? (
 							currentQuestion.answers.map((answer, index) => (
-								<motion.button
+								<AnswerButton
 									key={index}
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: index * 0.05 }}
-									onClick={() => handleAnswerSelect(index)}
-									disabled={answered}
-									className={cn(
-										'p-4 rounded-lg border-2 border-white transition-all text-left h-full flex items-center',
-										getAnswerStyle(index),
-										!answered ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed'
-									)}
-								>
-									<div className='flex items-center w-full'>
-										<div className='w-7 h-7 rounded-full bg-muted flex items-center justify-center mr-3 flex-shrink-0'>
-											<span className='font-bold text-sm'>{String.fromCharCode(65 + index)}</span>
-										</div>
-										<span className='text-base leading-tight flex-1'>{answer.text}</span>
-									</div>
-								</motion.button>
+									answer={answer}
+									index={index}
+									answered={answered}
+									selectedAnswer={selectedAnswer}
+									currentQuestion={currentQuestion}
+									onClick={handleAnswerSelect}
+									showResult={false}
+								/>
 							))
 						) : (
 							<div className='col-span-2 text-center text-muted-foreground'>No answers available</div>
@@ -765,13 +985,18 @@ export function GameSessionView() {
 							animate={{ opacity: 1, y: 0 }}
 							className='mb-2 text-center flex-shrink-0'
 						>
-							{selectedAnswer === currentQuestion.correctAnswerIndex ? (
-								<div className='text-green-500 text-lg font-bold'>Correct! +{score} points</div>
-							) : (
-								<div className='text-red-500 text-lg font-bold'>
-									Incorrect! The correct answer was {String.fromCharCode(65 + currentQuestion.correctAnswerIndex)}
-								</div>
-							)}
+							{(() => {
+								const correctIndex = getCorrectAnswerIndex(currentQuestion);
+								return selectedAnswer === correctIndex ? (
+									<div className='text-green-500 text-lg font-bold'>
+										Correct! {lastScoreEarned !== null ? `+${lastScoreEarned}` : ''} points
+									</div>
+								) : (
+									<div className='text-red-500 text-lg font-bold'>
+										Incorrect! The correct answer was {getAnswerLetter(correctIndex)}
+									</div>
+								);
+							})()}
 						</motion.div>
 					)}
 
@@ -784,15 +1009,17 @@ export function GameSessionView() {
 								size={ButtonSize.SM}
 								className='text-xs'
 							>
-								Finish Game ({currentQuestionIndex + 1} questions)
+								Finish Game
 							</Button>
 						)}
-						<button
+						<Button
 							onClick={() => setShowExitDialog(true)}
-							className='text-xs text-muted-foreground hover:text-foreground transition-colors'
+							size={ButtonSize.SM}
+							variant={ButtonVariant.GHOST}
+							className='text-xs'
 						>
 							Exit Game
-						</button>
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -806,7 +1033,7 @@ export function GameSessionView() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Continue Playing</AlertDialogCancel>
-						<AlertDialogAction onClick={handleExitGame}>Quit Game</AlertDialogAction>
+						<AlertDialogAction onClick={handleExitGame}>Exit Game</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
@@ -819,7 +1046,7 @@ export function GameSessionView() {
 						<AlertDialogDescription>{errorMessage}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogAction onClick={() => navigate(ROUTES.HOME)}>OK</AlertDialogAction>
+						<AlertDialogAction onClick={handleClose}>OK</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
@@ -829,12 +1056,10 @@ export function GameSessionView() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Last Question Warning</AlertDialogTitle>
-						<AlertDialogDescription>
-							נשאר לך קרדיט אחד. זו תהיה השאלה האחרונה שלך.
-						</AlertDialogDescription>
+						<AlertDialogDescription>נשאר לך קרדיט אחד. זו תהיה השאלה האחרונה שלך.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogAction onClick={() => setShowCreditsWarning(false)}>המשך</AlertDialogAction>
+						<AlertDialogAction onClick={() => setShowCreditsWarning(false)}>Continue</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

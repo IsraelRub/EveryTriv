@@ -1,13 +1,3 @@
-/**
- * Shared logging constants for EveryTriv
- * Used by both client and server
- *
- * @module LoggingConstants
- * @description Logging configuration and formatting constants
- * @used_by server/src/features, client/src/services, shared/services
- */
-
-// Log levels enum
 export enum LogLevel {
 	ERROR = 'error',
 	WARN = 'warn',
@@ -15,7 +5,6 @@ export enum LogLevel {
 	DEBUG = 'debug',
 }
 
-// Centralized icon constants
 export const LOG_ICONS = {
 	// Basic log levels
 	ERROR: '🔴',
@@ -76,7 +65,6 @@ export const LOG_ICONS = {
 	FAILED: '💣',
 } as const;
 
-// Shared log level properties (symbol + console method + colors)
 export const LOG_LEVEL_PROPERTIES = {
 	[LogLevel.ERROR]: {
 		symbol: LOG_ICONS.ERROR,
@@ -104,7 +92,6 @@ export const LOG_LEVEL_PROPERTIES = {
 	},
 } as const;
 
-// Domain definitions - define each domain only once
 export const LOG_DOMAINS = {
 	OAUTH: 'OAUTH',
 	NESTJS: 'NESTJS',
@@ -140,7 +127,6 @@ const createDomainFormatters = (domain: string) => ({
 	debug: (message: string) => `${LOG_ICONS.DEBUG} [${domain}] ${message}`,
 });
 
-// Message formatters for different log types
 export const MESSAGE_FORMATTERS = {
 	// Generic formatters for different contexts
 	context: {
@@ -267,8 +253,6 @@ export const MESSAGE_FORMATTERS = {
 		cancelled: (paymentId: string) => `${LOG_ICONS.CANCELLED} Payment Cancelled: ${paymentId}`,
 		expired: (paymentId: string) => `${LOG_ICONS.EXPIRED} Payment Expired: ${paymentId}`,
 		webhook: (event: string, paymentId: string) => `${LOG_ICONS.INFO} Payment Webhook: ${event} - ${paymentId}`,
-		subscription: (action: string, subscriptionId: string) =>
-			`${LOG_ICONS.INFO} Subscription ${action}: ${subscriptionId}`,
 		plan: (action: string, planId: string) => `${LOG_ICONS.INFO} Plan ${action}: ${planId}`,
 		invoice: (action: string, invoiceId: string) => `${LOG_ICONS.INFO} Invoice ${action}: ${invoiceId}`,
 		general: (event: string) => `${LOG_ICONS.PAYMENT} Payment: ${event}`,
@@ -368,11 +352,6 @@ export const MESSAGE_FORMATTERS = {
 	trivia: createDomainFormatters(LOG_DOMAINS.TRIVIA),
 } as const;
 
-/**
- * Performance threshold constants (in milliseconds)
- * @constant
- * @description Performance thresholds for monitoring and alerts
- */
 export const PERFORMANCE_THRESHOLDS = {
 	ACCEPTABLE: 500, // 500ms - acceptable response time
 	SLOW: 1000, // 1s - slow response time

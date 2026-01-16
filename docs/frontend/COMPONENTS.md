@@ -19,23 +19,11 @@ client/src/components/
 ├── user/                 # רכיבי משתמש
 ├── ui/                   # רכיבי UI בסיסיים
 ├── AudioControls.tsx     # בקרת אודיו
-├── FeatureErrorBoundary.tsx # Error boundary לתכונות
 ├── GameMode.tsx          # בחירת מצב משחק
-├── IconLibrary.tsx       # ספריית אייקונים
-├── Leaderboard.tsx       # לוח מובילים
-├── ProtectedRoute.tsx    # רכיב הגנה על נתיבים
-├── SubscriptionPlans.tsx # תוכניות מנוי
-└── ValidatedForm.tsx     # טופס עם ולידציה
+└── ProtectedRoute.tsx    # רכיב הגנה על נתיבים
 ```
 
 ## רכיבי משחק
-
-### Game.tsx
-הרכיב הראשי של המשחק:
-- ניהול מצב המשחק
-- הצגת שאלות
-- טיפול בתשובות
-- עדכון ניקוד
 
 ### GameTimer.tsx
 טיימר המשחק עם תמיכה במצבי משחק שונים:
@@ -72,59 +60,6 @@ const gameMode: GameConfig = {
 - ספירה קדימה במצבים אחרים
 - התראה ויזואלית כשהזמן נגמר
 - אנימציות עם framer-motion
-
-### TriviaForm.tsx
-טופס שאלות טריוויה:
-- בחירת נושא
-- בחירת קושי
-- שליחת בקשה
-
-### TriviaGame.tsx
-משחק טריוויה מלא עם טיימר וציון:
-```typescript
-import TriviaGame from '@components/game/TriviaGame';
-import { TriviaQuestion } from '@shared/types';
-import type { TriviaGameProps } from '@types';
-
-const question: TriviaQuestion = {
-  id: 'q_123',
-  question: 'מי כתב את המלט?',
-  answers: [
-    { text: 'שייקספיר', isCorrect: true, order: 0 },
-    { text: 'דיקנס', isCorrect: false, order: 1 },
-    { text: 'טולסטוי', isCorrect: false, order: 2 },
-    { text: 'המינגווי', isCorrect: false, order: 3 }
-  ],
-  correctAnswerIndex: 0,
-  topic: 'ספרות',
-  difficulty: 'medium',
-  createdAt: new Date(),
-  updatedAt: new Date()
-};
-
-<TriviaGame
-  question={question}
-  onComplete={(isCorrect: boolean, points: number) => {
-    console.log('Answer:', isCorrect, 'Points:', points);
-  }}
-  timeLimit={30}
-/>
-```
-
-**Props:**
-- `question`: `TriviaQuestion` - שאלת טריוויה
-- `onComplete`: `(isCorrect: boolean, points: number) => void` - callback בסיום
-- `timeLimit`: `number` - מגבלת זמן בשניות (ברירת מחדל: 30)
-
-**תכונות:**
-- טיימר אוטומטי עם ספירה לאחור
-- הצגת שאלה ותשובות
-- בדיקת נכונות תשובה
-- חישוב נקודות לפי קושי וזמן
-- עדכון Redux state עם נקודות
-- אנימציות עם framer-motion
-- צלילי feedback (נכון/שגוי/טיימאוט)
-- לוגים עם clientLogger
 
 ## רכיבי UI בסיסיים
 
@@ -218,43 +153,6 @@ import { Card } from '@components/ui';
 - אפקט זכוכית אופציונלי
 - אנימציות עם framer-motion
 
-### Modal.tsx
-חלונות מודאליים עם גדלים שונים:
-```typescript
-import { Modal } from '@components/ui';
-import { ModalSize } from '@constants';
-import { useState } from 'react';
-
-const [open, setOpen] = useState(false);
-
-<Modal 
-  open={open}
-  onClose={() => setOpen(false)}
-  size={ModalSize.MD}
-  isGlassy={true}
-  disableEscapeKeyDown={false}
-  disableBackdropClick={false}
->
-  <div className="p-6">
-    <h2 className="text-2xl font-bold mb-4">כותרת</h2>
-    <p>תוכן המודאל</p>
-  </div>
-</Modal>
-```
-
-**Props:**
-- `open`: `boolean` - האם המודאל פתוח
-- `onClose`: `() => void` - callback לסגירה
-- `size`: `ModalSize.SM` | `ModalSize.MD` | `ModalSize.LG` | `ModalSize.XL` | `ModalSize.FULL`
-- `isGlassy`: `boolean` - אפקט זכוכית (ברירת מחדל: true)
-- `disableEscapeKeyDown`: `boolean` - מניעת סגירה ב-Escape
-- `disableBackdropClick`: `boolean` - מניעת סגירה בלחיצה על הרקע
-
-**תכונות:**
-- Portal ל-body
-- סגירה ב-Escape
-- סגירה בלחיצה על רקע
-- מניעת scroll ל-body כשפתוח
 - אנימציות fade-in
 
 ### Input.tsx
@@ -299,11 +197,6 @@ const [value, setValue] = useState('');
 - `errorMessage`: `string` - הודעת שגיאה
 - `label`: `string` - תווית
 
-### Select.tsx
-רשימות נפתחות:
-- Select בסיסי
-- Select עם חיפוש
-- Select מרובה בחירות
 
 ### Avatar.tsx
 תמונות פרופיל:
@@ -325,11 +218,6 @@ Footer של האפליקציה:
 - מידע על האפליקציה
 - רשתות חברתיות
 
-### GridLayout.tsx
-פריסת Grid:
-- Grid responsive
-- Grid עם columns מותאמים
-
 ### NotFound.tsx
 דף 404:
 - הודעת שגיאה
@@ -349,19 +237,6 @@ Footer של האפליקציה:
 - מצב אימות
 - פרופיל משתמש
 
-## רכיבי סטטיסטיקות
-
-### ScoringSystem.tsx
-מערכת ניקוד:
-- הצגת ניקוד
-- חישוב נקודות
-- היסטוריית ניקוד
-
-### CustomDifficultyHistory.tsx
-היסטוריית קושי מותאם:
-- רשימת קשיים מותאמים
-- סטטיסטיקות לפי קושי
-
 ## רכיבי משתמש
 
 ### CompleteProfile.tsx
@@ -370,26 +245,11 @@ Footer של האפליקציה:
 - ולידציה
 - שמירה
 
-### FavoriteTopics.tsx
-נושאים מועדפים:
-- רשימת נושאים
-- הוספה והסרה
-- שמירה
-
 ### OAuthCallback.tsx
 Callback של OAuth:
 - טיפול ב-OAuth callback
 - שמירת token
 - הפניה לדף הבית
-
-## רכיבי אנימציה
-
-### AnimationLibrary.tsx
-ספריית אנימציות:
-- Fade in/out
-- Slide in/out
-- Scale in/out
-- Rotate
 
 ## רכיבי אודיו
 
@@ -401,47 +261,17 @@ Callback של OAuth:
 
 ## רכיבים נוספים
 
-### FeatureErrorBoundary.tsx
-Error boundary לתכונות ספציפיות:
-- טיפול בשגיאות ברמת תכונה
-- Fallback UI מותאם
-- שמירת שגיאות לניתוח
-
 ### GameMode.tsx
 בחירת מצב משחק:
 - בחירת מצב (question-limited, time-limited, unlimited)
 - הגדרות מצב מותאמות
 - ולידציה של קלט
 
-### IconLibrary.tsx
-ספריית אייקונים:
-- אייקונים מותאמים אישית
-- תמיכה בגדלים שונים
-- אייקונים לפי הקשר
-
-### Leaderboard.tsx
-לוח מובילים:
-- הצגת דירוגים
-- פילטרים לפי תקופה
-- מיקום המשתמש
-
 ### ProtectedRoute.tsx
 רכיב הגנה על נתיבים:
 - בדיקת אימות
 - בדיקת תפקידים
 - הפניה לדף התחברות אם לא מורשה
-
-### SubscriptionPlans.tsx
-תוכניות מנוי:
-- הצגת תוכניות זמינות
-- השוואה בין תוכניות
-- בחירת תוכנית
-
-### ValidatedForm.tsx
-טופס עם ולידציה:
-- ולידציה משולבת
-- טיפול בשגיאות
-- הצגת הודעות ולידציה
 
 ## הפניות
 

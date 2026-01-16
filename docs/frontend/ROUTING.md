@@ -25,7 +25,6 @@
 ```typescript
 <Route path='/game/play' element={<GameSessionView />} />
 <Route path='/game/summary' element={<GameSummaryView />} />
-<Route path='/game/custom' element={<CustomDifficultyView />} />
 ```
 
 ### נתיבים מוגנים (Protected Routes)
@@ -144,7 +143,6 @@
 | /leaderboard | LeaderboardView | לא | - | לוח מובילים |
 | /game/play | GameSessionView | לא | - | מסך משחק פעיל |
 | /game/summary | GameSummaryView | לא | - | סיכום משחק |
-| /game/custom | CustomDifficultyView | לא | - | קושי מותאם |
 | /history | GameHistory | כן | - | היסטוריית משחקים |
 | /payment | PaymentView | כן | - | תשלומים |
 | /credits | CreditsView | כן | - | קרדיטים |
@@ -183,7 +181,6 @@ import { fetchUserData, setAuthenticated, setUser } from './redux/slices';
 import { audioService, authService, prefetchAuthenticatedQueries } from './services';
 import AdminDashboard from './views/admin/AdminDashboard';
 import { AnalyticsView } from './views/analytics/AnalyticsView';
-import CustomDifficultyView from './views/game/CustomDifficultyView';
 import GameSessionView from './views/game/GameSessionView';
 import GameSummaryView from './views/game/GameSummaryView';
 import GameHistory from './views/gameHistory/GameHistory';
@@ -280,7 +277,6 @@ function NavigationTracker() {
       '/game',
       '/game/play',
       '/game/summary',
-      '/game/custom',
       '/play',
       '/start',
       '/history',

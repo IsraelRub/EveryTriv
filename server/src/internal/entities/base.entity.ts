@@ -1,6 +1,6 @@
 import { CreateDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-import type { BaseEntity as BaseEntityContract } from '@internal/types';
+import type { BaseEntity as BaseEntityContract } from '@shared/types';
 
 export abstract class BaseEntity implements BaseEntityContract {
 	@PrimaryGeneratedColumn('uuid')

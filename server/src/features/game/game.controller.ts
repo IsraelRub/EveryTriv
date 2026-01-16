@@ -1,32 +1,32 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { API_ROUTES, CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
+import { API_ENDPOINTS, ERROR_CODES, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import type { GameData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
+
 import { serverLogger as logger } from '@internal/services';
-import type { TokenPayload } from '@internal/types';
-import { Cache, CurrentUser, CurrentUserId, NoCache, Roles } from '../../common';
-import { CustomDifficultyPipe, GameAnswerPipe, TriviaRequestPipe } from '../../common/pipes';
-import { GameHistoryQueryDto, SubmitAnswerDto, TriviaRequestDto, ValidateCustomDifficultyDto } from './dtos';
+
+import { Cache, CurrentUserId, NoCache } from '../../common';
+import { CustomDifficultyPipe, TriviaRequestPipe } from '../../common/pipes';
+import {
+	FinalizeGameSessionDto,
+	GameHistoryQueryDto,
+	SaveGameHistoryDto,
+	StartGameSessionDto,
+	SubmitAnswerToSessionDto,
+	TriviaRequestDto,
+	ValidateCustomDifficultyDto,
+} from './dtos';
 import { GameService } from './game.service';
 
-@Controller(API_ROUTES.GAME.BASE)
+@Controller(API_ENDPOINTS.GAME.BASE)
 export class GameController {
 	constructor(private readonly gameService: GameService) {}
 
-	/**
-	 * Get trivia question by ID
-	 * @param id Question identifier
-	 * @returns Trivia question details
-	 */
 	@Get('trivia/:id')
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.HOUR)
 	async getQuestionById(@Param('id') id: string) {
 		try {
-			if (!id) {
-				throw new HttpException(ERROR_CODES.QUESTION_ID_REQUIRED, HttpStatus.BAD_REQUEST);
-			}
-
 			const result = await this.gameService.getQuestionById(id);
 
 			logger.apiRead('game_question_by_id', {
@@ -36,62 +36,134 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error getting question by ID', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				questionId: id,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Submit answer to a trivia question
-	 * @param userId Current user identifier
-	 * @param body Answer submission data
-	 * @returns Answer result with correctness and scoring
-	 */
-	@Post('answer')
-	async submitAnswer(@CurrentUserId() userId: string, @Body(GameAnswerPipe) body: SubmitAnswerDto) {
+	@Post('session/start')
+	@NoCache()
+	async startGameSession(@CurrentUserId() userId: string, @Body() body: StartGameSessionDto) {
 		try {
-			if (!body.questionId || !body.answer) {
+			const result = await this.gameService.startGameSession(
+				userId,
+				body.gameId,
+				body.topic,
+				body.difficulty,
+				body.gameMode
+			);
+
+			logger.apiCreate('game_session_start', {
+				userId,
+				gameId: body.gameId,
+				topic: body.topic,
+				difficulty: body.difficulty,
+				gameMode: body.gameMode,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Error starting game session', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+				gameId: body.gameId,
+			});
+			throw error;
+		}
+	}
+
+	@Post('session/answer')
+	async submitAnswerToSession(@CurrentUserId() userId: string, @Body() body: SubmitAnswerToSessionDto) {
+		try {
+			if (!body.questionId || body.answer === undefined || body.answer === null) {
 				throw new HttpException(ERROR_CODES.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.gameService.submitAnswer(body.questionId, body.answer, userId, body.timeSpent);
-
-			logger.apiUpdate('game_answer_submit', {
+			const result = await this.gameService.submitAnswerToSession({
+				questionId: body.questionId,
+				answer: body.answer,
 				userId,
+				timeSpent: body.timeSpent,
+				gameId: body.gameId,
+			});
+
+			logger.apiUpdate('game_session_answer_submit', {
+				userId,
+				gameId: body.gameId,
 				questionId: body.questionId,
 				timeSpent: body.timeSpent,
 			});
 
 			return result;
 		} catch (error) {
-			logger.gameError('Error submitting answer', {
-				error: getErrorMessage(error),
+			logger.gameError('Error submitting answer to session', {
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
+				gameId: body.gameId,
 				questionId: body.questionId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Get trivia questions based on topic and difficulty
-	 * @param userId Current user identifier
-	 * @param body Trivia request parameters
-	 * @returns Generated trivia questions
-	 */
+	@Get('validate-session/:gameId')
+	@NoCache()
+	async validateSession(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
+		try {
+			const result = await this.gameService.validateGameSession(userId, gameId);
+
+			logger.apiRead('game_session_validate', {
+				userId,
+				gameId,
+				isValid: result.isValid,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Error validating game session', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+				gameId,
+			});
+			throw error;
+		}
+	}
+
+	@Post('session/finalize')
+	async finalizeGameSession(@CurrentUserId() userId: string, @Body() body: FinalizeGameSessionDto) {
+		try {
+			const result = await this.gameService.finalizeGameSession(userId, body.gameId);
+
+			logger.apiUpdate('game_session_finalize', {
+				userId,
+				gameId: body.gameId,
+				score: result.score,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Error finalizing game session', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+				gameId: body.gameId,
+			});
+			throw error;
+		}
+	}
+
 	@Post('trivia')
 	@NoCache()
 	async getTriviaQuestions(@CurrentUserId() userId: string, @Body(TriviaRequestPipe) body: TriviaRequestDto) {
 		try {
-			const result = await this.gameService.getTriviaQuestion(
-				body.topic,
-				body.difficulty,
-				body.questionsPerRequest,
+			const result = await this.gameService.getTriviaQuestion({
+				topic: body.topic,
+				difficulty: body.difficulty,
+				questionsPerRequest: body.questionsPerRequest,
 				userId,
-				body.answerCount
-			);
+				answerCount: body.answerCount,
+			});
 
 			logger.apiCreate('game_trivia_questions', {
 				userId,
@@ -103,7 +175,7 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error getting trivia questions', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				topic: body.topic,
 				difficulty: body.difficulty,
@@ -112,36 +184,30 @@ export class GameController {
 		}
 	}
 
-	/**
-	 * Get user's game history
-	 * @param userId Current user identifier
-	 * @param query Query parameters for pagination
-	 * @returns User's game history with statistics
-	 */
 	@Get('history')
-	@Cache(CACHE_DURATION.LONG, 'game_history')
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES, 'game_history')
 	async getGameHistory(@CurrentUserId() userId: string, @Query() query: GameHistoryQueryDto) {
 		const startTime = Date.now();
 
 		try {
-			const limit = query.limit ?? 20;
-			const offset = query.offset ?? 0;
-			const result = await this.gameService.getUserGameHistory(userId, limit, offset);
+			const result = await this.gameService.getUserGameHistory({
+				userId,
+				limit: query.limit,
+				offset: query.offset,
+			});
 
-			// Log API call for game history request
 			logger.apiRead('game_history', {
 				userId: userId,
 				totalGames: result.totalGames,
-				limit,
-				offset,
+				limit: query.limit,
+				offset: query.offset,
 				duration: calculateDuration(startTime),
 			});
 
-			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return result;
 		} catch (error) {
 			logger.gameError('Error getting game history', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 
@@ -149,23 +215,33 @@ export class GameController {
 		}
 	}
 
-	/**
-	 * Save game history entry
-	 * @param userId Current user identifier
-	 * @param body Game data to save
-	 * @returns Saved game history entry
-	 */
 	@Post('history')
-	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: GameData) {
+	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: SaveGameHistoryDto) {
 		try {
-			// Validate required fields
 			if (!body.score) {
 				throw new HttpException(ERROR_CODES.SCORE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.gameService.saveGameHistory(userId, body);
+			// Convert DTO to GameData format
+			const gameData: GameData = {
+				userId: body.userId,
+				score: body.score,
+				gameQuestionCount: body.gameQuestionCount,
+				correctAnswers: body.correctAnswers,
+				difficulty: body.difficulty,
+				topic: body.topic,
+				gameMode: body.gameMode,
+				timeSpent: body.timeSpent,
+				creditsUsed: body.creditsUsed,
+				questionsData: body.questionsData,
+				clientMutationId: body.clientMutationId,
+			};
 
-			// Log API call for game history save
+			const result = await this.gameService.saveGameHistory({
+				userId,
+				gameData,
+			});
+
 			logger.apiCreate('game_history_save', {
 				userId,
 				score: body.score,
@@ -174,7 +250,7 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error saving game history', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				score: body.score,
 			});
@@ -182,22 +258,14 @@ export class GameController {
 		}
 	}
 
-	/**
-	 * Delete specific game from history
-	 * @param userId Current user identifier
-	 * @param gameId Game identifier to delete
-	 * @returns Deletion result
-	 */
 	@Delete('history/:gameId')
 	async deleteGameHistory(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
 		try {
-			if (!gameId || gameId.trim().length === 0) {
-				throw new HttpException(ERROR_CODES.GAME_ID_REQUIRED, HttpStatus.BAD_REQUEST);
-			}
+			const result = await this.gameService.deleteGameHistory({
+				userId,
+				gameId,
+			});
 
-			const result = await this.gameService.deleteGameHistory(userId, gameId);
-
-			// Log API call for game history deletion
 			logger.apiDelete('game_history_delete', {
 				userId,
 				id: gameId,
@@ -206,7 +274,7 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error deleting game history', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				id: gameId,
 			});
@@ -214,17 +282,11 @@ export class GameController {
 		}
 	}
 
-	/**
-	 * Clear all game history for user
-	 * @param userId Current user identifier
-	 * @returns Clear operation result
-	 */
 	@Delete('history')
 	async clearGameHistory(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.gameService.clearUserGameHistory(userId);
 
-			// Log API call for clearing game history
 			logger.apiDelete('game_history_clear_all', {
 				userId,
 			});
@@ -232,23 +294,16 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error clearing game history', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Validate custom difficulty text
-	 * @param body Custom difficulty validation data
-	 * @returns Validated custom difficulty data
-	 */
 	@Post('validate-custom')
 	async validateCustomDifficulty(@Body(CustomDifficultyPipe) body: ValidateCustomDifficultyDto) {
 		try {
-			// The CustomDifficultyPipe handles all validation logic
-			// This method simply returns the result from the pipe
 			logger.apiUpdate('game_validate_custom_difficulty', {
 				textLength: body.customText.length,
 			});
@@ -256,142 +311,15 @@ export class GameController {
 			return body;
 		} catch (error) {
 			logger.gameError('Error validating custom difficulty', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				textLength: body.customText?.length,
 			});
 			throw error;
 		}
 	}
 
-	/**
-	 * Admin endpoint - get game statistics (admin only)
-	 * @param user Current admin user token payload
-	 * @returns Game statistics summary
-	 */
-	@Get('admin/statistics')
-	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
-	async getGameStatistics(@CurrentUser() user: TokenPayload) {
-		try {
-			const statistics = await this.gameService.getAdminStatistics();
-
-			logger.apiRead('game_admin_statistics', {
-				id: user.sub,
-				role: user.role,
-				totalGames: statistics.totalGames,
-			});
-
-			return statistics;
-		} catch (error) {
-			logger.gameError('Failed to get game statistics', {
-				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Admin endpoint - delete all game history (admin only)
-	 * @param user Current admin user token payload
-	 * @returns Clear operation result with deleted count
-	 */
-	@Delete('admin/history/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.gameService.clearAllGameHistory();
-
-			logger.apiDelete('game_admin_clear_all_history', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
-			});
-
-			return {
-				cleared: (result.deletedCount ?? 0) > 0,
-				deletedCount: result.deletedCount ?? 0,
-				message: result.message,
-			};
-		} catch (error) {
-			logger.gameError('Failed to clear all game history', {
-				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Admin endpoint - get all trivia questions (admin only)
-	 * @param user Current admin user token payload
-	 * @returns All trivia questions from database
-	 */
-	@Get('admin/trivia')
-	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.MEDIUM)
-	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.gameService.getAllTriviaQuestions();
-
-			logger.apiRead('game_admin_get_all_trivia', {
-				id: user.sub,
-				role: user.role,
-			});
-
-			return result;
-		} catch (error) {
-			logger.gameError('Failed to get all trivia questions', {
-				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Admin endpoint - delete all trivia questions (admin only)
-	 * @param user Current admin user token payload
-	 * @returns Clear operation result with deleted count
-	 */
-	@Delete('admin/trivia/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.gameService.clearAllTrivia();
-
-			logger.apiDelete('game_admin_clear_all_trivia', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
-			});
-
-			return {
-				cleared: (result.deletedCount ?? 0) > 0,
-				deletedCount: result.deletedCount ?? 0,
-				message: result.message,
-			};
-		} catch (error) {
-			logger.gameError('Failed to clear all trivia', {
-				error: getErrorMessage(error),
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	/**
-	 * Get game by ID (for client compatibility)
-	 * Must be last to avoid conflicts with specific routes like 'trivia/:id'
-	 * @param id Game identifier
-	 * @returns Game details
-	 */
 	@Get(':id')
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getGameById(@Param('id') id: string) {
 		try {
 			if (!id) {
@@ -402,8 +330,8 @@ export class GameController {
 			const normalizedId = id.trim().replace(/\/+$/, '');
 
 			// Prevent matching reserved route names
-			const reservedRoutes = ['trivia', 'history', 'admin', 'answer', 'validate-custom'];
-			if (reservedRoutes.includes(normalizedId.toLowerCase())) {
+			const reservedRoutesSet = new Set<string>(['trivia', 'history', 'admin', 'validate-custom', 'session']);
+			if (reservedRoutesSet.has(normalizedId.toLowerCase())) {
 				throw new HttpException(
 					`${ERROR_CODES.INVALID_GAME_ID_FORMAT}. '${normalizedId}' is a reserved route name.`,
 					HttpStatus.BAD_REQUEST
@@ -419,7 +347,7 @@ export class GameController {
 			return result;
 		} catch (error) {
 			logger.gameError('Error getting game by ID', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				id,
 			});
 

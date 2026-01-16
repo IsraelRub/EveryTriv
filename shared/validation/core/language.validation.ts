@@ -1,21 +1,13 @@
-/**
- * Language validation utilities
- *
- * @module LanguageValidation
- * @description Validation functions for spell checking and grammar validation
- */
-import { COMMON_MISSPELLINGS, GRAMMAR_PATTERNS, LANGUAGE_TOOL_CONSTANTS, LANGUAGE_VALIDATION_THRESHOLDS } from '../../constants';
+import {
+	COMMON_MISSPELLINGS,
+	GRAMMAR_PATTERNS,
+	LANGUAGE_TOOL_CONSTANTS,
+	LANGUAGE_VALIDATION_THRESHOLDS,
+	VALIDATORS,
+} from '../../constants';
 import type { LanguageValidationOptions, LanguageValidationResult } from '../../types';
 import { getErrorMessage } from '../../utils/core/error.utils';
 
-/**
- * Validates input using language tools for spell checking and grammar validation
- * @param input The input string to validate
- * @param options Language validation configuration options
- * @returns Promise resolving to language validation result with errors and suggestions
- * Performs local language validation as fallback when external API is unavailable.
- * Includes spell checking, grammar validation, and language detection
- */
 export async function performLocalLanguageValidationAsync(
 	input: string,
 	options: LanguageValidationOptions = {}
@@ -49,22 +41,14 @@ export async function performLocalLanguageValidationAsync(
 	}
 }
 
-/**
- * Performs local language validation as fallback when external API is unavailable
- * @param input The input string to validate
- * @param options Language validation configuration options
- * @returns Language validation result with errors and suggestions
- * Provides basic spell checking, grammar validation, and language detection
- * using built-in patterns and dictionaries
- */
 export function performLocalLanguageValidation(
 	input: string,
 	options: {
-		enableSpellCheck?: boolean;
-		enableGrammarCheck?: boolean;
+		enableSpellCheck: boolean;
+		enableGrammarCheck: boolean;
 	}
 ): LanguageValidationResult {
-	const { enableSpellCheck = true, enableGrammarCheck = true } = options;
+	const { enableSpellCheck, enableGrammarCheck } = options;
 
 	const errors: string[] = [];
 	const suggestions: string[] = [];
@@ -73,18 +57,17 @@ export function performLocalLanguageValidation(
 		// Type guard for checking if language is supported
 		// Currently only English is supported via COMMON_MISSPELLINGS
 		const words = input.toLowerCase().split(/\s+/);
-		const misspellings = COMMON_MISSPELLINGS;
 
 		for (const word of words) {
 			const cleanWord = word.replace(/[^\w]/g, '');
-			const misspellingEntry = Object.entries(misspellings).find(([key]) => key === cleanWord);
+			const misspellingEntry = Object.entries(COMMON_MISSPELLINGS).find(([key]) => key === cleanWord);
 			if (misspellingEntry) {
 				const wordSuggestions = misspellingEntry[1];
 				const suggestionsForWord = Array.isArray(wordSuggestions) ? wordSuggestions : [wordSuggestions];
 				errors.push(`Possible misspelling: "${word}"`);
 				suggestions.push(
 					...suggestionsForWord
-						.filter((suggestion): suggestion is string => typeof suggestion === 'string')
+						.filter((suggestion): suggestion is string => VALIDATORS.string(suggestion))
 						.map((suggestion: string) => `Did you mean "${suggestion}"?`)
 				);
 			}
@@ -112,13 +95,6 @@ export function performLocalLanguageValidation(
 	};
 }
 
-/**
- * Performs local text quality checks to complement external API validation
- * @param input The input string to check
- * @returns Object containing errors and suggestions for text quality improvements
- * Checks for repeated words, excessive punctuation, capitalization issues,
- * and word length problems to improve text quality
- */
 function performLocalChecks(input: string): { errors: string[]; suggestions: string[] } {
 	const errors: string[] = [];
 	const suggestions: string[] = [];

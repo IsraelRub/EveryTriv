@@ -1,18 +1,10 @@
 import type { UserPreferences } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+
 import { AUDIO_DATA, AudioCategory, AudioKey } from '@/constants';
 import { clientLogger as logger } from '@/services';
-import { AudioServiceInterface } from '@/types';
 
-/**
- * Enhanced Audio Service for EveryTriv
- * Manages all audio playback, volume control, and muting
- *
- * @module ClientAudioService
- * @description Client-side audio management and playback service
- * @used_by client/src/components/audio, client/src/components/game, client/src/hooks
- */
-export class AudioService implements AudioServiceInterface {
+export class AudioService {
 	private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
 	private isMuted = false;
 	private volumes: Map<AudioKey, number> = new Map();
@@ -27,9 +19,6 @@ export class AudioService implements AudioServiceInterface {
 		this.setupUserInteractionListener();
 	}
 
-	/**
-	 * Setup listener for first user interaction to enable audio
-	 */
 	private setupUserInteractionListener(): void {
 		const enableAudio = () => {
 			this.userInteracted = true;
@@ -51,9 +40,6 @@ export class AudioService implements AudioServiceInterface {
 		document.addEventListener('touchstart', enableAudio, { once: true });
 	}
 
-	/**
-	 * Preload only essential audio files for immediate use
-	 */
 	private preloadEssentialAudio(): void {
 		const essentialKeys: AudioKey[] = [
 			AudioKey.CLICK,
@@ -76,18 +62,12 @@ export class AudioService implements AudioServiceInterface {
 		});
 	}
 
-	/**
-	 * Calculate the final volume for an audio key
-	 */
 	private calculateVolume(key: AudioKey): number {
 		const audioData = AUDIO_DATA[key];
 		return audioData.volume * this.masterVolume;
 	}
 
-	/**
-	 * Preload a single audio file
-	 */
-	private preloadAudioInternal(key: AudioKey, src: string, config: { loop?: boolean }): void {
+	private preloadAudioInternal(key: AudioKey, src: string, config: { loop: boolean }): void {
 		// Skip preload if this key already failed due to cache issues
 		if (this.failedPreloads.has(key)) {
 			return;
@@ -96,7 +76,7 @@ export class AudioService implements AudioServiceInterface {
 		const audio = new Audio();
 		const finalVolume = this.calculateVolume(key);
 		audio.volume = this.isMuted ? 0 : finalVolume;
-		audio.loop = config.loop ?? false;
+		audio.loop = config.loop;
 
 		// Use 'none' to avoid cache issues - load on demand instead
 		audio.preload = 'none';
@@ -133,14 +113,14 @@ export class AudioService implements AudioServiceInterface {
 				}
 
 				logger.mediaError(`Failed to load audio file: ${key} (${src})`, {
-					error: errorMessage,
+					errorInfo: { message: errorMessage },
 					key,
 					src,
 					audioErrorCode: errorCode,
 				});
 			} else {
 				logger.mediaError(`Failed to load audio file: ${key} (${src})`, {
-					error: errorMessage,
+					errorInfo: { message: errorMessage },
 					key,
 					src,
 				});
@@ -156,9 +136,6 @@ export class AudioService implements AudioServiceInterface {
 		audio.src = src;
 	}
 
-	/**
-	 * Load audio file on demand if not already loaded
-	 */
 	private ensureAudioLoaded(key: AudioKey): HTMLAudioElement | null {
 		let audio = this.audioElements.get(key);
 
@@ -190,28 +167,19 @@ export class AudioService implements AudioServiceInterface {
 			}
 		}
 
-		return audio || null;
+		return audio ?? null;
 	}
 
-	/**
-	 * Set user preferences for audio control
-	 */
 	public setUserPreferences(preferences: UserPreferences | null): void {
 		this.userPreferences = preferences;
 	}
 
-	/**
-	 * Mark that user has interacted (for manual music start)
-	 */
 	public markUserInteracted(): void {
 		if (!this.userInteracted) {
 			this.userInteracted = true;
 		}
 	}
 
-	/**
-	 * Play a sound
-	 */
 	public play(key: AudioKey): void {
 		let audio = this.ensureAudioLoaded(key);
 		if (!audio) {
@@ -310,12 +278,19 @@ export class AudioService implements AudioServiceInterface {
 				if (err.name === 'NotAllowedError') {
 					logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
 						key,
-						error: err,
+						errorInfo: { message: String(err) },
 					});
 				} else if (err.name === 'AbortError') {
 					// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
+				} else if (err.name === 'NotSupportedError' || err.message?.includes('NotSupportedError')) {
+					// NotSupportedError usually means the audio format is not supported or file is missing
+					// This is handled silently as it's often a browser/cache issue
+					logger.mediaWarn(`Audio format not supported for ${key}. Skipping playback.`, {
+						key,
+						errorInfo: { message: String(err) },
+					});
 				} else {
-					logger.audioError(key, err.message, { key, error: err });
+					logger.audioError(key, err.message, { key, errorInfo: { message: String(err) } });
 				}
 			});
 			return;
@@ -327,33 +302,36 @@ export class AudioService implements AudioServiceInterface {
 			logger.mediaError(`Failed to clone audio element for ${key}`, { key });
 			return;
 		}
-		const clone = clonedNode;
 		const finalVolume = this.calculateVolume(key);
-		clone.volume = this.isMuted ? 0 : finalVolume;
+		clonedNode.volume = this.isMuted ? 0 : finalVolume;
 
-		clone.play().catch(err => {
+		clonedNode.play().catch(err => {
 			// Handle autoplay restrictions gracefully
 			if (err.name === 'NotAllowedError') {
 				logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
 					key,
-					error: err,
+					errorInfo: { message: String(err) },
 				});
 			} else if (err.name === 'AbortError') {
 				// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
+			} else if (err.name === 'NotSupportedError' || err.message?.includes('NotSupportedError')) {
+				// NotSupportedError usually means the audio format is not supported or file is missing
+				// This is handled silently as it's often a browser/cache issue
+				logger.mediaWarn(`Audio format not supported for ${key}. Skipping playback.`, {
+					key,
+					errorInfo: { message: String(err) },
+				});
 			} else {
-				logger.audioError(key, err.message, { key, error: err });
+				logger.audioError(key, err.message, { key, errorInfo: { message: String(err) } });
 			}
 		});
 
 		// Clean up cloned node after it's done playing
-		clone.addEventListener('ended', () => {
-			clone.remove();
+		clonedNode.addEventListener('ended', () => {
+			clonedNode.remove();
 		});
 	}
 
-	/**
-	 * Stop playing a sound
-	 */
 	public stop(key: AudioKey): void {
 		const audio = this.audioElements.get(key);
 		if (!audio) {
@@ -364,9 +342,6 @@ export class AudioService implements AudioServiceInterface {
 		audio.currentTime = 0;
 	}
 
-	/**
-	 * Stop all sounds
-	 */
 	public stopAll(): void {
 		this.audioElements.forEach(audio => {
 			audio.pause();
@@ -374,9 +349,6 @@ export class AudioService implements AudioServiceInterface {
 		});
 	}
 
-	/**
-	 * Mute all audio
-	 */
 	public mute(): void {
 		this.isMuted = true;
 		this.audioElements.forEach(audio => {
@@ -384,9 +356,6 @@ export class AudioService implements AudioServiceInterface {
 		});
 	}
 
-	/**
-	 * Unmute all audio
-	 */
 	public unmute(): void {
 		this.isMuted = false;
 		this.audioElements.forEach((audio, key) => {
@@ -395,9 +364,6 @@ export class AudioService implements AudioServiceInterface {
 		});
 	}
 
-	/**
-	 * Toggle mute state
-	 */
 	public toggleMute(): boolean {
 		if (this.isMuted) {
 			this.unmute();
@@ -407,9 +373,6 @@ export class AudioService implements AudioServiceInterface {
 		return this.isMuted;
 	}
 
-	/**
-	 * Set master volume for all sounds
-	 */
 	public setMasterVolume(volume: number): void {
 		this.masterVolume = volume;
 		this.audioElements.forEach((audio, key) => {
@@ -418,12 +381,6 @@ export class AudioService implements AudioServiceInterface {
 		});
 	}
 
-	/**
-	 * Play achievement sound based on score and total
-	 * @param score Current score
-	 * @param total Total possible score
-	 * @param previousScore Previous score to determine increase
-	 */
 	public playAchievementSound(score: number, total: number, previousScore: number): void {
 		if (score <= previousScore) return;
 
@@ -446,7 +403,6 @@ export class AudioService implements AudioServiceInterface {
 		}
 	}
 
-	// Implement AudioServiceInterface methods
 	get isEnabled(): boolean {
 		return !this.isMuted;
 	}
@@ -454,12 +410,6 @@ export class AudioService implements AudioServiceInterface {
 	get volume(): number {
 		return this.isMuted ? 0 : this.masterVolume;
 	}
-
-	setVolume(volume: number): void {
-		// Alias for setMasterVolume to maintain interface compatibility
-		this.setMasterVolume(volume);
-	}
 }
 
-// Create singleton instance
 export const audioService = new AudioService();

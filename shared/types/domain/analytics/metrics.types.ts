@@ -1,17 +1,3 @@
-/**
- * Performance metrics and monitoring types for EveryTriv
- *
- * @module MetricsTypes
- * @description Type definitions for performance metrics and monitoring
- * @used_by server/src/features/analytics/analytics.service.ts
- */
-
-/**
- * Middleware metrics interface
- * @interface MiddlewareMetrics
- * @description Performance metrics for middleware components
- * @used_by server/src/internal/controllers/middleware-metrics.controller.ts
- */
 export interface MiddlewareMetrics {
 	requestCount: number;
 	totalDuration: number;
@@ -26,12 +12,6 @@ export interface MiddlewareMetrics {
 	lastErrorTimestamp?: Date;
 }
 
-/**
- * System performance metrics interface
- * @interface SystemPerformanceMetrics
- * @description System-wide performance and monitoring metrics (server/analytics)
- * @used_by server/src/features/analytics
- */
 export interface SystemPerformanceMetrics {
 	responseTime: number;
 	memoryUsage: number;
@@ -39,14 +19,8 @@ export interface SystemPerformanceMetrics {
 	errorRate: number;
 	throughput: number;
 	uptime: number;
-	activeConnections: number;
 }
 
-/**
- * Security metrics interface
- * @interface SecurityMetrics
- * @description Security-related metrics
- */
 export interface SecurityMetrics {
 	authentication: {
 		failedLogins: number;

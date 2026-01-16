@@ -1,13 +1,3 @@
-/**
- * Animation Constants for EveryTriv
- * Centralized animation configuration for consistent performance and behavior
- *
- * @module AnimationConstants
- * @description Animation configuration, constants, and performance settings
- * @used_by client/src/components/animations, client/src/hooks/layers/ui, client/src/styles
- */
-
-// Animation configuration and constants
 export const ANIMATION_CONFIG = {
 	DURATION: {
 		NORMAL: 0.6,
@@ -18,7 +8,6 @@ export const ANIMATION_CONFIG = {
 	},
 } as const;
 
-// Accessibility settings
 export const ACCESSIBILITY_CONFIG = {
 	REDUCED_MOTION: {
 		ENABLED: true,
@@ -26,11 +15,6 @@ export const ACCESSIBILITY_CONFIG = {
 	},
 } as const;
 
-/**
- * Icon animation type enumeration
- * @enum IconAnimationType
- * @description Types of animations available for icons
- */
 export enum IconAnimationType {
 	BOUNCE = 'bounce',
 	PULSE = 'pulse',

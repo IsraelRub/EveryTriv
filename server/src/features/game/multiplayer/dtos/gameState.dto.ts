@@ -2,11 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import type { CountRecord, GameState, MultiplayerRoom, Player } from '@shared/types';
 
-/**
- * DTO for game state response
- * @class GameStateDto
- * @description Data transfer object for current game state in multiplayer room
- */
 export class GameStateDto implements GameState {
 	@ApiProperty({ description: 'Room ID' })
 	roomId!: string;
@@ -36,11 +31,6 @@ export class GameStateDto implements GameState {
 	startedAt?: Date;
 }
 
-/**
- * DTO for room state response
- * @class RoomStateDto
- * @description Data transfer object for current room state
- */
 export class RoomStateDto implements Partial<MultiplayerRoom> {
 	@ApiProperty({ description: 'Room ID' })
 	roomId!: string;

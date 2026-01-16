@@ -1,76 +1,84 @@
-/**
- * Query Invalidation Service
- *
- * @module QueryInvalidationService
- * @description Service for managing React Query cache invalidation patterns
- * @used_by client/src/hooks
- */
 import type { QueryClient } from '@tanstack/react-query';
 
-/**
- * Query Invalidation Service
- * Provides centralized query invalidation patterns to avoid duplication
- */
+import { CACHE_KEYS, toReactQueryKey } from '@shared/constants';
+import { ensureErrorObject } from '@shared/utils';
+
+import { QUERY_KEYS } from '@/constants';
+import { clientLogger as logger } from '@/services';
+
 class QueryInvalidationService {
-	/**
-	 * Invalidate all game-related queries
-	 * Invalidates: game-history, UserAnalytics, userRanking, leaderboard, analytics
-	 * @param queryClient React Query client instance
-	 */
-	invalidateGameQueries(queryClient: QueryClient): void {
-		// User analytics
-		queryClient.invalidateQueries({ queryKey: ['game-history'] });
-		queryClient.invalidateQueries({ queryKey: ['UserAnalytics'] });
-		queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+	invalidateByServerKey(queryClient: QueryClient, serverKey: string): void {
+		try {
+			// Convert server cache key (string) to React Query key (array)
+			const queryKey = toReactQueryKey(serverKey);
 
-		// Leaderboard
-		queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
-		queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
-
-		// Global analytics
-		queryClient.invalidateQueries({ queryKey: ['popularTopics'] });
-		queryClient.invalidateQueries({ queryKey: ['globalDifficultyStats'] });
-		queryClient.invalidateQueries({ queryKey: ['globalStats'] });
-		queryClient.invalidateQueries({ queryKey: ['globalTrends'] });
+			// Invalidate queries that match the key (prefix matching for nested keys)
+			queryClient.invalidateQueries({ queryKey, exact: false });
+		} catch (error) {
+			logger.systemError(ensureErrorObject(error), {
+				contextMessage: 'Failed to invalidate queries by server key',
+				serverKey,
+			});
+		}
 	}
 
-	/**
-	 * Invalidate user-related queries
-	 * Invalidates: auth, user profile, user preferences
-	 * @param queryClient React Query client instance
-	 */
-	invalidateUserQueries(queryClient: QueryClient): void {
-		queryClient.invalidateQueries({ queryKey: ['auth'] });
-		queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
-		queryClient.invalidateQueries({ queryKey: ['userProfile'] });
-		queryClient.invalidateQueries({ queryKey: ['userPreferences'] });
+	invalidateGameQueries(queryClient: QueryClient, userId?: string): void {
+		if (userId) {
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId));
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.GAME_HISTORY.USER(userId));
+		}
+
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS);
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY);
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.TOPICS_STATS({}));
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0));
+
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leaderboard.all });
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.analytics.all });
 	}
 
-	/**
-	 * Invalidate leaderboard queries
-	 * Invalidates: leaderboard, globalLeaderboard, leaderboardByPeriod, userRanking
-	 * @param queryClient React Query client instance
-	 */
+	invalidateUserQueries(queryClient: QueryClient, userId?: string): void {
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+
+		if (userId) {
+			// Invalidate with actual userId for server cache sync
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.PROFILE(userId));
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.CREDITS(userId));
+		}
+
+		// Also invalidate 'current' keys for backward compatibility and local cache
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.user.all });
+	}
+
+	invalidateCreditsQueries(queryClient: QueryClient, userId?: string): void {
+		if (userId) {
+			// Invalidate with actual userId for server cache sync
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.BALANCE(userId));
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.PAYMENT.HISTORY(userId));
+		}
+
+		// Invalidate packages (global, no userId)
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.PACKAGES_ALL);
+
+		// Also invalidate 'current' keys for backward compatibility and local cache
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.all });
+	}
+
 	invalidateLeaderboardQueries(queryClient: QueryClient): void {
-		queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-		queryClient.invalidateQueries({ queryKey: ['globalLeaderboard'] });
-		queryClient.invalidateQueries({ queryKey: ['leaderboardByPeriod'] });
-		queryClient.invalidateQueries({ queryKey: ['userRanking'] });
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0));
+		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leaderboard.all });
 	}
 
-	/**
-	 * Invalidate analytics queries
-	 * Invalidates: UserAnalytics, popularTopics, globalDifficultyStats, globalStats, globalTrends
-	 * @param queryClient React Query client instance
-	 */
-	invalidateAnalyticsQueries(queryClient: QueryClient): void {
-		queryClient.invalidateQueries({ queryKey: ['UserAnalytics'] });
-		queryClient.invalidateQueries({ queryKey: ['popularTopics'] });
-		queryClient.invalidateQueries({ queryKey: ['globalDifficultyStats'] });
-		queryClient.invalidateQueries({ queryKey: ['globalStats'] });
-		queryClient.invalidateQueries({ queryKey: ['globalTrends'] });
+	invalidateAnalyticsQueries(queryClient: QueryClient, userId?: string): void {
+		if (userId) {
+			this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId));
+		}
+
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS);
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY);
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.TOPICS_STATS({}));
+		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS({}));
 	}
 }
 
 export const queryInvalidationService = new QueryInvalidationService();
-

@@ -4,14 +4,6 @@ import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 import { UserStatsEntity } from './userStats.entity';
 
-/**
- * Leaderboard Entity
- *
- * @entity LeaderboardEntity
- * @description Entity for storing user rankings and leaderboard data
- * Focused on ranking-specific data only, avoiding duplication with UserEntity and UserStatsEntity
- * @used_by server/src/features/leaderboard/leaderboard.service.ts
- */
 @Entity('leaderboard')
 export class LeaderboardEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
@@ -30,7 +22,6 @@ export class LeaderboardEntity extends BaseEntity {
 	@JoinColumn({ name: 'user_stats_id' })
 	userStats!: UserStatsEntity;
 
-	// Ranking-specific data only
 	@Column('int')
 	@Index()
 	rank: number = 0;
@@ -46,7 +37,6 @@ export class LeaderboardEntity extends BaseEntity {
 	@Column('int', { name: 'total_users' })
 	totalUsers: number = 0;
 
-	// Ranking metadata
 	@Column('timestamp', { name: 'last_rank_update', nullable: true })
 	lastRankUpdate?: Date;
 }

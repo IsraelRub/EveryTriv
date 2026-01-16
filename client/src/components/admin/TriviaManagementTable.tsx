@@ -1,13 +1,9 @@
-/**
- * Trivia Management Table Component
- *
- * @module TriviaManagementTable
- * @description Component for managing trivia questions in admin dashboard
- */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Trash2 } from 'lucide-react';
 
-import { ButtonVariant, VariantBase } from '@/constants';
+import { getCorrectAnswerIndex } from '@shared/utils';
+
+import { ButtonVariant, DEFAULT_ITEMS_PER_PAGE, VariantBase } from '@/constants';
 import {
 	Badge,
 	Button,
@@ -23,22 +19,19 @@ import {
 	TableCell,
 	TableHead,
 	TableHeader,
+	TablePagination,
 	TableRow,
 } from '@/components';
-import type { TriviaManagementTableProps } from '@/types';
+import { usePagination } from '@/hooks';
+import type { TriviaTableProps } from '@/types';
 import { ConfirmClearDialog } from './ConfirmClearDialog';
 
-/**
- * Component for managing trivia questions
- * @param props Component props
- * @returns Trivia management table component
- */
 export function TriviaManagementTable({
 	questions = [],
 	totalCount = 0,
 	isLoading = false,
 	onClearAll,
-}: TriviaManagementTableProps) {
+}: TriviaTableProps) {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [topicFilter, setTopicFilter] = useState<string>('');
 	const [difficultyFilter, setDifficultyFilter] = useState<string>('');
@@ -56,6 +49,22 @@ export function TriviaManagementTable({
 		return matchesSearch && matchesTopic && matchesDifficulty;
 	});
 
+	// Use pagination hook
+	const pagination = usePagination({
+		itemsPerPage: DEFAULT_ITEMS_PER_PAGE,
+		totalItems: filteredQuestions.length,
+		initialPage: 1,
+	});
+
+	// Reset to page 1 when filters change
+	useEffect(() => {
+		pagination.goToFirstPage();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [searchTerm, topicFilter, difficultyFilter]);
+
+	// Get paginated questions
+	const paginatedQuestions = filteredQuestions.slice(pagination.startIndex, pagination.endIndex);
+
 	return (
 		<Card>
 			<CardHeader>
@@ -66,7 +75,8 @@ export function TriviaManagementTable({
 							Trivia Questions Management
 						</CardTitle>
 						<CardDescription>
-							Total questions: {totalCount} | Showing: {filteredQuestions.length}
+							Total questions: {totalCount} | Filtered: {filteredQuestions.length} | Page {pagination.currentPage} of{' '}
+							{pagination.totalPages || 1}
 						</CardDescription>
 					</div>
 					{onClearAll && (
@@ -83,12 +93,12 @@ export function TriviaManagementTable({
 			</CardHeader>
 			<CardContent>
 				{/* Filters */}
-				<div className='flex flex-col sm:flex-row gap-4 mb-6'>
+				<div className='flex flex-col sm:flex-row gap-4 mb-6 items-center'>
 					<Input
 						placeholder='Search questions...'
 						value={searchTerm}
 						onChange={e => setSearchTerm(e.target.value)}
-						className='flex-1'
+						className='max-w-xs'
 					/>
 					<select
 						value={topicFilter}
@@ -114,6 +124,22 @@ export function TriviaManagementTable({
 							</option>
 						))}
 					</select>
+					{pagination.totalPages > 1 && (
+						<div className='ml-auto'>
+							<TablePagination
+								totalPages={pagination.totalPages}
+								totalItems={filteredQuestions.length}
+								startIndex={pagination.startIndex}
+								endIndex={pagination.endIndex}
+								hasNextPage={pagination.hasNextPage}
+								hasPreviousPage={pagination.hasPreviousPage}
+								onNextPage={pagination.goToNextPage}
+								onPreviousPage={pagination.goToPreviousPage}
+								isLoading={isLoading}
+								itemsLabel='questions'
+							/>
+						</div>
+					)}
 				</div>
 
 				{/* Table */}
@@ -141,7 +167,7 @@ export function TriviaManagementTable({
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{filteredQuestions.slice(0, 50).map(question => (
+								{paginatedQuestions.map(question => (
 									<TableRow key={question.id}>
 										<TableCell className='max-w-md'>
 											<div className='truncate' title={question.question}>
@@ -154,7 +180,7 @@ export function TriviaManagementTable({
 										<TableCell>
 											<Badge variant={VariantBase.SECONDARY}>{question.difficulty}</Badge>
 										</TableCell>
-										<TableCell>{question.answers[question.correctAnswerIndex]?.text || 'N/A'}</TableCell>
+										<TableCell>{question.answers[getCorrectAnswerIndex(question)]?.text ?? 'N/A'}</TableCell>
 										<TableCell className='text-sm text-muted-foreground'>
 											{new Date(question.createdAt).toLocaleDateString()}
 										</TableCell>
@@ -162,11 +188,6 @@ export function TriviaManagementTable({
 								))}
 							</TableBody>
 						</Table>
-						{filteredQuestions.length > 50 && (
-							<div className='p-4 text-center text-sm text-muted-foreground'>
-								Showing first 50 of {filteredQuestions.length} questions
-							</div>
-						)}
 					</div>
 				)}
 			</CardContent>

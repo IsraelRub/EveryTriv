@@ -12,8 +12,3 @@ export * from './social';
 export * from './statistics';
 export * from './user';
 export * from './ui';
-export { NavLink } from './NavLink';
-export { ErrorBoundary } from './ErrorBoundary';
-export { ProtectedRoute } from './ProtectedRoute';
-export { PublicRoute } from './PublicRoute';
-export { NotFound } from './NotFound';

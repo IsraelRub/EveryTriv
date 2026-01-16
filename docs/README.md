@@ -35,7 +35,6 @@
 | Leaderboard | `/leaderboard` | דירוגים וחישובי מיקום | [LEADERBOARD.md](./backend/features/LEADERBOARD.md) |
 | Analytics | `/analytics` | מדדים, איסוף שימוש, דוחות | [ANALYTICS.md](./backend/features/ANALYTICS.md) |
 | Payment | `/payment` | תשלומים, טרנזקציות | [PAYMENT.md](./backend/features/PAYMENT.md) |
-| Subscription | `/subscription` | ניהול מנויים והרשאות פרימיום | [SUBSCRIPTION.md](./backend/features/SUBSCRIPTION.md) |
 
 ## Frontend
 

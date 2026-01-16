@@ -461,21 +461,13 @@ export interface TriviaQuestionMetadata {
 }
 ```
 
-#### ServerTriviaQuestionInput
-
-קלט שאלה עבור השרת (עם DifficultyLevel constraint):
-
-```typescript
-export type ServerTriviaQuestionInput = TriviaQuestionInput<DifficultyLevel>;
-```
-
 #### QuestionCacheEntry
 
-ערך cache עבור שאלות:
+ערך cache עבור שאלות (עם DifficultyLevel constraint):
 
 ```typescript
 export interface QuestionCacheEntry {
-  question: ServerTriviaQuestionInput;
+  question: TriviaQuestion;
   createdAt: Date;
   accessCount: number;
   lastAccessed: Date;

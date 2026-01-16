@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ShieldX } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
-import { Button, Card } from '@/components';
+import { BackToHomeButton, Button, Card } from '@/components';
 
 export function UnauthorizedView() {
 	const navigate = useNavigate();
@@ -23,9 +23,7 @@ export function UnauthorizedView() {
 					<p className='text-muted-foreground'>You don't have permission to access this page</p>
 				</div>
 				<div className='flex flex-col gap-2'>
-					<Button onClick={() => navigate(ROUTES.HOME)} size={ButtonSize.LG}>
-						Go Home
-					</Button>
+					<BackToHomeButton />
 					<Button
 						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: ROUTES.UNAUTHORIZED } })}
 						variant={ButtonVariant.OUTLINE}

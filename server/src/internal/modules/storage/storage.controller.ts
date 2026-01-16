@@ -1,29 +1,21 @@
-/**
- * Storage Controller
- *
- * @module storage.controller
- * @description Controller for storage service management and monitoring
- */
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 
-import { CACHE_DURATION, ERROR_CODES, UserRole } from '@shared/constants';
+import { ERROR_CODES, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
+
 import { serverLogger as logger, metricsService } from '@internal/services';
 import { createStorageError } from '@internal/utils';
+
 import { Cache, Public, Roles } from '../../../common';
-import { ServerStorageService } from './storage.service';
+import { StorageService } from './storage.service';
 
 @Controller('storage')
 export class StorageController {
-	constructor(private readonly storageService: ServerStorageService) {}
+	constructor(private readonly storageService: StorageService) {}
 
-	/**
-	 * Get storage service metrics
-	 * @returns Storage metrics
-	 */
 	@Get('metrics')
 	@Public()
-	@Cache(CACHE_DURATION.MEDIUM)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getMetrics() {
 		try {
 			const metrics = metricsService.getMetrics();
@@ -37,16 +29,12 @@ export class StorageController {
 			return metrics;
 		} catch (error) {
 			logger.storageError('Error getting storage metrics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createStorageError('get storage metrics', error);
 		}
 	}
 
-	/**
-	 * Reset storage service metrics
-	 * @returns Reset result
-	 */
 	@Post('metrics/reset')
 	@Roles(UserRole.ADMIN)
 	async resetMetrics() {
@@ -58,19 +46,15 @@ export class StorageController {
 			return { reset: true };
 		} catch (error) {
 			logger.storageError('Error resetting storage metrics', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createStorageError('reset storage metrics', error);
 		}
 	}
 
-	/**
-	 * Get storage keys
-	 * @returns Storage keys
-	 */
 	@Get('keys')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.SHORT)
+	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getKeys() {
 		try {
 			const result = await this.storageService.getKeys();
@@ -85,20 +69,15 @@ export class StorageController {
 			return result.data;
 		} catch (error) {
 			logger.storageError('Error getting storage keys', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createStorageError('get storage keys', error);
 		}
 	}
 
-	/**
-	 * Get storage item
-	 * @param key Storage key
-	 * @returns Storage item
-	 */
 	@Get('item/:key')
 	@Roles(UserRole.ADMIN)
-	@Cache(CACHE_DURATION.VERY_SHORT)
+	@Cache(TIME_DURATIONS_SECONDS.THIRTY_SECONDS)
 	async getItem(@Param('key') key: string) {
 		try {
 			if (!key) {
@@ -117,17 +96,13 @@ export class StorageController {
 			return result.data;
 		} catch (error) {
 			logger.storageError('Error getting storage item', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				key,
 			});
 			throw createStorageError('get storage item', error);
 		}
 	}
 
-	/**
-	 * Clear storage
-	 * @returns Clear result
-	 */
 	@Delete('clear')
 	@Roles(UserRole.ADMIN)
 	async clear() {
@@ -142,7 +117,7 @@ export class StorageController {
 			return { cleared: true };
 		} catch (error) {
 			logger.storageError('Error clearing storage', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw createStorageError('clear storage', error);
 		}

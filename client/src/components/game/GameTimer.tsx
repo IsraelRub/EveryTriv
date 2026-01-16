@@ -1,13 +1,9 @@
-/**
- * Game Timer Component
- *
- * @module GameTimer
- * @description Reusable timer component for game sessions with countdown and elapsed time modes
- */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
 import { calculateElapsedSeconds } from '@shared/utils';
+
 import { AudioKey } from '@/constants';
 import { audioService } from '@/services';
 import type { GameTimerProps } from '@/types';
@@ -17,6 +13,8 @@ export function GameTimer({
 	mode,
 	initialTime,
 	startTime,
+	serverStartTimestamp,
+	serverEndTimestamp,
 	onTimeout,
 	onWarning,
 	label,
@@ -40,13 +38,77 @@ export function GameTimer({
 		onWarningRef.current = onWarning;
 	}, [onWarning]);
 
-	// Countdown mode: count down from initialTime
+	// Countdown mode: use server timestamps as authoritative source
 	const warningTimeThresholdRef = useRef<number | null>(null);
 	const timeoutTriggeredRef = useRef(false);
 	useEffect(() => {
-		if (mode !== 'countdown' || initialTime === undefined) return;
+		if (mode !== 'countdown') return;
 
-		// Calculate warning threshold (15% of total time)
+		// Priority: serverEndTimestamp > serverStartTimestamp + initialTime > startTime + initialTime > initialTime only
+		if (serverEndTimestamp !== undefined) {
+			// Use server timestamps as authoritative source
+			const totalTimeMs = serverEndTimestamp - (serverStartTimestamp ?? Date.now());
+			const totalTimeSeconds = Math.floor(totalTimeMs / 1000);
+			warningTimeThresholdRef.current = Math.floor(totalTimeSeconds * 0.15);
+			timeoutTriggeredRef.current = false;
+
+			const interval = setInterval(() => {
+				const now = Date.now();
+				const remainingMs = Math.max(0, serverEndTimestamp - now);
+				const remainingSeconds = Math.floor(remainingMs / 1000);
+
+				setCurrentTime(remainingSeconds);
+
+				// Play warning sound every 2 seconds when below warning threshold (15% or less)
+				const warningThreshold = warningTimeThresholdRef.current;
+				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
+					const timeBelowThreshold = warningThreshold - remainingSeconds;
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+						if (onWarningRef.current) {
+							onWarningRef.current();
+						} else {
+							audioService.play(AudioKey.TIME_WARNING);
+						}
+					}
+				}
+			}, TIME_PERIODS_MS.SECOND);
+
+			return () => clearInterval(interval);
+		}
+
+		// Fallback: If startTime is provided, calculate remaining time dynamically from startTime
+		if (startTime !== undefined && initialTime !== undefined) {
+			const totalTimeMs = initialTime * 1000;
+			warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
+			timeoutTriggeredRef.current = false;
+
+			const interval = setInterval(() => {
+				const now = Date.now();
+				const elapsed = now - startTime;
+				const remainingSeconds = Math.max(0, Math.floor((totalTimeMs - elapsed) / 1000));
+
+				setCurrentTime(remainingSeconds);
+
+				// Play warning sound every 2 seconds when below warning threshold (15% or less)
+				const warningThreshold = warningTimeThresholdRef.current;
+				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
+					const timeBelowThreshold = warningThreshold - remainingSeconds;
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+						if (onWarningRef.current) {
+							onWarningRef.current();
+						} else {
+							audioService.play(AudioKey.TIME_WARNING);
+						}
+					}
+				}
+			}, TIME_PERIODS_MS.SECOND);
+
+			return () => clearInterval(interval);
+		}
+
+		// Fallback: countdown from initialTime without startTime (legacy behavior)
+		if (initialTime === undefined) return;
+
 		warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
 		timeoutTriggeredRef.current = false;
 
@@ -56,13 +118,9 @@ export function GameTimer({
 					return 0;
 				}
 
-				// Play warning sound every 2 seconds when below warning threshold (15% or less)
-				// Start from the warning threshold and then every 2 seconds
 				if (warningTimeThresholdRef.current !== null && prev <= warningTimeThresholdRef.current) {
 					const timeBelowThreshold = warningTimeThresholdRef.current - prev;
-					// Play at threshold (timeBelowThreshold === 0) and then every 2 seconds
 					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
-						// If custom onWarning callback provided, use it; otherwise play audio directly
 						if (onWarningRef.current) {
 							onWarningRef.current();
 						} else {
@@ -73,10 +131,10 @@ export function GameTimer({
 
 				return prev - 1;
 			});
-		}, 1000);
+		}, TIME_PERIODS_MS.SECOND);
 
 		return () => clearInterval(interval);
-	}, [mode, initialTime]);
+	}, [mode, initialTime, startTime, serverStartTimestamp, serverEndTimestamp]);
 
 	// Handle timeout separately to avoid calling navigate during render
 	useEffect(() => {
@@ -96,7 +154,7 @@ export function GameTimer({
 		const interval = setInterval(() => {
 			const elapsed = calculateElapsedSeconds(startTime);
 			setCurrentTime(elapsed);
-		}, 1000);
+		}, TIME_PERIODS_MS.SECOND);
 
 		return () => clearInterval(interval);
 	}, [mode, startTime]);
@@ -164,7 +222,7 @@ export function GameTimer({
 		<div className={cn('mb-6', className)}>
 			<div className='text-center mb-2'>
 				<div className={cn('text-2xl font-medium', getTimerColor())}>{formatTime(currentTime)}</div>
-				<p className='text-sm text-muted-foreground mt-1'>{label || defaultLabel}</p>
+				<p className='text-sm text-muted-foreground mt-1'>{label ?? defaultLabel}</p>
 			</div>
 			{showProgressBar && (
 				<div className='relative h-4 bg-muted rounded-full overflow-hidden'>

@@ -15,7 +15,6 @@ server/src/internal/
 │   ├── database/    # קבועי מסד נתונים
 │   └── public-endpoints.constants.ts
 ├── controllers/     # controllers פנימיים
-│   ├── client-logs.controller.ts
 │   └── middleware-metrics.controller.ts
 ├── entities/        # ישויות TypeORM
 │   ├── base.entity.ts
@@ -23,9 +22,8 @@ server/src/internal/
 │   ├── trivia.entity.ts
 │   ├── gameHistory.entity.ts
 │   ├── userStats.entity.ts
-│   ├── pointTransaction.entity.ts
+│   ├── creditTransaction.entity.ts
 │   ├── paymentHistory.entity.ts
-│   ├── subscription.entity.ts
 │   └── leaderboard.entity.ts
 ├── middleware/      # middleware
 │   ├── decorator-aware.middleware.ts
@@ -54,9 +52,8 @@ server/src/internal/
 - `TriviaEntity` - ישות שאלת טריוויה
 - `GameHistoryEntity` - ישות היסטוריית משחק
 - `UserStatsEntity` - ישות סטטיסטיקות משתמש
-- `PointTransactionEntity` - ישות עסקת נקודות
+- `CreditTransactionEntity` - ישות עסקת נקודות
 - `PaymentHistoryEntity` - ישות היסטוריית תשלום
-- `SubscriptionEntity` - ישות מנוי
 - `LeaderboardEntity` - ישות לוח תוצאות
 
 **תכונות:**
@@ -95,11 +92,9 @@ server/src/internal/
 תיעוד מפורט: [CONTROLLERS.md](./CONTROLLERS.md)
 
 **Controllers:**
-- `ClientLogsController` - Controller ללוגים מצד הלקוח
 - `MiddlewareMetricsController` - Controller למטריקות middleware
 
 **Endpoints:**
-- `POST /client-logs/batch` - קבלת batch של לוגים מהלקוח
 - `GET /admin/middleware-metrics` - קבלת מטריקות middleware (ADMIN only)
 - `GET /admin/middleware-metrics/:middlewareName` - מטריקות ל-middleware ספציפי (ADMIN only)
 - `DELETE /admin/middleware-metrics/:middlewareName` - איפוס מטריקות (ADMIN only)
@@ -159,7 +154,6 @@ server/src/internal/
 - `RedisModule` הוא `@Global()` - זמין בכל המודולים
 
 ### Controllers → Services
-- `ClientLogsController` משתמש ב-`serverLogger`
 - `MiddlewareMetricsController` משתמש ב-`MetricsService`
 
 ### Utils → Constants
@@ -202,7 +196,7 @@ server/src/internal/
 ### תיעוד מבני
 - [Common Structure](../common/README.md) - מבנה משותף
 - [Request-Response Cycle](../REQUEST_RESPONSE_CYCLE.md) - זרימת בקשות
-- [Features](../features/AUTH.md) - מודולי Features (AUTH, GAME, USER, PAYMENT, SUBSCRIPTION, POINTS, LEADERBOARD, ANALYTICS)
+- [Features](../features/AUTH.md) - מודולי Features (AUTH, GAME, USER, PAYMENT, CREDITS, LEADERBOARD, ANALYTICS)
 
 ### דיאגרמות
 - [DIAGRAMS.md](../../DIAGRAMS.md) - דיאגרמות ארכיטקטורה

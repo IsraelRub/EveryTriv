@@ -1,7 +1,9 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { CreditTransactionType } from '@shared/constants';
+
 import { CreditSource } from '@internal/constants';
+
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
@@ -29,25 +31,25 @@ export class CreditTransactionEntity extends BaseEntity {
 	source?: CreditSource;
 
 	@Column('int')
-	amount: number; // Positive for credit, negative for debit
+	amount: number;
 
 	@Column({ name: 'balance_after', type: 'int' })
-	balanceAfter: number; // Total balance after this transaction
+	balanceAfter: number;
 
 	@Column({ name: 'free_questions_after', type: 'int', default: 0 })
-	freeQuestionsAfter: number; // Remaining free questions after transaction
+	freeQuestionsAfter: number;
 
 	@Column({ name: 'purchased_credits_after', type: 'int', default: 0 })
-	purchasedCreditsAfter: number; // Remaining purchased credits after transaction
+	purchasedCreditsAfter: number;
 
 	@Column({ nullable: true })
 	description?: string;
 
 	@Column({ name: 'game_history_id', nullable: true })
-	gameHistoryId?: string; // Reference to game session if applicable
+	gameHistoryId?: string;
 
 	@Column({ name: 'payment_id', nullable: true })
-	paymentId?: string; // Reference to payment if applicable
+	paymentId?: string;
 
 	@Column('jsonb', { default: {} })
 	metadata: {
@@ -66,6 +68,10 @@ export class CreditTransactionEntity extends BaseEntity {
 	} = {};
 
 	@Index()
-	@Column({ name: 'transaction_date', type: 'date', default: () => 'CURRENT_DATE' })
+	@Column({
+		name: 'transaction_date',
+		type: 'date',
+		default: () => 'CURRENT_DATE',
+	})
 	transactionDate: Date;
 }

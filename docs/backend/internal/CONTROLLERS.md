@@ -1,6 +1,6 @@
 # Controllers - Internal Structure
 
-תיעוד מפורט על כל ה-Internal Controllers ב-NestJS, כולל ClientLogsController ו-MiddlewareMetricsController.
+תיעוד מפורט על כל ה-Internal Controllers ב-NestJS, כולל MiddlewareMetricsController.
 
 ## סקירה כללית
 
@@ -9,120 +9,7 @@ Controllers ב-NestJS מטפלים בבקשות HTTP ומחזירים תגובו
 **מיקום:** `server/src/internal/controllers/`
 
 **Controllers:**
-- `client-logs.controller.ts` - Controller ללוגים מצד הלקוח
 - `middleware-metrics.controller.ts` - Controller למטריקות middleware
-
-## ClientLogsController
-
-**מיקום:** `server/src/internal/controllers/client-logs.controller.ts`
-
-**תפקיד:**
-- קבלת לוגים מצד הלקוח
-- עיבוד batch של לוגים
-- מיפוי רמות לוג ל-LogLevel enum
-- שימוש ב-serverLogger לרישום
-
-### Endpoints
-
-#### POST /client-logs/batch
-
-**תפקיד:** קבלת batch של לוגים מהלקוח.
-
-**Request Body:**
-```typescript
-interface ClientLogsRequest {
-  logs: Array<{
-    level: string;        // 'error', 'warn', 'info', 'debug'
-    message: string;
-    meta?: {
-      userId?: string;
-      sessionId?: string;
-      timestamp?: Date;
-    };
-  }>;
-  userId?: string;        // User ID גלובלי
-  sessionId?: string;     // Session ID גלובלי
-}
-```
-
-**Response:**
-```typescript
-{
-  processed: number;      // מספר לוגים שעובדו
-}
-```
-
-**תהליך:**
-1. קבלת batch של לוגים
-2. עיבוד כל לוג:
-   - חילוץ userId (מ-request או meta)
-   - חילוץ sessionId (מ-request או meta)
-   - מיפוי רמת לוג ל-LogLevel enum
-   - רישום ל-serverLogger עם MESSAGE_FORMATTERS
-3. החזרת מספר לוגים שעובדו
-
-**דוגמאות שימוש:**
-
-```typescript
-// שליחת batch לוגים
-const response = await fetch('/client-logs/batch', {
-  method: 'POST',
-  body: JSON.stringify({
-    logs: [
-      {
-        level: 'error',
-        message: 'Failed to load data',
-        meta: {
-          userId: 'user-123',
-          sessionId: 'session-456',
-        },
-      },
-      {
-        level: 'info',
-        message: 'User logged in',
-      },
-    ],
-    userId: 'user-123',
-    sessionId: 'session-456',
-  }),
-});
-
-// Response: { processed: 2 }
-```
-
-### מיפוי רמות לוג
-
-**Client Log Levels → LogLevel Enum:**
-- `'error'` → `LogLevel.ERROR`
-- `'warn'` / `'warning'` → `LogLevel.WARN`
-- `'info'` → `LogLevel.INFO`
-- `'debug'` → `LogLevel.DEBUG`
-- אחר → `LogLevel.INFO` (default)
-
-**שימוש ב-serverLogger:**
-
-```typescript
-switch (logLevel) {
-  case LogLevel.ERROR:
-    logger.apiError(MESSAGE_FORMATTERS.client.error(logEntry.message), meta);
-    break;
-  case LogLevel.WARN:
-    logger.apiWarn(MESSAGE_FORMATTERS.client.warn(logEntry.message), meta);
-    break;
-  case LogLevel.INFO:
-    logger.apiInfo(MESSAGE_FORMATTERS.client.info(logEntry.message), meta);
-    break;
-  case LogLevel.DEBUG:
-    logger.apiDebug(MESSAGE_FORMATTERS.client.debug(logEntry.message), meta);
-    break;
-}
-```
-
-### Rate Limiting
-
-**הערה:** Rate limiting מיוחד ל-endpoint זה:
-- `CLIENT_LOGS_MAX_REQUESTS` - מספר בקשות מקסימלי
-- מוגדר ב-RateLimitMiddleware
 
 ## MiddlewareMetricsController
 
@@ -280,26 +167,6 @@ await fetch('/admin/middleware-metrics', {
 
 ## אינטגרציה
 
-### ClientLogsController → serverLogger
-
-```typescript
-// client-logs.controller.ts
-@Controller('client-logs')
-export class ClientLogsController {
-  @Post('batch')
-  async receiveClientLogs(@Body() request: ClientLogsRequest) {
-    // עיבוד לוגים
-    for (const logEntry of logs) {
-      // מיפוי רמת לוג
-      const logLevel = this.mapClientLogLevel(logEntry.level);
-      
-      // רישום ל-serverLogger
-      logger.apiError(MESSAGE_FORMATTERS.client.error(logEntry.message), meta);
-    }
-  }
-}
-```
-
 ### MiddlewareMetricsController → MetricsService
 
 ```typescript
@@ -323,17 +190,7 @@ export class MiddlewareMetricsController {
 
 ## Best Practices
 
-### 1. Rate Limiting ל-Client Logs
-
-```typescript
-// ✅ טוב - Rate limiting מיוחד ל-client logs
-@Post('batch')
-async receiveClientLogs(@Body() request: ClientLogsRequest) {
-  // Rate limiting ב-RateLimitMiddleware
-}
-```
-
-### 2. Admin Only Endpoints
+### 1. Admin Only Endpoints
 
 ```typescript
 // ✅ טוב - Admin only למטריקות
@@ -344,25 +201,6 @@ async getAllMetrics() {}
 // ❌ רע - Public access למטריקות
 @Get()
 async getAllMetrics() {} // לא בטוח
-```
-
-### 3. Batch Processing
-
-```typescript
-// ✅ טוב - Batch processing ללוגים
-@Post('batch')
-async receiveClientLogs(@Body() request: ClientLogsRequest) {
-  for (const logEntry of logs) {
-    // עיבוד כל לוג
-  }
-  return { processed: logs.length };
-}
-
-// ❌ רע - בקשה נפרדת לכל לוג
-@Post()
-async receiveClientLog(@Body() log: ClientLog) {
-  // לא יעיל
-}
 ```
 
 ## הפניות

@@ -1,18 +1,15 @@
-/**
- * Multiplayer game types for EveryTriv
- *
- * @module MultiplayerTypes
- * @description Type definitions for multiplayer simultaneous trivia games
- * @used_by server/src/features/game/multiplayer, client/src/services/multiplayer.service.ts
- */
-import { DifficultyLevel, GameMode, PlayerStatus, RoomStatus } from '@shared/constants';
+// Multiplayer game types for EveryTriv.
+import {
+	DifficultyLevel,
+	GameMode,
+	MultiplayerEvent,
+	PlayerStatus,
+	QuestionState,
+	RoomStatus,
+} from '@shared/constants';
+
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
 
-/**
- * Player interface for multiplayer game
- * @interface Player
- * @description Player information in a multiplayer room
- */
 export interface Player {
 	userId: string;
 	email: string;
@@ -28,47 +25,25 @@ export interface Player {
 	correctAnswers: number;
 }
 
-/**
- * Configuration for creating a new multiplayer room
- * @interface CreateRoomConfig
- * @description Input configuration when creating a room (client-side)
- */
 export interface CreateRoomConfig extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	maxPlayers: number;
 	gameMode: GameMode;
 }
 
-/**
- * Multiplayer room configuration
- * @interface RoomConfig
- * @description Complete room configuration (server-side, includes timePerQuestion)
- */
 export interface RoomConfig extends CreateRoomConfig {
-	timePerQuestion: number; // See GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].timePerQuestion
-	mappedDifficulty?: DifficultyLevel; // Normalized difficulty level (set by controller/pipe)
+	timePerQuestion: number;
+	mappedDifficulty?: DifficultyLevel;
 }
 
-/**
- * Mapping between user IDs and their latest submitted answer index
- */
 export interface PlayerAnswerMap {
 	[userId: string]: number;
 }
 
-/**
- * Mapping between user IDs and their current score
- */
 export interface PlayerScoreMap {
 	[userId: string]: number;
 }
 
-/**
- * Multiplayer room interface
- * @interface MultiplayerRoom
- * @description Room state for multiplayer game
- * @note Rooms are transient (cached, not persisted to database) so they don't extend BaseEntity
- */
 export interface MultiplayerRoom {
 	roomId: string;
 	hostId: string;
@@ -78,17 +53,14 @@ export interface MultiplayerRoom {
 	currentQuestionIndex: number;
 	questions: TriviaQuestion[];
 	currentQuestionStartTime?: Date;
+	questionState?: QuestionState;
+	version: number;
 	startTime?: Date;
 	endTime?: Date;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
-/**
- * Game state for multiplayer game
- * @interface GameState
- * @description Current game state in a multiplayer room
- */
 export interface GameState {
 	roomId: string;
 	currentQuestion: TriviaQuestion | null;
@@ -99,104 +71,73 @@ export interface GameState {
 	playersScores: PlayerScoreMap;
 	leaderboard: Player[];
 	startedAt?: Date;
+	currentQuestionStartTime?: Date;
+	serverStartTimestamp?: number;
+	serverEndTimestamp?: number;
 }
 
-/**
- * Answer submission for multiplayer game
- * @interface AnswerSubmission
- * @description Answer submission data
- */
-export interface AnswerSubmission {
-	roomId: string;
+export interface QuestionResult {
 	userId: string;
-	questionId: string;
-	answer: number;
-	timeSpent: number;
-	submittedAt: Date;
+	isCorrect: boolean;
+	scoreEarned: number;
 }
 
-/**
- * Game event types
- */
-export type GameEventType =
-	| 'player-joined'
-	| 'player-left'
-	| 'player-ready'
-	| 'game-started'
-	| 'question-started'
-	| 'answer-received'
-	| 'question-ended'
-	| 'game-ended'
-	| 'leaderboard-update'
-	| 'room-updated'
-	| 'error';
-
-/**
- * Game event data map type
- * @type GameEventDataMap
- * @description Maps event types to their data structures
- */
 export type GameEventDataMap = {
-	'player-joined': {
+	[MultiplayerEvent.PLAYER_JOINED]: {
 		player: Player;
 		players: Player[];
 	};
-	'player-left': {
+	[MultiplayerEvent.PLAYER_LEFT]: {
 		userId: string;
 		players: Player[];
 	};
-	'player-ready': {
+	[MultiplayerEvent.PLAYER_READY]: {
 		player: Player;
 		players: Player[];
 	};
-	'game-started': {
+	[MultiplayerEvent.GAME_STARTED]: {
 		questions: TriviaQuestion[];
 		config: RoomConfig;
 	};
-	'question-started': {
+	[MultiplayerEvent.QUESTION_STARTED]: {
 		question: TriviaQuestion;
 		questionIndex: number;
 		timeLimit: number;
+		serverStartTimestamp: number;
+		serverEndTimestamp: number;
 	};
-	'answer-received': {
+	[MultiplayerEvent.ANSWER_RECEIVED]: {
 		userId: string;
 		questionId: string;
 		isCorrect: boolean;
 		scoreEarned: number;
 		leaderboard?: Player[];
 	};
-	'question-ended': {
+	[MultiplayerEvent.QUESTION_ENDED]: {
 		questionId: string;
 		correctAnswer: number;
-		results: Array<{
-			userId: string;
-			isCorrect: boolean;
-			scoreEarned: number;
-		}>;
+		results: QuestionResult[];
 		leaderboard: Player[];
 	};
-	'game-ended': {
+	[MultiplayerEvent.GAME_ENDED]: {
 		finalLeaderboard: Player[];
 		winner: Player | null;
 		gameDuration: number;
 	};
-	'leaderboard-update': {
+	[MultiplayerEvent.LEADERBOARD_UPDATE]: {
 		leaderboard: Player[];
 	};
-	'room-updated': {
+	[MultiplayerEvent.ROOM_UPDATED]: {
 		room: MultiplayerRoom;
 	};
-	error: {
+	[MultiplayerEvent.ERROR]: {
 		message: string;
 		code: string;
 	};
 };
 
-/**
- * Base game event interface
- * @interface GameEvent
- * @description Base structure for all game events with type-safe data
- */
+export type GameEventType = keyof GameEventDataMap;
+
 export interface GameEvent<T extends GameEventType = GameEventType> {
 	type: T;
 	roomId: string;
@@ -204,46 +145,27 @@ export interface GameEvent<T extends GameEventType = GameEventType> {
 	data: GameEventDataMap[T];
 }
 
-/**
- * Union type for all game events
- */
 export type MultiplayerGameEvent = GameEvent<GameEventType>;
 
-/**
- * Create room response interface
- * @interface CreateRoomResponse
- * @description Response from creating a multiplayer room
- */
 export interface CreateRoomResponse {
 	room: MultiplayerRoom;
 	code: string;
 }
 
-/**
- * Submit answer response type
- * @type SubmitAnswerResponse
- * @description Alias for SubmitAnswerHttpResponse
- */
-export type SubmitAnswerResponse = MultiplayerAnswerResult;
-
-/**
- * Room state response interface
- * @interface RoomStateResponse
- * @description Response containing room state information
- */
 export interface RoomStateResponse {
 	room: MultiplayerRoom;
 	gameState: GameState;
 }
 
-/**
- * Multiplayer answer result interface
- * @interface MultiplayerAnswerResult
- * @description Result from submitting an answer in multiplayer game
- */
 export interface MultiplayerAnswerResult {
 	room: MultiplayerRoom;
 	isCorrect: boolean;
 	scoreEarned: number;
 	leaderboard?: Player[];
+}
+
+export interface QuestionEndResult {
+	results: QuestionResult[];
+	leaderboard: Player[];
+	room: MultiplayerRoom;
 }

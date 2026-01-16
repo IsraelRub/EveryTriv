@@ -6,11 +6,7 @@ export enum AudioCategory {
 	GAMEPLAY = 'GAMEPLAY',
 	ACHIEVEMENT = 'ACHIEVEMENT',
 }
-/**
- * Audio Keys
- * @enum AudioKey
- * @description Audio keys for everytriv client
- */
+
 export enum AudioKey {
 	// Feedback Sounds
 	BUTTON_CLICK = 'BUTTON_CLICK',

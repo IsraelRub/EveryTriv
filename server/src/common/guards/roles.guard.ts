@@ -1,14 +1,8 @@
-/**
- * Roles Guard
- *
- * @module RolesGuard
- * @description Guard that checks user roles and permissions
- * @author EveryTriv Team
- */
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { ERROR_CODES, UserRole } from '@shared/constants';
+
 import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
@@ -22,13 +16,10 @@ export class RolesGuard implements CanActivate {
 
 		const request = context.switchToHttp().getRequest();
 
-		// Fallback: also honor decorator-aware middleware metadata if present
-		const middlewarePublicFlag: boolean | undefined = request?.decoratorMetadata?.isPublic;
-
 		// Check if endpoint is public using centralized function
-		const isHardcodedPublic = isPublicEndpoint(request.path || '');
+		const isHardcodedPublic = isPublicEndpoint(request.path ?? '');
 
-		if (isPublic || middlewarePublicFlag || isHardcodedPublic) {
+		if (isPublic || isHardcodedPublic) {
 			logger.authDebug('Public endpoint - skipping role check');
 			return true;
 		}
@@ -51,7 +42,7 @@ export class RolesGuard implements CanActivate {
 			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
 		}
 
-		const userRole = user.role || UserRole.USER;
+		const userRole = user.role ?? UserRole.USER;
 
 		// Check if user has required role
 		const hasRole = requiredRoles.includes(userRole);

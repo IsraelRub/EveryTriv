@@ -1,16 +1,7 @@
-/**
- * Base Logger Service - Abstract implementation of modular logging interfaces
- *
- * @module BaseLoggerService
- * @description Abstract base class for all logger implementations
- */
 import { LogLevel, MESSAGE_FORMATTERS, PERFORMANCE_THRESHOLDS } from '@shared/constants';
 import type { Logger, LoggerConfig, LoggerConfigUpdate, LogMeta } from '@shared/types';
-import { generateSessionId, generateTraceId } from '@shared/utils';
+import { generateSessionId, generateTraceId, getErrorMessage } from '@shared/utils';
 
-/**
- * Abstract Base Logger Service implementing all modular interfaces
- */
 export abstract class BaseLoggerService implements Logger {
 	protected sessionId: string;
 	protected traceId: string;
@@ -33,10 +24,17 @@ export abstract class BaseLoggerService implements Logger {
 	protected abstract info(message: string, meta?: LogMeta): void;
 	protected abstract debug(message: string, meta?: LogMeta): void;
 
-	private errorWithStack(error: Error, message?: string, meta?: LogMeta): void {
-		this.error(MESSAGE_FORMATTERS.validation.error(`${message || 'Error'}: ${error.message}`), {
-			...meta,
+	private errorWithStack(error: Error, meta?: LogMeta): void {
+		const contextMessage = meta?.contextMessage ?? 'Error';
+		const errorMessage = getErrorMessage(error);
+		const { contextMessage: _, ...restMeta } = meta ?? {};
+		this.error(`${contextMessage}: ${errorMessage}`, {
+			...restMeta,
 			stack: error.stack,
+			errorInfo: {
+				message: error.message,
+				type: error.constructor.name,
+			},
 		});
 	}
 
@@ -75,13 +73,14 @@ export abstract class BaseLoggerService implements Logger {
 	}
 
 	// DatabaseLogger implementation
-	databaseError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+	databaseError(messageOrError: string | Error, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage: string = typeof messageOrMeta === 'string' ? messageOrMeta : 'Database error';
-			this.errorWithStack(messageOrError, errorMessage, meta);
+			this.errorWithStack(messageOrError, {
+				...meta,
+				contextMessage: meta?.contextMessage ?? 'Database error',
+			});
 		} else {
-			const logMeta: LogMeta = typeof messageOrMeta === 'string' ? meta || {} : messageOrMeta || {};
-			this.error(MESSAGE_FORMATTERS.databaseConnection.error(messageOrError), logMeta);
+			this.error(MESSAGE_FORMATTERS.databaseConnection.error(messageOrError), meta);
 		}
 	}
 
@@ -187,8 +186,9 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.payment.message(message), meta);
 	}
 
+	// paymentInfo is deprecated - use payment instead
 	paymentInfo(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.payment.message(message), meta);
+		this.payment(message, meta);
 	}
 
 	// SecurityLogger implementation
@@ -238,13 +238,14 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.system.appStartup(), meta);
 	}
 
-	systemError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+	systemError(messageOrError: string | Error, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage: string = typeof messageOrMeta === 'string' ? messageOrMeta : 'System error';
-			this.errorWithStack(messageOrError, errorMessage, meta);
+			this.errorWithStack(messageOrError, {
+				...meta,
+				contextMessage: meta?.contextMessage ?? 'System error',
+			});
 		} else {
-			const logMeta: LogMeta = typeof messageOrMeta === 'string' ? meta || {} : messageOrMeta || {};
-			this.error(MESSAGE_FORMATTERS.system.error(messageOrError), logMeta);
+			this.error(MESSAGE_FORMATTERS.system.error(messageOrError), meta);
 		}
 	}
 
@@ -257,24 +258,26 @@ export abstract class BaseLoggerService implements Logger {
 		this.error(`Analytics error in ${operation}`, meta);
 	}
 
-	analyticsTrack(event: string, meta?: LogMeta): void {
-		this.info(`Analytics track: ${event}`, meta);
-	}
-
 	analyticsStats(type: string, meta?: LogMeta): void {
 		this.info(`Analytics stats: ${type}`, meta);
 	}
 
-	analyticsPerformance(operation: string, meta?: LogMeta): void {
-		this.info(`Analytics performance: ${operation}`, meta);
-	}
-
-	analyticsMetrics(type: string, meta?: LogMeta): void {
-		this.info(`Analytics metrics: ${type}`, meta);
-	}
-
-	analyticsRecommendations(meta?: LogMeta): void {
-		this.info('Analytics recommendations', meta);
+	// Generic analytics logging method - replaces analyticsTrack, analyticsPerformance, analyticsMetrics, analyticsRecommendations
+	analyticsLog(event: string, level: LogLevel = LogLevel.INFO, meta?: LogMeta): void {
+		const message = `Analytics: ${event}`;
+		switch (level) {
+			case LogLevel.ERROR:
+				this.error(message, meta);
+				break;
+			case LogLevel.WARN:
+				this.warn(message, meta);
+				break;
+			case LogLevel.DEBUG:
+				this.debug(message, meta);
+				break;
+			default:
+				this.info(message, meta);
+		}
 	}
 
 	// ProviderLogger implementation
@@ -320,13 +323,14 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.auth.profileUpdate(message), meta);
 	}
 
-	authError(messageOrError: string | Error, messageOrMeta?: string | LogMeta, meta?: LogMeta): void {
+	authError(messageOrError: string | Error, meta?: LogMeta): void {
 		if (messageOrError instanceof Error) {
-			const errorMessage: string = typeof messageOrMeta === 'string' ? messageOrMeta : 'Authentication error';
-			this.errorWithStack(messageOrError, errorMessage, meta);
+			this.errorWithStack(messageOrError, {
+				...meta,
+				contextMessage: meta?.contextMessage ?? 'Authentication error',
+			});
 		} else {
-			const logMeta: LogMeta = typeof messageOrMeta === 'string' ? meta || {} : messageOrMeta || {};
-			this.error(MESSAGE_FORMATTERS.auth.error(messageOrError), logMeta);
+			this.error(MESSAGE_FORMATTERS.auth.error(messageOrError), meta);
 		}
 	}
 
@@ -377,7 +381,7 @@ export abstract class BaseLoggerService implements Logger {
 		this.debug(MESSAGE_FORMATTERS.cache.delete(key), meta);
 	}
 
-	// NavigationLogger implementation
+	// NavigationLogger implementation - kept for backward compatibility as they are actively used
 	navigationPage(path: string, meta?: LogMeta): void {
 		this.info(MESSAGE_FORMATTERS.navigation.page(path), meta);
 	}
@@ -419,16 +423,9 @@ export abstract class BaseLoggerService implements Logger {
 		this.info(MESSAGE_FORMATTERS.game.statistics(message), meta);
 	}
 
-	gameTarget(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.game.target(message), meta);
-	}
-
-	gameForm(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.game.form(message), meta);
-	}
-
-	gameGamepad(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.game.gamepad(message), meta);
+	// Generic game logging method - replaces gameTarget, gameForm, gameGamepad
+	gameLog(event: string, message: string, meta?: LogMeta): void {
+		this.info(MESSAGE_FORMATTERS.game.link(event), { message, ...meta });
 	}
 
 	// MediaLogger implementation

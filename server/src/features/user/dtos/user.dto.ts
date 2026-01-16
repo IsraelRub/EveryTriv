@@ -1,9 +1,3 @@
-/**
- * User DTOs
- *
- * @module UserDTOs
- * @description Data Transfer Objects for user management
- */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -19,12 +13,12 @@ import {
 	MaxLength,
 	Min,
 	MinLength,
+	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
 import { UserStatus, VALID_USER_STATUSES, VALIDATION_COUNT } from '@shared/constants';
-import { BasicValue, UserPreferences } from '@shared/types';
-import type { CustomDifficultyItem } from '@internal/types';
+import type { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -34,18 +28,26 @@ export class UpdateUserProfileDto {
 	@IsOptional()
 	@IsString()
 	@MaxLength(50, { message: 'First name cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z\s'-]+$/, { message: 'First name can only contain letters, spaces, apostrophes, and hyphens' })
+	@Matches(/^[a-zA-Z\s'-]+$/, {
+		message: 'First name can only contain letters, spaces, apostrophes, and hyphens',
+	})
 	firstName?: string;
 
 	@ApiPropertyOptional({
-		description: 'Last name',
+		description: 'Last name (empty string to clear)',
 		maxLength: 50,
 	})
 	@IsOptional()
+	@Transform(({ value }) => (typeof value === 'string' && value.trim().length === 0 ? null : value))
+	@ValidateIf(o => o.lastName !== null)
 	@IsString()
+	@ValidateIf(o => o.lastName !== null)
 	@MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
-	@Matches(/^[a-zA-Z\s'-]+$/, { message: 'Last name can only contain letters, spaces, apostrophes, and hyphens' })
-	lastName?: string;
+	@ValidateIf(o => o.lastName !== null)
+	@Matches(/^[a-zA-Z\s'-]+$/, {
+		message: 'Last name can only contain letters, spaces, apostrophes, and hyphens',
+	})
+	lastName?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'User preferences',
@@ -77,7 +79,9 @@ export class SearchUsersDto {
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, { message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}` })
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
+	})
 	limit: number = 10;
 }
 
@@ -93,7 +97,13 @@ export class UpdateUserFieldDto {
 export class UpdateUserPreferencesDto {
 	@ApiPropertyOptional({
 		description: 'Custom difficulties',
-		example: [{ description: 'Custom Difficulty', usageCount: 5, lastUsed: '2024-01-01T00:00:00.000Z' }],
+		example: [
+			{
+				description: 'Custom Difficulty',
+				usageCount: 5,
+				lastUsed: '2024-01-01T00:00:00.000Z',
+			},
+		],
 	})
 	@IsOptional()
 	@IsArray({ message: 'Custom difficulties must be an array' })
@@ -164,7 +174,9 @@ export class UpdateUserStatusDto {
 export class ChangePasswordDto {
 	@ApiProperty({ description: 'Current password', minLength: 6, maxLength: 15 })
 	@IsString()
-	@MinLength(6, { message: 'Current password must be at least 6 characters long' })
+	@MinLength(6, {
+		message: 'Current password must be at least 6 characters long',
+	})
 	@MaxLength(15, { message: 'Current password cannot exceed 15 characters' })
 	currentPassword!: string;
 
@@ -183,7 +195,11 @@ export class SetAvatarDto {
 	})
 	@IsNumber({}, { message: 'Avatar ID must be a number' })
 	@IsNotEmpty({ message: 'Avatar ID is required' })
-	@Min(VALIDATION_COUNT.AVATAR_ID.MIN, { message: `Avatar ID must be at least ${VALIDATION_COUNT.AVATAR_ID.MIN}` })
-	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, { message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}` })
+	@Min(VALIDATION_COUNT.AVATAR_ID.MIN, {
+		message: `Avatar ID must be at least ${VALIDATION_COUNT.AVATAR_ID.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, {
+		message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}`,
+	})
 	avatarId!: number;
 }

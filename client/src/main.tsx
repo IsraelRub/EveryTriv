@@ -1,10 +1,3 @@
-/**
- * EveryTriv Client Entry Point
- *
- * @module ClientMain
- * @description Main entry point for the React client application
- */
-
 import './index.css';
 
 import { StrictMode } from 'react';
@@ -14,14 +7,11 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { ERROR_MESSAGES } from '@shared/constants';
+
 import { queryClient } from '@/services';
 import { store } from '@/redux/store';
 import App from './App';
 
-/**
- * Initialize and render the React application
- * Sets up Redux store, React Query client, and routing
- */
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {

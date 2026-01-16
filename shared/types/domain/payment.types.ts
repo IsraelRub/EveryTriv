@@ -1,8 +1,4 @@
-/**
- * Payment Interfaces
- * @module PaymentInterfaces
- * @description Payment-related interfaces and types
- */
+// Payment Interfaces.
 import {
 	PaymentClientAction as PaymentClientActionEnum,
 	PaymentMethod,
@@ -12,11 +8,6 @@ import {
 	RequestSource,
 } from '../../constants';
 
-/**
- * Payment metadata interface
- * @interface PaymentMetadata
- * @description Metadata specific to payment operations
- */
 export interface PaymentMetadata {
 	subscriptionId?: string;
 	plan?: string;
@@ -24,7 +15,6 @@ export interface PaymentMetadata {
 	price?: number;
 	currency?: string;
 	paymentMethod?: string;
-	userId?: string;
 	transactionId?: string;
 	status?: string;
 	optionId?: string;
@@ -58,11 +48,6 @@ export interface PaymentMetadata {
 	cardExpirationYear?: number;
 }
 
-/**
- * Manual payment details interface (shared)
- * @interface ManualPaymentDetails
- * @description Payment card details for manual credit card payments
- */
 export interface ManualPaymentDetails {
 	cardNumber: string;
 	expiryMonth: number;
@@ -73,11 +58,6 @@ export interface ManualPaymentDetails {
 	postalCode?: string;
 }
 
-/**
- * PayPal order request interface
- * @interface PayPalOrderRequest
- * @description Request for creating PayPal orders
- */
 export interface PayPalOrderRequest {
 	environment: PayPalEnvironment;
 	clientId: string;
@@ -86,7 +66,6 @@ export interface PayPalOrderRequest {
 	description?: string;
 }
 
-// Payment data for creating payments (shared between client and server)
 export interface PaymentData {
 	amount: number;
 	currency: string;
@@ -94,7 +73,6 @@ export interface PaymentData {
 	method: PaymentMethod;
 	planType?: PlanType;
 	numberOfPayments?: number;
-	type?: string;
 	manualPayment?: ManualPaymentDetails;
 	paypalOrderId?: string;
 	paypalPaymentId?: string;
@@ -102,7 +80,6 @@ export interface PaymentData {
 	metadata?: PaymentMetadata;
 }
 
-// Payment result (shared between client and server)
 export interface PaymentResult {
 	paymentId?: string;
 	transactionId?: string;

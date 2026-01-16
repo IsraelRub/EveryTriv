@@ -1,8 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 
-import { DifficultyLevel, VALIDATION_COUNT } from '@shared/constants';
+import { DifficultyLevel, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
+
+import { IsGameDifficulty } from '@common/decorators';
 
 export class TriviaRequestDto {
 	@ApiProperty({ description: 'Trivia topic' })
@@ -13,14 +15,13 @@ export class TriviaRequestDto {
 
 	@ApiProperty({ description: 'Difficulty level (standard or custom)' })
 	@IsString()
+	@IsGameDifficulty()
 	difficulty!: GameDifficulty;
 
 	@ApiPropertyOptional({
 		description: 'Normalized difficulty level (DifficultyLevel enum) - set automatically by pipe',
 		enum: DifficultyLevel,
 	})
-	@IsOptional()
-	@IsEnum(DifficultyLevel)
 	mappedDifficulty?: DifficultyLevel;
 
 	@ApiProperty({
@@ -35,31 +36,37 @@ export class TriviaRequestDto {
 	@Max(VALIDATION_COUNT.QUESTIONS.MAX)
 	questionsPerRequest!: number;
 
-	@ApiPropertyOptional({ description: 'Optional category for the trivia questions' })
+	@ApiPropertyOptional({
+		description: 'Optional category for the trivia questions',
+	})
 	@IsOptional()
 	@IsString()
 	@MaxLength(100)
 	category?: string;
 
-	@ApiPropertyOptional({ description: 'Optional user identifier (for personalization)' })
+	@ApiPropertyOptional({
+		description: 'Optional user identifier (for personalization)',
+	})
 	@IsOptional()
 	@IsString()
 	userId?: string;
 
-	@ApiPropertyOptional({ description: 'Optional game mode associated with this trivia request' })
+	@ApiPropertyOptional({
+		description: 'Optional game mode associated with this trivia request',
+	})
 	@IsOptional()
 	@IsString()
 	gameMode?: string;
 
 	@ApiPropertyOptional({
 		description: 'Optional time limit per question in seconds. Undefined means no time limit.',
-		maximum: 3600,
+		maximum: TIME_DURATIONS_SECONDS.HOUR,
 		minimum: 1,
 	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
-	@Max(3600)
+	@Max(TIME_DURATIONS_SECONDS.HOUR)
 	timeLimit?: number;
 
 	@ApiPropertyOptional({

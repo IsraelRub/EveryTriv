@@ -1,65 +1,52 @@
-/**
- * Application Module
- *
- * @module AppModule
- * @description Main NestJS application module with all features and middleware
- * @used_by server/main, server/config
- */
 import { BadRequestException, MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AUTH_CONSTANTS } from '@shared/constants';
-import { ClientLogsController, MiddlewareMetricsController } from '@internal/controllers';
-import { BulkOperationsMiddleware, DecoratorAwareMiddleware, RateLimitMiddleware } from '@internal/middleware';
-import { StorageModule } from '@internal/modules';
+
+import { AppConfig, DatabaseConfig } from '@config';
+import { HealthController, MetricsController } from '@internal/controllers';
+import { RateLimitMiddleware } from '@internal/middleware';
+import { CacheModule, CacheService, StorageModule } from '@internal/modules';
+
 import { AppController } from './app.controller';
 import { GlobalExceptionFilter } from './common/globalException.filter';
 import { AuthGuard, RolesGuard } from './common/guards';
+import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from './common/interceptors';
 import {
-	CacheInterceptor,
-	PerformanceMonitoringInterceptor,
-	ResponseFormattingInterceptor,
-} from './common/interceptors';
-import { DatabaseConfig } from './config/database.config';
-import {
+	AdminModule,
 	AnalyticsModule,
 	AuthModule,
-	CacheModule,
 	CreditsModule,
 	GameModule,
-	LeaderboardModule,
 	MultiplayerModule,
 	PaymentModule,
 	UserModule,
 } from './features';
-import { RedisModule } from './internal/modules/redis.module';
 
 @Module({
 	imports: [
-		// Redis Module
-		RedisModule,
 		// TypeORM Module
 		TypeOrmModule.forRoot(DatabaseConfig),
 		StorageModule,
 		// JWT Module for middleware
 		JwtModule.register({
-			secret: AUTH_CONSTANTS.JWT_SECRET,
+			secret: AppConfig.jwt.secret,
 			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
 		}),
 		// Feature Modules - Direct imports instead of TriviaModule
 		AuthModule,
 		GameModule,
-		LeaderboardModule,
 		MultiplayerModule,
 		AnalyticsModule,
+		AdminModule,
 		CacheModule,
 		UserModule,
 		PaymentModule,
 		CreditsModule,
 	],
-	controllers: [AppController, ClientLogsController, MiddlewareMetricsController],
+	controllers: [AppController, MetricsController, HealthController],
 	exports: [],
 	providers: [
 		// Global exception filter for better error logging
@@ -67,21 +54,23 @@ import { RedisModule } from './internal/modules/redis.module';
 			provide: APP_FILTER,
 			useClass: GlobalExceptionFilter,
 		},
-		// Global decorator metadata guard for reading @Public, @Roles, @RateLimit, @Cache
 		// Global cache interceptor for @Cache decorator
 		{
 			provide: APP_INTERCEPTOR,
-			useClass: CacheInterceptor,
+			useFactory: (cacheService: CacheService, reflector: Reflector) => {
+				return new CacheInterceptor(cacheService, reflector);
+			},
+			inject: [CacheService, Reflector],
 		},
 		// Global response formatting interceptor
 		{
 			provide: APP_INTERCEPTOR,
-			useClass: ResponseFormattingInterceptor,
+			useClass: ResponseFormatter,
 		},
 		// Global performance monitoring interceptor
 		{
 			provide: APP_INTERCEPTOR,
-			useClass: PerformanceMonitoringInterceptor,
+			useClass: PerformanceInterceptor,
 		},
 		// Global authentication guard
 		{
@@ -122,13 +111,7 @@ export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
 		// Apply middleware in the order specified in the architecture diagram
 
-		// Apply decorator-aware middleware (reads @Public, @Roles, @RateLimit metadata)
-		consumer.apply(DecoratorAwareMiddleware).forRoutes('*');
-
-		// Apply rate limiting middleware (supports both default and decorator-based)
+		// Apply rate limiting middleware
 		consumer.apply(RateLimitMiddleware).forRoutes('*');
-
-		// Apply bulk operations middleware - optimizes bulk operations
-		consumer.apply(BulkOperationsMiddleware).forRoutes('*');
 	}
 }

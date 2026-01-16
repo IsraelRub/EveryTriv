@@ -152,7 +152,7 @@ server/src/common/
 ### תיעוד מבני
 - [Internal Structure](../internal/README.md) - מבנה פנימי
 - [Request-Response Cycle](../REQUEST_RESPONSE_CYCLE.md) - זרימת בקשות
-- [Features](../features/AUTH.md) - מודולי Features (AUTH, GAME, USER, PAYMENT, SUBSCRIPTION, POINTS, LEADERBOARD, ANALYTICS)
+- [Features](../features/AUTH.md) - מודולי Features (AUTH, GAME, USER, PAYMENT, CREDITS, LEADERBOARD, ANALYTICS)
 
 ### דיאגרמות
 - [DIAGRAMS.md](../../DIAGRAMS.md) - דיאגרמות ארכיטקטורה

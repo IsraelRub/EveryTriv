@@ -2,43 +2,44 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_DURATION, ERROR_CODES, PlayerStatus, RoomStatus, VALIDATION_LENGTH, VALIDATION_COUNT } from '@shared/constants';
+import {
+	ERROR_CODES,
+	PlayerStatus,
+	QuestionState,
+	RoomStatus,
+	SERVER_CACHE_KEYS,
+	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
+	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
 import { getErrorMessage, isMultiplayerRoom } from '@shared/utils';
+
 import { UserEntity } from '@internal/entities';
-import { ServerStorageService } from '@internal/modules';
+import { StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 
-/**
- * Service for managing multiplayer rooms
- * @class RoomService
- * @description Handles room creation, joining, leaving, and state management
- */
 @Injectable()
 export class RoomService {
-	private readonly ROOM_TTL = CACHE_DURATION.MULTIPLAYER_ROOM;
-	private readonly ROOM_PREFIX = 'multiplayer:room:';
-	private readonly inMemoryRooms = new Map<string, MultiplayerRoom>();
+	private readonly ROOM_TTL = TIME_DURATIONS_SECONDS.HOUR;
+	private readonly IN_MEMORY_CACHE_TTL = TIME_PERIODS_MS.THIRTY_SECONDS;
+	private readonly inMemoryRooms = new Map<string, { room: MultiplayerRoom; expiresAt: number }>();
 	private readonly ROOM_ID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
-		private readonly storageService: ServerStorageService
+		private readonly storageService: StorageService
 	) {}
 
-	/**
-	 * Generate a unique short room ID
-	 * @returns Unique 8-character alphanumeric room ID
-	 */
 	private async generateUniqueRoomId(): Promise<string> {
-		const maxAttempts = 10;
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		for (let attempt = 0; attempt < VALIDATION_COUNT.ROOM_GENERATION_ATTEMPTS.MAX; attempt++) {
 			const roomId = this.generateRandomRoomId();
-			const existingRoom = await this.getCachedRoom(roomId);
+			const existingRoom = this.getCachedRoom(roomId);
 			if (!existingRoom) {
 				// Also check Redis storage
-				const result = await this.storageService.get(this.getRoomKey(roomId));
+				const result = await this.storageService.get(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
 				if (!result.success || !result.data) {
 					return roomId;
 				}
@@ -48,10 +49,6 @@ export class RoomService {
 		return this.generateRandomRoomId();
 	}
 
-	/**
-	 * Generate a random room ID
-	 * @returns 8-character alphanumeric room ID
-	 */
 	private generateRandomRoomId(): string {
 		let result = '';
 		for (let i = 0; i < VALIDATION_LENGTH.ROOM_CODE.LENGTH; i++) {
@@ -60,19 +57,10 @@ export class RoomService {
 		return result;
 	}
 
-	/**
-	 * Create a new multiplayer room
-	 * @param hostId User ID of the room host
-	 * @param config Room configuration
-	 * @returns Created room
-	 */
 	async createRoom(hostId: string, config: RoomConfig): Promise<MultiplayerRoom> {
 		try {
 			// Validate configuration
-			if (
-				config.maxPlayers < VALIDATION_COUNT.PLAYERS.MIN ||
-				config.maxPlayers > VALIDATION_COUNT.PLAYERS.MAX
-			) {
+			if (config.maxPlayers < VALIDATION_COUNT.PLAYERS.MIN || config.maxPlayers > VALIDATION_COUNT.PLAYERS.MAX) {
 				throw new BadRequestException(
 					`Max players must be between ${VALIDATION_COUNT.PLAYERS.MIN} and ${VALIDATION_COUNT.PLAYERS.MAX}`
 				);
@@ -88,14 +76,14 @@ export class RoomService {
 				);
 			}
 
-		// Get host user
-		const host = await this.userRepository.findOne({ where: { id: hostId } });
-		if (!host) {
-			throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
-		}
+			// Get host user
+			const host = await this.userRepository.findOne({ where: { id: hostId } });
+			if (!host) {
+				throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
+			}
 
-		// Create unique short room ID
-		const roomId = await this.generateUniqueRoomId();
+			// Create unique short room ID
+			const roomId = await this.generateUniqueRoomId();
 
 			// Create host player
 			const hostPlayer: Player = {
@@ -110,18 +98,20 @@ export class RoomService {
 				correctAnswers: 0,
 			};
 
-		// Create room
-		const room: MultiplayerRoom = {
-			roomId,
-			hostId,
-			players: [hostPlayer],
-			config,
-			status: RoomStatus.WAITING,
-			currentQuestionIndex: 0,
-			questions: [],
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		};
+			// Create room
+			const room: MultiplayerRoom = {
+				roomId,
+				hostId,
+				players: [hostPlayer],
+				config,
+				status: RoomStatus.WAITING,
+				currentQuestionIndex: 0,
+				questions: [],
+				questionState: QuestionState.IDLE,
+				version: 1,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
 
 			await this.persistRoomSnapshot(room);
 
@@ -137,7 +127,7 @@ export class RoomService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to create multiplayer room', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				hostId,
 				topic: config.topic,
 				difficulty: config.difficulty,
@@ -148,11 +138,6 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Get room by ID
-	 * @param roomId Room ID (8-character alphanumeric code)
-	 * @returns Room or null if not found
-	 */
 	async getRoom(roomId: string): Promise<MultiplayerRoom | null> {
 		try {
 			// Normalize room ID to uppercase
@@ -165,7 +150,7 @@ export class RoomService {
 			}
 
 			// Check Redis storage
-			const result = await this.storageService.get(this.getRoomKey(normalizedId));
+			const result = await this.storageService.get(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(normalizedId));
 			if (result.success && result.data && isMultiplayerRoom(result.data)) {
 				this.cacheRoom(result.data);
 				return result.data;
@@ -174,19 +159,13 @@ export class RoomService {
 			return null;
 		} catch (error) {
 			logger.gameError('Failed to get multiplayer room', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 			});
 			return this.getCachedRoom(roomId.toUpperCase());
 		}
 	}
 
-	/**
-	 * Join a room
-	 * @param roomId Room ID
-	 * @param userId User ID joining the room
-	 * @returns Updated room
-	 */
 	async joinRoom(roomId: string, userId: string): Promise<MultiplayerRoom> {
 		try {
 			const room = await this.getRoom(roomId);
@@ -244,7 +223,7 @@ export class RoomService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to join multiplayer room', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 				userId,
 			});
@@ -252,12 +231,6 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Leave a room
-	 * @param roomId Room ID
-	 * @param userId User ID leaving the room
-	 * @returns Updated room or null if room is empty
-	 */
 	async leaveRoom(roomId: string, userId: string): Promise<MultiplayerRoom | null> {
 		try {
 			const room = await this.getRoom(roomId);
@@ -302,7 +275,7 @@ export class RoomService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to leave multiplayer room', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 				userId,
 			});
@@ -310,14 +283,10 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Update room status
-	 * @param roomId Room ID
-	 * @param status New status
-	 * @returns Updated room
-	 */
 	async updateRoomStatus(roomId: string, status: RoomStatus): Promise<MultiplayerRoom> {
 		try {
+			this.invalidateRoomCache(roomId);
+
 			const room = await this.getRoom(roomId);
 			if (!room) {
 				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
@@ -341,7 +310,7 @@ export class RoomService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to update room status', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 				status,
 			});
@@ -349,62 +318,78 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Update room
-	 * @param roomId Room ID
-	 * @param updates Partial room updates
-	 * @returns Updated room
-	 */
 	async updateRoom(roomId: string, updates: Partial<MultiplayerRoom>): Promise<MultiplayerRoom> {
-		try {
-			const room = await this.getRoom(roomId);
-			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+		const maxRetries = 3;
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < maxRetries; attempt++) {
+			try {
+				this.invalidateRoomCache(roomId);
+
+				const room = await this.getRoom(roomId);
+				if (!room) {
+					throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+				}
+
+				const expectedVersion = room.version ?? 0;
+				const incomingVersion = updates.version;
+
+				if (incomingVersion !== undefined && incomingVersion !== expectedVersion) {
+					if (attempt < maxRetries - 1) {
+						continue;
+					}
+					throw new BadRequestException('Room version conflict - room was modified by another operation');
+				}
+
+				Object.assign(room, updates);
+				if (updates.version === undefined) {
+					room.version = (room.version ?? 0) + 1;
+				}
+				room.updatedAt = new Date();
+
+				await this.persistRoomSnapshot(room);
+
+				return room;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+				if (attempt < maxRetries - 1 && error instanceof BadRequestException) {
+					continue;
+				}
+				logger.gameError('Failed to update room', {
+					errorInfo: { message: getErrorMessage(error) },
+					roomId,
+					attempt: attempt + 1,
+				});
+				throw error;
 			}
-
-			Object.assign(room, updates);
-			room.updatedAt = new Date();
-
-			await this.persistRoomSnapshot(room);
-
-			return room;
-		} catch (error) {
-			logger.gameError('Failed to update room', {
-				error: getErrorMessage(error),
-				roomId,
-			});
-			throw error;
 		}
+
+		if (lastError) {
+			throw lastError;
+		}
+
+		throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
 	}
 
-	/**
-	 * Delete a room
-	 * @param roomId Room ID
-	 */
 	async deleteRoom(roomId: string): Promise<void> {
 		try {
 			await this.deleteRoomSnapshot(roomId);
 			logger.gameInfo('Multiplayer room deleted', { roomId });
 		} catch (error) {
 			logger.gameError('Failed to delete multiplayer room', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 			});
 		}
 	}
 
-	/**
-	 * Find all rooms that a user is in
-	 * @param userId User ID
-	 * @returns Array of rooms the user is in
-	 */
 	async findRoomsByUserId(userId: string): Promise<MultiplayerRoom[]> {
 		try {
 			const keysResult = await this.storageService.getKeys();
 			const rooms: MultiplayerRoom[] = [];
 
 			if (keysResult.success && keysResult.data) {
-				const roomKeys = keysResult.data.filter(key => key.startsWith(this.ROOM_PREFIX));
+				const roomKeys = keysResult.data.filter(key => key.startsWith('multiplayer:room:'));
 
 				for (const key of roomKeys) {
 					const result = await this.storageService.get(key);
@@ -418,7 +403,8 @@ export class RoomService {
 				}
 			}
 
-			for (const room of this.inMemoryRooms.values()) {
+			for (const cachedRoom of this.inMemoryRooms.values()) {
+				const room = cachedRoom.room;
 				const alreadyTracked = rooms.some(existing => existing.roomId === room.roomId);
 				if (!alreadyTracked && room.players.some(p => p.userId === userId)) {
 					rooms.push(room);
@@ -428,7 +414,7 @@ export class RoomService {
 			return rooms;
 		} catch (error) {
 			logger.gameError('Failed to find rooms by user ID', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
 			return [];
@@ -436,26 +422,70 @@ export class RoomService {
 	}
 
 	private cacheRoom(room: MultiplayerRoom): void {
-		this.inMemoryRooms.set(room.roomId, room);
+		this.inMemoryRooms.set(room.roomId, {
+			room,
+			expiresAt: Date.now() + this.IN_MEMORY_CACHE_TTL,
+		});
 	}
 
 	private getCachedRoom(roomId: string): MultiplayerRoom | null {
-		return this.inMemoryRooms.get(roomId) ?? null;
+		const cached = this.inMemoryRooms.get(roomId);
+		if (!cached) {
+			return null;
+		}
+
+		if (Date.now() > cached.expiresAt) {
+			this.inMemoryRooms.delete(roomId);
+			return null;
+		}
+
+		return cached.room;
+	}
+
+	invalidateRoomCache(roomId: string): void {
+		this.inMemoryRooms.delete(roomId);
 	}
 
 	private async persistRoomSnapshot(room: MultiplayerRoom): Promise<void> {
 		this.cacheRoom(room);
-		const result = await this.storageService.set(this.getRoomKey(room.roomId), room, this.ROOM_TTL);
-		if (!result.success) {
-			logger.gameError('Failed to persist multiplayer room snapshot', {
-				roomId: room.roomId,
-			});
+		const maxRetries = 3;
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < maxRetries; attempt++) {
+			try {
+				const result = await this.storageService.set(
+					SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(room.roomId),
+					room,
+					this.ROOM_TTL
+				);
+				if (result.success) {
+					return;
+				}
+
+				lastError = new Error(result.error ?? ERROR_CODES.REDIS_ERROR);
+				if (attempt < maxRetries - 1) {
+					const delay = Math.min(100 * Math.pow(2, attempt), 400);
+					await new Promise(resolve => setTimeout(resolve, delay));
+				}
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+				if (attempt < maxRetries - 1) {
+					const delay = Math.min(100 * Math.pow(2, attempt), 400);
+					await new Promise(resolve => setTimeout(resolve, delay));
+				}
+			}
 		}
+
+		logger.gameError('Failed to persist multiplayer room snapshot after retries', {
+			roomId: room.roomId,
+			errorInfo: { message: getErrorMessage(lastError) },
+		});
+		throw lastError ?? new Error(ERROR_CODES.REDIS_ERROR);
 	}
 
 	private async deleteRoomSnapshot(roomId: string): Promise<void> {
 		this.inMemoryRooms.delete(roomId);
-		const result = await this.storageService.delete(this.getRoomKey(roomId));
+		const result = await this.storageService.delete(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
 		if (!result.success) {
 			logger.gameError('Failed to delete multiplayer room snapshot', {
 				roomId,
@@ -463,25 +493,12 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Get room key for Redis
-	 * @param roomId Room ID
-	 * @returns Redis key
-	 */
-	private getRoomKey(roomId: string): string {
-		return `${this.ROOM_PREFIX}${roomId}`;
-	}
-
-	/**
-	 * Restore room snapshot in storage (used for HTTP proxy retries)
-	 * @param room Room data to persist
-	 */
 	async restoreRoom(room: MultiplayerRoom): Promise<void> {
 		try {
 			await this.persistRoomSnapshot(room);
 		} catch (error) {
 			logger.gameError('Failed to restore multiplayer room snapshot', {
-				error: getErrorMessage(error),
+				errorInfo: { message: getErrorMessage(error) },
 				roomId: room.roomId,
 			});
 		}

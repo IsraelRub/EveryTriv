@@ -1,57 +1,39 @@
-/**
- * Redux Features Index
- *
- * @module ReduxFeatures
- * @description Redux slices for state management
- * @used_by client/src/redux, client/src/components, client/src/views
- */
-
-/**
- * Favorites slice
- * @description Redux slice for managing user favorites
- * @used_by client/src/components, client/src/views
- */
-export { default as favoritesSlice } from './favoritesSlice';
-
-/**
- * Game mode slice
- * @description Redux slice for managing game mode state
- * @used_by client/src/components/game, client/src/views
- */
 export { default as gameModeSlice, setGameMode, resetGameMode } from './gameModeSlice';
-
-/**
- * Game slice
- * @description Redux slice for managing game state
- * @used_by client/src/components/game, client/src/views
- */
-export { default as gameSlice } from './gameSlice';
-export { updateScore } from './gameSlice';
-
-/**
- * User slice
- * @description Redux slice for managing user state
- * @used_by client/src/components/user, client/src/views
- */
-export { default as userSlice } from './userSlice';
-
-/**
- * User slice actions
- * @description Redux actions for user state management
- * @used_by client/src/components, client/src/views
- */
 export {
-	deductCredits,
-	fetchUserData,
-	setAvatar,
-	updateAvatar,
-	setCreditBalance,
-	setUser,
-} from './userSlice';
-
-/**
- * Selectors
- * @description Redux selectors for state access
- * @used_by client/src/components, client/hooks
- */
-export * from '../selectors';
+	default as gameSessionSlice,
+	startGameSession,
+	setQuestions,
+	setQuestionIndex,
+	selectAnswer,
+	setAnswered,
+	updateScore,
+	updateTimeSpent,
+	moveToNextQuestion,
+	setLoading,
+	setCreditsDeducted,
+	addQuestionData,
+	setQuestionsData,
+	finalizeGame,
+	resetGameSession,
+} from './gameSessionSlice';
+export {
+	default as multiplayerSlice,
+	setConnectionStatus,
+	setRoom,
+	updateGameState,
+	updateLeaderboard,
+	setError,
+	setLoading as setMultiplayerLoading,
+	resetMultiplayer,
+} from './multiplayerSlice';
+export {
+	default as audioSettingsSlice,
+	setVolume,
+	setMuted,
+	setSoundEnabled,
+	setMusicEnabled,
+	toggleMute,
+	toggleAll,
+	setInitialized,
+} from './audioSettingsSlice';
+export { default as uiPreferencesSlice, setLeaderboardPeriod, resetLeaderboardPeriod } from './uiPreferencesSlice';

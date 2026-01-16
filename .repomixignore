@@ -1,0 +1,25 @@
+# Binary and media files
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.wav
+*.mp3
+*.mp4
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+
+# Tool files
+tools/endpoints-collection.json
+
+# Large generated files
+client/public/assets/logo.svg
+
+# Documentation
+docs/**

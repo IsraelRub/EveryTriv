@@ -1,13 +1,8 @@
 import { Request, Response } from 'express';
 
 import type { UserRole } from '@shared/constants';
-import { OptimizationLevel as OptimizationLevelEnum } from '@internal/constants';
 
-/**
- * NestJS types
- * @description NestJS types used across the server
- * @exports {Object} Nest types
- */
+import { OptimizationLevel as OptimizationLevelEnum } from '@internal/constants';
 
 export interface CacheConfig {
 	ttl: number;
@@ -17,11 +12,6 @@ export interface CacheConfig {
 	condition?: (request: NestRequest, response: Response) => boolean;
 }
 
-/**
- * Bulk operation metadata interface
- * @interface BulkMetadata
- * @description Metadata for bulk operations and batch processing
- */
 export interface BulkMetadata {
 	isBulk: boolean;
 	batchSize?: number;
@@ -29,18 +19,15 @@ export interface BulkMetadata {
 	optimization?: (typeof OptimizationLevelEnum)[keyof typeof OptimizationLevelEnum];
 }
 
-// NestJS request/response types
 export interface NestRequest extends Request {
 	authToken?: string;
 	userRole?: UserRole;
 	user?: UserPayload;
-	decoratorMetadata?: DecoratorMetadata;
 	bulkMetadata?: BulkMetadata;
 	timestamp?: Date;
 	requestId?: string;
 }
 
-// Decorator metadata types
 export interface DecoratorMetadata {
 	isPublic: boolean;
 	requireAuth: boolean;
@@ -65,10 +52,8 @@ export interface ApiResponseConfig {
 	description?: string;
 }
 
-// User payload types
 export interface UserPayload {
 	sub: string;
-	id?: string; // Alias for sub, used in some contexts
 	email: string;
 	role: UserRole;
 	iat: number;

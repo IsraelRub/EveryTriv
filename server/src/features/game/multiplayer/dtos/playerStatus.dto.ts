@@ -3,11 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PlayerStatus } from '@shared/constants';
 import type { Player } from '@shared/types';
 
-/**
- * DTO for player status
- * @class PlayerStatusDto
- * @description Data transfer object for player status in multiplayer game
- */
 export class PlayerStatusDto implements Partial<Player> {
 	@ApiProperty({ description: 'User ID' })
 	userId!: string;

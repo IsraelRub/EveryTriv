@@ -11,14 +11,18 @@
 - אימות סכומים
 - ניהול תוצאה (Success/Failure/Pending)
 - היסטוריית תשלומים
-- תמיכה ברכישת נקודות ומנויים
+- תמיכה ברכישת נקודות
 
 ## מבנה מודול
 
 ```
 server/src/features/payment/
 ├── dtos/                       # Data Transfer Objects
-│   ├── createPayment.dto.ts    # DTO ליצירת תשלום
+│   ├── payment.dto.ts          # DTOs ליצירת תשלום
+│   └── index.ts
+├── webhooks/                   # PayPal Webhook Handlers
+│   ├── paypalWebhook.controller.ts  # Webhook endpoint
+│   ├── paypalWebhook.service.ts     # Webhook processing
 │   └── index.ts
 ├── payment.controller.ts        # Controller
 ├── payment.service.ts          # Service
@@ -112,6 +116,35 @@ async getPaymentHistory(@CurrentUserId() userId: string) {
 }
 ```
 
+### POST /payment/webhooks/paypal
+
+Webhook endpoint לטיפול בעדכוני סטטוס תשלום מ-PayPal.
+
+**Headers:**
+- `paypal-transmission-id` - PayPal transmission ID
+- `paypal-transmission-sig` - PayPal transmission signature
+- `paypal-transmission-time` - PayPal transmission time
+- `paypal-cert-url` - PayPal certificate URL
+- `paypal-auth-algo` - PayPal authentication algorithm
+
+**Request Body:**
+```typescript
+PayPalWebhookEvent
+```
+
+**Response:**
+```typescript
+{
+  status: 'success' | 'error';
+  message?: string;
+}
+```
+
+**Security:**
+- Endpoint הוא public (לא דורש authentication)
+- אימות signature מול PayPal API (חובה)
+- Idempotency checks למניעת עיבוד כפול
+
 ## Service Methods
 
 ### PaymentService
@@ -128,13 +161,6 @@ export class PaymentService {
   ) {}
 
   /**
-   * Get pricing plans
-   */
-  async getPricingPlans(): Promise<SubscriptionPlans> {
-    return SUBSCRIPTION_PLANS;
-  }
-
-  /**
    * Get credit purchase options
    */
   async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
@@ -149,54 +175,40 @@ export class PaymentService {
 
   /**
    * Process payment
+   * Supports both standalone and transaction-based processing
    */
   async processPayment(userId: string, paymentData: PaymentData): Promise<PaymentResult> {
-    this.ensureValidPaymentAmount(paymentData.amount);
-    const normalizedAmount = this.normalizeAmount(paymentData.amount);
-    const currency = (paymentData.currency ?? 'USD').toUpperCase();
-    const transactionId = this.generateTransactionId();
-    const method = paymentData.method ?? PaymentMethod.MANUAL_CREDIT;
+    return this.processPaymentInternal(null, userId, paymentData);
+  }
 
-    this.ensureValidPaymentMethod(method);
+  /**
+   * Process payment with transaction support
+   */
+  async processPaymentWithTransaction(
+    entityManager: EntityManager,
+    userId: string,
+    paymentData: PaymentData
+  ): Promise<PaymentResult> {
+    return this.processPaymentInternal(entityManager, userId, paymentData);
+  }
 
-    // Create payment history record
-    const paymentHistory = this.paymentHistoryRepository.create({
-      userId,
-      amount: normalizedAmount,
-      currency,
-      status: PaymentStatus.PENDING,
-      paymentMethod: method,
-      description: paymentData.description,
-      paymentId: transactionId,
-      transactionId: transactionId,
-      originalAmount: paymentData.amount,
-      originalCurrency: currency,
-      metadata: {
-        ...paymentData.metadata,
-        originalAmount: paymentData.amount,
-        originalCurrency: currency,
-      },
-    });
-
-    await this.paymentHistoryRepository.save(paymentHistory);
-
-    // Process payment by method
-    const processingResult = await this.processPaymentByMethod(
-      userId,
-      paymentHistory,
-      paymentData,
-      normalizedAmount,
-      currency,
-      method
-    );
-
-    await this.paymentHistoryRepository.save(paymentHistory);
-
-    if (processingResult.status === PaymentStatus.COMPLETED) {
-      await this.handlePaymentSuccess(userId, paymentData);
-    }
-
-    return processingResult;
+  /**
+   * Internal method that handles both standalone and transaction-based payment processing
+   * - Normalizes amount from dollars to cents (e.g., 9.99 -> 999)
+   * - Creates payment history record
+   * - Processes payment based on method (MANUAL_CREDIT or PAYPAL)
+   * - Invalidates cache on successful payment
+   */
+  private async processPaymentInternal(
+    entityManager: EntityManager | null,
+    userId: string,
+    paymentData: PaymentData
+  ): Promise<PaymentResult> {
+    // Implementation details:
+    // - Amount is normalized from dollars to cents (9.99 -> 999)
+    // - originalAmount and originalCurrency stored in metadata only
+    // - completedAt and failedAt are stored as separate columns (not in metadata)
+    // - Cache is invalidated after successful payment
   }
 
   /**
@@ -291,6 +303,20 @@ export class PaymentService {
 
   /**
    * Process PayPal payment
+   * 
+   * Flow:
+   * 1. אם אין paypalOrderId - מחזיר REQUIRES_ACTION עם paypalOrderRequest
+   * 2. אם יש paypalOrderId:
+   *    - קורא ל-PayPal API לאימות הזמנה
+   *    - בודק סטטוס (APPROVED/COMPLETED)
+   *    - בודק סכום ומטבע
+   *    - מבצע capture אם נדרש
+   *    - מעדכן payment history עם נתונים מ-PayPal
+   * 
+   * Retry Logic:
+   * - Retry אוטומטי עבור transient errors (5xx, network errors)
+   * - Exponential backoff (max 3 retries)
+   * - Logging מפורט של כל ניסיון
    */
   private async processPayPalPayment(
     paymentHistory: PaymentHistoryEntity,
@@ -298,52 +324,10 @@ export class PaymentService {
     normalizedAmount: number,
     currency: string
   ): Promise<PaymentResult> {
-    const paypalOrderId = paymentData.paypalOrderId;
-    const paypalPaymentId = paymentData.paypalPaymentId;
-
-    if (!paypalOrderId || !paypalPaymentId) {
-      paymentHistory.status = PaymentStatus.PENDING;
-      paymentHistory.metadata = {
-        ...paymentHistory.metadata,
-        paypalPending: true,
-      };
-
-      return {
-        paymentId: paymentHistory.transactionId,
-        transactionId: paymentHistory.transactionId,
-        status: PaymentStatus.PENDING,
-        message: 'PayPal payment pending',
-        amount: normalizedAmount,
-        currency,
-        paymentMethod: PaymentMethod.PAYPAL,
-        clientAction: 'complete_paypal',
-        paypalOrderId: paypalOrderId || undefined,
-        metadata: paymentHistory.metadata,
-      };
-    }
-
-    // Validate PayPal payment
-    // In production, this would integrate with PayPal API
-    
-    paymentHistory.status = PaymentStatus.COMPLETED;
-    paymentHistory.completedAt = new Date();
-    paymentHistory.metadata = {
-      ...paymentHistory.metadata,
-      paypalOrderId,
-      paypalPaymentId,
-    };
-
-    return {
-      paymentId: paymentHistory.transactionId,
-      transactionId: paymentHistory.transactionId,
-      status: PaymentStatus.COMPLETED,
-      message: 'PayPal payment completed',
-      amount: normalizedAmount,
-      currency,
-      paymentMethod: PaymentMethod.PAYPAL,
-      paypalOrderId,
-      metadata: paymentHistory.metadata,
-    };
+    // Implementation uses PayPalApiService for real API calls
+    // Validates order status, amount, and currency
+    // Captures payment if needed
+    // Updates payment history with PayPal transaction data
   }
 
   /**
@@ -352,12 +336,7 @@ export class PaymentService {
   private async handlePaymentSuccess(userId: string, paymentData: PaymentData): Promise<void> {
     // Handle payment success based on payment type
     if (paymentData.type === 'points_purchase') {
-      // Points purchase handled by PointsService
-      return;
-    }
-    
-    if (paymentData.planType) {
-      // Subscription handled by SubscriptionService
+      // Points purchase handled by CreditsService
       return;
     }
   }
@@ -384,10 +363,12 @@ export class PaymentService {
   }
 
   /**
-   * Normalize amount
+   * Normalize amount from dollars to cents
+   * @param amount Amount in dollars (e.g., 9.99)
+   * @returns Amount in cents (e.g., 999)
    */
   private normalizeAmount(amount: number): number {
-    return Math.round(amount);
+    return Math.round(amount * 100);
   }
 
   /**
@@ -431,28 +412,80 @@ export class PaymentService {
 
 | סוג נתון | Key Pattern | TTL | הערה |
 |----------|-------------|-----|------|
-| היסטוריית תשלומים | `payment:history:{userId}` | 300s | עדכון בעת תשלום חדש |
+| היסטוריית תשלומים | `payment:history:{userId}` | MEDIUM | Cache מתאפס אוטומטית לאחר תשלום חדש מוצלח |
+| אפשרויות רכישת נקודות | `credit_purchase_options` | VERY_LONG | Cache ארוך טווח |
 
 ## אבטחה
 - אימות בעלות על אמצעי תשלום
 - בדיקת סכום מול טבלת תעריפים
-- ולידציית פרטי כרטיס
-- הגנה על נתונים רגישים (CVV, מספר כרטיס מלא)
+- ולידציית פרטי כרטיס (Luhn algorithm)
+- הגנה על נתונים רגישים (CVV, מספר כרטיס מלא) - נמחקים לאחר עיבוד
 - רישום כל התשלומים בהיסטוריה
+- **PayPal API Integration**: אימות מלא מול PayPal REST API
+  - OAuth 2.0 authentication עם token caching
+  - אימות הזמנה, סכום, ומטבע
+  - Capture אוטומטי של תשלומים
+  - Webhook signature verification
+  - Retry logic עבור transient errors
+
+## הערות חשובות
+
+### Amount Handling
+- סכומים מגיעים כ-dollars (float) מה-API
+- מאוחסנים ב-DB כ-cents (integer)
+- `normalizeAmount` ממיר: `9.99` -> `999` (cents)
+
+### Payment History Entity
+- `completedAt` ו-`failedAt` הם עמודות נפרדות (לא metadata)
+- `originalAmount` ו-`originalCurrency` נשמרים ב-metadata בלבד
+- סכומים ב-DB הם ב-cents (integer)
+
+### PayPal Integration
+- **אימות מלא**: אינטגרציה מלאה עם PayPal REST API
+  - OAuth 2.0 token management עם auto-refresh
+  - Order validation מול PayPal API
+  - Amount ו-currency validation
+  - Capture אוטומטי של תשלומים
+  - Webhook handling לעדכוני סטטוס אסינכרוניים
+  - Retry logic עם exponential backoff
+  - Idempotency checks למניעת עיבוד כפול
+
+**PayPal Services:**
+- `PayPalAuthService` - ניהול OAuth tokens עם caching
+- `PayPalApiService` - קריאות ל-PayPal REST API
+- `PayPalWebhookService` - עיבוד webhook events
+
+**Webhook Events:**
+- `PAYMENT.CAPTURE.COMPLETED` - עדכון payment ל-COMPLETED
+- `PAYMENT.CAPTURE.DENIED` - עדכון payment ל-FAILED
+- `PAYMENT.CAPTURE.REFUNDED` - עדכון payment ל-FAILED עם refund flag
+- `PAYMENT.CAPTURE.PENDING` - עדכון payment ל-PENDING
+
+**Environment Variables:**
+- `PAYPAL_CLIENT_ID` - PayPal client ID
+- `PAYPAL_CLIENT_SECRET` - PayPal client secret
+- `PAYPAL_MERCHANT_ID` - PayPal merchant ID
+- `PAYPAL_ENVIRONMENT` - sandbox או production
+- `PAYPAL_WEBHOOK_ID` - PayPal webhook ID (אופציונלי)
 
 ## אינטגרציות
 
-- **Points Service**: רכישת נקודות
-- **Subscription Service**: רכישת מנויים
+- **Credits Service**: רכישת נקודות
 - **User Repository**: עדכון נתוני משתמשים
 - **Validation Service**: ולידציית נתוני תשלום
+- **PayPal REST API**: אינטגרציה מלאה עם PayPal
+  - OAuth 2.0 authentication
+  - Order management
+  - Payment capture
+  - Webhook verification
+- **Cache Service**: Caching של PayPal access tokens
+- **HttpService**: HTTP client לביצוע קריאות ל-PayPal API
 
 ## קישורים רלוונטיים
 
 - מבנה Backend: `../../README.md#backend`
 - API Reference: `../API_REFERENCE.md`
 - Internal Structure: `../internal/README.md`
-- Subscription Module: `./SUBSCRIPTION.md`
 - Credits Module: `./CREDITS.md`
 - דיאגרמות: [דיאגרמת זרימת תשלומים](../../DIAGRAMS.md#דיאגרמת-זרימת-תשלומים)
 

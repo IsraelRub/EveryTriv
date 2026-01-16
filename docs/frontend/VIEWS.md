@@ -91,40 +91,7 @@ import RegistrationView from '@views/registration/RegistrationView';
 - טיפול בשגיאות
 - OAuth עם Google
 
-### LeaderboardView
-לוח תוצאות עם דירוגים:
-```typescript
-import LeaderboardView from '@views/leaderboard/LeaderboardView';
-
-// השימוש ב-AppRoutes
-<Route path="/leaderboard" element={<LeaderboardView />} />
-```
-
-**תכונות:**
-- דירוג גלובלי, שבועי, חודשי, שנתי
-- מיקום המשתמש
-- טבלת דירוגים עם pagination
-- פילטרים לפי תקופה
-- עדכון אוטומטי
-
 ## דפים מוגנים
-
-### UserProfileView
-פרופיל משתמש:
-```typescript
-import UserProfileView from '@views/user/UserProfile';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/user/profile" element={<ProtectedRoute><UserProfileView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- הצגת פרטי משתמש
-- עדכון פרופיל (firstName, lastName, bio)
-- עדכון העדפות משתמש
-- ניהול תמונת פרופיל
-- הצגת סטטיסטיקות בסיסיות
-- ניהול חשבון
 
 ### GameSessionView
 משחק פעיל - ממשק המשחק המלא:
@@ -158,39 +125,6 @@ import GameSummaryView from '@views/game/GameSummaryView';
 - השוואה לסטטיסטיקות קודמות
 - שיתוף תוצאות
 - המשך למשחק הבא
-
-### CustomDifficultyView
-קושי מותאם - יצירה וניהול קשיים מותאמים:
-```typescript
-import CustomDifficultyView from '@views/game/CustomDifficultyView';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/game/custom-difficulty" element={<ProtectedRoute><CustomDifficultyView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- יצירת קושי מותאם אישית
-- היסטוריית קשיים שנוצרו
-- שימוש בקושי במשחקים
-- עריכה ומחיקה של קשיים
-- ולידציה של טקסט קושי
-
-### GameHistoryView
-היסטוריית משחקים:
-```typescript
-import GameHistoryView from '@views/gameHistory/GameHistory';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/game/history" element={<ProtectedRoute><GameHistoryView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- רשימת כל המשחקים
-- פילטרים לפי נושא, קושי, תאריך
-- סטטיסטיקות מפורטות
-- מחיקת משחקים בודדים
-- ניקוי כל ההיסטוריה
-- ייצוא נתונים
 
 ### MultiplayerLobbyView
 לובי מרובה משתתפים - יצירה והצטרפות לחדר:
@@ -268,56 +202,6 @@ import PaymentView from '@views/payment/PaymentView';
 - ניהול כרטיסי אשראי
 - ביטול מנויים
 - אינטגרציה עם Stripe
-
-### PointsView
-נקודות:
-```typescript
-import CreditsView from '@views/credits/CreditsView';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/credits" element={<ProtectedRoute><CreditsView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- הצגת מאזן קרדיטים (totalCredits, freeQuestions, purchasedCredits)
-- היסטוריית עסקות נקודות
-- רכישת נקודות
-- חבילות נקודות זמינות
-- מגבלות יומיות
-- זמן איפוס הבא
-
-### AnalyticsView
-אנליטיקה - דשבורד סטטיסטיקות:
-```typescript
-import AnalyticsView from '@views/analytics/AnalyticsView';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/analytics" element={<ProtectedRoute><AnalyticsView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- סטטיסטיקות משתמש מפורטות
-- מטריקות ביצועים
-- דוחות לפי תקופה
-- גרפים וייצוגים ויזואליים
-- ניתוח לפי נושאים וקשיים
-- ייצוא נתונים
-
-### SettingsView
-הגדרות:
-```typescript
-import SettingsView from '@views/settings/SettingsView';
-
-// השימוש ב-AppRoutes (מוגן)
-<Route path="/settings" element={<ProtectedRoute><SettingsView /></ProtectedRoute>} />
-```
-
-**תכונות:**
-- עדכון פרטים אישיים
-- העדפות משתמש (notifications, privacy, game)
-- הגדרות אודיו (enable/disable, volume)
-- הגדרות UI (theme, language)
-- ניהול חשבון (מחיקה, השבתה)
 
 ### AdminDashboard
 דף מנהל:

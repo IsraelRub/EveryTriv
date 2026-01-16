@@ -1,16 +1,8 @@
-/**
- * User analytics type definitions
- *
- * @module AnalyticsUserTypes
- * @description Structures describing user analytics queries, summaries, comparisons, and insights
- */
+// User analytics type definitions.
 import { ComparisonTarget } from '../../../constants';
 import type { ActivityEntry, CountRecord, DifficultyBreakdown } from '../../core/data.types';
 import type { UserRankData } from '../game/game.types';
 
-/**
- * User analytics query interface
- */
 export interface UserAnalyticsQuery {
 	startDate?: Date;
 	endDate?: Date;
@@ -19,9 +11,6 @@ export interface UserAnalyticsQuery {
 	includeTopicBreakdown?: boolean;
 }
 
-/**
- * Unified user analytics record
- */
 export interface UserAnalyticsRecord {
 	totalGames: number;
 	totalQuestionsAnswered: number;
@@ -30,7 +19,7 @@ export interface UserAnalyticsRecord {
 	bestScore: number;
 	totalPlayTime: number;
 	correctAnswers: number;
-	userId?: string;
+	userId: string;
 	favoriteTopic?: string;
 	mostPlayedTopic?: string;
 	averageTimePerQuestion?: number;
@@ -40,9 +29,6 @@ export interface UserAnalyticsRecord {
 	recentActivity?: ActivityEntry[];
 }
 
-/**
- * User basic information interface
- */
 export interface UserBasicInfo {
 	userId: string;
 	email: string;
@@ -53,9 +39,6 @@ export interface UserBasicInfo {
 	accountAge: number;
 }
 
-/**
- * User performance metrics interface
- */
 export interface UserPerformanceMetrics {
 	lastPlayed: Date;
 	streakDays: number;
@@ -68,9 +51,6 @@ export interface UserPerformanceMetrics {
 	learningCurve?: number;
 }
 
-/**
- * Complete user analytics interface
- */
 export interface CompleteUserAnalytics {
 	basic: UserBasicInfo;
 	game: UserAnalyticsRecord;
@@ -79,9 +59,6 @@ export interface CompleteUserAnalytics {
 	trends?: UserTrendPoint[];
 }
 
-/**
- * User progress topic analytics
- */
 export interface UserProgressTopic {
 	topic: string;
 	gamesPlayed: number;
@@ -93,9 +70,6 @@ export interface UserProgressTopic {
 	difficultyBreakdown: CountRecord;
 }
 
-/**
- * User trend timeline point
- */
 export interface UserTrendPoint {
 	date: string;
 	score: number;
@@ -106,9 +80,6 @@ export interface UserTrendPoint {
 	difficulty?: string;
 }
 
-/**
- * User progress analytics
- */
 export interface UserProgressAnalytics {
 	topics: UserProgressTopic[];
 	timeline: UserTrendPoint[];
@@ -119,18 +90,22 @@ export interface UserProgressAnalytics {
 	};
 }
 
-/**
- * User insights data
- */
+export interface UserProgressData {
+	userId: string;
+	topic: string;
+	correctAnswers: number;
+	totalQuestionsAnswered: number;
+	averageResponseTime: number;
+	lastPlayed: string;
+	difficulty: string;
+}
+
 export interface UserInsightsData {
 	strengths: string[];
 	improvements: string[];
 	recentHighlights: string[];
 }
 
-/**
- * User comparison metrics
- */
 export interface UserComparisonMetrics {
 	successRate: number;
 	averageScore: number;
@@ -143,9 +118,6 @@ export interface UserComparisonMetrics {
 	consistencyScore?: number;
 }
 
-/**
- * User comparison result
- */
 export interface UserComparisonResult {
 	userId: string;
 	target: ComparisonTarget;
@@ -155,9 +127,6 @@ export interface UserComparisonResult {
 	differences: UserComparisonMetrics;
 }
 
-/**
- * User summary data
- */
 export interface UserSummaryData {
 	user: UserBasicInfo;
 	highlights: {

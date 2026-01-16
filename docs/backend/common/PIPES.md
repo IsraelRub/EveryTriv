@@ -122,13 +122,13 @@ if (!triviaValidation.isValid) {
 ```typescript
 @Controller('game')
 export class GameController {
-  @Post('answer')
-  async submitAnswer(
-    @Body(GameAnswerPipe) body: GameAnswerSubmission,
+  @Post('session/answer')
+  async submitAnswerToSession(
+    @Body() body: SubmitAnswerToSessionDto,
     @CurrentUserId() userId: string
   ) {
     // body כבר עבר ולידציה
-    return this.gameService.submitAnswer(body, userId);
+    return this.gameService.submitAnswerToSession({ ...body, userId });
   }
 }
 ```
