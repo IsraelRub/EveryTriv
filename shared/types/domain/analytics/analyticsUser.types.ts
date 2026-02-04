@@ -1,7 +1,9 @@
 // User analytics type definitions.
 import { ComparisonTarget } from '../../../constants';
 import type { ActivityEntry, CountRecord, DifficultyBreakdown } from '../../core/data.types';
+import type { Achievement } from '../game/achievements.types';
 import type { UserRankData } from '../game/game.types';
+import type { SystemRecommendation } from './analyticsSystem.types';
 
 export interface UserAnalyticsQuery {
 	startDate?: Date;
@@ -137,4 +139,17 @@ export interface UserSummaryData {
 	};
 	performance: UserPerformanceMetrics;
 	insights: string[];
+}
+
+export interface UnifiedUserAnalyticsResponse {
+	statistics?: UserAnalyticsRecord;
+	performance?: UserPerformanceMetrics;
+	insights?: UserInsightsData;
+	recommendations?: SystemRecommendation[];
+	summary?: UserSummaryData;
+	achievements?: Achievement[];
+	trends?: UserTrendPoint[];
+	activity?: ActivityEntry[];
+	progress?: UserProgressAnalytics;
+	comparison?: UserComparisonResult;
 }

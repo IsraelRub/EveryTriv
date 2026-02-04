@@ -185,7 +185,7 @@ export class GameController {
 	}
 
 	@Get('history')
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES, 'game_history')
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getGameHistory(@CurrentUserId() userId: string, @Query() query: GameHistoryQueryDto) {
 		const startTime = Date.now();
 
@@ -224,7 +224,7 @@ export class GameController {
 
 			// Convert DTO to GameData format
 			const gameData: GameData = {
-				userId: body.userId,
+				userId,
 				score: body.score,
 				gameQuestionCount: body.gameQuestionCount,
 				correctAnswers: body.correctAnswers,
@@ -233,7 +233,7 @@ export class GameController {
 				gameMode: body.gameMode,
 				timeSpent: body.timeSpent,
 				creditsUsed: body.creditsUsed,
-				questionsData: body.questionsData,
+				answerHistory: body.answerHistory,
 				clientMutationId: body.clientMutationId,
 			};
 

@@ -1,48 +1,251 @@
 ---
-description: "הנחיות מותאמות לשרת NestJS במונורפו EveryTriv"
+description: "Comprehensive NestJS backend guidelines for EveryTriv monorepo"
 globs:
-  - server/**\/*.ts
+  - server/**/*.ts
 alwaysApply: false
 ---
 
-# הוראות NestJS מותאמות לפרויקט
+# NestJS Backend Guidelines for EveryTriv
 
-## מבנה פרויקט
-- כל קוד המקור חייב לשבת תחת `server/src`.
-- ארגון לפי מאפיינים: `features/`, `shared/`, `config/`, `constants/`.
-- כל מודול מאפיין כולל `controllers`, `services`, `dtos`, `entities`, `types`, ו-`{feature}.module.ts`.
-- קוד משותף נמצא בתיקיית המונורפו `shared/` ומשותף באמצעות barrel `index.ts`.
+## 🤖 AI Assistant Instructions
 
-## TypeScript
-- `tsconfig` מוגדר עם `"strict": true`; אין לשחרר את ההגדרה.
-- אין להשתמש ב-`any`, `unknown`, או `as`; נדרשים טיפוסים ספציפיים ושומרי טיפוס.
-- לחתום כל פונקציה בפרמטרים ובערכי החזרה מפורשים.
-- טיפוסים משותפים חיים תחת `shared/types/<domain>` ומיובאים משם בלבד.
+**CRITICAL: This file contains detailed patterns and conventions. Reference it when:**
+- Creating new controllers, services, or modules
+- Implementing DTOs and validation
+- Setting up database entities
+- Handling errors and logging
+- Implementing authentication/authorization
 
-## API ועיצוב שכבות
-- הבקרים (`controllers`) דקים ומכילים רק טיפול בנתיב, ואלידציה ומיפוי DTO.
-- כל לוגיקה עסקית נכתבת בשירותים (`services`) עם הזרקת תלות.
-- DTO מוגדרים ב-`dtos/` עם `class-validator` ו-`class-transformer`.
-- תיעוד Swagger חובה עבור נתיבים ציבוריים.
+### When to Reference This File
+- ✅ Creating new controllers → Check Controller Patterns section
+- ✅ Creating services → Check Service Patterns section
+- ✅ Creating entities → Check Entity Patterns section
+- ✅ Implementing DTOs → Check DTOs & Validation section
+- ✅ Adding authentication → Check Authentication & Authorization section
+- ✅ Writing tests → Check Testing Patterns section
 
-## לוגים וקבועים
-- כל הלוגיקה של לוגים רוכזת בשירותים או שירות לוג ייעודי כדי למנוע כפילות.
-- קבועים נשמרים ב-`shared/constants/<domain>` ומיוצאים דרך `shared/constants/index.ts`.
-- אין להשתמש ב-console; רק שירות לוגים.
+### Pattern Matching
+**ALWAYS** look for existing similar code in the codebase and follow the same pattern. If you find:
+- Similar controller → Follow its structure and error handling
+- Similar service → Follow its repository usage and logging
+- Similar entity → Follow its decorators and relationships
+- Similar DTO → Follow its validation decorators
 
-## כלים ותזרים עבודה
-- שימוש ב-`pnpm` בלבד. פקודות PowerShell נרצות ללא `&&`.
-- לעדכן barrel exports בעת הוספת קבצים ב-`shared/`.
-- אסור להוסיף קוד דוגמה או Placeholder.
-- כל פונקציה חדשה חייבת מימוש מלא ושימוש ישיר.
+## 📁 Project Structure
 
-## בדיקות
-- שירותים ובקרים מקבלים בדיקות יחידה עם Jest ו-`@nestjs/testing`.
-- Mock לכל תלות דרך מנגנון ההזרקה של Nest.
-- מבחני e2e נשמרים תחת `server/test`.
+- All source code must reside under `server/src/`.
+- Feature-based organization: `features/`, `shared/`, `config/`, `constants/`.
+- Each feature module includes `controllers/`, `services/`, `dtos/`, `entities/`, `types/`, and `{feature}.module.ts`.
+- Shared code lives in monorepo `shared/` directory and is shared via barrel `index.ts` exports.
 
-## סגנון וקונבנציות
-- שמות קבצים camelCase; מחלקות וממשקים PascalCase.
-- להוסיף JSDoc לממשקי API ציבוריים.
-- ייבוא תמיד דרך barrels (`index.ts`) כאשר קיים.
-- לממש טיפוסים ייעודיים עבור תוצאות, שגיאות ופרמטרים; אין טיפוסים גנריים.
+## 🔧 TypeScript
+
+- `tsconfig` is configured with `"strict": true`; do not relax this setting.
+- No use of `any`, `unknown`, or `as` assertions; specific types and type guards are required.
+- All function parameters and return values must be explicitly typed.
+- Shared types live under `shared/types/<domain>/` and are imported from there only.
+
+## 🌐 API & Layer Design
+
+- **Controllers** are thin and contain only route handling, validation, and DTO mapping.
+- All business logic is written in **services** with dependency injection.
+- **DTOs** are defined in `dtos/` with `class-validator` and `class-transformer`.
+- Swagger documentation is mandatory for public routes.
+- Follow RESTful principles for API design.
+
+## 📦 Required Packages
+
+Core:
+- @nestjs/common
+- @nestjs/core
+- @nestjs/platform-express
+- @nestjs/typeorm
+- @nestjs/config
+- typeorm
+- class-validator
+- class-transformer
+- winston (for logging)
+
+Optional:
+- @nestjs/swagger
+- @nestjs/caching
+- @nestjs/schedule
+- @nestjs/websockets
+
+## 🏗️ Module Structure
+
+Each feature module should contain:
+- `controllers/` – Route handlers and request/response logic
+- `services/` – Business logic
+- `dtos/` – Data transfer objects for validation
+- `entities/` – TypeORM entities
+- `types/` – Feature-specific types and interfaces
+- `{feature}.module.ts` – Module definition
+
+Shared code:
+- `shared/services/` – Common services (logging, caching, etc.)
+- `shared/utils/` – Utility functions
+- `shared/types/` – Global types
+- `shared/middleware/` – Global middleware
+- `shared/modules/` – Reusable modules
+
+## 🔄 Dependency Injection
+
+- Use NestJS dependency injection for all services
+- Inject dependencies through constructor
+- Use `@Injectable()` decorator for all services
+- Use `@InjectRepository()` for TypeORM repositories
+
+### Example Service Pattern
+```typescript
+@Injectable()
+export class GameService {
+  constructor(
+    @InjectRepository(GameEntity)
+    private readonly gameRepository: Repository<GameEntity>,
+    private readonly logger: LoggerService,
+  ) {}
+
+  async createGame(config: GameConfig): Promise<Game> {
+    // Implementation
+  }
+}
+```
+
+## 📝 DTOs & Validation
+
+- All DTOs must use `class-validator` decorators
+- Use `class-transformer` for data transformation
+- Validate all inputs at the controller level
+- Create separate DTOs for requests and responses
+
+### Example DTO Pattern
+```typescript
+export class CreateGameDto {
+  @IsString()
+  @IsNotEmpty()
+  topic: string;
+
+  @IsEnum(DifficultyLevel)
+  difficulty: DifficultyLevel;
+
+  @IsNumber()
+  @Min(1)
+  @Max(50)
+  questionCount: number;
+}
+```
+
+## 🗄️ Database Patterns
+
+### TypeORM Entities
+- Use TypeORM decorators for entity definitions
+- Define relationships explicitly
+- Use repositories for database operations
+- Implement soft deletes when needed
+
+### Transactions
+- Use transactions for operations that must be atomic
+- Use `@Transactional()` decorator or `QueryRunner` for complex transactions
+
+## 📊 Logging & Constants
+
+- All logging logic is centralized in services or a dedicated logging service to prevent duplication.
+- Constants are stored in `shared/constants/<domain>/` and exported through `shared/constants/index.ts`.
+- Never use `console`; only use logging service.
+- Use appropriate log levels: `logger.info()`, `logger.error()`, `logger.warn()`, `logger.debug()`
+
+## 🛠️ Tooling & Workflow
+
+- Use `pnpm` exclusively. PowerShell commands run without `&&`.
+- Update barrel exports when adding files in `shared/`.
+- No placeholder or example code allowed.
+- Every new function must have full implementation and direct usage.
+
+## 🧪 Testing
+
+- Services and controllers receive unit tests with Jest and `@nestjs/testing`.
+- Mock all dependencies through NestJS injection mechanism.
+- E2E tests are stored under `server/test/`.
+- Test business logic independently from infrastructure.
+
+## 🎨 Code Style
+
+- File names in camelCase; classes and interfaces in PascalCase.
+- Add JSDoc for public API interfaces.
+- Always import through barrels (`index.ts`) when available.
+- Implement specific types for results, errors, and parameters; no generic types.
+
+## 🔐 Security
+
+- Use environment variables for sensitive data
+- Implement proper authentication/authorization
+- Validate all inputs using class-validator
+- Use proper CORS configuration
+- Implement rate limiting
+- Use Helmet for security headers
+- Sanitize user inputs
+- Use parameterized queries (TypeORM handles this)
+
+## 🚀 Best Practices
+
+- Follow Single Responsibility Principle
+- Use dependency injection
+- Keep controllers thin, services thick
+- Use custom decorators for common functionality
+- Implement proper error handling
+- Use logging service instead of console.log
+- Cache expensive operations
+- Use TypeORM repositories for database operations
+- Define constants in dedicated files within `shared/constants/` and use barrel imports
+- Prevent duplicate logging between services and controllers; centralize logging responsibilities
+- Add new utilities only when they have an immediate use and colocate them with the relevant domain
+- Avoid placeholder or example code—commit only production-ready implementations
+- Prefer barrel imports (`index.ts`) over deep relative paths
+
+## 📝 Documentation
+
+- Use JSDoc comments for all public methods
+- Document environment variables
+- Keep README.md up to date
+- Use OpenAPI/Swagger for API documentation
+- Document database schema changes
+
+## 🔄 Error Handling
+
+- Use NestJS exception filters for global error handling
+- Create custom exceptions for domain-specific errors
+- Return consistent error response format
+- Log errors appropriately with context
+
+### Example Error Handling
+```typescript
+@Catch(HttpException)
+export class HttpExceptionFilter implements ExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost) {
+    // Implementation
+  }
+}
+```
+
+## 🎯 API Response Patterns
+
+- Use consistent response formats
+- Return appropriate HTTP status codes
+- Include error details in development, generic messages in production
+- Use DTOs for all responses
+
+## 📈 Performance
+
+- Use caching for expensive operations
+- Implement pagination for list endpoints
+- Use database indexes appropriately
+- Optimize queries to avoid N+1 problems
+- Use connection pooling
+
+## 🔍 Validation Patterns
+
+- Validate at the DTO level using class-validator
+- Use custom validators when needed
+- Return clear validation error messages
+- Validate business rules in services

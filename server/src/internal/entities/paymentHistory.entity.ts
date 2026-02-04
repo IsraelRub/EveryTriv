@@ -1,19 +1,20 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 import { PaymentMethod, PaymentStatus } from '@shared/constants';
 
 import type { PaymentHistoryMetadata } from '@internal/types';
 
 import { BaseEntity } from './base.entity';
+import { CreditTransactionEntity } from './creditTransaction.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('payment_history')
 export class PaymentHistoryEntity extends BaseEntity {
-	@Column({ name: 'user_id' })
+	@Column({ name: 'user_id', type: 'uuid' })
 	@Index()
 	userId!: string;
 
-	@ManyToOne(() => UserEntity, user => user.id, { onDelete: 'CASCADE' })
+	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'user_id' })
 	user!: UserEntity;
 
@@ -70,4 +71,7 @@ export class PaymentHistoryEntity extends BaseEntity {
 	set metadata(value: PaymentHistoryMetadata) {
 		this.metadataInternal = value ?? {};
 	}
+
+	@OneToMany(() => CreditTransactionEntity, creditTransaction => creditTransaction.paymentHistory)
+	creditTransactions?: CreditTransactionEntity[];
 }

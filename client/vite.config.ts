@@ -3,8 +3,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-import { APP_NAME, HttpMethod } from '../shared/constants';
-import { LOCALHOST_CONFIG } from './src/config/localhost.config';
+import { APP_NAME, HttpMethod, LOCALHOST_CONFIG } from '../shared/constants';
 import type { ViteProxyConfig } from './src/types';
 
 

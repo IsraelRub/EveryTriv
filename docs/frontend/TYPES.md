@@ -117,8 +117,8 @@ export interface CurrentQuestionMetadata {
 **GameProps:**
 ```typescript
 export interface GameProps {
-  state: ClientGameState;
-  onStateChange: (newState: ClientGameState) => void;
+  state: GameModeConfig;
+  onStateChange: (config: GameModeConfig) => void;
   trivia?: TriviaQuestion;
   selected?: number | null;
   gameMode?: GameModeConfig;
@@ -203,28 +203,6 @@ export interface GameConfig extends Pick<GameModeConfig, 'mode' | 'timeLimit' | 
   topic: string;
   difficulty: GameDifficulty;
   settings?: GameUISettings;
-}
-```
-
-**ClientGameState:**
-```typescript
-export interface ClientGameState {
-  status: 'idle' | 'loading' | 'playing' | 'paused' | 'completed' | 'error';
-  isPlaying?: boolean;
-  currentQuestion?: number;
-  totalQuestions?: number;
-  questions?: TriviaQuestion[];
-  answers?: number[];
-  data?: GameData;
-  config?: GameConfig;
-  stats?: GameSessionStats;
-  error?: string;
-  trivia?: TriviaQuestion;
-  selected?: number | null;
-  loading?: boolean;
-  favorites?: FavoriteTopic[];
-  gameMode?: GameModeConfig;
-  streak?: number;
 }
 ```
 

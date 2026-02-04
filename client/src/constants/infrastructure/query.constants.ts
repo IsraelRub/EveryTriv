@@ -17,8 +17,6 @@ export const QUERY_KEYS = {
 		all: ['user'] as const,
 		profile: (userId: string = 'current') => toReactQueryKey(CACHE_KEYS.USER.PROFILE(userId)),
 		credits: (userId: string = 'current') => toReactQueryKey(CACHE_KEYS.USER.CREDITS(userId)),
-		userProfile: () => [...QUERY_KEYS.user.all, 'userProfile'] as const, // Specific for useUserProfile hook (client-only)
-		userPreferences: () => [...QUERY_KEYS.user.all, 'userPreferences'] as const, // Specific for useUserPreferences hook (client-only)
 	},
 
 	// Credits keys
@@ -121,5 +119,7 @@ export const QUERY_KEYS = {
 		users: (limit: number, offset: number) => [...QUERY_KEYS.admin.all, 'adminUsers', limit, offset] as const,
 		aiProviderStats: () => [...QUERY_KEYS.admin.all, 'aiProviderStats'] as const,
 		aiProviderHealth: () => [...QUERY_KEYS.admin.all, 'aiProviderHealth'] as const,
+		allUsersConsistency: () => [...QUERY_KEYS.admin.all, 'allUsersConsistency'] as const,
+		userStatsConsistency: (userId: string) => [...QUERY_KEYS.admin.all, 'userStatsConsistency', userId] as const,
 	},
 } as const;

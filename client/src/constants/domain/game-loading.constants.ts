@@ -5,7 +5,6 @@ export enum GameLoadingStep {
 	VALIDATING_QUESTIONS = 'Validating questions...',
 	INITIALIZING_SESSION = 'Initializing game session...',
 	TRACKING_ANALYTICS = 'Sending analytics data...',
-	LOADING_AUDIO = 'Loading audio...',
 	READY = 'Ready to start...',
 
 	// Multiplayer steps

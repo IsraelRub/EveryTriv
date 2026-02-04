@@ -1,7 +1,8 @@
 import { Component, ErrorInfo } from 'react';
 import { AlertCircle } from 'lucide-react';
 
-import { getErrorMessage, getErrorStack, getErrorType } from '@shared/utils';
+import { VALIDATORS } from '@shared/constants';
+import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
 
 import { ButtonSize, ButtonVariant, ERROR_LOG_KEY_PREFIX, MAX_RETRIES, VariantBase } from '@/constants';
 import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
@@ -26,44 +27,25 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 
 		// Extract API trace ID from error object
 		let apiTraceId: string | undefined;
-		if (error && typeof error === 'object' && !Array.isArray(error)) {
+		if (isRecord(error)) {
 			// Check various possible locations for trace ID
-			const errorRecord = error as unknown as Record<string, unknown>;
-			if ('traceId' in errorRecord && typeof errorRecord.traceId === 'string') {
-				apiTraceId = errorRecord.traceId;
-			} else if ('requestId' in errorRecord && typeof errorRecord.requestId === 'string') {
-				apiTraceId = errorRecord.requestId;
-			} else if (
-				'response' in errorRecord &&
-				errorRecord.response &&
-				typeof errorRecord.response === 'object' &&
-				errorRecord.response !== null &&
-				!Array.isArray(errorRecord.response)
-			) {
-				const response = errorRecord.response as Record<string, unknown>;
+			if ('traceId' in error && VALIDATORS.string(error.traceId)) {
+				apiTraceId = error.traceId;
+			} else if ('requestId' in error && VALIDATORS.string(error.requestId)) {
+				apiTraceId = error.requestId;
+			} else if ('response' in error && isRecord(error.response)) {
+				const response = error.response;
 				// Check response headers
-				if (
-					'headers' in response &&
-					response.headers &&
-					typeof response.headers === 'object' &&
-					response.headers !== null &&
-					!Array.isArray(response.headers)
-				) {
-					const headers = response.headers as Record<string, unknown>;
-					if ('x-trace-id' in headers && typeof headers['x-trace-id'] === 'string') {
+				if ('headers' in response && isRecord(response.headers)) {
+					const headers = response.headers;
+					if ('x-trace-id' in headers && VALIDATORS.string(headers['x-trace-id'])) {
 						apiTraceId = headers['x-trace-id'];
 					}
 				}
 				// Check response data
-				if (
-					'data' in response &&
-					response.data &&
-					typeof response.data === 'object' &&
-					response.data !== null &&
-					!Array.isArray(response.data)
-				) {
-					const data = response.data as Record<string, unknown>;
-					if ('traceId' in data && typeof data.traceId === 'string') {
+				if ('data' in response && isRecord(response.data)) {
+					const data = response.data;
+					if ('traceId' in data && VALIDATORS.string(data.traceId)) {
 						apiTraceId = data.traceId;
 					}
 				}
@@ -178,7 +160,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 							<details className='mt-2'>
 								<summary className='cursor-pointer text-xs font-medium'>Error Details</summary>
 								<pre className='bg-muted p-2 rounded text-xs overflow-auto max-h-32 mt-2'>
-									{this.state.error.toString()}
+									{getErrorMessage(this.state.error)}
 									{this.state.errorInfo?.componentStack}
 								</pre>
 							</details>

@@ -1,7 +1,7 @@
 // Game-related types for EveryTriv.
 import { GameMode } from '../../../constants';
 import type { BaseEntity, CountRecord, OffsetPagination } from '../../core';
-import type { QuestionData } from '../../infrastructure/api.types';
+import type { AnswerHistory } from '../../infrastructure/api.types';
 import type { BaseAnswerPayload, BaseTriviaParams, GameDifficulty } from './trivia.types';
 
 export interface BaseGameStatistics {
@@ -28,7 +28,7 @@ export interface BaseGameEntity extends BaseEntity {
 }
 
 export interface GameHistoryEntry extends BaseGameEntity {
-	questionsData: QuestionData[];
+	answerHistory: AnswerHistory[];
 	correctAnswers: number;
 	gameQuestionCount: number;
 	timeSpent?: number;
@@ -42,7 +42,7 @@ export interface SaveGameHistoryData {
 	difficulty: GameDifficulty;
 	gameMode: GameMode;
 	creditsUsed: number;
-	questionsData: QuestionData[];
+	answerHistory: AnswerHistory[];
 	clientMutationId?: string;
 	topic?: string;
 	timeSpent?: number;
@@ -163,4 +163,19 @@ export interface ClearOperationResponse {
 export interface SubmitAnswerToSessionParams extends BaseAnswerPayload {
 	gameId: string;
 	answer: number;
+}
+
+export interface GameSessionValidationResponse {
+	isValid: boolean;
+	session?: unknown;
+}
+
+export interface GameSessionStartResponse {
+	gameId: string;
+	status: string;
+}
+
+export interface GameStatsSummary {
+	averageScore: number;
+	totalGames: number;
 }

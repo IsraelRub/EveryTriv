@@ -5,20 +5,26 @@ import { cn } from '@/utils';
 
 export const Tabs = TabsPrimitive.Root;
 
-export const TabsList = forwardRef<
-	ElementRef<typeof TabsPrimitive.List>,
-	ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-	<TabsPrimitive.List
-		ref={ref}
-		className={cn(
-			'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
-			className
-		)}
-		{...props}
-	/>
-));
-TabsList.displayName = TabsPrimitive.List.displayName;
+export type TabsListVariant = 'default' | 'compact';
+
+export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
+	variant?: TabsListVariant;
+}
+
+export const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, TabsListProps>(
+	({ className, variant = 'default', ...props }, ref) => (
+		<TabsPrimitive.List
+			ref={ref}
+			className={cn(
+				'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+				variant === 'compact' && 'w-max mx-auto gap-2',
+				className
+			)}
+			{...props}
+		/>
+	)
+);
+TabsList.displayName = 'TabsList';
 
 export const TabsTrigger = forwardRef<
 	ElementRef<typeof TabsPrimitive.Trigger>,
@@ -33,7 +39,7 @@ export const TabsTrigger = forwardRef<
 		{...props}
 	/>
 ));
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+TabsTrigger.displayName = 'TabsTrigger';
 
 export const TabsContent = forwardRef<
 	ElementRef<typeof TabsPrimitive.Content>,
@@ -48,4 +54,4 @@ export const TabsContent = forwardRef<
 		{...props}
 	/>
 ));
-TabsContent.displayName = TabsPrimitive.Content.displayName;
+TabsContent.displayName = 'TabsContent';

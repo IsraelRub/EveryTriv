@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
-import { SERVER_CACHE_KEYS } from '@shared/constants';
+import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 
 import { AppConfig } from '@config';
 import { CacheService } from '@internal/modules';
@@ -46,7 +46,7 @@ export class PayPalAuthService {
 			);
 
 			const tokenData = response.data;
-			const ttl = Math.max(0, tokenData.expires_in - 60);
+			const ttl = Math.max(0, tokenData.expires_in - TIME_DURATIONS_SECONDS.MINUTE);
 
 			await this.cacheService.set(SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN, tokenData.access_token, ttl * 1000);
 

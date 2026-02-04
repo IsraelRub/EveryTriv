@@ -2,7 +2,14 @@ import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import { API_ENDPOINTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS, UserRole, VALIDATORS } from '@shared/constants';
+import {
+	API_ENDPOINTS,
+	LOCALHOST_CONFIG,
+	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
+	UserRole,
+	VALIDATORS,
+} from '@shared/constants';
 import type { AdminUserData, BasicUser, GoogleAuthRequest, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
@@ -19,7 +26,6 @@ import {
 	Roles,
 	RolesGuard,
 } from '../../common';
-import { LOCALHOST_CONFIG } from '../../config/localhost.config';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 

@@ -1292,13 +1292,11 @@ import { GameMode } from '@shared/constants';
 import type { GameModeConfig } from '@shared/types';
 import { AudioKey } from '../constants';
 import { audioService } from '../services';
-import type { ClientGameState } from '../types';
-
 // Hook לניהול טיימר משחק
 export function useGameTimer(
   currentGameMode: GameModeConfig | undefined,
-  onStateChange: (newState: ClientGameState) => void,
-  state: ClientGameState | undefined,
+  onStateChange: (config: GameModeConfig) => void,
+  state: GameModeConfig | undefined,
   onGameEnd?: () => void
 ): void {
   const lastWarningTimeRef = useRef<number | null>(null);
@@ -1307,7 +1305,7 @@ export function useGameTimer(
     if (!currentGameMode || currentGameMode.isGameOver) return;
 
     const checkGameOver = (): boolean => {
-      if (!onStateChange || !state?.gameMode) return false;
+      if (!onStateChange || !state) return false;
 
       let shouldEndGame = false;
       let updatedGameMode = { ...currentGameMode };
@@ -1337,10 +1335,7 @@ export function useGameTimer(
       }
 
       if (shouldEndGame) {
-        onStateChange({
-          ...state,
-          gameMode: updatedGameMode,
-        });
+        onStateChange(updatedGameMode);
         onGameEnd?.();
         return true;
       }
@@ -1358,7 +1353,7 @@ export function useGameTimer(
       const startTime = currentGameMode.timer?.startTime ?? now;
       const elapsed = now - startTime;
 
-      if (onStateChange && state?.gameMode) {
+      if (onStateChange && state) {
         const updatedTimer = {
           ...currentGameMode.timer,
           timeElapsed: elapsed,
@@ -1393,11 +1388,8 @@ export function useGameTimer(
         }
 
         onStateChange({
-          ...state,
-          gameMode: {
-            ...currentGameMode,
-            timer: updatedTimer,
-          },
+          ...currentGameMode,
+          timer: updatedTimer,
         });
 
         checkGameOver();
@@ -1656,8 +1648,12 @@ const {
 **State:**
 - `isConnected` - סטטוס חיבור WebSocket
 - `room` - מצב החדר הנוכחי (`MultiplayerRoom | null`)
-- `gameState` - מצב המשחק (`GameState | null`)
-- `leaderboard` - לוח תוצאות (`Player[]`)
+- `gameState` - מצב המשחק (`GameState | null`) - כולל:
+  - `leaderboard` - לוח תוצאות (`Player[]`)
+  - `answerCounts` - מספר השחקנים שענו על כל תשובה (`Record<string, number>`)
+  - `playersAnswers` - תשובות שחקנים (`Record<string, number>`)
+  - `playersScores` - ניקוד שחקנים (`Record<string, number>`)
+- `leaderboard` - לוח תוצאות (computed מ-`gameState.leaderboard`, fallback ל-`[]`)
 - `error` - שגיאות (`string | null`)
 
 **Methods:**
@@ -1674,8 +1670,11 @@ const {
 - `room-created`, `room-joined`, `room-left`
 - `player-joined`, `player-left`
 - `game-started`, `question-started`, `question-ended`, `game-ended`
-- `answer-received`, `leaderboard-update`, `room-updated`
+- `answer-received` (כולל `leaderboard` ו-`answerCounts`)
+- `room-updated`
 - `error`
+
+**הערה:** אירוע `answer-received` כולל את כל המידע הנדרש (`leaderboard` ו-`answerCounts`), ולכן אין צורך באירוע נפרד `leaderboard-update`.
 
 **Auto-connect:**
 ההוק מתחבר אוטומטית כאשר יש token זמין.

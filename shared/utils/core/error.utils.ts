@@ -2,6 +2,7 @@ import {
 	ERROR_MESSAGES,
 	HTTP_ERROR_MESSAGES,
 	HTTP_NETWORK_ERROR_CODES_SET,
+	HTTP_STATUS_CODES,
 	HTTP_TIMEOUT_ERROR_CODES_SET,
 	MAX_NESTED_ERROR_DEPTH,
 	NEST_EXCEPTION_NAME_SET,
@@ -21,7 +22,7 @@ export function isErrorWithResponseStatus(error: unknown): error is { response?:
 
 	const response = error.response;
 	if (response === undefined) {
-		return true;
+		return false;
 	}
 
 	if (!isRecord(response)) {
@@ -36,7 +37,22 @@ export function isErrorWithCode(error: unknown): error is { code?: string } {
 		return false;
 	}
 
-	return !('code' in error) || VALIDATORS.string(error.code) || error.code === undefined;
+	if (!('code' in error)) {
+		return false;
+	}
+
+	return VALIDATORS.string(error.code) || error.code === undefined;
+}
+
+export function isErrorWithProperties(error: unknown): error is { name?: string; message?: string } {
+	if (!isRecord(error)) {
+		return false;
+	}
+
+	return (
+		(error.name === undefined || VALIDATORS.string(error.name)) &&
+		(error.message === undefined || VALIDATORS.string(error.message))
+	);
 }
 
 const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | null => {
@@ -141,8 +157,27 @@ const getHttpErrorMessage = (error: Error & { code?: string; response?: unknown 
 		return response.statusText;
 	}
 
-	// Try response status
+	// Try response status with specific messages based on status code
 	if (response && 'status' in response && VALIDATORS.number(response.status)) {
+		const status = response.status;
+		if (status === HTTP_STATUS_CODES.NOT_FOUND) {
+			return ERROR_MESSAGES.general.NOT_FOUND;
+		}
+		if (status === HTTP_STATUS_CODES.UNAUTHORIZED) {
+			return ERROR_MESSAGES.general.UNAUTHORIZED;
+		}
+		if (status === HTTP_STATUS_CODES.FORBIDDEN) {
+			return ERROR_MESSAGES.general.FORBIDDEN;
+		}
+		if (status === HTTP_STATUS_CODES.TOO_MANY_REQUESTS) {
+			return ERROR_MESSAGES.general.RATE_LIMIT_EXCEEDED;
+		}
+		if (status >= HTTP_STATUS_CODES.SERVER_ERROR_MIN && status <= HTTP_STATUS_CODES.SERVER_ERROR_MAX) {
+			return ERROR_MESSAGES.general.INTERNAL_SERVER_ERROR;
+		}
+		if (status >= HTTP_STATUS_CODES.BAD_REQUEST && status < HTTP_STATUS_CODES.SERVER_ERROR_MIN) {
+			return ERROR_MESSAGES.general.VALIDATION_ERROR;
+		}
 		return HTTP_ERROR_MESSAGES.SERVER_ERROR;
 	}
 
@@ -382,4 +417,113 @@ export function isProviderErrorWithStatusCode(error: unknown): error is Provider
 	}
 
 	return 'statusCode' in error && VALIDATORS.number(error.statusCode);
+}
+
+export function getErrorStatusCode(error: unknown): number | null {
+	if (!isRecord(error)) {
+		return null;
+	}
+
+	// Check direct statusCode property
+	if ('statusCode' in error && VALIDATORS.number(error.statusCode)) {
+		return error.statusCode;
+	}
+
+	// Check response.status
+	if ('response' in error && isRecord(error.response)) {
+		const response = error.response;
+		if ('status' in response && VALIDATORS.number(response.status)) {
+			return response.status;
+		}
+	}
+
+	return null;
+}
+
+export function isNetworkError(error: unknown): boolean {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	if (!isRecord(error)) {
+		return false;
+	}
+
+	const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
+	return errorCode !== undefined && HTTP_NETWORK_ERROR_CODES_SET.has(errorCode);
+}
+
+export function isTimeoutError(error: unknown): boolean {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	if (!isRecord(error)) {
+		return false;
+	}
+
+	const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
+	return errorCode !== undefined && HTTP_TIMEOUT_ERROR_CODES_SET.has(errorCode);
+}
+
+export function isServerError(error: unknown): boolean {
+	const statusCode = getErrorStatusCode(error);
+	if (statusCode === null) {
+		return false;
+	}
+
+	return statusCode >= HTTP_STATUS_CODES.SERVER_ERROR_MIN && statusCode <= HTTP_STATUS_CODES.SERVER_ERROR_MAX;
+}
+
+export function isClientError(error: unknown): boolean {
+	const statusCode = getErrorStatusCode(error);
+	if (statusCode === null) {
+		return false;
+	}
+
+	return statusCode >= HTTP_STATUS_CODES.BAD_REQUEST && statusCode < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
+}
+
+export function getProviderFromError(error: unknown): string | null {
+	if (!isRecord(error)) {
+		return null;
+	}
+
+	if ('provider' in error && VALIDATORS.string(error.provider)) {
+		return error.provider;
+	}
+
+	return null;
+}
+
+export function getRetryAfterFromError(error: unknown): number | null {
+	if (!isRecord(error)) {
+		return null;
+	}
+
+	if ('retryAfter' in error && VALIDATORS.number(error.retryAfter)) {
+		return error.retryAfter;
+	}
+
+	// Check response headers for Retry-After
+	if ('response' in error && isRecord(error.response)) {
+		const response = error.response;
+		if ('headers' in response && isRecord(response.headers)) {
+			const headers = response.headers;
+			if ('retry-after' in headers) {
+				const retryAfter = headers['retry-after'];
+				if (VALIDATORS.string(retryAfter)) {
+					const parsed = Number.parseInt(retryAfter, 10);
+					if (!Number.isNaN(parsed) && parsed > 0) {
+						return parsed;
+					}
+				}
+				if (VALIDATORS.number(retryAfter) && retryAfter > 0) {
+					return retryAfter;
+				}
+			}
+		}
+	}
+
+	return null;
 }

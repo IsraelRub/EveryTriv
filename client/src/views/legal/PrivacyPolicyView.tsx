@@ -1,25 +1,22 @@
-import { motion } from 'framer-motion';
 import { Database, Eye, Lock, Mail, Shield } from 'lucide-react';
 
 import { ROUTES } from '@/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components';
+import { formatDate } from '@/utils';
 
 export function PrivacyPolicyView() {
 	return (
-		<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
-			<div className='max-w-4xl mx-auto space-y-8'>
-				<Card>
-					<CardHeader>
+		<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-up-simple'>
+			<div className='max-w-4xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8'>
+				<Card className='flex-1 flex flex-col overflow-hidden'>
+					<CardHeader className='flex-shrink-0'>
 						<div className='flex items-center gap-3 mb-2'>
-							<Shield className='h-8 w-8 text-primary' />
-							<CardTitle className='text-4xl font-bold'>Privacy Policy</CardTitle>
+							<Shield className='h-6 md:h-8 w-6 md:w-8 text-primary' />
+							<CardTitle className='text-3xl md:text-4xl font-bold'>Privacy Policy</CardTitle>
 						</div>
-						<p className='text-muted-foreground'>
-							Last updated:{' '}
-							{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-						</p>
+						<p className='text-sm md:text-base text-muted-foreground'>Last updated: {formatDate(new Date())}</p>
 					</CardHeader>
-					<CardContent className='space-y-8'>
+					<CardContent className='space-y-6 md:space-y-8 flex-1 overflow-y-auto'>
 						<section>
 							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
 								<Lock className='h-6 w-6 text-primary' />
@@ -208,6 +205,6 @@ export function PrivacyPolicyView() {
 					</CardContent>
 				</Card>
 			</div>
-		</motion.main>
+		</main>
 	);
 }

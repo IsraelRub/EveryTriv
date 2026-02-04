@@ -46,7 +46,6 @@ export const API_ENDPOINTS = {
 	CREDITS: {
 		BASE: '/credits',
 		BALANCE: '/credits/balance',
-		HISTORY: '/credits/history',
 		PACKAGES: '/credits/packages',
 		CAN_PLAY: '/credits/can-play',
 		DEDUCT: '/credits/deduct',
@@ -66,9 +65,7 @@ export const API_ENDPOINTS = {
 		BY_ID: '/game/:id',
 		ADMIN: {
 			STATISTICS: '/admin/statistics',
-			HISTORY_CLEAR_ALL: '/admin/history/clear-all',
 			TRIVIA: '/admin/trivia',
-			TRIVIA_CLEAR_ALL: '/admin/trivia/clear-all',
 		},
 	},
 	MULTIPLAYER: {
@@ -104,7 +101,6 @@ export const API_ENDPOINTS = {
 		SYSTEM_SECURITY: '/analytics/system/security',
 		SYSTEM_RECOMMENDATIONS: '/analytics/system/recommendations',
 		SYSTEM_INSIGHTS: '/analytics/system/insights',
-		ADMIN_STATS_CLEAR_ALL: '/admin/stats/clear-all',
 		LEADERBOARD: {
 			BASE: '/analytics/leaderboard',
 			STATS: '/analytics/leaderboard/stats',
@@ -112,6 +108,15 @@ export const API_ENDPOINTS = {
 			PERIOD: '/analytics/leaderboard/period/:period',
 			ADMIN_CLEAR_ALL: '/analytics/leaderboard/admin/clear-all',
 		},
+	},
+	MAINTENANCE: {
+		BASE: '/admin/maintenance',
+		STATS_CONSISTENCY_CHECK_ALL: '/admin/maintenance/stats/consistency-check/all',
+		STATS_CONSISTENCY: '/admin/maintenance/stats/consistency/:userId',
+		STATS_FIX_CONSISTENCY: '/admin/maintenance/stats/fix-consistency/:userId',
+		DATA_GAME_HISTORY_CLEAR_ALL: '/admin/maintenance/data/game-history/clear-all',
+		DATA_TRIVIA_CLEAR_ALL: '/admin/maintenance/data/trivia/clear-all',
+		DATA_USER_STATS_CLEAR_ALL: '/admin/maintenance/data/user-stats/clear-all',
 	},
 	AI_PROVIDERS: {
 		BASE: '/ai-providers',

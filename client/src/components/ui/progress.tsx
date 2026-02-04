@@ -18,4 +18,4 @@ export const Progress = forwardRef<
 		/>
 	</ProgressPrimitive.Root>
 ));
-Progress.displayName = ProgressPrimitive.Root.displayName;
+Progress.displayName = 'Progress';

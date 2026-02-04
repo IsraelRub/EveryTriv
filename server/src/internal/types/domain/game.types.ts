@@ -1,6 +1,6 @@
 import type { Socket } from 'socket.io';
 
-import { DifficultyLevel } from '@shared/constants';
+import { DifficultyLevel, GameMode, GameStatus } from '@shared/constants';
 import type {
 	BaseCacheEntry,
 	GameDifficulty,
@@ -157,4 +157,19 @@ export interface GameSessionQuestion {
 	timeSpent: number;
 	isCorrect: boolean;
 	score: number;
+}
+
+export interface GameSessionState {
+	gameId: string;
+	userId: string;
+	topic: string;
+	difficulty: GameDifficulty;
+	gameMode: GameMode;
+	startedAt: string;
+	lastHeartbeat?: string;
+	questions: GameSessionQuestion[];
+	currentScore: number;
+	correctAnswers: number;
+	totalQuestions: number;
+	status: GameStatus;
 }

@@ -23,8 +23,7 @@ server/src/internal/
 │   ├── gameHistory.entity.ts
 │   ├── userStats.entity.ts
 │   ├── creditTransaction.entity.ts
-│   ├── paymentHistory.entity.ts
-│   └── leaderboard.entity.ts
+│   └── paymentHistory.entity.ts
 ├── middleware/      # middleware
 │   ├── decorator-aware.middleware.ts
 │   ├── rateLimit.middleware.ts
@@ -54,7 +53,6 @@ server/src/internal/
 - `UserStatsEntity` - ישות סטטיסטיקות משתמש
 - `CreditTransactionEntity` - ישות עסקת נקודות
 - `PaymentHistoryEntity` - ישות היסטוריית תשלום
-- `LeaderboardEntity` - ישות לוח תוצאות
 
 **תכונות:**
 - יורשים מ-BaseEntity

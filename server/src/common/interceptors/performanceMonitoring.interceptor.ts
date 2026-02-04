@@ -6,11 +6,14 @@ import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger, metricsService } from '@internal/services';
+import { SystemAnalyticsService } from '@features/analytics/services';
 
 @Injectable()
 export class PerformanceInterceptor implements NestInterceptor {
 	private readonly SLOW_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.SLOW;
 	private readonly CRITICAL_REQUEST_THRESHOLD = PERFORMANCE_THRESHOLDS.CRITICAL;
+
+	constructor(private readonly systemAnalyticsService: SystemAnalyticsService) {}
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const traceId = logger.newTrace();
@@ -27,6 +30,8 @@ export class PerformanceInterceptor implements NestInterceptor {
 		return next.handle().pipe(
 			tap(_data => {
 				const duration = calculateDuration(startTime);
+
+				this.systemAnalyticsService.trackPerformanceEvent(duration, true);
 
 				// Track performance metrics
 				this.trackPerformanceMetrics(endpoint, method, duration, userId);
@@ -48,6 +53,8 @@ export class PerformanceInterceptor implements NestInterceptor {
 			}),
 			catchError(error => {
 				const duration = calculateDuration(startTime);
+
+				this.systemAnalyticsService.trackPerformanceEvent(duration, false);
 
 				// Track error performance
 				this.trackErrorPerformance(endpoint, method, duration, error, userId);

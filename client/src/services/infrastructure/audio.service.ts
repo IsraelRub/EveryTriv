@@ -25,8 +25,10 @@ export class AudioService {
 
 			// Start background music if not muted and music is enabled
 			// If userPreferences is null, default to musicEnabled: true
+			// Only play background music if game music is not currently playing
 			const musicEnabled = this.userPreferences?.musicEnabled ?? true;
-			if (!this.isMuted && musicEnabled) {
+			const isGameMusicPlaying = this.isPlaying(AudioKey.GAME_MUSIC);
+			if (!this.isMuted && musicEnabled && !isGameMusicPlaying) {
 				this.play(AudioKey.BACKGROUND_MUSIC);
 			}
 
@@ -273,26 +275,7 @@ export class AudioService {
 				audio.setAttribute('data-listeners-added', 'true');
 			}
 
-			audio.play().catch(err => {
-				// Handle autoplay restrictions gracefully
-				if (err.name === 'NotAllowedError') {
-					logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
-						key,
-						errorInfo: { message: String(err) },
-					});
-				} else if (err.name === 'AbortError') {
-					// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
-				} else if (err.name === 'NotSupportedError' || err.message?.includes('NotSupportedError')) {
-					// NotSupportedError usually means the audio format is not supported or file is missing
-					// This is handled silently as it's often a browser/cache issue
-					logger.mediaWarn(`Audio format not supported for ${key}. Skipping playback.`, {
-						key,
-						errorInfo: { message: String(err) },
-					});
-				} else {
-					logger.audioError(key, err.message, { key, errorInfo: { message: String(err) } });
-				}
-			});
+			this.handleAudioPlay(audio, key);
 			return;
 		}
 
@@ -305,31 +288,44 @@ export class AudioService {
 		const finalVolume = this.calculateVolume(key);
 		clonedNode.volume = this.isMuted ? 0 : finalVolume;
 
-		clonedNode.play().catch(err => {
-			// Handle autoplay restrictions gracefully
-			if (err.name === 'NotAllowedError') {
-				logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
-					key,
-					errorInfo: { message: String(err) },
-				});
-			} else if (err.name === 'AbortError') {
-				// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
-			} else if (err.name === 'NotSupportedError' || err.message?.includes('NotSupportedError')) {
-				// NotSupportedError usually means the audio format is not supported or file is missing
-				// This is handled silently as it's often a browser/cache issue
-				logger.mediaWarn(`Audio format not supported for ${key}. Skipping playback.`, {
-					key,
-					errorInfo: { message: String(err) },
-				});
-			} else {
-				logger.audioError(key, err.message, { key, errorInfo: { message: String(err) } });
-			}
-		});
+		this.handleAudioPlay(clonedNode, key);
 
 		// Clean up cloned node after it's done playing
 		clonedNode.addEventListener('ended', () => {
 			clonedNode.remove();
 		});
+	}
+
+	private handleAudioPlay(audio: HTMLAudioElement, key: AudioKey): void {
+		const playAudio = async () => {
+			try {
+				await audio.play();
+			} catch (err) {
+				// Handle autoplay restrictions gracefully
+				if (err instanceof Error && err.name === 'NotAllowedError') {
+					logger.mediaWarn(`Audio autoplay blocked for ${key}. User interaction required.`, {
+						key,
+						errorInfo: { message: getErrorMessage(err) },
+					});
+				} else if (err instanceof Error && err.name === 'AbortError') {
+					// Play was interrupted (e.g., by pause/stop) - this is expected and can be ignored
+				} else if (
+					err instanceof Error &&
+					(err.name === 'NotSupportedError' || err.message?.includes('NotSupportedError'))
+				) {
+					// NotSupportedError usually means the audio format is not supported or file is missing
+					// This is handled silently as it's often a browser/cache issue
+					logger.mediaWarn(`Audio format not supported for ${key}. Skipping playback.`, {
+						key,
+						errorInfo: { message: getErrorMessage(err) },
+					});
+				} else {
+					const errorMessage = err instanceof Error ? err.message : getErrorMessage(err);
+					logger.audioError(key, errorMessage, { key, errorInfo: { message: getErrorMessage(err) } });
+				}
+			}
+		};
+		playAudio();
 	}
 
 	public stop(key: AudioKey): void {
@@ -347,6 +343,14 @@ export class AudioService {
 			audio.pause();
 			audio.currentTime = 0;
 		});
+	}
+
+	public isPlaying(key: AudioKey): boolean {
+		const audio = this.audioElements.get(key);
+		if (!audio) {
+			return false;
+		}
+		return !audio.paused && audio.currentTime > 0;
 	}
 
 	public mute(): void {

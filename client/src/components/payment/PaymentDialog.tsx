@@ -310,13 +310,13 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-lg'>
-				<DialogHeader>
+			<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
+				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle>Complete Payment</DialogTitle>
 					<DialogDescription>Choose your payment method to purchase {totalCredits} credits</DialogDescription>
 				</DialogHeader>
 
-				<div className='space-y-6 py-4'>
+				<div className='space-y-4 md:space-y-6 py-4 flex-1 overflow-y-auto'>
 					{/* Error Message */}
 					{errorMessage && (
 						<Alert variant={VariantBase.DESTRUCTIVE}>
@@ -375,7 +375,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Label>PayPal Payment</Label>
 							{isProcessing ? (
 								<div className='flex items-center justify-center p-8 border rounded-lg'>
-									<Spinner size={SpinnerSize.LG} variant='loader' className='text-primary' />
+									<Spinner size={SpinnerSize.LG} className='text-primary' />
 								</div>
 							) : (
 								<div ref={setPaypalButtonContainer} className='min-h-[50px]' />
@@ -390,7 +390,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Button className='w-full' onClick={handleManualPayment} disabled={isProcessing} size={ButtonSize.LG}>
 								{isProcessing ? (
 									<>
-										<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
+										<Spinner size={SpinnerSize.SM} className='mr-2' />
 										Processing...
 									</>
 								) : (
@@ -404,7 +404,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					)}
 				</div>
 
-				<DialogFooter>
+				<DialogFooter className='flex-shrink-0'>
 					<Button variant={ButtonVariant.OUTLINE} onClick={() => onOpenChange(false)} disabled={isProcessing}>
 						Cancel
 					</Button>

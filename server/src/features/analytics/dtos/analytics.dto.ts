@@ -9,6 +9,7 @@ import {
 	IsObject,
 	IsOptional,
 	IsString,
+	IsUUID,
 	Max,
 	MaxLength,
 	Min,
@@ -163,11 +164,12 @@ export class TopicAnalyticsQueryDto {
 
 export class UserIdParamDto {
 	@ApiProperty({
-		description: 'User ID',
+		description: 'User ID (UUID)',
 		example: 'f6e8b1a2-1234-4abd-9c1d-5e7f6b8a9c0d',
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'User ID is required' })
+	@IsUUID('4', { message: 'User ID must be a valid UUID' })
 	userId!: string;
 }
 
@@ -350,4 +352,94 @@ export class GetLeaderboardStatsDto {
 		message: `Period must be one of: ${VALID_LEADERBOARD_PERIODS.join(', ')}`,
 	})
 	period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY;
+}
+
+export class UnifiedUserAnalyticsQueryDto {
+	@ApiPropertyOptional({
+		description: 'Comma-separated list of analytics sections to include',
+		example: 'statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress',
+	})
+	@IsOptional()
+	@IsString()
+	include?: string;
+
+	@ApiPropertyOptional({
+		description: 'Start date for date range filter',
+		example: '2024-01-01',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'Start date must be a valid date' })
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	startDate?: Date;
+
+	@ApiPropertyOptional({
+		description: 'End date for date range filter',
+		example: '2024-12-31',
+	})
+	@IsOptional()
+	@IsDateString({}, { message: 'End date must be a valid date' })
+	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	endDate?: Date;
+
+	@ApiPropertyOptional({
+		description: 'Group trend data by time period',
+		enum: VALID_TIME_PERIODS,
+	})
+	@IsOptional()
+	@IsString()
+	@IsIn(VALID_TIME_PERIODS, {
+		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
+	})
+	groupBy?: TimePeriod;
+
+	@ApiPropertyOptional({
+		description: 'Maximum number of activity entries to return',
+		minimum: 1,
+		maximum: 200,
+	})
+	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Activity limit must be a number' })
+	@Min(1, { message: 'Activity limit must be at least 1' })
+	@Max(200, { message: 'Activity limit cannot exceed 200' })
+	activityLimit?: number;
+
+	@ApiPropertyOptional({
+		description: 'Maximum number of trend points to return',
+		minimum: 1,
+		maximum: 200,
+	})
+	@IsOptional()
+	@Transform(({ value }) => parseInt(value, 10))
+	@IsNumber({}, { message: 'Trend limit must be a number' })
+	@Min(1, { message: 'Trend limit must be at least 1' })
+	@Max(200, { message: 'Trend limit cannot exceed 200' })
+	trendLimit?: number;
+
+	@ApiPropertyOptional({
+		description: 'Include full activity history in summary',
+		example: false,
+	})
+	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true')
+	@IsBoolean({ message: 'includeActivity must be a boolean value' })
+	includeActivity?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Target user ID for comparison (when include=comparison)',
+		example: 'a7c8b9d0-1234-4def-9abc-5e6f7d8c9b0a',
+	})
+	@IsOptional()
+	@IsString()
+	targetUserId?: string;
+
+	@ApiPropertyOptional({
+		description: 'Comparison target: global averages or another user',
+		enum: ComparisonTarget,
+	})
+	@IsOptional()
+	@IsIn(Object.values(ComparisonTarget), {
+		message: 'Target must be either global or user',
+	})
+	comparisonTarget?: ComparisonTarget;
 }

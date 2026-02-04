@@ -261,6 +261,67 @@ export const useClearAllLeaderboard = () => {
 	});
 };
 
+// ============================================================================
+// MAINTENANCE OPERATIONS - Consistency Checks
+// ============================================================================
+
+export const useCheckAllUsersConsistency = (enabled?: boolean) => {
+	const userRole = useUserRole();
+	const isAdmin = userRole === UserRole.ADMIN;
+
+	return useQuery({
+		queryKey: QUERY_KEYS.admin.allUsersConsistency(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.checkAllUsersConsistency();
+		},
+		enabled: enabled !== undefined ? enabled && isAdmin : isAdmin,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+	});
+};
+
+export const useCheckUserStatsConsistency = (userId: string | null, enabled?: boolean) => {
+	const userRole = useUserRole();
+	const isAdmin = userRole === UserRole.ADMIN;
+
+	return useQuery({
+		queryKey: QUERY_KEYS.admin.userStatsConsistency(userId ?? ''),
+		queryFn: async () => {
+			if (!isAdmin || !userId) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.checkUserStatsConsistency(userId);
+		},
+		enabled: enabled !== undefined ? enabled && isAdmin && !!userId : isAdmin && !!userId,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+	});
+};
+
+export const useFixUserStatsConsistency = () => {
+	const queryClient = useQueryClient();
+	const userRole = useUserRole();
+	const isAdmin = userRole === UserRole.ADMIN;
+
+	return useMutation({
+		mutationFn: async (userId: string) => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.fixUserStatsConsistency(userId);
+		},
+		onSuccess: (_, userId) => {
+			// Invalidate related queries
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userStatsConsistency(userId) });
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.allUsersConsistency() });
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userAnalytics() });
+		},
+	});
+};
+
 export const useBusinessMetrics = (enabled?: boolean) => {
 	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;

@@ -7,7 +7,7 @@ export class GameHistoryQueryDto {
 		description: 'Maximum number of entries to return',
 		minimum: 1,
 		maximum: 1000,
-		default: 20,
+		default: 50,
 	})
 	@IsOptional()
 	@Type(() => Number)

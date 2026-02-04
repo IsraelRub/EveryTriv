@@ -1,41 +1,11 @@
 import { QueryClient } from '@tanstack/react-query';
 
-import { TIME_PERIODS_MS, VALIDATORS } from '@shared/constants';
-import { calculateRetryDelay, getErrorMessage, isRecord } from '@shared/utils';
+import { TIME_PERIODS_MS } from '@shared/constants';
+import { calculateRetryDelay, getErrorMessage, isClientError } from '@shared/utils';
 
 import { QUERY_KEYS, ROUTES } from '@/constants';
 import { analyticsService, authService, creditsService, clientLogger as logger } from '@/services';
-
-function isErrorWithProperties(error: unknown): error is { name?: string; message?: string } {
-	if (!isRecord(error)) {
-		return false;
-	}
-
-	return (
-		(error.name === undefined || VALIDATORS.string(error.name)) &&
-		(error.message === undefined || VALIDATORS.string(error.message))
-	);
-}
-
-function isSessionExpiredError(error: unknown): boolean {
-	if (error instanceof Error) {
-		return (
-			error.name === 'SessionExpiredError' ||
-			error.message.includes('Session expired') ||
-			error.message.includes('SESSION_EXPIRED')
-		);
-	}
-
-	if (isErrorWithProperties(error)) {
-		return (
-			error.name === 'SessionExpiredError' ||
-			(error.message?.includes('Session expired') ?? false) ||
-			(error.message?.includes('SESSION_EXPIRED') ?? false)
-		);
-	}
-
-	return false;
-}
+import { isAuthPage, isSessionExpiredError } from '@/utils';
 
 function shouldRetry(failureCount: number, error: unknown, maxRetries: number): boolean {
 	// Never retry on session expired errors
@@ -43,33 +13,12 @@ function shouldRetry(failureCount: number, error: unknown, maxRetries: number): 
 		return false;
 	}
 
-	// Extract status code from error (can be Error instance or plain object)
-	let statusCode: number | undefined;
-	if (isRecord(error)) {
-		// Check for status property (used by some libraries)
-		if (VALIDATORS.number(error.status)) {
-			statusCode = error.status;
-		}
-		// Check for statusCode property (used by our ApiError)
-		else if (VALIDATORS.number(error.statusCode)) {
-			statusCode = error.statusCode;
-		}
-	}
-
 	// Don't retry on 4xx client errors (validation errors, bad requests, etc.)
-	if (statusCode && statusCode >= 400 && statusCode < 500) {
+	if (isClientError(error)) {
 		return false;
 	}
 
 	return failureCount < maxRetries;
-}
-
-function isAuthPage(): boolean {
-	if (typeof window === 'undefined') {
-		return false;
-	}
-	const currentPath = window.location.pathname;
-	return currentPath === ROUTES.LOGIN || currentPath === ROUTES.REGISTER;
 }
 
 async function handleSessionExpired(client: QueryClient): Promise<void> {
@@ -104,11 +53,16 @@ function setupErrorHandlers(client: QueryClient): void {
 		if (event.type === 'updated' && event.query.state.error) {
 			const error = event.query.state.error;
 			if (isSessionExpiredError(error)) {
-				handleSessionExpired(client).catch(handleError => {
-					logger.systemError('Failed to handle session expired in query cache subscription', {
-						errorInfo: { message: getErrorMessage(handleError) },
-					});
-				});
+				const handleQuerySessionExpired = async () => {
+					try {
+						await handleSessionExpired(client);
+					} catch (handleError) {
+						logger.systemError('Failed to handle session expired in query cache subscription', {
+							errorInfo: { message: getErrorMessage(handleError) },
+						});
+					}
+				};
+				handleQuerySessionExpired();
 			}
 		}
 	});
@@ -118,11 +72,16 @@ function setupErrorHandlers(client: QueryClient): void {
 		if (event.type === 'updated' && event.mutation.state.error) {
 			const error = event.mutation.state.error;
 			if (isSessionExpiredError(error)) {
-				handleSessionExpired(client).catch(handleError => {
-					logger.systemError('Failed to handle session expired in mutation cache subscription', {
-						errorInfo: { message: getErrorMessage(handleError) },
-					});
-				});
+				const handleMutationSessionExpired = async () => {
+					try {
+						await handleSessionExpired(client);
+					} catch (handleError) {
+						logger.systemError('Failed to handle session expired in mutation cache subscription', {
+							errorInfo: { message: getErrorMessage(handleError) },
+						});
+					}
+				};
+				handleMutationSessionExpired();
 			}
 		}
 	});

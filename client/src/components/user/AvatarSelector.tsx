@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import { VALIDATION_COUNT } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils';
 
-import { ButtonVariant } from '@/constants';
+import { ANIMATION_DELAYS, ButtonVariant, SPRING_CONFIGS } from '@/constants';
 import {
 	Avatar,
 	AvatarImage,
@@ -42,24 +43,19 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 			logger.userSuccess('Avatar updated successfully', { avatar: selectedAvatarId });
 			onOpenChange(false);
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error
-					? error.message
-					: typeof error === 'object' && error !== null && 'message' in error
-						? String(error.message)
-						: 'Failed to update avatar';
+			const errorMessage = getErrorMessage(error) || 'Failed to update avatar';
 			logger.userError('Failed to update avatar', { errorInfo: { message: errorMessage }, avatar: selectedAvatarId });
 		}
 	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='max-w-2xl'>
-				<DialogHeader>
+			<DialogContent className='max-w-2xl max-h-[90vh] flex flex-col'>
+				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle>Select Avatar</DialogTitle>
 					<DialogDescription>Choose an avatar from the available options</DialogDescription>
 				</DialogHeader>
-				<div className='space-y-4 py-4'>
+				<div className='space-y-4 py-4 flex-1 overflow-y-auto'>
 					{/* Avatar Grid - 4x4 */}
 					<div className='grid grid-cols-4 gap-2'>
 						{Array.from({ length: VALIDATION_COUNT.AVATAR_ID.MAX }, (_, i) => i + 1).map((avatarId, index) => {
@@ -83,11 +79,8 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 									initial={{ opacity: 0, scale: 0.8 }}
 									animate={{ opacity: 1, scale: 1 }}
 									transition={{
-										delay: index * 0.03,
-										duration: 0.3,
-										type: 'spring',
-										stiffness: 200,
-										damping: 20,
+										delay: index * ANIMATION_DELAYS.STAGGER_EXTRA_SMALL,
+										...SPRING_CONFIGS.ICON_SPRING,
 									}}
 									whileHover={{ scale: 1.05 }}
 									whileTap={{ scale: 0.95 }}
@@ -104,7 +97,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId }: AvatarSe
 						})}
 					</div>
 				</div>
-				<DialogFooter>
+				<DialogFooter className='flex-shrink-0'>
 					<Button variant={ButtonVariant.OUTLINE} onClick={() => onOpenChange(false)} disabled={setAvatar.isPending}>
 						Cancel
 					</Button>

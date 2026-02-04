@@ -1,5 +1,6 @@
 import { VALIDATORS } from '@shared/constants';
 import type {
+	AdminGameStatistics,
 	AuditLogEntry,
 	BasicValue,
 	BusinessMetrics,
@@ -12,8 +13,10 @@ import type {
 	TopicAnalyticsRecord,
 	TriviaQuestion,
 	TypeGuard,
+	UnifiedUserAnalyticsResponse,
 	UserProgressData,
 	UserSearchCacheEntry,
+	UserTrendPoint,
 } from '@shared/types';
 import { isRecord } from '@shared/utils';
 import { isGameDifficulty } from '@shared/validation';
@@ -252,4 +255,104 @@ export const isUserProgressData = (value: unknown): value is UserProgressData =>
 		hasBasicValue(value.lastPlayed, 'string') &&
 		hasBasicValue(value.difficulty, 'string')
 	);
+};
+
+const isCountRecord = (v: unknown): v is Record<string, number> =>
+	isRecord(v) && Object.values(v).every(val => VALIDATORS.number(val) && !Number.isNaN(val) && Number.isFinite(val));
+
+export const isAdminGameStatistics = (value: unknown): value is AdminGameStatistics => {
+	if (!isRecord(value)) {
+		return false;
+	}
+	return (
+		hasBasicValue(value.totalGames, 'number') &&
+		hasBasicValue(value.totalQuestionsAnswered, 'number') &&
+		hasBasicValue(value.correctAnswers, 'number') &&
+		hasBasicValue(value.accuracy, 'number') &&
+		hasBasicValue(value.activePlayers24h, 'number') &&
+		hasBasicValue(value.averageScore, 'number') &&
+		hasBasicValue(value.bestScore, 'number') &&
+		(isCountRecord(value.topics) || (isRecord(value.topics) && Object.keys(value.topics).length === 0)) &&
+		(isCountRecord(value.difficultyDistribution) ||
+			(isRecord(value.difficultyDistribution) && Object.keys(value.difficultyDistribution).length === 0)) &&
+		(value.lastActivity === null || hasBasicValue(value.lastActivity, 'string'))
+	);
+};
+
+const isUserTrendPoint = (value: unknown): value is UserTrendPoint => {
+	if (!isRecord(value)) {
+		return false;
+	}
+	return (
+		hasBasicValue(value.date, 'string') &&
+		hasBasicValue(value.score, 'number') &&
+		hasBasicValue(value.successRate, 'number') &&
+		hasBasicValue(value.totalQuestionsAnswered, 'number') &&
+		hasBasicValue(value.correctAnswers, 'number') &&
+		hasOptionalBasicValue(value.topic, 'string') &&
+		hasOptionalBasicValue(value.difficulty, 'string')
+	);
+};
+
+export const isUserTrendPointArray = createArrayGuard(isUserTrendPoint);
+
+const UNIFIED_SECTION_KEYS = new Set([
+	'statistics',
+	'performance',
+	'insights',
+	'recommendations',
+	'summary',
+	'achievements',
+	'trends',
+	'activity',
+	'progress',
+	'comparison',
+]);
+
+export const isUnifiedUserAnalyticsResponse = (value: unknown): value is UnifiedUserAnalyticsResponse => {
+	if (!isRecord(value)) {
+		return false;
+	}
+	const keys = Object.keys(value);
+	if (keys.length > 0 && !keys.every(k => UNIFIED_SECTION_KEYS.has(k))) {
+		return false;
+	}
+	if (value.statistics !== undefined) {
+		const s = value.statistics;
+		if (!isRecord(s) || !hasBasicValue(s.totalGames, 'number') || !hasBasicValue(s.successRate, 'number')) {
+			return false;
+		}
+	}
+	if (value.trends !== undefined) {
+		if (!isUserTrendPointArray(value.trends)) {
+			return false;
+		}
+	}
+	if (value.performance !== undefined) {
+		const p = value.performance;
+		if (!isRecord(p) || !hasBasicValue(p.streakDays, 'number')) {
+			return false;
+		}
+	}
+	return true;
+};
+
+export const isAnalyticsResponseUserTrendPointArray = (
+	value: unknown
+): value is import('@shared/types').AnalyticsResponse<UserTrendPoint[]> => {
+	if (!isRecord(value) || !('data' in value) || !('timestamp' in value)) {
+		return false;
+	}
+	const v = value as { data: unknown; timestamp: unknown };
+	return hasBasicValue(v.timestamp, 'string') && Array.isArray(v.data) && (v.data as unknown[]).every(isUserTrendPoint);
+};
+
+export const isAnalyticsResponseUnifiedUserAnalytics = (
+	value: unknown
+): value is import('@shared/types').AnalyticsResponse<UnifiedUserAnalyticsResponse> => {
+	if (!isRecord(value) || !('data' in value) || !('timestamp' in value)) {
+		return false;
+	}
+	const v = value as { data: unknown; timestamp: unknown };
+	return hasBasicValue(v.timestamp, 'string') && isUnifiedUserAnalyticsResponse(v.data);
 };

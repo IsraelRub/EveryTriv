@@ -62,7 +62,7 @@ packages:
 **תפקיד:** הגדרת קבצים ותיקיות להתעלם מ-git  
 **קטגוריות:**
 - Dependencies (`node_modules/`, `pnpm-debug.log*`)
-- Build outputs (`dist/`, `build/`, `dist-temp/`)
+- Build outputs (`dist/`, `build/`)
 - Environment variables (`.env*`)
 - IDE files (`.vscode/`, `.idea/`, `.cursor/`)
 - OS files (`.DS_Store`, `Thumbs.db`)
@@ -129,7 +129,7 @@ export default defineConfig({
 - JSX: `react-jsx`
 - Strict mode: מופעל
 - Path aliases: תואם ל-`vite.config.ts`
-- OutDir: `./dist-temp` (לבדיקות TypeScript)
+- NoEmit: `true` (TypeScript משמש רק לבדיקת טיפוסים, Vite בונה את הפלט)
 
 **Path Aliases:**
 ```json
@@ -370,12 +370,7 @@ COPY client/nginx.conf /etc/nginx/nginx.conf
 
 ## קבצי תצורה נוספים
 
-### `.vscode/tasks.json`
-**מיקום:** `.vscode/tasks.json`  
-**תפקיד:** הגדרת tasks ל-VS Code  
-**תכונות:** Tasks להרצת client/server בפיתוח
-
-### `.npmrc` (אם קיים)
+### `.npmrc`
 **מיקום:** `./.npmrc`  
 **תפקיד:** תצורת npm/pnpm  
 **תכונות:** הגדרות registry, cache, וכו'

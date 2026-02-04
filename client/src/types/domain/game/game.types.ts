@@ -1,30 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 
-import { DifficultyLevel, GameMode, type GameMode as GameModeType } from '@shared/constants';
-import type {
-	GameConfig,
-	GameDifficulty,
-	GameHistoryEntry,
-	QuestionData,
-	TriviaAnswer,
-	TriviaQuestion,
-} from '@shared/types';
-
-import { GameClientStatus } from '@/constants';
+import { GameMode, type GameMode as GameModeType } from '@shared/constants';
+import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry } from '@shared/types';
 
 export interface CustomSettings {
 	questionCount: number;
 	timePerQuestion: number;
 	difficultyValue: number;
-}
-
-export interface ClientGameData {
-	questions: TriviaQuestion[];
-	answers: TriviaAnswer[];
-	score: number;
-	currentQuestionIndex: number;
-	startTime: Date;
-	endTime?: Date;
 }
 
 export interface GameModeState {
@@ -34,19 +16,6 @@ export interface GameModeState {
 	currentSettings: GameConfig;
 	isLoading: boolean;
 	error?: string;
-}
-
-export interface ClientGameState {
-	status: GameClientStatus;
-	data?: ClientGameData;
-	stats?: ClientGameSessionStats;
-	error?: string;
-}
-
-export interface ClientGameSessionStats {
-	currentScore: number;
-	correctStreak: number;
-	maxStreak: number;
 }
 
 export interface GameModeOption {
@@ -70,34 +39,12 @@ export interface GameSummaryStats {
 	percentage: number;
 	topic: string;
 	difficulty: GameDifficulty;
-	questionsData: QuestionData[];
+	answerHistory: AnswerHistory[];
 }
 
 export interface DeductCreditsParams {
 	questionsPerRequest: number;
 	gameMode?: GameModeType;
-}
-
-export interface GameSettingsFormProps {
-	topic: string;
-	onTopicChange: (topic: string) => void;
-	topicError?: string;
-	selectedDifficulty: DifficultyLevel;
-	onDifficultyChange: (difficulty: DifficultyLevel) => void;
-	customDifficulty: string;
-	onCustomDifficultyChange: (customDifficulty: string) => void;
-	customDifficultyError: string;
-	onCustomDifficultyErrorChange: (error: string) => void;
-	answerCount: number;
-	onAnswerCountChange: (count: number) => void;
-	selectedMode?: GameMode;
-	maxQuestionsPerGame?: number;
-	onMaxQuestionsPerGameChange?: (count: number) => void;
-	timeLimit?: number;
-	onTimeLimitChange?: (limit: number) => void;
-	maxPlayers?: number;
-	onMaxPlayersChange?: (count: number) => void;
-	showMaxPlayers?: boolean;
 }
 
 export interface FinalizeGameOptions {
@@ -108,4 +55,6 @@ export interface FinalizeGameOptions {
 	analyticsProperties?: Record<string, unknown>;
 	playErrorSound?: boolean;
 	logContext?: string;
+
+	gameId?: string | null;
 }

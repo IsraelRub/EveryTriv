@@ -5,7 +5,7 @@ import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
 
 import { QUERY_KEYS, STORAGE_KEYS } from '@/constants';
-import { authService, clientLogger as logger } from '@/services';
+import { authService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
 import { store } from '@/redux/store';
 
@@ -83,8 +83,7 @@ export const useLogin = () => {
 					// Update React Query cache with user data
 					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
 
-					// Invalidate auth-related queries to trigger refetch
-					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+					queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {
 					logger.authError('Token mismatch', {
 						userId: data.user.id,
@@ -131,8 +130,7 @@ export const useRegister = () => {
 					// Update React Query cache with user data
 					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
 
-					// Invalidate auth-related queries to trigger refetch
-					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+					queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {
 					logger.authError('Token mismatch', {
 						userId: data.user.id,

@@ -30,8 +30,7 @@
 
 טיפוסים משותפים נמצאים ב-`@shared/types`:
 - `TriviaQuestion` - שאלת טריוויה
-- `TriviaQuestionInput` - קלט שאלה
-- `TriviaQuestionDetailsMetadata` - metadata מפורט (כולל `TriviaQuestionSource`)
+- `TriviaQuestionDetailsMetadata` - metadata מפורט
 
 ## מבנה מודול
 

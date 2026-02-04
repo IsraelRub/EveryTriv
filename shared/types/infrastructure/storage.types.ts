@@ -20,9 +20,6 @@ export interface StorageService {
 		ttl: number | undefined,
 		validator: TypeGuard<T>
 	): Promise<T>;
-	setItem?<T extends StorageValue>(key: string, value: T, ttl?: number): Promise<StorageOperationResult<void>>;
-	getItem?<T extends StorageValue>(key: string, validator: TypeGuard<T>): Promise<StorageOperationResult<T | null>>;
-	removeItem?(key: string): Promise<StorageOperationResult<void>>;
 }
 
 export interface StorageConfig {
@@ -42,11 +39,6 @@ export interface StorageOperationResult<T = StorageItemMetadata> {
 	timestamp: Date;
 	duration?: number;
 	storageType?: StorageType;
-}
-
-export interface StorageStatsResult {
-	persistent: StorageStats | null;
-	cache: StorageStats | null;
 }
 
 export interface StorageItemMetadata extends BaseCacheEntry {
@@ -71,6 +63,8 @@ export interface StorageStatsItem {
 	items: number;
 	size: number;
 }
+
+export type StorageStatsItemByType = Record<StorageType, StorageStatsItem>;
 
 export interface StorageStats {
 	totalItems: number;
@@ -97,59 +91,15 @@ export interface StorageStats {
 	avgResponseTime?: number;
 	utilization?: number;
 	opsPerSecond?: number;
-	typeBreakdown?: Record<StorageType, { items: number; size: number }>;
+	typeBreakdown?: StorageStatsItemByType;
 }
 
 export interface StorageCleanupOptions {
 	maxAge?: number;
 	maxSize?: number;
-	excludePatterns?: string[];
-	includeExpired?: boolean;
-	force?: boolean;
 	removeExpired?: boolean;
 	dryRun?: boolean;
 	types?: StorageType[];
-}
-
-export interface StorageMigrationOptions {
-	sourceType: StorageType;
-	targetType: StorageType;
-	keys?: string[];
-	patterns?: string[];
-	validate?: boolean;
-	backup?: boolean;
-}
-
-export interface StorageSyncOptions {
-	keys?: string[];
-	patterns?: string[];
-	userId?: string;
-	force?: boolean;
-	validate?: boolean;
-	timeout?: number;
-	retry?: {
-		maxRetries?: number;
-		delay?: number;
-	};
-	onProgress?: (progress: StorageSyncProgress) => void;
-	onError?: (error: Error) => void;
-	onComplete?: (result: StorageSyncResult) => void;
-}
-
-export interface StorageSyncProgress {
-	current: number;
-	total: number;
-	percentage: number;
-	currentKey?: string;
-	status: 'syncing' | 'validating' | 'completed' | 'error';
-}
-
-export interface StorageSyncResult {
-	success: boolean;
-	synced: number;
-	failed: number;
-	errors?: string[];
-	duration: number;
 }
 
 export interface StorageMetrics {
@@ -190,9 +140,7 @@ export interface StorageMetrics {
 	};
 	storage: {
 		totalSize: number;
-		itemCount: number;
-		hitRate: number;
-		missRate: number;
+		totalItems: number;
 	};
 	storageTypes?: Record<
 		StorageType,

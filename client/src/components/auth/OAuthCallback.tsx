@@ -6,9 +6,9 @@ import { AlertCircle } from 'lucide-react';
 import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType, TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { ButtonVariant, QUERY_KEYS, ROUTES, SpinnerSize, STORAGE_KEYS, VariantBase } from '@/constants';
-import { Alert, AlertDescription, BackToHomeButton, Button, Card, Spinner } from '@/components';
-import { authService, clientLogger as logger, queryClient, storageService } from '@/services';
+import { ButtonSize, ButtonVariant, QUERY_KEYS, ROUTES, SpinnerSize, STORAGE_KEYS, VariantBase } from '@/constants';
+import { Alert, AlertDescription, Button, Card, HomeButton, Spinner } from '@/components';
+import { authService, clientLogger as logger, queryClient, queryInvalidationService, storageService } from '@/services';
 
 export function OAuthCallback() {
 	const navigate = useNavigate();
@@ -108,8 +108,7 @@ export function OAuthCallback() {
 					// Update React Query cache with user data
 					logger.authDebug('Setting user in React Query cache');
 					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), user);
-					// Invalidate auth queries to trigger refetch
-					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+					queryInvalidationService.invalidateAuthQueries(queryClient);
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
 
@@ -167,7 +166,7 @@ export function OAuthCallback() {
 			<Card className='w-full max-w-md p-8'>
 				{status === CallbackStatus.PROCESSING && (
 					<div className='text-center space-y-4'>
-						<Spinner size={SpinnerSize.XL} variant='fullscreen' className='mx-auto' />
+						<Spinner size={SpinnerSize.XL} className='mx-auto' />
 						<div>
 							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
 							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>
@@ -206,10 +205,10 @@ export function OAuthCallback() {
 								<p className='text-sm text-muted-foreground mt-2'>Redirecting you back to the login page...</p>
 							</div>
 							<div className='flex gap-2 justify-center'>
-								<Button onClick={() => window.location.reload()} variant={ButtonVariant.DEFAULT}>
+								<Button onClick={() => window.location.reload()} variant={ButtonVariant.OUTLINE} size={ButtonSize.LG}>
 									Try Again
 								</Button>
-								<BackToHomeButton variant={ButtonVariant.OUTLINE} />
+								<HomeButton />
 							</div>
 						</div>
 					</div>

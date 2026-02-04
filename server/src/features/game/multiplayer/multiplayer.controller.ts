@@ -11,9 +11,16 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { API_ENDPOINTS, ERROR_CODES, GAME_MODE_DEFAULTS, GameMode, VALIDATORS } from '@shared/constants';
+import {
+	API_ENDPOINTS,
+	ERROR_CODES,
+	GAME_MODE_DEFAULTS,
+	GameMode,
+	LOCALHOST_CONFIG,
+	VALIDATORS,
+} from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, isRecord } from '@shared/utils';
 import { isRoomId, toDifficultyLevel } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
@@ -25,7 +32,6 @@ import type {
 } from '@internal/types';
 
 import { CurrentUserId, Public } from '../../../common';
-import { LOCALHOST_CONFIG } from '../../../config/localhost.config';
 import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
 
@@ -355,8 +361,7 @@ export class MultiplayerController {
 		}
 
 		if (
-			typeof error === 'object' &&
-			error !== null &&
+			isRecord(error) &&
 			(('status' in error && VALIDATORS.number(error.status) && error.status === HttpStatus.NOT_FOUND) ||
 				('statusCode' in error && VALIDATORS.number(error.statusCode) && error.statusCode === HttpStatus.NOT_FOUND))
 		) {

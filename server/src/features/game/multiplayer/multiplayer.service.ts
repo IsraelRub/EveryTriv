@@ -6,11 +6,10 @@ import type {
 	GameState,
 	MultiplayerAnswerResult,
 	MultiplayerRoom,
-	Player,
-	QuestionResult,
+	QuestionEndResponse,
+	QuestionStartResponse,
 	RoomConfig,
 	RoomStateResponse,
-	TriviaQuestion,
 } from '@shared/types';
 import { getCorrectAnswerIndex } from '@shared/utils';
 
@@ -126,6 +125,7 @@ export class MultiplayerService {
 			isCorrect: result.isCorrect,
 			scoreEarned: result.scoreEarned,
 			leaderboard: gameState.leaderboard,
+			answerCounts: gameState.answerCounts,
 		};
 	}
 
@@ -142,13 +142,7 @@ export class MultiplayerService {
 		return await this.gameStateService.nextQuestion(room);
 	}
 
-	async startQuestion(roomId: string): Promise<{
-		question: TriviaQuestion;
-		questionIndex: number;
-		timeLimit: number;
-		serverStartTimestamp: number;
-		serverEndTimestamp: number;
-	} | null> {
+	async startQuestion(roomId: string): Promise<QuestionStartResponse | null> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room || room.status !== RoomStatus.PLAYING) {
 			return null;
@@ -177,13 +171,7 @@ export class MultiplayerService {
 		};
 	}
 
-	async endQuestion(roomId: string): Promise<{
-		questionId: string;
-		correctAnswer: number;
-		results: QuestionResult[];
-		leaderboard: Player[];
-		updatedRoom: MultiplayerRoom;
-	} | null> {
+	async endQuestion(roomId: string): Promise<QuestionEndResponse | null> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room || room.status !== RoomStatus.PLAYING) {
 			return null;

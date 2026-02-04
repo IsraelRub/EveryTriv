@@ -6,10 +6,10 @@
 
 ### קשר למסמכי פיתוח (Implementation)
 רכיבי אינטראקציה (אנימציה ואודיו) מתועדים ברמת יישום ב:
-- `./ANIMATION_SYSTEM.md` – לולאות, hooks ביצועים, התאמות reduced motion
+- `./ANIMATION_SYSTEM.md` – לולאות, hooks ביצועים
 - `./AUDIO_SYSTEM.md` – שכבות AudioService, קטגוריות צליל, אסטרטגיות טעינה
 
-תיעוד זה נשאר מקור האמת לעקרונות עיצוב, טוקנים, דפוסי קומפוננטים ונגישות. מסמכי הפיתוח מפנים לכאן ולא משכפלים טוקנים.
+תיעוד זה נשאר מקור האמת לעקרונות עיצוב, טוקנים ודפוסי קומפוננטים. מסמכי הפיתוח מפנים לכאן ולא משכפלים טוקנים.
 
 ## עקרונות עיצוב
 
@@ -18,18 +18,12 @@
 - רכיבים ניתנים לשימוש חוזר
 - התנהגות אחידה בכל האפליקציה
 
-### 2. נגישות
-- תמיכה ב-WCAG 2.1 AA
-- ניגודיות צבעים נכונה
-- ניווט מקלדת
-- תמיכה בקורא מסך
-
-### 3. ביצועים
+### 2. ביצועים
 - אופטימיזציה של אנימציות
 - טעינה הדרגתית של רכיבים
 - תמיכה במצבי ביצועים נמוכים
 
-### 4. רספונסיביות
+### 3. רספונסיביות
 - עיצוב מותאם לכל הגדלי מסך
 - התאמה למובייל תחילה
 - פריסה גמישה
@@ -181,7 +175,6 @@ client/src/
 |--------|-----|
 | Separation | אין לוגיקת דומיין ברכיב Presentational |
 | Tokens First | שימוש עקבי בטוקנים (צבע, טיפוגרפיה, מרווח) |
-| Accessibility | תמיכה ב-Keyboard + aria + Reduced Motion |
 | Controlled Variants | וריאנטים מוצהרים (size, variant, state) |
 | Minimal DOM | ללא עטיפות מיותרות לביצועים |
 
@@ -217,9 +210,6 @@ client/src/
 - `.auth-view-layout` - פריסת מסכי אימות
 - `.grid-content`, `.grid-cards`, `.grid-stats`, `.grid-form`, `.grid-game`, `.grid-balanced`, `.grid-compact`, `.grid-auto-fit` - פריסות grid שונות
 
-### Accessibility
-- `.sr-only` - טקסט נסתר לקוראי מסך (screen reader only)
-
 ### Game-Specific
 - `.game-over` - סגנון לסיום משחק
 - `.game-timer` - טיימר משחק
@@ -246,23 +236,6 @@ client/src/
 - `.animate-scale-in` - אנימציית scale in
 - `.animate-spin` - אנימציית סיבוב
 - `.animate-pulse` - אנימציית pulse
-
-### Reduced Motion Support
-
-הפרויקט תומך ב-`prefers-reduced-motion`:
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-```
 
 ## שימוש ב-CSS Variables
 
@@ -549,110 +522,7 @@ export const IconX: React.FC<{ className?: string }> = ({ className }) => (
 
 **הערה:** אנימציות CSS מוגדרות ב-`styles/global.css` (ראו סעיף "אנימציות CSS" למעלה). אנימציות React מתועדות ב-`./ANIMATION_SYSTEM.md`.
 
-## תמיכה בנגישות
-
-### ARIA Labels
-```typescript
-// aria-labels.ts
-export const ariaLabels = {
-  // ניווט
-  navigation: 'ניווט ראשי',
-  menuToggle: 'פתח/סגור תפריט',
-  
-  // משחק
-  startGame: 'התחל משחק',
-  pauseGame: 'השהה משחק',
-  endGame: 'סיים משחק',
-  
-  // שאלות
-  questionText: 'טקסט השאלה',
-  answerOption: 'אפשרות תשובה',
-  submitAnswer: 'שלח תשובה',
-  
-  // תוצאות
-  scoreDisplay: 'תצוגת ניקוד',
-  timerDisplay: 'תצוגת טיימר',
-  
-  // הגדרות
-  settingsMenu: 'תפריט הגדרות',
-  volumeControl: 'בקרת עוצמת קול',
-  themeToggle: 'החלף ערכת נושא',
-} as const;
-```
-
-### Focus Management
-דוגמה למימוש focus trap:
-```typescript
-import { useRef, useEffect } from 'react';
-
-// דוגמה קונספטואלית - לא מימוש קיים בפרויקט
-export const useFocusTrap = (isActive: boolean) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isActive || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const focusableElements = container.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-
-    // Type assertion נדרש כאן כי querySelectorAll מחזיר NodeListOf<Element>
-    const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    container.addEventListener('keydown', handleKeyDown);
-    firstElement?.focus();
-
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isActive]);
-
-  return containerRef;
-};
-```
-
 ## תמיכה במצבי ביצועים נמוכים
-
-### Reduced Motion
-```typescript
-import { useEffect, useState } from 'react';
-
-export const useReducedMotion = () => {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  return prefersReducedMotion;
-};
-```
 
 ### Performance Optimized Components
 ```typescript

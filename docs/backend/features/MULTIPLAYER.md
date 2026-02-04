@@ -238,12 +238,16 @@ server/src/features/game/multiplayer/
   data: {
     userId: string;
     questionId: string;
+    answerIndex: number;
     isCorrect: boolean;
     scoreEarned: number;
-    leaderboard: Player[];
+    leaderboard?: Player[];
+    answerCounts?: Record<string, number>;
   };
 }
 ```
+
+**הערה:** אירוע זה כולל את כל המידע הנדרש, כולל `leaderboard` ו-`answerCounts` (מספר השחקנים שענו על כל תשובה). אין צורך באירוע נפרד לעדכון לוח תוצאות.
 
 #### `question-ended`
 שאלה הסתיימה.
@@ -278,20 +282,6 @@ server/src/features/game/multiplayer/
     finalLeaderboard: Player[];
     winner: Player | null;
     gameDuration: number;
-  };
-}
-```
-
-#### `leaderboard-update`
-עדכון לוח תוצאות.
-
-```typescript
-{
-  type: 'leaderboard-update';
-  roomId: string;
-  timestamp: Date;
-  data: {
-    leaderboard: Player[];
   };
 }
 ```

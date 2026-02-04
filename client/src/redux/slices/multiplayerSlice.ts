@@ -1,21 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import type { GameState, MultiplayerRoom, Player } from '@shared/types';
+import type { GameState, MultiplayerRoom } from '@shared/types';
 
-export interface MultiplayerState {
-	isConnected: boolean;
-	room: MultiplayerRoom | null;
-	gameState: GameState | null;
-	leaderboard: Player[];
-	error: string | null;
-	isLoading: boolean;
-}
+import type { MultiplayerState } from '@/types';
 
 const initialState: MultiplayerState = {
 	isConnected: false,
 	room: null,
 	gameState: null,
-	leaderboard: [],
 	error: null,
 	isLoading: false,
 };
@@ -33,9 +25,6 @@ export const multiplayerSlice = createSlice({
 		updateGameState: (state, action: PayloadAction<GameState | null>) => {
 			state.gameState = action.payload;
 		},
-		updateLeaderboard: (state, action: PayloadAction<Player[]>) => {
-			state.leaderboard = action.payload;
-		},
 		setError: (state, action: PayloadAction<string | null>) => {
 			state.error = action.payload;
 		},
@@ -46,14 +35,7 @@ export const multiplayerSlice = createSlice({
 	},
 });
 
-export const {
-	setConnectionStatus,
-	setRoom,
-	updateGameState,
-	updateLeaderboard,
-	setError,
-	setLoading,
-	resetMultiplayer,
-} = multiplayerSlice.actions;
+export const { setConnectionStatus, setRoom, updateGameState, setError, setLoading, resetMultiplayer } =
+	multiplayerSlice.actions;
 
 export default multiplayerSlice.reducer;

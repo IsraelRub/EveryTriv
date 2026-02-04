@@ -1,6 +1,7 @@
 import type { ErrorInfo, ReactNode } from 'react';
+import { LucideIcon } from 'lucide-react';
 
-import { FeatureHighlightAccent } from '@/constants';
+import { NamedColor } from '@/constants';
 
 export interface BaseComponentProps {
 	className?: string;
@@ -11,10 +12,10 @@ export interface BaseComponentProps {
 
 export interface FeatureHighlightItem {
 	id: string;
-	icon: string;
+	icon: LucideIcon;
 	label: string;
 	description?: string;
-	accent?: FeatureHighlightAccent;
+	accent?: NamedColor;
 }
 
 export interface ErrorBoundaryProps {

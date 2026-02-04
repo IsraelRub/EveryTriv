@@ -3,6 +3,7 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from 
 import { ERROR_CODES, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { CacheService } from '@internal/modules';
 import { serverLogger as logger, metricsService } from '@internal/services';
 import { createStorageError } from '@internal/utils';
 
@@ -11,7 +12,10 @@ import { StorageService } from './storage.service';
 
 @Controller('storage')
 export class StorageController {
-	constructor(private readonly storageService: StorageService) {}
+	constructor(
+		private readonly storageService: StorageService,
+		private readonly cacheService: CacheService
+	) {}
 
 	@Get('metrics')
 	@Public()
@@ -19,11 +23,29 @@ export class StorageController {
 	async getMetrics() {
 		try {
 			const metrics = metricsService.getMetrics();
+			const [storageResult, cacheResult] = await Promise.all([
+				this.storageService.getStats(),
+				this.cacheService.getStats(),
+			]);
+
+			let totalItems = 0;
+			let totalSize = 0;
+			if (storageResult.success && storageResult.data) {
+				totalItems += storageResult.data.totalItems;
+				totalSize += storageResult.data.totalSize;
+			}
+			if (cacheResult.success && cacheResult.data) {
+				totalItems += cacheResult.data.totalItems;
+				totalSize += cacheResult.data.totalSize;
+			}
+			metrics.storage = { totalItems, totalSize };
 
 			logger.apiRead('storage_metrics', {
 				totalOps: metrics.totalOps,
 				totalErrors: metrics.totalErrors,
 				avgResponseTime: metrics.performance.avgResponseTime,
+				totalItems: metrics.storage.totalItems,
+				totalSize: metrics.storage.totalSize,
 			});
 
 			return metrics;

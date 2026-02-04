@@ -1,12 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export interface AudioSettingsState {
-	volume: number;
-	isMuted: boolean;
-	soundEnabled: boolean;
-	musicEnabled: boolean;
-	isInitialized: boolean;
-}
+import type { AudioSettingsState } from '@/types';
 
 const initialState: AudioSettingsState = {
 	volume: 0.7,

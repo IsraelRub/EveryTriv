@@ -2,7 +2,7 @@ import { HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, VALIDATORS } from '@shared/const
 import type { JitterOptions, RetryConfig, RetryOptions, RetryResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
-import { ensureErrorObject } from './error.utils';
+import { ensureErrorObject, getErrorStatusCode } from './error.utils';
 import { calculateDuration } from './number.utils';
 
 // Adds randomness to retry delays to prevent thundering herd problem.
@@ -45,7 +45,7 @@ export function calculateRetryDelay(baseDelay: number, attempt: number, options?
 		delay = retryAfter * 1000; // Convert seconds to milliseconds
 	} else if (useExponentialBackoff) {
 		// Exponential backoff: baseDelay * (exponentBase ^ attempt)
-		delay = baseDelay * Math.pow(exponentBase, attempt);
+		delay = baseDelay * exponentBase ** attempt;
 	} else {
 		// Linear backoff: baseDelay * (attempt + 1)
 		delay = baseDelay * (attempt + 1);
@@ -229,15 +229,7 @@ export async function executeRetry<T>(
 			}
 
 			// Extract status code from error
-			if ('statusCode' in lastError && VALIDATORS.number(lastError.statusCode)) {
-				lastStatusCode = lastError.statusCode;
-			} else if (
-				'response' in lastError &&
-				isRecord(lastError.response) &&
-				VALIDATORS.number(lastError.response.status)
-			) {
-				lastStatusCode = lastError.response.status;
-			}
+			lastStatusCode = getErrorStatusCode(lastError);
 
 			// Check if it's a timeout error (only if not already an Error with statusCode)
 			if (

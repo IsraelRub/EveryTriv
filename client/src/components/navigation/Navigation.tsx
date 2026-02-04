@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { LogOut, Shield, User } from 'lucide-react';
 
 import { APP_NAME, UserRole } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils';
 
 import { ButtonSize, ButtonVariant, NAVIGATION_LINKS, ROUTES } from '@/constants';
 import {
@@ -23,7 +24,7 @@ import {
 	ProfileEditDialog,
 } from '@/components';
 import { useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
-import { authService } from '@/services';
+import { authService, clientLogger as logger } from '@/services';
 import type { NavigationLink } from '@/types';
 import { getAvatarUrl, getUserInitials } from '@/utils';
 
@@ -51,14 +52,11 @@ export function Navigation() {
 
 	const handleLogout = async () => {
 		try {
-			// authService.logout() clears all auth data, localStorage, and Redux Persist
 			await authService.logout();
-			// Clear React Query cache to remove all user-specific cached data
 			queryClient.clear();
 			navigate(ROUTES.HOME);
 		} catch (error) {
-			// Error already logged in auth.service.ts - no need to log again
-			void error;
+			logger.authError('Logout failed', { errorInfo: { message: getErrorMessage(error) } });
 		}
 	};
 

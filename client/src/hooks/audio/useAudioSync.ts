@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 
 import { mergeUserPreferences } from '@shared/utils';
 
-import { AudioKey } from '@/constants';
 import { audioService } from '@/services';
 import type { UseAudioSyncProps } from '@/types';
 
@@ -32,18 +31,16 @@ export function useAudioSync({
 	}, [isInitialized, isMuted, volume, isInitializedRef]);
 
 	// Sync audio service with user preferences
+	// Note: We don't play background music here to avoid duplication with useAudioPreferences
+	// Background music is handled by:
+	// 1. setupUserInteractionListener - for first user interaction
+	// 2. useAudioPreferences - when user changes preferences
+	// 3. useRouteBasedMusic - automatically based on route and game state
 	useEffect(() => {
 		const currentPreferences = isAuthenticated && preferences ? preferences : { soundEnabled, musicEnabled };
 		const mergedPreferences = mergeUserPreferences(null, currentPreferences);
 		audioService.setUserPreferences(mergedPreferences);
-
-		if (!isMuted && mergedPreferences.musicEnabled) {
-			audioService.markUserInteracted();
-			requestAnimationFrame(() => {
-				audioService.play(AudioKey.BACKGROUND_MUSIC);
-			});
-		}
-	}, [preferences, isAuthenticated, soundEnabled, musicEnabled, isMuted]);
+	}, [preferences, isAuthenticated, soundEnabled, musicEnabled]);
 
 	// Sync volume with audioService (only after initialization)
 	useEffect(() => {

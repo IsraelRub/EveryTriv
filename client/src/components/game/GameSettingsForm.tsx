@@ -1,4 +1,5 @@
-import { AlertCircle, BookOpen, CheckSquare, Clock, FileQuestion, Hash, Star, Users } from 'lucide-react';
+import { useMemo } from 'react';
+import { AlertCircle, CheckSquare, Clock, FileQuestion, Flame, Hash, Layers, Star, User, Users } from 'lucide-react';
 
 import {
 	BASIC_TOPICS,
@@ -6,14 +7,17 @@ import {
 	DifficultyLevel,
 	GAME_MODES_CONFIG,
 	GameMode as GameModeEnum,
+	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import { calculateRequiredCredits } from '@shared/utils';
 
 import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
-import { Alert, AlertDescription, Button, Input, Label, NumberInput, Textarea } from '@/components';
+import { Alert, AlertDescription, Badge, Button, Input, Label, NumberInput, Textarea } from '@/components';
 import { usePopularTopics, useUserAnalytics } from '@/hooks';
 import type { GameSettingsFormProps } from '@/types';
+import { cn } from '@/utils';
 
 export function GameSettingsForm({
 	topic,
@@ -36,22 +40,78 @@ export function GameSettingsForm({
 	onMaxPlayersChange,
 	showMaxPlayers = false,
 }: GameSettingsFormProps): JSX.Element {
-	// Analytics hooks
-	const { data: analytics } = useUserAnalytics();
-	const { data: popularTopicsData } = usePopularTopics();
+	const { data: analytics } = useUserAnalytics({ staleTime: TIME_PERIODS_MS.THIRTY_MINUTES, refetchOnMount: false });
+	const { data: popularTopicsData } = usePopularTopics(undefined, { enabled: true });
 
-	// Extract user-specific topics
-	const mostPlayedTopic = analytics?.game?.mostPlayedTopic;
-	const topicsPlayed = analytics?.game?.topicsPlayed;
-	const userTopics = topicsPlayed
-		? Object.entries(topicsPlayed)
-				.sort(([, a], [, b]) => b - a)
-				.slice(0, 5)
-				.map(([topic]) => topic)
-		: [];
+	// Memoize topic extraction to avoid recalculation
+	// Limit to 3 topics per category to reduce UI clutter
+	const { mostPlayedTopic, userTopics, popularTopics } = useMemo(() => {
+		const mostPlayed = analytics?.game?.mostPlayedTopic;
+		const topicsPlayed = analytics?.game?.topicsPlayed;
+		const userTopicsList = topicsPlayed
+			? Object.entries(topicsPlayed)
+					.sort(([, a], [, b]) => b - a)
+					.slice(0, 3)
+					.map(([topic]) => topic)
+			: [];
+		const popularTopicsList: string[] = popularTopicsData?.topics?.slice(0, 3).map(t => t.topic) ?? [];
 
-	// Extract popular topics from analytics data
-	const popularTopics: string[] = popularTopicsData?.topics?.slice(0, 5).map(t => t.topic) ?? [];
+		return {
+			mostPlayedTopic: mostPlayed,
+			userTopics: userTopicsList,
+			popularTopics: popularTopicsList,
+		};
+	}, [analytics?.game?.mostPlayedTopic, analytics?.game?.topicsPlayed, popularTopicsData?.topics]);
+
+	// Memoize topics list construction
+	type TopicWithMeta = {
+		name: string;
+		type: 'most-played' | 'yours' | 'basic' | 'popular';
+		gameCount?: number;
+	};
+
+	const topicsList: TopicWithMeta[] = useMemo(() => {
+		const topicsPlayed = analytics?.game?.topicsPlayed;
+		const list: TopicWithMeta[] = [];
+
+		// Add basic topics first (excluding duplicates)
+		BASIC_TOPICS.forEach(t => {
+			if (!list.some(topic => topic.name === t)) {
+				list.push({ name: t, type: 'basic' });
+			}
+		});
+
+		// Add most played topic (if exists, excluding basic topics)
+		if (mostPlayedTopic && mostPlayedTopic !== 'None') {
+			if (!list.some(topic => topic.name === mostPlayedTopic)) {
+				list.push({
+					name: mostPlayedTopic,
+					type: 'most-played',
+					gameCount: topicsPlayed?.[mostPlayedTopic],
+				});
+			}
+		}
+
+		// Add user topics (excluding most played and basic to avoid duplicates)
+		userTopics.forEach(t => {
+			if (t !== mostPlayedTopic && !list.some(topic => topic.name === t)) {
+				list.push({
+					name: t,
+					type: 'yours',
+					gameCount: topicsPlayed?.[t],
+				});
+			}
+		});
+
+		// Add popular topics (excluding duplicates)
+		popularTopics.forEach(t => {
+			if (!list.some(topic => topic.name === t)) {
+				list.push({ name: t, type: 'popular' });
+			}
+		});
+
+		return list;
+	}, [mostPlayedTopic, userTopics, popularTopics, analytics?.game?.topicsPlayed]);
 
 	// Determine visibility based on selectedMode or default behavior
 	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
@@ -77,86 +137,111 @@ export function GameSettingsForm({
 					</Alert>
 				)}
 
-				{/* Your Most Played Topic */}
-				{mostPlayedTopic && mostPlayedTopic !== 'None' && (
-					<div className='space-y-2'>
-						<Label className='text-xs text-muted-foreground'>Your Most Played</Label>
-						<Button
-							type='button'
-							variant={topic === mostPlayedTopic ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-							size={ButtonSize.SM}
-							className='w-full justify-start bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/20'
-							onClick={() => onTopicChange(topic === mostPlayedTopic ? '' : mostPlayedTopic)}
-						>
-							<Star className='h-3 w-3 mr-2 text-indigo-500' />
-							{mostPlayedTopic}
-						</Button>
-					</div>
-				)}
+				{/* Combined Topics List with Badges */}
+				{topicsList.length > 0 && (
+					<div className='space-y-3'>
+						<Label className='text-xs text-muted-foreground'>Suggested Topics</Label>
+						<div className='flex flex-col gap-2'>
+							{/* Most Played - Highlighted separately */}
+							{topicsList
+								.filter(t => t.type === 'most-played')
+								.map(({ name }) => {
+									const isSelected = topic === name;
+									return (
+										<Button
+											key={name}
+											type='button'
+											variant={isSelected ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
+											size={ButtonSize.SM}
+											className='w-full justify-start h-auto py-1.5 px-3 gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/30'
+											onClick={() => onTopicChange(isSelected ? '' : name)}
+										>
+											<Star className='h-3.5 w-3.5 text-indigo-500' />
+											<span className='font-medium text-sm'>{name}</span>
+											<Badge
+												variant={VariantBase.DEFAULT}
+												className='text-[10px] py-0 px-1.5 h-4 ml-auto flex items-center gap-1'
+											>
+												<Star className='h-2.5 w-2.5' />
+												Your Top
+											</Badge>
+										</Button>
+									);
+								})}
 
-				{/* Your Topics */}
-				{userTopics.length > 0 && (
-					<div className='space-y-2'>
-						<Label className='text-xs text-muted-foreground'>Your Topics</Label>
-						<div className='flex flex-wrap gap-2'>
-							{userTopics.map(t => {
-								const gameCount = topicsPlayed?.[t] ?? 0;
-								return (
-									<Button
-										key={t}
-										type='button'
-										variant={topic === t ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-										size={ButtonSize.SM}
-										className='text-xs h-7'
-										onClick={() => onTopicChange(topic === t ? '' : t)}
-									>
-										<BookOpen className='h-3 w-3 mr-1' />
-										{t} ({gameCount} {gameCount === 1 ? 'game' : 'games'})
-									</Button>
-								);
-							})}
-						</div>
-					</div>
-				)}
+							{/* Other Topics - In a grid */}
+							<div className='flex flex-wrap gap-2'>
+								{topicsList
+									.filter(t => t.type !== 'most-played')
+									.map(({ name, type }) => {
+										const isSelected = topic === name;
+										type BadgeConfigType = {
+											label: string;
+											variant: VariantBase;
+											icon: typeof User;
+											buttonClassName?: string;
+											iconClassName?: string;
+										};
 
-				{/* Basic Topics */}
-				<div className='space-y-2'>
-					<Label className='text-xs text-muted-foreground'>Basic Topics</Label>
-					<div className='flex flex-wrap gap-2'>
-						{BASIC_TOPICS.map(t => (
-							<Button
-								key={t}
-								type='button'
-								variant={topic === t ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-								size={ButtonSize.SM}
-								className='text-xs h-7'
-								onClick={() => onTopicChange(topic === t ? '' : t)}
-							>
-								<BookOpen className='h-3 w-3 mr-1' />
-								{t}
-							</Button>
-						))}
-					</div>
-				</div>
+										const getBadgeConfig = (): BadgeConfigType => {
+											switch (type) {
+												case 'yours':
+													return {
+														label: 'Your',
+														variant: VariantBase.SECONDARY,
+														icon: User,
+													};
+												case 'basic':
+													return {
+														label: 'Basic',
+														variant: VariantBase.OUTLINE,
+														icon: Layers,
+													};
+												case 'popular':
+													return {
+														label: 'Popular',
+														variant: VariantBase.SECONDARY,
+														icon: Flame,
+														buttonClassName: 'bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/30',
+														iconClassName: 'text-white',
+													};
+												default:
+													return {
+														label: '',
+														variant: VariantBase.OUTLINE,
+														icon: Layers,
+													};
+											}
+										};
 
-				{/* Popular Topics */}
-				{popularTopics.length > 0 && (
-					<div className='space-y-2'>
-						<Label className='text-xs text-muted-foreground'>Popular Topics</Label>
-						<div className='flex flex-wrap gap-2'>
-							{popularTopics.map(t => (
-								<Button
-									key={t}
-									type='button'
-									variant={topic === t ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-									size={ButtonSize.SM}
-									className='text-xs h-7'
-									onClick={() => onTopicChange(topic === t ? '' : t)}
-								>
-									<BookOpen className='h-3 w-3 mr-1' />
-									{t}
-								</Button>
-							))}
+										const badgeConfig = getBadgeConfig();
+										const BadgeIcon = badgeConfig.icon;
+										const showBadge = type !== 'basic';
+
+										return (
+											<Button
+												key={name}
+												type='button'
+												variant={isSelected ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
+												size={ButtonSize.SM}
+												className={cn('text-xs h-auto py-1.5 px-2 gap-1.5', badgeConfig.buttonClassName)}
+												onClick={() => onTopicChange(isSelected ? '' : name)}
+											>
+												{showBadge && <BadgeIcon className={cn('h-3 w-3', badgeConfig.iconClassName)} />}
+												<span className='text-xs'>{name}</span>
+												{showBadge && (
+													<Badge
+														variant={badgeConfig.variant}
+														className='text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5'
+													>
+														<BadgeIcon className={cn('h-2.5 w-2.5', badgeConfig.iconClassName)} />
+														{badgeConfig.label}
+													</Badge>
+												)}
+											</Button>
+										);
+									})}
+							</div>
 						</div>
 					</div>
 				)}
@@ -279,11 +364,11 @@ export function GameSettingsForm({
 							/>
 						</div>
 						<p className='text-xs text-muted-foreground'>
-							{timeLimit < 60
+							{timeLimit < TIME_DURATIONS_SECONDS.MINUTE
 								? `${timeLimit}s`
-								: timeLimit < 3600
-									? `${Math.floor(timeLimit / 60)}m`
-									: `${Math.floor(timeLimit / 3600)}h`}
+								: timeLimit < TIME_DURATIONS_SECONDS.HOUR
+									? `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.MINUTE)}m`
+									: `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.HOUR)}h`}
 							{selectedMode && (
 								<span className='ml-2'>• Fixed cost: {CREDIT_COSTS[selectedMode]?.fixedCost ?? 10} credits</span>
 							)}

@@ -32,7 +32,7 @@ export function shouldChargeAfterGame(gameMode: GameMode): boolean {
 
 export function isHostPaysOnly(gameMode: GameMode): boolean {
 	const costConfig = CREDIT_COSTS[gameMode];
-	return 'hostPaysOnly' in costConfig && costConfig.hostPaysOnly === true;
+	return 'hostPaysOnly' in costConfig && costConfig.hostPaysOnly;
 }
 
 export function calculateNewBalance(

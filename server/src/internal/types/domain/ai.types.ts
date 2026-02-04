@@ -55,6 +55,7 @@ export interface PromptParams extends BaseTriviaConfig {
 	answerCount: number;
 	customInstructions?: string;
 	isCustomDifficulty?: boolean;
+	excludeQuestions?: string[]; // List of questions to exclude (for preventing duplicates)
 	options?: {
 		includeExplanation?: boolean;
 		includeHints?: boolean;

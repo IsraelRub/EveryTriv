@@ -8,9 +8,9 @@ import { validateFirstName, validateLastName } from '@shared/validation';
 
 import { QUERY_KEYS, ROUTES, SpinnerSize } from '@/constants';
 import { Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
-import { authService, clientLogger as logger, queryClient } from '@/services';
+import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
 import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
-import { cn } from '@/utils';
+import { cn, profileResponseToBasicUser } from '@/utils';
 
 export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	const navigate = useNavigate();
@@ -109,10 +109,9 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					userId: profileResponse.profile?.id,
 				});
 
-				// Update React Query cache with new user data
 				if (profileResponse.profile) {
-					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), profileResponse.profile);
-					queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), profileResponseToBasicUser(profileResponse));
+					queryInvalidationService.invalidateAuthQueries(queryClient);
 				}
 
 				// Call optional onComplete callback
@@ -140,7 +139,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 		<motion.div
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			className='min-h-screen flex items-center justify-center px-4'
+			className='min-h-screen flex flex-col items-center px-4 pt-0 pb-4 md:pb-6'
 		>
 			<Card className='p-6 max-w-md w-full relative'>
 				<CloseButton className='absolute top-4 right-4' />
@@ -199,7 +198,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
 							{loading ? (
 								<>
-									<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
+									<Spinner size={SpinnerSize.SM} className='mr-2' />
 									Saving...
 								</>
 							) : (

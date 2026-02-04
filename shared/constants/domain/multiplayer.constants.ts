@@ -40,9 +40,6 @@ export enum MultiplayerEvent {
 	QUESTION_ENDED = 'question-ended',
 	GAME_ENDED = 'game-ended',
 
-	// Leaderboard
-	LEADERBOARD_UPDATE = 'leaderboard-update',
-
 	// Emit events (client to server)
 	CREATE_ROOM = 'create-room',
 	JOIN_ROOM = 'join-room',

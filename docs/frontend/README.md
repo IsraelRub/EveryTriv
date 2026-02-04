@@ -9,6 +9,7 @@
 - **[services/SERVICES.md](./services/SERVICES.md)** - שירותי Frontend
   - **[services/interceptors/INTERCEPTORS.md](./services/interceptors/INTERCEPTORS.md)** - Interceptors
 - **[HOOKS.md](./HOOKS.md)** - ארכיטקטורת Hooks (כולל React Query)
+- **[REFRESH_INVALIDATION.md](./REFRESH_INVALIDATION.md)** - רענון ואינברידציה (Refresh / invalidation)
 - **[REDUX.md](./REDUX.md)** - ניהול מצב (Redux Toolkit)
 - **[ROUTING.md](./ROUTING.md)** - מערכת ניתוב
 

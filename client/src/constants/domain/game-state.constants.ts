@@ -1,6 +1,14 @@
 import { GAME_STATE_DEFAULTS, GameMode } from '@shared/constants';
 import type { GameDifficulty, TriviaQuestion } from '@shared/types';
 
+export enum AnswerButtonState {
+	IDLE = 'idle',
+	SELECTED = 'selected',
+	CORRECT = 'correct',
+	WRONG = 'wrong',
+	DISABLED = 'disabled',
+}
+
 export enum GameClientStatus {
 	IDLE = 'idle',
 	LOADING = 'loading',

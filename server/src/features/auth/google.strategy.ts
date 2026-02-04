@@ -2,12 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { AuthenticationEvent, ERROR_CODES, LogLevel } from '@shared/constants';
+import { AuthenticationEvent, ERROR_CODES, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
-
-import { LOCALHOST_CONFIG } from '../../config/localhost.config';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {

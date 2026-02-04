@@ -1,4 +1,4 @@
-import { Controller, Delete, Get } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 
 import { TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import type { TokenPayload } from '@shared/types';
@@ -37,33 +37,6 @@ export class AdminController {
 		}
 	}
 
-	@Delete('history/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.adminService.clearAllGameHistory();
-
-			logger.apiDelete('admin_clear_all_history', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
-			});
-
-			return {
-				cleared: (result.deletedCount ?? 0) > 0,
-				deletedCount: result.deletedCount ?? 0,
-				message: result.message,
-			};
-		} catch (error) {
-			logger.gameError('Failed to clear all game history', {
-				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
 	@Get('trivia')
 	@Roles(UserRole.ADMIN)
 	@Cache(TIME_DURATIONS_SECONDS.HOUR)
@@ -79,56 +52,6 @@ export class AdminController {
 			return result;
 		} catch (error) {
 			logger.gameError('Failed to get all trivia questions', {
-				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	@Delete('trivia/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.adminService.clearAllTrivia();
-
-			logger.apiDelete('admin_clear_all_trivia', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
-			});
-
-			return {
-				cleared: (result.deletedCount ?? 0) > 0,
-				deletedCount: result.deletedCount ?? 0,
-				message: result.message,
-			};
-		} catch (error) {
-			logger.gameError('Failed to clear all trivia', {
-				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	@Delete('stats/clear-all')
-	@Roles(UserRole.ADMIN)
-	async clearAllUserStats(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.adminService.clearAllUserStats();
-
-			logger.apiDelete('admin_clear_all_user_stats', {
-				id: user.sub,
-				role: user.role,
-				deletedCount: result.deletedCount,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Failed to clear all user stats', {
 				errorInfo: { message: getErrorMessage(error) },
 				id: user.sub,
 				role: user.role,

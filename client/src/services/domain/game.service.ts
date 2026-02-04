@@ -1,28 +1,53 @@
-import { API_ENDPOINTS } from '@shared/constants';
+import { API_ENDPOINTS, HTTP_TIMEOUTS } from '@shared/constants';
 import type {
 	AdminGameStatistics,
 	BaseValidationResult,
 	ClearOperationResponse,
 	CustomDifficultyRequest,
+	GameSessionValidationResponse,
 	TriviaRequest,
 	TriviaResponse,
 } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 
 import { apiService, clientLogger as logger } from '@/services';
 import type { TriviaQuestionsResponse } from '@/types';
 
+type TriviaRequestWithSignal = TriviaRequest & { signal?: AbortSignal };
+
 class GameService {
-	async getTrivia(request: TriviaRequest): Promise<TriviaResponse> {
+	async getTrivia(request: TriviaRequestWithSignal): Promise<TriviaResponse> {
 		try {
-			const apiResponse = await apiService.post<TriviaResponse>(API_ENDPOINTS.GAME.TRIVIA, request);
+			const { signal, ...triviaRequest } = request;
+			const apiResponse = await apiService.post<TriviaResponse>(
+				API_ENDPOINTS.GAME.TRIVIA,
+				triviaRequest,
+				{
+					signal,
+					timeout: HTTP_TIMEOUTS.TRIVIA_CLIENT,
+					skipDeduplication: true,
+				}
+			);
 			return apiResponse.data;
 		} catch (error) {
-			logger.gameError('Failed to get trivia questions', {
-				errorInfo: { message: getErrorMessage(error) },
-				topic: request.topic,
-				difficulty: request.difficulty,
-			});
+			const message = getErrorMessage(error);
+			const isAbortError =
+				message === 'Request was cancelled' ||
+				message.includes('aborted') ||
+				message === 'signal is aborted without reason' ||
+				(isRecord(error) &&
+					'statusCode' in error &&
+					error.statusCode === 0 &&
+					hasProperty(error, 'details') &&
+					isRecord(error.details) &&
+					error.details.error === 'Request was cancelled');
+			if (!isAbortError) {
+				logger.gameError('Failed to get trivia questions', {
+					errorInfo: { message },
+					topic: request.topic,
+					difficulty: request.difficulty,
+				});
+			}
 			throw error;
 		}
 	}
@@ -60,7 +85,9 @@ class GameService {
 	async clearAllGameHistory(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing all game history');
-			const response = await apiService.delete<ClearOperationResponse>(API_ENDPOINTS.GAME.ADMIN.HISTORY_CLEAR_ALL);
+			const response = await apiService.delete<ClearOperationResponse>(
+				API_ENDPOINTS.MAINTENANCE.DATA_GAME_HISTORY_CLEAR_ALL
+			);
 			const result = response.data;
 			logger.userInfo('All game history cleared successfully', { deletedCount: result.deletedCount });
 			return result;
@@ -88,7 +115,7 @@ class GameService {
 	async clearAllTrivia(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing all trivia questions');
-			const response = await apiService.delete<ClearOperationResponse>(API_ENDPOINTS.GAME.ADMIN.TRIVIA_CLEAR_ALL);
+			const response = await apiService.delete<ClearOperationResponse>(API_ENDPOINTS.MAINTENANCE.DATA_TRIVIA_CLEAR_ALL);
 			const result = response.data;
 			logger.userInfo('All trivia questions cleared successfully', { deletedCount: result.deletedCount });
 			return result;
@@ -100,10 +127,10 @@ class GameService {
 		}
 	}
 
-	async validateSession(gameId: string): Promise<{ isValid: boolean; session?: unknown }> {
+	async validateSession(gameId: string): Promise<GameSessionValidationResponse> {
 		try {
 			const url = API_ENDPOINTS.GAME.VALIDATE_SESSION.replace(':gameId', gameId);
-			const response = await apiService.get<{ isValid: boolean; session?: unknown }>(url);
+			const response = await apiService.get<GameSessionValidationResponse>(url);
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to validate game session', {

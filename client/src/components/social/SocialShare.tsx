@@ -6,7 +6,7 @@ import { APP_NAME, DifficultyLevel, TIME_PERIODS_MS } from '@shared/constants';
 import { calculatePercentage, getErrorMessage, isSocialSharePlatform } from '@shared/utils';
 import { getDifficultyDisplayText } from '@shared/validation';
 
-import { ButtonVariant, SOCIAL_DATA } from '@/constants';
+import { ANIMATION_DELAYS, ButtonVariant, SOCIAL_DATA } from '@/constants';
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
 import { clientLogger as logger } from '@/services';
 import type { SocialShareProps } from '@/types';
@@ -131,7 +131,7 @@ export function SocialShare({
 										key={platform.name}
 										initial={{ opacity: 0, y: 10 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ delay: index * 0.05 }}
+										transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
 									>
 										<Button
 											variant={ButtonVariant.OUTLINE}

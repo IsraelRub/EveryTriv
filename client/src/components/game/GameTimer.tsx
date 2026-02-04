@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { TIME_PERIODS_MS, TimerMode } from '@shared/constants';
 import { calculateElapsedSeconds } from '@shared/utils';
 
-import { AudioKey } from '@/constants';
+import { AudioKey, TIMER_WARNING_RATIO, TRANSITION_DURATIONS } from '@/constants';
 import { audioService } from '@/services';
 import type { GameTimerProps } from '@/types';
 import { cn, formatTime } from '@/utils';
@@ -22,7 +22,7 @@ export function GameTimer({
 	className = '',
 }: GameTimerProps) {
 	const [currentTime, setCurrentTime] = useState(() => {
-		if (mode === 'countdown' && initialTime !== undefined) {
+		if (mode === TimerMode.COUNTDOWN && initialTime !== undefined) {
 			return initialTime;
 		}
 		return 0;
@@ -42,14 +42,14 @@ export function GameTimer({
 	const warningTimeThresholdRef = useRef<number | null>(null);
 	const timeoutTriggeredRef = useRef(false);
 	useEffect(() => {
-		if (mode !== 'countdown') return;
+		if (mode !== TimerMode.COUNTDOWN) return;
 
 		// Priority: serverEndTimestamp > serverStartTimestamp + initialTime > startTime + initialTime > initialTime only
 		if (serverEndTimestamp !== undefined) {
 			// Use server timestamps as authoritative source
 			const totalTimeMs = serverEndTimestamp - (serverStartTimestamp ?? Date.now());
 			const totalTimeSeconds = Math.floor(totalTimeMs / 1000);
-			warningTimeThresholdRef.current = Math.floor(totalTimeSeconds * 0.15);
+			warningTimeThresholdRef.current = Math.floor(totalTimeSeconds * TIMER_WARNING_RATIO);
 			timeoutTriggeredRef.current = false;
 
 			const interval = setInterval(() => {
@@ -59,11 +59,11 @@ export function GameTimer({
 
 				setCurrentTime(remainingSeconds);
 
-				// Play warning sound every 2 seconds when below warning threshold (15% or less)
+				// Play warning sound every 10 seconds when below warning threshold (15% or less)
 				const warningThreshold = warningTimeThresholdRef.current;
 				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
 					const timeBelowThreshold = warningThreshold - remainingSeconds;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
 						if (onWarningRef.current) {
 							onWarningRef.current();
 						} else {
@@ -79,7 +79,7 @@ export function GameTimer({
 		// Fallback: If startTime is provided, calculate remaining time dynamically from startTime
 		if (startTime !== undefined && initialTime !== undefined) {
 			const totalTimeMs = initialTime * 1000;
-			warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
+			warningTimeThresholdRef.current = Math.floor(initialTime * TIMER_WARNING_RATIO);
 			timeoutTriggeredRef.current = false;
 
 			const interval = setInterval(() => {
@@ -89,11 +89,11 @@ export function GameTimer({
 
 				setCurrentTime(remainingSeconds);
 
-				// Play warning sound every 2 seconds when below warning threshold (15% or less)
+				// Play warning sound every 10 seconds when below warning threshold (15% or less)
 				const warningThreshold = warningTimeThresholdRef.current;
 				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
 					const timeBelowThreshold = warningThreshold - remainingSeconds;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
 						if (onWarningRef.current) {
 							onWarningRef.current();
 						} else {
@@ -109,7 +109,7 @@ export function GameTimer({
 		// Fallback: countdown from initialTime without startTime (legacy behavior)
 		if (initialTime === undefined) return;
 
-		warningTimeThresholdRef.current = Math.floor(initialTime * 0.15);
+		warningTimeThresholdRef.current = Math.floor(initialTime * TIMER_WARNING_RATIO);
 		timeoutTriggeredRef.current = false;
 
 		const interval = setInterval(() => {
@@ -120,7 +120,7 @@ export function GameTimer({
 
 				if (warningTimeThresholdRef.current !== null && prev <= warningTimeThresholdRef.current) {
 					const timeBelowThreshold = warningTimeThresholdRef.current - prev;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 2 === 0) {
+					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
 						if (onWarningRef.current) {
 							onWarningRef.current();
 						} else {
@@ -138,7 +138,7 @@ export function GameTimer({
 
 	// Handle timeout separately to avoid calling navigate during render
 	useEffect(() => {
-		if (mode === 'countdown' && currentTime === 0 && !timeoutTriggeredRef.current && onTimeoutRef.current) {
+		if (mode === TimerMode.COUNTDOWN && currentTime === 0 && !timeoutTriggeredRef.current && onTimeoutRef.current) {
 			timeoutTriggeredRef.current = true;
 			// Use setTimeout to defer the callback to avoid calling it during render
 			setTimeout(() => {
@@ -149,7 +149,7 @@ export function GameTimer({
 
 	// Elapsed mode: count up from startTime
 	useEffect(() => {
-		if (mode !== 'elapsed' || startTime === undefined) return;
+		if (mode !== TimerMode.ELAPSED || startTime === undefined) return;
 
 		const interval = setInterval(() => {
 			const elapsed = calculateElapsedSeconds(startTime);
@@ -162,7 +162,7 @@ export function GameTimer({
 	// Calculate progress percentage
 	// Only used for countdown mode (progress bar is hidden in elapsed mode)
 	const getProgress = useCallback(() => {
-		if (mode === 'countdown' && initialTime !== undefined && initialTime > 0) {
+		if (mode === TimerMode.COUNTDOWN && initialTime !== undefined && initialTime > 0) {
 			return (currentTime / initialTime) * 100;
 		}
 		return 0;
@@ -171,20 +171,20 @@ export function GameTimer({
 	// Get color based on percentage
 	const getColorByPercentage = useCallback((percentage: number, prefix: 'text' | 'bg'): string => {
 		if (percentage > 35) return `${prefix}-green-500`;
-		if (percentage > 15) return `${prefix}-orange-500`;
+		if (percentage > 15) return `${prefix}-yellow-500`;
 		return `${prefix}-red-500`;
 	}, []);
 
 	// Get color based on mode and time
 	const getTimerColor = useCallback(() => {
 		switch (mode) {
-			case 'countdown':
+			case TimerMode.COUNTDOWN:
 				if (initialTime !== undefined && initialTime > 0) {
 					const percentage = (currentTime / initialTime) * 100;
 					return getColorByPercentage(percentage, 'text');
 				}
 				return 'text-muted-foreground';
-			case 'elapsed':
+			case TimerMode.ELAPSED:
 				return 'text-muted-foreground';
 			default:
 				return 'text-muted-foreground';
@@ -193,13 +193,13 @@ export function GameTimer({
 
 	const getBarColor = useCallback(() => {
 		switch (mode) {
-			case 'countdown':
+			case TimerMode.COUNTDOWN:
 				if (initialTime !== undefined && initialTime > 0) {
 					const percentage = (currentTime / initialTime) * 100;
 					return getColorByPercentage(percentage, 'bg');
 				}
 				return 'bg-primary';
-			case 'elapsed':
+			case TimerMode.ELAPSED:
 				return 'bg-primary';
 			default:
 				return 'bg-primary';
@@ -209,9 +209,9 @@ export function GameTimer({
 	const progress = getProgress();
 	const defaultLabel = (() => {
 		switch (mode) {
-			case 'countdown':
+			case TimerMode.COUNTDOWN:
 				return 'Game Time';
-			case 'elapsed':
+			case TimerMode.ELAPSED:
 				return 'Time Elapsed';
 			default:
 				return 'Time Elapsed';
@@ -232,7 +232,7 @@ export function GameTimer({
 						animate={{
 							width: `${progress}%`,
 						}}
-						transition={{ duration: 0.3 }}
+						transition={{ duration: TRANSITION_DURATIONS.NORMAL }}
 					/>
 				</div>
 			)}

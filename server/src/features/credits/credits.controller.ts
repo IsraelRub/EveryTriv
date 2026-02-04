@@ -13,7 +13,7 @@ import { serverLogger as logger } from '@internal/services';
 
 import { Cache, CurrentUserId, NoCache } from '../../common';
 import { CreditsService } from './credits.service';
-import { CanPlayDto, DeductCreditsDto, GetCreditHistoryDto } from './dtos';
+import { CanPlayDto, DeductCreditsDto } from './dtos';
 
 @Controller(API_ENDPOINTS.CREDITS.BASE)
 export class CreditsController {
@@ -147,37 +147,6 @@ export class CreditsController {
 				questionsPerRequest: body.questionsPerRequest,
 				gameMode: body.gameMode,
 				reason: body.reason,
-			});
-			throw error;
-		}
-	}
-
-	@Get('history')
-	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
-	async getCreditHistory(@CurrentUserId() userId: string | null, @Query() query: GetCreditHistoryDto) {
-		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
-		}
-		try {
-			const limit = query.limit;
-			if (limit > 100) {
-				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_100, HttpStatus.BAD_REQUEST);
-			}
-
-			const result = await this.creditsService.getCreditHistory(userId, limit);
-
-			logger.apiRead('credits_history', {
-				userId,
-				limit,
-				transactionsCount: result.length,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Error getting credit history', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-				limit: query.limit,
 			});
 			throw error;
 		}

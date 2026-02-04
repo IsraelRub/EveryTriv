@@ -94,7 +94,6 @@ export const AppDataSource = new DataSource({
     __dirname + '/../internal/entities/trivia.entity.ts',
     __dirname + '/../internal/entities/paymentHistory.entity.ts',
     __dirname + '/../internal/entities/creditTransaction.entity.ts',
-    __dirname + '/../internal/entities/leaderboard.entity.ts',
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false,
@@ -163,11 +162,11 @@ export class UserEntity extends BaseEntity {
 ```
 
 **קשרים:**
-- `OneToMany` → `GameHistoryEntity`
-- `OneToMany` → `PointTransactionEntity`
-- `OneToMany` → `PaymentHistoryEntity`
 - `OneToOne` → `UserStatsEntity`
-- `OneToMany` → `LeaderboardEntity`
+- `OneToMany` → `GameHistoryEntity`
+- `OneToMany` → `CreditTransactionEntity`
+- `OneToMany` → `PaymentHistoryEntity`
+- `OneToMany` → `TriviaEntity`
 
 ### TriviaEntity
 ישות שאלת טריוויה (`trivia`):
@@ -204,7 +203,7 @@ export class TriviaEntity extends BaseEntity {
   isCorrect: boolean = false;    // האם השאלה נכונה (למעקב)
 
   @Column('jsonb', { nullable: true })
-  metadata: TriviaQuestionDetailsMetadata = {}; // מטא-דאטה (source, explanation, tags)
+  metadata: TriviaQuestionDetailsMetadata = {}; // מטא-דאטה (explanation, tags, providerName)
 
   // BaseEntity fields: id, createdAt, updatedAt
 }
@@ -258,7 +257,7 @@ export class GameHistoryEntity extends BaseEntity {
   creditsUsed: number = 0;       // נקודות זכות שנצרכו
 
   @Column({ name: 'questions_data', type: 'jsonb', default: () => "'[]'::jsonb" })
-  questionsData: QuestionData[] = []; // נתוני שאלות (array של QuestionData)
+  answerHistory: AnswerHistory[] = []; // נתוני שאלות (array של AnswerHistory)
 
   // BaseEntity fields: id, createdAt, updatedAt
 
@@ -269,9 +268,9 @@ export class GameHistoryEntity extends BaseEntity {
 }
 ```
 
-**QuestionData Structure:**
+**AnswerHistory Structure:**
 ```typescript
-interface QuestionData {
+interface AnswerHistory {
   question: string;              // טקסט השאלה
   questionId: string;            // מזהה השאלה
   userAnswerIndex: number;      // אינדקס התשובה שנבחרה (0-3, -1 = timeout)
@@ -466,8 +465,17 @@ export class PointTransactionEntity extends BaseEntity {
   @Column({ name: 'game_history_id', nullable: true })
   gameHistoryId?: string;        // מזהה היסטוריית משחק (אם רלוונטי)
 
-  @Column({ name: 'payment_id', nullable: true })
-  paymentId?: string;            // מזהה תשלום (אם רלוונטי)
+  @ManyToOne(() => GameHistoryEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'game_history_id' })
+  gameHistory?: GameHistoryEntity; // קשר להיסטוריית משחק
+
+  @Column({ name: 'payment_id', type: 'varchar', nullable: true })
+  @Index()
+  paymentId?: string;            // מזהה תשלום (אם רלוונטי, FK ל-payment_history)
+
+  @ManyToOne(() => PaymentHistoryEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payment_id', referencedColumnName: 'payment_id' })
+  paymentHistory?: PaymentHistoryEntity; // קשר להיסטוריית תשלום
 
   @Column('jsonb', { default: {} })
   metadata: {
@@ -490,55 +498,6 @@ export class PointTransactionEntity extends BaseEntity {
   // BaseEntity fields: id, createdAt, updatedAt
 }
 ```
-
-### LeaderboardEntity
-ישות לוח תוצאות (`leaderboard`):
-```typescript
-@Entity('leaderboard')
-export class LeaderboardEntity extends BaseEntity {
-  @Column({ name: 'user_id', type: 'uuid' })
-  @Index({ unique: true })
-  userId: string = '';           // מזהה משתמש (unique, FK)
-
-  @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user!: UserEntity;             // קשר למשתמש
-
-  @Column({ name: 'user_stats_id', type: 'uuid' })
-  @Index()
-  userStatsId: string = '';      // מזהה סטטיסטיקות משתמש (FK)
-
-  @ManyToOne(() => UserStatsEntity, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_stats_id' })
-  userStats!: UserStatsEntity;   // קשר לסטטיסטיקות משתמש
-
-  // Ranking-specific data
-  @Column('int')
-  @Index()
-  rank: number = 0;              // דירוג נוכחי
-
-  @Column('int')
-  @Index()
-  percentile: number = 0;        // אחוזון (0-100)
-
-  @Column('int')
-  @Index()
-  score: number = 0;             // ניקוד כולל לדירוג
-
-  @Column('int', { name: 'total_users' })
-  totalUsers: number = 0;        // מספר משתמשים כולל בדירוג
-
-  // Ranking metadata
-  @Column('timestamp', { name: 'last_rank_update', nullable: true })
-  lastRankUpdate?: Date;         // תאריך עדכון דירוג אחרון
-
-  // BaseEntity fields: id, createdAt, updatedAt
-}
-```
-
-**קשרים:**
-- `ManyToOne` → `UserEntity` (cascade delete)
-- `ManyToOne` → `UserStatsEntity` (cascade delete)
 
 ## מיגרציות
 

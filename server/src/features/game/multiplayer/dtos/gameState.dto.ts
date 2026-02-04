@@ -28,7 +28,19 @@ export class GameStateDto implements GameState {
 	leaderboard!: Player[];
 
 	@ApiProperty({ description: 'Game start time', nullable: true })
-	startedAt?: Date;
+	startedAt?: string;
+
+	@ApiProperty({ description: 'Current question start time', nullable: true })
+	currentQuestionStartTime?: string;
+
+	@ApiProperty({ description: 'Server start timestamp', nullable: true })
+	serverStartTimestamp?: number;
+
+	@ApiProperty({ description: 'Server end timestamp', nullable: true })
+	serverEndTimestamp?: number;
+
+	@ApiProperty({ description: 'Answer counts mapping (answerIndex -> playerCount)', nullable: true, required: false })
+	answerCounts?: CountRecord;
 }
 
 export class RoomStateDto implements Partial<MultiplayerRoom> {

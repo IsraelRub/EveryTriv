@@ -106,7 +106,7 @@ export const DialogContent = forwardRef<
 		showClose
 	/>
 ));
-DialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.displayName = 'DialogContent';
 
 export const DialogHeader = (props: HTMLAttributes<HTMLDivElement>) => <Header {...props} spaceY='1.5' />;
 DialogHeader.displayName = 'DialogHeader';
@@ -124,13 +124,13 @@ export const DialogTitle = forwardRef<
 		{...props}
 	/>
 ));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.displayName = 'DialogTitle';
 
 export const DialogDescription = forwardRef<
 	ElementRef<typeof DialogPrimitive.Description>,
 	ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >((props, ref) => <Description {...props} ref={ref} component={DialogPrimitive.Description} />);
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
+DialogDescription.displayName = 'DialogDescription';
 
 export const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -146,7 +146,7 @@ export const AlertDialogContent = forwardRef<
 		portal={AlertDialogPrimitive.Portal}
 	/>
 ));
-AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
+AlertDialogContent.displayName = 'AlertDialogContent';
 
 export const AlertDialogHeader = (props: HTMLAttributes<HTMLDivElement>) => <Header {...props} spaceY='2' />;
 AlertDialogHeader.displayName = 'AlertDialogHeader';
@@ -160,13 +160,13 @@ export const AlertDialogTitle = forwardRef<
 >(({ className, ...props }, ref) => (
 	<AlertDialogPrimitive.Title ref={ref} className={cn('text-lg font-semibold', className)} {...props} />
 ));
-AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
+AlertDialogTitle.displayName = 'AlertDialogTitle';
 
 export const AlertDialogDescription = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Description>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Description>
 >((props, ref) => <Description {...props} ref={ref} component={AlertDialogPrimitive.Description} />);
-AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
+AlertDialogDescription.displayName = 'AlertDialogDescription';
 
 export const AlertDialogAction = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Action>,
@@ -174,7 +174,7 @@ export const AlertDialogAction = forwardRef<
 >(({ className, ...props }, ref) => (
 	<AlertDialogPrimitive.Action ref={ref} className={buttonVariants({ className })} {...props} />
 ));
-AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
+AlertDialogAction.displayName = 'AlertDialogAction';
 
 export const AlertDialogCancel = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Cancel>,
@@ -186,4 +186,4 @@ export const AlertDialogCancel = forwardRef<
 		{...props}
 	/>
 ));
-AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
+AlertDialogCancel.displayName = 'AlertDialogCancel';

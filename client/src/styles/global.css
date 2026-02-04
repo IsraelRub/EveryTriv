@@ -469,15 +469,15 @@
 		0% {
 			background: conic-gradient(
 				from 0deg,
-				hsl(var(--primary)) 0deg 270deg,
-				hsl(var(--primary) / 0.2) 270deg 360deg
+				hsl(var(--primary)) 0deg 250deg,
+				hsl(var(--primary) / 0.2) 250deg 360deg
 			);
 		}
 		100% {
 			background: conic-gradient(
 				from 360deg,
-				hsl(var(--primary)) 0deg 270deg,
-				hsl(var(--primary) / 0.2) 270deg 360deg
+				hsl(var(--primary)) 0deg 250deg,
+				hsl(var(--primary) / 0.2) 250deg 360deg
 			);
 		}
 	}
@@ -486,11 +486,9 @@
 		0%,
 		100% {
 			opacity: 1;
-			transform: scale(1);
 		}
 		50% {
-			opacity: 0.5;
-			transform: scale(1.05);
+			opacity: 0.75;
 		}
 	}
 
@@ -528,6 +526,12 @@
 		transform-origin: center;
 	}
 
+	.animate-spin-slow {
+		animation: spin 2s linear infinite;
+		will-change: transform;
+		transform-origin: center;
+	}
+
 	@keyframes spinnerRotate {
 		from {
 			transform: rotate(0deg);
@@ -551,8 +555,8 @@
 		border-radius: 50%;
 		background: conic-gradient(
 			from 0deg,
-			hsl(var(--primary)) 0deg 270deg,
-			hsl(var(--primary) / 0.2) 270deg 360deg
+			hsl(var(--primary)) 0deg 250deg,
+			hsl(var(--primary) / 0.2) 250deg 360deg
 		);
 		animation: spinnerRotate 2s linear infinite, spinnerArc 2s ease-in-out infinite;
 		will-change: transform, background;
@@ -569,19 +573,71 @@
 	}
 
 	.animate-pulse {
-		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		will-change: opacity;
+	}
+
+	@keyframes fadeInOnly {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.animate-fade-in-only {
+		animation: fadeInOnly 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+		will-change: opacity;
+	}
+
+	@keyframes fadeInUpSimple {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-fade-in-up-simple {
+		animation: fadeInUpSimple 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
 		will-change: transform, opacity;
 		transform: translateZ(0);
 	}
-}
 
-@media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
-		scroll-behavior: auto !important;
+	@keyframes fadeInScaleSimple {
+		from {
+			opacity: 0;
+			transform: scale(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.animate-fade-in-scale-simple {
+		animation: fadeInScaleSimple 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+		will-change: transform, opacity;
+		transform: translateZ(0);
+	}
+
+	@keyframes scaleInSimple {
+		from {
+			transform: scale(0);
+		}
+		to {
+			transform: scale(1);
+		}
+	}
+
+	.animate-scale-in-simple {
+		animation: scaleInSimple 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+		will-change: transform;
+		transform-origin: center;
+		transform: translateZ(0);
 	}
 }

@@ -13,6 +13,7 @@ import type {
 	GameDifficulty,
 	GameHistoryEntry,
 	GameHistoryResponse,
+	GameSessionStartResponse,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, isNonEmptyString, normalizeGameData } from '@shared/utils';
 import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
@@ -54,7 +55,7 @@ class GameHistoryService {
 				correctAnswers: gameData.correctAnswers,
 				timeSpent: gameData.timeSpent ?? 0,
 				creditsUsed: gameData.creditsUsed ?? 0,
-				questionsData: gameData.questionsData ?? [],
+				answerHistory: gameData.answerHistory ?? [],
 				userId,
 			};
 
@@ -141,9 +142,9 @@ class GameHistoryService {
 		topic: string,
 		difficulty: GameDifficulty,
 		gameMode: GameMode
-	): Promise<{ gameId: string; status: string }> {
+	): Promise<GameSessionStartResponse> {
 		try {
-			const response = await apiService.post<{ gameId: string; status: string }>(API_ENDPOINTS.GAME.SESSION_START, {
+			const response = await apiService.post<GameSessionStartResponse>(API_ENDPOINTS.GAME.SESSION_START, {
 				gameId,
 				topic,
 				difficulty,

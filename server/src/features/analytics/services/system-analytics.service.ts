@@ -5,7 +5,7 @@ import { TIME_PERIODS_MS } from '@shared/constants';
 import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { serverLogger as logger } from '@internal/services';
+import { serverLogger as logger, metricsService } from '@internal/services';
 
 @Injectable()
 export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
@@ -144,37 +144,48 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	getSystemInsights(): SystemInsights {
+		const metrics = metricsService.getMetrics();
+		const perf = this.performanceData;
+		const sec = this.securityData;
+
 		const performanceInsights = [
-			'Response time is within optimal range',
-			'System throughput is stable',
-			'Error rate is below threshold',
+			perf.responseTime > 0 ? `Average response time: ${Math.round(perf.responseTime)}ms` : 'Response time pending',
+			perf.throughput >= 0 ? `Throughput: ${perf.throughput.toFixed(2)} req/s` : 'Throughput pending',
+			this.totalRequests > 0
+				? `Error rate: ${perf.errorRate.toFixed(2)}% (${this.failedRequests}/${this.totalRequests} failed)`
+				: 'Error rate: no requests yet',
 		];
 
 		const securityInsights = [
-			'No security vulnerabilities detected',
-			'Authentication system is functioning properly',
-			'Data encryption is active',
+			`Successful logins: ${sec.authentication.successfulLogins}`,
+			`Failed logins: ${sec.authentication.failedLogins}`,
+			`Unauthorized attempts: ${sec.authorization.unauthorizedAttempts}`,
+			`Data encryption coverage: ${sec.dataSecurity.encryptionCoverage}%`,
 		];
 
-		const userBehaviorInsights = [
-			'Peak usage during evening hours',
-			'Most popular topics: Science, History, Geography',
-			'Average session duration: 15 minutes',
-		];
+		const userBehaviorInsights = ['User behavior metrics are available via Analytics and Business endpoints.'];
 
+		const hitRate = metrics.performance?.hitRate ?? 0;
+		const missRate = metrics.performance?.missRate ?? 0;
+		const totalOps = metrics.totalOps ?? 0;
+		const successRate = metricsService.getOverallSuccessRate();
 		const systemHealthInsights = [
-			'All services are operational',
-			'Database performance is optimal',
-			'Cache hit rate is 85%',
-		];
+			totalOps > 0 ? `Cache hit rate: ${(hitRate * 100).toFixed(1)}%` : 'Cache metrics pending',
+			totalOps > 0 ? `Cache miss rate: ${(missRate * 100).toFixed(1)}%` : null,
+			totalOps > 0 ? `Storage success rate: ${successRate.toFixed(1)}%` : null,
+			`Total storage ops: ${totalOps}`,
+		].filter((s): s is string => typeof s === 'string');
+
+		const status =
+			perf.errorRate > 5 || perf.memoryUsage > 90 || sec.authentication.failedLogins > 100 ? 'attention' : 'optimal';
 
 		return {
 			performanceInsights,
 			securityInsights,
 			userBehaviorInsights,
 			systemHealthInsights,
-			status: 'optimal',
-			trends: ['Growing user base', 'Improved response times', 'Enhanced security'],
+			status,
+			trends: ['System insights driven by MetricsService and runtime data'],
 			timestamp: new Date(),
 		};
 	}
@@ -210,7 +221,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private startMetricsCollection(): void {
-		this.metricsCollectionInterval = setInterval(async () => {
+		const collectMetrics = async () => {
 			try {
 				await this.updatePerformanceMetrics();
 			} catch (error) {
@@ -218,7 +229,8 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 					errorInfo: { message: getErrorMessage(error) },
 				});
 			}
-		}, 5 * TIME_PERIODS_MS.MINUTE);
+		};
+		this.metricsCollectionInterval = setInterval(collectMetrics, 5 * TIME_PERIODS_MS.MINUTE);
 	}
 
 	private async updatePerformanceMetrics(): Promise<void> {

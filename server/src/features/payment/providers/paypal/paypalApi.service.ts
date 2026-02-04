@@ -8,7 +8,7 @@ import {
 	PAYPAL_ORDER_STATUSES,
 	PAYPAL_RETRY_CONFIG,
 } from '@shared/constants';
-import { isErrorWithCode, isErrorWithResponseStatus } from '@shared/utils';
+import { delay, isNetworkError, isServerError, isTimeoutError } from '@shared/utils';
 
 import { AppConfig } from '@config';
 import { serverLogger as logger } from '@internal/services';
@@ -48,6 +48,41 @@ export class PayPalApiService {
 			},
 			orderId,
 			'get PayPal order details'
+		);
+	}
+
+	async createOrder(amount: number, currency: string, description?: string): Promise<PayPalOrderResponse> {
+		const requestBody = {
+			intent: 'CAPTURE',
+			purchase_units: [
+				{
+					amount: {
+						currency_code: currency,
+						value: amount.toFixed(2),
+					},
+					description: description,
+				},
+			],
+		};
+
+		return this.executeWithRetry(
+			async () => {
+				const baseUrl = this.getBaseUrl();
+				const accessToken = await this.paypalAuthService.getAccessToken();
+
+				const response = await firstValueFrom(
+					this.httpService.post<PayPalOrderResponse>(`${baseUrl}${PAYPAL_API_ENDPOINTS.ORDERS}`, requestBody, {
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+							'Content-Type': 'application/json',
+						},
+					})
+				);
+
+				return response.data;
+			},
+			'new_order',
+			'create PayPal order'
 		);
 	}
 
@@ -159,8 +194,8 @@ export class PayPalApiService {
 					throw createServerError(operationName, new Error(errorMessage));
 				}
 
-				const delay = Math.min(
-					PAYPAL_RETRY_CONFIG.INITIAL_DELAY_MS * Math.pow(PAYPAL_RETRY_CONFIG.BACKOFF_MULTIPLIER, attempt),
+				const delayMs = Math.min(
+					PAYPAL_RETRY_CONFIG.INITIAL_DELAY_MS * PAYPAL_RETRY_CONFIG.BACKOFF_MULTIPLIER ** attempt,
 					PAYPAL_RETRY_CONFIG.MAX_DELAY_MS
 				);
 
@@ -168,10 +203,10 @@ export class PayPalApiService {
 					operation: operationName,
 					orderId,
 					attempt: attempt + 1,
-					delay,
+					delay: delayMs,
 				});
 
-				await this.sleep(delay);
+				await delay(delayMs);
 			}
 		}
 
@@ -180,24 +215,21 @@ export class PayPalApiService {
 	}
 
 	private isRetryableError(error: unknown): boolean {
-		if (isErrorWithResponseStatus(error)) {
-			const status = error.response?.status;
-			if (status && status >= 500 && status < 600) {
-				return true;
-			}
+		// Retry on server errors (5xx)
+		if (isServerError(error)) {
+			return true;
 		}
 
-		if (isErrorWithCode(error)) {
-			const code = error.code;
-			if (code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ENOTFOUND') {
-				return true;
-			}
+		// Retry on network errors
+		if (isNetworkError(error)) {
+			return true;
+		}
+
+		// Retry on timeout errors
+		if (isTimeoutError(error)) {
+			return true;
 		}
 
 		return false;
-	}
-
-	private sleep(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 }

@@ -127,7 +127,6 @@
 ### נתיבי שגיאה
 
 ```typescript
-<Route path='/forgot-password' element={<NotFound />} />
 <Route path='/unauthorized' element={<UnauthorizedView />} />
 <Route path='*' element={<NotFound />} />
 ```
@@ -153,7 +152,6 @@
 | /login | LoginView | לא | - | התחברות |
 | /register | RegistrationView | לא | - | הרשמה |
 | /auth/callback | OAuthCallback | לא | - | קריאת שוב OAuth |
-| /forgot-password | NotFound | לא | - | שכחת סיסמה (placeholder) |
 | /unauthorized | UnauthorizedView | לא | - | גישה לא מורשית |
 | * | NotFound | לא | - | 404 |
 

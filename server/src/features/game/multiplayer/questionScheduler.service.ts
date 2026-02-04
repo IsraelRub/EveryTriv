@@ -20,7 +20,7 @@ export class QuestionSchedulerService implements OnModuleDestroy {
 		// eslint-disable-next-line prefer-const -- checkIntervalId is assigned on line 43
 		let checkIntervalId: NodeJS.Timeout | undefined;
 
-		const timeoutId = setTimeout(async () => {
+		const handleTimeout = async () => {
 			try {
 				if (checkIntervalId) {
 					clearInterval(checkIntervalId);
@@ -33,9 +33,10 @@ export class QuestionSchedulerService implements OnModuleDestroy {
 					roomId,
 				});
 			}
-		}, checkIntervalMs * 100); // Fallback: 100x check interval
+		};
+		const timeoutId = setTimeout(handleTimeout, checkIntervalMs * 100); // Fallback: 100x check interval
 
-		checkIntervalId = setInterval(async () => {
+		const handleIntervalCheck = async () => {
 			try {
 				const allAnswered = await checkCallback();
 				if (allAnswered) {
@@ -52,7 +53,8 @@ export class QuestionSchedulerService implements OnModuleDestroy {
 					roomId,
 				});
 			}
-		}, checkIntervalMs);
+		};
+		checkIntervalId = setInterval(handleIntervalCheck, checkIntervalMs);
 
 		this.activeSchedules.set(roomId, {
 			timeoutId,

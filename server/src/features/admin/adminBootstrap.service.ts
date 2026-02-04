@@ -3,7 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
 import { TIME_PERIODS_MS, UserRole, VALIDATION_COUNT } from '@shared/constants';
-import { ensureErrorObject } from '@shared/utils';
+import { delay, ensureErrorObject } from '@shared/utils';
 
 import { AppConfig } from '@config';
 import { UserEntity } from '@internal/entities';
@@ -54,7 +54,7 @@ export class AdminBootstrapService implements OnModuleInit {
 					logger.securityWarn(`Admin bootstrap retry attempt ${attempt}/${maxRetries} - database not ready yet`, {
 						errorInfo: { message: normalizedError.message },
 					});
-					await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+					await delay(retryDelay * attempt);
 					continue;
 				}
 
@@ -73,6 +73,11 @@ export class AdminBootstrapService implements OnModuleInit {
 
 		if (user.role !== UserRole.ADMIN) {
 			user.role = UserRole.ADMIN;
+			// Admin users don't need credits - set to NULL when role changes to ADMIN
+			user.credits = null;
+			user.purchasedCredits = 0;
+			user.dailyFreeQuestions = 0;
+			user.remainingFreeQuestions = 0;
 			hasChanges = true;
 		}
 
@@ -104,6 +109,10 @@ export class AdminBootstrapService implements OnModuleInit {
 			passwordHash,
 			role: UserRole.ADMIN,
 			isActive: true,
+			credits: null, // NULL for admin (credits not applicable - unlimited access)
+			purchasedCredits: 0,
+			dailyFreeQuestions: 0, // Admin doesn't need free questions
+			remainingFreeQuestions: 0, // Admin doesn't need free questions
 		});
 
 		const savedUser = await this.userRepository.save(adminUser);

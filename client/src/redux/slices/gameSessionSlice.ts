@@ -1,28 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import type { QuestionData, TriviaQuestion } from '@shared/types';
+import type { AnswerHistory, TriviaQuestion } from '@shared/types';
 
 import { GameLoadingStep } from '@/constants';
-
-export interface GameSessionState {
-	gameId: string | null;
-	currentQuestionIndex: number;
-	gameQuestionCount: number | undefined;
-	score: number;
-	correctAnswers: number;
-	questions: TriviaQuestion[];
-	questionsData: QuestionData[];
-	selectedAnswer: number | null;
-	answered: boolean;
-	streak: number;
-	loading: boolean;
-	loadingStep: GameLoadingStep;
-	gameStartTime: number | null;
-	timeSpent: number;
-	isGameFinalized: boolean;
-	creditsDeducted: boolean;
-	lastScoreEarned: number | null;
-}
+import type { GameSessionState } from '@/types';
 
 const initialState: GameSessionState = {
 	gameId: null,
@@ -31,7 +12,7 @@ const initialState: GameSessionState = {
 	score: 0,
 	correctAnswers: 0,
 	questions: [],
-	questionsData: [],
+	answerHistory: [],
 	selectedAnswer: null,
 	answered: false,
 	streak: 0,
@@ -48,6 +29,12 @@ export const gameSessionSlice = createSlice({
 	name: 'gameSession',
 	initialState,
 	reducers: {
+		ensureGameStartTime: state => {
+			// Only set if not already initialized (avoid resetting the whole session)
+			if (state.gameStartTime === null) {
+				state.gameStartTime = Date.now();
+			}
+		},
 		startGameSession: (state, action: PayloadAction<{ gameId: string; gameQuestionCount?: number }>) => {
 			state.gameId = action.payload.gameId;
 			state.gameQuestionCount = action.payload.gameQuestionCount;
@@ -55,7 +42,7 @@ export const gameSessionSlice = createSlice({
 			state.score = 0;
 			state.correctAnswers = 0;
 			state.questions = [];
-			state.questionsData = [];
+			state.answerHistory = [];
 			state.selectedAnswer = null;
 			state.answered = false;
 			state.streak = 0;
@@ -69,6 +56,17 @@ export const gameSessionSlice = createSlice({
 		},
 		setQuestions: (state, action: PayloadAction<{ questions: TriviaQuestion[] }>) => {
 			state.questions = action.payload.questions;
+			// Update gameQuestionCount to match actual questions count if in QUESTION_LIMITED mode
+			// This ensures the displayed count matches the actual questions loaded
+			if (state.gameQuestionCount === undefined || state.gameQuestionCount === null) {
+				state.gameQuestionCount = action.payload.questions.length;
+			} else if (action.payload.questions.length < state.gameQuestionCount) {
+				// If we got fewer questions than expected, update to actual count
+				state.gameQuestionCount = action.payload.questions.length;
+			}
+		},
+		setGameQuestionCount: (state, action: PayloadAction<number>) => {
+			state.gameQuestionCount = action.payload;
 		},
 		setQuestionIndex: (state, action: PayloadAction<number>) => {
 			state.currentQuestionIndex = action.payload;
@@ -105,11 +103,11 @@ export const gameSessionSlice = createSlice({
 		setCreditsDeducted: (state, action: PayloadAction<boolean>) => {
 			state.creditsDeducted = action.payload;
 		},
-		addQuestionData: (state, action: PayloadAction<QuestionData>) => {
-			state.questionsData.push(action.payload);
+		addAnswerHistory: (state, action: PayloadAction<AnswerHistory>) => {
+			state.answerHistory.push(action.payload);
 		},
-		setQuestionsData: (state, action: PayloadAction<QuestionData[]>) => {
-			state.questionsData = action.payload;
+		setAnswerHistory: (state, action: PayloadAction<AnswerHistory[]>) => {
+			state.answerHistory = action.payload;
 		},
 		finalizeGame: state => {
 			state.isGameFinalized = true;
@@ -119,8 +117,10 @@ export const gameSessionSlice = createSlice({
 });
 
 export const {
+	ensureGameStartTime,
 	startGameSession,
 	setQuestions,
+	setGameQuestionCount,
 	setQuestionIndex,
 	selectAnswer,
 	setAnswered,
@@ -129,8 +129,8 @@ export const {
 	moveToNextQuestion,
 	setLoading,
 	setCreditsDeducted,
-	addQuestionData,
-	setQuestionsData,
+	addAnswerHistory,
+	setAnswerHistory,
 	finalizeGame,
 	resetGameSession,
 } = gameSessionSlice.actions;

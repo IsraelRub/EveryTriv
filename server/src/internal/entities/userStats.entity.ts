@@ -1,5 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, VersionColumn } from 'typeorm';
 
+import type { CategoryStatistics, RecentGameActivity } from '@shared/types';
+
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 
@@ -27,12 +29,7 @@ export class UserStatsEntity extends BaseEntity {
 	@Column('int', { name: 'incorrect_answers', default: 0 })
 	incorrectAnswers: number = 0;
 
-	@Column('decimal', {
-		name: 'overall_success_rate',
-		precision: 5,
-		scale: 2,
-		default: 0,
-	})
+	@Column('int', { name: 'overall_success_rate', default: 0 })
 	@Index()
 	overallSuccessRate: number = 0;
 
@@ -49,28 +46,10 @@ export class UserStatsEntity extends BaseEntity {
 	consecutiveDaysPlayed: number = 0;
 
 	@Column('jsonb', { name: 'topic_stats', default: {} })
-	topicStats: Record<
-		string,
-		{
-			totalQuestionsAnswered: number;
-			correctAnswers: number;
-			successRate: number;
-			score: number;
-			lastPlayed: Date;
-		}
-	> = {};
+	topicStats: Record<string, CategoryStatistics> = {};
 
 	@Column('jsonb', { name: 'difficulty_stats', default: {} })
-	difficultyStats: Record<
-		string,
-		{
-			totalQuestionsAnswered: number;
-			correctAnswers: number;
-			successRate: number;
-			score: number;
-			lastPlayed: Date;
-		}
-	> = {};
+	difficultyStats: Record<string, CategoryStatistics> = {};
 
 	@Column('int', { name: 'weekly_score', default: 0 })
 	@Index()
@@ -104,6 +83,12 @@ export class UserStatsEntity extends BaseEntity {
 
 	@Column('timestamp', { name: 'best_game_date', nullable: true })
 	bestGameDate?: Date;
+
+	@Column('int', { name: 'total_score', default: 0 })
+	totalScore: number = 0;
+
+	@Column('jsonb', { name: 'recent_activity', default: () => "'[]'::jsonb" })
+	recentActivity: RecentGameActivity[] = [];
 
 	@VersionColumn({ name: 'version' })
 	version!: number;

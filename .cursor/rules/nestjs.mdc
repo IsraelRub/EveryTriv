@@ -4,6 +4,38 @@ alwaysApply: true
 
 # Applies to: server/\*_/_.{ts}
 
+## 🤖 AI Assistant Instructions
+
+**CRITICAL: Read and follow ALL rules in this file before writing any code.**
+
+### Rule Enforcement Priority
+1. **MANDATORY**: TypeScript strict mode, no `any`/`as`, proper types
+2. **MANDATORY**: Controller/Service separation (thin controllers, thick services)
+3. **MANDATORY**: DTO validation with class-validator
+4. **MANDATORY**: Dependency injection patterns
+5. **MANDATORY**: Error handling and logging (no console.log)
+6. **STRONGLY RECOMMENDED**: Swagger documentation, transaction handling
+
+### Before Writing Code, Always:
+- ✅ Check existing similar controllers/services for patterns to follow
+- ✅ Verify module structure matches project organization
+- ✅ Ensure all DTOs have proper validation decorators
+- ✅ Use dependency injection for all services
+- ✅ Use logger service, never console.log
+- ✅ Implement proper error handling
+- ✅ Add Swagger decorators for public endpoints
+
+### Code Generation Checklist
+When creating new code, verify:
+- [ ] Types are explicit and complete
+- [ ] Controller follows Controller Pattern (thin, delegates to service)
+- [ ] Service follows Service Pattern (business logic, uses repositories)
+- [ ] DTOs have validation decorators
+- [ ] Error handling is implemented
+- [ ] Logging uses logger service (not console)
+- [ ] Swagger documentation is added
+- [ ] No placeholder or example code
+
 ## ✅ Project Structure
 
 - All source code must reside under the `src/` directory.
@@ -131,3 +163,142 @@ Shared code:
 - Keep README.md up to date
 - Use OpenAPI/Swagger for API documentation
 - Document database schema changes
+
+## 🎯 Controller Patterns
+
+### Standard Controller Structure
+```typescript
+@Controller('games')
+@ApiTags('Games')
+export class GamesController {
+  constructor(private readonly gamesService: GamesService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new game' })
+  @ApiResponse({ status: 201, description: 'Game created successfully' })
+  async create(@Body() createGameDto: CreateGameDto): Promise<GameResponseDto> {
+    return this.gamesService.create(createGameDto);
+  }
+}
+```
+
+### Best Practices
+- Keep controllers thin - delegate to services
+- Use DTOs for all request/response bodies
+- Document all endpoints with Swagger decorators
+- Use appropriate HTTP status codes
+- Handle exceptions at the filter level, not in controllers
+
+## 🔧 Service Patterns
+
+### Standard Service Structure
+```typescript
+@Injectable()
+export class GamesService {
+  constructor(
+    @InjectRepository(GameEntity)
+    private readonly gameRepository: Repository<GameEntity>,
+    private readonly logger: LoggerService,
+  ) {}
+
+  async create(createGameDto: CreateGameDto): Promise<Game> {
+    this.logger.log('Creating new game', { topic: createGameDto.topic });
+    
+    const game = this.gameRepository.create(createGameDto);
+    return this.gameRepository.save(game);
+  }
+}
+```
+
+### Service Responsibilities
+- Business logic implementation
+- Data validation beyond DTO validation
+- Database operations through repositories
+- Error handling and logging
+- Transaction management
+
+## 🗄️ Entity Patterns
+
+### TypeORM Entity Example
+```typescript
+@Entity('games')
+export class GameEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  topic: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### Entity Best Practices
+- Use UUIDs for primary keys when appropriate
+- Always include `createdAt` and `updatedAt` timestamps
+- Define relationships explicitly
+- Use indexes for frequently queried fields
+- Implement soft deletes when needed
+
+## 🔐 Authentication & Authorization
+
+- Use guards for route protection
+- Implement role-based access control (RBAC)
+- Use custom decorators for extracting user from request
+- Validate JWT tokens properly
+- Store sensitive data securely
+
+### Example Guard Pattern
+```typescript
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  canActivate(context: ExecutionContext): boolean {
+    // Implementation
+  }
+}
+```
+
+## 🧪 Testing Patterns
+
+### Unit Test Example
+```typescript
+describe('GamesService', () => {
+  let service: GamesService;
+  let repository: Repository<GameEntity>;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        GamesService,
+        {
+          provide: getRepositoryToken(GameEntity),
+          useValue: mockRepository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<GamesService>(GamesService);
+  });
+
+  it('should create a game', async () => {
+    // Test implementation
+  });
+});
+```
+
+## 🚨 Common Pitfalls to Avoid
+
+1. **Don't put business logic in controllers** - Move to services
+2. **Don't use `any` types** - Define proper types
+3. **Don't forget error handling** - Use exception filters
+4. **Don't skip validation** - Validate all inputs
+5. **Don't use console.log** - Use logger service
+6. **Don't create circular dependencies** - Structure modules properly
+7. **Don't forget transactions** - Use for multi-step operations
+8. **Don't expose sensitive data** - Filter responses properly
+9. **Don't skip documentation** - Document all public APIs
+10. **Don't ignore TypeScript errors** - Fix all type issues

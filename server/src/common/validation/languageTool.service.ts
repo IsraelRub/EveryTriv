@@ -1,35 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
-import { ERROR_CODES, LANGUAGE_TOOL_CONSTANTS } from '@shared/constants';
+import { ERROR_CODES, LANGUAGE_TOOL_CONSTANTS, TIME_PERIODS_MS } from '@shared/constants';
 import type { LanguageValidationResult } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { delay, getErrorMessage } from '@shared/utils';
 import { performLocalLanguageValidationAsync } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
+import type { LanguageToolCheckOptions, LanguageToolResponse } from '@internal/types';
 import { createServerError } from '@internal/utils';
-
-export interface LanguageToolCheckOptions {
-	enableSpellCheck?: boolean;
-	enableGrammarCheck?: boolean;
-	useExternalAPI?: boolean;
-	language?: string;
-}
-
-export interface LanguageToolResponse {
-	matches: Array<{
-		message: string;
-		shortMessage: string;
-		replacements: Array<{ value: string }>;
-		rule: {
-			id: string;
-			description: string;
-			category: {
-				id: string;
-				name: string;
-			};
-		};
-	}>;
-}
 
 @Injectable()
 export class LanguageToolService {
@@ -38,7 +16,7 @@ export class LanguageToolService {
 	private readonly maxRetries: number;
 	private isAvailableCache: boolean | null = null;
 	private availabilityCheckTime: number = 0;
-	private readonly availabilityCacheTTL = 5 * 60 * 1000; // 5 minutes
+	private readonly availabilityCacheTTL = TIME_PERIODS_MS.FIVE_MINUTES;
 
 	constructor() {
 		this.baseUrl = LANGUAGE_TOOL_CONSTANTS.BASE_URL;
@@ -143,7 +121,7 @@ export class LanguageToolService {
 					if (response.status >= 500 && attempt < this.maxRetries) {
 						// Retry on server errors
 						lastError = new Error(errorMessage);
-						await this.delay(attempt * 1000); // Exponential backoff
+						await delay(attempt * TIME_PERIODS_MS.SECOND); // Exponential backoff
 						continue;
 					}
 
@@ -182,15 +160,11 @@ export class LanguageToolService {
 					logger.languageToolDebug(`Retrying API call (attempt ${attempt}/${this.maxRetries})`, {
 						error: getErrorMessage(lastError),
 					});
-					await this.delay(attempt * 1000);
+					await delay(attempt * TIME_PERIODS_MS.SECOND);
 				}
 			}
 		}
 
 		throw createServerError('check text with LanguageTool API', lastError ?? new Error('Unknown error'));
-	}
-
-	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 }

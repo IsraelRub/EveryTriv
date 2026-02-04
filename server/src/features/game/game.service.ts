@@ -12,24 +12,28 @@ import {
 	HTTP_TIMEOUTS,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
+	VALID_GAME_STATUSES,
 	VALIDATION_COUNT,
+	VALIDATORS,
 } from '@shared/constants';
 import type {
+	AnswerHistoryFallback,
 	AnswerResult,
 	ClearOperationResponse,
 	GameData,
 	GameDifficulty,
 	GameHistoryEntry,
 	GameHistoryResponse,
-	QuestionDataWithoutQuestion,
+	GameSessionStartResponse,
+	GameSessionValidationResponse,
 	TriviaQuestion,
 } from '@shared/types';
 import {
 	calculateAnswerScore,
 	calculateSuccessRate,
 	checkAnswerCorrectness,
+	createAnswerHistory,
 	createAnswerResult,
-	createQuestionData,
 	getErrorMessage,
 	normalizeGameData,
 	toSavedGameConfiguration,
@@ -39,11 +43,12 @@ import { isSavedGameConfiguration } from '@shared/utils/domain';
 import { isRegisteredDifficulty, isUuid, restoreGameDifficulty, toDifficultyLevel } from '@shared/validation';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
-import { CacheInvalidationService, CacheService, StorageService } from '@internal/modules';
+import { CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	CreditsParams,
 	DeleteGameHistoryParams,
+	GameSessionState,
 	GetTriviaQuestionParams,
 	PromptParams,
 	SaveGameConfigParams,
@@ -59,6 +64,7 @@ import {
 	isValidGameDifficulty,
 } from '@internal/utils';
 
+import { UserStatsUpdateService } from '../analytics/services';
 import { TriviaGenerationService } from './triviaGeneration';
 
 @Injectable()
@@ -73,8 +79,42 @@ export class GameService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: StorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
-		private readonly cacheInvalidationService: CacheInvalidationService
+		private readonly userStatsUpdateService: UserStatsUpdateService
 	) {}
+
+	private async getUserRecentQuestionsForTopic(userId: string, topic: string, limit: number = 50): Promise<string[]> {
+		try {
+			const result = await this.gameHistoryRepository.query(
+				`SELECT DISTINCT LOWER(TRIM(elem->>'question')) as question
+				 FROM game_history gh,
+				 LATERAL jsonb_array_elements(gh.questions_data) AS elem
+				 WHERE gh.user_id = $1
+				   AND LOWER(gh.topic) = LOWER($2)
+				   AND gh.questions_data IS NOT NULL
+				   AND jsonb_array_length(gh.questions_data) > 0
+				   AND elem->>'question' IS NOT NULL
+				 ORDER BY gh.created_at DESC
+				 LIMIT $3`,
+				[userId, topic, limit]
+			);
+
+			const questions: string[] = [];
+			for (const row of result) {
+				if (row.question && typeof row.question === 'string' && row.question.trim().length > 0) {
+					questions.push(row.question);
+				}
+			}
+
+			return questions;
+		} catch (error) {
+			logger.gameError('Failed to get user recent questions for topic', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+				topic,
+			});
+			return [];
+		}
+	}
 
 	private async getUserSeenQuestions(userId: string): Promise<Set<string>> {
 		const cacheKey = SERVER_CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
@@ -88,7 +128,8 @@ export class GameService {
 
 			// If not in cache, query database with optimized query
 			// Using GIN index on questions_data (if exists) for better performance
-			// Limiting to recent games to avoid scanning entire history
+			// Get all distinct questions from user's entire game history to prevent repeats
+			// Note: This query is cached for 1 hour to avoid performance issues
 			const result = await this.gameHistoryRepository.query(
 				`SELECT DISTINCT LOWER(TRIM(elem->>'question')) as question
 				 FROM game_history gh,
@@ -96,10 +137,7 @@ export class GameService {
 				 WHERE gh.user_id = $1
 				   AND gh.questions_data IS NOT NULL
 				   AND jsonb_array_length(gh.questions_data) > 0
-				   AND elem->>'question' IS NOT NULL
-				   AND gh.created_at >= NOW() - INTERVAL '30 days'
-				 ORDER BY gh.created_at DESC
-				 LIMIT 10000`,
+				   AND elem->>'question' IS NOT NULL`,
 				[userId]
 			);
 
@@ -185,6 +223,13 @@ export class GameService {
 			const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
 			const maxRetries = VALIDATION_COUNT.RETRY_ATTEMPTS.QUESTION_GENERATION;
 
+			// Get the requested answer count (default to 4 if not specified)
+			const requestedAnswerCount = answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT;
+			const actualAnswerCount = Math.max(
+				VALIDATION_COUNT.ANSWER_COUNT.MIN,
+				Math.min(VALIDATION_COUNT.ANSWER_COUNT.MAX, requestedAnswerCount)
+			);
+
 			// Use existing questions first
 			// Note: getAvailableQuestions already filters excluded questions at SQL level
 			for (const questionEntity of availableQuestions) {
@@ -198,6 +243,28 @@ export class GameService {
 					questionEntity.metadata?.difficulty
 				);
 
+				// Adjust answer count to match requested count
+				let adjustedAnswers = [...questionEntity.answers];
+				const currentAnswerCount = adjustedAnswers.length;
+
+				if (currentAnswerCount > actualAnswerCount) {
+					// If we have more answers than needed, keep the first (correct) answer
+					// and randomly select (actualAnswerCount - 1) incorrect answers
+					const correctAnswer = adjustedAnswers[0];
+					if (!correctAnswer) {
+						// Skip if no correct answer (should not happen, but TypeScript safety)
+						continue;
+					}
+					const incorrectAnswers = adjustedAnswers.slice(1);
+					// Shuffle and take only what we need
+					const shuffledIncorrect = incorrectAnswers.sort(() => Math.random() - 0.5);
+					adjustedAnswers = [correctAnswer, ...shuffledIncorrect.slice(0, actualAnswerCount - 1)];
+				} else if (currentAnswerCount < actualAnswerCount) {
+					// If we have fewer answers than needed, skip this question
+					// It will be replaced by a newly generated question
+					continue;
+				}
+
 				const {
 					userId: _userId,
 					user: _user,
@@ -207,6 +274,7 @@ export class GameService {
 				} = questionEntity;
 				questions.push({
 					...rest,
+					answers: adjustedAnswers,
 					difficulty: restoredDifficulty,
 				});
 
@@ -216,16 +284,32 @@ export class GameService {
 			// Generate new questions if we don't have enough
 			const remainingCount = normalizedQuestionsPerRequest - questions.length;
 			if (remainingCount > 0) {
+				// Get recent questions from same topic across all difficulty levels to help LLM avoid duplicates (once per batch)
+				// Limit to 50 questions to avoid overwhelming the prompt (each question ~50-100 chars = ~10-20 tokens)
+				const baseRecentQuestions = userId ? await this.getUserRecentQuestionsForTopic(userId, topic, 50) : [];
+				// Track questions generated in this batch to include in exclude list for subsequent generations
+				const batchGeneratedQuestions: string[] = [];
+
 				for (let i = 0; i < remainingCount; i++) {
 					let question: TriviaQuestion | null = null;
 					let retries = 0;
 
 					while (retries < maxRetries && !question) {
 						try {
+							// Combine base recent questions with questions generated in this batch
+							const excludeQuestions = [
+								...baseRecentQuestions,
+								...batchGeneratedQuestions,
+								...Array.from(excludeQuestionsSet),
+							]
+								.slice(0, 50)
+								.filter((q, idx, arr) => arr.indexOf(q) === idx); // Remove duplicates
+
 							const promptParams: PromptParams = {
 								topic,
 								difficulty,
 								answerCount: answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
+								excludeQuestions: excludeQuestions.length > 0 ? excludeQuestions : undefined,
 							};
 							let timeoutId: NodeJS.Timeout | undefined = undefined;
 							const timeoutPromise = new Promise<never>((_, reject) => {
@@ -277,6 +361,7 @@ export class GameService {
 							};
 
 							appendExcludeQuestion(generationResult.question);
+							batchGeneratedQuestions.push(generationResult.question);
 							questions.push(question);
 						} catch (error) {
 							logger.gameError('Failed to generate question, retrying', {
@@ -374,10 +459,10 @@ export class GameService {
 		topic: string,
 		difficulty: GameDifficulty,
 		gameMode: GameMode
-	): Promise<{ gameId: string; status: string }> {
+	): Promise<GameSessionStartResponse> {
 		try {
 			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
-			const sessionState = {
+			const sessionState: GameSessionState = {
 				gameId,
 				userId,
 				topic,
@@ -389,7 +474,7 @@ export class GameService {
 				currentScore: 0,
 				correctAnswers: 0,
 				totalQuestions: 0,
-				status: 'in_progress' as const,
+				status: GameStatus.IN_PROGRESS,
 			};
 
 			const result = await this.storageService.set(sessionKey, sessionState, TIME_DURATIONS_SECONDS.HOUR);
@@ -406,7 +491,7 @@ export class GameService {
 
 			return {
 				gameId,
-				status: 'in_progress',
+				status: GameStatus.IN_PROGRESS,
 			};
 		} catch (error) {
 			logger.gameError('Failed to start game session', {
@@ -497,7 +582,7 @@ export class GameService {
 		}
 	}
 
-	async validateGameSession(userId: string, gameId: string): Promise<{ isValid: boolean; session?: unknown }> {
+	async validateGameSession(userId: string, gameId: string): Promise<GameSessionValidationResponse> {
 		try {
 			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionResult = await this.storageService.get(sessionKey);
@@ -507,17 +592,14 @@ export class GameService {
 			}
 
 			// Validate session structure
-			const session = sessionResult.data as {
-				gameId?: string;
-				userId?: string;
-				status?: string;
-			};
+			if (!isGameSessionState(sessionResult.data)) {
+				return { isValid: false };
+			}
+
+			const session = sessionResult.data;
 
 			// Check if session is valid (has required fields and matches user/game)
-			const isValid =
-				session.gameId === gameId &&
-				session.userId === userId &&
-				(session.status === 'in_progress' || session.status === 'completed');
+			const isValid = session.gameId === gameId && session.userId === userId && VALID_GAME_STATUSES.has(session.status);
 
 			if (isValid) {
 				return { isValid: true, session: sessionResult.data };
@@ -575,13 +657,13 @@ export class GameService {
 			// Calculate total time spent
 			const totalTimeSpent = session.questions.reduce((sum, q) => sum + (q.timeSpent ?? 0), 0);
 
-			// Create questionsData from session questions
+			// Create AnswerHistory from session questions
 			// Handle cases where question might be deleted (fallback to text-based data)
-			const questionsData = await Promise.all(
+			const answerHistory = await Promise.all(
 				session.questions.map(async q => {
 					try {
 						const question = await this.getQuestionById(q.questionId);
-						return createQuestionData(question, q.answer, q.isCorrect, q.timeSpent);
+						return createAnswerHistory(question, q.answer, q.isCorrect, q.timeSpent);
 					} catch (error) {
 						// Question was deleted or not found - create fallback data with text
 						// Note: We don't have the original question text/answers, so we use indices as fallback
@@ -590,7 +672,7 @@ export class GameService {
 							errorInfo: { message: getErrorMessage(error) },
 							questionId: q.questionId,
 						});
-						const fallbackData: QuestionDataWithoutQuestion = {
+						const fallbackData: AnswerHistoryFallback = {
 							question: `Question ${q.questionId.substring(0, 8)}... (deleted)`,
 							isCorrect: q.isCorrect,
 							timeSpent: q.timeSpent,
@@ -619,7 +701,7 @@ export class GameService {
 				gameMode: session.gameMode,
 				timeSpent: totalTimeSpent,
 				creditsUsed: 0,
-				questionsData,
+				answerHistory,
 			};
 
 			// Save to history (this will handle idempotency check)
@@ -703,30 +785,20 @@ export class GameService {
 				gameMode: normalizedData.gameMode,
 				timeSpent: normalizedData.timeSpent,
 				creditsUsed: normalizedData.creditsUsed,
-				questionsData: normalizedData.questionsData,
+				answerHistory: normalizedData.answerHistory,
 			});
 
 			const savedHistory = await this.gameHistoryRepository.save(gameHistory);
 
+			// Update user statistics asynchronously (non-blocking)
+			// Note: Cache invalidation is now handled inside updateStatsFromGame after stats are saved
+			this.updateUserStatsAsync(userId, savedHistory);
+
 			// Invalidate seen questions cache to include new questions from this game
 			const seenQuestionsCacheKey = SERVER_CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
-			void this.cacheService.delete(seenQuestionsCacheKey).catch(error => {
-				logger.cacheError('Failed to invalidate seen questions cache', seenQuestionsCacheKey, {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-				});
-			});
+			this.invalidateSeenQuestionsCacheAsync(seenQuestionsCacheKey, userId);
 
-			// Handle cache invalidation asynchronously (non-blocking)
-			void this.cacheInvalidationService.invalidateOnGameComplete(userId).catch(error => {
-				logger.cacheError('Failed to invalidate caches on game complete', userId, {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-					gameId: savedHistory.id,
-				});
-			});
-
-			const { user: _user, questionsData: _questionsData, updatedAt: _updatedAt, ...rest } = savedHistory;
+			const { user: _user, answerHistory: _AnswerHistory, updatedAt: _updatedAt, ...rest } = savedHistory;
 			return {
 				...rest,
 				incorrectAnswers,
@@ -743,7 +815,7 @@ export class GameService {
 	}
 
 	async getUserGameHistory(params: UserGameHistoryParams): Promise<GameHistoryResponse> {
-		const { userId, limit = 20, offset = 0 } = params;
+		const { userId, limit = 50, offset = 0 } = params;
 		try {
 			const totalGames = await this.gameHistoryRepository.count({
 				where: { userId },
@@ -989,6 +1061,9 @@ export class GameService {
 
 			await this.gameHistoryRepository.remove(gameHistory);
 
+			// Update user statistics asynchronously (non-blocking)
+			this.removeUserStatsFromGameAsync(userId, gameHistory);
+
 			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
 
 			return {
@@ -1020,10 +1095,10 @@ export class GameService {
 				.where('user_id = :userId', { userId })
 				.execute();
 
-			const deletedCount =
-				typeof deleteResult.affected === 'number' && Number.isFinite(deleteResult.affected)
-					? deleteResult.affected
-					: count;
+			const deletedCount = VALIDATORS.number(deleteResult.affected) ? deleteResult.affected : count;
+
+			// Reset user statistics asynchronously (non-blocking)
+			this.resetUserStatsAsync(userId);
 
 			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
 
@@ -1039,5 +1114,68 @@ export class GameService {
 			});
 			throw error;
 		}
+	}
+
+	private updateUserStatsAsync(userId: string, savedHistory: GameHistoryEntity): void {
+		const handleUpdate = async () => {
+			try {
+				await this.userStatsUpdateService.updateStatsFromGame(userId, savedHistory);
+			} catch (error) {
+				logger.gameError('Failed to update user stats (async)', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+					gameId: savedHistory.id,
+					note: 'Stats update failed but game was saved. Consider running consistency check.',
+				});
+
+				// Add to failed queue for potential retry
+				const queueKey = `${userId}:${savedHistory.id}`;
+				this.userStatsUpdateService.addToFailedQueue(queueKey, savedHistory);
+			}
+		};
+		handleUpdate();
+	}
+
+	private invalidateSeenQuestionsCacheAsync(cacheKey: string, userId: string): void {
+		const handleInvalidation = async () => {
+			try {
+				await this.cacheService.delete(cacheKey);
+			} catch (error) {
+				logger.cacheError('Failed to invalidate seen questions cache', cacheKey, {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+				});
+			}
+		};
+		handleInvalidation();
+	}
+
+	private removeUserStatsFromGameAsync(userId: string, gameHistory: GameHistoryEntity): void {
+		const handleRemove = async () => {
+			try {
+				await this.userStatsUpdateService.removeStatsFromGame(userId, gameHistory);
+			} catch (error) {
+				logger.gameError('Failed to remove user stats from deleted game', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+					gameId: gameHistory.id,
+				});
+			}
+		};
+		handleRemove();
+	}
+
+	private resetUserStatsAsync(userId: string): void {
+		const handleReset = async () => {
+			try {
+				await this.userStatsUpdateService.resetUserStats(userId);
+			} catch (error) {
+				logger.gameError('Failed to reset user stats after clearing history', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+				});
+			}
+		};
+		handleReset();
 	}
 }

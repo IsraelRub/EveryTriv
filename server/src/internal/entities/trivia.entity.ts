@@ -35,7 +35,7 @@ export class TriviaEntity extends BaseEntity {
 
 	@ManyToOne(() => UserEntity, { nullable: true })
 	@JoinColumn({ name: 'user_id' })
-	user!: UserEntity;
+	user?: UserEntity;
 
 	@Column({ name: 'is_correct', type: 'boolean', default: false })
 	isCorrect: boolean = false;

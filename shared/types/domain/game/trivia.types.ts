@@ -1,11 +1,5 @@
 // Trivia-related types for EveryTriv.
-import {
-	CUSTOM_DIFFICULTY_PREFIX,
-	DifficultyLevel,
-	GameMode,
-	GameStatus,
-	TriviaQuestionSource,
-} from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
@@ -24,7 +18,6 @@ export interface BaseTriviaParams {
 export interface TriviaQuestionDetailsMetadata {
 	category?: string;
 	tags?: string[];
-	source?: TriviaQuestionSource;
 	providerName?: string;
 	difficulty?: GameDifficulty;
 	difficultyScore?: number;
@@ -64,9 +57,7 @@ export interface BaseTriviaConfig {
 	gameMode?: GameMode;
 }
 
-export type TriviaQuestionInput = Omit<TriviaQuestion, 'id' | 'createdAt' | 'updatedAt'>;
-
-export interface TriviaQuestion extends BaseEntity {
+export interface TriviaQuestionInput {
 	question: string;
 	answers: TriviaAnswer[];
 	correctAnswerIndex: number;
@@ -77,6 +68,8 @@ export interface TriviaQuestion extends BaseEntity {
 	timesAnswered?: number;
 	successRate?: number;
 }
+
+export interface TriviaQuestion extends TriviaQuestionInput, BaseEntity {}
 
 export interface BaseAnswerPayload {
 	questionId: string;
@@ -96,10 +89,6 @@ export interface TriviaRequest extends BaseTriviaConfig {
 	timeLimit?: number;
 	maxQuestionsPerGame?: number;
 	answerCount?: number;
-}
-
-export interface GameAnswerSubmission extends BaseAnswerPayload {
-	answer: number;
 }
 
 export interface TriviaInputValidationResult {
@@ -122,18 +111,4 @@ export interface AnswerResult extends BaseAnswerData {
 	totalScore: number;
 	explanation?: string;
 	feedback: string;
-}
-
-export interface TriviaSession {
-	sessionId: string;
-	userId: string;
-	questions: TriviaQuestion[];
-	currentQuestionIndex: number;
-	answers: AnswerResult[];
-	startTime: Date;
-	endTime?: Date;
-	status: GameStatus;
-	score: number;
-	timeLimit?: number;
-	maxQuestionsPerGame?: number;
 }

@@ -68,6 +68,13 @@ export class GameStateService {
 		// Build players scores map
 		const playersScores = Object.fromEntries(room.players.map(player => [player.userId, player.score]));
 
+		// Build answer counts map - count how many players answered each answer index
+		const answerCounts: Record<string, number> = {};
+		Object.values(playersAnswers).forEach(answerIndex => {
+			const answerKey = String(answerIndex);
+			answerCounts[answerKey] = (answerCounts[answerKey] ?? 0) + 1;
+		});
+
 		// Build leaderboard (sorted by score, then by correct answers)
 		const leaderboard = [...room.players].sort((a, b) => {
 			if (b.score !== a.score) {
@@ -85,8 +92,9 @@ export class GameStateService {
 			playersAnswers,
 			playersScores,
 			leaderboard,
-			startedAt: room.startTime,
-			currentQuestionStartTime: room.currentQuestionStartTime,
+			startedAt: room.startTime?.toISOString(),
+			currentQuestionStartTime: room.currentQuestionStartTime?.toISOString(),
+			answerCounts: Object.keys(answerCounts).length > 0 ? answerCounts : undefined,
 		};
 	}
 

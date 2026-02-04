@@ -13,7 +13,7 @@
     },
     {
       "key": "accessToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkNWZhYzRhOC1mMTU1LTRiZWQtYjg0Yy0wYjRkYTRjZThmOWQiLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwidXNlcm5hbWUiOiJhZG1pbl91c2VyIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYyOTYzNjEzLCJleHAiOjE3NjI5NjcyMTN9.ySraCxE2dH-JT-c2xd1vMjiFuSOgWEZiX2ftJchNbso",
+      "value": "",
       "type": "string"
     },
     {
@@ -196,6 +196,15 @@
           "    });",
           "}",
           "",
+          "// Check if endpoint is public (doesn't require authentication)",
+          "const requestUrl = pm.request.url ? pm.request.url.toString() : '';",
+          "const baseUrl = getVar('baseUrl') || 'http://localhost:3001';",
+          "const requestPath = pm.request.url ? (pm.request.url.path ? pm.request.url.path.join('/') : '') : '';",
+          "const normalizedRequestUrl = requestUrl.endsWith('/') ? requestUrl.slice(0, -1) : requestUrl;",
+          "const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;",
+          "const isRootEndpoint = requestPath === '' || requestPath === '/' || requestUrl === baseUrl || requestUrl === baseUrl + '/' || normalizedRequestUrl === normalizedBaseUrl;",
+          "const isPublicEndpoint = isRootEndpoint || requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/refresh') || requestUrl.includes('/api/health') || requestUrl.includes('/analytics/leaderboard') || (requestUrl.includes('/multiplayer') && !requestUrl.includes('/rooms'));",
+          "",
           "// Inject Authorization header automatically when token exists and admin token not requested",
           "const accessToken = getVar('accessToken');",
           "if (!usesAdminToken && !needsAdminToken && accessToken && !pm.request.headers.has('Authorization')) {",
@@ -203,6 +212,59 @@
           "        key: 'Authorization',",
           "        value: 'Bearer ' + accessToken",
           "    });",
+          "} else if (!usesAdminToken && !needsAdminToken && !accessToken && !pm.request.headers.has('Authorization') && !isPublicEndpoint) {",
+          "    // Auto-login for regular user if no token exists and endpoint requires authentication",
+          "    const registerEmail = getVar('registerEmail');",
+          "    const registerPassword = getVar('registerPassword');",
+          "    ",
+          "    if (registerEmail && registerPassword) {",
+          "        pm.sendRequest({",
+          "            url: `${getVar('baseUrl')}/auth/login`,",
+          "            method: 'POST',",
+          "            header: { 'Content-Type': 'application/json' },",
+          "            body: {",
+          "                mode: 'raw',",
+          "                raw: JSON.stringify({",
+          "                    email: registerEmail,",
+          "                    password: registerPassword",
+          "                })",
+          "            }",
+          "        }, (error, response) => {",
+          "            if (!error && response && response.code >= 200 && response.code < 300) {",
+          "                try {",
+          "                    const loginBody = response.json();",
+          "                    const responseData = loginBody && loginBody.data ? loginBody.data : loginBody;",
+          "                    const newAccessToken = responseData?.accessToken || responseData?.access_token || loginBody?.accessToken || loginBody?.access_token;",
+          "                    const newRefreshToken = responseData?.refreshToken || responseData?.refresh_token || loginBody?.refreshToken || loginBody?.refresh_token;",
+          "                    ",
+          "                    if (newAccessToken) {",
+          "                        setVar('accessToken', newAccessToken);",
+          "                        setVar('userAccessToken', newAccessToken);",
+          "                        pm.request.headers.upsert({",
+          "                            key: 'Authorization',",
+          "                            value: 'Bearer ' + newAccessToken",
+          "                        });",
+          "                    }",
+          "                    ",
+          "                    if (newRefreshToken) {",
+          "                        setVar('refreshToken', newRefreshToken);",
+          "                        setVar('userRefreshToken', newRefreshToken);",
+          "                    }",
+          "                    ",
+          "                    // Set user info if available",
+          "                    const user = responseData?.user || loginBody?.user;",
+          "                    if (user) {",
+          "                        if (user.id) setVar('userId', user.id);",
+          "                        if (user.role) setVar('userRole', user.role);",
+          "                    }",
+          "                } catch (parseError) {",
+          "                    console.warn('Failed to process user login response', parseError);",
+          "                }",
+          "            } else {",
+          "                console.warn('User auto-login failed', { error, status: response && response.code });",
+          "            }",
+          "        });",
+          "    }",
           "}",
           "",
           "const ensureAdminHeader = token => {",
@@ -249,8 +311,8 @@
           "                    try {",
           "                        const loginBody = response.json();",
           "                        const responseData = loginBody && loginBody.data ? loginBody.data : loginBody;",
-          "                        const newAccessToken = responseData && responseData.access_token ? responseData.access_token : loginBody.access_token;",
-          "                        const newRefreshToken = responseData && responseData.refresh_token ? responseData.refresh_token : loginBody.refresh_token;",
+          "                        const newAccessToken = responseData?.accessToken || responseData?.access_token || loginBody?.accessToken || loginBody?.access_token;",
+          "                        const newRefreshToken = responseData?.refreshToken || responseData?.refresh_token || loginBody?.refreshToken || loginBody?.refresh_token;",
           "",
           "                        if (newAccessToken) {",
           "                            setVar('adminAccessToken', newAccessToken);",
@@ -446,11 +508,11 @@
           "        if (responseJson.credits !== undefined) {",
           "            setVar('creditsBalance', responseJson.credits.toString());",
           "        }",
-          "        if (responseJson.data && responseJson.data.access_token) {",
-          "            setVar('accessToken', responseJson.data.access_token);",
+          "        if (responseJson.data && (responseJson.data.accessToken || responseJson.data.access_token)) {",
+          "            setVar('accessToken', responseJson.data.accessToken || responseJson.data.access_token);",
           "        }",
-          "        if (responseJson.data && responseJson.data.refresh_token) {",
-          "            setVar('refreshToken', responseJson.data.refresh_token);",
+          "        if (responseJson.data && (responseJson.data.refreshToken || responseJson.data.refresh_token)) {",
+          "            setVar('refreshToken', responseJson.data.refreshToken || responseJson.data.refresh_token);",
           "        }",
           "    } catch (e) {",
           "        // Ignore parsing errors",
@@ -620,6 +682,55 @@
                   "pm.collectionVariables.set('registerEmail', uniqueEmail);"
                 ]
               }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save user data from registration response",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const accessToken = body.accessToken || body.access_token || (body.data && (body.data.accessToken || body.data.access_token));",
+                  "        const userId = body.user?.id || (body.data && body.data.user?.id);",
+                  "        ",
+                  "        if (accessToken) {",
+                  "            pm.collectionVariables.set('userAccessToken', accessToken);",
+                  "            pm.collectionVariables.set('accessToken', accessToken);",
+                  "        }",
+                  "        ",
+                  "        if (userId) {",
+                  "            pm.collectionVariables.set('registeredUserId', userId);",
+                  "        }",
+                  "        ",
+                  "        // Auto-delete test users (cli_user_*) after registration",
+                  "        const registerEmail = pm.collectionVariables.get('registerEmail') || '';",
+                  "        if (registerEmail.startsWith('cli_user_') && accessToken) {",
+                  "            // Delete the test user account",
+                  "            pm.sendRequest({",
+                  "                url: pm.collectionVariables.get('baseUrl') + '/users/account',",
+                  "                method: 'DELETE',",
+                  "                header: {",
+                  "                    'Authorization': 'Bearer ' + accessToken,",
+                  "                    'Content-Type': 'application/json'",
+                  "                }",
+                  "            }, function (err, response) {",
+                  "                if (err) {",
+                  "                    console.warn('Failed to delete test user:', err);",
+                  "                } else if (response.code === 200 || response.code === 204) {",
+                  "                    console.log('Test user automatically deleted:', registerEmail);",
+                  "                } else {",
+                  "                    console.warn('Failed to delete test user. Status:', response.code);",
+                  "                }",
+                  "            });",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.warn('Failed to process registration response:', error);",
+                  "    }",
+                  "}"
+                ]
+              }
             }
           ],
           "request": {
@@ -652,12 +763,12 @@
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    try {",
                   "        const body = pm.response.json();",
-                  "        const accessToken = body.access_token || (body.data && body.data.access_token);",
+                  "        const accessToken = body.accessToken || body.access_token || (body.data && (body.data.accessToken || body.data.access_token));",
                   "        if (accessToken) {",
                   "            pm.collectionVariables.set('userAccessToken', accessToken);",
                   "            pm.collectionVariables.set('accessToken', accessToken);",
                   "        }",
-                  "        const refreshToken = body.refresh_token || (body.data && body.data.refresh_token);",
+                  "        const refreshToken = body.refreshToken || body.refresh_token || (body.data && (body.data.refreshToken || body.data.refresh_token));",
                   "        if (refreshToken) {",
                   "            pm.collectionVariables.set('userRefreshToken', refreshToken);",
                   "            pm.collectionVariables.set('refreshToken', refreshToken);",
@@ -797,11 +908,11 @@
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    try {",
                   "        const body = pm.response.json();",
-                  "        const accessToken = body.access_token || (body.data && body.data.access_token);",
+                  "        const accessToken = body.accessToken || body.access_token || (body.data && (body.data.accessToken || body.data.access_token));",
                   "        if (accessToken) {",
                   "            pm.collectionVariables.set('adminAccessToken', accessToken);",
                   "        }",
-                  "        const refreshToken = body.refresh_token || (body.data && body.data.refresh_token);",
+                  "        const refreshToken = body.refreshToken || body.refresh_token || (body.data && (body.data.refreshToken || body.data.refresh_token));",
                   "        if (refreshToken) {",
                   "            pm.collectionVariables.set('adminRefreshToken', refreshToken);",
                   "        }",
@@ -1164,9 +1275,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/admin/all",
+              "raw": "{{baseUrl}}/users/admin/all?limit=200&offset=0",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "admin", "all"]
+              "path": ["users", "admin", "all"],
+              "query": [
+                { "key": "limit", "value": "200" },
+                { "key": "offset", "value": "0" }
+              ]
             }
           }
         },
@@ -1394,7 +1509,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"score\": 100,\n  \"totalQuestions\": 5,\n  \"correctAnswers\": 4,\n  \"difficulty\": \"medium\",\n  \"topic\": \"science\",\n  \"gameMode\": \"CLASSIC\",\n  \"timeSpent\": 120,\n  \"creditsUsed\": 5,\n  \"questionsData\": []\n}"
+              "raw": "{\n  \"score\": 100,\n  \"gameQuestionCount\": 5,\n  \"correctAnswers\": 4,\n  \"difficulty\": \"medium\",\n  \"topic\": \"science\",\n  \"gameMode\": \"question-limited\",\n  \"timeSpent\": 120,\n  \"creditsUsed\": 5,\n  \"AnswerHistory\": [],\n  \"clientMutationId\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/game/history",
@@ -1998,29 +2113,6 @@
           }
         },
         {
-          "name": "Get Credit History",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/credits/history?limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["credits", "history"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
           "name": "Deduct User Credits",
           "request": {
             "method": "POST",
@@ -2092,7 +2184,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"planType\": \"premium\",\n  \"numberOfPayments\": 12,\n  \"agreeToTerms\": true,\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
+              "raw": "{\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"description\": \"Test payment\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/create",
@@ -2117,7 +2209,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"planType\": \"premium\",\n  \"numberOfPayments\": 12,\n  \"agreeToTerms\": true,\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\",\n  \"paypalPaymentId\": \"PAYPAL_PAYMENT_ID_HERE\"\n}"
+              "raw": "{\n  \"amount\": 9.99,\n  \"currency\": \"USD\",\n  \"description\": \"Test PayPal payment\",\n  \"paymentMethod\": \"paypal\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/create",
@@ -2184,7 +2276,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"paypal\",\n  \"paypalOrderId\": \"PAYPAL_ORDER_ID_HERE\"\n}"
+              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"paypal\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/purchase-credits",
@@ -2267,7 +2359,7 @@
     },
     {
       "name": "📊 Analytics",
-      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user analytics\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get User Statistics (Admin) (GET)\n- Get User Performance (Admin) (GET)\n- Get User Progress (Admin) (GET)\n- Get User Activity (Admin) (GET)\n- Get User Insights (Admin) (GET)\n- Get User Recommendations (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Get Business Metrics (Admin) (GET)\n- Get System Performance Metrics (Admin) (GET)\n- Get System Security Metrics (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user analytics\n- Global trends aggregation",
+      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user analytics\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get Unified User Analytics (Admin) (GET) - Replaces all individual user analytics endpoints\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET)\n- Get Global Stats (GET)\n- Get Global Trends (Admin) (GET)\n- Get Business Metrics (Admin) (GET)\n- Get System Performance (Admin) (GET)\n- Get System Security (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET)ghts (Admin) (GET)\n- Get User Recommendations (Admin) (GET)\n- Get User Achievements (Admin) (GET)\n- Get User Trends (Admin) (GET)\n- Get User Comparison (Admin) (GET)\n- Get User Summary (Admin) (GET)\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET) - Public\n- Get Global Stats (GET) - Public\n- Get Global Trends (GET) - Admin\n- Get Business Metrics (Admin) (GET)\n- Get System Performance Metrics (Admin) (GET)\n- Get System Security Metrics (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user analytics\n- Global trends aggregation",
       "item": [
         {
           "name": "Track Analytics Event",
@@ -2313,83 +2405,72 @@
           }
         },
         {
-          "name": "Get User Statistics (Admin)",
+          "name": "Get Unified User Analytics (Current User)",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user/statistics/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/unified?include=statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "statistics", "{{userId}}"]
-            },
-            "description": "Get user statistics by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Performance (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/performance/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "performance", "{{userId}}"]
-            },
-            "description": "Get user performance metrics by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Progress (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/progress/{{userId}}?startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&limit=30",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "progress", "{{userId}}"],
+              "path": ["analytics", "user", "unified"],
               "query": [
+                {
+                  "key": "include",
+                  "value": "statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress",
+                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison"
+                },
                 {
                   "key": "startDate",
                   "value": "2024-01-01",
-                  "description": "Start date for progress analysis (ISO format)"
+                  "description": "Start date for date range filter (ISO format)"
                 },
                 {
                   "key": "endDate",
                   "value": "2024-12-31",
-                  "description": "End date for progress analysis (ISO format)"
+                  "description": "End date for date range filter (ISO format)"
                 },
                 {
                   "key": "groupBy",
                   "value": "daily",
-                  "description": "Group by period: daily, weekly, monthly"
+                  "description": "Group trend data by time period: daily, weekly, monthly"
                 },
                 {
-                  "key": "limit",
+                  "key": "activityLimit",
+                  "value": "50",
+                  "description": "Maximum number of activity entries to return (1-200)"
+                },
+                {
+                  "key": "trendLimit",
                   "value": "30",
-                  "description": "Maximum number of data points to return"
+                  "description": "Maximum number of trend points to return (1-200)"
+                },
+                {
+                  "key": "includeActivity",
+                  "value": "false",
+                  "description": "Include full activity history in summary (boolean)"
+                },
+                {
+                  "key": "targetUserId",
+                  "value": "",
+                  "description": "Target user ID for comparison (when include=comparison)"
+                },
+                {
+                  "key": "comparisonTarget",
+                  "value": "",
+                  "description": "Comparison target: global or user (when include=comparison)"
                 }
               ]
             },
-            "description": "Get user progress analytics by ID with optional date range and grouping (Admin only)"
+            "description": "Get unified user analytics for the currently authenticated user with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison). Protected endpoint."
           }
         },
         {
-          "name": "Get User Activity (Admin)",
+          "name": "Get Unified User Analytics (Admin)",
           "request": {
             "method": "GET",
             "header": [
@@ -2399,119 +2480,58 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user/activity/{{userId}}",
+              "raw": "{{baseUrl}}/analytics/user/unified/{{userId}}?include=statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
               "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "activity", "{{userId}}"]
+              "path": ["analytics", "user", "unified", "{{userId}}"],
+              "query": [
+                {
+                  "key": "include",
+                  "value": "statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress",
+                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date for date range filter (ISO format)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31",
+                  "description": "End date for date range filter (ISO format)"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "daily",
+                  "description": "Group trend data by time period: daily, weekly, monthly"
+                },
+                {
+                  "key": "activityLimit",
+                  "value": "50",
+                  "description": "Maximum number of activity entries to return (1-200)"
+                },
+                {
+                  "key": "trendLimit",
+                  "value": "30",
+                  "description": "Maximum number of trend points to return (1-200)"
+                },
+                {
+                  "key": "includeActivity",
+                  "value": "false",
+                  "description": "Include full activity history in summary (boolean)"
+                },
+                {
+                  "key": "targetUserId",
+                  "value": "",
+                  "description": "Target user ID for comparison (when include=comparison)"
+                },
+                {
+                  "key": "comparisonTarget",
+                  "value": "",
+                  "description": "Comparison target: global or user (when include=comparison)"
+                }
+              ]
             },
-            "description": "Get detailed user activity by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Insights (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/insights/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "insights", "{{userId}}"]
-            },
-            "description": "Get user insights by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Recommendations (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/recommendations/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "recommendations", "{{userId}}"]
-            },
-            "description": "Get personalized recommendations for user by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Achievements (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/achievements/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "achievements", "{{userId}}"]
-            },
-            "description": "Get user achievements by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Trends (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/trends/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "trends", "{{userId}}"]
-            },
-            "description": "Get user trend timeline by ID (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Comparison (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/comparison/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "comparison", "{{userId}}"]
-            },
-            "description": "Compare user metrics with another user or global averages (Admin only)"
-          }
-        },
-        {
-          "name": "Get User Summary (Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/analytics/user/summary/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["analytics", "user", "summary", "{{userId}}"]
-            },
-            "description": "Get user summary by ID (Admin only)"
+            "description": "Get unified user analytics with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison). Admin only."
           }
         },
         {
@@ -2665,6 +2685,64 @@
             },
             "description": "Get comprehensive system insights including performance, security, user behavior, and health metrics (Admin only)"
           }
+        },
+        {
+          "name": "Check User Stats Consistency (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/maintenance/stats/consistency/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "maintenance", "stats", "consistency", "{{userId}}"]
+            },
+            "description": "Check consistency between user_stats table and game_history table for a specific user. Returns discrepancies if any exist. Admin only."
+          }
+        },
+        {
+          "name": "Check All Users Stats Consistency (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/maintenance/stats/consistency-check/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "maintenance", "stats", "consistency-check", "all"]
+            },
+            "description": "Check consistency between user_stats table and game_history table for all users. Returns summary of consistent and inconsistent users. Admin only."
+          }
+        },
+        {
+          "name": "Fix User Stats Consistency (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/maintenance/stats/fix-consistency/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "maintenance", "stats", "fix-consistency", "{{userId}}"]
+            },
+            "description": "Fix consistency issues between user_stats table and game_history table for a specific user. Recalculates and updates user statistics based on game_history data. Admin only."
+          }
         }
       ]
     },
@@ -2706,6 +2784,105 @@
               "path": ["admin", "trivia"]
             },
             "description": "Get all trivia questions from the database (admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data Verification",
+      "description": "🗃️ **DATA VERIFICATION** – Full table data & sync checks\n\n**Purpose:** Fetch full data from users, trivia, game_history (stats) and verify user_stats ↔ game_history consistency.\n\n**Flow:** Login Admin → Get All Users (limit=200) → Get All Trivia → Get Game Statistics → Check All Users Consistency.\n\n**Run alone:** `newman run tools/endpoints-collection.json --folder \"Data Verification\"` (requires server + admin credentials).",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const body = pm.response.json();",
+                  "        const accessToken = body.accessToken || body.access_token || (body.data && (body.data.accessToken || body.data.access_token));",
+                  "        if (accessToken) pm.collectionVariables.set('adminAccessToken', accessToken);",
+                  "        const refreshToken = body.refreshToken || body.refresh_token || (body.data && (body.data.refreshToken || body.data.refresh_token));",
+                  "        if (refreshToken) pm.collectionVariables.set('adminRefreshToken', refreshToken);",
+                  "    } catch (e) { console.warn('Failed to capture admin tokens', e); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/all?limit=200&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "all"],
+              "query": [
+                { "key": "limit", "value": "200" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Trivia (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/trivia", "host": ["{{baseUrl}}"], "path": ["admin", "trivia"] }
+          }
+        },
+        {
+          "name": "Get Game Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/statistics", "host": ["{{baseUrl}}"], "path": ["admin", "statistics"] }
+          }
+        },
+        {
+          "name": "Check All Users Stats Consistency (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consistency check returns 200', function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { }",
+                  "const payload = json.data != null ? json.data : json;",
+                  "pm.test('All users consistent (user_stats ↔ game_history)', function () {",
+                  "    const inconsistent = typeof payload.inconsistentUsers === 'number' ? payload.inconsistentUsers : -1;",
+                  "    pm.expect(inconsistent).to.equal(0);",
+                  "});",
+                  "if (typeof payload.totalUsers === 'number' || typeof payload.usersWithGames === 'number') {",
+                  "    console.log('Consistency: totalUsers=' + payload.totalUsers + ', usersWithGames=' + payload.usersWithGames + ', consistent=' + payload.consistentUsers + ', inconsistent=' + payload.inconsistentUsers);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/maintenance/stats/consistency-check/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "maintenance", "stats", "consistency-check", "all"]
+            }
           }
         }
       ]

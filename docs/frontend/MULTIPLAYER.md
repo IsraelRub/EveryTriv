@@ -56,8 +56,8 @@ const {
 **State:**
 - `isConnected` - סטטוס חיבור
 - `room` - מצב החדר הנוכחי
-- `gameState` - מצב המשחק
-- `leaderboard` - לוח תוצאות
+- `gameState` - מצב המשחק (כולל `leaderboard` ו-`answerCounts`)
+- `leaderboard` - לוח תוצאות (computed מ-`gameState.leaderboard`)
 - `error` - שגיאות
 
 **Methods:**
@@ -180,6 +180,7 @@ const {
 - בחירת תשובה
 - טיימר
 - לוח תוצאות בזמן אמת
+- הצגת מספר השחקנים שענו על כל תשובה (`answerCounts`) בזמן אמת
 - עדכון אוטומטי
 
 ### MultiplayerResultsView
@@ -197,11 +198,16 @@ const {
 
 ## State Management
 
-המערכת משתמשת ב-**local state** ב-hooks ולא ב-Redux:
+המערכת משתמשת ב-**Redux** לניהול מצב מרובה משתתפים:
 
-- `useState` ב-`useMultiplayer` hook
-- State מתעדכן דרך WebSocket events
-- אין צורך ב-Redux עבור state זמני של משחק
+- `MultiplayerState` ב-Redux כולל:
+  - `room` - מצב החדר
+  - `gameState` - מצב המשחק (כולל `leaderboard`, `answerCounts`, `playersAnswers`, `playersScores`)
+  - `isConnected` - סטטוס חיבור
+  - `error` - שגיאות
+- `leaderboard` הוא computed selector מ-`gameState.leaderboard`
+- State מתעדכן דרך `updateGameState` action כאשר מתקבלים WebSocket events
+- אין צורך ב-state נפרד ל-`leaderboard` - הוא חלק מ-`gameState`
 
 ## Event Flow
 
@@ -236,10 +242,9 @@ const {
 
 1. שחקן בוחר תשובה
 2. `submitAnswer()` נשלח
-3. Server מחשב נקודות
-4. `answer-received` event נשלח
-5. `leaderboard-update` event נשלח
-6. UI מתעדכן
+3. Server מחשב נקודות ו-`answerCounts` (מספר השחקנים שענו על כל תשובה)
+4. `answer-received` event נשלח (כולל `leaderboard` ו-`answerCounts`)
+5. UI מתעדכן עם לוח תוצאות וסטטיסטיקות תשובות בזמן אמת
 
 ### סיום שאלה
 

@@ -21,6 +21,7 @@ export class UserCoreService {
 			const safeOffset = Math.max(offset, 0);
 
 			const [users, total] = await this.userRepository.findAndCount({
+				where: { isActive: true },
 				order: { createdAt: 'DESC' },
 				take: safeLimit,
 				skip: safeOffset,

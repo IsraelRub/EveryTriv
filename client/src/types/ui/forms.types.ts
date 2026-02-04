@@ -24,7 +24,7 @@ export interface ValidatedFormProps<T extends Record<string, string>> {
 	title?: string;
 	description?: string;
 	submitText?: string;
-	loading?: boolean;
+	isLoading?: boolean;
 	validationOptions?: ValidationHookOptions;
 	onSubmit: (values: T, isValid: boolean) => void | Promise<void>;
 	onCancel?: () => void;

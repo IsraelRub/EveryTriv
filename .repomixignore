@@ -18,8 +18,5 @@
 # Tool files
 tools/endpoints-collection.json
 
-# Large generated files
-client/public/assets/logo.svg
-
 # Documentation
 docs/**

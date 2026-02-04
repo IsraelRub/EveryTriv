@@ -11,7 +11,7 @@ import {
 } from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
 
-import { ButtonVariant, PaymentTab, VariantBase } from '@/constants';
+import { ButtonVariant, PaymentTab, SKELETON_HEIGHTS, SKELETON_WIDTHS, VariantBase } from '@/constants';
 import {
 	Badge,
 	Button,
@@ -53,7 +53,7 @@ function BalanceCard({ balance, isLoading }: { balance: number; isLoading: boole
 			</CardHeader>
 			<CardContent>
 				{isLoading ? (
-					<Skeleton className='h-10 w-32' />
+					<Skeleton className={`h-10 ${SKELETON_WIDTHS.TEXT_LARGE}`} />
 				) : (
 					<div className='flex items-baseline gap-2'>
 						<span className='text-4xl font-bold text-primary'>{balance}</span>
@@ -168,38 +168,40 @@ export function PaymentView() {
 	};
 
 	return (
-		<div className='max-w-6xl mx-auto'>
-			<Card>
-				<CardHeader>
-					<CardTitle className='text-4xl font-bold text-center mb-2'>Credits</CardTitle>
-					<CardDescription className='text-center'>Get credits to play more trivia games</CardDescription>
+		<div className='max-w-6xl mx-auto h-full flex flex-col'>
+			<Card className='flex-1 flex flex-col overflow-hidden'>
+				<CardHeader className='flex-shrink-0'>
+					<CardTitle className='text-3xl md:text-4xl font-bold text-center mb-1 md:mb-2'>Credits</CardTitle>
+					<CardDescription className='text-center text-sm md:text-base'>
+						Get credits to play more trivia games
+					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-8'>
+				<CardContent className='space-y-4 md:space-y-6 lg:space-y-8 flex-1 overflow-y-auto'>
 					{/* Balance Card */}
 					<div className='max-w-md mx-auto'>
 						<BalanceCard balance={balance} isLoading={balanceLoading} />
 					</div>
 
-					<Tabs defaultValue={PaymentTab.CREDITS} className='w-full'>
-						<TabsList className='grid w-full max-w-md mx-auto grid-cols-2'>
+					<Tabs defaultValue={PaymentTab.CREDITS} className='w-full flex-1 flex flex-col overflow-hidden'>
+						<TabsList className='grid w-full max-w-md mx-auto grid-cols-2 flex-shrink-0'>
 							<TabsTrigger value={PaymentTab.CREDITS}>Buy Credits</TabsTrigger>
 							<TabsTrigger value={PaymentTab.PAYMENT_HISTORY}>Payment History</TabsTrigger>
 						</TabsList>
 
-						<TabsContent value={PaymentTab.CREDITS} className='mt-8'>
+						<TabsContent value={PaymentTab.CREDITS} className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto'>
 							{packagesLoading ? (
 								<div className='grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden'>
 									{[...Array(3)].map((_, i) => (
 										<Card key={i} className='overflow-hidden'>
 											<CardHeader className='overflow-hidden'>
-												<Skeleton className='h-6 w-24 max-w-full' />
-												<Skeleton className='h-4 w-32 max-w-full' />
+												<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT} max-w-full`} />
+												<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_LARGE} max-w-full`} />
 											</CardHeader>
 											<CardContent className='overflow-hidden'>
-												<Skeleton className='h-10 w-20 max-w-full' />
+												<Skeleton className={`h-10 ${SKELETON_WIDTHS.TEXT_SMALL} max-w-full`} />
 											</CardContent>
 											<CardFooter className='overflow-hidden'>
-												<Skeleton className='h-10 w-full max-w-full' />
+												<Skeleton className={`h-10 ${SKELETON_WIDTHS.FULL} max-w-full`} />
 											</CardFooter>
 										</Card>
 									))}
@@ -218,7 +220,7 @@ export function PaymentView() {
 							)}
 						</TabsContent>
 
-						<TabsContent value={PaymentTab.PAYMENT_HISTORY} className='mt-8'>
+						<TabsContent value={PaymentTab.PAYMENT_HISTORY} className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto'>
 							<div className='max-w-2xl mx-auto'>
 								{paymentHistoryLoading ? (
 									<Card>
@@ -228,7 +230,7 @@ export function PaymentView() {
 										<CardContent>
 											<div className='space-y-4'>
 												{[...Array(3)].map((_, i) => (
-													<Skeleton key={i} className='h-16 w-full' />
+													<Skeleton key={i} className={`${SKELETON_HEIGHTS.ROW} ${SKELETON_WIDTHS.FULL}`} />
 												))}
 											</div>
 										</CardContent>

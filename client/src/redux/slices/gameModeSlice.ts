@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { DifficultyLevel, GAME_MODES_CONFIG } from '@shared/constants';
+import { DifficultyLevel, GAME_MODES_CONFIG, VALIDATION_COUNT } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
 
 import { GAME_STATE_CONFIG } from '@/constants';
@@ -22,7 +22,8 @@ export const gameModeStateSlice = createSlice({
 				difficulty: state.currentDifficulty,
 				maxQuestionsPerGame: maxQuestionsPerGame ?? defaults.maxQuestionsPerGame,
 				timeLimit: timeLimit ?? defaults.timeLimit,
-				answerCount: answerCount,
+				// Use answerCount from payload, or default if not provided
+				answerCount: answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
 			};
 			state.isLoading = false;
 			state.error = undefined;

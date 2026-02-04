@@ -10,7 +10,7 @@ export const RadioGroup = forwardRef<
 >(({ className, ...props }, ref) => {
 	return <RadioGroupPrimitive.Root className={cn('grid gap-2', className)} {...props} ref={ref} />;
 });
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+RadioGroup.displayName = 'RadioGroup';
 
 export const RadioGroupItem = forwardRef<
 	ElementRef<typeof RadioGroupPrimitive.Item>,
@@ -31,4 +31,4 @@ export const RadioGroupItem = forwardRef<
 		</RadioGroupPrimitive.Item>
 	);
 });
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
+RadioGroupItem.displayName = 'RadioGroupItem';

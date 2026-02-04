@@ -79,7 +79,7 @@ export const VALIDATION_COUNT = {
 	},
 	QUESTIONS: {
 		MIN: 1,
-		MAX: 10, // Maximum questions per request (matches server processing limit)
+		MAX: 50, // Maximum questions per request (matches server processing limit)
 		STEP: 5,
 		UNLIMITED: -1,
 	},

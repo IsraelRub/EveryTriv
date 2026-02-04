@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
+import { BarChart3, BookOpen, CheckCircle2, Clock, Star, Target, Trophy, XCircle } from 'lucide-react';
 
 import { DifficultyLevel } from '@shared/constants';
-import { calculatePercentage, hasQuestionAccess } from '@shared/utils';
+import { calculatePercentage, getErrorMessage } from '@shared/utils';
 
-import { AudioKey, TextColor } from '@/constants';
-import { BackToHomeButton, Card, SocialShare } from '@/components';
+import {
+	ANIMATION_CONFIG,
+	ANIMATION_DELAYS,
+	AudioKey,
+	ButtonSize,
+	ButtonVariant,
+	ROUTES,
+	SPRING_CONFIGS,
+	TextColor,
+	TRANSITION_DURATIONS,
+} from '@/constants';
+import { Button, Card, HomeButton, SocialShare } from '@/components';
 import {
 	useAppSelector,
 	useCountUp,
@@ -17,19 +28,20 @@ import {
 } from '@/hooks';
 import { audioService, clientLogger as logger } from '@/services';
 import type { GameKey, GameSummaryStats } from '@/types';
-import { cn, formatTime, getAnswerLetter } from '@/utils';
+import { cn, formatTime } from '@/utils';
 import {
+	selectAnswerHistory,
 	selectCorrectAnswers,
 	selectCurrentDifficulty,
 	selectCurrentTopic,
 	selectGameId,
 	selectGameQuestionCount,
 	selectGameScore,
-	selectQuestionsData,
 	selectTimeSpent,
 } from '@/redux/selectors';
 
 export function GameSummaryView() {
+	const navigate = useNavigate();
 	const { handleClose } = useNavigationClose();
 	const { finalizeGameSession } = useGameFinalization();
 	const currentTopic = useAppSelector(selectCurrentTopic);
@@ -38,9 +50,13 @@ export function GameSummaryView() {
 	const correctAnswers = useAppSelector(selectCorrectAnswers);
 	const gameQuestionCount = useAppSelector(selectGameQuestionCount);
 	const timeSpent = useAppSelector(selectTimeSpent);
-	const questionsData = useAppSelector(selectQuestionsData);
+	const answerHistory = useAppSelector(selectAnswerHistory);
 	const currentUser = useCurrentUserData();
 	const { data: analytics } = useUserAnalytics();
+
+	const handleViewStatistics = () => {
+		navigate(ROUTES.STATISTICS);
+	};
 
 	// Get game data from Redux
 	const gameStats = useMemo((): GameSummaryStats => {
@@ -56,9 +72,9 @@ export function GameSummaryView() {
 			percentage,
 			topic: currentTopic ?? 'General',
 			difficulty: currentDifficulty ?? DifficultyLevel.MEDIUM,
-			questionsData: questionsData ?? [],
+			answerHistory: answerHistory ?? [],
 		};
-	}, [score, correctAnswers, gameQuestionCount, timeSpent, currentTopic, currentDifficulty, questionsData]);
+	}, [score, correctAnswers, gameQuestionCount, timeSpent, currentTopic, currentDifficulty, answerHistory]);
 
 	// Calculate grade with stars
 	const grade = useMemo(() => {
@@ -110,7 +126,8 @@ export function GameSummaryView() {
 	// Finalize game session on mount (idempotent - safe to call multiple times)
 	useEffect(() => {
 		// Check if we have valid game data from Redux
-		if (!gameId || score === 0 || gameQuestionCount === 0) {
+		// Note: score can be 0 if user answered incorrectly - that's valid
+		if (!gameId || !gameQuestionCount || gameQuestionCount === 0) {
 			logger.gameInfo('No game state found in Redux, redirecting to home');
 			handleClose();
 			return;
@@ -147,13 +164,14 @@ export function GameSummaryView() {
 			onError: error => {
 				// Reset flag on error to allow retry
 				lastFinalizedGameRef.current = null;
-				logger.gameError('Failed to finalize game session', { errorInfo: { message: String(error) } });
+				logger.gameError('Failed to finalize game session', { errorInfo: { message: getErrorMessage(error) } });
 			},
 		});
 	}, [gameId, score, gameQuestionCount, currentUser?.id, finalizeGameSession, handleClose]);
 
 	// Redirect if no game state
-	if (!gameId || score === 0) {
+	// Note: score can be 0 if user answered incorrectly - that's valid
+	if (!gameId || !gameQuestionCount || gameQuestionCount === 0) {
 		return null;
 	}
 
@@ -161,24 +179,53 @@ export function GameSummaryView() {
 		<motion.main
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			className='min-h-screen py-12 px-4'
+			transition={{ duration: TRANSITION_DURATIONS.SMOOTH, ease: ANIMATION_CONFIG.EASING_NAMES.EASE_OUT }}
+			className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4'
 		>
-			<div className='max-w-2xl mx-auto'>
-				<Card className='p-8 text-center space-y-8'>
+			<div className='max-w-2xl mx-auto h-full flex flex-col'>
+				<Card className='p-6 md:p-8 text-center space-y-4 md:space-y-6 lg:space-y-8 flex-1 flex flex-col overflow-y-auto'>
 					{/* Header */}
-					<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring' }}>
-						<Trophy className='w-24 h-24 text-primary mx-auto mb-4' />
-						<h1 className='text-4xl font-bold mb-2'>Game Complete!</h1>
-						<p className='text-muted-foreground'>
+					<div>
+						{/* Game Complete Title - Dramatic Entrance */}
+						<motion.h1
+							initial={{ opacity: 0, scale: 2.5, rotate: -10, filter: 'blur(10px)' }}
+							animate={{ opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }}
+							transition={{
+								delay: ANIMATION_DELAYS.STAGGER_NORMAL,
+								...SPRING_CONFIGS.BOUNCY,
+							}}
+							className='text-4xl md:text-5xl font-extrabold mb-2 md:mb-4 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent tracking-wider'
+						>
+							Game Over!
+						</motion.h1>
+						<motion.div
+							initial={{ scale: 0, rotate: -90 }}
+							animate={{ scale: 1, rotate: 0 }}
+							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM, ...SPRING_CONFIGS.GENTLE }}
+						>
+							<Trophy className='w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 text-primary mx-auto mb-2 md:mb-4' />
+						</motion.div>
+						<motion.p
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{
+								delay:
+									ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_LARGE,
+							}}
+							className='text-muted-foreground'
+						>
 							{gameStats.topic} - {gameStats.difficulty}
-						</p>
+						</motion.p>
 						{analytics?.game?.mostPlayedTopic &&
 							analytics.game.mostPlayedTopic !== 'None' &&
 							gameStats.topic === analytics.game.mostPlayedTopic && (
 								<motion.div
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: 0.3 }}
+									initial={{ opacity: 0, scale: 0.9, y: 10 }}
+									animate={{ opacity: 1, scale: 1, y: 0 }}
+									transition={{
+										delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
+										...SPRING_CONFIGS.BOUNCY,
+									}}
 									className='mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg'
 								>
 									<div className='flex items-center gap-3 justify-center'>
@@ -187,27 +234,25 @@ export function GameSummaryView() {
 									</div>
 								</motion.div>
 							)}
-					</motion.div>
+					</div>
 
 					{/* Grade - Stars */}
 					<motion.div
-						initial={{ opacity: 0, scale: 0.5 }}
-						animate={{ opacity: 1, scale: 1 }}
-						transition={{ delay: 0.3 }}
+						initial={{ opacity: 0, scale: 0.8, y: 20 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						transition={{
+							delay:
+								ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
+							...SPRING_CONFIGS.GENTLE,
+						}}
 					>
 						<div className='flex justify-center items-center gap-4 mb-4'>
 							{[0, 1, 2].map(index => (
 								<motion.div
 									key={index}
-									initial={{ opacity: 0, scale: 0, rotate: -180 }}
-									animate={
-										index < visibleStars ? { opacity: 1, scale: 1, rotate: 0 } : { opacity: 0.3, scale: 0.5, rotate: 0 }
-									}
-									transition={{
-										type: 'spring',
-										stiffness: 200,
-										damping: 15,
-									}}
+									initial={{ opacity: 0, scale: 0 }}
+									animate={index < visibleStars ? { opacity: 1, scale: 1 } : { opacity: 0.3, scale: 0.5 }}
+									transition={SPRING_CONFIGS.ICON_SPRING}
 								>
 									<Star
 										className={cn('w-16 h-16 fill-current', index < visibleStars ? 'text-yellow-500' : 'text-gray-400')}
@@ -221,9 +266,12 @@ export function GameSummaryView() {
 					{/* Stats Grid */}
 					<div className='grid grid-cols-3 gap-6'>
 						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.4 }}
+							initial={{ opacity: 0, y: 20, scale: 0.9 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							transition={{
+								delay: ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								...SPRING_CONFIGS.GENTLE,
+							}}
 							className='space-y-2'
 						>
 							<Trophy className='w-8 h-8 text-primary mx-auto' />
@@ -232,9 +280,13 @@ export function GameSummaryView() {
 						</motion.div>
 
 						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.5 }}
+							initial={{ opacity: 0, y: 20, scale: 0.9 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							transition={{
+								delay:
+									ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								...SPRING_CONFIGS.GENTLE,
+							}}
 							className='space-y-2'
 						>
 							<Target className='w-8 h-8 text-primary mx-auto' />
@@ -245,9 +297,13 @@ export function GameSummaryView() {
 						</motion.div>
 
 						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.6 }}
+							initial={{ opacity: 0, y: 20, scale: 0.9 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							transition={{
+								delay:
+									ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								...SPRING_CONFIGS.GENTLE,
+							}}
 							className='space-y-2'
 						>
 							<Clock className='w-8 h-8 text-primary mx-auto' />
@@ -257,16 +313,23 @@ export function GameSummaryView() {
 					</div>
 
 					{/* Questions Breakdown */}
-					{gameStats.questionsData.length > 0 && (
+					{gameStats.answerHistory.length > 0 && (
 						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.7 }}
+							initial={{ opacity: 0, y: 20, scale: 0.95 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							transition={{
+								delay:
+									ANIMATION_DELAYS.STAGGER_NORMAL +
+									ANIMATION_DELAYS.SEQUENCE_STEP +
+									ANIMATION_DELAYS.SEQUENCE_LARGE +
+									ANIMATION_DELAYS.SEQUENCE_LARGE,
+								...SPRING_CONFIGS.GENTLE,
+							}}
 							className='text-left'
 						>
 							<h3 className='text-lg font-semibold mb-4'>Question Breakdown</h3>
 							<div className='space-y-3 max-h-64 overflow-y-auto'>
-								{gameStats.questionsData.map((q, index) => (
+								{gameStats.answerHistory.map((q, index) => (
 									<div
 										key={index}
 										className={cn(
@@ -282,14 +345,6 @@ export function GameSummaryView() {
 											)}
 											<div className='flex-1 min-w-0'>
 												<p className='text-sm font-medium truncate'>{q.question}</p>
-												{!q.isCorrect && (
-													<p className='text-xs text-muted-foreground mt-1'>
-														Correct:{' '}
-														{hasQuestionAccess(q)
-															? `Answer ${getAnswerLetter(q.correctAnswerIndex)}`
-															: q.correctAnswerText}
-													</p>
-												)}
 											</div>
 											<span className='text-xs text-muted-foreground'>{q.timeSpent ?? 'N/A'}s</span>
 										</div>
@@ -301,9 +356,16 @@ export function GameSummaryView() {
 
 					{/* Social Share */}
 					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.75 }}
+						initial={{ opacity: 0, scale: 0.9, y: 10 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						transition={{
+							delay:
+								ANIMATION_DELAYS.SEQUENCE_MEDIUM +
+								ANIMATION_DELAYS.SEQUENCE_STEP +
+								ANIMATION_DELAYS.SEQUENCE_LARGE +
+								ANIMATION_DELAYS.SEQUENCE_LARGE,
+							...SPRING_CONFIGS.GENTLE,
+						}}
 						className='flex justify-center'
 					>
 						<SocialShare
@@ -316,12 +378,23 @@ export function GameSummaryView() {
 
 					{/* Action Buttons */}
 					<motion.div
-						initial={{ opacity: 0, y: 20 }}
+						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.8 }}
+						transition={{
+							delay:
+								ANIMATION_DELAYS.SEQUENCE_LARGE +
+								ANIMATION_DELAYS.SEQUENCE_STEP +
+								ANIMATION_DELAYS.SEQUENCE_LARGE +
+								ANIMATION_DELAYS.SEQUENCE_LARGE,
+							...SPRING_CONFIGS.GENTLE,
+						}}
 						className='flex gap-4 justify-center'
 					>
-						<BackToHomeButton />
+						<HomeButton />
+						<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleViewStatistics}>
+							<BarChart3 className='h-4 w-4 mr-2' />
+							View Statistics
+						</Button>
 					</motion.div>
 				</Card>
 			</div>

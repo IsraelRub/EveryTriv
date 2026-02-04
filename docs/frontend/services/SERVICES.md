@@ -1525,10 +1525,6 @@ class MultiplayerService {
     this.on<GameEndedEvent>('game-ended', callback);
   }
 
-  onLeaderboardUpdate(callback: (event: LeaderboardUpdateEvent) => void): void {
-    this.on<LeaderboardUpdateEvent>('leaderboard-update', callback);
-  }
-
   onRoomUpdated(callback: (event: RoomUpdatedEvent) => void): void {
     this.on<RoomUpdatedEvent>('room-updated', callback);
   }

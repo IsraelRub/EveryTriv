@@ -129,7 +129,6 @@ class MultiplayerService {
 		this.socket.off(MultiplayerEvent.ANSWER_RECEIVED);
 		this.socket.off(MultiplayerEvent.QUESTION_ENDED);
 		this.socket.off(MultiplayerEvent.GAME_ENDED);
-		this.socket.off(MultiplayerEvent.LEADERBOARD_UPDATE);
 		this.socket.off(MultiplayerEvent.ROOM_UPDATED);
 	}
 
@@ -339,15 +338,6 @@ class MultiplayerService {
 	onGameEnded(callback: (event: unknown) => void): void {
 		this.on({
 			event: MultiplayerEvent.GAME_ENDED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onLeaderboardUpdate(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.LEADERBOARD_UPDATE,
 			callback: (data: unknown) => {
 				callback(data);
 			},

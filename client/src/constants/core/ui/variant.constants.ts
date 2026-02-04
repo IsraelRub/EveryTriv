@@ -26,9 +26,3 @@ export enum ToastVariant {
 	WARNING = 'warning',
 	INFO = 'info',
 }
-
-export enum SpinnerVariant {
-	FULL_SCREEN = 'fullScreen',
-	BUTTON = 'button',
-	REFRESH = 'refresh',
-}

@@ -27,7 +27,7 @@ export const DropdownMenuSubTrigger = forwardRef<
 		<ChevronRight className='ml-auto h-4 w-4' />
 	</DropdownMenuPrimitive.SubTrigger>
 ));
-DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
+DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger';
 
 export const DropdownMenuContent = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.Content>,
@@ -45,7 +45,7 @@ export const DropdownMenuContent = forwardRef<
 		/>
 	</DropdownMenuPrimitive.Portal>
 ));
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
+DropdownMenuContent.displayName = 'DropdownMenuContent';
 
 export const DropdownMenuItem = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.Item>,
@@ -63,7 +63,7 @@ export const DropdownMenuItem = forwardRef<
 		{...props}
 	/>
 ));
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+DropdownMenuItem.displayName = 'DropdownMenuItem';
 
 export const DropdownMenuCheckboxItem = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
@@ -86,7 +86,7 @@ export const DropdownMenuCheckboxItem = forwardRef<
 		{children}
 	</DropdownMenuPrimitive.CheckboxItem>
 ));
-DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
+DropdownMenuCheckboxItem.displayName = 'DropdownMenuCheckboxItem';
 
 export const DropdownMenuSeparator = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.Separator>,
@@ -94,4 +94,18 @@ export const DropdownMenuSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
 	<DropdownMenuPrimitive.Separator ref={ref} className={cn('-mx-1 my-1 h-px bg-muted', className)} {...props} />
 ));
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
+
+export const DropdownMenuLabel = forwardRef<
+	ElementRef<typeof DropdownMenuPrimitive.Label>,
+	ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+		inset?: boolean;
+	}
+>(({ className, inset, ...props }, ref) => (
+	<DropdownMenuPrimitive.Label
+		ref={ref}
+		className={cn('px-2 py-1.5 text-sm font-semibold', inset && 'pl-8', className)}
+		{...props}
+	/>
+));
+DropdownMenuLabel.displayName = 'DropdownMenuLabel';

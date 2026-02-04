@@ -1,13 +1,15 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components';
+import { ANIMATION_DELAYS } from '@/constants';
+import { Avatar, AvatarFallback, AvatarImage, EmptyState } from '@/components';
 import type { LeaderboardTableProps } from '@/types';
 import { cn, getAvatarUrl, getUserInitials } from '@/utils';
 import { RankBadge } from './RankBadge';
 import { LeaderboardSkeleton } from './skeleton';
 
-export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) {
+export const LeaderboardTable = memo(function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) {
 	if (isLoading) {
 		return <LeaderboardSkeleton />;
 	}
@@ -17,10 +19,13 @@ export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) 
 
 	if (!entriesArray || entriesArray.length === 0) {
 		return (
-			<div className='text-center py-8 text-muted-foreground'>
-				<Trophy className='h-12 w-12 mx-auto mb-4 opacity-50' />
-				<p>No leaderboard data available yet</p>
-			</div>
+			<EmptyState
+				data='leaderboard'
+				icon={Trophy}
+				title='No leaderboard data available yet'
+				description='Leaderboard data will appear once users start playing.'
+				action={null}
+			/>
 		);
 	}
 
@@ -31,7 +36,7 @@ export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) 
 					key={entry.userId}
 					initial={{ opacity: 0, x: -20 }}
 					animate={{ opacity: 1, x: 0 }}
-					transition={{ delay: index * 0.05 }}
+					transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
 					className={cn(
 						'flex items-center gap-4 p-3 rounded-lg transition-colors',
 						index < 3 ? 'bg-muted/50' : 'hover:bg-muted/30'
@@ -58,4 +63,4 @@ export function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) 
 			))}
 		</div>
 	);
-}
+});

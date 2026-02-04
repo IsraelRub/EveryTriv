@@ -1,83 +1,95 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Users } from 'lucide-react';
+import { BarChart3, Play } from 'lucide-react';
 
-import { PlayerType } from '@shared/constants';
-
-import { ButtonVariant } from '@/constants';
-import { Button, Card, GameMode, HomeTitle } from '@/components';
-import { useAppDispatch } from '@/hooks';
-import { setGameMode } from '@/redux/slices';
+import { ANIMATION_DELAYS, ButtonSize, ROUTES } from '@/constants';
+import { Button, HomeHeader, HomeStats, LeaderboardPreview, PopularTopicsSection, RecentGames } from '@/components';
+import { useCurrentUserData, useIsAuthenticated, useUserProfile } from '@/hooks';
 
 export function HomeView() {
 	const navigate = useNavigate();
-	const dispatch = useAppDispatch();
-	const [playerType, setPlayerType] = useState<PlayerType | null>(null);
+	const isAuthenticated = useIsAuthenticated();
+	const currentUser = useCurrentUserData();
+	const { data: userProfile } = useUserProfile();
+
+	const firstName = userProfile?.profile?.firstName || currentUser?.email?.split('@')[0];
 
 	return (
-		<motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='min-h-screen'>
-			<div className='container mx-auto px-4 py-12'>
-				<div className='max-w-6xl mx-auto space-y-12'>
-					<HomeTitle />
-
-					{!playerType ? (
-						<section className='space-y-6'>
-							<h2 className='text-3xl font-bold text-center'>Choose Player Type</h2>
-							<div className='grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto'>
-								<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-									<Card
-										className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
-										onClick={() => setPlayerType(PlayerType.SINGLE)}
+		<main className='min-h-0 h-full flex flex-col overflow-hidden animate-fade-in-only'>
+			<div className='container mx-auto px-4 pt-0 pb-4 md:pb-6 min-h-0 flex-1 flex flex-col'>
+				<div className='max-w-6xl mx-auto space-y-4 md:space-y-6 min-h-0 flex-1 flex flex-col overflow-y-auto'>
+					<HomeHeader
+						isAuthenticated={isAuthenticated}
+						firstName={firstName}
+						showWelcome={true}
+						showGuestContent={!isAuthenticated}
+						action={
+							<div className='flex items-center gap-4 flex-shrink-0'>
+								<motion.div
+									initial={{ opacity: 0, scale: 0.9 }}
+									animate={{ opacity: 1, scale: 1 }}
+									transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
+								>
+									<Button
+										size={ButtonSize.LG}
+										onClick={() => navigate(ROUTES.GAME)}
+										className='text-xl px-12 py-8 h-auto font-bold shadow-lg hover:shadow-xl transition-all'
 									>
-										<div className='flex flex-col items-center text-center space-y-4'>
-											<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
-												<User className='w-12 h-12 text-primary' />
-											</div>
-											<div>
-												<h3 className='text-2xl font-semibold mb-2'>Single Player</h3>
-												<p className='text-muted-foreground'>Play solo and challenge yourself</p>
-											</div>
-										</div>
-									</Card>
+										<Play className='w-6 h-6 mr-3' />
+										Start Game
+									</Button>
 								</motion.div>
-
-								<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-									<Card
-										className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
-										onClick={() => navigate('/multiplayer')}
+								{isAuthenticated && (
+									<motion.div
+										initial={{ opacity: 0, scale: 0.9 }}
+										animate={{ opacity: 1, scale: 1 }}
+										transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
 									>
-										<div className='flex flex-col items-center text-center space-y-4'>
-											<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
-												<Users className='w-12 h-12 text-primary' />
-											</div>
-											<div>
-												<h3 className='text-2xl font-semibold mb-2'>Multiplayer</h3>
-												<p className='text-muted-foreground'>Compete with friends</p>
-											</div>
-										</div>
-									</Card>
-								</motion.div>
+										<Button
+											size={ButtonSize.LG}
+											onClick={() => navigate(ROUTES.STATISTICS)}
+											className='text-xl px-12 py-8 h-auto font-bold shadow-lg hover:shadow-xl transition-all gap-2'
+										>
+											<BarChart3 className='w-6 h-6' />
+											View Statistics
+										</Button>
+									</motion.div>
+								)}
 							</div>
-						</section>
-					) : (
-						<section className='space-y-6'>
-							<div className='text-center'>
-								<Button variant={ButtonVariant.GHOST} onClick={() => setPlayerType(null)}>
-									Back to player selection
-								</Button>
-							</div>
-							<h2 className='text-3xl font-bold text-center'>Choose Your Game Mode</h2>
-							<GameMode
-								onModeSelect={settings => {
-									dispatch(setGameMode(settings));
-									navigate('/game/play');
-								}}
-							/>
-						</section>
+						}
+					/>
+
+					{/* Second Row - HomeStats + RecentGames (authenticated only) */}
+					{isAuthenticated && (
+						<motion.section
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
+							className='grid grid-cols-1 lg:grid-cols-2 gap-6'
+						>
+							<HomeStats />
+							<RecentGames />
+						</motion.section>
 					)}
+
+					{/* Dashboard Content */}
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
+						className='space-y-4 md:space-y-6 pt-4 md:pt-6 border-t border-border/50 flex-shrink-0'
+					>
+						<PopularTopicsSection />
+						{isAuthenticated ? (
+							<LeaderboardPreview />
+						) : (
+							<div className='max-w-4xl mx-auto'>
+								<LeaderboardPreview />
+							</div>
+						)}
+					</motion.div>
 				</div>
 			</div>
-		</motion.main>
+		</main>
 	);
 }

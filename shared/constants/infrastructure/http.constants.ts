@@ -14,6 +14,8 @@ export const HTTP_TIMEOUTS = {
 	QUESTION_GENERATION: 30000, // 30 seconds
 	AI_PROVIDER: 30000, // 30 seconds
 	UPLOAD: 60000, // 60 seconds
+	/** Client timeout for trivia API - longer than server gen to allow for network + AI generation */
+	TRIVIA_CLIENT: 60000, // 60 seconds
 } as const;
 
 export const HTTP_STATUS_CODES = {

@@ -16,7 +16,7 @@ export function normalizeGameData(gameData: Partial<GameData>, defaults: Partial
 		gameMode: gameData.gameMode ?? defaults.gameMode ?? GameMode.QUESTION_LIMITED,
 		timeSpent: gameData.timeSpent ?? 0,
 		creditsUsed: gameData.creditsUsed ?? 0,
-		questionsData: gameData.questionsData ?? [],
+		answerHistory: gameData.answerHistory ?? [],
 	};
 }
 

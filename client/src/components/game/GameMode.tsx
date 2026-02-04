@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle, Clock, CreditCard, Crown, Infinity, ListOrdered } from 'lucide-react';
+import { AlertCircle, Clock, CreditCard, Crown, Infinity, ListOrdered, Users } from 'lucide-react';
 
 import {
 	CREDIT_COSTS,
 	DifficultyLevel,
 	GAME_MODES_CONFIG,
 	GameMode as GameModeEnum,
+	TIME_DURATIONS_SECONDS,
 	UserRole,
 } from '@shared/constants';
 import type { GameConfig, GameDifficulty } from '@shared/types';
@@ -20,6 +21,7 @@ import {
 } from '@shared/validation';
 
 import {
+	ANIMATION_DELAYS,
 	ButtonVariant,
 	GAME_STATE_DEFAULTS,
 	ROUTES,
@@ -45,11 +47,11 @@ import type { GameModeOption } from '@/types';
 import { GameSettingsForm } from './GameSettingsForm';
 
 // Icon mapping for game modes
-const GAME_MODE_ICONS: Record<GameModeEnum, typeof ListOrdered | typeof Clock | typeof Infinity> = {
+const GAME_MODE_ICONS: Record<GameModeEnum, typeof ListOrdered | typeof Clock | typeof Infinity | typeof Users> = {
 	[GameModeEnum.QUESTION_LIMITED]: ListOrdered,
 	[GameModeEnum.TIME_LIMITED]: Clock,
 	[GameModeEnum.UNLIMITED]: Infinity,
-	[GameModeEnum.MULTIPLAYER]: Clock,
+	[GameModeEnum.MULTIPLAYER]: Users,
 } as const;
 
 // Generate game modes array from GAME_MODES_CONFIG
@@ -84,7 +86,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 		GAME_MODES_CONFIG[GameModeEnum.QUESTION_LIMITED].defaults.maxQuestionsPerGame ?? 10
 	);
 	const [timeLimit, setTimeLimit] = useState<number>(
-		GAME_MODES_CONFIG[GameModeEnum.TIME_LIMITED].defaults.timeLimit ?? 60
+		GAME_MODES_CONFIG[GameModeEnum.TIME_LIMITED].defaults.timeLimit ?? TIME_DURATIONS_SECONDS.MINUTE
 	);
 	const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
 	const [customDifficulty, setCustomDifficulty] = useState('');
@@ -245,7 +247,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							key={mode}
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: index * 0.1 }}
+							transition={{ delay: index * ANIMATION_DELAYS.STAGGER_NORMAL }}
 						>
 							<Card
 								className='p-6 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
@@ -271,8 +273,8 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 
 			{/* Settings Dialog */}
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<DialogContent className='sm:max-w-lg max-h-[90vh] overflow-y-auto'>
-					<DialogHeader>
+				<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
+					<DialogHeader className='flex-shrink-0'>
 						<DialogTitle className='flex items-center gap-2'>
 							{selectedMode &&
 								(() => {
@@ -298,67 +300,69 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 						<DialogDescription>Customize your game settings before starting</DialogDescription>
 					</DialogHeader>
 
-					{/* Credit Cost Display */}
-					{!isAdmin && selectedMode && (
-						<div className='my-2 p-3 rounded-lg bg-muted/50 border'>
-							<div className='flex items-center justify-between'>
-								<span className='text-sm text-muted-foreground flex items-center gap-2'>
-									<CreditCard className='h-4 w-4' />
-									Credit Cost:
-								</span>
-								<span className='font-semibold'>
-									{selectedMode === GameModeEnum.UNLIMITED ? (
-										<span className='text-muted-foreground text-xs'>Charged after game (1 credit/question)</span>
-									) : (
-										<>
-											{displayedCreditCost} {displayedCreditCost === 1 ? 'credit' : 'credits'}
-											{selectedMode === GameModeEnum.TIME_LIMITED && (
-												<span className='text-xs text-muted-foreground ml-1'>(fixed)</span>
-											)}
-										</>
-									)}
-								</span>
+					<div className='flex-1 overflow-y-auto space-y-4 py-4'>
+						{/* Credit Cost Display */}
+						{!isAdmin && selectedMode && (
+							<div className='p-3 rounded-lg bg-muted/50 border'>
+								<div className='flex items-center justify-between'>
+									<span className='text-sm text-muted-foreground flex items-center gap-2'>
+										<CreditCard className='h-4 w-4' />
+										Credit Cost:
+									</span>
+									<span className='font-semibold'>
+										{selectedMode === GameModeEnum.UNLIMITED ? (
+											<span className='text-muted-foreground text-xs'>Charged after game (1 credit/question)</span>
+										) : (
+											<>
+												{displayedCreditCost} {displayedCreditCost === 1 ? 'credit' : 'credits'}
+												{selectedMode === GameModeEnum.TIME_LIMITED && (
+													<span className='text-xs text-muted-foreground ml-1'>(fixed)</span>
+												)}
+											</>
+										)}
+									</span>
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					{/* Credit Warning */}
-					{!isAdmin && !canPlay && (
-						<Alert variant={VariantBase.DESTRUCTIVE} className='my-2'>
-							<AlertCircle className='h-4 w-4' />
-							<AlertDescription>Not enough credits. You need {displayedCreditCost} credits to play.</AlertDescription>
-						</Alert>
-					)}
+						{/* Credit Warning */}
+						{!isAdmin && !canPlay && (
+							<Alert variant={VariantBase.DESTRUCTIVE}>
+								<AlertCircle className='h-4 w-4' />
+								<AlertDescription>Not enough credits. You need {displayedCreditCost} credits to play.</AlertDescription>
+							</Alert>
+						)}
 
-					<GameSettingsForm
-						topic={topic}
-						onTopicChange={value => {
-							setTopic(value);
-							// Validate topic in real-time if not empty
-							if (value.trim()) {
-								const topicValidation = validateTopicLength(value.trim());
-								setTopicError(topicValidation.isValid ? '' : (topicValidation.errors[0] ?? ''));
-							} else {
-								setTopicError('');
-							}
-						}}
-						topicError={topicError}
-						selectedDifficulty={selectedDifficulty}
-						onDifficultyChange={setSelectedDifficulty}
-						customDifficulty={customDifficulty}
-						onCustomDifficultyChange={setCustomDifficulty}
-						customDifficultyError={customDifficultyError}
-						onCustomDifficultyErrorChange={setCustomDifficultyError}
-						answerCount={answerCount}
-						onAnswerCountChange={setAnswerCount}
-						selectedMode={selectedMode}
-						maxQuestionsPerGame={maxQuestionsPerGame}
-						onMaxQuestionsPerGameChange={setMaxQuestionsPerGame}
-						timeLimit={timeLimit}
-						onTimeLimitChange={setTimeLimit}
-					/>
+						<GameSettingsForm
+							topic={topic}
+							onTopicChange={value => {
+								setTopic(value);
+								// Validate topic in real-time if not empty
+								if (value.trim()) {
+									const topicValidation = validateTopicLength(value.trim());
+									setTopicError(topicValidation.isValid ? '' : (topicValidation.errors[0] ?? ''));
+								} else {
+									setTopicError('');
+								}
+							}}
+							topicError={topicError}
+							selectedDifficulty={selectedDifficulty}
+							onDifficultyChange={setSelectedDifficulty}
+							customDifficulty={customDifficulty}
+							onCustomDifficultyChange={setCustomDifficulty}
+							customDifficultyError={customDifficultyError}
+							onCustomDifficultyErrorChange={setCustomDifficultyError}
+							answerCount={answerCount}
+							onAnswerCountChange={setAnswerCount}
+							selectedMode={selectedMode}
+							maxQuestionsPerGame={maxQuestionsPerGame}
+							onMaxQuestionsPerGameChange={setMaxQuestionsPerGame}
+							timeLimit={timeLimit}
+							onTimeLimitChange={setTimeLimit}
+						/>
+					</div>
 
-					<DialogFooter className='gap-2 sm:gap-0'>
+					<DialogFooter className='flex-shrink-0 gap-2 sm:gap-0'>
 						<Button variant={ButtonVariant.OUTLINE} onClick={() => setDialogOpen(false)}>
 							Cancel
 						</Button>

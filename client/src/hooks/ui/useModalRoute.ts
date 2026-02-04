@@ -22,13 +22,13 @@ export function useModalRoute(): UseModalRouteReturn {
 			(returnUrl === undefined || VALIDATORS.string(returnUrl))
 		) {
 			return {
-				modal: modal === true,
+				modal: !!modal,
 				...(returnUrl !== undefined && { returnUrl }),
 			};
 		}
 		return null;
 	})();
-	const isModal = modalState?.modal === true;
+	const isModal = !!modalState?.modal;
 	const returnUrl = modalState?.returnUrl;
 
 	const closeModal = () => {

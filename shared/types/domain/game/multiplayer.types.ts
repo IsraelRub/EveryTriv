@@ -8,6 +8,7 @@ import {
 	RoomStatus,
 } from '@shared/constants';
 
+import type { CountRecord } from '../../core/data.types';
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
 
 export interface Player {
@@ -70,10 +71,11 @@ export interface GameState {
 	playersAnswers: PlayerAnswerMap;
 	playersScores: PlayerScoreMap;
 	leaderboard: Player[];
-	startedAt?: Date;
-	currentQuestionStartTime?: Date;
+	startedAt?: string;
+	currentQuestionStartTime?: string;
 	serverStartTimestamp?: number;
 	serverEndTimestamp?: number;
+	answerCounts?: CountRecord;
 }
 
 export interface QuestionResult {
@@ -109,9 +111,11 @@ export type GameEventDataMap = {
 	[MultiplayerEvent.ANSWER_RECEIVED]: {
 		userId: string;
 		questionId: string;
+		answerIndex: number;
 		isCorrect: boolean;
 		scoreEarned: number;
 		leaderboard?: Player[];
+		answerCounts?: CountRecord;
 	};
 	[MultiplayerEvent.QUESTION_ENDED]: {
 		questionId: string;
@@ -123,9 +127,6 @@ export type GameEventDataMap = {
 		finalLeaderboard: Player[];
 		winner: Player | null;
 		gameDuration: number;
-	};
-	[MultiplayerEvent.LEADERBOARD_UPDATE]: {
-		leaderboard: Player[];
 	};
 	[MultiplayerEvent.ROOM_UPDATED]: {
 		room: MultiplayerRoom;
@@ -162,10 +163,27 @@ export interface MultiplayerAnswerResult {
 	isCorrect: boolean;
 	scoreEarned: number;
 	leaderboard?: Player[];
+	answerCounts?: CountRecord;
 }
 
 export interface QuestionEndResult {
 	results: QuestionResult[];
 	leaderboard: Player[];
 	room: MultiplayerRoom;
+}
+
+export interface QuestionStartResponse {
+	question: TriviaQuestion;
+	questionIndex: number;
+	timeLimit: number;
+	serverStartTimestamp: number;
+	serverEndTimestamp: number;
+}
+
+export interface QuestionEndResponse {
+	questionId: string;
+	correctAnswer: number;
+	results: QuestionResult[];
+	leaderboard: Player[];
+	updatedRoom: MultiplayerRoom;
 }

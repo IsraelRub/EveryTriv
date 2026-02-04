@@ -8,3 +8,7 @@ export function validateClockOffset(offset: number, thresholdSeconds: number = 5
 	const absOffset = Math.abs(offset);
 	return absOffset <= thresholdMs;
 }
+
+export function delay(ms: number): Promise<void> {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}

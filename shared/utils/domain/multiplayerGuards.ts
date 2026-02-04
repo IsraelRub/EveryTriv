@@ -127,6 +127,9 @@ export function isGameState(value: unknown): value is GameState {
 	if (!isRecord(value)) {
 		return false;
 	}
+	const hasValidAnswerCounts =
+		value.answerCounts === undefined ||
+		(isRecord(value.answerCounts) && Object.values(value.answerCounts).every(val => VALIDATORS.number(val)));
 	return (
 		VALIDATORS.string(value.roomId) &&
 		VALIDATORS.number(value.currentQuestionIndex) &&
@@ -137,7 +140,8 @@ export function isGameState(value: unknown): value is GameState {
 		Array.isArray(value.leaderboard) &&
 		value.leaderboard.every(isPlayer) &&
 		(value.currentQuestion === null || isRecord(value.currentQuestion)) &&
-		(value.startedAt === undefined || VALIDATORS.date(value.startedAt))
+		(value.startedAt === undefined || VALIDATORS.date(value.startedAt)) &&
+		hasValidAnswerCounts
 	);
 }
 
@@ -212,19 +216,28 @@ export function isAnswerReceivedEvent(value: unknown): value is GameEvent<Multip
 	if (!isRecord(value)) {
 		return false;
 	}
+	if (
+		!VALIDATORS.string(value.type) ||
+		value.type !== MultiplayerEvent.ANSWER_RECEIVED ||
+		!VALIDATORS.string(value.roomId) ||
+		!VALIDATORS.date(value.timestamp) ||
+		!hasProperty(value, 'data') ||
+		!isRecord(value.data)
+	) {
+		return false;
+	}
+	const hasValidAnswerCounts =
+		value.data.answerCounts === undefined ||
+		(isRecord(value.data.answerCounts) && Object.values(value.data.answerCounts).every(val => VALIDATORS.number(val)));
 	return (
-		VALIDATORS.string(value.type) &&
-		value.type === MultiplayerEvent.ANSWER_RECEIVED &&
-		VALIDATORS.string(value.roomId) &&
-		VALIDATORS.date(value.timestamp) &&
-		hasProperty(value, 'data') &&
-		isRecord(value.data) &&
 		VALIDATORS.string(value.data.userId) &&
 		VALIDATORS.string(value.data.questionId) &&
+		VALIDATORS.number(value.data.answerIndex) &&
 		VALIDATORS.boolean(value.data.isCorrect) &&
 		VALIDATORS.number(value.data.scoreEarned) &&
 		(value.data.leaderboard === undefined ||
-			(Array.isArray(value.data.leaderboard) && value.data.leaderboard.every(isPlayer)))
+			(Array.isArray(value.data.leaderboard) && value.data.leaderboard.every(isPlayer))) &&
+		hasValidAnswerCounts
 	);
 }
 
@@ -264,21 +277,6 @@ export function isGameEndedEvent(value: unknown): value is GameEvent<Multiplayer
 		) &&
 		VALIDATORS.number(value.data.gameDuration) &&
 		(value.data.winner === null || isPlayer(value.data.winner))
-	);
-}
-
-export function isLeaderboardUpdateEvent(value: unknown): value is GameEvent<MultiplayerEvent.LEADERBOARD_UPDATE> {
-	if (!isRecord(value)) {
-		return false;
-	}
-	return (
-		VALIDATORS.string(value.type) &&
-		value.type === MultiplayerEvent.LEADERBOARD_UPDATE &&
-		VALIDATORS.string(value.roomId) &&
-		VALIDATORS.date(value.timestamp) &&
-		hasProperty(value, 'data') &&
-		isRecord(value.data) &&
-		hasPropertyOfType(value.data, 'leaderboard', (val): val is Player[] => Array.isArray(val) && val.every(isPlayer))
 	);
 }
 

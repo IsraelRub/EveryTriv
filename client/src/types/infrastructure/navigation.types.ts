@@ -70,3 +70,8 @@ export interface NavigationCreditsState {
 export interface NavLinkProps extends RouterNavLinkProps {
 	activeClassName?: string;
 }
+
+export interface UseNavigationCloseOptions {
+	defaultRoute?: string;
+	onBeforeClose?: () => void;
+}

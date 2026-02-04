@@ -16,7 +16,7 @@ export const selectGameQuestionCount = (state: RootState) => state.gameSession.g
 export const selectGameScore = (state: RootState) => state.gameSession.score;
 export const selectCorrectAnswers = (state: RootState) => state.gameSession.correctAnswers;
 export const selectGameQuestions = (state: RootState) => state.gameSession.questions;
-export const selectQuestionsData = (state: RootState) => state.gameSession.questionsData;
+export const selectAnswerHistory = (state: RootState) => state.gameSession.answerHistory;
 export const selectSelectedAnswer = (state: RootState) => state.gameSession.selectedAnswer;
 export const selectAnswered = (state: RootState) => state.gameSession.answered;
 export const selectStreak = (state: RootState) => state.gameSession.streak;
@@ -40,7 +40,7 @@ export const selectMultiplayer = (state: RootState) => state.multiplayer;
 export const selectIsConnected = (state: RootState) => state.multiplayer.isConnected;
 export const selectMultiplayerRoom = (state: RootState) => state.multiplayer.room;
 export const selectMultiplayerGameState = (state: RootState) => state.multiplayer.gameState;
-export const selectMultiplayerLeaderboard = (state: RootState) => state.multiplayer.leaderboard;
+export const selectMultiplayerLeaderboard = (state: RootState) => state.multiplayer.gameState?.leaderboard ?? [];
 export const selectMultiplayerError = (state: RootState) => state.multiplayer.error;
 export const selectMultiplayerLoading = (state: RootState) => state.multiplayer.isLoading;
 

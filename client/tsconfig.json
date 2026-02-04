@@ -18,7 +18,7 @@
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist-temp",
+    "noEmit": true,
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "esModuleInterop": true,

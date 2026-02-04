@@ -1,7 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { GameMode } from '@shared/constants';
-import type { QuestionData } from '@shared/types';
+import type { AnswerHistory } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
@@ -52,7 +52,7 @@ export class GameHistoryEntity extends BaseEntity {
 		type: 'jsonb',
 		default: () => "'[]'::jsonb",
 	})
-	questionsData: QuestionData[] = [];
+	answerHistory: AnswerHistory[] = [];
 
 	@Column({ name: 'client_mutation_id', type: 'uuid', nullable: true })
 	@Index({ unique: true, where: 'client_mutation_id IS NOT NULL' })

@@ -18,6 +18,8 @@ import {
 import { Root as LabelRoot } from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
 
+import { getErrorMessage } from '@shared/utils';
+
 import { Label } from '@/components';
 import type { FormFieldContextValue, FormItemContextValue } from '@/types';
 import { cn } from '@/utils';
@@ -106,7 +108,7 @@ FormDescription.displayName = 'FormDescription';
 export const FormMessage = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
 	({ className, children, ...props }, ref) => {
 		const { error, formMessageId } = useFormField();
-		const body = error ? String(error?.message) : children;
+		const body = error ? getErrorMessage(error) : children;
 
 		if (!body) {
 			return null;

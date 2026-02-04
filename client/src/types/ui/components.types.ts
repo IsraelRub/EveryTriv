@@ -1,17 +1,11 @@
-import {
-	ReactNode,
-	type ButtonHTMLAttributes,
-	type ComponentPropsWithoutRef,
-	type HTMLAttributes,
-	type ReactElement,
-	type SVGProps,
-} from 'react';
+import { ReactNode, type ButtonHTMLAttributes, type HTMLAttributes, type SVGProps } from 'react';
 import { type LinkProps } from 'react-router-dom';
-import * as ToastPrimitive from '@radix-ui/react-toast';
 import { type VariantProps } from 'class-variance-authority';
 
 import { ButtonSize, ButtonVariant, SpinnerSize, VariantBase } from '@/constants';
-import { badgeVariants, toastVariants } from '@/components';
+import { badgeVariants } from '@/components';
+
+export type { ToastActionElement, ToastProps } from '@/components';
 
 export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
 	variant?: VariantBase;
@@ -23,37 +17,28 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	asChild?: boolean;
 }
 
+export interface LinkButtonProps extends LinkProps {
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	children: ReactNode;
+}
+
 export interface CloseButtonProps {
 	to?: string;
 	className?: string;
 	onClose?: () => void;
 }
 
-export interface BackToHomeButtonProps extends Omit<ButtonProps, 'onClick' | 'children'> {
-	text?: string;
+export interface HomeButtonProps {
+	onClick?: () => void;
 }
 
-export interface LinkButtonProps extends Omit<LinkProps, 'className'> {
-	variant?: ButtonVariant;
-	size?: ButtonSize;
-	className?: string;
-	children: ReactNode;
-}
-
-export type ToastProps = ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & VariantProps<typeof toastVariants>;
-
-export type ToastActionElement = ReactElement<typeof ToastPrimitive.Action>;
-
-interface BaseSpinnerProps {
+export interface SpinnerProps extends SVGProps<SVGSVGElement> {
 	size?: SpinnerSize;
 }
 
-export interface SVGSpinnerProps extends SVGProps<SVGSVGElement>, BaseSpinnerProps {
-	variant?: 'loader' | 'refresh';
+export interface RefreshButtonProps {
+	onClick: () => void;
+	isLoading: boolean;
+	size?: ButtonSize;
 }
-
-export interface FullScreenSpinnerProps extends HTMLAttributes<HTMLDivElement>, BaseSpinnerProps {
-	variant: 'fullscreen';
-}
-
-export type SpinnerProps = SVGSpinnerProps | FullScreenSpinnerProps;

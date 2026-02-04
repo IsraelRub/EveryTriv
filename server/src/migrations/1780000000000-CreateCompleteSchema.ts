@@ -48,7 +48,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"google_id" character varying,
 					"first_name" character varying,
 					"last_name" character varying,
-					"credits" integer NOT NULL DEFAULT '100',
+					"credits" integer DEFAULT '100',
 					"purchased_credits" integer NOT NULL DEFAULT '0',
 					"daily_free_questions" integer NOT NULL DEFAULT '20',
 					"remaining_free_questions" integer NOT NULL DEFAULT '20',
@@ -63,6 +63,33 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"),
 					CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id")
 				)
+			`);
+
+			// If table already exists with NOT NULL constraint, make credits nullable
+			console.log('Ensuring credits column is nullable for admin users');
+			await queryRunner.query(`
+				DO $$ 
+				BEGIN
+					-- Check if column exists and has NOT NULL constraint, then remove it
+					IF EXISTS (
+						SELECT 1 
+						FROM information_schema.columns 
+						WHERE table_name = 'users' 
+						AND column_name = 'credits' 
+						AND is_nullable = 'NO'
+					) THEN
+						ALTER TABLE "users" 
+						ALTER COLUMN "credits" DROP NOT NULL;
+					END IF;
+				END $$;
+			`);
+
+			// Set credits to NULL for admin users (credits not applicable for admins)
+			console.log('Setting credits to NULL for admin users');
+			await queryRunner.query(`
+				UPDATE "users" 
+				SET "credits" = NULL 
+				WHERE "role" = 'admin';
 			`);
 
 			// Create indexes for users table
@@ -130,6 +157,17 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				`CREATE INDEX IF NOT EXISTS "IDX_payment_history_failed_at" ON "payment_history" ("failed_at")`
 			);
 
+			// Add UNIQUE constraint on payment_history.payment_id (required for FK from credit_transactions)
+			await queryRunner.query(`
+				DO $$ BEGIN
+					ALTER TABLE "payment_history"
+					ADD CONSTRAINT "UQ_payment_history_payment_id"
+					UNIQUE ("payment_id");
+				EXCEPTION
+					WHEN duplicate_object THEN null;
+				END $$;
+			`);
+
 			// Add foreign key constraint for payment_history
 			await queryRunner.query(`
 				DO $$ BEGIN
@@ -169,6 +207,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				`CREATE INDEX IF NOT EXISTS "IDX_credit_transactions_user_id" ON "credit_transactions" ("user_id")`
 			);
 			await queryRunner.query(
+				`CREATE INDEX IF NOT EXISTS "IDX_credit_transactions_payment_id" ON "credit_transactions" ("payment_id")`
+			);
+			await queryRunner.query(
 				`CREATE INDEX IF NOT EXISTS "IDX_credit_transactions_date" ON "credit_transactions" ("transaction_date")`
 			);
 
@@ -177,6 +218,20 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				DO $$ BEGIN
 					ALTER TABLE "credit_transactions" ADD CONSTRAINT "FK_credit_transactions_user" 
 					FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+				EXCEPTION
+					WHEN duplicate_object THEN null;
+				END $$;
+			`);
+
+			// Add foreign key constraint from credit_transactions.payment_id to payment_history.payment_id
+			await queryRunner.query(`
+				DO $$ BEGIN
+					ALTER TABLE "credit_transactions"
+					ADD CONSTRAINT "FK_credit_transactions_payment_history"
+					FOREIGN KEY ("payment_id")
+					REFERENCES "payment_history"("payment_id")
+					ON DELETE SET NULL
+					ON UPDATE NO ACTION;
 				EXCEPTION
 					WHEN duplicate_object THEN null;
 				END $$;
@@ -288,7 +343,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"total_questions_answered" integer NOT NULL DEFAULT '0',
 					"correct_answers" integer NOT NULL DEFAULT '0',
 					"incorrect_answers" integer NOT NULL DEFAULT '0',
-					"overall_success_rate" decimal(5,2) NOT NULL DEFAULT '0',
+					"overall_success_rate" integer NOT NULL DEFAULT '0',
 					"current_streak" integer NOT NULL DEFAULT '0',
 					"longest_streak" integer NOT NULL DEFAULT '0',
 					"last_play_date" TIMESTAMP,
@@ -305,7 +360,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"total_play_time" integer NOT NULL DEFAULT '0',
 					"best_game_score" integer NOT NULL DEFAULT '0',
 					"best_game_date" TIMESTAMP,
+					"total_score" integer NOT NULL DEFAULT '0',
 					"version" integer NOT NULL DEFAULT '0',
+					"recent_activity" jsonb NOT NULL DEFAULT '[]'::jsonb,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "UQ_user_stats_user_id" UNIQUE ("user_id"),
@@ -352,54 +409,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				END $$;
 			`);
 
-			// Create leaderboard table
-			console.log('Creating leaderboard table');
-			await queryRunner.query(`
-				CREATE TABLE IF NOT EXISTS "leaderboard" (
-					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-					"user_id" uuid NOT NULL,
-					"user_stats_id" uuid NOT NULL,
-					"rank" integer NOT NULL DEFAULT '0',
-					"percentile" integer NOT NULL DEFAULT '0',
-					"score" integer NOT NULL DEFAULT '0',
-					"total_users" integer NOT NULL DEFAULT '0',
-					"last_rank_update" TIMESTAMP,
-					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
-					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-					CONSTRAINT "UQ_leaderboard_user_id" UNIQUE ("user_id"),
-					CONSTRAINT "PK_leaderboard_id" PRIMARY KEY ("id")
-				)
-			`);
-
-			// Create indexes for leaderboard table
-			console.log('Creating indexes for leaderboard table');
-			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_leaderboard_user_id" ON "leaderboard" ("user_id")`);
-			await queryRunner.query(
-				`CREATE INDEX IF NOT EXISTS "IDX_leaderboard_user_stats_id" ON "leaderboard" ("user_stats_id")`
-			);
-			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_leaderboard_rank" ON "leaderboard" ("rank")`);
-			await queryRunner.query(
-				`CREATE INDEX IF NOT EXISTS "IDX_leaderboard_percentile" ON "leaderboard" ("percentile")`
-			);
-			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_leaderboard_score" ON "leaderboard" ("score")`);
-
-			// Add foreign key constraints for leaderboard
-			await queryRunner.query(`
-				DO $$ BEGIN
-					ALTER TABLE "leaderboard" ADD CONSTRAINT "FK_leaderboard_user" 
-					FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-				EXCEPTION
-					WHEN duplicate_object THEN null;
-				END $$;
-			`);
-			await queryRunner.query(`
-				DO $$ BEGIN
-					ALTER TABLE "leaderboard" ADD CONSTRAINT "FK_leaderboard_user_stats" 
-					FOREIGN KEY ("user_stats_id") REFERENCES "user_stats"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-				EXCEPTION
-					WHEN duplicate_object THEN null;
-				END $$;
-			`);
+			// Leaderboard table was removed - see RemoveLeaderboardTable migration for details
 
 			// Add database optimizations
 			console.log('Adding database optimizations');
@@ -494,15 +504,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			console.log('Migration completed successfully: CreateCompleteSchema', {
 				migrationName: this.name,
 				operation: 'up',
-				tablesCreated: [
-					'users',
-					'payment_history',
-					'credit_transactions',
-					'game_history',
-					'trivia',
-					'user_stats',
-					'leaderboard',
-				],
+				tablesCreated: ['users', 'credit_transactions', 'payment_history', 'game_history', 'trivia', 'user_stats'],
 				enumsCreated: ['credit_transaction_type_enum', 'credit_source_enum'],
 				materializedViewsCreated: ['mv_global_analytics', 'mv_topic_stats'],
 			});
@@ -530,10 +532,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 
 			// Drop tables in reverse dependency order
 			console.log('Dropping tables in reverse dependency order');
-
-			// Drop leaderboard table (depends on user_stats and users)
-			console.log('Dropping leaderboard table');
-			await queryRunner.query(`DROP TABLE IF EXISTS "leaderboard" CASCADE`);
 
 			// Drop user_stats table (depends on users)
 			console.log('Dropping user_stats table');

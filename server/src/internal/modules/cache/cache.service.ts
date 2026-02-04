@@ -8,38 +8,23 @@ import type {
 	StorageOperationResult,
 	StorageService,
 	StorageStats,
+	StorageStatsItemByType,
 	StorageValue,
 	TypeGuard,
 } from '@shared/types';
-import { createTimedResult, getErrorMessage } from '@shared/utils';
+import { createTimedResult, getErrorMessage, isRecord } from '@shared/utils';
 
 import { CACHE_CONFIG, StorageOperation } from '@internal/constants';
-import { serverLogger as logger } from '@internal/services';
+import { serverLogger as logger, metricsService, StorageMetricsTracker } from '@internal/services';
+import { isValidCacheEntry } from '@internal/utils';
 
 import { deleteKeysByPattern, scanKeys } from '../../utils';
 
-function createTypeBreakdown(
-	cacheItems: number = 0,
-	cacheSize: number = 0
-): Record<StorageType, { items: number; size: number }> {
+function createTypeBreakdown(cacheItems: number = 0, cacheSize: number = 0): StorageStatsItemByType {
 	return {
 		[StorageType.PERSISTENT]: { items: 0, size: 0 },
 		[StorageType.CACHE]: { items: cacheItems, size: cacheSize },
 	};
-}
-
-function isValidCacheEntry(entry: unknown): entry is { key: string; value: StorageValue; ttl?: number } {
-	if (typeof entry !== 'object' || entry === null) {
-		return false;
-	}
-	const obj = entry;
-	const hasKey = 'key' in obj && typeof Reflect.get(obj, 'key') === 'string';
-	const hasValue = 'value' in obj;
-	const hasTtl = 'ttl' in obj;
-	const ttlValue = hasTtl ? Reflect.get(obj, 'ttl') : undefined;
-	const isValidTtl = !hasTtl || ttlValue === undefined || (typeof ttlValue === 'number' && ttlValue >= 0);
-
-	return hasKey && hasValue && isValidTtl;
 }
 
 @Injectable()
@@ -77,11 +62,27 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				ttl,
 			});
 
+			StorageMetricsTracker.trackOperation(
+				'set',
+				startTime,
+				true,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
 			logger.cacheError(StorageOperation.SET, key, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'set',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(false, undefined, getErrorMessage(error), startTime, StorageType.CACHE);
 		}
 	}
@@ -107,19 +108,37 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				logger.cacheHit(key, {
 					storage: this.useRedis ? 'redis' : 'memory',
 				});
+				metricsService.trackCacheHit(true);
 			} else {
 				logger.cacheMiss(key, {
 					storage: this.useRedis ? 'redis' : 'memory',
 				});
+				metricsService.trackCacheHit(false);
 			}
 
 			const baseResult = createTimedResult<StorageValue | null>(true, value, undefined, startTime, StorageType.CACHE);
 
 			if (!validator) {
+				StorageMetricsTracker.trackOperation(
+					'get',
+					startTime,
+					true,
+					StorageType.CACHE,
+					undefined,
+					this.config.enableMetrics
+				);
 				return baseResult;
 			}
 
 			if (value !== null && validator(value)) {
+				StorageMetricsTracker.trackOperation(
+					'get',
+					startTime,
+					true,
+					StorageType.CACHE,
+					undefined,
+					this.config.enableMetrics
+				);
 				return {
 					...baseResult,
 					data: value,
@@ -130,11 +149,27 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				await this.delete(key);
 			}
 
+			StorageMetricsTracker.trackOperation(
+				'get',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<T | null>(false, null, 'Cache entry failed validation', startTime, StorageType.CACHE);
 		} catch (error) {
 			logger.cacheError(StorageOperation.GET, key, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'get',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<T | null>(false, null, getErrorMessage(error), startTime, StorageType.CACHE);
 		}
 	}
@@ -226,6 +261,14 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				deletedCount: deleted ? 1 : 0,
 			});
 
+			StorageMetricsTracker.trackOperation(
+				'delete',
+				startTime,
+				true,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(
 				deleted,
 				undefined,
@@ -237,6 +280,14 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			logger.cacheError(StorageOperation.DELETE, key, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'delete',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(false, undefined, getErrorMessage(error), startTime, StorageType.CACHE);
 		}
 	}
@@ -304,11 +355,27 @@ export class CacheService implements StorageService, OnModuleDestroy {
 
 			logger.systemInfo('Cache cleared', {});
 
+			StorageMetricsTracker.trackOperation(
+				'clear',
+				startTime,
+				true,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
 			logger.cacheError(StorageOperation.CLEAR, '', {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'clear',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(false, undefined, getErrorMessage(error), startTime, StorageType.CACHE);
 		}
 	}
@@ -360,11 +427,27 @@ export class CacheService implements StorageService, OnModuleDestroy {
 				this.invalidatePatternMemory(pattern);
 			}
 
+			StorageMetricsTracker.trackOperation(
+				'invalidate',
+				startTime,
+				true,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(true, undefined, undefined, startTime, StorageType.CACHE);
 		} catch (error) {
 			logger.cacheError(StorageOperation.INVALIDATE, pattern, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'invalidate',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return createTimedResult<void>(false, undefined, getErrorMessage(error), startTime, StorageType.CACHE);
 		}
 	}
@@ -460,17 +543,34 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	async invalidatePattern(pattern: string): Promise<number> {
+		const startTime = Date.now();
 		try {
 			const prefixedPattern = `${this.config.prefix}${pattern}`;
-			if (this.useRedis && this.redisClient) {
-				return await this.invalidatePatternRedis(prefixedPattern);
-			} else {
-				return this.invalidatePatternMemory(prefixedPattern);
-			}
+			const n =
+				this.useRedis && this.redisClient
+					? await this.invalidatePatternRedis(prefixedPattern)
+					: this.invalidatePatternMemory(prefixedPattern);
+			StorageMetricsTracker.trackOperation(
+				'invalidate',
+				startTime,
+				true,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
+			return n;
 		} catch (error) {
 			logger.cacheError(StorageOperation.INVALIDATE_PATTERN, pattern, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
+			StorageMetricsTracker.trackOperation(
+				'invalidate',
+				startTime,
+				false,
+				StorageType.CACHE,
+				undefined,
+				this.config.enableMetrics
+			);
 			return 0;
 		}
 	}
@@ -763,7 +863,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 			VALIDATORS.number(value) ||
 			VALIDATORS.boolean(value) ||
 			value instanceof Date ||
-			(typeof value === 'object' && value !== null)
+			isRecord(value)
 		) {
 			return value;
 		}

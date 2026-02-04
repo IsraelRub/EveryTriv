@@ -5,12 +5,13 @@ import { ERROR_CODES } from '@shared/constants';
 
 import { MetricsService } from '@internal/services';
 
-import { RedisModule } from '../redis.module';
+import { CacheModule } from '../cache';
+import { RedisModule } from '../redis';
 import { StorageController } from './storage.controller';
 import { StorageService } from './storage.service';
 
 @Module({
-	imports: [RedisModule],
+	imports: [RedisModule, CacheModule],
 	controllers: [StorageController],
 	providers: [
 		{

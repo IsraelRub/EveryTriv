@@ -285,7 +285,7 @@ export function RegistrationView() {
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
-								<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
+								<Spinner size={SpinnerSize.SM} className='mr-2' />
 								Creating account...
 							</>
 						) : (

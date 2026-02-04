@@ -16,6 +16,9 @@ export {
 	useUserStatisticsById,
 	useUserSummaryById,
 	useUserTrendsById,
+	useCheckAllUsersConsistency,
+	useCheckUserStatsConsistency,
+	useFixUserStatsConsistency,
 } from './useAdminAnalytics';
 
 export {

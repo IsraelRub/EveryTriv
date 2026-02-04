@@ -146,7 +146,7 @@ export class LeaderboardAnalyticsService {
 					// Get active users (users who played games in the period)
 					const activeUsersQueryBuilder = this.gameHistoryRepository
 						.createQueryBuilder('game')
-						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'value');
+						.select('CAST(COUNT(DISTINCT game.user_id) AS INTEGER)', 'value');
 					addDateRangeConditions(activeUsersQueryBuilder, 'game', 'createdAt', startDate);
 					const activeUsersRaw = await activeUsersQueryBuilder.getRawOne<NumericQueryResult>();
 
@@ -177,7 +177,7 @@ export class LeaderboardAnalyticsService {
 					const averageGamesQueryBuilder = this.gameHistoryRepository
 						.createQueryBuilder('game')
 						.select('CAST(COUNT(*) AS DOUBLE PRECISION)', 'total')
-						.addSelect('CAST(COUNT(DISTINCT game.userId) AS DOUBLE PRECISION)', 'users');
+						.addSelect('CAST(COUNT(DISTINCT game.user_id) AS DOUBLE PRECISION)', 'users');
 					addDateRangeConditions(averageGamesQueryBuilder, 'game', 'createdAt', startDate);
 					const averageGamesRaw = await averageGamesQueryBuilder.getRawOne<TotalUsersRecord>();
 

@@ -5,6 +5,8 @@ import {
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HttpMethod,
+	LOCALHOST_CONFIG,
+	TIME_PERIODS_MS,
 	VALIDATORS,
 } from '@shared/constants';
 import type {
@@ -24,6 +26,7 @@ import type {
 	UserProfileResponseType,
 } from '@shared/types';
 import {
+	delay,
 	getErrorMessage,
 	hasProperty,
 	hasPropertyOfType,
@@ -35,7 +38,6 @@ import {
 import { STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
 import { clientLogger as logger, storageService } from '@/services';
 import type { AuthResponse, EnhancedRequestConfig } from '@/types';
-import { LOCALHOST_CONFIG } from '@/config/localhost.config';
 import { authRequestInterceptor, InterceptorsService } from './interceptors.service';
 
 export class ApiConfig {
@@ -124,17 +126,15 @@ class ApiService {
 		if (!config.skipDeduplication && this.activeRequests.has(requestKey)) {
 			const existingRequest = this.activeRequests.get(requestKey);
 			if (existingRequest) {
-				return new Promise<ApiResponse<T>>((resolve, reject) => {
-					existingRequest
-						.then(response => {
-							if (this.isValidApiResponse<T>(response)) {
-								resolve(response);
-								return;
-							}
-							reject(new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE));
-						})
-						.catch(reject);
-				});
+				try {
+					const response = await existingRequest;
+					if (this.isValidApiResponse<T>(response)) {
+						return response;
+					}
+					throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
+				} catch (error) {
+					throw error;
+				}
 			}
 		}
 
@@ -168,16 +168,36 @@ class ApiService {
 			// Combine signals if both provided (use provided signal as primary, timeout as fallback)
 			let signal: AbortSignal = timeoutController.signal;
 			if (config.signal) {
-				// If provided signal is aborted, use it; otherwise use timeout signal
+				// Check if provided signal is already aborted before creating combined controller
+				if (config.signal.aborted) {
+					// If signal is already aborted, abort timeout controller and throw immediately
+					timeoutController.abort();
+					const abortError = new Error('Request aborted');
+					abortError.name = 'AbortError';
+					Object.assign(abortError, {
+						isAborted: true,
+						statusCode: 0,
+					});
+					throw abortError;
+				}
+
 				// Create a combined controller that aborts when either signal aborts
 				const combinedController = new AbortController();
 				const abortIfNeeded = () => {
-					if (config.signal?.aborted ?? timeoutController.signal.aborted) {
+					if (config.signal?.aborted || timeoutController.signal.aborted) {
 						combinedController.abort();
 					}
 				};
+
+				// Set up event listeners for both signals
 				config.signal.addEventListener('abort', abortIfNeeded);
 				timeoutController.signal.addEventListener('abort', abortIfNeeded);
+
+				// Check again after setting up listeners in case signal was aborted in between
+				if (config.signal.aborted || timeoutController.signal.aborted) {
+					combinedController.abort();
+				}
+
 				signal = combinedController.signal;
 			}
 
@@ -269,7 +289,7 @@ class ApiService {
 				logger.apiDebug('Fetch config prepared', {
 					url,
 					method,
-					bodyLength: typeof fetchConfig.body === 'string' ? fetchConfig.body.length : 0,
+					bodyLength: VALIDATORS.string(fetchConfig.body) ? fetchConfig.body.length : 0,
 					...(contentTypeValue && { contentType: contentTypeValue }),
 				});
 			}
@@ -299,6 +319,28 @@ class ApiService {
 
 			return interceptedResponse;
 		} catch (error) {
+			// Check if error is an abort error (from AbortController or fetch abort)
+			const isAbortError =
+				error instanceof Error &&
+				(error.name === 'AbortError' ||
+					error.message.includes('aborted') ||
+					error.message === 'signal is aborted without reason' ||
+					(isRecord(error) && hasProperty(error, 'isAborted') && error.isAborted));
+
+			// If it's an abort error, create a proper error with clear message
+			if (isAbortError) {
+				const abortError: ApiError = {
+					message: 'Request was cancelled',
+					statusCode: 0,
+					details: {
+						error: 'Request was cancelled',
+						reason: 'The request was aborted, likely due to a new request being made or timeout',
+					},
+				};
+				// Don't execute interceptors for abort errors - they're expected and shouldn't be logged as errors
+				throw abortError;
+			}
+
 			// Create API error - error is unknown in catch block, but may already contain rich metadata
 			const errorMessage = getErrorMessage(error);
 
@@ -368,7 +410,7 @@ class ApiService {
 
 						// Verify token was stored before retrying request
 						// Add a small delay to ensure token is fully stored
-						await new Promise(resolve => setTimeout(resolve, 50));
+						await delay(TIME_PERIODS_MS.FIFTY_MILLISECONDS);
 
 						const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 						if (!tokenResult.success || !tokenResult.data) {
@@ -421,7 +463,12 @@ class ApiService {
 					}
 				}
 			} else {
-				const textMessage = await response.text().catch(textError => getErrorMessage(textError));
+				let textMessage: string;
+				try {
+					textMessage = await response.text();
+				} catch (textError) {
+					textMessage = getErrorMessage(textError);
+				}
 				errorData = { message: textMessage };
 				details.message = textMessage;
 			}
@@ -470,7 +517,7 @@ class ApiService {
 		// Handle server response format: { success: true, data: T, timestamp: string }
 		if (hasProperty(responseData, 'success') && hasProperty(responseData, 'data') && isRecord(responseData)) {
 			const timestampValue =
-				'timestamp' in responseData && typeof responseData.timestamp === 'string'
+				'timestamp' in responseData && VALIDATORS.string(responseData.timestamp)
 					? responseData.timestamp
 					: new Date().toISOString();
 			const apiResponse: ApiResponse<unknown> = {
@@ -611,7 +658,7 @@ class ApiService {
 			// This is expected when token is expired/invalid
 			const errorMessage = getErrorMessage(error);
 			// Extract error code if available (prioritize code over message)
-			const errorCode = isRecord(error) && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+			const errorCode = isRecord(error) && 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
 
 			// Check auth errors using ERROR_CODES constants (prioritize code, fallback to message)
 			const isAuthError =

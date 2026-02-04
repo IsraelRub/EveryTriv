@@ -90,7 +90,7 @@ export class CacheController {
 			}
 
 			const existsResult = await this.cacheService.exists(key);
-			const exists = existsResult.success && existsResult.data === true;
+			const exists = existsResult.success && existsResult.data;
 			const ttl = exists ? await this.cacheService.getTTL(key) : -2;
 
 			logger.apiRead('cache_key_exists', {
@@ -165,12 +165,15 @@ export class CacheController {
 			const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ip);
 			const windowKey = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ip, path);
 
-			const [burstCount, burstTTL, windowCount, windowTTL] = await Promise.all([
-				this.redis.get(burstKey).then(val => (val ? parseInt(val, 10) : 0)),
+			const [burstVal, burstTTL, windowVal, windowTTL] = await Promise.all([
+				this.redis.get(burstKey),
 				this.redis.ttl(burstKey),
-				this.redis.get(windowKey).then(val => (val ? parseInt(val, 10) : 0)),
+				this.redis.get(windowKey),
 				this.redis.ttl(windowKey),
 			]);
+
+			const burstCount = burstVal ? parseInt(burstVal, 10) : 0;
+			const windowCount = windowVal ? parseInt(windowVal, 10) : 0;
 
 			const burstLimit = RATE_LIMIT_DEFAULTS.BURST_LIMIT;
 			const windowLimit = RATE_LIMIT_DEFAULTS.MAX_REQUESTS_PER_WINDOW;

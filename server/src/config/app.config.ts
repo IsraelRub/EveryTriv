@@ -1,4 +1,4 @@
-import { PayPalEnvironment } from '@shared/constants';
+import { LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
 
 import {
 	ADMIN_CREDENTIALS_DEFAULTS,
@@ -9,8 +9,6 @@ import {
 	REDIS_RETRY_STRATEGY_CONFIG,
 } from '@internal/constants';
 import type { PayPalConfig } from '@internal/types';
-
-import { LOCALHOST_CONFIG } from './localhost.config';
 
 export class AppConfig {
 	static get port() {

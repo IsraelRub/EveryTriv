@@ -1,8 +1,10 @@
 export { default as gameModeSlice, setGameMode, resetGameMode } from './gameModeSlice';
 export {
 	default as gameSessionSlice,
+	ensureGameStartTime,
 	startGameSession,
 	setQuestions,
+	setGameQuestionCount,
 	setQuestionIndex,
 	selectAnswer,
 	setAnswered,
@@ -11,8 +13,8 @@ export {
 	moveToNextQuestion,
 	setLoading,
 	setCreditsDeducted,
-	addQuestionData,
-	setQuestionsData,
+	addAnswerHistory,
+	setAnswerHistory as setAnswerHistory,
 	finalizeGame,
 	resetGameSession,
 } from './gameSessionSlice';
@@ -21,7 +23,6 @@ export {
 	setConnectionStatus,
 	setRoom,
 	updateGameState,
-	updateLeaderboard,
 	setError,
 	setLoading as setMultiplayerLoading,
 	resetMultiplayer,

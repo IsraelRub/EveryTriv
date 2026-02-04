@@ -8,4 +8,4 @@ export const Label = forwardRef<
 	ElementRef<typeof LabelRoot>,
 	ComponentPropsWithoutRef<typeof LabelRoot> & VariantProps<typeof labelVariants>
 >(({ className, ...props }, ref) => <LabelRoot ref={ref} className={labelVariants({ className })} {...props} />);
-Label.displayName = LabelRoot.displayName;
+Label.displayName = 'Label';

@@ -27,7 +27,6 @@ import {
 	GoogleAuthButton,
 	Input,
 	Label,
-	LinkButton,
 	Separator,
 	Spinner,
 } from '@/components';
@@ -173,17 +172,7 @@ export function LoginView() {
 					</div>
 
 					<div className='space-y-2'>
-						<div className='flex items-center justify-between'>
-							<Label htmlFor='password'>Password</Label>
-							<LinkButton
-								to={ROUTES.FORGOT_PASSWORD}
-								variant={ButtonVariant.GHOST}
-								size={ButtonSize.SM}
-								className='text-xs h-auto p-0 text-primary hover:underline'
-							>
-								Forgot password?
-							</LinkButton>
-						</div>
+						<Label htmlFor='password'>Password</Label>
 						<Input
 							id='password'
 							name='password'
@@ -206,7 +195,7 @@ export function LoginView() {
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
 							<>
-								<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
+								<Spinner size={SpinnerSize.SM} className='mr-2' />
 								Signing in...
 							</>
 						) : (

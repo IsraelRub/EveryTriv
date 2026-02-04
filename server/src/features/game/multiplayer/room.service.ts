@@ -14,7 +14,7 @@ import {
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
-import { getErrorMessage, isMultiplayerRoom } from '@shared/utils';
+import { delay, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
 import { StorageService } from '@internal/modules';
@@ -351,7 +351,7 @@ export class RoomService {
 
 				return room;
 			} catch (error) {
-				lastError = error instanceof Error ? error : new Error(String(error));
+				lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
 				if (attempt < maxRetries - 1 && error instanceof BadRequestException) {
 					continue;
 				}
@@ -464,14 +464,20 @@ export class RoomService {
 
 				lastError = new Error(result.error ?? ERROR_CODES.REDIS_ERROR);
 				if (attempt < maxRetries - 1) {
-					const delay = Math.min(100 * Math.pow(2, attempt), 400);
-					await new Promise(resolve => setTimeout(resolve, delay));
+					const delayMs = Math.min(
+						TIME_PERIODS_MS.HUNDRED_MILLISECONDS * 2 ** attempt,
+						TIME_PERIODS_MS.FOUR_HUNDRED_MILLISECONDS
+					);
+					await delay(delayMs);
 				}
 			} catch (error) {
-				lastError = error instanceof Error ? error : new Error(String(error));
+				lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
 				if (attempt < maxRetries - 1) {
-					const delay = Math.min(100 * Math.pow(2, attempt), 400);
-					await new Promise(resolve => setTimeout(resolve, delay));
+					const delayMs = Math.min(
+						TIME_PERIODS_MS.HUNDRED_MILLISECONDS * 2 ** attempt,
+						TIME_PERIODS_MS.FOUR_HUNDRED_MILLISECONDS
+					);
+					await delay(delayMs);
 				}
 			}
 		}

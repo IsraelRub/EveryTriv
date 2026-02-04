@@ -20,10 +20,12 @@ import {
 	AuthModule,
 	CreditsModule,
 	GameModule,
+	MaintenanceModule,
 	MultiplayerModule,
 	PaymentModule,
 	UserModule,
 } from './features';
+import { SystemAnalyticsService } from './features/analytics/services';
 
 @Module({
 	imports: [
@@ -41,6 +43,7 @@ import {
 		MultiplayerModule,
 		AnalyticsModule,
 		AdminModule,
+		MaintenanceModule, // For schedulers and maintenance operations
 		CacheModule,
 		UserModule,
 		PaymentModule,
@@ -70,7 +73,10 @@ import {
 		// Global performance monitoring interceptor
 		{
 			provide: APP_INTERCEPTOR,
-			useClass: PerformanceInterceptor,
+			useFactory: (systemAnalyticsService: SystemAnalyticsService) => {
+				return new PerformanceInterceptor(systemAnalyticsService);
+			},
+			inject: [SystemAnalyticsService],
 		},
 		// Global authentication guard
 		{

@@ -6,6 +6,8 @@ export * from './auth';
 
 export * from './game';
 
+export * from './maintenance';
+
 export * from './payment';
 
 export * from './credits';

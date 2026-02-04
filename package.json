@@ -20,7 +20,7 @@
     "build:server": "cd server && pnpm run build",
     "build:client": "cd client && pnpm run build",
     "clean:all": "pnpm run clean:server && pnpm run clean:client && pnpm run clean:cache",
-    "clean:cache": "rimraf node_modules/.cache node_modules/.vite .vite dist-temp",
+    "clean:cache": "rimraf node_modules/.cache node_modules/.vite .vite",
     "clean:server": "cd server && pnpm run clean",
     "clean:client": "cd client && pnpm run clean",
     "start:server": "cd server && pnpm run start",
@@ -35,6 +35,8 @@
     "stop:docker": "docker-compose down -v",
     "build:docker": "docker-compose build -d",
     "api:test": "newman run tools/endpoints-collection.json --reporter-cli-verbose",
+    "api:verify-db": "powershell -ExecutionPolicy Bypass -File scripts/verify-db-sync.ps1",
+    "api:verify-db-newman": "newman run tools/endpoints-collection.json --folder \"Data Verification\" --reporters cli",
     "docs:check": "node scripts/documentation/validate-doc-links.cjs",
     "docs:consistency": "node scripts/documentation/validate-doc-consistency.cjs",
     "docs:diagrams": "node scripts/documentation/validate-doc-diagrams.cjs",
@@ -45,8 +47,9 @@
     "db:admin": "npm run webdb:start",
     "imports:check": "npx tsc-alias -p server/tsconfig.json -v && npx tsc-alias -p shared/tsconfig.json -v",
     "imports:fix": "npx tsc-alias -p server/tsconfig.json -v && npx tsc-alias -p shared/tsconfig.json -v",
-    "empty-dirs": "powershell -Command \"@('client/src','server/src','shared') | ForEach-Object { $e = Get-ChildItem $_ -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { (Get-ChildItem $_.FullName -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0 }; if ($e) { Write-Host \"Empty dirs in $_:\"; $e.FullName; exit 1 } }\"",
-    "repomix": "npx repomix --style plain -o repomix-output.txt"
+    "empty-dirs": "powershell -Command \"@('client/src','server/src','shared') | ForEach-Object { $e = Get-ChildItem $_ -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { (Get-ChildItem $_.FullName -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0 }; if ($e) { Write-Host \"Empty dirs in ${_}:\"; $e.FullName; exit 1 } }\"",
+    "repomix": "npx repomix --style plain -o repomix-output.txt",
+    "delete-cli-users": "cd server && node ../scripts/delete-cli-users.cjs"
   },
   "dependencies": {
     "concurrently": "^8.2.2"

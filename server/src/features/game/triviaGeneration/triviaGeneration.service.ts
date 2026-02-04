@@ -2,23 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 
-import {
-	ALLOWED_TRIVIA_SOURCES,
-	DifficultyLevel,
-	ERROR_CODES,
-	ProviderHealthStatus,
-	TriviaQuestionSource,
-	VALIDATORS,
-} from '@shared/constants';
+import { DifficultyLevel, ERROR_CODES, ProviderHealthStatus, VALIDATORS } from '@shared/constants';
 import type {
 	AiProviderHealth,
 	AiProviderStats,
 	GameDifficulty,
 	TriviaAnswer,
-	TriviaQuestion,
 	TriviaQuestionDetailsMetadata,
+	TriviaQuestionInput,
 } from '@shared/types';
-import { getErrorMessage, isNonEmptyString, isOneOf, normalizeStringArray } from '@shared/utils';
+import { getErrorMessage, isNonEmptyString, normalizeStringArray } from '@shared/utils';
 import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
@@ -142,7 +135,7 @@ export class TriviaGenerationService {
 		},
 		topic: string,
 		difficulty: GameDifficulty
-	): Omit<TriviaQuestion, 'id' | 'createdAt' | 'updatedAt'> {
+	): TriviaQuestionInput {
 		try {
 			const difficultyLevel = toDifficultyLevel(difficulty);
 			const metadata = this.normalizeMetadata(aiQuestion.metadata, topic, difficultyLevel, aiQuestion.explanation);
@@ -178,14 +171,11 @@ export class TriviaGenerationService {
 	): TriviaQuestionDetailsMetadata {
 		const base = metadataInput ?? {};
 		const generatedAt = isNonEmptyString(base.generatedAt) ? base.generatedAt : new Date().toISOString();
-		const isTriviaQuestionSource = isOneOf(ALLOWED_TRIVIA_SOURCES);
-		const source: TriviaQuestionSource = isTriviaQuestionSource(base.source) ? base.source : TriviaQuestionSource.AI;
 		const fallbackExplanation = isNonEmptyString(explanation) ? explanation : undefined;
 
 		return {
 			category: isNonEmptyString(base.category) ? base.category : topic,
 			tags: normalizeStringArray(base.tags),
-			source,
 			providerName: isNonEmptyString(base.providerName) ? base.providerName : undefined,
 			difficulty: base.difficulty ?? difficulty,
 			difficultyScore: VALIDATORS.number(base.difficultyScore) ? base.difficultyScore : undefined,
@@ -208,22 +198,19 @@ export class TriviaGenerationService {
 		};
 	}
 
-	private convertQuestionToEntity(
-		questionData: Omit<TriviaQuestion, 'id' | 'createdAt' | 'updatedAt'>,
-		userId?: string
-	): DeepPartial<TriviaEntity> {
-		// Use correctAnswerIndex from questionData if available, otherwise calculate from answers
+	private convertQuestionToEntity(question: TriviaQuestionInput, userId?: string): DeepPartial<TriviaEntity> {
+		// Use correctAnswerIndex from question if available, otherwise calculate from answers
 		const correctAnswerIndex =
-			questionData.correctAnswerIndex !== undefined && questionData.correctAnswerIndex >= 0
-				? questionData.correctAnswerIndex
-				: questionData.answers.findIndex(answer => answer.isCorrect);
+			question.correctAnswerIndex !== undefined && question.correctAnswerIndex >= 0
+				? question.correctAnswerIndex
+				: question.answers.findIndex(answer => answer.isCorrect);
 		return {
-			question: questionData.question,
-			answers: questionData.answers,
+			question: question.question,
+			answers: question.answers,
 			correctAnswerIndex: correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
-			topic: questionData.topic,
-			difficulty: toDifficultyLevel(questionData.difficulty),
-			metadata: questionData.metadata,
+			topic: question.topic,
+			difficulty: toDifficultyLevel(question.difficulty),
+			metadata: question.metadata,
 			userId: userId ?? null,
 			createdAt: new Date(),
 		};

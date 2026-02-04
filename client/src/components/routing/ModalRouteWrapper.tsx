@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-import { ModalSize } from '@/constants';
+import { ANIMATION_CONFIG, ModalSize, TRANSITION_DURATIONS } from '@/constants';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
 import { useModalRoute } from '@/hooks';
 import type { ModalRouteProps } from '@/types';
@@ -45,7 +45,7 @@ export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalR
 		<motion.main
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.4, ease: 'easeOut' }}
+			transition={{ duration: TRANSITION_DURATIONS.NORMAL, ease: ANIMATION_CONFIG.EASING_NAMES.EASE_OUT }}
 			className='min-h-screen flex items-center justify-center px-4 py-12'
 			style={{ willChange: 'transform, opacity' }}
 		>

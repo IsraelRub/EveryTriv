@@ -15,8 +15,10 @@ export class CacheInvalidationService {
 		try {
 			const invalidationPromises: Promise<unknown>[] = [
 				// Analytics caches
-				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
+				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
 				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.USER(userId)),
+				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.USER_UNIFIED_PATTERN(userId)),
+				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS_PATTERN),
 				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_STATS),
 				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.BUSINESS_METRICS),
 				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.TOPICS_STATS_PATTERN),
@@ -27,6 +29,9 @@ export class CacheInvalidationService {
 				// Game History caches
 				this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER_WITH_PREFIX(userId)),
 				this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId)),
+
+				// Admin caches
+				this.cacheService.delete(SERVER_CACHE_KEYS.ADMIN.STATISTICS),
 			];
 
 			await Promise.allSettled(invalidationPromises);
@@ -87,12 +92,17 @@ export class CacheInvalidationService {
 			const invalidationPromises: Promise<unknown>[] = [
 				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_STATS),
 				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.BUSINESS_METRICS),
-				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
+				this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
 				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.TOPICS_STATS_PATTERN),
+				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS_PATTERN),
+				this.cacheService.delete(SERVER_CACHE_KEYS.ADMIN.STATISTICS),
 			];
 
 			if (userId) {
-				invalidationPromises.push(this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.USER(userId)));
+				invalidationPromises.push(this.cacheService.delete(SERVER_CACHE_KEYS.ANALYTICS.USER(userId)));
+				invalidationPromises.push(
+					this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.ANALYTICS.USER_UNIFIED_PATTERN(userId))
+				);
 			}
 
 			await Promise.allSettled(invalidationPromises);
@@ -117,6 +127,7 @@ export class CacheInvalidationService {
 				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.GAME_HISTORY.ALL_PATTERN),
 				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.TRIVIA.ALL_PATTERN),
 				this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.USER_STATS.ALL_PATTERN),
+				this.cacheService.delete(SERVER_CACHE_KEYS.ADMIN.STATISTICS),
 			];
 
 			await Promise.allSettled(invalidationPromises);

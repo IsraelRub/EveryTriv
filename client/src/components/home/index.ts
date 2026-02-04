@@ -1,1 +1,5 @@
-export { default as HomeTitle } from './HomeTitle';
+export * from './HomeHeader';
+export * from './HomeStats';
+export * from './PopularTopicsSection';
+export * from './RecentGames';
+export * from './LeaderboardPreview';

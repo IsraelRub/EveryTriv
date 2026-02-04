@@ -2,9 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { LeaderboardPeriod } from '@shared/constants';
 
-export interface UIPreferencesState {
-	leaderboardPeriod: LeaderboardPeriod;
-}
+import type { UIPreferencesState } from '@/types';
 
 const initialState: UIPreferencesState = {
 	leaderboardPeriod: LeaderboardPeriod.GLOBAL,

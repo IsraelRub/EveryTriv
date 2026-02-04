@@ -15,6 +15,7 @@ import {
 	GAME_MODE_DEFAULTS,
 	GameMode,
 	HttpMethod,
+	LOCALHOST_CONFIG,
 	MultiplayerEvent,
 	PlayerStatus,
 	RoomStatus,
@@ -29,7 +30,6 @@ import type { TypedSocket } from '@internal/types';
 
 import { WsCurrentUserId } from '../../../common/decorators';
 import { WsAuthGuard } from '../../../common/guards';
-import { LOCALHOST_CONFIG } from '../../../config/localhost.config';
 import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
 import { QuestionSchedulerService } from './questionScheduler.service';
@@ -351,17 +351,13 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			const answerReceivedEvent = this.createGameEvent(MultiplayerEvent.ANSWER_RECEIVED, data.roomId, {
 				userId,
 				questionId: data.questionId,
+				answerIndex: data.answer,
 				isCorrect: result.isCorrect,
 				scoreEarned: result.scoreEarned,
 				leaderboard: result.leaderboard,
+				answerCounts: result.answerCounts,
 			});
 			this.broadcastToRoom(data.roomId, answerReceivedEvent);
-
-			// Update leaderboard
-			const leaderboardUpdateEvent = this.createGameEvent(MultiplayerEvent.LEADERBOARD_UPDATE, data.roomId, {
-				leaderboard: result.leaderboard ?? [],
-			});
-			this.broadcastToRoom(data.roomId, leaderboardUpdateEvent);
 
 			logger.gameInfo('Answer submitted via WebSocket', {
 				roomId: data.roomId,
@@ -386,12 +382,16 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			return;
 		}
 
-		const questionData = await this.multiplayerService.startQuestion(room.roomId);
-		if (!questionData) {
+		const questionStartResponse = await this.multiplayerService.startQuestion(room.roomId);
+		if (!questionStartResponse) {
 			return;
 		}
 
-		const questionStartedEvent = this.createGameEvent(MultiplayerEvent.QUESTION_STARTED, room.roomId, questionData);
+		const questionStartedEvent = this.createGameEvent(
+			MultiplayerEvent.QUESTION_STARTED,
+			room.roomId,
+			questionStartResponse
+		);
 		this.broadcastToRoom(room.roomId, questionStartedEvent);
 
 		this.questionScheduler.scheduleAnswerCheck(
@@ -451,12 +451,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				this.broadcastToRoom(roomId, gameEndedEvent);
 			} else {
 				setTimeout(() => {
-					this.startQuestion(updatedRoom).catch(error => {
-						logger.gameError('Failed to start next question', {
-							errorInfo: { message: getErrorMessage(error) },
-							roomId,
-						});
-					});
+					this.startNextQuestionAsync(updatedRoom, roomId);
 				}, TIME_PERIODS_MS.TWO_SECONDS);
 			}
 
@@ -548,5 +543,19 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 
 	private broadcastToRoom(roomId: string, event: MultiplayerGameEvent) {
 		this.server.to(roomId).emit(event.type, event);
+	}
+
+	private startNextQuestionAsync(room: MultiplayerRoom, roomId: string): void {
+		const handleStartQuestion = async () => {
+			try {
+				await this.startQuestion(room);
+			} catch (error) {
+				logger.gameError('Failed to start next question', {
+					errorInfo: { message: getErrorMessage(error) },
+					roomId,
+				});
+			}
+		};
+		handleStartQuestion();
 	}
 }

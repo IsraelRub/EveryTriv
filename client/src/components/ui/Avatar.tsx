@@ -13,7 +13,7 @@ export const Avatar = forwardRef<
 		{...props}
 	/>
 ));
-Avatar.displayName = AvatarPrimitive.Root.displayName;
+Avatar.displayName = 'Avatar';
 
 export const AvatarImage = forwardRef<
 	ElementRef<typeof AvatarPrimitive.Image>,
@@ -21,7 +21,7 @@ export const AvatarImage = forwardRef<
 >(({ className, ...props }, ref) => (
 	<AvatarPrimitive.Image ref={ref} className={cn('aspect-square h-full w-full object-cover', className)} {...props} />
 ));
-AvatarImage.displayName = AvatarPrimitive.Image.displayName;
+AvatarImage.displayName = 'AvatarImage';
 
 export const AvatarFallback = forwardRef<
 	ElementRef<typeof AvatarPrimitive.Fallback>,
@@ -33,4 +33,4 @@ export const AvatarFallback = forwardRef<
 		{...props}
 	/>
 ));
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
+AvatarFallback.displayName = 'AvatarFallback';

@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Volume2, VolumeX } from 'lucide-react';
 
 import { ButtonSize, ButtonVariant } from '@/constants';
@@ -7,8 +7,6 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	Slider,
 } from '@/components';
@@ -16,7 +14,7 @@ import { useAudioSettings } from '@/hooks';
 import type { AudioControlsProps } from '@/types';
 import { cn } from '@/utils';
 
-export const AudioControls = memo(function AudioControls({ className = '', showSlider = true }: AudioControlsProps) {
+export function AudioControls({ className = '', showSlider = true }: AudioControlsProps) {
 	const { state, handlers } = useAudioSettings();
 	const [isOpen, setIsOpen] = useState(false);
 
@@ -90,30 +88,6 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 							/>
 						</div>
 
-						<DropdownMenuSeparator />
-
-						{/* Toggle All Button - UX: Keep menu open on toggle */}
-						<DropdownMenuItem
-							onSelect={e => {
-								e.preventDefault();
-								handlers.handleToggleAll();
-							}}
-							className='cursor-pointer focus:bg-muted focus:text-accent-foreground'
-						>
-							<div className='flex items-center justify-between w-full'>
-								<span className='text-sm font-medium'>
-									{state.soundEnabled && state.musicEnabled ? 'Mute All' : 'Unmute All'}
-								</span>
-								<div className='flex items-center gap-1 opacity-70'>
-									{state.soundEnabled && state.musicEnabled ? (
-										<Volume2 className='h-3.5 w-3.5' />
-									) : (
-										<VolumeX className='h-3.5 w-3.5' />
-									)}
-								</div>
-							</div>
-						</DropdownMenuItem>
-
 						<div className='flex flex-col gap-1'>
 							{/* Sound Effects Toggle */}
 							<DropdownMenuCheckboxItem
@@ -144,4 +118,4 @@ export const AudioControls = memo(function AudioControls({ className = '', showS
 			</DropdownMenu>
 		</div>
 	);
-});
+}

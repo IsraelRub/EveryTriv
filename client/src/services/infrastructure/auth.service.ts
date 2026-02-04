@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, ERROR_MESSAGES, UserRole } from '@shared/constants';
+import { API_ENDPOINTS, ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type {
 	AuthCredentials,
 	AuthenticationResult,
@@ -6,7 +6,7 @@ import type {
 	ChangePasswordData,
 	UserProfileResponseType,
 } from '@shared/types';
-import { ensureErrorObject, getErrorMessage } from '@shared/utils';
+import { delay, ensureErrorObject, getErrorMessage } from '@shared/utils';
 
 import { EXPECTED_ERROR_CODES, STORAGE_KEYS } from '@/constants';
 import { ApiConfig, apiService, clientLogger as logger, storageService, userService } from '@/services';
@@ -34,13 +34,13 @@ class AuthService {
 			const isExpectedError = EXPECTED_ERROR_CODES.has(errorMessage);
 
 			if (isExpectedError) {
-				// שגיאה צפויה - רק לוג, ללא טואסט
+				// Expected error - only log, no toast
 				logger.authDebug('Login failed (expected error)', {
 					errorInfo: { message: errorMessage },
 					emails: { current: credentials.email },
 				});
 			} else {
-				// שגיאה לא צפויה - עם טואסט
+				// Unexpected error - with toast
 				logger.authError('Login failed (unexpected error)', {
 					errorInfo: { message: errorMessage },
 					emails: { current: credentials.email },
@@ -70,13 +70,13 @@ class AuthService {
 			const isExpectedError = EXPECTED_ERROR_CODES.has(errorMessage);
 
 			if (isExpectedError) {
-				// שגיאה צפויה - רק לוג, ללא טואסט
+				// Expected error - only log, no toast
 				logger.authDebug('Registration failed (expected error)', {
 					errorInfo: { message: errorMessage },
 					emails: { current: credentials.email },
 				});
 			} else {
-				// שגיאה לא צפויה - עם טואסט
+				// Unexpected error - with toast
 				logger.authError(ensureErrorObject(error), {
 					contextMessage: 'Registration failed (unexpected error)',
 					emails: { current: credentials.email },
@@ -231,14 +231,17 @@ class AuthService {
 		}
 	}
 
-	async waitForTokenStorage(maxAttempts: number = 10, delayMs: number = 50): Promise<boolean> {
+	async waitForTokenStorage(
+		maxAttempts: number = 10,
+		delayMs: number = TIME_PERIODS_MS.FIFTY_MILLISECONDS
+	): Promise<boolean> {
 		let attempts = 0;
 		while (attempts < maxAttempts) {
 			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 			if (tokenResult.success && !!tokenResult.data) {
 				return true;
 			}
-			await new Promise(resolve => setTimeout(resolve, delayMs));
+			await delay(delayMs);
 			attempts++;
 		}
 		return false;

@@ -55,7 +55,10 @@ export function useAudioPreferences({ soundEnabled, musicEnabled, isMuted }: Use
 				audioService.stop(AudioKey.BACKGROUND_MUSIC);
 				audioService.stop(AudioKey.GAME_MUSIC);
 			} else {
-				if (!isMuted) {
+				// Only play background music if game music is not currently playing
+				// This prevents background music from playing during an active game session
+				const isGameMusicPlaying = audioService.isPlaying(AudioKey.GAME_MUSIC);
+				if (!isMuted && !isGameMusicPlaying) {
 					audioService.markUserInteracted();
 					requestAnimationFrame(() => {
 						audioService.play(AudioKey.BACKGROUND_MUSIC);

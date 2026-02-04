@@ -227,7 +227,7 @@ Authorization: Bearer <jwt_token>
       "gameMode": "question-limited",
       "timeSpent": 300,
       "creditsUsed": 0,
-      "questionsData": [
+      "AnswerHistory": [
         {
           "question": "string",
           "questionId": "uuid",

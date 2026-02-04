@@ -1,8 +1,16 @@
-import { AnalyticsResult, API_ENDPOINTS, ERROR_MESSAGES, LeaderboardPeriod, QUERY_PARAMS } from '@shared/constants';
+import {
+	AnalyticsResult,
+	API_ENDPOINTS,
+	ERROR_MESSAGES,
+	LeaderboardPeriod,
+	QUERY_PARAMS,
+	TimePeriod,
+} from '@shared/constants';
 import type {
 	Achievement,
 	ActivityEntry,
 	AnalyticsResponse,
+	AnswerHistory,
 	BasicValue,
 	BusinessMetrics,
 	ClearOperationResponse,
@@ -13,7 +21,6 @@ import type {
 	LeaderboardEntry,
 	LeaderboardResponse,
 	LeaderboardStats,
-	QuestionData,
 	SecurityMetrics,
 	SystemInsights,
 	SystemPerformanceMetrics,
@@ -21,6 +28,7 @@ import type {
 	TopicStatsData,
 	TrackEventResponse,
 	TrendQueryOptions,
+	UnifiedUserAnalyticsResponse,
 	UserAnalyticsQuery,
 	UserAnalyticsRecord,
 	UserComparisonResult,
@@ -40,11 +48,11 @@ class AnalyticsService {
 	// LOCAL CALCULATIONS
 	// ============================================================================
 
-	calculateGameSessionStats(questionsData: QuestionData[], totalScore: number, totalTime: number): CurrentGameStats {
-		const correctAnswers = questionsData.filter(q => q.isCorrect).length;
-		const totalQuestionsAnswered = questionsData.length;
+	calculateGameSessionStats(answerHistory: AnswerHistory[], totalScore: number, totalTime: number): CurrentGameStats {
+		const correctAnswers = answerHistory.filter(q => q.isCorrect).length;
+		const totalQuestionsAnswered = answerHistory.length;
 		const successRate = calculatePercentage(correctAnswers, totalQuestionsAnswered);
-		const timeSpentArray = questionsData.map(q => q.timeSpent).filter((t): t is number => t !== undefined && t > 0);
+		const timeSpentArray = answerHistory.map(q => q.timeSpent).filter((t): t is number => t !== undefined && t > 0);
 		const averageTimePerQuestion =
 			timeSpentArray.length === 0
 				? 0
@@ -57,7 +65,7 @@ class AnalyticsService {
 			successRate,
 			averageTimePerQuestion,
 			totalTime,
-			questionsData,
+			answerHistory,
 		};
 	}
 
@@ -107,6 +115,39 @@ class AnalyticsService {
 			return result;
 		} catch (error) {
 			logger.userError('Failed to get user analytics', { errorInfo: { message: getErrorMessage(error) } });
+			throw error;
+		}
+	}
+
+	async getUnifiedUserAnalytics(includeSections?: string[]): Promise<AnalyticsResponse<UnifiedUserAnalyticsResponse>> {
+		const sectionsCount = includeSections?.length ?? 0;
+		try {
+			const searchParams = new URLSearchParams();
+			if (includeSections && includeSections.length > 0) {
+				searchParams.append('include', includeSections.join(','));
+				if (includeSections.map(s => s.toLowerCase()).includes('trends')) {
+					searchParams.append('groupBy', TimePeriod.DAILY);
+					searchParams.append('trendLimit', '30');
+				}
+			}
+			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+			logger.userInfo('Fetching unified user analytics', {
+				sectionsCount,
+			});
+			const response = await apiService.get<AnalyticsResponse<UnifiedUserAnalyticsResponse>>(
+				`${API_ENDPOINTS.ANALYTICS.USER}/unified${query}`
+			);
+			const result = response.data;
+			logger.userInfo('Unified user analytics fetched successfully', {
+				sectionsCount,
+			});
+			return result;
+		} catch (error) {
+			logger.userError('Failed to get unified user analytics', {
+				errorInfo: { message: getErrorMessage(error) },
+				sectionsCount,
+			});
 			throw error;
 		}
 	}
@@ -583,7 +624,9 @@ class AnalyticsService {
 	async clearAllUserStats(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing all user stats');
-			const response = await apiService.delete<ClearOperationResponse>(API_ENDPOINTS.ANALYTICS.ADMIN_STATS_CLEAR_ALL);
+			const response = await apiService.delete<ClearOperationResponse>(
+				API_ENDPOINTS.MAINTENANCE.DATA_USER_STATS_CLEAR_ALL
+			);
 			const result = response.data;
 			logger.userInfo('All user stats cleared successfully', { deletedCount: result.deletedCount });
 			return result;
@@ -601,6 +644,117 @@ class AnalyticsService {
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to clear all leaderboard data', { errorInfo: { message: getErrorMessage(error) } });
+			throw error;
+		}
+	}
+
+	// ============================================================================
+	// MAINTENANCE OPERATIONS
+	// ============================================================================
+
+	async checkAllUsersConsistency(): Promise<{
+		totalUsers: number;
+		usersWithGames: number;
+		consistentUsers: number;
+		inconsistentUsers: number;
+		results: Array<{
+			userId: string;
+			isConsistent: boolean;
+			discrepancies: {
+				totalGames: { expected: number; actual: number };
+				totalQuestionsAnswered: { expected: number; actual: number };
+				correctAnswers: { expected: number; actual: number };
+				totalScore: { expected: number; actual: number };
+			};
+		}>;
+	}> {
+		try {
+			logger.userInfo('Checking all users consistency');
+			const response = await apiService.get<{
+				totalUsers: number;
+				usersWithGames: number;
+				consistentUsers: number;
+				inconsistentUsers: number;
+				results: Array<{
+					userId: string;
+					isConsistent: boolean;
+					discrepancies: {
+						totalGames: { expected: number; actual: number };
+						totalQuestionsAnswered: { expected: number; actual: number };
+						correctAnswers: { expected: number; actual: number };
+						totalScore: { expected: number; actual: number };
+					};
+				}>;
+			}>(API_ENDPOINTS.MAINTENANCE.STATS_CONSISTENCY_CHECK_ALL);
+			const result = response.data;
+			logger.userInfo('All users consistency check completed', {
+				totalUsers: result.totalUsers,
+				consistentUsers: result.consistentUsers,
+				inconsistentUsers: result.inconsistentUsers,
+			});
+			return result;
+		} catch (error) {
+			logger.userError('Failed to check all users consistency', { errorInfo: { message: getErrorMessage(error) } });
+			throw error;
+		}
+	}
+
+	async checkUserStatsConsistency(userId: string): Promise<{
+		isConsistent: boolean;
+		discrepancies: {
+			totalGames: { expected: number; actual: number };
+			totalQuestionsAnswered: { expected: number; actual: number };
+			correctAnswers: { expected: number; actual: number };
+			totalScore: { expected: number; actual: number };
+			successRate: { expected: number; actual: number };
+			bestGameScore: { expected: number; actual: number };
+			lastPlayDate: { expected: Date | null; actual: Date | null };
+			topicStats: { inconsistent: string[] };
+			difficultyStats: { inconsistent: string[] };
+		};
+	}> {
+		try {
+			logger.userInfo('Checking user stats consistency', { userId });
+			const url = API_ENDPOINTS.MAINTENANCE.STATS_CONSISTENCY.replace(':userId', userId);
+			const response = await apiService.get<{
+				isConsistent: boolean;
+				discrepancies: {
+					totalGames: { expected: number; actual: number };
+					totalQuestionsAnswered: { expected: number; actual: number };
+					correctAnswers: { expected: number; actual: number };
+					totalScore: { expected: number; actual: number };
+					successRate: { expected: number; actual: number };
+					bestGameScore: { expected: number; actual: number };
+					lastPlayDate: { expected: Date | null; actual: Date | null };
+					topicStats: { inconsistent: string[] };
+					difficultyStats: { inconsistent: string[] };
+				};
+			}>(url);
+			const result = response.data;
+			logger.userInfo('User stats consistency check completed', { userId, isConsistent: result.isConsistent });
+			return result;
+		} catch (error) {
+			logger.userError('Failed to check user stats consistency', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	async fixUserStatsConsistency(userId: string): Promise<{ fixed: boolean; message: string }> {
+		try {
+			logger.userInfo('Fixing user stats consistency', { userId });
+			const url = API_ENDPOINTS.MAINTENANCE.STATS_FIX_CONSISTENCY.replace(':userId', userId);
+			const response = await apiService.post<{ fixed: boolean; message: string }>(url);
+			const result = response.data;
+			logger.userInfo('User stats consistency fix completed', { userId, fixed: result.fixed });
+			return result;
+		} catch (error) {
+			logger.userError('Failed to fix user stats consistency', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+			});
 			throw error;
 		}
 	}

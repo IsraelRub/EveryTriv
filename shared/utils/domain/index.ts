@@ -1,3 +1,4 @@
+export * from './achievements.utils';
 export * from './answer.utils';
 export * from './credits.utils';
 export * from './game.utils';

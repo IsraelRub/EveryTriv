@@ -99,24 +99,6 @@ export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 	packageId: string;
 }
 
-export class GetCreditHistoryDto {
-	@ApiPropertyOptional({
-		description: 'Maximum number of transactions to return',
-		minimum: VALIDATION_COUNT.LEADERBOARD.MIN,
-		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
-		default: VALIDATION_COUNT.LEADERBOARD.DEFAULT,
-	})
-	@Transform(({ value }) => parseInt(value, 10))
-	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
-		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
-	})
-	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
-		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
-	})
-	limit: number = VALIDATION_COUNT.LEADERBOARD.DEFAULT;
-}
-
 export class CanPlayDto {
 	@ApiPropertyOptional({
 		description: 'Number of questions per request to check if user can play',

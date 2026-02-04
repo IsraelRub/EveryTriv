@@ -1,5 +1,7 @@
 import { DifficultyLevel, VALIDATION_COUNT } from '@shared/constants';
 
+export const TIMER_WARNING_RATIO = 0.15;
+
 export const SCORING_DEFAULTS = {
 	BASE_SCORE: 100,
 	STREAK: 0,

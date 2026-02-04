@@ -146,7 +146,7 @@ export type ApiResponse<T> = ApiResponse<T> | ApiError;
 ```typescript
 import { DifficultyLevel, GameMode } from '@shared/constants';
 import type { BaseEntity } from '../../core/data.types';
-import type { QuestionData } from '../../infrastructure/api.types';
+import type { AnswerHistory } from '../../infrastructure/api.types';
 
 
 /**
@@ -185,7 +185,7 @@ export interface BaseGameEntity extends BaseEntity {
  * Game history entry interface
  */
 export interface GameHistoryEntry extends BaseGameEntity {
-  questionsData: QuestionData[];
+  answerHistory: AnswerHistory[];
   correctAnswers: number;
   totalQuestions: number;
   timeSpent?: number;
@@ -262,7 +262,6 @@ export interface TriviaQuestion extends BaseEntity {
 export interface TriviaQuestionDetailsMetadata {
   category?: string;
   tags?: string[];
-  source?: TriviaQuestionSource;
   providerName?: string;
   difficulty?: GameDifficulty;
   difficultyScore?: number;
@@ -404,7 +403,7 @@ export enum HttpMethod {
 /**
  * Question data interface
  */
-export interface QuestionData {
+export interface AnswerHistory {
   questionId: string;
   question: string;
   options: string[];

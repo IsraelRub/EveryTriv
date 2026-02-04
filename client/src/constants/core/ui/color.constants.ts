@@ -1,3 +1,6 @@
+// Import at the end to avoid circular dependency
+import { toHslColor } from '@/utils';
+
 export enum TextColor {
 	BLUE_500 = 'text-blue-500',
 	YELLOW_500 = 'text-yellow-500',
@@ -15,12 +18,13 @@ export enum BgColor {
 	PURPLE_500 = 'bg-purple-500',
 }
 
-export enum MetricColor {
+export enum NamedColor {
 	YELLOW = 'yellow',
 	BLUE = 'blue',
 	GREEN = 'green',
 	PURPLE = 'purple',
 	RED = 'red',
+	ORANGE = 'orange',
 }
 
 export enum TrendDirection {
@@ -29,9 +33,34 @@ export enum TrendDirection {
 	NEUTRAL = 'neutral',
 }
 
-export enum FeatureHighlightAccent {
-	BLUE = 'blue',
-	GREEN = 'green',
-	PURPLE = 'purple',
-	ORANGE = 'orange',
+export enum CssColor {
+	PRIMARY = '--primary',
+	MUTED_FOREGROUND = '--muted-foreground',
+	CARD = '--card',
+	BORDER = '--border',
+	FOREGROUND = '--foreground',
+	MUTED = '--muted',
+	SUCCESS_500 = '--color-success-500',
+	WARNING_500 = '--color-warning-500',
+	DESTRUCTIVE = '--destructive',
+	ACCENT = '--accent',
+	CHART_1 = '--chart-1',
+	CHART_2 = '--chart-2',
+	CHART_3 = '--chart-3',
+	CHART_4 = '--chart-4',
+	CHART_5 = '--chart-5',
 }
+
+export const CHART_COLORS = [
+	toHslColor(CssColor.PRIMARY),
+	toHslColor(CssColor.SUCCESS_500),
+	toHslColor(CssColor.WARNING_500),
+	toHslColor(CssColor.DESTRUCTIVE),
+	toHslColor(CssColor.MUTED_FOREGROUND),
+	toHslColor(CssColor.ACCENT),
+	toHslColor(CssColor.CHART_1),
+	toHslColor(CssColor.CHART_2),
+	toHslColor(CssColor.CHART_3),
+	toHslColor(CssColor.CHART_4),
+	toHslColor(CssColor.CHART_5),
+];

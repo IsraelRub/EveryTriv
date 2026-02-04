@@ -1,5 +1,4 @@
-import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
@@ -11,16 +10,14 @@ import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
 import { UserModule } from '../user';
 import { AiProvidersController } from './aiProviders.controller';
-import { GameSessionScheduler } from './game-session.scheduler';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.service';
 
 @Module({
 	imports: [
-		ScheduleModule.forRoot(),
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity, TriviaEntity]),
-		AnalyticsModule,
+		forwardRef(() => AnalyticsModule),
 		AuthModule,
 		CacheModule,
 		StorageModule,
@@ -28,7 +25,7 @@ import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.ser
 		ValidationModule,
 	],
 	controllers: [GameController, AiProvidersController],
-	providers: [GameService, TriviaGenerationService, GameSessionScheduler, CustomDifficultyPipe, TriviaRequestPipe],
+	providers: [GameService, TriviaGenerationService, CustomDifficultyPipe, TriviaRequestPipe],
 	exports: [GameService],
 })
 export class GameModule {}

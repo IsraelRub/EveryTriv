@@ -5,4 +5,4 @@ export * from './business-analytics.service';
 export * from './system-analytics.service';
 export * from './analytics-tracker.service';
 export * from './leaderboard.service';
-export * from '../score-reset.scheduler';
+export * from './user-stats-update.service';

@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { Crown, Medal } from 'lucide-react';
 
 import type { RankBadgeProps } from '@/types';
 
-export function RankBadge({ rank }: RankBadgeProps) {
+export const RankBadge = memo(function RankBadge({ rank }: RankBadgeProps) {
 	switch (rank) {
 		case 1:
 			return <Crown className='h-6 w-6 text-yellow-500' />;
@@ -13,4 +14,4 @@ export function RankBadge({ rank }: RankBadgeProps) {
 		default:
 			return <span className='text-lg font-bold text-muted-foreground w-6 text-center'>{rank}</span>;
 	}
-}
+});

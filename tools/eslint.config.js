@@ -4,6 +4,8 @@
  *
  * @description Unified ESLint configuration file replacing separate files
  * @used_by All TypeScript/JavaScript files in the project
+ * @see CSS linting: Stylelint (standalone, e.g. `pnpm run lint:css`). Not integrated with ESLint.
+ *       Rules: .cursor/rules/client.mdc § Stylelint (CSS Linting)
  */
 
 const js = require('@eslint/js');
@@ -291,7 +293,6 @@ module.exports = [
 			'**/dist/**',
 			'**/build/**',
 			'**/node_modules/**',
-			'**/dist-temp/**',
 			'**/logs/**',
 			'scripts/documentation/**/*.cjs',
 			'server/src/main.ts',

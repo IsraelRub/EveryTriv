@@ -1,5 +1,5 @@
-import { API_ENDPOINTS, GameMode, QUERY_PARAMS, VALIDATION_COUNT } from '@shared/constants';
-import type { CanPlayResponse, CreditBalance, CreditPurchaseOption, CreditTransaction } from '@shared/types';
+import { API_ENDPOINTS, GameMode, VALIDATION_COUNT } from '@shared/constants';
+import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
 import { getErrorMessage, normalizeGameMode } from '@shared/utils';
 
 import { VALIDATION_MESSAGES } from '@/constants';
@@ -108,26 +108,6 @@ class CreditsService {
 
 	private resolveGameMode(gameMode: GameMode): GameMode | undefined {
 		return normalizeGameMode(gameMode);
-	}
-
-	async getCreditHistory(limit?: number): Promise<CreditTransaction[]> {
-		try {
-			logger.userInfo('Fetching credit history', { limit });
-			const searchParams = new URLSearchParams();
-			if (limit != null) searchParams.append(QUERY_PARAMS.LIMIT, String(limit));
-			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-
-			const response = await apiService.get<CreditTransaction[]>(`${API_ENDPOINTS.CREDITS.HISTORY}${query}`);
-			const result = response.data;
-			logger.userInfo('Credit history fetched successfully', { transactionsCount: result.length });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to get credit history', {
-				errorInfo: { message: getErrorMessage(error) },
-				limit,
-			});
-			throw error;
-		}
 	}
 }
 

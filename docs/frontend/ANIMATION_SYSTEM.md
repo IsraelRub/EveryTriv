@@ -4,7 +4,7 @@
 
 ## סקירה כללית
 
-מערכת האנימציות של EveryTriv עברה שדרוג מקיף לגרסה 2.0, עם דגש על ביצועים, נגישות ותחזוקה.
+מערכת האנימציות של EveryTriv עברה שדרוג מקיף לגרסה 2.0, עם דגש על ביצועים ותחזוקה.
 
 ## 🚀 תכונות עיקריות
 
@@ -13,12 +13,6 @@
 - **Framer Motion** לאנימציות יעילות
 - **CSS animations** לאנימציות בסיסיות מהירות
 - **Optimized rendering** עם React optimizations
-
-### נגישות מתקדמת
-- **prefers-reduced-motion** תמיכה מלאה
-- **Keyboard navigation** עם focus indicators
-- **High contrast mode** תמיכה
-- **Screen reader** תאימות
 
 ### ארכיטקטורה משופרת
 - **constants** תחת קובץ אחד
@@ -97,13 +91,6 @@ export const ANIMATION_CONFIG = {
     EASE_OUT: [0.4, 0, 0.2, 1],
   },
 };
-
-export const ACCESSIBILITY_CONFIG = {
-  REDUCED_MOTION: {
-    ENABLED: true,
-    SCALE_FACTOR: 0.01,
-  },
-};
 ```
 
 ## 🎨 CSS אנימציות
@@ -125,20 +112,6 @@ export const ACCESSIBILITY_CONFIG = {
 }
 ```
 
-### תמיכה ב-reduced motion
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
 ## 🔧 אופטימיזציות
 
 ### ביצועים
@@ -147,29 +120,6 @@ export const ACCESSIBILITY_CONFIG = {
 - **Optimized rendering** עם useMemo ו-useCallback
 - **Framer Motion** לאנימציות יעילות
 - **CSS animations** לאנימציות בסיסיות מהירות
-
-## ♿ נגישות
-
-### תמיכה ב-reduced motion
-
-```typescript
-// בדיקה אוטומטית של העדפות המשתמש
-const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// התאמת אנימציות בהתאם
-if (isReducedMotion) {
-  // אנימציות מהירות מאוד או ללא אנימציות
-}
-```
-
-### תמיכה ב-keyboard navigation
-
-```css
-.focus-visible:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-```
 
 ## 📱 תמיכה במכשירים
 
@@ -210,17 +160,6 @@ const memoryUsage = performance.memory?.usedJSHeapSize || 0;
 const animationTime = performance.now() - startTime;
 ```
 
-### בדיקת נגישות
-
-```typescript
-// בדיקת reduced motion
-const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-const isReducedMotion = mediaQuery.matches;
-
-// בדיקת high contrast
-const highContrast = window.matchMedia('(prefers-contrast: high)').matches;
-```
-
 ## 📚 משאבים נוספים
 
 - [Framer Motion Documentation](https://www.framer.com/motion/)
@@ -233,7 +172,6 @@ const highContrast = window.matchMedia('(prefers-contrast: high)').matches;
 לשיפור מערכת האנימציות:
 
 1. בדוק ביצועים עם DevTools Performance
-2. בדוק נגישות עם Lighthouse
-3. בדוק תאימות במכשירים שונים
-4. הוסף unit tests לאנימציות חדשות
-5. תיעד שינויים ב-API
+2. בדוק תאימות במכשירים שונים
+3. הוסף unit tests לאנימציות חדשות
+4. תיעד שינויים ב-API

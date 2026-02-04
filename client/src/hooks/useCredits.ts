@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { CreditBalance, CreditsPurchaseRequest, PaymentResult } from '@shared/types';
-import { calculateNewBalance, calculateRequiredCredits, getErrorMessage } from '@shared/utils';
+import { calculateNewBalance, calculateRequiredCredits, getErrorMessage, isRecord } from '@shared/utils';
 
 import { QUERY_KEYS } from '@/constants';
-import { creditsService, clientLogger as logger, paymentService } from '@/services';
+import { creditsService, clientLogger as logger, paymentService, queryInvalidationService } from '@/services';
 import type { DeductCreditsParams } from '@/types';
 import { useIsAuthenticated, useUserRole } from './useAuth';
 
@@ -38,7 +38,7 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 		data: canPlay,
 		isLoading: false,
 		error: null,
-		refetch: () => {}, // No need to refetch from API
+		refetch: () => {},
 	};
 };
 
@@ -76,8 +76,7 @@ export const useDeductCredits = () => {
 				// Simple type guard for CreditBalance
 				const isCreditBalance = (value: unknown): value is CreditBalance => {
 					return (
-						typeof value === 'object' &&
-						value !== null &&
+						isRecord(value) &&
 						'totalCredits' in value &&
 						'credits' in value &&
 						'purchasedCredits' in value &&
@@ -117,8 +116,7 @@ export const useDeductCredits = () => {
 			}
 		},
 		onSettled: () => {
-			// Always refetch after error or success to get latest balance from server
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.all });
+			queryInvalidationService.invalidateCreditsQueries(queryClient);
 		},
 	});
 };
@@ -148,8 +146,7 @@ export const usePurchaseCredits = () => {
 	return useMutation({
 		mutationFn: (request: CreditsPurchaseRequest) => paymentService.purchaseCredits(request),
 		onSuccess: () => {
-			// Invalidate balance after purchase
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.balance() });
+			queryInvalidationService.invalidateCreditsQueries(queryClient);
 		},
 	});
 };

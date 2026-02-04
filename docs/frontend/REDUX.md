@@ -53,7 +53,7 @@
 - `score` - ניקוד נוכחי
 - `correctAnswers` - מספר תשובות נכונות
 - `questions` - רשימת שאלות
-- `questionsData` - נתוני שאלות
+- `AnswerHistory` - נתוני שאלות
 - `selectedAnswer` - תשובה נבחרת
 - `answered` - האם ענה
 - `streak` - רצף תשובות נכונות
@@ -68,11 +68,16 @@
 #### multiplayerSlice
 מצב משחק מרובה משתתפים (לא persisted - session only):
 - `isConnected` - האם מחובר
-- `room` - פרטי חדר
-- `gameState` - מצב משחק
-- `leaderboard` - לוח תוצאות
-- `error` - שגיאות
-- `isLoading` - מצב טעינה
+- `room` - פרטי חדר (`MultiplayerRoom | null`)
+- `gameState` - מצב משחק (`GameState | null`) - כולל:
+  - `leaderboard` - לוח תוצאות (`Player[]`)
+  - `answerCounts` - מספר השחקנים שענו על כל תשובה (`Record<string, number>`)
+  - `playersAnswers` - תשובות שחקנים (`Record<string, number>`)
+  - `playersScores` - ניקוד שחקנים (`Record<string, number>`)
+- `error` - שגיאות (`string | null`)
+- `isLoading` - מצב טעינה (`boolean`)
+
+**הערה:** `leaderboard` הוא חלק מ-`gameState` ולא state נפרד. יש selector `selectMultiplayerLeaderboard` שמחזיר `gameState?.leaderboard ?? []`.
 
 #### audioSettingsSlice
 הגדרות אודיו (persisted ב-localStorage):
@@ -145,7 +150,7 @@ const timeSpent = useAppSelector(selectTimeSpent);
 const isConnected = useAppSelector(selectIsConnected);
 const room = useAppSelector(selectMultiplayerRoom);
 const gameState = useAppSelector(selectMultiplayerGameState);
-const leaderboard = useAppSelector(selectMultiplayerLeaderboard);
+const leaderboard = useAppSelector(selectMultiplayerLeaderboard); // Computed: gameState?.leaderboard ?? []
 
 // Audio Settings Selectors
 const volume = useAppSelector(selectVolume);

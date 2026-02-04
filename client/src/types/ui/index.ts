@@ -1,4 +1,6 @@
 export * from './components.types';
+export * from './layout.types';
+export * from './toast.types';
 export * from './stats.types';
 export * from './audio.types';
 export * from './backgroundAnimation.types';
@@ -7,4 +9,3 @@ export * from './icon.types';
 export * from './leaderboard.types';
 export * from './social.types';
 export * from './charts.types';
-export * from './table.types';

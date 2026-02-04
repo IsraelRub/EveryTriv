@@ -1,17 +1,12 @@
 import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
 
-import { ERROR_CODES, UserRole, VALIDATORS } from '@shared/constants';
+import { ERROR_CODES, UserRole } from '@shared/constants';
 import type { AllMetricsResponse, MetricsResponse } from '@shared/types';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import { getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger, MetricsService } from '@internal/services';
+import { isMiddlewareMetrics } from '@internal/utils';
 import { Roles } from '@common';
-
-function isMiddlewareMetrics(metrics: unknown): metrics is { requestCount: number } {
-	return isRecord(metrics) && VALIDATORS.number(metrics.requestCount);
-}
-
-// MiddlewareMetrics type is used implicitly
 
 @Controller('admin/middleware-metrics')
 export class MetricsController {

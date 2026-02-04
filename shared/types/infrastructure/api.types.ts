@@ -2,7 +2,6 @@
 import { GameMode } from '../../constants';
 import type { BaseApiResponse, BaseData, OffsetPagination, PagePagination } from '../core';
 import type { BasicUser, GameDifficulty, MiddlewareMetrics } from '../domain';
-import type { BaseAnswerData } from '../domain/game/trivia.types';
 
 export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
 	metadata?: ApiMetadata;
@@ -65,31 +64,29 @@ export interface ConfirmCreditPurchaseDto {
 	paymentIntentId: string;
 }
 
-export interface PurchaseResponse {
-	status: string;
-	id: string;
-}
-
 export interface DeductCreditsRequest {
 	questionsPerRequest: number;
 	gameMode: GameMode;
 }
 
-export interface QuestionDataWithQuestion extends BaseAnswerData {
-	question: string;
-	correctAnswerIndex: number;
-	timeSpent: number;
-}
-
-export interface QuestionDataWithoutQuestion {
+export interface AnswerHistoryComplete {
 	question: string;
 	isCorrect: boolean;
-	userAnswerText: string;
-	correctAnswerText: string;
-	timeSpent?: number;
+	timeSpent: number;
+	questionId: string;
+	userAnswerIndex: number;
+	correctAnswerIndex: number;
 }
 
-export type QuestionData = QuestionDataWithQuestion | QuestionDataWithoutQuestion;
+export interface AnswerHistoryFallback {
+	question: string;
+	isCorrect: boolean;
+	timeSpent: number;
+	userAnswerText: string;
+	correctAnswerText: string;
+}
+
+export type AnswerHistory = AnswerHistoryComplete | AnswerHistoryFallback;
 
 export interface GameData {
 	userId: string;
@@ -101,7 +98,7 @@ export interface GameData {
 	gameMode: GameMode;
 	timeSpent: number;
 	creditsUsed: number;
-	questionsData: QuestionData[];
+	answerHistory: AnswerHistory[];
 	clientMutationId?: string;
 }
 

@@ -1,3 +1,4 @@
+import { TIME_PERIODS_MS } from '@shared/constants';
 import type { CategoryStatistics, CountRecord } from '@shared/types';
 import { calculateSuccessRate, groupBy } from '@shared/utils';
 
@@ -54,7 +55,7 @@ export function calculateStreak(gameHistory: GameHistoryEntity[]): StreakData {
 			}
 			const currentDate = new Date(currentDateStr);
 			const previousDate = new Date(previousDateStr);
-			const daysDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+			const daysDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / TIME_PERIODS_MS.DAY);
 
 			if (daysDiff === 1) {
 				tempStreak++;

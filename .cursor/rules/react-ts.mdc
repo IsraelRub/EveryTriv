@@ -4,6 +4,38 @@ alwaysApply: true
 
 # Applies to: client/\*_/_.{ts,tsx}
 
+## 🤖 AI Assistant Instructions
+
+**CRITICAL: Read and follow ALL rules in this file before writing any code.**
+
+### Rule Enforcement Priority
+1. **MANDATORY**: TypeScript strict mode, no `any`/`as`, proper types
+2. **MANDATORY**: Component structure and patterns (functional components, hooks)
+3. **MANDATORY**: File organization and naming conventions
+4. **MANDATORY**: Animation component usage (motion.* only with animation props)
+5. **STRONGLY RECOMMENDED**: Performance optimizations, error handling
+6. **RECOMMENDED**: Documentation, accessibility
+
+### Before Writing Code, Always:
+- ✅ Check existing similar components/hooks for patterns to follow
+- ✅ Verify file location matches project structure rules
+- ✅ Ensure all types are explicitly defined (no `any`, no `as`)
+- ✅ Verify motion components have animation props OR use regular HTML elements
+- ✅ Check if logic should be extracted to a hook or utility
+- ✅ Ensure barrel exports (`index.ts`) are updated if adding new exports
+- ✅ Use `clientLogger` instead of `console.log`
+
+### Code Generation Checklist
+When creating new code, verify:
+- [ ] Types are explicit and complete
+- [ ] Component follows the View Component Pattern (if it's a view)
+- [ ] Hooks follow Custom Hook Pattern
+- [ ] Motion components have animation props OR are regular elements
+- [ ] Error handling is implemented
+- [ ] Loading states are handled
+- [ ] Barrel exports are updated
+- [ ] No placeholder or example code
+
 ## ✅ Project Structure
 
 - All source code must reside under the `src/` directory.
@@ -138,6 +170,58 @@ Optional:
 - Use camelCase for file names
 - Add JSDoc comments for complex logic
 
+## 🎬 Animation Components (framer-motion)
+
+### When to Use `motion.*` Components
+
+Use `motion.*` components (e.g., `motion.div`, `motion.span`, `motion.button`) **ONLY** when:
+1. **Animation props are present**: `initial`, `animate`, `transition`, `exit`
+2. **Interactive animations**: `whileHover`, `whileTap`, `whileFocus`, `whileDrag`
+3. **Layout animations**: `layout`, `layoutId`
+4. **Gesture handlers**: `onDrag`, `onPan`, etc.
+
+### When to Use Regular HTML Elements
+
+Use regular HTML elements (`<div>`, `<span>`, `<button>`, etc.) when:
+1. **No animation needed**: Static content without any animation props
+2. **CSS-only animations**: Use Tailwind classes or CSS transitions instead
+3. **Performance**: Avoid unnecessary motion component overhead for static elements
+
+### Best Practices
+
+- **Never wrap static content** in `motion.*` components without animation props
+- **Prefer regular elements** for static text, labels, and non-interactive content
+- **Use motion components** only for elements that actually animate or have gesture interactions
+- **Keep animations purposeful**: Don't add motion components "just in case" - add them when needed
+
+### Examples
+
+✅ **Correct**:
+```tsx
+// Static content - use regular element
+<span className='text-primary'>{text}</span>
+
+// Animated icon - use motion component
+<motion.span
+  initial={{ scale: 0 }}
+  animate={{ scale: 1 }}
+  transition={SPRING_CONFIGS.ICON_SPRING}
+>
+  <Icon />
+</motion.span>
+```
+
+❌ **Incorrect**:
+```tsx
+// Wrapping static content unnecessarily
+<motion.div>
+  <span>Static text</span>
+</motion.div>
+
+// Motion component without animation props
+<motion.span className='text-primary'>{text}</motion.span>
+```
+
 ## 🔄 Data Flow
 
 - Use Redux for global state
@@ -153,3 +237,163 @@ Optional:
 - Keep README.md up to date
 - Document environment variables
 - Use proper JSDoc comments
+
+## 🎯 Component Patterns & Examples
+
+### View Component Pattern
+```tsx
+export function GameSessionView() {
+  const dispatch = useAppDispatch();
+  const gameState = useAppSelector(selectGameState);
+  
+  // Hooks for data fetching
+  const { data, isLoading } = useQuery(...);
+  
+  // Event handlers
+  const handleAction = useCallback(() => {
+    // Implementation
+  }, [dependencies]);
+  
+  if (isLoading) return <Spinner />;
+  
+  return (
+    <main className='min-h-screen'>
+      {/* Component JSX */}
+    </main>
+  );
+}
+```
+
+### Custom Hook Pattern
+```tsx
+export const useGameSession = () => {
+  const dispatch = useAppDispatch();
+  const gameState = useAppSelector(selectGameState);
+  
+  const startGame = useCallback((config: GameConfig) => {
+    dispatch(startGameSession(config));
+  }, [dispatch]);
+  
+  return {
+    gameState,
+    startGame,
+    // ... other methods
+  };
+};
+```
+
+### Service Integration Pattern
+```tsx
+const { data, isLoading, error } = useQuery({
+  queryKey: QUERY_KEYS.game.history(userId),
+  queryFn: () => gameService.getHistory(userId),
+  enabled: !!userId,
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+```
+
+## 🔍 Code Quality Guidelines
+
+### Type Safety
+- Always define explicit return types for functions
+- Use type guards for runtime type checking
+- Prefer `interface` for object shapes, `type` for unions/intersections
+- Use `satisfies` operator when you need type checking without widening
+
+### Error Handling
+- Always handle errors explicitly
+- Use error boundaries for component error handling
+- Provide user-friendly error messages
+- Log errors appropriately using `clientLogger`
+
+### Performance Considerations
+
+#### React.memo Usage
+**ALWAYS use `memo` for:**
+- Chart components (PieChart, BarChart, LineChart, etc.)
+- Statistics components (StatCard, GameStatsCard, AchievementCard, etc.)
+- Display components that receive props and render frequently
+- Components used in lists or grids
+- Components that perform expensive rendering operations
+
+**Pattern:**
+```tsx
+import { memo } from 'react';
+
+export const ComponentName = memo(function ComponentName({
+  prop1,
+  prop2,
+}: ComponentProps) {
+  // Component implementation
+});
+```
+
+**DO NOT use `memo` for:**
+- Components that receive new object/array props on every render (unless parent memoizes them)
+- Components with frequently changing props
+- Simple presentational components with minimal rendering cost
+
+#### useMemo Usage
+**ALWAYS use `useMemo` for:**
+- Expensive computations (data transformations, filtering, sorting)
+- Derived data from complex calculations
+- Chart data processing (grouping, aggregating, formatting)
+- List/array operations that transform data
+- Object/array creation that's used as dependencies
+
+**Pattern:**
+```tsx
+const processedData = useMemo(() => {
+  if (!data || data.length === 0) return [];
+  return data
+    .filter(item => item.active)
+    .map(item => transformItem(item))
+    .sort((a, b) => a.value - b.value);
+}, [data]);
+```
+
+**DO NOT use `useMemo` for:**
+- Simple value assignments
+- Primitive value calculations (unless truly expensive)
+- Operations that are faster than memoization overhead
+
+#### useCallback Usage
+- Use `useCallback` for event handlers passed to child components
+- Use `useCallback` for functions used as dependencies in other hooks
+- Use `useCallback` for functions passed to memoized components
+
+#### Consistency Requirements
+- **All chart components MUST use `memo`**
+- **All statistics/display components MUST use `memo`**
+- **All data processing MUST use `useMemo`**
+- **All event handlers passed to children MUST use `useCallback`**
+
+### General Performance Guidelines
+- Use `React.memo` for expensive components
+- Use `useMemo` for expensive computations
+- Use `useCallback` for event handlers passed to child components
+- Lazy load routes and heavy components
+- Optimize images and assets
+
+### Accessibility
+- Use semantic HTML elements
+- Provide ARIA labels where needed
+- Ensure keyboard navigation works
+- Maintain proper focus management
+- Test with screen readers
+
+## 🚨 Common Pitfalls to Avoid
+
+1. **Don't use `any` or `as` assertions** - Use proper types or type guards
+2. **Don't create hooks without immediate usage** - Every hook must have a consumer
+3. **Don't duplicate logic** - Extract to shared utilities or hooks
+4. **Don't use motion components without animation props** - Use regular HTML elements
+5. **Don't forget to update barrel exports** - Keep `index.ts` files in sync
+6. **Don't use `console.log`** - Use `clientLogger` instead
+7. **Don't create placeholder code** - Only commit production-ready implementations
+8. **Don't ignore TypeScript errors** - Fix all type errors before committing
+9. **Don't mix concerns** - Keep components, hooks, and services focused
+10. **Don't forget error handling** - Always handle loading, error, and success states
+11. **Don't skip `memo` for chart/statistics components** - All chart and display components must use `memo`
+12. **Don't skip `useMemo` for data processing** - Always memoize expensive computations and data transformations
+13. **Don't create new objects/arrays in render without `useMemo`** - This breaks memo optimization

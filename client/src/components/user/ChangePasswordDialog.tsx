@@ -123,8 +123,8 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 
 	return (
 		<Dialog open={open} onOpenChange={handleDialogClose}>
-			<DialogContent className='max-w-md'>
-				<DialogHeader>
+			<DialogContent className='max-w-md max-h-[90vh] flex flex-col'>
+				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle className='flex items-center gap-2'>
 						<Key className='h-5 w-5' />
 						Change Password
@@ -132,7 +132,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 					<DialogDescription>Update your account password</DialogDescription>
 				</DialogHeader>
 
-				<div className='space-y-4 py-4'>
+				<div className='space-y-4 py-4 flex-1 overflow-y-auto'>
 					<div className='space-y-2'>
 						<Label htmlFor='current-password'>Current Password</Label>
 						<Input
@@ -194,7 +194,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							</p>
 						)}
 					</div>
-					<div className='flex gap-2 pt-2'>
+					<div className='flex gap-2 pt-2 flex-shrink-0'>
 						<Button variant={ButtonVariant.OUTLINE} onClick={() => onOpenChange(false)}>
 							Cancel
 						</Button>

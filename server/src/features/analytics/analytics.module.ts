@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GameHistoryEntity, PaymentHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
@@ -13,14 +12,13 @@ import {
 	BusinessAnalyticsService,
 	GlobalAnalyticsService,
 	LeaderboardAnalyticsService,
-	ScoreResetScheduler,
 	SystemAnalyticsService,
 	UserAnalyticsService,
+	UserStatsUpdateService,
 } from './services';
 
 @Module({
 	imports: [
-		ScheduleModule.forRoot(),
 		TypeOrmModule.forFeature([UserEntity, UserStatsEntity, GameHistoryEntity, TriviaEntity, PaymentHistoryEntity]),
 		CacheModule,
 		AuthModule,
@@ -34,7 +32,7 @@ import {
 		SystemAnalyticsService,
 		AnalyticsTrackerService,
 		LeaderboardAnalyticsService,
-		ScoreResetScheduler,
+		UserStatsUpdateService,
 	],
 	exports: [
 		UserAnalyticsService,
@@ -43,6 +41,7 @@ import {
 		SystemAnalyticsService,
 		AnalyticsTrackerService,
 		LeaderboardAnalyticsService,
+		UserStatsUpdateService,
 	],
 })
 export class AnalyticsModule {}

@@ -8,6 +8,9 @@ export const CACHE_KEYS = {
 		TOPICS_STATS_PATTERN: 'analytics:topics:stats:*',
 		ALL_PATTERN: 'analytics:*',
 		GLOBAL_TRENDS: (query?: unknown) => `analytics:global:trends:${JSON.stringify(query ?? {})}`,
+		GLOBAL_TRENDS_PATTERN: 'analytics:global:trends:*',
+		USER_UNIFIED: (userId: string, querySig: string) => `analytics:user:unified:${userId}:${querySig}`,
+		USER_UNIFIED_PATTERN: (userId: string) => `analytics:user:unified:${userId}:*`,
 		EVENT: (userId: string, eventId: string) => `analytics:event:${userId}:${eventId}`,
 		USER_EVENTS: (userId: string) => `analytics:events:${userId}`,
 	},
@@ -65,6 +68,9 @@ export const CACHE_KEYS = {
 	RATE_LIMIT: {
 		WINDOW: (ip: string, path: string) => `ratelimit:${ip}:${path}`,
 		BURST: (ip: string) => `ratelimit:burst:${ip}`,
+	},
+	ADMIN: {
+		STATISTICS: 'admin:statistics',
 	},
 } as const;
 

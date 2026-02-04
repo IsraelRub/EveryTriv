@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 
 import { UserRole } from '@shared/constants';
 import { mergeUserPreferences } from '@shared/utils';
@@ -18,12 +18,13 @@ import {
 	Spinner,
 	Toaster,
 } from '@/components';
-import { useCurrentUser, useNavigationAnalytics } from '@/hooks';
+import { useCurrentUser, useNavigationAnalytics, useRouteBasedMusic } from '@/hooks';
 import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import {
 	AdminDashboard,
 	ContactView,
 	GameSessionView,
+	GameSetupView,
 	GameSummaryView,
 	HomeView,
 	LoginView,
@@ -47,6 +48,9 @@ export default function AppRoutes() {
 	// Track navigation analytics
 	useNavigationAnalytics();
 
+	// Manage music based on route (game routes = game music, others = background music)
+	useRouteBasedMusic();
+
 	// Check if current route is an authentication page
 	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
 
@@ -58,7 +62,7 @@ export default function AppRoutes() {
 
 		initAuthRanRef.current = true;
 
-		const initAuth = async () => {
+		const handleInitAuth = async () => {
 			setIsInitializingAuth(true);
 			try {
 				const isAuthenticated = await authService.isAuthenticated();
@@ -76,7 +80,7 @@ export default function AppRoutes() {
 			}
 		};
 
-		initAuth().catch(() => {
+		handleInitAuth().catch(() => {
 			// Silently handle any unhandled promise rejections from initAuth
 			// These are expected when user is not authenticated
 			setIsInitializingAuth(false);
@@ -94,9 +98,14 @@ export default function AppRoutes() {
 				}
 
 				// Prefetch authenticated-only data
-				prefetchAuthenticatedQueries().catch(() => {
-					// Silently handle prefetch errors
-				});
+				const handlePrefetchQueries = async () => {
+					try {
+						await prefetchAuthenticatedQueries();
+					} catch {
+						// Silently handle prefetch errors
+					}
+				};
+				handlePrefetchQueries();
 
 				setIsInitializingAuth(false);
 			} else if (isError) {
@@ -124,7 +133,7 @@ export default function AppRoutes() {
 			<div className='app-shell'>
 				<BackgroundAnimation />
 				<main id='main-content' className='app-main flex items-center justify-center min-h-screen'>
-					<Spinner size={SpinnerSize.LG} variant='loader' />
+					<Spinner size={SpinnerSize.LG} />
 				</main>
 			</div>
 		);
@@ -138,8 +147,6 @@ export default function AppRoutes() {
 				<Routes>
 					{/* Public routes */}
 					<Route path={ROUTES.HOME} element={<HomeView />} />
-					<Route path={ROUTES.PLAY} element={<HomeView />} />
-					<Route path={ROUTES.START} element={<HomeView />} />
 					<Route path={ROUTES.STATISTICS} element={<StatisticsView />} />
 
 					{/* Legal and Info routes */}
@@ -148,7 +155,7 @@ export default function AppRoutes() {
 					<Route path={ROUTES.CONTACT} element={<ContactView />} />
 
 					{/* Game routes */}
-					<Route path={ROUTES.GAME} element={<Navigate to={ROUTES.GAME_PLAY} replace />} />
+					<Route path={ROUTES.GAME} element={<GameSetupView />} />
 					<Route path={ROUTES.GAME_PLAY} element={<GameSessionView />} />
 					<Route path={ROUTES.GAME_SUMMARY} element={<GameSummaryView />} />
 
@@ -162,7 +169,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path={ROUTES.MULTIPLAYER_GAME}
+						path={ROUTES.MULTIPLAYER_PLAY}
 						element={
 							<ProtectedRoute>
 								<MultiplayerGameView />
@@ -170,7 +177,7 @@ export default function AppRoutes() {
 						}
 					/>
 					<Route
-						path={ROUTES.MULTIPLAYER_RESULTS}
+						path={ROUTES.MULTIPLAYER_SUMMARY}
 						element={
 							<ProtectedRoute>
 								<MultiplayerResultsView />
@@ -230,9 +237,6 @@ export default function AppRoutes() {
 
 					{/* OAuth callback - no protection needed */}
 					<Route path={ROUTES.AUTH_CALLBACK} element={<OAuthCallback />} />
-
-					{/* Forgot password - placeholder route */}
-					<Route path={ROUTES.FORGOT_PASSWORD} element={<NotFound />} />
 
 					{/* Unauthorized page */}
 					<Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedView />} />

@@ -9,7 +9,7 @@ import {
 	ToastVariant,
 } from '@/constants';
 import { audioService } from '@/services';
-import type { Toast, ToastAction, ToasterToast } from '@/types';
+import type { AddToastOptions, ToastAction, ToasterToast, ToastHelperProps } from '@/types';
 
 let count = 0;
 
@@ -85,7 +85,7 @@ function dispatch(action: ToastAction) {
 
 const autoDismissTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-export function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: Toast) {
+export function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: AddToastOptions) {
 	const id = genId();
 
 	const update = (props: ToasterToast) =>
@@ -151,19 +151,19 @@ export function useToast() {
 }
 
 // Helper functions for common toast types
-toast.success = (props: Omit<Toast, 'variant'>) => {
+toast.success = (props: ToastHelperProps) => {
 	audioService.play(AudioKey.SUCCESS);
 	return toast({ ...props, variant: ToastVariant.SUCCESS });
 };
-toast.error = (props: Omit<Toast, 'variant'>) => {
+toast.error = (props: ToastHelperProps) => {
 	audioService.play(AudioKey.ERROR);
 	return toast({ ...props, variant: ToastVariant.DESTRUCTIVE });
 };
-toast.warning = (props: Omit<Toast, 'variant'>) => {
+toast.warning = (props: ToastHelperProps) => {
 	audioService.play(AudioKey.WARNING);
 	return toast({ ...props, variant: ToastVariant.WARNING });
 };
-toast.info = (props: Omit<Toast, 'variant'>) => {
+toast.info = (props: ToastHelperProps) => {
 	audioService.play(AudioKey.NOTIFICATION);
 	return toast({ ...props, variant: ToastVariant.INFO });
 };

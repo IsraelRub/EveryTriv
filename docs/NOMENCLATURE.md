@@ -341,15 +341,12 @@
 | `BaseTriviaConfig` | `shared/types/domain/game/trivia.types.ts` | הגדרות טריוויה בסיסיות |
 | `CustomDifficultyString` | `shared/types/domain/game/trivia.types.ts` | type מחרוזת קושי מותאם |
 | `GameDifficulty` | `shared/types/domain/game/trivia.types.ts` | type קושי משחק |
-| `TriviaQuestionInput` | `shared/types/domain/game/trivia.types.ts` | type קלט שאלת טריוויה |
 | `TriviaQuestion` | `shared/types/domain/game/trivia.types.ts` | interface שאלת טריוויה |
 | `BaseAnswerPayload` | `shared/types/domain/game/trivia.types.ts` | interface payload תשובה בסיסי |
 | `TriviaRequest` | `shared/types/domain/game/trivia.types.ts` | interface בקשת טריוויה |
-| `GameAnswerSubmission` | `shared/types/domain/game/trivia.types.ts` | interface שליחת תשובת משחק |
 | `TriviaInputValidationResult` | `shared/types/domain/game/trivia.types.ts` | interface תוצאת ולידציית קלט טריוויה |
 | `TriviaResponse` | `shared/types/domain/game/trivia.types.ts` | interface תגובת טריוויה |
 | `AnswerResult` | `shared/types/domain/game/trivia.types.ts` | interface תוצאת תשובה |
-| `TriviaSession` | `shared/types/domain/game/trivia.types.ts` | interface סשן טריוויה |
 | `SavedGameConfiguration` | `shared/types/domain/game/gameCache.types.ts` | interface הגדרות משחק שמורות |
 | `Achievement` | `shared/types/domain/game/achievements.types.ts` | interface הישג |
 | `GroqModelConfig` | `shared/types/domain/game/groq.types.ts` | interface הגדרות מודל Groq |
@@ -494,9 +491,8 @@
 | `AmountDto` | `shared/types/infrastructure/api.types.ts` | interface DTO סכום |
 | `PurchaseDto` | `shared/types/infrastructure/api.types.ts` | interface DTO רכישה |
 | `ConfirmCreditPurchaseDto` | `shared/types/infrastructure/api.types.ts` | interface DTO אישור רכישת נקודות |
-| `PurchaseResponse` | `shared/types/infrastructure/api.types.ts` | interface תגובת רכישה |
 | `DeductCreditsRequest` | `shared/types/infrastructure/api.types.ts` | interface בקשת ניכוי נקודות |
-| `QuestionData` | `shared/types/infrastructure/api.types.ts` | interface נתוני שאלה |
+| `AnswerHistory` | `shared/types/infrastructure/api.types.ts` | interface נתוני שאלה |
 | `GameData` | `shared/types/infrastructure/api.types.ts` | interface נתוני משחק |
 | `AdminUserData` | `shared/types/infrastructure/api.types.ts` | interface נתוני משתמש אדמין |
 | `UsersListResponse` | `shared/types/infrastructure/api.types.ts` | interface תגובת רשימת משתמשים |
@@ -538,16 +534,11 @@
 | `StorageService` | `shared/types/infrastructure/storage.types.ts` | interface שירות אחסון |
 | `StorageConfig` | `shared/types/infrastructure/storage.types.ts` | interface הגדרות אחסון |
 | `StorageOperationResult<T>` | `shared/types/infrastructure/storage.types.ts` | interface תוצאת פעולת אחסון |
-| `StorageStatsResult` | `shared/types/infrastructure/storage.types.ts` | interface תוצאת סטטיסטיקות אחסון |
 | `StorageItemMetadata` | `shared/types/infrastructure/storage.types.ts` | interface מטא-דאטה פריט אחסון |
 | `CacheEntry` | `shared/types/infrastructure/storage.types.ts` | type רשומת cache |
 | `StorageStatsItem` | `shared/types/infrastructure/storage.types.ts` | interface פריט סטטיסטיקות אחסון |
 | `StorageStats` | `shared/types/infrastructure/storage.types.ts` | interface סטטיסטיקות אחסון |
 | `StorageCleanupOptions` | `shared/types/infrastructure/storage.types.ts` | interface אפשרויות ניקוי אחסון |
-| `StorageMigrationOptions` | `shared/types/infrastructure/storage.types.ts` | interface אפשרויות מיגרציית אחסון |
-| `StorageSyncOptions` | `shared/types/infrastructure/storage.types.ts` | interface אפשרויות סנכרון אחסון |
-| `StorageSyncProgress` | `shared/types/infrastructure/storage.types.ts` | interface התקדמות סנכרון אחסון |
-| `StorageSyncResult` | `shared/types/infrastructure/storage.types.ts` | interface תוצאת סנכרון אחסון |
 | `StorageMetrics` | `shared/types/infrastructure/storage.types.ts` | interface מטריקות אחסון |
 
 #### Infrastructure Logging Types
@@ -661,11 +652,8 @@
 | שם Interface/Type | מיקום קובץ | תיאור |
 |------------------|------------|-------|
 | `CurrentGameStats` | `client/src/types/domain/analytics/analytics.types.ts` | interface סטטיסטיקות משחק נוכחי |
-| `ClientGameData` | `client/src/types/domain/game/game.types.ts` | interface נתוני משחק לקוח |
 | `CustomSettings` | `client/src/types/domain/game/game.types.ts` | interface הגדרות מותאמות |
 | `GameModeState` | `client/src/types/domain/game/game.types.ts` | interface מצב מצב משחק |
-| `ClientGameState` | `client/src/types/domain/game/game.types.ts` | interface מצב משחק לקוח |
-| `ClientGameSessionStats` | `client/src/types/domain/game/game.types.ts` | interface סטטיסטיקות סשן משחק לקוח |
 | `GameModeOption` | `client/src/types/domain/game/game.types.ts` | interface אפשרות מצב משחק |
 | `GameSummaryState` | `client/src/types/domain/game/game.types.ts` | interface מצב סיכום משחק |
 | `GameKey` | `client/src/types/domain/game/game.types.ts` | interface מפתח משחק |
@@ -714,10 +702,9 @@
 | `IconProps` | `client/src/types/ui/icon.types.ts` | interface props אייקון |
 | `IconAnimation` | `client/src/types/ui/icon.types.ts` | interface אנימציית אייקון |
 | `BackgroundAnimationProps` | `client/src/types/ui/backgroundAnimation.types.ts` | interface props אנימציית רקע |
-| `PieChartDataPoint` | `client/src/types/ui/charts.types.ts` | interface נקודת נתונים גרף עוגה |
 | `PieChartProps` | `client/src/types/ui/charts.types.ts` | interface props גרף עוגה |
 | `TrendChartProps` | `client/src/types/ui/charts.types.ts` | interface props גרף מגמה |
-| `DistributionDataPoint` | `client/src/types/ui/charts.types.ts` | interface נקודת נתונים התפלגות |
+| `DistributionDataPoint` | `client/src/types/ui/charts.types.ts` | interface נקודת נתונים התפלגות (משמש גם לגרפי עוגה) |
 | `DistributionChartProps` | `client/src/types/ui/charts.types.ts` | interface props גרף התפלגות |
 | `ChartCardProps` | `client/src/types/ui/charts.types.ts` | interface props כרטיס גרף |
 | `LeaderboardEntry` | `client/src/types/ui/leaderboard.types.ts` | interface רשומה בטבלת לוחות |
@@ -794,7 +781,7 @@
 | `toSavedGameConfiguration` | `shared/utils/domain/game.utils.ts` | המרה להגדרות שמורות |
 | `checkAnswerCorrectness` | `shared/utils/domain/answer.utils.ts` | בדיקת נכונות תשובה |
 | `createAnswerResult` | `shared/utils/domain/answer.utils.ts` | יצירת תוצאות תשובה |
-| `createQuestionData` | `shared/utils/domain/question.utils.ts` | יצירת נתוני שאלה |
+| `createAnswerHistory` | `shared/utils/domain/question.utils.ts` | יצירת נתוני שאלה |
 | `calculateAnswerScore` | `shared/utils/domain/score.utils.ts` | חישוב ניקוד תשובה |
 | `calculateTimeLimitedCredits` | `shared/utils/domain/credits.utils.ts` | חישוב נקודות מוגבלות זמן |
 | `calculateRequiredCredits` | `shared/utils/domain/credits.utils.ts` | חישוב נקודות נדרשות |
@@ -993,7 +980,6 @@
 | `LeaderboardPeriod` | `shared/constants/domain/game.constants.ts` | enum | תקופות טבלת לוחות |
 | `PlayerType` | `shared/constants/domain/game.constants.ts` | enum | סוגי שחקנים |
 | `GameStatus` | `shared/constants/domain/game.constants.ts` | enum | סטטוסי משחק |
-| `TriviaQuestionSource` | `shared/constants/domain/game.constants.ts` | enum | מקורות שאלות טריוויה |
 | `ProviderStatus` | `shared/constants/domain/game.constants.ts` | enum | סטטוסי ספק |
 | `CUSTOM_DIFFICULTY_PREFIX` | `shared/constants/domain/game.constants.ts` | const string | קידומת קושי מותאם |
 | `TIME_LIMITED_CREDITS_PER_30_SECONDS` | `shared/constants/domain/game.constants.ts` | const number | נקודות מוגבלות זמן לכל 30 שניות |
@@ -1023,7 +1009,6 @@
 | `VALID_TIME_PERIODS_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות זמן תקינות |
 | `VALID_LEADERBOARD_PERIODS` | `shared/constants/domain/game.constants.ts` | const array | תקופות טבלת לוחות תקינות |
 | `VALID_LEADERBOARD_PERIODS_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות טבלת לוחות תקינות |
-| `ALLOWED_TRIVIA_SOURCES` | `shared/constants/domain/game.constants.ts` | const array | מקורות טריוויה מותרים |
 | `AnalyticsResult` | `shared/constants/domain/analytics.constants.ts` | enum | תוצאות אנליטיקה |
 | `ComparisonTarget` | `shared/constants/domain/analytics.constants.ts` | enum | יעדי השוואה |
 | `AnalyticsEnvironment` | `shared/constants/domain/analytics.constants.ts` | enum | סביבות אנליטיקה |
@@ -1119,7 +1104,6 @@
 | `FormFieldType` | `client/src/constants/core/ui/form.constants.ts` | enum | סוגי שדות טופס |
 | `PaymentTab` | `client/src/constants/core/ui/payment.constants.ts` | enum | טאבים תשלום |
 | `ANIMATION_CONFIG` | `client/src/constants/core/ui/animation.constants.ts` | const object | הגדרות אנימציה |
-| `ACCESSIBILITY_CONFIG` | `client/src/constants/core/ui/animation.constants.ts` | const object | הגדרות נגישות |
 | `VALIDATION_MESSAGES` | `client/src/constants/core/ui/validation-messages.constants.ts` | const object | הודעות ולידציה |
 | `TOAST_LIMIT` | `client/src/constants/core/ui/toast.constants.ts` | const number | מגבלת התראות |
 | `TOAST_REMOVE_DELAY` | `client/src/constants/core/ui/toast.constants.ts` | const number | השהיית הסרת התראה |
@@ -1827,9 +1811,7 @@
 ## Internal Constants (Server)
 
 ### Domain Constants
-| שם Constant/Enum | מיקום קובץ | סוג | תיאור |
-|-----------------|------------|-----|-------|
-| `CreditSource` | `server/src/internal/constants/domain/credits.constants.ts` | enum | מקורות נקודות |
+_אין קבועי domain ב-internal constants - כל הקבועים נמצאים ב-`@shared/constants`._
 
 ### Infrastructure Constants
 | שם Constant/Enum | מיקום קובץ | סוג | תיאור |

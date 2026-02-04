@@ -78,7 +78,7 @@ export function buildCountRecord<T>(
 		}
 
 		const value = countSelector(item);
-		record[key] = Number(value ?? 0);
+		record[key] = value ?? 0;
 	}
 
 	return record;

@@ -1,15 +1,17 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
 
-import { StatCardVariant, VariantBase } from '@/constants';
+import { SKELETON_HEIGHTS, SKELETON_WIDTHS, StatCardVariant, VariantBase } from '@/constants';
 import { Badge, Card, CardContent, Skeleton } from '@/components';
+import { useRefreshAnimationGeneration } from '@/contexts';
 import { useCountUp } from '@/hooks';
 import type { StatCardProps } from '@/types';
 import { cn } from '@/utils';
 
-export function StatCard({
+export const StatCard = memo(function StatCard({
 	icon: Icon,
 	label,
 	value,
@@ -23,29 +25,63 @@ export function StatCard({
 	animate = false,
 	countUp = false,
 	countUpDuration = 2000,
+	countUpResetTrigger,
 }: StatCardProps) {
-	// Determine if value is numeric and should use count-up animation
 	const isNumeric = typeof value === 'number';
 	const numericValue = isNumeric ? value : 0;
 	const countUpEnabled = countUp && isNumeric;
+	const refreshGeneration = useRefreshAnimationGeneration();
+
 	const animatedValue = useCountUp(numericValue, {
 		...(countUpDuration !== TIME_PERIODS_MS.TWO_SECONDS && { duration: countUpDuration }),
-		...(!countUpEnabled && { enabled: false }),
+		enabled: countUpEnabled,
+		resetTrigger: countUpEnabled ? (countUpResetTrigger ?? refreshGeneration) : undefined,
 	});
 
 	// Use animated value if count-up is enabled and value is numeric, otherwise use original value
-	const displayValue = countUp && isNumeric ? animatedValue : value;
+	const displayValue = countUpEnabled ? animatedValue : value;
 
 	if (isLoading) {
-		return (
-			<Card className='p-6'>
-				<div className='flex items-center justify-between mb-4'>
-					<Skeleton className='h-8 w-8 rounded' />
-				</div>
-				<Skeleton className='h-8 w-24 mb-1' />
-				<Skeleton className='h-4 w-20' />
-			</Card>
-		);
+		switch (variant) {
+			case StatCardVariant.HORIZONTAL:
+				return (
+					<Card className='overflow-hidden'>
+						<CardContent className='pt-6 overflow-hidden'>
+							<div className='flex items-center gap-4 overflow-hidden'>
+								<Skeleton
+									className={`${SKELETON_HEIGHTS.ICON_LARGE} ${SKELETON_WIDTHS.ICON_LARGE} rounded-lg flex-shrink-0`}
+								/>
+								<div className='flex-1 space-y-2 overflow-hidden min-w-0'>
+									<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} max-w-full`} />
+									<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT} max-w-full`} />
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				);
+
+			case StatCardVariant.VERTICAL:
+				return (
+					<Card className='p-6 overflow-hidden'>
+						<div className='flex items-center justify-between mb-4 overflow-hidden'>
+							<Skeleton className={`${SKELETON_HEIGHTS.ICON} ${SKELETON_WIDTHS.ICON} rounded flex-shrink-0`} />
+							<Skeleton className={`${SKELETON_HEIGHTS.BADGE} ${SKELETON_WIDTHS.BADGE} flex-shrink-0`} />
+						</div>
+						<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} mb-1 max-w-full`} />
+						<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_SMALL} max-w-full`} />
+					</Card>
+				);
+
+			case StatCardVariant.CENTERED:
+			default:
+				return (
+					<div className='text-center p-4 rounded-lg bg-muted/50'>
+						<Skeleton className={`${SKELETON_HEIGHTS.ICON} ${SKELETON_WIDTHS.ICON} rounded mx-auto mb-2`} />
+						<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} mx-auto mb-2`} />
+						<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_SMALL} mx-auto`} />
+					</div>
+				);
+		}
 	}
 
 	const content = (
@@ -111,4 +147,4 @@ export function StatCard({
 	}
 
 	return content;
-}
+});

@@ -6,3 +6,4 @@ export * from './metrics.types';
 export * from './payment.types';
 export * from './paypal.types';
 export * from './user.types';
+export * from './validation.types';

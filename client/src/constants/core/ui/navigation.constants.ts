@@ -3,10 +3,7 @@ import type { NavigationLinks } from '@/types';
 export const ROUTES = {
 	// Public routes
 	HOME: '/',
-	PLAY: '/play',
-	START: '/start',
 	STATISTICS: '/statistics',
-	LEADERBOARD: '/leaderboard',
 
 	// Legal and Info routes
 	PRIVACY: '/privacy',
@@ -17,11 +14,9 @@ export const ROUTES = {
 	GAME: '/game',
 	GAME_PLAY: '/game/play',
 	GAME_SUMMARY: '/game/summary',
-
-	// Multiplayer routes
-	MULTIPLAYER: '/multiplayer',
-	MULTIPLAYER_GAME: '/multiplayer/game/:roomId',
-	MULTIPLAYER_RESULTS: '/multiplayer/results/:roomId',
+	MULTIPLAYER: '/game/multiplayer',
+	MULTIPLAYER_PLAY: '/game/multiplayer/play/:roomId',
+	MULTIPLAYER_SUMMARY: '/game/multiplayer/summary/:roomId',
 
 	// Protected routes
 	PAYMENT: '/payment',
@@ -33,14 +28,13 @@ export const ROUTES = {
 	REGISTER: '/register',
 	AUTH_CALLBACK: '/auth/callback',
 	AUTH_GOOGLE: '/auth/google',
-	FORGOT_PASSWORD: '/forgot-password',
 
 	// Error routes
 	UNAUTHORIZED: '/unauthorized',
 } as const;
 
 const MAIN_NAV_LINKS = [
-	{ label: 'Start Game', path: ROUTES.HOME },
+	{ label: 'Start Game', path: ROUTES.GAME },
 	{ label: 'Statistics', path: ROUTES.STATISTICS },
 ] as const;
 

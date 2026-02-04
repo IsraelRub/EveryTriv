@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
-import { ERROR_CODES } from '@shared/constants';
-import { ensureErrorObject, getErrorMessage } from '@shared/utils';
+import { ERROR_CODES, VALIDATORS } from '@shared/constants';
+import { ensureErrorObject, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 
 import { gameService, clientLogger as logger, prefetchCommonQueries } from '@/services';
 import { selectGameId } from '@/redux/selectors';
@@ -29,18 +29,29 @@ export const useAppInitialization = () => {
 		};
 
 		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-			const reason = event.reason ? getErrorMessage(event.reason) : 'Unknown reason';
-			const errorMessage =
-				typeof event.reason === 'object' && event.reason !== null && 'message' in event.reason
-					? String(event.reason.message)
-					: reason;
+			const errorMessage = event.reason ? getErrorMessage(event.reason) : 'Unknown reason';
+
+			// Check if error is an abort/cancellation error - these are expected and shouldn't be logged
+			const isAbortError =
+				errorMessage === 'Request was cancelled' ||
+				errorMessage.includes('aborted') ||
+				errorMessage === 'signal is aborted without reason' ||
+				(isRecord(event.reason) &&
+					'statusCode' in event.reason &&
+					event.reason.statusCode === 0 &&
+					hasProperty(event.reason, 'details') &&
+					isRecord(event.reason.details) &&
+					event.reason.details.error === 'Request was cancelled') ||
+				(event.reason instanceof Error && event.reason.name === 'AbortError');
+
+			// Skip logging abort errors - they're expected when React Query cancels previous requests
+			if (isAbortError) {
+				return;
+			}
 
 			// Extract error code if available (prioritize code over message for error checking)
 			const errorCode =
-				typeof event.reason === 'object' &&
-				event.reason !== null &&
-				'code' in event.reason &&
-				typeof event.reason.code === 'string'
+				isRecord(event.reason) && 'code' in event.reason && VALIDATORS.string(event.reason.code)
 					? event.reason.code
 					: undefined;
 
@@ -62,12 +73,12 @@ export const useAppInitialization = () => {
 				if (event.reason instanceof Error) {
 					logger.systemError(event.reason, {
 						contextMessage: 'Unhandled promise rejection',
-						reason,
+						reason: errorMessage,
 						errorCode,
 					});
 				} else {
 					logger.systemError('Unhandled promise rejection', {
-						reason,
+						reason: errorMessage,
 						errorCode,
 					});
 				}

@@ -18,14 +18,15 @@ import { json, urlencoded } from "express";
 import {
   API_VERSION,
   HttpMethod,
+  LOCALHOST_CONFIG,
   MESSAGE_FORMATTERS,
 } from "@shared/constants";
-import { LOCALHOST_CONFIG } from "./config/localhost.config";
 import { AUTH_CONSTANTS } from "@shared/constants";
 import { getErrorMessage, getErrorStack } from "@shared/utils";
 
 import { AppModule } from "./app.module";
 import { AppConfig, validateEnvironmentVariables } from "@config";
+import { RedisIoAdapter } from "./internal/modules/redis";
 
 // Environment configuration
 const environment = process.env.NODE_ENV || "production";
@@ -77,6 +78,11 @@ async function bootstrap() {
       logger: ["error", "warn", "log"],
     });
     console.log(MESSAGE_FORMATTERS.nestjs.appCreated());
+
+    // Initialize Redis Adapter
+    const redisIoAdapter = new RedisIoAdapter(app);
+    await redisIoAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisIoAdapter);
 
     app.enableCors({
       origin: process.env.CLIENT_URL || LOCALHOST_CONFIG.urls.CLIENT,

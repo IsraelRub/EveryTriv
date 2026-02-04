@@ -277,6 +277,7 @@ export interface LogMeta {
 	activeProviders?: number;
 	activeUsers?: number;
 	actualCount?: number;
+	actualQuestionCount?: number;
 	aiQuestion?: string;
 	amount?: number;
 	analysis?: string;
@@ -316,6 +317,7 @@ export interface LogMeta {
 	contactEmail?: string;
 	contactSubject?: string;
 	correctAnswers?: number;
+	consistentUsers?: number;
 	costPerToken?: number;
 	count?: number;
 	countryCode?: string;
@@ -330,6 +332,17 @@ export interface LogMeta {
 	deletedCount?: number;
 	dependencies?: string[];
 	difficulty?: GameDifficulty;
+	discrepancies?: {
+		totalGames?: { expected: number; actual: number };
+		totalQuestionsAnswered?: { expected: number; actual: number };
+		correctAnswers?: { expected: number; actual: number };
+		totalScore?: { expected: number; actual: number };
+		successRate?: { expected: number; actual: number };
+		bestGameScore?: { expected: number; actual: number };
+		lastPlayDate?: { expected: Date | null; actual: Date | null };
+		topicStats?: { inconsistent: string[] };
+		difficultyStats?: { inconsistent: string[] };
+	};
 	dryRun?: boolean;
 	duration?: number;
 	emails?: LogUserEmails;
@@ -351,6 +364,8 @@ export interface LogMeta {
 	failedLogins?: number;
 	feature?: string;
 	finalizedCount?: number;
+	fixed?: boolean;
+	fixedCount?: number;
 	field?: keyof User | 'isActive' | 'dailyFreeQuestions' | 'remainingFreeQuestions';
 	fields?: string[];
 	forceFullUpdate?: boolean;
@@ -358,6 +373,7 @@ export interface LogMeta {
 	gameData?: GameData;
 	gameId?: string;
 	gameMode?: GameMode;
+	overrideGameId?: string | null;
 	gameModes?: GameMode[];
 	gameQuestionCount?: number;
 	googleId?: string;
@@ -382,6 +398,8 @@ export interface LogMeta {
 	isPublic?: boolean;
 	isQuestionLimited?: boolean;
 	isValid?: boolean;
+	isConsistent?: boolean;
+	inconsistentUsers?: number;
 	jobId?: string | number;
 	key?: string;
 	keyPrefix?: string;
@@ -404,6 +422,7 @@ export interface LogMeta {
 	name?: string;
 	nameChanges?: LogUserName;
 	needsProfile?: boolean;
+	note?: string;
 	nodeEnv?: string;
 	newCredits?: number;
 	newFreeQuestions?: number;
@@ -449,6 +468,7 @@ export interface LogMeta {
 	purchasedCredits?: number;
 	qualityScore?: number;
 	query?: string | string[];
+	queueKey?: string;
 	queryParams?: Record<string, string | string[]>;
 	queueSize?: number;
 	questionId?: string;
@@ -486,6 +506,8 @@ export interface LogMeta {
 	sessionId?: string;
 	sessionKey?: string;
 	sessionScore?: number;
+	serverSessionGameId?: string;
+	reduxGameId?: string;
 	severity?: string;
 	shouldEndGame?: boolean;
 	src?: string;
@@ -498,6 +520,7 @@ export interface LogMeta {
 	successRate?: number;
 	suggestions?: string[];
 	suggestionsCount?: number;
+	sectionsCount?: number;
 	tags?: string[];
 	textLength?: number;
 	threshold?: number;
@@ -523,6 +546,7 @@ export interface LogMeta {
 	totalSessions?: number;
 	totalSize?: number;
 	totalTopics?: number;
+	totalInconsistent?: number;
 	totalUsers?: number;
 	traceId?: string;
 	transactionId?: string;
@@ -536,6 +560,7 @@ export interface LogMeta {
 	userId?: string;
 	userIdMatches?: boolean;
 	userIds?: LogUserIds;
+	usersWithGames?: number;
 	userKeys?: string[] | Record<string, unknown>;
 	userType?: string;
 	usersCount?: number;

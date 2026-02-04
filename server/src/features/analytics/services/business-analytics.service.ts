@@ -73,7 +73,7 @@ export class BusinessAnalyticsService {
 
 					const dailyActiveUsersQueryBuilder = this.gameHistoryRepo
 						.createQueryBuilder('game')
-						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'value');
+						.select('CAST(COUNT(DISTINCT game.user_id) AS INTEGER)', 'value');
 					addDateRangeConditions(
 						dailyActiveUsersQueryBuilder,
 						'game',
@@ -84,7 +84,7 @@ export class BusinessAnalyticsService {
 
 					const weeklyActiveUsersQueryBuilder = this.gameHistoryRepo
 						.createQueryBuilder('game')
-						.select('CAST(COUNT(DISTINCT game.userId) AS INTEGER)', 'value');
+						.select('CAST(COUNT(DISTINCT game.user_id) AS INTEGER)', 'value');
 					addDateRangeConditions(
 						weeklyActiveUsersQueryBuilder,
 						'game',

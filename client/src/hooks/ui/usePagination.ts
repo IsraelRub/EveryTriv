@@ -54,6 +54,7 @@ export function usePagination({
 		currentPage,
 		totalPages,
 		itemsPerPage,
+		totalItems,
 		startIndex,
 		endIndex,
 		hasNextPage,

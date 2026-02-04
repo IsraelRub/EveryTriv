@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { TimePeriod } from '@shared/constants';
+import { TIME_PERIODS_MS, TimePeriod } from '@shared/constants';
 import type { AnalyticsResponse, CountRecord, UserTrendPoint } from '@shared/types';
 import { calculateSuccessRate } from '@shared/utils';
 
@@ -52,7 +52,7 @@ export class AnalyticsCommonService {
 		target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
 		const firstThursday = new Date(target.getFullYear(), 0, 4);
 		firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7));
-		const weekNumber = Math.ceil((target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+		const weekNumber = Math.ceil((target.getTime() - firstThursday.getTime()) / TIME_PERIODS_MS.WEEK) + 1;
 		return weekNumber;
 	}
 

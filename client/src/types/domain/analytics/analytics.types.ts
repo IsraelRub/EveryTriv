@@ -1,4 +1,4 @@
-import type { QuestionData } from '@shared/types';
+import type { AnswerHistory } from '@shared/types';
 
 export interface CurrentGameStats {
 	score: number;
@@ -7,5 +7,5 @@ export interface CurrentGameStats {
 	successRate: number;
 	averageTimePerQuestion: number;
 	totalTime: number;
-	questionsData: QuestionData[];
+	answerHistory: AnswerHistory[];
 }

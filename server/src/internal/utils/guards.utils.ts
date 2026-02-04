@@ -1,26 +1,18 @@
-import { GameMode, VALID_GAME_MODES_SET, VALIDATORS } from '@shared/constants';
-import type { GameDifficulty, LeaderboardStats } from '@shared/types';
+import type { Response } from 'express';
+
+import { VALID_GAME_MODES_SET, VALID_GAME_STATUSES, VALIDATORS } from '@shared/constants';
+import type { GameDifficulty, LeaderboardStats, StorageValue } from '@shared/types';
 import { isRecord } from '@shared/utils';
 import { isGameDifficulty } from '@shared/validation';
 
 import { PUBLIC_ENDPOINTS } from '@internal/constants';
-import type { LeaderboardEntity } from '@internal/entities';
-import type { GameSessionQuestion, PayPalErrorResponse } from '@internal/types';
+import type { GameSessionQuestion, GameSessionState, PayPalErrorResponse } from '@internal/types';
+
+export { isErrorWithProperties } from '@shared/utils';
 
 export function isPublicEndpoint(path: string): boolean {
 	return PUBLIC_ENDPOINTS.some(
 		endpoint => path === endpoint || path?.startsWith(endpoint + '?') || path?.startsWith(endpoint + '/')
-	);
-}
-
-export function isErrorWithProperties(error: unknown): error is { name?: string; message?: string } {
-	if (!isRecord(error)) {
-		return false;
-	}
-
-	return (
-		(error.name === undefined || VALIDATORS.string(error.name)) &&
-		(error.message === undefined || VALIDATORS.string(error.message))
 	);
 }
 
@@ -38,20 +30,19 @@ function isGameSessionQuestion(value: unknown): value is GameSessionQuestion {
 	);
 }
 
-export function isGameSessionState(value: unknown): value is {
-	gameId: string;
-	userId: string;
-	topic: string;
-	difficulty: string;
-	gameMode: GameMode;
+export function hasSessionBasicFields(value: unknown): value is {
 	startedAt: string;
-	lastHeartbeat?: string;
-	questions: GameSessionQuestion[];
-	currentScore: number;
-	correctAnswers: number;
-	totalQuestions: number;
-	status: 'in_progress' | 'completed';
+	userId: string;
+	gameId: string;
 } {
+	if (!isRecord(value)) {
+		return false;
+	}
+
+	return VALIDATORS.string(value.startedAt) && VALIDATORS.string(value.userId) && VALIDATORS.string(value.gameId);
+}
+
+export function isGameSessionState(value: unknown): value is GameSessionState {
 	if (!isRecord(value)) {
 		return false;
 	}
@@ -73,7 +64,7 @@ export function isGameSessionState(value: unknown): value is {
 		return false;
 	}
 
-	if (!VALIDATORS.string(value.status) || (value.status !== 'in_progress' && value.status !== 'completed')) {
+	if (!VALIDATORS.string(value.status) || !VALID_GAME_STATUSES.has(value.status)) {
 		return false;
 	}
 
@@ -86,30 +77,6 @@ export function isGameSessionState(value: unknown): value is {
 
 export function isValidGameDifficulty(value: string): value is GameDifficulty {
 	return isGameDifficulty(value);
-}
-
-function isLeaderboardEntity(value: unknown): value is LeaderboardEntity {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	return (
-		VALIDATORS.string(value.id) &&
-		VALIDATORS.string(value.userId) &&
-		VALIDATORS.string(value.userStatsId) &&
-		VALIDATORS.number(value.rank) &&
-		VALIDATORS.number(value.percentile) &&
-		VALIDATORS.number(value.score) &&
-		VALIDATORS.number(value.totalUsers)
-	);
-}
-
-export function isLeaderboardEntityOrNull(value: unknown): value is LeaderboardEntity | null {
-	return value === null || isLeaderboardEntity(value);
-}
-
-export function isLeaderboardEntityArray(value: unknown): value is LeaderboardEntity[] {
-	return Array.isArray(value) && value.every(isLeaderboardEntity);
 }
 
 export function isLeaderboardStats(value: unknown): value is LeaderboardStats {
@@ -156,4 +123,46 @@ export function isErrorWithPayPalResponse(error: unknown): error is { response?:
 	}
 
 	return VALIDATORS.string(data.name) && VALIDATORS.string(data.message) && VALIDATORS.string(data.debug_id);
+}
+
+export function isValidCacheEntry(entry: unknown): entry is { key: string; value: StorageValue; ttl?: number } {
+	if (!isRecord(entry)) {
+		return false;
+	}
+	const obj = entry;
+	const hasKey = 'key' in obj && VALIDATORS.string(Reflect.get(obj, 'key'));
+	const hasValue = 'value' in obj;
+	const hasTtl = 'ttl' in obj;
+	const ttlValue = hasTtl ? Reflect.get(obj, 'ttl') : undefined;
+	const isValidTtl = !hasTtl || ttlValue === undefined || (VALIDATORS.number(ttlValue) && ttlValue >= 0);
+
+	return hasKey && hasValue && isValidTtl;
+}
+
+export function isMiddlewareMetrics(metrics: unknown): metrics is { requestCount: number } {
+	return isRecord(metrics) && VALIDATORS.number(metrics.requestCount);
+}
+
+export function isExpressResponse(value: unknown): value is Response {
+	return isRecord(value) && VALIDATORS.function(value.status) && VALIDATORS.function(value.setHeader);
+}
+
+export function isCacheableValue(value: unknown): value is StorageValue {
+	if (value === undefined) {
+		return false;
+	}
+
+	if (value === null || Object.values(VALIDATORS).some(validator => validator(value))) {
+		return true;
+	}
+
+	if (Array.isArray(value)) {
+		return value.every(isCacheableValue);
+	}
+
+	if (isRecord(value)) {
+		return Object.values(value).every(isCacheableValue);
+	}
+
+	return false;
 }

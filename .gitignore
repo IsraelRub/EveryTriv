@@ -10,13 +10,7 @@ dist-temp/
 *.tsbuildinfo
 
 # Environment variables
-.env
-.env.local
-.env.prod
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
+.env*
 
 # IDE and editor files
 .vscode/
@@ -29,20 +23,21 @@ dist-temp/
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 
 # OS generated files
 .DS_Store
-.DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 Thumbs.db
 
-# Logs
+# Logs (used by server)
 logs/
 *.log
+
+# Uploads (used by server)
+uploads/
 
 # Runtime data
 pids/
@@ -50,27 +45,11 @@ pids/
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-
 # Optional npm cache directory
 .npm
-.pnpm-store/
-.pnpm-cache/
 
 # Optional eslint cache
 .eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
 
 # Optional REPL history
 .node_repl_history
@@ -85,16 +64,3 @@ repomix-output.*
 tmp/
 temp/
 .vite/
-node_modules/.cache/
-node_modules/.vite/
-
-# Uploads
-uploads/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Docker
-.dockerignore

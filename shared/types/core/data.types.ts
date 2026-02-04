@@ -42,14 +42,21 @@ export interface SelectOption {
 
 export interface ActivityEntry {
 	date: string;
-
 	action: string;
-
 	detail?: string;
-
 	topic?: string;
-
 	durationSeconds?: number;
+}
+
+export interface RecentGameActivity {
+	gameId: string;
+	score: number;
+	correctAnswers: number;
+	totalQuestions: number;
+	timeSpent: number;
+	topic: string;
+	difficulty: string;
+	createdAt: Date;
 }
 
 export type CountRecord = Record<string, number>;

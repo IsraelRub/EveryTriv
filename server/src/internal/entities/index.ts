@@ -11,5 +11,3 @@ export * from './trivia.entity';
 export * from './user.entity';
 
 export * from './userStats.entity';
-
-export * from './leaderboard.entity';

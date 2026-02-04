@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ERROR_CODES, RoomStatus } from '@shared/constants';
+import { ERROR_CODES, RoomStatus, VALIDATORS } from '@shared/constants';
 import type { CreateRoomConfig, MultiplayerRoom } from '@shared/types';
 import {
 	calculateClockOffset,
@@ -9,7 +9,6 @@ import {
 	isCreateRoomResponse,
 	isGameEndedEvent,
 	isGameStartedEvent,
-	isLeaderboardUpdateEvent,
 	isPlayerJoinedEvent,
 	isPlayerLeftEvent,
 	isQuestionEndedEvent,
@@ -26,18 +25,10 @@ import {
 	selectIsConnected,
 	selectMultiplayerError,
 	selectMultiplayerGameState,
-	selectMultiplayerLeaderboard,
 	selectMultiplayerLoading,
 	selectMultiplayerRoom,
 } from '@/redux/selectors';
-import {
-	setConnectionStatus,
-	setError,
-	setMultiplayerLoading,
-	setRoom,
-	updateGameState,
-	updateLeaderboard,
-} from '@/redux/slices';
+import { setConnectionStatus, setError, setMultiplayerLoading, setRoom, updateGameState } from '@/redux/slices';
 import { store } from '@/redux/store';
 import { useCurrentUserData } from './useAuth';
 import { useAppDispatch, useAppSelector } from './useRedux';
@@ -48,8 +39,8 @@ export const useMultiplayer = (roomId?: string) => {
 	const room = useAppSelector(selectMultiplayerRoom);
 	const gameState = useAppSelector(selectMultiplayerGameState);
 	const error = useAppSelector(selectMultiplayerError);
-	const leaderboard = useAppSelector(selectMultiplayerLeaderboard);
 	const isLoading = useAppSelector(selectMultiplayerLoading);
+	const leaderboard = gameState?.leaderboard ?? [];
 	const tokenRef = useRef<string | null>(null);
 	const isConnectingRef = useRef(false);
 	const hasSetupListenersRef = useRef(false);
@@ -81,7 +72,7 @@ export const useMultiplayer = (roomId?: string) => {
 		});
 
 		multiplayerService.onRoomLeft((data: unknown) => {
-			if (isRecord(data) && 'roomId' in data && typeof data.roomId === 'string') {
+			if (isRecord(data) && 'roomId' in data && VALIDATORS.string(data.roomId)) {
 				dispatch(setRoom(null));
 				dispatch(updateGameState(null));
 			}
@@ -121,7 +112,7 @@ export const useMultiplayer = (roomId?: string) => {
 					...currentRoom,
 					questions: event.data.questions,
 					status: RoomStatus.PLAYING,
-					startTime: new Date(),
+					startTime: new Date().toISOString() as unknown as Date,
 				};
 				dispatch(setRoom(updatedRoom));
 			}
@@ -148,7 +139,14 @@ export const useMultiplayer = (roomId?: string) => {
 				}
 
 				// Update gameState with currentQuestionStartTime from room if available
-				const questionStartTime = currentRoom?.currentQuestionStartTime;
+				// Convert Date to ISO string for GameState (API response type expects string)
+				const rawQuestionStartTime = currentRoom?.currentQuestionStartTime;
+				const questionStartTime =
+					rawQuestionStartTime && VALIDATORS.date(rawQuestionStartTime)
+						? rawQuestionStartTime instanceof Date
+							? rawQuestionStartTime.toISOString()
+							: rawQuestionStartTime
+						: undefined;
 
 				// Extract server timestamps from event data
 				const serverStartTimestamp = 'serverStartTimestamp' in event.data ? event.data.serverStartTimestamp : undefined;
@@ -165,6 +163,7 @@ export const useMultiplayer = (roomId?: string) => {
 							playersAnswers: {},
 							playersScores: {},
 							leaderboard: [],
+							answerCounts: {},
 							...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
 							...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
 							...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
@@ -178,6 +177,7 @@ export const useMultiplayer = (roomId?: string) => {
 							currentQuestionIndex: event.data.questionIndex,
 							gameQuestionCount,
 							timeRemaining: event.data.timeLimit,
+							answerCounts: {},
 							...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
 							...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
 							...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
@@ -189,11 +189,6 @@ export const useMultiplayer = (roomId?: string) => {
 
 		multiplayerService.onAnswerReceived((event: unknown) => {
 			if (isAnswerReceivedEvent(event)) {
-				// Update leaderboard if provided
-				if (event.data.leaderboard) {
-					dispatch(updateLeaderboard(event.data.leaderboard));
-				}
-
 				const currentGameState = selectMultiplayerGameState(store.getState());
 				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
 				dispatch(
@@ -201,14 +196,14 @@ export const useMultiplayer = (roomId?: string) => {
 						...currentGameState,
 						playersAnswers: {
 							...currentGameState.playersAnswers,
-							[event.data.userId]: event.data.isCorrect ? 1 : 0,
+							[event.data.userId]: event.data.answerIndex,
 						},
 						playersScores: {
 							...currentGameState.playersScores,
 							[event.data.userId]: event.data.scoreEarned,
 						},
-						// Update leaderboard in gameState if provided
 						leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
+						answerCounts: event.data.answerCounts ?? currentGameState.answerCounts,
 					})
 				);
 			}
@@ -216,28 +211,36 @@ export const useMultiplayer = (roomId?: string) => {
 
 		multiplayerService.onQuestionEnded((event: unknown) => {
 			if (isQuestionEndedEvent(event)) {
-				dispatch(updateLeaderboard(event.data.leaderboard));
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				dispatch(
+					updateGameState({
+						...currentGameState,
+						leaderboard: event.data.leaderboard,
+					})
+				);
 			}
 		});
 
 		multiplayerService.onGameEnded((event: unknown) => {
 			if (isGameEndedEvent(event)) {
-				dispatch(updateLeaderboard(event.data.finalLeaderboard));
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				dispatch(
+					updateGameState({
+						...currentGameState,
+						leaderboard: event.data.finalLeaderboard,
+					})
+				);
 				const currentRoom = selectMultiplayerRoom(store.getState());
 				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
 				dispatch(
 					setRoom({
 						...currentRoom,
 						status: RoomStatus.FINISHED,
-						endTime: new Date(),
+						endTime: new Date().toISOString() as unknown as Date,
 					})
 				);
-			}
-		});
-
-		multiplayerService.onLeaderboardUpdate((event: unknown) => {
-			if (isLeaderboardUpdateEvent(event)) {
-				dispatch(updateLeaderboard(event.data.leaderboard));
 			}
 		});
 
@@ -248,8 +251,8 @@ export const useMultiplayer = (roomId?: string) => {
 		});
 
 		multiplayerService.onError((error: unknown) => {
-			if (isRecord(error) && 'message' in error && typeof error.message === 'string') {
-				const errorCode = 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+			if (isRecord(error) && 'message' in error && VALIDATORS.string(error.message)) {
+				const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
 				dispatch(setError(getErrorMessage(error)));
 
 				// Handle specific error codes
@@ -257,7 +260,6 @@ export const useMultiplayer = (roomId?: string) => {
 					// Reset room and game state when game is cancelled or room not found
 					dispatch(setRoom(null));
 					dispatch(updateGameState(null));
-					dispatch(updateLeaderboard([]));
 				}
 			}
 		});
@@ -272,6 +274,8 @@ export const useMultiplayer = (roomId?: string) => {
 		// Check if already connected
 		if (multiplayerService.isConnected()) {
 			dispatch(setConnectionStatus(true));
+			// Ensure event listeners are set up even if already connected
+			setupEventListeners();
 			return;
 		}
 
@@ -319,16 +323,13 @@ export const useMultiplayer = (roomId?: string) => {
 		dispatch(setConnectionStatus(false));
 		dispatch(setRoom(null));
 		dispatch(updateGameState(null));
-		dispatch(updateLeaderboard([]));
 		dispatch(setError(null));
 		isConnectingRef.current = false;
 	}, [dispatch]);
 
-	useEffect(() => {
-		return () => {
-			multiplayerService.cleanup();
-		};
-	}, []);
+	// Note: We don't cleanup listeners on unmount because connection should be maintained
+	// across multiplayer pages (lobby, game, summary). Cleanup is handled by disconnect()
+	// when explicitly leaving multiplayer section.
 
 	const createRoom = useCallback(
 		(config: CreateRoomConfig) => {
@@ -373,7 +374,7 @@ export const useMultiplayer = (roomId?: string) => {
 	}, []);
 
 	// Auto-connect on mount if user is authenticated
-	// Connection is maintained across multiplayer pages (lobby, game, results)
+	// Connection is maintained across multiplayer pages (lobby, game, summary)
 	// Only disconnect when explicitly leaving multiplayer section
 	useEffect(() => {
 		if (currentUser) {

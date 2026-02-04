@@ -1,5 +1,11 @@
 import { BASE_SCORE_BY_DIFFICULTY } from '@shared/constants';
 
+type DifficultyKey = keyof typeof BASE_SCORE_BY_DIFFICULTY;
+
+function isDifficultyKey(value: string): value is DifficultyKey {
+	return value in BASE_SCORE_BY_DIFFICULTY;
+}
+
 export function calculateAnswerScore(
 	difficulty: string,
 	timeSpentMs: number,
@@ -8,9 +14,10 @@ export function calculateAnswerScore(
 ): number {
 	if (!isCorrect) return 0;
 
-	const baseScore =
-		BASE_SCORE_BY_DIFFICULTY[difficulty.toLowerCase() as keyof typeof BASE_SCORE_BY_DIFFICULTY] ??
-		BASE_SCORE_BY_DIFFICULTY.easy;
+	const difficultyLower = difficulty.toLowerCase();
+	const baseScore = isDifficultyKey(difficultyLower)
+		? BASE_SCORE_BY_DIFFICULTY[difficultyLower]
+		: BASE_SCORE_BY_DIFFICULTY.easy;
 
 	const timeInSeconds = timeSpentMs / 1000;
 	const timeBonus = Math.max(0, 10 - Math.floor(timeInSeconds));

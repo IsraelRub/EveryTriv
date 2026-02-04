@@ -94,16 +94,16 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 	return (
 		<>
 			<Dialog open={open} onOpenChange={handleDialogClose}>
-				<DialogContent className='max-w-2xl max-h-[90vh]'>
-					<DialogHeader>
+				<DialogContent className='max-w-2xl max-h-[90vh] flex flex-col'>
+					<DialogHeader className='flex-shrink-0'>
 						<DialogTitle>Edit Profile</DialogTitle>
 						<DialogDescription>Manage your profile information</DialogDescription>
 					</DialogHeader>
 
 					{isLoading ? (
-						<div className='py-8 text-center text-muted-foreground'>Loading profile...</div>
+						<div className='py-8 text-center text-muted-foreground flex-1'>Loading profile...</div>
 					) : (
-						<div className='space-y-6 py-4'>
+						<div className='space-y-4 md:space-y-6 py-4 flex-1 overflow-y-auto'>
 							{/* Two Column Layout */}
 							<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
 								{/* Left Column: Avatar and Name */}
@@ -178,7 +178,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 											/>
 										</div>
 									</div>
-									<div className='flex gap-2 pt-2'>
+									<div className='flex gap-2 pt-2 flex-shrink-0'>
 										<Button variant={ButtonVariant.OUTLINE} onClick={() => setIsEditing(false)}>
 											Cancel
 										</Button>

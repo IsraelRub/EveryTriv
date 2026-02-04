@@ -1,6 +1,6 @@
 # Entities - Internal Structure
 
-תיעוד מפורט על כל ה-TypeORM Entities במערכת, כולל BaseEntity ו-8 entities נוספים.
+תיעוד מפורט על כל ה-TypeORM Entities במערכת, כולל BaseEntity ו-7 entities נוספים.
 
 ## סקירה כללית
 
@@ -16,7 +16,6 @@ Entities ב-NestJS משמשות לייצוג טבלאות במסד נתונים 
 - `userStats.entity.ts` - ישות סטטיסטיקות משתמש
 - `creditTransaction.entity.ts` - ישות עסקת נקודות
 - `paymentHistory.entity.ts` - ישות היסטוריית תשלום
-- `leaderboard.entity.ts` - ישות לוח תוצאות
 
 ## BaseEntity
 
@@ -92,7 +91,15 @@ export class UserEntity extends BaseEntity {
 
 ### קשרים
 
-- אין קשרים ישירים (אבל entities אחרים קשורים ל-UserEntity)
+**קשרים הפוכים (reverse relations):**
+- `userStats` (OneToOne → UserStatsEntity) - סטטיסטיקות משתמש
+- `gameHistories` (OneToMany → GameHistoryEntity[]) - היסטוריית משחקים
+- `creditTransactions` (OneToMany → CreditTransactionEntity[]) - עסקאות קרדיטים
+- `paymentHistories` (OneToMany → PaymentHistoryEntity[]) - היסטוריית תשלומים
+- `trivias` (OneToMany → TriviaEntity[]) - שאלות טריוויה שיצר המשתמש
+
+**קשרים ישירים:**
+- entities אחרים קשורים ל-`UserEntity` דרך `@ManyToOne`
 
 ### דוגמאות שימוש
 
@@ -136,7 +143,7 @@ user.preferences = {
 
 **משתמש:**
 - `userId` (uuid, nullable) - מזהה משתמש שיצר השאלה (null = מערכת)
-- `user` (ManyToOne → UserEntity, nullable) - קשר למשתמש
+- `user` (ManyToOne → UserEntity, nullable, optional) - קשר למשתמש (optional - יכול להיות null עבור שאלות מערכת)
 
 **מטא-דאטה:**
 - `isCorrect` (boolean, default: false) - האם השאלה נכונה (לשאלות משתמש)
@@ -194,7 +201,7 @@ trivia.userId = userId; // או null למערכת
 - `creditsUsed` (int, default: 0) - אשראי שנצרך
 
 **נתוני שאלות:**
-- `questionsData` (jsonb, default: []) - נתוני שאלות (QuestionData[])
+- `AnswerHistory` (jsonb, default: []) - נתוני שאלות (AnswerHistory[])
 
 **Computed Properties:**
 - `incorrectAnswers` (getter) - תשובות שגויות = `totalQuestions - correctAnswers`
@@ -221,7 +228,7 @@ gameHistory.correctAnswers = 8;
 gameHistory.gameMode = GameMode.QUESTION_LIMITED;
 gameHistory.timeSpent = 300; // 5 דקות
 gameHistory.creditsUsed = 10;
-gameHistory.questionsData = [
+gameHistory.answerHistory = [
   { questionId: '...', answer: '...', isCorrect: true, timeSpent: 30 },
   // ...
 ];
@@ -338,39 +345,39 @@ userStats.topicStats = {
 };
 ```
 
-## PointTransactionEntity
+## CreditTransactionEntity
 
-**מיקום:** `server/src/internal/entities/pointTransaction.entity.ts`
+**מיקום:** `server/src/internal/entities/creditTransaction.entity.ts`
 
 **תפקיד:**
-- ייצוג עסקת נקודות
-- שמירת היסטוריית עסקות נקודות (רכישה, שימוש, וכו')
+- ייצוג עסקת קרדיטים
+- שמירת היסטוריית עסקות קרדיטים (רכישה, שימוש, וכו')
 
 ### שדות
 
 **קשר למשתמש:**
-- `userId` (uuid, indexed) - מזהה משתמש
-- `user` (ManyToOne → UserEntity) - קשר למשתמש
+- `userId` (uuid, indexed, required) - מזהה משתמש
+- `user` (ManyToOne → UserEntity, CASCADE delete) - קשר למשתמש
 
 **פרטי עסקה:**
-- `type` (PointTransactionType enum) - סוג עסקה (CREDIT, DEBIT, PURCHASE, USAGE, REFUND, EXPIRY)
-- `source` (PointSource enum, nullable) - מקור נקודות (GAME, PURCHASE, BONUS, REFUND)
-- `amount` (int) - סכום נקודות (חיובי = credit, שלילי = debit)
+- `type` (CreditTransactionType enum) - סוג עסקה (DAILY_RESET, PURCHASE, GAME_USAGE, ADMIN_ADJUSTMENT, REFUND)
+- `source` (CreditSource enum, nullable) - מקור קרדיטים (FREE_DAILY, PURCHASED, BONUS, REFUND)
+- `amount` (int) - סכום קרדיטים (חיובי = credit, שלילי = debit)
 - `balanceAfter` (int) - מאזן אחרי העסקה
 - `freeQuestionsAfter` (int, default: 0) - שאלות חינם נותרות אחרי העסקה
 - `purchasedCreditsAfter` (int, default: 0) - קרדיטים נרכשים נותרות אחרי העסקה
 
 **מטא-דאטה:**
 - `description` (string, nullable) - תיאור העסקה
-- `gameHistoryId` (string, nullable) - מזהה היסטוריית משחק (אם רלוונטי)
-- `paymentId` (string, nullable) - מזהה תשלום (אם רלוונטי)
+- `gameHistoryId` (uuid, nullable) - מזהה היסטוריית משחק (אם רלוונטי)
+- `gameHistory` (ManyToOne → GameHistoryEntity, nullable, SET NULL on delete) - קשר להיסטוריית משחק
+- `paymentId` (string, nullable, indexed) - מזהה תשלום (אם רלוונטי)
+- `paymentHistory` (ManyToOne → PaymentHistoryEntity, nullable, SET NULL on delete) - קשר להיסטוריית תשלום
 - `transactionDate` (date, default: CURRENT_DATE, indexed) - תאריך עסקה
 
 **metadata (jsonb, default: {}):**
-- `difficulty` (string) - קושי (אם רלוונטי)
-- `topic` (string) - נושא (אם רלוונטי)
-- `requestedQuestions` (number) - מספר שאלות מבוקשות (אם רלוונטי)
-- `pricePerPoint` (number) - מחיר לנקודה (אם רלוונטי)
+- `questionsPerRequest` (number) - מספר שאלות מבוקשות (אם רלוונטי)
+- `requiredCredits` (number) - קרדיטים נדרשים
 - `originalAmount` (number) - סכום מקורי (אם רלוונטי)
 - `gameMode` (string) - מצב משחק (אם רלוונטי)
 - `freeQuestionsUsed` (number) - שאלות חינם שנצרכו
@@ -381,40 +388,42 @@ userStats.topicStats = {
 ### אינדקסים
 
 - `userId` - index
+- `paymentId` - index (לשיפור ביצועי queries וצורכי Foreign Key)
 - `transactionDate` - index
 
 ### קשרים
 
-- `user` (ManyToOne) → `UserEntity` - משתמש בעל העסקה
+- `user` (ManyToOne) → `UserEntity` (CASCADE delete) - משתמש בעל העסקה
+- `gameHistory` (ManyToOne) → `GameHistoryEntity` (nullable, SET NULL on delete) - קשר להיסטוריית משחק
+- `paymentHistory` (ManyToOne) → `PaymentHistoryEntity` (nullable, SET NULL on delete) - קשר להיסטוריית תשלום
 
 ### דוגמאות שימוש
 
 ```typescript
-// יצירת עסקת credit (רכישת נקודות)
-const transaction = new PointTransactionEntity();
+// יצירת עסקת credit (רכישת קרדיטים)
+const transaction = new CreditTransactionEntity();
 transaction.userId = userId;
-transaction.type = PointTransactionType.PURCHASE;
-transaction.source = PointSource.PURCHASE;
+transaction.type = CreditTransactionType.PURCHASE;
+transaction.source = CreditSource.PURCHASED;
 transaction.amount = 100;
-transaction.balanceAfter = user.purchasedCredits + 100;
+transaction.balanceAfter = user.credits + 100;
 transaction.description = 'Purchased 100 credits';
 transaction.paymentId = paymentId;
 transaction.metadata = {
-  pricePerCredit: 0.1,
   originalAmount: 10,
 };
 
-// יצירת עסקת debit (שימוש בנקודות)
-const usageTransaction = new PointTransactionEntity();
+// יצירת עסקת debit (שימוש בקרדיטים)
+const usageTransaction = new CreditTransactionEntity();
 usageTransaction.userId = userId;
-usageTransaction.type = PointTransactionType.USAGE;
+usageTransaction.type = CreditTransactionType.GAME_USAGE;
+usageTransaction.source = CreditSource.FREE_DAILY;
 usageTransaction.amount = -10; // שלילי = debit
-usageTransaction.balanceAfter = user.purchasedCredits - 10;
+usageTransaction.balanceAfter = user.credits - 10;
 usageTransaction.gameHistoryId = gameHistoryId;
+usageTransaction.gameHistory = gameHistoryEntity; // קשר ל-GameHistoryEntity
 usageTransaction.metadata = {
-  difficulty: 'medium',
-  topic: 'Science',
-  requestedQuestions: 10,
+  questionsPerRequest: 10,
   gameMode: 'QUESTION_LIMITED',
   purchasedCreditsUsed: 10,
 };
@@ -458,6 +467,7 @@ usageTransaction.metadata = {
 ### קשרים
 
 - `user` (ManyToOne) → `UserEntity` (CASCADE delete) - משתמש בעל התשלום
+- `creditTransactions` (OneToMany) → `CreditTransactionEntity[]` - עסקאות קרדיטים הקשורות לתשלום זה
 
 ### דוגמאות שימוש
 
@@ -479,63 +489,6 @@ payment.completedAt = new Date();
 // עדכון מטא-דאטה
 payment.originalAmount = 10.00;
 payment.originalCurrency = 'USD';
-```
-
-## LeaderboardEntity
-
-**מיקום:** `server/src/internal/entities/leaderboard.entity.ts`
-
-**תפקיד:**
-- ייצוג דירוג בלוח תוצאות
-- שמירת מידע דירוג ספציפי (rank, percentile, וכו')
-
-### שדות
-
-**קשרים:**
-- `userId` (uuid, unique, indexed) - מזהה משתמש (ייחודי)
-- `user` (ManyToOne → UserEntity, CASCADE delete) - קשר למשתמש
-- `userStatsId` (uuid, indexed) - מזהה סטטיסטיקות משתמש
-- `userStats` (ManyToOne → UserStatsEntity, CASCADE delete) - קשר לסטטיסטיקות
-
-**דירוג:**
-- `rank` (int, indexed) - דירוג בלוח תוצאות
-- `percentile` (int, indexed) - אחוזון
-- `score` (int, indexed) - ניקוד בדירוג
-- `totalUsers` (int) - מספר משתמשים כולל
-
-**מטא-דאטה:**
-- `lastRankUpdate` (timestamp, nullable) - תאריך עדכון דירוג אחרון
-
-### אינדקסים
-
-- `userId` - unique index
-- `userStatsId` - index
-- `rank` - index
-- `percentile` - index
-- `score` - index
-
-### קשרים
-
-- `user` (ManyToOne) → `UserEntity` (CASCADE delete) - משתמש בדירוג
-- `userStats` (ManyToOne) → `UserStatsEntity` (CASCADE delete) - סטטיסטיקות משתמש
-
-### דוגמאות שימוש
-
-```typescript
-// יצירת דירוג בלוח תוצאות
-const leaderboard = new LeaderboardEntity();
-leaderboard.userId = userId;
-leaderboard.userStatsId = userStatsId;
-leaderboard.rank = 5;
-leaderboard.percentile = 95; // משתמש ב-5% העליונים
-leaderboard.score = 5000;
-leaderboard.totalUsers = 1000;
-leaderboard.lastRankUpdate = new Date();
-
-// עדכון דירוג
-leaderboard.rank = 3; // עלייה בדירוג
-leaderboard.percentile = 97;
-leaderboard.lastRankUpdate = new Date();
 ```
 
 ## Best Practices

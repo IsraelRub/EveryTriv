@@ -1,0 +1,81 @@
+# EveryTriv Project Rules - Master Reference
+
+## 🎯 How to Use These Rules
+
+This project uses multiple rule files organized by context. The AI assistant MUST:
+
+1. **Always check `.cursor/rules/react-ts.mdc`** when working with client code (`client/src/**/*.{ts,tsx}`)
+2. **Always check `.cursor/rules/nestjs.mdc`** when working with server code (`server/src/**/*.ts`)
+3. **Reference `.cursor/rules/client.mdc`** for detailed frontend patterns and conventions
+4. **Reference `.cursor/rules/server.mdc`** for detailed backend patterns and conventions
+
+## 🔍 Consistency Checks - MANDATORY
+
+Before completing any code task, verify ALL of the following:
+
+### TypeScript (CRITICAL)
+- [ ] No `any` types used
+- [ ] No `as` assertions without type guards
+- [ ] All function parameters and returns are explicitly typed
+- [ ] Types imported from correct locations (`shared/types/` for shared types)
+
+### Code Organization (CRITICAL)
+- [ ] Files are in correct directories (views/, shared/, features/, etc.)
+- [ ] File names follow naming conventions (camelCase for files, PascalCase for components)
+- [ ] Barrel exports (`index.ts`) are updated when adding new exports
+
+### Patterns (CRITICAL)
+- [ ] Components follow established patterns (View Component Pattern, Custom Hook Pattern)
+- [ ] Motion components have animation props OR are regular HTML elements
+- [ ] Services use proper error handling and logging
+- [ ] DTOs have validation decorators (server code)
+
+### Best Practices (MANDATORY)
+- [ ] No `console.log` - use `clientLogger` (client) or `logger` service (server)
+- [ ] No placeholder or example code
+- [ ] Error handling is implemented
+- [ ] Loading states are handled (client code)
+
+## 📋 Quick Reference
+
+### Client Code (`client/src/**/*.{ts,tsx}`)
+- **Primary Rules**: `.cursor/rules/react-ts.mdc` (always applies - `alwaysApply: true`)
+- **Detailed Patterns**: `.cursor/rules/client.mdc` (reference when needed)
+- **Key Rules**: TypeScript strict, functional components, hooks, motion components only with animation props
+
+### Server Code (`server/src/**/*.ts`)
+- **Primary Rules**: `.cursor/rules/nestjs.mdc` (always applies - `alwaysApply: true`)
+- **Detailed Patterns**: `.cursor/rules/server.mdc` (reference when needed)
+- **Key Rules**: TypeScript strict, thin controllers, thick services, DTO validation, dependency injection
+
+## 🚨 Critical Rules (Never Violate)
+
+1. **TypeScript**: Always use strict mode, no `any`, no `as` without type guards
+2. **Structure**: Follow project folder structure exactly
+3. **Patterns**: Follow established patterns for components, hooks, services
+4. **Animation**: Motion components ONLY with animation props
+5. **Logging**: Use logger services, never console.log
+6. **Code Quality**: No placeholder code, all code must be production-ready
+
+## 💡 Pattern Matching Strategy (MANDATORY)
+
+When writing code, ALWAYS follow this order:
+1. **First**: Search for similar existing code in the codebase using codebase_search
+2. **Second**: Follow the exact pattern found in existing code
+3. **Third**: If no similar code exists, follow the patterns in the rule files (`.cursor/rules/*.mdc`)
+4. **Always**: Verify against the checklist above before completing
+
+## 📖 Rule Files Location
+
+All detailed rules are in `.cursor/rules/`:
+- `react-ts.mdc` - React/TypeScript rules (always applies to client code)
+- `nestjs.mdc` - NestJS rules (always applies to server code)
+- `client.mdc` - Detailed frontend patterns
+- `server.mdc` - Detailed backend patterns
+
+## ⚠️ Important Notes
+
+- **Always read the AI Assistant Instructions section** at the top of each `.mdc` file
+- **Follow the checklists** provided in each rule file
+- **Pattern matching is mandatory** - always look for existing similar code first
+- **Verify consistency** using the checklist above before completing any task

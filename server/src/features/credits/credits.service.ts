@@ -4,20 +4,19 @@ import { EntityManager, Repository } from 'typeorm';
 
 import {
 	CREDIT_PURCHASE_PACKAGES,
+	CreditSource,
 	CreditTransactionType,
 	ERROR_CODES,
 	GameMode,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
-	UserRole,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
-import { calculateNewBalance, calculateRequiredCredits, ensureErrorObject } from '@shared/utils';
+import { calculateNewBalance, calculateRequiredCredits, ensureErrorObject, getErrorMessage } from '@shared/utils';
 import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@shared/utils/domain';
 import { validateInputContent } from '@shared/validation';
 
-import { CreditSource } from '@internal/constants';
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -158,8 +157,8 @@ export class CreditsService {
 				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Admin users can always play without credits
-			if (user.role === UserRole.ADMIN) {
+			// Users with NULL credits (admins) can always play without credits
+			if (user.credits === null) {
 				return { canPlay: true };
 			}
 
@@ -253,8 +252,8 @@ export class CreditsService {
 					throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
 				}
 
-				// Re-check admin status (shouldn't change, but defensive)
-				if (user.role === UserRole.ADMIN) {
+				// Users with NULL credits (admins) don't need credit deduction
+				if (user.credits === null) {
 					const nextResetTime = user.lastFreeQuestionsReset
 						? new Date(user.lastFreeQuestionsReset).toISOString()
 						: null;
@@ -352,7 +351,7 @@ export class CreditsService {
 							? CreditSource.PURCHASED
 							: CreditSource.FREE_DAILY,
 					amount: -totalCreditsDeducted,
-					balanceAfter: updatedUser.credits,
+					balanceAfter: updatedUser.credits ?? 0,
 					freeQuestionsAfter: updatedUser.remainingFreeQuestions,
 					purchasedCreditsAfter: updatedUser.purchasedCredits,
 					description: reason
@@ -382,12 +381,7 @@ export class CreditsService {
 				});
 
 				// Invalidate credits cache (outside transaction for performance)
-				this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(userId)).catch(error => {
-					logger.cacheError('Failed to invalidate credits cache', SERVER_CACHE_KEYS.CREDITS.BALANCE(userId), {
-						errorInfo: { message: String(error) },
-						userId,
-					});
-				});
+				this.invalidateCreditsCacheAsync(userId);
 
 				const finalCredits = updatedUser.credits ?? 0;
 				const finalPurchasedCredits = updatedUser.purchasedCredits ?? 0;
@@ -413,35 +407,6 @@ export class CreditsService {
 				userId,
 				questionsPerRequest,
 				gameMode,
-			});
-			throw error;
-		}
-	}
-
-	async getCreditHistory(userId: string, limit: number = 50): Promise<CreditTransactionEntity[]> {
-		try {
-			const userValidation = await validateInputContent(userId);
-			if (!userValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
-			}
-
-			// Validate limit
-			if (!limit || limit < 1 || limit > 100) {
-				throw new BadRequestException(ERROR_CODES.LIMIT_OUT_OF_RANGE);
-			}
-
-			const transactions = await this.creditTransactionRepository.find({
-				where: { userId },
-				order: { createdAt: 'DESC' },
-				take: limit,
-			});
-
-			return transactions;
-		} catch (error) {
-			logger.databaseError(ensureErrorObject(error), {
-				contextMessage: 'Failed to get credit history',
-				userId,
-				limit,
 			});
 			throw error;
 		}
@@ -484,7 +449,7 @@ export class CreditsService {
 				type: CreditTransactionType.PURCHASE,
 				source: CreditSource.PURCHASED,
 				amount: credits,
-				balanceAfter: user.credits,
+				balanceAfter: user.credits ?? 0,
 				freeQuestionsAfter: user.remainingFreeQuestions,
 				purchasedCreditsAfter: user.purchasedCredits,
 				description: `Credits purchase: ${credits} credits`,
@@ -552,5 +517,19 @@ export class CreditsService {
 			});
 			throw error;
 		}
+	}
+
+	private invalidateCreditsCacheAsync(userId: string): void {
+		const handleInvalidation = async () => {
+			try {
+				await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(userId));
+			} catch (error) {
+				logger.cacheError('Failed to invalidate credits cache', SERVER_CACHE_KEYS.CREDITS.BALANCE(userId), {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+				});
+			}
+		};
+		handleInvalidation();
 	}
 }

@@ -3,18 +3,9 @@ import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 import { DifficultyLevel, GameMode } from '@shared/constants';
-import type { GameDifficulty, QuestionData } from '@shared/types';
+import type { AnswerHistory, GameDifficulty } from '@shared/types';
 
 export class SaveGameHistoryDto {
-	@ApiProperty({
-		description: 'User ID',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@IsString()
-	@IsUUID()
-	@IsNotEmpty()
-	userId!: string;
-
 	@ApiProperty({
 		description: 'Game score',
 		example: 100,
@@ -93,7 +84,7 @@ export class SaveGameHistoryDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => Object)
-	questionsData!: QuestionData[];
+	answerHistory!: AnswerHistory[];
 
 	@ApiProperty({
 		description: 'Client mutation ID for idempotency (required)',

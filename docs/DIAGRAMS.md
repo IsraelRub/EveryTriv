@@ -613,6 +613,8 @@ erDiagram
     USERS ||--o{ PAYMENT_HISTORY : "makes"
     USERS ||--o{ CREDIT_TRANSACTIONS : "transacts"
     USERS ||--o{ LEADERBOARD : "ranks"
+    PAYMENT_HISTORY ||--o{ CREDIT_TRANSACTIONS : "generates"
+    GAME_HISTORY ||--o{ CREDIT_TRANSACTIONS : "triggers"
 
     USERS {
         uuid id PK
@@ -696,13 +698,16 @@ erDiagram
         uuid id PK
         uuid user_id FK
         string transaction_type
+        string source
         int credits_amount
         int balance_after
         string description
-        string reference_id
-        string reference_type
+        uuid game_history_id FK
+        string payment_id FK
         jsonb metadata
+        date transaction_date
         timestamp created_at
+        timestamp updated_at
     }
 
     LEADERBOARD {

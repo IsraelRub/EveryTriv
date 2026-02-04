@@ -37,5 +37,4 @@ export enum StorageOperation {
 	SET_TTL = 'setTTL',
 	GET_TTL = 'getTTL',
 	INVALIDATE_PATTERN = 'invalidatePattern',
-	INVALIDATE_ON_STORAGE_CHANGE = 'invalidateOnStorageChange',
 }

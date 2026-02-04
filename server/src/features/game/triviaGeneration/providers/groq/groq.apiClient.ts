@@ -113,7 +113,12 @@ export class GroqApiClient {
 
 				// Handle non-OK responses
 				if (!response.ok) {
-					const errorText = await response.text().catch(() => ERROR_MESSAGES.general.UNKNOWN_ERROR);
+					let errorText: string;
+					try {
+						errorText = await response.text();
+					} catch {
+						errorText = ERROR_MESSAGES.general.UNKNOWN_ERROR;
+					}
 					const errorMessage = `${this.providerName} API returned ${response.status} ${response.statusText}: ${errorText}`;
 
 					// Log detailed error info for debugging

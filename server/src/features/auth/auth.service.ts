@@ -11,7 +11,7 @@ import type { ChangePasswordData, UserData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
-import { CacheService, StorageService } from '@internal/modules';
+import { CacheInvalidationService, CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import { createNotFoundError } from '@internal/utils';
 
@@ -26,6 +26,7 @@ export class AuthService {
 		private readonly jwtTokenService: JwtTokenService,
 		private readonly passwordService: PasswordService,
 		private readonly cacheService: CacheService,
+		private readonly cacheInvalidationService: CacheInvalidationService,
 		private readonly storageService: StorageService
 	) {}
 
@@ -70,6 +71,9 @@ export class AuthService {
 
 		const hashedPassword = await this.passwordService.hashPassword(registerDto.password);
 
+		// Admin users don't need credits - they have unlimited access
+		const isAdmin = roleForNewUser === UserRole.ADMIN;
+
 		const user = this.userRepository.create({
 			email: registerDto.email,
 			passwordHash: hashedPassword,
@@ -77,9 +81,19 @@ export class AuthService {
 			lastName: registerDto.lastName,
 			role: roleForNewUser,
 			isActive: true,
+			credits: isAdmin ? null : undefined, // NULL for admin (not applicable), default (100) for regular users
+			purchasedCredits: 0,
+			dailyFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions
+			remainingFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions
 		});
 
 		const savedUser = await this.userRepository.save(user);
+
+		try {
+			await this.cacheInvalidationService.invalidateOnUserCreated();
+		} catch (e) {
+			logger.cacheError('invalidateOnUserCreated', 'auth.register', { errorInfo: { message: getErrorMessage(e) } });
+		}
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
@@ -259,7 +273,7 @@ export class AuthService {
 		} catch (error) {
 			logger.authError('Failed to clear user cache on logout', {
 				userId,
-				errorInfo: { message: String(error) },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 		}
 
@@ -271,7 +285,7 @@ export class AuthService {
 		} catch (error) {
 			logger.authError('Failed to clear user session data on logout', {
 				userId,
-				errorInfo: { message: String(error) },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 		}
 
@@ -343,6 +357,12 @@ export class AuthService {
 			logger.systemInfo('User created from Google profile', {
 				userId: savedUser.id,
 			});
+
+			try {
+				await this.cacheInvalidationService.invalidateOnUserCreated();
+			} catch (e) {
+				logger.cacheError('invalidateOnUserCreated', 'auth.google', { errorInfo: { message: getErrorMessage(e) } });
+			}
 
 			const verifyUser = await this.userRepository.findOne({
 				where: { id: savedUser.id },
@@ -518,6 +538,11 @@ export class AuthService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
+			try {
+				await this.cacheInvalidationService.invalidateOnUserCreated();
+			} catch (e) {
+				logger.cacheError('invalidateOnUserCreated', 'auth.createUser', { errorInfo: { message: getErrorMessage(e) } });
+			}
 			return savedUser;
 		} catch (error) {
 			logger.authError('Failed to create user', {
@@ -547,6 +572,13 @@ export class AuthService {
 			});
 
 			const savedUser = await this.userRepository.save(user);
+			try {
+				await this.cacheInvalidationService.invalidateOnUserCreated();
+			} catch (e) {
+				logger.cacheError('invalidateOnUserCreated', 'auth.createGoogleUser', {
+					errorInfo: { message: getErrorMessage(e) },
+				});
+			}
 			return savedUser;
 		} catch (error) {
 			logger.authError('Failed to create Google user', {

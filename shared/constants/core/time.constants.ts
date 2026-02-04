@@ -31,9 +31,20 @@ export const TIME_DURATIONS_SECONDS = {
 } as const;
 
 // Time periods in milliseconds
-export const TIME_PERIODS_MS = Object.fromEntries(
+// First, convert seconds-based durations to milliseconds
+const millisecondsFromSeconds = Object.fromEntries(
 	Object.entries(TIME_DURATIONS_SECONDS).map(([key, value]) => [key, value * 1000])
-) as {
+);
+
+// Add very short durations in milliseconds (for delays, retries, etc.)
+export const TIME_PERIODS_MS = {
+	...millisecondsFromSeconds,
+	// Very short durations in milliseconds (for delays, retries, exponential backoff)
+	FIFTY_MILLISECONDS: 50,
+	HUNDRED_MILLISECONDS: 100,
+	TWO_HUNDRED_MILLISECONDS: 200,
+	FOUR_HUNDRED_MILLISECONDS: 400,
+} as {
 	readonly SECOND: number;
 	readonly TWO_SECONDS: number;
 	readonly THREE_SECONDS: number;
@@ -52,4 +63,8 @@ export const TIME_PERIODS_MS = Object.fromEntries(
 	readonly WEEK: number;
 	readonly MONTH: number;
 	readonly YEAR: number;
+	readonly FIFTY_MILLISECONDS: number;
+	readonly HUNDRED_MILLISECONDS: number;
+	readonly TWO_HUNDRED_MILLISECONDS: number;
+	readonly FOUR_HUNDRED_MILLISECONDS: number;
 };

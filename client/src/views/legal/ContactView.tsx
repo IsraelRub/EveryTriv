@@ -1,8 +1,8 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lucide-react';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
+import { delay } from '@shared/utils';
 
 import { ButtonSize, SpinnerSize } from '@/constants';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Textarea } from '@/components';
@@ -23,7 +23,7 @@ export function ContactView() {
 		setIsSubmitting(true);
 
 		// Simulate form submission
-		await new Promise(resolve => setTimeout(resolve, TIME_PERIODS_MS.SECOND));
+		await delay(TIME_PERIODS_MS.SECOND);
 
 		setIsSubmitting(false);
 		setIsSubmitted(true);
@@ -49,8 +49,8 @@ export function ContactView() {
 	};
 
 	return (
-		<motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className='min-h-screen py-12 px-4'>
-			<div className='max-w-6xl mx-auto space-y-8'>
+		<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 lg:pb-8 px-4 animate-fade-in-up-simple'>
+			<div className='max-w-6xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8 overflow-y-auto'>
 				<Card>
 					<CardHeader>
 						<div className='flex items-center gap-3 mb-2'>
@@ -217,7 +217,7 @@ export function ContactView() {
 										<Button type='submit' size={ButtonSize.LG} className='w-full' disabled={isSubmitting}>
 											{isSubmitting ? (
 												<>
-													<Spinner size={SpinnerSize.SM} variant='loader' className='mr-2' />
+													<Spinner size={SpinnerSize.SM} className='mr-2' />
 													Sending...
 												</>
 											) : (
@@ -234,6 +234,6 @@ export function ContactView() {
 					</CardContent>
 				</Card>
 			</div>
-		</motion.main>
+		</main>
 	);
 }

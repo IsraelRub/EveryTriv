@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, TIME_PERIODS_MS } from '@shared/constants';
 import type { GameDifficulty, SubmitAnswerToSessionParams, TriviaRequest } from '@shared/types';
-import { extractValidationErrors, getErrorMessage, isRecord } from '@shared/utils';
+import { extractValidationErrors, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
+
+type TriviaRequestWithOptionalSignal = TriviaRequest & { signal?: AbortSignal };
 
 import { QUERY_KEYS } from '@/constants';
 import { gameHistoryService, gameService, clientLogger as logger, queryInvalidationService } from '@/services';
@@ -23,13 +25,32 @@ export const useTriviaQuestionMutation = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (request: TriviaRequest) => gameService.getTrivia(request),
+		mutationFn: (request: TriviaRequestWithOptionalSignal) => gameService.getTrivia(request),
 		onSuccess: (data, request) => {
-			// Cache the result for potential reuse
-			queryClient.setQueryData(QUERY_KEYS.trivia.question(request), data);
+			// Cache the result for potential reuse - strip signal for cache key (not serializable)
+			const { signal: _signal, ...cacheRequest } = request;
+			queryClient.setQueryData(QUERY_KEYS.trivia.question(cacheRequest), data);
 		},
 		onError: (error: unknown) => {
 			const message = getErrorMessage(error);
+
+			// Check if error is an abort/cancellation error - these are expected and shouldn't be logged as errors
+			const isAbortError =
+				message === 'Request was cancelled' ||
+				message.includes('aborted') ||
+				message === 'signal is aborted without reason' ||
+				(isRecord(error) &&
+					'statusCode' in error &&
+					error.statusCode === 0 &&
+					hasProperty(error, 'details') &&
+					isRecord(error.details) &&
+					error.details.error === 'Request was cancelled');
+
+			// Skip logging abort errors - they're expected when React Query cancels previous requests
+			if (isAbortError) {
+				return;
+			}
+
 			const validationErrors = extractValidationErrors(error);
 
 			let statusCode: number | undefined;

@@ -1,51 +1,365 @@
 ---
-description: "הנחיות מותאמות לפרונט React במונורפו EveryTriv"
+description: "Comprehensive React frontend guidelines for EveryTriv monorepo"
 globs:
-  - client/**\/*.{ts,tsx}
+  - client/**/*.{ts,tsx}
+  - client/**/*.css
 alwaysApply: false
 ---
 
-# הוראות React מותאמות לפרויקט
+# React Frontend Guidelines for EveryTriv
 
-## מבנה ותיקיות
-- כל קוד המקור ממוקם ב-`client/src`.
-- ארגון לפי מאפיינים: `views/`, `shared/`, `redux/`, `assets/`, `styles/`.
-- רכיבים יש לשכן קרוב לצרכנים שלהם; רכיבים משותפים עוברים ל-`shared/components`.
-- קוד משותף מגיע מתיקיית המונורפו `shared/` דרך Barrel exports.
-- שמות קבצים camelCase בלבד.
+## 🤖 AI Assistant Instructions
 
-## TypeScript
-- הפרויקט פועל עם `"strict": true`; אין לשנות.
-- אין שימוש ב-`any`, `unknown`, או `as`; יש להגדיר טיפוסים מלאים.
-- כל props והחזרות פונקציות מטופסים במפורש.
-- טיפוסים משותפים נמצאים ב-`shared/types/<topic>` ומיובאים משם בלבד.
+**CRITICAL: This file contains detailed patterns and conventions. Reference it when:**
+- Creating new components, hooks, or services
+- Organizing code structure
+- Implementing state management
+- Adding animations
+- Setting up routing
 
-## רכיבים והוקים
-- רכיבים פונקציונליים בלבד עם Hooks; אין מחלקות.
-- לרכז לוגיקה עסקית ב-Hooks מותאמים; כל הוק חדש חייב שימוש מיידי.
-- להוסיף Error Boundaries ייעודיים היכן שנדרש.
-- לא לשכפל לוגיקה בין רכיבים; להעביר ל-`shared` בעת הצורך.
-- אין קוד דוגמה או Placeholder.
+### When to Reference This File
+- ✅ Creating new views/components → Check Component Patterns section
+- ✅ Creating custom hooks → Check Hooks section
+- ✅ Adding animations → Check Animation Components section
+- ✅ Setting up data fetching → Check Data Fetching Patterns section
+- ✅ Organizing constants → Check Constants Organization section
+- ✅ Implementing services → Check Services & Infrastructure section
+- ✅ Adding or editing custom CSS (`index.css`, `styles/global.css`) → Check Stylelint (CSS Linting) under Styling Patterns
 
-## סטייט וניהול נתונים
-- Redux Toolkit משמש לניהול גלובלי; ערכים מקומיים נשמרים ב-`useState`.
-- חיבור לשרת דרך שירותי API מתחת ל-`shared/services`.
-- טעינות, שגיאות והודעות מערכת מנוהלות במפורש.
-- שימוש ב-React Query מותר רק כאשר יש ניהול מצב שרת.
+### Pattern Matching
+**ALWAYS** look for existing similar code in the codebase and follow the same pattern. If you find:
+- Similar component → Follow its structure
+- Similar hook → Follow its return pattern
+- Similar service → Follow its error handling pattern
+- Similar constant file → Follow its export pattern
 
-## כלים ותזרים עבודה
-- להשתמש ב-`pnpm` בלבד; אין chained commands ב-PowerShell.
-- לעדכן barrel exports בכל הוספת רכיב או טיפוס משותף.
-- שילוב אנימציות ורכיבי UI מתבצע באמצעות הקבצים הקיימים (אין הוספת ספריות לא מאושרות).
+## 📁 Project Structure
 
-## בדיקות ואבטחה
-- בדיקות יחידה עם Vitest ו-React Testing Library.
-- Mock של קריאות API ושל Redux Store במידת הצורך.
-- קלטי משתמש עוברים ניקוי; אין הזרקת HTML.
-- לקרוא סיסמאות וערכים רגישים רק מקונפיג של סביבה.
+- All source code must reside under `client/src/`.
+- Feature-based organization: `views/`, `shared/`, `redux/`, `assets/`, `styles/`.
+- Components should be placed close to their consumers; shared components go to `shared/components/`.
+- Shared code comes from monorepo `shared/` directory via barrel exports.
+- File names must be camelCase only (e.g., `answerButton.tsx`, `gameSessionView.tsx`).
 
-## סגנון וקונבנציות
-- CamelCase לשמות משתנים ופונקציות; PascalCase לרכיבים.
-- קבועים ב-UpperCase ומנוהלים ב-`shared/constants`.
-- JSDoc עבור לוגיקה מורכבת, במיוחד ב-hooks.
-- ייבוא דרך barrels (`index.ts`) במקום מסלולי קבצים עמוקים.
+## 🔧 TypeScript
+
+- Project operates with `"strict": true`; do not change this.
+- No use of `any`, `unknown`, or `as` assertions; define complete types and use type guards.
+- All props and function returns must be explicitly typed.
+- Shared types are located in `shared/types/<topic>/` and imported from there only.
+- Use proper type imports/exports with explicit type-only imports when needed: `import type { ... }`.
+
+## 🎨 Component Design
+
+- Functional components with hooks only; no class components.
+- Keep components focused and reusable.
+- Use proper prop typing with interfaces or types.
+- Implement proper error boundaries where needed.
+- Use React.memo for performance optimization when appropriate.
+- Centralize business logic in custom hooks; every new hook must have immediate usage.
+- Do not duplicate logic across components; move to `shared/` when needed.
+- No placeholder or example code—only production-ready implementations.
+
+## 🪝 Hooks
+
+### Custom Hooks Organization
+- Domain hooks: `hooks/<domain>/` (e.g., `hooks/game/`, `hooks/auth/`)
+- UI hooks: `hooks/ui/` (e.g., `useNavigationAnalytics`, `useCountUp`)
+- Infrastructure hooks: `hooks/` root (e.g., `useRedux`, `useAppInitialization`)
+
+### Hook Patterns
+- Always prefix custom hooks with `use` (e.g., `useGameSession`, `useMultiplayer`)
+- Export hooks through barrel files (`hooks/index.ts`)
+- Hooks should return objects with named properties, not tuples (unless following React Query patterns)
+- Use `useCallback` and `useMemo` appropriately to prevent unnecessary re-renders
+- Every hook must have an immediate consumer before committing
+
+### Example Hook Structure
+```tsx
+export const useGameSession = () => {
+  const dispatch = useAppDispatch();
+  const gameState = useAppSelector(selectGameState);
+  
+  const startGame = useCallback((config: GameConfig) => {
+    // Implementation
+  }, [dispatch]);
+  
+  return {
+    gameState,
+    startGame,
+    // ... other methods
+  };
+};
+```
+
+## 📦 State Management
+
+- **Redux Toolkit** for global application state
+- **Local state** (`useState`) for UI-only state
+- **React Query** (`@tanstack/react-query`) for server state management
+- Connection to server through API services under `shared/services/`
+- Loading, error, and system messages must be explicitly managed
+- Use React Query only when managing server state
+
+### Redux Patterns
+- Slices organized by domain: `redux/slices/<domain>Slice.ts`
+- Selectors in `redux/selectors.ts` with `select` prefix
+- Use typed hooks: `useAppDispatch`, `useAppSelector`
+- Persist state using `redux-persist` when needed (game session, user preferences)
+
+## 🎬 Animation Components (framer-motion)
+
+### When to Use `motion.*` Components
+
+Use `motion.*` components (e.g., `motion.div`, `motion.span`, `motion.button`) **ONLY** when:
+1. **Animation props are present**: `initial`, `animate`, `transition`, `exit`
+2. **Interactive animations**: `whileHover`, `whileTap`, `whileFocus`, `whileDrag`
+3. **Layout animations**: `layout`, `layoutId`
+4. **Gesture handlers**: `onDrag`, `onPan`, etc.
+
+### When to Use Regular HTML Elements
+
+Use regular HTML elements (`<div>`, `<span>`, `<button>`, etc.) when:
+1. **No animation needed**: Static content without any animation props
+2. **CSS-only animations**: Use Tailwind classes or CSS transitions instead
+3. **Performance**: Avoid unnecessary motion component overhead for static elements
+
+### Best Practices
+
+- **Never wrap static content** in `motion.*` components without animation props
+- **Prefer regular elements** for static text, labels, and non-interactive content
+- **Use motion components** only for elements that actually animate or have gesture interactions
+- **Keep animations purposeful**: Don't add motion components "just in case" - add them when needed
+- Use animation constants from `@/constants` (e.g., `ANIMATION_DELAYS`, `SPRING_CONFIGS`)
+
+### Examples
+
+✅ **Correct**:
+```tsx
+// Static content - use regular element
+<span className='text-primary'>{text}</span>
+
+// Animated icon - use motion component
+<motion.span
+  initial={{ scale: 0 }}
+  animate={{ scale: 1 }}
+  transition={SPRING_CONFIGS.ICON_SPRING}
+>
+  <Icon />
+</motion.span>
+```
+
+❌ **Incorrect**:
+```tsx
+// Wrapping static content unnecessarily
+<motion.div>
+  <span>Static text</span>
+</motion.div>
+
+// Motion component without animation props
+<motion.span className='text-primary'>{text}</motion.span>
+```
+
+## 🛠 Services & Infrastructure
+
+### Service Organization
+- Infrastructure services: `services/infrastructure/` (e.g., `api.service.ts`, `audio.service.ts`, `queryClient.service.ts`)
+- Domain services: `services/domain/` (e.g., `game.service.ts`, `analytics.service.ts`)
+- All services exported through `services/index.ts`
+
+### API Service Patterns
+- Use `apiService` from `services/infrastructure/api.service.ts` for all HTTP requests
+- Services should return typed responses
+- Handle errors consistently using error utilities from `@shared/utils`
+- Use React Query mutations and queries for server state
+
+### Logging
+- Use `clientLogger` from `services/infrastructure/logger.service.ts`
+- Never use `console.log` in production code
+- Use appropriate log levels: `logger.userInfo`, `logger.userError`, `logger.systemError`, etc.
+
+## 📊 Constants Organization
+
+### Structure
+- Core UI constants: `constants/core/ui/` (e.g., `navigation.constants.ts`, `animation.constants.ts`)
+- Domain constants: `constants/domain/` (e.g., `game.constants.ts`, `game-state.constants.ts`)
+- Infrastructure constants: `constants/infrastructure/` (e.g., `query.constants.ts`, `storage.constants.ts`)
+
+### Naming Conventions
+- Constants in UPPER_CASE: `ROUTES`, `ANIMATION_DELAYS`, `SPRING_CONFIGS`
+- Export through barrel files: `constants/index.ts`
+- Use `as const` for type safety when appropriate
+
+## 🧩 Component Patterns
+
+### View Components
+- Located in `views/<feature>/`
+- Named with `View` suffix: `GameSessionView`, `HomeView`, `StatisticsView`
+- Handle routing, data fetching, and high-level orchestration
+- Delegate UI rendering to smaller components
+
+### Shared Components
+- Located in `shared/components/` or `components/`
+- Reusable across multiple features
+- Should be generic and configurable via props
+- Export through barrel files
+
+### Component Composition
+- Prefer composition over inheritance
+- Use compound components pattern when appropriate (e.g., `Dialog`, `DialogContent`, `DialogHeader`)
+- Keep components small and focused (single responsibility)
+
+### Radix UI vs Native Elements
+
+**Where Radix is used:** Only inside `components/ui/`. Views and feature components must **never** import directly from `@radix-ui/*`; they use the wrapped components from `@/components`.
+
+**Use Radix-based components (from `@/components`) when you need:**
+
+| Use case | Component | Reason |
+|----------|-----------|--------|
+| Single choice from a list (dropdown) | `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectValue` | Consistent styling, accessibility, keyboard, no native `<select>` |
+| Modal / overlay dialog | `Dialog`, `AlertDialog` | Focus trap, escape key, ARIA |
+| Confirmation (destructive action) | `AlertDialog` | Semantic and accessible |
+| Tabs (switch content) | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Keyboard, ARIA |
+| Checkbox / radio | `Checkbox`, `RadioGroup` | Styling, accessibility |
+| Dropdown menu (actions) | `DropdownMenu` and subcomponents | Not for “select one value”; for action menus |
+| Slider, progress | `Slider`, `Progress` | Styling and behavior |
+| Toast notifications | `Toast`, `Toaster` | Accessible, dismissible |
+| Label / form association | `Label` (with `Input` / `Select`) | Accessibility |
+| Separator, avatar | `Separator`, `Avatar` | Consistent primitives |
+
+**Use native-based components (from `@/components`) when:**
+
+| Use case | Component | Reason |
+|----------|-----------|--------|
+| Single-line text input | `Input` | Radix has no generic input primitive; native `<input>` with shared styling |
+| Multi-line text | `Textarea` | Same; native `<textarea>` with shared styling |
+| Number with stepper | `NumberInput` (wraps `Input`) | Built on native input |
+
+**Consistency: when wrap, when native, when no Radix**
+
+| Category | Pattern | Radix? | Wrap? | Examples |
+|----------|----------|--------|-------|----------|
+| **Wrap Radix** | Overlay / selection / complex control | Yes | Yes – wrap primitive in `components/ui`, add styling | Select, Dialog, AlertDialog, Tabs, DropdownMenu, Checkbox, RadioGroup, Slider, Progress, Toast, Label, Separator, Avatar |
+| **Native (no wrap)** | Text input – Radix has no primitive | No | No – native element with shared styling | Input (`<input>`), Textarea (`<textarea>`), NumberInput (wraps Input) |
+| **No Radix** | Presentational / layout only | No | No – custom React component | Card, Badge, Alert, Table, Skeleton, Spinner, EmptyState, ErrorBoundary, BackgroundAnimation |
+
+- **Wrap** = our component renders a Radix primitive (e.g. `<SelectPrimitive.Trigger className={...} />`) and re-exports it.
+- **Native** = our component renders a native HTML element with `className` / props; no Radix.
+- **No Radix** = our component is pure React + DOM/CSS; no Radix, no native form control.
+
+**Rules:**
+
+1. **No direct Radix in views/features** – Use only exports from `@/components` (e.g. `Select`, `Dialog`, not `@radix-ui/react-select`).
+2. **New overlays/controls** – If you need a new pattern (e.g. tooltip, switch), add a Radix-based wrapper under `components/ui/`, style it to match the design system, then export and use from `@/components`.
+3. **“All” / empty value in Select** – Radix Select does not allow `value=""` on `SelectItem`. Use a sentinel value (e.g. `__all__`) and map it in state to `null` or “no filter”.
+4. **Consistency** – Prefer existing Radix-based components over new native elements for selection, dialogs, menus, and tabs so behavior and accessibility stay consistent.
+
+## 🔄 Data Fetching Patterns
+
+### React Query Usage
+- Use `useQuery` for fetching data
+- Use `useMutation` for mutations
+- Query keys defined in `constants/infrastructure/query.constants.ts`
+- Prefetch data when possible using `prefetchCommonQueries` or `prefetchAuthenticatedQueries`
+
+### Example Pattern
+```tsx
+const { data, isLoading, error } = useQuery({
+  queryKey: QUERY_KEYS.game.history(userId),
+  queryFn: () => gameService.getHistory(userId),
+  enabled: !!userId,
+});
+```
+
+### Refresh & invalidation
+- Domain-level invalidation: use `queryInvalidationService` (e.g. `invalidateAuthQueries`, `invalidateUserQueries`, `invalidateCreditsQueries`, `invalidateGameQueries`, `invalidateAfterGameComplete`). Avoid direct `queryClient.invalidateQueries` except for ad-hoc cases.
+- Refresh buttons: use the shared `RefreshButton` (see `components/ui/button.tsx`); icon always visible, spins when loading. Use `Spinner` (`Loader2`) for initial load, form submit, or processing.
+- **refetchOnMount**: Use `false` when data is loaded "on the side" (e.g. GameSettingsForm analytics) or when polling/invalidation is sufficient. Use `true` / `'always'` when the primary view depends on the data and should stay fresh on mount.
+- Full policy: see `docs/frontend/REFRESH_INVALIDATION.md`.
+
+## 🎯 Routing Patterns
+
+### Route Definitions
+- Routes defined in `constants/core/ui/navigation.constants.ts` as `ROUTES` object
+- Use `ProtectedRoute` wrapper for authenticated routes
+- Use `PublicRoute` wrapper for routes that redirect if authenticated
+- Use `ModalRouteWrapper` for modal-based routes
+
+### Navigation
+- Use `useNavigate` from `react-router-dom`
+- Use `NavLink` component for navigation links with active state
+- Track navigation analytics using `useNavigationAnalytics` hook
+
+## 🎨 Styling Patterns
+
+### Tailwind CSS
+- Use Tailwind utility classes for styling
+- Custom colors and themes defined in `tailwind.config.js`
+- Use `cn()` utility for conditional class names
+- Prefer Tailwind classes over inline styles
+
+### Component Variants
+- Use `class-variance-authority` (cva) for component variants
+- Define variants in component files or separate variant files
+- Example: `buttonVariants`, `answerButtonVariants`
+
+### Stylelint (CSS Linting)
+- Use **Stylelint** for linting custom CSS (`client/src/index.css`, `client/src/styles/global.css`).
+- Run Stylelint as a **standalone** tool (e.g. `pnpm run lint:css`), **not** as an ESLint plugin.
+- Config must allow Tailwind at-rules: `@tailwind`, `@layer`, `@apply` (e.g. `at-rule-no-unknown` overrides).
+- When adding or changing custom CSS, run Stylelint and fix reported issues.
+- Prefer `stylelint-config-standard` with Tailwind-compatible overrides; use `stylelint-config-prettier` if CSS is also formatted by Prettier.
+
+## 🧪 Testing
+
+- Unit tests with Vitest and React Testing Library
+- Test hooks independently
+- Mock API calls and Redux store when needed
+- Test user interactions, not implementation details
+
+## 🔐 Security
+
+- Sanitize user inputs
+- Use environment variables for sensitive data
+- Implement proper authentication handling
+- Use HTTPS for API calls
+- Validate data from APIs
+
+## 🛠 Tooling & Workflow
+
+- Use `pnpm` exclusively for all commands
+- Run compound PowerShell commands separately (no `&&` chaining support)
+- Update barrel exports (`index.ts`) when adding or renaming files
+- Integration of animations and UI components done through existing files (no unauthorized library additions)
+
+## 📝 Code Style
+
+- **PascalCase** for components and types: `GameSessionView`, `AnswerButtonProps`
+- **camelCase** for variables and functions: `handleClick`, `gameState`
+- **UPPER_CASE** for constants: `ROUTES`, `ANIMATION_DELAYS`
+- **camelCase** for file names: `gameSessionView.tsx`, `answerButton.tsx`
+- Add JSDoc comments for complex logic, especially in hooks
+- Import through barrels (`index.ts`) instead of deep relative paths
+
+## 🚀 Performance Optimization
+
+- Lazy load routes and components using `React.lazy()` and `Suspense`
+- Use proper `key` props in lists
+- Optimize re-renders with `React.memo`, `useMemo`, `useCallback`
+- Use proper image formats and sizes
+- Implement proper caching strategies
+- Use React Query's built-in caching for server state
+
+## 📚 Best Practices Summary
+
+1. **Type Safety**: Always use explicit types, avoid `any` and `as` assertions
+2. **Component Size**: Keep components small and focused
+3. **Code Reuse**: Extract shared logic to hooks or utilities
+4. **State Management**: Use Redux for global state, React Query for server state, local state for UI
+5. **Error Handling**: Always handle errors explicitly with proper user feedback
+6. **Performance**: Optimize re-renders and lazy load when appropriate
+7. **Accessibility**: Ensure proper ARIA labels and keyboard navigation
+8. **Documentation**: Document complex logic with JSDoc comments
+9. **Testing**: Write tests for critical business logic
+10. **Consistency**: Follow existing patterns and conventions in the codebase

@@ -173,13 +173,51 @@ export const BASIC_TOPICS = [GAME_STATE_DEFAULTS.TOPIC, 'Science', 'History', 'G
 
 export enum GameStatus {
 	IN_PROGRESS = 'in_progress',
+	COMPLETED = 'completed',
 }
 
-export enum TriviaQuestionSource {
-	AI = 'ai',
+export const VALID_GAME_STATUSES = new Set<string>(Object.values(GameStatus));
+
+export enum TimerMode {
+	COUNTDOWN = 'countdown',
+	ELAPSED = 'elapsed',
 }
 
-export const ALLOWED_TRIVIA_SOURCES = Object.values(TriviaQuestionSource);
+export const VALID_TIMER_MODES = Object.values(TimerMode);
+export const VALID_TIMER_MODES_SET = new Set<string>(VALID_TIMER_MODES);
+
+export enum AchievementCategory {
+	ENGAGEMENT = 'Engagement',
+	PERFORMANCE = 'Performance',
+	KNOWLEDGE = 'Knowledge',
+}
+
+export const VALID_ACHIEVEMENT_CATEGORIES = new Set<string>(Object.values(AchievementCategory));
+
+export enum AchievementSortBy {
+	POINTS = 'points',
+	NAME = 'name',
+	CATEGORY = 'category',
+}
+
+export const VALID_ACHIEVEMENT_SORT_BY = Object.values(AchievementSortBy);
+
+export enum AchievementIconName {
+	GAMEPAD_ICON = 'GamepadIcon',
+	TROPHY = 'Trophy',
+	AWARD = 'Award',
+	MEDAL = 'Medal',
+	CROWN = 'Crown',
+	FLAME = 'Flame',
+	ZAP = 'Zap',
+	STAR = 'Star',
+	GRADUATION_CAP = 'GraduationCap',
+	TARGET = 'Target',
+	BOOK_OPEN = 'BookOpen',
+}
+
+export const VALID_ACHIEVEMENT_ICON_NAMES = Object.values(AchievementIconName);
+export const VALID_ACHIEVEMENT_ICON_NAMES_SET = new Set<string>(VALID_ACHIEVEMENT_ICON_NAMES);
 
 export enum ProviderStatus {
 	ACTIVE = 'active',
@@ -187,23 +225,14 @@ export enum ProviderStatus {
 	UNHEALTHY = 'unhealthy',
 }
 
-export const GROQ_DEFAULT_MODEL = 'gpt-oss-20b';
+export const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
 
-export const GROQ_FREE_TIER_MODELS = ['gpt-oss-20b', 'llama-3.1-8b-instant'] as const;
+export const GROQ_FREE_TIER_MODELS = ['llama-3.1-8b-instant'] as const;
 
 export const GROQ_MODELS: Record<
 	string,
 	{ priority: number; cost: number; name: string; rateLimit?: { requestsPerMinute: number; requestsPerDay?: number } }
 > = {
-	'gpt-oss-20b': {
-		priority: 1,
-		cost: 0,
-		name: 'gpt-oss-20b',
-		rateLimit: {
-			requestsPerMinute: 8,
-			requestsPerDay: 1000,
-		},
-	},
 	'llama-3.1-8b-instant': {
 		priority: 1,
 		cost: 0,
@@ -213,15 +242,44 @@ export const GROQ_MODELS: Record<
 			requestsPerDay: 14400,
 		},
 	},
-	'gpt-oss-120b': {
+	// Premium models - better quality but cost money
+	'llama-3.3-70b-versatile': {
 		priority: 2,
-		cost: 0.15,
-		name: 'gpt-oss-120b',
+		cost: 0.59, // Input: $0.59/million tokens, Output: $0.79/million tokens (using input cost as base)
+		name: 'llama-3.3-70b-versatile',
+		rateLimit: {
+			requestsPerMinute: 30,
+			requestsPerDay: 14400,
+		},
+	},
+	'llama-3.3-70b-specdec': {
+		priority: 2,
+		cost: 0.59, // Similar pricing to versatile, but faster inference
+		name: 'llama-3.3-70b-specdec',
+		rateLimit: {
+			requestsPerMinute: 30,
+			requestsPerDay: 14400,
+		},
 	},
 	'llama-3.1-70b-versatile': {
 		priority: 2,
-		cost: 0.75,
+		cost: 0.75, // Legacy model, kept for backward compatibility
 		name: 'llama-3.1-70b-versatile',
+	},
+	'gpt-oss-120b': {
+		priority: 2,
+		cost: 0.15, // Input: $0.15/million tokens, Output: $0.75/million tokens
+		name: 'gpt-oss-120b',
+	},
+	// Deprecated models - kept for reference but not recommended
+	'gpt-oss-20b': {
+		priority: 3, // Lower priority - model not available on Groq
+		cost: 0,
+		name: 'gpt-oss-20b',
+		rateLimit: {
+			requestsPerMinute: 8,
+			requestsPerDay: 1000,
+		},
 	},
 } as const;
 

@@ -1,12 +1,7 @@
-import type { Config } from 'tailwindcss';
-
 export default {
 	content: [
 		'./index.html',
 		'./src/**/*.{js,ts,jsx,tsx}',
-		'./pages/**/*.{ts,tsx}',
-		'./components/**/*.{ts,tsx}',
-		'./app/**/*.{ts,tsx}',
 	],
 	prefix: '',
 	theme: {
@@ -51,16 +46,6 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))',
-				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))',
 				},
 				success: {
 					DEFAULT: 'hsl(var(--color-success-500))',
@@ -127,7 +112,6 @@ export default {
 					'Segoe UI Symbol',
 					'Noto Color Emoji',
 				],
-				serif: ['ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
 				mono: [
 					'ui-monospace',
 					'SFMono-Regular',
@@ -139,17 +123,7 @@ export default {
 					'monospace',
 				],
 			},
-			spacing: {
-				18: '4.5rem',
-				22: '5.5rem',
-				88: '22rem',
-				128: '32rem',
-			},
-			backdropBlur: {
-				xs: '2px',
-			},
 		},
 	},
 	plugins: [require('tailwindcss-animate')],
-} satisfies Config;
-
+};

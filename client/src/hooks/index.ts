@@ -28,7 +28,6 @@ export {
 	useSubmitAnswerToSession,
 	useFinalizeGameSession,
 	useGameFinalization,
-	useGameSessionNavigation,
 } from './game';
 
 export { useSetAvatar, useUpdateUserProfile, useUserProfile, useUpdateUserPreferences } from './useUser';
@@ -43,6 +42,7 @@ export {
 	usePopularTopics,
 	useRealTimeAnalytics,
 	useTrackAnalyticsEvent,
+	useUnifiedUserAnalytics,
 	useUserAnalytics,
 } from './useAnalyticsDashboard';
 
@@ -71,11 +71,14 @@ export {
 	useAllUsers,
 	useAiProviderStats,
 	useAiProviderHealth,
+	useCheckAllUsersConsistency,
+	useCheckUserStatsConsistency,
+	useFixUserStatsConsistency,
 } from './admin';
 
 export { useAppDispatch, useAppSelector } from './useRedux';
 
-export { useAudioSettings } from './audio';
+export { useAudioSettings, useRouteBasedMusic } from './audio';
 
 export { useMultiplayer } from './useMultiplayer';
 
@@ -87,7 +90,6 @@ export {
 	useNavigationClose,
 	useCountUp,
 	usePagination,
-	useAnswerStyle,
 } from './ui';
 
 export { useAppInitialization } from './useAppInitialization';

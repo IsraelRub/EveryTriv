@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	ForbiddenException,
+	Get,
+	HttpException,
+	HttpStatus,
+	Param,
+	Post,
+	Query,
+} from '@nestjs/common';
 
 import {
 	API_ENDPOINTS,
@@ -15,16 +25,15 @@ import { calculateHasMore, getErrorMessage, isOneOf } from '@shared/utils';
 import { UserStatsEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 
-import { Cache, CurrentUserId, Public, Roles } from '../../common';
+import { Cache, CurrentUserId, CurrentUser, Public, Roles } from '../../common';
 import {
 	GetLeaderboardDto,
 	GetLeaderboardStatsDto,
 	TopicAnalyticsQueryDto,
 	TrackEventDto,
-	UserActivityQueryDto,
-	UserComparisonQueryDto,
+	UnifiedUserAnalyticsQueryDto,
 	UserIdParamDto,
-	UserSummaryQueryDto,
+	UserComparisonQueryDto,
 	UserTrendQueryDto,
 } from './dtos';
 import {
@@ -96,241 +105,113 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== User Analytics Endpoints ====================
-
-	@Get('user/statistics/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserStatistics(@Param() params: UserIdParamDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserStatistics(params.userId);
-
-			logger.apiRead('analytics_user_statistics', {
-				userId: params.userId,
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user statistics', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/performance/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserPerformance(@Param() params: UserIdParamDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserPerformance(params.userId);
-
-			logger.apiRead('analytics_user_performance', {
-				userId: params.userId,
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user performance', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/progress/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserProgress(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserProgress({
-				userId: params.userId,
-				query,
-			});
-
-			logger.apiRead('analytics_user_progress', {
-				userId: params.userId,
-				query: Object.keys(query ?? {}),
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user progress', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/activity/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
-	async getUserActivity(@Param() params: UserIdParamDto, @Query() query: UserActivityQueryDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserActivity({
-				userId: params.userId,
-				query,
-			});
-
-			logger.apiRead('analytics_user_activity', {
-				userId: params.userId,
-				query: Object.keys(query ?? {}),
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user activity', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/insights/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserInsights(@Param() params: UserIdParamDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserInsights(params.userId);
-
-			logger.apiRead('analytics_user_insights', {
-				userId: params.userId,
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user insights', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/recommendations/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserRecommendations(@Param() params: UserIdParamDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserRecommendations(params.userId);
-
-			logger.apiRead('analytics_user_recommendations', {
-				userId: params.userId,
-				recommendationsCount: result.data?.length ?? 0,
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user recommendations', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/achievements/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserAchievements(@Param() params: UserIdParamDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserAchievements(params.userId);
-
-			logger.apiRead('analytics_user_achievements', {
-				userId: params.userId,
-				resultsCount: result.data?.length ?? 0,
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user achievements', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
-	@Get('user/trends/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
-	async getUserTrends(@Param() params: UserIdParamDto, @Query() query: UserTrendQueryDto) {
-		try {
-			const result = await this.userAnalyticsService.getUserTrends({
-				userId: params.userId,
-				query,
-			});
-
-			logger.apiRead('analytics_user_trends', {
-				userId: params.userId,
-				query: Object.keys(query ?? {}),
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Error getting user trends', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
-			});
-			throw error;
-		}
-	}
-
 	@Get('user/comparison/:userId')
-	@Roles(UserRole.ADMIN)
 	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async compareUser(@Param() params: UserIdParamDto, @Query() query: UserComparisonQueryDto) {
+	async getUserComparison(
+		@Param() params: UserIdParamDto,
+		@Query() query: UserComparisonQueryDto,
+		@CurrentUserId() currentUserId: string,
+		@CurrentUser() user: { sub?: string; role?: string }
+	) {
+		if (params.userId !== currentUserId && user?.role !== UserRole.ADMIN) {
+			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+		}
 		try {
-			const result = await this.userAnalyticsService.compareUserPerformance(params.userId, query, () =>
-				this.globalAnalyticsService.getGameStatsForComparison()
-			);
-
-			logger.apiRead('analytics_user_comparison', {
-				userId: params.userId,
-				userIds: {
-					target: query?.targetUserId,
-				},
-				type: query?.target ?? ComparisonTarget.GLOBAL,
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['comparison'], {
+				comparisonTarget: query.target ?? ComparisonTarget.GLOBAL,
+				targetUserId: query.targetUserId,
+				startDate: query.startDate,
+				endDate: query.endDate,
+				getGameStats: () => this.globalAnalyticsService.getGameStatsForComparison(),
 			});
-
-			return result;
+			return {
+				data: result.data?.comparison ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
 		} catch (error) {
-			logger.analyticsError('Error comparing users', {
+			logger.analyticsError('Error getting user comparison', {
 				errorInfo: { message: getErrorMessage(error) },
 				userId: params.userId,
-				userIds: {
-					target: query?.targetUserId,
-				},
 			});
 			throw error;
 		}
 	}
 
-	@Get('user/summary/:userId')
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
+	// ==================== Unified User Analytics Endpoint ====================
+
+	@Get('user/unified')
+	async getCurrentUserUnifiedAnalytics(@CurrentUserId() userId: string, @Query() query: UnifiedUserAnalyticsQueryDto) {
+		const includeSections = query.include
+			? query.include.split(',').map(s => s.trim().toLowerCase())
+			: ['statistics', 'performance'];
+
 		try {
-			const result = await this.userAnalyticsService.getUserSummary({
-				userId: params.userId,
-				includeActivity: query?.includeActivity ?? false,
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(userId, includeSections, {
+				startDate: query.startDate,
+				endDate: query.endDate,
+				groupBy: query.groupBy,
+				activityLimit: query.activityLimit,
+				trendLimit: query.trendLimit,
+				includeActivity: query.includeActivity,
+				targetUserId: query.targetUserId,
+				comparisonTarget: query.comparisonTarget,
+				getGameStats: () => this.globalAnalyticsService.getGameStatsForComparison(),
 			});
 
-			logger.apiRead('analytics_user_summary', {
-				userId: params.userId,
-				options: query?.includeActivity ? 'include_activity' : 'default',
+			logger.apiRead(`analytics_user_unified [${includeSections.length} sections: ${includeSections.join(',')}]`, {
+				userId,
+				query: Object.keys(query || {}),
 			});
 
 			return result;
 		} catch (error) {
-			logger.analyticsError('Error getting user summary', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId: params.userId,
+			logger.analyticsError(
+				`Error getting unified user analytics [${includeSections.length} sections: ${includeSections.join(',')}]`,
+				{
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+					query: Object.keys(query || {}),
+				}
+			);
+			throw error;
+		}
+	}
+
+	@Get('user/unified/:userId')
+	@Roles(UserRole.ADMIN)
+	async getUnifiedUserAnalytics(@Param() params: UserIdParamDto, @Query() query: UnifiedUserAnalyticsQueryDto) {
+		const includeSections = query.include
+			? query.include.split(',').map(s => s.trim().toLowerCase())
+			: ['statistics', 'performance'];
+
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, includeSections, {
+				startDate: query.startDate,
+				endDate: query.endDate,
+				groupBy: query.groupBy,
+				activityLimit: query.activityLimit,
+				trendLimit: query.trendLimit,
+				includeActivity: query.includeActivity,
+				targetUserId: query.targetUserId,
+				comparisonTarget: query.comparisonTarget,
+				getGameStats: () => this.globalAnalyticsService.getGameStatsForComparison(),
 			});
+
+			logger.apiRead(`analytics_user_unified [${includeSections.length} sections: ${includeSections.join(',')}]`, {
+				userId: params.userId,
+				query: Object.keys(query || {}),
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError(
+				`Error getting unified user analytics [${includeSections.length} sections: ${includeSections.join(',')}]`,
+				{
+					errorInfo: { message: getErrorMessage(error) },
+					userId: params.userId,
+					query: Object.keys(query || {}),
+				}
+			);
 			throw error;
 		}
 	}
@@ -338,6 +219,7 @@ export class AnalyticsController {
 	// ==================== Global Analytics Endpoints ====================
 
 	@Get('global/topics/popular')
+	@Public()
 	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getPopularTopics(@Query() query: TopicAnalyticsQueryDto) {
 		try {
@@ -395,7 +277,6 @@ export class AnalyticsController {
 
 	@Get('global/trends')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIVE_MINUTES)
 	async getGlobalTrends(@Query() query: UserTrendQueryDto) {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalTrends(query);

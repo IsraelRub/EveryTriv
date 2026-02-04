@@ -123,44 +123,39 @@ export const GAME_MODE_DEFAULTS = {
 
 קבועי מצב משחק:
 
-**DEFAULT_GAME_STATE:**
+**GAME_STATE_CONFIG:**
 ```typescript
-export const DEFAULT_GAME_STATE: ClientGameState = {
-  status: 'idle',
-  isPlaying: false,
-  currentQuestion: 0,
-  totalQuestions: 0,
-  questions: [],
-  answers: [],
-  loading: false,
-  error: undefined,
-  trivia: undefined,
-  selected: null,
-  streak: 0,
-  favorites: [],
-  gameMode: {
-    mode: GameMode.UNLIMITED,
-    timeLimit: undefined,
-    questionLimit: undefined,
-    isGameOver: false,
-    timer: {
-      isRunning: false,
-      startTime: null,
-      timeElapsed: 0,
-    },
+export const GAME_STATE_CONFIG = {
+  initialClientState: {
+    status: GameClientStatus.IDLE,
+    isPlaying: false,
+    currentQuestion: 0,
+    gameQuestionCount: 0,
+    canGoBack: false,
+    canGoForward: false,
+    isGameComplete: false,
+    questions: [],
+    answers: [],
+    loading: false,
+    error: undefined,
+    trivia: undefined,
+    selected: null,
+    streak: 0,
   },
-  stats: {
-    currentScore: 0,
-    maxScore: 0,
-    successRate: 0,
-    averageTimePerQuestion: 0,
-    correctStreak: 0,
-    maxStreak: 0,
-    topicsPlayed: {},
-    successRateByDifficulty: {},
-    questionsAnswered: 0,
-    correctAnswers: 0,
-    totalGames: 0,
+  initialGameModeState: {
+    currentMode: GameMode.QUESTION_LIMITED,
+    currentTopic: GAME_STATE_DEFAULTS.TOPIC,
+    currentDifficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+    currentSettings: {
+      mode: GameMode.QUESTION_LIMITED,
+      topic: GAME_STATE_DEFAULTS.TOPIC,
+      difficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+      maxQuestionsPerGame: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+      timeLimit: undefined,
+      answerCount: undefined,
+    },
+    isLoading: false,
+    error: undefined,
   },
 } as const;
 ```
@@ -333,16 +328,6 @@ export const ANIMATION_CONFIG = {
   },
   EASING: {
     EASE_OUT: [0.4, 0, 0.2, 1],
-  },
-} as const;
-```
-
-**ACCESSIBILITY_CONFIG:**
-```typescript
-export const ACCESSIBILITY_CONFIG = {
-  REDUCED_MOTION: {
-    ENABLED: true,
-    SCALE_FACTOR: 0.01,
   },
 } as const;
 ```

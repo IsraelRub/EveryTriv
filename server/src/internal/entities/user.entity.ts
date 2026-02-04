@@ -1,9 +1,14 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, OneToMany, OneToOne } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
-import type { Achievement, UserPreferences } from '@shared/types';
+import type { SavedAchievement, UserPreferences } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
+import { CreditTransactionEntity } from './creditTransaction.entity';
+import { GameHistoryEntity } from './gameHistory.entity';
+import { PaymentHistoryEntity } from './paymentHistory.entity';
+import { TriviaEntity } from './trivia.entity';
+import { UserStatsEntity } from './userStats.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntity {
@@ -23,8 +28,8 @@ export class UserEntity extends BaseEntity {
 	@Column({ name: 'last_name', nullable: true })
 	lastName?: string;
 
-	@Column('int', { default: 100 })
-	credits: number = 100;
+	@Column('int', { nullable: true, default: 100 })
+	credits: number | null = 100;
 
 	@Column({ name: 'purchased_credits', type: 'int', default: 0 })
 	purchasedCredits: number = 0;
@@ -51,5 +56,21 @@ export class UserEntity extends BaseEntity {
 	preferences: Partial<UserPreferences> = {};
 
 	@Column('jsonb', { default: [] })
-	achievements: Achievement[];
+	achievements: SavedAchievement[];
+
+	// Relations
+	@OneToOne(() => UserStatsEntity, userStats => userStats.user)
+	userStats?: UserStatsEntity;
+
+	@OneToMany(() => GameHistoryEntity, gameHistory => gameHistory.user)
+	gameHistories?: GameHistoryEntity[];
+
+	@OneToMany(() => CreditTransactionEntity, transaction => transaction.user)
+	creditTransactions?: CreditTransactionEntity[];
+
+	@OneToMany(() => PaymentHistoryEntity, payment => payment.user)
+	paymentHistories?: PaymentHistoryEntity[];
+
+	@OneToMany(() => TriviaEntity, trivia => trivia.user)
+	trivias?: TriviaEntity[];
 }

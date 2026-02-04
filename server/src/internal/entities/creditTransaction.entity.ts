@@ -1,21 +1,22 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
-import { CreditTransactionType } from '@shared/constants';
-
-import { CreditSource } from '@internal/constants';
+import { CreditSource, CreditTransactionType } from '@shared/constants';
+import type { CreditTransaction } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
+import { GameHistoryEntity } from './gameHistory.entity';
+import { PaymentHistoryEntity } from './paymentHistory.entity';
 import { UserEntity } from './user.entity';
 
 @Entity('credit_transactions')
 export class CreditTransactionEntity extends BaseEntity {
 	@Column({ name: 'user_id', type: 'uuid' })
 	@Index()
-	userId: string;
+	userId!: string;
 
-	@ManyToOne(() => UserEntity)
+	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'user_id' })
-	user: UserEntity;
+	user!: UserEntity;
 
 	@Column({
 		type: 'enum',
@@ -45,27 +46,23 @@ export class CreditTransactionEntity extends BaseEntity {
 	@Column({ nullable: true })
 	description?: string;
 
-	@Column({ name: 'game_history_id', nullable: true })
+	@Column({ name: 'game_history_id', type: 'uuid', nullable: true })
 	gameHistoryId?: string;
 
-	@Column({ name: 'payment_id', nullable: true })
+	@ManyToOne(() => GameHistoryEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'game_history_id' })
+	gameHistory?: GameHistoryEntity;
+
+	@Column({ name: 'payment_id', type: 'varchar', nullable: true })
+	@Index()
 	paymentId?: string;
 
+	@ManyToOne(() => PaymentHistoryEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'payment_id', referencedColumnName: 'providerTransactionId' })
+	paymentHistory?: PaymentHistoryEntity;
+
 	@Column('jsonb', { default: {} })
-	metadata: {
-		difficulty?: string;
-		topic?: string;
-		questionsPerRequest?: number;
-		requiredCredits?: number;
-		pricePerCredit?: number;
-		originalAmount?: number;
-		gameMode?: string;
-		freeQuestionsUsed?: number;
-		purchasedCreditsUsed?: number;
-		creditsUsed?: number;
-		reason?: string | null;
-		isBonus?: boolean;
-	} = {};
+	metadata: CreditTransaction['metadata'] = {};
 
 	@Index()
 	@Column({

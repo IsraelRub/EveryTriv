@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 
-import { StorageType, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS, VALIDATORS } from '@shared/constants';
+import { StorageType, TIME_PERIODS_MS, VALIDATORS } from '@shared/constants';
 import type {
 	StorageService as IStorageService,
 	StorageCleanupOptions,
@@ -12,10 +12,8 @@ import type {
 	StorageStats,
 	StorageValue,
 	TypeGuard,
-	UserProgressData,
 } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { isUserProgressData } from '@shared/utils/domain';
 import { createTimedResult } from '@shared/utils/infrastructure/storage.utils';
 
 import { SERVER_STORAGE_CONFIG, StorageOperation } from '@internal/constants';
@@ -72,42 +70,6 @@ export class StorageService implements IStorageService {
 			storageType: this.config.type,
 			accessCount: (existing?.accessCount ?? 0) + 1,
 		});
-	}
-
-	protected calculateCompressionRatio(originalSize: number): number {
-		// Simple compression ratio calculation
-		return originalSize > 1024 ? 0.8 : 1;
-	}
-
-	protected generateChecksum(data: string): string {
-		// Simple checksum generation for data integrity
-		let hash = 0;
-		for (let i = 0; i < data.length; i++) {
-			const char = data.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash; // Convert to 32-bit integer
-		}
-		return hash.toString(16);
-	}
-
-	protected async saveUserProgress(userId: string, progress: UserProgressData): Promise<void> {
-		const key = `user_progress_${userId}`;
-		const progressData = {
-			...progress,
-			lastSaved: new Date(),
-			version: '1.0',
-			compressionRatio: this.config.enableCompression
-				? this.calculateCompressionRatio(JSON.stringify(progress).length)
-				: 1,
-			checksum: this.generateChecksum(JSON.stringify(progress)),
-		};
-		await this.set(key, progressData, TIME_DURATIONS_SECONDS.TWO_HOURS);
-	}
-
-	protected async loadUserProgress(userId: string): Promise<UserProgressData | null> {
-		const key = `user_progress_${userId}`;
-		const result = await this.get(key, isUserProgressData);
-		return result.success && result.data ? result.data : null;
 	}
 
 	// Redis-specific implementations

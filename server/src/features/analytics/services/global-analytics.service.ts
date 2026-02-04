@@ -9,6 +9,8 @@ import type {
 	DifficultyBreakdown,
 	DifficultyStatsRaw,
 	GameAnalyticsQuery,
+	GameStatsData,
+	GameStatsSummary,
 	GlobalStatsResponse,
 	TopicAnalyticsRecord,
 	TopicStatsData,
@@ -25,6 +27,7 @@ import {
 	isRecord,
 	isTopicAnalyticsRecordArray,
 } from '@shared/utils';
+import { isAnalyticsResponseUserTrendPointArray } from '@shared/utils/domain';
 import { isGameDifficulty } from '@shared/validation';
 
 import { SQL_CONDITIONS } from '@internal/constants';
@@ -79,7 +82,7 @@ export class GlobalAnalyticsService {
 					const difficultyStats = await queryBuilder
 						.select('game.difficulty', 'difficulty')
 						.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
-						.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
+						.addSelect('CAST(COALESCE(SUM(game.correct_answers), 0) AS INTEGER)', 'correct')
 						.where(`game.difficulty ${SQL_CONDITIONS.IS_NOT_NULL}`)
 						.andWhere("game.difficulty != ''")
 						.groupBy('game.difficulty')
@@ -129,26 +132,27 @@ export class GlobalAnalyticsService {
 					const averageGames = totalUsers > 0 ? Math.round(gameStats.totalGames / totalUsers) : 0;
 
 					const averageGameTimeRaw = gameStats.timeStats.averageTime;
-					const averageGameTime = averageGameTimeRaw ? Math.round(averageGameTimeRaw / 60) : 0;
+					const averageGameTime = averageGameTimeRaw
+						? Math.round(averageGameTimeRaw / TIME_DURATIONS_SECONDS.MINUTE)
+						: 0;
 
 					const consistencyRaw = await this.gameHistoryRepo
 						.createQueryBuilder('game')
-						.select('game.userId', 'userId')
+						.select('game.user_id', 'userId')
 						.addSelect(
-							'CAST(SUM(game.correctAnswers) AS DOUBLE PRECISION) / NULLIF(CAST(SUM(game.game_question_count) AS DOUBLE PRECISION), 0) * 100',
+							'CAST(SUM(game.correct_answers) AS DOUBLE PRECISION) / NULLIF(CAST(SUM(game.game_question_count) AS DOUBLE PRECISION), 0) * 100',
 							'successRate'
 						)
-						.groupBy('game.userId')
+						.groupBy('game.user_id')
 						.having('SUM(game.game_question_count) > 0')
 						.getRawMany<UserIdSuccessRateRecord>();
 
 					let consistency = 0;
 					if (consistencyRaw.length > 0) {
-						const successRates = consistencyRaw.map(r => Number(r.successRate) ?? 0);
+						const successRates = consistencyRaw.map(r => (VALIDATORS.number(r.successRate) ? r.successRate : 0));
 						const mean = successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length;
-						const variance =
-							successRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / successRates.length;
-						const standardDeviation = Math.sqrt(variance);
+						const variance = successRates.reduce((sum, rate) => sum + (rate - mean) ** 2, 0) / successRates.length;
+						const standardDeviation = variance ** 0.5;
 						consistency = Math.max(0, Math.round(100 - standardDeviation * 2));
 					}
 
@@ -184,22 +188,23 @@ export class GlobalAnalyticsService {
 
 	async getGlobalTrends(query?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
 		try {
-			const limit = query?.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 120) : 30;
-			const { groupBy } = query ?? {};
-
-			const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game').orderBy('game.createdAt', 'DESC');
-
-			if (query?.startDate ?? query?.endDate) {
-				addDateRangeConditions(queryBuilder, 'game', 'createdAt', query.startDate, query.endDate);
-			}
-
-			const allGames = await queryBuilder.limit(limit * 10).getMany();
-
-			const trends = this.analyticsCommon.buildTrends(allGames, {
-				limit,
-				groupBy,
-			});
-			return this.analyticsCommon.createAnalyticsResponse(trends);
+			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS(query);
+			return await this.cacheService.getOrSet<AnalyticsResponse<UserTrendPoint[]>>(
+				cacheKey,
+				async () => {
+					const limit = query?.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 120) : 30;
+					const { groupBy } = query ?? {};
+					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game').orderBy('game.createdAt', 'DESC');
+					if (query?.startDate ?? query?.endDate) {
+						addDateRangeConditions(queryBuilder, 'game', 'createdAt', query.startDate, query.endDate);
+					}
+					const allGames = await queryBuilder.limit(limit * 10).getMany();
+					const trends = this.analyticsCommon.buildTrends(allGames, { limit, groupBy });
+					return this.analyticsCommon.createAnalyticsResponse(trends);
+				},
+				TIME_DURATIONS_SECONDS.FIVE_MINUTES,
+				isAnalyticsResponseUserTrendPointArray
+			);
 		} catch (error) {
 			logger.analyticsError('getGlobalTrends', {
 				errorInfo: { message: getErrorMessage(error) },
@@ -208,10 +213,7 @@ export class GlobalAnalyticsService {
 		}
 	}
 
-	async getGameStatsForComparison(): Promise<{
-		averageScore: number;
-		totalGames: number;
-	}> {
+	async getGameStatsForComparison(): Promise<GameStatsSummary> {
 		const stats = await this.calculateGameStats();
 		return {
 			averageScore: stats.averageScore,
@@ -239,7 +241,7 @@ export class GlobalAnalyticsService {
 						(stat): stat is TopicAnalyticsRecord => stat.topic != null && stat.totalGames != null
 					);
 				},
-				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
+				TIME_DURATIONS_SECONDS.THIRTY_MINUTES,
 				isTopicAnalyticsRecordArray
 			);
 		} catch (error) {
@@ -274,22 +276,12 @@ export class GlobalAnalyticsService {
 		return queryBuilder;
 	}
 
-	private async calculateGameStats(query?: GameAnalyticsQuery): Promise<{
-		totalGames: number;
-		totalQuestionsAnswered: number;
-		averageScore: number;
-		popularTopics: string[];
-		difficultyDistribution: CountRecord;
-		timeStats: {
-			averageTime: number | null;
-			medianTime: number | null;
-		};
-	}> {
+	private async calculateGameStats(query?: GameAnalyticsQuery): Promise<GameStatsData> {
 		try {
 			const totalGames = await this.createFilteredGameHistoryQuery(query).getCount();
 
 			const totalCorrectAnswersRaw = await this.createFilteredGameHistoryQuery(query)
-				.select('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'value')
+				.select('CAST(COALESCE(SUM(game.correct_answers), 0) AS INTEGER)', 'value')
 				.getRawOne<NumericQueryResult>();
 
 			const totalQuestionsAskedRaw = await this.createFilteredGameHistoryQuery(query)
@@ -307,7 +299,7 @@ export class GlobalAnalyticsService {
 			const difficultyStatsRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('game.difficulty', 'difficulty')
 				.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
-				.addSelect('CAST(COALESCE(SUM(game.correctAnswers), 0) AS INTEGER)', 'correct')
+				.addSelect('CAST(COALESCE(SUM(game.correct_answers), 0) AS INTEGER)', 'correct')
 				.groupBy('game.difficulty')
 				.getRawMany<DifficultyStatsRaw>();
 
