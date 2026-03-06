@@ -1,4 +1,4 @@
-import { VALIDATORS } from '@shared/constants';
+import { VALIDATORS } from '@shared/validation';
 
 import { isRecord } from '../core/data.utils';
 

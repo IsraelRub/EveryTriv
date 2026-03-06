@@ -1,26 +1,13 @@
+import { DIFFICULTY_CONFIG } from '@shared/constants';
 import { extractCustomDifficultyText } from '@shared/validation';
 
 import type { PromptParams } from '@internal/types';
 
-function getDifficultyGuidance(difficulty: string): string {
-	switch (difficulty.toLowerCase().trim()) {
-		case 'easy':
-			return 'Use well-known, commonly known facts that most people would know. Simple, straightforward questions.';
-		case 'medium':
-			return 'Use moderately known facts that require some knowledge of the topic. Balance between common and specialized knowledge.';
-		case 'hard':
-			return 'Use specialized, less commonly known facts that require deeper knowledge or expertise in the topic.';
-		default:
-			return ''; // For custom difficulties, return empty string to let the AI interpret it
-	}
-}
-
 export function generateTriviaQuestion(params: PromptParams): string {
 	const { topic, difficulty, answerCount, isCustomDifficulty, excludeQuestions } = params;
-	// Extract the actual difficulty text without the "custom:" prefix for AI
 	const difficultyDescription = isCustomDifficulty ? extractCustomDifficultyText(difficulty) : difficulty;
-
-	const difficultyGuidance = getDifficultyGuidance(difficultyDescription);
+	const key = difficultyDescription.toLowerCase().trim();
+	const difficultyGuidance = DIFFICULTY_CONFIG[key]?.promptGuidance;
 
 	// Build exclude questions section if provided
 	const excludeSection =

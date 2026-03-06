@@ -9,5 +9,7 @@ export const PUBLIC_ENDPOINTS = [
 	'/auth/login',
 	'/auth/register',
 	'/auth/refresh',
+	'/auth/google',
+	'/auth/google/callback',
 	'/payment/webhooks/paypal',
 ] as const;

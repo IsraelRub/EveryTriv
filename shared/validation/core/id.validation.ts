@@ -1,4 +1,6 @@
-import { VALIDATION_LENGTH, VALIDATORS } from '@shared/constants';
+import { VALIDATION_LENGTH } from '@shared/constants';
+
+import { VALIDATORS } from './validators';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

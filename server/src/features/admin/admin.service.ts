@@ -4,9 +4,7 @@ import { Repository } from 'typeorm';
 
 import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import type { AdminGameStatistics, AdminStatisticsRaw, CountRecord, TriviaQuestion } from '@shared/types';
-import { buildCountRecord, calculateSuccessRate, getErrorMessage } from '@shared/utils';
-import { isAdminGameStatistics } from '@shared/utils/domain';
-import { restoreGameDifficulty } from '@shared/validation';
+import { buildCountRecord, calculateScoreRate, getErrorMessage } from '@shared/utils';
 
 import { SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity } from '@internal/entities';
@@ -14,6 +12,11 @@ import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { DifficultyCountRecord, NumericQueryResult, TopicCountRecord } from '@internal/types';
 import { addDateRangeConditions, createGroupByQuery } from '@internal/utils';
+
+import { restoreGameDifficulty } from '../../common/validation/difficulty.validation';
+import { isAdminGameStatistics } from '../../internal/utils/entityGuards';
+
+type AdminStatisticsRawWithScore = AdminStatisticsRaw & { totalScore?: number };
 
 @Injectable()
 export class AdminService {
@@ -49,12 +52,14 @@ export class AdminService {
 			.addSelect('CAST(MAX(game.score) AS INTEGER)', 'bestScore')
 			.addSelect('CAST(SUM(game.game_question_count) AS INTEGER)', 'totalQuestionsAnswered')
 			.addSelect('CAST(SUM(game.correct_answers) AS INTEGER)', 'correctAnswers')
+			.addSelect('CAST(SUM(game.score) AS INTEGER)', 'totalScore')
 			.addSelect('MAX(game.created_at)', 'lastActivity')
-			.getRawOne<AdminStatisticsRaw>();
+			.getRawOne<AdminStatisticsRawWithScore>();
 
 		const topicQueryBuilder = createGroupByQuery(this.gameHistoryRepository, 'game', 'topic', 'count', {
 			topic: SQL_CONDITIONS.IS_NOT_NULL,
 		});
+		topicQueryBuilder.andWhere('game.gameQuestionCount > :minQuestions', { minQuestions: 0 });
 		topicQueryBuilder.orderBy('count', 'DESC');
 		const topicStatsRaw = await topicQueryBuilder.getRawMany<TopicCountRecord>();
 
@@ -72,7 +77,8 @@ export class AdminService {
 		const totalGames = totalsRaw?.totalGames ?? 0;
 		const totalQuestionsAnswered = totalsRaw?.totalQuestionsAnswered ?? 0;
 		const correctAnswers = totalsRaw?.correctAnswers ?? 0;
-		const accuracy = calculateSuccessRate(totalQuestionsAnswered, correctAnswers);
+		const totalScore = totalsRaw?.totalScore ?? 0;
+		const accuracy = calculateScoreRate(totalScore, totalQuestionsAnswered);
 
 		// Normalize topics to handle case-insensitive duplicates (e.g., "science" vs "Science")
 		// Use a Map with lowercase keys for case-insensitive grouping, but preserve the variant with the highest count

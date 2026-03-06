@@ -1,39 +1,33 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Copy, Crown, Gamepad2, Info, Plus, Users } from 'lucide-react';
+import { Copy, Crown, Info, Play, Plus, Users } from 'lucide-react';
 
 import {
-	DifficultyLevel,
-	GAME_MODE_DEFAULTS,
+	DEFAULT_GAME_CONFIG,
+	GAME_MODES_CONFIG,
+	GAME_STATE_DEFAULTS,
 	GameMode,
 	PlayerStatus,
 	RoomStatus,
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type { CreateRoomConfig, GameDifficulty } from '@shared/types';
-import {
-	createCustomDifficulty,
-	validateCustomDifficultyText,
-	validateTopicLength,
-	validateTriviaRequest,
-} from '@shared/validation';
+import type { CreateRoomConfig } from '@shared/types';
+import { formatDifficulty, formatTitle } from '@shared/utils';
 
 import {
+	AlertVariant,
+	AvatarSize,
 	ButtonSize,
-	ButtonVariant,
-	GAME_STATE_DEFAULTS,
-	SCORING_DEFAULTS,
-	SpinnerSize,
+	Colors,
+	ComponentSize,
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
-	Avatar,
-	AvatarFallback,
 	Badge,
 	Button,
 	Card,
@@ -49,13 +43,31 @@ import {
 	TabsContent,
 	TabsList,
 	TabsTrigger,
+	UserAvatar,
 } from '@/components';
 import { GameSettingsForm } from '@/components/game';
-import { useMultiplayer } from '@/hooks';
+import { useGameSettingsForm, useMultiplayer } from '@/hooks';
 import { clientLogger as logger } from '@/services';
+import { cn, getDisplayNameFromPlayer } from '@/utils';
 
 export function MultiplayerLobbyView() {
 	const navigate = useNavigate();
+
+	// Shared game settings form state & validation
+	const {
+		topic,
+		topicError,
+		selectedDifficulty,
+		customDifficulty,
+		customDifficultyError,
+		answerCount,
+		handleTopicChange,
+		setSelectedDifficulty,
+		setCustomDifficulty,
+		setCustomDifficultyError,
+		setAnswerCount,
+		validateSettings,
+	} = useGameSettingsForm();
 
 	const {
 		room,
@@ -73,82 +85,25 @@ export function MultiplayerLobbyView() {
 		displayMessage,
 	} = useMultiplayer();
 
-	const handleStartGame = () => {
-		if (isReadyToStart) {
-			startGame();
-		}
-	};
-
-	const handleLeaveRoom = () => {
-		leaveRoom();
-	};
-
 	const [joinRoomId, setJoinRoomId] = useState('');
-	const [customDifficulty, setCustomDifficulty] = useState('');
-	const [customDifficultyError, setCustomDifficultyError] = useState<string>('');
-	const [topicError, setTopicError] = useState<string>('');
-	const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
-	const [answerCount, setAnswerCount] = useState<number>(SCORING_DEFAULTS.ANSWER_COUNT);
 
 	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
 		topic: GAME_STATE_DEFAULTS.TOPIC,
-		difficulty: DifficultyLevel.MEDIUM,
-		questionsPerRequest: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].maxQuestionsPerGame ?? 10,
+		difficulty: selectedDifficulty,
+		questionsPerRequest: GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.maxQuestionsPerGame ?? 10,
 		maxPlayers: VALIDATION_COUNT.PLAYERS.MAX,
 		gameMode: GameMode.QUESTION_LIMITED,
 	});
 
 	const handleCreateRoom = async () => {
-		// Format custom difficulty with prefix, or use standard difficulty
-		let finalDifficulty: GameDifficulty;
-		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-			finalDifficulty = customDifficulty.trim() ? createCustomDifficulty(customDifficulty) : DifficultyLevel.MEDIUM;
-		} else {
-			finalDifficulty = selectedDifficulty;
-		}
-
-		// Validate trivia request if topic is provided (empty topic is allowed for random)
-		const trimmedTopic = gameSettings.topic.trim();
-		if (trimmedTopic) {
-			const triviaValidation = validateTriviaRequest(trimmedTopic, finalDifficulty);
-			if (!triviaValidation.isValid) {
-				// Set topic error if there are topic-related errors
-				const topicErrors = triviaValidation.errors.filter(
-					err => err.toLowerCase().includes('topic') || err.toLowerCase().includes('length')
-				);
-				if (topicErrors.length > 0 && topicErrors[0]) {
-					setTopicError(topicErrors[0]);
-				}
-				// Set custom difficulty error if there are difficulty-related errors
-				if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-					const difficultyErrors = triviaValidation.errors.filter(
-						err => !err.toLowerCase().includes('topic') && !err.toLowerCase().includes('length')
-					);
-					if (difficultyErrors.length > 0 && difficultyErrors[0]) {
-						setCustomDifficultyError(difficultyErrors[0]);
-					}
-				}
-				return;
-			}
-		}
-		setTopicError('');
-
-		// Validate custom difficulty if selected
-		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-			const trimmedCustomDifficulty = customDifficulty.trim();
-			const validation = validateCustomDifficultyText(trimmedCustomDifficulty);
-
-			if (!validation.isValid) {
-				setCustomDifficultyError(validation.errors[0] ?? VALIDATION_MESSAGES.CUSTOM_DIFFICULTY_INVALID);
-				return;
-			}
-
-			setCustomDifficultyError('');
-		}
+		const { isValid, finalDifficulty } = validateSettings();
+		if (!isValid) return;
 
 		await createRoom({
 			...gameSettings,
+			topic: topic.trim() || GAME_STATE_DEFAULTS.TOPIC,
 			difficulty: finalDifficulty,
+			answerCount,
 		});
 	};
 
@@ -182,9 +137,9 @@ export function MultiplayerLobbyView() {
 
 	if (!isConnected) {
 		return (
-			<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-only'>
+			<main className='view-main animate-fade-in-only'>
 				<div className='max-w-md mx-auto h-full flex items-center justify-center text-center space-y-4'>
-					<Spinner size={SpinnerSize.XL} className='mx-auto text-primary' />
+					<Spinner size={ComponentSize.XL} className='mx-auto text-primary' />
 					<motion.h2
 						key={loadingStep}
 						initial={{ opacity: 0, y: 10 }}
@@ -202,8 +157,8 @@ export function MultiplayerLobbyView() {
 	// If in a room, show the lobby
 	if (room) {
 		return (
-			<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-up-simple'>
-				<div className='max-w-2xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 overflow-y-auto'>
+			<main className='view-main animate-fade-in-up-simple'>
+				<div className='view-content-2xl-scroll'>
 					<div className='text-center flex-shrink-0'>
 						<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>Multiplayer Lobby</h1>
 						{roomCode && (
@@ -212,7 +167,7 @@ export function MultiplayerLobbyView() {
 								<Badge variant={VariantBase.OUTLINE} className='text-lg font-mono px-3 py-1'>
 									{roomCode}
 								</Badge>
-								<Button variant={ButtonVariant.GHOST} size={ButtonSize.ICON} onClick={copyRoomCode}>
+								<Button variant={VariantBase.MINIMAL} size={ButtonSize.ICON_LG} onClick={copyRoomCode}>
 									<Copy className='h-4 w-4' />
 								</Button>
 							</div>
@@ -220,7 +175,7 @@ export function MultiplayerLobbyView() {
 					</div>
 
 					{error && (
-						<Alert variant={VariantBase.DESTRUCTIVE}>
+						<Alert variant={AlertVariant.DESTRUCTIVE}>
 							<AlertDescription>{error}</AlertDescription>
 						</Alert>
 					)}
@@ -229,7 +184,7 @@ export function MultiplayerLobbyView() {
 					<Card>
 						<CardHeader>
 							<CardTitle className='flex items-center gap-2'>
-								<Users className='h-5 w-5' />
+								<Users className='h-5 w-5 text-primary' />
 								Players ({room.players?.length ?? 0}/{room.config?.maxPlayers ?? VALIDATION_COUNT.PLAYERS.MAX})
 							</CardTitle>
 						</CardHeader>
@@ -242,17 +197,19 @@ export function MultiplayerLobbyView() {
 										animate={{ opacity: 1, x: 0 }}
 										className='flex items-center gap-3 p-3 rounded-lg bg-muted/50'
 									>
-										<Avatar>
-											<AvatarFallback>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
-										</Avatar>
+										<UserAvatar player={player} size={AvatarSize.MD} />
 										<div className='flex-1'>
 											<div className='flex items-center gap-2'>
-												<span className='font-medium'>{player.displayName ?? 'Player'}</span>
-												{player.userId === room.hostId && <Crown className='h-4 w-4 text-yellow-500' />}
+												<span className='font-medium'>{getDisplayNameFromPlayer(player)}</span>
+												{player.userId === room.hostId && <Crown className={cn('h-4 w-4', Colors.YELLOW_500.text)} />}
 											</div>
 										</div>
-										<Badge variant={player.status === PlayerStatus.READY ? VariantBase.DEFAULT : VariantBase.SECONDARY}>
-											{player.status === PlayerStatus.READY ? 'Ready' : 'Not Ready'}
+										<Badge
+											variant={
+												player.status === PlayerStatus.DISCONNECTED ? VariantBase.SECONDARY : VariantBase.DEFAULT
+											}
+										>
+											{player.status === PlayerStatus.DISCONNECTED ? 'Not Ready' : 'Ready'}
 										</Badge>
 									</motion.div>
 								))}
@@ -264,7 +221,7 @@ export function MultiplayerLobbyView() {
 					<Card>
 						<CardHeader>
 							<CardTitle className='flex items-center gap-2'>
-								<Info className='h-5 w-5' />
+								<Info className='h-5 w-5 text-primary' />
 								Game Details
 							</CardTitle>
 						</CardHeader>
@@ -272,11 +229,15 @@ export function MultiplayerLobbyView() {
 							<div className='grid grid-cols-2 gap-4 text-sm'>
 								<div className='flex justify-between'>
 									<span className='text-muted-foreground'>Topic:</span>
-									<span className='font-medium'>{room.config?.topic ?? 'General'}</span>
+									<span className='font-medium'>
+										{formatTitle(room.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic)}
+									</span>
 								</div>
 								<div className='flex justify-between'>
 									<span className='text-muted-foreground'>Difficulty:</span>
-									<span className='font-medium capitalize'>{room.config?.difficulty ?? 'Medium'}</span>
+									<span className='font-medium'>
+										{formatDifficulty(room.config?.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty)}
+									</span>
 								</div>
 								<div className='flex justify-between'>
 									<span className='text-muted-foreground'>Questions:</span>
@@ -298,21 +259,29 @@ export function MultiplayerLobbyView() {
 							<Button
 								className='flex-1'
 								size={ButtonSize.LG}
-								onClick={handleStartGame}
+								onClick={startGame}
 								disabled={!isReadyToStart || isLoading}
 							>
-								{isLoading ? <Spinner size={SpinnerSize.SM} className='mr-2' /> : <Gamepad2 className='h-4 w-4 mr-2' />}
-								Start Game
+								{!isLoading ? (
+									<>
+										<Play className='h-4 w-4 mr-2' />
+										Start Game
+									</>
+								) : (
+									<>
+										<Spinner size={ComponentSize.SM} className='mr-2' />
+										Starting game...
+									</>
+								)}
 							</Button>
 						)}
-						<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.LG} onClick={handleLeaveRoom} disabled={isLoading}>
+						<Button variant={VariantBase.OUTLINE} size={ButtonSize.LG} onClick={leaveRoom} disabled={isLoading}>
 							Leave Lobby
 						</Button>
 					</div>
-
-					{!isReadyToStart && isHost && (
+					{!isReadyToStart && isHost && !isLoading && (
 						<p className='text-center text-sm text-muted-foreground'>
-							Waiting for at least 2 players to start the game...
+							Click Start when you're ready (at least {VALIDATION_COUNT.PLAYERS.MIN} players).
 						</p>
 					)}
 				</div>
@@ -322,15 +291,15 @@ export function MultiplayerLobbyView() {
 
 	// No room - show create/join options
 	return (
-		<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-up-simple'>
-			<div className='max-w-2xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 overflow-y-auto'>
+		<main className='view-main animate-fade-in-up-simple'>
+			<div className='view-content-2xl-scroll'>
 				<div className='text-center flex-shrink-0'>
 					<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>Multiplayer</h1>
 					<p className='text-sm md:text-base text-muted-foreground'>Play trivia with friends in real-time</p>
 				</div>
 
 				{error && (
-					<Alert variant={VariantBase.DESTRUCTIVE}>
+					<Alert variant={AlertVariant.DESTRUCTIVE}>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
@@ -352,16 +321,10 @@ export function MultiplayerLobbyView() {
 							</CardHeader>
 							<CardContent className='space-y-6'>
 								<GameSettingsForm
-									topic={gameSettings.topic}
-									onTopicChange={topic => {
-										setGameSettings(prev => ({ ...prev, topic }));
-										// Validate topic in real-time if not empty
-										if (topic.trim()) {
-											const topicValidation = validateTopicLength(topic.trim());
-											setTopicError(topicValidation.isValid ? '' : (topicValidation.errors[0] ?? ''));
-										} else {
-											setTopicError('');
-										}
+									topic={topic}
+									onTopicChange={value => {
+										handleTopicChange(value);
+										setGameSettings(prev => ({ ...prev, topic: value }));
 									}}
 									topicError={topicError}
 									selectedDifficulty={selectedDifficulty}
@@ -385,7 +348,7 @@ export function MultiplayerLobbyView() {
 								/>
 
 								<Button className='w-full' size={ButtonSize.LG} onClick={handleCreateRoom} disabled={isLoading}>
-									{isLoading && <Spinner size={SpinnerSize.SM} className='mr-2' />}
+									{isLoading && <Spinner size={ComponentSize.SM} className='mr-2' />}
 									Create Room
 								</Button>
 							</CardContent>
@@ -396,7 +359,7 @@ export function MultiplayerLobbyView() {
 						<Card>
 							<CardHeader>
 								<CardTitle className='flex items-center gap-2'>
-									<Users className='h-5 w-5' />
+									<Users className='h-5 w-5 text-primary' />
 									Join a Room
 								</CardTitle>
 								<CardDescription>Enter the room code shared by your friend</CardDescription>
@@ -415,7 +378,7 @@ export function MultiplayerLobbyView() {
 								</div>
 
 								<Button className='w-full' size={ButtonSize.LG} onClick={handleJoinRoom} disabled={isLoading}>
-									{isLoading && <Spinner size={SpinnerSize.SM} className='mr-2' />}
+									{isLoading && <Spinner size={ComponentSize.SM} className='mr-2' />}
 									Join Room
 								</Button>
 							</CardContent>

@@ -4,6 +4,7 @@ export {
 	ensureGameStartTime,
 	startGameSession,
 	setQuestions,
+	appendQuestions,
 	setGameQuestionCount,
 	setQuestionIndex,
 	selectAnswer,
@@ -16,6 +17,7 @@ export {
 	addAnswerHistory,
 	setAnswerHistory as setAnswerHistory,
 	finalizeGame,
+	syncGameId,
 	resetGameSession,
 } from './gameSessionSlice';
 export {
@@ -25,6 +27,7 @@ export {
 	updateGameState,
 	setError,
 	setLoading as setMultiplayerLoading,
+	setRevealPhase,
 	resetMultiplayer,
 } from './multiplayerSlice';
 export {

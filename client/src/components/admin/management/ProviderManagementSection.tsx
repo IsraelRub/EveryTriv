@@ -1,10 +1,32 @@
-import { Activity, BarChart3, CheckCircle2, Server } from 'lucide-react';
+import { useMemo } from 'react';
+import {
+	Activity,
+	BotMessageSquare,
+	CheckCircle2,
+	CircleDot,
+	Clock,
+	Percent,
+	Send,
+	Timer,
+	XCircle,
+} from 'lucide-react';
 
-import { ProviderStatus as ProviderStatusEnum, VALIDATORS } from '@shared/constants';
-import { formatForDisplay, isRecord } from '@shared/utils';
+import { EMPTY_VALUE, ProviderHealthStatus } from '@shared/constants';
+import { formatNumericValue, isRecord, sumBy } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
-import { BgColor, SKELETON_HEIGHTS, SKELETON_WIDTHS, StatCardVariant, TextColor, VariantBase } from '@/constants';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, StatCard } from '@/components';
+import { Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
+import {
+	AlertIconSource,
+	Badge,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	Skeleton,
+	StatCard,
+} from '@/components';
 import { useAiProviderHealth, useAiProviderStats } from '@/hooks';
 import { formatDateTime } from '@/utils';
 
@@ -12,40 +34,34 @@ export function ProviderManagementSection() {
 	const { data: aiProviderStats, isLoading: aiProviderStatsLoading } = useAiProviderStats();
 	const { data: aiProviderHealth, isLoading: aiProviderHealthLoading } = useAiProviderHealth();
 
+	const totalRequests = useMemo(() => {
+		if (!aiProviderStats?.providerDetails) return 0;
+		return sumBy(Object.values(aiProviderStats.providerDetails), p => p.requests ?? 0);
+	}, [aiProviderStats]);
+
 	return (
 		<div className='space-y-8'>
-			{/* AI Provider Management Section */}
-			<Card className='border-primary/20 bg-primary/5'>
-				<CardHeader>
-					<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-						<Activity className='h-6 w-6 text-primary' />
-						AI Provider Management
-					</CardTitle>
-					<CardDescription>Monitor and manage AI provider health, statistics, and performance</CardDescription>
-				</CardHeader>
-			</Card>
-
 			{/* Health Status Card */}
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Activity className='h-5 w-5' />
+						<Activity className='h-5 w-5 text-primary' />
 						AI Provider Health Status
 					</CardTitle>
 					<CardDescription>Real-time health monitoring of AI providers</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{aiProviderHealthLoading ? (
-						<Skeleton className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
+						<Skeleton variant={SkeletonVariant.Card} />
 					) : aiProviderHealth ? (
 						<div className='flex items-center justify-between'>
 							<div>
 								<div className='flex items-center gap-2 mb-2'>
 									<Badge
 										variant={
-											aiProviderHealth.status === ProviderStatusEnum.HEALTHY
+											aiProviderHealth.status === ProviderHealthStatus.HEALTHY
 												? VariantBase.DEFAULT
-												: aiProviderHealth.status === ProviderStatusEnum.UNHEALTHY
+												: aiProviderHealth.status === ProviderHealthStatus.UNHEALTHY
 													? VariantBase.DESTRUCTIVE
 													: VariantBase.SECONDARY
 										}
@@ -61,16 +77,14 @@ export function ProviderManagementSection() {
 										icon={CheckCircle2}
 										label='Available Providers'
 										value={aiProviderHealth.availableProviders}
-										color={BgColor.GREEN_500}
-										countUp
+										color={Colors.GREEN_500.text}
 										isLoading={aiProviderHealthLoading}
 									/>
 									<StatCard
-										icon={Server}
+										icon={BotMessageSquare}
 										label='Total Providers'
 										value={aiProviderHealth.totalProviders}
-										color={BgColor.BLUE_500}
-										countUp
+										color={Colors.BLUE_500.text}
 										isLoading={aiProviderHealthLoading}
 									/>
 								</div>
@@ -91,10 +105,10 @@ export function ProviderManagementSection() {
 			</Card>
 
 			{/* AI Providers Statistics */}
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<BarChart3 className='h-5 w-5' />
+						<BotMessageSquare className='h-5 w-5 text-primary' />
 						AI Providers Statistics
 					</CardTitle>
 					<CardDescription>Overview of AI provider performance and status</CardDescription>
@@ -102,26 +116,22 @@ export function ProviderManagementSection() {
 				<CardContent>
 					{aiProviderStatsLoading ? (
 						<div className='space-y-4'>
-							{[...Array(3)].map((_, i) => (
-								<Skeleton key={i} className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
-							))}
+							<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
 						</div>
 					) : aiProviderStats ? (
 						<div className='space-y-6'>
 							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
 								<StatCard
-									icon={Activity}
+									icon={BotMessageSquare}
 									label='Total Providers'
 									value={aiProviderStats.totalProviders}
-									color={TextColor.BLUE_500}
-									variant={StatCardVariant.VERTICAL}
+									color={Colors.BLUE_500.text}
 								/>
 								<StatCard
-									icon={Activity}
+									icon={CircleDot}
 									label='Current Provider'
-									value={aiProviderStats.providers[aiProviderStats.currentProviderIndex] ?? 'N/A'}
-									color={TextColor.GREEN_500}
-									variant={StatCardVariant.VERTICAL}
+									value={aiProviderStats.providers[aiProviderStats.currentProviderIndex] ?? EMPTY_VALUE}
+									color={Colors.GREEN_500.text}
 								/>
 								<StatCard
 									icon={Activity}
@@ -130,25 +140,16 @@ export function ProviderManagementSection() {
 										Object.values(aiProviderStats.providerDetails).filter((provider: unknown) => {
 											if (isRecord(provider) && VALIDATORS.string(provider.status)) {
 												return (
-													provider.status === ProviderStatusEnum.HEALTHY ||
-													provider.status === ProviderStatusEnum.ACTIVE
+													provider.status === ProviderHealthStatus.HEALTHY ||
+													provider.status === ProviderHealthStatus.AVAILABLE
 												);
 											}
 											return false;
 										}).length
 									}
-									color={TextColor.PURPLE_500}
-									variant={StatCardVariant.VERTICAL}
+									color={Colors.PURPLE_500.text}
 								/>
-								<StatCard
-									icon={Activity}
-									label='Total Requests'
-									value={Object.values(aiProviderStats.providerDetails).reduce((sum, provider) => {
-										return sum + (provider.requests ?? 0);
-									}, 0)}
-									color={TextColor.YELLOW_500}
-									variant={StatCardVariant.VERTICAL}
-								/>
+								<StatCard icon={Send} label='Total Requests' value={totalRequests} color={Colors.YELLOW_500.text} />
 							</div>
 
 							<Card className='border-muted/50 bg-muted/10'>
@@ -166,8 +167,8 @@ export function ProviderManagementSection() {
 															<CardTitle className='text-lg'>{name}</CardTitle>
 															<Badge
 																variant={
-																	providerStats.status === ProviderStatusEnum.HEALTHY ||
-																	providerStats.status === ProviderStatusEnum.ACTIVE
+																	providerStats.status === ProviderHealthStatus.HEALTHY ||
+																	providerStats.status === ProviderHealthStatus.AVAILABLE
 																		? VariantBase.DEFAULT
 																		: VariantBase.DESTRUCTIVE
 																}
@@ -178,38 +179,48 @@ export function ProviderManagementSection() {
 													</CardHeader>
 													<CardContent>
 														<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-															<div>
-																<p className='text-sm text-muted-foreground'>Requests</p>
-																<p className='text-lg font-bold'>{providerStats.requests ?? 0}</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Successes</p>
-																<p className='text-lg font-bold text-green-500'>{providerStats.successes ?? 0}</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Failures</p>
-																<p className='text-lg font-bold text-red-500'>{providerStats.failures ?? 0}</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Success Rate</p>
-																<p className='text-lg font-bold'>{formatForDisplay(providerStats.successRate ?? 0)}%</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Avg Response Time</p>
-																<p className='text-lg font-bold'>
-																	{formatForDisplay(providerStats.averageResponseTime ?? 0)}ms
-																</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Error Rate</p>
-																<p className='text-lg font-bold text-red-500'>
-																	{formatForDisplay(providerStats.errorRate ?? 0)}%
-																</p>
-															</div>
-															<div>
-																<p className='text-sm text-muted-foreground'>Last Used</p>
-																<p className='text-lg font-bold'>{formatDateTime(providerStats.lastUsed, 'Never')}</p>
-															</div>
+															<StatCard
+																icon={Send}
+																label='Requests'
+																value={providerStats.requests ?? 0}
+																color={Colors.BLUE_500.text}
+															/>
+															<StatCard
+																icon={CheckCircle2}
+																label='Successes'
+																value={providerStats.successes ?? 0}
+																color={Colors.GREEN_500.text}
+															/>
+															<StatCard
+																icon={XCircle}
+																label='Failures'
+																value={providerStats.failures ?? 0}
+																color={Colors.RED_500.text}
+															/>
+															<StatCard
+																icon={Percent}
+																label='Success Rate'
+																value={formatNumericValue(providerStats.successRate, 2, '%')}
+																color={Colors.GREEN_500.text}
+															/>
+															<StatCard
+																icon={Timer}
+																label='Avg Response Time'
+																value={formatNumericValue(providerStats.averageResponseTime, 2, 'ms')}
+																color={Colors.YELLOW_500.text}
+															/>
+															<StatCard
+																icon={AlertIconSource}
+																label='Error Rate'
+																value={formatNumericValue(providerStats.errorRate, 2, '%')}
+																color={Colors.RED_500.text}
+															/>
+															<StatCard
+																icon={Clock}
+																label='Last Used'
+																value={formatDateTime(providerStats.lastUsed, 'Never')}
+																color={Colors.BLUE_500.text}
+															/>
 														</div>
 													</CardContent>
 												</Card>

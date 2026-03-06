@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { VALIDATION_COUNT, VALIDATORS } from '@shared/constants';
+import { VALIDATION_COUNT } from '@shared/constants';
 import { TriviaRequest } from '@shared/types';
-import { getErrorMessage, isNonEmptyString, isRecord } from '@shared/utils';
-import { toDifficultyLevel } from '@shared/validation';
+import { getErrorMessage, isNonEmptyString, isRecord, sanitizeInput } from '@shared/utils';
+import { toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import { TriviaRequestDto } from '@features/game/dtos';
@@ -13,15 +13,14 @@ export class TriviaRequestPipe implements PipeTransform {
 	async transform(value: unknown): Promise<TriviaRequestDto> {
 		try {
 			// Debug: Log what we receive
-			const isStringValue = typeof value === 'string';
 			logger.validationDebug('trivia_request', '[REDACTED]', 'transformation_start', {
 				type: typeof value,
 				data: {
 					isObject: isRecord(value),
 					isNull: value === null,
-					isString: isStringValue,
-					stringLength: isStringValue ? value.length : undefined,
-					stringPreview: isStringValue ? value.substring(0, 100) : undefined,
+					isString: VALIDATORS.string(value),
+					stringLength: VALIDATORS.string(value) ? value.length : undefined,
+					stringPreview: VALIDATORS.string(value) ? value.substring(0, 100) : undefined,
 				},
 			});
 
@@ -118,13 +117,12 @@ export class TriviaRequestPipe implements PipeTransform {
 
 	private normalizeValue(value: unknown): unknown {
 		// Debug: Log what we're trying to normalize
-		const isStringValue = typeof value === 'string';
 		logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_start', {
 			type: typeof value,
 			data: {
-				isString: isStringValue,
-				stringLength: isStringValue ? value.length : undefined,
-				stringPreview: isStringValue ? value.substring(0, 200) : undefined,
+				isString: VALIDATORS.string(value),
+				stringLength: VALIDATORS.string(value) ? value.length : undefined,
+				stringPreview: VALIDATORS.string(value) ? value.substring(0, 200) : undefined,
 				isObject: isRecord(value),
 				isNull: value === null,
 			},
@@ -132,8 +130,7 @@ export class TriviaRequestPipe implements PipeTransform {
 
 		// Framework typically parses JSON body, so value should be an object
 		// Handle edge cases where value might be a string (shouldn't happen in normal flow)
-		if (typeof value === 'string') {
-			// Empty string or whitespace - invalid
+		if (VALIDATORS.string(value)) {
 			if (value.trim().length === 0) {
 				logger.validationWarn('trivia_request', '[REDACTED]', 'normalize_empty_string', {
 					type: typeof value,
@@ -212,7 +209,7 @@ export class TriviaRequestPipe implements PipeTransform {
 		if (
 			!this.isValidQuestionsPerRequest(questionsPerRequest) ||
 			!isNonEmptyString(topic) ||
-			typeof difficulty !== 'string'
+			!VALIDATORS.string(difficulty)
 		) {
 			return false;
 		}
@@ -232,6 +229,7 @@ export class TriviaRequestPipe implements PipeTransform {
 		const optionalChecks: boolean[] = [
 			this.isOptionalString(candidate.category),
 			this.isOptionalString(candidate.userId),
+			this.isOptionalString(candidate.gameId),
 			this.isOptionalString(candidate.gameMode),
 			this.isOptionalNumber(candidate.timeLimit),
 			this.isOptionalNumber(candidate.maxQuestionsPerGame),
@@ -251,17 +249,21 @@ export class TriviaRequestPipe implements PipeTransform {
 
 	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
 		const dto = new TriviaRequestDto();
-		dto.topic = payload.topic;
+		dto.topic = sanitizeInput(payload.topic, 500);
 		dto.difficulty = payload.difficulty;
 		dto.mappedDifficulty = toDifficultyLevel(payload.difficulty);
 		dto.questionsPerRequest = questionsPerRequest;
 
 		if (payload.category !== undefined) {
-			dto.category = payload.category;
+			dto.category = sanitizeInput(payload.category, 500);
 		}
 
 		if (payload.userId !== undefined) {
 			dto.userId = payload.userId;
+		}
+
+		if (payload.gameId !== undefined) {
+			dto.gameId = payload.gameId;
 		}
 
 		if (payload.gameMode !== undefined) {

@@ -1,12 +1,12 @@
 import { CSSProperties, MouseEvent } from 'react';
 
-import { ComponentSize, TextColor } from '@/constants';
+import { ComponentSize } from '@/constants';
 import { BaseComponentProps } from '@/types';
 
 export interface IconProps extends BaseComponentProps {
 	name: string;
 	size?: ComponentSize;
-	color?: TextColor;
+	color?: string;
 	onClick?: (event: MouseEvent<SVGSVGElement>) => void;
 	style?: CSSProperties;
 }

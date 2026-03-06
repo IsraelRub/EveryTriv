@@ -3,22 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
-	DEFAULT_USER_PREFERENCES,
 	DifficultyLevel,
-	ERROR_CODES,
 	ERROR_MESSAGES,
+	ErrorCode,
 	GameMode,
-	GameStatus,
 	HTTP_TIMEOUTS,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
-	VALID_GAME_STATUSES,
+	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
-	VALIDATORS,
 } from '@shared/constants';
 import type {
 	AnswerHistoryFallback,
-	AnswerResult,
 	ClearOperationResponse,
 	GameData,
 	GameDifficulty,
@@ -26,44 +22,40 @@ import type {
 	GameHistoryResponse,
 	GameSessionStartResponse,
 	GameSessionValidationResponse,
+	SubmitAnswerResult,
 	TriviaQuestion,
 } from '@shared/types';
 import {
 	calculateAnswerScore,
-	calculateSuccessRate,
-	checkAnswerCorrectness,
+	calculateScoreRate,
+	clamp,
 	createAnswerHistory,
-	createAnswerResult,
+	delay,
 	getErrorMessage,
+	isAnswerCorrect,
 	normalizeGameData,
-	toSavedGameConfiguration,
+	shuffle,
+	sumBy,
 } from '@shared/utils';
-import { isStringArray } from '@shared/utils/core/data.utils';
-import { isSavedGameConfiguration } from '@shared/utils/domain';
-import { isRegisteredDifficulty, isUuid, restoreGameDifficulty, toDifficultyLevel } from '@shared/validation';
+import { isNonEmptyString, isStringArray } from '@shared/utils/core/data.utils';
+import { isRegisteredDifficulty, isUuid, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
+import { GAME_STATUSES, GameStatus } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type {
-	CreditsParams,
 	DeleteGameHistoryParams,
 	GameSessionState,
 	GetTriviaQuestionParams,
 	PromptParams,
-	SaveGameConfigParams,
 	SaveGameHistoryParams,
 	SubmitAnswerParams,
 	UserGameHistoryParams,
 } from '@internal/types';
-import {
-	createNotFoundError,
-	createServerError,
-	createValidationError,
-	isGameSessionState,
-	isValidGameDifficulty,
-} from '@internal/utils';
+import { createNotFoundError, createServerError, isGameSessionState, isValidGameDifficulty } from '@internal/utils';
 
+import { restoreGameDifficulty } from '../../common/validation/difficulty.validation';
 import { UserStatsUpdateService } from '../analytics/services';
 import { TriviaGenerationService } from './triviaGeneration';
 
@@ -82,30 +74,39 @@ export class GameService {
 		private readonly userStatsUpdateService: UserStatsUpdateService
 	) {}
 
+	private collectNonEmptyQuestionStrings(rows: { question: unknown }[]): string[] {
+		const out: string[] = [];
+		for (const row of rows) {
+			if (isNonEmptyString(row.question)) {
+				out.push(row.question);
+			}
+		}
+		return out;
+	}
+
 	private async getUserRecentQuestionsForTopic(userId: string, topic: string, limit: number = 50): Promise<string[]> {
 		try {
 			const result = await this.gameHistoryRepository.query(
-				`SELECT DISTINCT LOWER(TRIM(elem->>'question')) as question
-				 FROM game_history gh,
-				 LATERAL jsonb_array_elements(gh.questions_data) AS elem
-				 WHERE gh.user_id = $1
-				   AND LOWER(gh.topic) = LOWER($2)
-				   AND gh.questions_data IS NOT NULL
-				   AND jsonb_array_length(gh.questions_data) > 0
-				   AND elem->>'question' IS NOT NULL
-				 ORDER BY gh.created_at DESC
+				`SELECT sub.question
+				 FROM (
+				   SELECT DISTINCT ON (LOWER(TRIM(elem->>'question')))
+				     LOWER(TRIM(elem->>'question')) AS question,
+				     gh.created_at
+				   FROM game_history gh,
+				   LATERAL jsonb_array_elements(gh.questions_data) AS elem
+				   WHERE gh.user_id = $1
+				     AND LOWER(gh.topic) = LOWER($2)
+				     AND gh.questions_data IS NOT NULL
+				     AND jsonb_array_length(gh.questions_data) > 0
+				     AND elem->>'question' IS NOT NULL
+				   ORDER BY LOWER(TRIM(elem->>'question')), gh.created_at DESC
+				 ) sub
+				 ORDER BY sub.created_at DESC
 				 LIMIT $3`,
 				[userId, topic, limit]
 			);
 
-			const questions: string[] = [];
-			for (const row of result) {
-				if (row.question && typeof row.question === 'string' && row.question.trim().length > 0) {
-					questions.push(row.question);
-				}
-			}
-
-			return questions;
+			return this.collectNonEmptyQuestionStrings(result);
 		} catch (error) {
 			logger.gameError('Failed to get user recent questions for topic', {
 				errorInfo: { message: getErrorMessage(error) },
@@ -126,10 +127,9 @@ export class GameService {
 				return new Set(cachedResult.data);
 			}
 
-			// If not in cache, query database with optimized query
-			// Using GIN index on questions_data (if exists) for better performance
-			// Get all distinct questions from user's entire game history to prevent repeats
-			// Note: This query is cached for 1 hour to avoid performance issues
+			// Raw SQL: TypeORM QueryBuilder does not support LATERAL jsonb_array_elements(); expanding
+			// questions_data (jsonb array) into one row per question must be done in PostgreSQL.
+			// Result is cached for 1 hour to avoid repeated heavy queries.
 			const result = await this.gameHistoryRepository.query(
 				`SELECT DISTINCT LOWER(TRIM(elem->>'question')) as question
 				 FROM game_history gh,
@@ -141,12 +141,7 @@ export class GameService {
 				[userId]
 			);
 
-			const seenQuestions = new Set<string>();
-			for (const row of result) {
-				if (row.question && typeof row.question === 'string' && row.question.trim().length > 0) {
-					seenQuestions.add(row.question);
-				}
-			}
+			const seenQuestions = new Set(this.collectNonEmptyQuestionStrings(result));
 
 			// Cache the result for 1 hour
 			const questionsArray = Array.from(seenQuestions);
@@ -163,16 +158,22 @@ export class GameService {
 	}
 
 	async getTriviaQuestion(params: GetTriviaQuestionParams) {
-		const { topic, difficulty, questionsPerRequest = 1, userId, answerCount } = params;
+		const {
+			topic,
+			difficulty,
+			questionsPerRequest = 1,
+			userId,
+			answerCount = VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
+			gameId,
+		} = params;
 		// Note: questionsPerRequest is already validated and converted by TriviaRequestPipe
 		// For unlimited mode (-1), we request questions in batches to allow continuous gameplay
-		const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
+		const { UNLIMITED, MAX, INITIAL_BATCH_UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 
-		// For unlimited mode, request questions in batches (MAX per request)
-		// This allows continuous gameplay while respecting server limits
-		// Note: In unlimited mode, the client should request 1 question at a time for subsequent requests
-		// to avoid unnecessary credit deductions. The initial request uses -1 to indicate unlimited mode.
-		const normalizedQuestionsPerRequest = questionsPerRequest === UNLIMITED ? MAX : Math.min(questionsPerRequest, MAX);
+		// For unlimited mode, use a smaller initial batch so the first response returns within client timeout.
+		// Client can request more questions when needed. Using MAX (50) caused timeouts with Groq rate limits.
+		const normalizedQuestionsPerRequest =
+			questionsPerRequest === UNLIMITED ? INITIAL_BATCH_UNLIMITED : Math.min(questionsPerRequest, MAX);
 
 		if (questionsPerRequest > MAX && questionsPerRequest !== UNLIMITED) {
 			logger.gameError(
@@ -222,12 +223,12 @@ export class GameService {
 			};
 			const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
 			const maxRetries = VALIDATION_COUNT.RETRY_ATTEMPTS.QUESTION_GENERATION;
+			const delayBetweenQuestionsMs = TIME_PERIODS_MS.TWO_SECONDS;
 
-			// Get the requested answer count (default to 4 if not specified)
-			const requestedAnswerCount = answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT;
-			const actualAnswerCount = Math.max(
+			const actualAnswerCount = clamp(
+				answerCount,
 				VALIDATION_COUNT.ANSWER_COUNT.MIN,
-				Math.min(VALIDATION_COUNT.ANSWER_COUNT.MAX, requestedAnswerCount)
+				VALIDATION_COUNT.ANSWER_COUNT.MAX
 			);
 
 			// Use existing questions first
@@ -248,22 +249,27 @@ export class GameService {
 				const currentAnswerCount = adjustedAnswers.length;
 
 				if (currentAnswerCount > actualAnswerCount) {
-					// If we have more answers than needed, keep the first (correct) answer
-					// and randomly select (actualAnswerCount - 1) incorrect answers
-					const correctAnswer = adjustedAnswers[0];
+					// Keep the correct answer (by correctAnswerIndex) and randomly select (actualAnswerCount - 1) incorrect answers
+					const correctIdx =
+						questionEntity.correctAnswerIndex >= 0 && questionEntity.correctAnswerIndex < currentAnswerCount
+							? questionEntity.correctAnswerIndex
+							: questionEntity.answers.findIndex((a: { isCorrect?: boolean }) => a.isCorrect === true);
+					const correctAnswer = correctIdx >= 0 ? adjustedAnswers[correctIdx] : undefined;
 					if (!correctAnswer) {
-						// Skip if no correct answer (should not happen, but TypeScript safety)
 						continue;
 					}
-					const incorrectAnswers = adjustedAnswers.slice(1);
-					// Shuffle and take only what we need
-					const shuffledIncorrect = incorrectAnswers.sort(() => Math.random() - 0.5);
+					const incorrectAnswers = adjustedAnswers.filter((_, idx) => idx !== correctIdx);
+					const shuffledIncorrect = shuffle(incorrectAnswers);
 					adjustedAnswers = [correctAnswer, ...shuffledIncorrect.slice(0, actualAnswerCount - 1)];
 				} else if (currentAnswerCount < actualAnswerCount) {
 					// If we have fewer answers than needed, skip this question
 					// It will be replaced by a newly generated question
 					continue;
 				}
+
+				// Shuffle all answers so the correct one is not always in the same position (e.g. first)
+				adjustedAnswers = shuffle(adjustedAnswers);
+				const correctAnswerIndex = adjustedAnswers.findIndex((a: { isCorrect?: boolean }) => a.isCorrect === true) ?? 0;
 
 				const {
 					userId: _userId,
@@ -276,6 +282,7 @@ export class GameService {
 					...rest,
 					answers: adjustedAnswers,
 					difficulty: restoredDifficulty,
+					correctAnswerIndex: correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
 				});
 
 				appendExcludeQuestion(questionEntity.question);
@@ -314,7 +321,7 @@ export class GameService {
 							let timeoutId: NodeJS.Timeout | undefined = undefined;
 							const timeoutPromise = new Promise<never>((_, reject) => {
 								timeoutId = setTimeout(() => {
-									reject(new Error(ERROR_CODES.QUESTION_GENERATION_TIMEOUT));
+									reject(new Error(ErrorCode.QUESTION_GENERATION_TIMEOUT));
 								}, generationTimeout);
 							});
 
@@ -383,6 +390,9 @@ export class GameService {
 							maxRetries,
 						});
 					}
+					if (i < remainingCount - 1) {
+						await delay(delayBetweenQuestionsMs);
+					}
 				}
 			}
 
@@ -397,6 +407,27 @@ export class GameService {
 					actualCount: questions.length,
 					totalItems: availableQuestions.length,
 				});
+			}
+
+			// Store question snapshots in session when gameId and userId provided (for consistent answer evaluation on submit)
+			if (userId && gameId && isNonEmptyString(gameId) && isUuid(gameId) && questions.length > 0) {
+				const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+				const sessionResult = await this.storageService.get(sessionKey);
+				if (sessionResult.success && sessionResult.data && isGameSessionState(sessionResult.data)) {
+					const session = sessionResult.data;
+					const newSnapshots: Record<string, { correctAnswerIndex: number }> = {};
+					for (const q of questions) {
+						if (q?.id && typeof q.correctAnswerIndex === 'number') {
+							newSnapshots[q.id] = { correctAnswerIndex: q.correctAnswerIndex };
+						}
+					}
+					if (Object.keys(newSnapshots).length > 0) {
+						// Merge so time-limited "fetch more" keeps snapshots for previous batches and adds new ones
+						session.questionSnapshots = { ...(session.questionSnapshots ?? {}), ...newSnapshots };
+						session.lastHeartbeat = new Date().toISOString();
+						await this.storageService.set(sessionKey, session, TIME_DURATIONS_SECONDS.HOUR);
+					}
+				}
 			}
 
 			return {
@@ -419,13 +450,13 @@ export class GameService {
 
 	async getQuestionById(questionId: string): Promise<TriviaQuestion> {
 		try {
-			if (!questionId || questionId.trim().length === 0) {
-				throw new BadRequestException(ERROR_CODES.QUESTION_ID_REQUIRED);
+			if (!isNonEmptyString(questionId)) {
+				throw new BadRequestException(ErrorCode.QUESTION_ID_REQUIRED);
 			}
 
 			// Validate UUID format
 			if (!isUuid(questionId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_QUESTION_ID_FORMAT);
 			}
 
 			const questionEntity = await this.triviaRepository.findOne({
@@ -503,17 +534,15 @@ export class GameService {
 		}
 	}
 
-	async submitAnswerToSession(
-		params: SubmitAnswerParams & { gameId: string }
-	): Promise<AnswerResult & { sessionScore: number }> {
+	async submitAnswerToSession(params: SubmitAnswerParams & { gameId: string }): Promise<SubmitAnswerResult> {
 		const { questionId, answer, userId, timeSpent, gameId } = params;
 		try {
-			if (!questionId || questionId.trim().length === 0) {
-				throw new BadRequestException(ERROR_CODES.QUESTION_ID_REQUIRED);
+			if (!isNonEmptyString(questionId)) {
+				throw new BadRequestException(ErrorCode.QUESTION_ID_REQUIRED);
 			}
 
 			if (!isUuid(questionId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_QUESTION_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_QUESTION_ID_FORMAT);
 			}
 
 			const question = await this.getQuestionById(questionId);
@@ -525,11 +554,9 @@ export class GameService {
 			const maxAnswerIndex = question.answers.length - 1;
 			if (answer < 0 || answer > maxAnswerIndex) {
 				throw new BadRequestException(
-					`Invalid answer value: must be a number between 0 and ${maxAnswerIndex} (question has ${question.answers.length} answers)`
+					ERROR_MESSAGES.game.INVALID_ANSWER_INDEX_SERVER(maxAnswerIndex, question.answers.length)
 				);
 			}
-
-			const isCorrect = checkAnswerCorrectness(question, answer);
 
 			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionResult = await this.storageService.get(sessionKey);
@@ -539,10 +566,17 @@ export class GameService {
 			}
 
 			if (!isGameSessionState(sessionResult.data)) {
-				throw createServerError('get game session', new Error('Invalid game session data structure'));
+				throw createServerError('get game session', new Error(ERROR_MESSAGES.game.INVALID_GAME_SESSION_DATA_STRUCTURE));
 			}
 
 			const session = sessionResult.data;
+
+			// Use snapshot correctAnswerIndex when available (matches client shuffle); otherwise fallback to question from DB
+			const snapshot = session.questionSnapshots?.[questionId];
+			const isCorrect =
+				snapshot !== undefined && typeof snapshot.correctAnswerIndex === 'number'
+					? answer === snapshot.correctAnswerIndex
+					: isAnswerCorrect(question, answer);
 
 			const streak = session.questions.filter(q => q.isCorrect).length;
 			const score = calculateAnswerScore(toDifficultyLevel(question.difficulty), timeSpent, streak, isCorrect);
@@ -574,7 +608,13 @@ export class GameService {
 			}
 
 			return {
-				...createAnswerResult(questionId, answer, isCorrect, timeSpent, score, 0),
+				questionId,
+				userAnswerIndex: answer >= 0 ? answer : -1,
+				isCorrect,
+				timeSpent,
+				scoreEarned: score,
+				totalScore: 0,
+				feedback: isCorrect ? 'Correct answer!' : 'Wrong answer. Try again!',
 				sessionScore: session.currentScore,
 			};
 		} catch (error) {
@@ -599,7 +639,7 @@ export class GameService {
 			const session = sessionResult.data;
 
 			// Check if session is valid (has required fields and matches user/game)
-			const isValid = session.gameId === gameId && session.userId === userId && VALID_GAME_STATUSES.has(session.status);
+			const isValid = session.gameId === gameId && session.userId === userId && GAME_STATUSES.has(session.status);
 
 			if (isValid) {
 				return { isValid: true, session: sessionResult.data };
@@ -637,7 +677,7 @@ export class GameService {
 				return {
 					...existingHistory,
 					incorrectAnswers,
-					successRate: calculateSuccessRate(existingHistory.gameQuestionCount, existingHistory.correctAnswers),
+					successRate: calculateScoreRate(existingHistory.score, existingHistory.gameQuestionCount),
 				};
 			}
 
@@ -649,13 +689,16 @@ export class GameService {
 			}
 
 			if (!isGameSessionState(sessionResult.data)) {
-				throw createServerError('finalize game session', new Error('Invalid game session data structure'));
+				throw createServerError(
+					'finalize game session',
+					new Error(ERROR_MESSAGES.game.INVALID_GAME_SESSION_DATA_STRUCTURE)
+				);
 			}
 
 			const session = sessionResult.data;
 
 			// Calculate total time spent
-			const totalTimeSpent = session.questions.reduce((sum, q) => sum + (q.timeSpent ?? 0), 0);
+			const totalTimeSpent = sumBy(session.questions, q => q.timeSpent ?? 0);
 
 			// Create AnswerHistory from session questions
 			// Handle cases where question might be deleted (fallback to text-based data)
@@ -686,7 +729,10 @@ export class GameService {
 
 			// Validate difficulty is a valid GameDifficulty
 			if (!isValidGameDifficulty(session.difficulty)) {
-				throw createServerError('finalize game session', new Error(`Invalid difficulty: ${session.difficulty}`));
+				throw createServerError(
+					'finalize game session',
+					new Error(ERROR_MESSAGES.validation.INVALID_DIFFICULTY_LEVEL(session.difficulty))
+				);
 			}
 
 			// Create gameData from session
@@ -762,7 +808,7 @@ export class GameService {
 					return {
 						...existing,
 						incorrectAnswers,
-						successRate: calculateSuccessRate(existing.gameQuestionCount, existing.correctAnswers),
+						successRate: calculateScoreRate(existing.score, existing.gameQuestionCount),
 					};
 				}
 			}
@@ -790,9 +836,17 @@ export class GameService {
 
 			const savedHistory = await this.gameHistoryRepository.save(gameHistory);
 
-			// Update user statistics asynchronously (non-blocking)
-			// Note: Cache invalidation is now handled inside updateStatsFromGame after stats are saved
-			this.updateUserStatsAsync(userId, savedHistory);
+			// Update user statistics synchronously so leaderboards/stats stay consistent with game_history
+			try {
+				await this.userStatsUpdateService.updateStatsFromGame(userId, savedHistory);
+			} catch (error) {
+				logger.gameError('Failed to update user stats after save game', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+					gameId: savedHistory.id,
+					note: 'Game was saved. Entry already kept in retry queue by UserStatsUpdateService.',
+				});
+			}
 
 			// Invalidate seen questions cache to include new questions from this game
 			const seenQuestionsCacheKey = SERVER_CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
@@ -802,7 +856,7 @@ export class GameService {
 			return {
 				...rest,
 				incorrectAnswers,
-				successRate: calculateSuccessRate(savedHistory.gameQuestionCount, savedHistory.correctAnswers),
+				successRate: calculateScoreRate(savedHistory.score, savedHistory.gameQuestionCount),
 			};
 		} catch (error) {
 			logger.gameError('Failed to save game history', {
@@ -815,7 +869,7 @@ export class GameService {
 	}
 
 	async getUserGameHistory(params: UserGameHistoryParams): Promise<GameHistoryResponse> {
-		const { userId, limit = 50, offset = 0 } = params;
+		const { userId, limit = VALIDATION_COUNT.LEADERBOARD.DEFAULT, offset = 0 } = params;
 		try {
 			const totalGames = await this.gameHistoryRepository.count({
 				where: { userId },
@@ -856,13 +910,13 @@ export class GameService {
 
 	async getGameById(gameId: string) {
 		try {
-			if (!gameId || gameId.trim().length === 0) {
-				throw new BadRequestException(ERROR_CODES.GAME_ID_REQUIRED);
+			if (!isNonEmptyString(gameId)) {
+				throw new BadRequestException(ErrorCode.GAME_ID_REQUIRED);
 			}
 
 			// Validate UUID format
 			if (!isUuid(gameId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_GAME_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_GAME_ID_FORMAT);
 			}
 
 			const game = await this.gameHistoryRepository.findOne({
@@ -876,7 +930,7 @@ export class GameService {
 			const { user: _user, ...rest } = game;
 			return {
 				...rest,
-				successRate: calculateSuccessRate(game.gameQuestionCount, game.correctAnswers),
+				successRate: calculateScoreRate(game.score, game.gameQuestionCount),
 			};
 		} catch (error) {
 			logger.gameError('Failed to get game by ID', {
@@ -887,168 +941,15 @@ export class GameService {
 		}
 	}
 
-	async getUserCreditBalance(userId: string) {
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
-
-			return {
-				userId: user.id,
-				email: user.email,
-				credits: user.credits ?? 0,
-			};
-		} catch (error) {
-			logger.gameError('Failed to get user credit balance', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-			});
-			throw error;
-		}
-	}
-
-	async addCredits(params: CreditsParams) {
-		const { userId, credits } = params;
-		try {
-			logger.gameInfo('Adding credits to user', {
-				userId,
-				credits,
-				reason: 'Game completion',
-			});
-
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
-
-			const newCredits = (user.credits ?? 0) + credits;
-			await this.userRepository.update(userId, { credits: newCredits });
-
-			return {
-				userId: user.id,
-				email: user.email,
-				previousCredits: user.credits ?? 0,
-				addedCredits: credits,
-				newCredits,
-			};
-		} catch (error) {
-			logger.gameError('Failed to add credits', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-				credits,
-			});
-			throw error;
-		}
-	}
-
-	async deductCredits(params: CreditsParams) {
-		const { userId, credits } = params;
-		try {
-			const user = await this.userRepository.findOne({ where: { id: userId } });
-			if (!user) {
-				throw createNotFoundError('User');
-			}
-
-			const currentCredits = user.credits ?? 0;
-			if (currentCredits < credits) {
-				throw createValidationError('credits', 'number');
-			}
-
-			const newCredits = currentCredits - credits;
-			await this.userRepository.update(userId, { credits: newCredits });
-
-			return {
-				userId: user.id,
-				email: user.email,
-				previousCredits: currentCredits,
-				deductedCredits: credits,
-				newCredits,
-			};
-		} catch (error) {
-			logger.gameError('Failed to deduct credits', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-				credits,
-			});
-			throw error;
-		}
-	}
-
-	async saveGameConfiguration(params: SaveGameConfigParams) {
-		const { userId, config } = params;
-		try {
-			const configKey = `game_config:${userId}`;
-			const result = await this.storageService.set(
-				configKey,
-				{
-					...config,
-					updatedAt: new Date().toISOString(),
-					userId,
-				},
-				TIME_DURATIONS_SECONDS.HOUR
-			);
-
-			if (!result.success) {
-				logger.gameError('Failed to store game configuration', {
-					userId,
-					errorInfo: {
-						message: result.error ?? ERROR_MESSAGES.general.UNKNOWN_ERROR,
-					},
-				});
-				throw createServerError('save game configuration', new Error(ERROR_CODES.FAILED_TO_SAVE_CONFIG));
-			}
-
-			return {
-				message: 'Game configuration saved successfully',
-				config,
-			};
-		} catch (error) {
-			logger.gameError('Failed to save game configuration', {
-				userId,
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw error;
-		}
-	}
-
-	async getGameConfiguration(userId: string) {
-		try {
-			const configKey = `game_config:${userId}`;
-			const result = await this.storageService.get(configKey, isSavedGameConfiguration);
-
-			if (result.success && result.data) {
-				return {
-					config: result.data,
-				};
-			}
-
-			const defaultConfig = toSavedGameConfiguration(
-				DEFAULT_USER_PREFERENCES.game,
-				DEFAULT_USER_PREFERENCES.soundEnabled
-			);
-
-			return {
-				config: defaultConfig,
-			};
-		} catch (error) {
-			logger.gameError('Failed to get game configuration', {
-				userId,
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw error;
-		}
-	}
-
 	async deleteGameHistory(params: DeleteGameHistoryParams): Promise<ClearOperationResponse> {
 		const { userId, gameId } = params;
 		try {
-			if (!gameId || gameId.trim().length === 0) {
-				throw new BadRequestException(ERROR_CODES.GAME_ID_REQUIRED);
+			if (!isNonEmptyString(gameId)) {
+				throw new BadRequestException(ErrorCode.GAME_ID_REQUIRED);
 			}
 
 			if (!isUuid(gameId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_GAME_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_GAME_ID_FORMAT);
 			}
 
 			const gameHistory = await this.gameHistoryRepository.findOne({
@@ -1061,8 +962,15 @@ export class GameService {
 
 			await this.gameHistoryRepository.remove(gameHistory);
 
-			// Update user statistics asynchronously (non-blocking)
-			this.removeUserStatsFromGameAsync(userId, gameHistory);
+			try {
+				await this.userStatsUpdateService.removeStatsFromGame(userId, gameHistory);
+			} catch (error) {
+				logger.gameError('Failed to remove user stats after delete game', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+					gameId: gameHistory.id,
+				});
+			}
 
 			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
 
@@ -1097,8 +1005,14 @@ export class GameService {
 
 			const deletedCount = VALIDATORS.number(deleteResult.affected) ? deleteResult.affected : count;
 
-			// Reset user statistics asynchronously (non-blocking)
-			this.resetUserStatsAsync(userId);
+			try {
+				await this.userStatsUpdateService.resetUserStats(userId);
+			} catch (error) {
+				logger.gameError('Failed to reset user stats after clear history', {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+				});
+			}
 
 			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
 
@@ -1116,26 +1030,6 @@ export class GameService {
 		}
 	}
 
-	private updateUserStatsAsync(userId: string, savedHistory: GameHistoryEntity): void {
-		const handleUpdate = async () => {
-			try {
-				await this.userStatsUpdateService.updateStatsFromGame(userId, savedHistory);
-			} catch (error) {
-				logger.gameError('Failed to update user stats (async)', {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-					gameId: savedHistory.id,
-					note: 'Stats update failed but game was saved. Consider running consistency check.',
-				});
-
-				// Add to failed queue for potential retry
-				const queueKey = `${userId}:${savedHistory.id}`;
-				this.userStatsUpdateService.addToFailedQueue(queueKey, savedHistory);
-			}
-		};
-		handleUpdate();
-	}
-
 	private invalidateSeenQuestionsCacheAsync(cacheKey: string, userId: string): void {
 		const handleInvalidation = async () => {
 			try {
@@ -1148,34 +1042,5 @@ export class GameService {
 			}
 		};
 		handleInvalidation();
-	}
-
-	private removeUserStatsFromGameAsync(userId: string, gameHistory: GameHistoryEntity): void {
-		const handleRemove = async () => {
-			try {
-				await this.userStatsUpdateService.removeStatsFromGame(userId, gameHistory);
-			} catch (error) {
-				logger.gameError('Failed to remove user stats from deleted game', {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-					gameId: gameHistory.id,
-				});
-			}
-		};
-		handleRemove();
-	}
-
-	private resetUserStatsAsync(userId: string): void {
-		const handleReset = async () => {
-			try {
-				await this.userStatsUpdateService.resetUserStats(userId);
-			} catch (error) {
-				logger.gameError('Failed to reset user stats after clearing history', {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-				});
-			}
-		};
-		handleReset();
 	}
 }

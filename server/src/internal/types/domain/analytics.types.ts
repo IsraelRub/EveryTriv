@@ -1,4 +1,4 @@
-import type { CountRecord, GameDifficulty, TrendQueryOptions } from '@shared/types';
+import type { CountRecord, GameDifficulty } from '@shared/types';
 
 import type { GameHistoryEntity, UserEntity } from '@internal/entities';
 
@@ -6,6 +6,7 @@ export interface TopicAnalyticsAccumulator {
 	gamesPlayed: number;
 	totalQuestionsAnswered: number;
 	correctAnswers: number;
+	score: number;
 	totalTimeSpent: number;
 	lastPlayed: string | null;
 	difficultyBreakdown: CountRecord;
@@ -15,16 +16,6 @@ export interface DifficultyStatsRecord {
 	difficulty: GameDifficulty;
 	total: number;
 	correct: number;
-}
-
-export interface GetUserSummaryParams {
-	userId: string;
-	includeActivity: boolean;
-}
-
-export interface GetUserAnalyticsParams {
-	userId: string;
-	query?: TrendQueryOptions;
 }
 
 export interface UserWithHistoryResult {
@@ -44,4 +35,10 @@ export interface NumericQueryResult {
 export interface UserIdSuccessRateRecord {
 	userId: string;
 	successRate: number;
+}
+
+export interface MeanVarianceStddev {
+	mean: number;
+	variance: number;
+	standardDeviation: number;
 }

@@ -1,9 +1,0 @@
-export { UserActivityTab } from './UserActivityTab';
-export { UserComparisonTab } from './UserComparisonTab';
-export { UserInsightsTab } from './UserInsightsTab';
-export { UserOverviewTab } from './UserOverviewTab';
-export { UserPerformanceTab } from './UserPerformanceTab';
-export { UserProgressTab } from './UserProgressTab';
-export { UserSearchSection } from './UserSearchSection';
-export { UserStatisticsTab } from './UserStatisticsTab';
-export { UserTrendsTab } from './UserTrendsTab';

@@ -20,6 +20,7 @@ export {
 
 export {
 	useGameHistory,
+	useGameSettingsForm,
 	useValidateCustomDifficulty,
 	useTriviaQuestionMutation,
 	useClearGameHistory,
@@ -28,6 +29,7 @@ export {
 	useSubmitAnswerToSession,
 	useFinalizeGameSession,
 	useGameFinalization,
+	useSingleSession,
 } from './game';
 
 export { useSetAvatar, useUpdateUserProfile, useUserProfile, useUpdateUserPreferences } from './useUser';
@@ -40,7 +42,6 @@ export {
 	useLeaderboardByPeriod,
 	useLeaderboardStats,
 	usePopularTopics,
-	useRealTimeAnalytics,
 	useTrackAnalyticsEvent,
 	useUnifiedUserAnalytics,
 	useUserAnalytics,
@@ -55,20 +56,17 @@ export {
 	useSystemRecommendations,
 	useSystemSecurityMetrics,
 	useUserAchievementsById,
-	useUserActivityById,
-	useUserComparisonById,
 	useUserInsightsById,
 	useUserPerformanceById,
-	useUserProgressById,
 	useUserRecommendationsById,
 	useUserStatisticsById,
 	useUserSummaryById,
-	useUserTrendsById,
 	useAllTriviaQuestions,
 	useClearAllGameHistory,
 	useClearAllTrivia,
 	useGameStatistics,
 	useAllUsers,
+	useUserSearch,
 	useAiProviderStats,
 	useAiProviderHealth,
 	useCheckAllUsersConsistency,
@@ -90,6 +88,7 @@ export {
 	useNavigationClose,
 	useCountUp,
 	usePagination,
+	useClientTableState,
 } from './ui';
 
 export { useAppInitialization } from './useAppInitialization';

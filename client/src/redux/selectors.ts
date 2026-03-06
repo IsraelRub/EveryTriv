@@ -43,6 +43,7 @@ export const selectMultiplayerGameState = (state: RootState) => state.multiplaye
 export const selectMultiplayerLeaderboard = (state: RootState) => state.multiplayer.gameState?.leaderboard ?? [];
 export const selectMultiplayerError = (state: RootState) => state.multiplayer.error;
 export const selectMultiplayerLoading = (state: RootState) => state.multiplayer.isLoading;
+export const selectRevealPhase = (state: RootState) => state.multiplayer.revealPhase;
 
 // Audio Settings Selectors
 export const selectAudioSettings = (state: RootState) => state.audioSettings;

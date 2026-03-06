@@ -1,10 +1,3 @@
-export function sanitizeInput(input: string, maxLength: number = 1000): string {
-	return input
-		.trim()
-		.replace(/[<>]/g, '') // Remove potential HTML tags
-		.substring(0, maxLength);
-}
-
 export function sanitizeLogMessage(message: string): string {
 	return message
 		.replace(/password["\s]*[:=]["\s]*[^"\s,}]+/gi, 'password: ***')
@@ -13,12 +6,18 @@ export function sanitizeLogMessage(message: string): string {
 		.replace(/secret["\s]*[:=]["\s]*[^"\s,}]+/gi, 'secret: ***');
 }
 
+export function sanitizeCardNumber(cardNumber: string): string {
+	return cardNumber.replace(/\s/g, '').replace(/\D/g, '');
+}
+
 export function sanitizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
-export function sanitizeCardNumber(cardNumber: string): string {
-	return cardNumber.replace(/\s/g, '').replace(/\D/g, '');
+export function sanitizeInput(value: string, maxLength: number = 10_000): string {
+	const trimmed = value.trim().replace(/\s+/g, ' ');
+	const withoutTags = trimmed.replace(/<[^>]*>/g, '');
+	return withoutTags.length > maxLength ? withoutTags.slice(0, maxLength) : withoutTags;
 }
 
 export function normalizeText(text: string): string {

@@ -1,24 +1,37 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { SKELETON_HEIGHTS, SKELETON_WIDTHS, STATISTICS_TAB_ENTRIES, STATISTICS_TAB_PARAM } from '@/constants';
+import { ensureErrorObject } from '@shared/utils';
+
+import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, STATISTICS_TAB_PARAM, STATISTICS_TABS } from '@/constants';
 import { DashboardWithTabsLayout, Skeleton } from '@/components';
-import { RefreshAnimationContext } from '@/contexts';
 import { useCurrentUserData, useIsAuthenticated } from '@/hooks';
-import { queryInvalidationService } from '@/services';
+import { clientLogger as logger, queryInvalidationService } from '@/services';
 import { buildDashboardTabsConfig } from '@/utils';
+import { RefreshAnimationContext } from '@/contexts';
+
+const loadStatisticsTab = async (name: string) => {
+	switch (name) {
+		case 'StatisticsPerformanceTab':
+			return import('@/views/statistics/tabs/StatisticsPerformanceTab');
+		case 'StatisticsHistoryTab':
+			return import('@/views/statistics/tabs/StatisticsHistoryTab');
+		case 'StatisticsLeaderboardTab':
+			return import('@/views/statistics/tabs/StatisticsLeaderboardTab');
+		default:
+			throw new Error(`Unknown statistics tab: ${name}`);
+	}
+};
+
+const STATISTICS_TABS_CONFIG = buildDashboardTabsConfig(STATISTICS_TABS, loadStatisticsTab);
 
 const STATISTICS_SUSPENSE_FALLBACK = (
 	<div className='space-y-8'>
 		<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-			{[...Array(4)].map((_, i) => (
-				<Skeleton key={i} className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
-			))}
+			<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 		</div>
 	</div>
 );
-
-const ALL_TABS_CONFIG = buildDashboardTabsConfig(STATISTICS_TAB_ENTRIES);
 
 export function StatisticsView() {
 	const queryClient = useQueryClient();
@@ -28,17 +41,17 @@ export function StatisticsView() {
 	const [refreshGeneration, setRefreshGeneration] = useState(0);
 
 	const defaultTab = isAuthenticated ? 'performance' : 'leaderboard';
-
 	const tabsToShow = useMemo(() => {
-		return ALL_TABS_CONFIG.filter(
-			tab => tab.label.toLowerCase() === 'leaderboard' || isAuthenticated
-		);
+		return STATISTICS_TABS_CONFIG.filter(tab => tab.label.toLowerCase() === 'leaderboard' || isAuthenticated);
 	}, [isAuthenticated]);
 
 	const handleRefresh = useCallback(async () => {
 		setIsRefreshing(true);
 		try {
 			await queryInvalidationService.invalidateGameQueries(queryClient, currentUser?.id);
+		} catch (error) {
+			const err = ensureErrorObject(error);
+			logger.userError('Statistics refresh failed', { errorInfo: { message: err.message } });
 		} finally {
 			setIsRefreshing(false);
 			setRefreshGeneration(g => g + 1);

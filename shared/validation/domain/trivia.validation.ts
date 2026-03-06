@@ -1,4 +1,4 @@
-import { VALID_DIFFICULTIES } from '@shared/constants';
+import { DIFFICULTIES } from '@shared/constants';
 import type { GameDifficulty, ValidationResult } from '@shared/types';
 
 import { validateTopicLength } from '../core/topic.validation';
@@ -30,7 +30,7 @@ export function validateTriviaRequest(topic: string, difficulty: GameDifficulty)
 		}
 	} else {
 		if (!isRegisteredDifficulty(difficulty)) {
-			errors.push(`Difficulty must be one of: ${VALID_DIFFICULTIES.join(', ')}`);
+			errors.push(`Difficulty must be one of: ${[...DIFFICULTIES].join(', ')}`);
 		}
 	}
 

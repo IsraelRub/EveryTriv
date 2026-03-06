@@ -1,19 +1,26 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-import { DifficultyLevel, GameMode, VALID_GAME_MODES, VALIDATION_COUNT } from '@shared/constants';
+import {
+	DEFAULT_GAME_CONFIG,
+	DifficultyLevel,
+	GAME_MODES,
+	GameMode,
+	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 export class CreateRoomDto {
-	@ApiProperty({ description: 'Trivia topic', example: 'Science' })
+	@ApiProperty({ description: 'Trivia topic', example: DEFAULT_GAME_CONFIG.defaultTopic })
 	@IsString()
-	@MinLength(2)
-	@MaxLength(100)
+	@MinLength(VALIDATION_LENGTH.TOPIC.MIN)
+	@MaxLength(VALIDATION_LENGTH.TOPIC.MAX)
 	topic!: string;
 
 	@ApiProperty({
 		description: 'Difficulty level (standard or custom)',
-		example: 'medium',
+		example: DEFAULT_GAME_CONFIG.defaultDifficulty,
 	})
 	@IsString()
 	difficulty!: GameDifficulty;
@@ -46,7 +53,18 @@ export class CreateRoomDto {
 	@Max(VALIDATION_COUNT.PLAYERS.MAX)
 	maxPlayers!: number;
 
-	@ApiProperty({ description: 'Game mode', enum: VALID_GAME_MODES })
+	@ApiProperty({ description: 'Game mode', enum: [...GAME_MODES] })
 	@IsEnum(GameMode)
 	gameMode!: GameMode;
+
+	@ApiPropertyOptional({
+		description: `Number of answer choices per question (${VALIDATION_COUNT.ANSWER_COUNT.MIN}-${VALIDATION_COUNT.ANSWER_COUNT.MAX})`,
+		minimum: VALIDATION_COUNT.ANSWER_COUNT.MIN,
+		maximum: VALIDATION_COUNT.ANSWER_COUNT.MAX,
+	})
+	@IsOptional()
+	@IsInt()
+	@Min(VALIDATION_COUNT.ANSWER_COUNT.MIN)
+	@Max(VALIDATION_COUNT.ANSWER_COUNT.MAX)
+	answerCount?: number;
 }

@@ -36,16 +36,16 @@ formatTime(125); // "02:05"
 formatTime(3661); // "61:01"
 ```
 
-**formatTimeDisplay:**
+**formatPlayTime:**
 ```typescript
-export function formatTimeDisplay(seconds: number): string
+export function formatPlayTime(time: number, unit: 'seconds' | 'minutes' = 'seconds'): string
 ```
 
-מעצב זמן עם יחידת זמן מתאימה:
+מעצב משך זמן לקריאה (שעות ודקות):
 ```typescript
-formatTimeDisplay(30); // "30s"
-formatTimeDisplay(120); // "2m"
-formatTimeDisplay(7200); // "2h"
+formatPlayTime(3665); // "1h 1m"
+formatPlayTime(90, 'seconds'); // "1m"
+formatPlayTime(0); // "0m"
 ```
 
 **formatDate:**
@@ -53,23 +53,32 @@ formatTimeDisplay(7200); // "2h"
 export function formatDate(date: Date | string | null | undefined, defaultValue: string = '-'): string
 ```
 
-מעצב תאריך לקריאה:
+מעצב תאריך בפורמט DD/MM/YYYY (מקור: shared):
 ```typescript
-formatDate(new Date('2024-01-15')); // "Jan 15, 2024"
-formatDate('2024-01-15'); // "Jan 15, 2024"
+formatDate(new Date('2024-01-15')); // "15/01/2024"
+formatDate('2024-01-15'); // "15/01/2024"
 formatDate(null); // "-"
 ```
 
-**formatDuration:**
+**formatDateShort:**
 ```typescript
-export function formatDuration(seconds: number): string
+export function formatDateShort(date: Date | string | null | undefined, defaultValue: string = '-'): string
 ```
 
-מעצב משך זמן בפורמט קריא:
+תאריך קצר DD/MM (ללא שנה):
 ```typescript
-formatDuration(3665); // "1h 1m 5s"
-formatDuration(330); // "5m 30s"
-formatDuration(30); // "30s"
+formatDateShort(new Date('2024-01-15')); // "15/01"
+```
+
+**formatDateTime:**
+```typescript
+export function formatDateTime(date: Date | string | null | undefined, defaultValue: string = '-'): string
+```
+
+תאריך ושעה DD/MM/YYYY HH:mm:
+```typescript
+formatDateTime(new Date('2024-01-15T14:30:00')); // "15/01/2024 14:30"
+formatDateTime(null, 'Never'); // "Never"
 ```
 
 ## Class Names Utils
@@ -116,9 +125,10 @@ export * from './format.utils';
 import { 
   cn,
   formatTime,
-  formatTimeDisplay,
+  formatPlayTime,
   formatDate,
-  formatDuration
+  formatDateShort,
+  formatDateTime
 } from '@utils';
 ```
 
@@ -157,14 +167,15 @@ const buttonClass = cn(
 );
 ```
 
-### עיצוב זמן
+### עיצוב זמן ותאריך
 ```typescript
-import { formatTime, formatTimeDisplay, formatDate, formatDuration } from '@utils';
+import { formatTime, formatPlayTime, formatDate, formatDateShort, formatDateTime } from '@utils';
 
 const gameTime = formatTime(125); // "02:05"
-const displayTime = formatTimeDisplay(3661); // "1h"
-const date = formatDate(new Date()); // "Jan 15, 2024"
-const duration = formatDuration(3665); // "1h 1m 5s"
+const playDuration = formatPlayTime(3661); // "1h 1m"
+const date = formatDate(new Date()); // "15/01/2025"
+const shortDate = formatDateShort(new Date()); // "17/02"
+const dateAndTime = formatDateTime(new Date()); // "17/02/2025 14:30"
 ```
 
 ## קישורים רלוונטיים

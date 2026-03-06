@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 
 import { QUERY_KEYS } from '@/constants';
-import { adminService, gameService } from '@/services';
+import { adminService, apiService, gameService } from '@/services';
 import { useUserRole } from '../useAuth';
 
 export const useGameStatistics = (enabled?: boolean) => {
@@ -89,6 +89,16 @@ export const useAllUsers = (limit: number = 50, offset: number = 0) => {
 		queryFn: () => adminService.getAllUsers(limit, offset),
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+	});
+};
+
+export const useUserSearch = (query: string, limit: number = 50) => {
+	return useQuery({
+		queryKey: QUERY_KEYS.admin.userSearch(query, limit),
+		queryFn: () => apiService.searchUsers(query.trim(), limit),
+		enabled: query.trim().length >= 2,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
 

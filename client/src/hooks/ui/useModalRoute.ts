@@ -1,33 +1,29 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { VALIDATORS } from '@shared/constants';
 import { isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { ROUTES } from '@/constants';
 import type { UseModalRouteReturn } from '@/types';
+
+function parseModalState(state: unknown): { modal: boolean; returnUrl?: string } | null {
+	if (!isRecord(state)) return null;
+	const modal = state.modal;
+	const returnUrl = state.returnUrl;
+	if ((modal === undefined || VALIDATORS.boolean(modal)) && (returnUrl === undefined || VALIDATORS.string(returnUrl))) {
+		return {
+			modal: !!modal,
+			...(returnUrl !== undefined && { returnUrl }),
+		};
+	}
+	return null;
+}
 
 export function useModalRoute(): UseModalRouteReturn {
 	const location = useLocation();
 	const navigate = useNavigate();
 
-	const modalState = (() => {
-		const value = location.state;
-		if (!isRecord(value)) {
-			return null;
-		}
-		const modal = value.modal;
-		const returnUrl = value.returnUrl;
-		if (
-			(modal === undefined || VALIDATORS.boolean(modal)) &&
-			(returnUrl === undefined || VALIDATORS.string(returnUrl))
-		) {
-			return {
-				modal: !!modal,
-				...(returnUrl !== undefined && { returnUrl }),
-			};
-		}
-		return null;
-	})();
+	const modalState = parseModalState(location.state);
 	const isModal = !!modalState?.modal;
 	const returnUrl = modalState?.returnUrl;
 

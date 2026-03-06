@@ -1,11 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { ERROR_CODES, RoomStatus, VALIDATION_COUNT } from '@shared/constants';
+import { ErrorCode, RoomStatus, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import type {
 	CreateRoomResponse,
 	GameState,
-	MultiplayerAnswerResult,
 	MultiplayerRoom,
+	MultiplayerSubmitAnswerResult,
 	QuestionEndResponse,
 	QuestionStartResponse,
 	RoomConfig,
@@ -57,19 +57,19 @@ export class MultiplayerService {
 	async startGame(roomId: string, hostId: string): Promise<MultiplayerRoom> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room) {
-			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 		}
 
 		if (room.hostId !== hostId) {
-			throw new BadRequestException(ERROR_CODES.ONLY_HOST_CAN_START);
+			throw new BadRequestException(ErrorCode.ONLY_HOST_CAN_START);
 		}
 
 		if (room.status !== RoomStatus.WAITING) {
-			throw new BadRequestException(ERROR_CODES.GAME_ALREADY_STARTED_OR_FINISHED);
+			throw new BadRequestException(ErrorCode.GAME_ALREADY_STARTED_OR_FINISHED);
 		}
 
 		if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
-			throw new BadRequestException(ERROR_CODES.NEED_AT_LEAST_2_PLAYERS);
+			throw new BadRequestException(ErrorCode.NEED_AT_LEAST_2_PLAYERS);
 		}
 
 		const triviaResult = await this.gameService.getTriviaQuestion({
@@ -77,7 +77,7 @@ export class MultiplayerService {
 			difficulty: room.config.difficulty,
 			questionsPerRequest: room.config.questionsPerRequest,
 			userId: hostId,
-			answerCount: undefined,
+			answerCount: room.config.answerCount,
 		});
 
 		const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);
@@ -95,7 +95,7 @@ export class MultiplayerService {
 	async getGameState(roomId: string): Promise<GameState> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room) {
-			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 		}
 
 		return this.gameStateService.getGameState(room);
@@ -107,14 +107,14 @@ export class MultiplayerService {
 		questionId: string,
 		answer: number,
 		timeSpent: number
-	): Promise<MultiplayerAnswerResult> {
+	): Promise<MultiplayerSubmitAnswerResult> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room) {
-			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 		}
 
 		if (room.status !== RoomStatus.PLAYING) {
-			throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
+			throw new BadRequestException(ErrorCode.GAME_NOT_IN_PLAYING_STATE);
 		}
 
 		const result = await this.gameStateService.submitAnswer(room, userId, questionId, answer, timeSpent);
@@ -132,11 +132,11 @@ export class MultiplayerService {
 	async nextQuestion(roomId: string): Promise<MultiplayerRoom> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room) {
-			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 		}
 
 		if (room.status !== RoomStatus.PLAYING) {
-			throw new BadRequestException(ERROR_CODES.GAME_NOT_IN_PLAYING_STATE);
+			throw new BadRequestException(ErrorCode.GAME_NOT_IN_PLAYING_STATE);
 		}
 
 		return await this.gameStateService.nextQuestion(room);
@@ -160,7 +160,7 @@ export class MultiplayerService {
 
 		// Calculate server timestamps as authoritative source
 		const serverStartTimestamp = Date.now();
-		const serverEndTimestamp = serverStartTimestamp + updatedRoom.config.timePerQuestion * 1000;
+		const serverEndTimestamp = serverStartTimestamp + updatedRoom.config.timePerQuestion * TIME_PERIODS_MS.SECOND;
 
 		return {
 			question,
@@ -193,6 +193,7 @@ export class MultiplayerService {
 			results: endResult.results,
 			leaderboard: endResult.leaderboard,
 			updatedRoom: endResult.room,
+			...(endResult.answerCounts && { answerCounts: endResult.answerCounts }),
 		};
 	}
 
@@ -222,12 +223,12 @@ export class MultiplayerService {
 
 	private validateParticipant(room: MultiplayerRoom | null, userId: string): asserts room is MultiplayerRoom {
 		if (!room) {
-			throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 		}
 
 		const isParticipant = room.players.some(player => player.userId === userId);
 		if (!isParticipant) {
-			throw new ForbiddenException(ERROR_CODES.NOT_PART_OF_ROOM);
+			throw new ForbiddenException(ErrorCode.NOT_PART_OF_ROOM);
 		}
 	}
 

@@ -1,41 +1,28 @@
 import { useState } from 'react';
 import { ChevronDown, Volume2, VolumeX } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant } from '@/constants';
+import { calculatePercentage } from '@shared/utils';
+
+import { ButtonSize, VariantBase } from '@/constants';
 import {
 	Button,
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
+	Label,
 	Slider,
 } from '@/components';
 import { useAudioSettings } from '@/hooks';
 import type { AudioControlsProps } from '@/types';
 import { cn } from '@/utils';
 
-export function AudioControls({ className = '', showSlider = true }: AudioControlsProps) {
+export function AudioControls({ className = '' }: AudioControlsProps) {
 	const { state, handlers } = useAudioSettings();
 	const [isOpen, setIsOpen] = useState(false);
 
 	const MainVolumeIcon = state.isMuted ? VolumeX : Volume2;
 
-	// Simple button without slider
-	if (!showSlider) {
-		return (
-			<Button
-				variant={ButtonVariant.GHOST}
-				size={ButtonSize.ICON}
-				onClick={handlers.handleMuteToggle}
-				className={cn('transition-opacity hover:opacity-80', className)}
-				title={state.isMuted ? 'Unmute' : 'Mute'}
-			>
-				<MainVolumeIcon className={cn('h-5 w-5', state.isMuted ? 'text-muted-foreground' : 'text-foreground')} />
-			</Button>
-		);
-	}
-
-	// Full controls with split button
 	return (
 		<div
 			className={cn(
@@ -45,7 +32,7 @@ export function AudioControls({ className = '', showSlider = true }: AudioContro
 		>
 			{/* Main button - mute/unmute toggle */}
 			<Button
-				variant={ButtonVariant.GHOST}
+				variant={VariantBase.MINIMAL}
 				onClick={handlers.handleMuteToggle}
 				className={cn('h-9 rounded-none px-3 hover:bg-muted/50 transition-colors', state.isMuted && 'bg-muted/20')}
 				title={state.isMuted ? 'Unmute audio' : 'Mute audio'}
@@ -60,8 +47,8 @@ export function AudioControls({ className = '', showSlider = true }: AudioContro
 			<DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
 				<DropdownMenuTrigger asChild>
 					<Button
-						variant={ButtonVariant.GHOST}
-						size={ButtonSize.ICON}
+						variant={VariantBase.MINIMAL}
+						size={ButtonSize.ICON_LG}
 						className='h-9 w-8 rounded-none hover:bg-muted/50 shrink-0'
 						title='Audio settings'
 					>
@@ -73,9 +60,9 @@ export function AudioControls({ className = '', showSlider = true }: AudioContro
 						{/* Volume Slider Section */}
 						<div className='space-y-3'>
 							<div className='flex items-center justify-between'>
-								<label className='text-sm font-medium leading-none'>Master Volume</label>
+								<Label className='text-sm font-medium leading-none'>Master Volume</Label>
 								<span className='text-xs text-muted-foreground font-mono w-9 text-right'>
-									{Math.round(state.volume * 100)}%
+									{calculatePercentage(state.volume, 1)}%
 								</span>
 							</div>
 							<Slider

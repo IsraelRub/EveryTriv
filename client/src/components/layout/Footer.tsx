@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Share2 } from 'lucide-react';
 
 import { isSocialLinkItem } from '@shared/utils';
@@ -9,7 +8,7 @@ import { NavLink } from '@/components';
 import { cn } from '@/utils';
 
 export default function Footer() {
-	const socialLinks = SOCIAL_DATA.filter(isSocialLinkItem);
+	const socialLinks = useMemo(() => SOCIAL_DATA.filter(isSocialLinkItem), []);
 	const socialCells = useMemo((): ReactNode[] => {
 		const cells: ReactNode[] = [];
 		let iconIndex = 0;
@@ -27,7 +26,7 @@ export default function Footer() {
 							href={link.url}
 							target='_blank'
 							rel='noopener noreferrer'
-							className={cn('text-muted-foreground transition-all duration-200 ease-in-out', link.hoverColor)}
+							className={cn('text-muted-foreground transition-colors duration-200 ease-in-out', link.hoverColor)}
 						>
 							<Icon className='w-5 h-5' />
 						</a>
@@ -46,13 +45,15 @@ export default function Footer() {
 					{FOOTER_SECTIONS.map(section => (
 						<div key={section.title} className='flex flex-col gap-2'>
 							<h5 className='text-sm font-semibold text-muted-foreground mb-2'>{section.title}</h5>
-							{section.type === 'social' && (
-								<div className='grid grid-cols-4 gap-3'>{socialCells}</div>
-							)}
+							{section.type === 'social' && <div className='grid grid-cols-4 gap-3'>{socialCells}</div>}
 							{section.type === 'links' && (
 								<div className='flex flex-col gap-2'>
 									{section.links.map(link => (
-										<NavLink key={link.path} to={link.path} className='text-xs text-muted-foreground hover:text-foreground transition-colors'>
+										<NavLink
+											key={link.path}
+											to={link.path}
+											className='text-xs text-muted-foreground hover:text-foreground transition-colors'
+										>
 											{link.label}
 										</NavLink>
 									))}

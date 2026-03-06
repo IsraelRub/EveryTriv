@@ -15,16 +15,18 @@ import {
 
 import {
 	API_ENDPOINTS,
-	ERROR_CODES,
+	ERROR_MESSAGES,
+	ErrorCode,
 	GameMode,
 	TIME_DURATIONS_SECONDS,
+	USER_STATUSES,
 	UserRole,
 	UserStatus,
-	VALID_USER_STATUSES_SET,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { AdminUserData, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -66,7 +68,7 @@ export class UserController {
 	@NoCache()
 	async getUserProfile(@CurrentUser() user: TokenPayload | null) {
 		if (!user?.sub) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.getUserProfile(user.sub);
@@ -88,7 +90,7 @@ export class UserController {
 	@Post('credits')
 	async deductCredits(@CurrentUserId() userId: string | null, @Body() body: DeductCreditsDto) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.creditsService.deductCredits(
@@ -124,7 +126,7 @@ export class UserController {
 		@Body(UserDataPipe) profileData: UpdateUserProfileDto
 	) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.updateUserProfile(userId, profileData);
@@ -146,11 +148,9 @@ export class UserController {
 	}
 
 	@Patch('avatar')
-	@RequireEmailVerified()
-	@RequireUserStatus(UserStatus.ACTIVE)
 	async setAvatar(@CurrentUserId() userId: string | null, @Body() avatarData: SetAvatarDto) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.setAvatar(userId, avatarData.avatarId);
@@ -197,7 +197,7 @@ export class UserController {
 	@Delete('account')
 	async deleteUserAccount(@CurrentUserId() userId: string | null) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.deleteUserAccount(userId);
@@ -219,11 +219,11 @@ export class UserController {
 	@Put('change-password')
 	async changePassword(@CurrentUserId() userId: string | null, @Body() passwordData: ChangePasswordDto) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!passwordData.currentPassword || !passwordData.newPassword) {
-				throw new HttpException(ERROR_CODES.CURRENT_PASSWORD_AND_NEW_PASSWORD_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.CURRENT_PASSWORD_AND_NEW_PASSWORD_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.authService.changePassword(userId, passwordData);
@@ -245,7 +245,7 @@ export class UserController {
 	@Put('preferences')
 	async updateUserPreferences(@CurrentUserId() userId: string | null, @Body() preferences: UpdateUserPreferencesDto) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userService.updateUserPreferences(userId, preferences);
@@ -273,11 +273,11 @@ export class UserController {
 		@Body() body: UpdateUserFieldDto
 	) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!field || !body.value) {
-				throw new HttpException(ERROR_CODES.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			const validFieldsSet = new Set<string>([
@@ -295,7 +295,7 @@ export class UserController {
 			]);
 
 			if (!validFieldsSet.has(field)) {
-				throw new HttpException(`Invalid field: ${field}`, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ERROR_MESSAGES.validation.INVALID_FIELD(field), HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserField(userId, field, body.value);
@@ -303,10 +303,9 @@ export class UserController {
 			logger.apiUpdate('user_field', {
 				userId,
 				fields: [field],
-				value:
-					typeof body.value === 'string'
-						? body.value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.SHORT)
-						: body.value,
+				value: VALIDATORS.string(body.value)
+					? body.value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.SHORT)
+					: body.value,
 			});
 
 			return result;
@@ -327,11 +326,11 @@ export class UserController {
 		@Body() body: UpdateSinglePreferenceDto
 	) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!preference || body.value === undefined) {
-				throw new HttpException(ERROR_CODES.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_PREFERENCE_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateSinglePreference(userId, preference, body.value);
@@ -339,7 +338,7 @@ export class UserController {
 			logger.apiUpdate('user_single_preference', {
 				userId,
 				preference,
-				value: typeof body.value === 'string' ? body.value.substring(0, 50) : body.value,
+				value: VALIDATORS.string(body.value) ? body.value.substring(0, 50) : body.value,
 			});
 
 			return result;
@@ -358,7 +357,7 @@ export class UserController {
 	async getUserById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.getUserById(id);
@@ -382,7 +381,7 @@ export class UserController {
 	async updateUserCredits(@Param('userId') userId: string, @Body() creditsData: UpdateUserCreditsDto) {
 		try {
 			if (!userId || !creditsData.amount || !creditsData.reason) {
-				throw new HttpException(ERROR_CODES.REQUIRED_AMOUNT_AND_REASON, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_AMOUNT_AND_REASON, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserCredits({
@@ -413,7 +412,7 @@ export class UserController {
 	async deleteUser(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.deleteUserAccount(id);
@@ -437,11 +436,11 @@ export class UserController {
 	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-			if (!VALID_USER_STATUSES_SET.has(statusData.status)) {
-				throw new HttpException(ERROR_CODES.INVALID_STATUS, HttpStatus.BAD_REQUEST);
+			if (!USER_STATUSES.has(statusData.status)) {
+				throw new HttpException(ErrorCode.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.userService.updateUserStatus(userId, statusData.status);
@@ -471,11 +470,11 @@ export class UserController {
 		@Query('offset') offset?: number
 	) {
 		if (!user?.sub) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
-			const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
-			const parsedOffset = typeof offset === 'string' ? parseInt(offset, 10) : offset;
+			const parsedLimit = VALIDATORS.string(limit) ? parseInt(limit, 10) : limit;
+			const parsedOffset = VALIDATORS.string(offset) ? parseInt(offset, 10) : offset;
 			const result = await this.userService.getAllUsers(parsedLimit, parsedOffset);
 
 			logger.apiRead('admin_get_all_users', {
@@ -520,15 +519,15 @@ export class UserController {
 		@Body() statusData: UpdateUserStatusDto
 	) {
 		if (!adminUser?.sub) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			if (!userId || !statusData.status) {
-				throw new HttpException(ERROR_CODES.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
-			if (!VALID_USER_STATUSES_SET.has(statusData.status)) {
-				throw new HttpException(ERROR_CODES.INVALID_STATUS, HttpStatus.BAD_REQUEST);
+			if (!USER_STATUSES.has(statusData.status)) {
+				throw new HttpException(ErrorCode.INVALID_STATUS, HttpStatus.BAD_REQUEST);
 			}
 
 			const updated = await this.userService.updateUserStatus(userId, statusData.status);

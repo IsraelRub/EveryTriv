@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { PaymentStatus, PAYPAL_WEBHOOK_EVENTS, SERVER_CACHE_KEYS, TIME_PERIODS_MS } from '@shared/constants';
+import { PaymentStatus, PAYPAL_WEBHOOK_EVENTS, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
 import { PaymentHistoryEntity } from '@internal/entities';
@@ -228,7 +228,7 @@ export class PayPalWebhookService {
 	private async markEventAsProcessed(eventId: string): Promise<void> {
 		try {
 			const cacheKey = SERVER_CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
-			await this.cacheService.set(cacheKey, 'processed', TIME_PERIODS_MS.WEEK);
+			await this.cacheService.set(cacheKey, 'processed', TIME_DURATIONS_SECONDS.WEEK);
 		} catch (error) {
 			logger.cacheError('mark webhook event as processed', SERVER_CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId), {
 				errorInfo: { message: getErrorMessage(error) },

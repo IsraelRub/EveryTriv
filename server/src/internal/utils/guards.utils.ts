@@ -1,14 +1,12 @@
 import type { Response } from 'express';
 
-import { VALID_GAME_MODES_SET, VALID_GAME_STATUSES, VALIDATORS } from '@shared/constants';
+import { GAME_MODES } from '@shared/constants';
 import type { GameDifficulty, LeaderboardStats, StorageValue } from '@shared/types';
 import { isRecord } from '@shared/utils';
-import { isGameDifficulty } from '@shared/validation';
+import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
-import { PUBLIC_ENDPOINTS } from '@internal/constants';
+import { GAME_STATUSES, PUBLIC_ENDPOINTS } from '@internal/constants';
 import type { GameSessionQuestion, GameSessionState, PayPalErrorResponse } from '@internal/types';
-
-export { isErrorWithProperties } from '@shared/utils';
 
 export function isPublicEndpoint(path: string): boolean {
 	return PUBLIC_ENDPOINTS.some(
@@ -60,11 +58,11 @@ export function isGameSessionState(value: unknown): value is GameSessionState {
 		return false;
 	}
 
-	if (!VALIDATORS.string(value.gameMode) || !VALID_GAME_MODES_SET.has(value.gameMode)) {
+	if (!VALIDATORS.string(value.gameMode) || !GAME_MODES.has(value.gameMode)) {
 		return false;
 	}
 
-	if (!VALIDATORS.string(value.status) || !VALID_GAME_STATUSES.has(value.status)) {
+	if (!VALIDATORS.string(value.status) || !GAME_STATUSES.has(value.status)) {
 		return false;
 	}
 
@@ -72,7 +70,26 @@ export function isGameSessionState(value: unknown): value is GameSessionState {
 		return false;
 	}
 
-	return value.questions.every(isGameSessionQuestion);
+	if (!value.questions.every(isGameSessionQuestion)) {
+		return false;
+	}
+
+	// Optional questionSnapshots: if present, must be record of { correctAnswerIndex: number }
+	if (value.questionSnapshots !== undefined && value.questionSnapshots !== null) {
+		if (!isRecord(value.questionSnapshots)) {
+			return false;
+		}
+		for (const snapshot of Object.values(value.questionSnapshots)) {
+			if (
+				!isRecord(snapshot) ||
+				!VALIDATORS.number((snapshot as { correctAnswerIndex?: unknown }).correctAnswerIndex)
+			) {
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 export function isValidGameDifficulty(value: string): value is GameDifficulty {

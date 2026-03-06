@@ -26,6 +26,7 @@ export type GameAnalyticsStats = Record<string, GameAnalyticsStatsEntry>;
 export interface GameStatsCore {
 	totalGames: number;
 	totalQuestionsAnswered: number;
+	successRate: number;
 	averageScore: number;
 }
 

@@ -9,7 +9,7 @@ alwaysApply: true
 **CRITICAL: Read and follow ALL rules in this file before writing any code.**
 
 ### Rule Enforcement Priority
-1. **MANDATORY**: TypeScript strict mode, no `any`/`as`, proper types
+1. **MANDATORY**: TypeScript strict mode, no `any`, avoid `as` except when justified (e.g. preserving generic after memo), proper types
 2. **MANDATORY**: Component structure and patterns (functional components, hooks)
 3. **MANDATORY**: File organization and naming conventions
 4. **MANDATORY**: Animation component usage (motion.* only with animation props)
@@ -19,7 +19,7 @@ alwaysApply: true
 ### Before Writing Code, Always:
 - ✅ Check existing similar components/hooks for patterns to follow
 - ✅ Verify file location matches project structure rules
-- ✅ Ensure all types are explicitly defined (no `any`, no `as`)
+- ✅ Ensure all types are explicitly defined (no `any`; avoid `as` except when justified)
 - ✅ Verify motion components have animation props OR use regular HTML elements
 - ✅ Check if logic should be extracted to a hook or utility
 - ✅ Ensure barrel exports (`index.ts`) are updated if adding new exports
@@ -45,9 +45,10 @@ When creating new code, verify:
 ## 🔧 TypeScript
 
 - Always use TypeScript with `"strict": true` mode.
-- Avoid `any`, `unknown`, and `as` assertions; rely on concrete types and type guards.
+- Avoid `any` and `unknown`; rely on concrete types and type guards.
+- Avoid `as` assertions except when justified (e.g. preserving generic type after `memo()` or `forwardRef()`: `memo(Component) as typeof Component`).
 - Type all props and state explicitly.
-- Store shared types in `shared/types/`.
+- Store cross-workspace shared types in `shared/types/`; client-only types in `client/src/types/`.
 - Use proper type imports/exports.
 
 ## 🎨 Component Design
@@ -88,6 +89,7 @@ Optional:
 - Use React Testing Library for component testing
 - Test hooks independently
 - Mock API calls and Redux store
+- Prioritize tests for critical business logic, custom hooks with non-trivial behavior, and components with complex user-facing behavior
 
 ## 📁 Folder Structure
 
@@ -224,8 +226,8 @@ Use regular HTML elements (`<div>`, `<span>`, `<button>`, etc.) when:
 
 ## 🔄 Data Flow
 
-- Use Redux for global state
-- Use React Query for server state
+- Use Redux for global state (UI state, app-wide preferences, client-only session).
+- Use React Query for server state (API data: lists, user profile, entities). Do not put server state in Redux.
 - Implement proper loading states
 - Handle errors gracefully
 - Use proper TypeScript types
@@ -334,12 +336,12 @@ export const ComponentName = memo(function ComponentName({
 - Simple presentational components with minimal rendering cost
 
 #### useMemo Usage
-**ALWAYS use `useMemo` for:**
+**Use `useMemo` for expensive or repeated data processing:**
 - Expensive computations (data transformations, filtering, sorting)
 - Derived data from complex calculations
 - Chart data processing (grouping, aggregating, formatting)
 - List/array operations that transform data
-- Object/array creation that's used as dependencies
+- Object/array creation that's used as dependencies (e.g. passed to memoized children)
 
 **Pattern:**
 ```tsx
@@ -358,15 +360,15 @@ const processedData = useMemo(() => {
 - Operations that are faster than memoization overhead
 
 #### useCallback Usage
-- Use `useCallback` for event handlers passed to child components
-- Use `useCallback` for functions used as dependencies in other hooks
-- Use `useCallback` for functions passed to memoized components
+- Use `useCallback` for event handlers passed to **memoized** child components (so that `memo` can skip re-renders).
+- Use `useCallback` for functions used as dependencies in other hooks (e.g. `useEffect`, `useMemo`).
+- Prefer regular functions when the handler is not passed to a memoized child and is not in a dependency array.
 
 #### Consistency Requirements
 - **All chart components MUST use `memo`**
 - **All statistics/display components MUST use `memo`**
-- **All data processing MUST use `useMemo`**
-- **All event handlers passed to children MUST use `useCallback`**
+- **Expensive or repeated data processing** should use `useMemo` (avoid useMemo for trivial calculations).
+- **Event handlers passed to memoized children or used in dependency arrays** should use `useCallback`.
 
 ### General Performance Guidelines
 - Use `React.memo` for expensive components
@@ -384,7 +386,7 @@ const processedData = useMemo(() => {
 
 ## 🚨 Common Pitfalls to Avoid
 
-1. **Don't use `any` or `as` assertions** - Use proper types or type guards
+1. **Don't use `any` or unnecessary `as` assertions** - Use proper types or type guards; `as` is acceptable only when necessary (e.g. preserving generic after `memo()`)
 2. **Don't create hooks without immediate usage** - Every hook must have a consumer
 3. **Don't duplicate logic** - Extract to shared utilities or hooks
 4. **Don't use motion components without animation props** - Use regular HTML elements
@@ -395,5 +397,5 @@ const processedData = useMemo(() => {
 9. **Don't mix concerns** - Keep components, hooks, and services focused
 10. **Don't forget error handling** - Always handle loading, error, and success states
 11. **Don't skip `memo` for chart/statistics components** - All chart and display components must use `memo`
-12. **Don't skip `useMemo` for data processing** - Always memoize expensive computations and data transformations
-13. **Don't create new objects/arrays in render without `useMemo`** - This breaks memo optimization
+12. **Don't skip `useMemo` for expensive data processing** - Memoize expensive or repeated computations and data transformations; avoid useMemo for trivial calculations
+13. **Don't create new objects/arrays in render that are passed to memoized children** - Memoize them with useMemo so memo optimization is effective

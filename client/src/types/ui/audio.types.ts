@@ -11,7 +11,6 @@ export interface AudioData {
 
 export interface AudioControlsProps {
 	className?: string;
-	showSlider?: boolean;
 }
 
 export interface UseAudioPreferencesProps {

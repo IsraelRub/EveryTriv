@@ -1,7 +1,7 @@
 import { LeaderboardPeriod } from '@shared/constants';
 import type { AnswerHistory, GameState, MultiplayerRoom, TriviaQuestion } from '@shared/types';
 
-import { GameLoadingStep } from '@/constants';
+import { LoadingMessages } from '@/constants';
 import type { GameModeState } from '../domain/game';
 
 export interface GameSessionState {
@@ -16,8 +16,9 @@ export interface GameSessionState {
 	answered: boolean;
 	streak: number;
 	loading: boolean;
-	loadingStep: GameLoadingStep;
+	loadingStep: LoadingMessages;
 	gameStartTime: number | null;
+	questionStartTime: number | null;
 	timeSpent: number;
 	isGameFinalized: boolean;
 	creditsDeducted: boolean;
@@ -38,6 +39,8 @@ export interface MultiplayerState {
 	gameState: GameState | null;
 	error: string | null;
 	isLoading: boolean;
+	/** True after QUESTION_ENDED until next QUESTION_STARTED – show correct/wrong answers only in this phase */
+	revealPhase: boolean;
 }
 
 export interface UIPreferencesState {

@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { ERROR_CODES, UserRole } from '@shared/constants';
+import { ErrorCode, UserRole } from '@shared/constants';
 
 import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
@@ -39,7 +39,7 @@ export class RolesGuard implements CanActivate {
 
 		if (!user) {
 			logger.securityDenied('No user found in request for role check');
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 
 		const userRole = user.role ?? UserRole.USER;

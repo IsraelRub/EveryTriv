@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 
-import { API_ENDPOINTS, ERROR_CODES, PaymentMethod, PaymentStatus, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { API_ENDPOINTS, ErrorCode, PaymentMethod, PaymentStatus, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import type { PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
@@ -56,7 +56,7 @@ export class PaymentController {
 		try {
 			const packageInfo = this.paymentService.getPackageInfo(body.packageId);
 			if (!packageInfo) {
-				throw new HttpException(ERROR_CODES.INVALID_CREDITS_PACKAGE, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.INVALID_CREDITS_PACKAGE, HttpStatus.BAD_REQUEST);
 			}
 
 			if (body.paypalOrderId) {

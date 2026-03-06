@@ -1,4 +1,4 @@
-import { CREDIT_COSTS, GameMode, TIME_LIMITED_CREDITS_PER_30_SECONDS } from '@shared/constants';
+import { GAME_MODES_CONFIG, GameMode, TIME_LIMITED_CREDITS_PER_30_SECONDS } from '@shared/constants';
 import type { CreditBalance } from '@shared/types';
 
 export function calculateTimeLimitedCredits(timeInSeconds: number): number {
@@ -9,7 +9,7 @@ export function calculateTimeLimitedCredits(timeInSeconds: number): number {
 }
 
 export function calculateRequiredCredits(questionsOrTime: number, gameMode: GameMode): number {
-	const costConfig = CREDIT_COSTS[gameMode];
+	const costConfig = GAME_MODES_CONFIG[gameMode];
 
 	// For TIME_LIMITED, calculate based on time (5 credits per 30 seconds)
 	if (gameMode === GameMode.TIME_LIMITED) {
@@ -27,12 +27,7 @@ export function calculateRequiredCredits(questionsOrTime: number, gameMode: Game
 }
 
 export function shouldChargeAfterGame(gameMode: GameMode): boolean {
-	return CREDIT_COSTS[gameMode]?.chargeAfterGame ?? false;
-}
-
-export function isHostPaysOnly(gameMode: GameMode): boolean {
-	const costConfig = CREDIT_COSTS[gameMode];
-	return 'hostPaysOnly' in costConfig && costConfig.hostPaysOnly;
+	return GAME_MODES_CONFIG[gameMode]?.chargeAfterGame ?? false;
 }
 
 export function calculateNewBalance(
@@ -49,10 +44,7 @@ export function calculateNewBalance(
 } {
 	let newPurchasedCredits = currentBalance.purchasedCredits ?? 0;
 	let newFreeQuestions = currentBalance.freeQuestions ?? 0;
-	// Extract credits from currentBalance (fallback to totalCredits - purchasedCredits - freeQuestions for backward compatibility)
-	let newCredits =
-		currentBalance.credits ??
-		currentBalance.totalCredits - (currentBalance.purchasedCredits ?? 0) - (currentBalance.freeQuestions ?? 0);
+	let newCredits = currentBalance.credits ?? 0;
 
 	let freeQuestionsUsed = 0;
 	let purchasedCreditsUsed = 0;

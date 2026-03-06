@@ -8,6 +8,8 @@ export enum UserRole {
 	PREMIUM = 'premium',
 }
 
+export const USER_ROLES = new Set<string>(Object.values(UserRole));
+
 export enum UserStatus {
 	ACTIVE = 'active',
 	INACTIVE = 'inactive',
@@ -16,9 +18,7 @@ export enum UserStatus {
 	PENDING_VERIFICATION = 'pending_verification',
 }
 
-export const VALID_USER_STATUSES = Object.values(UserStatus);
-
-export const VALID_USER_STATUSES_SET = new Set<string>(VALID_USER_STATUSES);
+export const USER_STATUSES = new Set<string>(Object.values(UserStatus));
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	// Required base fields

@@ -1,5 +1,6 @@
 export * from './admin';
 export * from './audio';
+export * from './table';
 export * from './auth';
 export * from './charts';
 export * from './game';

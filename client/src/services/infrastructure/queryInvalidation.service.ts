@@ -7,16 +7,15 @@ import { QUERY_KEYS } from '@/constants';
 import { clientLogger as logger } from '@/services';
 
 class QueryInvalidationService {
-	invalidateByServerKey(queryClient: QueryClient, serverKey: string): Promise<void> {
+	async invalidateByServerKey(queryClient: QueryClient, serverKey: string): Promise<void> {
 		try {
 			const queryKey = toReactQueryKey(serverKey);
-			return queryClient.invalidateQueries({ queryKey, exact: false });
+			await queryClient.invalidateQueries({ queryKey, exact: false });
 		} catch (error) {
 			logger.systemError(ensureErrorObject(error), {
 				contextMessage: 'Failed to invalidate queries by server key',
 				serverKey,
 			});
-			return Promise.resolve();
 		}
 	}
 
@@ -36,6 +35,12 @@ class QueryInvalidationService {
 				queryClient.invalidateQueries({
 					queryKey: QUERY_KEYS.trivia.gameHistory('current'),
 					exact: false,
+				})
+			);
+			promises.push(
+				queryClient.invalidateQueries({
+					queryKey: QUERY_KEYS.admin.userStatistics(userId),
+					exact: true,
 				})
 			);
 		}
@@ -96,27 +101,18 @@ class QueryInvalidationService {
 		this.invalidateAuthQueries(queryClient);
 
 		if (userId) {
-			// Invalidate with actual userId for server cache sync
 			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.PROFILE(userId));
 			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.CREDITS(userId));
 		}
-
-		// Also invalidate 'current' keys for backward compatibility and local cache
-		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.user.all });
 	}
 
 	invalidateCreditsQueries(queryClient: QueryClient, userId?: string): void {
 		if (userId) {
-			// Invalidate with actual userId for server cache sync
 			this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.BALANCE(userId));
 			this.invalidateByServerKey(queryClient, CACHE_KEYS.PAYMENT.HISTORY(userId));
 		}
 
-		// Invalidate packages (global, no userId)
 		this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.PACKAGES_ALL);
-
-		// Also invalidate 'current' keys for backward compatibility and local cache
-		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.all });
 	}
 
 	invalidateLeaderboardQueries(queryClient: QueryClient): void {
@@ -151,6 +147,15 @@ class QueryInvalidationService {
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.analytics.popularTopics(), exact: false }),
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.gameStatistics() }),
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.businessMetrics() }),
+			queryClient.invalidateQueries({
+				queryKey: [...QUERY_KEYS.admin.all, 'adminUserStatistics'],
+				exact: false,
+			}),
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.allUsersConsistency() }),
+			queryClient.invalidateQueries({
+				queryKey: [...QUERY_KEYS.admin.all, 'userStatsConsistency'],
+				exact: false,
+			}),
 		];
 		await Promise.all(promises);
 	}

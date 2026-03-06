@@ -1,11 +1,16 @@
 import { lazy } from 'react';
 
-import type { DashboardTabEntry, NormalizedDashboardTab } from '@/types';
+import type { NormalizedDashboardTab, TabModuleLoader, TabSpec } from '@/types';
 
-export function buildDashboardTabsConfig(entries: DashboardTabEntry[]): NormalizedDashboardTab[] {
-	return entries.map(({ label, loader }) => ({
+export function buildDashboardTabsConfig(tabs: TabSpec[], loadModule: TabModuleLoader): NormalizedDashboardTab[] {
+	return tabs.map(({ label, componentName }) => ({
 		label,
 		value: label.toLowerCase(),
-		component: lazy(loader),
+		component: lazy(async () => {
+			const m = await loadModule(componentName);
+			const Component = m[componentName];
+			if (!Component) throw new Error(`Missing export: ${componentName}`);
+			return { default: Component };
+		}),
 	}));
 }

@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, ERROR_MESSAGES, QUERY_PARAMS, UserStatus, VALID_USER_STATUSES_SET } from '@shared/constants';
+import { API_ENDPOINTS, ERROR_MESSAGES, QUERY_PARAMS, USER_STATUSES, UserStatus } from '@shared/constants';
 import type {
 	AiProviderHealth,
 	AiProviderStats,
@@ -11,12 +11,13 @@ import { getErrorMessage, isNonEmptyString } from '@shared/utils';
 
 import { VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
+import { validateListQueryParams } from '@/utils';
 
 class AdminService {
 	async updateUserField(field: string, value: BasicValue): Promise<UpdateUserFieldResponse> {
 		// Validate field and value
 		if (!isNonEmptyString(field)) {
-			throw new Error(ERROR_MESSAGES.validation.FIELD_NAME_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.FIELD_NAME_REQUIRED);
 		}
 		if (!value) {
 			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
@@ -62,7 +63,7 @@ class AdminService {
 	async getUserById(userId: string): Promise<unknown> {
 		// Validate user ID
 		if (!isNonEmptyString(userId)) {
-			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
 		}
 
 		try {
@@ -78,13 +79,7 @@ class AdminService {
 	}
 
 	async getAllUsers(limit?: number, offset?: number): Promise<UsersListResponse> {
-		// Validate pagination parameters
-		if (limit && (limit < 1 || limit > 1000)) {
-			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 1000));
-		}
-		if (offset && offset < 0) {
-			throw new Error(VALIDATION_MESSAGES.OFFSET_NON_NEGATIVE);
-		}
+		validateListQueryParams(limit, offset);
 
 		try {
 			const searchParams = new URLSearchParams();
@@ -131,7 +126,7 @@ class AdminService {
 	async updateUserCredits(data: UpdateCreditsData): Promise<string> {
 		// Validate parameters
 		if (!isNonEmptyString(data.userId)) {
-			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
 		}
 		if (data.amount === 0) {
 			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
@@ -159,7 +154,7 @@ class AdminService {
 	async deleteUser(userId: string): Promise<unknown> {
 		// Validate user ID
 		if (!isNonEmptyString(userId)) {
-			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
 		}
 
 		try {
@@ -176,10 +171,10 @@ class AdminService {
 
 	async updateUserStatus(userId: string, status: UserStatus): Promise<unknown> {
 		// Validate parameters
-		if (!userId || userId.trim().length === 0) {
-			throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED);
+		if (!isNonEmptyString(userId)) {
+			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
 		}
-		if (!VALID_USER_STATUSES_SET.has(status)) {
+		if (!USER_STATUSES.has(status)) {
 			throw new Error(VALIDATION_MESSAGES.STATUS_INVALID);
 		}
 

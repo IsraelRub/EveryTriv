@@ -1,10 +1,15 @@
+import { TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+
 export function calculateClockOffset(serverTimestamp: number): number {
 	const clientTime = Date.now();
 	return clientTime - serverTimestamp;
 }
 
-export function validateClockOffset(offset: number, thresholdSeconds: number = 5): boolean {
-	const thresholdMs = thresholdSeconds * 1000;
+export function validateClockOffset(
+	offset: number,
+	thresholdSeconds: number = TIME_DURATIONS_SECONDS.FIVE_SECONDS
+): boolean {
+	const thresholdMs = thresholdSeconds * TIME_PERIODS_MS.SECOND;
 	const absOffset = Math.abs(offset);
 	return absOffset <= thresholdMs;
 }

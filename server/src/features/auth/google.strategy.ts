@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { AuthenticationEvent, ERROR_CODES, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
+import { AuthenticationEvent, ErrorCode, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -51,6 +52,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			callbackURL,
 			scope: ['email', 'profile'],
 			authorizationURL,
+			state: true, // CSRF protection: state stored in session, verified on callback
 		});
 	}
 
@@ -58,7 +60,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		if (!isRecord(value)) {
 			return false;
 		}
-		return typeof value.id === 'string';
+		return VALIDATORS.string(value.id);
 	}
 
 	private parseProfile(value: unknown): Profile {
@@ -73,16 +75,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				if (this.isProfile(parsed)) {
 					return parsed;
 				}
-				throw new Error(ERROR_CODES.PARSED_BUFFER_NOT_VALID_PROFILE);
+				throw new Error(ErrorCode.PARSED_BUFFER_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile Buffer as JSON', {
 					errorInfo: { message: getErrorMessage(parseError) },
 				});
-				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_BUFFER);
+				throw new Error(ErrorCode.GOOGLE_PROFILE_INVALID_FORMAT_BUFFER);
 			}
 		}
 
-		if (typeof value === 'string') {
+		if (VALIDATORS.string(value)) {
 			logger.systemError('Google OAuth profile received as string - attempting to parse', {
 				data: {
 					valueLength: value.length,
@@ -93,12 +95,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				if (this.isProfile(parsed)) {
 					return parsed;
 				}
-				throw new Error(ERROR_CODES.PARSED_STRING_NOT_VALID_PROFILE);
+				throw new Error(ErrorCode.PARSED_STRING_NOT_VALID_PROFILE);
 			} catch (parseError) {
 				logger.systemError('Failed to parse profile string as JSON', {
 					errorInfo: { message: getErrorMessage(parseError) },
 				});
-				throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT_STRING);
+				throw new Error(ErrorCode.GOOGLE_PROFILE_INVALID_FORMAT_STRING);
 			}
 		}
 
@@ -106,7 +108,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			return value;
 		}
 
-		throw new Error(ERROR_CODES.GOOGLE_PROFILE_INVALID_FORMAT);
+		throw new Error(ErrorCode.GOOGLE_PROFILE_INVALID_FORMAT);
 	}
 
 	async validate(accessToken: string, refreshToken: string, profile: Profile) {
@@ -125,7 +127,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Log profile details for debugging
 			// Profile from passport-google-oauth20 may have displayName property
 			const profileDisplayName =
-				'displayName' in actualProfile && typeof actualProfile.displayName === 'string'
+				'displayName' in actualProfile && VALIDATORS.string(actualProfile.displayName)
 					? actualProfile.displayName
 					: undefined;
 			logger.systemInfo('Google OAuth profile received', {
@@ -143,14 +145,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// Validate that profile.id exists
 			if (!actualProfile.id) {
 				logger.logSecurityEventEnhanced('Google OAuth profile missing ID', LogLevel.ERROR, {
-					errorInfo: { message: ERROR_CODES.PROFILE_ID_MISSING },
+					errorInfo: { message: ErrorCode.PROFILE_ID_MISSING },
 					provider: 'google',
 					context: 'GoogleStrategy',
 					data: {
 						profileKeys: Object.keys(actualProfile),
 					},
 				});
-				throw new Error(ERROR_CODES.GOOGLE_PROFILE_ID_MISSING);
+				throw new Error(ErrorCode.GOOGLE_PROFILE_ID_MISSING);
 			}
 
 			// Use enhanced logging
@@ -170,7 +172,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			// If name is not split, try to parse from displayName
 			if (!firstName && !lastName) {
 				const displayName =
-					'displayName' in actualProfile && typeof actualProfile.displayName === 'string'
+					'displayName' in actualProfile && VALIDATORS.string(actualProfile.displayName)
 						? actualProfile.displayName
 						: undefined;
 				if (displayName) {

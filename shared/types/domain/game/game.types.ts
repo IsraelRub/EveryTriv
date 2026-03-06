@@ -1,7 +1,7 @@
 // Game-related types for EveryTriv.
 import { GameMode } from '../../../constants';
 import type { BaseEntity, CountRecord, OffsetPagination } from '../../core';
-import type { AnswerHistory } from '../../infrastructure/api.types';
+import type { AnswerHistory } from '../../infrastructure';
 import type { BaseAnswerPayload, BaseTriviaParams, GameDifficulty } from './trivia.types';
 
 export interface BaseGameStatistics {
@@ -176,6 +176,7 @@ export interface GameSessionStartResponse {
 }
 
 export interface GameStatsSummary {
+	successRate: number;
 	averageScore: number;
 	totalGames: number;
 }

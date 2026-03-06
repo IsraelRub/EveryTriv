@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { UserRole } from '@shared/constants';
+import { COOKIE_NAMES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthenticationRequest, TokenPair, TokenPayload, TokenValidationResult } from '@shared/types';
 import { getCurrentTimestampInSeconds, getErrorMessage } from '@shared/utils';
 
@@ -144,7 +144,7 @@ export class JwtTokenService {
 			}
 
 			// Check cookies for access token
-			const cookieToken = request.cookies?.access_token;
+			const cookieToken = request.cookies?.[COOKIE_NAMES.AUTH_TOKEN];
 			if (cookieToken) {
 				return cookieToken;
 			}
@@ -192,7 +192,7 @@ export class JwtTokenService {
 				return null;
 			}
 
-			return new Date(decoded.exp * 1000);
+			return new Date(decoded.exp * TIME_PERIODS_MS.SECOND);
 		} catch (error) {
 			logger.securityError('Failed to get token expiration', {
 				errorInfo: { message: getErrorMessage(error) },

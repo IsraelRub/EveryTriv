@@ -9,5 +9,3 @@ export * from './auth.constants';
 export * from './time.constants';
 
 export * from './app.constants';
-
-export * from './idPrefix.constants';

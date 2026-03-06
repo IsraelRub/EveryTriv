@@ -1,5 +1,5 @@
-import { VALIDATORS } from '@shared/constants';
 import { hasPropertyOfType, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { STORAGE_KEYS } from '@/constants';
 import { storageService } from '@/services';

@@ -1,2 +1,2 @@
-export { LoginView } from './LoginView';
-export { RegistrationView } from './RegistrationView';
+export * from './LoginView';
+export * from './RegistrationView';

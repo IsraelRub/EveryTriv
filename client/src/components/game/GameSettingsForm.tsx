@@ -1,23 +1,65 @@
 import { useMemo } from 'react';
-import { AlertCircle, CheckSquare, Clock, FileQuestion, Flame, Hash, Layers, Star, User, Users } from 'lucide-react';
+import { cva } from 'class-variance-authority';
+import { CheckSquare, Clock, FileQuestion, Gauge, Tag, UserPlus } from 'lucide-react';
 
 import {
-	BASIC_TOPICS,
-	CREDIT_COSTS,
+	DIFFICULTY_CONFIG,
 	DifficultyLevel,
 	GAME_MODES_CONFIG,
-	GameMode as GameModeEnum,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
-import { calculateRequiredCredits } from '@shared/utils';
+import { formatTitle, namesMatch } from '@shared/utils';
 
-import { ButtonSize, ButtonVariant, VariantBase } from '@/constants';
+import {
+	AlertVariant,
+	BASIC_TOPICS,
+	ButtonSize,
+	isTopicBadgeType,
+	TOPIC_BADGE_META,
+	TopicBadgeType,
+	VariantBase,
+} from '@/constants';
 import { Alert, AlertDescription, Badge, Button, Input, Label, NumberInput, Textarea } from '@/components';
 import { usePopularTopics, useUserAnalytics } from '@/hooks';
-import type { GameSettingsFormProps } from '@/types';
+import type { GameSettingsFormProps, TopicWithMeta } from '@/types';
 import { cn } from '@/utils';
+
+const topicChipVariants = cva(
+	'inline-flex items-center rounded-md border transition-colors h-auto py-1.5 gap-2 shrink-0',
+	{
+		variants: {
+			type: {
+				[TopicBadgeType.MOST_PLAYED]: 'w-full justify-start px-3 font-medium text-sm',
+				[TopicBadgeType.BASIC]: 'text-xs px-2 gap-1.5',
+				[TopicBadgeType.YOUR]: 'text-xs px-2 gap-1.5',
+				[TopicBadgeType.POPULAR]: 'text-xs px-2 gap-1.5',
+			},
+			selected: {
+				true: '',
+				false: '',
+			},
+		},
+		compoundVariants: [
+			{
+				selected: false,
+				class: 'bg-muted/40 hover:bg-primary/20',
+			},
+		],
+		defaultVariants: {
+			type: TopicBadgeType.BASIC,
+			selected: false,
+		},
+	}
+);
+
+const difficultyOptions = Object.values(DifficultyLevel)
+	.sort((a, b) => (DIFFICULTY_CONFIG[a]?.order ?? 0) - (DIFFICULTY_CONFIG[b]?.order ?? 0))
+	.flatMap(level => {
+		const config = DIFFICULTY_CONFIG[level];
+		return config ? [{ level, ...config }] : [];
+	});
 
 export function GameSettingsForm({
 	topic,
@@ -64,29 +106,24 @@ export function GameSettingsForm({
 	}, [analytics?.game?.mostPlayedTopic, analytics?.game?.topicsPlayed, popularTopicsData?.topics]);
 
 	// Memoize topics list construction
-	type TopicWithMeta = {
-		name: string;
-		type: 'most-played' | 'yours' | 'basic' | 'popular';
-		gameCount?: number;
-	};
-
 	const topicsList: TopicWithMeta[] = useMemo(() => {
 		const topicsPlayed = analytics?.game?.topicsPlayed;
 		const list: TopicWithMeta[] = [];
+		const listHasName = (name: string) => list.some(t => namesMatch(t.name, name));
 
 		// Add basic topics first (excluding duplicates)
 		BASIC_TOPICS.forEach(t => {
-			if (!list.some(topic => topic.name === t)) {
-				list.push({ name: t, type: 'basic' });
+			if (!listHasName(t)) {
+				list.push({ name: t, type: TopicBadgeType.BASIC });
 			}
 		});
 
 		// Add most played topic (if exists, excluding basic topics)
 		if (mostPlayedTopic && mostPlayedTopic !== 'None') {
-			if (!list.some(topic => topic.name === mostPlayedTopic)) {
+			if (!listHasName(mostPlayedTopic)) {
 				list.push({
 					name: mostPlayedTopic,
-					type: 'most-played',
+					type: TopicBadgeType.MOST_PLAYED,
 					gameCount: topicsPlayed?.[mostPlayedTopic],
 				});
 			}
@@ -94,10 +131,10 @@ export function GameSettingsForm({
 
 		// Add user topics (excluding most played and basic to avoid duplicates)
 		userTopics.forEach(t => {
-			if (t !== mostPlayedTopic && !list.some(topic => topic.name === t)) {
+			if (!namesMatch(t, mostPlayedTopic ?? '') && !listHasName(t)) {
 				list.push({
 					name: t,
-					type: 'yours',
+					type: TopicBadgeType.YOUR,
 					gameCount: topicsPlayed?.[t],
 				});
 			}
@@ -105,8 +142,8 @@ export function GameSettingsForm({
 
 		// Add popular topics (excluding duplicates)
 		popularTopics.forEach(t => {
-			if (!list.some(topic => topic.name === t)) {
-				list.push({ name: t, type: 'popular' });
+			if (!listHasName(t)) {
+				list.push({ name: t, type: TopicBadgeType.POPULAR });
 			}
 		});
 
@@ -122,7 +159,7 @@ export function GameSettingsForm({
 			{/* Topic Selection */}
 			<div className='space-y-3'>
 				<Label className='flex items-center gap-2'>
-					<Hash className='h-4 w-4 text-muted-foreground' />
+					<Tag className='h-4 w-4 text-muted-foreground' />
 					Topic
 				</Label>
 				<Input
@@ -131,8 +168,7 @@ export function GameSettingsForm({
 					onChange={e => onTopicChange(e.target.value)}
 				/>
 				{topicError && (
-					<Alert variant={VariantBase.DESTRUCTIVE} className='py-2'>
-						<AlertCircle className='h-4 w-4' />
+					<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
 						<AlertDescription className='text-xs'>{topicError}</AlertDescription>
 					</Alert>
 				)}
@@ -142,100 +178,69 @@ export function GameSettingsForm({
 					<div className='space-y-3'>
 						<Label className='text-xs text-muted-foreground'>Suggested Topics</Label>
 						<div className='flex flex-col gap-2'>
-							{/* Most Played - Highlighted separately */}
 							{topicsList
-								.filter(t => t.type === 'most-played')
-								.map(({ name }) => {
-									const isSelected = topic === name;
+								.filter(t => t.type === TopicBadgeType.MOST_PLAYED)
+								.map(({ name, type }) => {
+									const isSelected = namesMatch(topic, name);
+									const badge = isTopicBadgeType(type) ? (TOPIC_BADGE_META[type] ?? null) : null;
+									const BadgeIcon = badge?.icon;
+									const chipType: TopicBadgeType = isTopicBadgeType(type) ? type : TopicBadgeType.BASIC;
 									return (
 										<Button
 											key={name}
 											type='button'
-											variant={isSelected ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
+											variant={isSelected ? VariantBase.DEFAULT : VariantBase.OUTLINE}
 											size={ButtonSize.SM}
-											className='w-full justify-start h-auto py-1.5 px-3 gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/30'
+											className={topicChipVariants({ type: chipType, selected: isSelected })}
 											onClick={() => onTopicChange(isSelected ? '' : name)}
 										>
-											<Star className='h-3.5 w-3.5 text-indigo-500' />
-											<span className='font-medium text-sm'>{name}</span>
-											<Badge
-												variant={VariantBase.DEFAULT}
-												className='text-[10px] py-0 px-1.5 h-4 ml-auto flex items-center gap-1'
-											>
-												<Star className='h-2.5 w-2.5' />
-												Your Top
-											</Badge>
+											<span className={type === TopicBadgeType.MOST_PLAYED ? 'font-medium text-sm' : 'text-xs'}>
+												{formatTitle(name)}
+											</span>
+											{badge && (
+												<Badge
+													variant={badge.variant}
+													className={cn(
+														'text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5',
+														type === TopicBadgeType.MOST_PLAYED && 'ml-auto gap-1',
+														badge.badgeClassName
+													)}
+												>
+													{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
+													{badge.label}
+												</Badge>
+											)}
 										</Button>
 									);
 								})}
-
-							{/* Other Topics - In a grid */}
 							<div className='flex flex-wrap gap-2'>
 								{topicsList
-									.filter(t => t.type !== 'most-played')
+									.filter(t => t.type !== TopicBadgeType.MOST_PLAYED)
 									.map(({ name, type }) => {
-										const isSelected = topic === name;
-										type BadgeConfigType = {
-											label: string;
-											variant: VariantBase;
-											icon: typeof User;
-											buttonClassName?: string;
-											iconClassName?: string;
-										};
-
-										const getBadgeConfig = (): BadgeConfigType => {
-											switch (type) {
-												case 'yours':
-													return {
-														label: 'Your',
-														variant: VariantBase.SECONDARY,
-														icon: User,
-													};
-												case 'basic':
-													return {
-														label: 'Basic',
-														variant: VariantBase.OUTLINE,
-														icon: Layers,
-													};
-												case 'popular':
-													return {
-														label: 'Popular',
-														variant: VariantBase.SECONDARY,
-														icon: Flame,
-														buttonClassName: 'bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/30',
-														iconClassName: 'text-white',
-													};
-												default:
-													return {
-														label: '',
-														variant: VariantBase.OUTLINE,
-														icon: Layers,
-													};
-											}
-										};
-
-										const badgeConfig = getBadgeConfig();
-										const BadgeIcon = badgeConfig.icon;
-										const showBadge = type !== 'basic';
-
+										const isSelected = namesMatch(topic, name);
+										const badge = isTopicBadgeType(type) ? (TOPIC_BADGE_META[type] ?? null) : null;
+										const BadgeIcon = badge?.icon;
+										const chipType: TopicBadgeType = isTopicBadgeType(type) ? type : TopicBadgeType.BASIC;
 										return (
 											<Button
 												key={name}
 												type='button'
-												variant={isSelected ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
+												variant={isSelected ? VariantBase.DEFAULT : VariantBase.OUTLINE}
 												size={ButtonSize.SM}
-												className={cn('text-xs h-auto py-1.5 px-2 gap-1.5', badgeConfig.buttonClassName)}
+												className={topicChipVariants({ type: chipType, selected: isSelected })}
 												onClick={() => onTopicChange(isSelected ? '' : name)}
 											>
-												{showBadge && <BadgeIcon className={cn('h-3 w-3', badgeConfig.iconClassName)} />}
-												<span className='text-xs'>{name}</span>
-												{showBadge && (
+												<span className='text-xs'>{formatTitle(name)}</span>
+												{badge && (
 													<Badge
-														variant={badgeConfig.variant}
-														className='text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5'
+														variant={badge.variant}
+														className={cn(
+															'text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5',
+															badge.badgeClassName
+														)}
 													>
-														<BadgeIcon className={cn('h-2.5 w-2.5', badgeConfig.iconClassName)} />
-														{badgeConfig.label}
+														{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
+														{badge.label}
 													</Badge>
 												)}
 											</Button>
@@ -250,50 +255,29 @@ export function GameSettingsForm({
 			{/* Difficulty Selection */}
 			<div className='space-y-3'>
 				<Label className='flex items-center gap-2'>
-					<AlertCircle className='h-4 w-4 text-muted-foreground' />
+					<Gauge className='h-4 w-4 text-muted-foreground' />
 					Difficulty
 				</Label>
 				<div className='grid grid-cols-4 gap-2'>
-					<Button
-						type='button'
-						variant={selectedDifficulty === DifficultyLevel.EASY ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-						size={ButtonSize.SM}
-						onClick={() => onDifficultyChange(DifficultyLevel.EASY)}
-						className='flex items-center justify-center gap-2'
-					>
-						<span className='w-2 h-2 rounded-full bg-green-500' />
-						Easy
-					</Button>
-					<Button
-						type='button'
-						variant={selectedDifficulty === DifficultyLevel.MEDIUM ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-						size={ButtonSize.SM}
-						onClick={() => onDifficultyChange(DifficultyLevel.MEDIUM)}
-						className='flex items-center justify-center gap-2'
-					>
-						<span className='w-2 h-2 rounded-full bg-yellow-500' />
-						Medium
-					</Button>
-					<Button
-						type='button'
-						variant={selectedDifficulty === DifficultyLevel.HARD ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-						size={ButtonSize.SM}
-						onClick={() => onDifficultyChange(DifficultyLevel.HARD)}
-						className='flex items-center justify-center gap-2'
-					>
-						<span className='w-2 h-2 rounded-full bg-red-500' />
-						Hard
-					</Button>
-					<Button
-						type='button'
-						variant={selectedDifficulty === DifficultyLevel.CUSTOM ? ButtonVariant.DEFAULT : ButtonVariant.OUTLINE}
-						size={ButtonSize.SM}
-						onClick={() => onDifficultyChange(DifficultyLevel.CUSTOM)}
-						className='flex items-center justify-center gap-2'
-					>
-						<span className='w-2 h-2 rounded-full bg-purple-500' />
-						Custom
-					</Button>
+					{difficultyOptions.map(({ level, label, dotColor }) => {
+						const isSelected = selectedDifficulty === level;
+						return (
+							<Button
+								key={level}
+								type='button'
+								variant={isSelected ? VariantBase.DEFAULT : VariantBase.OUTLINE}
+								size={ButtonSize.SM}
+								onClick={() => onDifficultyChange(level)}
+								className={cn(
+									'flex items-center justify-center gap-2',
+									!isSelected && 'bg-muted/40 hover:bg-primary/20'
+								)}
+							>
+								<span className={cn('w-2 h-2 rounded-full', dotColor)} />
+								{label}
+							</Button>
+						);
+					})}
 				</div>
 				{/* Custom Difficulty Input */}
 				{selectedDifficulty === DifficultyLevel.CUSTOM && (
@@ -311,8 +295,7 @@ export function GameSettingsForm({
 							className='min-h-[80px]'
 						/>
 						{customDifficultyError && (
-							<Alert variant={VariantBase.DESTRUCTIVE} className='py-2'>
-								<AlertCircle className='h-4 w-4' />
+							<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
 								<AlertDescription className='text-xs'>{customDifficultyError}</AlertDescription>
 							</Alert>
 						)}
@@ -322,103 +305,86 @@ export function GameSettingsForm({
 			</div>
 
 			{/* Settings Grid - Questions/Time, Answer Count, Max Players */}
-			<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-				{/* Question Limit */}
-				{shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange && (
-					<div className='space-y-3'>
-						<Label className='flex items-center gap-2'>
-							<FileQuestion className='h-4 w-4 text-muted-foreground' />
-							Number of Questions
-						</Label>
-						<div className='flex justify-start'>
-							<NumberInput
-								value={maxQuestionsPerGame}
-								onChange={onMaxQuestionsPerGameChange}
-								min={VALIDATION_COUNT.QUESTIONS.MIN}
-								max={VALIDATION_COUNT.QUESTIONS.MAX}
-								step={VALIDATION_COUNT.QUESTIONS.STEP}
-							/>
-						</div>
-						{selectedMode && (
-							<p className='text-xs text-muted-foreground'>
-								= {calculateRequiredCredits(maxQuestionsPerGame, selectedMode)} credits
-							</p>
-						)}
-					</div>
-				)}
+			{showMaxPlayers ? (
+				/* Multiplayer: three number inputs in one row, evenly distributed */
+				<div className='flex flex-col sm:flex-row gap-4 sm:justify-evenly'>
+					{shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange && (
+						<NumberInput
+							label='Questions'
+							labelIcon={<FileQuestion />}
+							value={maxQuestionsPerGame}
+							onChange={onMaxQuestionsPerGameChange}
+							min={VALIDATION_COUNT.QUESTIONS.MIN}
+							max={VALIDATION_COUNT.QUESTIONS.MAX}
+							step={VALIDATION_COUNT.QUESTIONS.STEP}
+						/>
+					)}
+					<NumberInput
+						label='Answer Choices'
+						labelIcon={<CheckSquare />}
+						value={answerCount}
+						onChange={onAnswerCountChange}
+						min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
+						max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
+						step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
+					/>
+					{maxPlayers !== undefined && onMaxPlayersChange && (
+						<NumberInput
+							label='Max Players'
+							labelIcon={<UserPlus />}
+							value={maxPlayers}
+							onChange={onMaxPlayersChange}
+							min={VALIDATION_COUNT.PLAYERS.MIN}
+							max={VALIDATION_COUNT.PLAYERS.MAX}
+							step={1}
+						/>
+					)}
+				</div>
+			) : (
+				<div className='flex flex-col sm:flex-row flex-wrap gap-4 sm:justify-evenly'>
+					{/* Question Limit */}
+					{shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange && (
+						<NumberInput
+							label='Questions'
+							labelIcon={<FileQuestion />}
+							value={maxQuestionsPerGame}
+							onChange={onMaxQuestionsPerGameChange}
+							min={VALIDATION_COUNT.QUESTIONS.MIN}
+							max={VALIDATION_COUNT.QUESTIONS.MAX}
+							step={VALIDATION_COUNT.QUESTIONS.STEP}
+						/>
+					)}
 
-				{/* Time Limit */}
-				{shouldShowTimeLimit && timeLimit !== undefined && onTimeLimitChange && (
-					<div className='space-y-3'>
-						<Label className='flex items-center gap-2'>
-							<Clock className='h-4 w-4 text-muted-foreground' />
-							Time Limit (seconds)
-						</Label>
-						<div className='flex justify-start'>
+					{/* Time Limit */}
+					{shouldShowTimeLimit && timeLimit !== undefined && onTimeLimitChange && (
+						<div className='flex flex-col items-center space-y-3'>
 							<NumberInput
+								label='Time Limit (seconds)'
+								labelIcon={<Clock />}
 								value={timeLimit}
 								onChange={onTimeLimitChange}
 								min={VALIDATION_COUNT.TIME_LIMIT.MIN}
 								max={VALIDATION_COUNT.TIME_LIMIT.MAX}
 								step={VALIDATION_COUNT.TIME_LIMIT.STEP}
 							/>
+							<p className='text-xs text-muted-foreground text-center'>
+								{timeLimit < TIME_DURATIONS_SECONDS.MINUTE
+									? `${timeLimit}s`
+									: `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.MINUTE)}m ${timeLimit % TIME_DURATIONS_SECONDS.MINUTE ? `${timeLimit % TIME_DURATIONS_SECONDS.MINUTE}s` : ''}`}
+							</p>
 						</div>
-						<p className='text-xs text-muted-foreground'>
-							{timeLimit < TIME_DURATIONS_SECONDS.MINUTE
-								? `${timeLimit}s`
-								: timeLimit < TIME_DURATIONS_SECONDS.HOUR
-									? `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.MINUTE)}m`
-									: `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.HOUR)}h`}
-							{selectedMode && (
-								<span className='ml-2'>• Fixed cost: {CREDIT_COSTS[selectedMode]?.fixedCost ?? 10} credits</span>
-							)}
-						</p>
-					</div>
-				)}
+					)}
 
-				{/* Answer Count Selection - Always shown */}
-				<div className='space-y-3'>
-					<Label className='flex items-center gap-2'>
-						<CheckSquare className='h-4 w-4 text-muted-foreground' />
-						Number of Answer Choices
-					</Label>
-					<div className='flex justify-start'>
-						<NumberInput
-							value={answerCount}
-							onChange={onAnswerCountChange}
-							min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
-							max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
-							step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
-						/>
-					</div>
-				</div>
-
-				{/* Max Players (for multiplayer) */}
-				{showMaxPlayers && maxPlayers !== undefined && onMaxPlayersChange && (
-					<div className='space-y-3'>
-						<Label className='flex items-center gap-2'>
-							<Users className='h-4 w-4 text-muted-foreground' />
-							Max Players
-						</Label>
-						<div className='flex justify-start'>
-							<NumberInput
-								value={maxPlayers}
-								onChange={onMaxPlayersChange}
-								min={VALIDATION_COUNT.PLAYERS.MIN}
-								max={VALIDATION_COUNT.PLAYERS.MAX}
-								step={1}
-							/>
-						</div>
-					</div>
-				)}
-			</div>
-
-			{/* Unlimited Mode Info */}
-			{selectedMode === GameModeEnum.UNLIMITED && (
-				<div className='p-4 rounded-lg bg-muted/50 text-center'>
-					<p className='text-sm text-muted-foreground'>
-						Play until your credits run out. Each question costs 1 credit.
-					</p>
+					{/* Answer Count Selection - Always shown */}
+					<NumberInput
+						label='Answer Choices'
+						labelIcon={<CheckSquare />}
+						value={answerCount}
+						onChange={onAnswerCountChange}
+						min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
+						max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
+						step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
+					/>
 				</div>
 			)}
 		</div>

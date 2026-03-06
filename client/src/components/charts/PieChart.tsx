@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
 import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
-import { formatForDisplay } from '@shared/utils';
+import { calculatePercentage, formatNumericValue } from '@shared/utils';
 
-import { CHART_COLORS, CHART_HEIGHTS, CssColor } from '@/constants';
+import { CHART_COLORS, CHART_HEIGHTS, CssColor, SkeletonVariant } from '@/constants';
 import { EmptyState, Skeleton } from '@/components';
 import type { PieChartProps } from '@/types';
-import { isPieTooltipEntry, processChartDataWithOthers, toHslColor } from '@/utils';
+import { calculateChartDataSum, isPieTooltipEntry, processChartDataWithOthers } from '@/utils';
 import { ChartCard } from './ChartCard';
 
 export const PieChart = memo(function PieChart({
@@ -15,7 +15,7 @@ export const PieChart = memo(function PieChart({
 	height = CHART_HEIGHTS.DEFAULT,
 	colors = CHART_COLORS,
 	maxItems = 10,
-	minPercentage = 1, // Default: group items below 1% as "Others"
+	minPercentage = 1,
 	valueLabel = 'Count',
 	className,
 	hideCard = false,
@@ -28,7 +28,7 @@ export const PieChart = memo(function PieChart({
 		() => processChartDataWithOthers(data ?? [], maxItems, effectiveMinPercentage),
 		[data, maxItems, effectiveMinPercentage]
 	);
-	const total = useMemo(() => chartData.reduce((sum, d) => sum + d.value, 0), [chartData]);
+	const total = useMemo(() => calculateChartDataSum(chartData), [chartData]);
 
 	const chartContent = (
 		<ResponsiveContainer width='100%' height={height}>
@@ -40,8 +40,8 @@ export const PieChart = memo(function PieChart({
 					innerRadius={50}
 					outerRadius={85}
 					labelLine={false}
-					label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-					fill={toHslColor(CssColor.PRIMARY)}
+					label={({ name, percent }) => `${name}: ${calculatePercentage(percent, 1)}%`}
+					fill={CssColor.PRIMARY}
 					dataKey='value'
 					stroke='none'
 				>
@@ -52,8 +52,8 @@ export const PieChart = memo(function PieChart({
 				<Tooltip
 					contentStyle={{
 						direction: 'rtl',
-						backgroundColor: toHslColor(CssColor.CARD),
-						border: `1px solid ${toHslColor(CssColor.BORDER)}`,
+						backgroundColor: CssColor.CARD,
+						border: `1px solid ${CssColor.BORDER}`,
 						borderRadius: '8px',
 					}}
 					content={({ active, payload }) => {
@@ -63,13 +63,13 @@ export const PieChart = memo(function PieChart({
 						const entry = raw.payload ?? raw;
 						if (!isPieTooltipEntry(entry)) return null;
 						const value = entry.value;
-						const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+						const pct = total > 0 ? calculatePercentage(value, total, false).toFixed(1) : '0';
 						return (
 							<div className='px-3 py-2 space-y-1'>
 								<div className='font-medium'>{entry.name}</div>
 								<div className='text-muted-foreground text-sm space-y-0.5'>
 									<div>
-										{valueLabel}: {formatForDisplay(value, 0)}
+										{valueLabel}: {formatNumericValue(value, 0)}
 									</div>
 									<div>Percentage: {pct}%</div>
 								</div>
@@ -101,7 +101,7 @@ export const PieChart = memo(function PieChart({
 										x='50%'
 										dy='16'
 										textAnchor='middle'
-										style={{ fontSize: '12px', fontWeight: 'normal', fill: toHslColor(CssColor.MUTED_FOREGROUND) }}
+										style={{ fontSize: '12px', fontWeight: 'normal', fill: CssColor.MUTED_FOREGROUND }}
 									>
 										{centerText.secondary}
 									</tspan>
@@ -116,7 +116,7 @@ export const PieChart = memo(function PieChart({
 
 	if (hideCard) {
 		if (isLoading) {
-			return <Skeleton className={className} style={{ height: `${height}px` }} />;
+			return <Skeleton variant={SkeletonVariant.Chart} className={className} style={{ height: `${height}px` }} />;
 		}
 		if (emptyStateData && (!data || data.length === 0)) {
 			return (

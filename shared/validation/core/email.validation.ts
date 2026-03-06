@@ -12,9 +12,7 @@ export function validateEmail(email: string): ValidationResult {
 			position,
 			suggestion: 'Please enter a valid email address (e.g., user@example.com)',
 		};
-	}
-
-	if (email.length > VALIDATION_LENGTH.EMAIL.MAX) {
+	} else if (email.length > VALIDATION_LENGTH.EMAIL.MAX) {
 		const position: TextPosition = { start: VALIDATION_LENGTH.EMAIL.MAX, end: email.length };
 		return {
 			isValid: false,

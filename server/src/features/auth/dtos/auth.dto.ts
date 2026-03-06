@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
+import { VALIDATION_LENGTH } from '@shared/constants';
+
 export class LoginDto {
 	@ApiProperty({
 		description: 'Email for login',
@@ -8,18 +10,24 @@ export class LoginDto {
 	})
 	@IsEmail({}, { message: 'Please provide a valid email address' })
 	@IsNotEmpty({ message: 'Email is required' })
-	@MaxLength(255, { message: 'Email cannot exceed 255 characters' })
+	@MaxLength(VALIDATION_LENGTH.EMAIL.MAX, {
+		message: `Email cannot exceed ${VALIDATION_LENGTH.EMAIL.MAX} characters`,
+	})
 	email: string;
 
 	@ApiProperty({
 		description: 'User password',
-		minLength: 6,
-		maxLength: 15,
+		minLength: VALIDATION_LENGTH.PASSWORD.MIN,
+		maxLength: VALIDATION_LENGTH.PASSWORD.MAX,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
-	@MinLength(6, { message: 'Password must be at least 6 characters long' })
-	@MaxLength(15, { message: 'Password cannot exceed 15 characters' })
+	@MinLength(VALIDATION_LENGTH.PASSWORD.MIN, {
+		message: `Password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.PASSWORD.MAX, {
+		message: `Password cannot exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`,
+	})
 	password: string;
 }
 
@@ -30,27 +38,35 @@ export class RegisterDto {
 	})
 	@IsEmail({}, { message: 'Please provide a valid email address' })
 	@IsNotEmpty({ message: 'Email is required' })
-	@MaxLength(255, { message: 'Email cannot exceed 255 characters' })
+	@MaxLength(VALIDATION_LENGTH.EMAIL.MAX, {
+		message: `Email cannot exceed ${VALIDATION_LENGTH.EMAIL.MAX} characters`,
+	})
 	email: string;
 
 	@ApiProperty({
 		description: 'Secure password',
-		minLength: 6,
-		maxLength: 15,
+		minLength: VALIDATION_LENGTH.PASSWORD.MIN,
+		maxLength: VALIDATION_LENGTH.PASSWORD.MAX,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Password is required' })
-	@MinLength(6, { message: 'Password must be at least 6 characters long' })
-	@MaxLength(15, { message: 'Password cannot exceed 15 characters' })
+	@MinLength(VALIDATION_LENGTH.PASSWORD.MIN, {
+		message: `Password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.PASSWORD.MAX, {
+		message: `Password cannot exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`,
+	})
 	password: string;
 
 	@ApiPropertyOptional({
 		description: 'First name',
-		maxLength: 50,
+		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(50, { message: 'First name cannot exceed 50 characters' })
+	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
+		message: `First name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
+	})
 	@Matches(/^[a-zA-Z\s'-]+$/, {
 		message: 'First name can only contain letters, spaces, apostrophes, and hyphens',
 	})
@@ -58,11 +74,13 @@ export class RegisterDto {
 
 	@ApiPropertyOptional({
 		description: 'Last name',
-		maxLength: 50,
+		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
+	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
+		message: `Last name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
+	})
 	@Matches(/^[a-zA-Z\s'-]+$/, {
 		message: 'Last name can only contain letters, spaces, apostrophes, and hyphens',
 	})
@@ -92,6 +110,7 @@ export class AuthResponseDto {
 		lastName?: string;
 		avatar?: number;
 		role: string;
+		emailVerified?: boolean;
 	};
 }
 

@@ -6,20 +6,28 @@ import {
 	CREDIT_PURCHASE_PACKAGES,
 	CreditSource,
 	CreditTransactionType,
-	ERROR_CODES,
+	ERROR_MESSAGES,
+	ErrorCode,
 	GameMode,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
-import { calculateNewBalance, calculateRequiredCredits, ensureErrorObject, getErrorMessage } from '@shared/utils';
-import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@shared/utils/domain';
-import { validateInputContent } from '@shared/validation';
+import {
+	calculateNewBalance,
+	calculateRequiredCredits,
+	ensureErrorObject,
+	getErrorMessage,
+	validateGameMode,
+} from '@shared/utils';
+import { isUuid } from '@shared/validation';
 
 import { CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
+
+import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '../../internal/utils/entityGuards';
 
 @Injectable()
 export class CreditsService {
@@ -37,17 +45,14 @@ export class CreditsService {
 			!Number.isFinite(questionsPerRequest) ||
 			(questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX))
 		) {
-			throw new BadRequestException(
-				`Questions per request must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`
-			);
+			throw new BadRequestException(ERROR_MESSAGES.validation.QUESTIONS_PER_REQUEST_RANGE(MIN, MAX, UNLIMITED));
 		}
 	}
 
 	async getCreditBalance(userId: string): Promise<CreditBalance> {
 		try {
-			const userValidation = await validateInputContent(userId);
-			if (!userValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
+			if (!isUuid(userId)) {
+				throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 			}
 
 			const cacheKey = SERVER_CACHE_KEYS.CREDITS.BALANCE(userId);
@@ -59,7 +64,7 @@ export class CreditsService {
 						where: { id: userId },
 					});
 					if (!user) {
-						throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+						throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 					}
 
 					const credits = user.credits ?? 0;
@@ -126,9 +131,8 @@ export class CreditsService {
 		gameMode: GameMode = GameMode.QUESTION_LIMITED
 	): Promise<CanPlayResponse> {
 		try {
-			const userValidation = await validateInputContent(userId);
-			if (!userValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
+			if (!isUuid(userId)) {
+				throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 			}
 
 			// For TIME_LIMITED mode, validate time in seconds (30-300)
@@ -136,7 +140,7 @@ export class CreditsService {
 			if (gameMode === GameMode.TIME_LIMITED) {
 				const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
 				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < MIN || questionsPerRequest > MAX) {
-					throw new BadRequestException(`Time limit must be between ${MIN} and ${MAX} seconds for TIME_LIMITED mode`);
+					throw new BadRequestException(ERROR_MESSAGES.validation.TIME_LIMIT_RANGE(MIN, MAX));
 				}
 			} else {
 				this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
@@ -154,7 +158,7 @@ export class CreditsService {
 
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Users with NULL credits (admins) can always play without credits
@@ -188,7 +192,11 @@ export class CreditsService {
 
 			return {
 				canPlay: false,
-				reason: `Insufficient credits. You have ${totalAvailable} credits available but need ${requiredCredits} credits (${normalizedQuestionsPerRequest} questions × ${gameMode} mode).`,
+				reason: ERROR_MESSAGES.game.INSUFFICIENT_CREDITS_DETAIL(
+					totalAvailable,
+					requiredCredits,
+					`${normalizedQuestionsPerRequest} questions × ${gameMode} mode`
+				),
 			};
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), {
@@ -208,9 +216,8 @@ export class CreditsService {
 		reason?: string
 	): Promise<CreditBalance> {
 		try {
-			const userValidation = await validateInputContent(userId);
-			if (!userValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
+			if (!isUuid(userId)) {
+				throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 			}
 
 			// For TIME_LIMITED mode, validate time in seconds (30-300)
@@ -218,7 +225,7 @@ export class CreditsService {
 			if (gameMode === GameMode.TIME_LIMITED) {
 				const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
 				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < MIN || questionsPerRequest > MAX) {
-					throw new BadRequestException(`Time limit must be between ${MIN} and ${MAX} seconds for TIME_LIMITED mode`);
+					throw new BadRequestException(ERROR_MESSAGES.validation.TIME_LIMIT_RANGE(MIN, MAX));
 				}
 			} else {
 				this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
@@ -234,9 +241,8 @@ export class CreditsService {
 						? MAX
 						: questionsPerRequest;
 
-			const gameModeValidation = await validateInputContent(gameMode);
-			if (!gameModeValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_GAME_MODE);
+			if (!validateGameMode(gameMode)) {
+				throw new BadRequestException(ErrorCode.INVALID_GAME_MODE);
 			}
 
 			// Use atomic transaction with optimistic locking to prevent race conditions
@@ -249,7 +255,7 @@ export class CreditsService {
 				});
 
 				if (!user) {
-					throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+					throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 				}
 
 				// Users with NULL credits (admins) don't need credit deduction
@@ -288,7 +294,11 @@ export class CreditsService {
 				// Check if user has sufficient credits (same logic as canPlay, but inside transaction)
 				if (freeQuestions < requiredCredits && purchasedCredits < requiredCredits && totalCredits < requiredCredits) {
 					throw new BadRequestException(
-						`Insufficient credits. You have ${totalCredits} credits available but need ${requiredCredits} credits (${normalizedQuestionsPerRequest} questions × ${gameMode} mode).`
+						ERROR_MESSAGES.game.INSUFFICIENT_CREDITS_DETAIL(
+							totalCredits,
+							requiredCredits,
+							`${normalizedQuestionsPerRequest} questions × ${gameMode} mode`
+						)
 					);
 				}
 
@@ -340,7 +350,7 @@ export class CreditsService {
 				});
 
 				if (!updatedUser) {
-					throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+					throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 				}
 
 				const creditTransaction = transactionalEntityManager.create(CreditTransactionEntity, {
@@ -419,14 +429,13 @@ export class CreditsService {
 		paymentId: string
 	): Promise<CreditBalance> {
 		try {
-			const userValidation = await validateInputContent(userId);
-			if (!userValidation.isValid) {
-				throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
+			if (!isUuid(userId)) {
+				throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 			}
 
 			// Validate credits amount
 			if (!credits || credits <= 0 || credits > 10000) {
-				throw new BadRequestException(ERROR_CODES.INVALID_CREDITS_AMOUNT);
+				throw new BadRequestException(ErrorCode.INVALID_CREDITS_AMOUNT);
 			}
 
 			const userRepo = entityManager ? entityManager.getRepository(UserEntity) : this.userRepository;
@@ -436,7 +445,7 @@ export class CreditsService {
 
 			const user = await userRepo.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new UnauthorizedException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Update user credits

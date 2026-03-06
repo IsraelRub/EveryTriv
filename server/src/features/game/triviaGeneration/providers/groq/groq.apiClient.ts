@@ -1,13 +1,6 @@
 import {
-	ERROR_CODES,
 	ERROR_MESSAGES,
-	GROQ_API_BASE_URL,
-	GROQ_DEFAULT_MAX_TOKENS,
-	GROQ_DEFAULT_TEMPERATURE,
-	GROQ_FREE_TIER_MODELS,
-	GROQ_MODELS,
-	GROQ_PROVIDER_NAME,
-	GROQ_PROVIDER_NAME_LOWERCASE,
+	ErrorCode,
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HTTP_TIMEOUTS,
@@ -15,6 +8,15 @@ import {
 } from '@shared/constants';
 import { executeRetry, getErrorMessage, isProviderAuthError, isRecord } from '@shared/utils';
 
+import {
+	GROQ_API_BASE_URL,
+	GROQ_DEFAULT_MAX_TOKENS,
+	GROQ_DEFAULT_TEMPERATURE,
+	GROQ_FREE_TIER_MODELS,
+	GROQ_MODELS,
+	GROQ_PROVIDER_NAME,
+	GROQ_PROVIDER_NAME_LOWERCASE,
+} from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type { LLMResponse, ProviderConfig } from '@internal/types';
 import { createAuthError } from '@internal/utils';
@@ -36,7 +38,7 @@ export class GroqApiClient {
 		this.currentModelIndex = (this.currentModelIndex + 1) % freeTierModelsLength;
 
 		if (selectedModel == null) {
-			throw new Error('No model available from GROQ_FREE_TIER_MODELS');
+			throw new Error(ERROR_MESSAGES.provider.NO_GROQ_MODEL_AVAILABLE);
 		}
 
 		return selectedModel;
@@ -75,7 +77,7 @@ export class GroqApiClient {
 
 	async makeApiCall(prompt: string): Promise<LLMResponse> {
 		if (!this.apiKey) {
-			throw createAuthError(ERROR_CODES.API_KEY_NOT_CONFIGURED);
+			throw createAuthError(ErrorCode.API_KEY_NOT_CONFIGURED);
 		}
 
 		const config = this.getProviderConfig(prompt);

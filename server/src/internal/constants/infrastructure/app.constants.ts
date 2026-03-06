@@ -1,8 +1,3 @@
-export const API_URLS = {
-	users: 'users',
-	files: 'files',
-} as const;
-
 export const DATABASE_DEFAULTS = {
 	username: 'everytriv_user',
 	name: 'everytriv',
@@ -36,12 +31,6 @@ export const REDIS_RETRY_STRATEGY_CONFIG = {
 export const JWT_DEFAULTS = {
 	expiresIn: '1h',
 	refreshExpiresIn: '7d',
-} as const;
-
-export const FEATURES_DEFAULTS = {
-	rateLimitingEnabled: true,
-	aiFallbackEnabled: true,
-	bypassRateLimitForLocalhost: true,
 } as const;
 
 export const ADMIN_CREDENTIALS_DEFAULTS = {

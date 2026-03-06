@@ -2,7 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
-import { ensureErrorObject } from '@shared/utils';
+import { TIME_PERIODS_MS } from '@shared/constants';
+import { calculateDuration, ensureErrorObject } from '@shared/utils';
 
 import { HealthStatus } from '@internal/constants';
 import type { HealthCheck, HealthCheckResponse, LivenessCheckResponse, ReadinessCheckResponse } from '@internal/types';
@@ -66,9 +67,9 @@ export class HealthController {
 		const startTime = Date.now();
 		try {
 			await this.dataSource.query('SELECT 1');
-			const responseTime = Date.now() - startTime;
+			const responseTime = calculateDuration(startTime);
 
-			if (responseTime > 1000) {
+			if (responseTime > TIME_PERIODS_MS.SECOND) {
 				return {
 					status: HealthStatus.DEGRADED,
 					message: 'Database response time is high',
@@ -87,7 +88,7 @@ export class HealthController {
 			return {
 				status: HealthStatus.UNHEALTHY,
 				message: 'Database connection failed',
-				responseTime: Date.now() - startTime,
+				responseTime: calculateDuration(startTime),
 			};
 		}
 	}

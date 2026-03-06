@@ -1,9 +1,9 @@
 import { cpus, freemem, totalmem } from 'os';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { SYSTEM_HEALTH_THRESHOLDS, TIME_PERIODS_MS } from '@shared/constants';
 import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { calculatePercentage, getErrorMessage, mean, sum } from '@shared/utils';
 
 import { serverLogger as logger, metricsService } from '@internal/services';
 
@@ -92,7 +92,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 				});
 			}
 
-			if (this.securityData.authentication.failedLogins > 100) {
+			if (this.securityData.authentication.failedLogins > SYSTEM_HEALTH_THRESHOLDS.FAILED_LOGINS_ATTENTION_COUNT) {
 				recommendations.push({
 					id: 'sec-001',
 					type: 'security',
@@ -106,7 +106,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 				});
 			}
 
-			if (this.performanceData.memoryUsage > 80) {
+			if (this.performanceData.memoryUsage > SYSTEM_HEALTH_THRESHOLDS.MEMORY_USAGE_RECOMMENDATION_PERCENT) {
 				recommendations.push({
 					id: 'perf-002',
 					type: 'performance',
@@ -120,7 +120,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 				});
 			}
 
-			if (this.performanceData.errorRate > 5) {
+			if (this.performanceData.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT) {
 				recommendations.push({
 					id: 'perf-003',
 					type: 'performance',
@@ -177,7 +177,11 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 		].filter((s): s is string => typeof s === 'string');
 
 		const status =
-			perf.errorRate > 5 || perf.memoryUsage > 90 || sec.authentication.failedLogins > 100 ? 'attention' : 'optimal';
+			perf.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT ||
+			perf.memoryUsage > SYSTEM_HEALTH_THRESHOLDS.MEMORY_USAGE_ATTENTION_PERCENT ||
+			sec.authentication.failedLogins > SYSTEM_HEALTH_THRESHOLDS.FAILED_LOGINS_ATTENTION_COUNT
+				? 'attention'
+				: 'optimal';
 
 		return {
 			performanceInsights,
@@ -209,15 +213,15 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 		if (this.responseTimes.length > 100) {
 			this.responseTimes.shift();
 		}
-		this.performanceData.responseTime = this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length;
+		this.performanceData.responseTime = mean(this.responseTimes);
 
 		this.totalRequests += 1;
-		this.performanceData.throughput = this.totalRequests / ((Date.now() - this.startTime) / 1000);
+		this.performanceData.throughput = this.totalRequests / ((Date.now() - this.startTime) / TIME_PERIODS_MS.SECOND);
 
 		if (!success) {
 			this.failedRequests += 1;
 		}
-		this.performanceData.errorRate = (this.failedRequests / this.totalRequests) * 100;
+		this.performanceData.errorRate = calculatePercentage(this.failedRequests, this.totalRequests);
 	}
 
 	private startMetricsCollection(): void {
@@ -234,11 +238,11 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private async updatePerformanceMetrics(): Promise<void> {
-		this.performanceData.uptime = Math.floor((Date.now() - this.startTime) / 1000);
+		this.performanceData.uptime = Math.floor((Date.now() - this.startTime) / TIME_PERIODS_MS.SECOND);
 
 		const totalMemory = totalmem();
 		const freeMemory = freemem();
-		this.performanceData.memoryUsage = ((totalMemory - freeMemory) / totalMemory) * 100;
+		this.performanceData.memoryUsage = calculatePercentage(totalMemory - freeMemory, totalMemory);
 
 		const cpuList = cpus();
 		let totalIdle = 0;
@@ -246,10 +250,10 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 
 		cpuList.forEach(cpu => {
 			const timeValues = Object.values(cpu.times);
-			totalTick += timeValues.reduce((sum, value) => sum + value, 0);
+			totalTick += sum(timeValues);
 			totalIdle += cpu.times.idle;
 		});
 
-		this.performanceData.cpuUsage = 100 - (totalIdle / totalTick) * 100;
+		this.performanceData.cpuUsage = calculatePercentage(totalTick - totalIdle, totalTick);
 	}
 }

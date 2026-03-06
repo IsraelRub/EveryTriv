@@ -1,6 +1,6 @@
-import { VALIDATORS } from '@shared/constants';
 import type { StorageOperationResult, TypeGuard } from '@shared/types';
 import { isStringArray } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { STORAGE_KEYS } from '@/constants';
 

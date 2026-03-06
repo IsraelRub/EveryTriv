@@ -1,10 +1,11 @@
+import { memo } from 'react';
 import { cva } from 'class-variance-authority';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 import { getCorrectAnswerIndex } from '@shared/utils';
 
-import { ANIMATION_DELAYS, AnswerButtonState, SPRING_CONFIGS } from '@/constants';
+import { ANIMATION_DELAYS, AnswerButtonState, Colors, SPRING_CONFIGS } from '@/constants';
 import type { AnswerButtonItemProps, AnswerButtonProps } from '@/types';
 import { cn } from '@/utils';
 
@@ -13,11 +14,11 @@ const answerButtonVariants = cva(
 	{
 		variants: {
 			state: {
-				[AnswerButtonState.IDLE]: 'bg-blue-900/80 hover:bg-blue-800/90 border-border',
+				[AnswerButtonState.IDLE]: 'bg-blue-900/80 hover:bg-blue-800/90 border-white/80',
 				[AnswerButtonState.SELECTED]: 'bg-blue-500/50 border-blue-500',
-				[AnswerButtonState.CORRECT]: 'bg-green-500/40 border-green-500',
-				[AnswerButtonState.WRONG]: 'bg-red-500/40 border-red-500',
-				[AnswerButtonState.DISABLED]: 'opacity-50 border-border',
+				[AnswerButtonState.CORRECT]: 'bg-green-500/40 border-white/80',
+				[AnswerButtonState.WRONG]: 'bg-red-500/40 border-white/80',
+				[AnswerButtonState.DISABLED]: 'opacity-50 border-white/80',
 			},
 		},
 		compoundVariants: [
@@ -43,7 +44,9 @@ const getAnswerLetter = (index: number): string => {
 	return String.fromCharCode(65 + index);
 };
 
-function AnswerButtonItem({
+const DIM_MAX_OPACITY = 0.45;
+
+const AnswerButtonItem = memo(function AnswerButtonItem({
 	answer,
 	index,
 	answered,
@@ -52,27 +55,28 @@ function AnswerButtonItem({
 	onClick,
 	showResult = false,
 	animationDelay = index * ANIMATION_DELAYS.STAGGER_SMALL,
-	className,
 	playerCount,
+	totalPlayerCount,
 }: AnswerButtonItemProps) {
 	const isSelected = selectedAnswer === index;
-
-	// Determine if this answer is correct
 	const isCorrect = showResult && currentQuestion ? index === getCorrectAnswerIndex(currentQuestion) : false;
 	const isWrong = showResult && isSelected && !isCorrect;
 
-	// Determine button state
 	const buttonState: AnswerButtonState = showResult
 		? isCorrect
 			? AnswerButtonState.CORRECT
 			: isWrong
 				? AnswerButtonState.WRONG
 				: AnswerButtonState.DISABLED
-		: !answered
-			? isSelected
-				? AnswerButtonState.SELECTED
-				: AnswerButtonState.IDLE
-			: AnswerButtonState.DISABLED;
+		: isSelected
+			? AnswerButtonState.SELECTED
+			: answered
+				? AnswerButtonState.DISABLED
+				: AnswerButtonState.IDLE;
+
+	const showMultiplayerCount = totalPlayerCount != null && totalPlayerCount > 0;
+	const count = playerCount ?? 0;
+	const dimOpacity = showMultiplayerCount && totalPlayerCount > 0 ? (count / totalPlayerCount) * DIM_MAX_OPACITY : 0;
 
 	return (
 		<motion.button
@@ -81,23 +85,22 @@ function AnswerButtonItem({
 			transition={{ delay: animationDelay }}
 			onClick={() => onClick(index)}
 			disabled={answered}
-			className={cn(answerButtonVariants({ state: buttonState }), className, 'relative')}
+			className={cn(answerButtonVariants({ state: buttonState }), 'relative overflow-hidden')}
 		>
-			{playerCount !== undefined && playerCount > 0 && (
-				<motion.span
-					initial={{ scale: 0 }}
-					animate={{ scale: 1 }}
-					transition={SPRING_CONFIGS.ICON_SPRING}
-					className='absolute top-1 right-1 bg-primary/20 text-primary text-xs font-medium px-1.5 py-0.5 rounded-full'
-				>
-					{playerCount}
-				</motion.span>
+			{showMultiplayerCount && dimOpacity > 0 && (
+				<div
+					className='pointer-events-none absolute inset-0 rounded-[6px] bg-muted transition-opacity duration-300'
+					style={{ opacity: dimOpacity }}
+				/>
 			)}
-			<div className='flex items-center gap-3 w-full'>
+			<div className='relative z-10 flex items-center gap-3 w-full'>
 				<span className='flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center font-medium text-sm'>
 					{getAnswerLetter(index)}
 				</span>
-				<span className='flex-1 text-base leading-tight'>{answer.text}</span>
+				<span className='flex-1 text-base leading-tight min-w-0'>{answer.text}</span>
+				{showMultiplayerCount && (
+					<span className='flex-shrink-0 text-muted-foreground text-xs font-medium tabular-nums'>{count}</span>
+				)}
 				{(isCorrect || isWrong) && (
 					<motion.span
 						initial={{ scale: 0 }}
@@ -106,9 +109,9 @@ function AnswerButtonItem({
 						className='flex-shrink-0'
 					>
 						{isCorrect ? (
-							<CheckCircle className='h-4 w-4 text-green-500' />
+							<CheckCircle2 className={cn('h-4 w-4', Colors.GREEN_500.text)} />
 						) : (
-							<XCircle className='h-4 w-4 text-red-500' />
+							<XCircle className={cn('h-4 w-4', Colors.RED_500.text)} />
 						)}
 					</motion.span>
 				)}
@@ -125,44 +128,60 @@ function AnswerButtonItem({
 			</div>
 		</motion.button>
 	);
-}
+});
 
-export function AnswerButton({
+export const AnswerButton = memo(function AnswerButton({
 	answers,
 	answered,
 	selectedAnswer,
 	currentQuestion,
 	onAnswerClick,
 	showResult = false,
-	className,
-	emptyStateMessage = 'No answers available',
 	answerCounts,
+	totalPlayerCount,
 }: AnswerButtonProps) {
 	if (!answers || !Array.isArray(answers) || answers.length === 0) {
-		return <div className={cn('text-center text-muted-foreground', className)}>{emptyStateMessage}</div>;
+		return <div className='text-center text-muted-foreground'>No answers available</div>;
 	}
 
+	const correctAnswerIndex = currentQuestion ? getCorrectAnswerIndex(currentQuestion) : -1;
+	const showCorrectAnswerUnavailable = showResult && selectedAnswer !== null && correctAnswerIndex === -1;
+
+	const gridColsClass =
+		answers.length <= 2
+			? 'grid-cols-1 sm:grid-cols-2'
+			: answers.length <= 4
+				? 'grid-cols-1 sm:grid-cols-2'
+				: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+	const gridRowsClass = answers.length <= 2 ? 'grid-rows-1' : 'grid-rows-2';
+
 	return (
-		<div
-			className={cn(
-				'grid grid-rows-2 gap-x-4 gap-y-4 flex-1 min-h-0 items-center justify-items-center',
-				answers.length <= 4 ? 'grid-cols-2' : 'grid-cols-3',
-				className
+		<div className='flex flex-col flex-1 min-h-0'>
+			<div
+				className={cn(
+					'grid gap-x-4 gap-y-4 flex-1 min-h-0 items-center justify-items-center',
+					gridRowsClass,
+					gridColsClass
+				)}
+			>
+				{answers.map((answer, index) => (
+					<AnswerButtonItem
+						key={index}
+						answer={answer}
+						index={index}
+						answered={answered}
+						selectedAnswer={selectedAnswer}
+						currentQuestion={currentQuestion}
+						onClick={onAnswerClick}
+						showResult={showResult}
+						playerCount={answerCounts?.[index]}
+						totalPlayerCount={totalPlayerCount}
+					/>
+				))}
+			</div>
+			{showCorrectAnswerUnavailable && (
+				<p className='text-sm text-muted-foreground text-center mt-2'>The correct answer could not be displayed </p>
 			)}
-		>
-			{answers.map((answer, index) => (
-				<AnswerButtonItem
-					key={index}
-					answer={answer}
-					index={index}
-					answered={answered}
-					selectedAnswer={selectedAnswer}
-					currentQuestion={currentQuestion}
-					onClick={onAnswerClick}
-					showResult={showResult}
-					playerCount={answerCounts?.[index]}
-				/>
-			))}
 		</div>
 	);
-}
+});

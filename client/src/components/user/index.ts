@@ -1,3 +1,4 @@
-export { AvatarSelector } from './AvatarSelector';
-export { ChangePasswordDialog } from './ChangePasswordDialog';
-export { ProfileEditDialog } from './ProfileEditDialog';
+export * from './AvatarSelector';
+export * from './ChangePasswordDialog';
+export * from './ProfileEditDialog';
+export * from './UserAvatar';

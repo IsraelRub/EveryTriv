@@ -49,10 +49,6 @@ export function useAudioSettings() {
 
 	// Use handlers directly from useAudioState - useAudioSync will handle AudioService synchronization
 	const handleVolumeChange = audioState.handleVolumeChange;
-	const handleMuteToggle = () => {
-		// Toggle Redux state first, then AudioService will sync via useAudioSync
-		audioState.handleMuteToggle();
-	};
 
 	return {
 		state: {
@@ -64,7 +60,7 @@ export function useAudioSettings() {
 		},
 		handlers: {
 			handleVolumeChange,
-			handleMuteToggle,
+			handleMuteToggle: audioState.handleMuteToggle,
 			handleToggleAll: preferenceHandlers.handleToggleAll,
 			handleSoundEnabledChange: preferenceHandlers.handleSoundEnabledChange,
 			handleMusicEnabledChange: preferenceHandlers.handleMusicEnabledChange,

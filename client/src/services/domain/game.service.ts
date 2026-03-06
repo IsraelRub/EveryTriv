@@ -5,29 +5,22 @@ import type {
 	ClearOperationResponse,
 	CustomDifficultyRequest,
 	GameSessionValidationResponse,
-	TriviaRequest,
 	TriviaResponse,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 
 import { apiService, clientLogger as logger } from '@/services';
-import type { TriviaQuestionsResponse } from '@/types';
-
-type TriviaRequestWithSignal = TriviaRequest & { signal?: AbortSignal };
+import type { TriviaQuestionsResponse, TriviaRequestWithSignal } from '@/types';
 
 class GameService {
 	async getTrivia(request: TriviaRequestWithSignal): Promise<TriviaResponse> {
 		try {
 			const { signal, ...triviaRequest } = request;
-			const apiResponse = await apiService.post<TriviaResponse>(
-				API_ENDPOINTS.GAME.TRIVIA,
-				triviaRequest,
-				{
-					signal,
-					timeout: HTTP_TIMEOUTS.TRIVIA_CLIENT,
-					skipDeduplication: true,
-				}
-			);
+			const apiResponse = await apiService.post<TriviaResponse>(API_ENDPOINTS.GAME.TRIVIA, triviaRequest, {
+				signal,
+				timeout: HTTP_TIMEOUTS.TRIVIA_CLIENT,
+				skipDeduplication: true,
+			});
 			return apiResponse.data;
 		} catch (error) {
 			const message = getErrorMessage(error);

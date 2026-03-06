@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, CreditCard, Gamepad2, Wallet } from 'lucide-react';
+import { CheckCircle, Coins, Play, Wallet } from 'lucide-react';
 
 import {
 	AnalyticsAction,
 	AnalyticsEventType,
 	AnalyticsPageName,
 	CREDIT_PURCHASE_PACKAGES,
+	EMPTY_VALUE,
 	PaymentStatus,
 } from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
+import { formatCurrency } from '@shared/utils';
 
-import { ButtonVariant, PaymentTab, SKELETON_HEIGHTS, SKELETON_WIDTHS, VariantBase } from '@/constants';
+import {
+	Colors,
+	LoadingMessages,
+	PaymentTab,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	VariantBase,
+} from '@/constants';
 import {
 	Badge,
 	Button,
@@ -41,21 +50,22 @@ import {
 	usePaymentHistory,
 	useTrackAnalyticsEvent,
 } from '@/hooks';
+import { cn, repeat } from '@/utils';
 
 function BalanceCard({ balance, isLoading }: { balance: number; isLoading: boolean }) {
 	return (
-		<Card className='border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5'>
-			<CardHeader className='pb-2'>
-				<CardTitle className='flex items-center gap-2 text-lg'>
-					<Wallet className='h-5 w-5' />
+		<Card className='w-fit border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5'>
+			<CardHeader className='pb-2 text-center'>
+				<CardTitle className='flex items-center justify-center gap-2 text-lg'>
+					<Wallet className='h-5 w-5 text-primary' />
 					Your Balance
 				</CardTitle>
 			</CardHeader>
-			<CardContent>
+			<CardContent className='text-center'>
 				{isLoading ? (
-					<Skeleton className={`h-10 ${SKELETON_WIDTHS.TEXT_LARGE}`} />
+					<Skeleton variant={SkeletonVariant.Input} className='mx-auto' />
 				) : (
-					<div className='flex items-baseline gap-2'>
+					<div className='flex items-baseline justify-center gap-2'>
 						<span className='text-4xl font-bold text-primary'>{balance}</span>
 						<span className='text-muted-foreground'>credits</span>
 					</div>
@@ -81,18 +91,19 @@ function CreditPackageCard({
 			<Card className='relative overflow-hidden'>
 				{hasBonus && (
 					<div className='absolute top-0 right-0'>
-						<Badge className='rounded-none rounded-bl-lg bg-green-500'>+{pkg.bonus} bonus</Badge>
+						<Badge className={cn('rounded-none rounded-bl-lg', Colors.GREEN_500.bg)}>+{pkg.bonus} bonus</Badge>
 					</div>
 				)}
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<CreditCard className='h-5 w-5' />
+						<Coins className='h-5 w-5 text-primary' />
 						{pkg.description ?? `${pkg.credits} Credits`}
 					</CardTitle>
-					<CardDescription>
-						{pkg.credits} credits
-						{hasBonus && <span className='text-green-500'> + {pkg.bonus} bonus</span>}
-					</CardDescription>
+					{hasBonus && (
+						<CardDescription>
+							<span className={Colors.GREEN_500.text}>+{pkg.bonus} bonus credits</span>
+						</CardDescription>
+					)}
 				</CardHeader>
 				<CardContent>
 					<div className='text-3xl font-bold'>{pkg.priceDisplay}</div>
@@ -100,7 +111,7 @@ function CreditPackageCard({
 				</CardContent>
 				<CardFooter>
 					<Button className='w-full' onClick={onPurchase} disabled={isPurchasing}>
-						{isPurchasing ? 'Processing...' : 'Purchase'}
+						{isPurchasing ? LoadingMessages.PROCESSING : 'Purchase'}
 					</Button>
 				</CardFooter>
 			</Card>
@@ -134,11 +145,6 @@ export function PaymentView() {
 			description: `${pkg.credits} Credits`,
 		}));
 
-	const handlePurchaseClick = (pkg: CreditPurchaseOption) => {
-		setSelectedPackage(pkg);
-		setShowPaymentDialog(true);
-	};
-
 	// Track page view analytics
 	useEffect(() => {
 		trackAnalyticsEvent.mutate({
@@ -168,7 +174,7 @@ export function PaymentView() {
 	};
 
 	return (
-		<div className='max-w-6xl mx-auto h-full flex flex-col'>
+		<div className='view-centered-6xl h-full flex flex-col'>
 			<Card className='flex-1 flex flex-col overflow-hidden'>
 				<CardHeader className='flex-shrink-0'>
 					<CardTitle className='text-3xl md:text-4xl font-bold text-center mb-1 md:mb-2'>Credits</CardTitle>
@@ -176,32 +182,35 @@ export function PaymentView() {
 						Get credits to play more trivia games
 					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-4 md:space-y-6 lg:space-y-8 flex-1 overflow-y-auto'>
+				<CardContent className='view-spacing-lg view-scroll-inline'>
 					{/* Balance Card */}
-					<div className='max-w-md mx-auto'>
+					<div className='flex justify-center'>
 						<BalanceCard balance={balance} isLoading={balanceLoading} />
 					</div>
 
-					<Tabs defaultValue={PaymentTab.CREDITS} className='w-full flex-1 flex flex-col overflow-hidden'>
+					<Tabs defaultValue={PaymentTab.CREDITS} className='w-full flex-1 flex flex-col overflow-hidden min-h-0'>
 						<TabsList className='grid w-full max-w-md mx-auto grid-cols-2 flex-shrink-0'>
 							<TabsTrigger value={PaymentTab.CREDITS}>Buy Credits</TabsTrigger>
 							<TabsTrigger value={PaymentTab.PAYMENT_HISTORY}>Payment History</TabsTrigger>
 						</TabsList>
 
-						<TabsContent value={PaymentTab.CREDITS} className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto'>
+						<TabsContent
+							value={PaymentTab.CREDITS}
+							className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto min-h-[320px] w-full'
+						>
 							{packagesLoading ? (
 								<div className='grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden'>
-									{[...Array(3)].map((_, i) => (
+									{repeat(SKELETON_PLACEHOLDER_COUNTS.MEDIUM, i => (
 										<Card key={i} className='overflow-hidden'>
 											<CardHeader className='overflow-hidden'>
-												<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT} max-w-full`} />
-												<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_LARGE} max-w-full`} />
+												<Skeleton variant={SkeletonVariant.TextLargeNarrow} className='max-w-full' />
+												<Skeleton variant={SkeletonVariant.TextLine} className='max-w-full' />
 											</CardHeader>
 											<CardContent className='overflow-hidden'>
-												<Skeleton className={`h-10 ${SKELETON_WIDTHS.TEXT_SMALL} max-w-full`} />
+												<Skeleton variant={SkeletonVariant.InputSmall} className='max-w-full' />
 											</CardContent>
 											<CardFooter className='overflow-hidden'>
-												<Skeleton className={`h-10 ${SKELETON_WIDTHS.FULL} max-w-full`} />
+												<Skeleton variant={SkeletonVariant.InputFull} className='max-w-full' />
 											</CardFooter>
 										</Card>
 									))}
@@ -212,7 +221,10 @@ export function PaymentView() {
 										<CreditPackageCard
 											key={pkg.id}
 											pkg={pkg}
-											onPurchase={() => handlePurchaseClick(pkg)}
+											onPurchase={() => {
+												setSelectedPackage(pkg);
+												setShowPaymentDialog(true);
+											}}
 											isPurchasing={false}
 										/>
 									))}
@@ -220,8 +232,11 @@ export function PaymentView() {
 							)}
 						</TabsContent>
 
-						<TabsContent value={PaymentTab.PAYMENT_HISTORY} className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto'>
-							<div className='max-w-2xl mx-auto'>
+						<TabsContent
+							value={PaymentTab.PAYMENT_HISTORY}
+							className='mt-4 md:mt-6 lg:mt-8 flex-1 overflow-y-auto min-h-[320px] w-full'
+						>
+							<div className='w-full'>
 								{paymentHistoryLoading ? (
 									<Card>
 										<CardHeader>
@@ -229,9 +244,7 @@ export function PaymentView() {
 										</CardHeader>
 										<CardContent>
 											<div className='space-y-4'>
-												{[...Array(3)].map((_, i) => (
-													<Skeleton key={i} className={`${SKELETON_HEIGHTS.ROW} ${SKELETON_WIDTHS.FULL}`} />
-												))}
+												<Skeleton variant={SkeletonVariant.Row} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
 											</div>
 										</CardContent>
 									</Card>
@@ -252,8 +265,9 @@ export function PaymentView() {
 															<div className='flex justify-between items-start'>
 																<div className='space-y-1'>
 																	<p className='font-medium'>
-																		{payment.amount != null ? `$${(payment.amount / 100).toFixed(2)}` : 'N/A'}
-																		{payment.currency && ` ${payment.currency}`}
+																		{payment.amount != null
+																			? formatCurrency(payment.amount, payment.currency ?? 'USD')
+																			: EMPTY_VALUE}
 																	</p>
 																	<p className='text-sm text-muted-foreground'>{payment.paymentMethod}</p>
 																	{payment.message && (
@@ -309,7 +323,7 @@ export function PaymentView() {
 			<Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
-						<DialogTitle className='flex items-center gap-2 text-green-600'>
+						<DialogTitle className={cn('flex items-center gap-2', Colors.GREEN_500.text)}>
 							<CheckCircle className='w-6 h-6' />
 							Purchase Complete!
 						</DialogTitle>
@@ -317,8 +331,8 @@ export function PaymentView() {
 					</DialogHeader>
 					<div className='py-6'>
 						<div className='flex flex-col items-center text-center space-y-4'>
-							<div className='p-4 rounded-full bg-green-500/10'>
-								<Wallet className='w-12 h-12 text-green-600' />
+							<div className={cn('p-4 rounded-full', `${Colors.GREEN_500.bg}/10`)}>
+								<Wallet className={cn('w-12 h-12', Colors.GREEN_500.text)} />
 							</div>
 							<div>
 								<p className='text-lg font-medium'>
@@ -333,7 +347,7 @@ export function PaymentView() {
 						</div>
 					</div>
 					<DialogFooter className='gap-2 sm:gap-0'>
-						<Button variant={ButtonVariant.OUTLINE} onClick={() => setShowSuccessDialog(false)}>
+						<Button variant={VariantBase.OUTLINE} onClick={() => setShowSuccessDialog(false)}>
 							Stay Here
 						</Button>
 						<Button
@@ -342,7 +356,7 @@ export function PaymentView() {
 								handleClose();
 							}}
 						>
-							<Gamepad2 className='w-4 h-4 mr-2' />
+							<Play className='w-4 h-4 mr-2' />
 							Play Now
 						</Button>
 					</DialogFooter>

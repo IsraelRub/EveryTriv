@@ -1,1 +1,1 @@
-export { clientLogger } from './clientLogger.service';
+export * from './clientLogger.service';

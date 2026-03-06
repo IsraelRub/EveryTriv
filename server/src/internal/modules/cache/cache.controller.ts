@@ -3,10 +3,11 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Redis } from 'ioredis';
 
 import {
-	ERROR_CODES,
+	ErrorCode,
 	RATE_LIMIT_DEFAULTS,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
 	UserRole,
 } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
@@ -86,7 +87,7 @@ export class CacheController {
 	async checkKeyExists(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const existsResult = await this.cacheService.exists(key);
@@ -120,7 +121,7 @@ export class CacheController {
 	async getKeyTTL(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const ttl = await this.cacheService.getTTL(key);
@@ -178,7 +179,7 @@ export class CacheController {
 			const burstLimit = RATE_LIMIT_DEFAULTS.BURST_LIMIT;
 			const windowLimit = RATE_LIMIT_DEFAULTS.MAX_REQUESTS_PER_WINDOW;
 			const burstWindowSeconds = TIME_DURATIONS_SECONDS.THIRTY_SECONDS;
-			const windowSizeSeconds = RATE_LIMIT_DEFAULTS.WINDOW_MS / 1000;
+			const windowSizeSeconds = RATE_LIMIT_DEFAULTS.WINDOW_MS / TIME_PERIODS_MS.SECOND;
 
 			return {
 				ip,

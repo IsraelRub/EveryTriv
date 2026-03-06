@@ -1,4 +1,5 @@
 import type { ValidationResult } from '../../types';
+import { isNonEmptyString } from '../../utils';
 import { sanitizeCardNumber } from '../../utils/infrastructure/sanitization.utils';
 
 export function isValidCardNumber(rawNumber: string): boolean {
@@ -36,7 +37,7 @@ export function validateExpiryDate(expiryDate: string): ValidationResult {
 	const errors: string[] = [];
 	let suggestion: string | undefined;
 
-	if (!expiryDate || typeof expiryDate !== 'string' || expiryDate.trim().length === 0) {
+	if (!isNonEmptyString(expiryDate)) {
 		errors.push('Expiry date is required');
 		suggestion = 'Please enter your card expiry date';
 		return {
@@ -99,7 +100,7 @@ export function validateCVV(cvv: string): ValidationResult {
 	const errors: string[] = [];
 	let suggestion: string | undefined;
 
-	if (!cvv || typeof cvv !== 'string' || cvv.trim().length === 0) {
+	if (!isNonEmptyString(cvv)) {
 		errors.push('CVV is required');
 		suggestion = 'Please enter your 3-4 digit CVV';
 		return {
@@ -118,9 +119,7 @@ export function validateCVV(cvv: string): ValidationResult {
 			errors,
 			suggestion,
 		};
-	}
-
-	if (!/^\d+$/.test(cleanCvv)) {
+	} else if (!/^\d+$/.test(cleanCvv)) {
 		errors.push('CVV can only contain digits');
 		suggestion = 'Remove any letters or special characters from your CVV';
 		return {

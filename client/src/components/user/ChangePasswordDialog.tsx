@@ -1,10 +1,11 @@
 import { ChangeEvent, useState } from 'react';
-import { AlertCircle, CheckCircle2, Key } from 'lucide-react';
+import { CheckCircle, Key } from 'lucide-react';
 
 import { validatePassword, validatePasswordMatch } from '@shared/validation';
 
-import { ButtonVariant, VALIDATION_MESSAGES } from '@/constants';
+import { Colors, VALIDATION_MESSAGES, VariantBase } from '@/constants';
 import {
+	AlertIcon,
 	Button,
 	Dialog,
 	DialogContent,
@@ -126,13 +127,13 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 			<DialogContent className='max-w-md max-h-[90vh] flex flex-col'>
 				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle className='flex items-center gap-2'>
-						<Key className='h-5 w-5' />
+						<Key className='h-5 w-5 text-primary' />
 						Change Password
 					</DialogTitle>
 					<DialogDescription>Update your account password</DialogDescription>
 				</DialogHeader>
 
-				<div className='space-y-4 py-4 flex-1 overflow-y-auto'>
+				<div className='space-y-4 py-4 view-scroll-inline'>
 					<div className='space-y-2'>
 						<Label htmlFor='current-password'>Current Password</Label>
 						<Input
@@ -141,12 +142,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							type='password'
 							value={passwordData.currentPassword}
 							onChange={handlePasswordChange}
-							className={cn(passwordFieldErrors.currentPassword && 'border-destructive')}
+							error={!!passwordFieldErrors.currentPassword}
 							placeholder='Enter current password'
 						/>
 						{passwordFieldErrors.currentPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{passwordFieldErrors.currentPassword}
 							</p>
 						)}
@@ -159,12 +160,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							type='password'
 							value={passwordData.newPassword}
 							onChange={handlePasswordChange}
-							className={cn(passwordFieldErrors.newPassword && 'border-destructive')}
+							error={!!passwordFieldErrors.newPassword}
 							placeholder='Enter new password'
 						/>
 						{passwordFieldErrors.newPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{passwordFieldErrors.newPassword}
 							</p>
 						)}
@@ -178,24 +179,24 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 								type='password'
 								value={passwordData.confirmPassword}
 								onChange={handlePasswordChange}
-								className={cn(passwordFieldErrors.confirmPassword && 'border-destructive')}
+								error={!!passwordFieldErrors.confirmPassword}
 								placeholder='Confirm new password'
 							/>
 							{passwordData.confirmPassword &&
 								passwordData.newPassword === passwordData.confirmPassword &&
 								!passwordFieldErrors.confirmPassword && (
-									<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
+									<CheckCircle className={cn('form-success-icon', Colors.GREEN_500.text)} />
 								)}
 						</div>
 						{passwordFieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{passwordFieldErrors.confirmPassword}
 							</p>
 						)}
 					</div>
 					<div className='flex gap-2 pt-2 flex-shrink-0'>
-						<Button variant={ButtonVariant.OUTLINE} onClick={() => onOpenChange(false)}>
+						<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)}>
 							Cancel
 						</Button>
 						<Button onClick={handlePasswordSave} disabled={changePassword.isPending}>

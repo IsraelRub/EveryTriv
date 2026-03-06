@@ -20,12 +20,14 @@ import {
   HttpMethod,
   LOCALHOST_CONFIG,
   MESSAGE_FORMATTERS,
+  TIME_PERIODS_MS,
 } from "@shared/constants";
 import { AUTH_CONSTANTS } from "@shared/constants";
-import { getErrorMessage, getErrorStack } from "@shared/utils";
+import { calculateDuration, getErrorMessage, getErrorStack, isNonEmptyString } from "@shared/utils";
 
 import { AppModule } from "./app.module";
 import { AppConfig, validateEnvironmentVariables } from "@config";
+import dataSource from "./config/dataSource";
 import { RedisIoAdapter } from "./internal/modules/redis";
 
 // Environment configuration
@@ -39,6 +41,18 @@ async function bootstrap() {
     validateEnvironmentVariables();
 
     console.log(MESSAGE_FORMATTERS.system.startup());
+
+    // Run pending migrations before Nest creates modules (so AdminBootstrap finds tables)
+    if (!dataSource.isInitialized) {
+      await dataSource.initialize();
+    }
+    const pendingMigrations = await dataSource.showMigrations();
+    if (pendingMigrations) {
+      console.log("Running pending database migrations...");
+      await dataSource.runMigrations();
+      console.log("Migrations completed.");
+    }
+    await dataSource.destroy();
     console.log(MESSAGE_FORMATTERS.system.config(), {
       DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
       REDIS_PASSWORD: process.env.REDIS_PASSWORD,
@@ -71,6 +85,24 @@ async function bootstrap() {
       );
     } else {
       console.log(MESSAGE_FORMATTERS.oauth.credentialsValid("GoogleOAuth"));
+    }
+
+    // Check CLIENT_URL for OAuth redirect
+    const clientUrl = process.env.CLIENT_URL;
+    if (!isNonEmptyString(clientUrl)) {
+      console.warn(
+        MESSAGE_FORMATTERS.oauth.warn(
+          "GoogleOAuth",
+          "CLIENT_URL is not set. OAuth redirect will use localhost fallback. Set CLIENT_URL for production.",
+        ),
+      );
+    } else if (environment === "production" && /localhost|127\.0\.0\.1/i.test(clientUrl)) {
+      console.warn(
+        MESSAGE_FORMATTERS.oauth.warn(
+          "GoogleOAuth",
+          "CLIENT_URL appears to be localhost in production. OAuth redirect may not work for users.",
+        ),
+      );
     }
 
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -107,6 +139,21 @@ async function bootstrap() {
 
     app.use(require("cookie-parser")());
 
+    // Session for OAuth state (CSRF protection)
+    const session = require("express-session");
+    app.use(
+      session({
+        secret: process.env.SESSION_SECRET ?? "everytriv-oauth-session-secret",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          secure: process.env.COOKIE_SECURE !== "false",
+          sameSite: "lax",
+          maxAge: TIME_PERIODS_MS.TEN_MINUTES,
+        },
+      }),
+    );
+
     // Swagger API Documentation
     const config = new DocumentBuilder()
       .setTitle("EveryTriv API")
@@ -129,11 +176,9 @@ async function bootstrap() {
 
     await app.listen(AppConfig.port);
 
-    const bootDuration = Date.now() - startTime;
-
     console.log("Server startup complete:", {
       port: AppConfig.port,
-      bootTime: `${bootDuration}ms`,
+      bootTime: `${calculateDuration(startTime)}ms`,
       environment: environment,
       nodeVersion: process.version,
       timestamp: new Date().toISOString(),
@@ -144,7 +189,7 @@ async function bootstrap() {
       console.error("Failed to start server:", {
         error: getErrorMessage(error),
         stack: getErrorStack(error),
-        bootAttemptDuration: `${Date.now() - startTime}ms`,
+        bootAttemptDuration: `${calculateDuration(startTime)}ms`,
       });
     } catch (shutdownError) {
       console.error("Shutdown: Failed to start server", {

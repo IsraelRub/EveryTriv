@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
-	ERROR_CODES,
+	ERROR_MESSAGES,
+	ErrorCode,
 	PlayerStatus,
 	QuestionState,
 	RoomStatus,
@@ -62,7 +63,7 @@ export class RoomService {
 			// Validate configuration
 			if (config.maxPlayers < VALIDATION_COUNT.PLAYERS.MIN || config.maxPlayers > VALIDATION_COUNT.PLAYERS.MAX) {
 				throw new BadRequestException(
-					`Max players must be between ${VALIDATION_COUNT.PLAYERS.MIN} and ${VALIDATION_COUNT.PLAYERS.MAX}`
+					ERROR_MESSAGES.validation.MAX_PLAYERS_RANGE(VALIDATION_COUNT.PLAYERS.MIN, VALIDATION_COUNT.PLAYERS.MAX)
 				);
 			}
 
@@ -71,15 +72,13 @@ export class RoomService {
 				config.questionsPerRequest !== UNLIMITED &&
 				(config.questionsPerRequest < MIN || config.questionsPerRequest > MAX)
 			) {
-				throw new BadRequestException(
-					`Questions per request must be between ${MIN} and ${MAX}, or ${UNLIMITED} for unlimited mode`
-				);
+				throw new BadRequestException(ERROR_MESSAGES.validation.QUESTIONS_PER_REQUEST_RANGE(MIN, MAX, UNLIMITED));
 			}
 
 			// Get host user
 			const host = await this.userRepository.findOne({ where: { id: hostId } });
 			if (!host) {
-				throw new NotFoundException(ERROR_CODES.HOST_USER_NOT_FOUND);
+				throw new NotFoundException(ErrorCode.HOST_USER_NOT_FOUND);
 			}
 
 			// Create unique short room ID
@@ -90,6 +89,7 @@ export class RoomService {
 				userId: hostId,
 				email: host.email,
 				displayName: host.firstName && host.lastName ? `${host.firstName} ${host.lastName}` : host.email,
+				avatar: host.preferences?.avatar,
 				score: 0,
 				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
@@ -170,7 +170,7 @@ export class RoomService {
 		try {
 			const room = await this.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+				throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 			}
 
 			// Check if user is already in room first - before checking room status
@@ -182,17 +182,17 @@ export class RoomService {
 
 			// Only check room status for new joins
 			if (room.status !== RoomStatus.WAITING) {
-				throw new BadRequestException(ERROR_CODES.ROOM_NOT_ACCEPTING_PLAYERS);
+				throw new BadRequestException(ErrorCode.ROOM_NOT_ACCEPTING_PLAYERS);
 			}
 
 			if (room.players.length >= room.config.maxPlayers) {
-				throw new BadRequestException(ERROR_CODES.ROOM_FULL);
+				throw new BadRequestException(ErrorCode.ROOM_FULL);
 			}
 
 			// Get user
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
-				throw new NotFoundException(ERROR_CODES.USER_NOT_FOUND_OR_AUTH_FAILED);
+				throw new NotFoundException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
 			// Create player
@@ -200,6 +200,7 @@ export class RoomService {
 				userId,
 				email: user.email,
 				displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+				avatar: user.preferences?.avatar,
 				score: 0,
 				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
@@ -289,21 +290,13 @@ export class RoomService {
 
 			const room = await this.getRoom(roomId);
 			if (!room) {
-				throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+				throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 			}
 
 			room.status = status;
 			room.updatedAt = new Date();
-
-			switch (status) {
-				case RoomStatus.PLAYING:
-					room.startTime = new Date();
-					break;
-				case RoomStatus.FINISHED:
-				case RoomStatus.CANCELLED:
-					room.endTime = new Date();
-					break;
-			}
+			if (status === RoomStatus.PLAYING) room.startTime = new Date();
+			if (status === RoomStatus.FINISHED || status === RoomStatus.CANCELLED) room.endTime = new Date();
 
 			await this.persistRoomSnapshot(room);
 
@@ -328,7 +321,7 @@ export class RoomService {
 
 				const room = await this.getRoom(roomId);
 				if (!room) {
-					throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+					throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 				}
 
 				const expectedVersion = room.version ?? 0;
@@ -341,7 +334,7 @@ export class RoomService {
 					throw new BadRequestException('Room version conflict - room was modified by another operation');
 				}
 
-				Object.assign(room, updates);
+				this.applyRoomUpdates(room, updates);
 				if (updates.version === undefined) {
 					room.version = (room.version ?? 0) + 1;
 				}
@@ -368,7 +361,7 @@ export class RoomService {
 			throw lastError;
 		}
 
-		throw new NotFoundException(ERROR_CODES.ROOM_NOT_FOUND);
+		throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
 	}
 
 	async deleteRoom(roomId: string): Promise<void> {
@@ -446,6 +439,57 @@ export class RoomService {
 		this.inMemoryRooms.delete(roomId);
 	}
 
+	private static toDate(value: unknown): Date {
+		if (value instanceof Date) return value;
+		if (typeof value === 'string') return new Date(value);
+		return new Date();
+	}
+
+	/**
+	 * Applies updates to room. When updates.players is provided, merges each player by userId
+	 * by assigning only defined properties from the incoming player; adds any player that exists
+	 * in updates but not in room (so room state is never missing players after an update).
+	 */
+	private applyRoomUpdates(room: MultiplayerRoom, updates: Partial<MultiplayerRoom>): void {
+		const { players: incomingPlayers, ...rest } = updates;
+		Object.assign(room, rest);
+		if (Array.isArray(incomingPlayers)) {
+			for (const incoming of incomingPlayers) {
+				const existing = room.players.find(p => p.userId === incoming.userId);
+				if (existing) {
+					if (incoming.userId !== undefined) existing.userId = incoming.userId;
+					if (incoming.email !== undefined) existing.email = incoming.email;
+					if (incoming.displayName !== undefined) existing.displayName = incoming.displayName;
+					if (incoming.score !== undefined) existing.score = incoming.score;
+					if (incoming.status !== undefined) existing.status = incoming.status;
+					if (incoming.joinedAt !== undefined) existing.joinedAt = RoomService.toDate(incoming.joinedAt);
+					if (incoming.lastActivity !== undefined) existing.lastActivity = RoomService.toDate(incoming.lastActivity);
+					if (incoming.isHost !== undefined) existing.isHost = incoming.isHost;
+					if (incoming.currentAnswer !== undefined) existing.currentAnswer = incoming.currentAnswer;
+					if (incoming.timeSpent !== undefined) existing.timeSpent = incoming.timeSpent;
+					if (incoming.answersSubmitted !== undefined) existing.answersSubmitted = incoming.answersSubmitted;
+					if (incoming.correctAnswers !== undefined) existing.correctAnswers = incoming.correctAnswers;
+				} else {
+					const newPlayer: Player = {
+						userId: incoming.userId,
+						email: incoming.email ?? '',
+						displayName: incoming.displayName,
+						score: incoming.score ?? 0,
+						status: incoming.status ?? PlayerStatus.WAITING,
+						joinedAt: RoomService.toDate(incoming.joinedAt),
+						lastActivity: incoming.lastActivity !== undefined ? RoomService.toDate(incoming.lastActivity) : undefined,
+						isHost: incoming.isHost ?? false,
+						currentAnswer: incoming.currentAnswer,
+						timeSpent: incoming.timeSpent,
+						answersSubmitted: incoming.answersSubmitted ?? 0,
+						correctAnswers: incoming.correctAnswers ?? 0,
+					};
+					room.players.push(newPlayer);
+				}
+			}
+		}
+	}
+
 	private async persistRoomSnapshot(room: MultiplayerRoom): Promise<void> {
 		this.cacheRoom(room);
 		const maxRetries = 3;
@@ -462,7 +506,7 @@ export class RoomService {
 					return;
 				}
 
-				lastError = new Error(result.error ?? ERROR_CODES.REDIS_ERROR);
+				lastError = new Error(result.error ?? ErrorCode.REDIS_ERROR);
 				if (attempt < maxRetries - 1) {
 					const delayMs = Math.min(
 						TIME_PERIODS_MS.HUNDRED_MILLISECONDS * 2 ** attempt,
@@ -486,7 +530,7 @@ export class RoomService {
 			roomId: room.roomId,
 			errorInfo: { message: getErrorMessage(lastError) },
 		});
-		throw lastError ?? new Error(ERROR_CODES.REDIS_ERROR);
+		throw lastError ?? new Error(ErrorCode.REDIS_ERROR);
 	}
 
 	private async deleteRoomSnapshot(roomId: string): Promise<void> {

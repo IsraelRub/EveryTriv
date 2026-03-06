@@ -1,22 +1,25 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 import { getErrorMessage } from '@shared/utils';
 import { validateEmail, validatePassword, validatePasswordMatch } from '@shared/validation';
 
 import {
+	AlertVariant,
 	AudioKey,
 	ButtonSize,
-	ButtonVariant,
+	Colors,
+	ComponentSize,
+	LoadingMessages,
 	ROUTES,
-	SpinnerSize,
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
+	AlertIcon,
 	Button,
 	Card,
 	CardContent,
@@ -63,19 +66,23 @@ export function RegistrationView() {
 	};
 
 	const validateField = (name: string, value: string): string | null => {
-		if (name === 'email') {
-			const validation = validateEmail(value);
-			return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.EMAIL_INVALID);
+		switch (name) {
+			case 'email':
+				return validateEmail(value).isValid
+					? null
+					: (validateEmail(value).errors[0] ?? VALIDATION_MESSAGES.EMAIL_INVALID);
+			case 'password':
+				return validatePassword(value).isValid
+					? null
+					: (validatePassword(value).errors[0] ?? VALIDATION_MESSAGES.PASSWORD_INVALID);
+			case 'confirmPassword':
+				return validatePasswordMatch(formData.password, value).isValid
+					? null
+					: (validatePasswordMatch(formData.password, value).errors[0] ??
+							VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID);
+			default:
+				return null;
 		}
-		if (name === 'password') {
-			const validation = validatePassword(value);
-			return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.PASSWORD_INVALID);
-		}
-		if (name === 'confirmPassword') {
-			const validation = validatePasswordMatch(formData.password, value);
-			return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID);
-		}
-		return null;
 	};
 
 	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -170,14 +177,13 @@ export function RegistrationView() {
 
 			<CardContent className='space-y-6'>
 				{error && (
-					<Alert variant={VariantBase.DESTRUCTIVE}>
-						<AlertCircle className='h-4 w-4' />
+					<Alert variant={AlertVariant.DESTRUCTIVE}>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
 
 				<form onSubmit={handleSubmit} className='space-y-4'>
-					<div className='grid grid-cols-2 gap-4'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 						<div className='space-y-2'>
 							<Label htmlFor='firstName'>First Name</Label>
 							<Input
@@ -219,11 +225,11 @@ export function RegistrationView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='email'
-							className={cn(fieldErrors.email && 'border-destructive')}
+							error={!!fieldErrors.email}
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.email}
 							</p>
 						)}
@@ -242,11 +248,11 @@ export function RegistrationView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='new-password'
-							className={cn(fieldErrors.password && 'border-destructive')}
+							error={!!fieldErrors.password}
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.password}
 							</p>
 						)}
@@ -266,17 +272,17 @@ export function RegistrationView() {
 								onChange={handleChange}
 								disabled={isLoading}
 								autoComplete='new-password'
-								className={cn(fieldErrors.confirmPassword && 'border-destructive')}
+								error={!!fieldErrors.confirmPassword}
 							/>
 							{formData.confirmPassword &&
 								formData.password === formData.confirmPassword &&
 								!fieldErrors.confirmPassword && (
-									<CheckCircle2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500' />
+									<CheckCircle className={cn('form-success-icon', Colors.GREEN_500.text)} />
 								)}
 						</div>
 						{fieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.confirmPassword}
 							</p>
 						)}
@@ -284,10 +290,7 @@ export function RegistrationView() {
 
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
-							<>
-								<Spinner size={SpinnerSize.SM} className='mr-2' />
-								Creating account...
-							</>
+							<Spinner size={ComponentSize.SM} message={LoadingMessages.CREATING_ACCOUNT} messageInline />
 						) : (
 							'Create Account'
 						)}
@@ -309,10 +312,10 @@ export function RegistrationView() {
 					<span className='text-muted-foreground'>Already have an account? </span>
 					<Button
 						type='button'
-						variant={ButtonVariant.GHOST}
+						variant={VariantBase.MINIMAL}
 						size={ButtonSize.SM}
 						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: isModal } })}
-						className='h-auto p-0 text-primary font-medium hover:underline'
+						className='link-primary h-auto p-0 font-medium'
 					>
 						Sign in
 					</Button>

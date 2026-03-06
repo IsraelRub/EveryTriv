@@ -1,6 +1,4 @@
-import type { ANIMATION_COLORS, ANIMATION_FONTS, TRIVIA_WORDS, WORD_DIRECTIONS } from '@/constants';
-
-export type WordDirection = (typeof WORD_DIRECTIONS)[number];
+import type { ANIMATION_COLORS, ANIMATION_FONTS, TRIVIA_WORDS, WordDirection } from '@/constants';
 
 export type TriviaWord = (typeof TRIVIA_WORDS)[number];
 

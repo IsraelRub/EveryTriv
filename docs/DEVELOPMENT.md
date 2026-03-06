@@ -69,7 +69,7 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 # AI Provider - Groq (with multiple models support)
-# Priority: 1 (free tier models: llama-3.1-8b-instant, gpt-oss-20b)
+# Priority: 1 (free tier model: llama-3.1-8b-instant)
 GROQ_API_KEY=your-groq-api-key
 
 # Stripe
@@ -199,7 +199,6 @@ import type {
   GameEvent,
   GameEventDataMap,
   GameEventType,
-  MultiplayerGameEvent,
   MultiplayerRoom,
 } from '@shared/types';
 

@@ -1,7 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 
-import { GameMode, type GameMode as GameModeType } from '@shared/constants';
-import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry } from '@shared/types';
+import type { DifficultyLevel, GameMode } from '@shared/constants';
+import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry, TriviaRequest } from '@shared/types';
+
+import { RANK_DISPLAY } from '@/constants';
 
 export interface CustomSettings {
 	questionCount: number;
@@ -44,7 +46,7 @@ export interface GameSummaryStats {
 
 export interface DeductCreditsParams {
 	questionsPerRequest: number;
-	gameMode?: GameModeType;
+	gameMode?: GameMode;
 }
 
 export interface FinalizeGameOptions {
@@ -55,6 +57,34 @@ export interface FinalizeGameOptions {
 	analyticsProperties?: Record<string, unknown>;
 	playErrorSound?: boolean;
 	logContext?: string;
-
 	gameId?: string | null;
+}
+
+export type RankKey = keyof typeof RANK_DISPLAY;
+
+export type RankDisplayEntry = (typeof RANK_DISPLAY)[RankKey];
+
+export interface GameSettingsValidationResult {
+	isValid: boolean;
+	finalDifficulty: GameDifficulty;
+}
+
+/** TriviaRequest with optional AbortSignal for client fetch cancellation. */
+export type TriviaRequestWithSignal = TriviaRequest & { signal?: AbortSignal };
+
+export interface UseGameSettingsFormReturn {
+	topic: string;
+	topicError: string;
+	selectedDifficulty: DifficultyLevel;
+	customDifficulty: string;
+	customDifficultyError: string;
+	answerCount: number;
+	isAdmin: boolean;
+	handleTopicChange: (value: string) => void;
+	setSelectedDifficulty: (difficulty: DifficultyLevel) => void;
+	setCustomDifficulty: (text: string) => void;
+	setCustomDifficultyError: (error: string) => void;
+	setAnswerCount: (count: number) => void;
+	validateSettings: () => GameSettingsValidationResult;
+	resetForm: () => void;
 }

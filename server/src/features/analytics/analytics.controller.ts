@@ -13,27 +13,29 @@ import {
 import {
 	API_ENDPOINTS,
 	ComparisonTarget,
-	ERROR_CODES,
+	ErrorCode,
 	LeaderboardPeriod,
 	TIME_DURATIONS_SECONDS,
 	UserRole,
-	VALID_LEADERBOARD_PERIODS,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { AnalyticsEventData, LeaderboardEntry, LeaderboardResponse } from '@shared/types';
-import { calculateHasMore, getErrorMessage, isOneOf } from '@shared/utils';
+import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
+import { isLeaderboardPeriod } from '@shared/validation';
 
+import { LEADERBOARD_PERIOD_CONFIG, LEADERBOARD_SCORE_FIELDS } from '@internal/constants';
 import { UserStatsEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 
-import { Cache, CurrentUserId, CurrentUser, Public, Roles } from '../../common';
+import { Cache, CurrentUser, CurrentUserId, Public, Roles } from '../../common';
 import {
 	GetLeaderboardDto,
 	GetLeaderboardStatsDto,
 	TopicAnalyticsQueryDto,
 	TrackEventDto,
 	UnifiedUserAnalyticsQueryDto,
-	UserIdParamDto,
 	UserComparisonQueryDto,
+	UserIdParamDto,
 	UserTrendQueryDto,
 } from './dtos';
 import {
@@ -44,6 +46,18 @@ import {
 	SystemAnalyticsService,
 	UserAnalyticsService,
 } from './services';
+
+function toLogRecord(obj: object | null | undefined): Record<string, unknown> {
+	if (obj == null) return {};
+	return Object.fromEntries(Object.entries(obj).map(([k, v]): [string, unknown] => [k, v]));
+}
+
+function getScoreFromUserStats(entry: UserStatsEntity, scoreField: string): number {
+	if (scoreField === LEADERBOARD_SCORE_FIELDS.WEEKLY) return entry.weeklyScore ?? 0;
+	if (scoreField === LEADERBOARD_SCORE_FIELDS.MONTHLY) return entry.monthlyScore ?? 0;
+	if (scoreField === LEADERBOARD_SCORE_FIELDS.YEARLY) return entry.yearlyScore ?? 0;
+	return 0;
+}
 
 @Controller(API_ENDPOINTS.ANALYTICS.BASE)
 export class AnalyticsController {
@@ -60,7 +74,7 @@ export class AnalyticsController {
 	async trackEvent(@Body() eventData: TrackEventDto) {
 		try {
 			if (!eventData.eventType) {
-				throw new HttpException(ERROR_CODES.EVENT_TYPE_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.EVENT_TYPE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const analyticsEventData: AnalyticsEventData = {
@@ -93,6 +107,9 @@ export class AnalyticsController {
 
 			logger.apiRead('analytics_user', {
 				userId,
+				chart: 'analytics_user',
+				data: toLogRecord(result?.game ?? {}),
+				metrics: toLogRecord(result?.performance ?? {}),
 			});
 
 			return result;
@@ -114,7 +131,7 @@ export class AnalyticsController {
 		@CurrentUser() user: { sub?: string; role?: string }
 	) {
 		if (params.userId !== currentUserId && user?.role !== UserRole.ADMIN) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['comparison'], {
@@ -137,13 +154,27 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== Unified User Analytics Endpoint ====================
-
 	@Get('user/unified')
 	async getCurrentUserUnifiedAnalytics(@CurrentUserId() userId: string, @Query() query: UnifiedUserAnalyticsQueryDto) {
+		return this.fetchUnifiedUserAnalytics(userId, query);
+	}
+
+	@Get('user/unified/:userId')
+	@Roles(UserRole.ADMIN)
+	async getUnifiedUserAnalytics(@Param() params: UserIdParamDto, @Query() query: UnifiedUserAnalyticsQueryDto) {
+		return this.fetchUnifiedUserAnalytics(params.userId, query);
+	}
+
+	private async fetchUnifiedUserAnalytics(
+		userId: string,
+		query: UnifiedUserAnalyticsQueryDto
+	): Promise<Awaited<ReturnType<UserAnalyticsService['getUnifiedUserAnalytics']>>> {
 		const includeSections = query.include
 			? query.include.split(',').map(s => s.trim().toLowerCase())
 			: ['statistics', 'performance'];
+
+		const targetUserId = query.targetUserId?.trim() ?? undefined;
+		const comparisonTarget = query.comparisonTarget ?? undefined;
 
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(userId, includeSections, {
@@ -153,14 +184,17 @@ export class AnalyticsController {
 				activityLimit: query.activityLimit,
 				trendLimit: query.trendLimit,
 				includeActivity: query.includeActivity,
-				targetUserId: query.targetUserId,
-				comparisonTarget: query.comparisonTarget,
+				targetUserId,
+				comparisonTarget,
 				getGameStats: () => this.globalAnalyticsService.getGameStatsForComparison(),
 			});
 
 			logger.apiRead(`analytics_user_unified [${includeSections.length} sections: ${includeSections.join(',')}]`, {
 				userId,
-				query: Object.keys(query || {}),
+				query: Object.keys(query ?? {}),
+				chart: 'analytics_user_unified',
+				dataKeys: result?.data ? Object.keys(result.data) : [],
+				data: result?.data ? toLogRecord(result.data) : {},
 			});
 
 			return result;
@@ -170,46 +204,7 @@ export class AnalyticsController {
 				{
 					errorInfo: { message: getErrorMessage(error) },
 					userId,
-					query: Object.keys(query || {}),
-				}
-			);
-			throw error;
-		}
-	}
-
-	@Get('user/unified/:userId')
-	@Roles(UserRole.ADMIN)
-	async getUnifiedUserAnalytics(@Param() params: UserIdParamDto, @Query() query: UnifiedUserAnalyticsQueryDto) {
-		const includeSections = query.include
-			? query.include.split(',').map(s => s.trim().toLowerCase())
-			: ['statistics', 'performance'];
-
-		try {
-			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, includeSections, {
-				startDate: query.startDate,
-				endDate: query.endDate,
-				groupBy: query.groupBy,
-				activityLimit: query.activityLimit,
-				trendLimit: query.trendLimit,
-				includeActivity: query.includeActivity,
-				targetUserId: query.targetUserId,
-				comparisonTarget: query.comparisonTarget,
-				getGameStats: () => this.globalAnalyticsService.getGameStatsForComparison(),
-			});
-
-			logger.apiRead(`analytics_user_unified [${includeSections.length} sections: ${includeSections.join(',')}]`, {
-				userId: params.userId,
-				query: Object.keys(query || {}),
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError(
-				`Error getting unified user analytics [${includeSections.length} sections: ${includeSections.join(',')}]`,
-				{
-					errorInfo: { message: getErrorMessage(error) },
-					userId: params.userId,
-					query: Object.keys(query || {}),
+					query: Object.keys(query ?? {}),
 				}
 			);
 			throw error;
@@ -225,8 +220,24 @@ export class AnalyticsController {
 		try {
 			const result = await this.globalAnalyticsService.getTopicStats(query);
 
+			const topicsData = result?.data?.topics;
+			const topicsArray = Array.isArray(topicsData) ? topicsData : [];
+			const topicNames: string[] = [];
+			const topicsByCount: Record<string, number> = {};
+			for (const t of topicsArray) {
+				if (isRecord(t) && hasProperty(t, 'topic') && hasProperty(t, 'totalGames')) {
+					const topic = String(t.topic ?? '');
+					const totalGames = typeof t.totalGames === 'number' ? t.totalGames : Number(t.totalGames) || 0;
+					if (topic) topicNames.push(topic);
+					topicsByCount[topic || 'unknown'] = totalGames;
+				}
+			}
 			logger.apiRead('analytics_popular_topics', {
 				query: Object.keys(query),
+				totalTopics: result?.data?.totalTopics ?? 0,
+				topicNames,
+				topicsByCount,
+				data: { topics: topicsArray.length > 0 ? topicsArray : (topicsData ?? {}) },
 			});
 
 			return result;
@@ -246,7 +257,10 @@ export class AnalyticsController {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalDifficultyStats();
 
-			logger.apiRead('analytics_global_difficulty_stats', {});
+			logger.apiRead('analytics_global_difficulty_stats', {
+				chart: 'global_difficulty',
+				difficultyBreakdown: result ? toLogRecord(result) : {},
+			});
 
 			return result;
 		} catch (error) {
@@ -264,7 +278,13 @@ export class AnalyticsController {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalStats();
 
-			logger.apiRead('analytics_global_stats', {});
+			logger.apiRead('analytics_global_stats', {
+				chart: 'global_stats',
+				successRate: result?.successRate,
+				averageGames: result?.averageGames,
+				consistency: result?.consistency,
+				data: { averageGameTime: result?.averageGameTime },
+			});
 
 			return result;
 		} catch (error) {
@@ -281,8 +301,12 @@ export class AnalyticsController {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalTrends(query);
 
+			const trendPoints = result?.data ?? [];
 			logger.apiRead('analytics_global_trends', {
 				query: Object.keys(query ?? {}),
+				chart: 'global_trends',
+				pointsCount: Array.isArray(trendPoints) ? trendPoints.length : 0,
+				trends: Array.isArray(trendPoints) ? trendPoints.slice(0, 10) : [],
 			});
 
 			return result;
@@ -303,7 +327,10 @@ export class AnalyticsController {
 		try {
 			const result = await this.businessAnalyticsService.getBusinessMetrics();
 
-			logger.apiRead('analytics_business_metrics', {});
+			logger.apiRead('analytics_business_metrics', {
+				chart: 'business_metrics',
+				metrics: result ? toLogRecord(result) : {},
+			});
 
 			return result;
 		} catch (error) {
@@ -323,7 +350,10 @@ export class AnalyticsController {
 		try {
 			const result = await this.systemAnalyticsService.getPerformanceMetrics();
 
-			logger.apiRead('analytics_system_performance', {});
+			logger.apiRead('analytics_system_performance', {
+				chart: 'system_performance',
+				metrics: result ? toLogRecord(result) : {},
+			});
 
 			return result;
 		} catch (error) {
@@ -341,7 +371,10 @@ export class AnalyticsController {
 		try {
 			const result = await this.systemAnalyticsService.getSecurityMetrics();
 
-			logger.apiRead('analytics_system_security', {});
+			logger.apiRead('analytics_system_security', {
+				chart: 'system_security',
+				metrics: result ? toLogRecord(result) : {},
+			});
 
 			return result;
 		} catch (error) {
@@ -361,6 +394,9 @@ export class AnalyticsController {
 
 			logger.apiRead('analytics_system_recommendations', {
 				recommendationsCount: result.length,
+				chart: 'system_recommendations',
+				count: Array.isArray(result) ? result.length : 0,
+				recommendations: Array.isArray(result) ? result : [],
 			});
 
 			return result;
@@ -381,6 +417,8 @@ export class AnalyticsController {
 
 			logger.apiRead('analytics_system_insights', {
 				status: result.status,
+				chart: 'system_insights',
+				insights: result ? toLogRecord(result) : {},
 			});
 
 			return result;
@@ -402,8 +440,8 @@ export class AnalyticsController {
 			const limitNum = query.limit;
 			const offsetNum = query.offset;
 
-			if (limitNum > 1000) {
-				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
+			if (limitNum > VALIDATION_COUNT.LIST_QUERY.LIMIT_MAX) {
+				throw new HttpException(ErrorCode.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
 			}
 
 			const leaderboard = await this.leaderboardAnalyticsService.getGlobalLeaderboard({
@@ -411,20 +449,29 @@ export class AnalyticsController {
 				offset: offsetNum,
 			});
 
+			const globalScoreField = LEADERBOARD_PERIOD_CONFIG[LeaderboardPeriod.GLOBAL].scoreField;
+			const topScores = leaderboard.slice(0, 5).map((e, i) => ({
+				rank: i + offsetNum + 1,
+				score: getScoreFromUserStats(e, globalScoreField),
+				totalGames: e.totalGames ?? 0,
+			}));
 			logger.apiRead('leaderboard_global', {
 				limit: limitNum,
 				offset: offsetNum,
 				resultsCount: leaderboard.length,
+				chart: 'leaderboard_global',
+				totalReturned: leaderboard.length,
+				topScores,
 			});
 
 			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
 				userId: entry.userId,
-				email: entry.user?.email || '',
+				email: entry.user?.email ?? '',
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
 				avatar: entry.user?.preferences?.avatar,
 				rank: index + offsetNum + 1,
-				score: entry.weeklyScore,
+				score: getScoreFromUserStats(entry, globalScoreField),
 				averageScore: entry.overallSuccessRate ?? 0,
 				bestScore: entry.bestGameScore ?? 0,
 				gamesPlayed: entry.totalGames ?? 0,
@@ -441,7 +488,7 @@ export class AnalyticsController {
 					limit: limitNum,
 					offset: offsetNum,
 					total: leaderboard.length,
-					hasMore: calculateHasMore(offsetNum, leaderboardEntries.length, leaderboard.length),
+					hasMore: offsetNum + leaderboardEntries.length < leaderboard.length,
 				},
 			};
 		} catch (error) {
@@ -460,62 +507,54 @@ export class AnalyticsController {
 	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit;
-			const periodString = periodParam || query.type || LeaderboardPeriod.WEEKLY;
+			const periodInput = periodParam ?? query.type ?? LeaderboardPeriod.WEEKLY;
 
-			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
-				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
+			if (!isLeaderboardPeriod(periodInput)) {
+				throw new HttpException(ErrorCode.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 
-			if (limitNum > 1000) {
-				throw new HttpException(ERROR_CODES.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
+			const period: LeaderboardPeriod = periodInput;
+
+			if (limitNum > VALIDATION_COUNT.LIST_QUERY.LIMIT_MAX) {
+				throw new HttpException(ErrorCode.LIMIT_CANNOT_EXCEED_1000, HttpStatus.BAD_REQUEST);
 			}
 
 			const leaderboard = await this.leaderboardAnalyticsService.getLeaderboardByPeriod({
-				period: periodString,
+				period,
 				limit: limitNum,
 			});
 
+			const scoreField = LEADERBOARD_PERIOD_CONFIG[period].scoreField;
+			const topPeriodScores = leaderboard.slice(0, 5).map((e, i) => ({
+				rank: i + 1,
+				score: getScoreFromUserStats(e, scoreField),
+			}));
 			logger.apiRead('leaderboard_period', {
-				period: periodString,
+				period,
 				limit: limitNum,
 				resultsCount: leaderboard.length,
+				chart: 'leaderboard_period',
+				totalReturned: leaderboard.length,
+				topScores: topPeriodScores,
 			});
 
-			const scoreFieldMap: Record<LeaderboardPeriod, keyof UserStatsEntity> = {
-				[LeaderboardPeriod.WEEKLY]: 'weeklyScore',
-				[LeaderboardPeriod.MONTHLY]: 'monthlyScore',
-				[LeaderboardPeriod.YEARLY]: 'yearlyScore',
-				[LeaderboardPeriod.GLOBAL]: 'weeklyScore',
-			};
-			const scoreField = scoreFieldMap[periodString] || 'weeklyScore';
-
-			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => {
-				const scoreValue =
-					scoreField === 'weeklyScore'
-						? entry.weeklyScore
-						: scoreField === 'monthlyScore'
-							? entry.monthlyScore
-							: scoreField === 'yearlyScore'
-								? entry.yearlyScore
-								: entry.weeklyScore;
-				return {
-					userId: entry.userId,
-					email: entry.user?.email || '',
-					firstName: entry.user?.firstName,
-					lastName: entry.user?.lastName,
-					avatar: entry.user?.preferences?.avatar,
-					rank: index + 1,
-					score: scoreValue ?? 0,
-					averageScore: entry.overallSuccessRate ?? 0,
-					bestScore: entry.bestGameScore ?? 0,
-					gamesPlayed: entry.totalGames ?? 0,
-					lastPlayed: entry.lastPlayDate ?? entry.createdAt,
-					successRate: entry.overallSuccessRate ?? 0,
-					totalGames: entry.totalGames ?? 0,
-					totalQuestionsAnswered: entry.totalQuestionsAnswered ?? 0,
-					totalPlayTime: entry.totalPlayTime ?? 0,
-				};
-			});
+			const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
+				userId: entry.userId,
+				email: entry.user?.email ?? '',
+				firstName: entry.user?.firstName,
+				lastName: entry.user?.lastName,
+				avatar: entry.user?.preferences?.avatar,
+				rank: index + 1,
+				score: getScoreFromUserStats(entry, scoreField),
+				averageScore: entry.overallSuccessRate ?? 0,
+				bestScore: entry.bestGameScore ?? 0,
+				gamesPlayed: entry.totalGames ?? 0,
+				lastPlayed: entry.lastPlayDate ?? entry.createdAt,
+				successRate: entry.overallSuccessRate ?? 0,
+				totalGames: entry.totalGames ?? 0,
+				totalQuestionsAnswered: entry.totalQuestionsAnswered ?? 0,
+				totalPlayTime: entry.totalPlayTime ?? 0,
+			}));
 
 			const response: LeaderboardResponse = {
 				leaderboard: leaderboardEntries,
@@ -523,15 +562,15 @@ export class AnalyticsController {
 					limit: limitNum,
 					offset: 0,
 					total: leaderboard.length,
-					hasMore: calculateHasMore(0, leaderboardEntries.length, leaderboard.length),
+					hasMore: leaderboardEntries.length < leaderboard.length,
 				},
-				period: periodString,
+				period,
 			};
 			return response;
 		} catch (error) {
 			logger.userError('Error getting period leaderboard', {
 				errorInfo: { message: getErrorMessage(error) },
-				period: periodParam || query.type || 'weekly',
+				period: periodParam ?? query.type ?? 'weekly',
 				limit: query.limit,
 			});
 			throw error;
@@ -543,19 +582,21 @@ export class AnalyticsController {
 	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
 		try {
-			const periodString = query.period;
+			const periodInput = query.period;
 
-			if (!isOneOf(VALID_LEADERBOARD_PERIODS)(periodString)) {
-				throw new HttpException(ERROR_CODES.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
+			if (!periodInput || !isLeaderboardPeriod(periodInput)) {
+				throw new HttpException(ErrorCode.INVALID_PERIOD, HttpStatus.BAD_REQUEST);
 			}
 
-			const stats = await this.leaderboardAnalyticsService.getLeaderboardStats(periodString);
+			const period: LeaderboardPeriod = periodInput;
+			const stats = await this.leaderboardAnalyticsService.getLeaderboardStats(period);
 
 			logger.apiRead('leaderboard_stats', {
-				period: periodString,
+				period,
 				activeUsers: stats.activeUsers,
 				averageScore: stats.averageScore,
 				averageGames: stats.averageGames,
+				chart: 'leaderboard_stats',
 			});
 
 			return stats;

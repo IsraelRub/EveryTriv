@@ -111,16 +111,18 @@ export const ANIMATION_COLORS = [
 	'hsl(217 33% 17%)', // muted
 ] as const;
 
-export const WORD_DIRECTIONS = [
-	'diagonal-up-right',
-	'diagonal-up-left',
-	'diagonal-down-right',
-	'diagonal-down-left',
-	'horizontal-right',
-	'horizontal-left',
-	'vertical-up',
-	'vertical-down',
-] as const;
+export enum WordDirection {
+	DiagonalUpRight = 'diagonal-up-right',
+	DiagonalUpLeft = 'diagonal-up-left',
+	DiagonalDownRight = 'diagonal-down-right',
+	DiagonalDownLeft = 'diagonal-down-left',
+	HorizontalRight = 'horizontal-right',
+	HorizontalLeft = 'horizontal-left',
+	VerticalUp = 'vertical-up',
+	VerticalDown = 'vertical-down',
+}
+
+export const WORD_DIRECTIONS: WordDirection[] = Object.values(WordDirection);
 
 export const BACKGROUND_ANIMATION_CONFIG = {
 	wordCount: 18,
@@ -130,8 +132,7 @@ export const BACKGROUND_ANIMATION_CONFIG = {
 	maxFontSize: 2.5,
 	minOpacity: 0.05,
 	maxOpacity: 0.12,
-	fadeInPercent: 10,
-	fadeOutPercent: 10,
+	fadeFraction: 0.1,
 	zIndex: 0,
 	spawnDelay: 200,
 	minRotation: -15,

@@ -1,22 +1,31 @@
 import { ChangeEvent, useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
 
 import { getErrorMessage } from '@shared/utils';
-import { validateFirstName, validateLastName } from '@shared/validation';
+import { validateName } from '@shared/validation';
 
-import { QUERY_KEYS, ROUTES, SpinnerSize } from '@/constants';
-import { Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
+import { ComponentSize, LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
+import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
-import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
-import { cn, profileResponseToBasicUser } from '@/utils';
+import type { CompleteProfileProps, ProfileFieldErrors, ProfileNameField } from '@/types';
+import { profileResponseToBasicUser } from '@/utils';
+
+const PROFILE_NAME_FIELDS: Record<ProfileNameField, { fieldName: string; required: boolean }> = {
+	firstName: { fieldName: 'First name', required: true },
+	lastName: { fieldName: 'Last name', required: false },
+};
+
+function validateProfileNameField(name: ProfileNameField, value: string): string | null {
+	const opts = PROFILE_NAME_FIELDS[name];
+	const result = validateName(value, opts);
+	return result.isValid ? null : (result.errors[0] ?? null);
+}
 
 export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	const navigate = useNavigate();
 
-	const [firstName, setFirstName] = useState('');
-	const [lastName, setLastName] = useState('');
+	const [form, setForm] = useState({ firstName: '', lastName: '' });
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
@@ -24,45 +33,18 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 	logger.userDebug('CompleteProfile component rendered');
 
 	const isFormValid = useCallback((): boolean => {
-		const firstNameValidation = validateFirstName(firstName);
-		if (!firstNameValidation.isValid) {
-			return false;
-		}
-		const lastNameValidation = validateLastName(lastName, false);
-		if (!lastNameValidation.isValid) {
-			return false;
-		}
-		return true;
-	}, [firstName, lastName]);
-
-	const validateField = (name: string, value: string): string | null => {
-		switch (name) {
-			case 'firstName': {
-				const validation = validateFirstName(value);
-				return validation.isValid ? null : (validation.errors[0] ?? null);
-			}
-
-			case 'lastName': {
-				const validation = validateLastName(value, false);
-				return validation.isValid ? null : (validation.errors[0] ?? null);
-			}
-		}
-		return null;
-	};
+		return (
+			validateProfileNameField('firstName', form.firstName) === null &&
+			validateProfileNameField('lastName', form.lastName) === null
+		);
+	}, [form.firstName, form.lastName]);
 
 	const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
-		switch (name) {
-			case 'firstName':
-				setFirstName(value);
-				break;
-			case 'lastName':
-				setLastName(value);
-				break;
-		}
+		if (name !== 'firstName' && name !== 'lastName') return;
+		setForm(prev => ({ ...prev, [name]: value }));
 		setError(null);
-
-		const fieldError = validateField(name, value);
+		const fieldError = validateProfileNameField(name, value);
 		setFieldErrors(prev => ({
 			...prev,
 			[name]: fieldError ?? undefined,
@@ -78,10 +60,10 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 			logger.userInfo('Profile completion started');
 
 			try {
-				const firstNameError = validateField('firstName', firstName);
-				const lastNameError = validateField('lastName', lastName);
+				const firstNameError = validateProfileNameField('firstName', form.firstName);
+				const lastNameError = validateProfileNameField('lastName', form.lastName);
 
-				const newFieldErrors: typeof fieldErrors = {};
+				const newFieldErrors: ProfileFieldErrors = {};
 				if (firstNameError) newFieldErrors.firstName = firstNameError;
 				if (lastNameError) newFieldErrors.lastName = lastNameError;
 
@@ -101,8 +83,8 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				logger.userDebug('Submitting profile to server');
 
 				const profileResponse = await authService.completeProfile({
-					firstName: firstName.trim(),
-					lastName: lastName.trim(),
+					firstName: form.firstName.trim(),
+					lastName: form.lastName.trim(),
 				});
 
 				logger.authProfileUpdate('Profile completed successfully', {
@@ -116,7 +98,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				// Call optional onComplete callback
 				if (onComplete) {
-					onComplete({ username: firstName, bio: lastName });
+					onComplete({ username: form.firstName, bio: form.lastName });
 				}
 
 				// Navigate to home
@@ -132,14 +114,14 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				setLoading(false);
 			}
 		},
-		[firstName, lastName, navigate, onComplete, isFormValid]
+		[form.firstName, form.lastName, navigate, onComplete, isFormValid]
 	);
 
 	return (
 		<motion.div
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			className='min-h-screen flex flex-col items-center px-4 pt-0 pb-4 md:pb-6'
+			className='view-main flex flex-col items-center justify-center'
 		>
 			<Card className='p-6 max-w-md w-full relative'>
 				<CloseButton className='absolute top-4 right-4' />
@@ -162,15 +144,15 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 						<Input
 							id='firstName'
 							name='firstName'
-							value={firstName}
+							value={form.firstName}
 							onChange={handleChange}
 							placeholder='Enter your first name'
 							disabled={loading}
-							className={cn(fieldErrors.firstName && 'border-destructive')}
+							error={!!fieldErrors.firstName}
 						/>
 						{fieldErrors.firstName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.firstName}
 							</p>
 						)}
@@ -180,15 +162,15 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 						<Input
 							id='lastName'
 							name='lastName'
-							value={lastName}
+							value={form.lastName}
 							onChange={handleChange}
 							placeholder='Enter your last name'
 							disabled={loading}
-							className={cn(fieldErrors.lastName && 'border-destructive')}
+							error={!!fieldErrors.lastName}
 						/>
 						{fieldErrors.lastName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.lastName}
 							</p>
 						)}
@@ -197,10 +179,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					<div className='flex gap-4'>
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
 							{loading ? (
-								<>
-									<Spinner size={SpinnerSize.SM} className='mr-2' />
-									Saving...
-								</>
+								<Spinner size={ComponentSize.SM} message={LoadingMessages.SAVING} messageInline />
 							) : (
 								'Complete Profile'
 							)}

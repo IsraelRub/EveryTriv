@@ -2,11 +2,18 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AnalyticsAction, AnalyticsEventType, AnalyticsPageName, DifficultyLevel, GameMode } from '@shared/constants';
+import {
+	AnalyticsAction,
+	AnalyticsEventType,
+	AnalyticsPageName,
+	DEFAULT_GAME_CONFIG,
+	GameMode,
+	TIME_PERIODS_MS,
+} from '@shared/constants';
 import type { CompleteUserAnalytics } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AudioKey, QUERY_KEYS, ROUTES } from '@/constants';
+import { AudioKey, QUERY_KEYS } from '@/constants';
 import { audioService, clientLogger as logger, queryInvalidationService } from '@/services';
 import type { FinalizeGameOptions } from '@/types';
 import {
@@ -63,12 +70,10 @@ export const useGameFinalization = () => {
 				return;
 			}
 
-			// Log warning if override differs from Redux (indicates potential race condition)
 			if (overrideGameId && gameId && overrideGameId !== gameId) {
-				logger.gameError('GameId mismatch in finalization - using server session gameId', {
+				logger.gameInfo('GameId mismatch in finalization - using server session gameId', {
 					serverSessionGameId: overrideGameId,
 					reduxGameId: gameId,
-					message: 'Using server session gameId to ensure session exists on server',
 				});
 			}
 
@@ -118,8 +123,8 @@ export const useGameFinalization = () => {
 								action: AnalyticsAction.GAME_FINALIZED,
 								value: score,
 								properties: {
-									topic: currentTopic ?? 'General',
-									difficulty: currentDifficulty ?? DifficultyLevel.MEDIUM,
+									topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
+									difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
 									gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
 									correctAnswers,
 									totalQuestions: gameQuestionCount ?? 0,
@@ -140,9 +145,9 @@ export const useGameFinalization = () => {
 							queryInvalidationService.invalidateLeaderboardQueries(queryClient);
 						}
 
-						// Navigate to summary if requested
+						// Navigate to summary if requested (URL includes gameId for consistency with multiplayer)
 						if (navigateToSummary) {
-							navigate(ROUTES.GAME_SUMMARY);
+							navigate(`/game/single/summary/${sessionGameId}`);
 						}
 
 						// Execute custom success callback with saved history
@@ -163,7 +168,7 @@ export const useGameFinalization = () => {
 
 						if (isRetryable && attempt < MAX_RETRIES) {
 							// Retry after exponential backoff
-							const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+							const delay = 2 ** attempt * TIME_PERIODS_MS.SECOND; // 1s, 2s, 4s
 							setTimeout(() => {
 								logger.gameInfo('Retrying game finalization', {
 									attempt: attempt + 1,
@@ -174,9 +179,7 @@ export const useGameFinalization = () => {
 							}, delay);
 						} else {
 							// Final failure - show error to user
-							const errorLogMessage = options.logContext
-								? `Failed to finalize game session - ${options.logContext}`
-								: 'Failed to finalize game session';
+							const errorLogMessage = `Failed to finalize game session${options.logContext ? ` - ${options.logContext}` : ''}`;
 							logger.gameError(errorLogMessage, {
 								gameId: sessionGameId,
 								errorInfo: { message },

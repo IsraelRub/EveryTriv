@@ -1,4 +1,4 @@
-import { LogLevel, VALIDATORS } from '@shared/constants';
+import { LogLevel } from '@shared/constants';
 import { BaseLoggerService } from '@shared/services';
 import type {
 	EnhancedLogger,
@@ -10,6 +10,7 @@ import type {
 	TraceStorage,
 } from '@shared/types';
 import { hasProperty, hasPropertyOfType, isRecord, sanitizeLogMessage } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 // Conditional imports for Node.js modules
 let fs: typeof import('fs') | undefined;
@@ -67,7 +68,7 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 	protected error: LogMessageFn = (message, meta) => {
 		const sanitizedMessage = sanitizeLogMessage(message);
 		const fullMeta = this.buildMeta(meta);
-		const errorType: string = typeof fullMeta?.errorType === 'string' ? fullMeta.errorType : 'unknown';
+		const errorType: string = VALIDATORS.string(fullMeta?.errorType) ? fullMeta.errorType : 'unknown';
 		this.errorCounts.set(errorType, (this.errorCounts.get(errorType) ?? 0) + 1);
 
 		this.writeToFile(LogLevel.ERROR, sanitizedMessage, fullMeta);
@@ -221,7 +222,7 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 
 	public override getTraceId(): string {
 		const activeTraceId = this.traceStorage.getStore();
-		if (typeof activeTraceId === 'string' && activeTraceId.length > 0) {
+		if (VALIDATORS.string(activeTraceId) && activeTraceId.length > 0) {
 			return activeTraceId;
 		}
 
@@ -291,7 +292,7 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 				},
 				getStore(): string | undefined {
 					const store = storageInstance.getStore();
-					if (typeof store === 'string' && store.length > 0) {
+					if (VALIDATORS.string(store) && store.length > 0) {
 						return store;
 					}
 

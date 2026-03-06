@@ -1,21 +1,5 @@
-import type { ComparisonTarget, TimePeriod } from '@shared/constants';
+import type { UnifiedQuerySignatureInput } from '@shared/types';
 
-export interface UnifiedQuerySignatureInput {
-	includeSections?: string[];
-	startDate?: Date;
-	endDate?: Date;
-	groupBy?: TimePeriod;
-	activityLimit?: number;
-	trendLimit?: number;
-	includeActivity?: boolean;
-	targetUserId?: string;
-	comparisonTarget?: ComparisonTarget;
-}
-
-/**
- * Builds a stable JSON string signature for unified analytics cache key.
- * Normalizes includeSections (sorted), dates (ISO), and optional query fields.
- */
 export function buildUnifiedQuerySignature(includeSections?: string[], options?: UnifiedQuerySignatureInput): string {
 	const sections =
 		includeSections && includeSections.length > 0

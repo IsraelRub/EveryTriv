@@ -3,7 +3,7 @@ import { Body, Controller, ForbiddenException, Get, HttpException, HttpStatus, P
 import {
 	API_ENDPOINTS,
 	DEFAULT_USER_PREFERENCES,
-	ERROR_CODES,
+	ErrorCode,
 	GameMode,
 	TIME_DURATIONS_SECONDS,
 } from '@shared/constants';
@@ -23,7 +23,7 @@ export class CreditsController {
 	@NoCache()
 	async getCreditBalance(@CurrentUserId() userId: string | null) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const result = await this.creditsService.getCreditBalance(userId);
@@ -64,13 +64,13 @@ export class CreditsController {
 	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			const questionsPerRequest = query.questionsPerRequest ?? DEFAULT_USER_PREFERENCES.game.maxQuestionsPerGame;
 
 			if (!questionsPerRequest || questionsPerRequest <= 0) {
-				throw new HttpException(ERROR_CODES.VALID_QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.VALID_QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const gameMode = query.gameMode ?? GameMode.QUESTION_LIMITED;
@@ -102,7 +102,7 @@ export class CreditsController {
 		@Query('gameMode') gameModeParam?: GameMode
 	) {
 		if (!userId) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
 			logger.apiDebug('Deduct credits request received', {
@@ -124,7 +124,7 @@ export class CreditsController {
 						body,
 					},
 				});
-				throw new HttpException(ERROR_CODES.QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const gameMode = body.gameMode ?? gameModeParam ?? GameMode.QUESTION_LIMITED;

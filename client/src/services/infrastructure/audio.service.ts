@@ -1,5 +1,5 @@
 import type { UserPreferences } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import { calculatePercentage, getErrorMessage } from '@shared/utils';
 
 import { AUDIO_DATA, AudioCategory, AudioKey } from '@/constants';
 import { clientLogger as logger } from '@/services';
@@ -130,7 +130,7 @@ export class AudioService {
 		});
 
 		this.audioElements.set(key, audio);
-		// Store the base volume (from AUDIO_DATA, without masterVolume) for later use
+		// Base volume from AUDIO_DATA (used when applying per-sound volume)
 		const audioData = AUDIO_DATA[key];
 		this.volumes.set(key, audioData.volume);
 
@@ -389,7 +389,7 @@ export class AudioService {
 		if (score <= previousScore) return;
 
 		const scoreIncrease = score - previousScore;
-		const percentage = (score / total) * 100;
+		const percentage = calculatePercentage(score, total);
 
 		// Play different sounds based on achievement level
 		if (percentage >= 100) {

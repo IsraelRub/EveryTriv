@@ -1,4 +1,4 @@
-import './index.css';
+import './global.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -15,7 +15,7 @@ import App from './App';
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-	throw new Error(ERROR_MESSAGES.general.ROOT_ELEMENT_NOT_FOUND);
+	throw new Error(ERROR_MESSAGES.client.ROOT_ELEMENT_NOT_FOUND);
 }
 
 createRoot(rootElement).render(

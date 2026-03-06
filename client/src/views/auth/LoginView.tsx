@@ -1,22 +1,23 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react';
 
 import { getErrorMessage, isNonEmptyString } from '@shared/utils';
 import { validateEmail } from '@shared/validation';
 
 import {
+	AlertVariant,
 	AudioKey,
 	ButtonSize,
-	ButtonVariant,
+	ComponentSize,
+	LoadingMessages,
 	ROUTES,
-	SpinnerSize,
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
+	AlertIcon,
 	Button,
 	Card,
 	CardContent,
@@ -33,7 +34,6 @@ import {
 import { useLogin, useModalRoute } from '@/hooks';
 import { audioService, authService } from '@/services';
 import type { LoginFieldErrors } from '@/types';
-import { cn } from '@/utils';
 
 export function LoginView() {
 	const navigate = useNavigate();
@@ -143,8 +143,7 @@ export function LoginView() {
 
 			<CardContent className='space-y-6'>
 				{error && (
-					<Alert variant={VariantBase.DESTRUCTIVE}>
-						<AlertCircle className='h-4 w-4' />
+					<Alert variant={AlertVariant.DESTRUCTIVE}>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
@@ -161,11 +160,11 @@ export function LoginView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='email'
-							className={cn(fieldErrors.email && 'border-destructive')}
+							error={!!fieldErrors.email}
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.email}
 							</p>
 						)}
@@ -182,11 +181,11 @@ export function LoginView() {
 							onChange={handleChange}
 							disabled={isLoading}
 							autoComplete='current-password'
-							className={cn(fieldErrors.password && 'border-destructive')}
+							error={!!fieldErrors.password}
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertCircle className='h-3 w-3' />
+								<AlertIcon size='sm' />
 								{fieldErrors.password}
 							</p>
 						)}
@@ -194,10 +193,7 @@ export function LoginView() {
 
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
 						{isLoading ? (
-							<>
-								<Spinner size={SpinnerSize.SM} className='mr-2' />
-								Signing in...
-							</>
+							<Spinner size={ComponentSize.SM} message={LoadingMessages.SIGNING_IN} messageInline />
 						) : (
 							'Sign In'
 						)}
@@ -219,10 +215,10 @@ export function LoginView() {
 					<span className='text-muted-foreground'>Don't have an account? </span>
 					<Button
 						type='button'
-						variant={ButtonVariant.GHOST}
+						variant={VariantBase.MINIMAL}
 						size={ButtonSize.SM}
 						onClick={() => navigate(ROUTES.REGISTER, { state: { modal: isModal } })}
-						className='h-auto p-0 text-primary font-medium hover:underline'
+						className='link-primary h-auto p-0 font-medium'
 					>
 						Sign up
 					</Button>

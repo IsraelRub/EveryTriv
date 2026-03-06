@@ -2,8 +2,6 @@ import type { LucideIcon } from 'lucide-react';
 
 import type { TriviaQuestion } from '@shared/types';
 
-import type { TextColor } from '@/constants';
-
 export interface ClearOperation {
 	id: string;
 	title: string;
@@ -29,5 +27,5 @@ export interface PlatformTrendsSectionStats {
 	icon: LucideIcon;
 	label: string;
 	value: string;
-	color: TextColor;
+	color: string;
 }

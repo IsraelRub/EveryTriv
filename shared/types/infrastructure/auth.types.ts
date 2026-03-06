@@ -51,10 +51,6 @@ export interface AuthenticationRequest {
 	authToken?: string;
 }
 
-export interface AuthRequest {
-	user: BasicUser;
-}
-
 export interface GoogleAuthPayload {
 	googleId: string;
 	email?: string;
@@ -65,12 +61,4 @@ export interface GoogleAuthPayload {
 
 export interface GoogleAuthRequest extends Request {
 	user?: GoogleAuthPayload;
-}
-
-export interface JWTDecodedToken {
-	sub: string;
-	email: string;
-	role: UserRole;
-	iat?: number;
-	exp?: number;
 }

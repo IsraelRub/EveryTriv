@@ -201,4 +201,54 @@ export class MaintenanceController {
 			throw error;
 		}
 	}
+
+	@Post('data/test-users/cleanup')
+	@Roles(UserRole.ADMIN)
+	async cleanupTestUsers(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.dataMaintenanceService.cleanupTestUsers();
+
+			logger.apiUpdate('maintenance_cleanup_test_users', {
+				id: user.sub,
+				role: user.role,
+				deletedUsers: result.deletedUsers,
+				deletedGameHistory: result.deletedGameHistory,
+				deletedUserStats: result.deletedUserStats,
+				deletedCreditTransactions: result.deletedCreditTransactions,
+				deletedPaymentHistory: result.deletedPaymentHistory,
+			});
+
+			return result;
+		} catch (error) {
+			logger.userError('Failed to cleanup test users', {
+				errorInfo: { message: getErrorMessage(error) },
+				id: user.sub,
+				role: user.role,
+			});
+			throw error;
+		}
+	}
+
+	@Post('data/achievements/cleanup-obsolete')
+	@Roles(UserRole.ADMIN)
+	async cleanupObsoleteAchievements(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.dataMaintenanceService.cleanupObsoleteAchievements();
+
+			logger.apiUpdate('maintenance_cleanup_obsolete_achievements', {
+				id: user.sub,
+				role: user.role,
+				data: { usersUpdated: result.usersUpdated, totalIdsRemoved: result.totalIdsRemoved },
+			});
+
+			return result;
+		} catch (error) {
+			logger.analyticsError('Failed to cleanup obsolete achievements', {
+				errorInfo: { message: getErrorMessage(error) },
+				id: user.sub,
+				role: user.role,
+			});
+			throw error;
+		}
+	}
 }

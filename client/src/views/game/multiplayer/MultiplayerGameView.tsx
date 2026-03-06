@@ -1,43 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Crown, XCircle } from 'lucide-react';
 
-import { RoomStatus, TimerMode } from '@shared/constants';
-import { calculateElapsedSeconds } from '@shared/utils';
+import { RoomStatus } from '@shared/constants';
+import { calculateElapsedSeconds, getCorrectAnswerIndex } from '@shared/utils';
 
-import { ANIMATION_DELAYS, SpinnerSize, VariantBase } from '@/constants';
+import { AudioKey, AvatarSize, ComponentSize, DISPLAY_NAME_FALLBACKS, LoadingMessages, TimerMode } from '@/constants';
 import {
 	AnswerButton,
-	Avatar,
-	AvatarFallback,
-	Badge,
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
 	GameTimer,
+	QuestionCounter,
 	Spinner,
+	UserAvatar,
 } from '@/components';
 import { useMultiplayer } from '@/hooks';
-import { cn } from '@/utils';
+import { useAppSelector } from '@/hooks/useRedux';
+import { audioService } from '@/services';
+import { cn, getDisplayNameFromPlayer } from '@/utils';
 
 export function MultiplayerGameView() {
 	const { roomId } = useParams<string>();
 	const navigate = useNavigate();
 
 	const { room, gameState, leaderboard, submitAnswer, loadingStep, displayMessage } = useMultiplayer(roomId);
+	const revealPhase = useAppSelector(state => state.multiplayer.revealPhase);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 	const [answered, setAnswered] = useState(false);
+
+	const selectedAnswerRef = useRef<number | null>(null);
+	selectedAnswerRef.current = selectedAnswer;
 
 	const currentQuestion = gameState?.currentQuestion;
 	const questionIndex = gameState?.currentQuestionIndex ?? 0;
 	const gameQuestionCount = gameState?.gameQuestionCount ?? 0;
 	const timePerQuestion = room?.config.timePerQuestion ?? 30;
-	// Only start timer when question is fully loaded (has question text and answers)
-	const isQuestionLoaded = Boolean(
-		currentQuestion?.question && currentQuestion?.answers && currentQuestion.answers.length > 0
+	const isQuestionLoaded = !!(
+		currentQuestion?.question &&
+		currentQuestion?.answers &&
+		currentQuestion.answers.length > 0
 	);
 
 	const questionStartTime =
@@ -62,11 +67,20 @@ export function MultiplayerGameView() {
 		return Object.keys(converted).length > 0 ? converted : undefined;
 	}, [gameState?.answerCounts]);
 
+	const totalPlayers = room?.players?.length ?? 0;
+	const totalAnsweredCount = gameState?.playersAnswers ? Object.keys(gameState.playersAnswers).length : 0;
+	const answeredBarWidthPercent = totalPlayers > 0 ? (totalAnsweredCount / totalPlayers) * 100 : 0;
+
 	// Reset state when question changes
 	useEffect(() => {
 		setSelectedAnswer(null);
 		setAnswered(false);
 	}, [gameState?.currentQuestionIndex]);
+
+	// Lock selection when reveal phase starts (server ended question)
+	useEffect(() => {
+		if (revealPhase) setAnswered(true);
+	}, [revealPhase]);
 
 	// Navigate to summary when game ends
 	useEffect(() => {
@@ -75,22 +89,36 @@ export function MultiplayerGameView() {
 		}
 	}, [room?.status, roomId, navigate]);
 
+	// Play correct/wrong sound when answer is revealed (revealPhase becomes true)
+	const prevRevealPhaseRef = useRef(false);
+	useEffect(() => {
+		if (revealPhase && !prevRevealPhaseRef.current && currentQuestion) {
+			const correctIndex = getCorrectAnswerIndex(currentQuestion);
+			const choice = selectedAnswerRef.current;
+			if (choice !== null) {
+				const isCorrect = choice === correctIndex;
+				audioService.play(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
+			}
+		}
+		prevRevealPhaseRef.current = revealPhase;
+	}, [revealPhase, currentQuestion]);
+
 	const handleAnswerSelect = (answerIndex: number) => {
 		if (answered || !roomId || !currentQuestion?.id) return;
-
+		const timeSpent = questionStartTime ? Math.max(1, calculateElapsedSeconds(questionStartTime)) : 0;
 		setSelectedAnswer(answerIndex);
-		setAnswered(true);
-
-		// Calculate time spent from question start (server timestamp)
-		const timeSpent = questionStartTime ? calculateElapsedSeconds(questionStartTime) : 0;
 		submitAnswer(roomId, currentQuestion.id, answerIndex, timeSpent);
 	};
 
+	const handleTimerTimeout = useCallback(() => {
+		setAnswered(true);
+	}, []);
+
 	if (!room || !gameState) {
 		return (
-			<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-only'>
+			<main className='view-main animate-fade-in-only'>
 				<div className='max-w-md mx-auto h-full flex items-center justify-center text-center space-y-4'>
-					<Spinner size={SpinnerSize.XL} className='mx-auto text-primary' />
+					<Spinner size={ComponentSize.XL} className='mx-auto text-primary' />
 					<motion.h2
 						key={loadingStep}
 						initial={{ opacity: 0, y: 10 }}
@@ -105,18 +133,15 @@ export function MultiplayerGameView() {
 	}
 
 	return (
-		<main className='h-screen overflow-hidden pt-0 pb-4 px-4 animate-fade-in-only'>
-			<div className='max-w-6xl mx-auto h-screen flex flex-col'>
-				<div className='grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0'>
-					{/* Main Game Area */}
-					<div className='lg:col-span-2 flex flex-col min-h-0'>
-						{/* Timer - Compact */}
-						<Card className='mb-3 flex-shrink-0'>
+		<main className='view-main animate-fade-in-only'>
+			<div className='view-centered-6xl h-full flex flex-col'>
+				<div className='flex flex-col flex-1 min-h-0'>
+					{/* Timer + Leaderboard – fixed ratio 2:1, always one row */}
+					<div className='flex flex-row gap-3 mb-3 flex-shrink-0 min-h-0'>
+						<Card className='flex-[2] min-w-0 basis-0'>
 							<CardContent className='pt-4 pb-4'>
-								<div className='flex items-center justify-between mb-3'>
-									<Badge variant={VariantBase.OUTLINE} className='text-xs'>
-										Question {questionIndex + 1} of {gameQuestionCount}
-									</Badge>
+								<div className='flex flex-col items-center text-center mb-3'>
+									<QuestionCounter current={questionIndex + 1} total={gameQuestionCount} size={ComponentSize.MD} />
 								</div>
 								<GameTimer
 									mode={TimerMode.COUNTDOWN}
@@ -124,113 +149,27 @@ export function MultiplayerGameView() {
 									startTime={questionStartTime}
 									serverStartTimestamp={serverStartTimestamp}
 									serverEndTimestamp={serverEndTimestamp}
+									onTimeout={handleTimerTimeout}
 									key={questionIndex}
 									label='Time Remaining'
 								/>
 							</CardContent>
 						</Card>
-
-						{/* Question - Scrollable if needed */}
-						<Card className='flex-1 flex flex-col min-h-0 mb-3'>
-							<CardContent className='pt-4 pb-4 flex-1 flex flex-col min-h-0'>
-								<h2 className='text-xl font-bold mb-4 leading-tight flex-shrink-0'>
-									{currentQuestion?.question ?? 'Loading question...'}
-								</h2>
-								<AnswerButton
-									answers={currentQuestion?.answers}
-									answered={answered}
-									selectedAnswer={selectedAnswer}
-									currentQuestion={currentQuestion}
-									onAnswerClick={handleAnswerSelect}
-									showResult={answered && !!gameState?.playersAnswers}
-									emptyStateMessage='No answers available'
-									answerCounts={answerCounts}
-								/>
-
-								{answered && (
-									<motion.div
-										initial={{ opacity: 0, y: 10 }}
-										animate={{ opacity: 1, y: 0 }}
-										className='mt-4 text-center text-sm text-muted-foreground flex-shrink-0'
-									>
-										Waiting for other players...
-									</motion.div>
-								)}
-							</CardContent>
-						</Card>
-					</div>
-
-					{/* Leaderboard Sidebar - Scrollable */}
-					<div className='space-y-3 flex flex-col min-h-0'>
-						<Card className='flex-1 flex flex-col min-h-0 flex-shrink-0'>
-							<CardHeader className='pb-3'>
-								<CardTitle className='text-base'>Live Leaderboard</CardTitle>
+						<Card className='flex-[1] min-w-0 basis-0'>
+							<CardHeader className='py-2 px-4'>
+								<CardTitle className='text-sm'>Standings</CardTitle>
 							</CardHeader>
-							<CardContent className='flex-1 overflow-y-auto'>
-								<div className='space-y-2'>
-									{leaderboard.length > 0 ? (
-										leaderboard.map((player, index) => (
-											<motion.div
-												key={player.userId}
-												initial={{ opacity: 0, x: 10 }}
-												animate={{ opacity: 1, x: 0 }}
-												transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
-												className={cn(
-													'flex items-center gap-2 p-2 rounded-lg',
-													index === 0 ? 'bg-yellow-500/30 ring-2 ring-yellow-500/50' : 'bg-muted/50'
-												)}
-											>
-												<span className='font-bold text-sm w-5'>#{index + 1}</span>
-												<Avatar className='h-7 w-7'>
-													<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
-												</Avatar>
-												<div className='flex-1 min-w-0'>
-													<div className='flex items-center gap-1'>
-														{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-														<span className='font-medium text-sm truncate'>{player.displayName || 'Player'}</span>
-														{index === 0 && <Crown className='h-3 w-3 text-yellow-500 flex-shrink-0' />}
-													</div>
-												</div>
-												<span className='font-bold text-primary text-sm'>{player.score}</span>
-											</motion.div>
-										))
-									) : (
-										<div className='space-y-2'>
-											{room.players?.map((player, index) => (
-												<div key={player.userId} className='flex items-center gap-2 p-2 rounded-lg bg-muted/50'>
-													<span className='font-bold text-sm w-5'>#{index + 1}</span>
-													<Avatar className='h-7 w-7'>
-														<AvatarFallback className='text-xs'>{player.displayName?.charAt(0) ?? 'P'}</AvatarFallback>
-													</Avatar>
-													{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-													<span className='font-medium text-sm truncate'>{player.displayName || 'Player'}</span>
-													<span className='font-bold text-muted-foreground ml-auto text-sm'>0</span>
-												</div>
-											))}
-										</div>
-									)}
-								</div>
-							</CardContent>
-						</Card>
-
-						{/* Answer Status - Compact */}
-						<Card className='flex-shrink-0'>
-							<CardHeader className='pb-3'>
-								<CardTitle className='text-base'>Answer Status</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className='space-y-1.5'>
-									{room.players?.map(player => {
-										const hasAnswered = gameState?.playersAnswers?.[player.userId] !== undefined;
+							<CardContent className='pt-0 px-4 pb-3'>
+								<div className='flex flex-wrap gap-x-4 gap-y-2'>
+									{(leaderboard.length > 0 ? leaderboard : (room?.players ?? [])).map((player, index) => {
+										const isFirst = index === 0 && leaderboard.length > 0;
 										return (
-											<div key={player.userId} className='flex items-center gap-2'>
-												{hasAnswered ? (
-													<CheckCircle className='h-3.5 w-3.5 text-green-500 flex-shrink-0' />
-												) : (
-													<XCircle className='h-3.5 w-3.5 text-muted-foreground flex-shrink-0' />
-												)}
-												{/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-												<span className='text-xs'>{player.displayName || 'Player'}</span>
+											<div key={player.userId} className={cn('flex items-center gap-2', isFirst && 'font-semibold')}>
+												<UserAvatar player={player} size={AvatarSize.SM} fallbackClassName='text-xs' />
+												<span className='text-sm truncate max-w-28'>
+													{getDisplayNameFromPlayer(player, DISPLAY_NAME_FALLBACKS.PLAYER_SHORT)}
+												</span>
+												<span className='text-sm font-bold tabular-nums'>{'score' in player ? player.score : 0}</span>
 											</div>
 										);
 									})}
@@ -238,6 +177,45 @@ export function MultiplayerGameView() {
 							</CardContent>
 						</Card>
 					</div>
+
+					{/* Question card: strip at bottom shows % of players who answered (fixed muted opacity, width varies) */}
+					<Card className='flex-1 flex flex-col min-h-0 mb-3 relative overflow-hidden'>
+						{totalPlayers > 0 && (
+							<div
+								className='absolute bottom-0 left-0 h-1.5 bg-muted/80 transition-[width] duration-300 ease-out'
+								style={{ width: `${answeredBarWidthPercent}%` }}
+							/>
+						)}
+						<CardContent className='pt-4 pb-4 flex-1 flex flex-col min-h-0'>
+							<h2 className='text-xl font-bold mb-4 leading-tight flex-shrink-0'>
+								{currentQuestion?.question ?? LoadingMessages.LOADING_QUESTION}
+							</h2>
+							<div className='relative flex flex-col flex-1 min-h-0'>
+								<div className='relative'>
+									<AnswerButton
+										answers={currentQuestion?.answers}
+										answered={answered}
+										selectedAnswer={selectedAnswer}
+										currentQuestion={currentQuestion}
+										onAnswerClick={handleAnswerSelect}
+										showResult={revealPhase}
+										answerCounts={answerCounts}
+										totalPlayerCount={answerCounts !== undefined ? totalPlayers : undefined}
+									/>
+								</div>
+							</div>
+
+							{answered && (
+								<motion.div
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									className='mt-4 text-center text-sm text-muted-foreground flex-shrink-0'
+								>
+									{LoadingMessages.WAITING_FOR_OTHER_PLAYERS}
+								</motion.div>
+							)}
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 		</main>

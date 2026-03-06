@@ -1,6 +1,6 @@
 import { TIME_PERIODS_MS } from '@shared/constants';
 import type { CategoryStatistics, CountRecord } from '@shared/types';
-import { calculateSuccessRate, groupBy } from '@shared/utils';
+import { calculateScoreRate, groupByBy, sumBy } from '@shared/utils';
 
 import type { GameHistoryEntity } from '@internal/entities';
 import type { StreakData } from '@internal/types';
@@ -76,8 +76,8 @@ function calculateCategoryMetrics(games: GameHistoryEntity[]): {
 	correctAnswers: number;
 } {
 	return {
-		totalQuestionsAnswered: games.reduce((sum, game) => sum + (game.gameQuestionCount ?? 0), 0),
-		correctAnswers: games.reduce((sum, game) => sum + (game.correctAnswers ?? 0), 0),
+		totalQuestionsAnswered: sumBy(games, g => g.gameQuestionCount ?? 0),
+		correctAnswers: sumBy(games, g => g.correctAnswers ?? 0),
 	};
 }
 
@@ -85,12 +85,14 @@ export function calculateCategoryStats(
 	gameHistory: GameHistoryEntity[],
 	category: 'topic' | 'difficulty'
 ): Record<string, CategoryStatistics> {
-	const groupedByCategory = groupBy(gameHistory, category);
+	const getKey = (game: GameHistoryEntity) =>
+		category === 'topic' ? String(game.topic).toLowerCase() : String(game[category]);
+	const groupedByCategory = groupByBy(gameHistory, getKey);
 	const categoryStats: Record<string, CategoryStatistics> = {};
 
 	Object.entries(groupedByCategory).forEach(([categoryKey, games]) => {
 		const { totalQuestionsAnswered, correctAnswers } = calculateCategoryMetrics(games);
-		const score = games.reduce((sum, game) => sum + game.score, 0);
+		const score = sumBy(games, g => g.score);
 		let lastPlayed = new Date(0);
 		let maxTimestamp = 0;
 		for (const game of games) {
@@ -105,7 +107,7 @@ export function calculateCategoryStats(
 			totalQuestionsAnswered,
 			correctAnswers,
 			score,
-			successRate: calculateSuccessRate(totalQuestionsAnswered, correctAnswers),
+			successRate: calculateScoreRate(score, totalQuestionsAnswered),
 			lastPlayed,
 		};
 	});
@@ -117,12 +119,13 @@ export function calculateCategoryPerformance(
 	gameHistory: GameHistoryEntity[],
 	category: 'topic' | 'difficulty'
 ): CountRecord {
-	const groupedByCategory = groupBy(gameHistory, category);
+	const groupedByCategory = groupByBy(gameHistory, game => String(game[category]));
 	const performance: CountRecord = {};
 
 	Object.entries(groupedByCategory).forEach(([categoryKey, games]) => {
-		const { totalQuestionsAnswered, correctAnswers } = calculateCategoryMetrics(games);
-		performance[categoryKey] = calculateSuccessRate(totalQuestionsAnswered, correctAnswers);
+		const { totalQuestionsAnswered } = calculateCategoryMetrics(games);
+		const score = sumBy(games, g => g.score);
+		performance[categoryKey] = calculateScoreRate(score, totalQuestionsAnswered);
 	});
 
 	return performance;

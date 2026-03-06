@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { matchPath, useLocation } from 'react-router-dom';
 
+import { RoomStatus } from '@shared/constants';
+
 import { AudioKey, ROUTES } from '@/constants';
 import { audioService } from '@/services';
 import {
@@ -8,6 +10,7 @@ import {
 	selectGameQuestions,
 	selectIsGameFinalized,
 	selectIsMuted,
+	selectMultiplayerRoom,
 	selectMusicEnabled,
 } from '@/redux/selectors';
 import { useAppSelector } from '../useRedux';
@@ -17,10 +20,10 @@ export function useRouteBasedMusic() {
 	const prevPathnameRef = useRef<string | null>(null);
 	const isGameMusicActiveRef = useRef(false);
 
-	// Get game state to check if game is actually active
 	const gameId = useAppSelector(selectGameId);
 	const questions = useAppSelector(selectGameQuestions);
 	const isGameFinalized = useAppSelector(selectIsGameFinalized);
+	const room = useAppSelector(selectMultiplayerRoom);
 	const isMuted = useAppSelector(selectIsMuted);
 	const musicEnabled = useAppSelector(selectMusicEnabled);
 
@@ -29,16 +32,15 @@ export function useRouteBasedMusic() {
 		const prevPath = prevPathnameRef.current;
 		const isInitialMount = prevPath === null;
 
-		// Check if we're on a game route
-		const isGameRoute =
-			matchPath({ path: ROUTES.GAME_PLAY, end: true }, currentPath) ||
-			matchPath({ path: ROUTES.MULTIPLAYER_PLAY, end: false }, currentPath);
+		const isSinglePlayRoute = matchPath({ path: ROUTES.GAME_SINGLE_PLAY, end: true }, currentPath) != null;
+		const isMultiplayerPlayRoute = matchPath({ path: ROUTES.MULTIPLAYER_PLAY, end: false }, currentPath) != null;
+		const isGameRoute = isSinglePlayRoute || isMultiplayerPlayRoute;
 
-		// Determine if we should play game music
-		// Play game music if we're on a game route and have questions loaded
-		// Don't play game music if game is finalized or if we're still loading (no questions yet)
-		// This ensures music starts only when game is actually active, not during "Connecting to server..."
-		const shouldPlayGameMusic = isGameRoute && !!(gameId && questions.length > 0 && !isGameFinalized);
+		const isSinglePlayerGameActive = isSinglePlayRoute && !!(gameId && questions.length > 0 && !isGameFinalized);
+		// Play game music when on multiplayer play URL and room is in PLAYING state (questions may still be loading)
+		const isMultiplayerGameActive = isMultiplayerPlayRoute && room != null && room.status === RoomStatus.PLAYING;
+
+		const shouldPlayGameMusic = isGameRoute && (isSinglePlayerGameActive || isMultiplayerGameActive);
 
 		// Stop background music if we're on a game route (even before questions load)
 		// This ensures background music stops immediately when entering game route
@@ -61,13 +63,10 @@ export function useRouteBasedMusic() {
 		} else if (!shouldPlayGameMusic && isGameMusicActiveRef.current) {
 			// Switching back to background music (game ended or navigated away)
 			audioService.stop(AudioKey.GAME_MUSIC);
-			// Play GAME_END sound effect when navigating away from game route
-			if (
-				!isInitialMount &&
-				prevPath &&
-				prevPath !== currentPath &&
-				matchPath({ path: ROUTES.GAME_PLAY, end: true }, prevPath)
-			) {
+			// Play GAME_END sound effect when navigating away from game route (single or multiplayer)
+			const wasOnSinglePlay = prevPath && matchPath({ path: ROUTES.GAME_SINGLE_PLAY, end: true }, prevPath);
+			const wasOnMultiplayerPlay = prevPath && matchPath({ path: ROUTES.MULTIPLAYER_PLAY, end: false }, prevPath);
+			if (!isInitialMount && prevPath && prevPath !== currentPath && (wasOnSinglePlay ?? wasOnMultiplayerPlay)) {
 				audioService.play(AudioKey.GAME_END);
 			}
 			// Only switch to background music if we're not on a game route anymore
@@ -95,5 +94,5 @@ export function useRouteBasedMusic() {
 		}
 
 		prevPathnameRef.current = currentPath;
-	}, [location.pathname, gameId, questions.length, isGameFinalized, isMuted, musicEnabled]);
+	}, [location.pathname, gameId, questions.length, isGameFinalized, room, isMuted, musicEnabled]);
 }

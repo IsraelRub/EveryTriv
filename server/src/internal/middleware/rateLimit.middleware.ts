@@ -11,7 +11,7 @@ import type { NestRequest } from '@internal/types';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
-	private readonly WINDOW_SIZE_IN_SECONDS = RATE_LIMIT_DEFAULTS.WINDOW_MS / 1000;
+	private readonly WINDOW_SIZE_IN_SECONDS = RATE_LIMIT_DEFAULTS.WINDOW_MS / TIME_PERIODS_MS.SECOND;
 	private readonly MAX_REQUESTS_PER_WINDOW = RATE_LIMIT_DEFAULTS.MAX_REQUESTS_PER_WINDOW;
 	private readonly BURST_LIMIT = RATE_LIMIT_DEFAULTS.BURST_LIMIT;
 
@@ -33,7 +33,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 			normalizedIp === '::' ||
 			normalizedIp.startsWith('::ffff:') ||
 			// Also check if it's undefined or empty (might happen in some cases)
-			normalizedIp === ''
+			!normalizedIp
 		);
 	}
 
@@ -109,7 +109,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 							ip: ip,
 							windowMs: TIME_PERIODS_MS.MINUTE,
 						},
-						retryAfter: RATE_LIMIT_DEFAULTS.BURST_WINDOW_MS / 1000,
+						retryAfter: RATE_LIMIT_DEFAULTS.BURST_WINDOW_MS / TIME_PERIODS_MS.SECOND,
 						timestamp: new Date().toISOString(),
 					},
 					HttpStatus.TOO_MANY_REQUESTS

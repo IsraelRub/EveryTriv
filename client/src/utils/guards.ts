@@ -1,5 +1,5 @@
-import { VALIDATORS } from '@shared/constants';
 import { isErrorWithProperties, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { ROUTES } from '@/constants';
 import type { ChartDataPoint, DifficultyTooltipPoint, DistributionTooltipPoint } from '@/types';

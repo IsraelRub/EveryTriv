@@ -45,10 +45,11 @@ export class PerformanceInterceptor implements NestInterceptor {
 				}
 
 				// Track in metrics service
-				metricsService.trackRequestPerformance(endpoint, duration, {
+				metricsService.trackPerformance('request', endpoint, {
 					method,
 					userId,
 					userAgent,
+					duration,
 				});
 			}),
 			catchError(error => {
@@ -65,20 +66,18 @@ export class PerformanceInterceptor implements NestInterceptor {
 	}
 
 	private trackPerformanceMetrics(endpoint: string, method: string, duration: number, userId: string): void {
-		// Track endpoint performance
-		metricsService.trackEndpointPerformance(endpoint, {
+		const timestamp = new Date();
+		metricsService.trackPerformance('endpoint', endpoint, {
 			method,
 			duration,
 			userId,
-			timestamp: new Date(),
+			timestamp,
 		});
-
-		// Track method performance
-		metricsService.trackMethodPerformance(method, {
+		metricsService.trackPerformance('method', method, {
 			endpoint,
 			duration,
 			userId,
-			timestamp: new Date(),
+			timestamp,
 		});
 	}
 
@@ -111,7 +110,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 		});
 
 		// Track slow request metrics
-		metricsService.trackSlowRequest(endpoint, {
+		metricsService.trackPerformance('slow', endpoint, {
 			method,
 			duration,
 			userId,
@@ -136,7 +135,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 		});
 
 		// Track error performance metrics
-		metricsService.trackErrorPerformance(endpoint, {
+		metricsService.trackPerformance('error', endpoint, {
 			method,
 			duration,
 			userId,

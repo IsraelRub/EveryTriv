@@ -1,5 +1,7 @@
 import { memo, useMemo } from 'react';
 
+import { formatTitle } from '@shared/utils';
+
 import { CHART_COLORS, CHART_HEIGHTS } from '@/constants';
 import { PieChart } from '@/components';
 import type { ChartDataPoint, TopicsDistributionChartProps } from '@/types';
@@ -10,7 +12,7 @@ export const TopicsDistributionChart = memo(function TopicsDistributionChart({
 	isLoading,
 	height = CHART_HEIGHTS.LARGE,
 	maxItems = 8,
-	minPercentage = 1, // Default: group items below 1% as "Others"
+	minPercentage = 1,
 	valueLabel = 'Games Played',
 	centerText,
 	centerPrimaryLabel,
@@ -22,7 +24,7 @@ export const TopicsDistributionChart = memo(function TopicsDistributionChart({
 		if (!topicsData || topicsData.length === 0) return [];
 
 		const rawData: ChartDataPoint[] = topicsData.map(topic => ({
-			name: topic.topic,
+			name: formatTitle(topic.topic),
 			value: topic.totalGames,
 		}));
 
@@ -33,7 +35,7 @@ export const TopicsDistributionChart = memo(function TopicsDistributionChart({
 
 	const defaultCenterText = useMemo(
 		() =>
-			centerText || {
+			centerText ?? {
 				primary: centerPrimaryLabel ?? 'Total Games',
 				secondary: totalGames.toLocaleString(),
 			},

@@ -1,14 +1,8 @@
-import {
-	ERROR_CODES,
-	ERROR_MESSAGES,
-	GROQ_PROVIDER_NAME,
-	LLM_PARSER,
-	LLMResponseStatus,
-	VALIDATION_LENGTH,
-} from '@shared/constants';
+import { ERROR_MESSAGES, ErrorCode, LLM_PARSER, LLMResponseStatus, VALIDATION_LENGTH } from '@shared/constants';
 import type { TriviaAnswer } from '@shared/types';
-import { isRecord } from '@shared/utils';
+import { isNonEmptyString, isRecord } from '@shared/utils';
 
+import { GROQ_PROVIDER_NAME } from '@internal/constants';
 import type { LLMResponse, LLMTriviaResponse, TriviaLLMJsonPayload } from '@internal/types';
 import { createValidationError } from '@internal/utils';
 
@@ -24,13 +18,19 @@ export class GroqResponseParser {
 		if (firstChoice == null) {
 			throw createValidationError(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE, 'string');
 		}
-		const content = firstChoice.message.content;
+		const rawContent = firstChoice.message.content;
+		const content =
+			typeof rawContent === 'string'
+				? rawContent
+				: typeof rawContent === 'object' && rawContent != null
+					? JSON.stringify(rawContent)
+					: String(rawContent ?? '');
 		return this.parseLLMContentToTriviaResponse(content, expectedAnswerCount);
 	}
 
 	parseLLMContentToTriviaResponse(content: string, expectedAnswerCount: number): LLMTriviaResponse {
-		if (!content || typeof content !== 'string' || content.trim().length === 0) {
-			throw createValidationError(`${this.providerName} ${ERROR_CODES.RESPONSE_CONTENT_EMPTY}`, 'string');
+		if (!isNonEmptyString(content)) {
+			throw createValidationError(`${this.providerName} ${ErrorCode.RESPONSE_CONTENT_EMPTY}`, 'string');
 		}
 
 		const { normalizedContent, replacements } = this.normalizeContentQuotes(content);
@@ -49,7 +49,7 @@ export class GroqResponseParser {
 
 		const triviaAnswers: TriviaAnswer[] = payload.answers.map((answer, index) => ({
 			text: answer,
-			isCorrect: index === 0, // First answer is correct by default (will be shuffled later)
+			isCorrect: index === 0,
 		}));
 
 		return {
@@ -66,9 +66,10 @@ export class GroqResponseParser {
 	}
 
 	private parseAndValidatePayload(content: string, expectedAnswerCount: number): TriviaLLMJsonPayload {
+		const jsonString = this.extractJsonFromContent(content);
 		let parsed: Record<string, unknown>;
 		try {
-			const result = JSON.parse(content);
+			const result = JSON.parse(jsonString);
 			parsed = isRecord(result) ? result : {};
 		} catch {
 			throw createValidationError(`${this.providerName} response is not valid JSON`, 'string');
@@ -79,7 +80,7 @@ export class GroqResponseParser {
 		const answers = this.sanitizeAnswers(parsed.answers, expectedAnswerCount, question.length === 0);
 
 		if (question.length === 0 && answers.length > 0) {
-			throw createValidationError(`${this.providerName} ${ERROR_CODES.INVALID_QUESTION_FORMAT}`, 'string');
+			throw createValidationError(`${this.providerName} ${ErrorCode.INVALID_QUESTION_FORMAT}`, 'string');
 		}
 
 		return {
@@ -157,6 +158,57 @@ export class GroqResponseParser {
 		}
 
 		return normalized;
+	}
+
+	private extractJsonFromContent(content: string): string {
+		const trimmed = content.trim();
+		try {
+			JSON.parse(trimmed);
+			return trimmed;
+		} catch {
+			// Not direct JSON; try to extract
+		}
+
+		let candidate = trimmed;
+		const markdownBlock = /```(?:json)?\s*([\s\S]*?)```/i;
+		const match = candidate.match(markdownBlock);
+		if (match?.[1]) {
+			candidate = match[1].trim();
+			try {
+				JSON.parse(candidate);
+				return candidate;
+			} catch {
+				// Fall through to brace extraction
+			}
+		}
+
+		const startIdx = candidate.indexOf('{');
+		if (startIdx === -1) {
+			throw createValidationError(`${this.providerName} response is not valid JSON`, 'string');
+		}
+		let depth = 0;
+		let endIdx = -1;
+		for (let i = startIdx; i < candidate.length; i++) {
+			const ch = candidate[i];
+			if (ch === '{') depth += 1;
+			else if (ch === '}') {
+				depth -= 1;
+				if (depth === 0) {
+					endIdx = i;
+					break;
+				}
+			}
+		}
+		if (endIdx === -1) {
+			throw createValidationError(`${this.providerName} response is not valid JSON`, 'string');
+		}
+		const extracted = candidate.slice(startIdx, endIdx + 1);
+		try {
+			JSON.parse(extracted);
+			return extracted;
+		} catch {
+			throw createValidationError(`${this.providerName} response is not valid JSON`, 'string');
+		}
 	}
 
 	// The parser, not the prompt, owns ASCII normalization so downstream systems stay deterministic.

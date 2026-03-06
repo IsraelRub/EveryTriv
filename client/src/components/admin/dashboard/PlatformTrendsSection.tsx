@@ -5,18 +5,17 @@ import { TimePeriod } from '@shared/constants';
 import { CHART_HEIGHTS } from '@/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, TrendChart } from '@/components';
 import { useGlobalTrends } from '@/hooks';
-import type { PlatformTrendsSectionProps } from '@/types';
 
-export function PlatformTrendsSection({ statsLoading }: PlatformTrendsSectionProps) {
+export function PlatformTrendsSection(props: { statsLoading: boolean }) {
 	const { data: globalTrends, isLoading: trendsLoading } = useGlobalTrends({ groupBy: TimePeriod.DAILY, limit: 30 });
-	const isLoading = statsLoading || trendsLoading;
+	const isLoading = props.statsLoading || trendsLoading;
 
 	return (
 		<div className='space-y-8'>
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<TrendingUp className='h-5 w-5' />
+						<TrendingUp className='h-5 w-5 text-primary' />
 						Platform Trends
 					</CardTitle>
 					<CardDescription>Historical trends and performance metrics over time</CardDescription>
@@ -26,7 +25,6 @@ export function PlatformTrendsSection({ statsLoading }: PlatformTrendsSectionPro
 						data={globalTrends}
 						isLoading={isLoading}
 						height={CHART_HEIGHTS.LARGE}
-						showSuccessRate={true}
 						className='col-span-full'
 					/>
 				</CardContent>

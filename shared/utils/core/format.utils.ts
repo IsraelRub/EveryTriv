@@ -1,46 +1,61 @@
-import { VALIDATORS } from '@shared/constants';
+import { EMPTY_VALUE } from '@shared/constants';
+import { extractCustomDifficultyText, isCustomDifficulty, VALIDATORS } from '@shared/validation';
 
-export function formatCurrency(amount: number, currency: string = 'USD', locale: string = 'en-US'): string {
-	return new Intl.NumberFormat(locale, {
-		style: 'currency',
-		currency: currency,
-	}).format(amount);
+export function formatNumericValue(
+	value: number | null | undefined,
+	decimals: number = 2,
+	suffix?: string,
+	prefix?: string
+): string {
+	const n = value ?? 0;
+	const formatted = n.toLocaleString(undefined, {
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	});
+	return (prefix ?? '') + formatted + (suffix ?? '');
 }
 
-export function calculatePricePerCredit(price: number, credits: number): number {
-	return Number((price / credits).toFixed(4));
+export function formatCurrency(amountCents: number, currency: string = 'USD'): string {
+	const value = amountCents / 100;
+	const formatted = value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	return currency === 'USD' ? `$${formatted}` : `${formatted} ${currency}`;
 }
 
-export function formatForDisplay(value: number, decimals: number = 2): string {
-	return Number(value.toFixed(decimals)).toLocaleString();
-}
-
-function pad2(n: number): string {
+export function pad2(n: number): string {
 	return n.toString().padStart(2, '0');
 }
 
-export function formatDate(date: Date | string | null | undefined, defaultValue: string = '-'): string {
+export function formatDate(date: Date | string | null | undefined, defaultValue: string = EMPTY_VALUE): string {
 	if (!date || !VALIDATORS.date(date)) {
 		return defaultValue;
 	}
-	const d = typeof date === 'string' ? new Date(date) : date;
+	const d = VALIDATORS.string(date) ? new Date(date) : date;
 	return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-export function formatDateShort(date: Date | string | null | undefined, defaultValue: string = '-'): string {
-	if (!date || !VALIDATORS.date(date)) {
-		return defaultValue;
-	}
-	const d = typeof date === 'string' ? new Date(date) : date;
-	return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+export function capitalize(word: string | null | undefined): string {
+	if (word == null || word.trim().length === 0) return '';
+	return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
-export function formatDateTime(date: Date | string | null | undefined, defaultValue: string = '-'): string {
-	if (!date || !VALIDATORS.date(date)) {
-		return defaultValue;
+export function formatTitle(topic: string | null | undefined): string {
+	if (!topic?.trim()) return '';
+	const words = topic
+		.trim()
+		.replace(/([a-z])([A-Z])/g, (_, a: string, b: string) => `${a} ${b.toLowerCase()}`)
+		.toLowerCase()
+		.split(/\s+/);
+	return words.map(capitalize).join(' ');
+}
+
+export function formatDifficulty(difficulty: string, maxLength: number = 50): string {
+	if (!isCustomDifficulty(difficulty)) {
+		return formatTitle(difficulty);
 	}
-	const d = typeof date === 'string' ? new Date(date) : date;
-	const datePart = formatDate(d, defaultValue);
-	if (datePart === defaultValue) return defaultValue;
-	return `${datePart} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+	const customText = extractCustomDifficultyText(difficulty);
+	const formatted = formatTitle(customText);
+	if (formatted.length <= maxLength) {
+		return formatted;
+	}
+	return formatted.substring(0, maxLength - 3) + '...';
 }

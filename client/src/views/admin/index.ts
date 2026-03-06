@@ -1,1 +1,1 @@
-export { AdminDashboard } from './AdminDashboard';
+export * from './AdminDashboard';

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-	IsIn,
+	IsEnum,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -13,7 +13,7 @@ import {
 	ValidateIf,
 } from 'class-validator';
 
-import { GameMode, VALID_GAME_MODES, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+import { GameMode, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
@@ -65,18 +65,17 @@ export class DeductCreditsDto {
 	@ApiProperty({
 		description:
 			'Game mode for the deduction. ' + 'BREAKING CHANGE: The "gameType" alias has been removed. Use "gameMode" only.',
-		enum: VALID_GAME_MODES,
+		enum: GameMode,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(VALID_GAME_MODES, {
-		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
+	@IsEnum(GameMode, {
+		message: 'Game mode must be a valid GameMode value',
 	})
 	gameMode?: GameMode;
 
 	@ApiPropertyOptional({
 		description: 'Reason for deduction (for logging purposes)',
-		maxLength: 200,
+		maxLength: VALIDATION_LENGTH.REASON.MAX,
 	})
 	@IsOptional()
 	@IsString()
@@ -89,13 +88,17 @@ export class DeductCreditsDto {
 export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 	@ApiProperty({
 		description: 'Package ID for credits purchase',
-		minLength: 1,
-		maxLength: 50,
+		minLength: VALIDATION_LENGTH.NAME.MIN,
+		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Package ID is required' })
-	@MinLength(1, { message: 'Package ID must be at least 1 character long' })
-	@MaxLength(50, { message: 'Package ID cannot exceed 50 characters' })
+	@MinLength(VALIDATION_LENGTH.NAME.MIN, {
+		message: `Package ID must be at least ${VALIDATION_LENGTH.NAME.MIN} character long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
+		message: `Package ID cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
+	})
 	packageId: string;
 }
 
@@ -119,12 +122,9 @@ export class CanPlayDto {
 
 	@ApiPropertyOptional({
 		description: 'Game mode to evaluate (optional)',
-		enum: VALID_GAME_MODES,
+		enum: GameMode,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(VALID_GAME_MODES, {
-		message: `Game mode must be one of: ${VALID_GAME_MODES.join(', ')}`,
-	})
+	@IsEnum(GameMode, { message: 'Game mode must be a valid GameMode value' })
 	gameMode?: GameMode;
 }

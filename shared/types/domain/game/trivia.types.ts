@@ -57,9 +57,12 @@ export interface BaseTriviaConfig {
 	gameMode?: GameMode;
 }
 
-export interface TriviaQuestionInput {
+export interface TriviaQuestionCore {
 	question: string;
 	answers: TriviaAnswer[];
+}
+
+export interface TriviaQuestionInput extends TriviaQuestionCore {
 	correctAnswerIndex: number;
 	topic: string;
 	difficulty: GameDifficulty;
@@ -86,6 +89,7 @@ export interface TriviaRequest extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	category?: string;
 	userId?: string;
+	gameId?: string;
 	timeLimit?: number;
 	maxQuestionsPerGame?: number;
 	answerCount?: number;
@@ -105,10 +109,11 @@ export interface TriviaResponse {
 	fromCache: boolean;
 }
 
-export interface AnswerResult extends BaseAnswerData {
+export interface SubmitAnswerResult extends BaseAnswerData {
 	timeSpent: number;
 	scoreEarned: number;
 	totalScore: number;
+	sessionScore: number;
 	explanation?: string;
 	feedback: string;
 }

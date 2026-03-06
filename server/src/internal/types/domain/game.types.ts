@@ -1,23 +1,9 @@
 import type { Socket } from 'socket.io';
 
-import { DifficultyLevel, GameMode, GameStatus } from '@shared/constants';
-import type {
-	BaseCacheEntry,
-	GameDifficulty,
-	MultiplayerRoom,
-	Player,
-	SaveGameHistoryData,
-	TokenPayload,
-	TriviaAnswer,
-	TriviaQuestion,
-} from '@shared/types';
+import { GameMode } from '@shared/constants';
+import type { GameDifficulty, MultiplayerRoom, Player, SaveGameHistoryData, TokenPayload } from '@shared/types';
 
-export interface RoomTimer {
-	checkInterval: NodeJS.Timeout;
-	timeoutId: NodeJS.Timeout;
-}
-
-export type RoomTimerMap = Record<string, RoomTimer>;
+import { GameStatus } from '@internal/constants';
 
 export interface QuestionSchedule {
 	timeoutId: NodeJS.Timeout;
@@ -67,33 +53,9 @@ export type SubmitAnswerHttpResponse = {
 	};
 };
 
-export interface TriviaQuestionMetadata {
-	actualDifficulty: GameDifficulty;
-	gameQuestionCount: number;
-	customDifficultyMultiplier: number;
-	mappedDifficulty: DifficultyLevel;
-}
-
-export interface QuestionCacheEntry extends BaseCacheEntry {
-	question: TriviaQuestion;
-	accessCount: number;
-}
-
-export type QuestionCacheMap = Record<string, QuestionCacheEntry>;
-
-// Re-export shared types for convenience
-export type { SavedGameConfiguration } from '@shared/types';
-
 export interface StreakData {
 	current: number;
 	best: number;
-}
-
-export interface QuestionValidationPayload {
-	question: string;
-	answers: TriviaAnswer[];
-	topic?: string;
-	difficulty?: GameDifficulty;
 }
 
 export interface GetTriviaQuestionParams {
@@ -102,6 +64,8 @@ export interface GetTriviaQuestionParams {
 	questionsPerRequest: number;
 	userId?: string;
 	answerCount?: number;
+	/** When provided with userId, server stores questionSnapshots in session for consistent answer evaluation. */
+	gameId?: string;
 }
 
 export interface SubmitAnswerParams {
@@ -159,6 +123,11 @@ export interface GameSessionQuestion {
 	score: number;
 }
 
+/** Snapshot of correctAnswerIndex per question for the game (post-shuffle). Used to evaluate answers consistently with client. */
+export interface GameSessionQuestionSnapshot {
+	correctAnswerIndex: number;
+}
+
 export interface GameSessionState {
 	gameId: string;
 	userId: string;
@@ -168,6 +137,8 @@ export interface GameSessionState {
 	startedAt: string;
 	lastHeartbeat?: string;
 	questions: GameSessionQuestion[];
+	/** Optional: questionId -> snapshot (correctAnswerIndex after shuffle). Set when questions are returned to client. */
+	questionSnapshots?: Record<string, GameSessionQuestionSnapshot>;
 	currentScore: number;
 	correctAnswers: number;
 	totalQuestions: number;

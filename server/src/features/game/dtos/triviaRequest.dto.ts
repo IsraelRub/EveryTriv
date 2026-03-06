@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 
-import { DifficultyLevel, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
+import { DifficultyLevel, TIME_DURATIONS_SECONDS, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 import { IsGameDifficulty } from '@common/decorators';
@@ -9,8 +9,8 @@ import { IsGameDifficulty } from '@common/decorators';
 export class TriviaRequestDto {
 	@ApiProperty({ description: 'Trivia topic' })
 	@IsString()
-	@MinLength(2)
-	@MaxLength(100)
+	@MinLength(VALIDATION_LENGTH.TOPIC.MIN)
+	@MaxLength(VALIDATION_LENGTH.TOPIC.MAX)
 	topic!: string;
 
 	@ApiProperty({ description: 'Difficulty level (standard or custom)' })
@@ -41,7 +41,7 @@ export class TriviaRequestDto {
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(100)
+	@MaxLength(VALIDATION_LENGTH.TOPIC.MAX)
 	category?: string;
 
 	@ApiPropertyOptional({
@@ -50,6 +50,14 @@ export class TriviaRequestDto {
 	@IsOptional()
 	@IsString()
 	userId?: string;
+
+	@ApiPropertyOptional({
+		description:
+			'Optional game session ID. When provided with authenticated user, server stores question snapshots in session for consistent answer evaluation.',
+	})
+	@IsOptional()
+	@IsString()
+	gameId?: string;
 
 	@ApiPropertyOptional({
 		description: 'Optional game mode associated with this trivia request',
@@ -72,13 +80,13 @@ export class TriviaRequestDto {
 	@ApiPropertyOptional({
 		description:
 			'Optional maximum number of questions for the session. Undefined means no question limit (unlimited mode).',
-		minimum: 1,
-		maximum: 100,
+		minimum: VALIDATION_COUNT.QUESTIONS.MIN,
+		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 	})
 	@IsOptional()
 	@IsInt()
-	@Min(1)
-	@Max(100)
+	@Min(VALIDATION_COUNT.QUESTIONS.MIN)
+	@Max(VALIDATION_COUNT.LEADERBOARD.MAX)
 	maxQuestionsPerGame?: number;
 
 	@ApiPropertyOptional({

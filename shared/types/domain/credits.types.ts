@@ -1,9 +1,5 @@
 // Credits System Types for EveryTriv.
-import {
-	CreditSource as CreditSourceEnum,
-	CreditTransactionType as CreditTransactionTypeEnum,
-	PaymentMethod,
-} from '../../constants';
+import { CreditSource, CreditTransactionType, PaymentMethod } from '../../constants';
 import type { BaseTimestamps } from '../core/data.types';
 import type { ManualPaymentDetails } from './payment.types';
 
@@ -39,8 +35,8 @@ export interface CreditTransaction extends BaseTimestamps {
 	id: string;
 	userId: string;
 	amount: number;
-	type: (typeof CreditTransactionTypeEnum)[keyof typeof CreditTransactionTypeEnum];
-	source?: (typeof CreditSourceEnum)[keyof typeof CreditSourceEnum];
+	type: CreditTransactionType;
+	source?: CreditSource;
 	balanceAfter: number;
 	description?: string;
 	freeQuestionsAfter: number;

@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Users } from 'lucide-react';
 
-import { PlayerType } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
 
 import { ANIMATION_DELAYS, ROUTES } from '@/constants';
@@ -13,17 +11,18 @@ import { setGameMode } from '@/redux/slices';
 
 export function GameSetupView() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const dispatch = useAppDispatch();
-	const [playerType, setPlayerType] = useState<PlayerType | null>(null);
+	const isSingleOptions = location.pathname === ROUTES.GAME_SINGLE;
 
 	return (
-		<main className='h-screen overflow-hidden animate-fade-in-only'>
-			<div className='container mx-auto px-4 pt-0 pb-4 md:pb-6 h-full flex flex-col'>
-				<div className='max-w-6xl mx-auto space-y-4 md:space-y-6 flex-1 flex flex-col'>
-					{!playerType ? (
+		<main className='view-main animate-fade-in-only'>
+			<div className='container mx-auto h-full flex flex-col'>
+				<div className='view-centered-6xl view-spacing flex-1 flex flex-col'>
+					{!isSingleOptions ? (
 						<>
 							{/* Player Type Selection */}
-							<section className='space-y-4 md:space-y-6'>
+							<section className='view-spacing'>
 								<div className='text-center'>
 									<div className='mb-2 md:mb-4'>
 										<HomeButton />
@@ -32,7 +31,7 @@ export function GameSetupView() {
 									<p className='text-muted-foreground text-base md:text-lg'>How would you like to play today?</p>
 								</div>
 
-								<div className='grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto'>
+								<div className='grid grid-cols-1 md:grid-cols-2 gap-6 view-centered-2xl'>
 									<motion.div
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
@@ -40,7 +39,7 @@ export function GameSetupView() {
 									>
 										<Card
 											className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50 h-full'
-											onClick={() => setPlayerType(PlayerType.SINGLE)}
+											onClick={() => navigate(ROUTES.GAME_SINGLE)}
 										>
 											<div className='flex flex-col items-center text-center space-y-4'>
 												<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
@@ -78,18 +77,19 @@ export function GameSetupView() {
 							</section>
 						</>
 					) : (
-						/* Game Mode Selection */
-						<section className='space-y-4 md:space-y-6 max-w-4xl mx-auto'>
+						/* Single-player options (topic, difficulty, mode) */
+						<section className='view-spacing view-centered-4xl'>
 							<div className='text-center'>
 								<div className='mb-2 md:mb-4'>
-									<HomeButton onClick={() => setPlayerType(null)} />
+									<HomeButton onClick={() => navigate(ROUTES.GAME)} />
 								</div>
 								<h2 className='text-2xl md:text-3xl font-bold'>Choose Your Game Mode</h2>
 							</div>
 							<GameMode
 								onModeSelect={(settings: GameConfig) => {
 									dispatch(setGameMode(settings));
-									navigate(ROUTES.GAME_PLAY);
+									const gameId = crypto.randomUUID();
+									navigate(`/game/single/play/${gameId}`);
 								}}
 							/>
 						</section>

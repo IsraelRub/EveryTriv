@@ -1,37 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle, Clock, CreditCard, Crown, Infinity, ListOrdered, Users } from 'lucide-react';
+import { Clock, CreditCard, Crown, Infinity, ListOrdered, LucideIcon, Play, Users } from 'lucide-react';
 
 import {
-	CREDIT_COSTS,
-	DifficultyLevel,
 	GAME_MODES_CONFIG,
+	GAME_STATE_DEFAULTS,
 	GameMode as GameModeEnum,
 	TIME_DURATIONS_SECONDS,
-	UserRole,
 } from '@shared/constants';
-import type { GameConfig, GameDifficulty } from '@shared/types';
+import type { GameConfig } from '@shared/types';
 import { calculateRequiredCredits } from '@shared/utils';
-import {
-	createCustomDifficulty,
-	validateCustomDifficultyText,
-	validateTopicLength,
-	validateTriviaRequest,
-} from '@shared/validation';
 
-import {
-	ANIMATION_DELAYS,
-	ButtonVariant,
-	GAME_STATE_DEFAULTS,
-	ROUTES,
-	SCORING_DEFAULTS,
-	VALIDATION_MESSAGES,
-	VariantBase,
-} from '@/constants';
+import { AlertVariant, ANIMATION_DELAYS, Colors, GAME_MODES_SET, ROUTES, VariantBase } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
+	AlertIcon,
 	Badge,
 	Button,
 	Card,
@@ -42,25 +27,21 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
-import { useCanPlay, useUserRole } from '@/hooks';
+import { useCanPlay, useGameSettingsForm } from '@/hooks';
 import type { GameModeOption } from '@/types';
+import { cn } from '@/utils';
 import { GameSettingsForm } from './GameSettingsForm';
 
 // Icon mapping for game modes
-const GAME_MODE_ICONS: Record<GameModeEnum, typeof ListOrdered | typeof Clock | typeof Infinity | typeof Users> = {
+const GAME_MODE_ICONS: Record<GameModeEnum, LucideIcon> = {
 	[GameModeEnum.QUESTION_LIMITED]: ListOrdered,
 	[GameModeEnum.TIME_LIMITED]: Clock,
 	[GameModeEnum.UNLIMITED]: Infinity,
 	[GameModeEnum.MULTIPLAYER]: Users,
 } as const;
 
-// Generate game modes array from GAME_MODES_CONFIG
-const isGameMode = (key: string): key is GameModeEnum => {
-	return Object.values(GameModeEnum).some(mode => mode === key);
-};
-
-const GAME_MODES: [GameModeEnum, GameModeOption][] = Object.keys(GAME_MODES_CONFIG)
-	.filter(isGameMode)
+const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption][] = Object.keys(GAME_MODES_CONFIG)
+	.filter((key: string): key is GameModeEnum => GAME_MODES_SET.has(key))
 	.filter(mode => mode !== GameModeEnum.MULTIPLAYER)
 	.map(mode => [
 		mode,
@@ -79,24 +60,33 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [noCreditsDialogOpen, setNoCreditsDialogOpen] = useState(false);
 
-	// Settings state
-	const [topic, setTopic] = useState<string>(GAME_STATE_DEFAULTS.TOPIC);
-	const [topicError, setTopicError] = useState<string>('');
+	// Shared game settings form state & validation
+	const {
+		topic,
+		topicError,
+		selectedDifficulty,
+		customDifficulty,
+		customDifficultyError,
+		answerCount,
+		isAdmin,
+		handleTopicChange,
+		setSelectedDifficulty,
+		setCustomDifficulty,
+		setCustomDifficultyError,
+		setAnswerCount,
+		validateSettings,
+		resetForm,
+	} = useGameSettingsForm();
+
+	// Mode-specific state (not shared with multiplayer)
 	const [maxQuestionsPerGame, setMaxQuestionsPerGame] = useState<number>(
 		GAME_MODES_CONFIG[GameModeEnum.QUESTION_LIMITED].defaults.maxQuestionsPerGame ?? 10
 	);
 	const [timeLimit, setTimeLimit] = useState<number>(
 		GAME_MODES_CONFIG[GameModeEnum.TIME_LIMITED].defaults.timeLimit ?? TIME_DURATIONS_SECONDS.MINUTE
 	);
-	const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
-	const [customDifficulty, setCustomDifficulty] = useState('');
-	const [customDifficultyError, setCustomDifficultyError] = useState<string>('');
-	const [answerCount, setAnswerCount] = useState<number>(SCORING_DEFAULTS.ANSWER_COUNT);
 
 	// Credit check
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
 	// Calculate the value for credit check based on game mode:
 	// - TIME_LIMITED: Uses timeLimit in seconds (5 credits per 30 seconds)
 	// - QUESTION_LIMITED: Uses maxQuestionsPerGame (1 credit per question)
@@ -104,7 +94,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const getCreditCheckValue = (): number => {
 		if (!selectedMode) return maxQuestionsPerGame;
 
-		const costConfig = CREDIT_COSTS[selectedMode];
+		const costConfig = GAME_MODES_CONFIG[selectedMode];
 
 		// If mode charges after game, return 0 to allow starting
 		// Note: UNLIMITED mode now charges in real-time, so it requires 1 credit minimum
@@ -129,6 +119,9 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const creditCheckValue = getCreditCheckValue();
 	const { data: canPlay } = useCanPlay(creditCheckValue, selectedMode ?? GameModeEnum.QUESTION_LIMITED);
 
+	const SelectedModeIcon = selectedMode ? GAME_MODE_ICONS[selectedMode] : null;
+	const selectedModeConfig = selectedMode ? GAME_MODES_CONFIG[selectedMode] : null;
+
 	// Calculate the actual credit cost to display to the user
 	const getDisplayedCreditCost = (): number => {
 		if (!selectedMode) return maxQuestionsPerGame;
@@ -145,22 +138,14 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const handleModeClick = (mode: GameModeEnum) => {
 		// Set default values based on mode
 		const defaults = GAME_MODES_CONFIG[mode].defaults;
-		// Only update maxQuestionsPerGame if it's defined (not undefined) and showQuestionLimit is true
-		if (defaults.maxQuestionsPerGame !== undefined && defaults.maxQuestionsPerGame !== null) {
+		if (defaults.maxQuestionsPerGame != null) {
 			setMaxQuestionsPerGame(defaults.maxQuestionsPerGame);
 		}
 		if (defaults.timeLimit) {
 			setTimeLimit(defaults.timeLimit);
 		}
 
-		// Reset form
-		setTopic(GAME_STATE_DEFAULTS.TOPIC);
-		setTopicError('');
-		setSelectedDifficulty(DifficultyLevel.MEDIUM);
-		setCustomDifficulty('');
-		setCustomDifficultyError('');
-		setAnswerCount(SCORING_DEFAULTS.ANSWER_COUNT);
-
+		resetForm();
 		setSelectedMode(mode);
 		setDialogOpen(true);
 	};
@@ -175,52 +160,8 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 			return;
 		}
 
-		// Format custom difficulty with prefix, or use standard difficulty
-		let finalDifficulty: GameDifficulty;
-		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-			finalDifficulty = customDifficulty.trim() ? createCustomDifficulty(customDifficulty) : DifficultyLevel.MEDIUM;
-		} else {
-			finalDifficulty = selectedDifficulty;
-		}
-
-		// Validate trivia request if topic is provided (empty topic is allowed for random)
-		const trimmedTopic = topic.trim();
-		if (trimmedTopic) {
-			const triviaValidation = validateTriviaRequest(trimmedTopic, finalDifficulty);
-			if (!triviaValidation.isValid) {
-				// Set topic error if there are topic-related errors
-				const topicErrors = triviaValidation.errors.filter(
-					err => err.toLowerCase().includes('topic') || err.toLowerCase().includes('length')
-				);
-				if (topicErrors.length > 0 && topicErrors[0]) {
-					setTopicError(topicErrors[0]);
-				}
-				// Set custom difficulty error if there are difficulty-related errors
-				if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-					const difficultyErrors = triviaValidation.errors.filter(
-						err => !err.toLowerCase().includes('topic') && !err.toLowerCase().includes('length')
-					);
-					if (difficultyErrors.length > 0 && difficultyErrors[0]) {
-						setCustomDifficultyError(difficultyErrors[0]);
-					}
-				}
-				return;
-			}
-		}
-		setTopicError('');
-
-		// Validate custom difficulty if selected
-		if (selectedDifficulty === DifficultyLevel.CUSTOM) {
-			const trimmedCustomDifficulty = customDifficulty.trim();
-			const validation = validateCustomDifficultyText(trimmedCustomDifficulty);
-
-			if (!validation.isValid) {
-				setCustomDifficultyError(validation.errors[0] ?? VALIDATION_MESSAGES.CUSTOM_DIFFICULTY_INVALID);
-				return;
-			}
-
-			setCustomDifficultyError('');
-		}
+		const { isValid, finalDifficulty } = validateSettings();
+		if (!isValid) return;
 
 		const modeConfig = GAME_MODES_CONFIG[selectedMode];
 		const settings: GameConfig = {
@@ -229,7 +170,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 			topic: topic.trim() || GAME_STATE_DEFAULTS.TOPIC,
 			maxQuestionsPerGame: modeConfig.showQuestionLimit ? maxQuestionsPerGame : modeConfig.defaults.maxQuestionsPerGame,
 			timeLimit: modeConfig.showTimeLimit ? timeLimit : undefined,
-			answerCount: answerCount,
+			answerCount,
 		};
 
 		onModeSelect(settings);
@@ -239,7 +180,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	return (
 		<>
 			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-				{GAME_MODES.map(([mode, config], index) => {
+				{GAME_MODES_OPTIONS.map(([mode, config], index) => {
 					const Icon = config.icon;
 
 					return (
@@ -276,21 +217,21 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 				<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
 					<DialogHeader className='flex-shrink-0'>
 						<DialogTitle className='flex items-center gap-2'>
-							{selectedMode &&
-								(() => {
-									const Icon = GAME_MODE_ICONS[selectedMode];
-									const config = GAME_MODES_CONFIG[selectedMode];
-									return (
-										<>
-											<Icon className='w-5 h-5 text-primary' />
-											{config.name}
-										</>
-									);
-								})()}
+							{selectedMode && SelectedModeIcon && selectedModeConfig && (
+								<>
+									<SelectedModeIcon className='w-5 h-5 text-primary' />
+									{selectedModeConfig.name}
+								</>
+							)}
 							{isAdmin && (
 								<Badge
 									variant={VariantBase.SECONDARY}
-									className='ml-2 bg-amber-500/10 text-amber-600 border-amber-500/30'
+									className={cn(
+										'ml-2',
+										`${Colors.AMBER_600.border}/30`,
+										`${Colors.AMBER_600.bg}/10`,
+										Colors.AMBER_600.text
+									)}
 								>
 									<Crown className='w-3 h-3 mr-1' />
 									Free Play
@@ -327,24 +268,14 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 
 						{/* Credit Warning */}
 						{!isAdmin && !canPlay && (
-							<Alert variant={VariantBase.DESTRUCTIVE}>
-								<AlertCircle className='h-4 w-4' />
+							<Alert variant={AlertVariant.DESTRUCTIVE}>
 								<AlertDescription>Not enough credits. You need {displayedCreditCost} credits to play.</AlertDescription>
 							</Alert>
 						)}
 
 						<GameSettingsForm
 							topic={topic}
-							onTopicChange={value => {
-								setTopic(value);
-								// Validate topic in real-time if not empty
-								if (value.trim()) {
-									const topicValidation = validateTopicLength(value.trim());
-									setTopicError(topicValidation.isValid ? '' : (topicValidation.errors[0] ?? ''));
-								} else {
-									setTopicError('');
-								}
-							}}
+							onTopicChange={handleTopicChange}
 							topicError={topicError}
 							selectedDifficulty={selectedDifficulty}
 							onDifficultyChange={setSelectedDifficulty}
@@ -363,10 +294,11 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 					</div>
 
 					<DialogFooter className='flex-shrink-0 gap-2 sm:gap-0'>
-						<Button variant={ButtonVariant.OUTLINE} onClick={() => setDialogOpen(false)}>
+						<Button variant={VariantBase.OUTLINE} onClick={() => setDialogOpen(false)}>
 							Cancel
 						</Button>
 						<Button onClick={handleStartGame} disabled={!isAdmin && !canPlay}>
+							<Play className='h-4 w-4 mr-2' />
 							Start Game
 						</Button>
 					</DialogFooter>
@@ -378,7 +310,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle className='flex items-center gap-2 text-destructive'>
-							<AlertCircle className='w-5 h-5' />
+							<AlertIcon size='lg' />
 							Not Enough Credits
 						</DialogTitle>
 						<DialogDescription>
@@ -391,10 +323,10 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 						</p>
 					</div>
 					<DialogFooter className='gap-2 sm:gap-0'>
-						<Button variant={ButtonVariant.OUTLINE} onClick={() => setNoCreditsDialogOpen(false)}>
+						<Button variant={VariantBase.OUTLINE} onClick={() => setNoCreditsDialogOpen(false)}>
 							Cancel
 						</Button>
-						<Button onClick={() => navigate(ROUTES.PAYMENT, { state: { modal: true, returnUrl: ROUTES.GAME_PLAY } })}>
+						<Button onClick={() => navigate(ROUTES.PAYMENT, { state: { modal: true, returnUrl: ROUTES.GAME_SINGLE } })}>
 							<CreditCard className='w-4 h-4 mr-2' />
 							Get Credits
 						</Button>

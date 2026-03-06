@@ -1,57 +1,115 @@
-import { Trophy } from 'lucide-react';
+import { useMemo } from 'react';
+import { Brain, CalendarDays, ChartNoAxesCombined, GamepadIcon, Medal } from 'lucide-react';
 
-import { StatCardVariant } from '@/constants';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, GameStatsCard, Skeleton } from '@/components';
+import { formatNumericValue } from '@shared/utils';
+
+import { ButtonSize, Colors, SkeletonVariant, StatCardVariant, VariantBase } from '@/constants';
+import {
+	Button,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	EmptyState,
+	Skeleton,
+	StatsSectionCard,
+} from '@/components';
 import { useUserAnalytics } from '@/hooks';
-import { hasNoGames } from '@/utils';
+import type { StatCardProps } from '@/types';
 
 export function HomeStats() {
-	const { data: analytics, isLoading } = useUserAnalytics();
+	const { data: analytics, isLoading, isError, refetch } = useUserAnalytics();
 	const gameStats = analytics?.game;
 	const performanceStats = analytics?.performance;
+	const VARIANT = StatCardVariant.CENTERED;
 
-	if (isLoading) {
-		return (
-			<Card className='border-primary/20 bg-primary/5'>
-				<CardHeader>
-					<Skeleton className='h-6 w-32' />
-					<Skeleton className='h-4 w-48 mt-2' />
-				</CardHeader>
-				<CardContent>
-					<Skeleton className='h-10 w-40' />
-				</CardContent>
-			</Card>
-		);
-	}
+	const stats = useMemo((): StatCardProps[] => {
+		const streak: StatCardProps = {
+			icon: CalendarDays,
+			label: 'Current Streak',
+			value: formatNumericValue(performanceStats?.streakDays, 0, ' days'),
+			color: Colors.ORANGE_500.text,
+			variant: VARIANT,
+			animate: true,
+		};
+		const base: StatCardProps[] = [
+			{
+				icon: GamepadIcon,
+				label: 'Total Games',
+				value: formatNumericValue(gameStats?.totalGames, 0),
+				color: Colors.BLUE_500.text,
+				variant: VARIANT,
+			},
+			{
+				icon: Brain,
+				label: 'Success Rate',
+				value: formatNumericValue(gameStats?.successRate, 0, '%'),
+				color: Colors.GREEN_500.text,
+				variant: VARIANT,
+			},
+			{
+				icon: Medal,
+				label: 'Best Score',
+				value: formatNumericValue(gameStats?.bestScore, 0),
+				color: Colors.YELLOW_500.text,
+				variant: VARIANT,
+			},
+		];
+		return [streak, ...base];
+	}, [gameStats, performanceStats, VARIANT]);
 
-	if (hasNoGames(gameStats)) {
+	const isEmpty =
+		!gameStats ||
+		((gameStats.totalGames ?? 0) === 0 &&
+			(gameStats.totalQuestionsAnswered ?? 0) === 0 &&
+			(gameStats.totalScore ?? 0) === 0 &&
+			(gameStats.bestScore ?? 0) === 0 &&
+			(!Array.isArray(gameStats.recentActivity) || gameStats.recentActivity.length === 0));
+
+	if (isLoading || isError || isEmpty) {
+		const description = isError
+			? 'Could not load your statistics'
+			: isEmpty
+				? 'Track your progress and achievements'
+				: 'Your quick stats at a glance';
 		return (
-			<Card className='border-primary/20 bg-primary/5'>
+			<Card className='card-primary-tint'>
 				<CardHeader>
 					<CardTitle className='text-xl flex items-center gap-2'>
-						<Trophy className='h-5 w-5 text-primary' />
+						<ChartNoAxesCombined className='h-5 w-5 text-primary' />
 						Your Overview
 					</CardTitle>
-					<CardDescription>Track your progress and achievements</CardDescription>
+					<CardDescription>{description}</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<EmptyState data='your statistics and progress' />
+					{isLoading ? (
+						<>
+							<Skeleton variant={SkeletonVariant.TextLarge} className='mb-2' />
+							<Skeleton variant={SkeletonVariant.InputMedium} />
+						</>
+					) : isError ? (
+						<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={() => refetch()}>
+							Try again
+						</Button>
+					) : (
+						<EmptyState data='your statistics and progress' />
+					)}
 				</CardContent>
 			</Card>
 		);
 	}
 
 	return (
-		<GameStatsCard
-			gameStats={gameStats}
-			performanceStats={performanceStats}
-			variant={StatCardVariant.CENTERED}
-			showStreak
-			className='border-primary/20 bg-primary/5'
+		<StatsSectionCard
 			title='Your Overview'
 			description='Your quick stats at a glance'
-			titleIcon={Trophy}
+			titleIcon={ChartNoAxesCombined}
+			stats={stats}
+			variant={VARIANT}
+			gridCols='grid-cols-2'
 			isLoading={isLoading}
+			className='card-primary-tint'
 		/>
 	);
 }

@@ -9,22 +9,17 @@ import type { QuestionSchedule } from '@internal/types';
 export class QuestionSchedulerService implements OnModuleDestroy {
 	private readonly activeSchedules = new Map<string, QuestionSchedule>();
 
-	scheduleAnswerCheck(
-		roomId: string,
-		checkIntervalMs: number,
-		checkCallback: () => Promise<boolean>,
-		endCallback: () => Promise<void>
-	): void {
+	/**
+	 * Schedules question end by timer only. No early end when all players have answered.
+	 * @param roomId - Room id
+	 * @param durationMs - Question duration in milliseconds (e.g. timePerQuestion * 1000)
+	 * @param endCallback - Called when the timer expires
+	 */
+	scheduleQuestionEnd(roomId: string, durationMs: number, endCallback: () => Promise<void>): void {
 		this.cancelSchedule(roomId);
-
-		// eslint-disable-next-line prefer-const -- checkIntervalId is assigned on line 43
-		let checkIntervalId: NodeJS.Timeout | undefined;
 
 		const handleTimeout = async () => {
 			try {
-				if (checkIntervalId) {
-					clearInterval(checkIntervalId);
-				}
 				this.activeSchedules.delete(roomId);
 				await endCallback();
 			} catch (error) {
@@ -34,31 +29,10 @@ export class QuestionSchedulerService implements OnModuleDestroy {
 				});
 			}
 		};
-		const timeoutId = setTimeout(handleTimeout, checkIntervalMs * 100); // Fallback: 100x check interval
-
-		const handleIntervalCheck = async () => {
-			try {
-				const allAnswered = await checkCallback();
-				if (allAnswered) {
-					if (checkIntervalId) {
-						clearInterval(checkIntervalId);
-					}
-					clearTimeout(timeoutId);
-					this.activeSchedules.delete(roomId);
-					await endCallback();
-				}
-			} catch (error) {
-				logger.gameError('Answer check callback failed', {
-					errorInfo: { message: getErrorMessage(error) },
-					roomId,
-				});
-			}
-		};
-		checkIntervalId = setInterval(handleIntervalCheck, checkIntervalMs);
+		const timeoutId = setTimeout(handleTimeout, durationMs);
 
 		this.activeSchedules.set(roomId, {
 			timeoutId,
-			checkInterval: checkIntervalId,
 			roomId,
 			startedAt: new Date(),
 		});

@@ -1,3 +1,5 @@
+import { TIME_PERIODS_MS } from './time.constants';
+
 export const API_ENDPOINTS = {
 	AUTH: {
 		BASE: '/auth',
@@ -9,6 +11,8 @@ export const API_ENDPOINTS = {
 		GOOGLE: '/auth/google',
 		GOOGLE_CALLBACK: '/auth/google/callback',
 		ADMIN_USERS: '/auth/admin/users',
+		REQUEST_VERIFICATION_EMAIL: '/auth/request-verification-email',
+		VERIFY_EMAIL: '/auth/verify-email',
 	},
 	USER: {
 		BASE: '/users',
@@ -114,9 +118,11 @@ export const API_ENDPOINTS = {
 		STATS_CONSISTENCY_CHECK_ALL: '/admin/maintenance/stats/consistency-check/all',
 		STATS_CONSISTENCY: '/admin/maintenance/stats/consistency/:userId',
 		STATS_FIX_CONSISTENCY: '/admin/maintenance/stats/fix-consistency/:userId',
+		DATA_ACHIEVEMENTS_CLEANUP_OBSOLETE: '/admin/maintenance/data/achievements/cleanup-obsolete',
 		DATA_GAME_HISTORY_CLEAR_ALL: '/admin/maintenance/data/game-history/clear-all',
 		DATA_TRIVIA_CLEAR_ALL: '/admin/maintenance/data/trivia/clear-all',
 		DATA_USER_STATS_CLEAR_ALL: '/admin/maintenance/data/user-stats/clear-all',
+		DATA_TEST_USERS_CLEANUP: '/admin/maintenance/data/test-users/cleanup',
 	},
 	AI_PROVIDERS: {
 		BASE: '/ai-providers',
@@ -126,7 +132,7 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const COOKIE_NAMES = {
-	AUTH_TOKEN: 'auth_token',
+	AUTH_TOKEN: 'access_token',
 	REFRESH_TOKEN: 'refresh_token',
 	USER_PREFERENCES: 'user_preferences',
 } as const;
@@ -140,11 +146,11 @@ export const PAGINATION_DEFAULTS = {
 } as const;
 
 export const RATE_LIMIT_DEFAULTS = {
-	WINDOW_MS: 60000,
+	WINDOW_MS: TIME_PERIODS_MS.MINUTE,
 	MAX_REQUESTS: 200,
 	MAX_REQUESTS_PER_WINDOW: 200,
 	BURST_LIMIT: 50,
-	BURST_WINDOW_MS: 10000,
+	BURST_WINDOW_MS: TIME_PERIODS_MS.TEN_SECONDS,
 	MESSAGE: 'Too many requests, please try again later',
 	BURST_MESSAGE: 'Rate limit exceeded, please slow down',
 } as const;

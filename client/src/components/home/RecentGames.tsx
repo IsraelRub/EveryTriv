@@ -1,30 +1,26 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Calendar, Clock, Trophy } from 'lucide-react';
+import { Calendar, Clock, Trophy, User, Users } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant, ROUTES, SKELETON_HEIGHTS, SKELETON_WIDTHS } from '@/constants';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Skeleton } from '@/components';
+import { GameMode } from '@shared/constants';
+import { formatDate, formatDifficulty, getDifficultyBadgeClasses } from '@shared/utils';
+
+import { Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase, ViewAllDestination } from '@/constants';
+import {
+	Badge,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	EmptyState,
+	Skeleton,
+	ViewAllButton,
+} from '@/components';
 import { useGameHistory } from '@/hooks';
-import { formatDate } from '@/utils';
+import { cn } from '@/utils';
 
 export function RecentGames() {
-	const navigate = useNavigate();
 	const { data: historyData, isLoading } = useGameHistory(3, 0);
 	const recentGames = Array.isArray(historyData) ? historyData : [];
-
-	if (isLoading) {
-		return (
-			<Card className='h-full'>
-				<CardHeader>
-					<CardTitle className='text-xl'>Recent Games</CardTitle>
-				</CardHeader>
-				<CardContent className='space-y-4'>
-					{[...Array(3)].map((_, i) => (
-						<Skeleton key={i} className={`${SKELETON_HEIGHTS.ROW} ${SKELETON_WIDTHS.FULL}`} />
-					))}
-				</CardContent>
-			</Card>
-		);
-	}
 
 	return (
 		<Card className='h-full flex flex-col'>
@@ -36,26 +32,23 @@ export function RecentGames() {
 					</CardTitle>
 					<CardDescription>Your last played games</CardDescription>
 				</div>
-				<Button
-					variant={ButtonVariant.GHOST}
-					size={ButtonSize.SM}
-					onClick={() => navigate(ROUTES.STATISTICS)}
-					className='text-xs'
-				>
-					View All <ArrowRight className='w-3 h-3 ml-1' />
-				</Button>
+				<ViewAllButton destination={ViewAllDestination.HISTORY} visible={recentGames.length > 0} />
 			</CardHeader>
 			<CardContent className='flex-1'>
-				{recentGames.length > 0 ? (
+				{isLoading ? (
+					<div className='space-y-4'>
+						<Skeleton variant={SkeletonVariant.Row} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
+					</div>
+				) : recentGames.length > 0 ? (
 					<div className='space-y-4'>
 						{recentGames.map(game => (
 							<div
 								key={game.id}
-								className='flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors'
+								className='flex items-center justify-between p-3 rounded-lg bg-muted/50 transition-colors hover-row'
 							>
 								<div className='space-y-1'>
 									<div className='flex items-center gap-2 text-sm font-medium'>
-										<Trophy className='w-3 h-3 text-yellow-500' />
+										<Trophy className={cn('w-3 h-3', Colors.YELLOW_500.text)} />
 										<span>{game.score} points</span>
 									</div>
 									<div className='flex items-center gap-2 text-xs text-muted-foreground'>
@@ -63,10 +56,26 @@ export function RecentGames() {
 										<span>{formatDate(game.createdAt)}</span>
 									</div>
 								</div>
-								<div className='text-right'>
-									<div className='text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary uppercase'>
-										{game.difficulty}
-									</div>
+								<div className='text-right shrink-0 flex flex-col items-end gap-1'>
+									<Badge
+										variant={VariantBase.OUTLINE}
+										className={cn('shrink-0', getDifficultyBadgeClasses(game.difficulty))}
+									>
+										{formatDifficulty(game.difficulty)}
+									</Badge>
+									<span className='text-[10px] text-muted-foreground flex items-center gap-1 justify-end'>
+										{game.gameMode === GameMode.MULTIPLAYER ? (
+											<>
+												<Users className='w-3 h-3 shrink-0' />
+												Multiplayer
+											</>
+										) : (
+											<>
+												<User className='w-3 h-3 shrink-0' />
+												Single
+											</>
+										)}
+									</span>
 								</div>
 							</div>
 						))}

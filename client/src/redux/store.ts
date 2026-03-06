@@ -37,7 +37,7 @@ const gameSessionPersistConfig = {
 		'score',
 		'correctAnswers',
 		'questions',
-		'AnswerHistory',
+		'answerHistory',
 		'streak',
 		'gameStartTime',
 		'timeSpent',

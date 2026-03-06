@@ -48,7 +48,7 @@ export class PayPalAuthService {
 			const tokenData = response.data;
 			const ttl = Math.max(0, tokenData.expires_in - TIME_DURATIONS_SECONDS.MINUTE);
 
-			await this.cacheService.set(SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN, tokenData.access_token, ttl * 1000);
+			await this.cacheService.set(SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN, tokenData.access_token, ttl);
 
 			logger.apiCreate('paypal_token_refresh', {
 				expiresIn: String(tokenData.expires_in),

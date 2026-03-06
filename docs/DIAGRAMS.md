@@ -884,9 +884,8 @@ graph TB
     
     B --> F[Groq API<br/>Unified Endpoint]
     F --> G[llama-3.1-8b-instant<br/>Priority: 1, Free]
-    F --> H[gpt-oss-20b<br/>Priority: 1, Free Tier]
     F --> I[gpt-oss-120b<br/>Priority: 2, Paid]
-    F --> J[llama-3.1-70b-versatile<br/>Priority: 3, Paid]
+    F --> J[llama-3.1-70b-versatile<br/>Priority: 2, Paid]
     
     A --> K[Prompt Templates]
     K --> L[Trivia Prompt]

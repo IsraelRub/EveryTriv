@@ -244,11 +244,6 @@ class ClientLoggerService extends BaseLoggerService {
 		});
 	};
 
-	public paymentInfo: LogMessageFn = (message, meta) => {
-		BaseLoggerService.prototype.paymentInfo.call(this, message, meta);
-		// No toast for successful payment - user doesn't need notification for normal operations
-	};
-
 	public paymentSuccess: LogMessageFn = (message, meta) => {
 		this.log('info', message, meta, {
 			baseMethod: BaseLoggerService.prototype.paymentInfo.bind(this),

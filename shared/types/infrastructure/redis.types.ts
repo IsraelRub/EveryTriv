@@ -10,22 +10,3 @@ export interface RedisConfig {
 	maxMemoryPolicy?: string;
 	ttl?: number;
 }
-
-export interface RedisStats {
-	totalKeys: number;
-	memoryUsage: number;
-	hitRate: number;
-	missRate: number;
-	operationsPerSecond: number;
-	connectedClients: number;
-	uptime: number;
-	lastSave: Date;
-	usedMemory: string;
-	usedMemoryPeak: string;
-	usedMemoryRss: string;
-	fragmentationRatio: number;
-	keyspaceHits: number;
-	keyspaceMisses: number;
-	expiredKeys: number;
-	evictedKeys: number;
-}

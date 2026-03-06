@@ -1,55 +1,53 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-	ArrowUpDown,
-	Filter,
-	Flame,
+	Brain,
+	CalendarDays,
 	GamepadIcon,
+	GraduationCap,
 	Hash,
+	Medal,
 	Percent,
-	Target,
 	Timer,
-	Trophy,
 	TrendingDown,
 	TrendingUp,
 } from 'lucide-react';
 
-import { AchievementSortBy, ComparisonTarget, TIME_PERIODS_MS, VALIDATORS, VALID_ACHIEVEMENT_CATEGORIES } from '@shared/constants';
+import { ComparisonTarget, TIME_PERIODS_MS } from '@shared/constants';
+import { formatNumericValue } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
-import { AchievementCardVariant, BgColor, ButtonSize, ButtonVariant, CHART_HEIGHTS, QUERY_KEYS, VariantBase } from '@/constants';
+import { AchievementCardVariant, AchievementsDescriptionKind, CHART_HEIGHTS, Colors, QUERY_KEYS } from '@/constants';
 import {
-	AchievementCard,
-	Badge,
-	Button,
+	AchievementsSection,
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
 	CategoryAnalysis,
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+	EmptyState,
 	PerformanceAnalysis,
 	StatCard,
 	TrendChart,
 } from '@/components';
 import { useCurrentUserData, useUnifiedUserAnalytics, useUserAnalytics } from '@/hooks';
 import { analyticsService } from '@/services';
-import { formatPlayTime } from '@/utils';
-import { calculateTotalAchievementPoints } from '@/utils/domain/achievement-icons.utils';
+import { buildAchievementContext, buildDisplayAchievements, cn, formatPlayTime } from '@/utils';
 
 export function StatisticsPerformanceTab() {
 	const currentUser = useCurrentUserData();
 	const { data: analytics, isLoading: analyticsLoading } = useUserAnalytics();
-	const { data: unifiedData } = useUnifiedUserAnalytics(['achievements']);
+	const { data: unifiedData } = useUnifiedUserAnalytics(['achievements', 'statistics', 'performance']);
 
-	const achievements = unifiedData?.data?.achievements;
-	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(VALID_ACHIEVEMENT_CATEGORIES);
-	const [sortBy, setSortBy] = useState<AchievementSortBy>(AchievementSortBy.POINTS);
+	const context = useMemo(
+		() => buildAchievementContext(unifiedData?.data?.statistics, unifiedData?.data?.performance),
+		[unifiedData?.data?.statistics, unifiedData?.data?.performance]
+	);
+	const achievements = useMemo(
+		() => buildDisplayAchievements(unifiedData?.data?.achievements ?? [], context),
+		[unifiedData?.data?.achievements, context]
+	);
 
 	const gameStats = analytics?.game;
 	const userDifficultyData = gameStats?.difficultyBreakdown
@@ -104,52 +102,34 @@ export function StatisticsPerformanceTab() {
 		};
 	}, [gameStats?.topicsPlayed]);
 
-	const filteredAndSortedAchievements = useMemo(() => {
-		if (!achievements || achievements.length === 0) return null;
-		const filtered = achievements.filter(a => selectedCategories.has(a.category));
-		const sorted = [...filtered].sort((a, b) => {
-			switch (sortBy) {
-				case AchievementSortBy.POINTS:
-					return b.points - a.points;
-				case AchievementSortBy.NAME:
-					return a.name.localeCompare(b.name);
-				case AchievementSortBy.CATEGORY:
-					return a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
-				default:
-					return 0;
-			}
-		});
-		return sorted;
-	}, [achievements, selectedCategories, sortBy]);
-
-	const totalAchievementPoints = useMemo(
-		() => calculateTotalAchievementPoints(filteredAndSortedAchievements),
-		[filteredAndSortedAchievements],
-	);
-
-	const availableCategories = useMemo(() => {
-		if (!achievements || achievements.length === 0) return [];
-		return Array.from(new Set(achievements.map(a => a.category))).sort();
+	const achievementsByPoints = useMemo(() => {
+		if (achievements.length === 0) return [];
+		return [...achievements].sort((a, b) => b.points - a.points);
 	}, [achievements]);
 
-	const toggleCategory = (category: string) => {
-		setSelectedCategories(prev => {
-			const next = new Set(prev);
-			if (next.has(category)) next.delete(category);
-			else next.add(category);
-			return next;
-		});
-	};
-
 	const performanceStats = analytics?.performance;
+
+	if (!analyticsLoading && (gameStats?.totalGames ?? 0) === 0) {
+		return (
+			<Card>
+				<CardContent className='p-6'>
+					<EmptyState
+						data='performance statistics'
+						icon={TrendingUp}
+						description='Start playing trivia games to see your performance stats, achievements, and trends here!'
+					/>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	return (
 		<div className='space-y-8'>
 			{/* Key Stats */}
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Target className='h-5 w-5' />
+						<Brain className='h-5 w-5 text-primary' />
 						Your Stats at a Glance
 					</CardTitle>
 					<CardDescription>Core performance metrics</CardDescription>
@@ -160,30 +140,28 @@ export function StatisticsPerformanceTab() {
 							icon={GamepadIcon}
 							label='Total Games'
 							value={gameStats?.totalGames ?? 0}
-							color={BgColor.BLUE_500}
-							countUp
+							color={Colors.BLUE_500.text}
 							isLoading={analyticsLoading}
 						/>
 						<StatCard
-							icon={Trophy}
+							icon={Medal}
 							label='Best Score'
 							value={gameStats?.bestScore ?? 0}
-							color={BgColor.YELLOW_500}
-							countUp
+							color={Colors.YELLOW_500.text}
 							isLoading={analyticsLoading}
 						/>
 						<StatCard
 							icon={Timer}
 							label='Total Play Time'
 							value={formatPlayTime(gameStats?.totalPlayTime ?? 0, 'seconds')}
-							color={BgColor.PURPLE_500}
+							color={Colors.PURPLE_500.text}
 							isLoading={analyticsLoading}
 						/>
 						<StatCard
-							icon={Flame}
+							icon={CalendarDays}
 							label='Current Streak'
-							value={`${performanceStats?.streakDays ?? 0} days`}
-							color={BgColor.GREEN_500}
+							value={formatNumericValue(performanceStats?.streakDays, 0, ' days')}
+							color={Colors.GREEN_500.text}
 							isLoading={analyticsLoading}
 						/>
 					</div>
@@ -191,107 +169,24 @@ export function StatisticsPerformanceTab() {
 			</Card>
 
 			{/* Achievements */}
-			{achievements && achievements.length > 0 && (
-				<Card className='border-muted bg-muted/20'>
-					<CardHeader>
-						<div className='flex items-center justify-between'>
-							<div>
-								<CardTitle className='flex items-center gap-2'>
-									<Trophy className='h-5 w-5' />
-									Achievements
-								</CardTitle>
-								<CardDescription>
-									Your achievements and milestones • Total Points:{' '}
-									<span className='font-semibold text-primary'>{totalAchievementPoints}</span>
-								</CardDescription>
-							</div>
-							<div className='flex items-center gap-2'>
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} className='gap-2'>
-											<Filter className='h-4 w-4' />
-											Filter
-											{selectedCategories.size < availableCategories.length && (
-												<Badge variant={VariantBase.SECONDARY} className='ml-1'>
-													{selectedCategories.size}
-												</Badge>
-											)}
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align='end' className='w-48'>
-										<DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
-										<DropdownMenuSeparator />
-										{availableCategories.map(category => (
-											<DropdownMenuCheckboxItem
-												key={category}
-												checked={selectedCategories.has(category)}
-												onCheckedChange={() => toggleCategory(category)}
-											>
-												{category}
-											</DropdownMenuCheckboxItem>
-										))}
-									</DropdownMenuContent>
-								</DropdownMenu>
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button variant={ButtonVariant.OUTLINE} size={ButtonSize.SM} className='gap-2'>
-											<ArrowUpDown className='h-4 w-4' />
-											Sort
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align='end' className='w-48'>
-										<DropdownMenuLabel>Sort by</DropdownMenuLabel>
-										<DropdownMenuSeparator />
-										<DropdownMenuCheckboxItem
-											checked={sortBy === AchievementSortBy.POINTS}
-											onCheckedChange={() => setSortBy(AchievementSortBy.POINTS)}
-										>
-											Points (High to Low)
-										</DropdownMenuCheckboxItem>
-										<DropdownMenuCheckboxItem
-											checked={sortBy === AchievementSortBy.NAME}
-											onCheckedChange={() => setSortBy(AchievementSortBy.NAME)}
-										>
-											Name (A-Z)
-										</DropdownMenuCheckboxItem>
-										<DropdownMenuCheckboxItem
-											checked={sortBy === AchievementSortBy.CATEGORY}
-											onCheckedChange={() => setSortBy(AchievementSortBy.CATEGORY)}
-										>
-											Category
-										</DropdownMenuCheckboxItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-							</div>
-						</div>
-					</CardHeader>
-					<CardContent>
-						{filteredAndSortedAchievements && filteredAndSortedAchievements.length > 0 ? (
-							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-								{filteredAndSortedAchievements.map(achievement => (
-									<AchievementCard
-										key={achievement.id}
-										achievement={achievement}
-										variant={AchievementCardVariant.COMPACT}
-									/>
-								))}
-							</div>
-						) : (
-							<div className='text-center py-8 text-muted-foreground'>
-								<Filter className='h-8 w-8 mx-auto mb-2 opacity-50' />
-								<p>No achievements match the selected filters</p>
-							</div>
-						)}
-					</CardContent>
-				</Card>
+			{achievements.length > 0 && (
+				<AchievementsSection
+					cardClassName='card-muted-tint'
+					achievements={achievementsByPoints}
+					variant={AchievementCardVariant.COMPACT}
+					descriptionKind={AchievementsDescriptionKind.YOUR}
+					emptyMessage='No achievements yet'
+					emptyIcon={GraduationCap}
+					titleIcon={GraduationCap}
+				/>
 			)}
 
-			{/* Comparison View */}
-			{processedComparison && (
-				<Card className='border-muted bg-muted/20'>
+			{/* Comparison View – only when we have valid user and target metrics */}
+			{processedComparison?.userMetrics != null && processedComparison?.targetMetrics != null && (
+				<Card className='card-muted-tint'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
-							<TrendingUp className='h-5 w-5' />
+							<TrendingUp className='h-5 w-5 text-primary' />
 							Comparison with Global Average
 						</CardTitle>
 						<CardDescription>See how you perform compared to other players</CardDescription>
@@ -304,33 +199,45 @@ export function StatisticsPerformanceTab() {
 								<div className='space-y-3'>
 									<div className='flex justify-between items-center p-3 rounded-lg bg-primary/5'>
 										<span>Your Average</span>
-										<span className='font-bold'>{processedComparison.userMetrics.successRate.toFixed(1)}%</span>
+										<span className='font-bold'>
+											{formatNumericValue(processedComparison.userMetrics?.successRate, 1, '%')}
+										</span>
 									</div>
 									<div className='flex justify-between items-center p-3 rounded-lg bg-muted/50'>
 										<span>Global Average</span>
-										<span className='font-bold'>{processedComparison.targetMetrics.successRate.toFixed(1)}%</span>
+										<span className='font-bold'>
+											{formatNumericValue(processedComparison.targetMetrics?.successRate, 1, '%')}
+										</span>
 									</div>
 									<div
-										className={`flex justify-between items-center p-3 rounded-lg border ${
-											(processedComparison.differences.successRate ?? 0) > 0
-												? 'bg-green-500/10 border-green-500/30'
-												: 'bg-red-500/10 border-red-500/30'
-										}`}
+										className={cn(
+											'flex justify-between items-center p-3 rounded-lg border',
+											(processedComparison.differences?.successRate ?? 0) > 0
+												? `${Colors.GREEN_500.bg}/10 ${Colors.GREEN_500.border}/30`
+												: `${Colors.RED_500.bg}/10 ${Colors.RED_500.border}/30`
+										)}
 									>
 										<span>Difference</span>
 										<div className='flex items-center gap-2'>
-											{(processedComparison.differences.successRate ?? 0) > 0 ? (
-												<TrendingUp className='h-4 w-4 text-green-500' />
+											{(processedComparison.differences?.successRate ?? 0) > 0 ? (
+												<TrendingUp className={cn('h-4 w-4', Colors.GREEN_500.text)} />
 											) : (
-												<TrendingDown className='h-4 w-4 text-red-500' />
+												<TrendingDown className={cn('h-4 w-4', Colors.RED_500.text)} />
 											)}
 											<span
-												className={`font-bold ${
-													(processedComparison.differences.successRate ?? 0) > 0 ? 'text-green-500' : 'text-red-500'
-												}`}
+												className={cn(
+													'font-bold',
+													(processedComparison.differences?.successRate ?? 0) > 0
+														? Colors.GREEN_500.text
+														: Colors.RED_500.text
+												)}
 											>
-												{(processedComparison.differences.successRate ?? 0) > 0 ? '+' : ''}
-												{(processedComparison.differences.successRate ?? 0).toFixed(1)}%
+												{formatNumericValue(
+													processedComparison.differences?.successRate,
+													1,
+													'%',
+													(processedComparison.differences?.successRate ?? 0) > 0 ? '+' : ''
+												)}
 											</span>
 										</div>
 									</div>
@@ -343,33 +250,45 @@ export function StatisticsPerformanceTab() {
 								<div className='space-y-3'>
 									<div className='flex justify-between items-center p-3 rounded-lg bg-primary/5'>
 										<span>Your Average</span>
-										<span className='font-bold'>{processedComparison.userMetrics.averageScore.toFixed(0)}</span>
+										<span className='font-bold'>
+											{formatNumericValue(processedComparison.userMetrics?.averageScore, 0)}
+										</span>
 									</div>
 									<div className='flex justify-between items-center p-3 rounded-lg bg-muted/50'>
 										<span>Global Average</span>
-										<span className='font-bold'>{processedComparison.targetMetrics.averageScore.toFixed(0)}</span>
+										<span className='font-bold'>
+											{formatNumericValue(processedComparison.targetMetrics?.averageScore, 0)}
+										</span>
 									</div>
 									<div
-										className={`flex justify-between items-center p-3 rounded-lg border ${
-											(processedComparison.differences.averageScore ?? 0) > 0
-												? 'bg-green-500/10 border-green-500/30'
-												: 'bg-red-500/10 border-red-500/30'
-										}`}
+										className={cn(
+											'flex justify-between items-center p-3 rounded-lg border',
+											(processedComparison.differences?.averageScore ?? 0) > 0
+												? `${Colors.GREEN_500.bg}/10 ${Colors.GREEN_500.border}/30`
+												: `${Colors.RED_500.bg}/10 ${Colors.RED_500.border}/30`
+										)}
 									>
 										<span>Difference</span>
 										<div className='flex items-center gap-2'>
-											{(processedComparison.differences.averageScore ?? 0) > 0 ? (
-												<TrendingUp className='h-4 w-4 text-green-500' />
+											{(processedComparison.differences?.averageScore ?? 0) > 0 ? (
+												<TrendingUp className={cn('h-4 w-4', Colors.GREEN_500.text)} />
 											) : (
-												<TrendingDown className='h-4 w-4 text-red-500' />
+												<TrendingDown className={cn('h-4 w-4', Colors.RED_500.text)} />
 											)}
 											<span
-												className={`font-bold ${
-													(processedComparison.differences.averageScore ?? 0) > 0 ? 'text-green-500' : 'text-red-500'
-												}`}
+												className={cn(
+													'font-bold',
+													(processedComparison.differences?.averageScore ?? 0) > 0
+														? Colors.GREEN_500.text
+														: Colors.RED_500.text
+												)}
 											>
-												{(processedComparison.differences.averageScore ?? 0) > 0 ? '+' : ''}
-												{(processedComparison.differences.averageScore ?? 0).toFixed(0)} points
+												{formatNumericValue(
+													processedComparison.differences?.averageScore,
+													0,
+													' points',
+													(processedComparison.differences?.averageScore ?? 0) > 0 ? '+' : ''
+												)}
 											</span>
 										</div>
 									</div>
@@ -377,7 +296,7 @@ export function StatisticsPerformanceTab() {
 							</div>
 
 							{/* Rank & Percentile */}
-							{processedComparison.userMetrics.rank && processedComparison.userMetrics.percentile && (
+							{processedComparison.userMetrics?.rank != null && processedComparison.userMetrics?.percentile != null && (
 								<div className='space-y-4 md:col-span-2'>
 									<h4 className='text-sm font-medium text-muted-foreground mb-3'>Ranking</h4>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -385,15 +304,15 @@ export function StatisticsPerformanceTab() {
 											icon={Hash}
 											label='Your Rank'
 											value={`#${processedComparison.userMetrics.rank}`}
-											color={BgColor.BLUE_500}
+											color={Colors.BLUE_500.text}
 											isLoading={analyticsLoading}
 										/>
 										<StatCard
 											icon={Percent}
 											label='Percentile'
-											value={`${processedComparison.userMetrics.percentile.toFixed(1)}%`}
-											subtext={`Better than ${processedComparison.userMetrics.percentile.toFixed(1)}% of players`}
-											color={BgColor.PURPLE_500}
+											value={formatNumericValue(processedComparison.userMetrics?.percentile, 1, '%')}
+											subtext={`Better than ${formatNumericValue(processedComparison.userMetrics?.percentile, 1, '%')} of players`}
+											color={Colors.PURPLE_500.text}
 											isLoading={analyticsLoading}
 										/>
 									</div>
@@ -406,38 +325,28 @@ export function StatisticsPerformanceTab() {
 
 			{/* Performance Trends Over Time (own row above) */}
 			{analytics?.trends && analytics.trends.length > 0 && (
-				<Card className='border-muted bg-muted/20'>
+				<Card className='card-muted-tint'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
-							<TrendingUp className='h-5 w-5' />
+							<TrendingUp className='h-5 w-5 text-primary' />
 							Performance Trends Over Time
 						</CardTitle>
 						<CardDescription>Your score and success rate trends over time</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<TrendChart
-							data={analytics.trends}
-							isLoading={analyticsLoading}
-							height={CHART_HEIGHTS.LARGE}
-							showSuccessRate={true}
-							hideCard
-						/>
+						<TrendChart data={analytics.trends} isLoading={analyticsLoading} height={CHART_HEIGHTS.LARGE} hideCard />
 					</CardContent>
 				</Card>
 			)}
 
 			{/* Your Performance by Difficulty + Your Topics (same row on large screens) */}
 			<div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
-				<PerformanceAnalysis mainData={userDifficultyData?.difficulties} isLoading={analyticsLoading} showPersonalStats />
-				{userTopicsData && userTopicsData.topics.length > 0 ? (
-					<CategoryAnalysis
-						topicsData={userTopicsData.topics}
-						isLoading={analyticsLoading}
-						showPersonalStats
-					/>
-				) : (
-					<CategoryAnalysis topicsData={[]} isLoading={analyticsLoading} showPersonalStats />
-				)}
+				<PerformanceAnalysis
+					mainData={userDifficultyData?.difficulties}
+					isLoading={analyticsLoading}
+					showPersonalStats
+				/>
+				<CategoryAnalysis topicsData={userTopicsData?.topics ?? []} isLoading={analyticsLoading} showPersonalStats />
 			</div>
 		</div>
 	);

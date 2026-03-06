@@ -263,8 +263,8 @@ class AuthService {
 		try {
 			logger.securityLogin('Initiating Google OAuth login');
 
-			// Redirect to Google OAuth endpoint
-			const googleAuthUrl = `${ApiConfig.getBaseUrl()}${API_ENDPOINTS.AUTH.GOOGLE}`;
+			// Redirect to the real server URL so session (OAuth state) is set on the same origin as the callback
+			const googleAuthUrl = `${ApiConfig.getOAuthBaseUrl()}${API_ENDPOINTS.AUTH.GOOGLE}`;
 
 			logger.authInfo('Redirecting to Google OAuth', {
 				url: googleAuthUrl,

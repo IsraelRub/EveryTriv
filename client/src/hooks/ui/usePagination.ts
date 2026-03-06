@@ -1,9 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { calculateTotalPages } from '@shared/utils';
-
 import { DEFAULT_ITEMS_PER_PAGE } from '@/constants';
 import type { UsePaginationOptions, UsePaginationReturn } from '@/types';
+import { calculateTotalPages } from '@/utils';
 
 export function usePagination({
 	itemsPerPage = DEFAULT_ITEMS_PER_PAGE,
@@ -15,11 +14,11 @@ export function usePagination({
 
 	const totalPages = useMemo(() => calculateTotalPages(totalItems, itemsPerPage), [totalItems, itemsPerPage]);
 
-	const startIndex = useMemo(() => (currentPage - 1) * itemsPerPage, [currentPage, itemsPerPage]);
-	const endIndex = useMemo(() => startIndex + itemsPerPage, [startIndex, itemsPerPage]);
+	const startIndex = (currentPage - 1) * itemsPerPage;
+	const endIndex = startIndex + itemsPerPage;
 
-	const hasNextPage = currentPage < totalPages;
-	const hasPreviousPage = currentPage > 1;
+	const hasNextPage = startIndex + itemsPerPage < totalItems;
+	const hasPreviousPage = startIndex > 0;
 
 	const goToPage = useCallback(
 		(page: number) => {

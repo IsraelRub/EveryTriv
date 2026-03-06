@@ -1,1 +1,1 @@
-export { UnauthorizedView } from './UnauthorizedView';
+export * from './UnauthorizedView';

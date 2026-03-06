@@ -44,7 +44,7 @@ Pipes ב-NestJS אחראים לוולידציה וטרנספורמציה של נ
 - ולידציה עסקית דרך ValidationService
 
 **3. Difficulty:**
-- חייב להיות difficulty תקין (VALID_DIFFICULTIES)
+- חייב להיות difficulty תקין (VALID_DIFFICULTIES_SET)
 - או custom difficulty (CUSTOM_DIFFICULTY_PREFIX)
 - ולידציה עסקית דרך ValidationService
 

@@ -7,12 +7,13 @@ import { AUTH_CONSTANTS } from '@shared/constants';
 
 import { AppConfig, DatabaseConfig } from '@config';
 import { HealthController, MetricsController } from '@internal/controllers';
+import { UserEntity } from '@internal/entities';
 import { RateLimitMiddleware } from '@internal/middleware';
 import { CacheModule, CacheService, StorageModule } from '@internal/modules';
 
 import { AppController } from './app.controller';
 import { GlobalExceptionFilter } from './common/globalException.filter';
-import { AuthGuard, RolesGuard } from './common/guards';
+import { AuthGuard, RolesGuard, UserStatusGuard } from './common/guards';
 import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from './common/interceptors';
 import {
 	AdminModule,
@@ -31,6 +32,7 @@ import { SystemAnalyticsService } from './features/analytics/services';
 	imports: [
 		// TypeORM Module
 		TypeOrmModule.forRoot(DatabaseConfig),
+		TypeOrmModule.forFeature([UserEntity]),
 		StorageModule,
 		// JWT Module for middleware
 		JwtModule.register({
@@ -87,6 +89,10 @@ import { SystemAnalyticsService } from './features/analytics/services';
 		{
 			provide: APP_GUARD,
 			useClass: RolesGuard,
+		},
+		{
+			provide: APP_GUARD,
+			useClass: UserStatusGuard,
 		},
 		// Global validation pipe for DTO validation
 		{

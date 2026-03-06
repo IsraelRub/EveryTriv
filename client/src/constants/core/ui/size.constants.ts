@@ -3,31 +3,24 @@ export enum ComponentSize {
 	MD = 'md',
 	LG = 'lg',
 	XL = 'xl',
-}
-
-export enum ModalSize {
-	SM = ComponentSize.SM,
-	MD = ComponentSize.MD,
-	LG = ComponentSize.LG,
-	XL = ComponentSize.XL,
 	FULL = 'full',
 }
-
-export type InteractiveSize = ComponentSize.SM | ComponentSize.MD | ComponentSize.LG;
 
 export enum ButtonSize {
-	DEFAULT = 'default',
 	SM = ComponentSize.SM,
+	MD = ComponentSize.MD,
 	LG = ComponentSize.LG,
-	ICON = 'icon',
+	ICON_SM = 'icon-sm',
+	ICON_MD = 'icon-md',
+	ICON_LG = 'icon-lg',
 }
 
-export enum SpinnerSize {
+export enum AvatarSize {
 	SM = ComponentSize.SM,
 	MD = ComponentSize.MD,
 	LG = ComponentSize.LG,
 	XL = ComponentSize.XL,
-	FULL = 'full',
+	NAV = 'nav',
 }
 
 export const DEFAULT_ITEMS_PER_PAGE = 10;

@@ -275,35 +275,39 @@ if (duration > this.SLOW_REQUEST_THRESHOLD) {
 
 ### מטריקות
 
-**Endpoint Performance:**
+**Performance tracking (מתודה מאוחדת):**
 ```typescript
-metricsService.trackEndpointPerformance(endpoint, {
+// request / endpoint / method / slow / error
+metricsService.trackPerformance('request', endpoint, {
   method,
   duration,
-  memoryDelta,
+  userId,
+  userAgent,
+});
+metricsService.trackPerformance('endpoint', endpoint, {
+  method,
+  duration,
   userId,
   timestamp: new Date(),
 });
-```
-
-**Method Performance:**
-```typescript
-metricsService.trackMethodPerformance(method, {
+metricsService.trackPerformance('method', method, {
   endpoint,
   duration,
-  memoryDelta,
   userId,
   timestamp: new Date(),
 });
-```
-
-**Slow Request Tracking:**
-```typescript
-metricsService.trackSlowRequest(endpoint, {
+metricsService.trackPerformance('slow', endpoint, {
   method,
   duration,
   userId,
   severity,
+  timestamp: new Date(),
+});
+metricsService.trackPerformance('error', endpoint, {
+  method,
+  duration,
+  userId,
+  errorInfo: { message: getErrorMessage(error) },
   timestamp: new Date(),
 });
 ```

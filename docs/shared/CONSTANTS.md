@@ -139,14 +139,10 @@ export enum DifficultyLevel {
 }
 
 /**
- * Array of all valid difficulty levels
+ * Set of all valid difficulty levels for fast lookup.
+ * For an ordered list use: [...VALID_DIFFICULTIES_SET]
  */
-export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
-
-/**
- * Set of all valid difficulty levels for fast lookup
- */
-export const VALID_DIFFICULTIES_SET = new Set<string>(VALID_DIFFICULTIES);
+export const VALID_DIFFICULTIES_SET = new Set<string>(Object.values(DifficultyLevel));
 
 /**
  * Game mode enumeration
@@ -158,9 +154,9 @@ export enum GameMode {
 }
 
 /**
- * Array of all valid game modes
+ * Set of all valid game modes. For an ordered list use: [...VALID_GAME_MODES_SET]
  */
-export const VALID_GAME_MODES = Object.values(GameMode);
+export const VALID_GAME_MODES_SET = new Set<string>(Object.values(GameMode));
 
 /**
  * Time Period Enum
@@ -173,9 +169,9 @@ export enum TimePeriod {
 }
 
 /**
- * Array of all valid time periods
+ * Set of all valid time periods. For an ordered list use: [...VALID_TIME_PERIODS_SET]
  */
-export const VALID_TIME_PERIODS = Object.values(TimePeriod);
+export const VALID_TIME_PERIODS_SET = new Set<string>(Object.values(TimePeriod));
 
 /**
  * Leaderboard Period Enum
@@ -188,9 +184,9 @@ export enum LeaderboardPeriod {
 }
 
 /**
- * Array of all valid leaderboard periods
+ * Set of all valid leaderboard periods. For an ordered list use: [...VALID_LEADERBOARD_PERIODS_SET]
  */
-export const VALID_LEADERBOARD_PERIODS = Object.values(LeaderboardPeriod);
+export const VALID_LEADERBOARD_PERIODS_SET = new Set<string>(Object.values(LeaderboardPeriod));
 
 /**
  * Game state constants

@@ -1,10 +1,3 @@
-export const VALIDATION_DEBOUNCE_DELAYS = {
-	QUICK: 150,
-	STANDARD: 300,
-	LANGUAGE_CHECK: 500,
-	ASYNC_VALIDATION: 1000,
-} as const;
-
 export enum ClientValidationType {
 	EMAIL = 'email',
 	PASSWORD = 'password',
@@ -30,11 +23,7 @@ export const VALIDATION_LENGTH = {
 		MIN: 3,
 		MAX: 200,
 	},
-	FIRST_NAME: {
-		MIN: 1,
-		MAX: 50,
-	},
-	LAST_NAME: {
+	NAME: {
 		MIN: 1,
 		MAX: 50,
 	},
@@ -65,6 +54,24 @@ export const VALIDATION_LENGTH = {
 		MIN: 1,
 		MAX: 100,
 	},
+	SEARCH_QUERY: {
+		MIN: 1,
+		MAX: 100,
+	},
+	IDENTIFIER: {
+		MAX: 100,
+	},
+} as const;
+
+export const VALIDATION_PAYMENT = {
+	ORDER_ID_MIN_LENGTH: 10,
+	CARD_NUMBER: { MIN: 12, MAX: 19 },
+	CVV: { MIN: 3, MAX: 4 },
+	CARD_HOLDER_NAME: { MIN: 2, MAX: 80 },
+	POSTAL_CODE_MAX: 20,
+	CURRENCY_CODE_MAX: 10,
+	ADDITIONAL_INFO_MAX: 500,
+	AMOUNT_MIN: 0.5,
 } as const;
 
 export const VALIDATION_COUNT = {
@@ -82,6 +89,9 @@ export const VALIDATION_COUNT = {
 		MAX: 50, // Maximum questions per request (matches server processing limit)
 		STEP: 5,
 		UNLIMITED: -1,
+
+		INITIAL_BATCH_UNLIMITED: 15,
+		INITIAL_BATCH_TIME_LIMITED: 8,
 	},
 	ANSWER_COUNT: {
 		MIN: 3,
@@ -98,6 +108,11 @@ export const VALIDATION_COUNT = {
 		MAX: 100,
 		DEFAULT: 50,
 	},
+	ACTIVITY_ENTRIES: {
+		MIN: 1,
+		MAX: 200,
+		DEFAULT: 30,
+	},
 	AVATAR_ID: {
 		MIN: 1,
 		MAX: 16,
@@ -108,6 +123,12 @@ export const VALIDATION_COUNT = {
 	},
 	ROOM_GENERATION_ATTEMPTS: {
 		MAX: 10, // Maximum attempts to generate unique room ID
+	},
+
+	LIST_QUERY: {
+		LIMIT_MIN: 1,
+		LIMIT_MAX: 1000,
+		OFFSET_MIN: 0,
 	},
 } as const;
 
@@ -171,14 +192,3 @@ export const GRAMMAR_PATTERNS = [
 	{ pattern: /\b(there)\s+(going)/, suggestion: 'Use "they\'re" (they are) instead of "there" (location)' },
 	{ pattern: /\b(their)\s+(going)/, suggestion: 'Use "they\'re" (they are) instead of "their" (possessive)' },
 ] as const;
-
-export const VALIDATORS = {
-	string: (value: unknown): value is string => typeof value === 'string',
-	number: (value: unknown): value is number =>
-		typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value),
-	boolean: (value: unknown): value is boolean => typeof value === 'boolean',
-	function: (value: unknown): value is Function => typeof value === 'function',
-	date: (value: unknown): value is Date | string =>
-		(value instanceof Date && !Number.isNaN(value.getTime())) ||
-		(typeof value === 'string' && !Number.isNaN(Date.parse(value))),
-} as const;

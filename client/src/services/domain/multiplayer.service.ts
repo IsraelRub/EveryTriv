@@ -174,7 +174,7 @@ class MultiplayerService {
 
 		this.socket.on(MultiplayerEvent.ERROR, (error: { message: string }) => {
 			logger.gameError('Multiplayer server error', {
-				errorInfo: { message: error.message },
+				errorInfo: { message: getErrorMessage(error) },
 			});
 		});
 	}

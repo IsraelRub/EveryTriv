@@ -14,6 +14,7 @@ import {
 	getErrorMessage,
 	getErrorStack,
 	getErrorType,
+	isNonEmptyString,
 	isValidationErrorResponse,
 	parseValidationErrorResponse,
 } from '@shared/utils';
@@ -55,10 +56,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 					});
 
 					// This is a validation error with detailed error information
-					const validationMessage =
-						typeof validationError.message === 'string' && validationError.message.trim().length > 0
-							? validationError.message
-							: 'Validation failed';
+					const validationMessage = isNonEmptyString(validationError.message)
+						? validationError.message
+						: 'Validation failed';
 
 					return response.status(status).json({
 						statusCode: status,

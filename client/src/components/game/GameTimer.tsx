@@ -1,13 +1,52 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-import { TIME_PERIODS_MS, TimerMode } from '@shared/constants';
-import { calculateElapsedSeconds } from '@shared/utils';
+import { TIME_PERIODS_MS } from '@shared/constants';
+import { calculateDuration, calculateElapsedSeconds, calculatePercentage } from '@shared/utils';
 
-import { AudioKey, TIMER_WARNING_RATIO, TRANSITION_DURATIONS } from '@/constants';
+import { AudioKey, Colors, TIMER_WARNING_RATIO, TimerMode, TRANSITION_DURATIONS } from '@/constants';
 import { audioService } from '@/services';
 import type { GameTimerProps } from '@/types';
 import { cn, formatTime } from '@/utils';
+
+const WARNING_BEEP_INTERVAL_MS = 3 * TIME_PERIODS_MS.SECOND;
+
+function isInWarningZone(remainingSeconds: number, warningThreshold: number | null): boolean {
+	return warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0;
+}
+
+function playWarning(onWarning: (() => void) | undefined): void {
+	if (onWarning) onWarning();
+	else audioService.play(AudioKey.TIME_WARNING);
+}
+
+function computeWarningThresholdSeconds(totalSeconds: number): number {
+	return Math.floor(totalSeconds * TIMER_WARNING_RATIO);
+}
+
+function runInterval(callback: () => void, periodMs: number): () => void {
+	const id = setInterval(callback, periodMs);
+	return () => clearInterval(id);
+}
+
+/**
+ * Attempts to play a warning beep. Uses wall-clock time to enforce a minimum
+ * gap of WARNING_BEEP_INTERVAL_MS between beeps, which guards against
+ * StrictMode double-invocation and overlapping intervals.
+ */
+function tryPlayWarning(
+	remaining: number,
+	threshold: number | null,
+	lastBeepTimeRef: React.MutableRefObject<number>,
+	onWarning: (() => void) | undefined
+): void {
+	if (!isInWarningZone(remaining, threshold)) return;
+	const now = Date.now();
+	if (now - lastBeepTimeRef.current >= WARNING_BEEP_INTERVAL_MS) {
+		lastBeepTimeRef.current = now;
+		playWarning(onWarning);
+	}
+}
 
 export function GameTimer({
 	mode,
@@ -19,7 +58,6 @@ export function GameTimer({
 	onWarning,
 	label,
 	showProgressBar = true,
-	className = '',
 }: GameTimerProps) {
 	const [currentTime, setCurrentTime] = useState(() => {
 		if (mode === TimerMode.COUNTDOWN && initialTime !== undefined) {
@@ -41,99 +79,58 @@ export function GameTimer({
 	// Countdown mode: use server timestamps as authoritative source
 	const warningTimeThresholdRef = useRef<number | null>(null);
 	const timeoutTriggeredRef = useRef(false);
+	// Wall-clock timestamp of the last warning beep. Using wall-clock time
+	// (rather than remaining-seconds) makes it immune to StrictMode
+	// double-invocation and overlapping intervals.
+	const lastBeepTimeRef = useRef(0);
+
 	useEffect(() => {
 		if (mode !== TimerMode.COUNTDOWN) return;
 
-		// Priority: serverEndTimestamp > serverStartTimestamp + initialTime > startTime + initialTime > initialTime only
+		const onWarning = onWarningRef.current ?? undefined;
+		// Reset so the first tick in the warning zone plays immediately
+		lastBeepTimeRef.current = 0;
+
+		// Priority: serverEndTimestamp > startTime + initialTime > initialTime only
 		if (serverEndTimestamp !== undefined) {
-			// Use server timestamps as authoritative source
-			const totalTimeMs = serverEndTimestamp - (serverStartTimestamp ?? Date.now());
-			const totalTimeSeconds = Math.floor(totalTimeMs / 1000);
-			warningTimeThresholdRef.current = Math.floor(totalTimeSeconds * TIMER_WARNING_RATIO);
+			const totalTimeSeconds = Math.floor(
+				(serverEndTimestamp - (serverStartTimestamp ?? Date.now())) / TIME_PERIODS_MS.SECOND
+			);
+			warningTimeThresholdRef.current = computeWarningThresholdSeconds(totalTimeSeconds);
 			timeoutTriggeredRef.current = false;
-
-			const interval = setInterval(() => {
-				const now = Date.now();
-				const remainingMs = Math.max(0, serverEndTimestamp - now);
-				const remainingSeconds = Math.floor(remainingMs / 1000);
-
-				setCurrentTime(remainingSeconds);
-
-				// Play warning sound every 10 seconds when below warning threshold (15% or less)
-				const warningThreshold = warningTimeThresholdRef.current;
-				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
-					const timeBelowThreshold = warningThreshold - remainingSeconds;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
-						if (onWarningRef.current) {
-							onWarningRef.current();
-						} else {
-							audioService.play(AudioKey.TIME_WARNING);
-						}
-					}
-				}
+			const threshold = warningTimeThresholdRef.current;
+			return runInterval(() => {
+				const remaining = Math.floor(Math.max(0, serverEndTimestamp - Date.now()) / TIME_PERIODS_MS.SECOND);
+				setCurrentTime(remaining);
+				tryPlayWarning(remaining, threshold, lastBeepTimeRef, onWarning);
 			}, TIME_PERIODS_MS.SECOND);
-
-			return () => clearInterval(interval);
 		}
 
-		// Fallback: If startTime is provided, calculate remaining time dynamically from startTime
 		if (startTime !== undefined && initialTime !== undefined) {
-			const totalTimeMs = initialTime * 1000;
-			warningTimeThresholdRef.current = Math.floor(initialTime * TIMER_WARNING_RATIO);
+			const totalTimeMs = initialTime * TIME_PERIODS_MS.SECOND;
+			warningTimeThresholdRef.current = computeWarningThresholdSeconds(initialTime);
 			timeoutTriggeredRef.current = false;
-
-			const interval = setInterval(() => {
-				const now = Date.now();
-				const elapsed = now - startTime;
-				const remainingSeconds = Math.max(0, Math.floor((totalTimeMs - elapsed) / 1000));
-
-				setCurrentTime(remainingSeconds);
-
-				// Play warning sound every 10 seconds when below warning threshold (15% or less)
-				const warningThreshold = warningTimeThresholdRef.current;
-				if (warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0) {
-					const timeBelowThreshold = warningThreshold - remainingSeconds;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
-						if (onWarningRef.current) {
-							onWarningRef.current();
-						} else {
-							audioService.play(AudioKey.TIME_WARNING);
-						}
-					}
-				}
+			const threshold = warningTimeThresholdRef.current;
+			return runInterval(() => {
+				const elapsed = calculateDuration(startTime);
+				const remaining = Math.max(0, Math.floor((totalTimeMs - elapsed) / TIME_PERIODS_MS.SECOND));
+				setCurrentTime(remaining);
+				tryPlayWarning(remaining, threshold, lastBeepTimeRef, onWarning);
 			}, TIME_PERIODS_MS.SECOND);
-
-			return () => clearInterval(interval);
 		}
 
-		// Fallback: countdown from initialTime without startTime (legacy behavior)
 		if (initialTime === undefined) return;
 
-		warningTimeThresholdRef.current = Math.floor(initialTime * TIMER_WARNING_RATIO);
+		warningTimeThresholdRef.current = computeWarningThresholdSeconds(initialTime);
 		timeoutTriggeredRef.current = false;
-
-		const interval = setInterval(() => {
-			setCurrentTime((prev: number) => {
-				if (prev <= 1) {
-					return 0;
-				}
-
-				if (warningTimeThresholdRef.current !== null && prev <= warningTimeThresholdRef.current) {
-					const timeBelowThreshold = warningTimeThresholdRef.current - prev;
-					if (timeBelowThreshold === 0 || timeBelowThreshold % 10 === 0) {
-						if (onWarningRef.current) {
-							onWarningRef.current();
-						} else {
-							audioService.play(AudioKey.TIME_WARNING);
-						}
-					}
-				}
-
-				return prev - 1;
-			});
+		const threshold = warningTimeThresholdRef.current;
+		let localTime = initialTime;
+		return runInterval(() => {
+			if (localTime <= 0) return;
+			localTime = localTime <= 1 ? 0 : localTime - 1;
+			setCurrentTime(localTime);
+			tryPlayWarning(localTime, threshold, lastBeepTimeRef, onWarningRef.current ?? undefined);
 		}, TIME_PERIODS_MS.SECOND);
-
-		return () => clearInterval(interval);
 	}, [mode, initialTime, startTime, serverStartTimestamp, serverEndTimestamp]);
 
 	// Handle timeout separately to avoid calling navigate during render
@@ -151,87 +148,47 @@ export function GameTimer({
 	useEffect(() => {
 		if (mode !== TimerMode.ELAPSED || startTime === undefined) return;
 
-		const interval = setInterval(() => {
-			const elapsed = calculateElapsedSeconds(startTime);
-			setCurrentTime(elapsed);
+		return runInterval(() => {
+			setCurrentTime(calculateElapsedSeconds(startTime));
 		}, TIME_PERIODS_MS.SECOND);
-
-		return () => clearInterval(interval);
 	}, [mode, startTime]);
 
-	// Calculate progress percentage
-	// Only used for countdown mode (progress bar is hidden in elapsed mode)
-	const getProgress = useCallback(() => {
-		if (mode === TimerMode.COUNTDOWN && initialTime !== undefined && initialTime > 0) {
-			return (currentTime / initialTime) * 100;
-		}
-		return 0;
-	}, [mode, currentTime, initialTime]);
-
-	// Get color based on percentage
 	const getColorByPercentage = useCallback((percentage: number, prefix: 'text' | 'bg'): string => {
-		if (percentage > 35) return `${prefix}-green-500`;
-		if (percentage > 15) return `${prefix}-yellow-500`;
-		return `${prefix}-red-500`;
+		if (percentage > 35) return prefix === 'text' ? Colors.GREEN_500.text : Colors.GREEN_500.bg;
+		if (percentage > 15) return prefix === 'text' ? Colors.YELLOW_500.text : Colors.YELLOW_500.bg;
+		return prefix === 'text' ? Colors.RED_500.text : Colors.RED_500.bg;
 	}, []);
 
-	// Get color based on mode and time
-	const getTimerColor = useCallback(() => {
-		switch (mode) {
-			case TimerMode.COUNTDOWN:
-				if (initialTime !== undefined && initialTime > 0) {
-					const percentage = (currentTime / initialTime) * 100;
-					return getColorByPercentage(percentage, 'text');
-				}
-				return 'text-muted-foreground';
-			case TimerMode.ELAPSED:
-				return 'text-muted-foreground';
-			default:
-				return 'text-muted-foreground';
-		}
-	}, [mode, currentTime, initialTime, getColorByPercentage]);
+	const countdownPercentage =
+		mode === TimerMode.COUNTDOWN && initialTime !== undefined && initialTime > 0
+			? calculatePercentage(currentTime, initialTime, false)
+			: null;
 
-	const getBarColor = useCallback(() => {
-		switch (mode) {
-			case TimerMode.COUNTDOWN:
-				if (initialTime !== undefined && initialTime > 0) {
-					const percentage = (currentTime / initialTime) * 100;
-					return getColorByPercentage(percentage, 'bg');
-				}
-				return 'bg-primary';
-			case TimerMode.ELAPSED:
-				return 'bg-primary';
-			default:
-				return 'bg-primary';
-		}
-	}, [mode, currentTime, initialTime, getColorByPercentage]);
+	const getColorByMode = useCallback(
+		(prefix: 'text' | 'bg', defaultClass: string): string => {
+			if (mode !== TimerMode.COUNTDOWN || countdownPercentage === null) return defaultClass;
+			return getColorByPercentage(countdownPercentage, prefix);
+		},
+		[mode, countdownPercentage, getColorByPercentage]
+	);
 
-	const progress = getProgress();
-	const defaultLabel = (() => {
-		switch (mode) {
-			case TimerMode.COUNTDOWN:
-				return 'Game Time';
-			case TimerMode.ELAPSED:
-				return 'Time Elapsed';
-			default:
-				return 'Time Elapsed';
-		}
-	})();
+	const progress = countdownPercentage ?? 0;
+	const defaultLabel = mode === TimerMode.COUNTDOWN ? 'Game Time' : 'Time Elapsed';
 
 	return (
-		<div className={cn('mb-6', className)}>
+		<div className='mb-6'>
 			<div className='text-center mb-2'>
-				<div className={cn('text-2xl font-medium', getTimerColor())}>{formatTime(currentTime)}</div>
+				<div className={cn('text-2xl font-medium', getColorByMode('text', 'text-muted-foreground'))}>
+					{formatTime(currentTime)}
+				</div>
 				<p className='text-sm text-muted-foreground mt-1'>{label ?? defaultLabel}</p>
 			</div>
 			{showProgressBar && (
 				<div className='relative h-4 bg-muted rounded-full overflow-hidden'>
 					<motion.div
-						className={cn('absolute inset-y-0 left-0', getBarColor())}
+						className={cn('absolute inset-y-0 left-0', getColorByMode('bg', 'bg-primary'))}
 						initial={{ width: '100%' }}
-						animate={{
-							width: `${progress}%`,
-						}}
+						animate={{ width: `${progress}%` }}
 						transition={{ duration: TRANSITION_DURATIONS.NORMAL }}
 					/>
 				</div>

@@ -2,17 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 
-import { DifficultyLevel, ERROR_CODES, ProviderHealthStatus, VALIDATORS } from '@shared/constants';
+import { DifficultyLevel, ErrorCode, ProviderHealthStatus } from '@shared/constants';
 import type {
 	AiProviderHealth,
 	AiProviderStats,
 	GameDifficulty,
-	TriviaAnswer,
+	TriviaQuestionCore,
 	TriviaQuestionDetailsMetadata,
 	TriviaQuestionInput,
 } from '@shared/types';
-import { getErrorMessage, isNonEmptyString, normalizeStringArray } from '@shared/utils';
-import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
+import { calculatePercentage, getErrorMessage, isNonEmptyString, normalizeStringArray } from '@shared/utils';
+import { isCustomDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
@@ -41,7 +41,7 @@ export class TriviaGenerationService {
 			const question = this.convertAIQuestionToFormat(providerResult.question, params.topic, params.difficulty);
 
 			if (!question?.question || question.answers.length === 0) {
-				throw createServerError('generate question with AI providers', new Error(ERROR_CODES.AI_PROVIDERS_FAILED));
+				throw createServerError('generate question with AI providers', new Error(ErrorCode.AI_PROVIDERS_FAILED));
 			}
 
 			const triviaEntity = this.convertQuestionToEntity(question, userId);
@@ -127,9 +127,7 @@ export class TriviaGenerationService {
 	}
 
 	private convertAIQuestionToFormat(
-		aiQuestion: {
-			question: string;
-			answers: TriviaAnswer[];
+		aiQuestion: TriviaQuestionCore & {
 			explanation?: string;
 			metadata?: Partial<TriviaQuestionDetailsMetadata>;
 		},
@@ -309,8 +307,8 @@ export class TriviaGenerationService {
 					requests: totalRequests,
 					successes: provider.successCount,
 					failures: provider.errorCount,
-					successRate: totalRequests > 0 ? (provider.successCount / totalRequests) * 100 : 0,
-					errorRate: totalRequests > 0 ? (provider.errorCount / totalRequests) * 100 : 0,
+					successRate: totalRequests > 0 ? calculatePercentage(provider.successCount, totalRequests) : 0,
+					errorRate: totalRequests > 0 ? calculatePercentage(provider.errorCount, totalRequests) : 0,
 					averageResponseTime: provider.averageResponseTime,
 					lastUsed: provider.isAvailable ? new Date().toISOString() : undefined,
 				},

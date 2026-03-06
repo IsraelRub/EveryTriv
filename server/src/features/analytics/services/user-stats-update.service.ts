@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
-import { calculateSuccessRate, delay, getErrorMessage } from '@shared/utils';
+import { calculateScoreRate, delay, getErrorMessage, sumBy } from '@shared/utils';
 
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheInvalidationService } from '@internal/modules';
@@ -47,9 +47,6 @@ export class UserStatsUpdateService {
 				gameId: gameHistory.id,
 				queueKey,
 			});
-
-			// Keep in queue for later retry (could be picked up by a scheduled job)
-			// Log for monitoring
 		}
 	}
 
@@ -66,9 +63,7 @@ export class UserStatsUpdateService {
 					lock: { mode: 'pessimistic_write' }, // Use pessimistic locking for better consistency
 				});
 
-				if (!userStats) {
-					userStats = await this.initializeUserStats(userId);
-				}
+				userStats ??= await this.initializeUserStats(userId);
 
 				this.updateBasicStats(userStats, gameHistory);
 				this.updateCategoryStats(userStats, gameHistory);
@@ -293,7 +288,7 @@ export class UserStatsUpdateService {
 		gameHistory: GameHistoryEntity[],
 		totalQuestionsAnswered: number
 	): { totalPlayTime: number; averageTimePerQuestion: number } {
-		const totalPlayTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent || 0), 0);
+		const totalPlayTime = sumBy(gameHistory, game => game.timeSpent ?? 0);
 		const averageTimePerQuestion = totalQuestionsAnswered > 0 ? Math.floor(totalPlayTime / totalQuestionsAnswered) : 0;
 		return { totalPlayTime, averageTimePerQuestion };
 	}
@@ -362,7 +357,7 @@ export class UserStatsUpdateService {
 		userStats.totalScore += gameHistory.score;
 
 		if (userStats.totalQuestionsAnswered > 0) {
-			userStats.overallSuccessRate = calculateSuccessRate(userStats.totalQuestionsAnswered, userStats.correctAnswers);
+			userStats.overallSuccessRate = calculateScoreRate(userStats.totalScore, userStats.totalQuestionsAnswered);
 		}
 
 		const gameDate = new Date(gameHistory.createdAt);
@@ -386,7 +381,7 @@ export class UserStatsUpdateService {
 		userStats.totalScore = Math.max(0, userStats.totalScore - gameHistory.score);
 
 		if (userStats.totalQuestionsAnswered > 0) {
-			userStats.overallSuccessRate = calculateSuccessRate(userStats.totalQuestionsAnswered, userStats.correctAnswers);
+			userStats.overallSuccessRate = calculateScoreRate(userStats.totalScore, userStats.totalQuestionsAnswered);
 		} else {
 			userStats.overallSuccessRate = 0;
 		}
@@ -418,9 +413,14 @@ export class UserStatsUpdateService {
 	}
 
 	private updateCategoryStats(userStats: UserStatsEntity, gameHistory: GameHistoryEntity): void {
+		if (gameHistory.gameQuestionCount <= 0) {
+			return;
+		}
 		if (gameHistory.topic) {
-			const existingTopicStats = userStats.topicStats[gameHistory.topic];
-			const topicStats = existingTopicStats || {
+			const key = gameHistory.topic.trim().toLowerCase();
+			const existingKey = Object.keys(userStats.topicStats ?? {}).find(k => k.toLowerCase() === key);
+			const existingTopicStats = existingKey ? userStats.topicStats[existingKey] : undefined;
+			const topicStats = existingTopicStats ?? {
 				totalQuestionsAnswered: 0,
 				correctAnswers: 0,
 				successRate: 0,
@@ -431,19 +431,22 @@ export class UserStatsUpdateService {
 			topicStats.totalQuestionsAnswered += gameHistory.gameQuestionCount;
 			topicStats.correctAnswers += gameHistory.correctAnswers;
 			topicStats.score += gameHistory.score;
-			topicStats.successRate = calculateSuccessRate(topicStats.totalQuestionsAnswered, topicStats.correctAnswers);
+			topicStats.successRate = calculateScoreRate(topicStats.score, topicStats.totalQuestionsAnswered);
 
 			const gameDate = new Date(gameHistory.createdAt);
 			if (gameDate > topicStats.lastPlayed) {
 				topicStats.lastPlayed = gameDate;
 			}
 
-			userStats.topicStats[gameHistory.topic] = topicStats;
+			if (existingKey && existingKey !== key) {
+				delete userStats.topicStats[existingKey];
+			}
+			userStats.topicStats[key] = topicStats;
 		}
 
 		if (gameHistory.difficulty) {
 			const existingDifficultyStats = userStats.difficultyStats[gameHistory.difficulty];
-			const difficultyStats = existingDifficultyStats || {
+			const difficultyStats = existingDifficultyStats ?? {
 				totalQuestionsAnswered: 0,
 				correctAnswers: 0,
 				successRate: 0,
@@ -454,10 +457,7 @@ export class UserStatsUpdateService {
 			difficultyStats.totalQuestionsAnswered += gameHistory.gameQuestionCount;
 			difficultyStats.correctAnswers += gameHistory.correctAnswers;
 			difficultyStats.score += gameHistory.score;
-			difficultyStats.successRate = calculateSuccessRate(
-				difficultyStats.totalQuestionsAnswered,
-				difficultyStats.correctAnswers
-			);
+			difficultyStats.successRate = calculateScoreRate(difficultyStats.score, difficultyStats.totalQuestionsAnswered);
 
 			const gameDate = new Date(gameHistory.createdAt);
 			if (gameDate > difficultyStats.lastPlayed) {
@@ -470,7 +470,9 @@ export class UserStatsUpdateService {
 
 	private decrementCategoryStats(userStats: UserStatsEntity, gameHistory: GameHistoryEntity): void {
 		if (gameHistory.topic) {
-			const topicStats = userStats.topicStats[gameHistory.topic];
+			const key = gameHistory.topic.trim().toLowerCase();
+			const existingKey = Object.keys(userStats.topicStats ?? {}).find(k => k.toLowerCase() === key);
+			const topicStats = existingKey ? userStats.topicStats[existingKey] : undefined;
 			if (topicStats) {
 				topicStats.totalQuestionsAnswered = Math.max(
 					0,
@@ -480,9 +482,13 @@ export class UserStatsUpdateService {
 				topicStats.score = Math.max(0, topicStats.score - gameHistory.score);
 
 				if (topicStats.totalQuestionsAnswered > 0) {
-					topicStats.successRate = calculateSuccessRate(topicStats.totalQuestionsAnswered, topicStats.correctAnswers);
-				} else {
-					delete userStats.topicStats[gameHistory.topic];
+					topicStats.successRate = calculateScoreRate(topicStats.score, topicStats.totalQuestionsAnswered);
+					if (existingKey && existingKey !== key) {
+						delete userStats.topicStats[existingKey];
+						userStats.topicStats[key] = topicStats;
+					}
+				} else if (existingKey !== undefined) {
+					delete userStats.topicStats[existingKey];
 				}
 			}
 		}
@@ -498,9 +504,9 @@ export class UserStatsUpdateService {
 				difficultyStats.score = Math.max(0, difficultyStats.score - gameHistory.score);
 
 				if (difficultyStats.totalQuestionsAnswered > 0) {
-					difficultyStats.successRate = calculateSuccessRate(
-						difficultyStats.totalQuestionsAnswered,
-						difficultyStats.correctAnswers
+					difficultyStats.successRate = calculateScoreRate(
+						difficultyStats.score,
+						difficultyStats.totalQuestionsAnswered
 					);
 				} else {
 					delete userStats.difficultyStats[gameHistory.difficulty];

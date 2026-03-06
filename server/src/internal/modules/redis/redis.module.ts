@@ -12,7 +12,7 @@ export class RedisSocketIoService {
 	private subClient: Redis | null = null;
 
 	async createPubSubClients(): Promise<{ pubClient: Redis; subClient: Redis } | null> {
-		if (!redisConfig.host || redisConfig.host === '') {
+		if (!redisConfig.host) {
 			logger.systemError('Redis not configured for Socket.IO adapter');
 			return null;
 		}
@@ -66,7 +66,7 @@ export class RedisSocketIoService {
 			provide: 'REDIS_CLIENT',
 			useFactory: (): Redis | null => {
 				// Only create Redis client if Redis is configured
-				if (!redisConfig.host || redisConfig.host === '') {
+				if (!redisConfig.host) {
 					logger.systemError('Redis not configured - using null client');
 					return null;
 				}

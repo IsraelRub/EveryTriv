@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 
-import { ModalSize } from '@/constants';
+import { ComponentSize } from '@/constants';
 
 export interface ModalRouteProps {
 	children: ReactNode;
-	modalSize?: ModalSize;
+	modalSize?: ComponentSize;
 }
 
 export interface UseModalRouteReturn {

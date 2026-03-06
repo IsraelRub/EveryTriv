@@ -1,7 +1,4 @@
-import { NEST_EXCEPTION_NAMES } from '../../constants';
 import { ErrorResponseData } from '../infrastructure';
-
-export type NestExceptionName = (typeof NEST_EXCEPTION_NAMES)[number];
 
 export interface HttpError extends Error {
 	code?: 'ECONNABORTED' | 'ENOTFOUND' | 'ECONNREFUSED' | 'ECONNRESET' | 'ETIMEDOUT' | string;

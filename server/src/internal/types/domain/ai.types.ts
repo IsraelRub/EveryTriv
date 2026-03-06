@@ -1,10 +1,8 @@
-import { DifficultyLevel, LLMResponseStatus, ProviderStatus } from '@shared/constants';
-import type { BaseTimestamps, BaseTriviaConfig, BasicValue, TriviaAnswer, TriviaQuestion } from '@shared/types';
+import { DifficultyLevel, LLMResponseStatus } from '@shared/constants';
+import type { BaseTriviaConfig, BasicValue, TriviaQuestion, TriviaQuestionCore } from '@shared/types';
 
-export interface LLMQuestion {
-	question: string;
-	answers: TriviaAnswer[];
-}
+/** Parsed LLM question: same shape as TriviaQuestionCore (question + typed answers). */
+export type LLMQuestion = TriviaQuestionCore;
 
 export interface LLMTriviaResponse {
 	questions: LLMQuestion[];
@@ -37,18 +35,6 @@ export interface ProviderConfig {
 	priority: number;
 	headers?: Record<string, string>;
 	body?: Record<string, unknown>;
-}
-
-export interface ProviderStats extends BaseTimestamps {
-	providerName: string;
-	requests: number;
-	successes: number;
-	failures: number;
-	averageResponseTime: number;
-	successRate: number;
-	errorRate: number;
-	lastUsed: Date | null;
-	status: ProviderStatus;
 }
 
 export interface PromptParams extends BaseTriviaConfig {

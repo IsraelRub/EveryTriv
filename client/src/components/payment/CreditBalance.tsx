@@ -3,9 +3,10 @@ import { Coins, Crown, Plus } from 'lucide-react';
 
 import { UserRole } from '@shared/constants';
 
-import { ROUTES, SpinnerSize } from '@/constants';
+import { Colors, ComponentSize, LoadingMessages, ROUTES } from '@/constants';
 import { Spinner } from '@/components';
 import { useCreditBalance, useUserRole } from '@/hooks';
+import { cn } from '@/utils';
 
 export function CreditBalance() {
 	const { data: creditBalance, isLoading } = useCreditBalance();
@@ -15,8 +16,12 @@ export function CreditBalance() {
 	if (isLoading) {
 		return (
 			<div className='flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50'>
-				<Spinner size={SpinnerSize.SM} className='text-muted-foreground' />
-				<span className='text-sm text-muted-foreground'>Loading...</span>
+				<Spinner
+					size={ComponentSize.SM}
+					className='text-muted-foreground'
+					message={LoadingMessages.LOADING_BALANCE}
+					messageInline
+				/>
 			</div>
 		);
 	}
@@ -27,8 +32,10 @@ export function CreditBalance() {
 		<div className='flex items-center rounded-full bg-primary/10 overflow-hidden'>
 			{/* Credit Information Display */}
 			<div className='flex items-center gap-2 px-3 py-1.5'>
-				<Coins className='w-4 h-4 text-yellow-500' />
-				<span className='text-sm font-medium text-yellow-500'>{isAdmin ? 'Unlimited' : totalCredits}</span>
+				<Coins className={cn('w-4 h-4', Colors.YELLOW_500.text)} />
+				<span className={cn('text-sm font-medium', Colors.YELLOW_500.text)}>
+					{isAdmin ? 'Unlimited' : totalCredits}
+				</span>
 			</div>
 
 			{/* Divider */}
@@ -37,15 +44,22 @@ export function CreditBalance() {
 			{/* Right Side - Crown for admin, Add button for regular users */}
 			{isAdmin ? (
 				<div className='flex items-center gap-1.5 px-3 py-1.5'>
-					<Crown className='w-4 h-4 text-amber-600' />
+					<Crown className={cn('w-4 h-4', Colors.AMBER_600.text)} />
 				</div>
 			) : (
 				<Link
 					to={ROUTES.PAYMENT}
 					className='flex items-center gap-1.5 px-3 py-1.5 hover:bg-primary/20 transition-colors cursor-pointer group'
 				>
-					<Plus className='w-4 h-4 text-yellow-500 opacity-70 group-hover:opacity-100 transition-opacity' />
-					<span className='text-xs font-medium text-yellow-500 opacity-70 group-hover:opacity-100 transition-opacity'>
+					<Plus
+						className={cn('w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity', Colors.YELLOW_500.text)}
+					/>
+					<span
+						className={cn(
+							'text-xs font-medium opacity-70 group-hover:opacity-100 transition-opacity',
+							Colors.YELLOW_500.text
+						)}
+					>
 						ADD
 					</span>
 				</Link>

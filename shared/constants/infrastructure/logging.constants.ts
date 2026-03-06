@@ -1,3 +1,5 @@
+import { TIME_PERIODS_MS } from '../core/time.constants';
+
 export enum LogLevel {
 	ERROR = 'error',
 	WARN = 'warn',
@@ -354,6 +356,6 @@ export const MESSAGE_FORMATTERS = {
 
 export const PERFORMANCE_THRESHOLDS = {
 	ACCEPTABLE: 500, // 500ms - acceptable response time
-	SLOW: 1000, // 1s - slow response time
+	SLOW: TIME_PERIODS_MS.SECOND, // 1s - slow response time
 	CRITICAL: 3000, // 3s - critical/very slow response time
 } as const;

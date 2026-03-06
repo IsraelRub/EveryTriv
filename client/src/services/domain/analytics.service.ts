@@ -7,7 +7,6 @@ import {
 	TimePeriod,
 } from '@shared/constants';
 import type {
-	Achievement,
 	ActivityEntry,
 	AnalyticsResponse,
 	AnswerHistory,
@@ -38,10 +37,11 @@ import type {
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
-import { calculatePercentage, getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { calculateScoreRate, getErrorMessage, isNonEmptyString, mean } from '@shared/utils';
 
 import { apiService, clientLogger as logger } from '@/services';
-import type { CurrentGameStats } from '@/types';
+import type { Achievement, CurrentGameStats } from '@/types';
+import { buildAchievementContext, buildDisplayAchievements } from '@/utils';
 
 class AnalyticsService {
 	// ============================================================================
@@ -51,12 +51,9 @@ class AnalyticsService {
 	calculateGameSessionStats(answerHistory: AnswerHistory[], totalScore: number, totalTime: number): CurrentGameStats {
 		const correctAnswers = answerHistory.filter(q => q.isCorrect).length;
 		const totalQuestionsAnswered = answerHistory.length;
-		const successRate = calculatePercentage(correctAnswers, totalQuestionsAnswered);
+		const successRate = calculateScoreRate(totalScore, totalQuestionsAnswered);
 		const timeSpentArray = answerHistory.map(q => q.timeSpent).filter((t): t is number => t !== undefined && t > 0);
-		const averageTimePerQuestion =
-			timeSpentArray.length === 0
-				? 0
-				: Number((timeSpentArray.reduce((acc, val) => acc + val, 0) / timeSpentArray.length).toFixed(1));
+		const averageTimePerQuestion = Number(mean(timeSpentArray).toFixed(1));
 
 		return {
 			score: totalScore,
@@ -147,6 +144,37 @@ class AnalyticsService {
 			logger.userError('Failed to get unified user analytics', {
 				errorInfo: { message: getErrorMessage(error) },
 				sectionsCount,
+			});
+			throw error;
+		}
+	}
+
+	async getUnifiedUserAnalyticsByUserId(
+		userId: string,
+		includeSections: string[]
+	): Promise<AnalyticsResponse<UnifiedUserAnalyticsResponse>> {
+		try {
+			const searchParams = new URLSearchParams();
+			if (includeSections.length > 0) {
+				searchParams.append('include', includeSections.join(','));
+				if (includeSections.map(s => s.toLowerCase()).includes('trends')) {
+					searchParams.append('groupBy', TimePeriod.DAILY);
+					searchParams.append('trendLimit', '30');
+				}
+			}
+			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+			logger.userInfo('Fetching unified user analytics by ID', { userId, sectionsCount: includeSections.length });
+			const response = await apiService.get<AnalyticsResponse<UnifiedUserAnalyticsResponse>>(
+				`${API_ENDPOINTS.ANALYTICS.USER}/unified/${userId}${query}`
+			);
+			const result = response.data;
+			logger.userInfo('Unified user analytics by ID fetched successfully', { userId });
+			return result;
+		} catch (error) {
+			logger.userError('Failed to get unified user analytics by ID', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
 			});
 			throw error;
 		}
@@ -280,16 +308,12 @@ class AnalyticsService {
 
 	async getUserAchievementsById(userId: string): Promise<AnalyticsResponse<Achievement[]>> {
 		try {
-			logger.userInfo('Fetching user achievements by ID', { userId });
-			const response = await apiService.get<AnalyticsResponse<Achievement[]>>(
-				API_ENDPOINTS.ANALYTICS.USER_ACHIEVEMENTS.replace(':userId', userId)
-			);
-			const result = response.data;
-			logger.userInfo('User achievements fetched successfully', {
-				userId,
-				count: result.data?.length ?? 0,
-			});
-			return result;
+			const result = await this.getUnifiedUserAnalyticsByUserId(userId, ['achievements', 'statistics', 'performance']);
+			const minimal = result.data?.achievements ?? [];
+			const context = buildAchievementContext(result.data?.statistics, result.data?.performance);
+			const data = buildDisplayAchievements(minimal, context);
+			logger.userInfo('User achievements fetched successfully', { userId, count: data.length });
+			return { data, timestamp: result.timestamp };
 		} catch (error) {
 			logger.userError('Failed to get user achievements', { errorInfo: { message: getErrorMessage(error) }, userId });
 			throw error;
@@ -562,7 +586,7 @@ class AnalyticsService {
 			const response = await apiService.get<LeaderboardResponse>(
 				`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.GLOBAL}${queryString}`
 			);
-			const result = response.data.leaderboard;
+			const result = AnalyticsService.deduplicateLeaderboardByUserId(response.data.leaderboard);
 
 			logger.userInfo('Global leaderboard fetched successfully', { count: result.length });
 			return result;
@@ -591,7 +615,7 @@ class AnalyticsService {
 			const response = await apiService.get<LeaderboardResponse>(
 				`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.PERIOD.replace(':period', period)}${queryString}`
 			);
-			const result = response.data.leaderboard;
+			const result = AnalyticsService.deduplicateLeaderboardByUserId(response.data.leaderboard);
 
 			logger.userInfo('Leaderboard fetched successfully', { period, count: result.length });
 			return result;
@@ -757,6 +781,15 @@ class AnalyticsService {
 			});
 			throw error;
 		}
+	}
+
+	private static deduplicateLeaderboardByUserId(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+		const seen = new Set<string>();
+		return entries.filter(entry => {
+			if (seen.has(entry.userId)) return false;
+			seen.add(entry.userId);
+			return true;
+		});
 	}
 }
 

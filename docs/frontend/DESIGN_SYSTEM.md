@@ -207,8 +207,16 @@ client/src/
 ### Layout Components
 - `.app-shell` - מעטפת האפליקציה
 - `.app-main` - תוכן ראשי
-- `.auth-view-layout` - פריסת מסכי אימות
-- `.grid-content`, `.grid-cards`, `.grid-stats`, `.grid-form`, `.grid-game`, `.grid-balanced`, `.grid-compact`, `.grid-auto-fit` - פריסות grid שונות
+- `.view-main` - מעטפת `<main>` לדפי view (גובה מסך, padding, overflow)
+- `.view-content-4xl`, `.view-content-2xl-scroll`, `.view-content-3xl-scroll`, `.view-content-6xl-fill`, `.view-content-6xl-scroll` - תוכן ממורכז עם ריווח וגלילה
+- `.view-spacing`, `.view-spacing-lg`, `.view-spacing-legal` - ריווח אנכי סטנדרטי
+- `.view-scroll-inline` - אזור גלילה (flex)
+- `.view-centered-4xl`, `.view-centered-6xl` - מירכוז ורוחב מקסימלי
+- `.card-padding` - padding סטנדרטי לכרטיס (`p-6 md:p-8`)
+- `.dialog-body` - גוף דיאלוג (ריווח + גלילה)
+- `.card-primary-tint`, `.card-muted-tint` - כרטיס עם גוון primary/muted
+- `.hover-row` - שורת טבלה עם הובר
+- `.link-primary` - קישור primary עם underline בהובר
 
 ### Game-Specific
 - `.game-over` - סגנון לסיום משחק

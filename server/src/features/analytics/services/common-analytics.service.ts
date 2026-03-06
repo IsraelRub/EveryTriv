@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { TIME_PERIODS_MS, TimePeriod } from '@shared/constants';
+import { TIME_PERIODS_MS, TimePeriod, VALIDATION_COUNT } from '@shared/constants';
 import type { AnalyticsResponse, CountRecord, UserTrendPoint } from '@shared/types';
-import { calculateSuccessRate } from '@shared/utils';
+import { calculateScoreRate, clamp, groupByBy, sumBy } from '@shared/utils';
 
 import type { GameHistoryEntity } from '@internal/entities';
 
@@ -75,73 +75,64 @@ export class AnalyticsCommonService {
 		gameHistory: GameHistoryEntity[],
 		options: { limit?: number; groupBy?: TimePeriod } = {}
 	): UserTrendPoint[] {
-		const limit = options.limit && options.limit > 0 ? Math.min(Math.floor(options.limit), 120) : 30;
+		const limit = clamp(
+			Math.floor(options.limit && options.limit > 0 ? options.limit : VALIDATION_COUNT.ACTIVITY_ENTRIES.DEFAULT),
+			VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+			120
+		);
 		const { groupBy } = options;
 
 		if (!groupBy) {
 			return gameHistory.slice(0, limit).map(game => {
 				const totalQuestionsAnswered = game.gameQuestionCount ?? 0;
-				const correctAnswers = game.correctAnswers ?? 0;
-				const successRate = calculateSuccessRate(totalQuestionsAnswered, correctAnswers);
+				const successRate = calculateScoreRate(game.score ?? 0, totalQuestionsAnswered);
 
 				return {
 					date: game.createdAt ? new Date(game.createdAt).toISOString() : new Date().toISOString(),
 					score: game.score ?? 0,
 					successRate,
 					totalQuestionsAnswered,
-					correctAnswers,
+					correctAnswers: game.correctAnswers ?? 0,
 					topic: game.topic ?? undefined,
 					difficulty: game.difficulty ?? undefined,
 				};
 			});
 		}
 
-		const buckets = new Map<
-			string,
-			{
-				date: Date;
-				totalScore: number;
-				totalQuestionsAnswered: number;
-				correctAnswers: number;
-				count: number;
-				topicCounter: CountRecord;
-				difficultyCounter: CountRecord;
-			}
-		>();
-
-		gameHistory.forEach(game => {
+		const grouped = groupByBy(gameHistory, game => {
 			const createdAt = game.createdAt ? new Date(game.createdAt) : new Date();
-			const key = this.getPeriodKey(createdAt, groupBy);
-			const bucket = buckets.get(key) ?? {
-				date: this.normalizeDateToPeriod(createdAt, groupBy),
-				totalScore: 0,
-				totalQuestionsAnswered: 0,
-				correctAnswers: 0,
-				count: 0,
-				topicCounter: {},
-				difficultyCounter: {},
-			};
-
-			bucket.totalScore += game.score ?? 0;
-			bucket.totalQuestionsAnswered += game.gameQuestionCount ?? 0;
-			bucket.correctAnswers += game.correctAnswers ?? 0;
-			bucket.count += 1;
-
-			if (game.topic) {
-				bucket.topicCounter[game.topic] = (bucket.topicCounter[game.topic] ?? 0) + 1;
-			}
-			if (game.difficulty) {
-				bucket.difficultyCounter[game.difficulty] = (bucket.difficultyCounter[game.difficulty] ?? 0) + 1;
-			}
-
-			buckets.set(key, bucket);
+			return this.getPeriodKey(createdAt, groupBy);
 		});
 
-		return Array.from(buckets.values())
+		const buckets = Object.entries(grouped).map(([key, games]) => {
+			const firstDate = games[0]?.createdAt ? new Date(games[0].createdAt) : new Date();
+			const date = this.normalizeDateToPeriod(firstDate, groupBy);
+			const totalScore = sumBy(games, g => g.score ?? 0);
+			const totalQuestionsAnswered = sumBy(games, g => g.gameQuestionCount ?? 0);
+			const correctAnswers = sumBy(games, g => g.correctAnswers ?? 0);
+			const topicCounter: CountRecord = {};
+			const difficultyCounter: CountRecord = {};
+			for (const game of games) {
+				if (game.topic) topicCounter[game.topic] = (topicCounter[game.topic] ?? 0) + 1;
+				if (game.difficulty) difficultyCounter[game.difficulty] = (difficultyCounter[game.difficulty] ?? 0) + 1;
+			}
+			return {
+				key,
+				date,
+				totalScore,
+				totalQuestionsAnswered,
+				correctAnswers,
+				count: games.length,
+				topicCounter,
+				difficultyCounter,
+			};
+		});
+
+		return buckets
 			.sort((a, b) => b.date.getTime() - a.date.getTime())
 			.slice(0, limit)
 			.map(bucket => {
-				const successRate = calculateSuccessRate(bucket.totalQuestionsAnswered, bucket.correctAnswers);
+				const successRate = calculateScoreRate(bucket.totalScore, bucket.totalQuestionsAnswered);
 				return {
 					date: bucket.date.toISOString(),
 					score: bucket.count > 0 ? bucket.totalScore / bucket.count : 0,

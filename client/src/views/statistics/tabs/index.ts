@@ -1,3 +1,3 @@
-export { StatisticsPerformanceTab } from './StatisticsPerformanceTab';
-export { StatisticsHistoryTab } from './StatisticsHistoryTab';
-export { StatisticsLeaderboardTab } from './StatisticsLeaderboardTab';
+export * from './StatisticsPerformanceTab';
+export * from './StatisticsHistoryTab';
+export * from './StatisticsLeaderboardTab';

@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, TIME_PERIODS_MS } from '@shared/constants';
-import type { GameDifficulty, SubmitAnswerToSessionParams, TriviaRequest } from '@shared/types';
+import type { GameDifficulty, SubmitAnswerToSessionParams } from '@shared/types';
 import { extractValidationErrors, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
-
-type TriviaRequestWithOptionalSignal = TriviaRequest & { signal?: AbortSignal };
 
 import { QUERY_KEYS } from '@/constants';
 import { gameHistoryService, gameService, clientLogger as logger, queryInvalidationService } from '@/services';
+import type { TriviaRequestWithSignal } from '@/types';
 import { useIsAuthenticated } from '../useAuth';
 
 export const useGameHistory = (limit: number = 20, offset: number = 0) => {
@@ -25,7 +24,7 @@ export const useTriviaQuestionMutation = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (request: TriviaRequestWithOptionalSignal) => gameService.getTrivia(request),
+		mutationFn: (request: TriviaRequestWithSignal) => gameService.getTrivia(request),
 		onSuccess: (data, request) => {
 			// Cache the result for potential reuse - strip signal for cache key (not serializable)
 			const { signal: _signal, ...cacheRequest } = request;

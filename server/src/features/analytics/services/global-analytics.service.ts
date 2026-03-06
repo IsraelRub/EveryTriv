@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 
-import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, VALIDATORS } from '@shared/constants';
+import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	CountRecord,
@@ -19,25 +19,30 @@ import type {
 } from '@shared/types';
 import {
 	buildCountRecord,
-	calculateSuccessRate,
+	calculateScoreRate,
+	clamp,
 	ensureErrorObject,
 	getErrorMessage,
 	hasProperty,
-	isDifficultyStatsRecord,
 	isRecord,
-	isTopicAnalyticsRecordArray,
 } from '@shared/utils';
-import { isAnalyticsResponseUserTrendPointArray } from '@shared/utils/domain';
-import { isGameDifficulty } from '@shared/validation';
+import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
 import { SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { DifficultyStatsRecord, NumericQueryResult, UserIdSuccessRateRecord } from '@internal/types';
-import { addDateRangeConditions } from '@internal/utils';
+import { addDateRangeConditions, computeMeanVarianceStddev } from '@internal/utils';
 
+import {
+	isAnalyticsResponseUserTrendPointArray,
+	isDifficultyStatsRecord,
+	isTopicAnalyticsRecordArray,
+} from '../../../internal/utils/entityGuards';
 import { AnalyticsCommonService } from './common-analytics.service';
+
+type DifficultyStatRow = DifficultyStatsRecord & { totalQuestions?: number; scoreSum?: number };
 
 @Injectable()
 export class GlobalAnalyticsService {
@@ -83,20 +88,22 @@ export class GlobalAnalyticsService {
 						.select('game.difficulty', 'difficulty')
 						.addSelect('CAST(COUNT(*) AS INTEGER)', 'total')
 						.addSelect('CAST(COALESCE(SUM(game.correct_answers), 0) AS INTEGER)', 'correct')
+						.addSelect('CAST(COALESCE(SUM(game.game_question_count), 0) AS INTEGER)', 'totalQuestions')
+						.addSelect('CAST(COALESCE(SUM(game.score), 0) AS INTEGER)', 'scoreSum')
 						.where(`game.difficulty ${SQL_CONDITIONS.IS_NOT_NULL}`)
 						.andWhere("game.difficulty != ''")
 						.groupBy('game.difficulty')
-						.getRawMany<DifficultyStatsRecord>();
+						.getRawMany<DifficultyStatRow>();
 
 					const result: DifficultyBreakdown = {};
 					difficultyStats.forEach(stat => {
 						if (stat?.difficulty && isGameDifficulty(stat.difficulty) && stat.total != null && stat.correct != null) {
-							const total = stat.total;
-							const correct = stat.correct;
+							const totalQuestions = stat.totalQuestions ?? 0;
+							const scoreSum = stat.scoreSum ?? 0;
 							result[stat.difficulty] = {
-								total,
-								correct,
-								successRate: total > 0 ? calculateSuccessRate(total, correct) : undefined,
+								total: stat.total,
+								correct: stat.correct,
+								successRate: totalQuestions > 0 ? calculateScoreRate(scoreSum, totalQuestions) : undefined,
 							};
 						}
 					});
@@ -150,14 +157,12 @@ export class GlobalAnalyticsService {
 					let consistency = 0;
 					if (consistencyRaw.length > 0) {
 						const successRates = consistencyRaw.map(r => (VALIDATORS.number(r.successRate) ? r.successRate : 0));
-						const mean = successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length;
-						const variance = successRates.reduce((sum, rate) => sum + (rate - mean) ** 2, 0) / successRates.length;
-						const standardDeviation = variance ** 0.5;
-						consistency = Math.max(0, Math.round(100 - standardDeviation * 2));
+						const stats = computeMeanVarianceStddev(successRates);
+						consistency = Math.max(0, Math.round(100 - stats.standardDeviation * 2));
 					}
 
 					return {
-						successRate: Math.round(gameStats.averageScore),
+						successRate: gameStats.successRate,
 						averageGames,
 						averageGameTime,
 						consistency,
@@ -192,7 +197,11 @@ export class GlobalAnalyticsService {
 			return await this.cacheService.getOrSet<AnalyticsResponse<UserTrendPoint[]>>(
 				cacheKey,
 				async () => {
-					const limit = query?.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 120) : 30;
+					const limit = clamp(
+						Math.floor(query?.limit && query.limit > 0 ? query.limit : VALIDATION_COUNT.ACTIVITY_ENTRIES.DEFAULT),
+						VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+						120
+					);
 					const { groupBy } = query ?? {};
 					const queryBuilder = this.gameHistoryRepo.createQueryBuilder('game').orderBy('game.createdAt', 'DESC');
 					if (query?.startDate ?? query?.endDate) {
@@ -216,6 +225,7 @@ export class GlobalAnalyticsService {
 	async getGameStatsForComparison(): Promise<GameStatsSummary> {
 		const stats = await this.calculateGameStats();
 		return {
+			successRate: stats.successRate,
 			averageScore: stats.averageScore,
 			totalGames: stats.totalGames,
 		};
@@ -228,7 +238,10 @@ export class GlobalAnalyticsService {
 			return await this.cacheService.getOrSet<TopicAnalyticsRecord[]>(
 				cacheKey,
 				async () => {
-					const queryBuilder = this.createFilteredGameHistoryQuery(query);
+					const queryBuilder = this.createFilteredGameHistoryQuery(query).andWhere(
+						'game.gameQuestionCount > :minQuestions',
+						{ minQuestions: 0 }
+					);
 
 					const topicStatsRaw = await queryBuilder
 						.select('game.topic', 'topic')
@@ -237,9 +250,10 @@ export class GlobalAnalyticsService {
 						.addOrderBy('COUNT(*)', 'DESC')
 						.getRawMany<TopicAnalyticsRecord>();
 
-					return topicStatsRaw.filter(
+					const filtered = topicStatsRaw.filter(
 						(stat): stat is TopicAnalyticsRecord => stat.topic != null && stat.totalGames != null
 					);
+					return this.normalizeTopicStats(filtered);
 				},
 				TIME_DURATIONS_SECONDS.THIRTY_MINUTES,
 				isTopicAnalyticsRecordArray
@@ -250,6 +264,28 @@ export class GlobalAnalyticsService {
 			});
 			return [];
 		}
+	}
+
+	private normalizeTopicStats(stats: TopicAnalyticsRecord[]): TopicAnalyticsRecord[] {
+		const topicsMap = new Map<string, { original: string; count: number; maxVariantCount: number }>();
+		for (const stat of stats) {
+			const trimmed = stat.topic.trim();
+			const lowerKey = trimmed.toLowerCase();
+			const count = stat.totalGames ?? 0;
+			const existing = topicsMap.get(lowerKey);
+			if (existing) {
+				existing.count += count;
+				if (count > existing.maxVariantCount) {
+					existing.original = trimmed;
+					existing.maxVariantCount = count;
+				}
+			} else {
+				topicsMap.set(lowerKey, { original: trimmed, count, maxVariantCount: count });
+			}
+		}
+		return Array.from(topicsMap.values())
+			.map(({ original, count }) => ({ topic: original, totalGames: count }))
+			.sort((a, b) => b.totalGames - a.totalGames);
 	}
 
 	private createFilteredGameHistoryQuery(query?: GameAnalyticsQuery): SelectQueryBuilder<GameHistoryEntity> {
@@ -280,15 +316,16 @@ export class GlobalAnalyticsService {
 		try {
 			const totalGames = await this.createFilteredGameHistoryQuery(query).getCount();
 
-			const totalCorrectAnswersRaw = await this.createFilteredGameHistoryQuery(query)
-				.select('CAST(COALESCE(SUM(game.correct_answers), 0) AS INTEGER)', 'value')
-				.getRawOne<NumericQueryResult>();
-
 			const totalQuestionsAskedRaw = await this.createFilteredGameHistoryQuery(query)
 				.select('CAST(COALESCE(SUM(game.game_question_count), 0) AS INTEGER)', 'value')
 				.getRawOne<NumericQueryResult>();
 
+			const totalScoreRaw = await this.createFilteredGameHistoryQuery(query)
+				.select('CAST(COALESCE(SUM(game.score), 0) AS INTEGER)', 'value')
+				.getRawOne<NumericQueryResult>();
+
 			const topicStatsRaw = await this.createFilteredGameHistoryQuery(query)
+				.andWhere('game.gameQuestionCount > :minQuestions', { minQuestions: 0 })
 				.select('game.topic', 'topic')
 				.addSelect('CAST(COUNT(*) AS INTEGER)', 'totalGames')
 				.groupBy('game.topic')
@@ -343,17 +380,16 @@ export class GlobalAnalyticsService {
 				medianTime,
 			};
 
-			const correctAnswers = totalCorrectAnswersRaw?.value ?? 0;
 			const questionsAsked = totalQuestionsAskedRaw?.value ?? 0;
-			const averageScore = calculateSuccessRate(questionsAsked, correctAnswers);
+			const totalScore = totalScoreRaw?.value ?? 0;
+			const successRate = questionsAsked > 0 ? calculateScoreRate(totalScore, questionsAsked) : 0;
+			const averageScore = totalGames > 0 ? Math.round(totalScore / totalGames) : 0;
 
-			const popularTopics = topicStatsRaw.reduce<string[]>((acc, stat) => {
-				const topic = stat?.topic ?? '';
-				if (topic !== '') {
-					acc.push(topic);
-				}
-				return acc;
-			}, []);
+			const topicStatsFiltered = topicStatsRaw.filter(
+				(stat): stat is TopicAnalyticsRecord => stat.topic != null && stat.totalGames != null
+			);
+			const normalizedTopics = this.normalizeTopicStats(topicStatsFiltered);
+			const popularTopics = normalizedTopics.slice(0, 5).map(t => t.topic);
 
 			const difficultyDistribution: CountRecord = buildCountRecord(
 				difficultyStatsRaw,
@@ -364,6 +400,7 @@ export class GlobalAnalyticsService {
 			return {
 				totalGames,
 				totalQuestionsAnswered: questionsAsked,
+				successRate,
 				averageScore,
 				popularTopics,
 				difficultyDistribution,

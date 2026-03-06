@@ -1,2 +1,2 @@
-export { Navigation } from './Navigation';
-export { NavLink } from './NavLink';
+export * from './Navigation';
+export * from './NavLink';

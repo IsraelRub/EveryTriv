@@ -9,5 +9,3 @@ export enum ProviderHealthStatus {
 	UNAVAILABLE = 'unavailable',
 	AVAILABLE = 'available',
 }
-
-export const PROVIDER_HEALTH_STATUSES = Object.values(ProviderHealthStatus);

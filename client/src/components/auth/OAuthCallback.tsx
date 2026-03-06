@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
 
 import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType, TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { ButtonSize, ButtonVariant, QUERY_KEYS, ROUTES, SpinnerSize, STORAGE_KEYS, VariantBase } from '@/constants';
-import { Alert, AlertDescription, Button, Card, HomeButton, Spinner } from '@/components';
+import {
+	AlertVariant,
+	ButtonSize,
+	Colors,
+	ComponentSize,
+	QUERY_KEYS,
+	ROUTES,
+	STORAGE_KEYS,
+	VariantBase,
+} from '@/constants';
+import { Alert, AlertDescription, AlertIcon, Button, Card, HomeButton, Spinner } from '@/components';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService, storageService } from '@/services';
+import { cn } from '@/utils';
 
 export function OAuthCallback() {
 	const navigate = useNavigate();
@@ -30,15 +39,13 @@ export function OAuthCallback() {
 				}
 				logger.authDebug('OAuth callback search params', { params });
 
-				// Get parameters from URL
+				// Get parameters from URL (auth is via cookie; no token in URL)
 				const success = searchParams.get('success');
-				const token = searchParams.get('token');
 				const error = searchParams.get('error');
 				const errorDescription = searchParams.get('error_description');
 
 				logger.authDebug('OAuth callback received', {
 					success: success === 'true',
-					token: token ?? undefined,
 					errorInfo: {
 						message: error ?? undefined,
 						description: errorDescription ?? undefined,
@@ -72,27 +79,24 @@ export function OAuthCallback() {
 					return;
 				}
 
-				// Check for success flag or token
-				if (success === 'true' || token) {
+				// Check for success flag with tokens from server redirect
+				if (success === 'true') {
 					logger.authDebug('OAuth success confirmed, proceeding with user authentication');
 
-					// Store token if provided
-					if (token) {
-						logger.authDebug('Storing authentication token');
-						await storageService.set(STORAGE_KEYS.AUTH_TOKEN, token);
+					const accessToken = searchParams.get('accessToken');
+					const refreshToken = searchParams.get('refreshToken');
 
-						// Verify token was stored
-						const storedToken = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-						if (!storedToken.success || !storedToken.data) {
-							logger.authError('Failed to store authentication token', {
-								success: storedToken.success,
-							});
-							throw new Error(ERROR_MESSAGES.api.FAILED_TO_STORE_AUTH_TOKEN);
-						}
-						logger.authDebug('Token stored successfully');
+					if (!accessToken) {
+						logger.authError('OAuth callback missing access token');
+						throw new Error(ERROR_MESSAGES.user.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
-					// Get user data
+					await storageService.set(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+					if (refreshToken) {
+						await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+					}
+					window.dispatchEvent(new Event('auth-token-changed'));
+
 					logger.authDebug('Attempting to get current user');
 					const user = await authService.getCurrentUser();
 					logger.authDebug('User data received', {
@@ -102,10 +106,9 @@ export function OAuthCallback() {
 
 					if (!user) {
 						logger.authError('Failed to retrieve user data - user is null');
-						throw new Error(ERROR_MESSAGES.api.FAILED_TO_RETRIEVE_USER_DATA);
+						throw new Error(ERROR_MESSAGES.user.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
-					// Update React Query cache with user data
 					logger.authDebug('Setting user in React Query cache');
 					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), user);
 					queryInvalidationService.invalidateAuthQueries(queryClient);
@@ -128,8 +131,8 @@ export function OAuthCallback() {
 						navigate(ROUTES.HOME, { replace: true });
 					}
 				} else {
-					// No success flag and no token
-					logger.authError('OAuth callback without success parameter or token', { params });
+					// No success flag
+					logger.authError('OAuth callback without success parameter', { params });
 					setErrorMessage(getErrorMessage(OAuthErrorType.NO_TOKEN));
 					setErrorType(OAuthErrorType.NO_TOKEN);
 					setStatus(CallbackStatus.ERROR);
@@ -150,7 +153,7 @@ export function OAuthCallback() {
 
 				setTimeout(() => {
 					navigate(`${ROUTES.LOGIN}?error=${OAuthErrorType.UNEXPECTED_ERROR}`, { replace: true });
-				}, 3000);
+				}, TIME_PERIODS_MS.THREE_SECONDS);
 			}
 		};
 
@@ -166,7 +169,7 @@ export function OAuthCallback() {
 			<Card className='w-full max-w-md p-8'>
 				{status === CallbackStatus.PROCESSING && (
 					<div className='text-center space-y-4'>
-						<Spinner size={SpinnerSize.XL} className='mx-auto' />
+						<Spinner size={ComponentSize.XL} className='mx-auto' />
 						<div>
 							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
 							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>
@@ -176,15 +179,14 @@ export function OAuthCallback() {
 
 				{status === CallbackStatus.ERROR && (
 					<div className='space-y-4'>
-						<Alert variant={VariantBase.DESTRUCTIVE}>
-							<AlertCircle className='h-4 w-4' />
+						<Alert variant={AlertVariant.DESTRUCTIVE}>
 							<AlertDescription>{errorMessage}</AlertDescription>
 						</Alert>
 
 						{/* Show additional info for configuration errors */}
 						{errorType === OAuthErrorType.INVALID_CLIENT && (
 							<Alert>
-								<AlertCircle className='h-4 w-4' />
+								<AlertIcon />
 								<AlertDescription>
 									<p className='font-semibold mb-1'>Configuration Issue</p>
 									<p className='text-sm'>
@@ -196,8 +198,13 @@ export function OAuthCallback() {
 						)}
 
 						<div className='text-center space-y-4'>
-							<div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto'>
-								<AlertCircle className='w-10 h-10 text-red-600' />
+							<div
+								className={cn(
+									'w-16 h-16 rounded-full flex items-center justify-center mx-auto',
+									`${Colors.RED_500.bg}/10`
+								)}
+							>
+								<AlertIcon size='xl' className={Colors.RED_500.text} />
 							</div>
 							<div>
 								<h2 className='text-xl font-semibold mb-2'>Authentication Failed</h2>
@@ -205,7 +212,7 @@ export function OAuthCallback() {
 								<p className='text-sm text-muted-foreground mt-2'>Redirecting you back to the login page...</p>
 							</div>
 							<div className='flex gap-2 justify-center'>
-								<Button onClick={() => window.location.reload()} variant={ButtonVariant.OUTLINE} size={ButtonSize.LG}>
+								<Button onClick={() => window.location.reload()} variant={VariantBase.OUTLINE} size={ButtonSize.LG}>
 									Try Again
 								</Button>
 								<HomeButton />

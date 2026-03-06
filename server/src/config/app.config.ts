@@ -1,4 +1,4 @@
-import { LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
+import { ERROR_MESSAGES, LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
 
 import {
 	ADMIN_CREDENTIALS_DEFAULTS,
@@ -38,9 +38,7 @@ export class AppConfig {
 	static createDatabaseConfig() {
 		const password = process.env.DATABASE_PASSWORD;
 		if (!password || typeof password !== 'string') {
-			throw new Error(
-				'DATABASE_PASSWORD must be a non-empty string. Please set the DATABASE_PASSWORD environment variable.'
-			);
+			throw new Error(ERROR_MESSAGES.config.DATABASE_PASSWORD_REQUIRED);
 		}
 		return {
 			host: process.env.DATABASE_HOST ?? LOCALHOST_CONFIG.hosts.DATABASE,

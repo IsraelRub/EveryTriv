@@ -1,17 +1,22 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Get,
+	Post,
+	Query,
+	Req,
+	Res,
+	UnauthorizedException,
+	UseGuards,
+} from '@nestjs/common';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import {
-	API_ENDPOINTS,
-	LOCALHOST_CONFIG,
-	TIME_DURATIONS_SECONDS,
-	TIME_PERIODS_MS,
-	UserRole,
-	VALIDATORS,
-} from '@shared/constants';
+import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import type { AdminUserData, BasicUser, GoogleAuthRequest, TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { UserCoreService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -106,6 +111,23 @@ export class AuthController {
 		}
 	}
 
+	@Post('request-verification-email')
+	async requestVerificationEmail(@CurrentUserId() userId: string | null): Promise<{ verificationLink: string }> {
+		if (!userId) {
+			throw new UnauthorizedException(ErrorCode.USER_NOT_AUTHENTICATED);
+		}
+		return this.authService.requestVerificationEmail(userId);
+	}
+
+	@Get('verify-email')
+	@Public()
+	async verifyEmail(@Query('token') token: string | undefined): Promise<{ verified: boolean }> {
+		if (!token || typeof token !== 'string') {
+			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
+		}
+		return this.authService.verifyEmail(token);
+	}
+
 	@Get('me')
 	@NoCache()
 	async getCurrentUser(@CurrentUser() user: TokenPayload): Promise<BasicUser> {
@@ -147,6 +169,9 @@ export class AuthController {
 			}
 			if (fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)) {
 				userData.avatar = fullUser.preferences.avatar;
+			}
+			if ('emailVerified' in fullUser && typeof fullUser.emailVerified === 'boolean') {
+				userData.emailVerified = fullUser.emailVerified;
 			}
 
 			logger.systemInfo('Returning user data', {
@@ -268,27 +293,14 @@ export class AuthController {
 			});
 
 			const clientUrl = process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT;
-			const cookieOptions = {
-				httpOnly: true,
-				secure: process.env.COOKIE_SECURE !== 'false',
-				sameSite: 'lax' as const,
-				maxAge: 15 * TIME_PERIODS_MS.MINUTE,
-				path: '/',
-			};
 
-			res.cookie('access_token', result.accessToken, cookieOptions);
-
-			if (result.refreshToken) {
-				res.cookie('refresh_token', result.refreshToken, {
-					...cookieOptions,
-					maxAge: TIME_PERIODS_MS.WEEK,
-				});
-			}
-
-			const redirectUrl = `${clientUrl}/auth/callback?success=true&token=${encodeURIComponent(result.accessToken)}`;
+			const redirectUrl =
+				`${clientUrl}/auth/callback?success=true` +
+				`&accessToken=${encodeURIComponent(result.accessToken)}` +
+				(result.refreshToken ? `&refreshToken=${encodeURIComponent(result.refreshToken)}` : '');
 
 			logger.systemInfo('Redirecting to client after successful OAuth', {
-				redirectTo: redirectUrl.replace(/token=[^&]+/, 'token=***'),
+				redirectTo: `${clientUrl}/auth/callback?success=true&accessToken=[REDACTED]`,
 				baseUrl: clientUrl,
 			});
 

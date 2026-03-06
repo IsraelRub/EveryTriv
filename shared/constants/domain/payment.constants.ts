@@ -1,3 +1,7 @@
+import { TIME_PERIODS_MS } from '../core/time.constants';
+
+export const GENERATED_PAYMENT_INTENT_ID_PREFIX = 'pi_';
+
 export enum PaymentStatus {
 	PENDING = 'pending',
 	COMPLETED = 'completed',
@@ -39,26 +43,12 @@ export enum PaymentClientAction {
 	CONFIRM_PAYPAL = 'confirm_paypal',
 }
 
-export const MANUAL_CREDIT_SUPPORTED_CARD_LENGTHS = {
-	MIN: 12,
-	MAX: 19,
-} as const;
-
-export const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
-
-export const VALID_PAYMENT_METHODS_SET = new Set<string>(VALID_PAYMENT_METHODS);
+export const PAYMENT_METHODS = new Set<string>(Object.values(PaymentMethod));
 
 export enum PlanType {
 	BASIC = 'basic',
 	PREMIUM = 'premium',
 	PRO = 'pro',
-}
-
-export const VALID_PLAN_TYPES = Object.values(PlanType);
-
-export enum RequestSource {
-	WEB = 'web',
-	API = 'api',
 }
 
 export const CREDIT_PURCHASE_PACKAGES = [
@@ -116,7 +106,7 @@ export const PAYPAL_WEBHOOK_EVENTS = {
 
 export const PAYPAL_RETRY_CONFIG = {
 	MAX_RETRIES: 3,
-	INITIAL_DELAY_MS: 1000,
-	MAX_DELAY_MS: 10000,
+	INITIAL_DELAY_MS: TIME_PERIODS_MS.SECOND,
+	MAX_DELAY_MS: TIME_PERIODS_MS.TEN_SECONDS,
 	BACKOFF_MULTIPLIER: 2,
 } as const;

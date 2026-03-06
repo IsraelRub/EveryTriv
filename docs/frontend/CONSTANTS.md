@@ -101,23 +101,7 @@ export const SCORING_DEFAULTS = {
 - `DEFAULT_TIME_LIMIT` - מגבלת זמן ברירת מחדל (60 שניות)
 - `DEFAULT_GAME_MODE` - מצב משחק ברירת מחדל (`GameMode.QUESTION_LIMITED`)
 
-**GAME_MODE_DEFAULTS:**
-```typescript
-export const GAME_MODE_DEFAULTS = {
-  [GameMode.QUESTION_LIMITED]: {
-    timeLimit: 0,
-    questionLimit: DEFAULT_QUESTION_LIMIT,
-  },
-  [GameMode.TIME_LIMITED]: {
-    timeLimit: DEFAULT_TIME_LIMIT,
-    questionLimit: UNLIMITED_QUESTIONS,
-  },
-  [GameMode.UNLIMITED]: {
-    timeLimit: 0,
-    questionLimit: UNLIMITED_QUESTIONS,
-  },
-} as const;
-```
+**GAME_MODES_CONFIG** (shared): מכיל לכל מצב משחק את השם, התיאור, ברירות המחדל (timeLimit, maxQuestionsPerGame, timePerQuestion) ועלויות הנקודות (costPerQuestion, chargeAfterGame, hostPaysOnly וכו').
 
 ### game/game-state.constants.ts
 
@@ -563,16 +547,23 @@ SM, MD, LG, XL, XXL, FULL
 
 קבועי וריאנטים:
 
-**ButtonVariant Enum:**
+**VariantBase Enum (מקור יחיד לוריאנטים):**
 ```typescript
-export enum ButtonVariant {
-  PRIMARY = 'primary',
+export enum VariantBase {
+  DEFAULT = 'default',
+  DESTRUCTIVE = 'destructive',
+  MINIMAL = 'minimal',
+  OUTLINE = 'outline',
   SECONDARY = 'secondary',
-  GHOST = 'ghost',
-  DANGER = 'danger',
-  ACCENT = 'accent',
+  STATIC = 'static',
 }
 ```
+
+**ButtonVariant Type (VariantBase ללא STATIC):**
+```typescript
+export type ButtonVariant = Exclude<VariantBase, VariantBase.STATIC>;
+```
+בכפתורים משתמשים בערכי `VariantBase` (למשל `VariantBase.DEFAULT`, `VariantBase.MINIMAL`). ב-Badge ובממשקים שמקבלים וריאנט משתמשים ב-`VariantBase` או ב-`ButtonVariant` לפי הצורך.
 
 **CardVariant Enum:**
 GLASS, WHITE, TRANSPARENT, GRAY, SOLID, GRADIENT
@@ -634,7 +625,8 @@ export * from './storage.constants';
 import { 
   STORAGE_KEYS,
   AudioKey, 
-  ButtonVariant,
+  VariantBase,
+  type ButtonVariant,
   ComponentSize,
   NAVIGATION_LINKS,
   ROUTE_PATHS

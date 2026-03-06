@@ -2,7 +2,14 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { GameHistoryEntity, TriviaEntity, UserStatsEntity } from '@internal/entities';
+import {
+	CreditTransactionEntity,
+	GameHistoryEntity,
+	PaymentHistoryEntity,
+	TriviaEntity,
+	UserEntity,
+	UserStatsEntity,
+} from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
 import { AnalyticsModule } from '../analytics/analytics.module';
@@ -15,7 +22,14 @@ import { UserStatsMaintenanceService } from './user-stats-maintenance.service';
 @Module({
 	imports: [
 		ScheduleModule.forRoot(),
-		TypeOrmModule.forFeature([UserStatsEntity, GameHistoryEntity, TriviaEntity]),
+		TypeOrmModule.forFeature([
+			UserStatsEntity,
+			GameHistoryEntity,
+			TriviaEntity,
+			UserEntity,
+			CreditTransactionEntity,
+			PaymentHistoryEntity,
+		]),
 		forwardRef(() => AnalyticsModule), // For UserStatsUpdateService
 		forwardRef(() => GameModule), // For GameService
 		StorageModule, // For GameSessionScheduler

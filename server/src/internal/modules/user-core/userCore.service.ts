@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import type { AdminUserData, AdminUsersListResponse } from '@shared/types';
-import { calculateHasMore, getErrorMessage } from '@shared/utils';
+import { clamp, getErrorMessage } from '@shared/utils';
 
 import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
@@ -17,7 +17,7 @@ export class UserCoreService {
 
 	async getAllUsers(limit: number = 50, offset: number = 0): Promise<AdminUsersListResponse> {
 		try {
-			const safeLimit = Math.min(Math.max(limit, 1), 200);
+			const safeLimit = clamp(limit, 1, 200);
 			const safeOffset = Math.max(offset, 0);
 
 			const [users, total] = await this.userRepository.findAndCount({
@@ -40,7 +40,7 @@ export class UserCoreService {
 				total,
 				limit: safeLimit,
 				offset: safeOffset,
-				hasMore: calculateHasMore(safeOffset, mapped.length, total),
+				hasMore: safeOffset + mapped.length < total,
 			};
 		} catch (error) {
 			logger.userError('Failed to get all users', {

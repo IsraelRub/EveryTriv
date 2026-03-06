@@ -1,5 +1,5 @@
-import { VALIDATORS } from '@shared/constants';
 import type { ErrorDetail, ErrorResponse, ErrorResponseData, ValidationErrorResponse } from '@shared/types';
+import { VALIDATORS } from '@shared/validation';
 
 import { hasProperty, isRecord, isStringArray } from '../core/data.utils';
 

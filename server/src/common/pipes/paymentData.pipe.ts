@@ -1,9 +1,16 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ERROR_CODES, PaymentMethod } from '@shared/constants';
+import { ErrorCode, PaymentMethod, VALIDATION_PAYMENT } from '@shared/constants';
 import type { ValidationResult } from '@shared/types';
-import { calculateDuration, isRecord, sanitizeCardNumber } from '@shared/utils';
-import { isPaymentMethod, isValidCardNumber, validateCVV, validateExpiryDate, validateName } from '@shared/validation';
+import { calculateDuration, isNonEmptyString, isRecord, sanitizeCardNumber } from '@shared/utils';
+import {
+	isPaymentMethod,
+	isValidCardNumber,
+	validateCVV,
+	validateExpiryDate,
+	validateName,
+	VALIDATORS,
+} from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import type { PersonalPaymentData } from '@internal/types';
@@ -52,11 +59,11 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		if (!this.hasCardData(value)) {
-			throw new BadRequestException(ERROR_CODES.CARD_DETAILS_REQUIRED);
+			throw new BadRequestException(ErrorCode.CARD_DETAILS_REQUIRED);
 		}
 
 		if (!this.isManualPaymentPayload(value)) {
-			throw new BadRequestException(ERROR_CODES.INCOMPLETE_PAYMENT_INFO);
+			throw new BadRequestException(ErrorCode.INCOMPLETE_PAYMENT_INFO);
 		}
 
 		const validationResult = this.validateManualPaymentData(value);
@@ -92,7 +99,7 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		// Validate card number using shared validation function
-		if (!data.cardNumber || typeof data.cardNumber !== 'string') {
+		if (!data.cardNumber || !VALIDATORS.string(data.cardNumber)) {
 			errors.push('Card number is required');
 			suggestions.push('Please enter your card number');
 		} else {
@@ -104,7 +111,7 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		// Validate expiry date using shared validation function
-		if (!data.expiryDate || typeof data.expiryDate !== 'string') {
+		if (!data.expiryDate || !VALIDATORS.string(data.expiryDate)) {
 			errors.push('Expiry date is required');
 			suggestions.push('Please enter your card expiry date');
 		} else {
@@ -118,7 +125,7 @@ export class PaymentDataPipe implements PipeTransform {
 		}
 
 		// Validate CVV using shared validation function
-		if (!data.cvv || typeof data.cvv !== 'string') {
+		if (!data.cvv || !VALIDATORS.string(data.cvv)) {
 			errors.push('CVV is required');
 			suggestions.push('Please enter your 3-4 digit CVV');
 		} else {
@@ -149,24 +156,23 @@ export class PaymentDataPipe implements PipeTransform {
 
 	private ensurePayPalOrderId(value: PersonalPaymentData | CreatePaymentDto): void {
 		if (
-			(typeof value.paypalOrderId !== 'string' || value.paypalOrderId.trim().length < 10) &&
-			(typeof value.paypalPaymentId !== 'string' || value.paypalPaymentId.trim().length < 10)
+			(!VALIDATORS.string(value.paypalOrderId) ||
+				value.paypalOrderId.trim().length < VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH) &&
+			(!VALIDATORS.string(value.paypalPaymentId) ||
+				value.paypalPaymentId.trim().length < VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH)
 		) {
-			throw new BadRequestException(ERROR_CODES.PAYPAL_ORDER_ID_REQUIRED);
+			throw new BadRequestException(ErrorCode.PAYPAL_ORDER_ID_REQUIRED);
 		}
 	}
 
 	private hasPayPalOrderId(value: PersonalPaymentData | CreatePaymentDto): boolean {
-		return (
-			(typeof value.paypalOrderId === 'string' && value.paypalOrderId.trim().length > 0) ||
-			(typeof value.paypalPaymentId === 'string' && value.paypalPaymentId.trim().length > 0)
-		);
+		return isNonEmptyString(value.paypalOrderId) || isNonEmptyString(value.paypalPaymentId);
 	}
 
 	private getPaymentMethod(value: PersonalPaymentData | CreatePaymentDto): PaymentMethod {
 		if ('paymentMethod' in value && value.paymentMethod) {
 			const method = value.paymentMethod;
-			if (typeof method === 'string' && isPaymentMethod(method)) {
+			if (VALIDATORS.string(method) && isPaymentMethod(method)) {
 				return method;
 			}
 		}
@@ -174,9 +180,8 @@ export class PaymentDataPipe implements PipeTransform {
 	}
 
 	private hasCardData(value: PersonalPaymentData | CreatePaymentDto): boolean {
-		const hasCardNumber =
-			'cardNumber' in value && typeof value.cardNumber === 'string' && value.cardNumber.trim().length > 0;
-		const hasCvv = 'cvv' in value && typeof value.cvv === 'string' && value.cvv.trim().length > 0;
+		const hasCardNumber = 'cardNumber' in value && isNonEmptyString(value.cardNumber);
+		const hasCvv = 'cvv' in value && isNonEmptyString(value.cvv);
 		return hasCardNumber || hasCvv;
 	}
 
@@ -185,19 +190,19 @@ export class PaymentDataPipe implements PipeTransform {
 			return false;
 		}
 
-		return typeof value.cardNumber === 'string' && typeof value.cvv === 'string';
+		return VALIDATORS.string(value.cardNumber) && VALIDATORS.string(value.cvv);
 	}
 
 	private sanitizeManualPaymentValue<T extends PersonalPaymentData | CreatePaymentDto>(value: T): T {
-		if ('cardNumber' in value && typeof value.cardNumber === 'string') {
+		if ('cardNumber' in value && VALIDATORS.string(value.cardNumber)) {
 			value.cardNumber = value.cardNumber.replace(/\s+/g, '');
 		}
 
-		if ('cvv' in value && typeof value.cvv === 'string') {
+		if ('cvv' in value && VALIDATORS.string(value.cvv)) {
 			value.cvv = value.cvv.trim();
 		}
 
-		if ('expiryDate' in value && typeof value.expiryDate === 'string') {
+		if ('expiryDate' in value && VALIDATORS.string(value.expiryDate)) {
 			value.expiryDate = value.expiryDate.trim();
 		}
 

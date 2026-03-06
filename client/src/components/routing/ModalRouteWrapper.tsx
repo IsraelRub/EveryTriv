@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
 
-import { ANIMATION_CONFIG, ModalSize, TRANSITION_DURATIONS } from '@/constants';
+import { ANIMATION_CONFIG, ComponentSize, TRANSITION_DURATIONS } from '@/constants';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
 import { useModalRoute } from '@/hooks';
 import type { ModalRouteProps } from '@/types';
 import { cn } from '@/utils';
 
-export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalRouteProps): JSX.Element {
+export function ModalRouteWrapper({ children, modalSize = ComponentSize.LG }: ModalRouteProps): JSX.Element {
 	const { isModal, closeModal } = useModalRoute();
 
 	// If modal mode, render as Dialog
@@ -23,10 +23,10 @@ export function ModalRouteWrapper({ children, modalSize = ModalSize.LG }: ModalR
 				<DialogContent
 					className={cn(
 						'sm:max-w-lg max-h-[90vh] overflow-y-auto',
-						modalSize === ModalSize.XL && 'sm:max-w-6xl',
-						modalSize === ModalSize.SM && 'sm:max-w-sm',
-						modalSize === ModalSize.MD && 'sm:max-w-md',
-						modalSize === ModalSize.FULL && 'sm:max-w-full'
+						modalSize === ComponentSize.XL && 'sm:max-w-6xl',
+						modalSize === ComponentSize.SM && 'sm:max-w-sm',
+						modalSize === ComponentSize.MD && 'sm:max-w-md',
+						modalSize === ComponentSize.FULL && 'sm:max-w-full'
 					)}
 				>
 					<DialogHeader>

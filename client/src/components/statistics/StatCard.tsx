@@ -1,15 +1,15 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
+import { VALIDATORS } from '@shared/validation';
 
-import { SKELETON_HEIGHTS, SKELETON_WIDTHS, StatCardVariant, VariantBase } from '@/constants';
-import { Badge, Card, CardContent, Skeleton } from '@/components';
-import { useRefreshAnimationGeneration } from '@/contexts';
+import { SkeletonVariant, StatCardVariant } from '@/constants';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
 import { useCountUp } from '@/hooks';
-import type { StatCardProps } from '@/types';
+import type { StatCardProps, StatsSectionCardProps } from '@/types';
 import { cn } from '@/utils';
+import { useRefreshAnimationGeneration } from '@/contexts';
 
 export const StatCard = memo(function StatCard({
 	icon: Icon,
@@ -18,133 +18,133 @@ export const StatCard = memo(function StatCard({
 	subtext,
 	color,
 	suffix,
-	trend,
-	trendUp,
 	isLoading,
 	variant = StatCardVariant.HORIZONTAL,
 	animate = false,
-	countUp = false,
-	countUpDuration = 2000,
-	countUpResetTrigger,
 }: StatCardProps) {
-	const isNumeric = typeof value === 'number';
-	const numericValue = isNumeric ? value : 0;
-	const countUpEnabled = countUp && isNumeric;
+	const numericValue = VALIDATORS.number(value) ? value : 0;
+	const countUpEnabled = VALIDATORS.number(value);
 	const refreshGeneration = useRefreshAnimationGeneration();
 
 	const animatedValue = useCountUp(numericValue, {
-		...(countUpDuration !== TIME_PERIODS_MS.TWO_SECONDS && { duration: countUpDuration }),
+		duration: TIME_PERIODS_MS.FIVE_SECONDS,
 		enabled: countUpEnabled,
-		resetTrigger: countUpEnabled ? (countUpResetTrigger ?? refreshGeneration) : undefined,
+		resetTrigger: countUpEnabled ? refreshGeneration : undefined,
 	});
 
 	// Use animated value if count-up is enabled and value is numeric, otherwise use original value
 	const displayValue = countUpEnabled ? animatedValue : value;
 
-	if (isLoading) {
-		switch (variant) {
-			case StatCardVariant.HORIZONTAL:
+	switch (variant) {
+		case StatCardVariant.HORIZONTAL:
+			if (isLoading) {
 				return (
 					<Card className='overflow-hidden'>
 						<CardContent className='pt-6 overflow-hidden'>
 							<div className='flex items-center gap-4 overflow-hidden'>
-								<Skeleton
-									className={`${SKELETON_HEIGHTS.ICON_LARGE} ${SKELETON_WIDTHS.ICON_LARGE} rounded-lg flex-shrink-0`}
-								/>
+								<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0' />
 								<div className='flex-1 space-y-2 overflow-hidden min-w-0'>
-									<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} max-w-full`} />
-									<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT} max-w-full`} />
+									<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
+									<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 				);
-
-			case StatCardVariant.VERTICAL:
-				return (
-					<Card className='p-6 overflow-hidden'>
-						<div className='flex items-center justify-between mb-4 overflow-hidden'>
-							<Skeleton className={`${SKELETON_HEIGHTS.ICON} ${SKELETON_WIDTHS.ICON} rounded flex-shrink-0`} />
-							<Skeleton className={`${SKELETON_HEIGHTS.BADGE} ${SKELETON_WIDTHS.BADGE} flex-shrink-0`} />
-						</div>
-						<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} mb-1 max-w-full`} />
-						<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_SMALL} max-w-full`} />
-					</Card>
-				);
-
-			case StatCardVariant.CENTERED:
-			default:
-				return (
-					<div className='text-center p-4 rounded-lg bg-muted/50'>
-						<Skeleton className={`${SKELETON_HEIGHTS.ICON} ${SKELETON_WIDTHS.ICON} rounded mx-auto mb-2`} />
-						<Skeleton className={`${SKELETON_HEIGHTS.TEXT_LARGE} ${SKELETON_WIDTHS.TEXT_LARGE} mx-auto mb-2`} />
-						<Skeleton className={`${SKELETON_HEIGHTS.TEXT} ${SKELETON_WIDTHS.TEXT_SMALL} mx-auto`} />
-					</div>
-				);
-		}
-	}
-
-	const content = (
-		<>
-			{variant === StatCardVariant.HORIZONTAL && (
+			}
+			return (
 				<Card>
 					<CardContent className='pt-6'>
-						<div className='flex items-center gap-4'>
-							<div className={cn('p-3 rounded-lg', color)}>
-								<Icon className='h-6 w-6 text-white' />
+						<div className='flex flex-col gap-2'>
+							<div className='flex items-center gap-3'>
+								<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
+								<p className='text-sm text-muted-foreground leading-none'>{label}</p>
 							</div>
 							<div>
 								<p className='text-2xl font-bold'>
-									{typeof displayValue === 'number' ? displayValue.toLocaleString() : displayValue}
+									{VALIDATORS.number(displayValue) ? displayValue.toLocaleString() : displayValue}
 									{suffix}
 								</p>
-								<p className='text-sm text-muted-foreground'>{label}</p>
 								{subtext && <p className='text-xs text-muted-foreground'>{subtext}</p>}
 							</div>
 						</div>
 					</CardContent>
 				</Card>
-			)}
-
-			{variant === StatCardVariant.VERTICAL && (
-				<Card className='p-6'>
-					<div className='flex items-center justify-between mb-4'>
-						<Icon className={cn('w-8 h-8', color)} />
-						{trend && (
-							<Badge variant={trendUp ? VariantBase.DEFAULT : VariantBase.SECONDARY} className='text-xs'>
-								<TrendingUp className={cn('h-3 w-3 mr-1', !trendUp && 'rotate-180')} />
-								{trend}
-							</Badge>
-						)}
+			);
+		case StatCardVariant.CENTERED:
+		default: {
+			if (isLoading) {
+				return (
+					<div className='text-center p-4 rounded-lg bg-muted/50'>
+						<Skeleton variant={SkeletonVariant.Icon} className='rounded mx-auto mb-2' />
+						<Skeleton variant={SkeletonVariant.TextLarge} className='mx-auto mb-2' />
+						<Skeleton variant={SkeletonVariant.TextWithSmallWidth} className='mx-auto' />
 					</div>
-					<div className='text-3xl font-bold mb-1'>
-						{typeof displayValue === 'number' ? displayValue.toLocaleString() : displayValue}
-						{suffix}
+				);
+			}
+			const centeredContent = (
+				<div className='text-center p-4 rounded-lg bg-muted/50 transition-colors hover-row'>
+					<div className='flex items-center justify-center gap-3 mb-2'>
+						<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
+						<p className='text-sm text-muted-foreground leading-none'>{label}</p>
 					</div>
-					<div className='text-sm text-muted-foreground'>{label}</div>
-				</Card>
-			)}
-
-			{variant === StatCardVariant.CENTERED && (
-				<div className='text-center p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors'>
-					<Icon className={cn('h-6 w-6 mx-auto mb-2', color)} />
 					<p className='text-3xl font-bold'>
-						{typeof displayValue === 'number' ? displayValue.toLocaleString() : displayValue}
+						{VALIDATORS.number(displayValue) ? displayValue.toLocaleString() : displayValue}
 						{suffix}
 					</p>
-					<p className='text-sm text-muted-foreground'>{label}</p>
 				</div>
-			)}
-		</>
-	);
-
-	if (animate && variant === StatCardVariant.CENTERED) {
-		return (
-			<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-				{content}
-			</motion.div>
-		);
+			);
+			return animate ? (
+				<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+					{centeredContent}
+				</motion.div>
+			) : (
+				centeredContent
+			);
+		}
 	}
+});
 
-	return content;
+const DEFAULT_GRID_COLS = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+
+export const StatsSectionCard = memo(function StatsSectionCard({
+	title,
+	description,
+	titleIcon: TitleIcon,
+	stats,
+	variant = StatCardVariant.HORIZONTAL,
+	gridCols = DEFAULT_GRID_COLS,
+	isLoading: sectionLoading,
+	className,
+}: StatsSectionCardProps) {
+	return (
+		<Card className={className}>
+			{(title ?? description) && (
+				<CardHeader>
+					{title && (
+						<CardTitle className={cn('flex items-center gap-2 m-0', variant === StatCardVariant.CENTERED && 'text-xl')}>
+							<span className='flex shrink-0 items-center'>
+								{TitleIcon && <TitleIcon className='h-5 w-5 text-primary' />}
+							</span>
+							<span className='leading-none'>{title}</span>
+						</CardTitle>
+					)}
+					{description && <CardDescription>{description}</CardDescription>}
+				</CardHeader>
+			)}
+			<CardContent>
+				<div className={cn('grid gap-4', gridCols)}>
+					{stats.map(stat => (
+						<StatCard
+							key={stat.label}
+							{...stat}
+							variant={stat.variant ?? variant}
+							animate={stat.animate ?? variant === StatCardVariant.CENTERED}
+							isLoading={stat.isLoading ?? sectionLoading}
+						/>
+					))}
+				</div>
+			</CardContent>
+		</Card>
+	);
 });

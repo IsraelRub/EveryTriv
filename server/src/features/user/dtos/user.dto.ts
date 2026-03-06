@@ -3,7 +3,7 @@ import { Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
-	IsIn,
+	IsEnum,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -17,17 +17,20 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { UserStatus, VALID_USER_STATUSES, VALIDATION_COUNT } from '@shared/constants';
+import { UserStatus, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
+import { isNonEmptyString } from '@shared/utils';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
 		description: 'First name',
-		maxLength: 50,
+		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(50, { message: 'First name cannot exceed 50 characters' })
+	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
+		message: `First name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
+	})
 	@Matches(/^[a-zA-Z\s'-]+$/, {
 		message: 'First name can only contain letters, spaces, apostrophes, and hyphens',
 	})
@@ -35,14 +38,16 @@ export class UpdateUserProfileDto {
 
 	@ApiPropertyOptional({
 		description: 'Last name (empty string to clear)',
-		maxLength: 50,
+		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => (typeof value === 'string' && value.trim().length === 0 ? null : value))
+	@Transform(({ value }) => (!isNonEmptyString(value) ? null : value))
 	@ValidateIf(o => o.lastName !== null)
 	@IsString()
 	@ValidateIf(o => o.lastName !== null)
-	@MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
+	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
+		message: `Last name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
+	})
 	@ValidateIf(o => o.lastName !== null)
 	@Matches(/^[a-zA-Z\s'-]+$/, {
 		message: 'Last name can only contain letters, spaces, apostrophes, and hyphens',
@@ -61,24 +66,30 @@ export class UpdateUserProfileDto {
 export class SearchUsersDto {
 	@ApiProperty({
 		description: 'Search query',
-		minLength: 1,
-		maxLength: 100,
+		minLength: VALIDATION_LENGTH.SEARCH_QUERY.MIN,
+		maxLength: VALIDATION_LENGTH.SEARCH_QUERY.MAX,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Search query is required' })
-	@MinLength(1, { message: 'Search query must be at least 1 character long' })
-	@MaxLength(100, { message: 'Search query cannot exceed 100 characters' })
+	@MinLength(VALIDATION_LENGTH.SEARCH_QUERY.MIN, {
+		message: `Search query must be at least ${VALIDATION_LENGTH.SEARCH_QUERY.MIN} character long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.SEARCH_QUERY.MAX, {
+		message: `Search query cannot exceed ${VALIDATION_LENGTH.SEARCH_QUERY.MAX} characters`,
+	})
 	query: string;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of results',
-		minimum: 1,
+		minimum: VALIDATION_COUNT.LEADERBOARD.MIN,
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 10,
 	})
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(1, { message: 'Limit must be at least 1' })
+	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
+	})
 	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
 		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
 	})
@@ -145,59 +156,75 @@ export class UpdateSinglePreferenceDto {
 export class UpdateUserCreditsDto {
 	@ApiProperty({
 		description: 'Amount of credits to update',
-		minimum: 1,
+		minimum: VALIDATION_COUNT.CREDITS.MIN,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
-	@Min(1, { message: 'Amount must be greater than 0' })
+	@Min(VALIDATION_COUNT.CREDITS.MIN, {
+		message: `Amount must be at least ${VALIDATION_COUNT.CREDITS.MIN}`,
+	})
 	amount: number;
 
 	@ApiProperty({
 		description: 'Reason for credit update',
 		example: 'Admin adjustment',
-		maxLength: 200,
+		maxLength: VALIDATION_LENGTH.REASON.MAX,
 	})
 	@IsString()
 	@IsNotEmpty({ message: 'Reason is required' })
-	@MaxLength(200, { message: 'Reason cannot exceed 200 characters' })
+	@MaxLength(VALIDATION_LENGTH.REASON.MAX, {
+		message: `Reason cannot exceed ${VALIDATION_LENGTH.REASON.MAX} characters`,
+	})
 	reason: string;
 }
 
 export class UpdateUserStatusDto {
 	@ApiProperty({
 		description: 'User status',
-		enum: VALID_USER_STATUSES,
+		enum: UserStatus,
 	})
-	@IsIn(VALID_USER_STATUSES, { message: 'Status must be a valid user status' })
-	status: UserStatus;
+	@IsEnum(UserStatus, { message: 'Status must be a valid user status' })
+	status!: UserStatus;
 }
 
 export class ChangePasswordDto {
-	@ApiProperty({ description: 'Current password', minLength: 6, maxLength: 15 })
-	@IsString()
-	@MinLength(6, {
-		message: 'Current password must be at least 6 characters long',
+	@ApiProperty({
+		description: 'Current password',
+		minLength: VALIDATION_LENGTH.PASSWORD.MIN,
+		maxLength: VALIDATION_LENGTH.PASSWORD.MAX,
 	})
-	@MaxLength(15, { message: 'Current password cannot exceed 15 characters' })
+	@IsString()
+	@MinLength(VALIDATION_LENGTH.PASSWORD.MIN, {
+		message: `Current password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.PASSWORD.MAX, {
+		message: `Current password cannot exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`,
+	})
 	currentPassword!: string;
 
-	@ApiProperty({ description: 'New password', minLength: 6, maxLength: 15 })
+	@ApiProperty({
+		description: 'New password',
+		minLength: VALIDATION_LENGTH.PASSWORD.MIN,
+		maxLength: VALIDATION_LENGTH.PASSWORD.MAX,
+	})
 	@IsString()
-	@MinLength(6, { message: 'New password must be at least 6 characters long' })
-	@MaxLength(15, { message: 'New password cannot exceed 15 characters' })
+	@MinLength(VALIDATION_LENGTH.PASSWORD.MIN, {
+		message: `New password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`,
+	})
+	@MaxLength(VALIDATION_LENGTH.PASSWORD.MAX, {
+		message: `New password cannot exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`,
+	})
 	newPassword!: string;
 }
 
 export class SetAvatarDto {
 	@ApiProperty({
-		description: `Avatar ID (${VALIDATION_COUNT.AVATAR_ID.MIN}-${VALIDATION_COUNT.AVATAR_ID.MAX})`,
-		minimum: VALIDATION_COUNT.AVATAR_ID.MIN,
+		description: `Avatar ID: 0 to clear avatar, ${VALIDATION_COUNT.AVATAR_ID.MIN}-${VALIDATION_COUNT.AVATAR_ID.MAX} to set`,
+		minimum: 0,
 		maximum: VALIDATION_COUNT.AVATAR_ID.MAX,
 	})
 	@IsNumber({}, { message: 'Avatar ID must be a number' })
 	@IsNotEmpty({ message: 'Avatar ID is required' })
-	@Min(VALIDATION_COUNT.AVATAR_ID.MIN, {
-		message: `Avatar ID must be at least ${VALIDATION_COUNT.AVATAR_ID.MIN}`,
-	})
+	@Min(0, { message: 'Avatar ID must be 0 (clear) or between 1 and 16' })
 	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, {
 		message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}`,
 	})

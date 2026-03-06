@@ -1,7 +1,19 @@
 // Common analytics types shared across analytics modules.
-import { ComparisonTarget, TrendPeriod } from '@shared/constants';
+import { ComparisonTarget, TimePeriod, TrendPeriod } from '@shared/constants';
 
 import type { CorePagination } from '../../core';
+
+export interface UnifiedQuerySignatureInput {
+	includeSections?: string[];
+	startDate?: Date;
+	endDate?: Date;
+	groupBy?: TimePeriod;
+	activityLimit?: number;
+	trendLimit?: number;
+	includeActivity?: boolean;
+	targetUserId?: string;
+	comparisonTarget?: ComparisonTarget;
+}
 
 export interface TimeStat {
 	averageTime: number | null;
@@ -32,7 +44,7 @@ export interface ComparisonQueryOptions extends HistoryFilterOptions {
 export interface TrendQueryOptions extends HistoryFilterOptions {
 	period?: TrendPeriod;
 	limit?: number;
-	groupBy?: import('@shared/constants').TimePeriod;
+	groupBy?: TimePeriod;
 }
 
 export interface TopicAnalyticsQuery {
@@ -44,6 +56,6 @@ export interface TopicAnalyticsQuery {
 export interface UserTrendQuery {
 	startDate?: Date;
 	endDate?: Date;
-	groupBy?: import('@shared/constants').TimePeriod;
+	groupBy?: TimePeriod;
 	limit?: number;
 }

@@ -117,6 +117,7 @@ export const QUERY_KEYS = {
 		systemRecommendations: () => [...QUERY_KEYS.admin.all, 'systemRecommendations'] as const,
 		systemInsights: () => [...QUERY_KEYS.admin.all, 'systemInsights'] as const,
 		users: (limit: number, offset: number) => [...QUERY_KEYS.admin.all, 'adminUsers', limit, offset] as const,
+		userSearch: (query: string, limit: number) => [...QUERY_KEYS.admin.all, 'userSearch', query, limit] as const,
 		aiProviderStats: () => [...QUERY_KEYS.admin.all, 'aiProviderStats'] as const,
 		aiProviderHealth: () => [...QUERY_KEYS.admin.all, 'aiProviderHealth'] as const,
 		allUsersConsistency: () => [...QUERY_KEYS.admin.all, 'allUsersConsistency'] as const,

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-import { ERROR_CODES, VALIDATORS } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 import { ensureErrorObject, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { gameService, clientLogger as logger, prefetchCommonQueries } from '@/services';
 import { selectGameId } from '@/redux/selectors';
@@ -49,25 +50,18 @@ export const useAppInitialization = () => {
 				return;
 			}
 
-			// Extract error code if available (prioritize code over message for error checking)
 			const errorCode =
 				isRecord(event.reason) && 'code' in event.reason && VALIDATORS.string(event.reason.code)
 					? event.reason.code
 					: undefined;
 
-			// Ignore expected authentication errors using ERROR_CODES constants
 			const isExpectedAuthError =
-				errorCode === ERROR_CODES.USER_NOT_AUTHENTICATED ||
-				errorCode === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
-				errorCode === ERROR_CODES.INVALID_CREDENTIALS ||
-				errorCode === ERROR_CODES.INVALID_AUTHENTICATION_TOKEN ||
-				errorCode === ERROR_CODES.UNAUTHORIZED ||
-				errorCode === ERROR_CODES.VALIDATION_ERROR ||
-				// Fallback to message checks for errors without code field (backward compatibility)
-				errorMessage.includes('Session expired') ||
-				errorMessage === ERROR_CODES.INVALID_CREDENTIALS ||
-				errorMessage === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
-				errorMessage === ERROR_CODES.USER_NOT_AUTHENTICATED;
+				errorCode === ErrorCode.USER_NOT_AUTHENTICATED ||
+				errorCode === ErrorCode.AUTHENTICATION_TOKEN_REQUIRED ||
+				errorCode === ErrorCode.INVALID_CREDENTIALS ||
+				errorCode === ErrorCode.INVALID_AUTHENTICATION_TOKEN ||
+				errorCode === ErrorCode.UNAUTHORIZED ||
+				errorCode === ErrorCode.VALIDATION_ERROR;
 
 			if (!isExpectedAuthError) {
 				if (event.reason instanceof Error) {

@@ -1,18 +1,18 @@
-import { HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, VALIDATORS } from '@shared/constants';
+import { HTTP_CLIENT_CONFIG, HTTP_STATUS_CODES, TIME_PERIODS_MS } from '@shared/constants';
 import type { JitterOptions, RetryConfig, RetryOptions, RetryResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { ensureErrorObject, getErrorStatusCode } from './error.utils';
 import { calculateDuration } from './number.utils';
 
 // Adds randomness to retry delays to prevent thundering herd problem.
-function calculateJitter(delay: number, options?: JitterOptions): number {
+function calculateJitter(delay: number, options: JitterOptions = {}): number {
 	if (!Number.isFinite(delay) || delay < 0) {
 		return 0;
 	}
 
-	const opts = options ?? {};
-	const { percentage = 0.1, maxJitter = 1000, fixedJitter } = opts;
+	const { percentage = 0.1, maxJitter = TIME_PERIODS_MS.SECOND, fixedJitter } = options;
 
 	// Fixed jitter takes precedence
 	if (VALIDATORS.number(fixedJitter) && fixedJitter >= 0) {
@@ -26,7 +26,7 @@ function calculateJitter(delay: number, options?: JitterOptions): number {
 	return Math.random() * cappedJitter;
 }
 
-export function calculateRetryDelay(baseDelay: number, attempt: number, options?: RetryOptions): number {
+export function calculateRetryDelay(baseDelay: number, attempt: number, options: RetryOptions = {}): number {
 	if (!Number.isFinite(baseDelay) || baseDelay < 0) {
 		return 0;
 	}
@@ -35,14 +35,13 @@ export function calculateRetryDelay(baseDelay: number, attempt: number, options?
 		attempt = 0;
 	}
 
-	const opts = options ?? {};
-	const { useExponentialBackoff = true, exponentBase = 2, minDelay, maxDelay, retryAfter, jitter } = opts;
+	const { useExponentialBackoff = true, exponentBase = 2, minDelay, maxDelay, retryAfter, jitter } = options;
 
 	let delay: number;
 
 	// Use Retry-After header value if provided
 	if (VALIDATORS.number(retryAfter) && retryAfter > 0) {
-		delay = retryAfter * 1000; // Convert seconds to milliseconds
+		delay = retryAfter * TIME_PERIODS_MS.SECOND; // Convert seconds to milliseconds
 	} else if (useExponentialBackoff) {
 		// Exponential backoff: baseDelay * (exponentBase ^ attempt)
 		delay = baseDelay * exponentBase ** attempt;
@@ -61,7 +60,7 @@ export function calculateRetryDelay(baseDelay: number, attempt: number, options?
 	}
 
 	// Add jitter if enabled
-	if (jitter !== null && jitter !== undefined) {
+	if (jitter != null) {
 		const jitterValue = calculateJitter(delay, jitter);
 		delay = delay + jitterValue;
 	}
@@ -326,14 +325,14 @@ export async function executeRetry<T>(
 					...retryOptions,
 					retryAfter: retryAfterSeconds,
 					minDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY_RATE_LIMIT,
-					jitter: retryOptions.jitter ?? { maxJitter: 2000 },
+					jitter: retryOptions.jitter ?? { maxJitter: TIME_PERIODS_MS.TWO_SECONDS },
 				});
 			} else {
 				// Regular retry
 				retryDelay = calculateRetryDelay(baseDelay, attempt, {
 					...retryOptions,
 					retryAfter: retryAfterSeconds,
-					jitter: retryOptions.jitter ?? { maxJitter: 1000 },
+					jitter: retryOptions.jitter ?? { maxJitter: TIME_PERIODS_MS.SECOND },
 				});
 			}
 

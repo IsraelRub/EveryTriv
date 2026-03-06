@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { Gauge } from 'lucide-react';
 
 import { CHART_HEIGHTS } from '@/constants';
 import {
@@ -9,7 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 	DifficultyOverviewChart,
-	EmptyState,
 	PerformanceSkeleton,
 } from '@/components';
 import type { PerformanceAnalysisProps } from '@/types';
@@ -28,13 +27,16 @@ export const PerformanceAnalysis = memo(function PerformanceAnalysis({
 	}
 
 	const hasData = mainData && Object.keys(mainData).length > 0;
+	if (!hasData) {
+		return null;
+	}
 
 	return (
 		<div className='space-y-8'>
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<BarChart3 className='h-5 w-5' />
+						<Gauge className='h-5 w-5 text-primary' />
 						{showPersonalStats ? 'Your Performance by Difficulty' : 'Performance by Difficulty'}
 					</CardTitle>
 					<CardDescription>
@@ -44,16 +46,13 @@ export const PerformanceAnalysis = memo(function PerformanceAnalysis({
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{hasData && (
-						<div className='space-y-4'>
-							<DifficultyOverviewChart
-								difficultyData={mainData}
-								height={CHART_HEIGHTS.LARGE}
-								valueLabel={showPersonalStats ? 'Questions Answered' : 'Games Played'}
-							/>
-						</div>
-					)}
-					{!hasData && <EmptyState data='difficulty statistics' />}
+					<div className='space-y-4'>
+						<DifficultyOverviewChart
+							difficultyData={mainData}
+							height={CHART_HEIGHTS.LARGE}
+							valueLabel={showPersonalStats ? 'Questions Answered' : 'Games Played'}
+						/>
+					</div>
 				</CardContent>
 			</Card>
 		</div>

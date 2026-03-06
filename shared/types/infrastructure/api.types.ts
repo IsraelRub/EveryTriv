@@ -7,81 +7,56 @@ export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
 	metadata?: ApiMetadata;
 }
 
-export interface PaymentResponse {
-	success: boolean;
-	paymentUrl?: string;
-	paymentId?: string;
-	error?: string;
-}
-
 export interface ApiMetadata extends Partial<PagePagination> {
 	timestamp?: string;
 	processingTime?: number;
 }
 
-export interface ApiError {
-	message: string;
+export type ErrorDetail = string | string[] | Record<string, string | string[]>;
+
+export interface ErrorCodeField {
 	code?: string;
+}
+
+export interface ApiError extends ErrorCodeField {
+	message: string;
 	statusCode: number;
 	timestamp?: string;
 	details?: BaseData;
 }
 
-export type ErrorDetail = string | string[] | Record<string, string | string[]>;
-
 export interface ErrorResponseData {
 	message?: string;
+	code?: string;
 	error?: string;
 	detail?: string;
 	description?: string;
 	errors?: ErrorDetail;
-	code?: string;
 }
 
-export interface ErrorResponse {
+export interface ErrorResponse extends ErrorCodeField {
+	message: string | string[];
 	statusCode: number;
 	path: string;
-	message: string | string[];
 	timestamp: string;
 	errorType?: string;
-	code?: string;
 }
 
-export interface ValidationErrorResponse extends ErrorResponse {
-	errors?: string[] | Record<string, string | string[]>;
-}
+export type ValidationErrorResponse = ErrorResponse & { errors?: ErrorDetail };
 
-export interface AmountDto {
-	amount: number;
-}
-
-export interface PurchaseDto {
-	identifier: string;
-	paymentMethodId: string;
-}
-
-export interface ConfirmCreditPurchaseDto {
-	paymentIntentId: string;
-}
-
-export interface DeductCreditsRequest {
-	questionsPerRequest: number;
-	gameMode: GameMode;
-}
-
-export interface AnswerHistoryComplete {
+export interface AnswerHistoryBase {
 	question: string;
 	isCorrect: boolean;
 	timeSpent: number;
+}
+
+export interface AnswerHistoryComplete extends AnswerHistoryBase {
 	questionId: string;
 	userAnswerIndex: number;
 	correctAnswerIndex: number;
 }
 
-export interface AnswerHistoryFallback {
-	question: string;
-	isCorrect: boolean;
-	timeSpent: number;
+export interface AnswerHistoryFallback extends AnswerHistoryBase {
 	userAnswerText: string;
 	correctAnswerText: string;
 }

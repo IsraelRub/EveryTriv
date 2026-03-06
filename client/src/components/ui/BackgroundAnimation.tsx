@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
+import { ERROR_MESSAGES } from '@shared/constants';
+
 import {
 	ANIMATION_COLORS,
 	ANIMATION_FONTS,
@@ -8,8 +10,9 @@ import {
 	Easing,
 	TRIVIA_WORDS,
 	WORD_DIRECTIONS,
+	WordDirection,
 } from '@/constants';
-import type { AnimatedWord, ScreenPosition, WordDirection } from '@/types';
+import type { AnimatedWord, ScreenPosition } from '@/types';
 
 const randomBetween = (min: number, max: number): number => {
 	return Math.random() * (max - min) + min;
@@ -18,7 +21,7 @@ const randomBetween = (min: number, max: number): number => {
 const randomItem = <T,>(array: readonly T[]): T => {
 	const item = array[Math.floor(Math.random() * array.length)];
 	if (item == null) {
-		throw new Error('Array is empty or item not found');
+		throw new Error(ERROR_MESSAGES.client.ARRAY_EMPTY_OR_ITEM_NOT_FOUND);
 	}
 	return item;
 };
@@ -27,21 +30,21 @@ const calculateEndPosition = (start: ScreenPosition, direction: WordDirection): 
 	const offset = BACKGROUND_ANIMATION_CONFIG.movementOffset;
 
 	switch (direction) {
-		case 'diagonal-up-right':
+		case WordDirection.DiagonalUpRight:
 			return { x: start.x + offset, y: start.y - offset };
-		case 'diagonal-up-left':
+		case WordDirection.DiagonalUpLeft:
 			return { x: start.x - offset, y: start.y - offset };
-		case 'diagonal-down-right':
+		case WordDirection.DiagonalDownRight:
 			return { x: start.x + offset, y: start.y + offset };
-		case 'diagonal-down-left':
+		case WordDirection.DiagonalDownLeft:
 			return { x: start.x - offset, y: start.y + offset };
-		case 'horizontal-right':
+		case WordDirection.HorizontalRight:
 			return { x: start.x + offset, y: start.y };
-		case 'horizontal-left':
+		case WordDirection.HorizontalLeft:
 			return { x: start.x - offset, y: start.y };
-		case 'vertical-up':
+		case WordDirection.VerticalUp:
 			return { x: start.x, y: start.y - offset };
-		case 'vertical-down':
+		case WordDirection.VerticalDown:
 			return { x: start.x, y: start.y + offset };
 		default:
 			return { x: start.x + offset, y: start.y + offset };
@@ -136,12 +139,7 @@ export function BackgroundAnimation() {
 						duration: word.duration,
 						ease: Easing.LINEAR,
 						opacity: {
-							times: [
-								0,
-								BACKGROUND_ANIMATION_CONFIG.fadeInPercent / 100,
-								1 - BACKGROUND_ANIMATION_CONFIG.fadeOutPercent / 100,
-								1,
-							],
+							times: [0, BACKGROUND_ANIMATION_CONFIG.fadeFraction, 1 - BACKGROUND_ANIMATION_CONFIG.fadeFraction, 1],
 							duration: word.duration,
 						},
 					}}

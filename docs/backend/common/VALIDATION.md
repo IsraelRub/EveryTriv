@@ -124,7 +124,7 @@ const result = await validationService.validateTopicLength('Science');
 
 **ולידציות:**
 - **Topic:** ולידציית אורך דרך `validateTopicLength()`
-- **Difficulty:** בדיקת difficulty תקין (VALID_DIFFICULTIES) או custom difficulty
+- **Difficulty:** בדיקת difficulty תקין (VALID_DIFFICULTIES_SET) או custom difficulty
 - **Requested Questions:** בדיקת טווח (MIN-MAX לפי VALIDATION_LIMITS.REQUESTED_QUESTIONS)
 
 **דוגמה:**

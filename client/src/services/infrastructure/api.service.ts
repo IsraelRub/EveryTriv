@@ -1,13 +1,12 @@
 import {
 	API_ENDPOINTS,
-	ERROR_CODES,
 	ERROR_MESSAGES,
+	ErrorCode,
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HttpMethod,
 	LOCALHOST_CONFIG,
 	TIME_PERIODS_MS,
-	VALIDATORS,
 } from '@shared/constants';
 import type {
 	ApiError,
@@ -24,6 +23,7 @@ import type {
 	UpdateUserProfileData,
 	UserPreferences,
 	UserProfileResponseType,
+	UserSearchCacheEntry,
 } from '@shared/types';
 import {
 	delay,
@@ -34,6 +34,7 @@ import {
 	isRecord,
 	parseErrorResponseData,
 } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
 import { clientLogger as logger, storageService } from '@/services';
@@ -44,6 +45,14 @@ export class ApiConfig {
 	static getBaseUrl(): string {
 		const envUrl = import.meta.env.VITE_API_BASE_URL;
 		return envUrl ?? LOCALHOST_CONFIG.urls.SERVER;
+	}
+
+	static getOAuthBaseUrl(): string {
+		if (typeof window !== 'undefined' && window.location?.origin === LOCALHOST_CONFIG.urls.CLIENT) {
+			return LOCALHOST_CONFIG.urls.SERVER;
+		}
+		const serverUrl = import.meta.env.VITE_SERVER_URL;
+		return isNonEmptyString(serverUrl) ? serverUrl : ApiConfig.getBaseUrl();
 	}
 }
 
@@ -183,8 +192,9 @@ class ApiService {
 
 				// Create a combined controller that aborts when either signal aborts
 				const combinedController = new AbortController();
+				const isEitherAborted = () => [config.signal?.aborted, timeoutController.signal.aborted].some(Boolean);
 				const abortIfNeeded = () => {
-					if (config.signal?.aborted || timeoutController.signal.aborted) {
+					if (isEitherAborted()) {
 						combinedController.abort();
 					}
 				};
@@ -194,7 +204,7 @@ class ApiService {
 				timeoutController.signal.addEventListener('abort', abortIfNeeded);
 
 				// Check again after setting up listeners in case signal was aborted in between
-				if (config.signal.aborted || timeoutController.signal.aborted) {
+				if (isEitherAborted()) {
 					combinedController.abort();
 				}
 
@@ -401,7 +411,7 @@ class ApiService {
 			if (response.status === 401 && originalRequest && !hasAttemptedRefresh && !isAuthEndpoint) {
 				// Check if we have a refresh token before attempting refresh
 				const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
-				const hasRefreshToken = refreshTokenResult.success && !!refreshTokenResult.data;
+				const hasRefreshToken = refreshTokenResult.success && refreshTokenResult.data;
 
 				if (hasRefreshToken) {
 					try {
@@ -478,8 +488,6 @@ class ApiService {
 			const isClientError =
 				response.status >= HTTP_STATUS_CODES.BAD_REQUEST && response.status < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
 
-			// Prioritize code field over message for error handling (code is more reliable)
-			// Enhanced error message with more context (fallback to message if code not available)
 			const errorMessage = getErrorMessage(
 				errorData.code ?? errorData.message ?? errorData.error ?? `HTTP ${response.status}: ${response.statusText}`
 			);
@@ -657,18 +665,12 @@ class ApiService {
 			// Continue with logout even if server request fails
 			// This is expected when token is expired/invalid
 			const errorMessage = getErrorMessage(error);
-			// Extract error code if available (prioritize code over message)
 			const errorCode = isRecord(error) && 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
 
-			// Check auth errors using ERROR_CODES constants (prioritize code, fallback to message)
 			const isAuthError =
-				errorCode === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
-				errorCode === ERROR_CODES.USER_NOT_AUTHENTICATED ||
-				errorCode === ERROR_CODES.UNAUTHORIZED ||
-				// Fallback to message checks for backward compatibility
-				errorMessage === ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED ||
-				errorMessage.includes('Session expired') ||
-				errorMessage.includes('401');
+				errorCode === ErrorCode.AUTHENTICATION_TOKEN_REQUIRED ||
+				errorCode === ErrorCode.USER_NOT_AUTHENTICATED ||
+				errorCode === ErrorCode.UNAUTHORIZED;
 
 			if (isAuthError) {
 				logger.apiDebug('Logout request failed due to expired/invalid token (expected)', {
@@ -729,7 +731,7 @@ class ApiService {
 	async updateUserProfile(data: UpdateUserProfileData): Promise<UserProfileResponseType> {
 		// Validate required fields
 		if (!data || Object.keys(data).length === 0) {
-			throw new Error(ERROR_MESSAGES.validation.PROFILE_DATA_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.PROFILE_DATA_REQUIRED);
 		}
 
 		const response = await this.put<UserProfileResponseType>(API_ENDPOINTS.USER.PROFILE, data);
@@ -737,9 +739,9 @@ class ApiService {
 	}
 
 	async setAvatar(avatarId: number): Promise<UserProfileResponseType> {
-		// Validate avatar ID
-		if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 16) {
-			throw new Error(ERROR_MESSAGES.validation.AVATAR_ID_OUT_OF_RANGE);
+		// Validate avatar ID: 0 = clear avatar, 1–16 = set avatar
+		if (!Number.isInteger(avatarId) || avatarId < 0 || avatarId > 16) {
+			throw new Error(ERROR_MESSAGES.user.AVATAR_ID_OUT_OF_RANGE);
 		}
 
 		const response = await this.patch<UserProfileResponseType>(API_ENDPOINTS.USER.AVATAR, {
@@ -748,10 +750,10 @@ class ApiService {
 		return response.data;
 	}
 
-	async searchUsers(query: string, limit: number = 10): Promise<BasicUser[]> {
+	async searchUsers(query: string, limit: number = 10): Promise<UserSearchCacheEntry> {
 		// Validate input
 		if (!isNonEmptyString(query)) {
-			throw new Error(ERROR_MESSAGES.validation.SEARCH_QUERY_REQUIRED);
+			throw new Error(ERROR_MESSAGES.user.SEARCH_QUERY_REQUIRED);
 		}
 		if (limit < 1 || limit > 100) {
 			throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 100));
@@ -762,7 +764,7 @@ class ApiService {
 			limit,
 		});
 
-		const response = await this.get<BasicUser[]>(`${API_ENDPOINTS.USER.SEARCH}${queryString}`);
+		const response = await this.get<UserSearchCacheEntry>(`${API_ENDPOINTS.USER.SEARCH}${queryString}`);
 		return response.data;
 	}
 

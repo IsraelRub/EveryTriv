@@ -1,3 +1,3 @@
-export { ContactView } from './ContactView';
-export { PrivacyPolicyView } from './PrivacyPolicyView';
-export { TermsOfServiceView } from './TermsOfServiceView';
+export * from './ContactView';
+export * from './PrivacyPolicyView';
+export * from './TermsOfServiceView';

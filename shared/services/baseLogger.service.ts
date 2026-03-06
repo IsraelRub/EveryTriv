@@ -182,13 +182,8 @@ export abstract class BaseLoggerService implements Logger {
 		this.error(MESSAGE_FORMATTERS.payment.failed(paymentId, error), meta);
 	}
 
-	payment(message: string, meta?: LogMeta): void {
-		this.info(MESSAGE_FORMATTERS.payment.message(message), meta);
-	}
-
-	// paymentInfo is deprecated - use payment instead
 	paymentInfo(message: string, meta?: LogMeta): void {
-		this.payment(message, meta);
+		this.info(MESSAGE_FORMATTERS.payment.message(message), meta);
 	}
 
 	// SecurityLogger implementation
@@ -381,7 +376,6 @@ export abstract class BaseLoggerService implements Logger {
 		this.debug(MESSAGE_FORMATTERS.cache.delete(key), meta);
 	}
 
-	// NavigationLogger implementation - kept for backward compatibility as they are actively used
 	navigationPage(path: string, meta?: LogMeta): void {
 		this.info(MESSAGE_FORMATTERS.navigation.page(path), meta);
 	}

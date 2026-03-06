@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { API_ENDPOINTS, ERROR_CODES, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { API_ENDPOINTS, ErrorCode, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import type { GameData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
 
@@ -78,7 +78,7 @@ export class GameController {
 	async submitAnswerToSession(@CurrentUserId() userId: string, @Body() body: SubmitAnswerToSessionDto) {
 		try {
 			if (!body.questionId || body.answer === undefined || body.answer === null) {
-				throw new HttpException(ERROR_CODES.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.gameService.submitAnswerToSession({
@@ -163,6 +163,7 @@ export class GameController {
 				questionsPerRequest: body.questionsPerRequest,
 				userId,
 				answerCount: body.answerCount,
+				gameId: body.gameId,
 			});
 
 			logger.apiCreate('game_trivia_questions', {
@@ -196,12 +197,22 @@ export class GameController {
 				offset: query.offset,
 			});
 
+			const games = result?.games ?? [];
+			const historySummary = games.slice(0, 10).map(g => ({
+				topic: g.topic,
+				difficulty: g.difficulty,
+				score: g.score,
+				correctAnswers: g.correctAnswers,
+			}));
 			logger.apiRead('game_history', {
 				userId: userId,
 				totalGames: result.totalGames,
 				limit: query.limit,
 				offset: query.offset,
 				duration: calculateDuration(startTime),
+				chart: 'game_history',
+				returnedCount: games.length,
+				recentGames: historySummary,
 			});
 
 			return result;
@@ -219,7 +230,7 @@ export class GameController {
 	async saveGameHistory(@CurrentUserId() userId: string, @Body() body: SaveGameHistoryDto) {
 		try {
 			if (!body.score) {
-				throw new HttpException(ERROR_CODES.SCORE_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.SCORE_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			// Convert DTO to GameData format
@@ -323,7 +334,7 @@ export class GameController {
 	async getGameById(@Param('id') id: string) {
 		try {
 			if (!id) {
-				throw new HttpException(ERROR_CODES.GAME_ID_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.GAME_ID_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			// Normalize ID (remove trailing slashes)
@@ -333,7 +344,7 @@ export class GameController {
 			const reservedRoutesSet = new Set<string>(['trivia', 'history', 'admin', 'validate-custom', 'session']);
 			if (reservedRoutesSet.has(normalizedId.toLowerCase())) {
 				throw new HttpException(
-					`${ERROR_CODES.INVALID_GAME_ID_FORMAT}. '${normalizedId}' is a reserved route name.`,
+					`${ErrorCode.INVALID_GAME_ID_FORMAT}. '${normalizedId}' is a reserved route name.`,
 					HttpStatus.BAD_REQUEST
 				);
 			}

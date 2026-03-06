@@ -1,5 +1,17 @@
-import { DifficultyLevel, GameMode, TimerMode } from '@shared/constants';
+import type { LucideIcon } from 'lucide-react';
+
+import { DifficultyLevel, GameMode } from '@shared/constants';
 import type { TriviaAnswer, TriviaQuestion } from '@shared/types';
+
+import { type ComponentSize, type TimerMode, type VariantBase } from '@/constants';
+
+export interface TopicBadgeMeta {
+	label: string;
+	icon: LucideIcon;
+	variant: VariantBase;
+	iconClassName?: string;
+	badgeClassName?: string;
+}
 
 export interface AnswerButtonItemProps {
 	answer: TriviaAnswer;
@@ -10,8 +22,8 @@ export interface AnswerButtonItemProps {
 	onClick: (index: number) => void;
 	showResult?: boolean;
 	animationDelay?: number;
-	className?: string;
 	playerCount?: number;
+	totalPlayerCount?: number;
 }
 
 export interface AnswerButtonProps {
@@ -21,9 +33,8 @@ export interface AnswerButtonProps {
 	currentQuestion?: TriviaQuestion | null;
 	onAnswerClick: (index: number) => void;
 	showResult?: boolean;
-	className?: string;
-	emptyStateMessage?: string;
 	answerCounts?: Record<number, number>;
+	totalPlayerCount?: number;
 }
 
 export interface GameTimerProps {
@@ -36,12 +47,43 @@ export interface GameTimerProps {
 	onWarning?: () => void;
 	label?: string;
 	showProgressBar?: boolean;
-	className?: string;
 }
 
-export interface GameStatsProps {
-	currentQuestionIndex: number;
-	className?: string;
+export interface QuestionCounterProps {
+	current: number;
+	total: number;
+	size?: ComponentSize;
+}
+
+export interface SingleSessionCreditsExitProps {
+	isFinalizing: boolean;
+	onGetCredits: () => void;
+	onGoHome: () => void;
+}
+
+export interface SingleSessionDialogsProps {
+	showExitDialog: boolean;
+	setShowExitDialog: (open: boolean) => void;
+	showErrorDialog: boolean;
+	setShowErrorDialog: (open: boolean) => void;
+	errorMessage: string;
+	showCreditsWarning: boolean;
+	setShowCreditsWarning: (open: boolean) => void;
+	onExitGame: () => void;
+	onSafeExitFromLoading: () => void;
+}
+
+export interface SingleSessionLoadingProps {
+	message: string;
+	showSpinner?: boolean;
+	onBeforeNavigate?: () => void;
+}
+
+/** Topic row for settings form; type is TopicBadgeType from constants. */
+export interface TopicWithMeta {
+	name: string;
+	type: string;
+	gameCount?: number;
 }
 
 export interface GameSettingsFormProps {

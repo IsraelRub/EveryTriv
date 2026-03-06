@@ -1,1 +1,1 @@
-export { AudioControls } from './AudioControls';
+export * from './AudioControls';

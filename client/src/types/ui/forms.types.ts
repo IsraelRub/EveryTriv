@@ -4,7 +4,7 @@ import type { FieldPath, FieldValues } from 'react-hook-form';
 import { ClientValidationType } from '@shared/constants';
 import type { LanguageValidationOptions, SelectOption } from '@shared/types';
 
-import { FormFieldType, InteractiveSize } from '@/constants';
+import { FormFieldType } from '@/constants';
 import type { ValidationHookOptions } from '@/types';
 
 export interface FormField {
@@ -44,7 +44,6 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
 	showErrors?: boolean;
 	renderError?: (error: string) => ReactNode;
 	isGlassy?: boolean;
-	size?: InteractiveSize;
 	className?: string;
 }
 
@@ -55,16 +54,14 @@ export type FormFieldContextValue<
 	name: TName;
 };
 
-export interface FormItemContextValue {
-	id: string;
-}
-
-export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange'> {
+export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'className'> {
 	value: number;
 	onChange: (value: number) => void;
-	min?: number;
-	max?: number;
+	min: number;
+	max: number;
 	step?: number;
+	label?: string;
+	labelIcon?: ReactNode;
 }
 
 export type BaseFormFieldErrors<T extends Record<string, string> = Record<string, string>> = {

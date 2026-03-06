@@ -1,12 +1,13 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { CheckCircle2, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lucide-react';
+import { CheckCircle, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lucide-react';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { delay } from '@shared/utils';
 
-import { ButtonSize, SpinnerSize } from '@/constants';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Textarea } from '@/components';
+import { ButtonSize, Colors, ComponentSize, LoadingMessages } from '@/constants';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Spinner, Textarea } from '@/components';
 import { clientLogger as logger } from '@/services';
+import { cn } from '@/utils';
 
 export function ContactView() {
 	const [formData, setFormData] = useState({
@@ -49,8 +50,8 @@ export function ContactView() {
 	};
 
 	return (
-		<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 lg:pb-8 px-4 animate-fade-in-up-simple'>
-			<div className='max-w-6xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8 overflow-y-auto'>
+		<main className='view-main lg:pb-8 animate-fade-in-up-simple'>
+			<div className='view-content-6xl-scroll'>
 				<Card>
 					<CardHeader>
 						<div className='flex items-center gap-3 mb-2'>
@@ -120,19 +121,19 @@ export function ContactView() {
 									<div className='space-y-2 text-muted-foreground'>
 										<p>
 											• For privacy concerns:{' '}
-											<a href='mailto:privacy@everytriv.com' className='text-primary hover:underline'>
+											<a href='mailto:privacy@everytriv.com' className='link-primary'>
 												privacy@everytriv.com
 											</a>
 										</p>
 										<p>
 											• For legal matters:{' '}
-											<a href='mailto:legal@everytriv.com' className='text-primary hover:underline'>
+											<a href='mailto:legal@everytriv.com' className='link-primary'>
 												legal@everytriv.com
 											</a>
 										</p>
 										<p>
 											• For press inquiries:{' '}
-											<a href='mailto:press@everytriv.com' className='text-primary hover:underline'>
+											<a href='mailto:press@everytriv.com' className='link-primary'>
 												press@everytriv.com
 											</a>
 										</p>
@@ -145,7 +146,7 @@ export function ContactView() {
 								<h3 className='text-2xl font-semibold mb-6'>Send us a Message</h3>
 								{isSubmitted ? (
 									<div className='flex flex-col items-center justify-center py-12 space-y-4'>
-										<CheckCircle2 className='h-16 w-16 text-green-500' />
+										<CheckCircle className={cn('h-16 w-16', Colors.GREEN_500.text)} />
 										<h4 className='text-xl font-semibold'>Message Sent Successfully!</h4>
 										<p className='text-muted-foreground text-center'>
 											Thank you for contacting us. We'll get back to you as soon as possible.
@@ -154,9 +155,9 @@ export function ContactView() {
 								) : (
 									<form onSubmit={handleSubmit} className='space-y-4'>
 										<div>
-											<label htmlFor='name' className='block text-sm font-medium mb-2'>
+											<Label htmlFor='name' className='block text-sm font-medium mb-2'>
 												Name *
-											</label>
+											</Label>
 											<Input
 												id='name'
 												name='name'
@@ -169,9 +170,9 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<label htmlFor='email' className='block text-sm font-medium mb-2'>
+											<Label htmlFor='email' className='block text-sm font-medium mb-2'>
 												Email *
-											</label>
+											</Label>
 											<Input
 												id='email'
 												name='email'
@@ -184,9 +185,9 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<label htmlFor='subject' className='block text-sm font-medium mb-2'>
+											<Label htmlFor='subject' className='block text-sm font-medium mb-2'>
 												Subject *
-											</label>
+											</Label>
 											<Input
 												id='subject'
 												name='subject'
@@ -199,9 +200,9 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<label htmlFor='message' className='block text-sm font-medium mb-2'>
+											<Label htmlFor='message' className='block text-sm font-medium mb-2'>
 												Message *
-											</label>
+											</Label>
 											<Textarea
 												id='message'
 												name='message'
@@ -216,10 +217,7 @@ export function ContactView() {
 
 										<Button type='submit' size={ButtonSize.LG} className='w-full' disabled={isSubmitting}>
 											{isSubmitting ? (
-												<>
-													<Spinner size={SpinnerSize.SM} className='mr-2' />
-													Sending...
-												</>
+												<Spinner size={ComponentSize.SM} message={LoadingMessages.SENDING} messageInline />
 											) : (
 												<>
 													<Send className='mr-2 h-4 w-4' />

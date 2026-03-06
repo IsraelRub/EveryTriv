@@ -20,49 +20,40 @@ import { QUERY_KEYS } from '@/constants';
 import { analyticsService, clientLogger as logger } from '@/services';
 import { useIsAuthenticated } from './useAuth';
 
-/**
- * User analytics. Default `refetchOnMount: 'always'` for primary views (e.g. Statistics).
- * Pass `refetchOnMount: false` when used "on the side" (e.g. GameSettingsForm) to avoid extra fetches.
- */
 export const useUserAnalytics = (options?: { staleTime?: number; refetchOnMount?: boolean | 'always' }) => {
-	const isAuthenticated = useIsAuthenticated();
-
 	return useQuery<CompleteUserAnalytics>({
 		queryKey: QUERY_KEYS.analytics.user(),
 		queryFn: () => analyticsService.getUserAnalytics(),
 		staleTime: options?.staleTime ?? TIME_PERIODS_MS.THIRTY_MINUTES,
 		gcTime: TIME_PERIODS_MS.HOUR,
-		enabled: isAuthenticated,
+		enabled: useIsAuthenticated(),
 		refetchOnMount: options?.refetchOnMount ?? 'always',
-		refetchOnWindowFocus: false,
+		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
 	});
 };
 
-/** Unified user analytics; `refetchOnMount: 'always'` so primary consumers (e.g. Statistics Performance) stay fresh on mount. */
-export const useUnifiedUserAnalytics = (includeSections?: string[]) => {
-	const isAuthenticated = useIsAuthenticated();
-
+export const useUnifiedUserAnalytics = (includeSections: string[] = []) => {
 	return useQuery<AnalyticsResponse<UnifiedUserAnalyticsResponse>>({
-		queryKey: [...QUERY_KEYS.analytics.user(), 'unified', ...(includeSections || [])],
+		queryKey: [...QUERY_KEYS.analytics.user(), 'unified', ...includeSections],
 		queryFn: () => analyticsService.getUnifiedUserAnalytics(includeSections),
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
-		enabled: isAuthenticated,
+		enabled: useIsAuthenticated(),
 		refetchOnMount: 'always',
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,
 	});
 };
 
-/** Popular topics; `refetchOnMount: false` — data is secondary and staleTime/polling or invalidation suffice. Use `allowGuest: true` for public display (e.g. Home). */
-export const usePopularTopics = (
-	query?: UserAnalyticsQuery,
-	options?: { enabled?: boolean; allowGuest?: boolean }
-) => {
+export const usePopularTopics = (query?: UserAnalyticsQuery, options?: { enabled?: boolean; allowGuest?: boolean }) => {
 	const isAuthenticated = useIsAuthenticated();
 	const enabled =
-		options?.allowGuest === true ? (options?.enabled !== false) : (options?.enabled !== undefined ? options.enabled && isAuthenticated : isAuthenticated);
+		options?.allowGuest === true
+			? options?.enabled !== false
+			: options?.enabled !== undefined
+				? options.enabled && isAuthenticated
+				: isAuthenticated;
 
 	return useQuery({
 		queryKey: [...QUERY_KEYS.analytics.popularTopics(), ...(query ? [query] : [])],
@@ -84,8 +75,7 @@ export const useGlobalDifficultyStats = () => {
 	});
 };
 
-export const useGlobalStats = (options?: { realtime?: boolean }) => {
-	const realtime = options?.realtime ?? false;
+export const useGlobalStats = (realtime: boolean = false) => {
 	return useQuery<GlobalStatsResponse>({
 		queryKey: QUERY_KEYS.analytics.globalStats(),
 		queryFn: () => analyticsService.getGlobalStats(),
@@ -94,8 +84,6 @@ export const useGlobalStats = (options?: { realtime?: boolean }) => {
 		refetchInterval: realtime ? TIME_PERIODS_MS.THIRTY_SECONDS : undefined,
 	});
 };
-
-export const useRealTimeAnalytics = () => useGlobalStats({ realtime: true });
 
 export const useGlobalTrends = (query?: TrendQueryOptions) => {
 	return useQuery<UserTrendPoint[]>({
@@ -147,7 +135,7 @@ export const useGlobalLeaderboard = (limit: number = 100, offset: number = 0) =>
 
 export const useLeaderboardByPeriod = (period: LeaderboardPeriod, limit: number = 100, offset: number = 0) => {
 	return useQuery({
-		queryKey: [...QUERY_KEYS.leaderboard.byPeriod(period, limit), offset], // offset not part of cache key, added here
+		queryKey: [...QUERY_KEYS.leaderboard.byPeriod(period, limit), offset],
 		queryFn: () => analyticsService.getLeaderboardByPeriod(period, limit, offset),
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,

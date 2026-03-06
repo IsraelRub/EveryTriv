@@ -1,8 +1,9 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { StorageType, TIME_PERIODS_MS, VALIDATORS } from '@shared/constants';
+import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
 import type {
+	CacheEntry,
 	StorageCleanupOptions,
 	StorageConfig,
 	StorageOperationResult,
@@ -13,12 +14,11 @@ import type {
 	TypeGuard,
 } from '@shared/types';
 import { createTimedResult, getErrorMessage, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { CACHE_CONFIG, StorageOperation } from '@internal/constants';
 import { serverLogger as logger, metricsService, StorageMetricsTracker } from '@internal/services';
-import { isValidCacheEntry } from '@internal/utils';
-
-import { deleteKeysByPattern, scanKeys } from '../../utils';
+import { deleteKeysByPattern, isValidCacheEntry, scanKeys } from '@internal/utils';
 
 function createTypeBreakdown(cacheItems: number = 0, cacheSize: number = 0): StorageStatsItemByType {
 	return {
@@ -211,7 +211,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		}
 	}
 
-	async mset(keyValues: import('@shared/types').CacheEntry[]): Promise<void> {
+	async mset(keyValues: CacheEntry[]): Promise<void> {
 		try {
 			if (this.useRedis && this.redisClient) {
 				await this.msetRedis(keyValues);
@@ -684,7 +684,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		return keys.map(key => this.getMemory(key));
 	}
 
-	private msetMemory(keyValues: import('@shared/types').CacheEntry[]): void {
+	private msetMemory(keyValues: CacheEntry[]): void {
 		keyValues.forEach(entry => {
 			if (!isValidCacheEntry(entry)) {
 				logger.cacheError(StorageOperation.MSET, 'invalid entry', {
@@ -812,7 +812,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 		return values.map(value => (value ? JSON.parse(value) : null));
 	}
 
-	private async msetRedis(keyValues: import('@shared/types').CacheEntry[]): Promise<void> {
+	private async msetRedis(keyValues: CacheEntry[]): Promise<void> {
 		if (!this.redisClient) return;
 		const pipeline = this.redisClient.pipeline();
 

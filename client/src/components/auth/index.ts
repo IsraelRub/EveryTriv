@@ -1,3 +1,3 @@
-export { CompleteProfile } from './CompleteProfile';
-export { GoogleAuthButton } from './GoogleAuthButton';
-export { OAuthCallback } from './OAuthCallback';
+export * from './CompleteProfile';
+export * from './GoogleAuthButton';
+export * from './OAuthCallback';

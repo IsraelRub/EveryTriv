@@ -55,36 +55,33 @@ export function createGroupByQuery<T extends ObjectLiteral>(
 	return queryBuilder;
 }
 
+const SEARCH_PATTERN_BUILDERS: Record<
+	(typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum],
+	(term: string) => string
+> = {
+	[WildcardPatternEnum.BOTH]: t => `%${t}%`,
+	[WildcardPatternEnum.START]: t => `${t}%`,
+	[WildcardPatternEnum.END]: t => `%${t}`,
+	[WildcardPatternEnum.NONE]: t => t,
+};
+
 export function addSearchConditions<T extends ObjectLiteral>(
 	queryBuilder: SelectQueryBuilder<T>,
 	alias: string,
 	searchFields: string[],
 	searchTerm: string,
-	options?: {
+	options: {
 		normalizeTerm?: (term: string) => string;
-		wildcardPattern?: (typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum];
+		wildcardPattern: (typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum];
 	}
 ): SelectQueryBuilder<T> {
-	const normalizedTerm = options?.normalizeTerm ? options.normalizeTerm(searchTerm) : searchTerm.trim().toLowerCase();
+	const normalizedTerm = options.normalizeTerm ? options.normalizeTerm(searchTerm) : searchTerm.trim().toLowerCase();
 
 	if (!normalizedTerm || searchFields.length === 0) {
 		return queryBuilder;
 	}
 
-	const pattern = (() => {
-		switch (options?.wildcardPattern) {
-			case WildcardPatternEnum.BOTH:
-				return `%${normalizedTerm}%`;
-			case WildcardPatternEnum.START:
-				return `${normalizedTerm}%`;
-			case WildcardPatternEnum.END:
-				return `%${normalizedTerm}`;
-			case WildcardPatternEnum.NONE:
-				return normalizedTerm;
-			default:
-				return `%${normalizedTerm}%`;
-		}
-	})();
+	const pattern = SEARCH_PATTERN_BUILDERS[options.wildcardPattern](normalizedTerm);
 
 	const conditions = searchFields.map(field => `${alias}.${field} ILIKE :searchTerm`).join(' OR ');
 

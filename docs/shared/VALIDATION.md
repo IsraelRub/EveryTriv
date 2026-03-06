@@ -25,7 +25,7 @@ shared/validation/
 ולידציה מקיפה לניהול קושי משחק:
 
 ```typescript
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, VALID_DIFFICULTIES_SET } from '@shared/constants';
 import type { BaseValidationResult, GameDifficulty } from '@shared/types';
 
 /**
@@ -37,11 +37,9 @@ export function toDifficultyLevel(difficulty: GameDifficulty): DifficultyLevel {
     return DifficultyLevel.CUSTOM;
   }
 
-  const normalizedDifficulty = difficulty.toLowerCase();
-  const matchedDifficulty = VALID_DIFFICULTIES.find(level => level.toLowerCase() === normalizedDifficulty);
-
-  if (matchedDifficulty) {
-    return matchedDifficulty;
+  const normalized = difficulty.toLowerCase();
+  if (isRegisteredDifficulty(normalized)) {
+    return normalized;
   }
 
   return DifficultyLevel.MEDIUM;
@@ -58,8 +56,7 @@ export function isCustomDifficulty(difficulty: string): boolean {
  * Checks if the provided difficulty matches a registered difficulty level
  */
 export function isRegisteredDifficulty(difficulty: string): difficulty is DifficultyLevel {
-  const normalizedDifficulty = difficulty.toLowerCase();
-  return VALID_DIFFICULTIES.some(validDiff => validDiff.toLowerCase() === normalizedDifficulty);
+  return VALID_DIFFICULTIES_SET.has(difficulty.toLowerCase());
 }
 
 /**
@@ -83,23 +80,11 @@ export function extractCustomDifficultyText(difficulty: string): string {
 export function createCustomDifficulty(text: string): string {
   return `${CUSTOM_DIFFICULTY_PREFIX}${text.trim()}`;
 }
+```
 
-/**
- * Gets display text for difficulty with length constraints
- */
-export function getDifficultyDisplayText(difficulty: string, maxLength: number = 50): string {
-  if (!isCustomDifficulty(difficulty)) {
-    return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-  }
+פונקציית `formatDifficulty` (טקסט תצוגה לקושי עם הגבלת אורך) נמצאת ב-`shared/utils/core/format.utils.ts` ומשתמשת ב-`formatTitle` לפורמט כותרת אחיד.
 
-  const customText = extractCustomDifficultyText(difficulty);
-  if (customText.length <= maxLength) {
-    return customText;
-  }
-
-  return customText.substring(0, maxLength - 3) + '...';
-}
-
+```typescript
 /**
  * Gets the score multiplier based on mapped difficulty level
  */

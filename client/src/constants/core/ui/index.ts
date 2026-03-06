@@ -1,3 +1,4 @@
+export * from './loading.constants';
 export * from './validation-messages.constants';
 
 export * from './animation.constants';

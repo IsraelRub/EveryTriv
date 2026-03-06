@@ -25,16 +25,6 @@ export interface BaseCacheEntry extends BaseTimestamps {
 	lastAccessed: Date;
 }
 
-export interface SlowOperation {
-	operation: string;
-
-	duration: number;
-
-	timestamp: Date;
-
-	metadata?: Record<string, BasicValue>;
-}
-
 export interface SelectOption {
 	value: string;
 	label: string;

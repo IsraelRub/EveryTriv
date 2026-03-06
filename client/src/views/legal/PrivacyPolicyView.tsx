@@ -1,13 +1,14 @@
 import { Database, Eye, Lock, Mail, Shield } from 'lucide-react';
 
+import { formatDate } from '@shared/utils';
+
 import { ROUTES } from '@/constants';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components';
-import { formatDate } from '@/utils';
+import { Card, CardContent, CardHeader, CardTitle, NavLink } from '@/components';
 
 export function PrivacyPolicyView() {
 	return (
-		<main className='h-screen overflow-hidden pt-0 pb-4 md:pb-6 px-4 animate-fade-in-up-simple'>
-			<div className='max-w-4xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8'>
+		<main className='view-main animate-fade-in-up-simple'>
+			<div className='view-content-4xl'>
 				<Card className='flex-1 flex flex-col overflow-hidden'>
 					<CardHeader className='flex-shrink-0'>
 						<div className='flex items-center gap-3 mb-2'>
@@ -16,7 +17,7 @@ export function PrivacyPolicyView() {
 						</div>
 						<p className='text-sm md:text-base text-muted-foreground'>Last updated: {formatDate(new Date())}</p>
 					</CardHeader>
-					<CardContent className='space-y-6 md:space-y-8 flex-1 overflow-y-auto'>
+					<CardContent className='view-spacing-legal view-scroll-inline'>
 						<section>
 							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
 								<Lock className='h-6 w-6 text-primary' />
@@ -191,14 +192,14 @@ export function PrivacyPolicyView() {
 								If you have any questions about this Privacy Policy or wish to exercise your rights, please contact us
 								at:
 							</p>
-							<div className='mt-4 p-4 bg-muted rounded-lg'>
+							<div className='callout-muted'>
 								<p className='font-semibold mb-2'>EveryTriv Support</p>
 								<p className='text-muted-foreground'>Email: privacy@everytriv.com</p>
 								<p className='text-muted-foreground'>
 									Website:{' '}
-									<a href={ROUTES.CONTACT} className='text-primary hover:underline'>
+									<NavLink to={ROUTES.CONTACT} className='link-primary'>
 										Contact Page
-									</a>
+									</NavLink>
 								</p>
 							</div>
 						</section>

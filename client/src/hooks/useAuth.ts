@@ -38,17 +38,12 @@ function useHasToken(): boolean {
 			}
 		};
 
-		// Listen for custom events from the same window (when token is set/removed)
-		const handleTokenChange = () => {
-			checkToken();
-		};
-
 		window.addEventListener('storage', handleStorageChange);
-		window.addEventListener('auth-token-changed', handleTokenChange);
+		window.addEventListener('auth-token-changed', checkToken);
 
 		return () => {
 			window.removeEventListener('storage', handleStorageChange);
-			window.removeEventListener('auth-token-changed', handleTokenChange);
+			window.removeEventListener('auth-token-changed', checkToken);
 		};
 	}, []);
 

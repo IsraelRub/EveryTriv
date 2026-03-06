@@ -1,3 +1,4 @@
+import { LoadingMessages, VariantBase } from '@/constants';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -17,13 +18,8 @@ export function ConfirmClearDialog({
 	description,
 	itemName,
 	onConfirm,
-	isLoading = false,
+	isLoading,
 }: ConfirmClearDialogProps) {
-	const handleConfirm = () => {
-		onConfirm();
-		onOpenChange(false);
-	};
-
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
@@ -39,11 +35,14 @@ export function ConfirmClearDialog({
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
 					<AlertDialogAction
-						onClick={handleConfirm}
+						variant={VariantBase.DESTRUCTIVE}
+						onClick={() => {
+							onConfirm();
+							onOpenChange(false);
+						}}
 						disabled={isLoading}
-						className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
 					>
-						{isLoading ? 'Clearing...' : `Clear All ${itemName}`}
+						{isLoading ? LoadingMessages.CLEARING : `Clear All ${itemName}`}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

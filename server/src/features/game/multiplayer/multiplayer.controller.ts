@@ -11,17 +11,10 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import {
-	API_ENDPOINTS,
-	ERROR_CODES,
-	GAME_MODE_DEFAULTS,
-	GameMode,
-	LOCALHOST_CONFIG,
-	VALIDATORS,
-} from '@shared/constants';
+import { API_ENDPOINTS, ErrorCode, GAME_MODES_CONFIG, GameMode, LOCALHOST_CONFIG } from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-import { isRoomId, toDifficultyLevel } from '@shared/validation';
+import { isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import type {
@@ -72,7 +65,8 @@ export class MultiplayerController {
 				questionsPerRequest: body.questionsPerRequest,
 				maxPlayers: body.maxPlayers,
 				gameMode: body.gameMode,
-				timePerQuestion: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER].timePerQuestion,
+				answerCount: body.answerCount,
+				timePerQuestion: GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.timePerQuestion,
 				mappedDifficulty: body.mappedDifficulty ?? toDifficultyLevel(body.difficulty),
 			};
 			const result = await this.multiplayerService.createRoom(userId, config);
@@ -258,7 +252,7 @@ export class MultiplayerController {
 			// Validate roomId format (8 alphanumeric characters)
 			const normalizedRoomId = roomId.toUpperCase();
 			if (!isRoomId(normalizedRoomId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_ROOM_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_ROOM_ID_FORMAT);
 			}
 
 			const room = await this.multiplayerService.getRoomDetails(normalizedRoomId, userId);
@@ -287,7 +281,7 @@ export class MultiplayerController {
 			// Validate roomId format (8 alphanumeric characters)
 			const normalizedRoomId = roomId.toUpperCase();
 			if (!isRoomId(normalizedRoomId)) {
-				throw new BadRequestException(ERROR_CODES.INVALID_ROOM_ID_FORMAT);
+				throw new BadRequestException(ErrorCode.INVALID_ROOM_ID_FORMAT);
 			}
 
 			const result = await this.multiplayerService.getRoomState(normalizedRoomId, userId);
@@ -310,7 +304,7 @@ export class MultiplayerController {
 
 	private ensureAuthenticated(userId: string | null): asserts userId is string {
 		if (userId == null) {
-			throw new ForbiddenException(ERROR_CODES.USER_NOT_AUTHENTICATED);
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 	}
 

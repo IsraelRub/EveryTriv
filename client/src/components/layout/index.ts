@@ -1,2 +1,2 @@
 export { default as Footer } from './Footer';
-export { DashboardWithTabsLayout } from './DashboardWithTabsLayout';
+export * from './DashboardWithTabsLayout';

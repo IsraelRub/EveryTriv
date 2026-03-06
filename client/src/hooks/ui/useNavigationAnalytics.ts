@@ -9,7 +9,7 @@ export function useNavigationAnalytics() {
 	const prevPathnameRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (prevPathnameRef.current !== null && prevPathnameRef.current !== location.pathname) {
+		if (prevPathnameRef.current != null && prevPathnameRef.current !== location.pathname) {
 			audioService.play(AudioKey.PAGE_CHANGE);
 		}
 		prevPathnameRef.current = location.pathname;
@@ -30,8 +30,9 @@ export function useNavigationAnalytics() {
 		const routePatterns = [
 			ROUTES.HOME,
 			ROUTES.GAME,
-			ROUTES.GAME_PLAY,
-			ROUTES.GAME_SUMMARY,
+			ROUTES.GAME_SINGLE,
+			ROUTES.GAME_SINGLE_PLAY,
+			ROUTES.GAME_SINGLE_SUMMARY,
 			ROUTES.PAYMENT,
 			ROUTES.REGISTER,
 			ROUTES.LOGIN,

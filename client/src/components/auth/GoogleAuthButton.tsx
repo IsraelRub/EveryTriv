@@ -1,12 +1,12 @@
-import { ButtonSize, ButtonVariant } from '@/constants';
+import { ButtonSize, VariantBase } from '@/constants';
 import { Button } from '@/components';
 import type { GoogleAuthButtonProps } from '@/types';
 
-export function GoogleAuthButton({ onClick, disabled = false, text = 'Continue with Google' }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ onClick, disabled, text = 'Continue with Google' }: GoogleAuthButtonProps) {
 	return (
 		<Button
 			type='button'
-			variant={ButtonVariant.OUTLINE}
+			variant={VariantBase.OUTLINE}
 			className='w-full'
 			size={ButtonSize.LG}
 			onClick={onClick}

@@ -18,10 +18,11 @@ import {
 import { Root as LabelRoot } from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
 
+import { ERROR_MESSAGES } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
 import { Label } from '@/components';
-import type { FormFieldContextValue, FormItemContextValue } from '@/types';
+import type { FormFieldContextValue } from '@/types';
 import { cn } from '@/utils';
 
 const FormFieldContext = createContext<FormFieldContextValue | undefined>(undefined);
@@ -41,19 +42,14 @@ export const FormField = <
 
 export const useFormField = () => {
 	const fieldContext = useContext(FormFieldContext);
-	const itemContext = useContext(FormItemContext);
+	const id = useContext(FormItemContext);
 	const { getFieldState, formState } = useFormContext();
 
-	if (!fieldContext) {
-		throw new Error('useFormField should be used within <FormField>');
-	}
-
-	if (!itemContext) {
-		throw new Error('useFormField should be used within <FormItem>');
+	if (!fieldContext || !id) {
+		throw new Error(ERROR_MESSAGES.validation.USE_FORM_FIELD_WITHIN_FORM_FIELD);
 	}
 
 	const fieldState = getFieldState(fieldContext.name, formState);
-	const { id } = itemContext;
 
 	return {
 		id,
@@ -65,13 +61,13 @@ export const useFormField = () => {
 	};
 };
 
-const FormItemContext = createContext<FormItemContextValue | undefined>(undefined);
+const FormItemContext = createContext<string | undefined>(undefined);
 
 export const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
 	const id = useId();
 
 	return (
-		<FormItemContext.Provider value={{ id }}>
+		<FormItemContext.Provider value={id}>
 			<div ref={ref} className={cn('space-y-2', className)} {...props} />
 		</FormItemContext.Provider>
 	);

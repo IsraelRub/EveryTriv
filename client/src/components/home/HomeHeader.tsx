@@ -4,17 +4,11 @@ import { BarChart3, History, Trophy } from 'lucide-react';
 
 import { APP_NAME } from '@shared/constants';
 
-import { ANIMATION_CONFIG, ANIMATION_DELAYS, ButtonVariant, ROUTES } from '@/constants';
+import { ANIMATION_CONFIG, ANIMATION_DELAYS, ROUTES, VariantBase } from '@/constants';
 import { Button, Card } from '@/components';
 import type { HomeHeaderProps } from '@/types/domain/home';
 
-export function HomeHeader({
-	isAuthenticated,
-	firstName,
-	showWelcome = true,
-	showGuestContent = false,
-	action,
-}: HomeHeaderProps) {
+export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestContent, action }: HomeHeaderProps) {
 	const navigate = useNavigate();
 
 	return (
@@ -28,7 +22,7 @@ export function HomeHeader({
 				<h1 className='text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary leading-tight py-1 md:py-2 lg:py-3'>
 					<span className='bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>{APP_NAME}</span>
 				</h1>
-				<p className='text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto'>
+				<p className='text-base md:text-lg lg:text-xl text-muted-foreground view-centered-2xl'>
 					Challenge your knowledge with thousands of trivia questions across multiple categories
 				</p>
 			</motion.div>
@@ -37,7 +31,7 @@ export function HomeHeader({
 					initial={{ opacity: 0, y: 10 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM }}
-					className={action ? 'flex flex-row flex-wrap items-center justify-center gap-6 text-center' : 'text-center mb-6'}
+					className={action ? 'flex flex-col items-center justify-center gap-4 text-center' : 'text-center mb-6'}
 				>
 					<h2 className='text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground'>
 						{isAuthenticated && firstName ? (
@@ -59,7 +53,7 @@ export function HomeHeader({
 					className='mt-8'
 				>
 					<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-						<Card className='p-6 bg-primary/5 border-primary/20 backdrop-blur-sm'>
+						<Card className='p-6 card-primary-tint backdrop-blur-sm'>
 							<div className='flex flex-col items-center text-center space-y-4'>
 								<div className='p-3 rounded-full bg-primary/10'>
 									<BarChart3 className='w-8 h-8 text-primary' />
@@ -71,7 +65,7 @@ export function HomeHeader({
 							</div>
 						</Card>
 
-						<Card className='p-6 bg-primary/5 border-primary/20 backdrop-blur-sm'>
+						<Card className='p-6 card-primary-tint backdrop-blur-sm'>
 							<div className='flex flex-col items-center text-center space-y-4'>
 								<div className='p-3 rounded-full bg-primary/10'>
 									<Trophy className='w-8 h-8 text-primary' />
@@ -83,7 +77,7 @@ export function HomeHeader({
 							</div>
 						</Card>
 
-						<Card className='p-6 bg-primary/5 border-primary/20 backdrop-blur-sm'>
+						<Card className='p-6 card-primary-tint backdrop-blur-sm'>
 							<div className='flex flex-col items-center text-center space-y-4'>
 								<div className='p-3 rounded-full bg-primary/10'>
 									<History className='w-8 h-8 text-primary' />
@@ -99,7 +93,7 @@ export function HomeHeader({
 							<p className='text-muted-foreground mb-4'>Create a free account to unlock these features!</p>
 							<div className='flex justify-center gap-4'>
 								<Button onClick={() => navigate(ROUTES.REGISTER)}>Register Now</Button>
-								<Button variant={ButtonVariant.OUTLINE} onClick={() => navigate(ROUTES.LOGIN)}>
+								<Button variant={VariantBase.OUTLINE} onClick={() => navigate(ROUTES.LOGIN)}>
 									Login
 								</Button>
 							</div>

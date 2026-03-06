@@ -1,12 +1,5 @@
 // Payment Interfaces.
-import {
-	PaymentClientAction as PaymentClientActionEnum,
-	PaymentMethod,
-	PaymentStatus,
-	PayPalEnvironment,
-	PlanType,
-	RequestSource,
-} from '../../constants';
+import { PaymentClientAction, PaymentMethod, PaymentStatus, PayPalEnvironment, PlanType } from '../../constants';
 
 export interface PaymentMetadata {
 	subscriptionId?: string;
@@ -34,7 +27,6 @@ export interface PaymentMetadata {
 	campaign?: string;
 	affiliate?: string;
 	apiVersion?: string;
-	requestSource?: RequestSource;
 	gatewayTransactionId?: string;
 	refundReason?: string;
 	paypalOrderId?: string;
@@ -89,7 +81,7 @@ export interface PaymentResult {
 	currency?: string;
 	error?: string;
 	paymentMethod: PaymentMethod;
-	clientAction: (typeof PaymentClientActionEnum)[keyof typeof PaymentClientActionEnum];
+	clientAction: PaymentClientAction;
 	paypalOrderRequest?: PayPalOrderRequest;
 	paypalOrderId?: string;
 	paypalPaymentId?: string;

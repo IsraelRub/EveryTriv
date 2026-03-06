@@ -1,7 +1,7 @@
 import { BadRequestException, Module } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { ERROR_CODES } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 
 import { MetricsService } from '@internal/services';
 
@@ -18,7 +18,7 @@ import { StorageService } from './storage.service';
 			provide: StorageService,
 			useFactory: (redisClient: Redis | null) => {
 				if (!redisClient) {
-					throw new BadRequestException(ERROR_CODES.REDIS_CLIENT_REQUIRED);
+					throw new BadRequestException(ErrorCode.REDIS_CLIENT_REQUIRED);
 				}
 				return new StorageService(redisClient, {});
 			},

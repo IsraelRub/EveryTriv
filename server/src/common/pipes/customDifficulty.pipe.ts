@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ERROR_CODES } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 import type { CustomDifficultyRequest } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { validateCustomDifficultyText } from '@shared/validation';
@@ -29,7 +29,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				});
 
 				throw new BadRequestException(
-					basicValidation.errors.join(', ') || ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED
+					basicValidation.errors.join(', ') || ErrorCode.CUSTOM_DIFFICULTY_VALIDATION_FAILED
 				);
 			}
 
@@ -56,7 +56,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				const allSuggestions = [...languageValidation.suggestions];
 
 				throw new BadRequestException({
-					message: allErrors.join(', ') || ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED,
+					message: allErrors.join(', ') || ErrorCode.CUSTOM_DIFFICULTY_VALIDATION_FAILED,
 					errors: allErrors,
 					suggestion: allSuggestions.length > 0 ? allSuggestions[0] : undefined,
 				});
@@ -70,7 +70,7 @@ export class CustomDifficultyPipe implements PipeTransform {
 				throw error;
 			}
 
-			throw new BadRequestException(ERROR_CODES.CUSTOM_DIFFICULTY_VALIDATION_FAILED);
+			throw new BadRequestException(ErrorCode.CUSTOM_DIFFICULTY_VALIDATION_FAILED);
 		}
 	}
 }

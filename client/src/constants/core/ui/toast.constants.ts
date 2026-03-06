@@ -2,7 +2,7 @@ import { TIME_PERIODS_MS } from '@shared/constants';
 
 export const TOAST_LIMIT = 3;
 
-export const TOAST_REMOVE_DELAY = 300;
+export const TOAST_REMOVE_DELAY = TIME_PERIODS_MS.THREE_HUNDRED_MILLISECONDS;
 
 export const DEFAULT_TOAST_DURATION = TIME_PERIODS_MS.FIVE_SECONDS;
 

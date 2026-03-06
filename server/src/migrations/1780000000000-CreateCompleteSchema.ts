@@ -1,5 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+import { MAX_POINTS_PER_QUESTION, UserRole } from '@shared/constants';
+
 export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 	name = 'CreateCompleteSchema1780000000000';
 
@@ -55,7 +57,8 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"last_free_questions_reset" date,
 					"last_login" TIMESTAMP,
 					"is_active" boolean NOT NULL DEFAULT true,
-					"role" character varying NOT NULL DEFAULT 'user',
+					"email_verified" boolean NOT NULL DEFAULT false,
+					"role" character varying NOT NULL DEFAULT '${UserRole.USER}',
 					"preferences" jsonb NOT NULL DEFAULT '{}',
 					"achievements" jsonb NOT NULL DEFAULT '[]',
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
@@ -89,7 +92,18 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			await queryRunner.query(`
 				UPDATE "users" 
 				SET "credits" = NULL 
-				WHERE "role" = 'admin';
+				WHERE "role" = '${UserRole.ADMIN}';
+			`);
+
+			console.log('Adding email_verified column to users if needed');
+			await queryRunner.query(`
+				ALTER TABLE "users"
+				ADD COLUMN IF NOT EXISTS "email_verified" boolean NOT NULL DEFAULT false
+			`);
+			await queryRunner.query(`
+				UPDATE "users"
+				SET "email_verified" = true
+				WHERE "google_id" IS NOT NULL
 			`);
 
 			// Create indexes for users table
@@ -119,7 +133,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				)
 			`);
 
-			// Add columns to payment_history if table already exists (for backward compatibility)
 			console.log('Adding completed_at and failed_at columns to payment_history if needed');
 			await queryRunner.query(`
 				DO $$ BEGIN
@@ -370,7 +383,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				)
 			`);
 
-			// Add version column to user_stats if table already exists (for backward compatibility)
 			console.log('Adding version column to user_stats if needed');
 			await queryRunner.query(`
 				DO $$ BEGIN
@@ -501,6 +513,50 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				WHERE metadata->>'failedAt' IS NOT NULL AND "failed_at" IS NULL
 			`);
 
+			// Normalize user_stats success rates to score-based formula (0–100)
+			console.log('Normalizing user_stats success rates to score-based formula');
+			await queryRunner.query(`
+				UPDATE user_stats
+				SET overall_success_rate = LEAST(100, ROUND(100.0 * total_score / NULLIF(total_questions_answered, 0) / ${MAX_POINTS_PER_QUESTION})::integer)
+				WHERE total_questions_answered > 0
+			`);
+			await queryRunner.query(`
+				UPDATE user_stats
+				SET topic_stats = (
+					SELECT COALESCE(jsonb_object_agg(
+						t.key,
+						t.value || jsonb_build_object(
+							'successRate',
+							CASE
+								WHEN (t.value->>'totalQuestionsAnswered')::int > 0
+								THEN LEAST(100, ROUND(100.0 * COALESCE((t.value->>'score')::numeric, 0) / (t.value->>'totalQuestionsAnswered')::int / ${MAX_POINTS_PER_QUESTION})::integer)
+								ELSE 0
+							END
+						)
+					), '{}'::jsonb)
+					FROM jsonb_each(topic_stats) AS t(key, value)
+				)
+				WHERE topic_stats IS NOT NULL AND topic_stats != '{}'::jsonb
+			`);
+			await queryRunner.query(`
+				UPDATE user_stats
+				SET difficulty_stats = (
+					SELECT COALESCE(jsonb_object_agg(
+						d.key,
+						d.value || jsonb_build_object(
+							'successRate',
+							CASE
+								WHEN (d.value->>'totalQuestionsAnswered')::int > 0
+								THEN LEAST(100, ROUND(100.0 * COALESCE((d.value->>'score')::numeric, 0) / (d.value->>'totalQuestionsAnswered')::int / ${MAX_POINTS_PER_QUESTION})::integer)
+								ELSE 0
+							END
+						)
+					), '{}'::jsonb)
+					FROM jsonb_each(difficulty_stats) AS d(key, value)
+				)
+				WHERE difficulty_stats IS NOT NULL AND difficulty_stats != '{}'::jsonb
+			`);
+
 			console.log('Migration completed successfully: CreateCompleteSchema', {
 				migrationName: this.name,
 				operation: 'up',
@@ -562,9 +618,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			await queryRunner.query(`DROP TYPE IF EXISTS "credit_source_enum"`);
 			await queryRunner.query(`DROP TYPE IF EXISTS "credit_transaction_type_enum"`);
 
-			// Drop extension (optional - may be used by other databases)
 			console.log('Dropping uuid-ossp extension (if not used elsewhere)');
-			// Note: We don't drop the extension as it might be used by other schemas
 			// await queryRunner.query(`DROP EXTENSION IF EXISTS "uuid-ossp"`);
 
 			console.log('Migration rollback completed successfully: CreateCompleteSchema', {

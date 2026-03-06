@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsString, IsUUID, MinLength } from 'class-validator';
 
-import { GameMode } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, GameMode } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 export class StartGameSessionDto {
@@ -14,12 +14,12 @@ export class StartGameSessionDto {
 	@MinLength(1)
 	gameId!: string;
 
-	@ApiProperty({ description: 'Game topic', example: 'Science' })
+	@ApiProperty({ description: 'Game topic', example: DEFAULT_GAME_CONFIG.defaultTopic })
 	@IsString()
 	@MinLength(1)
 	topic!: string;
 
-	@ApiProperty({ description: 'Game difficulty', example: 'medium' })
+	@ApiProperty({ description: 'Game difficulty', example: DEFAULT_GAME_CONFIG.defaultDifficulty })
 	@IsString()
 	@MinLength(1)
 	difficulty!: GameDifficulty;

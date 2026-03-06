@@ -46,7 +46,6 @@ export interface TrendChartProps {
 	data?: UserTrendPoint[];
 	isLoading?: boolean;
 	height?: number;
-	showSuccessRate?: boolean;
 	xAxisLabel?: string;
 	scoreLabel?: string;
 	successRateLabel?: string;
@@ -55,26 +54,9 @@ export interface TrendChartProps {
 	emptyStateData?: string;
 }
 
-export interface DistributionChartProps {
-	data?: ChartDataPoint[];
-	comparisonData?: ChartDataPoint[];
-	isLoading?: boolean;
-	height?: number;
-	xAxisLabel?: string;
-	yAxisLabel?: string;
-	valueLabel?: string;
-	countLabel?: string;
-	className?: string;
-	color?: string;
-	comparisonColor?: string;
-	hideCard?: boolean;
-	emptyStateData?: string;
-	isPercentage?: boolean;
-}
-
 export interface ChartCardProps {
 	title: string;
-	description?: string;
+	description: string;
 	isLoading?: boolean;
 	data?: unknown[] | null | undefined;
 	children: ReactNode;
@@ -93,50 +75,8 @@ export interface TopicsDistributionChartProps {
 	className?: string;
 }
 
-export interface DifficultyDistributionChartProps {
-	difficultyData?: Record<string, DifficultyStats | undefined>;
-	totalGames?: number;
-	isLoading?: boolean;
-	height?: number;
-	maxItems?: number;
-	minPercentage?: number;
-	centerText?: string | PieChartCenterText;
-	className?: string;
-	showSuccessRate?: boolean;
-}
-
 export interface DifficultyOverviewChartProps {
 	difficultyData?: Record<string, DifficultyStats | undefined>;
 	height?: number;
 	valueLabel?: string;
-}
-
-export interface MetricsPieChartProps {
-	data?: ChartDataPoint[];
-	isLoading?: boolean;
-	height?: number;
-	className?: string;
-	maxItems?: number;
-	minPercentage?: number;
-}
-
-export interface StackedBarDataPoint {
-	name: string;
-	success: number;
-	failure: number;
-}
-
-export interface StackedBarChartProps {
-	data?: StackedBarDataPoint[];
-	isLoading?: boolean;
-	height?: number;
-	xAxisLabel?: string;
-	yAxisLabel?: string;
-	successLabel?: string;
-	failureLabel?: string;
-	className?: string;
-	successColor?: string;
-	failureColor?: string;
-	hideCard?: boolean;
-	emptyStateData?: string;
 }

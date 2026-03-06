@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
-import { calculateSuccessRate, getErrorMessage } from '@shared/utils';
+import { calculateScoreRate, getErrorMessage, namesMatch, sumBy } from '@shared/utils';
 
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheInvalidationService } from '@internal/modules';
@@ -34,9 +34,7 @@ export class UserStatsMaintenanceService {
 				where: { userId },
 			});
 
-			if (!userStats) {
-				userStats = await this.userStatsUpdateService.initializeUserStats(userId);
-			}
+			userStats ??= await this.userStatsUpdateService.initializeUserStats(userId);
 
 			if (gameHistory.length === 0) {
 				await this.userStatsUpdateService.resetUserStats(userId);
@@ -108,11 +106,12 @@ export class UserStatsMaintenanceService {
 			});
 
 			if (!userStats) {
-				const expectedTotalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
-				const expectedCorrectAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
+				const expectedTotalQuestionsAnswered = sumBy(gameHistory, g => g.gameQuestionCount);
+				const expectedCorrectAnswers = sumBy(gameHistory, g => g.correctAnswers);
+				const expectedTotalScore = sumBy(gameHistory, g => g.score ?? 0);
 				const expectedSuccessRate =
 					expectedTotalQuestionsAnswered > 0
-						? calculateSuccessRate(expectedTotalQuestionsAnswered, expectedCorrectAnswers)
+						? calculateScoreRate(expectedTotalScore, expectedTotalQuestionsAnswered)
 						: 0;
 				const expectedBestScore = gameHistory.length > 0 ? Math.max(...gameHistory.map(game => game.score ?? 0)) : 0;
 				const expectedLastPlayDate =
@@ -131,7 +130,7 @@ export class UserStatsMaintenanceService {
 							actual: 0,
 						},
 						totalScore: {
-							expected: gameHistory.reduce((sum, game) => sum + (game.score ?? 0), 0),
+							expected: expectedTotalScore,
 							actual: 0,
 						},
 						successRate: {
@@ -153,13 +152,11 @@ export class UserStatsMaintenanceService {
 			}
 
 			const expectedTotalGames = gameHistory.length;
-			const expectedTotalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
-			const expectedCorrectAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
-			const expectedTotalScore = gameHistory.reduce((sum, game) => sum + (game.score ?? 0), 0);
+			const expectedTotalQuestionsAnswered = sumBy(gameHistory, g => g.gameQuestionCount);
+			const expectedCorrectAnswers = sumBy(gameHistory, g => g.correctAnswers);
+			const expectedTotalScore = sumBy(gameHistory, g => g.score ?? 0);
 			const expectedSuccessRate =
-				expectedTotalQuestionsAnswered > 0
-					? calculateSuccessRate(expectedTotalQuestionsAnswered, expectedCorrectAnswers)
-					: 0;
+				expectedTotalQuestionsAnswered > 0 ? calculateScoreRate(expectedTotalScore, expectedTotalQuestionsAnswered) : 0;
 			const expectedBestScore = gameHistory.length > 0 ? Math.max(...gameHistory.map(game => game.score ?? 0)) : 0;
 			const expectedLastPlayDate =
 				gameHistory.length > 0 ? (gameHistory[gameHistory.length - 1]?.createdAt ?? null) : null;
@@ -168,9 +165,9 @@ export class UserStatsMaintenanceService {
 			const topicStatsInconsistent: string[] = [];
 			if (userStats.topicStats) {
 				for (const [topic, stats] of Object.entries(userStats.topicStats)) {
-					const topicGames = gameHistory.filter(game => game.topic === topic);
-					const expectedTopicQuestions = topicGames.reduce((sum, game) => sum + game.gameQuestionCount, 0);
-					const expectedTopicCorrect = topicGames.reduce((sum, game) => sum + game.correctAnswers, 0);
+					const topicGames = gameHistory.filter(game => namesMatch(game.topic, topic));
+					const expectedTopicQuestions = sumBy(topicGames, g => g.gameQuestionCount);
+					const expectedTopicCorrect = sumBy(topicGames, g => g.correctAnswers);
 
 					if (
 						stats.totalQuestionsAnswered !== expectedTopicQuestions ||
@@ -186,8 +183,8 @@ export class UserStatsMaintenanceService {
 			if (userStats.difficultyStats) {
 				for (const [difficulty, stats] of Object.entries(userStats.difficultyStats)) {
 					const difficultyGames = gameHistory.filter(game => game.difficulty === difficulty);
-					const expectedDifficultyQuestions = difficultyGames.reduce((sum, game) => sum + game.gameQuestionCount, 0);
-					const expectedDifficultyCorrect = difficultyGames.reduce((sum, game) => sum + game.correctAnswers, 0);
+					const expectedDifficultyQuestions = sumBy(difficultyGames, g => g.gameQuestionCount);
+					const expectedDifficultyCorrect = sumBy(difficultyGames, g => g.correctAnswers);
 
 					if (
 						stats.totalQuestionsAnswered !== expectedDifficultyQuestions ||
@@ -228,6 +225,13 @@ export class UserStatsMaintenanceService {
 				difficultyStats: { inconsistent: difficultyStatsInconsistent },
 			};
 
+			const lastPlayDateMatch =
+				discrepancies.lastPlayDate.expected === null && discrepancies.lastPlayDate.actual === null
+					? true
+					: discrepancies.lastPlayDate.expected !== null &&
+						discrepancies.lastPlayDate.actual !== null &&
+						discrepancies.lastPlayDate.expected.getTime() === discrepancies.lastPlayDate.actual.getTime();
+
 			const isConsistent =
 				discrepancies.totalGames.expected === discrepancies.totalGames.actual &&
 				discrepancies.totalQuestionsAnswered.expected === discrepancies.totalQuestionsAnswered.actual &&
@@ -235,6 +239,7 @@ export class UserStatsMaintenanceService {
 				discrepancies.totalScore.expected === discrepancies.totalScore.actual &&
 				discrepancies.successRate.expected === discrepancies.successRate.actual &&
 				discrepancies.bestGameScore.expected === discrepancies.bestGameScore.actual &&
+				lastPlayDateMatch &&
 				discrepancies.topicStats.inconsistent.length === 0 &&
 				discrepancies.difficultyStats.inconsistent.length === 0;
 
@@ -342,9 +347,12 @@ export class UserStatsMaintenanceService {
 				}
 			}
 
-			// Get total users count
-			const allUserStats = await this.userStatsRepo.find({ select: ['userId'] });
-			const totalUsers = allUserStats.length;
+			// Total users with stats that are active (aligned with admin "total users")
+			const totalUsers = await this.userStatsRepo
+				.createQueryBuilder('userStats')
+				.innerJoin('userStats.user', 'user')
+				.where('user.isActive = :isActive', { isActive: true })
+				.getCount();
 
 			logger.analyticsStats('all_users_consistency_check', {
 				totalUsers,
@@ -375,9 +383,7 @@ export class UserStatsMaintenanceService {
 	}> {
 		try {
 			const consistency = await this.checkAllUsersConsistency();
-			const inconsistentUserIds = consistency.results
-				.filter(r => !r.isConsistent)
-				.map(r => r.userId);
+			const inconsistentUserIds = consistency.results.filter(r => !r.isConsistent).map(r => r.userId);
 
 			const results: Array<{ userId: string; fixed: boolean; message: string }> = [];
 
@@ -418,16 +424,13 @@ export class UserStatsMaintenanceService {
 
 	private recalculateBasicStats(userStats: UserStatsEntity, gameHistory: GameHistoryEntity[]): void {
 		userStats.totalGames = gameHistory.length;
-		userStats.totalQuestionsAnswered = gameHistory.reduce((sum, game) => sum + game.gameQuestionCount, 0);
-		userStats.correctAnswers = gameHistory.reduce((sum, game) => sum + game.correctAnswers, 0);
-		userStats.incorrectAnswers = gameHistory.reduce(
-			(sum, game) => sum + Math.max(0, game.gameQuestionCount - game.correctAnswers),
-			0
-		);
-		userStats.totalScore = gameHistory.reduce((sum, game) => sum + (game.score ?? 0), 0);
+		userStats.totalQuestionsAnswered = sumBy(gameHistory, g => g.gameQuestionCount);
+		userStats.correctAnswers = sumBy(gameHistory, g => g.correctAnswers);
+		userStats.incorrectAnswers = sumBy(gameHistory, g => Math.max(0, g.gameQuestionCount - g.correctAnswers));
+		userStats.totalScore = sumBy(gameHistory, g => g.score ?? 0);
 
 		if (userStats.totalQuestionsAnswered > 0) {
-			userStats.overallSuccessRate = calculateSuccessRate(userStats.totalQuestionsAnswered, userStats.correctAnswers);
+			userStats.overallSuccessRate = calculateScoreRate(userStats.totalScore, userStats.totalQuestionsAnswered);
 		} else {
 			userStats.overallSuccessRate = 0;
 		}
@@ -487,7 +490,8 @@ export class UserStatsMaintenanceService {
 	}
 
 	private recalculateCategoryStats(userStats: UserStatsEntity, gameHistory: GameHistoryEntity[]): void {
-		userStats.topicStats = calculateCategoryStats(gameHistory, 'topic');
-		userStats.difficultyStats = calculateCategoryStats(gameHistory, 'difficulty');
+		const gamesWithQuestions = gameHistory.filter(g => g.gameQuestionCount > 0);
+		userStats.topicStats = calculateCategoryStats(gamesWithQuestions, 'topic');
+		userStats.difficultyStats = calculateCategoryStats(gamesWithQuestions, 'difficulty');
 	}
 }

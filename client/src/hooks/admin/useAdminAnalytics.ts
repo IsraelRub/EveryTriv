@@ -2,27 +2,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type {
-	Achievement,
-	ActivityEntry,
 	AnalyticsResponse,
 	BusinessMetrics,
-	ComparisonQueryOptions,
 	SecurityMetrics,
 	SystemInsights,
 	SystemPerformanceMetrics,
 	SystemRecommendation,
-	TrendQueryOptions,
 	UserAnalyticsRecord,
-	UserComparisonResult,
 	UserInsightsData,
 	UserPerformanceMetrics,
-	UserProgressAnalytics,
 	UserSummaryData,
-	UserTrendPoint,
 } from '@shared/types';
 
 import { QUERY_KEYS } from '@/constants';
 import { analyticsService, queryInvalidationService } from '@/services';
+import type { Achievement } from '@/types';
 import { useUserRole } from '../useAuth';
 
 export const useUserSummaryById = (userId: string, includeActivity: boolean = false, enabled?: boolean) => {
@@ -79,48 +73,6 @@ export const useUserPerformanceById = (userId: string, enabled?: boolean) => {
 	});
 };
 
-export const useUserProgressById = (userId: string, params?: TrendQueryOptions, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
-	return useQuery<AnalyticsResponse<UserProgressAnalytics>>({
-		queryKey: QUERY_KEYS.admin.userProgress(userId, params),
-		queryFn: async () => {
-			if (!isAdmin) {
-				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
-			}
-			return analyticsService.getUserProgressById(userId, params);
-		},
-		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
-		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
-	});
-};
-
-export const useUserActivityById = (
-	userId: string,
-	limit?: number,
-	startDate?: Date | string,
-	endDate?: Date | string,
-	enabled?: boolean
-) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
-	return useQuery<AnalyticsResponse<ActivityEntry[]>>({
-		queryKey: QUERY_KEYS.admin.userActivity(userId, { limit, startDate, endDate }),
-		queryFn: async () => {
-			if (!isAdmin) {
-				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
-			}
-			return analyticsService.getUserActivityById(userId, limit, startDate, endDate);
-		},
-		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
-		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
-	});
-};
-
 export const useUserInsightsById = (userId: string, enabled?: boolean) => {
 	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;
@@ -168,42 +120,6 @@ export const useUserAchievementsById = (userId: string, enabled?: boolean) => {
 				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
 			return analyticsService.getUserAchievementsById(userId);
-		},
-		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
-		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
-	});
-};
-
-export const useUserTrendsById = (userId: string, params?: TrendQueryOptions, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
-	return useQuery<AnalyticsResponse<UserTrendPoint[]>>({
-		queryKey: QUERY_KEYS.admin.userTrends(userId, params),
-		queryFn: async () => {
-			if (!isAdmin) {
-				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
-			}
-			return analyticsService.getUserTrendsById(userId, params);
-		},
-		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: TIME_PERIODS_MS.MINUTE,
-		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
-	});
-};
-
-export const useUserComparisonById = (userId: string, params?: ComparisonQueryOptions, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
-	return useQuery<AnalyticsResponse<UserComparisonResult>>({
-		queryKey: QUERY_KEYS.admin.userComparison(userId, params),
-		queryFn: async () => {
-			if (!isAdmin) {
-				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
-			}
-			return analyticsService.compareUserPerformanceById(userId, params);
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,

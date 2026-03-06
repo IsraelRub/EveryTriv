@@ -10,6 +10,7 @@ const initialState: MultiplayerState = {
 	gameState: null,
 	error: null,
 	isLoading: false,
+	revealPhase: false,
 };
 
 export const multiplayerSlice = createSlice({
@@ -31,11 +32,14 @@ export const multiplayerSlice = createSlice({
 		setLoading: (state, action: PayloadAction<boolean>) => {
 			state.isLoading = action.payload;
 		},
+		setRevealPhase: (state, action: PayloadAction<boolean>) => {
+			state.revealPhase = action.payload;
+		},
 		resetMultiplayer: () => initialState,
 	},
 });
 
-export const { setConnectionStatus, setRoom, updateGameState, setError, setLoading, resetMultiplayer } =
+export const { setConnectionStatus, setRoom, updateGameState, setError, setLoading, setRevealPhase, resetMultiplayer } =
 	multiplayerSlice.actions;
 
 export default multiplayerSlice.reducer;

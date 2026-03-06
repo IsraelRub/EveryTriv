@@ -1,4 +1,4 @@
-import { MultiplayerEvent, RoomStatus, VALIDATORS } from '@shared/constants';
+import { MultiplayerEvent, RoomStatus } from '@shared/constants';
 import type {
 	CreateRoomResponse,
 	GameEvent,
@@ -8,7 +8,7 @@ import type {
 	RoomConfig,
 	RoomStateResponse,
 } from '@shared/types';
-import { isGameDifficulty } from '@shared/validation';
+import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
 import { hasProperty, hasPropertyOfType, isRecord } from '../core';
 

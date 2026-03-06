@@ -1,19 +1,18 @@
 import { memo, useMemo } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import { formatForDisplay } from '@shared/utils';
+import { formatDate, formatNumericValue, mean } from '@shared/utils';
 
-import { CHART_HEIGHTS, CssColor } from '@/constants';
+import { CHART_HEIGHTS, CssColor, SkeletonVariant } from '@/constants';
 import { EmptyState, Skeleton } from '@/components';
 import type { TrendChartProps } from '@/types';
-import { formatDate, formatDateShort, toHslColor } from '@/utils';
+import { formatDateShort } from '@/utils';
 import { ChartCard } from './ChartCard';
 
 export const TrendChart = memo(function TrendChart({
 	data,
 	isLoading,
 	height = CHART_HEIGHTS.DEFAULT,
-	showSuccessRate = true,
 	xAxisLabel,
 	scoreLabel = 'Score',
 	successRateLabel = 'Success Rate (%)',
@@ -47,22 +46,18 @@ export const TrendChart = memo(function TrendChart({
 				dateKey,
 				fullDate: bucket.fullDate,
 				date: formatDateShort(bucket.fullDate),
-				score:
-					bucket.scores.length > 0 ? Math.round(bucket.scores.reduce((s, n) => s + n, 0) / bucket.scores.length) : 0,
-				successRate:
-					bucket.successRates.length > 0
-						? Math.round(bucket.successRates.reduce((s, n) => s + n, 0) / bucket.successRates.length)
-						: 0,
+				score: bucket.scores.length > 0 ? Math.round(mean(bucket.scores)) : 0,
+				successRate: bucket.successRates.length > 0 ? Math.round(mean(bucket.successRates)) : 0,
 			}));
 	}, [data]);
 
 	const chartContent = (
 		<ResponsiveContainer width='100%' height={height}>
 			<LineChart data={chartData} margin={{ top: 5, right: 50, left: 50, bottom: 30 }} style={{ direction: 'ltr' }}>
-				<CartesianGrid strokeDasharray='3 3' stroke={toHslColor(CssColor.MUTED_FOREGROUND, 0.2)} />
+				<CartesianGrid strokeDasharray='3 3' stroke={CssColor.MUTED_FOREGROUND_20} />
 				<XAxis
 					dataKey='dateKey'
-					stroke={toHslColor(CssColor.MUTED_FOREGROUND)}
+					stroke={CssColor.MUTED_FOREGROUND}
 					style={{ fontSize: '12px' }}
 					angle={-45}
 					textAnchor='end'
@@ -72,25 +67,23 @@ export const TrendChart = memo(function TrendChart({
 				/>
 				<YAxis
 					yAxisId='score'
-					stroke={toHslColor(CssColor.PRIMARY)}
+					stroke={CssColor.PRIMARY}
 					style={{ fontSize: '12px' }}
 					label={{ value: scoreLabel, angle: -90, position: 'left', style: { textAnchor: 'middle' } }}
 				/>
-				{showSuccessRate && (
-					<YAxis
-						yAxisId='successRate'
-						orientation='right'
-						stroke={toHslColor(CssColor.SUCCESS_500)}
-						style={{ fontSize: '12px' }}
-						domain={[0, 100]}
-						label={{ value: successRateLabel, angle: 90, position: 'right', style: { textAnchor: 'middle' } }}
-					/>
-				)}
+				<YAxis
+					yAxisId='successRate'
+					orientation='right'
+					stroke={CssColor.SUCCESS_500}
+					style={{ fontSize: '12px' }}
+					domain={[0, 100]}
+					label={{ value: successRateLabel, angle: 90, position: 'right', style: { textAnchor: 'middle' } }}
+				/>
 				<Tooltip
 					contentStyle={{
 						direction: 'rtl',
-						backgroundColor: toHslColor(CssColor.CARD),
-						border: `1px solid ${toHslColor(CssColor.BORDER)}`,
+						backgroundColor: CssColor.CARD,
+						border: `1px solid ${CssColor.BORDER}`,
 						borderRadius: '8px',
 					}}
 					labelFormatter={value => {
@@ -100,12 +93,12 @@ export const TrendChart = memo(function TrendChart({
 					}}
 					formatter={(value: number, name: string) => {
 						if (name === 'score') {
-							return [formatForDisplay(value, 0), scoreLabel];
+							return [formatNumericValue(value, 0), scoreLabel];
 						}
 						if (name === 'successRate') {
-							return [formatForDisplay(value), successRateLabel];
+							return [formatNumericValue(value), successRateLabel];
 						}
-						return [formatForDisplay(value), name];
+						return [formatNumericValue(value), name];
 					}}
 				/>
 				<Legend
@@ -120,31 +113,29 @@ export const TrendChart = memo(function TrendChart({
 					type='monotone'
 					dataKey='score'
 					yAxisId='score'
-					stroke={toHslColor(CssColor.PRIMARY)}
+					stroke={CssColor.PRIMARY}
 					strokeWidth={2}
 					dot={{ r: 4 }}
 					activeDot={{ r: 6 }}
 					name='score'
 				/>
-				{showSuccessRate && (
-					<Line
-						type='monotone'
-						dataKey='successRate'
-						yAxisId='successRate'
-						stroke={toHslColor(CssColor.SUCCESS_500)}
-						strokeWidth={2}
-						dot={{ r: 4 }}
-						activeDot={{ r: 6 }}
-						name='successRate'
-					/>
-				)}
+				<Line
+					type='monotone'
+					dataKey='successRate'
+					yAxisId='successRate'
+					stroke={CssColor.SUCCESS_500}
+					strokeWidth={2}
+					dot={{ r: 4 }}
+					activeDot={{ r: 6 }}
+					name='successRate'
+				/>
 			</LineChart>
 		</ResponsiveContainer>
 	);
 
 	if (hideCard) {
 		if (isLoading) {
-			return <Skeleton className={className} style={{ height: `${height}px` }} />;
+			return <Skeleton variant={SkeletonVariant.Chart} className={className} style={{ height: `${height}px` }} />;
 		}
 		if (emptyStateData && (!data || data.length === 0)) {
 			return (

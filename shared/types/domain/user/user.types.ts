@@ -10,6 +10,7 @@ export interface BasicUser {
 	firstName?: string;
 	lastName?: string;
 	avatar?: number;
+	emailVerified?: boolean;
 }
 
 export interface UserProfile extends BasicUser, BaseEntity {

@@ -1,5 +1,12 @@
 import type { ComponentType, LazyExoticComponent } from 'react';
 
+export type TabModuleLoader = (componentName: string) => Promise<Record<string, ComponentType<unknown>>>;
+
+export interface TabSpec {
+	label: string;
+	componentName: string;
+}
+
 export interface DashboardTabEntry {
 	label: string;
 	loader: () => Promise<{ default: ComponentType<unknown> }>;

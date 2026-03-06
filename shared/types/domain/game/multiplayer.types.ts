@@ -15,6 +15,8 @@ export interface Player {
 	userId: string;
 	email: string;
 	displayName?: string;
+	/** Avatar ID (1–N) for avatar image; used by client for UserAvatar. */
+	avatar?: number;
 	score: number;
 	status: PlayerStatus;
 	joinedAt: Date;
@@ -30,6 +32,7 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	maxPlayers: number;
 	gameMode: GameMode;
+	answerCount?: number;
 }
 
 export interface RoomConfig extends CreateRoomConfig {
@@ -122,6 +125,7 @@ export type GameEventDataMap = {
 		correctAnswer: number;
 		results: QuestionResult[];
 		leaderboard: Player[];
+		answerCounts?: CountRecord;
 	};
 	[MultiplayerEvent.GAME_ENDED]: {
 		finalLeaderboard: Player[];
@@ -146,8 +150,6 @@ export interface GameEvent<T extends GameEventType = GameEventType> {
 	data: GameEventDataMap[T];
 }
 
-export type MultiplayerGameEvent = GameEvent<GameEventType>;
-
 export interface CreateRoomResponse {
 	room: MultiplayerRoom;
 	code: string;
@@ -158,7 +160,7 @@ export interface RoomStateResponse {
 	gameState: GameState;
 }
 
-export interface MultiplayerAnswerResult {
+export interface MultiplayerSubmitAnswerResult {
 	room: MultiplayerRoom;
 	isCorrect: boolean;
 	scoreEarned: number;
@@ -170,6 +172,7 @@ export interface QuestionEndResult {
 	results: QuestionResult[];
 	leaderboard: Player[];
 	room: MultiplayerRoom;
+	answerCounts?: CountRecord;
 }
 
 export interface QuestionStartResponse {
@@ -186,4 +189,5 @@ export interface QuestionEndResponse {
 	results: QuestionResult[];
 	leaderboard: Player[];
 	updatedRoom: MultiplayerRoom;
+	answerCounts?: CountRecord;
 }

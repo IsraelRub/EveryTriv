@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, RefreshCw, Users as UsersIcon, XCircle } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { CheckCircle2, GamepadIcon, RefreshCw, Users as UsersIcon, XCircle } from 'lucide-react';
+
+import { formatTitle } from '@shared/utils';
 
 import {
 	ButtonSize,
-	ButtonVariant,
-	SKELETON_HEIGHTS,
-	SKELETON_WIDTHS,
+	Colors,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
 	StatCardVariant,
-	TextColor,
 	VariantBase,
 } from '@/constants';
 import {
+	AlertIcon,
 	Badge,
 	Button,
 	Card,
@@ -18,16 +20,29 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
+	DataTableCard,
 	Skeleton,
 	StatCard,
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
 } from '@/components';
 import { useCheckAllUsersConsistency, useCheckUserStatsConsistency, useFixUserStatsConsistency } from '@/hooks';
+import type { ConsistencyDiscrepancy, ConsistencyResultRow, DataTableColumn } from '@/types';
+import { cn } from '@/utils';
+
+const CONSISTENCY_DISCREPANCY_FIELDS: ReadonlyArray<keyof ConsistencyResultRow['discrepancies']> = [
+	'totalGames',
+	'totalQuestionsAnswered',
+	'correctAnswers',
+	'totalScore',
+];
+
+function DiscrepancyCell({ expected, actual }: ConsistencyDiscrepancy): JSX.Element {
+	return (
+		<div className='flex flex-col'>
+			<span>Expected: {expected}</span>
+			<span className='text-destructive'>Actual: {actual}</span>
+		</div>
+	);
+}
 
 export function ConsistencyManagementSection() {
 	const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -39,24 +54,70 @@ export function ConsistencyManagementSection() {
 	} = useCheckUserStatsConsistency(selectedUserId, !!selectedUserId);
 	const fixConsistency = useFixUserStatsConsistency();
 
-	const handleCheckUser = (userId: string) => {
-		setSelectedUserId(userId);
-	};
+	const handleFixUser = useCallback(
+		async (userId: string) => {
+			try {
+				await fixConsistency.mutateAsync(userId);
+				await refetchUser();
+				await refetchAll();
+			} catch {
+				// Error is handled by the mutation
+			}
+		},
+		[fixConsistency, refetchUser, refetchAll]
+	);
 
-	const handleFixUser = async (userId: string) => {
-		try {
-			await fixConsistency.mutateAsync(userId);
-			await refetchUser();
-			await refetchAll();
-		} catch (error) {
-			// Error is handled by the mutation
-		}
-	};
+	const inconsistentRows = useMemo<ConsistencyResultRow[]>(() => {
+		if (!allConsistency?.results) return [];
+		return allConsistency.results.filter(r => !r.isConsistent).slice(0, 20);
+	}, [allConsistency?.results]);
+
+	const consistencyColumns = useMemo((): DataTableColumn<ConsistencyResultRow>[] => {
+		const discrepancyColumns: DataTableColumn<ConsistencyResultRow>[] = CONSISTENCY_DISCREPANCY_FIELDS.map(key => ({
+			id: key,
+			type: 'custom' as const,
+			render: (row: ConsistencyResultRow) => <DiscrepancyCell {...row.discrepancies[key]} />,
+		}));
+		return [
+			{
+				id: 'userId',
+				type: 'text',
+				getValue: row => row.userId.slice(0, 8) + '...',
+				cellClassName: 'font-mono text-sm',
+			},
+			...discrepancyColumns,
+			{
+				id: 'actions',
+				emptyHeader: true,
+				type: 'custom',
+				render: row => (
+					<div className='flex gap-2'>
+						<Button
+							variant={VariantBase.OUTLINE}
+							size={ButtonSize.SM}
+							onClick={() => setSelectedUserId(row.userId)}
+							disabled={userConsistencyLoading}
+						>
+							Check
+						</Button>
+						<Button
+							variant={VariantBase.DEFAULT}
+							size={ButtonSize.SM}
+							onClick={() => handleFixUser(row.userId)}
+							disabled={fixConsistency.isPending}
+						>
+							{fixConsistency.isPending ? <RefreshCw className='h-4 w-4 animate-spin-slow' /> : 'Fix'}
+						</Button>
+					</div>
+				),
+			},
+		];
+	}, [handleFixUser, userConsistencyLoading, fixConsistency.isPending]);
 
 	return (
 		<div className='space-y-8'>
 			{/* Summary Card */}
-			<Card className='border-primary/20 bg-primary/5'>
+			<Card className='card-primary-tint'>
 				<CardHeader>
 					<CardTitle className='text-2xl font-bold flex items-center gap-2'>
 						<CheckCircle2 className='h-6 w-6 text-primary' />
@@ -67,9 +128,7 @@ export function ConsistencyManagementSection() {
 				<CardContent>
 					{allConsistencyLoading ? (
 						<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-							{[...Array(4)].map((_, i) => (
-								<Skeleton key={i} className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
-							))}
+							<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 						</div>
 					) : allConsistency ? (
 						<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
@@ -78,28 +137,28 @@ export function ConsistencyManagementSection() {
 								icon={UsersIcon}
 								label='Total Users'
 								value={allConsistency.totalUsers.toLocaleString()}
-								color={TextColor.BLUE_500}
+								color={Colors.BLUE_500.text}
 							/>
 							<StatCard
 								variant={StatCardVariant.CENTERED}
-								icon={UsersIcon}
+								icon={GamepadIcon}
 								label='Users with Games'
 								value={allConsistency.usersWithGames.toLocaleString()}
-								color={TextColor.GREEN_500}
+								color={Colors.GREEN_500.text}
 							/>
 							<StatCard
 								variant={StatCardVariant.CENTERED}
 								icon={CheckCircle2}
 								label='Consistent Users'
 								value={allConsistency.consistentUsers.toLocaleString()}
-								color={TextColor.GREEN_500}
+								color={Colors.GREEN_500.text}
 							/>
 							<StatCard
 								variant={StatCardVariant.CENTERED}
 								icon={XCircle}
 								label='Inconsistent Users'
 								value={allConsistency.inconsistentUsers.toLocaleString()}
-								color={TextColor.RED_500}
+								color={Colors.RED_500.text}
 							/>
 						</div>
 					) : null}
@@ -108,122 +167,50 @@ export function ConsistencyManagementSection() {
 
 			{/* Inconsistent Users Table */}
 			{allConsistency && allConsistency.inconsistentUsers > 0 && (
-				<Card className='border-muted bg-muted/20'>
-					<CardHeader>
-						<CardTitle className='flex items-center gap-2'>
-							<AlertTriangle className='h-5 w-5 text-destructive' />
-							Inconsistent Users ({allConsistency.inconsistentUsers})
-						</CardTitle>
-						<CardDescription>Users with data inconsistencies that need to be fixed</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className='rounded-md border'>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>User ID</TableHead>
-										<TableHead>Total Games</TableHead>
-										<TableHead>Questions</TableHead>
-										<TableHead>Correct Answers</TableHead>
-										<TableHead>Total Score</TableHead>
-										<TableHead>Actions</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{allConsistency.results
-										.filter((result: { isConsistent: boolean }) => !result.isConsistent)
-										.slice(0, 20)
-										.map(
-											(result: {
-												userId: string;
-												isConsistent: boolean;
-												discrepancies: {
-													totalGames: { expected: number; actual: number };
-													totalQuestionsAnswered: { expected: number; actual: number };
-													correctAnswers: { expected: number; actual: number };
-													totalScore: { expected: number; actual: number };
-												};
-											}) => (
-												<TableRow key={result.userId}>
-													<TableCell className='font-mono text-sm'>{result.userId.slice(0, 8)}...</TableCell>
-													<TableCell>
-														<div className='flex flex-col'>
-															<span>Expected: {result.discrepancies.totalGames.expected}</span>
-															<span className='text-destructive'>Actual: {result.discrepancies.totalGames.actual}</span>
-														</div>
-													</TableCell>
-													<TableCell>
-														<div className='flex flex-col'>
-															<span>Expected: {result.discrepancies.totalQuestionsAnswered.expected}</span>
-															<span className='text-destructive'>
-																Actual: {result.discrepancies.totalQuestionsAnswered.actual}
-															</span>
-														</div>
-													</TableCell>
-													<TableCell>
-														<div className='flex flex-col'>
-															<span>Expected: {result.discrepancies.correctAnswers.expected}</span>
-															<span className='text-destructive'>
-																Actual: {result.discrepancies.correctAnswers.actual}
-															</span>
-														</div>
-													</TableCell>
-													<TableCell>
-														<div className='flex flex-col'>
-															<span>Expected: {result.discrepancies.totalScore.expected}</span>
-															<span className='text-destructive'>Actual: {result.discrepancies.totalScore.actual}</span>
-														</div>
-													</TableCell>
-													<TableCell>
-														<div className='flex gap-2'>
-															<Button
-																variant={ButtonVariant.OUTLINE}
-																size={ButtonSize.SM}
-																onClick={() => handleCheckUser(result.userId)}
-																disabled={userConsistencyLoading}
-															>
-																Check
-															</Button>
-															<Button
-																variant={ButtonVariant.DEFAULT}
-																size={ButtonSize.SM}
-																onClick={() => handleFixUser(result.userId)}
-																disabled={fixConsistency.isPending}
-															>
-																{fixConsistency.isPending ? <RefreshCw className='h-4 w-4 animate-spin-slow' /> : 'Fix'}
-															</Button>
-														</div>
-													</TableCell>
-												</TableRow>
-											)
-										)}
-								</TableBody>
-							</Table>
-						</div>
-					</CardContent>
-				</Card>
+				<DataTableCard<ConsistencyResultRow>
+					header={{
+						title: (
+							<CardTitle className='flex items-center gap-2'>
+								<AlertIcon size='lg' className='text-destructive' />
+								Inconsistent Users ({allConsistency.inconsistentUsers})
+							</CardTitle>
+						),
+						description: <CardDescription>Users with data inconsistencies that need to be fixed</CardDescription>,
+						pagination: null,
+					}}
+					columns={consistencyColumns}
+					data={inconsistentRows}
+					getRowKey={row => row.userId}
+					emptyState={{
+						title: 'No inconsistent users on this page',
+						description: 'Run a full check to refresh the list.',
+					}}
+				/>
 			)}
 
 			{/* User Details Card */}
 			{selectedUserId && (
-				<Card className='border-muted bg-muted/20'>
+				<Card className='card-muted-tint'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
-							<UsersIcon className='h-5 w-5' />
+							<UsersIcon className='h-5 w-5 text-primary' />
 							User Consistency Details
 						</CardTitle>
 						<CardDescription>Detailed consistency check for selected user</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{userConsistencyLoading ? (
-							<Skeleton className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
+							<Skeleton variant={SkeletonVariant.Card} />
 						) : userConsistency ? (
 							<div className='space-y-4'>
 								<div className='flex items-center gap-2'>
 									{userConsistency.isConsistent ? (
 										<>
-											<CheckCircle2 className='h-5 w-5 text-green-500' />
-											<Badge variant={VariantBase.OUTLINE} className='bg-green-500/10 text-green-500 border-green-500'>
+											<CheckCircle2 className={cn('h-5 w-5', Colors.GREEN_500.text)} />
+											<Badge
+												variant={VariantBase.OUTLINE}
+												className={cn(`${Colors.GREEN_500.bg}/10`, Colors.GREEN_500.border, Colors.GREEN_500.text)}
+											>
 												Consistent
 											</Badge>
 										</>
@@ -244,34 +231,17 @@ export function ConsistencyManagementSection() {
 									<div className='space-y-2'>
 										<div className='text-sm font-semibold'>Discrepancies:</div>
 										<div className='grid grid-cols-2 gap-4 text-sm'>
-											<div>
-												<div className='font-medium'>Total Games</div>
-												<div>
-													Expected: {userConsistency.discrepancies.totalGames.expected} | Actual:{' '}
-													{userConsistency.discrepancies.totalGames.actual}
-												</div>
-											</div>
-											<div>
-												<div className='font-medium'>Total Questions</div>
-												<div>
-													Expected: {userConsistency.discrepancies.totalQuestionsAnswered.expected} | Actual:{' '}
-													{userConsistency.discrepancies.totalQuestionsAnswered.actual}
-												</div>
-											</div>
-											<div>
-												<div className='font-medium'>Correct Answers</div>
-												<div>
-													Expected: {userConsistency.discrepancies.correctAnswers.expected} | Actual:{' '}
-													{userConsistency.discrepancies.correctAnswers.actual}
-												</div>
-											</div>
-											<div>
-												<div className='font-medium'>Total Score</div>
-												<div>
-													Expected: {userConsistency.discrepancies.totalScore.expected} | Actual:{' '}
-													{userConsistency.discrepancies.totalScore.actual}
-												</div>
-											</div>
+											{CONSISTENCY_DISCREPANCY_FIELDS.map(key => {
+												const d = userConsistency.discrepancies[key];
+												return (
+													<div key={key}>
+														<div className='font-medium'>{formatTitle(key)}</div>
+														<div>
+															Expected: {d.expected} | Actual: {d.actual}
+														</div>
+													</div>
+												);
+											})}
 										</div>
 
 										{(userConsistency.discrepancies.topicStats.inconsistent.length > 0 ||
@@ -287,7 +257,7 @@ export function ConsistencyManagementSection() {
 																	variant={VariantBase.OUTLINE}
 																	className='text-destructive border-destructive'
 																>
-																	{topic}
+																	{formatTitle(topic)}
 																</Badge>
 															))}
 														</div>
@@ -313,7 +283,7 @@ export function ConsistencyManagementSection() {
 										)}
 
 										<Button
-											variant={ButtonVariant.DEFAULT}
+											variant={VariantBase.DEFAULT}
 											onClick={() => handleFixUser(selectedUserId)}
 											disabled={fixConsistency.isPending}
 											className='w-full'

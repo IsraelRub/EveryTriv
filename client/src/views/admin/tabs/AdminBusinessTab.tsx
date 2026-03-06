@@ -1,17 +1,11 @@
-import {
-	Activity,
-	AlertTriangle,
-	BarChart3,
-	DollarSign,
-	TrendingUp,
-	Users,
-} from 'lucide-react';
+import { Activity, CalendarDays, DollarSign, Timer, TrendingUp, UserCheck, Users } from 'lucide-react';
 
 import { TIME_DURATIONS_SECONDS } from '@shared/constants';
-import { formatForDisplay } from '@shared/utils';
+import { formatNumericValue } from '@shared/utils';
 
-import { SKELETON_WIDTHS, StatCardVariant, TextColor } from '@/constants';
+import { Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
 import {
+	AlertIconSource,
 	Card,
 	CardContent,
 	CardDescription,
@@ -28,9 +22,7 @@ export function AdminBusinessTab() {
 	if (businessMetricsLoading) {
 		return (
 			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-				{[...Array(4)].map((_, i) => (
-					<Skeleton key={i} className={`h-32 ${SKELETON_WIDTHS.FULL}`} />
-				))}
+				<Skeleton variant={SkeletonVariant.BlockTall} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 			</div>
 		);
 	}
@@ -38,7 +30,7 @@ export function AdminBusinessTab() {
 	if (!businessMetrics) {
 		return (
 			<Card>
-				<CardContent className='p-6 text-center text-muted-foreground'>
+				<CardContent className='card-content-center-muted'>
 					<DollarSign className='h-12 w-12 mx-auto mb-4 opacity-50' />
 					<p>No business metrics available</p>
 				</CardContent>
@@ -48,10 +40,10 @@ export function AdminBusinessTab() {
 
 	return (
 		<>
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<DollarSign className='h-5 w-5' />
+						<DollarSign className='h-5 w-5 text-primary' />
 						Revenue Metrics
 					</CardTitle>
 					<CardDescription>Financial performance and revenue indicators</CardDescription>
@@ -61,32 +53,29 @@ export function AdminBusinessTab() {
 						<StatCard
 							icon={DollarSign}
 							label='Total Revenue'
-							value={`$${formatForDisplay(businessMetrics.revenue.total)}`}
-							color={TextColor.GREEN_500}
-							variant={StatCardVariant.VERTICAL}
+							value={formatNumericValue(businessMetrics.revenue.total, 2, undefined, '$')}
+							color={Colors.GREEN_500.text}
 						/>
 						<StatCard
 							icon={TrendingUp}
 							label='Monthly Recurring Revenue (MRR)'
-							value={`$${formatForDisplay(businessMetrics.revenue.mrr)}`}
-							color={TextColor.BLUE_500}
-							variant={StatCardVariant.VERTICAL}
+							value={formatNumericValue(businessMetrics.revenue.mrr, 2, undefined, '$')}
+							color={Colors.BLUE_500.text}
 						/>
 						<StatCard
 							icon={Users}
 							label='Average Revenue Per User (ARPU)'
-							value={`$${formatForDisplay(businessMetrics.revenue.arpu)}`}
-							color={TextColor.PURPLE_500}
-							variant={StatCardVariant.VERTICAL}
+							value={formatNumericValue(businessMetrics.revenue.arpu, 2, undefined, '$')}
+							color={Colors.PURPLE_500.text}
 						/>
 					</div>
 				</CardContent>
 			</Card>
 
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Users className='h-5 w-5' />
+						<Users className='h-5 w-5 text-primary' />
 						User Metrics
 					</CardTitle>
 					<CardDescription>User growth and retention metrics</CardDescription>
@@ -97,38 +86,34 @@ export function AdminBusinessTab() {
 							icon={Users}
 							label='Total Users'
 							value={businessMetrics.users.total.toLocaleString()}
-							color={TextColor.BLUE_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.BLUE_500.text}
 						/>
 						<StatCard
-							icon={Activity}
+							icon={UserCheck}
 							label='Active Users'
 							value={businessMetrics.users.active.toLocaleString()}
-							color={TextColor.GREEN_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.GREEN_500.text}
 						/>
 						<StatCard
 							icon={TrendingUp}
 							label='New This Month'
 							value={businessMetrics.users.newThisMonth.toLocaleString()}
-							color={TextColor.PURPLE_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.PURPLE_500.text}
 						/>
 						<StatCard
-							icon={AlertTriangle}
+							icon={AlertIconSource}
 							label='Churn Rate'
-							value={`${formatForDisplay(businessMetrics.users.churnRate)}%`}
-							color={TextColor.RED_500}
-							variant={StatCardVariant.VERTICAL}
+							value={formatNumericValue(businessMetrics.users.churnRate, 2, '%')}
+							color={Colors.RED_500.text}
 						/>
 					</div>
 				</CardContent>
 			</Card>
 
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Activity className='h-5 w-5' />
+						<Activity className='h-5 w-5 text-primary' />
 						Engagement Metrics
 					</CardTitle>
 					<CardDescription>User engagement and activity indicators</CardDescription>
@@ -136,32 +121,32 @@ export function AdminBusinessTab() {
 				<CardContent>
 					<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
 						<StatCard
-							icon={Users}
+							icon={Activity}
 							label='Daily Active Users (DAU)'
 							value={businessMetrics.engagement.dau.toLocaleString()}
-							color={TextColor.BLUE_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.BLUE_500.text}
 						/>
 						<StatCard
 							icon={Users}
 							label='Weekly Active Users (WAU)'
 							value={businessMetrics.engagement.wau.toLocaleString()}
-							color={TextColor.GREEN_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.GREEN_500.text}
 						/>
 						<StatCard
-							icon={Users}
+							icon={CalendarDays}
 							label='Monthly Active Users (MAU)'
 							value={businessMetrics.engagement.mau.toLocaleString()}
-							color={TextColor.PURPLE_500}
-							variant={StatCardVariant.VERTICAL}
+							color={Colors.PURPLE_500.text}
 						/>
 						<StatCard
-							icon={BarChart3}
+							icon={Timer}
 							label='Avg Session Duration'
-							value={`${formatForDisplay(businessMetrics.engagement.avgSessionDuration / TIME_DURATIONS_SECONDS.MINUTE)}m`}
-							color={TextColor.YELLOW_500}
-							variant={StatCardVariant.VERTICAL}
+							value={formatNumericValue(
+								businessMetrics.engagement.avgSessionDuration / TIME_DURATIONS_SECONDS.MINUTE,
+								2,
+								'm'
+							)}
+							color={Colors.YELLOW_500.text}
 						/>
 					</div>
 				</CardContent>

@@ -1,50 +1,53 @@
-import { ChangeEvent, forwardRef, useCallback } from 'react';
+import { ChangeEvent, cloneElement, forwardRef, isValidElement, useCallback, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant } from '@/constants';
+import { clamp } from '@shared/utils';
+
+import { ButtonSize, VariantBase } from '@/constants';
 import type { NumberInputProps } from '@/types';
-import { cn } from '@/utils';
 import { Button } from './button';
 import { Input } from './input';
+import { Label } from './label';
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
-	({ className, value, onChange, min, max, step = 1, disabled, ...props }, ref) => {
-		const handleIncrement = useCallback(() => {
-			if (disabled) return;
-			const newValue = max !== undefined ? Math.min(value + step, max) : value + step;
-			onChange(newValue);
-		}, [value, step, max, onChange, disabled]);
-
-		const handleDecrement = useCallback(() => {
-			if (disabled) return;
-			const newValue = min !== undefined ? Math.max(value - step, min) : value - step;
-			onChange(newValue);
-		}, [value, step, min, onChange, disabled]);
+	({ value, onChange, min, max, step = 1, disabled, label, labelIcon, ...props }, ref) => {
+		const handleStep = useCallback(
+			(direction: 1 | -1) => {
+				if (disabled) return;
+				const firstStepPoint = Math.ceil(min / step) * step;
+				const next =
+					direction === 1
+						? value === min
+							? firstStepPoint === min
+								? min + step // min is already on grid (e.g. time 30, step 30 → 60)
+								: firstStepPoint // first step above min (e.g. 1, step 5 → 5)
+							: value + step
+						: value - step;
+				onChange(clamp(next, min, max));
+			},
+			[value, step, min, max, onChange, disabled]
+		);
 
 		const handleInputChange = useCallback(
 			(e: ChangeEvent<HTMLInputElement>) => {
 				if (disabled) return;
 				const inputValue = e.target.value;
-				if (inputValue === '') {
-					onChange(min ?? value);
+				if (!inputValue) {
+					onChange(min);
 					return;
 				}
 				const numValue = Number.parseInt(inputValue, 10);
 				if (Number.isNaN(numValue)) return;
-
-				let clampedValue = numValue;
-				if (min !== undefined) clampedValue = Math.max(min, clampedValue);
-				if (max !== undefined) clampedValue = Math.min(max, clampedValue);
-				onChange(clampedValue);
+				onChange(clamp(numValue, min, max));
 			},
-			[min, max, onChange, disabled, value]
+			[min, max, onChange, disabled]
 		);
 
-		const isDecrementDisabled = disabled ?? (min !== undefined && value <= min);
-		const isIncrementDisabled = disabled ?? (max !== undefined && value >= max);
+		const isDecrementDisabled = disabled ?? value <= min;
+		const isIncrementDisabled = disabled ?? value >= max;
 
-		return (
-			<div className={cn('inline-flex items-center gap-2', className)}>
+		const inputBlock = (
+			<div className='inline-flex items-center gap-0 rounded-md border border-input overflow-hidden'>
 				<Input
 					ref={ref}
 					type='number'
@@ -54,26 +57,26 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 					max={max}
 					step={step}
 					disabled={disabled}
-					className='h-12 w-20 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+					className='h-10 w-16 text-center border-0 rounded-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0 focus-visible:ring-offset-0'
 					{...props}
 				/>
-				<div className='flex flex-col gap-0'>
+				<div className='flex flex-col shrink-0 border-l border-input'>
 					<Button
 						type='button'
-						variant={ButtonVariant.OUTLINE}
-						size={ButtonSize.ICON}
-						className='h-6 w-8 shrink-0 rounded-b-none border-b-0 rounded-tl-md rounded-tr-md'
-						onClick={handleIncrement}
+						variant={VariantBase.OUTLINE}
+						size={ButtonSize.ICON_LG}
+						className='h-5 w-7 shrink-0 rounded-none border-0 border-b border-input'
+						onClick={() => handleStep(1)}
 						disabled={isIncrementDisabled}
 					>
 						<ChevronUp className='h-3 w-3' />
 					</Button>
 					<Button
 						type='button'
-						variant={ButtonVariant.OUTLINE}
-						size={ButtonSize.ICON}
-						className='h-6 w-8 shrink-0 rounded-t-none border-t-0 rounded-bl-md rounded-br-md'
-						onClick={handleDecrement}
+						variant={VariantBase.OUTLINE}
+						size={ButtonSize.ICON_LG}
+						className='h-5 w-7 shrink-0 rounded-none border-0'
+						onClick={() => handleStep(-1)}
 						disabled={isDecrementDisabled}
 					>
 						<ChevronDown className='h-3 w-3' />
@@ -81,6 +84,26 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 				</div>
 			</div>
 		);
+
+		if (label) {
+			let iconNode: ReactNode = labelIcon;
+			if (isValidElement(labelIcon)) {
+				iconNode = cloneElement(labelIcon, {
+					className: 'h-4 w-4 text-muted-foreground',
+				});
+			}
+			return (
+				<div className='flex flex-col items-center space-y-2'>
+					<Label htmlFor={props.id} className='flex items-center justify-center gap-2'>
+						{iconNode}
+						{label}
+					</Label>
+					{inputBlock}
+				</div>
+			);
+		}
+
+		return inputBlock;
 	}
 );
 NumberInput.displayName = 'NumberInput';

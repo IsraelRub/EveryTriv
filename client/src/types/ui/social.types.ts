@@ -29,7 +29,12 @@ export interface SocialPlatformData {
 export interface SocialShareProps {
 	score: number;
 	total: number;
-	topic?: string;
-	difficulty?: string;
-	className?: string;
+	topic: string;
+	difficulty: string;
+	dialogTitle?: string;
+	dialogDescription?: string;
+	shareText?: string;
+	buttonLabel?: string;
+	/** Applied to the share trigger button (e.g. "w-full" for equal width in a flex row). */
+	triggerClassName?: string;
 }

@@ -384,8 +384,7 @@ export class PaymentService {
    * Ensure valid payment method
    */
   private ensureValidPaymentMethod(method: PaymentMethod | undefined): void {
-    const VALID_PAYMENT_METHODS = [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL];
-    if (!method || !VALID_PAYMENT_METHODS.includes(method)) {
+    if (!method || !VALID_PAYMENT_METHODS_SET.has(method)) {
       throw createValidationError('payment method', 'string');
     }
   }

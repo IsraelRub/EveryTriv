@@ -15,23 +15,6 @@ export function createValidationError(field: string, expectedType: string): BadR
 	return new BadRequestException(`${field} must be a ${expectedType}`);
 }
 
-export function createStringLengthValidationError(
-	field: string,
-	minLength?: number,
-	maxLength?: number
-): BadRequestException {
-	if (minLength && maxLength) {
-		return new BadRequestException(`${field} must be between ${minLength} and ${maxLength} characters`);
-	}
-	if (minLength) {
-		return new BadRequestException(`${field} must be at least ${minLength} characters long`);
-	}
-	if (maxLength) {
-		return new BadRequestException(`${field} must be less than ${maxLength} characters`);
-	}
-	return new BadRequestException(`${field} must be a valid string`);
-}
-
 export function createStorageError(operation: string, originalError?: unknown): InternalServerErrorException {
 	const message = originalError
 		? `Failed to ${operation}: ${getErrorMessage(originalError)}`

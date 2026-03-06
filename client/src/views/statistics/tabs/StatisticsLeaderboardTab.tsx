@@ -1,9 +1,10 @@
-import { Activity, BarChart3, GamepadIcon, Trophy } from 'lucide-react';
+import { GamepadIcon, Medal, Percent, Users } from 'lucide-react';
 
 import { LeaderboardPeriod } from '@shared/constants';
+import { formatNumericValue } from '@shared/utils';
 import { isLeaderboardPeriod } from '@shared/validation';
 
-import { BgColor } from '@/constants';
+import { Colors } from '@/constants';
 import {
 	Card,
 	CardContent,
@@ -13,7 +14,6 @@ import {
 	LeaderboardTable,
 	StatCard,
 	Tabs,
-	TabsContent,
 	TabsList,
 	TabsTrigger,
 } from '@/components';
@@ -39,44 +39,6 @@ export function StatisticsLeaderboardTab() {
 
 	return (
 		<div className='space-y-8'>
-			<Card className='border-muted bg-muted/20'>
-				<CardHeader>
-					<CardTitle className='flex items-center gap-2'>
-						<BarChart3 className='h-5 w-5' />
-						Leaderboard Statistics ({leaderboardTab === LeaderboardPeriod.GLOBAL ? 'Global' : leaderboardTab})
-					</CardTitle>
-					<CardDescription>See how you rank against other players • Statistics for the selected period</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-						<StatCard
-							icon={Activity}
-							label='Active Users'
-							value={leaderboardStats?.activeUsers ?? 0}
-							color={BgColor.BLUE_500}
-							countUp
-							isLoading={leaderboardStatsLoading}
-						/>
-						<StatCard
-							icon={Trophy}
-							label='Average Score'
-							value={Math.round(leaderboardStats?.averageScore ?? 0)}
-							color={BgColor.YELLOW_500}
-							countUp
-							isLoading={leaderboardStatsLoading}
-						/>
-						<StatCard
-							icon={GamepadIcon}
-							label='Average Games'
-							value={leaderboardStats?.averageGames ?? 0}
-							color={BgColor.GREEN_500}
-							countUp
-							isLoading={leaderboardStatsLoading}
-						/>
-					</div>
-				</CardContent>
-			</Card>
-
 			<Tabs
 				value={leaderboardTab}
 				onValueChange={value => {
@@ -86,36 +48,62 @@ export function StatisticsLeaderboardTab() {
 				}}
 				className='w-full'
 			>
-				<TabsList className='grid w-full grid-cols-2'>
+				<TabsList className='grid w-full grid-cols-2 mb-6'>
 					<TabsTrigger value={LeaderboardPeriod.GLOBAL}>All Time</TabsTrigger>
 					<TabsTrigger value={LeaderboardPeriod.WEEKLY}>This Week</TabsTrigger>
 				</TabsList>
-				<TabsContent value={LeaderboardPeriod.GLOBAL} className='mt-6'>
-					<Card className='border-muted bg-muted/20'>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<Trophy className='h-5 w-5 text-yellow-500' />
-								Global Leaderboard
-							</CardTitle>
-						</CardHeader>
-						<CardContent className='overflow-hidden'>
-							<LeaderboardTable entries={globalEntries} isLoading={globalLoading} />
-						</CardContent>
-					</Card>
-				</TabsContent>
-				<TabsContent value={LeaderboardPeriod.WEEKLY} className='mt-6'>
-					<Card className='border-muted bg-muted/20'>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<Trophy className='h-5 w-5 text-blue-500' />
-								Weekly Leaderboard
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<LeaderboardTable entries={weeklyEntries} isLoading={weeklyLoading} />
-						</CardContent>
-					</Card>
-				</TabsContent>
+
+				<Card className='card-muted-tint'>
+					<CardHeader>
+						<CardTitle className='flex items-center gap-2'>
+							<Medal className='h-5 w-5 text-primary' />
+							Leaderboard
+						</CardTitle>
+						<CardDescription>
+							{leaderboardTab === LeaderboardPeriod.GLOBAL
+								? 'See how you rank against other players • All-time statistics'
+								: 'See how you rank against other players • Statistics for the selected period'}
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className='grid grid-cols-1 lg:grid-cols-[minmax(0,260px)_1fr] gap-6 items-stretch'>
+							<div className='flex flex-col gap-4'>
+								<StatCard
+									icon={Users}
+									label='Active Users'
+									value={formatNumericValue(leaderboardStats?.activeUsers, 0)}
+									color={Colors.BLUE_500.text}
+									isLoading={leaderboardStatsLoading}
+								/>
+								<StatCard
+									icon={Percent}
+									label='Average Score'
+									value={formatNumericValue(leaderboardStats?.averageScore, 0)}
+									color={Colors.YELLOW_500.text}
+									isLoading={leaderboardStatsLoading}
+								/>
+								<StatCard
+									icon={GamepadIcon}
+									label='Average Games'
+									value={formatNumericValue(leaderboardStats?.averageGames, 0)}
+									color={Colors.GREEN_500.text}
+									isLoading={leaderboardStatsLoading}
+								/>
+							</div>
+							<div className='min-h-0 flex flex-col'>
+								<p className='text-sm font-medium text-muted-foreground mb-3'>
+									{leaderboardTab === LeaderboardPeriod.GLOBAL ? 'Global' : 'Weekly'} ranking
+								</p>
+								<div className='flex-1 min-h-0 overflow-auto rounded-lg border border-border/50 bg-background/50 p-2'>
+									<LeaderboardTable
+										entries={leaderboardTab === LeaderboardPeriod.GLOBAL ? globalEntries : weeklyEntries}
+										isLoading={leaderboardTab === LeaderboardPeriod.GLOBAL ? globalLoading : weeklyLoading}
+									/>
+								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</Tabs>
 		</div>
 	);

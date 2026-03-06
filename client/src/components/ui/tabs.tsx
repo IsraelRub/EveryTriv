@@ -1,27 +1,29 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
+import { cva } from 'class-variance-authority';
 
+import { TabsListVariant } from '@/constants';
+import type { TabsListProps } from '@/types';
 import { cn } from '@/utils';
+
+const tabsListVariants = cva(
+	'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+	{
+		variants: {
+			variant: {
+				[TabsListVariant.DEFAULT]: '',
+				[TabsListVariant.COMPACT]: 'w-max mx-auto gap-2',
+			},
+		},
+		defaultVariants: { variant: TabsListVariant.DEFAULT },
+	}
+);
 
 export const Tabs = TabsPrimitive.Root;
 
-export type TabsListVariant = 'default' | 'compact';
-
-export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
-	variant?: TabsListVariant;
-}
-
 export const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, TabsListProps>(
-	({ className, variant = 'default', ...props }, ref) => (
-		<TabsPrimitive.List
-			ref={ref}
-			className={cn(
-				'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
-				variant === 'compact' && 'w-max mx-auto gap-2',
-				className
-			)}
-			{...props}
-		/>
+	({ className, variant = TabsListVariant.DEFAULT, ...props }, ref) => (
+		<TabsPrimitive.List ref={ref} className={cn(tabsListVariants({ variant }), className)} {...props} />
 	)
 );
 TabsList.displayName = 'TabsList';

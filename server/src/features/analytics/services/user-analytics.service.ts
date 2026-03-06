@@ -4,18 +4,17 @@ import { Repository } from 'typeorm';
 
 import {
 	ComparisonTarget,
-	ERROR_CODES,
+	ErrorCode,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
 	TimePeriod,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
-	Achievement,
 	AchievementCalculationContext,
 	ActivityEntry,
 	AnalyticsResponse,
-	CategoryStatistics,
 	ComparisonQueryOptions,
 	CompleteUserAnalytics,
 	CountRecord,
@@ -35,22 +34,26 @@ import type {
 	UserProgressTopic,
 	UserSummaryData,
 } from '@shared/types';
-import { calculateSuccessRate, formatDate, getErrorMessage } from '@shared/utils';
-import {
-	buildAchievementFromSaved,
-	buildAllAchievements,
-	convertToSavedAchievement,
-	isAnalyticsResponseUnifiedUserAnalytics,
-	isCompleteUserAnalyticsData,
-} from '@shared/utils/domain';
+import { calculateScoreRate, clamp, formatDate, formatTitle, getErrorMessage, sumBy } from '@shared/utils';
 import { isGameDifficulty, isUuid } from '@shared/validation';
 
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { TopicAnalyticsAccumulator, UserWithHistoryResult } from '@internal/types';
-import { calculateCategoryPerformance, calculateStreak, createNotFoundError } from '@internal/utils';
+import {
+	buildAchievementFromSaved,
+	buildAllAchievements,
+	calculateCategoryPerformance,
+	calculateStreak,
+	computeMeanVarianceStddev,
+	createNotFoundError,
+} from '@internal/utils';
 
+import {
+	isAnalyticsResponseUnifiedUserAnalytics,
+	isCompleteUserAnalyticsData,
+} from '../../../internal/utils/entityGuards';
 import { AnalyticsCommonService } from './common-analytics.service';
 import { SystemAnalyticsService } from './system-analytics.service';
 import { buildUnifiedQuerySignature } from './unifiedAnalyticsCache.utils';
@@ -131,7 +134,7 @@ export class UserAnalyticsService {
 					const performanceMetrics = this.calculatePerformanceMetrics(gameHistory);
 
 					const trends = this.analyticsCommon.buildTrends(gameHistory, {
-						limit: 30,
+						limit: VALIDATION_COUNT.ACTIVITY_ENTRIES.DEFAULT,
 					});
 
 					const rankingData = {
@@ -145,6 +148,18 @@ export class UserAnalyticsService {
 					const purchasedCredits = user.purchasedCredits ?? 0;
 					const freeQuestions = user.remainingFreeQuestions ?? 0;
 					const totalCredits = credits + purchasedCredits + freeQuestions;
+
+					const difficultyBreakdown: DifficultyBreakdown = {};
+					const breakdownEntries = gameAnalytics.difficultyBreakdown ?? {};
+					for (const [key, value] of Object.entries(breakdownEntries)) {
+						if (isGameDifficulty(key) && value != null) {
+							difficultyBreakdown[key] = {
+								total: value.total,
+								correct: value.correct,
+								successRate: value.successRate ?? 0,
+							};
+						}
+					}
 
 					return {
 						basic: {
@@ -169,22 +184,7 @@ export class UserAnalyticsService {
 							correctAnswers: gameAnalytics.correctAnswers ?? 0,
 							averageTimePerQuestion: gameAnalytics.averageTimePerQuestion ?? 0,
 							topicsPlayed: gameAnalytics.topicsPlayed ?? {},
-							difficultyBreakdown: (() => {
-								const breakdown: DifficultyBreakdown = {};
-								const entries = gameAnalytics.difficultyBreakdown ?? {};
-								for (const [key, value] of Object.entries(entries)) {
-									if (isGameDifficulty(key)) {
-										if (value != null) {
-											breakdown[key] = {
-												total: value.total,
-												correct: value.correct,
-												successRate: value.successRate ?? 0,
-											};
-										}
-									}
-								}
-								return breakdown;
-							})(),
+							difficultyBreakdown,
 							recentActivity: gameAnalytics.recentActivity ?? [],
 						},
 						performance: performanceMetrics,
@@ -192,7 +192,7 @@ export class UserAnalyticsService {
 						trends,
 					};
 				},
-				900,
+				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
 				isCompleteUserAnalyticsData
 			);
 		} catch (error) {
@@ -270,7 +270,7 @@ export class UserAnalyticsService {
 						history = userWithHistory.history;
 
 						// Filter history by date if provided
-						if (options?.startDate || options?.endDate) {
+						if (options?.startDate ?? options?.endDate) {
 							history = this.filterHistoryByDate(history, {
 								startDate: options.startDate,
 								endDate: options.endDate,
@@ -321,66 +321,28 @@ export class UserAnalyticsService {
 						response.recommendations = [...recommendations, ...systemRecommendations.slice(0, 2)];
 					}
 
-					// Build achievements if needed
-					if (includeSet.has('achievements') && stats && performance && user && history) {
-						// Get saved achievements from database
-						const savedAchievements: SavedAchievement[] = Array.isArray(user.achievements)
-							? user.achievements.filter(ach => ach?.id && (ach.unlockedAt || ach.progress !== undefined))
-							: [];
+					let builtAchievements: { list: SavedAchievement[]; savedIds: Set<string> } | undefined;
+					if (
+						(includeSet.has('achievements') || includeSet.has('summary')) &&
+						stats &&
+						performance &&
+						user &&
+						history
+					) {
+						builtAchievements = this.mergeSavedAndComputedAchievements(user, stats, performance, history);
+					}
 
-						// Build calculation context
-						const context: AchievementCalculationContext = {
-							totalGames: stats.totalGames,
-							bestScore: stats.bestScore,
-							successRate: stats.successRate,
-							totalQuestionsAnswered: stats.totalQuestionsAnswered,
-							streakDays: performance.streakDays,
-							bestStreak: performance.bestStreak,
-							topicsPlayed: stats.topicsPlayed ?? {},
-						};
-
-						// Build all achievements based on current stats
-						const allComputedAchievements = buildAllAchievements(context);
-						const lastPlayed = history[0]?.createdAt ? new Date(history[0].createdAt).toISOString() : undefined;
-
-						// Create map of saved achievement IDs
-						const savedIds = new Set(savedAchievements.map(ach => ach.id));
-
-						// Merge: convert saved achievements to full achievements, then add computed ones
-						const merged = new Map<string, Achievement>();
-
-						// Convert saved achievements to full achievements (using saved points snapshot)
-						for (const saved of savedAchievements) {
-							const full = buildAchievementFromSaved(saved, context);
-							if (full) {
-								merged.set(full.id, full);
-							}
-						}
-
-						// Add computed achievements (only if not already saved)
-						// Mark new ones with unlockedAt
-						for (const computed of allComputedAchievements) {
-							if (!merged.has(computed.id)) {
-								const isNew = !savedIds.has(computed.id);
-								merged.set(computed.id, {
-									...computed,
-									unlockedAt: isNew ? lastPlayed : undefined,
-								});
-							}
-						}
-
-						response.achievements = Array.from(merged.values()).sort((a, b) => {
+					if (includeSet.has('achievements') && builtAchievements) {
+						response.achievements = [...builtAchievements.list].sort((a, b) => {
 							const timeA = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
 							const timeB = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
 							return timeB - timeA;
 						});
-
-						// Save new achievements (those with unlockedAt that weren't saved before)
-						const newAchievementsToSave: Achievement[] = Array.from(merged.values()).filter(
-							ach => ach.unlockedAt && !savedIds.has(ach.id)
+						const newToSave = builtAchievements.list.filter(
+							ach => ach.unlockedAt && !builtAchievements.savedIds.has(ach.id)
 						);
-						if (newAchievementsToSave.length > 0) {
-							await this.saveNewAchievements(userId, newAchievementsToSave);
+						if (newToSave.length > 0) {
+							await this.saveNewAchievements(userId, newToSave);
 						}
 					}
 
@@ -399,41 +361,8 @@ export class UserAnalyticsService {
 
 					// Build summary if needed
 					if (includeSet.has('summary') && stats && performance && user && history) {
-						const savedAchievements: SavedAchievement[] = Array.isArray(user.achievements)
-							? user.achievements.filter(ach => ach?.id && (ach.unlockedAt || ach.progress !== undefined))
-							: [];
-
-						// Build calculation context
-						const context: AchievementCalculationContext = {
-							totalGames: stats.totalGames,
-							bestScore: stats.bestScore,
-							successRate: stats.successRate,
-							totalQuestionsAnswered: stats.totalQuestionsAnswered,
-							streakDays: performance.streakDays,
-							bestStreak: performance.bestStreak,
-							topicsPlayed: stats.topicsPlayed ?? {},
-						};
-
-						// Build all achievements and convert saved ones to full achievements
-						const allComputedAchievements = buildAllAchievements(context);
-						const savedIds = new Set(savedAchievements.map(ach => ach.id));
-						const achievements: Achievement[] = [];
-
-						// Convert saved achievements to full achievements (using saved points snapshot)
-						for (const saved of savedAchievements) {
-							const full = buildAchievementFromSaved(saved, context);
-							if (full) {
-								achievements.push(full);
-							}
-						}
-
-						// Add computed achievements (only if not already saved)
-						for (const computed of allComputedAchievements) {
-							if (!savedIds.has(computed.id)) {
-								achievements.push(computed);
-							}
-						}
-						const progressData = progress || this.buildUserProgressAnalytics(history);
+						const achievements = builtAchievements?.list ?? [];
+						const progressData = progress ?? this.buildUserProgressAnalytics(history);
 						const insights = this.buildUserInsights(stats, performance, progressData.topics);
 						const summary = this.buildUserSummary(user, stats, performance, achievements, progressData, insights);
 
@@ -456,11 +385,11 @@ export class UserAnalyticsService {
 						const targetPreference =
 							options.comparisonTarget ?? (options.targetUserId ? ComparisonTarget.USER : ComparisonTarget.GLOBAL);
 						if (targetPreference === ComparisonTarget.USER && !options.targetUserId) {
-							throw new BadRequestException(ERROR_CODES.TARGET_USER_ID_REQUIRED);
+							throw new BadRequestException(ErrorCode.TARGET_USER_ID_REQUIRED);
 						}
 
 						if (options.targetUserId && !isUuid(options.targetUserId)) {
-							throw new BadRequestException(ERROR_CODES.INVALID_USER_ID);
+							throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 						}
 
 						const comparisonResult = await this.buildUserComparison(
@@ -480,11 +409,6 @@ export class UserAnalyticsService {
 						response.comparison = comparisonResult;
 					}
 
-					logger.apiRead(`analytics_user_unified [${sections.length} sections: ${sections.join(',')}]`, {
-						userId,
-						query: Object.keys(options || {}),
-					});
-
 					return this.analyticsCommon.createAnalyticsResponse(response);
 				},
 				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
@@ -496,7 +420,7 @@ export class UserAnalyticsService {
 			logger.analyticsError(`getUnifiedUserAnalytics [${errorSections.length} sections: ${errorSections.join(',')}]`, {
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
-				query: Object.keys(options || {}),
+				query: Object.keys(options ?? {}),
 			});
 			throw error;
 		}
@@ -596,7 +520,11 @@ export class UserAnalyticsService {
 	}
 
 	private buildUserActivityEntries(history: GameHistoryEntity[], limit?: number): ActivityEntry[] {
-		const effectiveLimit = limit && limit > 0 ? Math.min(Math.floor(limit), 200) : 50;
+		const effectiveLimit = clamp(
+			Math.floor(limit && limit > 0 ? limit : VALIDATION_COUNT.LEADERBOARD.DEFAULT),
+			VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+			VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX
+		);
 		const boundedHistory = history.slice(0, effectiveLimit);
 
 		return boundedHistory.map(game => ({
@@ -656,6 +584,7 @@ export class UserAnalyticsService {
 					gamesPlayed: 0,
 					totalQuestionsAnswered: 0,
 					correctAnswers: 0,
+					score: 0,
 					totalTimeSpent: 0,
 					lastPlayed: null,
 					difficultyBreakdown: {},
@@ -666,6 +595,7 @@ export class UserAnalyticsService {
 			entry.gamesPlayed += 1;
 			entry.totalQuestionsAnswered += game.gameQuestionCount ?? 0;
 			entry.correctAnswers += game.correctAnswers ?? 0;
+			entry.score += game.score ?? 0;
 			entry.totalTimeSpent += game.timeSpent ?? 0;
 
 			const playedAt = game.createdAt ? new Date(game.createdAt).toISOString() : null;
@@ -684,7 +614,7 @@ export class UserAnalyticsService {
 
 		const topics: UserProgressTopic[] = Array.from(topicsMap.entries())
 			.map(([topic, value]) => {
-				const successRate = calculateSuccessRate(value.totalQuestionsAnswered, value.correctAnswers);
+				const successRate = calculateScoreRate(value.score, value.totalQuestionsAnswered);
 				const averageResponseTime =
 					value.totalQuestionsAnswered > 0 ? value.totalTimeSpent / value.totalQuestionsAnswered : 0;
 
@@ -814,7 +744,45 @@ export class UserAnalyticsService {
 		return recommendations;
 	}
 
-	private async saveNewAchievements(userId: string, newAchievements: Achievement[]): Promise<void> {
+	private mergeSavedAndComputedAchievements(
+		user: UserEntity,
+		stats: UserAnalyticsRecord,
+		performance: UserPerformanceMetrics,
+		history: GameHistoryEntity[]
+	): { list: SavedAchievement[]; savedIds: Set<string> } {
+		const savedAchievements: SavedAchievement[] = Array.isArray(user.achievements)
+			? user.achievements.filter(ach => ach?.id && (ach.unlockedAt ?? ach.progress !== undefined))
+			: [];
+		const context: AchievementCalculationContext = {
+			totalGames: stats.totalGames,
+			bestScore: stats.bestScore,
+			successRate: stats.successRate,
+			totalQuestionsAnswered: stats.totalQuestionsAnswered,
+			streakDays: performance.streakDays,
+			bestStreak: performance.bestStreak,
+			topicsPlayed: stats.topicsPlayed ?? {},
+		};
+		const allComputed = buildAllAchievements(context);
+		const savedIds = new Set(savedAchievements.map(ach => ach.id));
+		const lastPlayed = history[0]?.createdAt ? new Date(history[0].createdAt).toISOString() : undefined;
+		const merged = new Map<string, SavedAchievement>();
+		for (const saved of savedAchievements) {
+			const minimal = buildAchievementFromSaved(saved);
+			if (minimal) merged.set(minimal.id, minimal);
+		}
+		for (const computed of allComputed) {
+			if (!merged.has(computed.id)) {
+				const isNew = !savedIds.has(computed.id);
+				merged.set(computed.id, {
+					...computed,
+					unlockedAt: isNew ? lastPlayed : undefined,
+				});
+			}
+		}
+		return { list: Array.from(merged.values()), savedIds };
+	}
+
+	private async saveNewAchievements(userId: string, newAchievements: SavedAchievement[]): Promise<void> {
 		try {
 			const user = await this.userRepo.findOne({ where: { id: userId } });
 			if (!user) {
@@ -822,21 +790,24 @@ export class UserAnalyticsService {
 			}
 
 			const existing: SavedAchievement[] = Array.isArray(user.achievements) ? user.achievements : [];
-			const existingMap = new Map<string, SavedAchievement>();
-			existing.forEach(ach => {
-				if (ach?.id) {
-					existingMap.set(ach.id, ach);
-				}
-			});
+			const byId: Record<string, SavedAchievement> = {};
+			for (const ach of existing) {
+				if (ach?.id) byId[ach.id] = ach;
+			}
 
-			// Convert and add new achievements (only those with unlockedAt or progress)
 			for (const ach of newAchievements) {
-				if (ach?.id && (ach.unlockedAt || ach.progress !== undefined)) {
-					existingMap.set(ach.id, convertToSavedAchievement(ach));
+				if (ach?.id && (ach.unlockedAt ?? ach.progress !== undefined)) {
+					byId[ach.id] = {
+						id: ach.id,
+						unlockedAt: ach.unlockedAt,
+						points: ach.points,
+						progress: ach.progress,
+						maxProgress: ach.maxProgress,
+					};
 				}
 			}
 
-			user.achievements = Array.from(existingMap.values());
+			user.achievements = Object.values(byId);
 			await this.userRepo.save(user);
 
 			logger.analyticsStats('achievements_saved', {
@@ -848,7 +819,6 @@ export class UserAnalyticsService {
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
-			// Don't throw - achievements are computed, saving is optional
 		}
 	}
 
@@ -905,7 +875,7 @@ export class UserAnalyticsService {
 			try {
 				const globalStats = await getGameStats();
 				targetMetrics = {
-					successRate: globalStats.averageScore,
+					successRate: globalStats.successRate,
 					averageScore: globalStats.averageScore,
 					totalGames: globalStats.totalGames,
 				};
@@ -958,7 +928,7 @@ export class UserAnalyticsService {
 		user: UserEntity,
 		stats: UserAnalyticsRecord,
 		performance: UserPerformanceMetrics,
-		achievements: Achievement[],
+		achievements: SavedAchievement[],
 		progress: UserProgressAnalytics,
 		insights: UserInsightsData
 	): UserSummaryData {
@@ -1016,18 +986,21 @@ export class UserAnalyticsService {
 					? userStats.totalScore / userStats.totalGames
 					: 0;
 
-			// Use topicStats from UserStatsEntity instead of querying GameHistory
-			const topicsPlayed: CountRecord = {};
+			// Use topicStats from UserStatsEntity; merge by lowercase key then map to display form
+			const topicsPlayedMerged: CountRecord = {};
 			if (userStats.topicStats) {
 				Object.entries(userStats.topicStats).forEach(([topic, stats]) => {
-					// Count total games per topic - we'll use totalQuestionsAnswered as a proxy
-					// since topicStats doesn't directly store game count, we calculate it from questions
-					topicsPlayed[topic] = stats.totalQuestionsAnswered || 0;
+					const key = topic.trim().toLowerCase();
+					topicsPlayedMerged[key] = (topicsPlayedMerged[key] ?? 0) + (stats.totalQuestionsAnswered || 0);
 				});
 			}
+			const topicsPlayed: CountRecord = Object.fromEntries(
+				Object.entries(topicsPlayedMerged).map(([k, v]) => [formatTitle(k), v])
+			);
 
-			// Calculate mostPlayedTopic from topicStats
-			const mostPlayedTopic = this.calculateMostPlayedTopicFromStats(userStats.topicStats);
+			// Most played topic: pick by max count from merged, then display form
+			const mostPlayedTopicKey = Object.entries(topicsPlayedMerged).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+			const mostPlayedTopic = mostPlayedTopicKey ? formatTitle(mostPlayedTopicKey) : 'None';
 
 			// Use difficultyStats from UserStatsEntity instead of querying GameHistory
 			const difficultyBreakdown: DifficultyBreakdown = {};
@@ -1039,20 +1012,20 @@ export class UserAnalyticsService {
 							correct: stats.correctAnswers || 0,
 							successRate:
 								stats.totalQuestionsAnswered > 0
-									? calculateSuccessRate(stats.totalQuestionsAnswered, stats.correctAnswers)
+									? calculateScoreRate(stats.score, stats.totalQuestionsAnswered)
 									: undefined,
 						};
 					}
 				});
 			}
 
-			// Use recentActivity from UserStatsEntity instead of querying GameHistory
+			// Use recentActivity from UserStatsEntity; topic in display form
 			const recentActivity =
 				userStats.recentActivity?.map(activity => ({
 					date: new Date(activity.createdAt).toISOString(),
 					action: 'game_completed',
-					detail: `Score: ${activity.score}, Topic: ${activity.topic}`,
-					topic: activity.topic,
+					detail: `Score: ${activity.score}, Topic: ${formatTitle(activity.topic ?? '')}`,
+					topic: formatTitle(activity.topic ?? ''),
 					durationSeconds: activity.timeSpent,
 				})) ?? [];
 
@@ -1081,25 +1054,6 @@ export class UserAnalyticsService {
 		}
 	}
 
-	private calculateMostPlayedTopicFromStats(topicStats?: Record<string, CategoryStatistics>): string {
-		if (!topicStats || Object.keys(topicStats).length === 0) {
-			return 'None';
-		}
-
-		let mostPlayedTopic = '';
-		let maxQuestionsAnswered = 0;
-
-		Object.entries(topicStats).forEach(([topic, stats]) => {
-			const questionsAnswered = stats.totalQuestionsAnswered || 0;
-			if (questionsAnswered > maxQuestionsAnswered) {
-				maxQuestionsAnswered = questionsAnswered;
-				mostPlayedTopic = topic;
-			}
-		});
-
-		return mostPlayedTopic || 'None';
-	}
-
 	private calculateAdvancedImprovementRate(gameHistory: GameHistoryEntity[]) {
 		if (gameHistory.length < 4) return 0;
 
@@ -1111,12 +1065,12 @@ export class UserAnalyticsService {
 		const firstQuarter = sortedHistory.slice(0, quarterSize);
 		const lastQuarter = sortedHistory.slice(-quarterSize);
 
-		const firstQuarterTotal = firstQuarter.reduce((sum, game) => sum + (game.gameQuestionCount ?? 0), 0);
-		const firstQuarterCorrect = firstQuarter.reduce((sum, game) => sum + (game.correctAnswers ?? 0), 0);
-		const firstQuarterSuccessRate = calculateSuccessRate(firstQuarterTotal, firstQuarterCorrect);
-		const lastQuarterTotal = lastQuarter.reduce((sum, game) => sum + (game.gameQuestionCount ?? 0), 0);
-		const lastQuarterCorrect = lastQuarter.reduce((sum, game) => sum + (game.correctAnswers ?? 0), 0);
-		const lastQuarterSuccessRate = calculateSuccessRate(lastQuarterTotal, lastQuarterCorrect);
+		const firstQuarterTotal = sumBy(firstQuarter, g => g.gameQuestionCount ?? 0);
+		const firstQuarterScore = sumBy(firstQuarter, g => g.score ?? 0);
+		const firstQuarterSuccessRate = calculateScoreRate(firstQuarterScore, firstQuarterTotal);
+		const lastQuarterTotal = sumBy(lastQuarter, g => g.gameQuestionCount ?? 0);
+		const lastQuarterScore = sumBy(lastQuarter, g => g.score ?? 0);
+		const lastQuarterSuccessRate = calculateScoreRate(lastQuarterScore, lastQuarterTotal);
 
 		const improvement = lastQuarterSuccessRate - firstQuarterSuccessRate;
 
@@ -1129,20 +1083,16 @@ export class UserAnalyticsService {
 	private calculateAverageGameTime(gameHistory: GameHistoryEntity[]) {
 		if (gameHistory.length === 0) return 0;
 
-		const totalTime = gameHistory.reduce((sum, game) => sum + (game.timeSpent ?? 0), 0);
+		const totalTime = sumBy(gameHistory, g => g.timeSpent ?? 0);
 		return Math.round(totalTime / gameHistory.length / TIME_DURATIONS_SECONDS.MINUTE);
 	}
 
 	private calculateConsistencyScore(gameHistory: GameHistoryEntity[]) {
 		if (gameHistory.length < 3) return 0;
 
-		const successRates = gameHistory.map(game => calculateSuccessRate(game.gameQuestionCount, game.correctAnswers));
-
-		const mean = successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length;
-		const variance = successRates.reduce((sum, rate) => sum + (rate - mean) ** 2, 0) / successRates.length;
-		const standardDeviation = variance ** 0.5;
-
-		const consistencyScore = Math.max(0, 100 - standardDeviation * 2);
+		const successRates = gameHistory.map(game => calculateScoreRate(game.score ?? 0, game.gameQuestionCount ?? 0));
+		const stats = computeMeanVarianceStddev(successRates);
+		const consistencyScore = Math.max(0, 100 - stats.standardDeviation * 2);
 		return Math.round(consistencyScore);
 	}
 
@@ -1160,9 +1110,9 @@ export class UserAnalyticsService {
 			const start = i * segmentSize;
 			const end = Math.min(start + segmentSize, sortedHistory.length);
 			const segment = sortedHistory.slice(start, end);
-			const segmentTotal = segment.reduce((sum, game) => sum + (game.gameQuestionCount ?? 0), 0);
-			const segmentCorrect = segment.reduce((sum, game) => sum + (game.correctAnswers ?? 0), 0);
-			segments.push(calculateSuccessRate(segmentTotal, segmentCorrect));
+			const segmentTotal = sumBy(segment, g => g.gameQuestionCount ?? 0);
+			const segmentScore = sumBy(segment, g => g.score ?? 0);
+			segments.push(calculateScoreRate(segmentScore, segmentTotal));
 		}
 
 		let improvement = 0;
@@ -1179,11 +1129,7 @@ export class UserAnalyticsService {
 	private calculateTrend(recentGames: GameHistoryEntity[]) {
 		if (recentGames.length < 3) return 0;
 
-		const successRates = recentGames.map(game => {
-			const questionCount = game.gameQuestionCount ?? 0;
-			const correctAnswers = game.correctAnswers ?? 0;
-			return calculateSuccessRate(questionCount, correctAnswers);
-		});
+		const successRates = recentGames.map(game => calculateScoreRate(game.score ?? 0, game.gameQuestionCount ?? 0));
 
 		let sumX = 0,
 			sumY = 0,

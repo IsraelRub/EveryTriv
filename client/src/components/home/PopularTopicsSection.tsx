@@ -1,7 +1,9 @@
 import { memo } from 'react';
 import { Flame } from 'lucide-react';
 
-import { VariantBase } from '@/constants';
+import { formatTitle } from '@shared/utils';
+
+import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
 import { usePopularTopics } from '@/hooks';
 
@@ -11,58 +13,45 @@ export const PopularTopicsSection = memo(function PopularTopicsSection() {
 	const { data: topicsData, isLoading } = usePopularTopics(undefined, { allowGuest: true });
 	const topics = topicsData?.topics?.slice(0, TOPICS_TO_SHOW) ?? [];
 
-	if (isLoading) {
-		return (
-			<Card className='border-muted bg-muted/20'>
-				<CardHeader>
-					<CardTitle className='flex items-center gap-2'>
-						<Flame className='h-5 w-5 text-primary' />
-						Popular Topics
-					</CardTitle>
-					<CardDescription>Most played topics across the platform</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className='flex flex-wrap gap-2'>
-						{[...Array(5)].map((_, i) => (
-							<Skeleton key={i} className='h-8 w-20 rounded-full' />
-						))}
-					</div>
-				</CardContent>
-			</Card>
-		);
-	}
-
-	if (topics.length === 0) {
+	if (!isLoading && topics.length === 0) {
 		return null;
 	}
 
 	return (
-		<Card className='border-muted bg-muted/20'>
+		<Card className='card-muted-tint h-full flex flex-col min-w-0'>
 			<CardHeader>
-				<CardTitle className='flex items-center gap-2'>
+				<CardTitle className='text-xl flex items-center gap-2'>
 					<Flame className='h-5 w-5 text-primary' />
 					Popular Topics
 				</CardTitle>
-				<CardDescription>Most played topics across the platform</CardDescription>
+				<CardDescription>Most played topics</CardDescription>
 			</CardHeader>
-			<CardContent>
-				<div className='flex flex-wrap gap-2'>
-					{topics.map(t => (
-						<Badge
-							key={t.topic}
-							variant={VariantBase.SECONDARY}
-							className='px-3 py-1 text-sm font-medium cursor-default hover:bg-secondary hover:text-secondary-foreground'
-							title={`${t.totalGames.toLocaleString()} games played`}
-						>
-							{t.topic}
-							{topics.length <= 3 && (
-								<span className='ml-1.5 text-muted-foreground font-normal'>
-									({t.totalGames.toLocaleString()})
-								</span>
-							)}
-						</Badge>
-					))}
-				</div>
+			<CardContent className='flex-1'>
+				{isLoading ? (
+					<div className='flex flex-col gap-2'>
+						<Skeleton
+							variant={SkeletonVariant.IconNarrow}
+							count={SKELETON_PLACEHOLDER_COUNTS.LIST}
+							className='rounded-full'
+						/>
+					</div>
+				) : (
+					<div className='flex flex-col gap-2 items-start'>
+						{topics.map(t => (
+							<Badge
+								key={t.topic}
+								variant={VariantBase.STATIC}
+								className='px-3 py-1 text-sm font-medium'
+								title={`${t.totalGames.toLocaleString()} games played`}
+							>
+								{formatTitle(t.topic)}
+								{topics.length <= 3 && (
+									<span className='ml-1.5 text-muted-foreground font-normal'>({t.totalGames.toLocaleString()})</span>
+								)}
+							</Badge>
+						))}
+					</div>
+				)}
 			</CardContent>
 		</Card>
 	);

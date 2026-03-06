@@ -2,8 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
 	IsBoolean,
+	IsDate,
 	IsDateString,
-	IsIn,
+	IsEnum,
 	IsNotEmpty,
 	IsNumber,
 	IsObject,
@@ -13,6 +14,7 @@ import {
 	Max,
 	MaxLength,
 	Min,
+	ValidateIf,
 } from 'class-validator';
 
 import {
@@ -21,29 +23,22 @@ import {
 	AnalyticsPageName,
 	AnalyticsResult,
 	ComparisonTarget,
+	DEFAULT_GAME_CONFIG,
 	LeaderboardPeriod,
 	TimePeriod,
-	VALID_LEADERBOARD_PERIODS,
-	VALID_TIME_PERIODS,
 	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { BasicValue } from '@shared/types';
-
-const VALID_ANALYTICS_RESULTS = Object.values(AnalyticsResult);
-const VALID_ANALYTICS_EVENT_TYPES = Object.values(AnalyticsEventType);
-const VALID_ANALYTICS_PAGE_NAMES = Object.values(AnalyticsPageName);
-const VALID_ANALYTICS_ACTIONS = Object.values(AnalyticsAction);
 
 export class TrackEventDto {
 	@ApiProperty({
 		description: 'Type of analytics event',
-		enum: VALID_ANALYTICS_EVENT_TYPES,
+		enum: AnalyticsEventType,
 	})
 	@IsNotEmpty({ message: 'Event type is required' })
-	@IsIn(VALID_ANALYTICS_EVENT_TYPES, {
-		message: `Event type must be one of: ${VALID_ANALYTICS_EVENT_TYPES.join(', ')}`,
-	})
-	eventType: AnalyticsEventType;
+	@IsEnum(AnalyticsEventType, { message: 'Event type must be a valid AnalyticsEventType' })
+	eventType!: AnalyticsEventType;
 
 	@ApiPropertyOptional({
 		description: 'User ID (optional, will be set from authenticated user)',
@@ -51,7 +46,9 @@ export class TrackEventDto {
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(100, { message: 'User ID cannot exceed 100 characters' })
+	@MaxLength(VALIDATION_LENGTH.IDENTIFIER.MAX, {
+		message: `User ID cannot exceed ${VALIDATION_LENGTH.IDENTIFIER.MAX} characters`,
+	})
 	userId?: string;
 
 	@ApiPropertyOptional({
@@ -60,7 +57,9 @@ export class TrackEventDto {
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(100, { message: 'Session ID cannot exceed 100 characters' })
+	@MaxLength(VALIDATION_LENGTH.IDENTIFIER.MAX, {
+		message: `Session ID cannot exceed ${VALIDATION_LENGTH.IDENTIFIER.MAX} characters`,
+	})
 	sessionId?: string;
 
 	@ApiPropertyOptional({
@@ -73,32 +72,26 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Page or screen where event occurred',
-		enum: VALID_ANALYTICS_PAGE_NAMES,
+		enum: AnalyticsPageName,
 	})
 	@IsOptional()
-	@IsIn(VALID_ANALYTICS_PAGE_NAMES, {
-		message: `Page must be one of: ${VALID_ANALYTICS_PAGE_NAMES.join(', ')}`,
-	})
+	@IsEnum(AnalyticsPageName, { message: 'Page must be a valid AnalyticsPageName' })
 	page?: AnalyticsPageName;
 
 	@ApiPropertyOptional({
 		description: 'Action performed by user',
-		enum: VALID_ANALYTICS_ACTIONS,
+		enum: AnalyticsAction,
 	})
 	@IsOptional()
-	@IsIn(VALID_ANALYTICS_ACTIONS, {
-		message: `Action must be one of: ${VALID_ANALYTICS_ACTIONS.join(', ')}`,
-	})
+	@IsEnum(AnalyticsAction, { message: 'Action must be a valid AnalyticsAction' })
 	action?: AnalyticsAction;
 
 	@ApiPropertyOptional({
 		description: 'Result of the action',
-		enum: VALID_ANALYTICS_RESULTS,
+		enum: AnalyticsResult,
 	})
 	@IsOptional()
-	@IsIn(VALID_ANALYTICS_RESULTS, {
-		message: `Result must be one of: ${VALID_ANALYTICS_RESULTS.join(', ')}`,
-	})
+	@IsEnum(AnalyticsResult, { message: 'Result must be a valid AnalyticsResult' })
 	result?: AnalyticsResult;
 
 	@ApiPropertyOptional({
@@ -121,7 +114,7 @@ export class TrackEventDto {
 
 	@ApiPropertyOptional({
 		description: 'Additional properties for the event',
-		example: { difficulty: 'medium', topic: 'science' },
+		example: { difficulty: DEFAULT_GAME_CONFIG.defaultDifficulty, topic: DEFAULT_GAME_CONFIG.defaultTopic },
 	})
 	@IsOptional()
 	@IsObject()
@@ -149,13 +142,15 @@ export class TopicAnalyticsQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of topics to return',
-		minimum: 1,
+		minimum: VALIDATION_COUNT.LEADERBOARD.MIN,
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(1, { message: 'Limit must be at least 1' })
+	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
+	})
 	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
 		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
 	})
@@ -176,14 +171,18 @@ export class UserIdParamDto {
 export class UserActivityQueryDto {
 	@ApiPropertyOptional({
 		description: 'Maximum number of activity entries to return',
-		minimum: 1,
-		maximum: 200,
+		minimum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(200, { message: 'Limit cannot exceed 200' })
+	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX}`,
+	})
 	limit?: number;
 
 	@ApiPropertyOptional({
@@ -224,25 +223,26 @@ export class UserTrendQueryDto {
 
 	@ApiPropertyOptional({
 		description: 'Group trend data by time period',
-		enum: VALID_TIME_PERIODS,
+		enum: TimePeriod,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(VALID_TIME_PERIODS, {
-		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
-	})
+	@IsEnum(TimePeriod, { message: 'Group by must be a valid TimePeriod' })
 	groupBy?: TimePeriod;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of timeline scoring to return',
-		minimum: 1,
-		maximum: 200,
+		minimum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(1, { message: 'Limit must be at least 1' })
-	@Max(200, { message: 'Limit cannot exceed 200' })
+	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX, {
+		message: `Limit cannot exceed ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX}`,
+	})
 	limit?: number;
 }
 
@@ -252,9 +252,7 @@ export class UserComparisonQueryDto {
 		enum: ComparisonTarget,
 	})
 	@IsOptional()
-	@IsIn(Object.values(ComparisonTarget), {
-		message: 'Target must be either global or user',
-	})
+	@IsEnum(ComparisonTarget, { message: 'Target must be either global or user' })
 	target?: ComparisonTarget;
 
 	@ApiPropertyOptional({
@@ -298,33 +296,34 @@ export class UserSummaryQueryDto {
 export class GetLeaderboardDto {
 	@ApiPropertyOptional({
 		description: 'Leaderboard type',
-		enum: VALID_LEADERBOARD_PERIODS,
+		enum: LeaderboardPeriod,
 		default: LeaderboardPeriod.GLOBAL,
 	})
-	@IsString()
-	@IsIn(VALID_LEADERBOARD_PERIODS, {
-		message: `Type must be one of: ${VALID_LEADERBOARD_PERIODS.join(', ')}`,
-	})
+	@IsEnum(LeaderboardPeriod, { message: 'Type must be a valid LeaderboardPeriod' })
 	type: LeaderboardPeriod = LeaderboardPeriod.GLOBAL;
 
 	@ApiPropertyOptional({
 		description: 'Topic for topic-specific leaderboard',
-		maxLength: 100,
+		maxLength: VALIDATION_LENGTH.TOPIC.MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(100, { message: 'Topic cannot exceed 100 characters' })
+	@MaxLength(VALIDATION_LENGTH.TOPIC.MAX, {
+		message: `Topic cannot exceed ${VALIDATION_LENGTH.TOPIC.MAX} characters`,
+	})
 	topic?: string;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of entries to return',
-		minimum: 1,
+		minimum: VALIDATION_COUNT.LEADERBOARD.MIN,
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 50,
 	})
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(1, { message: 'Limit must be at least 1' })
+	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
+		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
+	})
 	@Max(VALIDATION_COUNT.LEADERBOARD.MAX, {
 		message: `Limit cannot exceed ${VALIDATION_COUNT.LEADERBOARD.MAX}`,
 	})
@@ -344,13 +343,10 @@ export class GetLeaderboardDto {
 export class GetLeaderboardStatsDto {
 	@ApiPropertyOptional({
 		description: 'Time period for statistics',
-		enum: VALID_LEADERBOARD_PERIODS,
+		enum: LeaderboardPeriod,
 		default: LeaderboardPeriod.WEEKLY,
 	})
-	@IsString()
-	@IsIn(VALID_LEADERBOARD_PERIODS, {
-		message: `Period must be one of: ${VALID_LEADERBOARD_PERIODS.join(', ')}`,
-	})
+	@IsEnum(LeaderboardPeriod, { message: 'Period must be a valid LeaderboardPeriod' })
 	period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY;
 }
 
@@ -368,8 +364,8 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: '2024-01-01',
 	})
 	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
 	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@IsDate({ message: 'Start date must be a valid date' })
 	startDate?: Date;
 
 	@ApiPropertyOptional({
@@ -377,43 +373,48 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: '2024-12-31',
 	})
 	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
 	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@IsDate({ message: 'End date must be a valid date' })
 	endDate?: Date;
 
 	@ApiPropertyOptional({
 		description: 'Group trend data by time period',
-		enum: VALID_TIME_PERIODS,
+		enum: TimePeriod,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(VALID_TIME_PERIODS, {
-		message: `Group by must be one of: ${VALID_TIME_PERIODS.join(', ')}`,
-	})
+	@IsEnum(TimePeriod, { message: 'Group by must be a valid TimePeriod' })
 	groupBy?: TimePeriod;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of activity entries to return',
-		minimum: 1,
-		maximum: 200,
+		minimum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Activity limit must be a number' })
-	@Min(1, { message: 'Activity limit must be at least 1' })
-	@Max(200, { message: 'Activity limit cannot exceed 200' })
+	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
+		message: `Activity limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX, {
+		message: `Activity limit cannot exceed ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX}`,
+	})
 	activityLimit?: number;
 
 	@ApiPropertyOptional({
 		description: 'Maximum number of trend points to return',
-		minimum: 1,
-		maximum: 200,
+		minimum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
+		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
 	@Transform(({ value }) => parseInt(value, 10))
 	@IsNumber({}, { message: 'Trend limit must be a number' })
-	@Min(1, { message: 'Trend limit must be at least 1' })
-	@Max(200, { message: 'Trend limit cannot exceed 200' })
+	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
+		message: `Trend limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX, {
+		message: `Trend limit cannot exceed ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX}`,
+	})
 	trendLimit?: number;
 
 	@ApiPropertyOptional({
@@ -430,6 +431,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: 'a7c8b9d0-1234-4def-9abc-5e6f7d8c9b0a',
 	})
 	@IsOptional()
+	@ValidateIf((_o, v) => v !== '' && v != null)
 	@IsString()
 	targetUserId?: string;
 
@@ -438,8 +440,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		enum: ComparisonTarget,
 	})
 	@IsOptional()
-	@IsIn(Object.values(ComparisonTarget), {
-		message: 'Target must be either global or user',
-	})
+	@ValidateIf((_o, v) => v !== '' && v != null)
+	@IsEnum(ComparisonTarget, { message: 'Target must be either global or user' })
 	comparisonTarget?: ComparisonTarget;
 }

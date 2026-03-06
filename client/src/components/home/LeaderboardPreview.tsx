@@ -1,12 +1,18 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant, ROUTES } from '@/constants';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, LeaderboardTable } from '@/components';
+import { ViewAllDestination } from '@/constants';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	LeaderboardTable,
+	ViewAllButton,
+} from '@/components';
 import { useGlobalLeaderboard } from '@/hooks';
 
 export function LeaderboardPreview() {
-	const navigate = useNavigate();
 	const { data: globalData, isLoading } = useGlobalLeaderboard();
 	const topPlayers = Array.isArray(globalData) ? globalData.slice(0, 5) : [];
 
@@ -20,14 +26,7 @@ export function LeaderboardPreview() {
 					</CardTitle>
 					<CardDescription>Global leaders this week</CardDescription>
 				</div>
-				<Button
-					variant={ButtonVariant.GHOST}
-					size={ButtonSize.SM}
-					onClick={() => navigate(ROUTES.STATISTICS)}
-					className='text-xs'
-				>
-					View Full <ArrowRight className='w-3 h-3 ml-1' />
-				</Button>
+				<ViewAllButton destination={ViewAllDestination.LEADERBOARD} visible={topPlayers.length > 0} />
 			</CardHeader>
 			<CardContent className='flex-1'>
 				<LeaderboardTable entries={topPlayers} isLoading={isLoading} />

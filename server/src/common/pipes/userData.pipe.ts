@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ERROR_CODES } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 import type { UpdateUserProfileData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
-import { validateFirstName, validateLastName } from '@shared/validation';
+import { validateName } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -22,7 +22,7 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate first name if provided using shared validation function
 			if (value.firstName) {
-				const firstNameValidation = validateFirstName(value.firstName);
+				const firstNameValidation = validateName(value.firstName, { fieldName: 'First name', required: true });
 				if (!firstNameValidation.isValid) {
 					errors.push(...firstNameValidation.errors);
 				}
@@ -30,8 +30,8 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate last name if provided using shared validation function
 			// null is allowed to clear the field (transformed from empty string in DTO)
-			if (value.lastName !== undefined && value.lastName !== null) {
-				const lastNameValidation = validateLastName(value.lastName, false);
+			if (value.lastName != null) {
+				const lastNameValidation = validateName(value.lastName, { fieldName: 'Last name', required: false });
 				if (!lastNameValidation.isValid) {
 					errors.push(...lastNameValidation.errors);
 				}
@@ -71,7 +71,7 @@ export class UserDataPipe implements PipeTransform {
 
 			logger.apiUpdateError('userDataValidation', getErrorMessage(error));
 
-			throw new BadRequestException(ERROR_CODES.USER_DATA_VALIDATION_FAILED);
+			throw new BadRequestException(ErrorCode.USER_DATA_VALIDATION_FAILED);
 		}
 	}
 }

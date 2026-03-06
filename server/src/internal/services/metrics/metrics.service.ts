@@ -1,6 +1,9 @@
 import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
-import type { BasicValue, MiddlewareMetrics, StatsValue, StorageMetrics } from '@shared/types';
-import { getErrorType } from '@shared/utils';
+import type { MiddlewareMetrics, StatsValue, StorageMetrics } from '@shared/types';
+import { calculatePercentage, getErrorType, mean, sumBy } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
+
+import { PERFORMANCE_TRACKING } from '@internal/constants';
 
 import { serverLogger as logger } from '../logging';
 
@@ -98,28 +101,28 @@ export class MetricsService {
 				if (!success) errors.total++;
 				break;
 			case 'exists':
-				ops.exists!++;
-				if (!success) errors.exists!++;
+				ops.exists = (ops.exists ?? 0) + 1;
+				if (!success) errors.exists = (errors.exists ?? 0) + 1;
 				break;
 			case 'getKeys':
-				ops.getKeys!++;
-				if (!success) errors.getKeys!++;
+				ops.getKeys = (ops.getKeys ?? 0) + 1;
+				if (!success) errors.getKeys = (errors.getKeys ?? 0) + 1;
 				break;
 			case 'invalidate':
-				ops.invalidate!++;
-				if (!success) errors.invalidate!++;
+				ops.invalidate = (ops.invalidate ?? 0) + 1;
+				if (!success) errors.invalidate = (errors.invalidate ?? 0) + 1;
 				break;
 			case 'getOrSet':
-				ops.getOrSet!++;
-				if (!success) errors.getOrSet!++;
+				ops.getOrSet = (ops.getOrSet ?? 0) + 1;
+				if (!success) errors.getOrSet = (errors.getOrSet ?? 0) + 1;
 				break;
 			case 'getStats':
-				ops.getStats!++;
-				if (!success) errors.getStats!++;
+				ops.getStats = (ops.getStats ?? 0) + 1;
+				if (!success) errors.getStats = (errors.getStats ?? 0) + 1;
 				break;
 			case 'cleanup':
-				ops.cleanup!++;
-				if (!success) errors.cleanup!++;
+				ops.cleanup = (ops.cleanup ?? 0) + 1;
+				if (!success) errors.cleanup = (errors.cleanup ?? 0) + 1;
 				break;
 		}
 
@@ -155,8 +158,8 @@ export class MetricsService {
 	}
 
 	trackCacheHit(hit: boolean): void {
-		if (hit) this.metrics.performance.hitRate!++;
-		else this.metrics.performance.missRate!++;
+		if (hit) this.metrics.performance.hitRate = (this.metrics.performance.hitRate ?? 0) + 1;
+		else this.metrics.performance.missRate = (this.metrics.performance.missRate ?? 0) + 1;
 	}
 
 	trackMiddlewareExecution(middlewareName: string, duration: number, success: boolean = true, error?: Error): void {
@@ -288,53 +291,10 @@ export class MetricsService {
 		this.operationTimes.clear();
 	}
 
-	getSuccessRate(operation: keyof StorageMetrics['operations']): number {
-		const ops = this.metrics.operations;
-		const errors = this.metrics.errors;
-		let total = 0;
-		let errorCount = 0;
-		switch (operation) {
-			case 'get':
-			case 'set':
-			case 'delete':
-			case 'clear':
-				total = ops[operation];
-				errorCount = errors.total;
-				break;
-			case 'exists':
-				total = ops.exists ?? 0;
-				errorCount = errors.exists ?? errors.total;
-				break;
-			case 'getKeys':
-				total = ops.getKeys ?? 0;
-				errorCount = errors.getKeys ?? errors.total;
-				break;
-			case 'invalidate':
-				total = ops.invalidate ?? 0;
-				errorCount = errors.invalidate ?? errors.total;
-				break;
-			case 'getOrSet':
-				total = ops.getOrSet ?? 0;
-				errorCount = errors.getOrSet ?? errors.total;
-				break;
-			case 'getStats':
-				total = ops.getStats ?? 0;
-				errorCount = errors.getStats ?? errors.total;
-				break;
-			case 'cleanup':
-				total = ops.cleanup ?? 0;
-				errorCount = errors.cleanup ?? errors.total;
-				break;
-		}
-		return total > 0 ? ((total - errorCount) / total) * 100 : 100;
-	}
-
 	getOverallSuccessRate(): number {
-		const totalOps = Object.values(this.metrics.operations).reduce((sum: number, count: unknown) => {
-			return sum + (typeof count === 'number' ? count : 0);
-		}, 0);
+		const totalOps = sumBy(Object.values(this.metrics.operations), count => (VALIDATORS.number(count) ? count : 0));
 		const totalErrors = this.metrics.errors.total ?? 0;
-		return totalOps > 0 ? ((totalOps - totalErrors) / totalOps) * 100 : 100;
+		return totalOps > 0 ? calculatePercentage(totalOps - totalErrors, totalOps) : 100;
 	}
 
 	private updateUptime(): void {
@@ -362,14 +322,13 @@ export class MetricsService {
 		const deleteTimes = this.operationTimes.get('delete') ?? [];
 
 		if (getTimes.length > 0) {
-			this.metrics.performance.averageGetTime = getTimes.reduce((sum, time) => sum + time, 0) / getTimes.length;
+			this.metrics.performance.averageGetTime = mean(getTimes);
 		}
 		if (setTimes.length > 0) {
-			this.metrics.performance.averageSetTime = setTimes.reduce((sum, time) => sum + time, 0) / setTimes.length;
+			this.metrics.performance.averageSetTime = mean(setTimes);
 		}
 		if (deleteTimes.length > 0) {
-			this.metrics.performance.averageDeleteTime =
-				deleteTimes.reduce((sum, time) => sum + time, 0) / deleteTimes.length;
+			this.metrics.performance.averageDeleteTime = mean(deleteTimes);
 		}
 
 		// Calculate average response time across all operations
@@ -379,40 +338,24 @@ export class MetricsService {
 		});
 
 		if (allTimes.length > 0) {
-			this.metrics.performance.avgResponseTime = allTimes.reduce((sum, time) => sum + time, 0) / allTimes.length;
+			this.metrics.performance.avgResponseTime = mean(allTimes);
 		}
 
 		// Calculate operations per second
 		const uptime = Date.now() - this.startTime.getTime();
-		const totalOps = Object.values(this.metrics.operations).reduce((sum: number, count: unknown) => {
-			return sum + (typeof count === 'number' ? count : 0);
-		}, 0);
+		const totalOps = sumBy(Object.values(this.metrics.operations), count => (VALIDATORS.number(count) ? count : 0));
 		this.metrics.performance.opsPerSecond = uptime > 0 ? totalOps / (uptime / TIME_PERIODS_MS.SECOND) : 0;
 	}
 
-	/** Log-only; request/endpoint/method/slow/error data is not persisted to getMetrics(). */
-	trackRequestPerformance(endpoint: string, duration: number, metadata?: Record<string, BasicValue>): void {
-		logger.performance('Request tracking', duration, { endpoint, ...metadata });
-	}
-
-	trackEndpointPerformance(endpoint: string, metadata?: Record<string, StatsValue>): void {
-		const duration = typeof metadata?.duration === 'number' ? metadata.duration : 0;
-		logger.performance('Endpoint tracking', duration, { endpoint, ...metadata });
-	}
-
-	trackMethodPerformance(method: string, metadata?: Record<string, StatsValue>): void {
-		const duration = typeof metadata?.duration === 'number' ? metadata.duration : 0;
-		logger.performance('Method tracking', duration, { method, ...metadata });
-	}
-
-	trackSlowRequest(endpoint: string, metadata?: Record<string, StatsValue>): void {
-		const duration = typeof metadata?.duration === 'number' ? metadata.duration : 0;
-		logger.performance('Slow request tracking', duration, { endpoint, ...metadata });
-	}
-
-	trackErrorPerformance(endpoint: string, metadata?: Record<string, StatsValue>): void {
-		const duration = typeof metadata?.duration === 'number' ? metadata.duration : 0;
-		logger.performance('Error performance tracking', duration, { endpoint, ...metadata });
+	trackPerformance(
+		kind: keyof typeof PERFORMANCE_TRACKING,
+		target: string,
+		metadata?: Record<string, StatsValue>
+	): void {
+		const duration = VALIDATORS.number(metadata?.duration) ? metadata.duration : 0;
+		const message = PERFORMANCE_TRACKING[kind];
+		const payload = kind === 'method' ? { method: target, ...metadata } : { endpoint: target, ...metadata };
+		logger.performance(message, duration, payload);
 	}
 }
 

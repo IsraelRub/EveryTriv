@@ -1,6 +1,6 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 
-import { ERROR_CODES, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
+import { ErrorCode, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
 import { CacheService } from '@internal/modules';
@@ -103,7 +103,7 @@ export class StorageController {
 	async getItem(@Param('key') key: string) {
 		try {
 			if (!key) {
-				throw new HttpException(ERROR_CODES.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
+				throw new HttpException(ErrorCode.KEY_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
 			const result = await this.storageService.get(key);

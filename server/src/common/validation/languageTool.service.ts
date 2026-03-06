@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
-import { ERROR_CODES, LANGUAGE_TOOL_CONSTANTS, TIME_PERIODS_MS } from '@shared/constants';
+import { ErrorCode, LANGUAGE_TOOL_CONSTANTS, TIME_PERIODS_MS } from '@shared/constants';
 import type { LanguageValidationResult } from '@shared/types';
-import { delay, getErrorMessage } from '@shared/utils';
-import { performLocalLanguageValidationAsync } from '@shared/validation';
+import { delay, getErrorMessage, isNonEmptyString } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
 import type { LanguageToolCheckOptions, LanguageToolResponse } from '@internal/types';
 import { createServerError } from '@internal/utils';
+
+import { performLocalLanguageValidationAsync } from './language.validation';
 
 @Injectable()
 export class LanguageToolService {
@@ -56,8 +57,8 @@ export class LanguageToolService {
 		const { useExternalAPI = true, language = LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH } = options;
 
 		// Validate input
-		if (!text || text.trim().length === 0) {
-			throw new Error(ERROR_CODES.LANGUAGETOOL_VALIDATION_REQUIRES_TEXT);
+		if (!isNonEmptyString(text)) {
+			throw new Error(ErrorCode.LANGUAGETOOL_VALIDATION_REQUIRES_TEXT);
 		}
 
 		// Try external API if enabled and available

@@ -1,7 +1,7 @@
 // User analytics type definitions.
 import { ComparisonTarget } from '../../../constants';
 import type { ActivityEntry, CountRecord, DifficultyBreakdown } from '../../core/data.types';
-import type { Achievement } from '../game/achievements.types';
+import type { SavedAchievement } from '../game/achievements.types';
 import type { UserRankData } from '../game/game.types';
 import type { SystemRecommendation } from './analyticsSystem.types';
 
@@ -147,7 +147,7 @@ export interface UnifiedUserAnalyticsResponse {
 	insights?: UserInsightsData;
 	recommendations?: SystemRecommendation[];
 	summary?: UserSummaryData;
-	achievements?: Achievement[];
+	achievements?: SavedAchievement[];
 	trends?: UserTrendPoint[];
 	activity?: ActivityEntry[];
 	progress?: UserProgressAnalytics;

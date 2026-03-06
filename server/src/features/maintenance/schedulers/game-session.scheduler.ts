@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { StorageService } from '@internal/modules';
@@ -41,7 +41,7 @@ export class GameSessionScheduler {
 			}
 
 			// Check each session and finalize if stale
-			const staleThreshold = Date.now() - TIME_DURATIONS_SECONDS.HOUR * 1000; // 1 hour ago
+			const staleThreshold = Date.now() - TIME_PERIODS_MS.HOUR;
 			let finalizedCount = 0;
 
 			for (const sessionKey of sessionKeys) {

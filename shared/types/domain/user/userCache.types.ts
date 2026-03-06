@@ -15,18 +15,13 @@ export interface UserSearchCacheResult extends Record<string, unknown> {
 	lastName: string | null;
 	avatar: number | null;
 	displayName: string;
+	role?: string;
+	createdAt?: string;
+	lastLogin?: string;
 }
 
 export interface UserSearchCacheEntry extends Record<string, unknown> {
 	query: string;
 	results: UserSearchCacheResult[];
 	totalResults: number;
-}
-
-export interface AuditLogEntry extends Record<string, unknown> {
-	userId: string;
-	action: string;
-	timestamp: string;
-	ip: string;
-	userAgent: string;
 }

@@ -1,3 +1,5 @@
+import type { DifficultyConfigEntry } from '@shared/types';
+
 import { TIME_DURATIONS_SECONDS } from '../core/time.constants';
 
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
@@ -9,9 +11,7 @@ export enum DifficultyLevel {
 	CUSTOM = 'custom',
 }
 
-export const VALID_DIFFICULTIES = Object.values(DifficultyLevel);
-
-export const VALID_DIFFICULTIES_SET = new Set<string>(VALID_DIFFICULTIES);
+export const DIFFICULTIES = new Set<string>(Object.values(DifficultyLevel));
 
 export enum GameMode {
 	QUESTION_LIMITED = 'question-limited',
@@ -20,9 +20,7 @@ export enum GameMode {
 	MULTIPLAYER = 'multiplayer',
 }
 
-export const VALID_GAME_MODES = Object.values(GameMode);
-
-export const VALID_GAME_MODES_SET = new Set<string>(VALID_GAME_MODES);
+export const GAME_MODES = new Set<string>(Object.values(GameMode));
 
 export enum TimePeriod {
 	HOURLY = 'hourly',
@@ -31,10 +29,6 @@ export enum TimePeriod {
 	MONTHLY = 'monthly',
 }
 
-export const VALID_TIME_PERIODS = Object.values(TimePeriod);
-
-export const VALID_TIME_PERIODS_SET = new Set<string>(VALID_TIME_PERIODS);
-
 export enum LeaderboardPeriod {
 	GLOBAL = 'global',
 	WEEKLY = 'weekly',
@@ -42,72 +36,47 @@ export enum LeaderboardPeriod {
 	YEARLY = 'yearly',
 }
 
-export const VALID_LEADERBOARD_PERIODS = Object.values(LeaderboardPeriod);
+export const LEADERBOARD_PERIODS = new Set<string>(Object.values(LeaderboardPeriod));
 
-export const VALID_LEADERBOARD_PERIODS_SET = new Set<string>(VALID_LEADERBOARD_PERIODS);
+export const MAX_POINTS_PER_QUESTION = 50;
 
 export const TIME_LIMITED_CREDITS_PER_30_SECONDS = 5;
 
-export const BASE_SCORE_BY_DIFFICULTY = {
-	easy: 10,
-	medium: 20,
-	hard: 30,
-} as const;
-
-export const CREDIT_COSTS = {
-	[GameMode.QUESTION_LIMITED]: {
-		costPerQuestion: 1,
-
-		fixedCost: undefined,
-
-		chargeAfterGame: false,
+export const DIFFICULTY_CONFIG: Record<string, DifficultyConfigEntry> = {
+	[DifficultyLevel.EASY]: {
+		order: 1,
+		label: 'Easy',
+		dotColor: 'bg-green-500',
+		badgeClasses: 'bg-green-500/10 text-green-500 border-green-500/30',
+		baseScore: 10,
+		promptGuidance:
+			'Use well-known, commonly known facts that most people would know. Simple, straightforward questions.',
 	},
-	[GameMode.TIME_LIMITED]: {
-		costPerQuestion: undefined,
-
-		fixedCost: undefined,
-
-		creditsPer30Seconds: TIME_LIMITED_CREDITS_PER_30_SECONDS,
-
-		chargeAfterGame: false,
+	[DifficultyLevel.MEDIUM]: {
+		order: 2,
+		label: 'Medium',
+		dotColor: 'bg-yellow-500',
+		badgeClasses: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+		baseScore: 20,
+		promptGuidance:
+			'Use moderately known facts that require some knowledge of the topic. Balance between common and specialized knowledge.',
 	},
-	[GameMode.UNLIMITED]: {
-		costPerQuestion: 1,
-
-		fixedCost: undefined,
-
-		chargeAfterGame: false,
+	[DifficultyLevel.HARD]: {
+		order: 3,
+		label: 'Hard',
+		dotColor: 'bg-red-500',
+		badgeClasses: 'bg-red-500/10 text-red-500 border-red-500/30',
+		baseScore: 30,
+		promptGuidance:
+			'Use specialized, less commonly known facts that require deeper knowledge or expertise in the topic.',
 	},
-	[GameMode.MULTIPLAYER]: {
-		costPerQuestion: 1,
-
-		fixedCost: undefined,
-
-		chargeAfterGame: false,
-
-		hostPaysOnly: true,
+	[DifficultyLevel.CUSTOM]: {
+		order: 4,
+		label: 'Custom',
+		dotColor: 'bg-purple-500',
+		badgeClasses: 'bg-muted text-muted-foreground',
 	},
-} as const;
-
-export const GAME_MODE_DEFAULTS = {
-	[GameMode.QUESTION_LIMITED]: {
-		timeLimit: undefined,
-		maxQuestionsPerGame: 10, // 10 questions
-	},
-	[GameMode.TIME_LIMITED]: {
-		timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
-		maxQuestionsPerGame: undefined, // No question limit in time-limited mode
-	},
-	[GameMode.UNLIMITED]: {
-		timeLimit: undefined,
-		maxQuestionsPerGame: undefined, // No question limit in unlimited mode
-	},
-	[GameMode.MULTIPLAYER]: {
-		timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
-		maxQuestionsPerGame: 10, // 10 questions
-		timePerQuestion: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,
-	},
-} as const;
+};
 
 export const GAME_MODES_CONFIG = {
 	[GameMode.QUESTION_LIMITED]: {
@@ -115,35 +84,63 @@ export const GAME_MODES_CONFIG = {
 		description: 'Answer a set number of questions',
 		showQuestionLimit: true,
 		showTimeLimit: false,
-		defaults: GAME_MODE_DEFAULTS[GameMode.QUESTION_LIMITED],
+		defaults: {
+			timeLimit: undefined,
+			maxQuestionsPerGame: 10,
+		},
+		costPerQuestion: 1,
+		fixedCost: undefined,
+		creditsPer30Seconds: undefined,
+		chargeAfterGame: false,
+		hostPaysOnly: undefined,
 	},
 	[GameMode.TIME_LIMITED]: {
 		name: 'Time Attack',
 		description: 'Answer as many as you can in time',
 		showQuestionLimit: false,
 		showTimeLimit: true,
-		defaults: GAME_MODE_DEFAULTS[GameMode.TIME_LIMITED],
+		defaults: {
+			timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
+			maxQuestionsPerGame: undefined,
+		},
+		costPerQuestion: undefined,
+		fixedCost: undefined,
+		creditsPer30Seconds: TIME_LIMITED_CREDITS_PER_30_SECONDS,
+		chargeAfterGame: false,
+		hostPaysOnly: undefined,
 	},
 	[GameMode.UNLIMITED]: {
 		name: 'Unlimited',
 		description: 'Play until your credits run out',
 		showQuestionLimit: false,
 		showTimeLimit: false,
-		defaults: GAME_MODE_DEFAULTS[GameMode.UNLIMITED],
+		defaults: {
+			timeLimit: undefined,
+			maxQuestionsPerGame: undefined,
+		},
+		costPerQuestion: 1,
+		fixedCost: undefined,
+		creditsPer30Seconds: undefined,
+		chargeAfterGame: false,
+		hostPaysOnly: undefined,
 	},
 	[GameMode.MULTIPLAYER]: {
 		name: 'Multiplayer',
 		description: 'Compete with friends',
 		showQuestionLimit: false,
 		showTimeLimit: false,
-		defaults: GAME_MODE_DEFAULTS[GameMode.MULTIPLAYER],
+		defaults: {
+			timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
+			maxQuestionsPerGame: 10,
+			timePerQuestion: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,
+		},
+		costPerQuestion: 1,
+		fixedCost: undefined,
+		creditsPer30Seconds: undefined,
+		chargeAfterGame: false,
+		hostPaysOnly: true,
 	},
 } as const;
-
-export enum PlayerType {
-	SINGLE = 'single',
-	MULTIPLAYER = 'multiplayer',
-}
 
 export const DEFAULT_GAME_CONFIG = {
 	defaultDifficulty: DifficultyLevel.MEDIUM,
@@ -163,142 +160,7 @@ export const GAME_STATE_DEFAULTS = {
 	IS_GAME_PAUSED: false,
 	IS_GAME_OVER: false,
 	QUESTION_INDEX: 0,
-	// Game configuration values - shared with DEFAULT_USER_PREFERENCES.game for consistency
 	TOTAL_QUESTIONS: DEFAULT_GAME_CONFIG.maxQuestionsPerGame,
 	DIFFICULTY: DEFAULT_GAME_CONFIG.defaultDifficulty,
 	TOPIC: DEFAULT_GAME_CONFIG.defaultTopic,
 } as const;
-
-export const BASIC_TOPICS = [GAME_STATE_DEFAULTS.TOPIC, 'Science', 'History', 'Geography'] as const;
-
-export enum GameStatus {
-	IN_PROGRESS = 'in_progress',
-	COMPLETED = 'completed',
-}
-
-export const VALID_GAME_STATUSES = new Set<string>(Object.values(GameStatus));
-
-export enum TimerMode {
-	COUNTDOWN = 'countdown',
-	ELAPSED = 'elapsed',
-}
-
-export const VALID_TIMER_MODES = Object.values(TimerMode);
-export const VALID_TIMER_MODES_SET = new Set<string>(VALID_TIMER_MODES);
-
-export enum AchievementCategory {
-	ENGAGEMENT = 'Engagement',
-	PERFORMANCE = 'Performance',
-	KNOWLEDGE = 'Knowledge',
-}
-
-export const VALID_ACHIEVEMENT_CATEGORIES = new Set<string>(Object.values(AchievementCategory));
-
-export enum AchievementSortBy {
-	POINTS = 'points',
-	NAME = 'name',
-	CATEGORY = 'category',
-}
-
-export const VALID_ACHIEVEMENT_SORT_BY = Object.values(AchievementSortBy);
-
-export enum AchievementIconName {
-	GAMEPAD_ICON = 'GamepadIcon',
-	TROPHY = 'Trophy',
-	AWARD = 'Award',
-	MEDAL = 'Medal',
-	CROWN = 'Crown',
-	FLAME = 'Flame',
-	ZAP = 'Zap',
-	STAR = 'Star',
-	GRADUATION_CAP = 'GraduationCap',
-	TARGET = 'Target',
-	BOOK_OPEN = 'BookOpen',
-}
-
-export const VALID_ACHIEVEMENT_ICON_NAMES = Object.values(AchievementIconName);
-export const VALID_ACHIEVEMENT_ICON_NAMES_SET = new Set<string>(VALID_ACHIEVEMENT_ICON_NAMES);
-
-export enum ProviderStatus {
-	ACTIVE = 'active',
-	HEALTHY = 'healthy',
-	UNHEALTHY = 'unhealthy',
-}
-
-export const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
-
-export const GROQ_FREE_TIER_MODELS = ['llama-3.1-8b-instant'] as const;
-
-export const GROQ_MODELS: Record<
-	string,
-	{ priority: number; cost: number; name: string; rateLimit?: { requestsPerMinute: number; requestsPerDay?: number } }
-> = {
-	'llama-3.1-8b-instant': {
-		priority: 1,
-		cost: 0,
-		name: 'llama-3.1-8b-instant',
-		rateLimit: {
-			requestsPerMinute: 30,
-			requestsPerDay: 14400,
-		},
-	},
-	// Premium models - better quality but cost money
-	'llama-3.3-70b-versatile': {
-		priority: 2,
-		cost: 0.59, // Input: $0.59/million tokens, Output: $0.79/million tokens (using input cost as base)
-		name: 'llama-3.3-70b-versatile',
-		rateLimit: {
-			requestsPerMinute: 30,
-			requestsPerDay: 14400,
-		},
-	},
-	'llama-3.3-70b-specdec': {
-		priority: 2,
-		cost: 0.59, // Similar pricing to versatile, but faster inference
-		name: 'llama-3.3-70b-specdec',
-		rateLimit: {
-			requestsPerMinute: 30,
-			requestsPerDay: 14400,
-		},
-	},
-	'llama-3.1-70b-versatile': {
-		priority: 2,
-		cost: 0.75, // Legacy model, kept for backward compatibility
-		name: 'llama-3.1-70b-versatile',
-	},
-	'gpt-oss-120b': {
-		priority: 2,
-		cost: 0.15, // Input: $0.15/million tokens, Output: $0.75/million tokens
-		name: 'gpt-oss-120b',
-	},
-	// Deprecated models - kept for reference but not recommended
-	'gpt-oss-20b': {
-		priority: 3, // Lower priority - model not available on Groq
-		cost: 0,
-		name: 'gpt-oss-20b',
-		rateLimit: {
-			requestsPerMinute: 8,
-			requestsPerDay: 1000,
-		},
-	},
-} as const;
-
-export const GROQ_DEFAULT_MODEL_CONFIG = GROQ_MODELS[GROQ_DEFAULT_MODEL];
-
-export const GROQ_DEFAULT_REQUESTS_PER_MINUTE = GROQ_DEFAULT_MODEL_CONFIG?.rateLimit?.requestsPerMinute ?? 30;
-
-export const GROQ_DEFAULT_TOKENS_PER_MINUTE = 30000;
-
-export const GROQ_PROVIDER_NAME = 'Groq';
-
-export const GROQ_PROVIDER_NAME_LOWERCASE = 'groq';
-
-export const GROQ_API_BASE_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
-export const GROQ_DEFAULT_TEMPERATURE = 0.7;
-
-export const GROQ_DEFAULT_MAX_TOKENS = 512;
-
-export const GROQ_PROVIDER_MAX_TOKENS = 8192;
-
-export const GROQ_PROVIDER_VERSION = '1.0';

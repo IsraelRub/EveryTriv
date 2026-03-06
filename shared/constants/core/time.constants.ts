@@ -5,10 +5,12 @@ const MINUTE = 60;
 export const TIME_DURATIONS_SECONDS = {
 	// Very short durations (for intervals, delays, animations)
 	SECOND: 1,
+	ONE_AND_HALF_SECONDS: 1.5,
 	TWO_SECONDS: 2,
 	THREE_SECONDS: 3,
 	FIVE_SECONDS: 5,
 	EIGHT_SECONDS: 8,
+	TEN_SECONDS: 10,
 
 	// Short durations
 	THIRTY_SECONDS: 30,
@@ -43,13 +45,16 @@ export const TIME_PERIODS_MS = {
 	FIFTY_MILLISECONDS: 50,
 	HUNDRED_MILLISECONDS: 100,
 	TWO_HUNDRED_MILLISECONDS: 200,
+	THREE_HUNDRED_MILLISECONDS: 300,
 	FOUR_HUNDRED_MILLISECONDS: 400,
 } as {
 	readonly SECOND: number;
+	readonly ONE_AND_HALF_SECONDS: number;
 	readonly TWO_SECONDS: number;
 	readonly THREE_SECONDS: number;
 	readonly FIVE_SECONDS: number;
 	readonly EIGHT_SECONDS: number;
+	readonly TEN_SECONDS: number;
 	readonly THIRTY_SECONDS: number;
 	readonly MINUTE: number;
 	readonly TWO_MINUTES: number;
@@ -66,5 +71,6 @@ export const TIME_PERIODS_MS = {
 	readonly FIFTY_MILLISECONDS: number;
 	readonly HUNDRED_MILLISECONDS: number;
 	readonly TWO_HUNDRED_MILLISECONDS: number;
+	readonly THREE_HUNDRED_MILLISECONDS: number;
 	readonly FOUR_HUNDRED_MILLISECONDS: number;
 };

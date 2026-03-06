@@ -10,10 +10,11 @@ export const ROUTES = {
 	TERMS: '/terms',
 	CONTACT: '/contact',
 
-	// Game routes
+	// Game routes (single vs multi under /game for clear distinction)
 	GAME: '/game',
-	GAME_PLAY: '/game/play',
-	GAME_SUMMARY: '/game/summary',
+	GAME_SINGLE: '/game/single',
+	GAME_SINGLE_PLAY: '/game/single/play/:gameId',
+	GAME_SINGLE_SUMMARY: '/game/single/summary/:gameId',
 	MULTIPLAYER: '/game/multiplayer',
 	MULTIPLAYER_PLAY: '/game/multiplayer/play/:roomId',
 	MULTIPLAYER_SUMMARY: '/game/multiplayer/summary/:roomId',

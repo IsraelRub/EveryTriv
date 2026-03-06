@@ -21,9 +21,9 @@ export function NotFound() {
 		<motion.main
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			className='h-screen flex flex-col items-center px-4 pt-0 pb-4 md:pb-6'
+			className='view-main flex flex-col items-center justify-center'
 		>
-			<Card className='w-full max-w-md p-6 md:p-8 text-center space-y-4 md:space-y-6'>
+			<Card className='w-full max-w-md card-padding text-center view-spacing'>
 				<div>
 					<h1 className='text-5xl md:text-6xl font-bold mb-1 md:mb-2'>404</h1>
 					<p className='text-lg md:text-xl text-muted-foreground'>Oops! Page not found</p>

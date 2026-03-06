@@ -390,9 +390,8 @@ export class GameService {
 
 **Priority 1 - מודלים חינמיים/זמינים ב-free tier:**
 - **llama-3.1-8b-instant** - חינמי לחלוטין ($0), 30 req/min, 14,400 req/day
-- **gpt-oss-20b** - זמין ב-free tier (1,000 requests/day), 8 req/min
 
-> המודל הדיפולטי במערכת הוא **gpt-oss-20b** לטובת איכות גבוהה יותר, כאשר **llama-3.1-8b-instant** משמש כגיבוי במקרי Rate limit או עומס.
+> המודל הדיפולטי במערכת הוא **llama-3.1-8b-instant**.
 
 **Priority 2+ - מודלים בתשלום:**
 - **gpt-oss-120b** - $0.15/$0.75 per M tokens
@@ -402,7 +401,7 @@ export class GameService {
 
 המערכת משתמשת ב-round-robin selection בין מודלי Priority 1:
 1. **Selection**: מודלים נבחרים לפי priority (חינמי = priority 1)
-2. **Round-robin**: בין מודלי priority 1 (llama-3.1-8b, gpt-oss-20b) נעשה round-robin
+2. **Round-robin**: בין מודלי priority 1 (כרגע llama-3.1-8b-instant בלבד) נעשה round-robin
 3. **Cost Optimization**: המודל הזול ביותר (priority 1) נבחר קודם לחיסכון בעלויות
 4. **Fallback**: במקרה של שגיאה, המערכת יכולה לנסות מודל אחר מאותו priority
 

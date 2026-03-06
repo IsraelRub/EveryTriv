@@ -1,6 +1,8 @@
 import { StorageType } from '@shared/constants';
 import type { StorageOperationResult } from '@shared/types';
 
+import { calculateDuration } from '../core/number.utils';
+
 export function createTimedResult<T>(
 	success: boolean,
 	data?: T,
@@ -8,7 +10,7 @@ export function createTimedResult<T>(
 	startTime?: number,
 	storageType: StorageType = StorageType.PERSISTENT
 ): StorageOperationResult<T> {
-	const duration = startTime ? Date.now() - startTime : undefined;
+	const duration = startTime ? calculateDuration(startTime) : undefined;
 	const result: StorageOperationResult<T> = {
 		success,
 		timestamp: new Date(),

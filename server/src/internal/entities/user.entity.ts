@@ -49,6 +49,9 @@ export class UserEntity extends BaseEntity {
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean = true;
 
+	@Column({ name: 'email_verified', default: false })
+	emailVerified: boolean = false;
+
 	@Column({ default: UserRole.USER })
 	role: UserRole = UserRole.USER;
 

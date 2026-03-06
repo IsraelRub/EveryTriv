@@ -4,18 +4,18 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import { UserRole } from '@shared/constants';
 import { mergeUserPreferences } from '@shared/utils';
 
-import { ModalSize, ROUTES, SpinnerSize } from '@/constants';
+import { ComponentSize, LoadingMessages, ROUTES } from '@/constants';
 import {
 	BackgroundAnimation,
 	CompleteProfile,
 	Footer,
+	FullPageSpinner,
 	ModalRouteWrapper,
 	Navigation,
 	NotFound,
 	OAuthCallback,
 	ProtectedRoute,
 	PublicRoute,
-	Spinner,
 	Toaster,
 } from '@/components';
 import { useCurrentUser, useNavigationAnalytics, useRouteBasedMusic } from '@/hooks';
@@ -23,9 +23,7 @@ import { audioService, authService, prefetchAuthenticatedQueries, queryClient } 
 import {
 	AdminDashboard,
 	ContactView,
-	GameSessionView,
 	GameSetupView,
-	GameSummaryView,
 	HomeView,
 	LoginView,
 	MultiplayerGameView,
@@ -34,6 +32,8 @@ import {
 	PaymentView,
 	PrivacyPolicyView,
 	RegistrationView,
+	SingleSessionView,
+	SingleSummaryView,
 	StatisticsView,
 	TermsOfServiceView,
 	UnauthorizedView,
@@ -132,9 +132,7 @@ export default function AppRoutes() {
 		return (
 			<div className='app-shell'>
 				<BackgroundAnimation />
-				<main id='main-content' className='app-main flex items-center justify-center min-h-screen'>
-					<Spinner size={SpinnerSize.LG} />
-				</main>
+				<FullPageSpinner message={LoadingMessages.LOADING_APP} layout='appShell' showHomeButton={false} />
 			</div>
 		);
 	}
@@ -154,12 +152,39 @@ export default function AppRoutes() {
 					<Route path={ROUTES.TERMS} element={<TermsOfServiceView />} />
 					<Route path={ROUTES.CONTACT} element={<ContactView />} />
 
-					{/* Game routes */}
-					<Route path={ROUTES.GAME} element={<GameSetupView />} />
-					<Route path={ROUTES.GAME_PLAY} element={<GameSessionView />} />
-					<Route path={ROUTES.GAME_SUMMARY} element={<GameSummaryView />} />
-
-					{/* Multiplayer routes */}
+					{/* Game routes - single player and multiplayer both require auth (credits, stats) */}
+					<Route
+						path={ROUTES.GAME}
+						element={
+							<ProtectedRoute>
+								<GameSetupView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path={ROUTES.GAME_SINGLE}
+						element={
+							<ProtectedRoute>
+								<GameSetupView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path={ROUTES.GAME_SINGLE_PLAY}
+						element={
+							<ProtectedRoute>
+								<SingleSessionView />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path={ROUTES.GAME_SINGLE_SUMMARY}
+						element={
+							<ProtectedRoute>
+								<SingleSummaryView />
+							</ProtectedRoute>
+						}
+					/>
 					<Route
 						path={ROUTES.MULTIPLAYER}
 						element={
@@ -190,7 +215,7 @@ export default function AppRoutes() {
 						path={ROUTES.PAYMENT}
 						element={
 							<ProtectedRoute>
-								<ModalRouteWrapper modalSize={ModalSize.XL}>
+								<ModalRouteWrapper modalSize={ComponentSize.XL}>
 									<PaymentView />
 								</ModalRouteWrapper>
 							</ProtectedRoute>

@@ -296,7 +296,7 @@ module.exports = [
 			'**/logs/**',
 			'scripts/documentation/**/*.cjs',
 			'server/src/main.ts',
-			'server/scripts/**/*.js',
+			'server/scripts/**',
 			'**/postcss.config.js',
 			'**/vite.config.ts',
 		],

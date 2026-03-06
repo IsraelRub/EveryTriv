@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CreditCard, Lock } from 'lucide-react';
+import { FaPaypal } from 'react-icons/fa6';
+import { CreditCard } from 'lucide-react';
 
-import { PaymentMethod, PaymentStatus } from '@shared/constants';
+import { ERROR_MESSAGES, PaymentMethod, PaymentStatus } from '@shared/constants';
 import type { PayPalOrderRequest } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { isPaymentMethod } from '@shared/validation';
 
-import { ButtonSize, ButtonVariant, SpinnerSize, VariantBase } from '@/constants';
+import { AlertVariant, ButtonSize, Colors, ComponentSize, LoadingMessages, VariantBase } from '@/constants';
 import {
 	Alert,
 	AlertDescription,
@@ -29,6 +30,7 @@ import {
 import { usePurchaseCredits } from '@/hooks';
 import { clientLogger as logger } from '@/services';
 import type { CreditsPurchaseResponse, PaymentDialogProps, PayPalButtonInstance } from '@/types';
+import { cn } from '@/utils';
 
 export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: PaymentDialogProps) {
 	const purchaseCredits = usePurchaseCredits();
@@ -121,7 +123,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					if (result.status === PaymentStatus.COMPLETED) {
 						handlePaymentSuccess(result);
 					} else {
-						throw new Error(result.message ?? 'Payment not completed');
+						throw new Error(result.message ?? ERROR_MESSAGES.payment.PAYMENT_NOT_COMPLETED);
 					}
 				} catch (error) {
 					const errorMsg = getErrorMessage(error);
@@ -138,7 +140,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 				}
 			},
 			onError: (err: Error) => {
-				const errorMsg = err.message ?? 'An error occurred with PayPal';
+				const errorMsg = getErrorMessage(err);
 				logger.paymentFailed(pkg.id, errorMsg, {
 					errorInfo: { message: errorMsg },
 					packageId: pkg.id,
@@ -235,7 +237,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			} else if (result.status === PaymentStatus.COMPLETED) {
 				handlePaymentSuccess(result);
 			} else {
-				throw new Error(result.message ?? 'Failed to initialize PayPal');
+				throw new Error(result.message ?? ERROR_MESSAGES.payment.FAILED_TO_INITIALIZE_PAYPAL);
 			}
 		} catch (error) {
 			const errorMsg = getErrorMessage(error);
@@ -261,7 +263,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			if (result.status === PaymentStatus.COMPLETED) {
 				handlePaymentSuccess(result);
 			} else {
-				throw new Error(result.message ?? 'Payment not completed');
+				throw new Error(result.message ?? ERROR_MESSAGES.payment.PAYMENT_NOT_COMPLETED);
 			}
 		} catch (error) {
 			const errorMsg = getErrorMessage(error);
@@ -316,11 +318,10 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 					<DialogDescription>Choose your payment method to purchase {totalCredits} credits</DialogDescription>
 				</DialogHeader>
 
-				<div className='space-y-4 md:space-y-6 py-4 flex-1 overflow-y-auto'>
+				<div className='dialog-body'>
 					{/* Error Message */}
 					{errorMessage && (
-						<Alert variant={VariantBase.DESTRUCTIVE}>
-							<AlertCircle className='h-4 w-4' />
+						<Alert variant={AlertVariant.DESTRUCTIVE}>
 							<AlertDescription>{errorMessage}</AlertDescription>
 						</Alert>
 					)}
@@ -336,7 +337,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 								<span className='font-medium'>{pkg.description ?? `${pkg.credits} Credits`}</span>
 							</div>
 							{pkg.bonus && pkg.bonus > 0 && (
-								<div className='flex justify-between text-green-600'>
+								<div className={cn('flex justify-between', Colors.GREEN_500.text)}>
 									<span>Bonus:</span>
 									<span className='font-medium'>+{pkg.bonus} credits</span>
 								</div>
@@ -355,7 +356,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<div className='flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer'>
 								<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
 								<Label htmlFor='paypal' className='flex-1 cursor-pointer flex items-center gap-2'>
-									<Lock className='h-5 w-5' />
+									<FaPaypal className='h-5 w-5 text-white' />
 									<span>PayPal</span>
 								</Label>
 							</div>
@@ -375,7 +376,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Label>PayPal Payment</Label>
 							{isProcessing ? (
 								<div className='flex items-center justify-center p-8 border rounded-lg'>
-									<Spinner size={SpinnerSize.LG} className='text-primary' />
+									<Spinner size={ComponentSize.XL} className='text-primary' message={LoadingMessages.PROCESSING} />
 								</div>
 							) : (
 								<div ref={setPaypalButtonContainer} className='min-h-[50px]' />
@@ -389,10 +390,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Label>Credit Card Payment</Label>
 							<Button className='w-full' onClick={handleManualPayment} disabled={isProcessing} size={ButtonSize.LG}>
 								{isProcessing ? (
-									<>
-										<Spinner size={SpinnerSize.SM} className='mr-2' />
-										Processing...
-									</>
+									<Spinner size={ComponentSize.SM} message={LoadingMessages.PROCESSING} messageInline />
 								) : (
 									<>
 										<CreditCard className='mr-2 h-4 w-4' />
@@ -405,7 +403,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 				</div>
 
 				<DialogFooter className='flex-shrink-0'>
-					<Button variant={ButtonVariant.OUTLINE} onClick={() => onOpenChange(false)} disabled={isProcessing}>
+					<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)} disabled={isProcessing}>
 						Cancel
 					</Button>
 				</DialogFooter>

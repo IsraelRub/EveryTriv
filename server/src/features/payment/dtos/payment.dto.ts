@@ -11,7 +11,9 @@ import {
 	ValidateIf,
 } from 'class-validator';
 
-import { PaymentMethod, VALID_PAYMENT_METHODS } from '@shared/constants';
+import { PaymentMethod, VALIDATION_LENGTH, VALIDATION_PAYMENT } from '@shared/constants';
+
+const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
 
 export class PaymentMethodDetailsDto {
 	@ApiProperty({
@@ -25,33 +27,39 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'PayPal order ID returned from PayPal API',
+		minLength: VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.PAYPAL && dto.paypalOrderId !== undefined)
 	@IsString({ message: 'PayPal order ID must be a string' })
-	@MinLength(10, {
-		message: 'PayPal order ID must be at least 10 characters long',
+	@MinLength(VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH, {
+		message: `PayPal order ID must be at least ${VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH} characters long`,
 	})
 	paypalOrderId?: string;
 
 	@ApiPropertyOptional({
 		description: 'PayPal payment ID returned from PayPal API',
+		minLength: VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.PAYPAL && dto.paypalPaymentId !== undefined)
 	@IsString({ message: 'PayPal payment ID must be a string' })
-	@MinLength(10, {
-		message: 'PayPal payment ID must be at least 10 characters long',
+	@MinLength(VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH, {
+		message: `PayPal payment ID must be at least ${VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH} characters long`,
 	})
 	paypalPaymentId?: string;
 
 	@ApiPropertyOptional({
 		description: 'Primary card number for manual credit payments (digits only)',
-		minLength: 12,
-		maxLength: 19,
+		minLength: VALIDATION_PAYMENT.CARD_NUMBER.MIN,
+		maxLength: VALIDATION_PAYMENT.CARD_NUMBER.MAX,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Card number must be a string of digits' })
-	@MinLength(12, { message: 'Card number must be at least 12 digits' })
-	@MaxLength(19, { message: 'Card number cannot exceed 19 digits' })
+	@MinLength(VALIDATION_PAYMENT.CARD_NUMBER.MIN, {
+		message: `Card number must be at least ${VALIDATION_PAYMENT.CARD_NUMBER.MIN} digits`,
+	})
+	@MaxLength(VALIDATION_PAYMENT.CARD_NUMBER.MAX, {
+		message: `Card number cannot exceed ${VALIDATION_PAYMENT.CARD_NUMBER.MAX} digits`,
+	})
 	cardNumber?: string;
 
 	@ApiPropertyOptional({
@@ -67,71 +75,89 @@ export class PaymentMethodDetailsDto {
 
 	@ApiPropertyOptional({
 		description: 'CVV code for manual credit payments',
-		minLength: 3,
-		maxLength: 4,
+		minLength: VALIDATION_PAYMENT.CVV.MIN,
+		maxLength: VALIDATION_PAYMENT.CVV.MAX,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'CVV must be a string' })
-	@MinLength(3, { message: 'CVV must be at least 3 digits' })
-	@MaxLength(4, { message: 'CVV cannot exceed 4 digits' })
+	@MinLength(VALIDATION_PAYMENT.CVV.MIN, {
+		message: `CVV must be at least ${VALIDATION_PAYMENT.CVV.MIN} digits`,
+	})
+	@MaxLength(VALIDATION_PAYMENT.CVV.MAX, {
+		message: `CVV cannot exceed ${VALIDATION_PAYMENT.CVV.MAX} digits`,
+	})
 	@Matches(/^\d+$/, { message: 'CVV can only contain digits' })
 	cvv?: string;
 
 	@ApiPropertyOptional({
 		description: 'Card holder name for manual credit payments',
-		minLength: 2,
-		maxLength: 80,
+		minLength: VALIDATION_PAYMENT.CARD_HOLDER_NAME.MIN,
+		maxLength: VALIDATION_PAYMENT.CARD_HOLDER_NAME.MAX,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Card holder name must be a string' })
-	@MinLength(2, { message: 'Card holder name must be at least 2 characters' })
-	@MaxLength(80, { message: 'Card holder name cannot exceed 80 characters' })
+	@MinLength(VALIDATION_PAYMENT.CARD_HOLDER_NAME.MIN, {
+		message: `Card holder name must be at least ${VALIDATION_PAYMENT.CARD_HOLDER_NAME.MIN} characters`,
+	})
+	@MaxLength(VALIDATION_PAYMENT.CARD_HOLDER_NAME.MAX, {
+		message: `Card holder name cannot exceed ${VALIDATION_PAYMENT.CARD_HOLDER_NAME.MAX} characters`,
+	})
 	cardHolderName?: string;
 
 	@ApiPropertyOptional({
 		description: 'Postal code associated with the card for manual credit payments',
-		maxLength: 20,
+		maxLength: VALIDATION_PAYMENT.POSTAL_CODE_MAX,
 	})
 	@ValidateIf(dto => dto.paymentMethod === PaymentMethod.MANUAL_CREDIT)
 	@IsString({ message: 'Postal code must be a string' })
-	@MaxLength(20, { message: 'Postal code cannot exceed 20 characters' })
+	@MaxLength(VALIDATION_PAYMENT.POSTAL_CODE_MAX, {
+		message: `Postal code cannot exceed ${VALIDATION_PAYMENT.POSTAL_CODE_MAX} characters`,
+	})
 	postalCode?: string;
 }
 
 export class CreatePaymentDto extends PaymentMethodDetailsDto {
 	@ApiPropertyOptional({
 		description: 'One-time payment amount (when not using predefined plans)',
-		minimum: 0.5,
+		minimum: VALIDATION_PAYMENT.AMOUNT_MIN,
 	})
 	@IsOptional()
 	@IsNumber({}, { message: 'Amount must be a number' })
-	@Min(0.5, { message: 'Amount must be at least 0.5' })
+	@Min(VALIDATION_PAYMENT.AMOUNT_MIN, {
+		message: `Amount must be at least ${VALIDATION_PAYMENT.AMOUNT_MIN}`,
+	})
 	amount?: number;
 
 	@ApiPropertyOptional({
 		description: 'Payment currency code (defaults to USD)',
-		maxLength: 10,
+		maxLength: VALIDATION_PAYMENT.CURRENCY_CODE_MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(10, { message: 'Currency code cannot exceed 10 characters' })
+	@MaxLength(VALIDATION_PAYMENT.CURRENCY_CODE_MAX, {
+		message: `Currency code cannot exceed ${VALIDATION_PAYMENT.CURRENCY_CODE_MAX} characters`,
+	})
 	currency?: string;
 
 	@ApiPropertyOptional({
 		description: 'Payment description for transaction record',
-		maxLength: 200,
+		maxLength: VALIDATION_LENGTH.REASON.MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(200, { message: 'Description cannot exceed 200 characters' })
+	@MaxLength(VALIDATION_LENGTH.REASON.MAX, {
+		message: `Description cannot exceed ${VALIDATION_LENGTH.REASON.MAX} characters`,
+	})
 	description?: string;
 
 	@ApiPropertyOptional({
 		description: 'Additional payment information',
-		maxLength: 500,
+		maxLength: VALIDATION_PAYMENT.ADDITIONAL_INFO_MAX,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(500, { message: 'Additional info cannot exceed 500 characters' })
+	@MaxLength(VALIDATION_PAYMENT.ADDITIONAL_INFO_MAX, {
+		message: `Additional info cannot exceed ${VALIDATION_PAYMENT.ADDITIONAL_INFO_MAX} characters`,
+	})
 	additionalInfo?: string;
 }

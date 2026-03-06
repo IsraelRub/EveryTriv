@@ -1,16 +1,15 @@
-import { ReactNode } from 'react';
+import type { ElementType } from 'react';
 
 import type { LeaderboardEntry } from '@shared/types';
-
-import { NamedColor, TrendDirection } from '@/constants';
 
 export interface CardMetricProps {
 	title: string;
 	value: string;
 	subtitle: string;
-	icon: ReactNode;
-	color: NamedColor;
-	trend?: TrendDirection;
+	/** Icon component (e.g. LucideIcon), rendered with createElement(icon, props). */
+	icon: ElementType;
+	color: string;
+	trend?: string;
 }
 
 export interface LeaderboardEntryProps {

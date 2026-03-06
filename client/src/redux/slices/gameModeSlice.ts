@@ -3,11 +3,11 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { DifficultyLevel, GAME_MODES_CONFIG, VALIDATION_COUNT } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
 
-import { GAME_STATE_CONFIG } from '@/constants';
+import { initialGameModeState } from '@/constants';
 
 export const gameModeStateSlice = createSlice({
 	name: 'gameMode',
-	initialState: GAME_STATE_CONFIG.initialGameModeState,
+	initialState: initialGameModeState,
 	reducers: {
 		setGameMode: (state, action: PayloadAction<GameConfig>) => {
 			const { mode, topic, difficulty, maxQuestionsPerGame, timeLimit, answerCount } = action.payload;
@@ -28,7 +28,7 @@ export const gameModeStateSlice = createSlice({
 			state.isLoading = false;
 			state.error = undefined;
 		},
-		resetGameMode: () => GAME_STATE_CONFIG.initialGameModeState,
+		resetGameMode: () => initialGameModeState,
 	},
 });
 

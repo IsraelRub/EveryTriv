@@ -5,13 +5,14 @@ import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import type { BusinessMetrics } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { isBusinessMetricsData } from '@shared/utils/domain';
 
 import { GameHistoryEntity, PaymentHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { NumericQueryResult } from '@internal/types';
 import { addDateRangeConditions } from '@internal/utils';
+
+import { isBusinessMetricsData } from '../../../internal/utils/entityGuards';
 
 @Injectable()
 export class BusinessAnalyticsService {

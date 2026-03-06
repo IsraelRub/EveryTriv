@@ -26,4 +26,10 @@ export const STORAGE_KEYS = {
 	REDIRECT_AFTER_LOGIN: 'redirectAfterLogin',
 	ERROR_LOG: 'error-log',
 	ACTIVE_GAME_SESSION: 'active_game_session',
+	/** Prefix for multiplayer final leaderboard by roomId: `multiplayer_summary_${roomId}` */
+	MULTIPLAYER_SUMMARY_PREFIX: 'multiplayer_summary_',
 } as const;
+
+export function getMultiplayerSummaryStorageKey(roomId: string): string {
+	return `${STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX}${roomId}`;
+}

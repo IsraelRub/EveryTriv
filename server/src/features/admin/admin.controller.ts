@@ -24,6 +24,13 @@ export class AdminController {
 				id: user.sub,
 				role: user.role,
 				totalGames: statistics.totalGames,
+				chart: 'admin_game_statistics',
+				averageScore: statistics.averageScore,
+				bestScore: statistics.bestScore,
+				accuracy: statistics.accuracy,
+				activePlayers24h: statistics.activePlayers24h,
+				topics: statistics.topics,
+				difficultyDistribution: statistics.difficultyDistribution,
 			});
 
 			return statistics;
@@ -44,9 +51,18 @@ export class AdminController {
 		try {
 			const result = await this.adminService.getAllTriviaQuestions();
 
+			const questions = result?.questions ?? [];
+			const topicCounts: Record<string, number> = {};
+			for (const q of questions) {
+				const t = q.topic ?? 'unknown';
+				topicCounts[t] = (topicCounts[t] ?? 0) + 1;
+			}
 			logger.apiRead('admin_get_all_trivia', {
 				id: user.sub,
 				role: user.role,
+				chart: 'admin_trivia',
+				count: questions.length,
+				topicsPlayed: topicCounts,
 			});
 
 			return result;

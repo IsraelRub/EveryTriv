@@ -9,12 +9,6 @@ export interface BaseValidationResult {
 	warnings?: string[];
 }
 
-export interface PasswordValidationResult extends BaseValidationResult {
-	checks: {
-		hasMinLength: boolean;
-	};
-}
-
 export interface ValidationResult extends BaseValidationResult {
 	suggestion?: string;
 	position?: Position;

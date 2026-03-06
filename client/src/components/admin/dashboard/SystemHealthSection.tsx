@@ -1,10 +1,33 @@
-import { Activity, AlertTriangle, BarChart3, Settings, Shield, Zap } from 'lucide-react';
+import {
+	Activity,
+	CheckCircle,
+	CircleGauge,
+	Clock,
+	Cpu,
+	Fingerprint,
+	HardDrive,
+	Lightbulb,
+	Shield,
+	TrendingUp,
+	Zap,
+} from 'lucide-react';
 
-import { TIME_DURATIONS_SECONDS } from '@shared/constants';
-import { formatForDisplay } from '@shared/utils';
+import { SYSTEM_HEALTH_THRESHOLDS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { formatNumericValue } from '@shared/utils';
 
-import { SKELETON_HEIGHTS, SKELETON_WIDTHS, StatCardVariant, TextColor, VariantBase } from '@/constants';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, StatCard } from '@/components';
+import { Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
+import {
+	AlertIcon,
+	AlertIconSource,
+	Badge,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	Skeleton,
+	StatCard,
+} from '@/components';
 import {
 	useSystemInsights,
 	useSystemPerformanceMetrics,
@@ -21,22 +44,11 @@ export function SystemHealthSection() {
 
 	return (
 		<div className='space-y-8'>
-			{/* System Analytics Section */}
-			<Card className='border-primary/20 bg-primary/5'>
-				<CardHeader>
-					<CardTitle className='text-2xl font-bold flex items-center gap-2'>
-						<Settings className='h-6 w-6 text-primary' />
-						System Analytics
-					</CardTitle>
-					<CardDescription>System performance, security, and health metrics</CardDescription>
-				</CardHeader>
-			</Card>
-
 			{/* System Performance Metrics */}
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Zap className='h-5 w-5' />
+						<Zap className='h-5 w-5 text-primary' />
 						Performance Metrics
 					</CardTitle>
 					<CardDescription>Real-time system performance indicators</CardDescription>
@@ -44,69 +56,65 @@ export function SystemHealthSection() {
 				<CardContent>
 					{systemPerformanceLoading ? (
 						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-							{[...Array(4)].map((_, i) => (
-								<Skeleton key={i} className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
-							))}
+							<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 						</div>
 					) : systemPerformance ? (
 						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
 							<StatCard
 								icon={Zap}
 								label='Response Time'
-								value={`${formatForDisplay(systemPerformance.responseTime)}ms`}
-								color={TextColor.BLUE_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.responseTime, 2, 'ms')}
+								color={Colors.BLUE_500.text}
 							/>
 							<StatCard
-								icon={Activity}
+								icon={HardDrive}
 								label='Memory Usage'
-								value={`${formatForDisplay(systemPerformance.memoryUsage / 1024 / 1024)} MB`}
-								color={TextColor.PURPLE_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.memoryUsage / 1024 / 1024, 2, ' MB')}
+								color={Colors.PURPLE_500.text}
 							/>
 							<StatCard
-								icon={BarChart3}
+								icon={Cpu}
 								label='CPU Usage'
-								value={`${formatForDisplay(systemPerformance.cpuUsage)}%`}
-								color={TextColor.YELLOW_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.cpuUsage, 2, '%')}
+								color={Colors.YELLOW_500.text}
 							/>
 							<StatCard
-								icon={Activity}
+								icon={CircleGauge}
 								label='Throughput'
-								value={`${formatForDisplay(systemPerformance.throughput)} req/s`}
-								color={TextColor.GREEN_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.throughput, 2, ' req/s')}
+								color={Colors.GREEN_500.text}
 							/>
 							<StatCard
-								icon={AlertTriangle}
+								icon={AlertIconSource}
 								label='Error Rate'
-								value={`${formatForDisplay(systemPerformance.errorRate)}%`}
-								color={systemPerformance.errorRate > 5 ? TextColor.RED_500 : TextColor.GREEN_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.errorRate, 2, '%')}
+								color={
+									systemPerformance.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT
+										? Colors.RED_500.text
+										: Colors.GREEN_500.text
+								}
 							/>
 							<StatCard
-								icon={Activity}
+								icon={Clock}
 								label='Uptime'
-								value={`${formatForDisplay(systemPerformance.uptime / TIME_DURATIONS_SECONDS.HOUR)}h`}
-								color={TextColor.BLUE_500}
-								variant={StatCardVariant.VERTICAL}
+								value={formatNumericValue(systemPerformance.uptime / TIME_DURATIONS_SECONDS.HOUR, 2, 'h')}
+								color={Colors.BLUE_500.text}
 							/>
 						</div>
 					) : (
 						<div className='text-center py-8 text-muted-foreground'>
 							<Zap className='h-12 w-12 mx-auto mb-4 opacity-50' />
-							<p>No performance metrics available</p>
+							<p>No Performance Metrics Available</p>
 						</div>
 					)}
 				</CardContent>
 			</Card>
 
 			{/* System Security Metrics */}
-			<Card className='border-muted bg-muted/20'>
+			<Card className='card-muted-tint'>
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Shield className='h-5 w-5' />
+						<Shield className='h-5 w-5 text-primary' />
 						Security Metrics
 					</CardTitle>
 					<CardDescription>Authentication, authorization, and data security indicators</CardDescription>
@@ -114,39 +122,37 @@ export function SystemHealthSection() {
 				<CardContent>
 					{systemSecurityLoading ? (
 						<div className='space-y-4'>
-							{[...Array(3)].map((_, i) => (
-								<Skeleton key={i} className={`${SKELETON_HEIGHTS.CARD} ${SKELETON_WIDTHS.FULL}`} />
-							))}
+							<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
 						</div>
 					) : systemSecurity ? (
 						<div className='space-y-6'>
 							{/* Authentication Metrics */}
 							<Card>
 								<CardHeader className='pb-3'>
-									<CardTitle className='text-lg'>Authentication</CardTitle>
+									<CardTitle className='text-lg flex items-center gap-2'>
+										<Fingerprint className='h-5 w-5 text-primary' />
+										Authentication
+									</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 										<StatCard
-											icon={AlertTriangle}
+											icon={AlertIconSource}
 											label='Failed Logins'
 											value={systemSecurity.authentication.failedLogins.toLocaleString()}
-											color={TextColor.RED_500}
-											variant={StatCardVariant.VERTICAL}
+											color={Colors.RED_500.text}
 										/>
 										<StatCard
-											icon={Activity}
+											icon={CheckCircle}
 											label='Successful Logins'
 											value={systemSecurity.authentication.successfulLogins.toLocaleString()}
-											color={TextColor.GREEN_500}
-											variant={StatCardVariant.VERTICAL}
+											color={Colors.GREEN_500.text}
 										/>
 										<StatCard
 											icon={Shield}
 											label='Account Lockouts'
 											value={systemSecurity.authentication.accountLockouts.toLocaleString()}
-											color={TextColor.YELLOW_500}
-											variant={StatCardVariant.VERTICAL}
+											color={Colors.YELLOW_500.text}
 										/>
 									</div>
 								</CardContent>
@@ -160,18 +166,16 @@ export function SystemHealthSection() {
 								<CardContent>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 										<StatCard
-											icon={AlertTriangle}
+											icon={AlertIconSource}
 											label='Unauthorized Attempts'
 											value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
-											color={TextColor.RED_500}
-											variant={StatCardVariant.VERTICAL}
+											color={Colors.RED_500.text}
 										/>
 										<StatCard
 											icon={Shield}
 											label='Permission Violations'
 											value={systemSecurity.authorization.permissionViolations.toLocaleString()}
-											color={TextColor.ORANGE_500}
-											variant={StatCardVariant.VERTICAL}
+											color={Colors.ORANGE_500.text}
 										/>
 									</div>
 								</CardContent>
@@ -185,25 +189,22 @@ export function SystemHealthSection() {
 								<CardContent>
 									<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 										<StatCard
-											icon={AlertTriangle}
+											icon={AlertIconSource}
 											label='Data Breaches'
 											value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
-											color={systemSecurity.dataSecurity.dataBreaches > 0 ? TextColor.RED_500 : TextColor.GREEN_500}
-											variant={StatCardVariant.VERTICAL}
+											color={systemSecurity.dataSecurity.dataBreaches > 0 ? Colors.RED_500.text : Colors.GREEN_500.text}
 										/>
 										<StatCard
 											icon={Shield}
 											label='Encryption Coverage'
-											value={`${formatForDisplay(systemSecurity.dataSecurity.encryptionCoverage)}%`}
-											color={TextColor.BLUE_500}
-											variant={StatCardVariant.VERTICAL}
+											value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
+											color={Colors.BLUE_500.text}
 										/>
 										<StatCard
-											icon={Activity}
+											icon={CheckCircle}
 											label='Backup Success Rate'
-											value={`${formatForDisplay(systemSecurity.dataSecurity.backupSuccessRate)}%`}
-											color={TextColor.GREEN_500}
-											variant={StatCardVariant.VERTICAL}
+											value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
+											color={Colors.GREEN_500.text}
 										/>
 									</div>
 								</CardContent>
@@ -212,7 +213,7 @@ export function SystemHealthSection() {
 					) : (
 						<div className='text-center py-8 text-muted-foreground'>
 							<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
-							<p>No security metrics available</p>
+							<p>No Security Metrics Available</p>
 						</div>
 					)}
 				</CardContent>
@@ -220,10 +221,10 @@ export function SystemHealthSection() {
 
 			{/* System Recommendations */}
 			{systemRecommendations && systemRecommendations.length > 0 && (
-				<Card className='border-muted bg-muted/20'>
+				<Card className='card-muted-tint'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
-							<AlertTriangle className='h-5 w-5' />
+							<AlertIcon size='lg' className='text-primary' />
 							System Recommendations
 						</CardTitle>
 						<CardDescription>Actionable recommendations to improve system performance and security</CardDescription>
@@ -231,14 +232,12 @@ export function SystemHealthSection() {
 					<CardContent>
 						{systemRecommendationsLoading ? (
 							<div className='space-y-4'>
-								{[...Array(3)].map((_, i) => (
-									<Skeleton key={i} className={`h-32 ${SKELETON_WIDTHS.FULL}`} />
-								))}
+								<Skeleton variant={SkeletonVariant.BlockTall} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
 							</div>
 						) : (
 							<div className='space-y-4'>
 								{systemRecommendations.map(recommendation => (
-									<Card key={recommendation.id} className='border-l-4 border-l-yellow-500'>
+									<Card key={recommendation.id} className='card-accent-left-warning'>
 										<CardHeader className='pb-3'>
 											<div className='flex items-start justify-between'>
 												<div className='flex-1'>
@@ -278,10 +277,10 @@ export function SystemHealthSection() {
 
 			{/* System Insights */}
 			{systemInsights && (
-				<Card className='border-muted bg-muted/20'>
+				<Card className='card-muted-tint'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
-							<BarChart3 className='h-5 w-5' />
+							<Lightbulb className='h-5 w-5 text-primary' />
 							System Insights
 						</CardTitle>
 						<CardDescription>Key insights about system health, performance, and user behavior</CardDescription>
@@ -289,9 +288,7 @@ export function SystemHealthSection() {
 					<CardContent>
 						{systemInsightsLoading ? (
 							<div className='space-y-4'>
-								{[...Array(4)].map((_, i) => (
-									<Skeleton key={i} className={`h-20 ${SKELETON_WIDTHS.FULL}`} />
-								))}
+								<Skeleton variant={SkeletonVariant.BlockSm} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 							</div>
 						) : systemInsights ? (
 							<div className='space-y-6'>
@@ -400,7 +397,7 @@ export function SystemHealthSection() {
 									<Card>
 										<CardHeader className='pb-3'>
 											<CardTitle className='text-lg flex items-center gap-2'>
-												<BarChart3 className='h-4 w-4' />
+												<TrendingUp className='h-4 w-4' />
 												Trends
 											</CardTitle>
 										</CardHeader>
@@ -419,8 +416,8 @@ export function SystemHealthSection() {
 							</div>
 						) : (
 							<div className='text-center py-8 text-muted-foreground'>
-								<BarChart3 className='h-12 w-12 mx-auto mb-4 opacity-50' />
-								<p>No system insights available</p>
+								<Lightbulb className='h-12 w-12 mx-auto mb-4 opacity-50' />
+								<p>No System Insights Available</p>
 							</div>
 						)}
 					</CardContent>

@@ -328,8 +328,7 @@
 | `QuestionResult` | `shared/types/domain/game/multiplayer.types.ts` | תוצאות שאלה |
 | `GameEventDataMap` | `shared/types/domain/game/multiplayer.types.ts` | type map אירועי משחק |
 | `GameEventType` | `shared/types/domain/game/multiplayer.types.ts` | type סוגי אירועי משחק |
-| `GameEvent` | `shared/types/domain/game/multiplayer.types.ts` | interface אירוע משחק |
-| `MultiplayerGameEvent` | `shared/types/domain/game/multiplayer.types.ts` | type אירוע משחק מרובה משתמשים |
+| `GameEvent` | `shared/types/domain/game/multiplayer.types.ts` | interface אירוע משחק (גנרי על סוג האירוע) |
 | `CreateRoomResponse` | `shared/types/domain/game/multiplayer.types.ts` | תגובת יצירת חדר |
 | `RoomStateResponse` | `shared/types/domain/game/multiplayer.types.ts` | תגובת מצב חדר |
 | `MultiplayerAnswerResult` | `shared/types/domain/game/multiplayer.types.ts` | תוצאות תשובה מרובה משתמשים |
@@ -470,10 +469,7 @@
 #### Core ID Types
 | שם Interface/Type | מיקום קובץ | תיאור |
 |------------------|------------|-------|
-| `GeneratedUserId` | `shared/types/core/id.types.ts` | type ID משתמש שנוצר |
 | `GeneratedPaymentIntentId` | `shared/types/core/id.types.ts` | type ID payment intent שנוצר |
-| `GeneratedInterceptorId` | `shared/types/core/id.types.ts` | type ID interceptor שנוצר |
-| `GeneratedId` | `shared/types/core/id.types.ts` | type ID שנוצר (union) |
 
 ### Shared Types (Infrastructure)
 
@@ -637,7 +633,6 @@
 |------------------|------------|-------|
 | `Position` | `shared/types/domain/validation.types.ts` | interface מיקום |
 | `BaseValidationResult` | `shared/types/domain/validation.types.ts` | interface תוצאת ולידציה בסיסית |
-| `PasswordValidationResult` | `shared/types/domain/validation.types.ts` | interface תוצאת ולידציית סיסמה |
 | `ValidationResult` | `shared/types/domain/validation.types.ts` | interface תוצאת ולידציה |
 | `ValidationOptions` | `shared/types/domain/validation.types.ts` | interface אפשרויות ולידציה |
 | `CustomDifficultyRequest` | `shared/types/domain/validation.types.ts` | interface בקשת קושי מותאם |
@@ -742,9 +737,7 @@
 | `validateTopicLength` | `shared/validation/core/topic.validation.ts` | ולידציית אורך נושא |
 | `isUuid` | `shared/validation/core/id.validation.ts` | בדיקת type guard ל-UUID |
 | `isRoomId` | `shared/validation/core/id.validation.ts` | בדיקת type guard ל-room ID |
-| `isGeneratedUserId` | `shared/validation/core/generatedId.validation.ts` | בדיקת type guard ל-generated user ID |
 | `isGeneratedPaymentIntentId` | `shared/validation/core/generatedId.validation.ts` | בדיקת type guard ל-generated payment intent ID |
-| `isGeneratedInterceptorId` | `shared/validation/core/generatedId.validation.ts` | בדיקת type guard ל-generated interceptor ID |
 | `performLocalLanguageValidation` | `shared/validation/core/language.validation.ts` | ולידציית שפה מקומית |
 | `performLocalLanguageValidationAsync` | `shared/validation/core/language.validation.ts` | ולידציית שפה מקומית אסינכרונית |
 
@@ -761,7 +754,7 @@
 | `isGameDifficulty` | `shared/validation/domain/difficulty.validation.ts` | בדיקת type guard לקושי משחק |
 | `extractCustomDifficultyText` | `shared/validation/domain/difficulty.validation.ts` | חילוץ טקסט קושי מותאם |
 | `createCustomDifficulty` | `shared/validation/domain/difficulty.validation.ts` | יצירת קושי מותאם |
-| `getDifficultyDisplayText` | `shared/validation/domain/difficulty.validation.ts` | קבלת טקסט תצוגת קושי |
+| `formatDifficulty` | `shared/utils/core/format.utils.ts` | פורמט קושי לתצוגה (משתמש ב-formatTitle) |
 | `validateCustomDifficultyText` | `shared/validation/domain/difficulty.validation.ts` | ולידציית טקסט קושי מותאם |
 | `isValidCardNumber` | `shared/validation/domain/payment.validation.ts` | בדיקת תקינות מספר כרטיס |
 | `isTimePeriod` | `shared/validation/domain/constants.validation.ts` | בדיקת type guard לתקופת זמן |
@@ -779,14 +772,13 @@
 |------------|------------|-------|
 | `normalizeGameData` | `shared/utils/domain/game.utils.ts` | נירמול נתוני משחק |
 | `toSavedGameConfiguration` | `shared/utils/domain/game.utils.ts` | המרה להגדרות שמורות |
-| `checkAnswerCorrectness` | `shared/utils/domain/answer.utils.ts` | בדיקת נכונות תשובה |
-| `createAnswerResult` | `shared/utils/domain/answer.utils.ts` | יצירת תוצאות תשובה |
+| `getCorrectAnswerIndex` | `shared/utils/domain/answer.utils.ts` | אינדקס התשובה הנכונה (או -1 אם לא תקין) |
+| `isAnswerCorrect` | `shared/utils/domain/answer.utils.ts` | האם התשובה שנבחרה נכונה |
 | `createAnswerHistory` | `shared/utils/domain/question.utils.ts` | יצירת נתוני שאלה |
 | `calculateAnswerScore` | `shared/utils/domain/score.utils.ts` | חישוב ניקוד תשובה |
 | `calculateTimeLimitedCredits` | `shared/utils/domain/credits.utils.ts` | חישוב נקודות מוגבלות זמן |
 | `calculateRequiredCredits` | `shared/utils/domain/credits.utils.ts` | חישוב נקודות נדרשות |
 | `shouldChargeAfterGame` | `shared/utils/domain/credits.utils.ts` | בדיקה אם לחייב אחרי משחק |
-| `isHostPaysOnly` | `shared/utils/domain/credits.utils.ts` | בדיקה אם רק מארח משלם |
 | `calculateNewBalance` | `shared/utils/domain/credits.utils.ts` | חישוב יתרה חדשה |
 | `mergeUserPreferences` | `shared/utils/domain/user.utils.ts` | מיזוג העדפות משתמש |
 | `validateGameMode` | `shared/utils/domain/gameMode.utils.ts` | ולידציית מצב משחק |
@@ -834,11 +826,8 @@
 | `calculateElapsedSeconds` | `shared/utils/core/number.utils.ts` | חישוב שניות שחלפו |
 | `calculateDuration` | `shared/utils/core/number.utils.ts` | חישוב משך זמן |
 | `calculateRetryDelay` | `shared/utils/core/retry.utils.ts` | חישוב השהיה לניסיון חוזר |
-| `calculateCurrentPage` | `shared/utils/core/pagination.utils.ts` | חישוב עמוד נוכחי |
-| `calculateTotalPages` | `shared/utils/core/pagination.utils.ts` | חישוב סך עמודים |
-| `calculateHasMore` | `shared/utils/core/pagination.utils.ts` | חישוב האם יש עוד |
-| `calculateHasNext` | `shared/utils/core/pagination.utils.ts` | חישוב האם יש הבא |
-| `calculateHasPrev` | `shared/utils/core/pagination.utils.ts` | חישוב האם יש קודם |
+| `calculateTotalPages` | `client/src/utils/domain/pagination.utils.ts` | חישוב סך עמודים (client) |
+| `hasMore` (inline) | offset + currentCount < total בשרת | חישוב האם יש עוד תוצאות |
 | `getErrorMessage` | `shared/utils/core/error.utils.ts` | קבלת הודעת שגיאה |
 | `getErrorStack` | `shared/utils/core/error.utils.ts` | קבלת stack trace שגיאה |
 | `getErrorType` | `shared/utils/core/error.utils.ts` | קבלת סוג שגיאה |
@@ -852,7 +841,6 @@
 | `hasPropertyOfType` | `shared/utils/core/data.utils.ts` | בדיקה אם יש property מסוג מסוים |
 | `isStringArray` | `shared/utils/core/data.utils.ts` | בדיקת type guard למערך מחרוזות |
 | `isNonEmptyString` | `shared/utils/core/data.utils.ts` | בדיקת type guard למחרוזת לא ריקה |
-| `isOneOf` | `shared/utils/core/data.utils.ts` | בדיקת type guard לערך מתוך רשימה |
 | `normalizeStringArray` | `shared/utils/core/data.utils.ts` | נירמול מערך מחרוזות |
 | `calculatePercentage` | `shared/utils/core/data.utils.ts` | חישוב אחוז |
 | `groupBy` | `shared/utils/core/data.utils.ts` | קיבוץ לפי מפתח |
@@ -882,10 +870,11 @@
 ### Client Utils
 | שם Function | מיקום קובץ | תיאור |
 |------------|------------|-------|
-| `formatTime` | `client/src/utils/core/format.utils.ts` | עיצוב זמן |
-| `formatTimeDisplay` | `client/src/utils/core/format.utils.ts` | עיצוב תצוגת זמן |
-| `formatDate` | `client/src/utils/core/format.utils.ts` | עיצוב תאריך |
-| `formatDuration` | `client/src/utils/core/format.utils.ts` | עיצוב משך זמן |
+| `formatTime` | `client/src/utils/core/format.utils.ts` | עיצוב זמן MM:SS |
+| `formatPlayTime` | `client/src/utils/core/format.utils.ts` | עיצוב משך משחק (שעות/דקות) |
+| `formatDate` | `client/src/utils/core/format.utils.ts` | עיצוב תאריך (re-export מ-shared) |
+| `formatDateShort` | `client/src/utils/core/format.utils.ts` | תאריך קצר DD/MM |
+| `formatDateTime` | `client/src/utils/core/format.utils.ts` | תאריך ושעה DD/MM/YYYY HH:mm |
 | `cn` | `client/src/utils/core/cn.utils.ts` | שילוב class names (clsx) |
 | `isValidAvatarId` | `client/src/utils/domain/avatar.utils.ts` | בדיקת תקינות ID אווטר |
 | `getAvatarUrl` | `client/src/utils/domain/avatar.utils.ts` | קבלת URL אווטר |
@@ -956,7 +945,6 @@
 | `MAX_NESTED_ERROR_DEPTH` | `shared/constants/core/error.constants.ts` | const number | מקסימום עומק שגיאה מקוננת |
 | `HTTP_TIMEOUT_ERROR_CODES_SET` | `shared/constants/core/error.constants.ts` | const Set | Set קודי שגיאת timeout HTTP |
 | `HTTP_NETWORK_ERROR_CODES_SET` | `shared/constants/core/error.constants.ts` | const Set | Set קודי שגיאת רשת HTTP |
-| `VALIDATION_DEBOUNCE_DELAYS` | `shared/constants/core/validation.constants.ts` | const object | השהיות debounce ולידציה |
 | `ClientValidationType` | `shared/constants/core/validation.constants.ts` | enum | סוגי ולידציה לקוח |
 | `VALIDATION_LENGTH` | `shared/constants/core/validation.constants.ts` | const object | אורכי ולידציה |
 | `VALIDATION_COUNT` | `shared/constants/core/validation.constants.ts` | const object | ספירות ולידציה |
@@ -967,9 +955,7 @@
 | `GRAMMAR_PATTERNS` | `shared/constants/core/validation.constants.ts` | const array | דפוסי דקדוק |
 | `VALIDATORS` | `shared/constants/core/validation.constants.ts` | const object | ולידטורים |
 | `TIME_PERIODS_MS` | `shared/constants/core/time.constants.ts` | const object | תקופות זמן במילישניות |
-| `GENERATED_USER_ID_PREFIX` | `shared/constants/core/idPrefix.constants.ts` | const string | קידומת ID משתמש שנוצר |
-| `GENERATED_PAYMENT_INTENT_ID_PREFIX` | `shared/constants/core/idPrefix.constants.ts` | const string | קידומת ID payment intent שנוצר |
-| `GENERATED_INTERCEPTOR_ID_PREFIX` | `shared/constants/core/idPrefix.constants.ts` | const string | קידומת ID interceptor שנוצר |
+| `GENERATED_PAYMENT_INTENT_ID_PREFIX` | `shared/constants/domain/payment.constants.ts` | const string | קידומת ID payment intent שנוצר |
 
 #### Domain Constants
 | שם Constant/Enum | מיקום קובץ | סוג | תיאור |
@@ -978,19 +964,20 @@
 | `GameMode` | `shared/constants/domain/game.constants.ts` | enum | מצבי משחק |
 | `TimePeriod` | `shared/constants/domain/game.constants.ts` | enum | תקופות זמן |
 | `LeaderboardPeriod` | `shared/constants/domain/game.constants.ts` | enum | תקופות טבלת לוחות |
-| `PlayerType` | `shared/constants/domain/game.constants.ts` | enum | סוגי שחקנים |
 | `GameStatus` | `shared/constants/domain/game.constants.ts` | enum | סטטוסי משחק |
+| `GAME_STATUSES` | `shared/constants/domain/game.constants.ts` | const Set | Set סטטוסי משחק תקינים |
+| `TimerMode` | `shared/constants/domain/game.constants.ts` | enum | מצבי טיימר |
 | `ProviderStatus` | `shared/constants/domain/game.constants.ts` | enum | סטטוסי ספק |
+| `LEADERBOARD_SCORE_FIELDS` | `shared/constants/domain/game.constants.ts` | const object | שמות שדות ציון לטבלת לוחות |
+| `LEADERBOARD_PERIOD_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות תקופות טבלת לוחות |
+| `MAX_POINTS_PER_QUESTION` | `shared/constants/domain/game.constants.ts` | const number | מקסימום נקודות לשאלה |
 | `CUSTOM_DIFFICULTY_PREFIX` | `shared/constants/domain/game.constants.ts` | const string | קידומת קושי מותאם |
 | `TIME_LIMITED_CREDITS_PER_30_SECONDS` | `shared/constants/domain/game.constants.ts` | const number | נקודות מוגבלות זמן לכל 30 שניות |
-| `CREDIT_COSTS` | `shared/constants/domain/game.constants.ts` | const object | עלויות נקודות |
-| `GAME_MODE_DEFAULTS` | `shared/constants/domain/game.constants.ts` | const object | ברירות מחדל מצב משחק |
-| `GAME_MODES_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות מצבי משחק |
+| `GAME_MODES_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות מצבי משחק (שם, תיאור, ברירות מחדל, עלויות נקודות) |
 | `DEFAULT_GAME_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות משחק ברירת מחדל |
 | `GAME_STATE_DEFAULTS` | `shared/constants/domain/game.constants.ts` | const object | ברירות מחדל מצב משחק |
 | `BASIC_TOPICS` | `shared/constants/domain/game.constants.ts` | const array | נושאים בסיסיים |
-| `GROQ_DEFAULT_MODEL` | `shared/constants/domain/game.constants.ts` | const string | מודל Groq ברירת מחדל |
-| `GROQ_FREE_TIER_MODELS` | `shared/constants/domain/game.constants.ts` | const array | מודלי Groq חינמיים |
+| `GROQ_FREE_TIER_MODELS` | `shared/constants/domain/game.constants.ts` | const array | מודלי Groq חינמיים (ברירת מחדל = אלמנט ראשון) |
 | `GROQ_MODELS` | `shared/constants/domain/game.constants.ts` | const object | מודלי Groq |
 | `GROQ_DEFAULT_MODEL_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות מודל Groq ברירת מחדל |
 | `GROQ_DEFAULT_REQUESTS_PER_MINUTE` | `shared/constants/domain/game.constants.ts` | const number | בקשות Groq לדקה ברירת מחדל |
@@ -1001,14 +988,10 @@
 | `GROQ_DEFAULT_MAX_TOKENS` | `shared/constants/domain/game.constants.ts` | const number | מקסימום טוקנים Groq ברירת מחדל |
 | `GROQ_PROVIDER_MAX_TOKENS` | `shared/constants/domain/game.constants.ts` | const number | מקסימום טוקנים ספק Groq |
 | `GROQ_PROVIDER_VERSION` | `shared/constants/domain/game.constants.ts` | const string | גרסת ספק Groq |
-| `VALID_DIFFICULTIES` | `shared/constants/domain/game.constants.ts` | const array | קושיים תקינים |
-| `VALID_DIFFICULTIES_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set קושיים תקינים |
-| `VALID_GAME_MODES` | `shared/constants/domain/game.constants.ts` | const array | מצבי משחק תקינים |
-| `VALID_GAME_MODES_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set מצבי משחק תקינים |
-| `VALID_TIME_PERIODS` | `shared/constants/domain/game.constants.ts` | const array | תקופות זמן תקינות |
-| `VALID_TIME_PERIODS_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות זמן תקינות |
-| `VALID_LEADERBOARD_PERIODS` | `shared/constants/domain/game.constants.ts` | const array | תקופות טבלת לוחות תקינות |
-| `VALID_LEADERBOARD_PERIODS_SET` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות טבלת לוחות תקינות |
+| `DIFFICULTIES` | `shared/constants/domain/game.constants.ts` | const Set | Set קושיים תקינים |
+| `GAME_MODES` | `shared/constants/domain/game.constants.ts` | const Set | Set מצבי משחק תקינים |
+| `TIME_PERIODS` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות זמן תקינות |
+| `LEADERBOARD_PERIODS` | `shared/constants/domain/game.constants.ts` | const Set | Set תקופות טבלת לוחות תקינות |
 | `AnalyticsResult` | `shared/constants/domain/analytics.constants.ts` | enum | תוצאות אנליטיקה |
 | `ComparisonTarget` | `shared/constants/domain/analytics.constants.ts` | enum | יעדי השוואה |
 | `AnalyticsEnvironment` | `shared/constants/domain/analytics.constants.ts` | enum | סביבות אנליטיקה |
@@ -1016,6 +999,7 @@
 | `AnalyticsEventType` | `shared/constants/domain/analytics.constants.ts` | enum | סוגי אירועי אנליטיקה |
 | `AnalyticsPageName` | `shared/constants/domain/analytics.constants.ts` | enum | שמות דפי אנליטיקה |
 | `AnalyticsAction` | `shared/constants/domain/analytics.constants.ts` | enum | פעולות אנליטיקה |
+| `SYSTEM_HEALTH_THRESHOLDS` | `shared/constants/domain/analytics.constants.ts` | const object | סף בריאות מערכת (שיעור שגיאות, זיכרון, כניסות כושלות) |
 | `CreditTransactionType` | `shared/constants/domain/credits.constants.ts` | enum | סוגי עסקות נקודות |
 | `CreditSource` | `shared/constants/domain/credits.constants.ts` | enum | מקורות נקודות |
 | `PaymentStatus` | `shared/constants/domain/payment.constants.ts` | enum | סטטוסי תשלום |
@@ -1023,11 +1007,7 @@
 | `PayPalEnvironment` | `shared/constants/domain/payment.constants.ts` | enum | סביבות PayPal |
 | `PaymentClientAction` | `shared/constants/domain/payment.constants.ts` | enum | פעולות תשלום לקוח |
 | `PlanType` | `shared/constants/domain/payment.constants.ts` | enum | סוגי תוכניות |
-| `RequestSource` | `shared/constants/domain/payment.constants.ts` | enum | מקורות בקשה |
-| `VALID_PAYMENT_METHODS` | `shared/constants/domain/payment.constants.ts` | const array | שיטות תשלום תקינות |
-| `VALID_PAYMENT_METHODS_SET` | `shared/constants/domain/payment.constants.ts` | const Set | Set שיטות תשלום תקינות |
-| `VALID_PLAN_TYPES` | `shared/constants/domain/payment.constants.ts` | const array | סוגי תוכניות תקינים |
-| `MANUAL_CREDIT_SUPPORTED_CARD_LENGTHS` | `shared/constants/domain/payment.constants.ts` | const object | אורכי כרטיסים נתמכים תשלום ידני |
+| `PAYMENT_METHODS` | `shared/constants/domain/payment.constants.ts` | const Set | Set שיטות תשלום תקינות |
 | `CREDIT_PURCHASE_PACKAGES` | `shared/constants/domain/payment.constants.ts` | const array | חבילות רכישת נקודות |
 | `CREDIT_PURCHASE_PACKAGES_BY_ID` | `shared/constants/domain/payment.constants.ts` | const Map | Map חבילות רכישה לפי ID |
 | `CREDIT_PURCHASE_PACKAGES_BY_CREDITS` | `shared/constants/domain/payment.constants.ts` | const Map | Map חבילות רכישה לפי נקודות |
@@ -1042,11 +1022,10 @@
 | `QuestionState` | `shared/constants/domain/multiplayer.constants.ts` | enum | מצבי שאלה |
 | `LLMResponseStatus` | `shared/constants/domain/ai.constants.ts` | enum | סטטוסי תגובת LLM |
 | `ProviderHealthStatus` | `shared/constants/domain/ai.constants.ts` | enum | סטטוסי בריאות ספק |
-| `PROVIDER_HEALTH_STATUSES` | `shared/constants/domain/ai.constants.ts` | const array | סטטוסי בריאות ספק תקינים |
 | `UserRole` | `shared/constants/domain/user.constants.ts` | enum | תפקידי משתמש |
 | `UserStatus` | `shared/constants/domain/user.constants.ts` | enum | סטטוסי משתמש |
-| `VALID_USER_STATUSES` | `shared/constants/domain/user.constants.ts` | const array | סטטוסי משתמש תקינים |
-| `VALID_USER_STATUSES_SET` | `shared/constants/domain/user.constants.ts` | const Set | Set סטטוסי משתמש תקינים |
+| `USER_ROLES` | `shared/constants/domain/user.constants.ts` | const Set | Set תפקידי משתמש תקינים |
+| `USER_STATUSES` | `shared/constants/domain/user.constants.ts` | const Set | Set סטטוסי משתמש תקינים |
 | `DEFAULT_USER_PREFERENCES` | `shared/constants/domain/user.constants.ts` | const object | העדפות משתמש ברירת מחדל |
 
 #### Infrastructure Constants
@@ -1055,8 +1034,6 @@
 | `CACHE_KEYS` | `shared/constants/infrastructure/cacheKeys.constants.ts` | const object | מפתחות cache (מקור) |
 | `SERVER_CACHE_KEYS` | `shared/constants/infrastructure/cacheKeys.constants.ts` | const object | מפתחות cache שרת (alias ל-CACHE_KEYS) |
 | `CLIENT_TO_SERVER_MAP` | `shared/constants/infrastructure/cacheKeys.constants.ts` | const object | מיפוי client לשרת |
-| `DEFAULT_PORTS` | `shared/constants/infrastructure/infrastructure.constants.ts` | const object | פורטים ברירת מחדל |
-| `DEFAULT_URLS` | `shared/constants/infrastructure/infrastructure.constants.ts` | const object | כתובות ברירת מחדל |
 | `LOCALHOST_URLS` | `shared/constants/infrastructure/localhost.constants.ts` | const object | כתובות localhost |
 | `LOCALHOST_PORTS` | `shared/constants/infrastructure/localhost.constants.ts` | const object | פורטים localhost |
 | `LOCALHOST_HOSTS` | `shared/constants/infrastructure/localhost.constants.ts` | const object | hosts localhost |
@@ -1065,7 +1042,6 @@
 | `LOCALHOST_CONFIG` | `shared/constants/infrastructure/localhost.constants.ts` | const object | הגדרות localhost |
 | `STORAGE_CONFIG` | `shared/constants/infrastructure/storage.constants.ts` | const object | הגדרות אחסון |
 | `StorageType` | `shared/constants/infrastructure/storage.constants.ts` | enum | סוגי אחסון |
-| `CACHE_DURATION` | `shared/constants/infrastructure/storage.constants.ts` | const object | משכי cache |
 | `LogLevel` | `shared/constants/infrastructure/logging.constants.ts` | enum | רמות לוג |
 | `LOG_ICONS` | `shared/constants/infrastructure/logging.constants.ts` | const object | אייקוני לוג |
 | `LOG_LEVEL_PROPERTIES` | `shared/constants/infrastructure/logging.constants.ts` | const object | תכונות רמות לוג |
@@ -1077,7 +1053,6 @@
 | `HTTP_TIMEOUTS` | `shared/constants/infrastructure/http.constants.ts` | const object | timeouts HTTP |
 | `HTTP_STATUS_CODES` | `shared/constants/infrastructure/http.constants.ts` | const object | קודי סטטוס HTTP |
 | `HttpMethod` | `shared/constants/infrastructure/http.constants.ts` | enum | שיטות HTTP |
-| `HTTP_ERROR_MESSAGES` | `shared/constants/infrastructure/http.constants.ts` | const object | הודעות שגיאה HTTP |
 
 ### Client Constants
 
@@ -1089,7 +1064,7 @@
 | `InteractiveSize` | `client/src/constants/core/ui/size.constants.ts` | type | גדלים אינטראקטיביים |
 | `ButtonSize` | `client/src/constants/core/ui/size.constants.ts` | enum | גדלי כפתור |
 | `SpinnerSize` | `client/src/constants/core/ui/size.constants.ts` | enum | גדלי ספינר |
-| `ButtonVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של כפתור |
+| `ButtonVariant` | `client/src/constants/core/ui/variant.constants.ts` | type | וריאנט כפתור (VariantBase ללא STATIC) |
 | `StatCardVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של כרטיס סטטיסטיקה |
 | `ToastVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של toast |
 | `SpinnerVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של ספינר |

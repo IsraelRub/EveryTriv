@@ -1,38 +1,39 @@
 import {
 	API_ENDPOINTS,
 	ERROR_MESSAGES,
+	GAME_MODES,
+	GAME_STATE_DEFAULTS,
 	GameMode,
 	QUERY_PARAMS,
-	VALID_GAME_MODES_SET,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
-	AnswerResult,
 	ClearOperationResponse,
 	GameData,
 	GameDifficulty,
 	GameHistoryEntry,
 	GameHistoryResponse,
 	GameSessionStartResponse,
+	SubmitAnswerResult,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, isNonEmptyString, normalizeGameData } from '@shared/utils';
 import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
 
-import { GAME_STATE_DEFAULTS, VALIDATION_MESSAGES } from '@/constants';
 import { apiService, clientLogger as logger } from '@/services';
+import { validateListQueryParams } from '@/utils';
 
 class GameHistoryService {
 	async saveGameResult(gameData: GameData): Promise<GameHistoryEntry> {
 		try {
 			if (!isNonEmptyString(gameData.userId)) {
-				throw new Error(ERROR_MESSAGES.validation.USER_ID_REQUIRED_FOR_HISTORY);
+				throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED_FOR_HISTORY);
 			}
 			const userId = gameData.userId;
 
 			if (!isValidDifficulty(gameData.difficulty)) {
 				throw new Error(ERROR_MESSAGES.validation.INVALID_DIFFICULTY_LEVEL(gameData.difficulty));
 			}
-			if (!VALID_GAME_MODES_SET.has(gameData.gameMode)) {
+			if (!GAME_MODES.has(gameData.gameMode)) {
 				throw new Error(ERROR_MESSAGES.validation.INVALID_GAME_MODE(gameData.gameMode));
 			}
 
@@ -70,15 +71,9 @@ class GameHistoryService {
 	}
 
 	async getUserGameHistory(limit: number = 20, offset: number = 0): Promise<GameHistoryEntry[]> {
-		try {
-			// Validate pagination parameters
-			if (limit && (limit < 1 || limit > 1000)) {
-				throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(1, 1000));
-			}
-			if (offset && offset < 0) {
-				throw new Error(VALIDATION_MESSAGES.OFFSET_NON_NEGATIVE);
-			}
+		validateListQueryParams(limit, offset);
 
+		try {
 			const searchParams = new URLSearchParams();
 			if (limit != null) searchParams.append(QUERY_PARAMS.LIMIT, String(limit));
 			if (offset != null) searchParams.append(QUERY_PARAMS.OFFSET, String(offset));
@@ -167,23 +162,20 @@ class GameHistoryService {
 		questionId: string,
 		answer: number,
 		timeSpent: number
-	): Promise<AnswerResult & { sessionScore: number }> {
+	): Promise<SubmitAnswerResult> {
 		try {
 			// Validate answer value (0 to MAX_ANSWER_COUNT-1)
 			const maxAnswerIndex = VALIDATION_COUNT.ANSWER_COUNT.MAX - 1;
 			if (typeof answer !== 'number' || isNaN(answer) || answer < 0 || answer > maxAnswerIndex) {
-				throw new Error(`Invalid answer value: must be a number between 0 and ${maxAnswerIndex}`);
+				throw new Error(ERROR_MESSAGES.game.INVALID_ANSWER_INDEX(maxAnswerIndex));
 			}
 
-			const response = await apiService.post<AnswerResult & { sessionScore: number }>(
-				API_ENDPOINTS.GAME.SESSION_ANSWER,
-				{
-					gameId,
-					questionId,
-					answer,
-					timeSpent,
-				}
-			);
+			const response = await apiService.post<SubmitAnswerResult>(API_ENDPOINTS.GAME.SESSION_ANSWER, {
+				gameId,
+				questionId,
+				answer,
+				timeSpent,
+			});
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to submit answer to session', {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthenticationEvent, ERROR_CODES, LogLevel } from '@shared/constants';
+import { AuthenticationEvent, ErrorCode, LogLevel } from '@shared/constants';
 import type { AuthCredentials, AuthenticationResult, UserData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
@@ -25,7 +25,7 @@ export class AuthenticationManager {
 					userId: userData.id,
 				});
 				return {
-					error: ERROR_CODES.ACCOUNT_IS_INACTIVE,
+					error: ErrorCode.ACCOUNT_IS_INACTIVE,
 				};
 			}
 
@@ -39,7 +39,7 @@ export class AuthenticationManager {
 					contextMessage: 'password_mismatch',
 				});
 				return {
-					error: ERROR_CODES.INVALID_CREDENTIALS,
+					error: ErrorCode.INVALID_CREDENTIALS,
 				};
 			}
 
@@ -54,7 +54,7 @@ export class AuthenticationManager {
 					errorInfo: { message: getErrorMessage(tokenError) },
 				});
 				return {
-					error: ERROR_CODES.TOKEN_GENERATION_FAILED,
+					error: ErrorCode.TOKEN_GENERATION_FAILED,
 				};
 			}
 
@@ -80,7 +80,7 @@ export class AuthenticationManager {
 				errorInfo: { message: getErrorMessage(error) },
 			});
 			return {
-				error: ERROR_CODES.AUTHENTICATION_FAILED_GENERIC,
+				error: ErrorCode.AUTHENTICATION_FAILED_GENERIC,
 			};
 		}
 	}
@@ -94,7 +94,7 @@ export class AuthenticationManager {
 			if (!tokenResult.isValid || !tokenResult.payload) {
 				logger.securityDenied('Invalid refresh token');
 				return {
-					error: ERROR_CODES.INVALID_REFRESH_TOKEN,
+					error: ErrorCode.INVALID_REFRESH_TOKEN,
 				};
 			}
 
@@ -111,7 +111,7 @@ export class AuthenticationManager {
 					errorInfo: { message: getErrorMessage(tokenError) },
 				});
 				return {
-					error: ERROR_CODES.TOKEN_GENERATION_FAILED,
+					error: ErrorCode.TOKEN_GENERATION_FAILED,
 				};
 			}
 
@@ -134,7 +134,7 @@ export class AuthenticationManager {
 				errorInfo: { message: getErrorMessage(error) },
 			});
 			return {
-				error: ERROR_CODES.TOKEN_REFRESH_FAILED,
+				error: ErrorCode.TOKEN_REFRESH_FAILED,
 			};
 		}
 	}

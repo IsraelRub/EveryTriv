@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import { formatForDisplay } from '@shared/utils';
-import { getDifficultyDisplayText, isGameDifficulty } from '@shared/validation';
+import { formatDifficulty, formatNumericValue } from '@shared/utils';
+import { isGameDifficulty } from '@shared/validation';
 
 import { CHART_HEIGHTS, CssColor } from '@/constants';
 import type { DifficultyOverviewChartProps } from '@/types';
-import { getBarColorBySuccessRate, isDifficultyTooltipPoint, toHslColor } from '@/utils';
+import { getBarColorBySuccessRate, isDifficultyTooltipPoint } from '@/utils';
 
 export const DifficultyOverviewChart = memo(function DifficultyOverviewChart({
 	difficultyData,
@@ -21,7 +21,7 @@ export const DifficultyOverviewChart = memo(function DifficultyOverviewChart({
 			.map(([difficulty, stats]) => {
 				if (!isGameDifficulty(difficulty) || !stats) return null;
 				return {
-					name: getDifficultyDisplayText(difficulty),
+					name: formatDifficulty(difficulty),
 					games: stats.total,
 					successRate: stats.successRate ?? 0,
 				};
@@ -41,10 +41,10 @@ export const DifficultyOverviewChart = memo(function DifficultyOverviewChart({
 				style={{ direction: 'ltr' }}
 				barCategoryGap='20%'
 			>
-				<CartesianGrid strokeDasharray='3 3' stroke={toHslColor(CssColor.MUTED_FOREGROUND, 0.2)} horizontal={false} />
+				<CartesianGrid strokeDasharray='3 3' stroke={CssColor.MUTED_FOREGROUND_20} horizontal={false} />
 				<XAxis
 					type='number'
-					stroke={toHslColor(CssColor.MUTED_FOREGROUND)}
+					stroke={CssColor.MUTED_FOREGROUND}
 					style={{ fontSize: '12px' }}
 					label={{ value: valueLabel, position: 'bottom', offset: 10 }}
 				/>
@@ -52,17 +52,17 @@ export const DifficultyOverviewChart = memo(function DifficultyOverviewChart({
 					dataKey='name'
 					type='category'
 					width={100}
-					stroke={toHslColor(CssColor.PRIMARY)}
+					stroke={CssColor.PRIMARY}
 					style={{ fontSize: '12px' }}
-					tick={{ fill: toHslColor(CssColor.FOREGROUND) }}
+					tick={{ fill: CssColor.FOREGROUND }}
 					label={{ value: 'Difficulty', angle: -90, position: 'left', style: { textAnchor: 'middle' } }}
 				/>
 				<Tooltip
-					cursor={{ fill: toHslColor(CssColor.MUTED, 0.2), radius: 4 }}
+					cursor={{ fill: CssColor.MUTED_20, radius: 4 }}
 					contentStyle={{
 						direction: 'rtl',
-						backgroundColor: toHslColor(CssColor.CARD),
-						border: `1px solid ${toHslColor(CssColor.BORDER)}`,
+						backgroundColor: CssColor.CARD,
+						border: `1px solid ${CssColor.BORDER}`,
 						borderRadius: '8px',
 					}}
 					content={({ active, payload }) => {
@@ -74,8 +74,10 @@ export const DifficultyOverviewChart = memo(function DifficultyOverviewChart({
 							<div className='px-3 py-2 space-y-1'>
 								<div className='font-medium'>{point.name}</div>
 								<div className='text-muted-foreground text-sm space-y-0.5'>
-									<div>{valueLabel}: {formatForDisplay(point.games, 0)}</div>
-									<div>Success Rate: {formatForDisplay(point.successRate)}%</div>
+									<div>
+										{valueLabel}: {formatNumericValue(point.games, 0)}
+									</div>
+									<div>Success Rate: {formatNumericValue(point.successRate, 2, '%')}</div>
 								</div>
 							</div>
 						);

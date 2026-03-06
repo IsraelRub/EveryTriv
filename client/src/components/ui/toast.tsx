@@ -6,6 +6,22 @@ import { X } from 'lucide-react';
 import { ToastVariant } from '@/constants';
 import { cn } from '@/utils';
 
+export const toastVariants = cva(
+	'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
+	{
+		variants: {
+			variant: {
+				[ToastVariant.DEFAULT]: 'border bg-background text-foreground',
+				[ToastVariant.DESTRUCTIVE]: 'destructive group border-destructive bg-destructive text-destructive-foreground',
+				[ToastVariant.SUCCESS]: 'border-green-500 bg-green-50 text-green-900',
+				[ToastVariant.WARNING]: 'border-yellow-500 bg-yellow-50 text-yellow-900',
+				[ToastVariant.INFO]: 'border-blue-500 bg-blue-50 text-blue-900',
+			},
+		},
+		defaultVariants: { variant: ToastVariant.DEFAULT },
+	}
+);
+
 export type ToastProps = ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & VariantProps<typeof toastVariants>;
 export type ToastActionElement = ReactElement<typeof ToastPrimitive.Action>;
 
@@ -25,24 +41,6 @@ export const ToastViewport = forwardRef<
 	/>
 ));
 ToastViewport.displayName = 'ToastViewport';
-
-export const toastVariants = cva(
-	'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
-	{
-		variants: {
-			variant: {
-				[ToastVariant.DEFAULT]: 'border bg-background text-foreground',
-				[ToastVariant.DESTRUCTIVE]: 'destructive group border-destructive bg-destructive text-destructive-foreground',
-				[ToastVariant.SUCCESS]: 'border-green-500 bg-green-50 text-green-900',
-				[ToastVariant.WARNING]: 'border-yellow-500 bg-yellow-50 text-yellow-900',
-				[ToastVariant.INFO]: 'border-blue-500 bg-blue-50 text-blue-900',
-			},
-		},
-		defaultVariants: {
-			variant: ToastVariant.DEFAULT,
-		},
-	}
-);
 
 export const Toast = forwardRef<ElementRef<typeof ToastPrimitive.Root>, ToastProps>(
 	({ className, variant, ...props }, ref) => {

@@ -1,9 +1,12 @@
+import { sumBy } from '@shared/utils';
+
+import { CssColor } from '@/constants';
 import type { ChartDataPoint } from '@/types';
 
 export function getBarColorBySuccessRate(successRate: number): string {
-	const clamped = Math.max(0, Math.min(100, successRate));
-	const hue = clamped < 50 ? (clamped / 50) * 40 : 40 + ((clamped - 50) / 50) * 80;
-	return `hsl(${hue}, 70%, 45%)`;
+	if (successRate >= 70) return CssColor.SUCCESS_500;
+	if (successRate >= 40) return CssColor.WARNING_500;
+	return CssColor.DESTRUCTIVE;
 }
 
 export function sortChartDataByValue(data: ChartDataPoint[]): ChartDataPoint[] {
@@ -51,6 +54,5 @@ export function processChartDataWithOthers(
 }
 
 export function calculateChartDataSum(data: ChartDataPoint[]): number {
-	if (!data || data.length === 0) return 0;
-	return data.reduce((sum, item) => sum + item.value, 0);
+	return sumBy(data, item => item.value);
 }

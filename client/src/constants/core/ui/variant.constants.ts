@@ -1,21 +1,16 @@
 export enum VariantBase {
 	DEFAULT = 'default',
 	DESTRUCTIVE = 'destructive',
+	MINIMAL = 'minimal',
 	OUTLINE = 'outline',
 	SECONDARY = 'secondary',
+	STATIC = 'static',
 }
 
-export enum ButtonVariant {
-	DEFAULT = VariantBase.DEFAULT,
-	DESTRUCTIVE = VariantBase.DESTRUCTIVE,
-	OUTLINE = VariantBase.OUTLINE,
-	SECONDARY = VariantBase.SECONDARY,
-	GHOST = 'ghost',
-}
+export type ButtonVariant = Exclude<VariantBase, VariantBase.STATIC>;
 
 export enum StatCardVariant {
 	HORIZONTAL = 'horizontal',
-	VERTICAL = 'vertical',
 	CENTERED = 'centered',
 }
 
@@ -25,4 +20,14 @@ export enum ToastVariant {
 	SUCCESS = 'success',
 	WARNING = 'warning',
 	INFO = 'info',
+}
+
+export enum TabsListVariant {
+	DEFAULT = 'default',
+	COMPACT = 'compact',
+}
+
+export enum AlertVariant {
+	DEFAULT = 'default',
+	DESTRUCTIVE = 'destructive',
 }

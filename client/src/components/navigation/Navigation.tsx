@@ -1,18 +1,15 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { LogOut, Shield, User } from 'lucide-react';
+import { CircleUser, LogOut, Menu, Shield } from 'lucide-react';
 
 import { APP_NAME, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { ButtonSize, ButtonVariant, NAVIGATION_LINKS, ROUTES } from '@/constants';
+import { AvatarSize, ButtonSize, DISPLAY_NAME_FALLBACKS, NAVIGATION_LINKS, ROUTES, VariantBase } from '@/constants';
 import {
 	AudioControls,
-	Avatar,
-	AvatarFallback,
-	AvatarImage,
 	Button,
 	CreditBalance,
 	DropdownMenu,
@@ -22,11 +19,12 @@ import {
 	DropdownMenuTrigger,
 	NavLink,
 	ProfileEditDialog,
+	UserAvatar,
 } from '@/components';
 import { useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
 import { authService, clientLogger as logger } from '@/services';
 import type { NavigationLink } from '@/types';
-import { getAvatarUrl, getUserInitials } from '@/utils';
+import { getDisplayNameFromUser } from '@/utils';
 
 export function Navigation() {
 	const navigate = useNavigate();
@@ -38,17 +36,17 @@ export function Navigation() {
 	const userRole = useUserRole();
 	const isAdmin = userRole === UserRole.ADMIN;
 	const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-
-	// Get avatar from currentUser
-	const avatar = currentUser?.avatar ?? null;
+	const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
 	const mainNavItems = NAVIGATION_LINKS.main;
 	const authenticatedNavItems = isAuthenticated ? NAVIGATION_LINKS.authenticated : [];
 	const adminNavItems = isAdmin ? NAVIGATION_LINKS.admin : [];
 
-	const handleSignIn = () => {
-		navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } });
-	};
+	const navSections: { items: typeof mainNavItems; showIcon?: boolean }[] = [
+		{ items: mainNavItems },
+		{ items: authenticatedNavItems },
+		{ items: adminNavItems, showIcon: true },
+	].filter(s => s.items.length > 0);
 
 	const handleLogout = async () => {
 		try {
@@ -67,68 +65,74 @@ export function Navigation() {
 			className='sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
 		>
 			<div className='container mx-auto px-4'>
-				<div className='flex h-16 items-center justify-between'>
-					<div className='flex items-center gap-6'>
-						<NavLink to={ROUTES.HOME} className='flex items-center gap-2 text-2xl font-bold text-foreground'>
+				<div className='flex h-16 items-center justify-between gap-2'>
+					<div className='flex min-w-0 flex-1 items-center gap-4 lg:gap-6'>
+						<NavLink to={ROUTES.HOME} className='flex shrink-0 items-center gap-2 text-2xl font-bold text-foreground'>
 							<img src='/assets/logo.svg' className='h-8 w-8 flex-shrink-0 object-contain' width={32} height={32} />
-							{APP_NAME}
+							<span className='truncate'>{APP_NAME}</span>
 						</NavLink>
 
-						{/* Main Navigation Links */}
-						{mainNavItems.length > 0 && (
-							<>
-								<div className='h-4 w-px bg-border' />
-								{mainNavItems.map((item: NavigationLink) => (
-									<NavLink
-										key={item.path}
-										to={item.path}
-										className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
-										activeClassName='text-foreground'
-									>
-										{item.label}
-									</NavLink>
-								))}
-							</>
-						)}
+						{/* Desktop: inline links */}
+						<div className='hidden lg:flex lg:items-center lg:gap-6'>
+							{navSections.map((section, sectionIndex) => (
+								<Fragment key={`desktop-${sectionIndex}`}>
+									{sectionIndex > 0 && <div className='h-4 w-px bg-border' />}
+									{section.items.map((item: NavigationLink) => (
+										<NavLink
+											key={item.path}
+											to={item.path}
+											className={
+												section.showIcon
+													? 'text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 whitespace-nowrap'
+													: 'text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap'
+											}
+											activeClassName='text-foreground'
+										>
+											{section.showIcon && <Shield className='h-4 w-4 shrink-0' />}
+											{item.label}
+										</NavLink>
+									))}
+								</Fragment>
+							))}
+						</div>
 
-						{/* Authenticated Navigation Links */}
-						{authenticatedNavItems.length > 0 && (
-							<>
-								<div className='h-4 w-px bg-border' />
-								{authenticatedNavItems.map((item: NavigationLink) => (
-									<NavLink
-										key={item.path}
-										to={item.path}
-										className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
-										activeClassName='text-foreground'
+						{/* Narrow viewport: dropdown menu */}
+						{navSections.length > 0 && (
+							<DropdownMenu open={isNavMenuOpen} onOpenChange={setIsNavMenuOpen}>
+								<DropdownMenuTrigger asChild className='lg:hidden'>
+									<Button
+										variant={VariantBase.MINIMAL}
+										size={ButtonSize.ICON_MD}
+										className='relative border-2 border-white'
 									>
-										{item.label}
-									</NavLink>
-								))}
-							</>
-						)}
-
-						{/* Admin Navigation Links */}
-						{adminNavItems.length > 0 && (
-							<>
-								<div className='h-4 w-px bg-border' />
-								{adminNavItems.map((item: NavigationLink) => (
-									<NavLink
-										key={item.path}
-										to={item.path}
-										className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1'
-										activeClassName='text-foreground'
-									>
-										<Shield className='h-4 w-4' />
-										{item.label}
-									</NavLink>
-								))}
-							</>
+										<Menu className='h-5 w-5' />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align='start' className='w-56'>
+									{navSections.map((section, sectionIndex) => (
+										<Fragment key={`dropdown-${sectionIndex}`}>
+											{sectionIndex > 0 && <DropdownMenuSeparator />}
+											{section.items.map((item: NavigationLink) => (
+												<DropdownMenuItem key={item.path} asChild>
+													<NavLink
+														to={item.path}
+														className={section.showIcon ? 'flex w-full items-center gap-1' : 'flex w-full'}
+														onClick={() => setIsNavMenuOpen(false)}
+													>
+														{section.showIcon && <Shield className='h-4 w-4' />}
+														{item.label}
+													</NavLink>
+												</DropdownMenuItem>
+											))}
+										</Fragment>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
 						)}
 					</div>
 
 					{/* Right Side Actions */}
-					<div className='flex items-center gap-5'>
+					<div className='flex shrink-0 items-center gap-3 sm:gap-5'>
 						{/* Audio Controls */}
 						<AudioControls />
 
@@ -139,26 +143,36 @@ export function Navigation() {
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<Button
-										variant={ButtonVariant.GHOST}
-										className='relative h-9 w-9 !rounded-full p-0 hover:ring-2 hover:ring-ring'
+										variant={VariantBase.MINIMAL}
+										size={ButtonSize.ICON_MD}
+										className='relative !rounded-full hover:ring-2 hover:ring-primary hover:ring-offset-0'
 									>
-										<Avatar className='h-9 w-9 pointer-events-none'>
-											<AvatarImage src={getAvatarUrl(avatar)} />
-											<AvatarFallback>
-												{getUserInitials(currentUser?.firstName, currentUser?.lastName, currentUser?.email)}
-											</AvatarFallback>
-										</Avatar>
+										{currentUser && (
+											<UserAvatar
+												size={AvatarSize.NAV}
+												className='pointer-events-none'
+												user={{
+													firstName: currentUser.firstName,
+													lastName: currentUser.lastName,
+													email: currentUser.email,
+													avatar: currentUser.avatar,
+												}}
+												fallbackLetter={DISPLAY_NAME_FALLBACKS.USER_SHORT}
+											/>
+										)}
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align='end' className='w-56'>
-									<div className='flex items-center justify-start gap-2 p-2'>
-										<div className='flex flex-col space-y-1 leading-none'>
-											<p className='font-medium'>{currentUser?.email}</p>
+									<div className='flex items-center justify-start gap-2 p-2 min-w-0'>
+										<div className='flex flex-col space-y-1 leading-none min-w-0'>
+											<p className='font-medium truncate'>
+												{currentUser ? getDisplayNameFromUser(currentUser) || currentUser.email : ''}
+											</p>
 										</div>
 									</div>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem onClick={() => setIsProfileDialogOpen(true)} className='gap-1'>
-										<User className='h-4 w-4' />
+										<CircleUser className='h-4 w-4' />
 										Profile
 									</DropdownMenuItem>
 									<DropdownMenuSeparator />
@@ -169,7 +183,10 @@ export function Navigation() {
 								</DropdownMenuContent>
 							</DropdownMenu>
 						) : (
-							<Button size={ButtonSize.SM} onClick={handleSignIn}>
+							<Button
+								size={ButtonSize.SM}
+								onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
+							>
 								Sign In
 							</Button>
 						)}

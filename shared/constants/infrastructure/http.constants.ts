@@ -1,9 +1,11 @@
+import { TIME_PERIODS_MS } from '../core/time.constants';
+
 export const HTTP_CLIENT_CONFIG = {
-	TIMEOUT: 30000, // 30 seconds
+	TIMEOUT: TIME_PERIODS_MS.THIRTY_SECONDS,
 	RETRY_ATTEMPTS: 3,
-	RETRY_ATTEMPTS_RATE_LIMIT: 5, // More attempts for rate limit errors
-	RETRY_DELAY: 1000, // 1 second
-	RETRY_DELAY_RATE_LIMIT: 5000, // 5 seconds minimum for rate limit errors
+	RETRY_ATTEMPTS_RATE_LIMIT: 5,
+	RETRY_DELAY: TIME_PERIODS_MS.SECOND,
+	RETRY_DELAY_RATE_LIMIT: TIME_PERIODS_MS.FIVE_SECONDS,
 	DEFAULT_HEADERS: {
 		'Content-Type': 'application/json',
 		Accept: 'application/json',
@@ -11,11 +13,10 @@ export const HTTP_CLIENT_CONFIG = {
 } as const;
 
 export const HTTP_TIMEOUTS = {
-	QUESTION_GENERATION: 30000, // 30 seconds
-	AI_PROVIDER: 30000, // 30 seconds
-	UPLOAD: 60000, // 60 seconds
-	/** Client timeout for trivia API - longer than server gen to allow for network + AI generation */
-	TRIVIA_CLIENT: 60000, // 60 seconds
+	QUESTION_GENERATION: 55 * TIME_PERIODS_MS.SECOND,
+	AI_PROVIDER: TIME_PERIODS_MS.THIRTY_SECONDS,
+	UPLOAD: TIME_PERIODS_MS.MINUTE,
+	TRIVIA_CLIENT: TIME_PERIODS_MS.TWO_MINUTES,
 } as const;
 
 export const HTTP_STATUS_CODES = {
@@ -45,10 +46,3 @@ export enum HttpMethod {
 	DELETE = 'DELETE',
 	OPTIONS = 'OPTIONS',
 }
-
-export const HTTP_ERROR_MESSAGES = {
-	NETWORK_ERROR: 'Network error occurred. Please check your connection.', // Same as ERROR_MESSAGES.general.NETWORK_ERROR
-	UNKNOWN_ERROR: 'An unknown error occurred.', // Same as ERROR_MESSAGES.general.UNKNOWN_ERROR
-	TIMEOUT_ERROR: 'Request timed out. Please try again.', // Same as ERROR_MESSAGES.general.TIMEOUT
-	SERVER_ERROR: 'Server error occurred. Please try again later.', // Similar to ERROR_MESSAGES.general.INTERNAL_SERVER_ERROR
-} as const;

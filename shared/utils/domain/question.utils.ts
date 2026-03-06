@@ -1,4 +1,4 @@
-import type { AnswerHistory, AnswerHistoryComplete, TriviaQuestion } from '../../types';
+import type { AnswerHistoryComplete, TriviaQuestion } from '../../types';
 import { getCorrectAnswerIndex } from './answer.utils';
 
 export function createAnswerHistory(
@@ -15,8 +15,4 @@ export function createAnswerHistory(
 		isCorrect,
 		timeSpent,
 	};
-}
-
-export function hasQuestionAccess(data: AnswerHistory): data is AnswerHistoryComplete {
-	return 'questionId' in data && 'userAnswerIndex' in data && 'correctAnswerIndex' in data;
 }

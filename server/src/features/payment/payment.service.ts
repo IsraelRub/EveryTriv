@@ -5,14 +5,15 @@ import { EntityManager, Repository } from 'typeorm';
 import {
 	CREDIT_PURCHASE_PACKAGES,
 	CREDIT_PURCHASE_PACKAGES_BY_CREDITS,
-	ERROR_CODES,
 	ERROR_MESSAGES,
+	ErrorCode,
+	PAYMENT_METHODS,
 	PaymentClientAction,
 	PaymentMethod,
 	PaymentStatus,
 	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
-	VALID_PAYMENT_METHODS_SET,
+	VALIDATION_PAYMENT,
 } from '@shared/constants';
 import type {
 	CreditPurchaseOption,
@@ -22,7 +23,6 @@ import type {
 	PayPalOrderRequest,
 } from '@shared/types';
 import { generatePaymentIntentId, getErrorMessage, sanitizeCardNumber } from '@shared/utils';
-import { detectCardBrand, extractLastFourDigits, isCreditPurchaseOptionArray } from '@shared/utils/domain';
 import { isValidCardNumber } from '@shared/validation';
 
 import { AppConfig } from '@config';
@@ -32,8 +32,10 @@ import { serverLogger as logger } from '@internal/services';
 import type { PayPalConfig } from '@internal/types';
 import { createServerError, createValidationError } from '@internal/utils';
 
+import { isCreditPurchaseOptionArray } from '../../internal/utils/entityGuards';
 import type { PaymentMethodDetailsDto } from './dtos/payment.dto';
 import { PayPalApiService } from './providers/paypal';
+import { detectCardBrand, extractLastFourDigits } from './utils/payment.utils';
 
 @Injectable()
 export class PaymentService {
@@ -156,7 +158,7 @@ export class PaymentService {
 			if (error instanceof Error && error.message) {
 				throw createServerError('process payment', error);
 			}
-			throw createServerError('process payment', new Error(ERROR_CODES.PAYMENT_PROCESSING_FAILED));
+			throw createServerError('process payment', new Error(ErrorCode.PAYMENT_PROCESSING_FAILED));
 		}
 	}
 
@@ -167,7 +169,7 @@ export class PaymentService {
 	}
 
 	private ensureValidPaymentMethod(method: PaymentMethod | undefined): void {
-		if (!method || !VALID_PAYMENT_METHODS_SET.has(method)) {
+		if (!method || !PAYMENT_METHODS.has(method)) {
 			throw createValidationError('payment method', 'string');
 		}
 	}
@@ -317,7 +319,7 @@ export class PaymentService {
 				return {
 					paymentId: paymentHistory.providerTransactionId,
 					status: PaymentStatus.FAILED,
-					message: `PayPal order status is ${order.status}, expected APPROVED or COMPLETED`,
+					message: ERROR_MESSAGES.payment.INVALID_PAYPAL_ORDER_STATUS(order.status),
 					amount: normalizedAmount,
 					currency,
 					paymentMethod: PaymentMethod.PAYPAL,
@@ -401,7 +403,7 @@ export class PaymentService {
 		if (!id || typeof id !== 'string') {
 			return false;
 		}
-		return id.trim().length >= 10 && /^[A-Z0-9_-]+$/i.test(id);
+		return id.trim().length >= VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH && /^[A-Z0-9_-]+$/i.test(id);
 	}
 
 	private buildPayPalOrderRequest(amount: number, currency: string, config: PayPalConfig): PayPalOrderRequest {
@@ -494,7 +496,7 @@ export class PaymentService {
 
 	buildManualPaymentDetails(dto: PaymentMethodDetailsDto): ManualPaymentDetails {
 		if (!dto.cardNumber || !dto.cvv) {
-			throw new BadRequestException(ERROR_CODES.CARD_DETAILS_REQUIRED);
+			throw new BadRequestException(ErrorCode.CARD_DETAILS_REQUIRED);
 		}
 		const { month, year } = this.parseExpiryDate(dto.expiryDate);
 		return {

@@ -734,7 +734,7 @@ export const storageService = new ClientStorageService();
 ### gameHistory.service.ts
 
 ```typescript
-import { GAME_STATE_DEFAULTS, VALID_GAME_MODES } from '@shared/constants';
+import { GAME_STATE_DEFAULTS, VALID_GAME_MODES_SET } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { GameData, GameHistoryEntry, LeaderboardEntry, UserRankData, UserStatsData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -856,7 +856,7 @@ export const gameHistoryService = new ClientGameHistoryService();
 ### credits.service.ts
 
 ```typescript
-import { GameMode, PaymentMethod, VALID_GAME_MODES } from '@shared/constants';
+import { GameMode, PaymentMethod, VALID_GAME_MODES_SET } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type { CanPlayResponse, CreditBalance, CreditPurchaseOption, CreditTransaction } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
@@ -985,7 +985,7 @@ class ClientCreditsService {
   }
 
   private resolveGameMode(gameMode: GameMode): GameMode | undefined {
-    return VALID_GAME_MODES.find(mode => mode === gameMode);
+    return VALID_GAME_MODES_SET.has(gameMode) ? gameMode : undefined;
   }
 }
 

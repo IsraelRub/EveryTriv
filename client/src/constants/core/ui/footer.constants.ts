@@ -1,5 +1,4 @@
 import type { FooterSection } from '@/types';
-
 import { NAVIGATION_LINKS } from './navigation.constants';
 
 export const FOOTER_SECTIONS: FooterSection[] = [

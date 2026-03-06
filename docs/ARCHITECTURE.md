@@ -33,7 +33,7 @@ EveryTriv הוא פלטפורמת טריוויה חכמה המבוססת על AI
 
 ### AI ו-Infrastructure
 - **Groq** - פרובידר AI עם תמיכה במודלים מרובים (Llama, GPT-OSS, Mixtral, Gemma)
-  - מודלים חינמיים: llama-3.1-8b-instant, gpt-oss-20b (priority 1)
+  - מודל חינמי: llama-3.1-8b-instant (priority 1)
   - מודלים נוספים: gpt-oss-120b, llama-3.1-70b-versatile (priority 2+)
 - **Docker** - containerization
 - **Docker Compose** - אורכיסטרציה
@@ -275,7 +275,7 @@ React Query הוא ה-Source of Truth היחיד למצב שרת (server state) 
 #### שירותי AI
 - **BaseProvider** - ממשק בסיס לספקי AI
 - **GroqProvider** - אינטגרציה עם Groq עם תמיכה במודלים מרובים
-  - מודלים חינמיים (priority 1): llama-3.1-8b-instant, gpt-oss-20b
+  - מודל חינמי (priority 1): llama-3.1-8b-instant
   - מודלים בתשלום (priority 2+): gpt-oss-120b, llama-3.1-70b-versatile, וכו'
 - **Models Configuration** - הגדרת מודלים עם priority, cost, rate limits
 

@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule as CommonAuthModule } from 'src/common/auth';
 
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
-import { CacheModule, StorageModule, UserCoreModule } from '@internal/modules';
+import { CacheModule, UserCoreModule } from '@internal/modules';
 
 import { UserDataPipe } from '../../common/pipes';
 import { AuthModule } from '../auth';
@@ -19,7 +19,6 @@ import { UserService } from './user.service';
 		UserCoreModule,
 		CreditsModule,
 		CacheModule,
-		StorageModule,
 	],
 	controllers: [UserController],
 	providers: [UserService, UserDataPipe],

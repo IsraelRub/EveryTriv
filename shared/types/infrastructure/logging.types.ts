@@ -108,7 +108,6 @@ export interface StorageLogger {
 
 export interface PaymentLogger {
 	paymentFailed(paymentId: string, error: string, meta?: LogMeta): void;
-	payment(message: string, meta?: LogMeta): void;
 	paymentInfo(message: string, meta?: LogMeta): void;
 }
 
@@ -274,6 +273,8 @@ export interface LogRequestCounts {
 
 export interface LogMeta {
 	action?: string;
+	accuracy?: number;
+	activePlayers24h?: number;
 	activeProviders?: number;
 	activeUsers?: number;
 	actualCount?: number;
@@ -290,11 +291,13 @@ export interface LogMeta {
 	availableProviders?: number;
 	avatar?: number;
 	averageAccuracy?: number;
+	averageGameTime?: number;
 	averageGames?: number;
 	averageScore?: number;
 	avgResponseTime?: number;
 	baseUrl?: string;
 	batchSize?: number;
+	bestScore?: number;
 	bestStreak?: number;
 	body?: string;
 	bodyLength?: number;
@@ -302,6 +305,7 @@ export interface LogMeta {
 	canPlay?: boolean;
 	canPlayFree?: boolean;
 	captureId?: string;
+	chart?: string;
 	checking?: boolean;
 	clientId?: string;
 	clientMutationId?: string;
@@ -313,6 +317,7 @@ export interface LogMeta {
 	config?: string;
 	contextMessage?: string;
 	connectTimeout?: number;
+	consistency?: number;
 	context?: LogContext;
 	contactEmail?: string;
 	contactSubject?: string;
@@ -327,9 +332,16 @@ export interface LogMeta {
 	customText?: string;
 	data?: Record<string, unknown>;
 	dataKeys?: string[];
+	difficultyBreakdown?: Record<string, unknown>;
+	difficultyDistribution?: Record<string, number>;
 	db?: number;
 	delay?: number;
 	deletedCount?: number;
+	deletedUsers?: number;
+	deletedGameHistory?: number;
+	deletedUserStats?: number;
+	deletedCreditTransactions?: number;
+	deletedPaymentHistory?: number;
 	dependencies?: string[];
 	difficulty?: GameDifficulty;
 	discrepancies?: {
@@ -400,6 +412,7 @@ export interface LogMeta {
 	isValid?: boolean;
 	isConsistent?: boolean;
 	inconsistentUsers?: number;
+	insights?: Record<string, unknown>;
 	jobId?: string | number;
 	key?: string;
 	keyPrefix?: string;
@@ -414,6 +427,7 @@ export interface LogMeta {
 	memoryDelta?: number;
 	memoryUsage?: number;
 	message?: string;
+	metrics?: Record<string, unknown>;
 	method?: string;
 	middleware?: string;
 	mode?: string;
@@ -452,6 +466,7 @@ export interface LogMeta {
 	paypalOrderStatus?: string;
 	percentile?: number;
 	period?: string;
+	pointsCount?: number;
 	planType?: PlanType;
 	plansCount?: number;
 	playerCount?: number;
@@ -476,11 +491,14 @@ export interface LogMeta {
 	questionsPerRequest?: number;
 	rank?: number;
 	reason?: string;
+	recommendations?: unknown[];
 	recommendationsCount?: number;
+	recentGames?: Array<{ topic?: string; difficulty?: string; score?: number; correctAnswers?: number }>;
 	redirectTo?: string;
 	referrer?: string;
 	remaining?: number;
 	remainingCredits?: number;
+	returnedCount?: number;
 	remainingInQueue?: number;
 	requestCount?: number;
 	requestCounts?: LogRequestCounts;
@@ -525,6 +543,13 @@ export interface LogMeta {
 	textLength?: number;
 	threshold?: number;
 	timeout?: number;
+	topScores?: Array<{ rank?: number; score?: number; totalGames?: number }>;
+	topicNames?: string[];
+	topics?: Record<string, number> | unknown[];
+	topicsByCount?: Record<string, number>;
+	topicsPlayed?: Record<string, number>;
+	totalReturned?: number;
+	trends?: unknown[];
 	timeRemaining?: number;
 	timeSpent?: number;
 	timestamp?: string;

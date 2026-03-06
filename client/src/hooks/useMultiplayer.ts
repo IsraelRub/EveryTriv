@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ERROR_CODES, RoomStatus, VALIDATORS } from '@shared/constants';
+import { ErrorCode, RoomStatus, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import type { CreateRoomConfig, MultiplayerRoom } from '@shared/types';
 import {
 	calculateClockOffset,
@@ -18,8 +18,9 @@ import {
 	isRoomUpdatedEvent,
 	validateClockOffset,
 } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
-import { GameLoadingStep } from '@/constants';
+import { getMultiplayerSummaryStorageKey, LoadingMessages } from '@/constants';
 import { authService, clientLogger as logger, multiplayerService } from '@/services';
 import {
 	selectIsConnected,
@@ -28,7 +29,14 @@ import {
 	selectMultiplayerLoading,
 	selectMultiplayerRoom,
 } from '@/redux/selectors';
-import { setConnectionStatus, setError, setMultiplayerLoading, setRoom, updateGameState } from '@/redux/slices';
+import {
+	setConnectionStatus,
+	setError,
+	setMultiplayerLoading,
+	setRevealPhase,
+	setRoom,
+	updateGameState,
+} from '@/redux/slices';
 import { store } from '@/redux/store';
 import { useCurrentUserData } from './useAuth';
 import { useAppDispatch, useAppSelector } from './useRedux';
@@ -112,7 +120,7 @@ export const useMultiplayer = (roomId?: string) => {
 					...currentRoom,
 					questions: event.data.questions,
 					status: RoomStatus.PLAYING,
-					startTime: new Date().toISOString() as unknown as Date,
+					startTime: new Date(),
 				};
 				dispatch(setRoom(updatedRoom));
 			}
@@ -148,11 +156,11 @@ export const useMultiplayer = (roomId?: string) => {
 							: rawQuestionStartTime
 						: undefined;
 
-				// Extract server timestamps from event data
-				const serverStartTimestamp = 'serverStartTimestamp' in event.data ? event.data.serverStartTimestamp : undefined;
-				const serverEndTimestamp = 'serverEndTimestamp' in event.data ? event.data.serverEndTimestamp : undefined;
+				const serverStartTimestamp = event.data.serverStartTimestamp;
+				const serverEndTimestamp = event.data.serverEndTimestamp;
 
 				if (!currentGameState || currentGameState.roomId !== event.roomId) {
+					dispatch(setRevealPhase(false));
 					dispatch(
 						updateGameState({
 							roomId: event.roomId,
@@ -170,6 +178,7 @@ export const useMultiplayer = (roomId?: string) => {
 						})
 					);
 				} else {
+					dispatch(setRevealPhase(false));
 					dispatch(
 						updateGameState({
 							...currentGameState,
@@ -191,6 +200,7 @@ export const useMultiplayer = (roomId?: string) => {
 			if (isAnswerReceivedEvent(event)) {
 				const currentGameState = selectMultiplayerGameState(store.getState());
 				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				const nextAnswerCounts = event.data.answerCounts ?? currentGameState.answerCounts;
 				dispatch(
 					updateGameState({
 						...currentGameState,
@@ -203,7 +213,7 @@ export const useMultiplayer = (roomId?: string) => {
 							[event.data.userId]: event.data.scoreEarned,
 						},
 						leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
-						answerCounts: event.data.answerCounts ?? currentGameState.answerCounts,
+						answerCounts: nextAnswerCounts,
 					})
 				);
 			}
@@ -213,10 +223,12 @@ export const useMultiplayer = (roomId?: string) => {
 			if (isQuestionEndedEvent(event)) {
 				const currentGameState = selectMultiplayerGameState(store.getState());
 				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				dispatch(setRevealPhase(true));
 				dispatch(
 					updateGameState({
 						...currentGameState,
 						leaderboard: event.data.leaderboard,
+						...(event.data.answerCounts !== undefined && { answerCounts: event.data.answerCounts }),
 					})
 				);
 			}
@@ -226,19 +238,28 @@ export const useMultiplayer = (roomId?: string) => {
 			if (isGameEndedEvent(event)) {
 				const currentGameState = selectMultiplayerGameState(store.getState());
 				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				const finalLeaderboard = event.data.finalLeaderboard;
 				dispatch(
 					updateGameState({
 						...currentGameState,
-						leaderboard: event.data.finalLeaderboard,
+						leaderboard: finalLeaderboard,
 					})
 				);
 				const currentRoom = selectMultiplayerRoom(store.getState());
+				try {
+					const key = getMultiplayerSummaryStorageKey(event.roomId);
+					const questionCount = currentRoom?.questions?.length ?? 0;
+					const payload = questionCount > 0 ? { leaderboard: finalLeaderboard, questionCount } : finalLeaderboard;
+					sessionStorage.setItem(key, JSON.stringify(payload));
+				} catch {
+					// Ignore sessionStorage errors (private mode, quota, etc.)
+				}
 				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
 				dispatch(
 					setRoom({
 						...currentRoom,
 						status: RoomStatus.FINISHED,
-						endTime: new Date().toISOString() as unknown as Date,
+						endTime: new Date(),
 					})
 				);
 			}
@@ -253,13 +274,21 @@ export const useMultiplayer = (roomId?: string) => {
 		multiplayerService.onError((error: unknown) => {
 			if (isRecord(error) && 'message' in error && VALIDATORS.string(error.message)) {
 				const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
+				if (errorCode === ErrorCode.NEED_AT_LEAST_2_PLAYERS) {
+					return;
+				}
 				dispatch(setError(getErrorMessage(error)));
 
-				// Handle specific error codes
-				if (errorCode === ERROR_CODES.GAME_CANCELLED || errorCode === ERROR_CODES.ROOM_NOT_FOUND) {
-					// Reset room and game state when game is cancelled or room not found
-					dispatch(setRoom(null));
-					dispatch(updateGameState(null));
+				if (errorCode === ErrorCode.GAME_CANCELLED || errorCode === ErrorCode.ROOM_NOT_FOUND) {
+					const state = store.getState();
+					const currentRoom = selectMultiplayerRoom(state);
+					const currentGameState = selectMultiplayerGameState(state);
+					const hasFinishedGameWithResults =
+						currentRoom?.status === RoomStatus.FINISHED && (currentGameState?.leaderboard?.length ?? 0) > 0;
+					if (!hasFinishedGameWithResults) {
+						dispatch(setRoom(null));
+						dispatch(updateGameState(null));
+					}
 				}
 			}
 		});
@@ -284,7 +313,7 @@ export const useMultiplayer = (roomId?: string) => {
 
 			const token = await authService.getToken();
 			if (!token) {
-				dispatch(setError(getErrorMessage(ERROR_CODES.AUTHENTICATION_TOKEN_REQUIRED)));
+				dispatch(setError(getErrorMessage(ErrorCode.AUTHENTICATION_TOKEN_REQUIRED)));
 				isConnectingRef.current = false;
 				return;
 			}
@@ -323,6 +352,7 @@ export const useMultiplayer = (roomId?: string) => {
 		dispatch(setConnectionStatus(false));
 		dispatch(setRoom(null));
 		dispatch(updateGameState(null));
+		dispatch(setRevealPhase(false));
 		dispatch(setError(null));
 		isConnectingRef.current = false;
 	}, [dispatch]);
@@ -343,31 +373,27 @@ export const useMultiplayer = (roomId?: string) => {
 	const joinRoom = useCallback(
 		(targetRoomId: string) => {
 			dispatch(setMultiplayerLoading(true));
+			isLoadingRef.current = true;
 			multiplayerService.joinRoom(targetRoomId);
-			dispatch(setMultiplayerLoading(false));
 		},
 		[dispatch]
 	);
 
-	const leaveRoom = useCallback(
-		(targetRoomId?: string) => {
-			const roomIdToLeave = targetRoomId ?? room?.roomId;
-			if (roomIdToLeave) {
-				multiplayerService.leaveRoom(roomIdToLeave);
-			}
-		},
-		[room]
-	);
+	const leaveRoom = useCallback(() => {
+		const roomIdToLeave = room?.roomId;
+		if (roomIdToLeave) {
+			multiplayerService.leaveRoom(roomIdToLeave);
+		}
+	}, [room]);
 
-	const startGame = useCallback(
-		(targetRoomId?: string) => {
-			const roomIdToStart = targetRoomId ?? room?.roomId;
-			if (roomIdToStart) {
-				multiplayerService.startGame(roomIdToStart);
-			}
-		},
-		[room]
-	);
+	const startGame = useCallback(() => {
+		const roomIdToStart = room?.roomId;
+		if (roomIdToStart) {
+			dispatch(setMultiplayerLoading(true));
+			isLoadingRef.current = true;
+			multiplayerService.startGame(roomIdToStart);
+		}
+	}, [room, dispatch]);
 
 	const submitAnswer = useCallback((roomId: string, questionId: string, answer: number, timeSpent: number) => {
 		multiplayerService.submitAnswer(roomId, questionId, answer, timeSpent);
@@ -391,13 +417,30 @@ export const useMultiplayer = (roomId?: string) => {
 		}
 	}, [roomId, isConnected, room, joinRoom]);
 
-	// Stop loading when room is created or error occurs during room creation
+	// Stop loading when room is created, join completes, error occurs, or after game start (so spinner is visible)
 	useEffect(() => {
-		if (isLoadingRef.current && (room ?? error)) {
+		if (!isLoadingRef.current) return;
+
+		if (error) {
+			dispatch(setMultiplayerLoading(false));
+			isLoadingRef.current = false;
+			return;
+		}
+
+		if (room) {
+			if (room.status === RoomStatus.PLAYING) {
+				// Game just started – clear loading after a short delay so the "Starting game..." spinner is visible before navigation
+				const t = setTimeout(() => {
+					dispatch(setMultiplayerLoading(false));
+					isLoadingRef.current = false;
+				}, TIME_PERIODS_MS.THREE_HUNDRED_MILLISECONDS);
+				return () => clearTimeout(t);
+			}
+			// Room created or join completed (still WAITING)
 			dispatch(setMultiplayerLoading(false));
 			isLoadingRef.current = false;
 		}
-	}, [room, error, dispatch]);
+	}, [room, room?.status, error, dispatch]);
 
 	// roomCode is now the same as roomId
 	const roomCode = room?.roomId ?? null;
@@ -408,34 +451,35 @@ export const useMultiplayer = (roomId?: string) => {
 	// Get current player
 	const currentPlayer = room?.players.find(p => p.userId === currentUser?.id);
 
-	// Check if room is ready to start
-	const isReadyToStart = (room?.players?.length ?? 0) >= 2 && room?.status === RoomStatus.WAITING;
+	// Check if room is ready to start (min players to start can be less than max players in room)
+	const isReadyToStart =
+		(room?.players?.length ?? 0) >= VALIDATION_COUNT.PLAYERS.MIN && room?.status === RoomStatus.WAITING;
 
 	// ============================================================================
 	// Loading State Management
 	// ============================================================================
 
-	const [loadingStep, setLoadingStep] = useState<GameLoadingStep | null>(null);
+	const [loadingStep, setLoadingStep] = useState<LoadingMessages | null>(null);
 
 	useEffect(() => {
 		if (!isConnected) {
 			if (isLoading) {
-				setLoadingStep(GameLoadingStep.AUTHENTICATING);
+				setLoadingStep(LoadingMessages.AUTHENTICATING);
 			} else {
-				setLoadingStep(GameLoadingStep.CONNECTING_TO_SOCKET);
+				setLoadingStep(LoadingMessages.CONNECTING_TO_SOCKET);
 			}
 		} else {
 			if (!room) {
 				if (isLoading) {
-					setLoadingStep(GameLoadingStep.JOINING_ROOM);
+					setLoadingStep(LoadingMessages.JOINING_ROOM);
 				} else {
 					setLoadingStep(null);
 				}
 			} else if (!gameState) {
 				if (room.status === RoomStatus.PLAYING) {
-					setLoadingStep(GameLoadingStep.LOADING_MULTIPLAYER_QUESTIONS);
+					setLoadingStep(LoadingMessages.LOADING_MULTIPLAYER_QUESTIONS);
 				} else {
-					setLoadingStep(GameLoadingStep.WAITING_FOR_GAME_STATE);
+					setLoadingStep(LoadingMessages.WAITING_FOR_GAME_STATE);
 				}
 			} else {
 				setLoadingStep(null);
@@ -443,7 +487,7 @@ export const useMultiplayer = (roomId?: string) => {
 		}
 	}, [room, gameState, isConnected, isLoading]);
 
-	const displayMessage = loadingStep ?? GameLoadingStep.CONNECTING_TO_SOCKET;
+	const displayMessage = loadingStep ?? LoadingMessages.CONNECTING_TO_SOCKET;
 
 	return {
 		isConnected,

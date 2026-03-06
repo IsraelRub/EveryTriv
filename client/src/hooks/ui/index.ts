@@ -9,3 +9,5 @@ export { useToast, toast } from './useToast';
 export { useCountUp } from './useCountUp';
 
 export { usePagination } from './usePagination';
+
+export { useClientTableState } from './useClientTableState';
