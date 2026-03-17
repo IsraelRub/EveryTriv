@@ -1,6 +1,7 @@
 import { StorageType } from '@shared/constants';
-import type { StorageMetrics } from '@shared/types';
 import { calculateDuration } from '@shared/utils';
+
+import type { StorageMetrics } from '@internal/types';
 
 import { metricsService } from './metrics.service';
 

@@ -6,14 +6,14 @@ import type {
 	ChangePasswordData,
 	UserProfileResponseType,
 } from '@shared/types';
-import { delay, ensureErrorObject, getErrorMessage } from '@shared/utils';
+import { delay, ensureErrorObject, getErrorMessage, hasPropertyOfType, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { EXPECTED_ERROR_CODES, STORAGE_KEYS } from '@/constants';
-import { ApiConfig, apiService, clientLogger as logger, storageService, userService } from '@/services';
-import type { AuthState } from '@/types';
+import type { AuthState, CompleteProfileParams, ParsedJwtAuthToken } from '@/types';
+import { ApiConfig, apiService, clientLogger as logger, storageService } from '@/services';
 
 class AuthService {
-	private readonly TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
 	private readonly logoutCallbacks: Set<() => void> = new Set();
 
 	async login(credentials: AuthCredentials): Promise<AuthenticationResult> {
@@ -22,8 +22,12 @@ class AuthService {
 
 			const response = await apiService.login(credentials);
 
-			// Store auth data
-			await this.setAuthData(response);
+			if (response.user) {
+				logger.authInfo('Authentication data ready - user will be stored in Redux/sessionStorage', {
+					userId: response.user.id,
+					emails: { current: response.user.email },
+				});
+			}
 
 			if (response.user) {
 				logger.logUserActivity(response.user.id, 'login', { emails: { current: credentials.email } });
@@ -58,8 +62,12 @@ class AuthService {
 
 			const response = await apiService.register(credentials);
 
-			// Store auth data
-			await this.setAuthData(response);
+			if (response.user) {
+				logger.authInfo('Authentication data ready - user will be stored in Redux/sessionStorage', {
+					userId: response.user.id,
+					emails: { current: response.user.email },
+				});
+			}
 
 			if (response.user) {
 				logger.authRegister('User registered successfully', { userId: response.user.id });
@@ -110,25 +118,11 @@ class AuthService {
 
 	async getCurrentUser(): Promise<BasicUser> {
 		try {
-			// Get current token for logging
 			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-			const token = tokenResult.success ? tokenResult.data : null;
-
-			// Decode token to get user info for logging
-			let tokenUserId: string | undefined = undefined;
-			let tokenEmail: string | undefined = undefined;
-			if (token) {
-				try {
-					const tokenParts = token.split('.');
-					if (tokenParts.length === 3 && tokenParts[1] != null) {
-						const payload = JSON.parse(atob(tokenParts[1]));
-						tokenUserId = payload.sub;
-						tokenEmail = payload.email;
-					}
-				} catch {
-					// Ignore decode errors
-				}
-			}
+			const token = tokenResult.success ? (tokenResult.data ?? null) : null;
+			const parsedToken = this.parseAuthToken(token);
+			const tokenUserId = parsedToken?.userId ?? undefined;
+			const tokenEmail = parsedToken?.email ?? undefined;
 
 			logger.authInfo('Getting current user from server', {
 				tokenLength: token?.length ?? 0,
@@ -202,16 +196,9 @@ class AuthService {
 		}
 	}
 
-	async isAuthenticated(): Promise<boolean> {
-		return await apiService.isAuthenticated();
-	}
-
-	async getToken(): Promise<string | null> {
-		return await apiService.getAuthToken();
-	}
-
 	async getAuthState(): Promise<AuthState> {
-		const token = await this.getToken();
+		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+		const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 
 		return {
 			isAuthenticated: !!token,
@@ -219,15 +206,29 @@ class AuthService {
 		};
 	}
 
-	private async setAuthData(authResponse: AuthenticationResult): Promise<void> {
-		// Token is already stored by apiService.register/login() with 'access_token' key
-		// User data is stored in sessionStorage via Redux Persist by the calling hook/component
-		// No need to store user data here to avoid duplication
-		if (authResponse.user) {
-			logger.authInfo('Authentication data ready - user will be stored in Redux/sessionStorage', {
-				userId: authResponse.user.id,
-				emails: { current: authResponse.user.email },
-			});
+	/**
+	 * Restore session in this tab using persistent refresh token (localStorage).
+	 * Used when opening a new tab so the user is auto-logged in until they manually log out.
+	 */
+	async tryRestoreSession(): Promise<boolean> {
+		try {
+			const persistentResult = await storageService.getString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
+			const persistentToken =
+				persistentResult.success && persistentResult.data && typeof persistentResult.data === 'string'
+					? persistentResult.data
+					: null;
+			if (!persistentToken) {
+				return false;
+			}
+
+			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, persistentToken);
+
+			await apiService.refreshToken();
+			logger.authInfo('Session restored from persistent refresh token');
+			return true;
+		} catch {
+			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
+			return false;
 		}
 	}
 
@@ -238,7 +239,8 @@ class AuthService {
 		let attempts = 0;
 		while (attempts < maxAttempts) {
 			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-			if (tokenResult.success && !!tokenResult.data) {
+			const token = tokenResult.success ? (tokenResult.data ?? null) : null;
+			if (token) {
 				return true;
 			}
 			await delay(delayMs);
@@ -248,8 +250,9 @@ class AuthService {
 	}
 
 	async verifyStoredTokenForUser(userId: string): Promise<boolean> {
-		const { authSyncService } = await import('@/services');
-		return authSyncService.verifyStoredTokenMatchesUser(userId);
+		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+		const token = tokenResult.success ? (tokenResult.data ?? null) : null;
+		return this.parseAuthToken(token)?.userId === userId;
 	}
 
 	registerLogoutCallback(callback: () => void): () => void {
@@ -264,7 +267,7 @@ class AuthService {
 			logger.securityLogin('Initiating Google OAuth login');
 
 			// Redirect to the real server URL so session (OAuth state) is set on the same origin as the callback
-			const googleAuthUrl = `${ApiConfig.getOAuthBaseUrl()}${API_ENDPOINTS.AUTH.GOOGLE}`;
+			const googleAuthUrl = ApiConfig.getOAuthBaseUrl() + API_ENDPOINTS.AUTH.GOOGLE;
 
 			logger.authInfo('Redirecting to Google OAuth', {
 				url: googleAuthUrl,
@@ -277,12 +280,12 @@ class AuthService {
 		}
 	}
 
-	async completeProfile(profileData: { firstName: string; lastName?: string }): Promise<UserProfileResponseType> {
+	async completeProfile(profileData: CompleteProfileParams): Promise<UserProfileResponseType> {
 		try {
 			logger.authProfileUpdate('Completing user profile');
 
 			// Note: avatar is set through dedicated /users/avatar endpoint, not through profile update
-			const profileResponse = await userService.updateUserProfile({
+			const profileResponse = await apiService.updateUserProfile({
 				firstName: profileData.firstName,
 				lastName: profileData.lastName,
 			});
@@ -309,10 +312,37 @@ class AuthService {
 		}
 	}
 
+	private parseAuthToken(token: string | null | undefined): ParsedJwtAuthToken | null {
+		if (!token) {
+			return null;
+		}
+
+		try {
+			const tokenParts = token.split('.');
+			if (tokenParts.length !== 3 || tokenParts[1] == null) {
+				return null;
+			}
+
+			const payload = JSON.parse(atob(tokenParts[1]));
+			if (!isRecord(payload)) {
+				return null;
+			}
+
+			return {
+				email: hasPropertyOfType(payload, 'email', VALIDATORS.string) ? payload.email : null,
+				userId: hasPropertyOfType(payload, 'sub', VALIDATORS.string) ? payload.sub : null,
+			};
+		} catch {
+			// Ignore decode errors
+			return null;
+		}
+	}
+
 	private async clearAuthData(): Promise<void> {
 		// Clear all auth-related storage keys from localStorage
-		await storageService.delete(this.TOKEN_KEY); // 'access_token'
+		await storageService.delete(STORAGE_KEYS.AUTH_TOKEN); // 'access_token'
 		await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN); // 'refresh_token'
+		await storageService.delete(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
 
 		// Clear all user-specific data from localStorage
 		await storageService.delete(STORAGE_KEYS.USER_ID);
@@ -327,10 +357,10 @@ class AuthService {
 		// Clear Redux Persist storage manually to avoid non-serializable action
 		// persist:user is in sessionStorage (cleared automatically when tab closes)
 		// persist:gameMode is in localStorage
-		await storageService.delete('persist:gameMode');
+		await storageService.delete(STORAGE_KEYS.GAME_MODE);
 		// Clear other Redux Persist storage
-		await storageService.delete('persist:audioSettings');
-		await storageService.delete('persist:uiPreferences');
+		await storageService.delete(STORAGE_KEYS.AUDIO_SETTINGS);
+		await storageService.delete(STORAGE_KEYS.UI_PREFERENCES);
 		// Note: persist:user is in sessionStorage and will be cleared when tab closes
 		// We can't delete from sessionStorage here because storageService only handles localStorage
 

@@ -1,3 +1,5 @@
+import { TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from './time.constants';
+
 export enum ClientValidationType {
 	EMAIL = 'email',
 	PASSWORD = 'password',
@@ -13,76 +15,130 @@ export const VALIDATION_LENGTH = {
 		MAX: 15,
 	},
 	EMAIL: {
+		MIN: 3,
 		MAX: 255,
 	},
 	TOPIC: {
 		MIN: 2,
-		MAX: 100,
+		MAX: 75,
 	},
 	CUSTOM_DIFFICULTY: {
 		MIN: 3,
-		MAX: 200,
+		MAX: 150,
 	},
 	NAME: {
 		MIN: 1,
 		MAX: 50,
 	},
+	FIRST_NAME: {
+		MIN: 1,
+		MAX: 50,
+	},
+	LAST_NAME: {
+		MIN: 1,
+		MAX: 50,
+	},
+	CARDHOLDER_NAME: {
+		MIN: 2,
+		MAX: 80,
+	},
+	CARD_NUMBER: {
+		MIN: 12,
+		MAX: 19,
+	},
+	CVV: {
+		MIN: 3,
+		MAX: 4,
+	},
+	ORDER_ID: {
+		MIN: 10,
+		MAX: 100,
+	},
+	POSTAL_CODE: {
+		MAX: 20,
+	},
+	CURRENCY_CODE: {
+		MAX: 10,
+	},
+	ADDITIONAL_INFO: {
+		MAX: 500,
+	},
 	QUESTION: {
 		MIN: 10,
-		MAX: 500,
-		PARSER_MAX: 150, // Maximum length for LLM parser validation (Groq)
+		MAX: 300,
+		PARSER_MAX: 150,
 	},
 	ANSWER: {
-		MAX: 200, // Maximum length for both trivia answers and game user answers
-		PARSER_MAX: 100, // Maximum length for LLM parser validation (Groq)
+		MAX: 150,
+		PARSER_MAX: 100,
 	},
 	REASON: {
-		MAX: 200,
+		MAX: 150,
 	},
 	INPUT: {
-		MIN: 1, // Minimum length for general input content validation
-		MAX: 1000, // Maximum length for general input content validation
+		MIN: 1,
+		MAX: 500,
 	},
 	ROOM_CODE: {
-		LENGTH: 8, // Room ID/code length (short alphanumeric identifier)
+		LENGTH: 8,
 	},
-	// String truncation limits (for logs and responses)
 	STRING_TRUNCATION: {
-		SHORT: 50, // Short string limit (for logs)
-	},
-	PAYMENT_INTENT_ID: {
-		MIN: 1,
-		MAX: 100,
+		SHORT: 50,
+		TOKEN_PREVIEW: 23,
+		ERROR_PREVIEW: 13,
+		ID_PREVIEW: 11,
+		CONTENT_PREVIEW: 103,
 	},
 	SEARCH_QUERY: {
 		MIN: 1,
-		MAX: 100,
+		MAX: 80,
 	},
 	IDENTIFIER: {
 		MAX: 100,
 	},
 } as const;
 
-export const VALIDATION_PAYMENT = {
-	ORDER_ID_MIN_LENGTH: 10,
-	CARD_NUMBER: { MIN: 12, MAX: 19 },
-	CVV: { MIN: 3, MAX: 4 },
-	CARD_HOLDER_NAME: { MIN: 2, MAX: 80 },
-	POSTAL_CODE_MAX: 20,
-	CURRENCY_CODE_MAX: 10,
-	ADDITIONAL_INFO_MAX: 500,
+export enum LengthKey {
+	TOPIC = 'TOPIC',
+	CUSTOM_DIFFICULTY = 'CUSTOM_DIFFICULTY',
+	FIRST_NAME = 'FIRST_NAME',
+	LAST_NAME = 'LAST_NAME',
+	CARDHOLDER_NAME = 'CARDHOLDER_NAME',
+	CARD_NUMBER = 'CARD_NUMBER',
+	CVV = 'CVV',
+	PASSWORD = 'PASSWORD',
+	EMAIL = 'EMAIL',
+}
+
+export const LENGTH_RULES: Record<LengthKey, { fieldName: string; required: boolean }> = {
+	[LengthKey.TOPIC]: { fieldName: 'Topic', required: true },
+	[LengthKey.CUSTOM_DIFFICULTY]: { fieldName: 'Description', required: true },
+	[LengthKey.FIRST_NAME]: { fieldName: 'First name', required: true },
+	[LengthKey.LAST_NAME]: { fieldName: 'Last name', required: false },
+	[LengthKey.CARDHOLDER_NAME]: { fieldName: 'Cardholder name', required: true },
+	[LengthKey.CARD_NUMBER]: { fieldName: 'Card number', required: true },
+	[LengthKey.CVV]: { fieldName: 'CVV', required: true },
+	[LengthKey.PASSWORD]: { fieldName: 'Password', required: false },
+	[LengthKey.EMAIL]: { fieldName: 'Email', required: false },
+};
+
+export const FORBIDDEN_CONTENT_WORDS = ['spam', 'test', 'xxx'] as const;
+
+export const VALIDATION_PAYMENT_LIMITS = {
 	AMOUNT_MIN: 0.5,
 } as const;
 
 export const VALIDATION_COUNT = {
 	TIME_LIMIT: {
-		MIN: 30,
-		MAX: 300,
-		STEP: 30,
+		MIN: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,
+		MAX: TIME_DURATIONS_SECONDS.FIVE_MINUTES,
+		STEP: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,
+		DEFAULT: TIME_DURATIONS_SECONDS.MINUTE,
 	},
 	PLAYERS: {
 		MIN: 2,
-		MAX: 4,
+		MAX: 6,
+		DEFAULT: 4,
 	},
 	QUESTIONS: {
 		MIN: 1,
@@ -96,7 +152,6 @@ export const VALIDATION_COUNT = {
 	ANSWER_COUNT: {
 		MIN: 3,
 		MAX: 5,
-		STEP: 1,
 		DEFAULT: 4,
 	},
 	CREDITS: {
@@ -115,14 +170,14 @@ export const VALIDATION_COUNT = {
 	},
 	AVATAR_ID: {
 		MIN: 1,
-		MAX: 16,
+		MAX: 15,
 	},
 	RETRY_ATTEMPTS: {
-		QUESTION_GENERATION: 3, // Maximum retries for question generation
-		ADMIN_BOOTSTRAP: 5, // Maximum retries for admin bootstrap
+		QUESTION_GENERATION: 3,
+		ADMIN_BOOTSTRAP: 5,
 	},
 	ROOM_GENERATION_ATTEMPTS: {
-		MAX: 10, // Maximum attempts to generate unique room ID
+		MAX: 10,
 	},
 
 	LIST_QUERY: {
@@ -151,14 +206,17 @@ export const LANGUAGE_TOOL_CONSTANTS = {
 	},
 	LANGUAGES: {
 		ENGLISH: 'en',
+		HEBREW: 'he',
 	},
 	CONFIDENCE: {
 		HIGH: 0.95,
 		MEDIUM: 0.8,
 		LOW: 0.5,
 	},
-	TIMEOUT: 10000, // 10 seconds
+	TIMEOUT: TIME_PERIODS_MS.TEN_SECONDS,
 	MAX_RETRIES: 3,
+
+	MIN_TEXT_LENGTH_FOR_API: 15,
 } as const;
 
 export const COMMON_MISSPELLINGS = {

@@ -1,16 +1,13 @@
 import { type ElementType } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import type { DifficultyStats, LeaderboardEntry } from '@shared/types';
 
-import { Easing, StatCardVariant } from '@/constants';
-
-export type { DifficultyStats };
+import { StatCardVariant } from '@/constants';
 
 export interface UseCountUpOptions {
 	duration?: number;
 	enabled?: boolean;
-	easing?: Easing;
-
 	resetTrigger?: unknown;
 }
 
@@ -31,7 +28,7 @@ export interface StatCardProps {
 export interface StatsSectionCardProps {
 	title?: string;
 	description?: string;
-	titleIcon?: ElementType;
+	titleIcon?: LucideIcon;
 	stats: StatCardProps[];
 	variant?: StatCardVariant;
 	gridCols?: string;
@@ -39,7 +36,11 @@ export interface StatsSectionCardProps {
 	className?: string;
 }
 
-export type AdminGameStatFormat = 'integer' | 'decimal' | 'percent';
+export enum AdminGameStatFormat {
+	INTEGER = 'integer',
+	DECIMAL = 'decimal',
+	PERCENT = 'percent',
+}
 
 export type AdminGameStatKey =
 	| 'totalGames'

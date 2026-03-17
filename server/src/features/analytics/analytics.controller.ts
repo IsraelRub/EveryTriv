@@ -23,11 +23,13 @@ import type { AnalyticsEventData, LeaderboardEntry, LeaderboardResponse } from '
 import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 import { isLeaderboardPeriod } from '@shared/validation';
 
+import { AppConfig } from '@config';
+import { Cache, CurrentUser, CurrentUserId, Public, Roles } from '@common/decorators';
 import { LEADERBOARD_PERIOD_CONFIG, LEADERBOARD_SCORE_FIELDS } from '@internal/constants';
 import { UserStatsEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
+import { getAvatarUrlForUser } from '@internal/utils';
 
-import { Cache, CurrentUser, CurrentUserId, Public, Roles } from '../../common';
 import {
 	GetLeaderboardDto,
 	GetLeaderboardStatsDto,
@@ -36,6 +38,7 @@ import {
 	UnifiedUserAnalyticsQueryDto,
 	UserComparisonQueryDto,
 	UserIdParamDto,
+	UserSummaryQueryDto,
 	UserTrendQueryDto,
 } from './dtos';
 import {
@@ -108,7 +111,7 @@ export class AnalyticsController {
 			logger.apiRead('analytics_user', {
 				userId,
 				chart: 'analytics_user',
-				data: toLogRecord(result?.game ?? {}),
+				gameRecord: toLogRecord(result?.game ?? {}),
 				metrics: toLogRecord(result?.performance ?? {}),
 			});
 
@@ -165,6 +168,108 @@ export class AnalyticsController {
 		return this.fetchUnifiedUserAnalytics(params.userId, query);
 	}
 
+	@Get('user/summary/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['summary'], {
+				includeActivity: query.includeActivity ?? false,
+			});
+			logger.apiRead('analytics_user_summary', { userId: params.userId });
+			return {
+				data: result.data?.summary ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('Error getting user summary', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/statistics/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserStatistics(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['statistics']);
+			logger.apiRead('analytics_user_statistics', { userId: params.userId });
+			return {
+				data: result.data?.statistics ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('Error getting user statistics', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/performance/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserPerformance(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['performance']);
+			logger.apiRead('analytics_user_performance', { userId: params.userId });
+			return {
+				data: result.data?.performance ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('Error getting user performance', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/insights/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserInsights(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['insights']);
+			logger.apiRead('analytics_user_insights', { userId: params.userId });
+			return {
+				data: result.data?.insights ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('Error getting user insights', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
+	@Get('user/recommendations/:userId')
+	@Roles(UserRole.ADMIN)
+	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
+	async getUserRecommendations(@Param() params: UserIdParamDto) {
+		try {
+			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['recommendations']);
+			logger.apiRead('analytics_user_recommendations', { userId: params.userId });
+			return {
+				data: result.data?.recommendations ?? null,
+				timestamp: result.timestamp ?? new Date().toISOString(),
+			};
+		} catch (error) {
+			logger.analyticsError('Error getting user recommendations', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: params.userId,
+			});
+			throw error;
+		}
+	}
+
 	private async fetchUnifiedUserAnalytics(
 		userId: string,
 		query: UnifiedUserAnalyticsQueryDto
@@ -194,7 +299,7 @@ export class AnalyticsController {
 				query: Object.keys(query ?? {}),
 				chart: 'analytics_user_unified',
 				dataKeys: result?.data ? Object.keys(result.data) : [],
-				data: result?.data ? toLogRecord(result.data) : {},
+				metrics: result?.data ? toLogRecord(result.data) : {},
 			});
 
 			return result;
@@ -211,7 +316,7 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== Global Analytics Endpoints ====================
+	// Global analytics endpoints
 
 	@Get('global/topics/popular')
 	@Public()
@@ -237,7 +342,7 @@ export class AnalyticsController {
 				totalTopics: result?.data?.totalTopics ?? 0,
 				topicNames,
 				topicsByCount,
-				data: { topics: topicsArray.length > 0 ? topicsArray : (topicsData ?? {}) },
+				topics: topicsArray.length > 0 ? topicsArray : Array.isArray(topicsData) ? topicsData : [],
 			});
 
 			return result;
@@ -283,7 +388,7 @@ export class AnalyticsController {
 				successRate: result?.successRate,
 				averageGames: result?.averageGames,
 				consistency: result?.consistency,
-				data: { averageGameTime: result?.averageGameTime },
+				averageGameTime: result?.averageGameTime,
 			});
 
 			return result;
@@ -318,7 +423,7 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== Business Analytics Endpoints ====================
+	// Business analytics endpoints
 
 	@Get('business/metrics')
 	@Roles(UserRole.ADMIN)
@@ -341,7 +446,7 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== System Analytics Endpoints ====================
+	// System analytics endpoints
 
 	@Get('system/performance')
 	@Roles(UserRole.ADMIN)
@@ -430,7 +535,7 @@ export class AnalyticsController {
 		}
 	}
 
-	// ==================== Leaderboard Endpoints ====================
+	// Leaderboard endpoints
 
 	@Get('leaderboard/global')
 	@Public()
@@ -470,6 +575,10 @@ export class AnalyticsController {
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
 				avatar: entry.user?.preferences?.avatar,
+				avatarUrl: getAvatarUrlForUser(
+					entry.user as { id: string; customAvatar?: Buffer } | undefined,
+					AppConfig.apiPublicBaseUrl
+				),
 				rank: index + offsetNum + 1,
 				score: getScoreFromUserStats(entry, globalScoreField),
 				averageScore: entry.overallSuccessRate ?? 0,
@@ -544,6 +653,10 @@ export class AnalyticsController {
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
 				avatar: entry.user?.preferences?.avatar,
+				avatarUrl: getAvatarUrlForUser(
+					entry.user as { id: string; customAvatar?: Buffer } | undefined,
+					AppConfig.apiPublicBaseUrl
+				),
 				rank: index + 1,
 				score: getScoreFromUserStats(entry, scoreField),
 				averageScore: entry.overallSuccessRate ?? 0,

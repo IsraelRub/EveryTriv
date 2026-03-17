@@ -1,12 +1,5 @@
 // Multiplayer game types for EveryTriv.
-import {
-	DifficultyLevel,
-	GameMode,
-	MultiplayerEvent,
-	PlayerStatus,
-	QuestionState,
-	RoomStatus,
-} from '@shared/constants';
+import { DifficultyLevel, MultiplayerEvent, PlayerStatus, QuestionState, RoomStatus } from '@shared/constants';
 
 import type { CountRecord } from '../../core/data.types';
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
@@ -14,9 +7,11 @@ import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
 export interface Player {
 	userId: string;
 	email: string;
+	firstName?: string;
+	lastName?: string;
 	displayName?: string;
-	/** Avatar ID (1–N) for avatar image; used by client for UserAvatar. */
 	avatar?: number;
+	avatarUrl?: string;
 	score: number;
 	status: PlayerStatus;
 	joinedAt: Date;
@@ -31,22 +26,16 @@ export interface Player {
 export interface CreateRoomConfig extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	maxPlayers: number;
-	gameMode: GameMode;
 	answerCount?: number;
 }
 
 export interface RoomConfig extends CreateRoomConfig {
-	timePerQuestion: number;
-	mappedDifficulty?: DifficultyLevel;
+	mappedDifficulty: DifficultyLevel;
 }
 
-export interface PlayerAnswerMap {
-	[userId: string]: number;
-}
+export type PlayerAnswerMap = Record<string, number>;
 
-export interface PlayerScoreMap {
-	[userId: string]: number;
-}
+export type PlayerScoreMap = Record<string, number>;
 
 export interface MultiplayerRoom {
 	roomId: string;
@@ -94,10 +83,6 @@ export type GameEventDataMap = {
 	};
 	[MultiplayerEvent.PLAYER_LEFT]: {
 		userId: string;
-		players: Player[];
-	};
-	[MultiplayerEvent.PLAYER_READY]: {
-		player: Player;
 		players: Player[];
 	};
 	[MultiplayerEvent.GAME_STARTED]: {

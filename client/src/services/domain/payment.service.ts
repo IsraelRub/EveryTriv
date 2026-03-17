@@ -2,8 +2,8 @@ import { API_ENDPOINTS } from '@shared/constants';
 import type { CreditsPurchaseRequest, PaymentResult } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { apiService, clientLogger as logger } from '@/services';
 import type { CreditsPurchaseResponse } from '@/types';
+import { apiService, clientLogger as logger } from '@/services';
 
 class PaymentService {
 	async getPaymentHistory(): Promise<PaymentResult[]> {

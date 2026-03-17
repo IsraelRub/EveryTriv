@@ -1,11 +1,15 @@
-import { InputHTMLAttributes, ReactNode, type ComponentProps } from 'react';
+import { InputHTMLAttributes, type ComponentProps, type ReactElement } from 'react';
 import type { FieldPath, FieldValues } from 'react-hook-form';
 
 import { ClientValidationType } from '@shared/constants';
-import type { LanguageValidationOptions, SelectOption } from '@shared/types';
 
 import { FormFieldType } from '@/constants';
-import type { ValidationHookOptions } from '@/types';
+import type { LanguageValidationOptions, ValidationHookOptions } from '../core';
+
+export interface SelectOption {
+	value: string;
+	label: string;
+}
 
 export interface FormField {
 	name: string;
@@ -42,7 +46,7 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
 	onChange?: (value: string, isValid: boolean) => void;
 	showValidationIcon?: boolean;
 	showErrors?: boolean;
-	renderError?: (error: string) => ReactNode;
+	renderError?: (error: string) => ReactElement | string | null;
 	isGlassy?: boolean;
 	className?: string;
 }
@@ -54,6 +58,8 @@ export type FormFieldContextValue<
 	name: TName;
 };
 
+export type InputProps = ComponentProps<'input'> & { error?: boolean };
+
 export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'className'> {
 	value: number;
 	onChange: (value: number) => void;
@@ -61,7 +67,7 @@ export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' |
 	max: number;
 	step?: number;
 	label?: string;
-	labelIcon?: ReactNode;
+	labelIcon?: ReactElement | null;
 }
 
 export type BaseFormFieldErrors<T extends Record<string, string> = Record<string, string>> = {

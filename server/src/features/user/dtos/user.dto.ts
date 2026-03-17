@@ -17,7 +17,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { UserStatus, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+import { DifficultyLevel, GameMode, Locale, UserStatus, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
 import { isNonEmptyString } from '@shared/utils';
 
@@ -105,6 +105,33 @@ export class UpdateUserFieldDto {
 	value: BasicValue;
 }
 
+export class UpdateUserGamePreferencesDto {
+	@ApiPropertyOptional({ description: 'Default difficulty', enum: DifficultyLevel })
+	@IsOptional()
+	@IsEnum(DifficultyLevel)
+	defaultDifficulty?: DifficultyLevel;
+
+	@ApiPropertyOptional({ description: 'Default topic' })
+	@IsOptional()
+	@IsString()
+	defaultTopic?: string;
+
+	@ApiPropertyOptional({ description: 'Default game mode', enum: GameMode })
+	@IsOptional()
+	@IsEnum(GameMode)
+	defaultGameMode?: GameMode;
+
+	@ApiPropertyOptional({ description: 'Time limit in seconds' })
+	@IsOptional()
+	@IsNumber()
+	timeLimit?: number;
+
+	@ApiPropertyOptional({ description: 'Max questions per game' })
+	@IsOptional()
+	@IsNumber()
+	maxQuestionsPerGame?: number;
+}
+
 export class UpdateUserPreferencesDto {
 	@ApiPropertyOptional({
 		description: 'Custom difficulties',
@@ -143,6 +170,23 @@ export class UpdateUserPreferencesDto {
 	@IsOptional()
 	@IsBoolean({ message: 'Animations enabled must be a boolean value' })
 	animationsEnabled?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'UI locale (synced across devices)',
+		enum: Locale,
+	})
+	@IsOptional()
+	@IsEnum(Locale)
+	locale?: Locale;
+
+	@ApiPropertyOptional({
+		description: 'Last game settings (synced across devices)',
+		type: UpdateUserGamePreferencesDto,
+	})
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => UpdateUserGamePreferencesDto)
+	game?: UpdateUserGamePreferencesDto;
 }
 
 export class UpdateSinglePreferenceDto {
@@ -224,7 +268,7 @@ export class SetAvatarDto {
 	})
 	@IsNumber({}, { message: 'Avatar ID must be a number' })
 	@IsNotEmpty({ message: 'Avatar ID is required' })
-	@Min(0, { message: 'Avatar ID must be 0 (clear) or between 1 and 16' })
+	@Min(0, { message: 'Avatar ID must be 0 (clear) or between 1 and 15' })
 	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, {
 		message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}`,
 	})

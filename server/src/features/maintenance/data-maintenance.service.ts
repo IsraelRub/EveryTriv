@@ -2,12 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SERVER_CACHE_KEYS } from '@shared/constants';
-import type { CleanupTestUsersResponse, ClearOperationResponse, SavedAchievement } from '@shared/types';
+import type { ClearOperationResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { ACHIEVEMENT_DEFINITIONS } from '@internal/constants';
+import { SERVER_CACHE_KEYS, TEST_USER_EMAIL_PATTERN } from '@internal/constants';
 import {
 	CreditTransactionEntity,
 	GameHistoryEntity,
@@ -18,8 +17,7 @@ import {
 } from '@internal/entities';
 import { CacheInvalidationService, CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-
-const TEST_USER_EMAIL_PATTERN = 'cli_user_%';
+import type { CleanupTestUsersResponse } from '@internal/types';
 
 @Injectable()
 export class DataMaintenanceService {
@@ -303,49 +301,5 @@ export class DataMaintenanceService {
 			});
 			throw error;
 		}
-	}
-
-	/**
-	 * Removes from user.achievements any id that no longer exists in ACHIEVEMENT_DEFINITIONS.
-	 * Run after removing achievements from the server definitions (e.g. ach-accuracy-master).
-	 */
-	async cleanupObsoleteAchievements(): Promise<{ usersUpdated: number; totalIdsRemoved: number }> {
-		const validIds = new Set(Object.keys(ACHIEVEMENT_DEFINITIONS));
-
-		const users = await this.userRepository.find({
-			select: ['id', 'achievements'],
-		});
-
-		let usersUpdated = 0;
-		let totalIdsRemoved = 0;
-
-		for (const user of users) {
-			const raw = user.achievements;
-			const current: SavedAchievement[] = Array.isArray(raw) ? raw : [];
-			if (current.length === 0) continue;
-
-			const filtered = current.filter(ach => ach?.id && validIds.has(ach.id));
-			const removed = current.length - filtered.length;
-			if (removed === 0) continue;
-
-			user.achievements = filtered;
-			await this.userRepository.save(user);
-			usersUpdated += 1;
-			totalIdsRemoved += removed;
-
-			try {
-				await this.cacheInvalidationService.invalidateOnAnalyticsUpdate(user.id);
-			} catch (cacheError) {
-				logger.cacheError('cleanupObsoleteAchievements invalidate', user.id, {
-					errorInfo: { message: getErrorMessage(cacheError) },
-				});
-			}
-		}
-
-		logger.analyticsStats('maintenance_cleanup_obsolete_achievements', {
-			data: { usersUpdated, totalIdsRemoved },
-		});
-
-		return { usersUpdated, totalIdsRemoved };
 	}
 }

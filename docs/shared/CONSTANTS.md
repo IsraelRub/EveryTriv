@@ -188,27 +188,6 @@ export enum LeaderboardPeriod {
  */
 export const VALID_LEADERBOARD_PERIODS_SET = new Set<string>(Object.values(LeaderboardPeriod));
 
-/**
- * Game state constants
- */
-export const GAME_STATE_DEFAULTS = {
-  SCORE: 0,
-  STREAK: 0,
-  QUESTIONS_ANSWERED: 0,
-  QUESTIONS_CORRECT: 0,
-  QUESTIONS_INCORRECT: 0,
-  TIME_ELAPSED: 0,
-  IS_GAME_ACTIVE: false,
-  IS_GAME_PAUSED: false,
-  IS_GAME_OVER: false,
-  QUESTION_INDEX: 0,
-  TOTAL_QUESTIONS: 10,
-  TIME_LIMIT: 60,
-  DIFFICULTY: DifficultyLevel.EASY,
-  TOPIC: 'General Knowledge',
-} as const;
-```
-
 ### time.constants.ts
 
 ```typescript
@@ -304,10 +283,8 @@ export enum UserStatus {
  * Payment method enumeration
  */
 export enum PaymentMethod {
-  CREDIT_CARD = 'credit_card',
+  MANUAL_CREDIT = 'manual_credit',
   PAYPAL = 'paypal',
-  STRIPE = 'stripe',
-  BANK_TRANSFER = 'bank_transfer',
 }
 
 /**

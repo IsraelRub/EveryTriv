@@ -1,7 +1,8 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { CreditSource, CreditTransactionType } from '@shared/constants';
-import type { CreditTransaction } from '@shared/types';
+
+import type { CreditTransaction } from '@internal/types';
 
 import { BaseEntity } from './base.entity';
 import { GameHistoryEntity } from './gameHistory.entity';

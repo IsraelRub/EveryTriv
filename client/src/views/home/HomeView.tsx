@@ -1,15 +1,31 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart3, Play } from 'lucide-react';
 
-import { ANIMATION_DELAYS, ButtonSize, ROUTES } from '@/constants';
+import { ANIMATION_DELAYS, AuthKey, ButtonSize, ErrorsKey, NavKey, ROUTES } from '@/constants';
+import { cn } from '@/utils';
 import { Button, HomeHeader, HomeStats, LeaderboardPreview, PopularTopicsSection, RecentGames } from '@/components';
 import { useCurrentUserData, useIsAuthenticated, useUserProfile } from '@/hooks';
-import { cn } from '@/utils';
+import { toast } from '@/hooks/ui/useToast';
 
 export function HomeView() {
+	const { t } = useTranslation();
+	const location = useLocation();
 	const navigate = useNavigate();
 	const isAuthenticated = useIsAuthenticated();
+
+	useEffect(() => {
+		const authError =
+			location.state && typeof location.state === 'object' && 'authError' in location.state
+				? (location.state as { authError?: string }).authError
+				: undefined;
+		if (authError) {
+			toast.error({ title: t(ErrorsKey.SOMETHING_WENT_WRONG), description: t(AuthKey.SIGN_IN_TO_CONTINUE) });
+			navigate(ROUTES.HOME, { replace: true });
+		}
+	}, [location.state, navigate, t]);
 	const currentUser = useCurrentUserData();
 	const { data: userProfile } = useUserProfile();
 
@@ -38,7 +54,7 @@ export function HomeView() {
 											className='text-xl px-12 py-8 h-auto font-bold shadow-lg'
 										>
 											<Play className='w-6 h-6 mr-3' />
-											Start Game
+											{t(NavKey.START_GAME)}
 										</Button>
 									</motion.div>
 									{isAuthenticated && (
@@ -53,7 +69,7 @@ export function HomeView() {
 												className='text-xl px-12 py-8 h-auto font-bold shadow-lg gap-2'
 											>
 												<BarChart3 className='w-6 h-6' />
-												View Statistics
+												{t(NavKey.STATISTICS)}
 											</Button>
 										</motion.div>
 									)}

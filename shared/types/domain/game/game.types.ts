@@ -1,8 +1,8 @@
 // Game-related types for EveryTriv.
 import { GameMode } from '../../../constants';
-import type { BaseEntity, CountRecord, OffsetPagination } from '../../core';
+import type { BaseEntity, BaseOperationResponse, CountRecord, OffsetPagination } from '../../core';
 import type { AnswerHistory } from '../../infrastructure';
-import type { BaseAnswerPayload, BaseTriviaParams, GameDifficulty } from './trivia.types';
+import type { GameDifficulty } from './trivia.types';
 
 export interface BaseGameStatistics {
 	totalGames: number;
@@ -54,6 +54,7 @@ export interface LeaderboardEntry extends BaseScoreData {
 	firstName?: string;
 	lastName?: string;
 	avatar?: number;
+	avatarUrl?: string;
 	rank: number;
 	gamesPlayed: number;
 	lastPlayed: Date;
@@ -69,15 +70,6 @@ export interface UserRankData {
 	score: number;
 	totalUsers: number;
 	percentile: number;
-}
-
-export interface UserStatsData extends BaseGameStatistics, BaseScoreData {
-	userId: string;
-	correctAnswers: number;
-	favoriteTopic: string;
-	gamesPlayed?: number;
-	currentStreak: number;
-	bestStreak: number;
 }
 
 export interface GameModeConfig {
@@ -96,9 +88,11 @@ export interface GameModeConfig {
 	};
 }
 
-export interface GameConfig
-	extends BaseTriviaParams,
-		Pick<GameModeConfig, 'mode' | 'timeLimit' | 'maxQuestionsPerGame'> {
+export interface GameConfig extends Pick<GameModeConfig, 'mode' | 'timeLimit' | 'maxQuestionsPerGame'> {
+	topic?: string;
+	difficulty?: GameDifficulty;
+	count?: number;
+	answerCount?: number;
 	settings?: {
 		showTimer?: boolean;
 		showProgress?: boolean;
@@ -144,25 +138,21 @@ export interface AdminGameStatistics extends Omit<AdminStatisticsBase, 'averageS
 	lastActivity: string | null;
 }
 
-export interface AdminStatisticsRaw extends AdminStatisticsBase {
-	lastActivity: Date | null;
-}
-
 export interface GameHistoryResponse {
 	userId: string;
 	totalGames: number;
 	games: GameHistoryEntry[];
 }
 
-export interface ClearOperationResponse {
-	success: boolean;
-	message: string;
+export interface ClearOperationResponse extends BaseOperationResponse {
 	deletedCount?: number;
 }
 
-export interface SubmitAnswerToSessionParams extends BaseAnswerPayload {
+export interface SubmitAnswerToSessionParams {
 	gameId: string;
+	questionId: string;
 	answer: number;
+	timeSpent: number;
 }
 
 export interface GameSessionValidationResponse {
@@ -170,13 +160,14 @@ export interface GameSessionValidationResponse {
 	session?: unknown;
 }
 
+export interface StartGameSessionParams {
+	gameId: string;
+	topic: string;
+	difficulty: GameDifficulty;
+	gameMode: GameMode;
+}
+
 export interface GameSessionStartResponse {
 	gameId: string;
 	status: string;
-}
-
-export interface GameStatsSummary {
-	successRate: number;
-	averageScore: number;
-	totalGames: number;
 }

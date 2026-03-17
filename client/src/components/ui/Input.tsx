@@ -1,7 +1,8 @@
-import { forwardRef, useCallback, type ComponentProps, type FocusEvent } from 'react';
+import { forwardRef, useCallback, type FocusEvent } from 'react';
 import { cva } from 'class-variance-authority';
 
 import { AudioKey } from '@/constants';
+import type { InputProps } from '@/types';
 import { audioService } from '@/services';
 import { cn } from '@/utils';
 
@@ -19,8 +20,6 @@ const inputVariants = cva(
 		},
 	}
 );
-
-export type InputProps = ComponentProps<'input'> & { error?: boolean };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
 	({ className, type, onFocus, error = false, ...props }, ref) => {

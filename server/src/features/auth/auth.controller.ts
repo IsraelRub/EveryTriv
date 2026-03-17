@@ -13,24 +13,26 @@ import {
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
-import type { AdminUserData, BasicUser, GoogleAuthRequest, TokenPayload } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
+import {
+	API_ENDPOINTS,
+	ErrorCode,
+	LOCALHOST_CONFIG,
+	TIME_DURATIONS_SECONDS,
+	UserRole,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
+import type { AdminUserData, BasicUser } from '@shared/types';
+import { getErrorMessage, isNonEmptyString, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
+import { AppConfig } from '@config';
+import { Cache, CurrentUser, CurrentUserId, NoCache, Public, Roles } from '@common/decorators';
+import { LocalAuthGuard, RolesGuard } from '@common/guards';
 import { UserCoreService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
+import type { GoogleAuthRequest, TokenPayload } from '@internal/types';
+import { getAvatarUrlForUser } from '@internal/utils';
 
-import {
-	Cache,
-	CurrentUser,
-	CurrentUserId,
-	AuthGuard as LocalAuthGuard,
-	NoCache,
-	Public,
-	Roles,
-	RolesGuard,
-} from '../../common';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -105,7 +107,9 @@ export class AuthController {
 		} catch (error) {
 			logger.authError('Token refresh failed', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: refreshTokenDto.refreshToken?.substring(0, 10) + '...',
+				id: refreshTokenDto.refreshToken
+					? truncateWithEllipsis(refreshTokenDto.refreshToken, VALIDATION_LENGTH.STRING_TRUNCATION.ERROR_PREVIEW)
+					: undefined,
 			});
 			throw error;
 		}
@@ -161,15 +165,20 @@ export class AuthController {
 				role: fullUser.role,
 			};
 
-			if ('firstName' in fullUser && VALIDATORS.string(fullUser.firstName) && fullUser.firstName) {
+			if ('firstName' in fullUser && isNonEmptyString(fullUser.firstName)) {
 				userData.firstName = fullUser.firstName;
 			}
-			if ('lastName' in fullUser && VALIDATORS.string(fullUser.lastName) && fullUser.lastName) {
+			if ('lastName' in fullUser && isNonEmptyString(fullUser.lastName)) {
 				userData.lastName = fullUser.lastName;
 			}
 			if (fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)) {
 				userData.avatar = fullUser.preferences.avatar;
 			}
+			const avatarUrl = getAvatarUrlForUser(
+				fullUser as { id: string; customAvatar?: Buffer | null },
+				AppConfig.apiPublicBaseUrl
+			);
+			if (avatarUrl != null) userData.avatarUrl = avatarUrl;
 			if ('emailVerified' in fullUser && typeof fullUser.emailVerified === 'boolean') {
 				userData.emailVerified = fullUser.emailVerified;
 			}
@@ -240,9 +249,9 @@ export class AuthController {
 				queryParams: queryParamsRecord,
 			});
 
-			const error = VALIDATORS.string(req.query.error) ? req.query.error : undefined;
-			const errorDescription = VALIDATORS.string(req.query.error_description) ? req.query.error_description : undefined;
-			const errorUri = VALIDATORS.string(req.query.error_uri) ? req.query.error_uri : undefined;
+			const error = isNonEmptyString(req.query.error) ? req.query.error : undefined;
+			const errorDescription = isNonEmptyString(req.query.error_description) ? req.query.error_description : undefined;
+			const errorUri = isNonEmptyString(req.query.error_uri) ? req.query.error_uri : undefined;
 
 			if (error) {
 				logger.authError('Google OAuth error received', {
@@ -262,9 +271,7 @@ export class AuthController {
 
 			const payload = req.user;
 			logger.systemInfo('Google OAuth callback payload check', {
-				data: {
-					googleIdLength: payload?.googleId ? String(payload.googleId).length : 0,
-				},
+				googleIdLength: payload?.googleId ? String(payload.googleId).length : 0,
 				dataKeys: payload ? Object.keys(payload) : [],
 			});
 
@@ -340,7 +347,9 @@ export class AuthController {
 
 			const parsedLimit = VALIDATORS.string(limit) ? parseInt(limit, 10) : limit;
 			const parsedOffset = VALIDATORS.string(offset) ? parseInt(offset, 10) : offset;
-			const result = await this.userCoreService.getAllUsers(parsedLimit, parsedOffset);
+			const safeLimit = VALIDATORS.number(parsedLimit) ? parsedLimit : 50;
+			const safeOffset = VALIDATORS.number(parsedOffset) ? parsedOffset : 0;
+			const result = await this.userCoreService.getAllUsers(safeLimit, safeOffset);
 
 			const adminUser: AdminUserData = {
 				id: user.sub,

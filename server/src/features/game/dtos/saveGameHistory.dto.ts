@@ -8,7 +8,6 @@ import type { AnswerHistory, GameDifficulty } from '@shared/types';
 export class SaveGameHistoryDto {
 	@ApiProperty({
 		description: 'Game score',
-		example: 100,
 		minimum: 0,
 	})
 	@IsNumber()
@@ -17,7 +16,6 @@ export class SaveGameHistoryDto {
 
 	@ApiProperty({
 		description: 'Number of questions in the game',
-		example: 10,
 		minimum: 1,
 	})
 	@IsNumber()
@@ -26,7 +24,6 @@ export class SaveGameHistoryDto {
 
 	@ApiProperty({
 		description: 'Number of correct answers',
-		example: 8,
 		minimum: 0,
 	})
 	@IsNumber()
@@ -60,7 +57,6 @@ export class SaveGameHistoryDto {
 
 	@ApiProperty({
 		description: 'Time spent in seconds',
-		example: 300,
 		minimum: 0,
 	})
 	@IsNumber()
@@ -69,7 +65,6 @@ export class SaveGameHistoryDto {
 
 	@ApiProperty({
 		description: 'Credits used',
-		example: 10,
 		minimum: 0,
 	})
 	@IsNumber()

@@ -437,69 +437,11 @@ export class MultiplayerGateway {
 }
 ```
 
-## Trivia Types
+## Game Types (Server)
 
-**מיקום:** `server/src/internal/types/trivia.types.ts`
+**מיקום:** `server/src/internal/types/domain/game.types.ts`
 
-**תפקיד:**
-- טיפוסים ספציפיים לטריוויה (server-only)
-- metadata עבור שאלות שנוצרו
-- cache entries עבור providers
-
-### טיפוסים
-
-#### TriviaQuestionMetadata
-
-Metadata נוסף עבור שאלות שנוצרו:
-
-```typescript
-export interface TriviaQuestionMetadata {
-  actualDifficulty: GameDifficulty;
-  totalQuestions: number;
-  customDifficultyMultiplier: number;
-  mappedDifficulty: GameDifficulty;
-}
-```
-
-#### QuestionCacheEntry
-
-ערך cache עבור שאלות (עם DifficultyLevel constraint):
-
-```typescript
-export interface QuestionCacheEntry {
-  question: TriviaQuestion;
-  createdAt: Date;
-  accessCount: number;
-  lastAccessed: Date;
-}
-```
-
-#### QuestionCacheMap
-
-מפה של מפתחות שאלות לערכי cache:
-
-```typescript
-export type QuestionCacheMap = Record<string, QuestionCacheEntry>;
-```
-
-### שימוש
-
-```typescript
-import type { TriviaQuestionMetadata, QuestionCacheMap } from '@internal/types';
-
-export abstract class BaseTriviaProvider {
-  protected questionCache: QuestionCacheMap = {};
-
-  protected extractMetadata(triviaQuestion: TriviaQuestion): TriviaQuestionMetadata {
-    return {
-      actualDifficulty: triviaQuestion.difficulty,
-      totalQuestions: 1,
-      customDifficultyMultiplier: 1,
-      mappedDifficulty: triviaQuestion.difficulty,
-    };
-  }
-}
-```
+**טיפוסים:** GetTriviaQuestionParams, SubmitAnswerParams, UserGameHistoryParams, GameConfigParams, SaveGameHistoryParams, SaveGameConfigParams, DeleteGameHistoryParams, GameSessionState, GameSessionQuestion, GameSessionQuestionSnapshot, QuestionSchedule, SocketData, וכו'.
 
 ## Best Practices
 

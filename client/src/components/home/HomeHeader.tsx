@@ -1,14 +1,16 @@
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart3, History, Trophy } from 'lucide-react';
 
 import { APP_NAME } from '@shared/constants';
 
-import { ANIMATION_CONFIG, ANIMATION_DELAYS, ROUTES, VariantBase } from '@/constants';
+import { ANIMATION_CONFIG, ANIMATION_DELAYS, HomeKey, ROUTES, VariantBase } from '@/constants';
+import type { HomeHeaderProps } from '@/types';
 import { Button, Card } from '@/components';
-import type { HomeHeaderProps } from '@/types/domain/home';
 
 export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestContent, action }: HomeHeaderProps) {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 
 	return (
@@ -19,12 +21,22 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 				transition={{ duration: ANIMATION_CONFIG.DURATION.NORMAL }}
 				className='text-center space-y-2 md:space-y-3 lg:space-y-4'
 			>
-				<h1 className='text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary leading-tight py-1 md:py-2 lg:py-3'>
-					<span className='bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>{APP_NAME}</span>
-				</h1>
-				<p className='text-base md:text-lg lg:text-xl text-muted-foreground view-centered-2xl'>
-					Challenge your knowledge with thousands of trivia questions across multiple categories
-				</p>
+				<div className='flex flex-wrap items-center justify-center gap-3 md:gap-4'>
+					<img
+						src='/assets/logo.svg'
+						alt=''
+						aria-hidden='true'
+						className='h-24 w-24 shrink-0 object-contain md:h-28 md:w-28 lg:h-32 lg:w-32'
+						width={128}
+						height={128}
+					/>
+					<h1 className='text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary leading-tight py-1 md:py-2 lg:py-3'>
+						<span className='bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
+							{APP_NAME}
+						</span>
+					</h1>
+				</div>
+				<p className='text-base md:text-lg lg:text-xl text-muted-foreground view-centered-2xl'>{t(HomeKey.TAGLINE)}</p>
 			</motion.div>
 			{showWelcome && (
 				<motion.div
@@ -35,11 +47,12 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 				>
 					<h2 className='text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground'>
 						{isAuthenticated && firstName ? (
-							<span>
-								Welcome back, <span className='text-primary font-bold'>{firstName}</span>!
-							</span>
+							<>
+								{t(HomeKey.WELCOME_BACK_PREFIX)}
+								<span className='text-blue-600 font-medium'>{firstName}</span>!
+							</>
 						) : (
-							'Test your knowledge and challenge your friends'
+							t(HomeKey.GUEST_CTA)
 						)}
 					</h2>
 					{action && <div className='flex items-center justify-center gap-4 flex-wrap'>{action}</div>}
@@ -58,10 +71,8 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 								<div className='p-3 rounded-full bg-primary/10'>
 									<BarChart3 className='w-8 h-8 text-primary' />
 								</div>
-								<h3 className='text-lg font-semibold'>Track Your Stats</h3>
-								<p className='text-sm text-muted-foreground'>
-									See your average score, success rate, and improvement over time.
-								</p>
+								<h3 className='text-lg font-semibold'>{t(HomeKey.TRACK_STATS_TITLE)}</h3>
+								<p className='text-sm text-muted-foreground'>{t(HomeKey.TRACK_STATS_DESC)}</p>
 							</div>
 						</Card>
 
@@ -70,10 +81,8 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 								<div className='p-3 rounded-full bg-primary/10'>
 									<Trophy className='w-8 h-8 text-primary' />
 								</div>
-								<h3 className='text-lg font-semibold'>Compete Globally</h3>
-								<p className='text-sm text-muted-foreground'>
-									Join the global leaderboard and see how you rank against other players.
-								</p>
+								<h3 className='text-lg font-semibold'>{t(HomeKey.COMPETE_TITLE)}</h3>
+								<p className='text-sm text-muted-foreground'>{t(HomeKey.COMPETE_DESC)}</p>
 							</div>
 						</Card>
 
@@ -82,19 +91,17 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 								<div className='p-3 rounded-full bg-primary/10'>
 									<History className='w-8 h-8 text-primary' />
 								</div>
-								<h3 className='text-lg font-semibold'>Save History</h3>
-								<p className='text-sm text-muted-foreground'>
-									Keep a record of every game you play and challenge yourself to improve.
-								</p>
+								<h3 className='text-lg font-semibold'>{t(HomeKey.SAVE_HISTORY_TITLE)}</h3>
+								<p className='text-sm text-muted-foreground'>{t(HomeKey.SAVE_HISTORY_DESC)}</p>
 							</div>
 						</Card>
 
 						<div className='col-span-full text-center mt-4'>
-							<p className='text-muted-foreground mb-4'>Create a free account to unlock these features!</p>
+							<p className='text-muted-foreground mb-4'>{t(HomeKey.CREATE_ACCOUNT_CTA)}</p>
 							<div className='flex justify-center gap-4'>
-								<Button onClick={() => navigate(ROUTES.REGISTER)}>Register Now</Button>
+								<Button onClick={() => navigate(ROUTES.REGISTER)}>{t(HomeKey.REGISTER_NOW)}</Button>
 								<Button variant={VariantBase.OUTLINE} onClick={() => navigate(ROUTES.LOGIN)}>
-									Login
+									{t(HomeKey.LOGIN)}
 								</Button>
 							</div>
 						</div>

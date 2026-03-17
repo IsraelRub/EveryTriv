@@ -1,5 +1,6 @@
 // Game analytics type definitions.
 import type { CountRecord, DifficultyBreakdown } from '../../core/data.types';
+import type { BaseGameStatistics } from '../game/game.types';
 import type { TimeStat } from './analyticsCommon.types';
 
 export interface TopicAnalyticsRecord {
@@ -23,12 +24,10 @@ export interface GameAnalyticsStatsEntry {
 
 export type GameAnalyticsStats = Record<string, GameAnalyticsStatsEntry>;
 
-export interface GameStatsCore {
-	totalGames: number;
-	totalQuestionsAnswered: number;
-	successRate: number;
-	averageScore: number;
-}
+export type GameStatsCore = Pick<
+	BaseGameStatistics,
+	'totalGames' | 'totalQuestionsAnswered' | 'successRate' | 'averageScore'
+>;
 
 export interface GameStatsData extends GameStatsCore {
 	popularTopics: string[];

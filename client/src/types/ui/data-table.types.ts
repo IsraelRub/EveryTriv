@@ -1,23 +1,23 @@
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 
 import type { SortDirection, VariantBase } from '@/constants';
 import type { PaginationButtonsProps } from './components.types';
 
-export type { SortDirection } from '@/constants';
-
-export type DataTableColumnType =
-	| 'text'
-	| 'text-primary'
-	| 'date'
-	| 'date-optional'
-	| 'badge'
-	| 'badge-difficulty'
-	| 'badge-role'
-	| 'truncate'
-	| 'custom';
+export enum DataTableColumnType {
+	TEXT = 'text',
+	TEXT_PRIMARY = 'text-primary',
+	DATE = 'date',
+	DATE_OPTIONAL = 'date-optional',
+	BADGE = 'badge',
+	BADGE_DIFFICULTY = 'badge-difficulty',
+	BADGE_ROLE = 'badge-role',
+	TRUNCATE = 'truncate',
+	CUSTOM = 'custom',
+}
 
 export interface DataTableColumn<T> {
 	id: string;
+	headerLabel?: string;
 	emptyHeader?: boolean;
 	headerClassName?: string;
 	cellClassName?: string;
@@ -26,11 +26,11 @@ export interface DataTableColumn<T> {
 	format?: (value: unknown, row: T) => string;
 	getBadgeVariant?: (row: T) => VariantBase;
 	roleBadgeClasses?: Record<string, string>;
-	render?: (row: T) => ReactNode;
+	render?: (row: T) => ReactElement | string | number | null;
 	truncateTitle?: (row: T) => string;
 	dateDefaultValue?: string;
 	sortField?: string;
-	headerIcon?: ReactNode;
+	headerIcon?: ReactElement | null;
 }
 
 export interface DataTableProps<T> {
@@ -49,15 +49,15 @@ export interface DataTableProps<T> {
 }
 
 export interface DataTableCardHeaderProps {
-	title: ReactNode;
-	description?: ReactNode;
-	toolbar?: ReactNode;
+	title: ReactElement | string;
+	description?: ReactElement | string | null;
+	toolbar?: ReactElement | string | null;
 	pagination: PaginationButtonsProps | null;
-	actions?: ReactNode;
+	actions?: ReactElement | string | null;
 }
 
 export interface DataTableCardProps<T> extends DataTableProps<T> {
 	header: DataTableCardHeaderProps;
-	filters?: ReactNode;
+	filters?: ReactElement | string | null;
 	useCard?: boolean;
 }

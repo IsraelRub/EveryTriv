@@ -1,7 +1,23 @@
-import { DifficultyLevel, ERROR_MESSAGES, ErrorCode, VALIDATION_COUNT } from '@shared/constants';
-import type { TriviaQuestion, TriviaQuestionDetailsMetadata } from '@shared/types';
-import { calculateDuration, clamp, getErrorMessage, shuffle } from '@shared/utils';
-import { extractCustomDifficultyText, isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
+import {
+	DEFAULT_LANGUAGE,
+	DifficultyLevel,
+	ERROR_MESSAGES,
+	ErrorCode,
+	OUTPUT_LANGUAGE_LABELS,
+	SurpriseScope,
+	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
+	type Locale,
+} from '@shared/constants';
+import type { SurprisePickResult, TriviaQuestion, TriviaQuestionDetailsMetadata } from '@shared/types';
+import { calculateDuration, clamp, getErrorMessage, isRecord, shuffle } from '@shared/utils';
+import {
+	createCustomDifficulty,
+	extractCustomDifficultyText,
+	isCustomDifficulty,
+	isRegisteredDifficulty,
+	toDifficultyLevel,
+} from '@shared/validation';
 
 import {
 	GROQ_DEFAULT_MODEL_CONFIG,
@@ -21,7 +37,7 @@ import type {
 } from '@internal/types';
 import { createServerError } from '@internal/utils';
 
-import { generateTriviaQuestion } from '../prompts';
+import { buildSurprisePickPrompt, buildTriviaPrompt, SURPRISE_PICK_SYSTEM_PROMPT } from '../prompts';
 import { GroqApiClient } from './groq.apiClient';
 import { GroqResponseParser } from './groq.responseParser';
 
@@ -84,7 +100,7 @@ export class GroqTriviaProvider {
 				});
 			}
 
-			const prompt = generateTriviaQuestion({
+			const prompt = buildTriviaPrompt({
 				...params,
 				answerCount: actualAnswerCount,
 				isCustomDifficulty: isCustomDifficulty(params.difficulty),
@@ -207,6 +223,99 @@ export class GroqTriviaProvider {
 			// Re-throw the error instead of returning fallback question
 			throw createServerError('generate trivia question', error);
 		}
+	}
+
+	async pickSurpriseTopicAndDifficulty(options: {
+		excludeTopics: string[];
+		scope: SurpriseScope;
+		locale?: Locale;
+	}): Promise<SurprisePickResult> {
+		const { excludeTopics, scope, locale } = options;
+		const outputLanguage = OUTPUT_LANGUAGE_LABELS[locale ?? DEFAULT_LANGUAGE];
+		try {
+			const userPrompt = buildSurprisePickPrompt({ excludeTopics, scope, outputLanguage });
+			const response = await this.apiClient.makeApiCall(userPrompt, SURPRISE_PICK_SYSTEM_PROMPT);
+
+			const rawContent = response.data?.choices?.[0]?.message?.content;
+			const content =
+				typeof rawContent === 'string'
+					? rawContent
+					: typeof rawContent === 'object' && rawContent != null
+						? JSON.stringify(rawContent)
+						: '';
+			if (!content || content.trim().length === 0) {
+				throw createServerError('surprise pick', new Error(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE));
+			}
+
+			const jsonString = this.extractSurprisePickJson(content.trim());
+			let parsed: Record<string, unknown>;
+			try {
+				const result = JSON.parse(jsonString);
+				parsed = isRecord(result) ? result : {};
+			} catch {
+				throw createServerError('surprise pick', new Error(ErrorCode.INVALID_QUESTION_FORMAT_FROM_AI));
+			}
+
+			const result: SurprisePickResult = {};
+
+			if (scope === SurpriseScope.TOPIC || scope === SurpriseScope.BOTH) {
+				const topic = typeof parsed.topic === 'string' ? parsed.topic.trim() : '';
+				if (topic.length < VALIDATION_LENGTH.TOPIC.MIN || topic.length > VALIDATION_LENGTH.TOPIC.MAX) {
+					throw createServerError(
+						'surprise pick',
+						new Error(`Topic length must be between ${VALIDATION_LENGTH.TOPIC.MIN} and ${VALIDATION_LENGTH.TOPIC.MAX}`)
+					);
+				}
+				result.topic = topic;
+			}
+
+			if (scope === SurpriseScope.DIFFICULTY || scope === SurpriseScope.BOTH) {
+				const difficultyRaw = typeof parsed.difficulty === 'string' ? parsed.difficulty.trim() : '';
+				if (difficultyRaw.length === 0) {
+					throw createServerError('surprise pick', new Error('Difficulty is required'));
+				}
+				const difficultyLower = difficultyRaw.toLowerCase();
+				result.difficulty = isRegisteredDifficulty(difficultyLower)
+					? difficultyLower
+					: createCustomDifficulty(
+							difficultyRaw.length > VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX
+								? difficultyRaw.slice(0, VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX)
+								: difficultyRaw
+						);
+			}
+
+			return result;
+		} catch (error) {
+			logger.providerError(this.name, 'Surprise pick failed', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw createServerError('surprise pick', error);
+		}
+	}
+
+	private extractSurprisePickJson(content: string): string {
+		try {
+			JSON.parse(content);
+			return content;
+		} catch {
+			// ignore
+		}
+		const markdownBlock = /```(?:json)?\s*([\s\S]*?)```/i;
+		const match = content.match(markdownBlock);
+		if (match?.[1]) {
+			const candidate = match[1].trim();
+			try {
+				JSON.parse(candidate);
+				return candidate;
+			} catch {
+				// ignore
+			}
+		}
+		const objectMatch = content.match(/\{[\s\S]*\}/);
+		if (objectMatch?.[0]) {
+			return objectMatch[0];
+		}
+		throw createServerError('surprise pick', new Error(ErrorCode.INVALID_QUESTION_FORMAT_FROM_AI));
 	}
 
 	private applyMetadata(

@@ -1,6 +1,46 @@
+import type { ComparisonTarget, TimePeriod } from '@shared/constants';
 import type { CountRecord, GameDifficulty } from '@shared/types';
 
 import type { GameHistoryEntity, UserEntity } from '@internal/entities';
+
+export interface BuildTrendsOptions {
+	limit?: number;
+	groupBy?: TimePeriod;
+}
+
+export interface UnifiedQuerySignatureInput {
+	includeSections?: string[];
+	startDate?: Date;
+	endDate?: Date;
+	groupBy?: TimePeriod;
+	activityLimit?: number;
+	trendLimit?: number;
+	includeActivity?: boolean;
+	targetUserId?: string;
+	comparisonTarget?: ComparisonTarget;
+}
+
+export interface DifficultyStatsRaw {
+	difficulty: string;
+	total: number;
+	correct: number;
+}
+
+export interface GameStatsSummary {
+	successRate: number;
+	averageScore: number;
+	totalGames: number;
+}
+
+export interface AdminStatisticsRaw {
+	totalGames: number;
+	averageScore: number | null;
+	bestScore: number | null;
+	totalQuestionsAnswered: number;
+	correctAnswers: number;
+	lastActivity: Date | null;
+	totalScore: number | null;
+}
 
 export interface TopicAnalyticsAccumulator {
 	gamesPlayed: number;
@@ -12,10 +52,12 @@ export interface TopicAnalyticsAccumulator {
 	difficultyBreakdown: CountRecord;
 }
 
-export interface DifficultyStatsRecord {
+export interface DifficultyStatRow {
 	difficulty: GameDifficulty;
 	total: number;
 	correct: number;
+	totalQuestions: number;
+	scoreSum: number;
 }
 
 export interface UserWithHistoryResult {

@@ -1,21 +1,27 @@
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 
-import { getErrorMessage } from '@shared/utils';
-import { validateEmail, validatePassword, validatePasswordMatch } from '@shared/validation';
+import { LengthKey, validateEmail, validatePasswordMatch, validateStringLength } from '@shared/validation';
 
 import {
+	AlertIconSize,
 	AlertVariant,
 	AudioKey,
+	AuthKey,
 	ButtonSize,
 	Colors,
 	ComponentSize,
 	LoadingMessages,
+	PLACEHOLDER_EMAIL,
 	ROUTES,
-	VALIDATION_MESSAGES,
+	ValidationKey,
 	VariantBase,
 } from '@/constants';
+import type { RegistrationFieldErrors } from '@/types';
+import { audioService, authService } from '@/services';
+import { cn, getTranslatedErrorMessage, translateValidationMessage } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
@@ -34,11 +40,9 @@ import {
 	Spinner,
 } from '@/components';
 import { useModalRoute, useRegister } from '@/hooks';
-import { audioService, authService } from '@/services';
-import type { RegistrationFieldErrors } from '@/types';
-import { cn } from '@/utils';
 
 export function RegistrationView() {
+	const { t } = useTranslation(['auth', 'validation', 'errors']);
 	const navigate = useNavigate();
 	const registerMutation = useRegister();
 	const { isModal, closeModal, returnUrl } = useModalRoute();
@@ -55,31 +59,40 @@ export function RegistrationView() {
 
 	const isLoading = registerMutation.isPending;
 
-	const isFormValid = (): boolean => {
-		const emailValidation = validateEmail(formData.email);
-		const passwordValidation = validatePassword(formData.password);
-		const passwordMatchValidation =
-			formData.confirmPassword !== undefined
-				? validatePasswordMatch(formData.password, formData.confirmPassword)
-				: { isValid: true, errors: [] };
-		return emailValidation.isValid && passwordValidation.isValid && passwordMatchValidation.isValid;
-	};
+	const emailValidation = validateEmail(formData.email);
+	const passwordValidation = validateStringLength(formData.password, LengthKey.PASSWORD);
+	const passwordMatchValidation =
+		formData.confirmPassword !== undefined
+			? validatePasswordMatch(formData.password, formData.confirmPassword)
+			: { isValid: true, errors: [] };
+	const isFormValid = emailValidation.isValid && passwordValidation.isValid && passwordMatchValidation.isValid;
 
 	const validateField = (name: string, value: string): string | null => {
 		switch (name) {
-			case 'email':
-				return validateEmail(value).isValid
+			case 'email': {
+				const emailRes = validateEmail(value);
+				return emailRes.isValid
 					? null
-					: (validateEmail(value).errors[0] ?? VALIDATION_MESSAGES.EMAIL_INVALID);
-			case 'password':
-				return validatePassword(value).isValid
+					: emailRes.errors[0]
+						? translateValidationMessage(emailRes.errors[0], t)
+						: t(ValidationKey.EMAIL_INVALID);
+			}
+			case 'password': {
+				const res = validateStringLength(value, LengthKey.PASSWORD);
+				return res.isValid
 					? null
-					: (validatePassword(value).errors[0] ?? VALIDATION_MESSAGES.PASSWORD_INVALID);
-			case 'confirmPassword':
-				return validatePasswordMatch(formData.password, value).isValid
+					: res.errors[0]
+						? translateValidationMessage(res.errors[0], t)
+						: t(ValidationKey.PASSWORD_INVALID);
+			}
+			case 'confirmPassword': {
+				const matchRes = validatePasswordMatch(formData.password, value);
+				return matchRes.isValid
 					? null
-					: (validatePasswordMatch(formData.password, value).errors[0] ??
-							VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID);
+					: matchRes.errors[0]
+						? translateValidationMessage(matchRes.errors[0], t)
+						: t(ValidationKey.PASSWORD_CONFIRMATION_INVALID);
+			}
 			default:
 				return null;
 		}
@@ -132,11 +145,6 @@ export function RegistrationView() {
 			return;
 		}
 
-		if (!isFormValid()) {
-			audioService.play(AudioKey.ERROR);
-			return;
-		}
-
 		try {
 			await registerMutation.mutateAsync({
 				email: formData.email,
@@ -151,8 +159,7 @@ export function RegistrationView() {
 				navigate(returnUrl ?? '/');
 			}
 		} catch (err) {
-			const errorMessage = getErrorMessage(err);
-			setError(errorMessage);
+			setError(getTranslatedErrorMessage(t, err));
 			audioService.play(AudioKey.ERROR);
 		}
 	};
@@ -162,8 +169,7 @@ export function RegistrationView() {
 		try {
 			await authService.initiateGoogleLogin();
 		} catch (err) {
-			const errorMessage = getErrorMessage(err);
-			setError(errorMessage);
+			setError(getTranslatedErrorMessage(t, err));
 		}
 	};
 
@@ -171,8 +177,8 @@ export function RegistrationView() {
 		<Card className='w-full max-w-md relative'>
 			{!isModal && <CloseButton className='absolute top-4 left-4' />}
 			<CardHeader className='text-center space-y-2'>
-				<CardTitle className='text-3xl font-bold'>Create Account</CardTitle>
-				<CardDescription>Join EveryTriv and start playing trivia</CardDescription>
+				<CardTitle className='text-3xl font-bold'>{t(AuthKey.CREATE_ACCOUNT)}</CardTitle>
+				<CardDescription>{t(AuthKey.JOIN_EVERY_TRIV_SHORT)}</CardDescription>
 			</CardHeader>
 
 			<CardContent className='space-y-6'>
@@ -185,12 +191,12 @@ export function RegistrationView() {
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label htmlFor='firstName'>First Name</Label>
+							<Label htmlFor='firstName'>{t(AuthKey.FIRST_NAME)}</Label>
 							<Input
 								id='firstName'
 								name='firstName'
 								type='text'
-								placeholder='John'
+								placeholder={t(AuthKey.FIRST_NAME_PLACEHOLDER)}
 								value={formData.firstName}
 								onChange={handleChange}
 								disabled={isLoading}
@@ -198,12 +204,12 @@ export function RegistrationView() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label htmlFor='lastName'>Last Name</Label>
+							<Label htmlFor='lastName'>{t(AuthKey.LAST_NAME)}</Label>
 							<Input
 								id='lastName'
 								name='lastName'
 								type='text'
-								placeholder='Doe'
+								placeholder={t(AuthKey.LAST_NAME_PLACEHOLDER)}
 								value={formData.lastName}
 								onChange={handleChange}
 								disabled={isLoading}
@@ -214,13 +220,13 @@ export function RegistrationView() {
 
 					<div className='space-y-2'>
 						<Label htmlFor='email'>
-							Email <span className='text-destructive'>*</span>
+							{t(AuthKey.EMAIL)} <span className='text-destructive'>*</span>
 						</Label>
 						<Input
 							id='email'
 							name='email'
 							type='email'
-							placeholder='your@email.com'
+							placeholder={PLACEHOLDER_EMAIL}
 							value={formData.email}
 							onChange={handleChange}
 							disabled={isLoading}
@@ -229,7 +235,7 @@ export function RegistrationView() {
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.email}
 							</p>
 						)}
@@ -237,13 +243,13 @@ export function RegistrationView() {
 
 					<div className='space-y-2'>
 						<Label htmlFor='password'>
-							Password <span className='text-destructive'>*</span>
+							{t(AuthKey.PASSWORD)} <span className='text-destructive'>*</span>
 						</Label>
 						<Input
 							id='password'
 							name='password'
 							type='password'
-							placeholder='Enter your password'
+							placeholder={t(AuthKey.PASSWORD_PLACEHOLDER)}
 							value={formData.password}
 							onChange={handleChange}
 							disabled={isLoading}
@@ -252,7 +258,7 @@ export function RegistrationView() {
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.password}
 							</p>
 						)}
@@ -260,14 +266,14 @@ export function RegistrationView() {
 
 					<div className='space-y-2'>
 						<Label htmlFor='confirmPassword'>
-							Confirm Password <span className='text-destructive'>*</span>
+							{t(AuthKey.CONFIRM_PASSWORD)} <span className='text-destructive'>*</span>
 						</Label>
 						<div className='relative'>
 							<Input
 								id='confirmPassword'
 								name='confirmPassword'
 								type='password'
-								placeholder='Confirm your password'
+								placeholder={t(AuthKey.CONFIRM_PASSWORD_PLACEHOLDER)}
 								value={formData.confirmPassword}
 								onChange={handleChange}
 								disabled={isLoading}
@@ -277,22 +283,26 @@ export function RegistrationView() {
 							{formData.confirmPassword &&
 								formData.password === formData.confirmPassword &&
 								!fieldErrors.confirmPassword && (
-									<CheckCircle className={cn('form-success-icon', Colors.GREEN_500.text)} />
+									<CheckCircle
+										className={cn('form-success-icon', Colors.GREEN_500.text)}
+										fill='currentColor'
+										strokeWidth={0}
+									/>
 								)}
 						</div>
 						{fieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.confirmPassword}
 							</p>
 						)}
 					</div>
 
-					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
+					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid}>
 						{isLoading ? (
 							<Spinner size={ComponentSize.SM} message={LoadingMessages.CREATING_ACCOUNT} messageInline />
 						) : (
-							'Create Account'
+							t(AuthKey.CREATE_ACCOUNT)
 						)}
 					</Button>
 				</form>
@@ -302,14 +312,14 @@ export function RegistrationView() {
 						<Separator className='w-full' />
 					</div>
 					<div className='relative flex justify-center text-xs uppercase'>
-						<span className='bg-card px-2 text-muted-foreground'>Or continue with</span>
+						<span className='bg-card px-2 text-muted-foreground'>{t(AuthKey.OR_CONTINUE_WITH)}</span>
 					</div>
 				</div>
 
 				<GoogleAuthButton onClick={handleGoogleSignup} disabled={isLoading} />
 
 				<div className='text-center text-sm'>
-					<span className='text-muted-foreground'>Already have an account? </span>
+					<span className='text-muted-foreground'>{t(AuthKey.ALREADY_HAVE_ACCOUNT)} </span>
 					<Button
 						type='button'
 						variant={VariantBase.MINIMAL}
@@ -317,7 +327,7 @@ export function RegistrationView() {
 						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: isModal } })}
 						className='link-primary h-auto p-0 font-medium'
 					>
-						Sign in
+						{t(AuthKey.SIGN_IN)}
 					</Button>
 				</div>
 			</CardContent>

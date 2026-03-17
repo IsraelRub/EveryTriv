@@ -8,10 +8,14 @@ import {
 	ErrorCode,
 	GameMode,
 	HTTP_TIMEOUTS,
-	SERVER_CACHE_KEYS,
+	Locale,
+	OUTPUT_LANGUAGE_LABELS,
+	SURPRISE_SCOPE_DEFAULT,
+	SurpriseScope,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type {
 	AnswerHistoryFallback,
@@ -23,6 +27,8 @@ import type {
 	GameSessionStartResponse,
 	GameSessionValidationResponse,
 	SubmitAnswerResult,
+	SurprisePickResult,
+	TriviaAnswer,
 	TriviaQuestion,
 } from '@shared/types';
 import {
@@ -36,26 +42,27 @@ import {
 	normalizeGameData,
 	shuffle,
 	sumBy,
+	truncateWithEllipsis,
 } from '@shared/utils';
 import { isNonEmptyString, isStringArray } from '@shared/utils/core/data.utils';
-import { isRegisteredDifficulty, isUuid, toDifficultyLevel, VALIDATORS } from '@shared/validation';
+import { isLocale, isRegisteredDifficulty, isUuid, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
-import { GAME_STATUSES, GameStatus } from '@internal/constants';
+import { restoreGameDifficulty } from '@common/validation';
+import { GAME_STATUSES, GameStatus, SERVER_CACHE_KEYS } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	DeleteGameHistoryParams,
-	GameSessionState,
 	GetTriviaQuestionParams,
 	PromptParams,
 	SaveGameHistoryParams,
+	ServerGameSessionState,
 	SubmitAnswerParams,
 	UserGameHistoryParams,
 } from '@internal/types';
 import { createNotFoundError, createServerError, isGameSessionState, isValidGameDifficulty } from '@internal/utils';
 
-import { restoreGameDifficulty } from '../../common/validation/difficulty.validation';
 import { UserStatsUpdateService } from '../analytics/services';
 import { TriviaGenerationService } from './triviaGeneration';
 
@@ -165,6 +172,7 @@ export class GameService {
 			userId,
 			answerCount = VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
 			gameId,
+			outputLanguage,
 		} = params;
 		// Note: questionsPerRequest is already validated and converted by TriviaRequestPipe
 		// For unlimited mode (-1), we request questions in batches to allow continuous gameplay
@@ -192,20 +200,25 @@ export class GameService {
 			const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
 			const excludeQuestionTexts = Array.from(userSeenQuestions);
 
-			// Check if questions exist in database for this topic and difficulty
+			const locale = isLocale(outputLanguage) ? outputLanguage : Locale.EN;
+
+			// Check if questions exist in database for this topic, difficulty, and language
 			const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(
 				topic,
-				difficulty
+				difficulty,
+				locale
 			);
 
-			// Try to get existing questions first
+			// Try to get existing questions first (only those matching requested language)
 			let availableQuestions: TriviaEntity[] = [];
 			if (hasExistingQuestions) {
 				availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
 					topic,
 					difficulty,
 					normalizedQuestionsPerRequest * 2,
-					excludeQuestionTexts
+					excludeQuestionTexts,
+					[],
+					locale
 				);
 			}
 
@@ -253,7 +266,7 @@ export class GameService {
 					const correctIdx =
 						questionEntity.correctAnswerIndex >= 0 && questionEntity.correctAnswerIndex < currentAnswerCount
 							? questionEntity.correctAnswerIndex
-							: questionEntity.answers.findIndex((a: { isCorrect?: boolean }) => a.isCorrect === true);
+							: questionEntity.answers.findIndex((a: TriviaAnswer) => a.isCorrect === true);
 					const correctAnswer = correctIdx >= 0 ? adjustedAnswers[correctIdx] : undefined;
 					if (!correctAnswer) {
 						continue;
@@ -269,7 +282,7 @@ export class GameService {
 
 				// Shuffle all answers so the correct one is not always in the same position (e.g. first)
 				adjustedAnswers = shuffle(adjustedAnswers);
-				const correctAnswerIndex = adjustedAnswers.findIndex((a: { isCorrect?: boolean }) => a.isCorrect === true) ?? 0;
+				const correctAnswerIndex = adjustedAnswers.findIndex((a: TriviaAnswer) => a.isCorrect === true) ?? 0;
 
 				const {
 					userId: _userId,
@@ -317,6 +330,8 @@ export class GameService {
 								difficulty,
 								answerCount: answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
 								excludeQuestions: excludeQuestions.length > 0 ? excludeQuestions : undefined,
+								outputLanguageLabel: OUTPUT_LANGUAGE_LABELS[locale],
+								outputLanguage: locale,
 							};
 							let timeoutId: NodeJS.Timeout | undefined = undefined;
 							const timeoutPromise = new Promise<never>((_, reject) => {
@@ -417,7 +432,7 @@ export class GameService {
 					const session = sessionResult.data;
 					const newSnapshots: Record<string, { correctAnswerIndex: number }> = {};
 					for (const q of questions) {
-						if (q?.id && typeof q.correctAnswerIndex === 'number') {
+						if (q?.id && VALIDATORS.number(q.correctAnswerIndex)) {
 							newSnapshots[q.id] = { correctAnswerIndex: q.correctAnswerIndex };
 						}
 					}
@@ -493,7 +508,7 @@ export class GameService {
 	): Promise<GameSessionStartResponse> {
 		try {
 			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
-			const sessionState: GameSessionState = {
+			const sessionState: ServerGameSessionState = {
 				gameId,
 				userId,
 				topic,
@@ -532,6 +547,34 @@ export class GameService {
 			});
 			throw createServerError('start game session', error);
 		}
+	}
+
+	private async getTopicsPlayedByUser(userId: string): Promise<string[]> {
+		try {
+			const rows = await this.gameHistoryRepository
+				.createQueryBuilder('gh')
+				.select('gh.topic', 'topic')
+				.distinct(true)
+				.where('gh.userId = :userId', { userId })
+				.andWhere("TRIM(gh.topic) != ''")
+				.getRawMany<{ topic: string }>();
+			return rows.map(r => r.topic).filter(isNonEmptyString);
+		} catch (error) {
+			logger.gameError('Failed to get topics played by user', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+			});
+			return [];
+		}
+	}
+
+	async getSurprisePick(userId: string, scope?: SurpriseScope, locale?: Locale): Promise<SurprisePickResult> {
+		const excludeTopics = await this.getTopicsPlayedByUser(userId);
+		return this.triviaGenerationService.getSurprisePick({
+			excludeTopics,
+			scope: scope ?? SURPRISE_SCOPE_DEFAULT,
+			locale,
+		});
 	}
 
 	async submitAnswerToSession(params: SubmitAnswerParams & { gameId: string }): Promise<SubmitAnswerResult> {
@@ -574,7 +617,7 @@ export class GameService {
 			// Use snapshot correctAnswerIndex when available (matches client shuffle); otherwise fallback to question from DB
 			const snapshot = session.questionSnapshots?.[questionId];
 			const isCorrect =
-				snapshot !== undefined && typeof snapshot.correctAnswerIndex === 'number'
+				snapshot !== undefined && VALIDATORS.number(snapshot.correctAnswerIndex)
 					? answer === snapshot.correctAnswerIndex
 					: isAnswerCorrect(question, answer);
 
@@ -716,7 +759,7 @@ export class GameService {
 							questionId: q.questionId,
 						});
 						const fallbackData: AnswerHistoryFallback = {
-							question: `Question ${q.questionId.substring(0, 8)}... (deleted)`,
+							question: `Question ${truncateWithEllipsis(q.questionId, VALIDATION_LENGTH.STRING_TRUNCATION.ID_PREVIEW)} (deleted)`,
 							isCorrect: q.isCorrect,
 							timeSpent: q.timeSpent,
 							userAnswerText: `Answer ${String.fromCharCode(65 + (q.answer >= 0 ? q.answer : 0))}`,

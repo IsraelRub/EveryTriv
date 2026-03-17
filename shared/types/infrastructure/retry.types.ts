@@ -17,6 +17,8 @@ export interface RetryConfig {
 	maxRetries?: number;
 	baseDelay?: number;
 	timeout?: number;
+
+	maxTotalTimeMs?: number;
 	retryOptions?: RetryOptions;
 	retryOnAuthError?: boolean;
 	retryOnRateLimit?: boolean;

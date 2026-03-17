@@ -1,6 +1,6 @@
-import { AchievementCardVariant, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
+import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
+import { repeat } from '@/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
-import { cn, repeat } from '@/utils';
 
 export function LeaderboardSkeleton() {
 	return (
@@ -103,56 +103,4 @@ export function HistorySkeleton() {
 			</Card>
 		</div>
 	);
-}
-
-export function AchievementCardSkeleton({
-	variant = AchievementCardVariant.COMPACT,
-	className,
-}: {
-	variant?: AchievementCardVariant;
-	className?: string;
-}) {
-	switch (variant) {
-		case AchievementCardVariant.DETAILED:
-			return (
-				<Card className={cn('card-accent-left-warning', className)}>
-					<CardHeader className='pb-3'>
-						<div className='flex items-center justify-between gap-2'>
-							<div className='flex items-center gap-2'>
-								<Skeleton variant={SkeletonVariant.Icon} className='rounded' />
-								<Skeleton variant={SkeletonVariant.TextLine} className='max-w-full' />
-							</div>
-							<Skeleton variant={SkeletonVariant.Badge} className='max-w-full' />
-						</div>
-					</CardHeader>
-					<CardContent className='space-y-2'>
-						<Skeleton variant={SkeletonVariant.TextSmallLine} className='max-w-full' />
-						<div className='flex items-center gap-2 flex-wrap'>
-							<Skeleton variant={SkeletonVariant.Badge} className='max-w-full' />
-							<Skeleton variant={SkeletonVariant.TextSmall} className='max-w-full' />
-						</div>
-					</CardContent>
-				</Card>
-			);
-
-		case AchievementCardVariant.COMPACT:
-		default:
-			return (
-				<div className={cn('callout-primary', className)}>
-					<div className='flex items-start gap-3'>
-						<div className='flex-shrink-0'>
-							<Skeleton variant={SkeletonVariant.Icon} className='rounded' />
-						</div>
-						<div className='flex-1 min-w-0'>
-							<div className='flex items-start justify-between gap-2 mb-1'>
-								<Skeleton variant={SkeletonVariant.TextLine} className='max-w-full' />
-								<Skeleton variant={SkeletonVariant.Badge} className='max-w-full' />
-							</div>
-							<Skeleton variant={SkeletonVariant.TextSmall} className='max-w-full mb-2' />
-							<Skeleton variant={SkeletonVariant.Badge} className='max-w-full' />
-						</div>
-					</div>
-				</div>
-			);
-	}
 }

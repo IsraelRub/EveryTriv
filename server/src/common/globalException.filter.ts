@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { HttpMethod } from '@shared/constants';
 import type { ErrorResponse } from '@shared/types';
 import {
 	getErrorMessage,
@@ -20,8 +21,7 @@ import {
 } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
-
-import { NestRequest } from '../internal/types';
+import type { NestRequest } from '@internal/types';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -52,7 +52,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 							message: errorMessage,
 							messages: errorArray,
 						},
-						body: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
+						requestBody: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
 					});
 
 					// This is a validation error with detailed error information
@@ -101,7 +101,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		// Also check if the request method is GET (typical for page navigation)
 		const acceptHeader = request.headers.accept ?? '';
 		const isApiRequest =
-			acceptHeader.includes('application/json') || request.url?.startsWith('/api/') || request.method !== 'GET';
+			acceptHeader.includes('application/json') ||
+			request.url?.startsWith('/api/') ||
+			request.method !== HttpMethod.GET;
 
 		// For 404 errors on frontend routes (GET requests without JSON accept header)
 		// Return 404 without JSON body - this allows Vite's proxy to handle it

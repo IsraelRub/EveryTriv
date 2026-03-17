@@ -1,9 +1,9 @@
 import { cloneElement, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
 import { Circle, Loader2 } from 'lucide-react';
 
-import { ComponentSize, ROUTES } from '@/constants';
+import { APP_SHELL_MAIN_CLASS, APP_SHELL_MAIN_ID, ComponentSize, VIEW_MAIN_CLASS } from '@/constants';
 import type { FullPageSpinnerProps, SpinnerProps } from '@/types';
 import { cn } from '@/utils';
 import { HomeButton } from './button';
@@ -23,6 +23,7 @@ export const spinnerSizeVariants = cva('', {
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>((props, ref) => {
 	const { message, messageInline, size, className, ...rest } = props;
+	const { t } = useTranslation();
 	const sizeClass = spinnerSizeVariants({ size: size ?? ComponentSize.MD });
 	const spinnerSpan = (
 		<span className={cn('relative inline-block', sizeClass, className)} {...rest}>
@@ -37,17 +38,13 @@ export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>((props, ref) =>
 		return (
 			<span ref={ref} className={wrapperClass}>
 				{spinnerSpan}
-				<span className='text-muted-foreground text-sm m-0'>{message}</span>
+				<span className='text-muted-foreground text-sm m-0'>{t(message)}</span>
 			</span>
 		);
 	}
 	return cloneElement(spinnerSpan, { ref });
 });
 Spinner.displayName = 'Spinner';
-
-const VIEW_MAIN_CLASS = 'view-main flex flex-col items-center justify-center animate-fade-in-only';
-const APP_SHELL_MAIN_CLASS = 'app-main flex items-center justify-center min-h-screen';
-const APP_SHELL_MAIN_ID = 'main-content';
 
 export function FullPageSpinner({
 	message,
@@ -56,11 +53,7 @@ export function FullPageSpinner({
 	showHomeButton = true,
 	onBeforeNavigate,
 }: FullPageSpinnerProps) {
-	const navigate = useNavigate();
-	const handleHomeClick = () => {
-		onBeforeNavigate?.();
-		navigate(ROUTES.HOME);
-	};
+	const { t } = useTranslation();
 	const isAppShell = layout === 'appShell';
 	const mainClassName = isAppShell ? APP_SHELL_MAIN_CLASS : VIEW_MAIN_CLASS;
 	const mainId = isAppShell ? APP_SHELL_MAIN_ID : undefined;
@@ -69,8 +62,8 @@ export function FullPageSpinner({
 		<main id={mainId} className={mainClassName}>
 			<div className='text-center flex flex-col items-center gap-6'>
 				{showSpinner && <Spinner size={ComponentSize.FULL} className='mx-auto' />}
-				<div className='text-lg md:text-xl font-bold text-foreground'>{message}</div>
-				{showHomeButton && <HomeButton onClick={handleHomeClick} />}
+				<div className='text-lg md:text-xl font-bold text-foreground'>{t(message)}</div>
+				{showHomeButton && <HomeButton onBeforeNavigate={onBeforeNavigate} />}
 			</div>
 		</main>
 	);

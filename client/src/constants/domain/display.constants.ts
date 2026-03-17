@@ -1,4 +1,5 @@
-/** Fallback strings when display name is missing (labels, getDisplayNameFromPlayer, etc.). */
+export const POPULAR_TOPICS_TO_SHOW = 5;
+
 export const DISPLAY_NAME_FALLBACKS = {
 	PLAYER: 'Player',
 	PLAYER_SHORT: 'P',

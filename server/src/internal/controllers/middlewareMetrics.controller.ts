@@ -4,9 +4,9 @@ import { EMPTY_VALUE, ErrorCode, UserRole } from '@shared/constants';
 import type { AllMetricsResponse, MetricsResponse } from '@shared/types';
 import { getErrorMessage, meanBy, sumBy } from '@shared/utils';
 
+import { Roles } from '@common/decorators';
 import { serverLogger as logger, MetricsService } from '@internal/services';
 import { isMiddlewareMetrics } from '@internal/utils';
-import { Roles } from '@common';
 
 @Controller('admin/middleware-metrics')
 export class MetricsController {

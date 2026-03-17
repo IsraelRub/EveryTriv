@@ -36,7 +36,7 @@ export class PayPalApiService {
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
-					this.httpService.get<PayPalOrderResponse>(`${baseUrl}${PAYPAL_API_ENDPOINTS.ORDERS}/${orderId}`, {
+					this.httpService.get<PayPalOrderResponse>(baseUrl + `${PAYPAL_API_ENDPOINTS.ORDERS}/${orderId}`, {
 						headers: {
 							Authorization: `Bearer ${accessToken}`,
 							'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export class PayPalApiService {
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
-					this.httpService.post<PayPalOrderResponse>(`${baseUrl}${PAYPAL_API_ENDPOINTS.ORDERS}`, requestBody, {
+					this.httpService.post<PayPalOrderResponse>(baseUrl + PAYPAL_API_ENDPOINTS.ORDERS, requestBody, {
 						headers: {
 							Authorization: `Bearer ${accessToken}`,
 							'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ export class PayPalApiService {
 
 				const response = await firstValueFrom(
 					this.httpService.post<PayPalCaptureResponse>(
-						`${baseUrl}${PAYPAL_API_ENDPOINTS.ORDERS}/${orderId}/capture`,
+						baseUrl + `${PAYPAL_API_ENDPOINTS.ORDERS}/${orderId}/capture`,
 						{},
 						{
 							headers: {
@@ -122,7 +122,7 @@ export class PayPalApiService {
 
 				const response = await firstValueFrom(
 					this.httpService.post<PayPalWebhookVerificationResponse>(
-						`${baseUrl}${PAYPAL_API_ENDPOINTS.WEBHOOK_VERIFY}`,
+						baseUrl + PAYPAL_API_ENDPOINTS.WEBHOOK_VERIFY,
 						verificationRequest,
 						{
 							headers: {

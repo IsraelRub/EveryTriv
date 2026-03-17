@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Delete,
@@ -6,15 +7,21 @@ import {
 	Get,
 	HttpException,
 	HttpStatus,
+	NotFoundException,
 	Param,
 	Patch,
 	Post,
 	Put,
 	Query,
+	StreamableFile,
+	UploadedFile,
+	UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import {
 	API_ENDPOINTS,
+	AVATAR_UPLOAD_MAX_BYTES,
 	ERROR_MESSAGES,
 	ErrorCode,
 	GameMode,
@@ -24,22 +31,25 @@ import {
 	UserStatus,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type { AdminUserData, TokenPayload } from '@shared/types';
+import type { AdminUserData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
-
-import { serverLogger as logger } from '@internal/services';
 
 import {
 	Cache,
 	CurrentUser,
 	CurrentUserId,
 	NoCache,
+	Public,
 	RequireEmailVerified,
 	RequireUserStatus,
 	Roles,
-} from '../../common';
-import { UserDataPipe } from '../../common/pipes';
+} from '@common/decorators';
+import { UserDataPipe } from '@common/pipes';
+import { UserCoreService } from '@internal/modules';
+import { serverLogger as logger } from '@internal/services';
+import type { TokenPayload } from '@internal/types';
+
 import { AuthService } from '../auth/auth.service';
 import { CreditsService } from '../credits/credits.service';
 import { DeductCreditsDto } from '../credits/dtos';
@@ -60,6 +70,7 @@ import { UserService } from './user.service';
 export class UserController {
 	constructor(
 		private readonly userService: UserService,
+		private readonly userCoreService: UserCoreService,
 		private readonly creditsService: CreditsService,
 		private readonly authService: AuthService
 	) {}
@@ -142,6 +153,61 @@ export class UserController {
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				fields: Object.keys(profileData),
+			});
+			throw error;
+		}
+	}
+
+	@Get('me/avatar')
+	@NoCache()
+	async getMyAvatar(@CurrentUserId() userId: string | null) {
+		if (!userId) {
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
+		}
+		const image = await this.userService.getAvatarImage(userId);
+		if (!image) {
+			throw new NotFoundException(ErrorCode.NOT_FOUND);
+		}
+		return new StreamableFile(image.buffer, { type: image.mime });
+	}
+
+	@Get(':id/avatar')
+	@Public()
+	@NoCache()
+	async getAvatarById(@Param('id') id: string) {
+		const image = await this.userService.getAvatarImage(id);
+		if (!image) {
+			throw new NotFoundException(ErrorCode.NOT_FOUND);
+		}
+		return new StreamableFile(image.buffer, { type: image.mime });
+	}
+
+	@Post('avatar/upload')
+	@UseInterceptors(
+		FileInterceptor('file', {
+			limits: { fileSize: AVATAR_UPLOAD_MAX_BYTES },
+		})
+	)
+	async uploadAvatar(
+		@CurrentUserId() userId: string | null,
+		@UploadedFile() file: { buffer?: Buffer; mimetype?: string; size?: number } | undefined
+	) {
+		if (!userId) {
+			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
+		}
+		if (!file) {
+			throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_INVALID_TYPE);
+		}
+		try {
+			const result = await this.userService.uploadAvatar(userId, file);
+
+			logger.apiUpdate('user_avatar_upload', { userId });
+
+			return result;
+		} catch (error) {
+			logger.userError('Error uploading avatar', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
 			});
 			throw error;
 		}
@@ -338,7 +404,9 @@ export class UserController {
 			logger.apiUpdate('user_single_preference', {
 				userId,
 				preference,
-				value: VALIDATORS.string(body.value) ? body.value.substring(0, 50) : body.value,
+				value: VALIDATORS.string(body.value)
+					? body.value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.SHORT)
+					: body.value,
 			});
 
 			return result;
@@ -360,7 +428,7 @@ export class UserController {
 				throw new HttpException(ErrorCode.REQUIRED_USER_ID, HttpStatus.BAD_REQUEST);
 			}
 
-			const result = await this.userService.getUserById(id);
+			const result = await this.userCoreService.getUserById(id);
 
 			logger.apiRead('user_by_id', {
 				userId: id,
@@ -475,7 +543,9 @@ export class UserController {
 		try {
 			const parsedLimit = VALIDATORS.string(limit) ? parseInt(limit, 10) : limit;
 			const parsedOffset = VALIDATORS.string(offset) ? parseInt(offset, 10) : offset;
-			const result = await this.userService.getAllUsers(parsedLimit, parsedOffset);
+			const safeLimit = VALIDATORS.number(parsedLimit) ? parsedLimit : 50;
+			const safeOffset = VALIDATORS.number(parsedOffset) ? parsedOffset : 0;
+			const result = await this.userCoreService.getAllUsers(safeLimit, safeOffset);
 
 			logger.apiRead('admin_get_all_users', {
 				id: user.sub,

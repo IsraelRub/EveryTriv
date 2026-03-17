@@ -1,5 +1,10 @@
 import type { StorageValue } from './data.types';
 
+export interface BaseOperationResponse {
+	success: boolean;
+	message: string;
+}
+
 export interface BaseApiResponse<T = StorageValue> {
 	data: T;
 	success: boolean;
@@ -23,14 +28,4 @@ export interface PagePagination extends CorePagination {
 export interface OffsetPagination extends CorePagination {
 	offset: number;
 	hasMore: boolean;
-}
-
-export interface CleanupTestUsersResponse {
-	success: boolean;
-	message: string;
-	deletedUsers: number;
-	deletedGameHistory: number;
-	deletedUserStats: number;
-	deletedCreditTransactions: number;
-	deletedPaymentHistory: number;
 }

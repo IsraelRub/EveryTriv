@@ -8,11 +8,8 @@ import {
 	DEFAULT_GAME_CONFIG,
 	ERROR_MESSAGES,
 	GAME_MODES_CONFIG,
-	GAME_STATE_DEFAULTS,
 	GameMode,
-	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
-	UserRole,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { TriviaQuestion } from '@shared/types';
@@ -21,12 +18,21 @@ import {
 	createAnswerHistory,
 	getErrorMessage,
 	hasProperty,
+	isNonEmptyString,
 	isRecord,
 	shouldChargeAfterGame,
 } from '@shared/utils';
-import { VALIDATORS } from '@shared/validation';
 
-import { AudioKey, LoadingMessages, ROUTES } from '@/constants';
+import { AudioKey, ExitReason, LoadingMessages, ROUTES } from '@/constants';
+import type { UseSingleSessionReturn } from '@/types';
+import { audioService, clientLogger as logger } from '@/services';
+import {
+	getSingleSessionCompletionState,
+	getSingleSessionCreditDeductionValue,
+	getSingleSessionExpectedQuestionCount,
+	getSingleSessionGameModeFlags,
+	getSingleSessionQuestionsPerRequest,
+} from '@/utils';
 import {
 	useAppDispatch,
 	useAppSelector,
@@ -34,15 +40,11 @@ import {
 	useCurrentUserData,
 	useDeductCredits,
 	useGameFinalization,
-	useStartGameSession,
-	useSubmitAnswerToSession,
 	useTrackAnalyticsEvent,
 	useTriviaQuestionMutation,
 	useUserRole,
 } from '@/hooks';
 import { useNavigationClose } from '@/hooks/ui/useNavigationClose';
-import { audioService, clientLogger as logger } from '@/services';
-import type { UseSingleSessionReturn } from '@/types';
 import {
 	selectAnswered,
 	selectCorrectAnswers,
@@ -62,6 +64,7 @@ import {
 	selectGameStartTime,
 	selectIsGameFinalized,
 	selectLastScoreEarned,
+	selectLocale,
 	selectSelectedAnswer,
 	selectStreak,
 } from '@/redux/selectors';
@@ -85,6 +88,7 @@ import {
 	updateScore,
 	updateTimeSpent,
 } from '@/redux/slices';
+import { useStartGameSession, useSubmitAnswerToSession } from './useTrivia';
 
 export function useSingleSession(): UseSingleSessionReturn {
 	const { gameId: urlGameId } = useParams<{ gameId: string }>();
@@ -96,14 +100,11 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const currentDifficulty = useAppSelector(selectCurrentDifficulty);
 	const currentGameMode = useAppSelector(selectCurrentGameMode);
 	const currentSettings = useAppSelector(selectCurrentSettings);
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
-	const isQuestionLimited = currentGameMode === GameMode.QUESTION_LIMITED;
-	const isTimeLimited = currentGameMode === GameMode.TIME_LIMITED;
-	const isUnlimited = currentGameMode === GameMode.UNLIMITED;
-	const isMultiplayer = currentGameMode === GameMode.MULTIPLAYER;
-	const hasQuestionLimit = isQuestionLimited || isMultiplayer;
+	const gameModeForUtils = currentGameMode ?? GameMode.QUESTION_LIMITED;
+	const { isQuestionLimited, isTimeLimited, isUnlimited, hasQuestionLimit } =
+		getSingleSessionGameModeFlags(gameModeForUtils);
 
 	const maxQuestionsPerGame =
 		currentSettings?.maxQuestionsPerGame ?? GAME_MODES_CONFIG[currentGameMode]?.defaults.maxQuestionsPerGame;
@@ -111,7 +112,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const timeLimit =
 		currentSettings?.timeLimit ??
 		(currentGameMode ? GAME_MODES_CONFIG[currentGameMode]?.defaults.timeLimit : undefined) ??
-		TIME_DURATIONS_SECONDS.MINUTE;
+		VALIDATION_COUNT.TIME_LIMIT.DEFAULT;
 
 	const deductCredits = useDeductCredits();
 
@@ -131,6 +132,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const creditsDeducted = useAppSelector(selectCreditsDeducted);
 	const lastScoreEarned = useAppSelector(selectLastScoreEarned);
 	const currentQuestion = useAppSelector(selectCurrentQuestion);
+	const locale = useAppSelector(selectLocale);
 
 	useEffect(() => {
 		if (!urlGameId || serverSessionGameIdRef.current) return;
@@ -154,7 +156,6 @@ export function useSingleSession(): UseSingleSessionReturn {
 		handleClose();
 	}, [dispatch, handleClose]);
 
-	const [showExitDialog, setShowExitDialog] = useState(false);
 	const [showErrorDialog, setShowErrorDialog] = useState(false);
 	const [errorMessage, setErrorMessage] = useState('');
 	const [showCreditsWarning, setShowCreditsWarning] = useState(false);
@@ -172,6 +173,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	});
 	const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const answerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const fetchingQuestionsHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const initialLoadValuesRef = useRef<{
 		maxQuestionsPerGame: number | undefined;
 		answerCount: number | undefined;
@@ -185,7 +187,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const submitAnswerToSessionMutation = useSubmitAnswerToSession();
 	const { finalizeGameSession, isFinalizing } = useGameFinalization();
 	const [showSummaryLoading, setShowSummaryLoading] = useState(false);
-	const [exitReason, setExitReason] = useState<'credits_exhausted' | null>(null);
+	const [exitReason, setExitReason] = useState<ExitReason | null>(null);
 	const [isFetchingMoreQuestions, setIsFetchingMoreQuestions] = useState(false);
 	const trackAnalyticsEvent = useTrackAnalyticsEvent();
 
@@ -213,12 +215,11 @@ export function useSingleSession(): UseSingleSessionReturn {
 		}
 
 		const gameMode = currentGameMode ?? GameMode.QUESTION_LIMITED;
-
-		const valueForDeduction = isTimeLimited
-			? timeLimit
-			: isUnlimited
-				? 1
-				: (maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.MAX);
+		const valueForDeduction = getSingleSessionCreditDeductionValue({
+			gameMode,
+			timeLimit,
+			maxQuestionsPerGame,
+		});
 
 		logger.gameInfo('Deducting credits for game', {
 			questionsPerRequest: valueForDeduction,
@@ -321,22 +322,20 @@ export function useSingleSession(): UseSingleSessionReturn {
 					dispatch(startGameSession({ gameId: sessionGameId, gameQuestionCount: initialGameQuestionCount }));
 				}
 
-				const questionsPerRequestForAPI = hasQuestionLimit
-					? (maxQuestionsPerGame ??
-						GAME_MODES_CONFIG[currentGameMode ?? GameMode.QUESTION_LIMITED]?.defaults.maxQuestionsPerGame ??
-						VALIDATION_COUNT.QUESTIONS.MAX)
-					: isTimeLimited
-						? VALIDATION_COUNT.QUESTIONS.INITIAL_BATCH_TIME_LIMITED
-						: (maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.UNLIMITED);
+				const questionsPerRequestForAPI = getSingleSessionQuestionsPerRequest({
+					gameMode: gameModeForUtils,
+					maxQuestionsPerGame,
+					gameQuestionCount,
+				});
 
-				const expectedQuestionCount = hasQuestionLimit
-					? (gameQuestionCount ??
-						maxQuestionsPerGame ??
-						GAME_MODES_CONFIG[currentGameMode ?? GameMode.QUESTION_LIMITED]?.defaults.maxQuestionsPerGame)
-					: undefined;
+				const expectedQuestionCount = getSingleSessionExpectedQuestionCount({
+					gameMode: gameModeForUtils,
+					gameQuestionCount,
+					maxQuestionsPerGame,
+				});
 
 				logger.gameInfo('Loading trivia questions', {
-					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
+					topic: currentTopic || DEFAULT_GAME_CONFIG.defaultTopic,
 					difficulty: currentDifficulty || DEFAULT_GAME_CONFIG.defaultDifficulty,
 					questionsPerRequest: questionsPerRequestForAPI,
 					...(expectedQuestionCount !== undefined && { expectedQuestionCount }),
@@ -384,15 +383,23 @@ export function useSingleSession(): UseSingleSessionReturn {
 				}
 
 				if (ignore) return;
+				if (fetchingQuestionsHintTimeoutRef.current) {
+					clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+					fetchingQuestionsHintTimeoutRef.current = null;
+				}
 				dispatch(setLoading({ loading: true, loadingStep: LoadingMessages.FETCHING_QUESTIONS }));
+				fetchingQuestionsHintTimeoutRef.current = setTimeout(() => {
+					fetchingQuestionsHintTimeoutRef.current = null;
+					dispatch(setLoading({ loading: true, loadingStep: LoadingMessages.FETCHING_QUESTIONS_HINT }));
+				}, 8 * TIME_PERIODS_MS.SECOND);
 				const answerCountToSend = currentSettings?.answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT;
 				const response = await triviaMutation.mutateAsync({
-					topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
+					topic: currentTopic || DEFAULT_GAME_CONFIG.defaultTopic,
 					difficulty: currentDifficulty || DEFAULT_GAME_CONFIG.defaultDifficulty,
 					questionsPerRequest: questionsPerRequestForAPI,
-					...(currentUser?.id ? { userId: currentUser.id } : {}),
 					answerCount: answerCountToSend,
 					...(sessionGameId ? { gameId: sessionGameId } : {}),
+					outputLanguage: locale,
 					signal: abortController.signal,
 				});
 
@@ -407,10 +414,14 @@ export function useSingleSession(): UseSingleSessionReturn {
 
 				if (response && isRecord(response) && 'questions' in response) {
 					if (Array.isArray(response.questions) && response.questions.length > 0) {
+						if (fetchingQuestionsHintTimeoutRef.current) {
+							clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+							fetchingQuestionsHintTimeoutRef.current = null;
+						}
 						dispatch(setLoading({ loading: true, loadingStep: LoadingMessages.VALIDATING_QUESTIONS }));
 						const validQuestions = response.questions.filter(
 							(q): q is TriviaQuestion =>
-								isRecord(q) && VALIDATORS.string(q.question) && Array.isArray(q.answers) && q.answers.length > 0
+								isRecord(q) && isNonEmptyString(q.question) && Array.isArray(q.answers) && q.answers.length > 0
 						);
 
 						if (validQuestions.length > 0) {
@@ -459,6 +470,10 @@ export function useSingleSession(): UseSingleSessionReturn {
 								hasQuestionLimit,
 							};
 							questionsLoadedRef.current = true;
+							if (fetchingQuestionsHintTimeoutRef.current) {
+								clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+								fetchingQuestionsHintTimeoutRef.current = null;
+							}
 							dispatch(setLoading({ loading: false, loadingStep: LoadingMessages.READY }));
 						} else {
 							throw new Error(ERROR_MESSAGES.api.NO_VALID_QUESTIONS_IN_RESPONSE);
@@ -485,6 +500,10 @@ export function useSingleSession(): UseSingleSessionReturn {
 						error.details.error === 'Request was cancelled');
 
 				if (isAbortError) {
+					if (fetchingQuestionsHintTimeoutRef.current) {
+						clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+						fetchingQuestionsHintTimeoutRef.current = null;
+					}
 					logger.gameInfo('Trivia request aborted or timed out', { message });
 					isLoadingRef.current = false;
 					dispatch(setLoading({ loading: false, loadingStep: LoadingMessages.CONNECTING }));
@@ -504,6 +523,10 @@ export function useSingleSession(): UseSingleSessionReturn {
 					message.toLowerCase().includes('timeout');
 				const displayMessage = isRateLimitOrTimeout ? ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT : message;
 
+				if (fetchingQuestionsHintTimeoutRef.current) {
+					clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+					fetchingQuestionsHintTimeoutRef.current = null;
+				}
 				logger.gameError('Failed to load questions', { errorInfo: { message } });
 				audioService.play(AudioKey.ERROR);
 				setErrorMessage(displayMessage);
@@ -532,6 +555,10 @@ export function useSingleSession(): UseSingleSessionReturn {
 			isLoadingRef.current = false;
 			loadInProgressRef.current = false;
 			abortController.abort();
+			if (fetchingQuestionsHintTimeoutRef.current) {
+				clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+				fetchingQuestionsHintTimeoutRef.current = null;
+			}
 			if (errorTimeoutRef.current) {
 				clearTimeout(errorTimeoutRef.current);
 				errorTimeoutRef.current = null;
@@ -578,60 +605,58 @@ export function useSingleSession(): UseSingleSessionReturn {
 		});
 	}, [score, correctAnswers, currentQuestionIndex, timeLimit, finalizeGameSession, dispatch, serverSessionGameIdRef]);
 
-	const fetchMoreQuestionsAndContinue = useCallback(() => {
+	const fetchMoreQuestionsAndContinue = useCallback(async () => {
 		setIsFetchingMoreQuestions(true);
 		const answerCountToSend = currentSettings?.answerCount ?? VALIDATION_COUNT.ANSWER_COUNT.DEFAULT;
 		const sessionGameId = serverSessionGameIdRef.current;
-		triviaMutation
-			.mutateAsync({
-				topic: currentTopic || GAME_STATE_DEFAULTS.TOPIC,
-				difficulty: currentDifficulty || 'medium',
-				questionsPerRequest: VALIDATION_COUNT.QUESTIONS.INITIAL_BATCH_TIME_LIMITED,
-				...(currentUser?.id ? { userId: currentUser.id } : {}),
+		try {
+			const response = await triviaMutation.mutateAsync({
+				topic: currentTopic || DEFAULT_GAME_CONFIG.defaultTopic,
+				difficulty: currentDifficulty || DEFAULT_GAME_CONFIG.defaultDifficulty,
+				questionsPerRequest: getSingleSessionQuestionsPerRequest({ gameMode: GameMode.TIME_LIMITED }),
 				...(sessionGameId ? { gameId: sessionGameId } : {}),
 				answerCount: answerCountToSend,
-			})
-			.then(response => {
-				if (!response || !isRecord(response) || !('questions' in response) || !Array.isArray(response.questions))
-					throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
-				const validQuestions = response.questions.filter(
-					(q): q is TriviaQuestion =>
-						isRecord(q) && VALIDATORS.string(q.question) && Array.isArray(q.answers) && q.answers.length > 0
-				);
-				if (validQuestions.length > 0) {
-					dispatch(appendQuestions({ questions: validQuestions }));
-					setIsFetchingMoreQuestions(false);
-					dispatch(moveToNextQuestionAction());
-					logger.gameInfo('More questions loaded for time-limited game', { count: validQuestions.length });
-				} else {
-					throw new Error(ERROR_MESSAGES.api.NO_VALID_QUESTIONS_IN_RESPONSE);
-				}
-			})
-			.catch(err => {
-				const message = getErrorMessage(err);
-				logger.gameError('Failed to load more questions for time-limited game', { errorInfo: { message } });
-				setIsFetchingMoreQuestions(false);
-				audioService.play(AudioKey.ERROR);
-				setErrorMessage(message);
-				setShowErrorDialog(true);
-				dispatch(finalizeGame());
-				if (serverSessionGameIdRef.current) {
-					setShowSummaryLoading(true);
-					finalizeGameSession({
-						navigateToSummary: true,
-						trackAnalytics: false,
-						logContext: 'out of questions (fetch more failed)',
-						gameId: serverSessionGameIdRef.current,
-						playErrorSound: false,
-					});
-				}
+				outputLanguage: locale,
 			});
+			if (!response || !isRecord(response) || !('questions' in response) || !Array.isArray(response.questions))
+				throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
+			const validQuestions = response.questions.filter(
+				(q): q is TriviaQuestion =>
+					isRecord(q) && isNonEmptyString(q.question) && Array.isArray(q.answers) && q.answers.length > 0
+			);
+			if (validQuestions.length > 0) {
+				dispatch(appendQuestions({ questions: validQuestions }));
+				setIsFetchingMoreQuestions(false);
+				dispatch(moveToNextQuestionAction());
+				logger.gameInfo('More questions loaded for time-limited game', { count: validQuestions.length });
+			} else {
+				throw new Error(ERROR_MESSAGES.api.NO_VALID_QUESTIONS_IN_RESPONSE);
+			}
+		} catch (err) {
+			const message = getErrorMessage(err);
+			logger.gameError('Failed to load more questions for time-limited game', { errorInfo: { message } });
+			setIsFetchingMoreQuestions(false);
+			audioService.play(AudioKey.ERROR);
+			setErrorMessage(message);
+			setShowErrorDialog(true);
+			dispatch(finalizeGame());
+			if (serverSessionGameIdRef.current) {
+				setShowSummaryLoading(true);
+				finalizeGameSession({
+					navigateToSummary: true,
+					trackAnalytics: false,
+					logContext: 'out of questions (fetch more failed)',
+					gameId: serverSessionGameIdRef.current,
+					playErrorSound: false,
+				});
+			}
+		}
 	}, [
 		currentTopic,
 		currentDifficulty,
 		currentSettings?.answerCount,
-		currentUser?.id,
 		dispatch,
+		locale,
 		triviaMutation,
 		finalizeGameSession,
 	]);
@@ -642,8 +667,17 @@ export function useSingleSession(): UseSingleSessionReturn {
 
 			const userAnswer: number = selectedAnswer ?? -1;
 
-			const answerHistory = createAnswerHistory(currentQuestion, userAnswer, isCorrect, timeSpent);
-			dispatch(addAnswerHistory(answerHistory));
+			const entry = createAnswerHistory(currentQuestion, userAnswer, isCorrect, timeSpent);
+			const answers = currentQuestion.answers ?? [];
+			const correctText = answers[entry.correctAnswerIndex]?.text;
+			const userText = userAnswer >= 0 && userAnswer < answers.length ? answers[userAnswer]?.text : undefined;
+			dispatch(
+				addAnswerHistory({
+					...entry,
+					...(correctText !== undefined && { correctAnswerText: correctText }),
+					...(userText !== undefined && { userAnswerText: userText }),
+				})
+			);
 		},
 		[currentQuestion, selectedAnswer, dispatch]
 	);
@@ -651,11 +685,12 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const moveToNextQuestion = useCallback(
 		(wasCorrect: boolean, scoreEarned: number) => {
 			const nextQuestionIndex = currentQuestionIndex + 1;
-			const questionsExhausted = nextQuestionIndex >= questions.length;
-			const shouldEndGame =
-				hasQuestionLimit && gameQuestionCount
-					? nextQuestionIndex >= gameQuestionCount
-					: isTimeLimited && questionsExhausted;
+			const { shouldEndGame, shouldFetchMore } = getSingleSessionCompletionState({
+				gameMode: gameModeForUtils,
+				currentQuestionIndex,
+				gameQuestionCount,
+				questionsLength: questions.length,
+			});
 
 			logger.gameInfo('Checking game completion', {
 				currentQuestionIndex,
@@ -666,7 +701,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 				sessionId: serverSessionGameIdRef.current ?? undefined,
 			});
 
-			if (isTimeLimited && questionsExhausted) {
+			if (shouldFetchMore) {
 				fetchMoreQuestionsAndContinue();
 				return;
 			}
@@ -743,7 +778,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 					dispatch(updateTimeSpent(totalTimeSpent));
 					dispatch(setQuestionIndex(nextQuestionIndex));
 
-					setExitReason('credits_exhausted');
+					setExitReason(ExitReason.CREDITS_EXHAUSTED);
 					setShowSummaryLoading(true);
 					setTimeout(() => {
 						finalizeGameSession({
@@ -788,7 +823,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 							dispatch(updateTimeSpent(totalTimeSpent));
 							dispatch(setQuestionIndex(nextQuestionIndex));
 
-							setExitReason('credits_exhausted');
+							setExitReason(ExitReason.CREDITS_EXHAUSTED);
 							setShowSummaryLoading(true);
 							setTimeout(() => {
 								finalizeGameSession({
@@ -806,9 +841,8 @@ export function useSingleSession(): UseSingleSessionReturn {
 			}
 		},
 		[
-			hasQuestionLimit,
+			gameModeForUtils,
 			isQuestionLimited,
-			isTimeLimited,
 			isUnlimited,
 			isAdmin,
 			currentQuestionIndex,
@@ -906,11 +940,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 						})
 					);
 
-					if (isCorrect) {
-						audioService.play(AudioKey.CORRECT_ANSWER);
-					} else {
-						audioService.play(AudioKey.WRONG_ANSWER);
-					}
+					audioService.playAnswerFeedback(isCorrect);
 
 					logger.gameInfo(isCorrect ? 'Correct answer' : 'Incorrect answer', {
 						questionId: submittingQuestionId,
@@ -1018,6 +1048,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 
 		dispatch(updateTimeSpent(totalTimeSpent));
 		dispatch(setQuestionIndex(questionsAnswered));
+		dispatch(setGameQuestionCount(questionsAnswered));
 
 		setShowSummaryLoading(true);
 		finalizeGameSession({
@@ -1056,8 +1087,6 @@ export function useSingleSession(): UseSingleSessionReturn {
 		onBeforeNavigateReset,
 		handleClose,
 		navigateToPayment,
-		showExitDialog,
-		setShowExitDialog,
 		showErrorDialog,
 		setShowErrorDialog,
 		errorMessage,

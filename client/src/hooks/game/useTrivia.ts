@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { GameMode, TIME_PERIODS_MS } from '@shared/constants';
-import type { GameDifficulty, SubmitAnswerToSessionParams } from '@shared/types';
+import { TIME_PERIODS_MS } from '@shared/constants';
+import type { StartGameSessionParams, SubmitAnswerToSessionParams } from '@shared/types';
 import { extractValidationErrors, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 
 import { QUERY_KEYS } from '@/constants';
-import { gameHistoryService, gameService, clientLogger as logger, queryInvalidationService } from '@/services';
 import type { TriviaRequestWithSignal } from '@/types';
+import { gameHistoryService, gameService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { useIsAuthenticated } from '../useAuth';
 
 export const useGameHistory = (limit: number = 20, offset: number = 0) => {
@@ -17,6 +17,7 @@ export const useGameHistory = (limit: number = 20, offset: number = 0) => {
 		queryFn: () => gameHistoryService.getUserGameHistory(limit, offset),
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		enabled: isAuthenticated,
+		refetchOnWindowFocus: true,
 	});
 };
 
@@ -73,10 +74,6 @@ export const useTriviaQuestionMutation = () => {
 	});
 };
 
-export const useValidateCustomDifficulty = () => {
-	return (customText: string) => gameService.validateCustomDifficulty(customText);
-};
-
 export const useDeleteGameHistory = () => {
 	const queryClient = useQueryClient();
 
@@ -101,7 +98,7 @@ export const useClearGameHistory = () => {
 
 export const useStartGameSession = () => {
 	return useMutation({
-		mutationFn: (params: { gameId: string; topic: string; difficulty: GameDifficulty; gameMode: GameMode }) =>
+		mutationFn: (params: StartGameSessionParams) =>
 			gameHistoryService.startGameSession(params.gameId, params.topic, params.difficulty, params.gameMode),
 		onError: (error: unknown) => {
 			const message = getErrorMessage(error);

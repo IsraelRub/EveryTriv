@@ -41,9 +41,7 @@ export function isRoomConfig(value: unknown): value is RoomConfig {
 		VALIDATORS.string(value.difficulty) &&
 		isGameDifficulty(value.difficulty) &&
 		VALIDATORS.number(value.questionsPerRequest) &&
-		VALIDATORS.number(value.maxPlayers) &&
-		VALIDATORS.string(value.gameMode) &&
-		VALIDATORS.number(value.timePerQuestion)
+		VALIDATORS.number(value.maxPlayers)
 	);
 }
 
@@ -51,6 +49,7 @@ function isRoomStatus(value: unknown): value is RoomStatus {
 	return (
 		VALIDATORS.string(value) &&
 		(value === RoomStatus.WAITING ||
+			value === RoomStatus.STARTING ||
 			value === RoomStatus.PLAYING ||
 			value === RoomStatus.FINISHED ||
 			value === RoomStatus.CANCELLED)

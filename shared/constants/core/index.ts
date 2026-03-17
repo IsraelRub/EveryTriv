@@ -1,5 +1,7 @@
 export * from './api.constants';
 
+export * from './avatar.constants';
+
 export * from './validation.constants';
 
 export * from './error.constants';

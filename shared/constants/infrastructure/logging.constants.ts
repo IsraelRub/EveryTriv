@@ -1,4 +1,5 @@
 import { TIME_PERIODS_MS } from '../core/time.constants';
+import { VALIDATION_LENGTH } from '../core/validation.constants';
 
 export enum LogLevel {
 	ERROR = 'error',
@@ -305,7 +306,7 @@ export const MESSAGE_FORMATTERS = {
 	languageTool: {
 		...createDomainFormatters(LOG_DOMAINS.LANGUAGE_TOOL),
 		validation: (text: string, suggestions: number) =>
-			`${LOG_ICONS.FORM} [${LOG_DOMAINS.LANGUAGE_TOOL}] Validation: ${text.substring(0, 50)}... (${suggestions} suggestions)`,
+			`${LOG_ICONS.FORM} [${LOG_DOMAINS.LANGUAGE_TOOL}] Validation: ${text.length <= VALIDATION_LENGTH.STRING_TRUNCATION.SHORT ? text : `${text.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.SHORT - 3)}...`} (${suggestions} suggestions)`,
 		apiRequest: (endpoint: string) => `${LOG_ICONS.API} [${LOG_DOMAINS.LANGUAGE_TOOL}] API Request: ${endpoint}`,
 		apiError: (endpoint: string, error: string) =>
 			`${LOG_ICONS.ERROR} [${LOG_DOMAINS.LANGUAGE_TOOL}] API Error: ${endpoint} - ${error}`,
@@ -355,7 +356,7 @@ export const MESSAGE_FORMATTERS = {
 } as const;
 
 export const PERFORMANCE_THRESHOLDS = {
-	ACCEPTABLE: 500, // 500ms - acceptable response time
-	SLOW: TIME_PERIODS_MS.SECOND, // 1s - slow response time
-	CRITICAL: 3000, // 3s - critical/very slow response time
+	ACCEPTABLE: 500,
+	SLOW: TIME_PERIODS_MS.SECOND,
+	CRITICAL: 3000,
 } as const;

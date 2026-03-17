@@ -1,8 +1,10 @@
-import { LeaderboardPeriod } from '@shared/constants';
+import { LeaderboardPeriod, type Locale } from '@shared/constants';
 import type { AnswerHistory, GameState, MultiplayerRoom, TriviaQuestion } from '@shared/types';
 
 import { LoadingMessages } from '@/constants';
 import type { GameModeState } from '../domain/game';
+
+export type { AppDispatch } from '@/redux/store';
 
 export interface GameSessionState {
 	gameId: string | null;
@@ -27,10 +29,19 @@ export interface GameSessionState {
 
 export interface AudioSettingsState {
 	volume: number;
+	soundEffectsVolume: number;
+	musicVolume: number;
 	isMuted: boolean;
 	soundEnabled: boolean;
 	musicEnabled: boolean;
 	isInitialized: boolean;
+}
+
+export interface MultiplayerAnswerBreakdownEntry {
+	question: string;
+	isCorrect: boolean;
+	correctAnswerText?: string;
+	userAnswerText?: string;
 }
 
 export interface MultiplayerState {
@@ -39,12 +50,15 @@ export interface MultiplayerState {
 	gameState: GameState | null;
 	error: string | null;
 	isLoading: boolean;
-	/** True after QUESTION_ENDED until next QUESTION_STARTED – show correct/wrong answers only in this phase */
 	revealPhase: boolean;
+	personalAnswerHistory: MultiplayerAnswerBreakdownEntry[];
+
+	answerCountsForQuestionId: string | null;
 }
 
 export interface UIPreferencesState {
 	leaderboardPeriod: LeaderboardPeriod;
+	locale: Locale;
 }
 
 export interface RootState {
@@ -54,6 +68,3 @@ export interface RootState {
 	audioSettings: AudioSettingsState;
 	uiPreferences: UIPreferencesState;
 }
-
-// AppDispatch is exported from @/redux/store to avoid circular dependency
-export type { AppDispatch } from '@/redux/store';

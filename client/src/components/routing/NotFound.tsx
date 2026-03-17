@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-import { Card, HomeButton } from '@/components';
+import { CommonKey } from '@/constants';
 import { clientLogger as logger } from '@/services';
+import { Card, HomeButton } from '@/components';
 
 export function NotFound() {
+	const { t } = useTranslation('common');
 	const location = useLocation();
 
 	useEffect(() => {
@@ -26,13 +29,9 @@ export function NotFound() {
 			<Card className='w-full max-w-md card-padding text-center view-spacing'>
 				<div>
 					<h1 className='text-5xl md:text-6xl font-bold mb-1 md:mb-2'>404</h1>
-					<p className='text-lg md:text-xl text-muted-foreground'>Oops! Page not found</p>
+					<p className='text-lg md:text-xl text-muted-foreground'>{t(CommonKey.PAGE_NOT_FOUND)}</p>
 				</div>
-				<p className='text-base md:text-lg text-muted-foreground italic'>
-					The path to knowledge is paved with questions,
-					<br />
-					not answers.
-				</p>
+				<p className='text-base md:text-lg text-muted-foreground italic'>{t(CommonKey.PAGE_NOT_FOUND_TAGLINE)}</p>
 				<div className='flex flex-col gap-2'>
 					<HomeButton />
 				</div>

@@ -3,16 +3,16 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 
 import { API_ENDPOINTS, ErrorCode, PaymentMethod, PaymentStatus, TIME_DURATIONS_SECONDS } from '@shared/constants';
-import type { PaymentData } from '@shared/types';
+import type { ManualPaymentDetails, PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import { Cache, CurrentUserId } from '@common/decorators';
+import { PaymentDataPipe } from '@common/pipes';
 import { serverLogger as logger } from '@internal/services';
 
-import { Cache, CurrentUserId } from '../../common';
-import { PaymentDataPipe } from '../../common/pipes';
 import { CreditsService } from '../credits/credits.service';
 import { PurchaseCreditsDto } from '../credits/dtos';
-import { CreatePaymentDto } from './dtos';
+import { CreatePaymentDto, PaymentMethodDetailsDto } from './dtos';
 import { PaymentService } from './payment.service';
 
 @Controller(API_ENDPOINTS.PAYMENT.BASE)
@@ -27,7 +27,7 @@ export class PaymentController {
 	async createPayment(@CurrentUserId() userId: string, @Body(PaymentDataPipe) paymentData: CreatePaymentDto) {
 		const manualPayment =
 			paymentData.paymentMethod === PaymentMethod.MANUAL_CREDIT
-				? this.paymentService.buildManualPaymentDetails(paymentData)
+				? this.buildManualPaymentDetails(paymentData)
 				: undefined;
 		const paymentDataForService: PaymentData = {
 			amount: paymentData.amount ?? 0,
@@ -54,7 +54,7 @@ export class PaymentController {
 	@Post('purchase-credits')
 	async purchaseCredits(@CurrentUserId() userId: string, @Body(PaymentDataPipe) body: PurchaseCreditsDto) {
 		try {
-			const packageInfo = this.paymentService.getPackageInfo(body.packageId);
+			const packageInfo = await this.creditsService.getPackageById(body.packageId);
 			if (!packageInfo) {
 				throw new HttpException(ErrorCode.INVALID_CREDITS_PACKAGE, HttpStatus.BAD_REQUEST);
 			}
@@ -74,9 +74,7 @@ export class PaymentController {
 
 			return await this.entityManager.transaction(async transactionManager => {
 				const manualPayment =
-					body.paymentMethod === PaymentMethod.MANUAL_CREDIT
-						? this.paymentService.buildManualPaymentDetails(body)
-						: undefined;
+					body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.buildManualPaymentDetails(body) : undefined;
 
 				const paymentData: PaymentData = {
 					amount: packageInfo.price,
@@ -127,5 +125,34 @@ export class PaymentController {
 			});
 			throw error;
 		}
+	}
+
+	private buildManualPaymentDetails(dto: PaymentMethodDetailsDto): ManualPaymentDetails {
+		if (!dto.cardNumber || !dto.cvv) {
+			throw new HttpException(ErrorCode.CARD_DETAILS_REQUIRED, HttpStatus.BAD_REQUEST);
+		}
+
+		const { month, year } = this.parseExpiryDate(dto.expiryDate);
+		return {
+			cardNumber: dto.cardNumber,
+			expiryMonth: month,
+			expiryYear: year,
+			cvv: dto.cvv,
+			cardHolderName: dto.cardHolderName ?? '',
+			postalCode: dto.postalCode,
+			expiryDate: dto.expiryDate,
+		};
+	}
+
+	private parseExpiryDate(expiryDate?: string): { month: number; year: number } {
+		if (!expiryDate) {
+			return { month: 0, year: 0 };
+		}
+
+		const [monthPart, yearPart] = expiryDate.split('/');
+		const month = parseInt(monthPart ?? '0', 10);
+		const year = 2000 + parseInt(yearPart ?? '0', 10);
+
+		return { month, year };
 	}
 }

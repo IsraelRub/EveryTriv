@@ -1,4 +1,5 @@
 export * from './customDifficulty.dto';
+export * from './validateText.dto';
 export * from './finalizeGameSession.dto';
 export * from './gameHistoryQuery.dto';
 export * from './saveGameHistory.dto';

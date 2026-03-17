@@ -1,9 +1,13 @@
-import { ChangeEvent, useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, Key } from 'lucide-react';
 
-import { validatePassword, validatePasswordMatch } from '@shared/validation';
+import { LengthKey, validatePasswordMatch, validateStringLength } from '@shared/validation';
 
-import { Colors, VALIDATION_MESSAGES, VariantBase } from '@/constants';
+import { AlertIconSize, AuthKey, Colors, CommonKey, ValidationKey, VariantBase } from '@/constants';
+import type { ChangePasswordDialogProps, ChangePasswordValidationErrorKey } from '@/types';
+import { clientLogger as logger } from '@/services';
+import { cn } from '@/utils';
 import {
 	AlertIcon,
 	Button,
@@ -16,30 +20,30 @@ import {
 	Label,
 } from '@/components';
 import { useChangePassword } from '@/hooks';
-import { clientLogger as logger } from '@/services';
-import type { ChangePasswordDialogProps, PasswordFieldErrors } from '@/types';
-import { cn } from '@/utils';
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
+	const { t } = useTranslation(['auth', 'validation', 'common']);
 	const [passwordData, setPasswordData] = useState({
 		currentPassword: '',
 		newPassword: '',
 		confirmPassword: '',
 	});
-	const [passwordFieldErrors, setPasswordFieldErrors] = useState<PasswordFieldErrors>({});
+	const [passwordFieldErrors, setPasswordFieldErrors] = useState<
+		Record<string, ChangePasswordValidationErrorKey | undefined>
+	>({});
 	const changePassword = useChangePassword();
 
-	const validatePasswordField = (name: string, value: string): string | null => {
+	const validatePasswordField = (name: string, value: string): ChangePasswordValidationErrorKey | null => {
 		if (name === 'currentPassword') {
-			if (!value.trim()) return VALIDATION_MESSAGES.CURRENT_PASSWORD_REQUIRED;
+			if (!value.trim()) return 'currentPasswordRequired';
 		}
 		if (name === 'newPassword') {
-			const validation = validatePassword(value);
-			return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.PASSWORD_INVALID);
+			const validation = validateStringLength(value, LengthKey.PASSWORD);
+			return validation.isValid ? null : 'passwordInvalid';
 		}
 		if (name === 'confirmPassword') {
 			const validation = validatePasswordMatch(passwordData.newPassword, value);
-			return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.PASSWORD_CONFIRMATION_INVALID);
+			return validation.isValid ? null : 'passwordConfirmationInvalid';
 		}
 		return null;
 	};
@@ -66,15 +70,13 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 		}
 	};
 
-	const isPasswordFormValid = (): boolean => {
-		if (!passwordData.currentPassword.trim()) return false;
-		const passwordValidation = validatePassword(passwordData.newPassword);
-		const passwordMatchValidation =
-			passwordData.confirmPassword !== undefined
-				? validatePasswordMatch(passwordData.newPassword, passwordData.confirmPassword)
-				: { isValid: true, errors: [] };
-		return passwordValidation.isValid && passwordMatchValidation.isValid;
-	};
+	const passwordValidation = validateStringLength(passwordData.newPassword, LengthKey.PASSWORD);
+	const passwordMatchValidation =
+		passwordData.confirmPassword !== undefined
+			? validatePasswordMatch(passwordData.newPassword, passwordData.confirmPassword)
+			: { isValid: true, errors: [] };
+	const isPasswordFormValid =
+		passwordData.currentPassword.trim() !== '' && passwordValidation.isValid && passwordMatchValidation.isValid;
 
 	const handlePasswordSave = async () => {
 		const currentPasswordError = validatePasswordField('currentPassword', passwordData.currentPassword);
@@ -92,10 +94,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 			return;
 		}
 
-		if (!isPasswordFormValid()) {
-			return;
-		}
-
 		try {
 			await changePassword.mutateAsync({
 				currentPassword: passwordData.currentPassword,
@@ -104,12 +102,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
 			setPasswordFieldErrors({});
 			onOpenChange(false);
-			logger.authSuccess('Your password has been updated successfully.');
+			logger.authSuccess(t(AuthKey.PASSWORD_UPDATED_SUCCESS));
 		} catch (error) {
-			// authError will handle toast display for unexpected errors
-			// Expected errors (like CURRENT_PASSWORD_INCORRECT) are handled in auth.service.ts
-			logger.authError(error instanceof Error ? error : new Error('Failed to change password'), {
-				contextMessage: 'Failed to change password',
+			logger.authError(error instanceof Error ? error : new Error(t(AuthKey.FAILED_TO_CHANGE_PASSWORD)), {
+				contextMessage: t(AuthKey.FAILED_TO_CHANGE_PASSWORD),
 			});
 		}
 	};
@@ -128,14 +124,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle className='flex items-center gap-2'>
 						<Key className='h-5 w-5 text-primary' />
-						Change Password
+						{t(AuthKey.CHANGE_PASSWORD)}
 					</DialogTitle>
-					<DialogDescription>Update your account password</DialogDescription>
+					<DialogDescription>{t(AuthKey.UPDATE_ACCOUNT_PASSWORD)}</DialogDescription>
 				</DialogHeader>
 
 				<div className='space-y-4 py-4 view-scroll-inline'>
 					<div className='space-y-2'>
-						<Label htmlFor='current-password'>Current Password</Label>
+						<Label htmlFor='current-password'>{t(AuthKey.CURRENT_PASSWORD)}</Label>
 						<Input
 							id='current-password'
 							name='currentPassword'
@@ -143,17 +139,23 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							value={passwordData.currentPassword}
 							onChange={handlePasswordChange}
 							error={!!passwordFieldErrors.currentPassword}
-							placeholder='Enter current password'
+							placeholder={t(AuthKey.ENTER_CURRENT_PASSWORD)}
 						/>
 						{passwordFieldErrors.currentPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
-								{passwordFieldErrors.currentPassword}
+								<AlertIcon size={AlertIconSize.SM} />
+								{t(
+									passwordFieldErrors.currentPassword === 'currentPasswordRequired'
+										? ValidationKey.CURRENT_PASSWORD_REQUIRED
+										: passwordFieldErrors.currentPassword === 'passwordInvalid'
+											? ValidationKey.PASSWORD_INVALID
+											: ValidationKey.PASSWORD_CONFIRMATION_INVALID
+								)}
 							</p>
 						)}
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='new-password'>New Password</Label>
+						<Label htmlFor='new-password'>{t(AuthKey.NEW_PASSWORD)}</Label>
 						<Input
 							id='new-password'
 							name='newPassword'
@@ -161,17 +163,17 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							value={passwordData.newPassword}
 							onChange={handlePasswordChange}
 							error={!!passwordFieldErrors.newPassword}
-							placeholder='Enter new password'
+							placeholder={t(AuthKey.ENTER_NEW_PASSWORD)}
 						/>
 						{passwordFieldErrors.newPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
-								{passwordFieldErrors.newPassword}
+								<AlertIcon size={AlertIconSize.SM} />
+								{t(`validation:${passwordFieldErrors.newPassword}`)}
 							</p>
 						)}
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='confirm-password'>Confirm New Password</Label>
+						<Label htmlFor='confirm-password'>{t(AuthKey.CONFIRM_NEW_PASSWORD)}</Label>
 						<div className='relative'>
 							<Input
 								id='confirm-password'
@@ -180,27 +182,37 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 								value={passwordData.confirmPassword}
 								onChange={handlePasswordChange}
 								error={!!passwordFieldErrors.confirmPassword}
-								placeholder='Confirm new password'
+								placeholder={t(AuthKey.CONFIRM_NEW_PASSWORD_PLACEHOLDER)}
 							/>
 							{passwordData.confirmPassword &&
 								passwordData.newPassword === passwordData.confirmPassword &&
 								!passwordFieldErrors.confirmPassword && (
-									<CheckCircle className={cn('form-success-icon', Colors.GREEN_500.text)} />
+									<CheckCircle
+										className={cn('form-success-icon', Colors.GREEN_500.text)}
+										fill='currentColor'
+										strokeWidth={0}
+									/>
 								)}
 						</div>
 						{passwordFieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
-								{passwordFieldErrors.confirmPassword}
+								<AlertIcon size={AlertIconSize.SM} />
+								{t(
+									passwordFieldErrors.confirmPassword === 'currentPasswordRequired'
+										? ValidationKey.CURRENT_PASSWORD_REQUIRED
+										: passwordFieldErrors.confirmPassword === 'passwordInvalid'
+											? ValidationKey.PASSWORD_INVALID
+											: ValidationKey.PASSWORD_CONFIRMATION_INVALID
+								)}
 							</p>
 						)}
 					</div>
 					<div className='flex gap-2 pt-2 flex-shrink-0'>
 						<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)}>
-							Cancel
+							{t(CommonKey.CANCEL)}
 						</Button>
-						<Button onClick={handlePasswordSave} disabled={changePassword.isPending}>
-							{changePassword.isPending ? 'Changing...' : 'Change Password'}
+						<Button onClick={handlePasswordSave} disabled={changePassword.isPending || !isPasswordFormValid}>
+							{changePassword.isPending ? t(AuthKey.CHANGING) : t(AuthKey.CHANGE_PASSWORD_BUTTON)}
 						</Button>
 					</div>
 				</div>

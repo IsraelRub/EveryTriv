@@ -370,7 +370,7 @@ Authorization: Bearer <jwt_token>
 {
   "amount": 10.00,
   "currency": "USD",
-  "paymentMethod": "stripe",
+  "paymentMethod": "paypal",
   "planType": "premium"
 }
 ```

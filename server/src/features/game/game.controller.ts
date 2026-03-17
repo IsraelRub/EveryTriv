@@ -1,13 +1,23 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
 
-import { API_ENDPOINTS, ErrorCode, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import {
+	API_ENDPOINTS,
+	DEFAULT_LANGUAGE,
+	ErrorCode,
+	Locale,
+	SURPRISE_SCOPE_DEFAULT,
+	SurpriseScope,
+	TIME_DURATIONS_SECONDS,
+} from '@shared/constants';
 import type { GameData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
+import { isLocale } from '@shared/validation';
 
+import { Cache, CurrentUserId, NoCache } from '@common/decorators';
+import { CustomDifficultyPipe, TriviaRequestPipe } from '@common/pipes';
+import { LanguageToolService } from '@common/validation';
 import { serverLogger as logger } from '@internal/services';
 
-import { Cache, CurrentUserId, NoCache } from '../../common';
-import { CustomDifficultyPipe, TriviaRequestPipe } from '../../common/pipes';
 import {
 	FinalizeGameSessionDto,
 	GameHistoryQueryDto,
@@ -16,12 +26,24 @@ import {
 	SubmitAnswerToSessionDto,
 	TriviaRequestDto,
 	ValidateCustomDifficultyDto,
+	ValidateTextDto,
 } from './dtos';
 import { GameService } from './game.service';
 
+function isSurpriseScope(s: string | undefined): s is SurpriseScope {
+	return s === SurpriseScope.TOPIC || s === SurpriseScope.DIFFICULTY || s === SurpriseScope.BOTH;
+}
+
+function toLocale(s: string | undefined): Locale {
+	return isLocale(s) ? s : DEFAULT_LANGUAGE;
+}
+
 @Controller(API_ENDPOINTS.GAME.BASE)
 export class GameController {
-	constructor(private readonly gameService: GameService) {}
+	constructor(
+		private readonly gameService: GameService,
+		private readonly languageToolService: LanguageToolService
+	) {}
 
 	@Get('trivia/:id')
 	@Cache(TIME_DURATIONS_SECONDS.HOUR)
@@ -108,6 +130,30 @@ export class GameController {
 		}
 	}
 
+	@Get('surprise-pick')
+	@NoCache()
+	async getSurprisePick(
+		@CurrentUserId() userId: string,
+		@Query('scope') scope?: string,
+		@Query('locale') locale?: string
+	) {
+		try {
+			const scopeValue: SurpriseScope = isSurpriseScope(scope) ? scope : SURPRISE_SCOPE_DEFAULT;
+			const localeValue = toLocale(locale);
+			const result = await this.gameService.getSurprisePick(userId, scopeValue, localeValue);
+			logger.apiRead('game_surprise_pick', {
+				...(result.topic !== undefined && { topic: result.topic }),
+				...(result.difficulty !== undefined && { difficulty: result.difficulty }),
+			});
+			return result;
+		} catch (error) {
+			logger.gameError('Error getting surprise pick', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
 	@Get('validate-session/:gameId')
 	@NoCache()
 	async validateSession(@CurrentUserId() userId: string, @Param('gameId') gameId: string) {
@@ -164,6 +210,7 @@ export class GameController {
 				userId,
 				answerCount: body.answerCount,
 				gameId: body.gameId,
+				outputLanguage: body.outputLanguage,
 			});
 
 			logger.apiCreate('game_trivia_questions', {
@@ -329,6 +376,24 @@ export class GameController {
 		}
 	}
 
+	@Post('validate-text')
+	@NoCache()
+	async validateText(@Body() body: ValidateTextDto) {
+		try {
+			const result = await this.languageToolService.checkText(body.text.trim(), {
+				enableSpellCheck: true,
+				enableGrammarCheck: true,
+				...(body.language != null ? { language: body.language, detectLanguage: false } : { detectLanguage: true }),
+			});
+			return result;
+		} catch (error) {
+			logger.gameError('Error validating text', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
 	@Get(':id')
 	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getGameById(@Param('id') id: string) {
@@ -341,7 +406,15 @@ export class GameController {
 			const normalizedId = id.trim().replace(/\/+$/, '');
 
 			// Prevent matching reserved route names
-			const reservedRoutesSet = new Set<string>(['trivia', 'history', 'admin', 'validate-custom', 'session']);
+			const reservedRoutesSet = new Set<string>([
+				'trivia',
+				'history',
+				'admin',
+				'validate-custom',
+				'validate-text',
+				'session',
+				'surprise-pick',
+			]);
 			if (reservedRoutesSet.has(normalizedId.toLowerCase())) {
 				throw new HttpException(
 					`${ErrorCode.INVALID_GAME_ID_FORMAT}. '${normalizedId}' is a reserved route name.`,

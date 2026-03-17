@@ -1,39 +1,44 @@
-import {
-	Award,
-	BookOpen,
-	Crown,
-	Flame,
-	GamepadIcon,
-	GraduationCap,
-	Star,
-	Trophy,
-	User,
-	Zap,
-	type LucideIcon,
-} from 'lucide-react';
+import { Award, Crown, Flame, Star, User } from 'lucide-react';
 
-import { GAME_STATE_DEFAULTS, GameMode } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, DifficultyLevel, GameMode, SurpriseScope } from '@shared/constants';
 
 import type { GameModeState, RankDisplayEntry, RankKey, TopicBadgeMeta } from '@/types';
 import { Colors } from '../core/ui/color.constants';
+import { GameKey } from '../core/ui/localeKeys.constants';
 import { VariantBase } from '../core/ui/variant.constants';
 
-// ---------------------------------------------------------------------------
-// Client-only: topics list, timer mode
-// ---------------------------------------------------------------------------
+export const SURPRISE_SCOPE_LABEL_KEYS: Record<SurpriseScope, string> = {
+	[SurpriseScope.TOPIC]: GameKey.SURPRISE_TOPIC_ONLY,
+	[SurpriseScope.DIFFICULTY]: GameKey.SURPRISE_DIFFICULTY_ONLY,
+	[SurpriseScope.BOTH]: GameKey.SURPRISE_BOTH,
+};
+
+export const DIFFICULTY_LABEL_KEYS: Record<DifficultyLevel, string> = {
+	[DifficultyLevel.EASY]: GameKey.DIFFICULTY_EASY,
+	[DifficultyLevel.MEDIUM]: GameKey.DIFFICULTY_MEDIUM,
+	[DifficultyLevel.HARD]: GameKey.DIFFICULTY_HARD,
+	[DifficultyLevel.CUSTOM]: GameKey.DIFFICULTY_CUSTOM,
+};
+
+export const ANSWER_LETTER_KEYS: readonly string[] = [
+	GameKey.ANSWER_LETTER_FIRST,
+	GameKey.ANSWER_LETTER_SECOND,
+	GameKey.ANSWER_LETTER_THIRD,
+	GameKey.ANSWER_LETTER_FOURTH,
+	GameKey.ANSWER_LETTER_FIFTH,
+];
 
 export const GAME_MODES_SET: ReadonlySet<string> = new Set(Object.values(GameMode));
-
-export const BASIC_TOPICS = [GAME_STATE_DEFAULTS.TOPIC, 'Science', 'History', 'Geography'] as const;
 
 export enum TimerMode {
 	COUNTDOWN = 'countdown',
 	ELAPSED = 'elapsed',
 }
 
-// ---------------------------------------------------------------------------
-// Game state (answer button, initial game mode)
-// ---------------------------------------------------------------------------
+export enum TimerColorPrefix {
+	TEXT = 'text',
+	BG = 'bg',
+}
 
 export enum AnswerButtonState {
 	IDLE = 'idle',
@@ -43,25 +48,28 @@ export enum AnswerButtonState {
 	DISABLED = 'disabled',
 }
 
+export enum TextLanguageStatus {
+	IDLE = 'idle',
+	PENDING = 'pending',
+	VALID = 'valid',
+	INVALID = 'invalid',
+}
+
 export const initialGameModeState: GameModeState = {
 	currentMode: GameMode.QUESTION_LIMITED,
-	currentTopic: GAME_STATE_DEFAULTS.TOPIC,
-	currentDifficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+	currentTopic: DEFAULT_GAME_CONFIG.defaultTopic,
+	currentDifficulty: DEFAULT_GAME_CONFIG.defaultDifficulty,
 	currentSettings: {
 		mode: GameMode.QUESTION_LIMITED,
-		topic: GAME_STATE_DEFAULTS.TOPIC,
-		difficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
-		maxQuestionsPerGame: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+		topic: DEFAULT_GAME_CONFIG.defaultTopic,
+		difficulty: DEFAULT_GAME_CONFIG.defaultDifficulty,
+		maxQuestionsPerGame: DEFAULT_GAME_CONFIG.maxQuestionsPerGame,
 		timeLimit: undefined,
 		answerCount: undefined,
 	},
 	isLoading: false,
 	error: undefined,
 };
-
-// ---------------------------------------------------------------------------
-// Rank & podium display (icon, colors, podium slot order and height)
-// ---------------------------------------------------------------------------
 
 export const RANK_DISPLAY = {
 	1: {
@@ -88,9 +96,9 @@ export const RANK_DISPLAY = {
 };
 
 export const STAR_GRADE_LEVELS_AND_THRESHOLDS = {
-	threeStars: { stars: 3, threshold: 70 },
+	threeStars: { stars: 3, threshold: 75 },
 	twoStars: { stars: 2, threshold: 50 },
-	oneStar: { stars: 1, threshold: 30 },
+	oneStar: { stars: 1, threshold: 25 },
 };
 
 const RANK_KEYS = [1, 2, 3] as const;
@@ -111,30 +119,6 @@ export const PODIUM_SLOTS: readonly {
 		...RANK_DISPLAY[rank],
 	}));
 
-// ---------------------------------------------------------------------------
-// Achievement display (client-only): category and Lucide Icon per id
-// ---------------------------------------------------------------------------
-
-export const ACHIEVEMENT_DISPLAY: Record<string, { category: string; Icon: LucideIcon }> = {
-	'ach-first-game': { category: 'Engagement', Icon: GamepadIcon },
-	'ach-ten-games': { category: 'Engagement', Icon: Trophy },
-	'ach-twenty-five-games': { category: 'Engagement', Icon: Award },
-	'ach-fifty-games': { category: 'Engagement', Icon: Award },
-	'ach-hundred-games': { category: 'Engagement', Icon: Crown },
-	'ach-week-warrior': { category: 'Engagement', Icon: Flame },
-	'ach-streak-hero': { category: 'Engagement', Icon: Zap },
-	'ach-high-scorer': { category: 'Performance', Icon: Star },
-	'ach-expert': { category: 'Performance', Icon: GraduationCap },
-	'ach-hundred-answers': { category: 'Engagement', Icon: BookOpen },
-	'ach-five-hundred-answers': { category: 'Engagement', Icon: BookOpen },
-	'ach-thousand-answers': { category: 'Engagement', Icon: BookOpen },
-	'ach-topic-specialist': { category: 'Knowledge', Icon: BookOpen },
-};
-
-// ---------------------------------------------------------------------------
-// Topic badges, timer, scoring (client-only defaults where needed)
-// ---------------------------------------------------------------------------
-
 export enum TopicBadgeType {
 	MOST_PLAYED = 'most-played',
 	YOUR = 'your',
@@ -142,7 +126,12 @@ export enum TopicBadgeType {
 	POPULAR = 'popular',
 }
 
-/** Set for O(1) membership checks (e.g. narrowing string to TopicBadgeType). */
+export const TOPIC_BADGE_LABEL_KEYS: Partial<Record<TopicBadgeType, string>> = {
+	[TopicBadgeType.MOST_PLAYED]: GameKey.TOPIC_BADGE_YOUR_TOP,
+	[TopicBadgeType.YOUR]: GameKey.TOPIC_BADGE_YOUR,
+	[TopicBadgeType.POPULAR]: GameKey.POPULAR,
+};
+
 export const TOPIC_BADGE_TYPE_SET: ReadonlySet<string> = new Set([
 	TopicBadgeType.MOST_PLAYED,
 	TopicBadgeType.YOUR,
@@ -180,9 +169,14 @@ export const TOPIC_BADGE_META: Partial<Record<TopicBadgeType, TopicBadgeMeta>> =
 
 export const TIMER_WARNING_RATIO = 0.15;
 
-// ---------------------------------------------------------------------------
-// Game exit – credits exhausted (elegant exit message and actions)
-// ---------------------------------------------------------------------------
+export enum ExitReason {
+	CREDITS_EXHAUSTED = 'credits_exhausted',
+}
+
+export enum ExitGameButtonVariant {
+	GAME = 'game',
+	ROOM = 'room',
+}
 
 export const CREDITS_EXIT_MESSAGES = {
 	TITLE: "You've run out of credits",

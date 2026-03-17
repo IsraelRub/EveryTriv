@@ -1,12 +1,18 @@
-import type { ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ReactElement } from 'react';
+import * as ToastPrimitive from '@radix-ui/react-toast';
 
-import { ToastActionType } from '@/constants';
-import type { ToastActionElement, ToastProps } from '@/components';
+import { ToastActionType, ToastVariant } from '@/constants';
+
+export type ToastProps = ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & {
+	variant?: ToastVariant;
+};
+
+export type ToastActionElement = ReactElement<typeof ToastPrimitive.Action>;
 
 export type ToasterToast = ToastProps & {
 	id: string;
-	title?: ReactNode;
-	description?: ReactNode;
+	title?: string | ReactElement;
+	description?: string | ReactElement;
 	action?: ToastActionElement;
 };
 

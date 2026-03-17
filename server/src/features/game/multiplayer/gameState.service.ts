@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
-import { ErrorCode, PlayerStatus, QuestionState, RoomStatus, TIME_PERIODS_MS } from '@shared/constants';
+import {
+	ErrorCode,
+	MULTIPLAYER_TIME_PER_QUESTION,
+	PlayerStatus,
+	QuestionState,
+	RoomStatus,
+	TIME_PERIODS_MS,
+} from '@shared/constants';
 import type {
 	GameState,
 	MultiplayerRoom,
@@ -121,7 +128,7 @@ export class GameStateService {
 		if (room.currentQuestionStartTime && room.status === RoomStatus.PLAYING) {
 			const now = Date.now();
 			const questionEndTime =
-				new Date(room.currentQuestionStartTime).getTime() + room.config.timePerQuestion * TIME_PERIODS_MS.SECOND;
+				new Date(room.currentQuestionStartTime).getTime() + MULTIPLAYER_TIME_PER_QUESTION * TIME_PERIODS_MS.SECOND;
 			if (now >= questionEndTime) {
 				throw new Error(ErrorCode.QUESTION_NOT_FOUND_OR_NOT_CURRENT);
 			}
@@ -198,11 +205,11 @@ export class GameStateService {
 		return true;
 	}
 
-	startQuestion(room: MultiplayerRoom): boolean {
+	private startQuestion(room: MultiplayerRoom): boolean {
 		return this.transitionQuestionState(room, QuestionState.STARTING);
 	}
 
-	activateQuestion(room: MultiplayerRoom): boolean {
+	private activateQuestion(room: MultiplayerRoom): boolean {
 		return this.transitionQuestionState(room, QuestionState.ACTIVE);
 	}
 
@@ -218,7 +225,7 @@ export class GameStateService {
 		return this.transitionQuestionState(room, QuestionState.ENDING);
 	}
 
-	completeQuestion(room: MultiplayerRoom): boolean {
+	private completeQuestion(room: MultiplayerRoom): boolean {
 		return this.transitionQuestionState(room, QuestionState.ENDED);
 	}
 
@@ -252,7 +259,7 @@ export class GameStateService {
 		return endResult;
 	}
 
-	async endQuestionWithResults(room: MultiplayerRoom): Promise<QuestionEndResult> {
+	private async endQuestionWithResults(room: MultiplayerRoom): Promise<QuestionEndResult> {
 		const currentQuestion = room.questions[room.currentQuestionIndex];
 		if (!currentQuestion) {
 			throw new Error(ErrorCode.QUESTION_NOT_FOUND_OR_NOT_CURRENT);
@@ -283,22 +290,6 @@ export class GameStateService {
 			room,
 			answerCounts: gameState.answerCounts,
 		};
-	}
-
-	allPlayersAnswered(room: MultiplayerRoom): boolean {
-		if (room.status !== RoomStatus.PLAYING) {
-			return false;
-		}
-
-		const activePlayers = room.players.filter(
-			player => player.status !== PlayerStatus.DISCONNECTED && player.status !== PlayerStatus.FINISHED
-		);
-
-		if (activePlayers.length === 0) {
-			return false;
-		}
-
-		return activePlayers.every(player => player.status === PlayerStatus.ANSWERED);
 	}
 
 	async nextQuestion(room: MultiplayerRoom): Promise<MultiplayerRoom> {
@@ -342,12 +333,12 @@ export class GameStateService {
 
 	private calculateTimeRemaining(room: MultiplayerRoom): number {
 		if (!room.currentQuestionStartTime || room.status !== RoomStatus.PLAYING) {
-			return room.config.timePerQuestion;
+			return MULTIPLAYER_TIME_PER_QUESTION;
 		}
 
 		const now = Date.now();
 		const elapsed = (now - new Date(room.currentQuestionStartTime).getTime()) / TIME_PERIODS_MS.SECOND;
-		const remaining = room.config.timePerQuestion - elapsed;
+		const remaining = MULTIPLAYER_TIME_PER_QUESTION - elapsed;
 
 		return Math.max(0, Math.floor(remaining));
 	}

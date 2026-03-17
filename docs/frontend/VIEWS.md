@@ -121,7 +121,6 @@ import GameSummaryView from '@views/game/GameSummaryView';
 
 **תכונות:**
 - תוצאות המשחק (ניקוד סופי, שאלות נכונות, זמן)
-- הישגים חדשים
 - השוואה לסטטיסטיקות קודמות
 - שיתוף תוצאות
 - המשך למשחק הבא
@@ -201,7 +200,7 @@ import PaymentView from '@views/payment/PaymentView';
 - היסטוריית תשלומים
 - ניהול כרטיסי אשראי
 - ביטול מנויים
-- אינטגרציה עם Stripe
+- אינטגרציה עם PayPal
 
 ### AdminDashboard
 דף מנהל:

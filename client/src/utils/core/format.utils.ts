@@ -36,3 +36,11 @@ export function formatPlayTime(time: number, unit: 'seconds' | 'minutes' = 'seco
 	}
 	return `${minutes}m`;
 }
+
+export function formatTimeLimitDisplay(totalSeconds: number): string {
+	const minutes = Math.floor(totalSeconds / TIME_DURATIONS_SECONDS.MINUTE);
+	const seconds = totalSeconds % TIME_DURATIONS_SECONDS.MINUTE;
+	if (minutes === 0) return `${totalSeconds}s`;
+	const remainder = seconds > 0 ? ` ${seconds}s` : '';
+	return `${minutes}m${remainder}`;
+}

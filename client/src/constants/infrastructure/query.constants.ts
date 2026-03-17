@@ -98,8 +98,6 @@ export const QUERY_KEYS = {
 			[...QUERY_KEYS.admin.all, 'adminUserInsights', ...(userId ? [userId] : [])] as const,
 		userRecommendations: (userId?: string) =>
 			[...QUERY_KEYS.admin.all, 'adminUserRecommendations', ...(userId ? [userId] : [])] as const,
-		userAchievements: (userId?: string) =>
-			[...QUERY_KEYS.admin.all, 'adminUserAchievements', ...(userId ? [userId] : [])] as const,
 		userTrends: (userId?: string, params?: unknown) =>
 			[...QUERY_KEYS.admin.all, 'adminUserTrends', ...(userId ? [userId] : []), ...(params ? [params] : [])] as const,
 		userComparison: (userId?: string, params?: unknown) =>
@@ -122,5 +120,6 @@ export const QUERY_KEYS = {
 		aiProviderHealth: () => [...QUERY_KEYS.admin.all, 'aiProviderHealth'] as const,
 		allUsersConsistency: () => [...QUERY_KEYS.admin.all, 'allUsersConsistency'] as const,
 		userStatsConsistency: (userId: string) => [...QUERY_KEYS.admin.all, 'userStatsConsistency', userId] as const,
+		pricing: () => [...QUERY_KEYS.admin.all, 'pricing'] as const,
 	},
 } as const;

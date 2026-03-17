@@ -1,9 +1,11 @@
 import type { Socket } from 'socket.io';
 
-import { GameMode } from '@shared/constants';
-import type { GameDifficulty, MultiplayerRoom, Player, SaveGameHistoryData, TokenPayload } from '@shared/types';
+import { GameMode, type Locale } from '@shared/constants';
+import type { GameDifficulty, MultiplayerRoom, Player, SaveGameHistoryData } from '@shared/types';
 
 import { GameStatus } from '@internal/constants';
+
+import type { TokenPayload } from './auth.types';
 
 export interface QuestionSchedule {
 	timeoutId: NodeJS.Timeout;
@@ -64,8 +66,8 @@ export interface GetTriviaQuestionParams {
 	questionsPerRequest: number;
 	userId?: string;
 	answerCount?: number;
-	/** When provided with userId, server stores questionSnapshots in session for consistent answer evaluation. */
 	gameId?: string;
+	outputLanguage?: Locale;
 }
 
 export interface SubmitAnswerParams {
@@ -123,12 +125,11 @@ export interface GameSessionQuestion {
 	score: number;
 }
 
-/** Snapshot of correctAnswerIndex per question for the game (post-shuffle). Used to evaluate answers consistently with client. */
 export interface GameSessionQuestionSnapshot {
 	correctAnswerIndex: number;
 }
 
-export interface GameSessionState {
+export interface ServerGameSessionState {
 	gameId: string;
 	userId: string;
 	topic: string;
@@ -137,7 +138,7 @@ export interface GameSessionState {
 	startedAt: string;
 	lastHeartbeat?: string;
 	questions: GameSessionQuestion[];
-	/** Optional: questionId -> snapshot (correctAnswerIndex after shuffle). Set when questions are returned to client. */
+
 	questionSnapshots?: Record<string, GameSessionQuestionSnapshot>;
 	currentScore: number;
 	correctAnswers: number;

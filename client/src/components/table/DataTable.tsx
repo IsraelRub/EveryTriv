@@ -1,11 +1,22 @@
-import { cloneElement, isValidElement, memo, type ReactNode } from 'react';
+import { memo, type ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
 import { EMPTY_VALUE } from '@shared/constants';
-import { formatDate, formatDifficulty, formatTitle, getDifficultyBadgeClasses } from '@shared/utils';
+import { formatDate, formatTitle, getDifficultyBadgeClasses } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, SortDirection, VariantBase } from '@/constants';
+import {
+	EMPTY_CELL_CLASS,
+	HEADER_ICON_CLASS,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	SortDirection,
+	VariantBase,
+} from '@/constants';
+import { DataTableColumnType, type DataTableColumn, type DataTableProps } from '@/types';
+import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Badge,
 	EmptyState,
@@ -17,54 +28,49 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components';
-import type { DataTableColumn, DataTableProps } from '@/types';
-import { cn } from '@/utils';
 
-/** Single source of truth for data table cell and header icon styling (this file only). */
-const EMPTY_CELL_CLASS = 'text-muted-foreground';
-const HEADER_ICON_CLASS = 'h-4 w-4';
-
-function withHeaderIconClass(node: ReactNode): ReactNode {
-	if (!isValidElement(node)) return node;
-	const props = node.props;
-	const existingClass = 'className' in props && VALIDATORS.string(props.className) ? props.className : undefined;
-	return cloneElement(node, {
-		className: cn(HEADER_ICON_CLASS, existingClass),
-	});
+function wrapHeaderIcon(node: ReactElement | null): ReactElement | null {
+	if (node == null) return null;
+	return <span className='inline-flex shrink-0 [&_svg]:h-4 [&_svg]:w-4'>{node}</span>;
 }
 
-function renderCell<T>(column: DataTableColumn<T>, row: T, emptyValue: string): ReactNode {
+function renderCell<T>(
+	column: DataTableColumn<T>,
+	row: T,
+	emptyValue: string,
+	t: TFunction
+): ReactElement | string | number | null {
 	const type = column.type;
 	const value = column.getValue?.(row);
 	const formatted = column.format
 		? column.format(value, row)
-		: type === 'badge-difficulty'
-			? formatDifficulty(String(value ?? ''))
+		: type === DataTableColumnType.BADGE_DIFFICULTY
+			? getDifficultyDisplayLabel(String(value ?? ''), t)
 			: String(value ?? '');
 	const isEmpty = value == null || value === '' || formatted === emptyValue;
 
 	switch (type) {
-		case 'custom':
+		case DataTableColumnType.CUSTOM:
 			return column.render?.(row) ?? null;
 
-		case 'text':
-		case 'text-primary':
+		case DataTableColumnType.TEXT:
+		case DataTableColumnType.TEXT_PRIMARY:
 			if (isEmpty) return <span className={EMPTY_CELL_CLASS}>{emptyValue}</span>;
 			return formatted;
 
-		case 'date': {
+		case DataTableColumnType.DATE: {
 			const dateValue = value == null || VALIDATORS.string(value) || value instanceof Date ? value : undefined;
 			return formatDate(dateValue, emptyValue);
 		}
 
-		case 'date-optional': {
+		case DataTableColumnType.DATE_OPTIONAL: {
 			const dateDefault = column.dateDefaultValue ?? emptyValue;
 			if (isEmpty) return <span className={EMPTY_CELL_CLASS}>{dateDefault}</span>;
 			const dateValue = value == null || VALIDATORS.string(value) || value instanceof Date ? value : undefined;
 			return formatDate(dateValue, dateDefault);
 		}
 
-		case 'badge':
+		case DataTableColumnType.BADGE:
 			if (isEmpty) return <span className={EMPTY_CELL_CLASS}>{emptyValue}</span>;
 			return (
 				<Badge variant={column.getBadgeVariant?.(row) ?? VariantBase.OUTLINE} className='shrink-0'>
@@ -72,7 +78,7 @@ function renderCell<T>(column: DataTableColumn<T>, row: T, emptyValue: string): 
 				</Badge>
 			);
 
-		case 'badge-difficulty': {
+		case DataTableColumnType.BADGE_DIFFICULTY: {
 			if (isEmpty) return <span className={EMPTY_CELL_CLASS}>{emptyValue}</span>;
 			return (
 				<Badge variant={VariantBase.OUTLINE} className={cn('shrink-0', getDifficultyBadgeClasses(value))}>
@@ -81,7 +87,7 @@ function renderCell<T>(column: DataTableColumn<T>, row: T, emptyValue: string): 
 			);
 		}
 
-		case 'badge-role': {
+		case DataTableColumnType.BADGE_ROLE: {
 			if (isEmpty) return <span className={EMPTY_CELL_CLASS}>{emptyValue}</span>;
 			const roleKey = String(value ?? '').toLowerCase();
 			const badgeClasses = column.roleBadgeClasses?.[roleKey] ?? 'border-muted text-muted-foreground';
@@ -92,7 +98,7 @@ function renderCell<T>(column: DataTableColumn<T>, row: T, emptyValue: string): 
 			);
 		}
 
-		case 'truncate': {
+		case DataTableColumnType.TRUNCATE: {
 			const title = column.truncateTitle?.(row) ?? formatted;
 			return (
 				<div className='truncate' title={title}>
@@ -110,12 +116,12 @@ function renderCell<T>(column: DataTableColumn<T>, row: T, emptyValue: string): 
 
 function getCellClassName<T>(column: DataTableColumn<T>): string | undefined {
 	switch (column.type) {
-		case 'text-primary':
+		case DataTableColumnType.TEXT_PRIMARY:
 			return 'font-medium';
-		case 'date':
-		case 'date-optional':
+		case DataTableColumnType.DATE:
+		case DataTableColumnType.DATE_OPTIONAL:
 			return 'text-sm text-muted-foreground whitespace-nowrap';
-		case 'truncate':
+		case DataTableColumnType.TRUNCATE:
 			return 'max-w-md';
 		default:
 			return column.cellClassName ?? undefined;
@@ -127,15 +133,15 @@ function renderHeader<T>(
 	sortBy: string | undefined,
 	sortDirection: SortDirection | undefined,
 	onSort: ((field: string, direction: SortDirection) => void) | undefined
-): ReactNode {
+): ReactElement {
 	const isSortable = !!(col.sortField && onSort);
 	const isActive = sortBy === col.sortField;
-	const label = col.emptyHeader ? '' : formatTitle(col.id);
+	const label = col.emptyHeader ? '' : (col.headerLabel ?? formatTitle(col.id));
 
 	if (!isSortable) {
 		return (
 			<span className='flex items-center gap-2 w-full text-left'>
-				{col.headerIcon != null ? withHeaderIconClass(col.headerIcon) : null}
+				{col.headerIcon != null ? wrapHeaderIcon(col.headerIcon) : null}
 				{label}
 			</span>
 		);
@@ -157,7 +163,7 @@ function renderHeader<T>(
 				isActive && 'text-primary'
 			)}
 		>
-			{col.headerIcon != null ? withHeaderIconClass(col.headerIcon) : null}
+			{col.headerIcon != null ? wrapHeaderIcon(col.headerIcon) : null}
 			{label}
 			{isActive &&
 				(sortDirection === SortDirection.ASC ? (
@@ -180,6 +186,8 @@ function DataTableInner<T>({
 	sortDirection,
 	onSort,
 }: DataTableProps<T>): JSX.Element | null {
+	const { t } = useTranslation();
+
 	if (isLoading) {
 		return (
 			<div className='space-y-3'>
@@ -215,7 +223,7 @@ function DataTableInner<T>({
 						<TableRow key={getRowKey(row)}>
 							{columns.map(col => (
 								<TableCell key={col.id} className={cn(getCellClassName(col), col.cellClassName)}>
-									{renderCell(col, row, emptyValue)}
+									{renderCell(col, row, emptyValue, t)}
 								</TableCell>
 							))}
 						</TableRow>

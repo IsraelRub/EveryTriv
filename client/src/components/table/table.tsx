@@ -2,7 +2,6 @@ import { forwardRef, type HTMLAttributes, type TdHTMLAttributes, type ThHTMLAttr
 
 import { cn } from '@/utils';
 
-/** Table primitives: single source of truth for table element styling (wrapper, thead, th, td, tr). */
 export const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(({ className, ...props }, ref) => (
 	<div className='relative w-full overflow-auto'>
 		<table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />

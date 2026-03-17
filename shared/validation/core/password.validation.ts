@@ -1,23 +1,4 @@
-import { VALIDATION_LENGTH } from '../../constants';
-import type { BaseValidationResult } from '../../types';
-
-export function validatePassword(password: string): BaseValidationResult {
-	const hasMinLength = password && password.length >= VALIDATION_LENGTH.PASSWORD.MIN;
-	const hasMaxLength = password && password.length <= VALIDATION_LENGTH.PASSWORD.MAX;
-
-	const errors: string[] = [];
-
-	if (!password || !hasMinLength) {
-		errors.push(`Password must be at least ${VALIDATION_LENGTH.PASSWORD.MIN} characters long`);
-	} else if (!hasMaxLength) {
-		errors.push(`Password must not exceed ${VALIDATION_LENGTH.PASSWORD.MAX} characters`);
-	}
-
-	return {
-		isValid: errors.length === 0,
-		errors,
-	};
-}
+import type { BaseValidationResult } from '@shared/types';
 
 export function validatePasswordMatch(password: string, confirmPassword: string): BaseValidationResult {
 	const errors: string[] = [];

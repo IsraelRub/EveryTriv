@@ -94,7 +94,7 @@ Interface מלא עם כל ה-methods של API service:
 - Credits methods: `getCreditBalance`, `getCreditPackages`, `canPlayCredits`, `deductCredits`, `getCreditHistory`, `confirmCreditPurchase`, `purchaseCredits`
 - Trivia methods: `getTrivia`, `getTriviaQuestionById`, `getGameById`, `validateCustomDifficulty`
 - Game session methods: `startGameSession`, `submitAnswerToSession`, `finalizeGameSession`
-- Analytics methods: `getUserAnalytics`, `getPopularTopics`, `getDifficultyStats`, `trackAnalyticsEvent`, `getUserStatisticsById`, `getUserPerformanceById`, `getUserProgressById`, `getUserActivityById`, `getUserInsightsById`, `getUserRecommendationsById`, `getUserAchievementsById`, `getUserTrendsById`, `compareUserPerformanceById`, `getUserSummaryById`
+- Analytics methods: `getUserAnalytics`, `getPopularTopics`, `getDifficultyStats`, `trackAnalyticsEvent`, `getUserStatisticsById`, `getUserPerformanceById`, `getUserProgressById`, `getUserActivityById`, `getUserInsightsById`, `getUserRecommendationsById`, `getUserTrendsById`, `compareUserPerformanceById`, `getUserSummaryById`
 - User preferences methods: `updateUserPreferences`
 - Account management methods: `deleteUserAccount`, `updateUserField`, `updateSinglePreference`, `getUserById`, `updateUserCredits`, `deleteUser`, `updateUserStatus`
 - Payment methods: `createPayment`, `getPaymentHistory`

@@ -1,71 +1,62 @@
 import { memo, useMemo } from 'react';
-import { cva } from 'class-variance-authority';
 
-import { AvatarSize, DISPLAY_NAME_FALLBACKS } from '@/constants';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getDisplayNameFromUserFields } from '@shared/utils';
+
+import { AvatarSize, AvatarVariant, DISPLAY_NAME_FALLBACKS } from '@/constants';
 import type { UserAvatarProps } from '@/types';
-import { cn, getAvatarUrl, getDisplayNameFromPlayer, getDisplayNameFromUser } from '@/utils';
+import { ApiConfig } from '@/services';
+import { getAvatarImageSource, toAbsoluteAvatarUrl } from '@/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const userAvatarSizeVariants = cva('rounded-full', {
-	variants: {
-		size: {
-			[AvatarSize.SM]: 'h-6 w-6',
-			[AvatarSize.NAV]: 'h-9 w-9',
-			[AvatarSize.MD]: 'h-10 w-10',
-			[AvatarSize.LG]: 'h-12 w-12',
-			[AvatarSize.XL]: 'h-20 w-20',
-		},
-	},
-	defaultVariants: { size: AvatarSize.MD },
-});
+const FALLBACK_TEXT_BY_SIZE: Record<AvatarSize, string> = {
+	[AvatarSize.SM]: 'text-xs',
+	[AvatarSize.NAV]: 'text-sm',
+	[AvatarSize.MD]: 'text-sm',
+	[AvatarSize.LG]: 'text-base',
+	[AvatarSize.XL]: 'text-2xl',
+	[AvatarSize.FULL]: 'text-sm',
+};
 
-function UserAvatarComponent({
-	className,
-	fallbackClassName,
+export const UserAvatar = memo(function UserAvatar({
+	source,
 	size,
-	user,
-	player,
 	name: nameProp,
 	fallbackLetter = DISPLAY_NAME_FALLBACKS.PLAYER_SHORT,
 	avatarId: avatarIdProp,
 	src,
+	pointerEventsNone = false,
+	variant = AvatarVariant.DEFAULT,
 }: UserAvatarProps) {
-	const { name, avatarId } = useMemo(() => {
-		const derivedName =
-			user != null
-				? getDisplayNameFromUser(user)
-				: player != null
-					? getDisplayNameFromPlayer(player, DISPLAY_NAME_FALLBACKS.EMPTY)
-					: '';
-		const derivedAvatarId = user?.avatar ?? player?.avatar ?? undefined;
-		return {
-			name: nameProp ?? derivedName,
-			avatarId: avatarIdProp ?? derivedAvatarId,
-		};
-	}, [user, player, nameProp, avatarIdProp]);
+	const { avatarId, avatarUrl } = useMemo(
+		() => ({
+			avatarId: avatarIdProp ?? source?.avatar ?? undefined,
+			avatarUrl: source?.avatarUrl ?? undefined,
+		}),
+		[source, avatarIdProp]
+	);
 
-	const imageSrc = src ?? (avatarId != null ? getAvatarUrl(avatarId) : undefined);
+	const rawSrc = src ?? getAvatarImageSource(avatarUrl, avatarId);
+	const imageSrc = rawSrc ? (toAbsoluteAvatarUrl(rawSrc, ApiConfig.getBaseUrl()) ?? rawSrc) : undefined;
 
-	const trimmed = name?.trim();
-	const parts = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
-	const first = parts[0];
-	const last = parts.length >= 2 ? parts[parts.length - 1] : undefined;
-
-	const initials =
-		first && last
-			? `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
-			: first
-				? first.charAt(0).toUpperCase()
-				: fallbackLetter;
-
-	const sizeClass = userAvatarSizeVariants({ size: size ?? AvatarSize.MD });
+	const effectiveSize = size ?? AvatarSize.MD;
+	const initials = imageSrc
+		? fallbackLetter
+		: (() => {
+				const name = nameProp ?? getDisplayNameFromUserFields(source);
+				const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+				const first = parts[0];
+				const last = parts.length >= 2 ? parts[parts.length - 1] : undefined;
+				return first && last
+					? (first.charAt(0) + last.charAt(0)).toUpperCase()
+					: first
+						? first.charAt(0).toUpperCase()
+						: fallbackLetter;
+			})();
 
 	return (
-		<Avatar className={cn(sizeClass, className)}>
+		<Avatar key={imageSrc ?? 'no-image'} size={effectiveSize} variant={variant} pointerEventsNone={pointerEventsNone}>
 			{imageSrc && <AvatarImage src={imageSrc} />}
-			<AvatarFallback className={cn('text-sm', fallbackClassName)}>{initials}</AvatarFallback>
+			<AvatarFallback className={FALLBACK_TEXT_BY_SIZE[effectiveSize]}>{initials}</AvatarFallback>
 		</Avatar>
 	);
-}
-
-export const UserAvatar = memo(UserAvatarComponent);
+});

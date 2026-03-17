@@ -1,14 +1,16 @@
 import type { UserPreferences } from '@shared/types';
-import { calculatePercentage, getErrorMessage } from '@shared/utils';
+import { getErrorMessage } from '@shared/utils';
 
 import { AUDIO_DATA, AudioCategory, AudioKey } from '@/constants';
+import type { AudioPreloadConfig } from '@/types';
 import { clientLogger as logger } from '@/services';
 
 export class AudioService {
 	private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
 	private isMuted = false;
-	private volumes: Map<AudioKey, number> = new Map();
 	private masterVolume = 1;
+	private soundEffectsVolume = 1;
+	private musicVolume = 1;
 	private userInteracted = false;
 	private userPreferences: UserPreferences | null = null;
 	private failedPreloads: Set<AudioKey> = new Set();
@@ -44,14 +46,13 @@ export class AudioService {
 
 	private preloadEssentialAudio(): void {
 		const essentialKeys: AudioKey[] = [
-			AudioKey.CLICK,
-			AudioKey.POP,
 			AudioKey.ERROR,
 			AudioKey.WARNING,
 			AudioKey.SUCCESS,
 			AudioKey.NOTIFICATION,
 			AudioKey.BACKGROUND_MUSIC,
 			AudioKey.GAME_MUSIC,
+			AudioKey.STAR_APPEAR,
 		];
 
 		essentialKeys.forEach(key => {
@@ -66,10 +67,11 @@ export class AudioService {
 
 	private calculateVolume(key: AudioKey): number {
 		const audioData = AUDIO_DATA[key];
-		return audioData.volume * this.masterVolume;
+		const categoryMultiplier = audioData.category === AudioCategory.MUSIC ? this.musicVolume : this.soundEffectsVolume;
+		return audioData.volume * this.masterVolume * categoryMultiplier;
 	}
 
-	private preloadAudioInternal(key: AudioKey, src: string, config: { loop: boolean }): void {
+	private preloadAudioInternal(key: AudioKey, src: string, config: AudioPreloadConfig): void {
 		// Skip preload if this key already failed due to cache issues
 		if (this.failedPreloads.has(key)) {
 			return;
@@ -130,9 +132,6 @@ export class AudioService {
 		});
 
 		this.audioElements.set(key, audio);
-		// Base volume from AUDIO_DATA (used when applying per-sound volume)
-		const audioData = AUDIO_DATA[key];
-		this.volumes.set(key, audioData.volume);
 
 		// Set src but don't call load() - let it load on demand
 		audio.src = src;
@@ -338,13 +337,6 @@ export class AudioService {
 		audio.currentTime = 0;
 	}
 
-	public stopAll(): void {
-		this.audioElements.forEach(audio => {
-			audio.pause();
-			audio.currentTime = 0;
-		});
-	}
-
 	public isPlaying(key: AudioKey): boolean {
 		const audio = this.audioElements.get(key);
 		if (!audio) {
@@ -368,51 +360,30 @@ export class AudioService {
 		});
 	}
 
-	public toggleMute(): boolean {
-		if (this.isMuted) {
-			this.unmute();
-		} else {
-			this.mute();
-		}
-		return this.isMuted;
-	}
-
 	public setMasterVolume(volume: number): void {
 		this.masterVolume = volume;
+		this.applyVolumesToAll();
+	}
+
+	public setSoundEffectsVolume(volume: number): void {
+		this.soundEffectsVolume = volume;
+		this.applyVolumesToAll();
+	}
+
+	public setMusicVolume(volume: number): void {
+		this.musicVolume = volume;
+		this.applyVolumesToAll();
+	}
+
+	private applyVolumesToAll(): void {
 		this.audioElements.forEach((audio, key) => {
 			const finalVolume = this.calculateVolume(key);
 			audio.volume = this.isMuted ? 0 : finalVolume;
 		});
 	}
 
-	public playAchievementSound(score: number, total: number, previousScore: number): void {
-		if (score <= previousScore) return;
-
-		const scoreIncrease = score - previousScore;
-		const percentage = calculatePercentage(score, total);
-
-		// Play different sounds based on achievement level
-		if (percentage >= 100) {
-			this.play(AudioKey.NEW_ACHIEVEMENT);
-		} else if (percentage >= 80) {
-			this.play(AudioKey.LEVEL_UP);
-		} else if (scoreIncrease >= 5) {
-			this.play(AudioKey.SCORE_STREAK);
-		} else if (scoreIncrease >= 2) {
-			this.play(AudioKey.SCORE_EARNED);
-		} else if (scoreIncrease >= 1) {
-			this.play(AudioKey.ACHIEVEMENT);
-		} else {
-			this.play(AudioKey.CLICK);
-		}
-	}
-
-	get isEnabled(): boolean {
-		return !this.isMuted;
-	}
-
-	get volume(): number {
-		return this.isMuted ? 0 : this.masterVolume;
+	public playAnswerFeedback(isCorrect: boolean): void {
+		this.play(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
 	}
 }
 

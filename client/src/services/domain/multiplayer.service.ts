@@ -4,6 +4,7 @@ import { MultiplayerEvent, TIME_PERIODS_MS } from '@shared/constants';
 import type { CreateRoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import type { MultiplayerErrorMessage, MultiplayerEventListener } from '@/types';
 import { ApiConfig, clientLogger as logger } from '@/services';
 
 class MultiplayerService {
@@ -12,7 +13,7 @@ class MultiplayerService {
 	private readonly maxReconnectAttempts = 5;
 	private readonly reconnectDelay = TIME_PERIODS_MS.SECOND;
 	private isConnecting = false;
-	private pendingListeners: { event: string; callback: (data: unknown) => void }[] = [];
+	private pendingListeners: MultiplayerEventListener[] = [];
 	private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
 	connect(token: string): Socket {
@@ -172,7 +173,7 @@ class MultiplayerService {
 			this.isConnecting = false;
 		});
 
-		this.socket.on(MultiplayerEvent.ERROR, (error: { message: string }) => {
+		this.socket.on(MultiplayerEvent.ERROR, (error: MultiplayerErrorMessage) => {
 			logger.gameError('Multiplayer server error', {
 				errorInfo: { message: getErrorMessage(error) },
 			});
@@ -187,7 +188,7 @@ class MultiplayerService {
 		this.socket.emit(event, data);
 	}
 
-	on(eventListener: { event: string; callback: (data: unknown) => void }): void {
+	on(eventListener: MultiplayerEventListener): void {
 		const wrappedCallback = (data: unknown): void => {
 			eventListener.callback(data);
 		};
@@ -251,114 +252,6 @@ class MultiplayerService {
 			questionId,
 			answer,
 			timeSpent,
-		});
-	}
-
-	onRoomCreated(callback: (data: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ROOM_CREATED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onRoomJoined(callback: (data: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ROOM_JOINED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onRoomLeft(callback: (data: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ROOM_LEFT,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onPlayerJoined(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.PLAYER_JOINED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onPlayerLeft(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.PLAYER_LEFT,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onGameStarted(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.GAME_STARTED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onQuestionStarted(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.QUESTION_STARTED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onAnswerReceived(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ANSWER_RECEIVED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onQuestionEnded(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.QUESTION_ENDED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onGameEnded(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.GAME_ENDED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onRoomUpdated(callback: (event: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ROOM_UPDATED,
-			callback: (data: unknown) => {
-				callback(data);
-			},
-		});
-	}
-
-	onError(callback: (error: unknown) => void): void {
-		this.on({
-			event: MultiplayerEvent.ERROR,
-			callback: (data: unknown) => {
-				callback(data);
-			},
 		});
 	}
 }

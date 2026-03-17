@@ -60,13 +60,6 @@ export function isRegisteredDifficulty(difficulty: string): difficulty is Diffic
 }
 
 /**
- * Checks if a difficulty value is valid (registered or custom)
- */
-export function isValidDifficulty(difficulty: string): boolean {
-  return isRegisteredDifficulty(difficulty) || isCustomDifficulty(difficulty);
-}
-
-/**
  * Extracts the custom difficulty text from a full difficulty string
  */
 export function extractCustomDifficultyText(difficulty: string): string {
@@ -172,7 +165,7 @@ export function validateCustomDifficultyText(text: string): BaseValidationResult
 ```typescript
 import { CUSTOM_DIFFICULTY_PREFIX } from '@shared/constants';
 import type { TriviaInputValidationResult } from '@shared/types';
-import { validateTopicLength } from '@shared/utils';
+import { validateStringLength, validateNoForbiddenWords } from '@shared/validation';
 import { isCustomDifficulty, isRegisteredDifficulty } from './difficulty.validation';
 
 /**
@@ -189,7 +182,10 @@ export function validateTriviaInputQuick(topic: string, difficulty: string): Tri
     result.topic.isValid = false;
     result.topic.errors.push('Topic is required');
   } else {
-    const topicValidation = validateTopicLength(topic);
+    const topicLengthResult = validateStringLength(topic, 'TOPIC');
+    const topicValidation = !topicLengthResult.isValid
+      ? topicLengthResult
+      : validateNoForbiddenWords(topic.trim(), 'Topic');
     if (!topicValidation.isValid && topicValidation.errors.length > 0) {
       result.topic.isValid = false;
       result.topic.errors.push(topicValidation.errors[0]);

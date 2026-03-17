@@ -1,4 +1,4 @@
-import { forwardRef, useCallback } from 'react';
+import { ForwardedRef, forwardRef, useCallback } from 'react';
 import { cva } from 'class-variance-authority';
 
 import { SkeletonVariant } from '@/constants';
@@ -40,7 +40,7 @@ const skeletonVariants = cva('rounded-md bg-muted animate-pulse', {
 	defaultVariants: { size: undefined },
 });
 
-function assignRef(el: HTMLDivElement | HTMLSpanElement | null, ref: React.ForwardedRef<HTMLElement>): void {
+function assignRef(el: HTMLDivElement | HTMLSpanElement | null, ref: ForwardedRef<HTMLElement>): void {
 	if (typeof ref === 'function') ref(el);
 	else if (ref) ref.current = el;
 }

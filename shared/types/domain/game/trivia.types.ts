@@ -1,5 +1,5 @@
 // Trivia-related types for EveryTriv.
-import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, GameMode } from '@shared/constants';
+import { CUSTOM_DIFFICULTY_PREFIX, DifficultyLevel, type Locale } from '@shared/constants';
 
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseValidationResult } from '../validation.types';
@@ -8,32 +8,15 @@ export type CustomDifficultyString = `${typeof CUSTOM_DIFFICULTY_PREFIX}${string
 
 export type GameDifficulty = DifficultyLevel | CustomDifficultyString;
 
-export interface BaseTriviaParams {
-	topic?: string;
-	difficulty?: GameDifficulty;
-	count?: number;
-	answerCount?: number;
-}
-
 export interface TriviaQuestionDetailsMetadata {
 	category?: string;
 	tags?: string[];
 	providerName?: string;
 	difficulty?: GameDifficulty;
-	difficultyScore?: number;
 	customDifficultyDescription?: string;
 	generatedAt?: string;
 	language?: string;
 	explanation?: string;
-	referenceUrls?: string[];
-	hints?: string[];
-	usageCount?: number;
-	correctAnswerCount?: number;
-	aiConfidenceScore?: number;
-	safeContentScore?: number;
-	flaggedReasons?: string[];
-	popularityScore?: number;
-	averageAnswerTimeMs?: number;
 	mappedDifficulty?: DifficultyLevel;
 }
 
@@ -50,11 +33,8 @@ export interface BaseGameTopicDifficulty {
 	difficulty: GameDifficulty;
 }
 
-export interface BaseTriviaConfig {
-	topic: string;
-	difficulty: GameDifficulty;
+export interface BaseTriviaConfig extends BaseGameTopicDifficulty {
 	questionsPerRequest?: number;
-	gameMode?: GameMode;
 }
 
 export interface TriviaQuestionCore {
@@ -67,16 +47,20 @@ export interface TriviaQuestionInput extends TriviaQuestionCore {
 	topic: string;
 	difficulty: GameDifficulty;
 	metadata?: TriviaQuestionDetailsMetadata;
-	rating?: number;
-	timesAnswered?: number;
-	successRate?: number;
 }
 
 export interface TriviaQuestion extends TriviaQuestionInput, BaseEntity {}
 
-export interface BaseAnswerPayload {
-	questionId: string;
-	timeSpent: number;
+export interface AdminTriviaFields {
+	userId: string | null;
+	isCorrect: boolean | null;
+}
+
+export type AdminTriviaQuestion = TriviaQuestion & AdminTriviaFields;
+
+export interface TriviaQuestionsResponse {
+	questions: AdminTriviaQuestion[];
+	totalCount: number;
 }
 
 export interface BaseAnswerData {
@@ -87,12 +71,9 @@ export interface BaseAnswerData {
 
 export interface TriviaRequest extends BaseTriviaConfig {
 	questionsPerRequest: number;
-	category?: string;
-	userId?: string;
+	answerCount: number;
+	outputLanguage: Locale;
 	gameId?: string;
-	timeLimit?: number;
-	maxQuestionsPerGame?: number;
-	answerCount?: number;
 }
 
 export interface TriviaInputValidationResult {

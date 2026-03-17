@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { DifficultyLevel, GameMode } from '@shared/constants';
 import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry, TriviaRequest } from '@shared/types';
 
-import { RANK_DISPLAY } from '@/constants';
+import { RANK_DISPLAY, TextLanguageStatus } from '@/constants';
 
 export interface CustomSettings {
 	questionCount: number;
@@ -69,17 +69,22 @@ export interface GameSettingsValidationResult {
 	finalDifficulty: GameDifficulty;
 }
 
-/** TriviaRequest with optional AbortSignal for client fetch cancellation. */
 export type TriviaRequestWithSignal = TriviaRequest & { signal?: AbortSignal };
 
 export interface UseGameSettingsFormReturn {
 	topic: string;
 	topicError: string;
+	topicLanguageStatus: TextLanguageStatus;
+	topicLanguageError: string;
 	selectedDifficulty: DifficultyLevel;
 	customDifficulty: string;
 	customDifficultyError: string;
+	customDifficultyLanguageStatus: TextLanguageStatus;
+	customDifficultyLanguageError: string;
 	answerCount: number;
 	isAdmin: boolean;
+
+	canSubmitLanguage: boolean;
 	handleTopicChange: (value: string) => void;
 	setSelectedDifficulty: (difficulty: DifficultyLevel) => void;
 	setCustomDifficulty: (text: string) => void;

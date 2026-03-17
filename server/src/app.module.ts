@@ -3,18 +3,17 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, Reflector } from '@ne
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-
 import { AppConfig, DatabaseConfig } from '@config';
+import { GlobalExceptionFilter } from '@common/globalException.filter';
+import { LocalAuthGuard, RolesGuard, UserStatusGuard } from '@common/guards';
+import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from '@common/interceptors';
+import { AUTH_CONSTANTS } from '@internal/constants';
 import { HealthController, MetricsController } from '@internal/controllers';
 import { UserEntity } from '@internal/entities';
 import { RateLimitMiddleware } from '@internal/middleware';
 import { CacheModule, CacheService, StorageModule } from '@internal/modules';
 
 import { AppController } from './app.controller';
-import { GlobalExceptionFilter } from './common/globalException.filter';
-import { AuthGuard, RolesGuard, UserStatusGuard } from './common/guards';
-import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from './common/interceptors';
 import {
 	AdminModule,
 	AnalyticsModule,
@@ -83,7 +82,7 @@ import { SystemAnalyticsService } from './features/analytics/services';
 		// Global authentication guard
 		{
 			provide: APP_GUARD,
-			useClass: AuthGuard,
+			useClass: LocalAuthGuard,
 		},
 		// Global roles guard
 		{

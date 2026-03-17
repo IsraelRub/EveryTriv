@@ -2,22 +2,20 @@ import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
 import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
-import type {
-	CacheEntry,
-	StorageCleanupOptions,
-	StorageConfig,
-	StorageOperationResult,
-	StorageService,
-	StorageStats,
-	StorageStatsItemByType,
-	StorageValue,
-	TypeGuard,
-} from '@shared/types';
+import type { StorageOperationResult, StorageValue, TypeGuard } from '@shared/types';
 import { createTimedResult, getErrorMessage, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { CACHE_CONFIG, StorageOperation } from '@internal/constants';
 import { serverLogger as logger, metricsService, StorageMetricsTracker } from '@internal/services';
+import type {
+	CacheEntry,
+	IStorageService,
+	StorageCleanupOptions,
+	StorageConfig,
+	StorageStats,
+	StorageStatsItemByType,
+} from '@internal/types';
 import { deleteKeysByPattern, isValidCacheEntry, scanKeys } from '@internal/utils';
 
 function createTypeBreakdown(cacheItems: number = 0, cacheSize: number = 0): StorageStatsItemByType {
@@ -28,7 +26,7 @@ function createTypeBreakdown(cacheItems: number = 0, cacheSize: number = 0): Sto
 }
 
 @Injectable()
-export class CacheService implements StorageService, OnModuleDestroy {
+export class CacheService implements IStorageService, OnModuleDestroy {
 	private memoryCache = new Map<string, { value: StorageValue; expiry: number | null }>();
 	private useRedis: boolean = false;
 	private config: StorageConfig;
@@ -42,7 +40,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	}
 
 	private getPrefixedKey(key: string): string {
-		return `${this.config.prefix}${key}`;
+		return this.config.prefix + key;
 	}
 
 	async set(key: string, value: StorageValue, ttl?: number): Promise<StorageOperationResult<void>> {
@@ -545,7 +543,7 @@ export class CacheService implements StorageService, OnModuleDestroy {
 	async invalidatePattern(pattern: string): Promise<number> {
 		const startTime = Date.now();
 		try {
-			const prefixedPattern = `${this.config.prefix}${pattern}`;
+			const prefixedPattern = this.config.prefix + pattern;
 			const n =
 				this.useRedis && this.redisClient
 					? await this.invalidatePatternRedis(prefixedPattern)

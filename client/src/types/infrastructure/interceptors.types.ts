@@ -17,11 +17,9 @@ export type ResponseInterceptor = <T>(response: ApiResponse<T>) => ApiResponse<T
 
 export type ErrorInterceptor = (error: ApiError) => ApiError | Promise<ApiError>;
 
-export interface InterceptorOptions {
-	enabled?: boolean;
-}
+export type InterceptorFn = RequestInterceptor | ResponseInterceptor | ErrorInterceptor;
 
-export interface SimpleInterceptor<T> {
+export interface InterceptorEntry<T extends InterceptorFn = InterceptorFn> {
 	interceptor: T;
 	enabled: boolean;
 }

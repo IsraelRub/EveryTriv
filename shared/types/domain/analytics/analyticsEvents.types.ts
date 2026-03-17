@@ -8,7 +8,7 @@ import {
 } from '@shared/constants';
 
 import type { BasicValue } from '../../core/data.types';
-import type { BaseAnswerData, BaseGameTopicDifficulty, GameDifficulty } from '../game/trivia.types';
+import type { BaseGameTopicDifficulty } from '../game/trivia.types';
 
 export interface AnalyticsQuestionDetail extends BaseGameTopicDifficulty {
 	id: string;
@@ -48,11 +48,6 @@ export interface AnalyticsMetadata {
 	utmCampaign?: string;
 	questions?: AnalyticsQuestionDetail[];
 	errors?: AnalyticsProviderError[];
-}
-
-export interface AnalyticsAnswerData extends Partial<BaseAnswerData> {
-	topic?: string;
-	difficulty?: GameDifficulty;
 }
 
 export interface TrackEventResponse {

@@ -1,4 +1,5 @@
 import type { NavigationLinks } from '@/types';
+import { NavKey } from './localeKeys.constants';
 
 export const ROUTES = {
 	// Public routes
@@ -35,20 +36,20 @@ export const ROUTES = {
 } as const;
 
 const MAIN_NAV_LINKS = [
-	{ label: 'Start Game', path: ROUTES.GAME },
-	{ label: 'Statistics', path: ROUTES.STATISTICS },
+	{ labelKey: NavKey.START_GAME, path: ROUTES.GAME },
+	{ labelKey: NavKey.STATISTICS, path: ROUTES.STATISTICS },
 ] as const;
 
 const LEGAL_LINKS = [
-	{ label: 'Privacy Policy', path: ROUTES.PRIVACY },
-	{ label: 'Terms of Service', path: ROUTES.TERMS },
-	{ label: 'Contact', path: ROUTES.CONTACT },
+	{ labelKey: NavKey.PRIVACY_POLICY, path: ROUTES.PRIVACY },
+	{ labelKey: NavKey.TERMS_OF_SERVICE, path: ROUTES.TERMS },
+	{ labelKey: NavKey.CONTACT, path: ROUTES.CONTACT },
 ] as const;
 
 export const NAVIGATION_LINKS: NavigationLinks = {
 	main: MAIN_NAV_LINKS,
 	authenticated: [],
-	admin: [{ label: 'Admin Dashboard', path: ROUTES.ADMIN }],
+	admin: [{ labelKey: NavKey.ADMIN_DASHBOARD, path: ROUTES.ADMIN }],
 	footer: {
 		quick: MAIN_NAV_LINKS,
 		legal: LEGAL_LINKS,

@@ -1,11 +1,11 @@
-import type { ErrorInfo, ReactNode } from 'react';
+import type { ErrorInfo, ReactElement } from 'react';
 import { LucideIcon } from 'lucide-react';
 
 export interface BaseComponentProps {
 	className?: string;
 	id?: string;
 	disabled?: boolean;
-	children?: ReactNode;
+	children?: ReactElement | ReactElement[] | null;
 }
 
 export interface FeatureHighlightItem {
@@ -17,9 +17,9 @@ export interface FeatureHighlightItem {
 }
 
 export interface ErrorBoundaryProps {
-	children: ReactNode;
+	children: ReactElement | ReactElement[];
 	featureName?: string;
-	fallback?: ReactNode;
+	fallback?: ReactElement | null;
 	onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
@@ -30,9 +30,9 @@ export interface ErrorBoundaryState {
 }
 
 export interface FeatureErrorBoundaryProps {
-	children: ReactNode;
+	children: ReactElement | ReactElement[];
 	featureName: string;
-	fallback?: ReactNode;
+	fallback?: ReactElement | null;
 	onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 

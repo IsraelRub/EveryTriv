@@ -1,6 +1,14 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { ErrorCode, RoomStatus, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
+import {
+	ErrorCode,
+	GAME_MODES_CONFIG,
+	GameMode,
+	MULTIPLAYER_TIME_PER_QUESTION,
+	RoomStatus,
+	TIME_PERIODS_MS,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type {
 	CreateRoomResponse,
 	GameState,
@@ -15,6 +23,7 @@ import { getCorrectAnswerIndex } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
 
+import { CreditsService } from '../../credits/credits.service';
 import { GameService } from '../game.service';
 import { GameStateService } from './gameState.service';
 import { RoomService } from './room.service';
@@ -24,7 +33,8 @@ export class MultiplayerService {
 	constructor(
 		private readonly roomService: RoomService,
 		private readonly gameStateService: GameStateService,
-		private readonly gameService: GameService
+		private readonly gameService: GameService,
+		private readonly creditsService: CreditsService
 	) {}
 
 	async createRoom(hostId: string, config: RoomConfig): Promise<CreateRoomResponse> {
@@ -64,13 +74,19 @@ export class MultiplayerService {
 			throw new BadRequestException(ErrorCode.ONLY_HOST_CAN_START);
 		}
 
-		if (room.status !== RoomStatus.WAITING) {
+		if (room.status !== RoomStatus.WAITING && room.status !== RoomStatus.STARTING) {
 			throw new BadRequestException(ErrorCode.GAME_ALREADY_STARTED_OR_FINISHED);
 		}
 
 		if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
 			throw new BadRequestException(ErrorCode.NEED_AT_LEAST_2_PLAYERS);
 		}
+
+		const defaultQuestions =
+			GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.MIN;
+		const questionsPerRequest = room.config.questionsPerRequest ?? defaultQuestions;
+		const creditsToDeduct = questionsPerRequest * room.players.length;
+		await this.creditsService.deductCredits(hostId, creditsToDeduct, GameMode.MULTIPLAYER, 'multiplayer_host_start');
 
 		const triviaResult = await this.gameService.getTriviaQuestion({
 			topic: room.config.topic,
@@ -160,12 +176,12 @@ export class MultiplayerService {
 
 		// Calculate server timestamps as authoritative source
 		const serverStartTimestamp = Date.now();
-		const serverEndTimestamp = serverStartTimestamp + updatedRoom.config.timePerQuestion * TIME_PERIODS_MS.SECOND;
+		const serverEndTimestamp = serverStartTimestamp + MULTIPLAYER_TIME_PER_QUESTION * TIME_PERIODS_MS.SECOND;
 
 		return {
 			question,
 			questionIndex: updatedRoom.currentQuestionIndex,
-			timeLimit: updatedRoom.config.timePerQuestion,
+			timeLimit: MULTIPLAYER_TIME_PER_QUESTION,
 			serverStartTimestamp,
 			serverEndTimestamp,
 		};
@@ -195,30 +211,6 @@ export class MultiplayerService {
 			updatedRoom: endResult.room,
 			...(endResult.answerCounts && { answerCounts: endResult.answerCounts }),
 		};
-	}
-
-	async checkAllPlayersAnswered(roomId: string): Promise<boolean> {
-		const room = await this.roomService.getRoom(roomId);
-		if (!room) {
-			return false;
-		}
-		return this.gameStateService.allPlayersAnswered(room);
-	}
-
-	async findRoomsByUserId(userId: string): Promise<MultiplayerRoom[]> {
-		return this.roomService.findRoomsByUserId(userId);
-	}
-
-	async getRoom(roomId: string): Promise<MultiplayerRoom | null> {
-		return this.roomService.getRoom(roomId);
-	}
-
-	async restoreRoom(room: MultiplayerRoom): Promise<void> {
-		return this.roomService.restoreRoom(room);
-	}
-
-	async cancelGame(roomId: string): Promise<MultiplayerRoom> {
-		return this.roomService.updateRoomStatus(roomId, RoomStatus.CANCELLED);
 	}
 
 	private validateParticipant(room: MultiplayerRoom | null, userId: string): asserts room is MultiplayerRoom {

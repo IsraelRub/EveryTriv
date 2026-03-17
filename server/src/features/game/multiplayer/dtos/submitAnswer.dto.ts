@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsNumber, IsString, IsUUID, Length, Matches, Max, Min, MinLength } from 'class-validator';
 
+import { VALIDATION_COUNT } from '@shared/constants';
+
 export class MultiplayerSubmitAnswerDto {
 	@ApiProperty({
 		description: 'Room ID (8 alphanumeric characters)',
@@ -25,11 +27,11 @@ export class MultiplayerSubmitAnswerDto {
 	@ApiProperty({
 		description: 'Selected answer index (0-based)',
 		minimum: 0,
-		maximum: 3,
+		maximum: VALIDATION_COUNT.ANSWER_COUNT.MAX - 1,
 	})
 	@IsInt()
 	@Min(0)
-	@Max(3)
+	@Max(VALIDATION_COUNT.ANSWER_COUNT.MAX - 1)
 	answer!: number;
 
 	@ApiProperty({ description: 'Time spent on question in seconds', minimum: 0 })

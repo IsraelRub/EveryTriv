@@ -4,10 +4,7 @@ export enum VariantBase {
 	MINIMAL = 'minimal',
 	OUTLINE = 'outline',
 	SECONDARY = 'secondary',
-	STATIC = 'static',
 }
-
-export type ButtonVariant = Exclude<VariantBase, VariantBase.STATIC>;
 
 export enum StatCardVariant {
 	HORIZONTAL = 'horizontal',
@@ -25,6 +22,7 @@ export enum ToastVariant {
 export enum TabsListVariant {
 	DEFAULT = 'default',
 	COMPACT = 'compact',
+	SECONDARY = 'secondary',
 }
 
 export enum AlertVariant {

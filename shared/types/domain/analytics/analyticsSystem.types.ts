@@ -1,3 +1,5 @@
+import type { RecommendationPriority, SystemInsightStatus } from '@shared/constants';
+
 export interface SystemStats {
 	totalUsers: number;
 	activeUsers24h: number;
@@ -20,9 +22,21 @@ export interface SystemInsights {
 	securityInsights: string[];
 	userBehaviorInsights: string[];
 	systemHealthInsights: string[];
-	status: string;
+	status: SystemInsightStatus;
 	trends: string[];
 	timestamp: Date;
+}
+
+export interface SystemRecommendation {
+	id: string;
+	type: string;
+	title: string;
+	description: string;
+	message: string;
+	action: string;
+	priority: RecommendationPriority;
+	estimatedImpact: string;
+	implementationEffort: string;
 }
 
 export interface BusinessMetricsRevenue {
@@ -49,16 +63,4 @@ export interface BusinessMetrics {
 	revenue: BusinessMetricsRevenue;
 	users: BusinessMetricsUsers;
 	engagement: BusinessMetricsEngagement;
-}
-
-export interface SystemRecommendation {
-	id: string;
-	type: string;
-	title: string;
-	description: string;
-	message: string;
-	action: string;
-	priority: string;
-	estimatedImpact: string;
-	implementationEffort: string;
 }

@@ -6,6 +6,8 @@ export * from './paymentHistory.entity';
 
 export * from './creditTransaction.entity';
 
+export * from './creditsConfig.entity';
+
 export * from './trivia.entity';
 
 export * from './user.entity';

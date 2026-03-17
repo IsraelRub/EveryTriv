@@ -1,39 +1,28 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
 import {
-	CREDIT_PURCHASE_PACKAGES,
-	CREDIT_PURCHASE_PACKAGES_BY_CREDITS,
 	ERROR_MESSAGES,
 	ErrorCode,
 	PAYMENT_METHODS,
 	PaymentClientAction,
 	PaymentMethod,
 	PaymentStatus,
-	SERVER_CACHE_KEYS,
-	TIME_DURATIONS_SECONDS,
-	VALIDATION_PAYMENT,
+	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type {
-	CreditPurchaseOption,
-	ManualPaymentDetails,
-	PaymentData,
-	PaymentResult,
-	PayPalOrderRequest,
-} from '@shared/types';
+import type { ManualPaymentDetails, PaymentData, PaymentResult, PayPalOrderRequest } from '@shared/types';
 import { generatePaymentIntentId, getErrorMessage, sanitizeCardNumber } from '@shared/utils';
 import { isValidCardNumber } from '@shared/validation';
 
 import { AppConfig } from '@config';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { PaymentHistoryEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalConfig } from '@internal/types';
 import { createServerError, createValidationError } from '@internal/utils';
 
-import { isCreditPurchaseOptionArray } from '../../internal/utils/entityGuards';
-import type { PaymentMethodDetailsDto } from './dtos/payment.dto';
 import { PayPalApiService } from './providers/paypal';
 import { detectCardBrand, extractLastFourDigits } from './utils/payment.utils';
 
@@ -45,31 +34,6 @@ export class PaymentService {
 		private readonly cacheService: CacheService,
 		private readonly paypalApiService: PayPalApiService
 	) {}
-
-	async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
-		try {
-			const cachedOptions = await this.cacheService.get<CreditPurchaseOption[]>(
-				SERVER_CACHE_KEYS.CREDITS.PURCHASE_OPTIONS,
-				isCreditPurchaseOptionArray
-			);
-			if (cachedOptions.success && cachedOptions.data) {
-				return cachedOptions.data;
-			}
-
-			await this.cacheService.set(
-				SERVER_CACHE_KEYS.CREDITS.PURCHASE_OPTIONS,
-				CREDIT_PURCHASE_PACKAGES,
-				TIME_DURATIONS_SECONDS.HOUR
-			);
-
-			return [...CREDIT_PURCHASE_PACKAGES];
-		} catch (error) {
-			logger.paymentFailed('unknown', 'Failed to get credit purchase options', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw createServerError('retrieve credit options', error);
-		}
-	}
 
 	async processPayment(userId: string, paymentData: PaymentData): Promise<PaymentResult> {
 		return this.processPaymentInternal(null, userId, paymentData);
@@ -403,7 +367,7 @@ export class PaymentService {
 		if (!id || typeof id !== 'string') {
 			return false;
 		}
-		return id.trim().length >= VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH && /^[A-Z0-9_-]+$/i.test(id);
+		return id.trim().length >= VALIDATION_LENGTH.ORDER_ID.MIN && /^[A-Z0-9_-]+$/i.test(id);
 	}
 
 	private buildPayPalOrderRequest(amount: number, currency: string, config: PayPalConfig): PayPalOrderRequest {
@@ -479,49 +443,10 @@ export class PaymentService {
 		}
 	}
 
-	getPackageInfo(packageId: string): CreditPurchaseOption | null {
-		const creditsMatch = packageId.match(/package_(\d+)/);
-		if (!creditsMatch?.[1]) return null;
-
-		const credits = parseInt(creditsMatch[1]);
-		return CREDIT_PURCHASE_PACKAGES_BY_CREDITS.get(credits) ?? null;
-	}
-
 	async findByPaypalOrderId(orderId: string): Promise<PaymentHistoryEntity | null> {
 		return await this.paymentHistoryRepository
 			.createQueryBuilder('payment')
 			.where("payment.metadata->>'paypalOrderId' = :orderId", { orderId })
 			.getOne();
-	}
-
-	buildManualPaymentDetails(dto: PaymentMethodDetailsDto): ManualPaymentDetails {
-		if (!dto.cardNumber || !dto.cvv) {
-			throw new BadRequestException(ErrorCode.CARD_DETAILS_REQUIRED);
-		}
-		const { month, year } = this.parseExpiryDate(dto.expiryDate);
-		return {
-			cardNumber: dto.cardNumber,
-			expiryMonth: month,
-			expiryYear: year,
-			cvv: dto.cvv,
-			cardHolderName: dto.cardHolderName ?? '',
-			postalCode: dto.postalCode,
-			expiryDate: dto.expiryDate,
-		};
-	}
-
-	private parseExpiryDate(expiryDate?: string): {
-		month: number;
-		year: number;
-	} {
-		if (!expiryDate) {
-			return { month: 0, year: 0 };
-		}
-
-		const [monthPart, yearPart] = expiryDate.split('/');
-		const month = parseInt(monthPart ?? '0', 10);
-		const year = 2000 + parseInt(yearPart ?? '0', 10);
-
-		return { month, year };
 	}
 }

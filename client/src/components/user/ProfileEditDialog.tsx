@@ -1,9 +1,20 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Edit, Key, Pencil } from 'lucide-react';
 
-import { validateName } from '@shared/validation';
+import { getDisplayNameFromUserFields } from '@shared/utils';
+import { LengthKey, validateStringLength } from '@shared/validation';
 
-import { AvatarSize, ButtonSize, DISPLAY_NAME_FALLBACKS, LoadingMessages, VariantBase } from '@/constants';
+import {
+	AuthKey,
+	AvatarSize,
+	ButtonSize,
+	CommonKey,
+	DISPLAY_NAME_FALLBACKS,
+	LoadingKey,
+	VariantBase,
+} from '@/constants';
+import type { ProfileEditDialogProps } from '@/types';
 import {
 	AvatarSelector,
 	Button,
@@ -18,10 +29,9 @@ import {
 	UserAvatar,
 } from '@/components';
 import { useCurrentUserData, useUpdateUserProfile, useUserProfile } from '@/hooks';
-import type { ProfileEditDialogProps } from '@/types';
-import { getDisplayNameFromUser } from '@/utils';
 
 export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps) {
+	const { t } = useTranslation(['auth', 'loading', 'common']);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editData, setEditData] = useState({ firstName: '', lastName: '' });
 	const [showAvatarSelector, setShowAvatarSelector] = useState(false);
@@ -43,9 +53,8 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 	};
 
 	const handleSave = async () => {
-		// Validate before saving
-		const firstNameValidation = validateName(editData.firstName, { fieldName: 'First name', required: true });
-		const lastNameValidation = validateName(editData.lastName, { fieldName: 'Last name', required: false });
+		const firstNameValidation = validateStringLength(editData.firstName, LengthKey.FIRST_NAME);
+		const lastNameValidation = validateStringLength(editData.lastName, LengthKey.LAST_NAME);
 
 		if (!firstNameValidation.isValid || !lastNameValidation.isValid) {
 			// Validation errors are handled by server, but we can prevent submission
@@ -65,14 +74,11 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 		}
 	};
 
-	const displayName =
-		(getDisplayNameFromUser({
-			firstName: profile?.firstName ?? currentUser?.firstName,
-			lastName: profile?.lastName ?? currentUser?.lastName,
-			email: currentUser?.email,
-		}) ||
-			currentUser?.email?.split('@')[0]) ??
-		DISPLAY_NAME_FALLBACKS.USER;
+	const displayName = getDisplayNameFromUserFields({
+		firstName: profile?.firstName ?? currentUser?.firstName,
+		lastName: profile?.lastName ?? currentUser?.lastName,
+		email: currentUser?.email,
+	});
 
 	const handleDialogClose = (shouldClose: boolean) => {
 		if (shouldClose) {
@@ -88,12 +94,12 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 			<Dialog open={open} onOpenChange={handleDialogClose}>
 				<DialogContent className='max-w-2xl max-h-[90vh] flex flex-col'>
 					<DialogHeader className='flex-shrink-0'>
-						<DialogTitle>Edit Profile</DialogTitle>
-						<DialogDescription>Manage your profile information</DialogDescription>
+						<DialogTitle>{t(AuthKey.EDIT_PROFILE)}</DialogTitle>
+						<DialogDescription>{t(AuthKey.MANAGE_PROFILE_INFO)}</DialogDescription>
 					</DialogHeader>
 
 					{isLoading ? (
-						<div className='py-8 text-center text-muted-foreground flex-1'>{LoadingMessages.LOADING_PROFILE}</div>
+						<div className='py-8 text-center text-muted-foreground flex-1'>{t(LoadingKey.LOADING_PROFILE)}</div>
 					) : (
 						<div className='dialog-body'>
 							{/* Two Column Layout */}
@@ -104,12 +110,12 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 										{(profile ?? currentUser) && (
 											<UserAvatar
 												size={AvatarSize.XL}
-												fallbackClassName='text-2xl'
-												user={{
+												source={{
 													firstName: profile?.firstName ?? currentUser?.firstName,
 													lastName: profile?.lastName ?? currentUser?.lastName,
 													email: currentUser?.email,
 													avatar: currentAvatarId ?? profile?.avatar ?? currentUser?.avatar,
+													avatarUrl: profile?.avatarUrl ?? currentUser?.avatarUrl,
 												}}
 												fallbackLetter={DISPLAY_NAME_FALLBACKS.USER_SHORT}
 											/>
@@ -133,16 +139,16 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 								{!isEditing && (
 									<div className='flex flex-col gap-3 justify-center items-center md:items-start'>
 										<Button variant={VariantBase.DEFAULT} onClick={handleEditStart} className='w-full md:w-auto'>
-											<Edit className='h-4 w-4 mr-2' />
-											Edit Profile
+											<Edit className='h-4 w-4 me-2' />
+											{t(AuthKey.EDIT_PROFILE_BUTTON)}
 										</Button>
 										<Button
 											variant={VariantBase.DEFAULT}
 											onClick={() => setShowChangePasswordDialog(true)}
 											className='w-full md:w-auto'
 										>
-											<Key className='h-4 w-4 mr-2' />
-											Change Password
+											<Key className='h-4 w-4 me-2' />
+											{t(AuthKey.CHANGE_PASSWORD)}
 										</Button>
 									</div>
 								)}
@@ -153,30 +159,30 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 								<div className='space-y-4 pt-4 border-t'>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 										<div className='space-y-2'>
-											<Label htmlFor='firstName'>First Name</Label>
+											<Label htmlFor='firstName'>{t(AuthKey.FIRST_NAME)}</Label>
 											<Input
 												id='firstName'
 												value={editData.firstName}
 												onChange={e => setEditData(prev => ({ ...prev, firstName: e.target.value }))}
-												placeholder='First name'
+												placeholder={t(AuthKey.FIRST_NAME)}
 											/>
 										</div>
 										<div className='space-y-2'>
-											<Label htmlFor='lastName'>Last Name</Label>
+											<Label htmlFor='lastName'>{t(AuthKey.LAST_NAME)}</Label>
 											<Input
 												id='lastName'
 												value={editData.lastName}
 												onChange={e => setEditData(prev => ({ ...prev, lastName: e.target.value }))}
-												placeholder='Last name'
+												placeholder={t(AuthKey.LAST_NAME)}
 											/>
 										</div>
 									</div>
 									<div className='flex gap-2 pt-2 flex-shrink-0'>
 										<Button variant={VariantBase.OUTLINE} onClick={() => setIsEditing(false)}>
-											Cancel
+											{t(CommonKey.CANCEL)}
 										</Button>
 										<Button onClick={handleSave} disabled={updateProfile.isPending}>
-											{updateProfile.isPending ? LoadingMessages.SAVING : 'Save'}
+											{updateProfile.isPending ? t(LoadingKey.SAVING) : t(CommonKey.SAVE)}
 										</Button>
 									</div>
 								</div>
@@ -191,6 +197,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 				open={showAvatarSelector}
 				onOpenChange={setShowAvatarSelector}
 				currentAvatarId={currentAvatarId}
+				currentAvatarUrl={profile?.avatarUrl ?? currentUser?.avatarUrl}
 			/>
 
 			{/* Change Password Dialog */}

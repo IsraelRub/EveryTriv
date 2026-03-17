@@ -18,6 +18,8 @@ export const API_ENDPOINTS = {
 		BASE: '/users',
 		PROFILE: '/users/profile',
 		AVATAR: '/users/avatar',
+		AVATAR_UPLOAD: '/users/avatar/upload',
+		AVATAR_IMAGE: (id: string) => `/users/${id}/avatar`,
 		SEARCH: '/users/search',
 		ACCOUNT: '/users/account',
 		CHANGE_PASSWORD: '/users/change-password',
@@ -62,9 +64,11 @@ export const API_ENDPOINTS = {
 		HISTORY: '/game/history',
 		HISTORY_BY_ID: '/game/history/:gameId',
 		VALIDATE_CUSTOM: '/game/validate-custom',
+		VALIDATE_TEXT: '/game/validate-text',
 		SESSION_START: '/game/session/start',
 		SESSION_ANSWER: '/game/session/answer',
 		SESSION_FINALIZE: '/game/session/finalize',
+		SURPRISE_PICK: '/game/surprise-pick',
 		VALIDATE_SESSION: '/game/validate-session/:gameId',
 		BY_ID: '/game/:id',
 		ADMIN: {
@@ -91,7 +95,6 @@ export const API_ENDPOINTS = {
 		USER_ACTIVITY: '/analytics/user/activity/:userId',
 		USER_INSIGHTS: '/analytics/user/insights/:userId',
 		USER_RECOMMENDATIONS: '/analytics/user/recommendations/:userId',
-		USER_ACHIEVEMENTS: '/analytics/user/achievements/:userId',
 		USER_TRENDS: '/analytics/user/trends/:userId',
 		USER_COMPARISON: '/analytics/user/comparison/:userId',
 		USER_SUMMARY: '/analytics/user/summary/:userId',
@@ -113,12 +116,17 @@ export const API_ENDPOINTS = {
 			ADMIN_CLEAR_ALL: '/analytics/leaderboard/admin/clear-all',
 		},
 	},
+	ADMIN: {
+		BASE: '/admin',
+		PRICING: '/admin/pricing',
+		STATISTICS: '/admin/statistics',
+		TRIVIA: '/admin/trivia',
+	},
 	MAINTENANCE: {
 		BASE: '/admin/maintenance',
 		STATS_CONSISTENCY_CHECK_ALL: '/admin/maintenance/stats/consistency-check/all',
 		STATS_CONSISTENCY: '/admin/maintenance/stats/consistency/:userId',
 		STATS_FIX_CONSISTENCY: '/admin/maintenance/stats/fix-consistency/:userId',
-		DATA_ACHIEVEMENTS_CLEANUP_OBSOLETE: '/admin/maintenance/data/achievements/cleanup-obsolete',
 		DATA_GAME_HISTORY_CLEAR_ALL: '/admin/maintenance/data/game-history/clear-all',
 		DATA_TRIVIA_CLEAR_ALL: '/admin/maintenance/data/trivia/clear-all',
 		DATA_USER_STATS_CLEAR_ALL: '/admin/maintenance/data/user-stats/clear-all',
@@ -131,19 +139,7 @@ export const API_ENDPOINTS = {
 	},
 } as const;
 
-export const COOKIE_NAMES = {
-	AUTH_TOKEN: 'access_token',
-	REFRESH_TOKEN: 'refresh_token',
-	USER_PREFERENCES: 'user_preferences',
-} as const;
-
 export const API_VERSION = 'v1';
-
-export const PAGINATION_DEFAULTS = {
-	DEFAULT_PAGE: 1,
-	DEFAULT_LIMIT: 10,
-	MAX_LIMIT: 100,
-} as const;
 
 export const RATE_LIMIT_DEFAULTS = {
 	WINDOW_MS: TIME_PERIODS_MS.MINUTE,

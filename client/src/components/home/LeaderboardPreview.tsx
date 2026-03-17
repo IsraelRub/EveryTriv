@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { Trophy } from 'lucide-react';
 
-import { ViewAllDestination } from '@/constants';
+import { HomeKey, ViewAllDestination } from '@/constants';
 import {
 	Card,
 	CardContent,
@@ -13,6 +14,7 @@ import {
 import { useGlobalLeaderboard } from '@/hooks';
 
 export function LeaderboardPreview() {
+	const { t } = useTranslation('home');
 	const { data: globalData, isLoading } = useGlobalLeaderboard();
 	const topPlayers = Array.isArray(globalData) ? globalData.slice(0, 5) : [];
 
@@ -22,9 +24,9 @@ export function LeaderboardPreview() {
 				<div className='space-y-1'>
 					<CardTitle className='text-xl flex items-center gap-2'>
 						<Trophy className='w-5 h-5 text-primary' />
-						Top Players
+						{t(HomeKey.TOP_PLAYERS)}
 					</CardTitle>
-					<CardDescription>Global leaders this week</CardDescription>
+					<CardDescription>{t(HomeKey.TOP_PLAYERS_DESC)}</CardDescription>
 				</div>
 				<ViewAllButton destination={ViewAllDestination.LEADERBOARD} visible={topPlayers.length > 0} />
 			</CardHeader>

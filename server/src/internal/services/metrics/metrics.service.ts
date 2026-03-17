@@ -1,9 +1,10 @@
 import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
-import type { MiddlewareMetrics, StatsValue, StorageMetrics } from '@shared/types';
+import type { MiddlewareMetrics, StatsValue } from '@shared/types';
 import { calculatePercentage, getErrorType, mean, sumBy } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { PERFORMANCE_TRACKING } from '@internal/constants';
+import type { StorageMetrics } from '@internal/types';
 
 import { serverLogger as logger } from '../logging';
 
@@ -15,13 +16,12 @@ function createStorageTypesMetrics(): Record<StorageType, { operations: number; 
 }
 
 export class MetricsService {
-	private static instance: MetricsService;
 	private metrics: StorageMetrics;
 	private startTime: Date;
 	private operationTimes: Map<keyof StorageMetrics['operations'], number[]> = new Map();
 	private middlewareMetrics: Map<string, MiddlewareMetrics> = new Map();
 
-	private constructor() {
+	constructor() {
 		this.startTime = new Date();
 		this.metrics = {
 			operations: {
@@ -74,13 +74,6 @@ export class MetricsService {
 			totalErrors: 0,
 			middleware: {},
 		};
-	}
-
-	static getInstance(): MetricsService {
-		if (!MetricsService.instance) {
-			MetricsService.instance = new MetricsService();
-		}
-		return MetricsService.instance;
 	}
 
 	trackOperation(
@@ -359,4 +352,4 @@ export class MetricsService {
 	}
 }
 
-export const metricsService = MetricsService.getInstance();
+export const metricsService = new MetricsService();

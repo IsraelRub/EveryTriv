@@ -4,8 +4,6 @@ import { IsInt, IsNumber, IsString, IsUUID, Max, Min, MinLength } from 'class-va
 
 import { VALIDATION_COUNT } from '@shared/constants';
 
-const MAX_ANSWER_INDEX = VALIDATION_COUNT.ANSWER_COUNT.MAX - 1;
-
 export class SubmitAnswerToSessionDto {
 	@ApiProperty({
 		description: 'Unique game session ID',
@@ -27,14 +25,13 @@ export class SubmitAnswerToSessionDto {
 
 	@ApiProperty({
 		description: 'Selected answer index (0-based)',
-		example: 0,
 		minimum: 0,
-		maximum: MAX_ANSWER_INDEX,
+		maximum: VALIDATION_COUNT.ANSWER_COUNT.MAX - 1,
 	})
 	@Type(() => Number)
 	@IsInt()
 	@Min(0)
-	@Max(MAX_ANSWER_INDEX)
+	@Max(VALIDATION_COUNT.ANSWER_COUNT.MAX - 1)
 	answer!: number;
 
 	@ApiProperty({ description: 'Time spent on question in seconds', minimum: 0 })

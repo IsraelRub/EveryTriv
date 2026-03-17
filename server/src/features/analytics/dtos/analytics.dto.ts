@@ -353,7 +353,7 @@ export class GetLeaderboardStatsDto {
 export class UnifiedUserAnalyticsQueryDto {
 	@ApiPropertyOptional({
 		description: 'Comma-separated list of analytics sections to include',
-		example: 'statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress',
+		example: 'statistics,performance,insights,recommendations,summary,trends,activity,progress',
 	})
 	@IsOptional()
 	@IsString()

@@ -41,7 +41,6 @@ export const CACHE_KEYS = {
 	CREDITS: {
 		BALANCE: (userId: string) => `credits:balance:${userId}`,
 		PACKAGES_ALL: 'credits:packages:all',
-		PURCHASE_OPTIONS: 'credit_purchase_options',
 	},
 	USER: {
 		PROFILE: (userId: string) => `user:profile:${userId}`,
@@ -74,8 +73,6 @@ export const CACHE_KEYS = {
 		STATISTICS: 'admin:statistics',
 	},
 } as const;
-
-export const SERVER_CACHE_KEYS = CACHE_KEYS;
 
 export function toReactQueryKey(cacheKey: string): string[] {
 	return cacheKey.split(':');

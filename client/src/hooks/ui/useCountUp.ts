@@ -3,11 +3,10 @@ import { useEffect, useState } from 'react';
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration } from '@shared/utils';
 
-import { Easing } from '@/constants';
 import type { UseCountUpOptions } from '@/types';
 
 export function useCountUp(target: number, options: UseCountUpOptions = {}): number {
-	const { duration = TIME_PERIODS_MS.TWO_SECONDS, enabled = true, easing = Easing.LINEAR, resetTrigger } = options;
+	const { duration = TIME_PERIODS_MS.FIVE_SECONDS, enabled = true, resetTrigger } = options;
 	const [count, setCount] = useState(0);
 
 	useEffect(() => {
@@ -22,20 +21,13 @@ export function useCountUp(target: number, options: UseCountUpOptions = {}): num
 		let startTime: number | null = null;
 		let animationFrameId: number;
 
-		const easingFunctions = {
-			linear: (t: number) => t,
-			easeOut: (t: number) => 1 - (1 - t) ** 3,
-			easeIn: (t: number) => t ** 3,
-			easeInOut: (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 3 / 2),
-		};
-
 		const animate = (currentTime: number) => {
 			startTime ??= currentTime;
 
 			const elapsed = calculateDuration(startTime);
 			const progress = Math.min(elapsed / duration, 1);
-			const easedProgress = easingFunctions[easing](progress);
-			const currentCount = Math.floor(easedProgress * target);
+			const eased = 1 - (1 - progress) * (1 - progress);
+			const currentCount = Math.floor(eased * target);
 
 			setCount(currentCount);
 
@@ -53,7 +45,7 @@ export function useCountUp(target: number, options: UseCountUpOptions = {}): num
 				cancelAnimationFrame(animationFrameId);
 			}
 		};
-	}, [target, duration, enabled, easing, resetTrigger]);
+	}, [target, duration, enabled, resetTrigger]);
 
 	return count;
 }

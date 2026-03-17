@@ -1,21 +1,20 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { compare, hash } from 'bcrypt';
-import { AuthenticationManager } from 'src/common/auth/authentication.manager';
-import { JwtTokenService } from 'src/common/auth/jwt-token.service';
-import { PasswordService } from 'src/common/auth/password.service';
 import { Repository } from 'typeorm';
 
-import { ErrorCode, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
-import type { ChangePasswordData, UserData } from '@shared/types';
-import { getErrorMessage, isNonEmptyString, sanitizeEmail } from '@shared/utils';
+import { ErrorCode, TIME_DURATIONS_SECONDS, UserRole, VALIDATION_LENGTH } from '@shared/constants';
+import type { ChangePasswordData } from '@shared/types';
+import { getErrorMessage, isNonEmptyString, sanitizeEmail, truncateWithEllipsis } from '@shared/utils';
 
 import { AppConfig } from '@config';
+import { AuthenticationManager, JwtTokenService, PasswordService } from '@common/auth';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheInvalidationService, CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import { createNotFoundError } from '@internal/utils';
+import type { CreateGoogleUserData, UserData } from '@internal/types';
+import { createNotFoundError, getAvatarUrlForUser } from '@internal/utils';
 
 import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
 
@@ -53,6 +52,7 @@ export class AuthService {
 				existingUser.role
 			);
 
+			const avatarUrl = getAvatarUrlForUser(existingUser, AppConfig.apiPublicBaseUrl);
 			return {
 				accessToken: tokenPair.accessToken,
 				refreshToken: tokenPair.refreshToken,
@@ -62,6 +62,7 @@ export class AuthService {
 					firstName: existingUser.firstName ?? undefined,
 					lastName: existingUser.lastName ?? undefined,
 					avatar: existingUser.preferences?.avatar,
+					avatarUrl,
 					role: existingUser.role,
 					emailVerified: existingUser.emailVerified,
 				},
@@ -102,6 +103,7 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
+		const avatarUrl = getAvatarUrlForUser(savedUser, AppConfig.apiPublicBaseUrl);
 		return {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,
@@ -111,6 +113,7 @@ export class AuthService {
 				firstName: savedUser.firstName ?? undefined,
 				lastName: savedUser.lastName ?? undefined,
 				avatar: savedUser.preferences?.avatar,
+				avatarUrl,
 				role: savedUser.role,
 				emailVerified: savedUser.emailVerified,
 			},
@@ -167,7 +170,7 @@ export class AuthService {
 			{
 				userId: user.id,
 				lastLogin: new Date().toISOString(),
-				accessToken: authResult.accessToken.substring(0, 20) + '...',
+				accessToken: truncateWithEllipsis(authResult.accessToken, VALIDATION_LENGTH.STRING_TRUNCATION.TOKEN_PREVIEW),
 			},
 			TIME_DURATIONS_SECONDS.TWO_HOURS
 		);
@@ -180,6 +183,7 @@ export class AuthService {
 			});
 		}
 
+		const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
 		return {
 			accessToken: authResult.accessToken,
 			refreshToken: authResult.refreshToken,
@@ -189,6 +193,7 @@ export class AuthService {
 				firstName: user.firstName ?? undefined,
 				lastName: user.lastName ?? undefined,
 				avatar: user.preferences?.avatar,
+				avatarUrl,
 				role: user.role,
 				emailVerified: user.emailVerified,
 			},
@@ -224,7 +229,17 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: userId, isActive: true },
-			select: ['id', 'email', 'firstName', 'lastName', 'role', 'preferences', 'createdAt', 'emailVerified'],
+			select: [
+				'id',
+				'email',
+				'firstName',
+				'lastName',
+				'role',
+				'preferences',
+				'customAvatar',
+				'createdAt',
+				'emailVerified',
+			],
 		});
 
 		if (!user) {
@@ -249,8 +264,7 @@ export class AuthService {
 	}
 
 	async logout(userId: string): Promise<string> {
-		// Use AuthenticationManager for logout
-		await this.authenticationManager.logout(userId);
+		logger.authInfo('User logout', { userId });
 
 		// Clear user-specific cache entries to prevent stale data on re-login
 		try {
@@ -448,6 +462,7 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(user.id, user.email, user.role);
 
+		const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
 		const response = {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,
@@ -459,6 +474,7 @@ export class AuthService {
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				lastName: user.lastName || undefined,
 				avatar: user.preferences?.avatar,
+				avatarUrl,
 				role: user.role,
 				emailVerified: user.emailVerified,
 			},
@@ -488,13 +504,16 @@ export class AuthService {
 			if (!user.passwordHash) {
 				throw new BadRequestException(ErrorCode.PASSWORD_NOT_SET);
 			}
-			const isCurrentPasswordValid = await compare(changePasswordData.currentPassword, user.passwordHash);
+			const isCurrentPasswordValid = await this.passwordService.comparePassword(
+				changePasswordData.currentPassword,
+				user.passwordHash
+			);
 			if (!isCurrentPasswordValid) {
 				throw new UnauthorizedException(ErrorCode.CURRENT_PASSWORD_INCORRECT);
 			}
 
 			// Hash new password
-			const newPasswordHash = await hash(changePasswordData.newPassword, 10);
+			const newPasswordHash = await this.passwordService.hashPassword(changePasswordData.newPassword, 10);
 
 			// Update password
 			user.passwordHash = newPasswordHash;
@@ -589,7 +608,7 @@ export class AuthService {
 		}
 	}
 
-	async createGoogleUser(userData: { googleId: string; email: string; firstName?: string; lastName?: string }) {
+	async createGoogleUser(userData: CreateGoogleUserData) {
 		try {
 			const user = this.userRepository.create({
 				googleId: userData.googleId,

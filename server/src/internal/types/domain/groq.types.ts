@@ -1,3 +1,8 @@
+export interface GroqMessageForLog {
+	role?: string;
+	content?: unknown;
+}
+
 export interface GroqModelConfig {
 	priority: number;
 	cost: number;

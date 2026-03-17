@@ -2,15 +2,15 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/constants';
-import { useCurrentUser, useIsAuthenticated, useUserRole } from '@/hooks';
 import type { ProtectedRouteProps } from '@/types';
+import { useCurrentUser, useIsAuthenticated, useUserRole } from '@/hooks';
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const isAuthenticated = useIsAuthenticated();
 	const { isLoading } = useCurrentUser();
-	const userRole = useUserRole();
+	const { role: userRole } = useUserRole();
 	const hasRedirected = useRef(false);
 	const hasUnauthorizedRedirected = useRef(false);
 

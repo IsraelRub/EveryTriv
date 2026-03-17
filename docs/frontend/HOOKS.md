@@ -227,7 +227,7 @@ const { data: profile, isLoading, error } = useUserProfile();
 // data מכיל:
 // {
 //   profile: UserProfile,
-//   stats: UserStatsData
+//   stats: UserStatistics
 // }
 ```
 
@@ -296,8 +296,8 @@ import { usePurchaseCredits } from '@hooks';
 const { mutate, isLoading } = usePurchaseCredits();
 
 mutate({
-  packageId: 'package-1',
-  paymentMethod: PaymentMethod.STRIPE
+  packageId: 'package_100',
+  paymentMethod: PaymentMethod.PAYPAL
 });
 ```
 
@@ -816,7 +816,6 @@ import { useQuery } from '@tanstack/react-query';
 import { TimePeriod } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
 import type {
-  Achievement,
   ActivityEntry,
   AnalyticsResponse,
   SystemRecommendation,
@@ -949,25 +948,6 @@ export const useUserRecommendationsById = (userId: string, enabled?: boolean) =>
     enabled: enabled !== undefined ? enabled : !!userId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
-  });
-};
-
-// Hook לקבלת הישגי משתמש לפי ID (Admin בלבד)
-export const useUserAchievementsById = (userId: string, enabled?: boolean) => {
-  return useQuery<AnalyticsResponse<Achievement[]>>({
-    queryKey: ['adminUserAchievements', userId],
-    queryFn: async () => {
-      logger.userInfo('Fetching user achievements by ID', { userId });
-      const result = await apiService.getUserAchievementsById(userId);
-      logger.userInfo('User achievements fetched successfully', {
-        userId,
-        count: result.data?.length ?? 0,
-      });
-      return result;
-    },
-    enabled: enabled !== undefined ? enabled : !!userId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
   });
 };
 
@@ -1421,11 +1401,11 @@ import { useCallback, useMemo } from 'react';
 import {
   performLocalLanguageValidationAsync,
   validateEmail,
-  validatePassword,
-  validateTopicLength,
+  validateStringLength,
+  validateNoForbiddenWords,
   validateUsername,
 } from '@shared/utils';
-import { validateCustomDifficultyText } from '@shared/validation';
+import { validateCustomDifficultyText, validateStringLength } from '@shared/validation';
 import type { BasicValidationResult, ValidationHookOptions, ValidatorsMap } from '../types';
 
 // Hook לוולידציה
@@ -1433,9 +1413,16 @@ export function useValidation() {
   const validators: ValidatorsMap = useMemo(
     () => ({
       username: async (value: string) => Promise.resolve(validateUsername(value)),
-      password: async (value: string) => Promise.resolve(validatePassword(value)),
+      password: async (value: string) =>
+        Promise.resolve(validateStringLength(value ?? '', 'PASSWORD', { fieldName: 'Password' })),
       email: async (value: string) => Promise.resolve(validateEmail(value)),
-      topic: async (value: string) => Promise.resolve(validateTopicLength(value)),
+      topic: async (value: string) =>
+        Promise.resolve(
+          (() => {
+            const r = validateStringLength(value, 'TOPIC');
+            return !r.isValid ? r : validateNoForbiddenWords((value ?? '').trim(), 'Topic');
+          })()
+        ),
       customDifficulty: async (value: string) => Promise.resolve(validateCustomDifficultyText(value)),
       language: async (
         value: string,

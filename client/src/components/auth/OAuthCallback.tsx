@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -6,7 +7,10 @@ import { CallbackStatus, ERROR_MESSAGES, OAuthErrorType, TIME_PERIODS_MS } from 
 import { getErrorMessage } from '@shared/utils';
 
 import {
+	AlertIconSize,
 	AlertVariant,
+	AUTH_TOKEN_CHANGED_EVENT,
+	AuthKey,
 	ButtonSize,
 	Colors,
 	ComponentSize,
@@ -15,11 +19,12 @@ import {
 	STORAGE_KEYS,
 	VariantBase,
 } from '@/constants';
-import { Alert, AlertDescription, AlertIcon, Button, Card, HomeButton, Spinner } from '@/components';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService, storageService } from '@/services';
 import { cn } from '@/utils';
+import { Alert, AlertDescription, AlertIcon, Button, Card, HomeButton, Spinner } from '@/components';
 
 export function OAuthCallback() {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 
@@ -70,11 +75,11 @@ export function OAuthCallback() {
 					setErrorType(error);
 					setStatus(CallbackStatus.ERROR);
 
-					// Redirect after delay
+					// Redirect to home after delay (user can try login again from nav)
 					setTimeout(() => {
 						const errorParam =
 							error === OAuthErrorType.INVALID_CLIENT ? OAuthErrorType.INVALID_CLIENT : OAuthErrorType.OAUTH_FAILED;
-						navigate(`${ROUTES.LOGIN}?error=${errorParam}`, { replace: true });
+						navigate(ROUTES.HOME, { state: { authError: errorParam }, replace: true });
 					}, TIME_PERIODS_MS.FIVE_SECONDS);
 					return;
 				}
@@ -94,8 +99,9 @@ export function OAuthCallback() {
 					await storageService.set(STORAGE_KEYS.AUTH_TOKEN, accessToken);
 					if (refreshToken) {
 						await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+						await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, refreshToken);
 					}
-					window.dispatchEvent(new Event('auth-token-changed'));
+					window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 
 					logger.authDebug('Attempting to get current user');
 					const user = await authService.getCurrentUser();
@@ -138,7 +144,7 @@ export function OAuthCallback() {
 					setStatus(CallbackStatus.ERROR);
 
 					setTimeout(() => {
-						navigate(`${ROUTES.LOGIN}?error=${OAuthErrorType.NO_TOKEN}`, { replace: true });
+						navigate(ROUTES.HOME, { state: { authError: OAuthErrorType.NO_TOKEN }, replace: true });
 					}, TIME_PERIODS_MS.THREE_SECONDS);
 				}
 			} catch (error) {
@@ -152,7 +158,7 @@ export function OAuthCallback() {
 				setStatus(CallbackStatus.ERROR);
 
 				setTimeout(() => {
-					navigate(`${ROUTES.LOGIN}?error=${OAuthErrorType.UNEXPECTED_ERROR}`, { replace: true });
+					navigate(ROUTES.HOME, { state: { authError: OAuthErrorType.UNEXPECTED_ERROR }, replace: true });
 				}, TIME_PERIODS_MS.THREE_SECONDS);
 			}
 		};
@@ -171,8 +177,8 @@ export function OAuthCallback() {
 					<div className='text-center space-y-4'>
 						<Spinner size={ComponentSize.XL} className='mx-auto' />
 						<div>
-							<h2 className='text-xl font-semibold mb-2'>Completing Sign In</h2>
-							<p className='text-muted-foreground'>Please wait while we verify your credentials...</p>
+							<h2 className='text-xl font-semibold mb-2'>{t(AuthKey.COMPLETING_SIGN_IN)}</h2>
+							<p className='text-muted-foreground'>{t(AuthKey.PLEASE_WAIT_VERIFY_CREDENTIALS)}</p>
 						</div>
 					</div>
 				)}
@@ -188,11 +194,8 @@ export function OAuthCallback() {
 							<Alert>
 								<AlertIcon />
 								<AlertDescription>
-									<p className='font-semibold mb-1'>Configuration Issue</p>
-									<p className='text-sm'>
-										This error usually means the Google OAuth client ID or secret is not configured correctly. Please
-										contact the administrator to verify the OAuth settings.
-									</p>
+									<p className='font-semibold mb-1'>{t(AuthKey.CONFIGURATION_ISSUE)}</p>
+									<p className='text-sm'>{t(AuthKey.CONFIGURATION_ISSUE_DESCRIPTION)}</p>
 								</AlertDescription>
 							</Alert>
 						)}
@@ -204,16 +207,16 @@ export function OAuthCallback() {
 									`${Colors.RED_500.bg}/10`
 								)}
 							>
-								<AlertIcon size='xl' className={Colors.RED_500.text} />
+								<AlertIcon size={AlertIconSize.XL} className={Colors.RED_500.text} />
 							</div>
 							<div>
-								<h2 className='text-xl font-semibold mb-2'>Authentication Failed</h2>
-								<p className='text-muted-foreground'>We couldn't complete your sign in.</p>
-								<p className='text-sm text-muted-foreground mt-2'>Redirecting you back to the login page...</p>
+								<h2 className='text-xl font-semibold mb-2'>{t(AuthKey.AUTHENTICATION_FAILED)}</h2>
+								<p className='text-muted-foreground'>{t(AuthKey.COULD_NOT_COMPLETE_SIGN_IN)}</p>
+								<p className='text-sm text-muted-foreground mt-2'>{t(AuthKey.REDIRECTING_TO_LOGIN)}</p>
 							</div>
 							<div className='flex gap-2 justify-center'>
 								<Button onClick={() => window.location.reload()} variant={VariantBase.OUTLINE} size={ButtonSize.LG}>
-									Try Again
+									{t(AuthKey.TRY_AGAIN)}
 								</Button>
 								<HomeButton />
 							</div>

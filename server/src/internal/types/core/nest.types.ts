@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 
 import type { UserRole } from '@shared/constants';
 
+import type { TokenPayload } from '../domain/auth.types';
+
 export interface CacheConfig {
 	ttl: number;
 	key?: string;
@@ -13,13 +15,5 @@ export interface CacheConfig {
 export interface NestRequest extends Request {
 	authToken?: string;
 	userRole?: UserRole;
-	user?: UserPayload;
-}
-
-export interface UserPayload {
-	sub: string;
-	email: string;
-	role: UserRole;
-	iat: number;
-	exp: number;
+	user?: TokenPayload;
 }

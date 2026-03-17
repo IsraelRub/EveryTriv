@@ -1,14 +1,23 @@
-import { Coins, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Zap } from 'lucide-react';
 
-import { GAME_STATE_DEFAULTS } from '@shared/constants';
-import { formatDifficulty } from '@shared/utils';
-
-import { ButtonSize, Colors, ComponentSize, LoadingMessages, TimerMode, VariantBase } from '@/constants';
-import { AnswerButton, Button, Card, GameTimer, Progress, QuestionCounter, Spinner } from '@/components';
+import { ButtonSize, ComponentSize, GameKey, LoadingKey, TimerMode, VariantBase } from '@/constants';
 import type { UseSingleSessionReturn } from '@/types';
-import { cn } from '@/utils';
+import { getDifficultyDisplayLabel } from '@/utils';
+import {
+	AnswerButton,
+	Button,
+	Card,
+	ExitGameButton,
+	GameCreditBadge,
+	GameTimer,
+	Progress,
+	QuestionCounter,
+	Spinner,
+} from '@/components';
 
 export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
+	const { t } = useTranslation();
 	const {
 		isFetchingMoreQuestions,
 		isTimeLimited,
@@ -31,7 +40,7 @@ export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 		handleAnswerSelect,
 		handleSubmit,
 		handleFinishUnlimitedGame,
-		setShowExitDialog,
+		handleExitGame,
 		score,
 	} = session;
 
@@ -41,59 +50,65 @@ export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 				<div className='absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm'>
 					<Card className='p-6 flex flex-col items-center gap-4 max-w-sm mx-4'>
 						<Spinner size={ComponentSize.LG} className='text-primary' />
-						<p className='text-foreground font-medium text-center'>{LoadingMessages.FETCHING_QUESTIONS}</p>
-						<p className='text-sm text-muted-foreground text-center'>{LoadingMessages.FETCHING_QUESTIONS_HINT}</p>
+						<p className='text-foreground font-medium text-center'>{t(LoadingKey.FETCHING_QUESTIONS)}</p>
+						<p className='text-sm text-muted-foreground text-center'>{t(LoadingKey.FETCHING_QUESTIONS_HINT)}</p>
 					</Card>
 				</div>
 			)}
 			<div className='container mx-auto max-w-4xl h-full flex flex-col'>
 				<div className='flex-shrink-0 mb-4'>
+					{/* Question count centered at top (same as multiplayer and question-limited) */}
+					<div className='flex flex-col items-center text-center mb-3'>
+						<div className='flex items-center justify-center gap-3 flex-wrap'>
+							<QuestionCounter
+								current={currentQuestionIndex + 1}
+								total={hasQuestionLimit ? gameQuestionCount : undefined}
+								size={ComponentSize.SM}
+							/>
+							{isUnlimited && !isAdmin && <GameCreditBadge totalCredits={creditBalanceTotal} />}
+						</div>
+					</div>
+
 					<div className='flex items-center justify-between gap-4 mb-3'>
 						<div className='flex-1'>
 							<GameTimer
 								key='game-timer'
 								mode={isTimeLimited ? TimerMode.COUNTDOWN : TimerMode.ELAPSED}
 								initialTime={isTimeLimited ? timeLimit : undefined}
+								label={isTimeLimited ? t(GameKey.GAME_TIME) : t(GameKey.TIME_ELAPSED)}
+								showProgressBar={isTimeLimited}
 								startTime={gameStartTime ?? undefined}
 								onTimeout={isTimeLimited ? handleGameTimeout : undefined}
-								label={isTimeLimited ? 'Game Time' : 'Time Elapsed'}
-								showProgressBar={isTimeLimited}
 							/>
 						</div>
-						{isUnlimited && (
-							<div className='flex items-center gap-3 text-sm'>
-								<span className='text-foreground font-medium'>Question {currentQuestionIndex + 1}</span>
-								{!isAdmin && (
-									<div className='flex items-center gap-1.5 text-muted-foreground'>
-										<Coins className={cn('w-3.5 h-3.5', Colors.YELLOW_500.text)} />
-										<span className='text-xs'>{creditBalanceTotal}</span>
-									</div>
-								)}
-							</div>
+						{hasQuestionLimit && (
+							<span className='text-primary font-bold text-sm'>
+								{t(GameKey.SCORE_LABEL)}: {score}
+							</span>
 						)}
 					</div>
 
 					{hasQuestionLimit && (
-						<div className='mt-3 mb-3'>
-							<div className='flex justify-between items-center mb-1.5'>
-								<QuestionCounter current={currentQuestionIndex + 1} total={gameQuestionCount} size={ComponentSize.SM} />
-								<span className='text-primary font-bold text-sm'>Score: {score}</span>
-							</div>
+						<div className='mb-3'>
 							<Progress value={progress} className='h-2' />
 						</div>
 					)}
 
 					<div className='mb-3 text-center'>
 						<div className='flex items-center justify-center gap-2 text-xs text-muted-foreground flex-wrap'>
-							<span>Topic: {currentTopic ?? GAME_STATE_DEFAULTS.TOPIC}</span>
+							<span>
+								{t(GameKey.TOPIC_LABEL)}: {currentTopic ?? t(GameKey.DEFAULT_TOPIC)}
+							</span>
 							<span className='text-muted-foreground/50'>•</span>
-							<span>Difficulty: {formatDifficulty(currentDifficulty ?? GAME_STATE_DEFAULTS.DIFFICULTY)}</span>
+							<span>
+								{t(GameKey.DIFFICULTY_LABEL)}: {getDifficultyDisplayLabel(currentDifficulty, t)}
+							</span>
 							{streak > 1 && (
 								<>
 									<span className='text-muted-foreground/50'>•</span>
 									<span className='flex items-center gap-1 text-primary font-medium'>
 										<Zap className='h-3.5 w-3.5' />
-										Streak: {streak}
+										{t(GameKey.STREAK)}: {streak}
 									</span>
 								</>
 							)}
@@ -117,34 +132,30 @@ export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 						/>
 					</div>
 
-					<Button
-						onClick={handleSubmit}
-						disabled={selectedAnswer === null || answered}
-						size={ButtonSize.LG}
-						className='w-full py-4 text-base mb-3 flex-shrink-0'
-					>
-						{answered ? LoadingMessages.PROCESSING : 'Submit Answer'}
-					</Button>
+					{selectedAnswer !== null && (
+						<Button
+							onClick={handleSubmit}
+							disabled={answered}
+							size={ButtonSize.LG}
+							className='w-full py-4 text-base mb-3 flex-shrink-0'
+						>
+							{answered ? t(LoadingKey.PROCESSING) : t(GameKey.SUBMIT_ANSWER)}
+						</Button>
+					)}
 
-					<div className='text-center flex-shrink-0 flex justify-center gap-4'>
-						{isUnlimited && currentQuestionIndex > 0 && (
+					<div className='text-center flex-shrink-0'>
+						{isUnlimited && currentQuestionIndex > 0 ? (
 							<Button
 								onClick={handleFinishUnlimitedGame}
 								variant={VariantBase.DEFAULT}
 								size={ButtonSize.SM}
 								className='text-xs'
 							>
-								Finish Game
+								{t(GameKey.FINISH_GAME)}
 							</Button>
+						) : (
+							!isUnlimited && <ExitGameButton onConfirm={handleExitGame} />
 						)}
-						<Button
-							onClick={() => setShowExitDialog(true)}
-							size={ButtonSize.SM}
-							variant={VariantBase.MINIMAL}
-							className='text-xs'
-						>
-							Exit Game
-						</Button>
 					</div>
 				</div>
 			</div>

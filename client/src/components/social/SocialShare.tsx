@@ -1,43 +1,45 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Check, Copy, Hash, Share2 } from 'lucide-react';
 
 import { APP_NAME, TIME_PERIODS_MS } from '@shared/constants';
+import { calculatePercentage, formatTitle, getErrorMessage, isSocialSharePlatform } from '@shared/utils';
+
 import {
-	calculatePercentage,
-	formatDifficulty,
-	formatTitle,
-	getErrorMessage,
-	isSocialSharePlatform,
-} from '@shared/utils';
-
-import { ANIMATION_DELAYS, ButtonSize, Colors, SOCIAL_DATA, VariantBase } from '@/constants';
-import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
-import { clientLogger as logger } from '@/services';
+	ANIMATION_DELAYS,
+	ButtonSize,
+	Colors,
+	GameKey,
+	SOCIAL_DATA,
+	SocialKey,
+	SocialShareMode,
+	VariantBase,
+} from '@/constants';
 import type { SocialShareProps } from '@/types';
-import { cn } from '@/utils';
+import { clientLogger as logger } from '@/services';
+import { cn, getDifficultyDisplayLabel } from '@/utils';
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
 
-export function SocialShare({
-	score,
-	total,
-	topic,
-	difficulty,
-	dialogTitle = 'Share Your Achievement!',
-	dialogDescription = 'Challenge your friends to beat your score!',
-	shareText: shareTextOverride,
-	buttonLabel = 'Share Score',
-	triggerClassName,
-}: SocialShareProps) {
+export function SocialShare({ score, total, topic, difficulty, mode, shareText: shareTextOverride }: SocialShareProps) {
+	const { t } = useTranslation(['social', 'game']);
 	const [isOpen, setIsOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 
 	const percentage = calculatePercentage(score ?? 0, total ?? 0);
-	const difficultyDisplay = formatDifficulty(difficulty);
+	const difficultyDisplay = getDifficultyDisplayLabel(difficulty, t);
 	const topicDisplay = formatTitle(topic);
 
 	const scoreText =
 		shareTextOverride ??
-		`I scored ${score}/${total} (${percentage}%) on ${topicDisplay} ${difficultyDisplay} difficulty in ${APP_NAME}! Think you can beat my score?`;
+		t(GameKey.SHARE_SINGLE_SCORE, {
+			score: score ?? 0,
+			total: total ?? 0,
+			percentage,
+			topic: topicDisplay,
+			difficulty: difficultyDisplay,
+			appName: APP_NAME,
+		});
 
 	// Share URL: home page
 	const shareUrl = window.location.origin;
@@ -48,6 +50,7 @@ export function SocialShare({
 		const originalPlatform = SOCIAL_DATA.find(p => p.name === platform.name);
 		return {
 			...platform,
+			nameKey: originalPlatform?.nameKey,
 			url: platform.getShareUrl(scoreText, shareUrl),
 			color: platform.shareColor,
 			Icon: originalPlatform?.icon ?? Share2,
@@ -78,14 +81,9 @@ export function SocialShare({
 		<div className='relative'>
 			{/* Share Button */}
 			<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-				<Button
-					variant={VariantBase.DEFAULT}
-					size={ButtonSize.LG}
-					onClick={() => setIsOpen(!isOpen)}
-					className={triggerClassName}
-				>
-					<Share2 className='w-4 h-4 mr-2' />
-					{buttonLabel}
+				<Button variant={VariantBase.DEFAULT} size={ButtonSize.LG} onClick={() => setIsOpen(!isOpen)}>
+					<Share2 className='w-4 h-4 me-2' />
+					{t(SocialKey.SHARE_RESULT)}
 				</Button>
 			</motion.div>
 
@@ -93,10 +91,16 @@ export function SocialShare({
 			<Dialog open={isOpen} onOpenChange={setIsOpen}>
 				<DialogContent className='max-w-md'>
 					<DialogHeader>
-						<DialogTitle>{dialogTitle}</DialogTitle>
+						<DialogTitle>
+							{mode === SocialShareMode.MULTIPLAYER
+								? t(SocialKey.SHARE_YOUR_MULTIPLAYER_RESULT)
+								: t(SocialKey.SHARE_YOUR_RESULT)}
+						</DialogTitle>
 						<DialogDescription className='flex items-center justify-center gap-1.5'>
 							<Hash className={cn('w-4 h-4', Colors.YELLOW_500.text)} />
-							{dialogDescription}
+							{mode === SocialShareMode.MULTIPLAYER
+								? t(SocialKey.CHALLENGE_FRIENDS_MULTIPLAYER)
+								: t(SocialKey.CHALLENGE_FRIENDS)}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -111,7 +115,9 @@ export function SocialShare({
 							<div className='text-2xl font-bold mb-1'>
 								{score} <span className='text-muted-foreground font-normal'>/</span> {total}
 							</div>
-							<div className='text-lg text-primary mb-2'>{Number.isFinite(percentage) ? percentage : 0}% Correct</div>
+							<div className='text-lg text-primary mb-2'>
+								{Number.isFinite(percentage) ? percentage : 0}% {t(SocialKey.CORRECT)}
+							</div>
 							<div className='text-sm text-muted-foreground flex items-center justify-center gap-2'>
 								<span>{topicDisplay}</span>
 								<span className='text-muted-foreground/50'>•</span>
@@ -125,22 +131,23 @@ export function SocialShare({
 						{copied ? (
 							<>
 								<Check className={cn('w-4 h-4 mr-2', Colors.GREEN_500.text)} />
-								Copied!
+								{t(SocialKey.COPIED)}
 							</>
 						) : (
 							<>
 								<Copy className='w-4 h-4 mr-2' />
-								Copy to Clipboard
+								{t(SocialKey.COPY_TO_CLIPBOARD)}
 							</>
 						)}
 					</Button>
 
 					{/* Social Platforms */}
 					<div className='space-y-2 mb-4'>
-						<p className='text-sm text-muted-foreground mb-3'>Share on:</p>
+						<p className='text-sm text-muted-foreground mb-3'>{t(SocialKey.SHARE_ON)}</p>
 						<div className='grid grid-cols-2 gap-2'>
 							{socialPlatforms.map((platform, index) => {
 								const Icon = platform.Icon;
+								const platformLabel = platform.nameKey ? t(`social:${platform.nameKey}`) : platform.name;
 								return (
 									<motion.div
 										key={platform.name}
@@ -151,10 +158,10 @@ export function SocialShare({
 										<Button
 											variant={VariantBase.OUTLINE}
 											className={cn('w-full text-white border-0', platform.color)}
-											onClick={() => handleShare(platform.url, platform.name)}
+											onClick={() => handleShare(platform.url, platformLabel)}
 										>
 											<Icon className='w-4 h-4 mr-2' />
-											{platform.name}
+											{platformLabel}
 										</Button>
 									</motion.div>
 								);

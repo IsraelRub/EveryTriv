@@ -1,41 +1,54 @@
+import { useEffect } from 'react';
+import { cva } from 'class-variance-authority';
 import { motion } from 'framer-motion';
 
-import { ANIMATION_CONFIG, ComponentSize, TRANSITION_DURATIONS } from '@/constants';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
-import { useModalRoute } from '@/hooks';
+import { ANIMATION_CONFIG, ComponentSize, KEY_ESCAPE, TRANSITION_DURATIONS } from '@/constants';
 import type { ModalRouteProps } from '@/types';
-import { cn } from '@/utils';
+import { useModalRoute } from '@/hooks';
+
+const modalContentVariants = cva('w-full max-h-[90vh] overflow-y-auto', {
+	variants: {
+		size: {
+			[ComponentSize.SM]: 'sm:max-w-sm',
+			[ComponentSize.MD]: 'sm:max-w-md',
+			[ComponentSize.LG]: 'sm:max-w-lg',
+			[ComponentSize.XL]: 'sm:max-w-6xl',
+			[ComponentSize.FULL]: 'sm:max-w-full',
+		},
+	},
+	defaultVariants: {
+		size: ComponentSize.LG,
+	},
+});
 
 export function ModalRouteWrapper({ children, modalSize = ComponentSize.LG }: ModalRouteProps): JSX.Element {
 	const { isModal, closeModal } = useModalRoute();
 
-	// If modal mode, render as Dialog
+	useEffect(() => {
+		if (!isModal) return;
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === KEY_ESCAPE) closeModal();
+		};
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	}, [isModal, closeModal]);
+
 	if (isModal) {
 		return (
-			<Dialog
-				open={true}
-				onOpenChange={open => {
-					if (!open) {
-						closeModal();
-					}
-				}}
+			<div
+				className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50'
+				onClick={closeModal}
+				role='presentation'
 			>
-				<DialogContent
-					className={cn(
-						'sm:max-w-lg max-h-[90vh] overflow-y-auto',
-						modalSize === ComponentSize.XL && 'sm:max-w-6xl',
-						modalSize === ComponentSize.SM && 'sm:max-w-sm',
-						modalSize === ComponentSize.MD && 'sm:max-w-md',
-						modalSize === ComponentSize.FULL && 'sm:max-w-full'
-					)}
+				<div
+					className={modalContentVariants({ size: modalSize })}
+					onClick={e => e.stopPropagation()}
+					role='dialog'
+					aria-modal='true'
 				>
-					<DialogHeader>
-						<DialogTitle>Dialog</DialogTitle>
-						<DialogDescription>Modal dialog</DialogDescription>
-					</DialogHeader>
 					{children}
-				</DialogContent>
-			</Dialog>
+				</div>
+			</div>
 		);
 	}
 

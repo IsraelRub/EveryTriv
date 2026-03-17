@@ -1,83 +1,12 @@
-import { API_ENDPOINTS, ERROR_MESSAGES, QUERY_PARAMS, USER_STATUSES, UserStatus } from '@shared/constants';
-import type {
-	AiProviderHealth,
-	AiProviderStats,
-	BasicValue,
-	UpdateCreditsData,
-	UpdateUserFieldResponse,
-	UsersListResponse,
-} from '@shared/types';
-import { getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { API_ENDPOINTS, QUERY_PARAMS } from '@shared/constants';
+import type { AiProviderHealth, AiProviderStats, UsersListResponse } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
-import { VALIDATION_MESSAGES } from '@/constants';
+import type { AdminPricingResponse, AdminPricingUpdatePayload } from '@/types';
 import { apiService, clientLogger as logger } from '@/services';
 import { validateListQueryParams } from '@/utils';
 
 class AdminService {
-	async updateUserField(field: string, value: BasicValue): Promise<UpdateUserFieldResponse> {
-		// Validate field and value
-		if (!isNonEmptyString(field)) {
-			throw new Error(ERROR_MESSAGES.user.FIELD_NAME_REQUIRED);
-		}
-		if (!value) {
-			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
-		}
-
-		try {
-			const response = await apiService.patch<UpdateUserFieldResponse>(
-				API_ENDPOINTS.USER.PROFILE_FIELD.replace(':field', field),
-				{ value }
-			);
-			return response.data;
-		} catch (error) {
-			logger.userError('Failed to update user field', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw error;
-		}
-	}
-
-	async updateSinglePreference(preference: string, value: BasicValue): Promise<unknown> {
-		// Validate preference and value
-		if (!isNonEmptyString(preference)) {
-			throw new Error(VALIDATION_MESSAGES.FIELD_REQUIRED('Preference name'));
-		}
-		if (!value) {
-			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
-		}
-
-		try {
-			const response = await apiService.patch(API_ENDPOINTS.USER.PREFERENCES_FIELD.replace(':preference', preference), {
-				value,
-			});
-			return response.data;
-		} catch (error) {
-			logger.userError('Failed to update single preference', {
-				errorInfo: { message: getErrorMessage(error) },
-				preference,
-			});
-			throw error;
-		}
-	}
-
-	async getUserById(userId: string): Promise<unknown> {
-		// Validate user ID
-		if (!isNonEmptyString(userId)) {
-			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
-		}
-
-		try {
-			const response = await apiService.get<unknown>(API_ENDPOINTS.USER.BY_ID.replace(':id', userId));
-			return response.data;
-		} catch (error) {
-			logger.userError('Failed to get user by ID', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-			});
-			throw error;
-		}
-	}
-
 	async getAllUsers(limit?: number, offset?: number): Promise<UsersListResponse> {
 		validateListQueryParams(limit, offset);
 
@@ -87,7 +16,7 @@ class AdminService {
 			if (offset != null) searchParams.append(QUERY_PARAMS.OFFSET, String(offset));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-			const response = await apiService.get<UsersListResponse>(`${API_ENDPOINTS.USER.ADMIN.ALL}${query}`);
+			const response = await apiService.get<UsersListResponse>(API_ENDPOINTS.USER.ADMIN.ALL + query);
 			return response.data;
 		} catch (error) {
 			logger.userError('Failed to get all users', {
@@ -123,72 +52,25 @@ class AdminService {
 		}
 	}
 
-	async updateUserCredits(data: UpdateCreditsData): Promise<string> {
-		// Validate parameters
-		if (!isNonEmptyString(data.userId)) {
-			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
-		}
-		if (data.amount === 0) {
-			throw new Error(VALIDATION_MESSAGES.VALUE_REQUIRED);
-		}
-		if (!isNonEmptyString(data.reason)) {
-			throw new Error(VALIDATION_MESSAGES.REASON_REQUIRED);
-		}
-
+	async getAdminPricing(): Promise<AdminPricingResponse> {
 		try {
-			const response = await apiService.patch<string>(
-				API_ENDPOINTS.USER.CREDITS_BY_USER_ID.replace(':userId', data.userId),
-				{ amount: data.amount, reason: data.reason }
-			);
+			const response = await apiService.get<AdminPricingResponse>(API_ENDPOINTS.ADMIN.PRICING);
 			return response.data;
 		} catch (error) {
-			logger.userError('Failed to update user credits', {
+			logger.userError('Failed to get admin pricing', {
 				errorInfo: { message: getErrorMessage(error) },
-				userId: data.userId,
-				amount: data.amount,
 			});
 			throw error;
 		}
 	}
 
-	async deleteUser(userId: string): Promise<unknown> {
-		// Validate user ID
-		if (!isNonEmptyString(userId)) {
-			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
-		}
-
+	async updateAdminPricing(payload: AdminPricingUpdatePayload): Promise<{ success: boolean }> {
 		try {
-			const response = await apiService.delete<unknown>(API_ENDPOINTS.USER.BY_USER_ID.replace(':userId', userId));
+			const response = await apiService.put<{ success: boolean }>(API_ENDPOINTS.ADMIN.PRICING, payload);
 			return response.data;
 		} catch (error) {
-			logger.userError('Failed to delete user', {
+			logger.userError('Failed to update admin pricing', {
 				errorInfo: { message: getErrorMessage(error) },
-				userId,
-			});
-			throw error;
-		}
-	}
-
-	async updateUserStatus(userId: string, status: UserStatus): Promise<unknown> {
-		// Validate parameters
-		if (!isNonEmptyString(userId)) {
-			throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED);
-		}
-		if (!USER_STATUSES.has(status)) {
-			throw new Error(VALIDATION_MESSAGES.STATUS_INVALID);
-		}
-
-		try {
-			const response = await apiService.patch<unknown>(
-				API_ENDPOINTS.USER.ADMIN.STATUS_BY_USER_ID.replace(':userId', userId),
-				{ status }
-			);
-			return response.data;
-		} catch (error) {
-			logger.userError('Failed to update user status', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-				status,
 			});
 			throw error;
 		}

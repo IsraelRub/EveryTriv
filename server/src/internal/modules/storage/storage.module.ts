@@ -3,7 +3,7 @@ import type { Redis } from 'ioredis';
 
 import { ErrorCode } from '@shared/constants';
 
-import { MetricsService } from '@internal/services';
+import { metricsService, MetricsService } from '@internal/services';
 
 import { CacheModule } from '../cache';
 import { RedisModule } from '../redis';
@@ -26,7 +26,7 @@ import { StorageService } from './storage.service';
 		},
 		{
 			provide: MetricsService,
-			useFactory: () => MetricsService.getInstance(),
+			useValue: metricsService,
 		},
 	],
 	exports: [StorageService, MetricsService],

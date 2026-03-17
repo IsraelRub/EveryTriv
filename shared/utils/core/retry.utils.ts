@@ -95,6 +95,7 @@ export async function executeRetry<T>(
 		maxRetries = HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 		baseDelay = HTTP_CLIENT_CONFIG.RETRY_DELAY,
 		timeout = HTTP_CLIENT_CONFIG.TIMEOUT,
+		maxTotalTimeMs,
 		retryOptions = {},
 		retryOnAuthError = false,
 		retryOnRateLimit = true,
@@ -311,6 +312,16 @@ export async function executeRetry<T>(
 			if (!shouldRetry || attempt >= maxRetries) {
 				if (lastStatusCode !== null && lastError instanceof Error) {
 					Object.assign(lastError, { statusCode: lastStatusCode });
+				}
+				throw lastError;
+			}
+
+			if (maxTotalTimeMs != null && maxTotalTimeMs > 0 && Date.now() - startTime >= maxTotalTimeMs) {
+				if (lastStatusCode !== null && lastError instanceof Error) {
+					Object.assign(lastError, { statusCode: lastStatusCode });
+				}
+				if (onError && lastError) {
+					onError(lastError, attempt + 1, true);
 				}
 				throw lastError;
 			}

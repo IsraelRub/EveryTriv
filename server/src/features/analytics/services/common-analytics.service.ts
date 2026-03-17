@@ -5,6 +5,7 @@ import type { AnalyticsResponse, CountRecord, UserTrendPoint } from '@shared/typ
 import { calculateScoreRate, clamp, groupByBy, sumBy } from '@shared/utils';
 
 import type { GameHistoryEntity } from '@internal/entities';
+import type { BuildTrendsOptions } from '@internal/types';
 
 @Injectable()
 export class AnalyticsCommonService {
@@ -71,10 +72,7 @@ export class AnalyticsCommonService {
 		}
 	}
 
-	buildTrends(
-		gameHistory: GameHistoryEntity[],
-		options: { limit?: number; groupBy?: TimePeriod } = {}
-	): UserTrendPoint[] {
+	buildTrends(gameHistory: GameHistoryEntity[], options: BuildTrendsOptions = {}): UserTrendPoint[] {
 		const limit = clamp(
 			Math.floor(options.limit && options.limit > 0 ? options.limit : VALIDATION_COUNT.ACTIVITY_ENTRIES.DEFAULT),
 			VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,

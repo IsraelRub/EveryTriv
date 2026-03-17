@@ -1,3 +1,5 @@
+export const CREDITS_CONFIG_KEY_PACKAGES = 'credit_packages';
+
 export enum CreditTransactionType {
 	DAILY_RESET = 'DAILY_RESET',
 	PURCHASE = 'PURCHASE',

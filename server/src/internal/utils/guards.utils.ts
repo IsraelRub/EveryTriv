@@ -6,11 +6,11 @@ import { isRecord } from '@shared/utils';
 import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
 import { GAME_STATUSES, PUBLIC_ENDPOINTS } from '@internal/constants';
-import type { GameSessionQuestion, GameSessionState, PayPalErrorResponse } from '@internal/types';
+import type { GameSessionQuestion, PayPalErrorResponse, ServerGameSessionState } from '@internal/types';
 
 export function isPublicEndpoint(path: string): boolean {
 	return PUBLIC_ENDPOINTS.some(
-		endpoint => path === endpoint || path?.startsWith(endpoint + '?') || path?.startsWith(endpoint + '/')
+		endpoint => path === endpoint || path?.startsWith(`${endpoint}?`) || path?.startsWith(`${endpoint}/`)
 	);
 }
 
@@ -40,7 +40,7 @@ export function hasSessionBasicFields(value: unknown): value is {
 	return VALIDATORS.string(value.startedAt) && VALIDATORS.string(value.userId) && VALIDATORS.string(value.gameId);
 }
 
-export function isGameSessionState(value: unknown): value is GameSessionState {
+export function isGameSessionState(value: unknown): value is ServerGameSessionState {
 	if (!isRecord(value)) {
 		return false;
 	}

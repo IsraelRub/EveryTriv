@@ -1,34 +1,29 @@
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAttributes } from 'react';
+import { forwardRef, useCallback, type ComponentPropsWithoutRef, type ElementRef, type HTMLAttributes } from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import { X } from 'lucide-react';
 
-import { ButtonSize, VariantBase, type ButtonVariant } from '@/constants';
-import { buttonVariants } from '@/components';
+import { AudioKey, ButtonSize, DialogContentSize, VariantBase } from '@/constants';
+import { audioService } from '@/services';
 import { cn } from '@/utils';
+import { buttonVariants } from '@/components';
 
 const dialogContentVariants = cva(
 	'fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
 	{
 		variants: {
 			size: {
-				default: 'max-w-lg',
-				lg: 'max-w-xl',
-				xl: 'max-w-2xl',
+				[DialogContentSize.SM]: 'max-w-lg',
+				[DialogContentSize.MD]: 'max-w-xl',
+				[DialogContentSize.LG]: 'max-w-2xl',
 			},
 		},
 		defaultVariants: {
-			size: 'default',
+			size: DialogContentSize.SM,
 		},
 	}
 );
-
-export type DialogContentSize = VariantProps<typeof dialogContentVariants>['size'];
-
-// ============================================================================
-// Shared Components
-// ============================================================================
 
 const Overlay = forwardRef<
 	ElementRef<typeof DialogPrimitive.Overlay>,
@@ -63,7 +58,7 @@ const Content = forwardRef<
 			overlay: OverlayComponent,
 			portal: PortalComponent,
 			showClose = false,
-			size = 'default',
+			size = DialogContentSize.SM,
 			className,
 			children,
 			...props
@@ -105,7 +100,22 @@ const Description = forwardRef<
 ));
 Description.displayName = 'Description';
 
-export const Dialog = DialogPrimitive.Root;
+function DialogWithCloseSound(props: ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) {
+	const { onOpenChange, ...rest } = props;
+	const handleOpenChange = useCallback(
+		(open: boolean) => {
+			if (!open) {
+				audioService.play(AudioKey.DIALOG_CLOSE);
+			}
+			onOpenChange?.(open);
+		},
+		[onOpenChange]
+	);
+	return <DialogPrimitive.Root {...rest} onOpenChange={handleOpenChange} />;
+}
+DialogWithCloseSound.displayName = 'Dialog';
+
+export const Dialog = DialogWithCloseSound;
 
 export const DialogContent = forwardRef<
 	ElementRef<typeof DialogPrimitive.Content>,
@@ -147,7 +157,22 @@ export const DialogDescription = forwardRef<
 >((props, ref) => <Description {...props} ref={ref} component={DialogPrimitive.Description} />);
 DialogDescription.displayName = 'DialogDescription';
 
-export const AlertDialog = AlertDialogPrimitive.Root;
+function AlertDialogWithCloseSound(props: ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>) {
+	const { onOpenChange, ...rest } = props;
+	const handleOpenChange = useCallback(
+		(open: boolean) => {
+			if (!open) {
+				audioService.play(AudioKey.DIALOG_CLOSE);
+			}
+			onOpenChange?.(open);
+		},
+		[onOpenChange]
+	);
+	return <AlertDialogPrimitive.Root {...rest} onOpenChange={handleOpenChange} />;
+}
+AlertDialogWithCloseSound.displayName = 'AlertDialog';
+
+export const AlertDialog = AlertDialogWithCloseSound;
 
 export const AlertDialogContent = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Content>,
@@ -187,7 +212,7 @@ AlertDialogDescription.displayName = 'AlertDialogDescription';
 export const AlertDialogAction = forwardRef<
 	ElementRef<typeof AlertDialogPrimitive.Action>,
 	ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> & {
-		variant?: ButtonVariant;
+		variant?: VariantBase;
 		size?: ButtonSize;
 	}
 >(({ className, variant, size, ...props }, ref) => (

@@ -2,8 +2,8 @@ import { useCallback, type MouseEvent } from 'react';
 import { NavLink as RouterNavLink } from 'react-router-dom';
 
 import { AudioKey } from '@/constants';
-import { audioService } from '@/services';
 import type { NavLinkProps } from '@/types';
+import { audioService } from '@/services';
 import { cn } from '@/utils';
 
 export function NavLink({ className, activeClassName, onClick, ...props }: NavLinkProps) {

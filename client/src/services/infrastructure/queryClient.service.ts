@@ -23,7 +23,7 @@ function shouldRetry(failureCount: number, error: unknown, maxRetries: number): 
 
 async function handleSessionExpired(client: QueryClient): Promise<void> {
 	try {
-		logger.authError('Session expired, clearing auth data and redirecting to login');
+		logger.authError('Session expired, clearing auth data and redirecting to home');
 
 		// Clear auth data (tokens, storage, etc.)
 		await authService.logout();
@@ -31,18 +31,16 @@ async function handleSessionExpired(client: QueryClient): Promise<void> {
 		// Clear React Query cache
 		client.clear();
 
-		// Redirect to login with full page reload to ensure all state is cleared
-		// This includes Redux state (via sessionStorage clear) and any other client-side state
+		// Redirect to home with full page reload so user can continue browsing or choose to log in
 		if (!isAuthPage() && typeof window !== 'undefined') {
-			window.location.href = ROUTES.LOGIN;
+			window.location.href = ROUTES.HOME;
 		}
 	} catch (error) {
 		logger.systemError('Failed to handle session expired', {
 			errorInfo: { message: getErrorMessage(error) },
 		});
-		// Even if logout fails, try to redirect to login
 		if (!isAuthPage() && typeof window !== 'undefined') {
-			window.location.href = ROUTES.LOGIN;
+			window.location.href = ROUTES.HOME;
 		}
 	}
 }

@@ -1,4 +1,5 @@
-export * from './achievements.utils';
+export * from './avatar.util';
+export * from './entityGuards';
 export * from './error.utils';
 export * from './gameStats.utils';
 export * from './guards.utils';

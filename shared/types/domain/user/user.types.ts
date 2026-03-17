@@ -1,4 +1,6 @@
 // User-related types for EveryTriv.
+import type { Locale } from '@shared/constants';
+
 import { AuthProvider, DifficultyLevel, GameMode, UserRole, UserStatus } from '../../../constants';
 import type { BaseEntity } from '../../core/data.types';
 import type { BaseGameStatistics } from '../game/game.types';
@@ -10,6 +12,8 @@ export interface BasicUser {
 	firstName?: string;
 	lastName?: string;
 	avatar?: number;
+
+	avatarUrl?: string;
 	emailVerified?: boolean;
 }
 
@@ -20,7 +24,6 @@ export interface UserProfile extends BasicUser, BaseEntity {
 export interface UserPrivacyPreferences {
 	showOnlineStatus?: boolean;
 	showActivity?: boolean;
-	showAchievements?: boolean;
 }
 
 export interface UserGamePreferences {
@@ -38,9 +41,14 @@ export interface UserPreferences {
 	musicEnabled: boolean;
 	animationsEnabled: boolean;
 	avatar?: number;
+	locale?: Locale;
 	privacy: UserPrivacyPreferences;
 	game: UserGamePreferences;
 }
+
+export type UserPreferencesPatch = Omit<Partial<UserPreferences>, 'game'> & {
+	game?: Partial<UserGamePreferences>;
+};
 
 export interface User extends UserProfile {
 	status: UserStatus;

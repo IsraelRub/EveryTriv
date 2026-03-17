@@ -1,12 +1,20 @@
 import { forwardRef, memo, useCallback, type ElementType, type MouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
 import { ArrowRight, Home, RefreshCw, X } from 'lucide-react';
 
-import { AudioKey, ButtonSize, ROUTES, STATISTICS_TAB_PARAM, VariantBase, ViewAllDestination } from '@/constants';
-import { useModalRoute } from '@/hooks';
-import { audioService } from '@/services';
+import {
+	AudioKey,
+	ButtonSize,
+	CommonKey,
+	HomeKey,
+	ROUTES,
+	STATISTICS_TAB_PARAM,
+	VariantBase,
+	ViewAllDestination,
+} from '@/constants';
 import type {
 	ButtonProps,
 	CloseButtonProps,
@@ -16,14 +24,17 @@ import type {
 	RefreshButtonProps,
 	ViewAllButtonProps,
 } from '@/types';
+import { audioService } from '@/services';
 import { cn } from '@/utils';
+import { useModalRoute } from '@/hooks';
 
 const buttonVariantsConfig = {
 	variants: {
 		variant: {
-			[VariantBase.DEFAULT]: 'bg-primary text-primary-foreground hover:bg-primary/90',
+			[VariantBase.DEFAULT]: 'bg-primary text-primary-foreground hover:bg-primary/90 active:opacity-90',
 			[VariantBase.DESTRUCTIVE]: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-			[VariantBase.OUTLINE]: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+			[VariantBase.OUTLINE]:
+				'border border-input bg-background hover:bg-primary hover:text-primary-foreground active:opacity-90',
 			[VariantBase.SECONDARY]: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
 			[VariantBase.MINIMAL]: 'hover:bg-accent hover:text-accent-foreground',
 		},
@@ -66,23 +77,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
-export const HomeButton = forwardRef<HTMLButtonElement, HomeButtonProps>(({ onClick, className }, ref) => {
+export const HomeButton = forwardRef<HTMLButtonElement, HomeButtonProps>(({ onBeforeNavigate, className }, ref) => {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 
-	const handleNavigateHome = useCallback(() => {
+	const handleClick = useCallback(() => {
+		onBeforeNavigate?.();
 		navigate(ROUTES.HOME, { replace: true });
-	}, [navigate]);
+	}, [navigate, onBeforeNavigate]);
 
 	return (
-		<Button
-			ref={ref}
-			variant={VariantBase.OUTLINE}
-			size={ButtonSize.LG}
-			onClick={onClick ?? handleNavigateHome}
-			className={className}
-		>
+		<Button ref={ref} variant={VariantBase.OUTLINE} size={ButtonSize.LG} onClick={handleClick} className={className}>
 			<Home className='h-4 w-4 mr-2' />
-			Back to Home
+			{t(CommonKey.BACK_TO_HOME)}
 		</Button>
 	);
 });
@@ -138,6 +145,7 @@ export const PaginationButtons = memo(function PaginationButtons({
 	totalPages,
 	disabled = false,
 }: PaginationButtonsProps) {
+	const { t } = useTranslation();
 	return (
 		<div className='flex items-center gap-3'>
 			<Button
@@ -146,22 +154,23 @@ export const PaginationButtons = memo(function PaginationButtons({
 				onClick={onPrevious}
 				disabled={!hasPrevious || disabled}
 			>
-				Previous
+				{t(CommonKey.PREVIOUS)}
 			</Button>
 			{totalPages > 0 && (
 				<span className='text-sm text-muted-foreground shrink-0'>
-					Page <span className='font-bold text-foreground'>{currentPage}</span> of{' '}
+					{t(CommonKey.PAGE)} <span className='font-bold text-foreground'>{currentPage}</span> {t(CommonKey.OF)}{' '}
 					<span className='font-bold text-foreground'>{totalPages}</span>
 				</span>
 			)}
 			<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={onNext} disabled={!hasNext || disabled}>
-				Next
+				{t(CommonKey.NEXT)}
 			</Button>
 		</div>
 	);
 });
 
 export function ViewAllButton({ destination, visible = true }: ViewAllButtonProps) {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const path =
 		ROUTES.STATISTICS +
@@ -173,7 +182,7 @@ export function ViewAllButton({ destination, visible = true }: ViewAllButtonProp
 
 	return (
 		<Button variant={VariantBase.MINIMAL} size={ButtonSize.SM} onClick={() => navigate(path)} className='text-xs'>
-			View All <ArrowRight className='h-3 w-3 ml-1' />
+			{t(HomeKey.VIEW_ALL)} <ArrowRight className='h-3 w-3 ml-1 rtl:scale-x-[-1]' />
 		</Button>
 	);
 }

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { calculateScoreRate, delay, getErrorMessage, sumBy } from '@shared/utils';
 
+import { MAX_RECENT_ACTIVITY } from '@internal/constants';
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheInvalidationService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -58,24 +59,29 @@ export class UserStatsUpdateService {
 					await delay(this.RETRY_DELAY_MS * currentAttempt);
 				}
 
-				let userStats = await this.userStatsRepo.findOne({
-					where: { userId },
-					lock: { mode: 'pessimistic_write' }, // Use pessimistic locking for better consistency
+				await this.userStatsRepo.manager.transaction(async (manager: EntityManager) => {
+					const userStatsRepo = manager.getRepository(UserStatsEntity);
+					let userStats = await userStatsRepo.findOne({
+						where: { userId },
+						lock: { mode: 'pessimistic_write' },
+					});
+
+					if (!userStats) {
+						userStats = userStatsRepo.create({ userId });
+						await manager.save(UserStatsEntity, userStats);
+					}
+
+					this.updateBasicStats(userStats, gameHistory);
+					this.updateCategoryStats(userStats, gameHistory);
+					await this.updateStreaks(userStats, userId, manager);
+					this.updateTimeBasedScores(userStats, gameHistory);
+					this.updateTimeStats(userStats, gameHistory);
+					this.updateBestGameScore(userStats, gameHistory);
+					this.updateRecentActivity(userStats, gameHistory);
+
+					await manager.save(UserStatsEntity, userStats);
 				});
 
-				userStats ??= await this.initializeUserStats(userId);
-
-				this.updateBasicStats(userStats, gameHistory);
-				this.updateCategoryStats(userStats, gameHistory);
-				await this.updateStreaks(userStats, userId);
-				this.updateTimeBasedScores(userStats, gameHistory);
-				this.updateTimeStats(userStats, gameHistory);
-				this.updateBestGameScore(userStats, gameHistory);
-				this.updateRecentActivity(userStats, gameHistory);
-
-				await this.userStatsRepo.save(userStats);
-
-				// Invalidate cache after successful update
 				await this.cacheInvalidationService.invalidateOnGameComplete(userId);
 
 				logger.analyticsStats('user_stats_updated', {
@@ -90,12 +96,10 @@ export class UserStatsUpdateService {
 				const isLastAttempt = currentAttempt === this.MAX_RETRIES - 1;
 
 				if (isVersionConflict && !isLastAttempt) {
-					// Version conflict - retry
 					continue;
 				}
 
 				if (isLastAttempt) {
-					// Log final failure
 					logger.analyticsError('updateStatsFromGame - final failure', {
 						errorInfo: { message: getErrorMessage(error) },
 						userId,
@@ -273,11 +277,15 @@ export class UserStatsUpdateService {
 		}
 	}
 
-	// ==================== Public Methods for Maintenance ====================
+	// Public methods for maintenance
 
-	async calculateStreaksFromHistory(userId: string): Promise<{ current: number; best: number }> {
+	async calculateStreaksFromHistory(
+		userId: string,
+		manager?: EntityManager
+	): Promise<{ current: number; best: number }> {
 		const cutoffDate = new Date(Date.now() - this.STREAK_CALCULATION_DAYS * TIME_PERIODS_MS.DAY);
-		const recentGames = await this.gameHistoryRepo.find({
+		const repo = manager ? manager.getRepository(GameHistoryEntity) : this.gameHistoryRepo;
+		const recentGames = await repo.find({
 			where: { userId, createdAt: MoreThanOrEqual(cutoffDate) },
 			order: { createdAt: 'DESC' },
 		});
@@ -515,8 +523,8 @@ export class UserStatsUpdateService {
 		}
 	}
 
-	private async updateStreaks(userStats: UserStatsEntity, userId: string): Promise<void> {
-		const streakData = await this.calculateStreaksFromHistory(userId);
+	private async updateStreaks(userStats: UserStatsEntity, userId: string, manager?: EntityManager): Promise<void> {
+		const streakData = await this.calculateStreaksFromHistory(userId, manager);
 		userStats.currentStreak = streakData.current;
 		userStats.longestStreak = Math.max(userStats.longestStreak, streakData.best);
 	}
@@ -627,8 +635,6 @@ export class UserStatsUpdateService {
 	}
 
 	private updateRecentActivity(userStats: UserStatsEntity, gameHistory: GameHistoryEntity): void {
-		const MAX_RECENT_ACTIVITY = 10;
-
 		const activityEntry = {
 			gameId: gameHistory.id,
 			score: gameHistory.score,

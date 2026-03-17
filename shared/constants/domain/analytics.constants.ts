@@ -42,6 +42,17 @@ export enum AnalyticsAction {
 	GAME_FINALIZED = 'game-finalized',
 }
 
+export enum SystemInsightStatus {
+	OPTIMAL = 'optimal',
+	ATTENTION = 'attention',
+}
+
+export enum RecommendationPriority {
+	HIGH = 'high',
+	MEDIUM = 'medium',
+	LOW = 'low',
+}
+
 export const SYSTEM_HEALTH_THRESHOLDS = {
 	ERROR_RATE_ATTENTION_PERCENT: 5,
 	MEMORY_USAGE_RECOMMENDATION_PERCENT: 80,

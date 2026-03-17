@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { DEFAULT_ITEMS_PER_PAGE, SortDirection } from '@/constants';
-import { usePagination } from '@/hooks/ui/usePagination';
 import type { UseClientTableStateOptions, UseClientTableStateReturn } from '@/types';
+import { usePagination } from '@/hooks/ui/usePagination';
 
 export function useClientTableState<T>({
 	data,

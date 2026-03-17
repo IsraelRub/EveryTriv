@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+	IsArray,
 	IsEnum,
 	IsNotEmpty,
 	IsNumber,
@@ -11,6 +12,7 @@ import {
 	Min,
 	MinLength,
 	ValidateIf,
+	ValidateNested,
 } from 'class-validator';
 
 import { GameMode, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
@@ -63,8 +65,7 @@ export class DeductCreditsDto {
 	questionsPerRequest: number;
 
 	@ApiProperty({
-		description:
-			'Game mode for the deduction. ' + 'BREAKING CHANGE: The "gameType" alias has been removed. Use "gameMode" only.',
+		description: `Game mode for the deduction. BREAKING CHANGE: The "gameType" alias has been removed. Use "gameMode" only.`,
 		enum: GameMode,
 	})
 	@IsOptional()
@@ -100,6 +101,36 @@ export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 		message: `Package ID cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
 	})
 	packageId: string;
+}
+
+export class CreditPackageItemDto {
+	@ApiProperty({ description: 'Package ID', example: 'package_50' })
+	@IsString()
+	@IsNotEmpty()
+	id: string;
+
+	@ApiProperty({ description: 'Number of credits', minimum: 1 })
+	@IsNumber()
+	@Min(1)
+	credits: number;
+
+	@ApiProperty({ description: 'Price in USD', minimum: 0.01 })
+	@IsNumber()
+	@Min(0.01)
+	price: number;
+
+	@ApiPropertyOptional({ description: 'Tier label', example: 'basic' })
+	@IsOptional()
+	@IsString()
+	tier?: string;
+}
+
+export class UpdateCreditPackagesDto {
+	@ApiProperty({ type: [CreditPackageItemDto], description: 'Credit packages to set' })
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => CreditPackageItemDto)
+	packages: CreditPackageItemDto[];
 }
 
 export class CanPlayDto {

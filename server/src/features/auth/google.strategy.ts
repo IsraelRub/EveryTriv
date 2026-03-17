@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { AuthenticationEvent, ErrorCode, LOCALHOST_CONFIG, LogLevel } from '@shared/constants';
-import { getErrorMessage, isRecord } from '@shared/utils';
+import { ErrorCode, LOCALHOST_CONFIG, VALIDATION_LENGTH } from '@shared/constants';
+import { getErrorMessage, isRecord, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
@@ -18,9 +18,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		// Validate OAuth credentials
 		if (!clientID || !clientSecret) {
 			logger.systemError('Google OAuth credentials are missing', {
-				data: {
-					callbackURL,
-				},
+				callbackURL,
 			});
 		} else if (
 			clientID === 'your-google-client-id.apps.googleusercontent.com' ||
@@ -31,7 +29,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			});
 		} else {
 			logger.systemInfo('Google OAuth strategy initialized', {
-				clientId: clientID.substring(0, 20) + '...',
+				clientId: truncateWithEllipsis(clientID, VALIDATION_LENGTH.STRING_TRUNCATION.TOKEN_PREVIEW),
 				url: callbackURL,
 			});
 		}
@@ -66,9 +64,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 	private parseProfile(value: unknown): Profile {
 		if (Buffer.isBuffer(value)) {
 			logger.systemError('Google OAuth profile received as Buffer - attempting to parse', {
-				data: {
-					valueLength: value.length,
-				},
+				valueLength: value.length,
 			});
 			try {
 				const parsed = JSON.parse(value.toString('utf8'));
@@ -86,9 +82,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
 		if (VALIDATORS.string(value)) {
 			logger.systemError('Google OAuth profile received as string - attempting to parse', {
-				data: {
-					valueLength: value.length,
-				},
+				valueLength: value.length,
 			});
 			try {
 				const parsed = JSON.parse(value);
@@ -115,10 +109,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 		try {
 			// Log all parameters for debugging
 			logger.systemInfo('Google OAuth validate called', {
-				data: {
-					accessTokenLength: accessToken ? String(accessToken).length : 0,
-					refreshTokenLength: refreshToken ? String(refreshToken).length : 0,
-				},
+				accessTokenLength: accessToken ? String(accessToken).length : 0,
+				refreshTokenLength: refreshToken ? String(refreshToken).length : 0,
 			});
 
 			// Parse profile if needed (handle Buffer/string cases)
@@ -132,32 +124,30 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 					: undefined;
 			logger.systemInfo('Google OAuth profile received', {
 				id: actualProfile.id,
-				data: {
-					emailsCount: actualProfile.emails?.length ?? 0,
-					nameGivenName: actualProfile.name?.givenName,
-					nameFamilyName: actualProfile.name?.familyName,
-					displayName: profileDisplayName,
-					photosCount: actualProfile.photos?.length ?? 0,
-					profileKeys: Object.keys(actualProfile),
-				},
+				emailsCount: actualProfile.emails?.length ?? 0,
+				nameGivenName: actualProfile.name?.givenName,
+				nameFamilyName: actualProfile.name?.familyName,
+				displayName: profileDisplayName,
+				photosCount: actualProfile.photos?.length ?? 0,
+				profileKeys: Object.keys(actualProfile),
 			});
 
 			// Validate that profile.id exists
 			if (!actualProfile.id) {
-				logger.logSecurityEventEnhanced('Google OAuth profile missing ID', LogLevel.ERROR, {
+				logger.securityError('Google OAuth profile missing ID', {
 					errorInfo: { message: ErrorCode.PROFILE_ID_MISSING },
 					provider: 'google',
 					context: 'GoogleStrategy',
-					data: {
-						profileKeys: Object.keys(actualProfile),
-					},
+					profileKeys: Object.keys(actualProfile),
 				});
 				throw new Error(ErrorCode.GOOGLE_PROFILE_ID_MISSING);
 			}
 
 			// Use enhanced logging
-			logger.logAuthenticationEnhanced(AuthenticationEvent.LOGIN, 'google_user', actualProfile.id, {
+			logger.securityLogin('Authentication: login', {
+				userId: 'google_user',
 				emails: { current: actualProfile.emails?.[0]?.value ?? '' },
+				id: actualProfile.id,
 				provider: 'google',
 				context: 'GoogleStrategy',
 			});
@@ -198,10 +188,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			logger.systemInfo('Google OAuth validate returning user', {
 				googleId: user.googleId,
 				emails: { current: user.email },
-				data: {
-					googleIdLength: user.googleId ? String(user.googleId).length : 0,
-					profileId: actualProfile.id,
-				},
+				googleIdLength: user.googleId ? String(user.googleId).length : 0,
+				profileId: actualProfile.id,
 			});
 
 			return user;
@@ -215,7 +203,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				// Profile parsing failed, use 'unknown'
 			}
 
-			logger.logSecurityEventEnhanced('Google OAuth validation failed', LogLevel.ERROR, {
+			logger.securityError('Google OAuth validation failed', {
 				errorInfo: { message: getErrorMessage(error) },
 				id: profileId,
 				provider: 'google',

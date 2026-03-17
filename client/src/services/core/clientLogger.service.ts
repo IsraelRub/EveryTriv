@@ -1,20 +1,20 @@
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { LogLevel, TIME_PERIODS_MS } from '@shared/constants';
 import { BaseLoggerService } from '@shared/services';
+import type { LogMessageFn, LogMeta } from '@shared/types';
+import { getErrorMessage, sanitizeLogMessage } from '@shared/utils';
+
+import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS } from '@/constants';
 import type {
 	LogComponentErrorFn,
-	LogMessageFn,
-	LogMeta,
 	LogPaymentErrorFn,
 	LogProviderErrorFn,
 	LogProviderFn,
 	LogResourceErrorFn,
-} from '@shared/types';
-import { getErrorMessage, sanitizeLogMessage } from '@shared/utils';
-
-import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS } from '@/constants';
-import { toast } from '@/hooks';
+	ToastOptions,
+	ToastType,
+} from '@/types';
 import { audioService } from '@/services';
-import type { LogLevel, ToastOptions, ToastType } from '@/types';
+import { toast } from '@/hooks';
 
 class ClientLoggerService extends BaseLoggerService {
 	private extractUserMessage(message: string): string {
@@ -92,7 +92,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	// User-facing methods
 	public userError: LogMessageFn = (message, meta) => {
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userError.bind(this),
 			toast: {
 				type: 'error',
@@ -105,7 +105,7 @@ class ClientLoggerService extends BaseLoggerService {
 	};
 
 	public userWarn: LogMessageFn = (message, meta) => {
-		this.log('warn', message, meta, {
+		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userWarn.bind(this),
 			toast: {
 				type: 'warning',
@@ -118,7 +118,7 @@ class ClientLoggerService extends BaseLoggerService {
 	};
 
 	public userSuccess: LogMessageFn = (message, meta) => {
-		this.log('info', message, meta, {
+		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userInfo.bind(this),
 			toast: {
 				type: 'success',
@@ -150,7 +150,7 @@ class ClientLoggerService extends BaseLoggerService {
 	public authError(messageOrError: string | Error, meta?: LogMeta): void {
 		super.authError(messageOrError, meta);
 		const message = messageOrError instanceof Error ? getErrorMessage(messageOrError) : messageOrError;
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			toast: {
 				type: 'error',
 				title: 'Authentication error',
@@ -162,7 +162,7 @@ class ClientLoggerService extends BaseLoggerService {
 	}
 
 	public authSuccess: LogMessageFn = (message, meta) => {
-		this.log('info', message, meta, {
+		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.authInfo.bind(this),
 			toast: {
 				type: 'success',
@@ -178,7 +178,7 @@ class ClientLoggerService extends BaseLoggerService {
 	public systemError(messageOrError: string | Error, meta?: LogMeta): void {
 		super.systemError(messageOrError, meta);
 		const message = messageOrError instanceof Error ? getErrorMessage(messageOrError) : messageOrError;
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			toast: {
 				type: 'error',
 				title: 'System error',
@@ -191,7 +191,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	// API methods
 	public apiError: LogMessageFn = (message, meta) => {
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.apiError.bind(this),
 			toast: {
 				type: 'error',
@@ -205,7 +205,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	public apiUpdateError: LogResourceErrorFn = (resource, error, meta) => {
 		BaseLoggerService.prototype.apiUpdateError.call(this, resource, error, meta);
-		this.log('error', error, meta, {
+		this.log(LogLevel.ERROR, error, meta, {
 			toast: {
 				type: 'error',
 				title: 'Update failed',
@@ -218,7 +218,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	// Game methods
 	public gameError: LogMessageFn = (message, meta) => {
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.gameError.bind(this),
 			toast: {
 				type: 'error',
@@ -233,7 +233,7 @@ class ClientLoggerService extends BaseLoggerService {
 	// Payment methods
 	public paymentFailed: LogPaymentErrorFn = (paymentId, error, meta) => {
 		BaseLoggerService.prototype.paymentFailed.call(this, paymentId, error, meta);
-		this.log('error', error, meta, {
+		this.log(LogLevel.ERROR, error, meta, {
 			toast: {
 				type: 'error',
 				title: 'Payment failed',
@@ -245,7 +245,7 @@ class ClientLoggerService extends BaseLoggerService {
 	};
 
 	public paymentSuccess: LogMessageFn = (message, meta) => {
-		this.log('info', message, meta, {
+		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.paymentInfo.bind(this),
 			toast: {
 				type: 'success',
@@ -259,7 +259,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	// Security methods
 	public securityDenied: LogMessageFn = (message, meta) => {
-		this.log('warn', message, meta, {
+		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityDenied.bind(this),
 			toast: {
 				type: 'warning',
@@ -272,7 +272,7 @@ class ClientLoggerService extends BaseLoggerService {
 	};
 
 	public securityWarn: LogMessageFn = (message, meta) => {
-		this.log('warn', message, meta, {
+		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityWarn.bind(this),
 			toast: {
 				type: 'warning',
@@ -285,7 +285,7 @@ class ClientLoggerService extends BaseLoggerService {
 	};
 
 	public securityError: LogMessageFn = (message, meta) => {
-		this.log('error', message, meta, {
+		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityError.bind(this),
 			toast: {
 				type: 'error',
@@ -300,7 +300,7 @@ class ClientLoggerService extends BaseLoggerService {
 	// Component methods
 	public navigationComponentError: LogComponentErrorFn = (component, error, meta) => {
 		BaseLoggerService.prototype.navigationComponentError.call(this, component, error, meta);
-		this.log('error', `${component}: ${error}`, meta, {
+		this.log(LogLevel.ERROR, `${component}: ${error}`, meta, {
 			toast: {
 				type: 'error',
 				title: 'Component error',
@@ -314,7 +314,7 @@ class ClientLoggerService extends BaseLoggerService {
 	// Provider methods
 	public providerError: LogProviderErrorFn = (provider, error, meta) => {
 		BaseLoggerService.prototype.providerError.call(this, provider, error, meta);
-		this.log('error', `${provider}: ${error}`, meta, {
+		this.log(LogLevel.ERROR, `${provider}: ${error}`, meta, {
 			toast: {
 				type: 'error',
 				title: 'Service error',
@@ -332,7 +332,7 @@ class ClientLoggerService extends BaseLoggerService {
 
 	public providerFallback: LogProviderFn = (provider, meta) => {
 		BaseLoggerService.prototype.providerFallback.call(this, provider, meta);
-		this.log('warn', `Using fallback for ${provider}`, meta, {
+		this.log(LogLevel.WARN, `Using fallback for ${provider}`, meta, {
 			toast: {
 				type: 'warning',
 				title: 'Service fallback',

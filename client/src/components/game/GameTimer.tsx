@@ -1,24 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, calculateElapsedSeconds, calculatePercentage } from '@shared/utils';
 
-import { AudioKey, Colors, TIMER_WARNING_RATIO, TimerMode, TRANSITION_DURATIONS } from '@/constants';
-import { audioService } from '@/services';
+import {
+	AudioKey,
+	Colors,
+	GameKey,
+	TIMER_WARNING_RATIO,
+	TimerColorPrefix,
+	TimerMode,
+	TRANSITION_DURATIONS,
+} from '@/constants';
 import type { GameTimerProps } from '@/types';
+import { audioService } from '@/services';
 import { cn, formatTime } from '@/utils';
-
-const WARNING_BEEP_INTERVAL_MS = 3 * TIME_PERIODS_MS.SECOND;
-
-function isInWarningZone(remainingSeconds: number, warningThreshold: number | null): boolean {
-	return warningThreshold !== null && remainingSeconds <= warningThreshold && remainingSeconds > 0;
-}
-
-function playWarning(onWarning: (() => void) | undefined): void {
-	if (onWarning) onWarning();
-	else audioService.play(AudioKey.TIME_WARNING);
-}
 
 function computeWarningThresholdSeconds(totalSeconds: number): number {
 	return Math.floor(totalSeconds * TIMER_WARNING_RATIO);
@@ -29,23 +27,17 @@ function runInterval(callback: () => void, periodMs: number): () => void {
 	return () => clearInterval(id);
 }
 
-/**
- * Attempts to play a warning beep. Uses wall-clock time to enforce a minimum
- * gap of WARNING_BEEP_INTERVAL_MS between beeps, which guards against
- * StrictMode double-invocation and overlapping intervals.
- */
 function tryPlayWarning(
 	remaining: number,
 	threshold: number | null,
-	lastBeepTimeRef: React.MutableRefObject<number>,
+	lastBeepRemainingRef: MutableRefObject<number>,
 	onWarning: (() => void) | undefined
 ): void {
-	if (!isInWarningZone(remaining, threshold)) return;
-	const now = Date.now();
-	if (now - lastBeepTimeRef.current >= WARNING_BEEP_INTERVAL_MS) {
-		lastBeepTimeRef.current = now;
-		playWarning(onWarning);
-	}
+	if (threshold === null || remaining > threshold || remaining <= 0 || remaining === lastBeepRemainingRef.current)
+		return;
+	lastBeepRemainingRef.current = remaining;
+	if (onWarning) onWarning();
+	else audioService.play(AudioKey.TIME_WARNING);
 }
 
 export function GameTimer({
@@ -79,17 +71,15 @@ export function GameTimer({
 	// Countdown mode: use server timestamps as authoritative source
 	const warningTimeThresholdRef = useRef<number | null>(null);
 	const timeoutTriggeredRef = useRef(false);
-	// Wall-clock timestamp of the last warning beep. Using wall-clock time
-	// (rather than remaining-seconds) makes it immune to StrictMode
-	// double-invocation and overlapping intervals.
-	const lastBeepTimeRef = useRef(0);
+	// Last "remaining" value we beeped for; one beep per remaining-second avoids
+	// skips when setInterval ticks run close together (e.g. after heavy render).
+	const lastBeepRemainingRef = useRef(-1);
 
 	useEffect(() => {
 		if (mode !== TimerMode.COUNTDOWN) return;
 
 		const onWarning = onWarningRef.current ?? undefined;
-		// Reset so the first tick in the warning zone plays immediately
-		lastBeepTimeRef.current = 0;
+		lastBeepRemainingRef.current = -1;
 
 		// Priority: serverEndTimestamp > startTime + initialTime > initialTime only
 		if (serverEndTimestamp !== undefined) {
@@ -102,7 +92,7 @@ export function GameTimer({
 			return runInterval(() => {
 				const remaining = Math.floor(Math.max(0, serverEndTimestamp - Date.now()) / TIME_PERIODS_MS.SECOND);
 				setCurrentTime(remaining);
-				tryPlayWarning(remaining, threshold, lastBeepTimeRef, onWarning);
+				tryPlayWarning(remaining, threshold, lastBeepRemainingRef, onWarning);
 			}, TIME_PERIODS_MS.SECOND);
 		}
 
@@ -115,7 +105,7 @@ export function GameTimer({
 				const elapsed = calculateDuration(startTime);
 				const remaining = Math.max(0, Math.floor((totalTimeMs - elapsed) / TIME_PERIODS_MS.SECOND));
 				setCurrentTime(remaining);
-				tryPlayWarning(remaining, threshold, lastBeepTimeRef, onWarning);
+				tryPlayWarning(remaining, threshold, lastBeepRemainingRef, onWarning);
 			}, TIME_PERIODS_MS.SECOND);
 		}
 
@@ -129,7 +119,7 @@ export function GameTimer({
 			if (localTime <= 0) return;
 			localTime = localTime <= 1 ? 0 : localTime - 1;
 			setCurrentTime(localTime);
-			tryPlayWarning(localTime, threshold, lastBeepTimeRef, onWarningRef.current ?? undefined);
+			tryPlayWarning(localTime, threshold, lastBeepRemainingRef, onWarningRef.current ?? undefined);
 		}, TIME_PERIODS_MS.SECOND);
 	}, [mode, initialTime, startTime, serverStartTimestamp, serverEndTimestamp]);
 
@@ -153,10 +143,10 @@ export function GameTimer({
 		}, TIME_PERIODS_MS.SECOND);
 	}, [mode, startTime]);
 
-	const getColorByPercentage = useCallback((percentage: number, prefix: 'text' | 'bg'): string => {
-		if (percentage > 35) return prefix === 'text' ? Colors.GREEN_500.text : Colors.GREEN_500.bg;
-		if (percentage > 15) return prefix === 'text' ? Colors.YELLOW_500.text : Colors.YELLOW_500.bg;
-		return prefix === 'text' ? Colors.RED_500.text : Colors.RED_500.bg;
+	const getColorByPercentage = useCallback((percentage: number, prefix: TimerColorPrefix): string => {
+		if (percentage > 35) return prefix === TimerColorPrefix.TEXT ? Colors.GREEN_500.text : Colors.GREEN_500.bg;
+		if (percentage > 15) return prefix === TimerColorPrefix.TEXT ? Colors.YELLOW_500.text : Colors.YELLOW_500.bg;
+		return prefix === TimerColorPrefix.TEXT ? Colors.RED_500.text : Colors.RED_500.bg;
 	}, []);
 
 	const countdownPercentage =
@@ -165,30 +155,31 @@ export function GameTimer({
 			: null;
 
 	const getColorByMode = useCallback(
-		(prefix: 'text' | 'bg', defaultClass: string): string => {
+		(prefix: TimerColorPrefix, defaultClass: string): string => {
 			if (mode !== TimerMode.COUNTDOWN || countdownPercentage === null) return defaultClass;
 			return getColorByPercentage(countdownPercentage, prefix);
 		},
 		[mode, countdownPercentage, getColorByPercentage]
 	);
 
-	const progress = countdownPercentage ?? 0;
-	const defaultLabel = mode === TimerMode.COUNTDOWN ? 'Game Time' : 'Time Elapsed';
+	const { t } = useTranslation('game');
+	const displayLabel = label ?? (mode === TimerMode.COUNTDOWN ? t(GameKey.GAME_TIME) : t(GameKey.TIME_ELAPSED));
 
 	return (
 		<div className='mb-6'>
-			<div className='text-center mb-2'>
-				<div className={cn('text-2xl font-medium', getColorByMode('text', 'text-muted-foreground'))}>
+			<div className='text-center'>
+				<p className='text-sm text-muted-foreground mb-0.5'>{displayLabel}</p>
+				<div
+					className={cn('text-2xl font-medium mb-1.5', getColorByMode(TimerColorPrefix.TEXT, 'text-muted-foreground'))}
+				>
 					{formatTime(currentTime)}
 				</div>
-				<p className='text-sm text-muted-foreground mt-1'>{label ?? defaultLabel}</p>
 			</div>
 			{showProgressBar && (
 				<div className='relative h-4 bg-muted rounded-full overflow-hidden'>
 					<motion.div
-						className={cn('absolute inset-y-0 left-0', getColorByMode('bg', 'bg-primary'))}
-						initial={{ width: '100%' }}
-						animate={{ width: `${progress}%` }}
+						className={cn('absolute inset-y-0 left-0', getColorByMode(TimerColorPrefix.BG, 'bg-primary'))}
+						animate={{ width: `clamp(0%, ${countdownPercentage ?? 0}%, 100%)` }}
 						transition={{ duration: TRANSITION_DURATIONS.NORMAL }}
 					/>
 				</div>

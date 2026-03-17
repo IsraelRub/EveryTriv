@@ -1,19 +1,26 @@
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import { getErrorMessage, isNonEmptyString } from '@shared/utils';
+import { isNonEmptyString } from '@shared/utils';
 import { validateEmail } from '@shared/validation';
 
 import {
+	AlertIconSize,
 	AlertVariant,
 	AudioKey,
+	AuthKey,
 	ButtonSize,
 	ComponentSize,
-	LoadingMessages,
+	LoadingKey,
+	PLACEHOLDER_EMAIL,
 	ROUTES,
-	VALIDATION_MESSAGES,
+	ValidationKey,
 	VariantBase,
 } from '@/constants';
+import type { LoginFieldErrors } from '@/types';
+import { audioService, authService } from '@/services';
+import { getTranslatedErrorMessage } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
@@ -32,10 +39,9 @@ import {
 	Spinner,
 } from '@/components';
 import { useLogin, useModalRoute } from '@/hooks';
-import { audioService, authService } from '@/services';
-import type { LoginFieldErrors } from '@/types';
 
 export function LoginView() {
+	const { t } = useTranslation(['auth', 'loading', 'validation']);
 	const navigate = useNavigate();
 	const loginMutation = useLogin();
 	const { isModal, closeModal, returnUrl } = useModalRoute();
@@ -46,20 +52,16 @@ export function LoginView() {
 	const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
 
 	const isLoading = loginMutation.isPending;
-
-	const isFormValid = (): boolean => {
-		const emailValidation = validateEmail(email);
-		return emailValidation.isValid && isNonEmptyString(password);
-	};
+	const isFormValid = validateEmail(email).isValid && isNonEmptyString(password);
 
 	const validateField = (name: string, value: string): string | null => {
 		switch (name) {
 			case 'email': {
 				const validation = validateEmail(value);
-				return validation.isValid ? null : (validation.errors[0] ?? VALIDATION_MESSAGES.EMAIL_INVALID);
+				return validation.isValid ? null : (validation.errors[0] ?? t(ValidationKey.EMAIL_INVALID));
 			}
 			case 'password':
-				if (!value.trim()) return VALIDATION_MESSAGES.PASSWORD_REQUIRED;
+				if (!value.trim()) return t(ValidationKey.PASSWORD_REQUIRED);
 				break;
 		}
 		return null;
@@ -103,11 +105,6 @@ export function LoginView() {
 			return;
 		}
 
-		if (!isFormValid()) {
-			audioService.play(AudioKey.ERROR);
-			return;
-		}
-
 		try {
 			await loginMutation.mutateAsync({ email, password });
 			audioService.play(AudioKey.SUCCESS);
@@ -117,8 +114,7 @@ export function LoginView() {
 				navigate(returnUrl ?? '/');
 			}
 		} catch (err) {
-			const errorMessage = getErrorMessage(err);
-			setError(errorMessage);
+			setError(getTranslatedErrorMessage(t, err));
 			audioService.play(AudioKey.ERROR);
 		}
 	};
@@ -128,8 +124,7 @@ export function LoginView() {
 		try {
 			await authService.initiateGoogleLogin();
 		} catch (err) {
-			const errorMessage = getErrorMessage(err);
-			setError(errorMessage);
+			setError(getTranslatedErrorMessage(t, err));
 		}
 	};
 
@@ -137,8 +132,8 @@ export function LoginView() {
 		<Card className='w-full max-w-md relative'>
 			{!isModal && <CloseButton className='absolute top-4 left-4' />}
 			<CardHeader className='text-center space-y-2'>
-				<CardTitle className='text-3xl font-bold'>Welcome Back</CardTitle>
-				<CardDescription>Sign in to continue playing EveryTriv</CardDescription>
+				<CardTitle className='text-3xl font-bold'>{t(AuthKey.WELCOME_BACK)}</CardTitle>
+				<CardDescription>{t(AuthKey.SIGN_IN_TO_CONTINUE)}</CardDescription>
 			</CardHeader>
 
 			<CardContent className='space-y-6'>
@@ -150,12 +145,12 @@ export function LoginView() {
 
 				<form onSubmit={handleLogin} className='space-y-4'>
 					<div className='space-y-2'>
-						<Label htmlFor='email'>Email</Label>
+						<Label htmlFor='email'>{t(AuthKey.EMAIL)}</Label>
 						<Input
 							id='email'
 							name='email'
 							type='email'
-							placeholder='your@email.com'
+							placeholder={PLACEHOLDER_EMAIL}
 							value={email}
 							onChange={handleChange}
 							disabled={isLoading}
@@ -164,19 +159,19 @@ export function LoginView() {
 						/>
 						{fieldErrors.email && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.email}
 							</p>
 						)}
 					</div>
 
 					<div className='space-y-2'>
-						<Label htmlFor='password'>Password</Label>
+						<Label htmlFor='password'>{t(AuthKey.PASSWORD)}</Label>
 						<Input
 							id='password'
 							name='password'
 							type='password'
-							placeholder='Enter your password'
+							placeholder={t(AuthKey.PASSWORD_PLACEHOLDER)}
 							value={password}
 							onChange={handleChange}
 							disabled={isLoading}
@@ -185,17 +180,17 @@ export function LoginView() {
 						/>
 						{fieldErrors.password && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.password}
 							</p>
 						)}
 					</div>
 
-					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid()}>
+					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid}>
 						{isLoading ? (
-							<Spinner size={ComponentSize.SM} message={LoadingMessages.SIGNING_IN} messageInline />
+							<Spinner size={ComponentSize.SM} message={t(LoadingKey.SIGNING_IN)} messageInline />
 						) : (
-							'Sign In'
+							t(AuthKey.SIGN_IN)
 						)}
 					</Button>
 				</form>
@@ -205,14 +200,14 @@ export function LoginView() {
 						<Separator className='w-full' />
 					</div>
 					<div className='relative flex justify-center text-xs uppercase'>
-						<span className='bg-card px-2 text-muted-foreground'>Or continue with</span>
+						<span className='bg-card px-2 text-muted-foreground'>{t(AuthKey.OR_CONTINUE_WITH)}</span>
 					</div>
 				</div>
 
 				<GoogleAuthButton onClick={handleGoogleLogin} disabled={isLoading} />
 
 				<div className='text-center text-sm'>
-					<span className='text-muted-foreground'>Don't have an account? </span>
+					<span className='text-muted-foreground'>{t(AuthKey.DONT_HAVE_ACCOUNT)} </span>
 					<Button
 						type='button'
 						variant={VariantBase.MINIMAL}
@@ -220,7 +215,7 @@ export function LoginView() {
 						onClick={() => navigate(ROUTES.REGISTER, { state: { modal: isModal } })}
 						className='link-primary h-auto p-0 font-medium'
 					>
-						Sign up
+						{t(AuthKey.SIGN_UP)}
 					</Button>
 				</div>
 			</CardContent>

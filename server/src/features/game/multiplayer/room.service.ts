@@ -8,18 +8,20 @@ import {
 	PlayerStatus,
 	QuestionState,
 	RoomStatus,
-	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
-import { delay, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
+import { delay, getDisplayNameFromUserFields, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
 
+import { AppConfig } from '@config';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
+import { getAvatarUrlForUser } from '@internal/utils';
 
 @Injectable()
 export class RoomService {
@@ -84,12 +86,15 @@ export class RoomService {
 			// Create unique short room ID
 			const roomId = await this.generateUniqueRoomId();
 
-			// Create host player
+			const hostAvatarUrl = getAvatarUrlForUser(host, AppConfig.apiPublicBaseUrl);
 			const hostPlayer: Player = {
 				userId: hostId,
 				email: host.email,
-				displayName: host.firstName && host.lastName ? `${host.firstName} ${host.lastName}` : host.email,
+				firstName: host.firstName ?? undefined,
+				lastName: host.lastName ?? undefined,
+				displayName: getDisplayNameFromUserFields(host),
 				avatar: host.preferences?.avatar,
+				avatarUrl: hostAvatarUrl,
 				score: 0,
 				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
@@ -195,12 +200,15 @@ export class RoomService {
 				throw new NotFoundException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Create player
+			const playerAvatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
 			const player: Player = {
 				userId,
 				email: user.email,
-				displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+				firstName: user.firstName ?? undefined,
+				lastName: user.lastName ?? undefined,
+				displayName: getDisplayNameFromUserFields(user),
 				avatar: user.preferences?.avatar,
+				avatarUrl: playerAvatarUrl,
 				score: 0,
 				status: PlayerStatus.WAITING,
 				joinedAt: new Date(),
@@ -445,11 +453,6 @@ export class RoomService {
 		return new Date();
 	}
 
-	/**
-	 * Applies updates to room. When updates.players is provided, merges each player by userId
-	 * by assigning only defined properties from the incoming player; adds any player that exists
-	 * in updates but not in room (so room state is never missing players after an update).
-	 */
 	private applyRoomUpdates(room: MultiplayerRoom, updates: Partial<MultiplayerRoom>): void {
 		const { players: incomingPlayers, ...rest } = updates;
 		Object.assign(room, rest);
@@ -459,6 +462,8 @@ export class RoomService {
 				if (existing) {
 					if (incoming.userId !== undefined) existing.userId = incoming.userId;
 					if (incoming.email !== undefined) existing.email = incoming.email;
+					if (incoming.firstName !== undefined) existing.firstName = incoming.firstName;
+					if (incoming.lastName !== undefined) existing.lastName = incoming.lastName;
 					if (incoming.displayName !== undefined) existing.displayName = incoming.displayName;
 					if (incoming.score !== undefined) existing.score = incoming.score;
 					if (incoming.status !== undefined) existing.status = incoming.status;
@@ -473,6 +478,8 @@ export class RoomService {
 					const newPlayer: Player = {
 						userId: incoming.userId,
 						email: incoming.email ?? '',
+						firstName: incoming.firstName,
+						lastName: incoming.lastName,
 						displayName: incoming.displayName,
 						score: incoming.score ?? 0,
 						status: incoming.status ?? PlayerStatus.WAITING,

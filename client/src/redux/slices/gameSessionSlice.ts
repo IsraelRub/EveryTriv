@@ -117,7 +117,6 @@ export const gameSessionSlice = createSlice({
 		finalizeGame: state => {
 			state.isGameFinalized = true;
 		},
-		/** Sync only gameId (e.g. after rehydration overwrote it). Does not reset session state. */
 		syncGameId: (state, action: PayloadAction<string>) => {
 			state.gameId = action.payload;
 		},

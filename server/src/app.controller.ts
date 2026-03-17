@@ -2,9 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 
 import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 
+import { Cache, Public } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
-
-import { Cache, Public } from './common';
 
 @Controller()
 export class AppController {

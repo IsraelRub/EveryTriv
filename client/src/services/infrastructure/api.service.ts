@@ -1,5 +1,7 @@
 import {
 	API_ENDPOINTS,
+	AVATAR_ALLOWED_MIME_TYPES_SET,
+	AVATAR_UPLOAD_MAX_BYTES,
 	ERROR_MESSAGES,
 	ErrorCode,
 	HTTP_CLIENT_CONFIG,
@@ -7,6 +9,7 @@ import {
 	HttpMethod,
 	LOCALHOST_CONFIG,
 	TIME_PERIODS_MS,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
 	ApiError,
@@ -37,8 +40,8 @@ import {
 import { VALIDATORS } from '@shared/validation';
 
 import { STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
-import { clientLogger as logger, storageService } from '@/services';
 import type { AuthResponse, EnhancedRequestConfig } from '@/types';
+import { clientLogger as logger, storageService } from '@/services';
 import { authRequestInterceptor, InterceptorsService } from './interceptors.service';
 
 export class ApiConfig {
@@ -238,10 +241,8 @@ class ApiService {
 				logger.apiDebug('Request body prepared', {
 					url,
 					method,
-					data: {
-						originalData: data,
-						bodyString: requestBody,
-					},
+					requestBody,
+					body: isRecord(data) ? data : undefined,
 				});
 			} else {
 				// Log when body is not prepared
@@ -299,13 +300,13 @@ class ApiService {
 				logger.apiDebug('Fetch config prepared', {
 					url,
 					method,
-					bodyLength: VALIDATORS.string(fetchConfig.body) ? fetchConfig.body.length : 0,
+					valueLength: VALIDATORS.string(fetchConfig.body) ? fetchConfig.body.length : 0,
 					...(contentTypeValue && { contentType: contentTypeValue }),
 				});
 			}
 
 			// Execute fetch
-			const fullUrl = `${interceptedConfig.baseURL ?? this.baseURL}${url}`;
+			const fullUrl = (interceptedConfig.baseURL ?? this.baseURL) + url;
 			const response = await fetch(fullUrl, fetchConfig);
 
 			// Handle response with retry support for 401
@@ -324,10 +325,7 @@ class ApiService {
 				fullUrl
 			);
 
-			// Execute response interceptors with generic type support
-			const interceptedResponse = await this.interceptors.executeResponse<T>(apiResponse);
-
-			return interceptedResponse;
+			return apiResponse;
 		} catch (error) {
 			// Check if error is an abort error (from AbortController or fetch abort)
 			const isAbortError =
@@ -374,10 +372,7 @@ class ApiService {
 				details,
 			};
 
-			// Execute error interceptors
-			const interceptedError = await this.interceptors.executeError(apiError);
-
-			throw interceptedError;
+			throw apiError;
 		}
 	}
 
@@ -595,6 +590,7 @@ class ApiService {
 		}
 		if (authResult.refreshToken) {
 			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 		}
 
 		return authResult;
@@ -651,6 +647,7 @@ class ApiService {
 		if (authResult.refreshToken) {
 			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
 			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 			logger.authInfo('Refresh token stored');
 		}
 
@@ -712,16 +709,6 @@ class ApiService {
 		return response.data;
 	}
 
-	async isAuthenticated(): Promise<boolean> {
-		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-		return tokenResult.success && !!tokenResult.data;
-	}
-
-	async getAuthToken(): Promise<string | null> {
-		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-		return tokenResult.success && tokenResult.data ? tokenResult.data : null;
-	}
-
 	// User methods
 	async getUserProfile(): Promise<UserProfileResponseType> {
 		const response = await this.get<UserProfileResponseType>(API_ENDPOINTS.USER.PROFILE);
@@ -739,8 +726,8 @@ class ApiService {
 	}
 
 	async setAvatar(avatarId: number): Promise<UserProfileResponseType> {
-		// Validate avatar ID: 0 = clear avatar, 1–16 = set avatar
-		if (!Number.isInteger(avatarId) || avatarId < 0 || avatarId > 16) {
+		const { MAX } = VALIDATION_COUNT.AVATAR_ID;
+		if (!Number.isInteger(avatarId) || avatarId < 0 || avatarId > MAX) {
 			throw new Error(ERROR_MESSAGES.user.AVATAR_ID_OUT_OF_RANGE);
 		}
 
@@ -748,6 +735,42 @@ class ApiService {
 			avatarId,
 		});
 		return response.data;
+	}
+
+	async uploadAvatar(file: File): Promise<UserProfileResponseType> {
+		if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
+			throw new Error(ERROR_MESSAGES.user.AVATAR_UPLOAD_FILE_TOO_LARGE);
+		}
+		const mime = (file.type ?? '').toLowerCase();
+		if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
+			throw new Error(ERROR_MESSAGES.user.AVATAR_UPLOAD_INVALID_TYPE);
+		}
+		const formData = new FormData();
+		formData.append('file', file);
+		const response = await this.postFormData<UserProfileResponseType>(API_ENDPOINTS.USER.AVATAR_UPLOAD, formData);
+		return response.data;
+	}
+
+	private async postFormData<T>(url: string, formData: FormData): Promise<ApiResponse<T>> {
+		const fullUrl = this.baseURL + url;
+		const enhancedConfig: EnhancedRequestConfig = {
+			method: HttpMethod.POST,
+			baseURL: this.baseURL,
+			credentials: 'include',
+		};
+		const interceptedConfig = await this.interceptors.executeRequest(enhancedConfig);
+		const headers = new Headers(interceptedConfig.headers);
+		headers.delete('Content-Type');
+		const response = await fetch(fullUrl, {
+			method: HttpMethod.POST,
+			headers,
+			body: formData,
+			credentials: 'include',
+			signal: interceptedConfig.signal,
+		});
+		const originalRequestFn = async (): Promise<ApiResponse<T>> => this.postFormData<T>(url, formData);
+		const apiResponse = await this.handleResponse<T>(response, HttpMethod.POST, originalRequestFn, false, fullUrl);
+		return apiResponse;
 	}
 
 	async searchUsers(query: string, limit: number = 10): Promise<UserSearchCacheEntry> {
@@ -764,7 +787,7 @@ class ApiService {
 			limit,
 		});
 
-		const response = await this.get<UserSearchCacheEntry>(`${API_ENDPOINTS.USER.SEARCH}${queryString}`);
+		const response = await this.get<UserSearchCacheEntry>(API_ENDPOINTS.USER.SEARCH + queryString);
 		return response.data;
 	}
 
@@ -775,11 +798,6 @@ class ApiService {
 	}
 
 	// Account management methods
-	async deleteUserAccount(): Promise<string> {
-		const response = await this.delete<string>(API_ENDPOINTS.USER.ACCOUNT);
-		return response.data;
-	}
-
 	async changePassword(changePasswordData: ChangePasswordData): Promise<string> {
 		const response = await this.put<string>(API_ENDPOINTS.USER.CHANGE_PASSWORD, changePasswordData);
 		return response.data;

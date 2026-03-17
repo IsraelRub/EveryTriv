@@ -7,7 +7,6 @@ import {
 	TimePeriod,
 } from '@shared/constants';
 import type {
-	ActivityEntry,
 	AnalyticsResponse,
 	AnswerHistory,
 	BasicValue,
@@ -33,21 +32,16 @@ import type {
 	UserComparisonResult,
 	UserInsightsData,
 	UserPerformanceMetrics,
-	UserProgressAnalytics,
 	UserSummaryData,
 	UserTrendPoint,
 } from '@shared/types';
 import { calculateScoreRate, getErrorMessage, isNonEmptyString, mean } from '@shared/utils';
 
+import type { CheckAllUsersConsistencyResponse, CurrentGameStats } from '@/types';
 import { apiService, clientLogger as logger } from '@/services';
-import type { Achievement, CurrentGameStats } from '@/types';
-import { buildAchievementContext, buildDisplayAchievements } from '@/utils';
 
 class AnalyticsService {
-	// ============================================================================
-	// LOCAL CALCULATIONS
-	// ============================================================================
-
+	// Local calculations
 	calculateGameSessionStats(answerHistory: AnswerHistory[], totalScore: number, totalTime: number): CurrentGameStats {
 		const correctAnswers = answerHistory.filter(q => q.isCorrect).length;
 		const totalQuestionsAnswered = answerHistory.length;
@@ -66,10 +60,7 @@ class AnalyticsService {
 		};
 	}
 
-	// ============================================================================
-	// EVENT TRACKING
-	// ============================================================================
-
+	// Event tracking
 	async trackAnalyticsEvent(eventData: {
 		eventType: string;
 		userId?: string;
@@ -99,10 +90,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// USER ANALYTICS (Current User)
-	// ============================================================================
-
+	// User analytics (current user)
 	async getUserAnalytics(): Promise<CompleteUserAnalytics> {
 		try {
 			logger.userInfo('Fetching user analytics');
@@ -166,7 +154,7 @@ class AnalyticsService {
 
 			logger.userInfo('Fetching unified user analytics by ID', { userId, sectionsCount: includeSections.length });
 			const response = await apiService.get<AnalyticsResponse<UnifiedUserAnalyticsResponse>>(
-				`${API_ENDPOINTS.ANALYTICS.USER}/unified/${userId}${query}`
+				`${API_ENDPOINTS.ANALYTICS.USER}/unified/${userId}` + query
 			);
 			const result = response.data;
 			logger.userInfo('Unified user analytics by ID fetched successfully', { userId });
@@ -180,10 +168,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// USER ANALYTICS (Admin - By User ID)
-	// ============================================================================
-
+	// User analytics (admin, by user ID)
 	async getUserStatisticsById(userId: string): Promise<AnalyticsResponse<UserAnalyticsRecord>> {
 		try {
 			logger.userInfo('Fetching user statistics by ID', { userId });
@@ -210,62 +195,6 @@ class AnalyticsService {
 			return result;
 		} catch (error) {
 			logger.userError('Failed to get user performance', { errorInfo: { message: getErrorMessage(error) }, userId });
-			throw error;
-		}
-	}
-
-	async getUserProgressById(
-		userId: string,
-		params?: TrendQueryOptions
-	): Promise<AnalyticsResponse<UserProgressAnalytics>> {
-		try {
-			const searchParams = new URLSearchParams();
-			if (params?.startDate)
-				searchParams.append(
-					'startDate',
-					params.startDate instanceof Date ? params.startDate.toISOString() : params.startDate
-				);
-			if (params?.endDate)
-				searchParams.append('endDate', params.endDate instanceof Date ? params.endDate.toISOString() : params.endDate);
-			if (params?.groupBy) searchParams.append('groupBy', params.groupBy);
-			if (params?.limit != null) searchParams.append(QUERY_PARAMS.LIMIT, String(params.limit));
-			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-
-			logger.userInfo('Fetching user progress by ID', { userId });
-			const response = await apiService.get<AnalyticsResponse<UserProgressAnalytics>>(
-				`${API_ENDPOINTS.ANALYTICS.USER_PROGRESS.replace(':userId', userId)}${query}`
-			);
-			const result = response.data;
-			logger.userInfo('User progress fetched successfully', { userId });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to get user progress', { errorInfo: { message: getErrorMessage(error) }, userId });
-			throw error;
-		}
-	}
-
-	async getUserActivityById(
-		userId: string,
-		limit?: number,
-		startDate?: Date | string,
-		endDate?: Date | string
-	): Promise<AnalyticsResponse<ActivityEntry[]>> {
-		try {
-			const searchParams = new URLSearchParams();
-			if (limit != null) searchParams.append(QUERY_PARAMS.LIMIT, String(limit));
-			if (startDate) searchParams.append('startDate', startDate instanceof Date ? startDate.toISOString() : startDate);
-			if (endDate) searchParams.append('endDate', endDate instanceof Date ? endDate.toISOString() : endDate);
-			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-
-			logger.userInfo('Fetching user activity by ID', { userId });
-			const response = await apiService.get<AnalyticsResponse<ActivityEntry[]>>(
-				`${API_ENDPOINTS.ANALYTICS.USER_ACTIVITY.replace(':userId', userId)}${query}`
-			);
-			const result = response.data;
-			logger.userInfo('User activity fetched successfully', { userId });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to get user activity', { errorInfo: { message: getErrorMessage(error) }, userId });
 			throw error;
 		}
 	}
@@ -306,47 +235,6 @@ class AnalyticsService {
 		}
 	}
 
-	async getUserAchievementsById(userId: string): Promise<AnalyticsResponse<Achievement[]>> {
-		try {
-			const result = await this.getUnifiedUserAnalyticsByUserId(userId, ['achievements', 'statistics', 'performance']);
-			const minimal = result.data?.achievements ?? [];
-			const context = buildAchievementContext(result.data?.statistics, result.data?.performance);
-			const data = buildDisplayAchievements(minimal, context);
-			logger.userInfo('User achievements fetched successfully', { userId, count: data.length });
-			return { data, timestamp: result.timestamp };
-		} catch (error) {
-			logger.userError('Failed to get user achievements', { errorInfo: { message: getErrorMessage(error) }, userId });
-			throw error;
-		}
-	}
-
-	async getUserTrendsById(userId: string, params?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
-		try {
-			const searchParams = new URLSearchParams();
-			if (params?.startDate)
-				searchParams.append(
-					'startDate',
-					params.startDate instanceof Date ? params.startDate.toISOString() : params.startDate
-				);
-			if (params?.endDate)
-				searchParams.append('endDate', params.endDate instanceof Date ? params.endDate.toISOString() : params.endDate);
-			if (params?.groupBy) searchParams.append('groupBy', params.groupBy);
-			if (params?.limit != null) searchParams.append(QUERY_PARAMS.LIMIT, String(params.limit));
-			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-
-			logger.userInfo('Fetching user trends by ID', { userId });
-			const response = await apiService.get<AnalyticsResponse<UserTrendPoint[]>>(
-				`${API_ENDPOINTS.ANALYTICS.USER_TRENDS.replace(':userId', userId)}${query}`
-			);
-			const result = response.data;
-			logger.userInfo('User trends fetched successfully', { userId });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to get user trends', { errorInfo: { message: getErrorMessage(error) }, userId });
-			throw error;
-		}
-	}
-
 	async compareUserPerformanceById(
 		userId: string,
 		params?: ComparisonQueryOptions
@@ -366,7 +254,7 @@ class AnalyticsService {
 
 			logger.userInfo('Fetching user comparison by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserComparisonResult>>(
-				`${API_ENDPOINTS.ANALYTICS.USER_COMPARISON.replace(':userId', userId)}${query}`
+				API_ENDPOINTS.ANALYTICS.USER_COMPARISON.replace(':userId', userId) + query
 			);
 			const result = response.data;
 			logger.userInfo('User comparison fetched successfully', { userId });
@@ -391,7 +279,7 @@ class AnalyticsService {
 
 			logger.userInfo('Fetching user summary by ID', { userId });
 			const response = await apiService.get<AnalyticsResponse<UserSummaryData>>(
-				`${API_ENDPOINTS.ANALYTICS.USER_SUMMARY.replace(':userId', userId)}${query}`
+				API_ENDPOINTS.ANALYTICS.USER_SUMMARY.replace(':userId', userId) + query
 			);
 			const result = response.data;
 			logger.userInfo('User summary fetched successfully', { userId });
@@ -402,10 +290,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// GLOBAL ANALYTICS
-	// ============================================================================
-
+	// Global analytics
 	async getPopularTopics(query?: UserAnalyticsQuery): Promise<TopicStatsData> {
 		try {
 			const searchParams = new URLSearchParams();
@@ -426,7 +311,7 @@ class AnalyticsService {
 
 			logger.userInfo('Fetching popular topics', { query: query ? JSON.stringify(query) : undefined });
 			const response = await apiService.get<AnalyticsResponse<TopicStatsData>>(
-				`${API_ENDPOINTS.ANALYTICS.TOPICS_POPULAR}${queryString}`
+				API_ENDPOINTS.ANALYTICS.TOPICS_POPULAR + queryString
 			);
 			const result = response.data.data;
 			logger.userInfo('Popular topics fetched successfully', { totalTopics: result.topics.length });
@@ -479,7 +364,7 @@ class AnalyticsService {
 
 			logger.userInfo('Fetching global trends', params ? { query: JSON.stringify(params) } : undefined);
 			const response = await apiService.get<AnalyticsResponse<UserTrendPoint[]>>(
-				`${API_ENDPOINTS.ANALYTICS.GLOBAL_TRENDS}${query}`
+				API_ENDPOINTS.ANALYTICS.GLOBAL_TRENDS + query
 			);
 			const result = response.data;
 			logger.userInfo('Global trends fetched successfully');
@@ -490,10 +375,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// BUSINESS ANALYTICS (Admin only)
-	// ============================================================================
-
+	// Business analytics (admin only)
 	async getBusinessMetrics(): Promise<BusinessMetrics> {
 		try {
 			logger.userInfo('Fetching business metrics');
@@ -507,10 +389,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// SYSTEM ANALYTICS (Admin only)
-	// ============================================================================
-
+	// System analytics (admin only)
 	async getSystemPerformanceMetrics(): Promise<SystemPerformanceMetrics> {
 		try {
 			logger.userInfo('Fetching system performance metrics');
@@ -571,10 +450,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// LEADERBOARD
-	// ============================================================================
-
+	// Leaderboard
 	async getGlobalLeaderboard(limit: number = 100, offset: number = 0): Promise<LeaderboardEntry[]> {
 		try {
 			logger.userInfo('Fetching global leaderboard', { limit, offset });
@@ -584,7 +460,7 @@ class AnalyticsService {
 			const queryString = query.toString() ? `?${query.toString()}` : '';
 
 			const response = await apiService.get<LeaderboardResponse>(
-				`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.GLOBAL}${queryString}`
+				API_ENDPOINTS.ANALYTICS.LEADERBOARD.GLOBAL + queryString
 			);
 			const result = AnalyticsService.deduplicateLeaderboardByUserId(response.data.leaderboard);
 
@@ -613,7 +489,7 @@ class AnalyticsService {
 			const queryString = query.toString() ? `?${query.toString()}` : '';
 
 			const response = await apiService.get<LeaderboardResponse>(
-				`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.PERIOD.replace(':period', period)}${queryString}`
+				API_ENDPOINTS.ANALYTICS.LEADERBOARD.PERIOD.replace(':period', period) + queryString
 			);
 			const result = AnalyticsService.deduplicateLeaderboardByUserId(response.data.leaderboard);
 
@@ -633,7 +509,7 @@ class AnalyticsService {
 	async getLeaderboardStats(period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY): Promise<LeaderboardStats> {
 		try {
 			const query = `?${QUERY_PARAMS.PERIOD}=${period}`;
-			const response = await apiService.get<LeaderboardStats>(`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.STATS}${query}`);
+			const response = await apiService.get<LeaderboardStats>(API_ENDPOINTS.ANALYTICS.LEADERBOARD.STATS + query);
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to get leaderboard stats', { errorInfo: { message: getErrorMessage(error) }, period });
@@ -641,10 +517,7 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// ADMIN OPERATIONS
-	// ============================================================================
-
+	// Admin operations
 	async clearAllUserStats(): Promise<ClearOperationResponse> {
 		try {
 			logger.userInfo('Clearing all user stats');
@@ -672,44 +545,13 @@ class AnalyticsService {
 		}
 	}
 
-	// ============================================================================
-	// MAINTENANCE OPERATIONS
-	// ============================================================================
-
-	async checkAllUsersConsistency(): Promise<{
-		totalUsers: number;
-		usersWithGames: number;
-		consistentUsers: number;
-		inconsistentUsers: number;
-		results: Array<{
-			userId: string;
-			isConsistent: boolean;
-			discrepancies: {
-				totalGames: { expected: number; actual: number };
-				totalQuestionsAnswered: { expected: number; actual: number };
-				correctAnswers: { expected: number; actual: number };
-				totalScore: { expected: number; actual: number };
-			};
-		}>;
-	}> {
+	// Maintenance operations
+	async checkAllUsersConsistency(): Promise<CheckAllUsersConsistencyResponse> {
 		try {
 			logger.userInfo('Checking all users consistency');
-			const response = await apiService.get<{
-				totalUsers: number;
-				usersWithGames: number;
-				consistentUsers: number;
-				inconsistentUsers: number;
-				results: Array<{
-					userId: string;
-					isConsistent: boolean;
-					discrepancies: {
-						totalGames: { expected: number; actual: number };
-						totalQuestionsAnswered: { expected: number; actual: number };
-						correctAnswers: { expected: number; actual: number };
-						totalScore: { expected: number; actual: number };
-					};
-				}>;
-			}>(API_ENDPOINTS.MAINTENANCE.STATS_CONSISTENCY_CHECK_ALL);
+			const response = await apiService.get<CheckAllUsersConsistencyResponse>(
+				API_ENDPOINTS.MAINTENANCE.STATS_CONSISTENCY_CHECK_ALL
+			);
 			const result = response.data;
 			logger.userInfo('All users consistency check completed', {
 				totalUsers: result.totalUsers,

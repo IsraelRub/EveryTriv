@@ -2,10 +2,11 @@ import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@
 import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
 
-import { RATE_LIMIT_DEFAULTS, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import { RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
 
 import { AppConfig } from '@config';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { serverLogger as logger, metricsService } from '@internal/services';
 import type { NestRequest } from '@internal/types';
 
@@ -17,8 +18,8 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 	constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {}
 
-	private isLocalhost(ip: string): boolean {
-		if (!ip || ip === 'unknown') {
+	private isLocalhost(ip: string | undefined): boolean {
+		if (ip == null || ip.trim() === '') {
 			return false;
 		}
 		const normalizedIp = ip.toLowerCase().trim();
@@ -48,8 +49,9 @@ export class RateLimitMiddleware implements NestMiddleware {
 		const xRealIp = req.headers['x-real-ip'];
 		const forwardedIp = typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0]?.trim() : undefined;
 		const realIp = typeof xRealIp === 'string' ? xRealIp : undefined;
-		const ip =
-			req.ip ?? req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? forwardedIp ?? realIp ?? 'unknown';
+		const ip: string | undefined =
+			req.ip ?? req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? forwardedIp ?? realIp ?? undefined;
+		const ipDisplay = ip ?? 'unknown';
 
 		// Bypass rate limiting for localhost (development/testing)
 		// This allows local API tests to run without hitting rate limits
@@ -60,7 +62,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 		if (shouldBypass) {
 			logger.security('access', 'Rate limit bypassed for localhost/development', {
-				ip,
+				ip: ipDisplay,
 				path: req.path,
 				nodeEnv: AppConfig.nodeEnv,
 			});
@@ -76,8 +78,8 @@ export class RateLimitMiddleware implements NestMiddleware {
 			return next();
 		}
 
-		const key = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ip, req.path);
-		const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ip);
+		const key = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ipDisplay, req.path);
+		const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ipDisplay);
 
 		const maxRequests = this.MAX_REQUESTS_PER_WINDOW;
 		const burstLimit = this.BURST_LIMIT;
@@ -90,7 +92,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 			if (burstCount > burstLimit) {
 				logger.securityDenied('Burst rate limit exceeded', {
-					ip,
+					ip: ipDisplay,
 					path: req.path,
 					burstCount,
 					limit: burstLimit,
@@ -106,7 +108,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 							burstLimit,
 							endpoint: req.path,
 							method: req.method,
-							ip: ip,
+							ip: ipDisplay,
 							windowMs: TIME_PERIODS_MS.MINUTE,
 						},
 						retryAfter: RATE_LIMIT_DEFAULTS.BURST_WINDOW_MS / TIME_PERIODS_MS.SECOND,
@@ -126,7 +128,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 				const ttl = await this.redis.ttl(key);
 
 				logger.securityDenied('Rate limit exceeded', {
-					ip,
+					ip: ipDisplay,
 					path: req.path,
 					requestCounts: { current: requests },
 					limit: maxRequests,
@@ -145,7 +147,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 							remainingTime: ttl,
 							endpoint: req.path,
 							method: req.method,
-							ip: ip,
+							ip: ipDisplay,
 						},
 						retryAfter: ttl,
 						timestamp: new Date().toISOString(),
@@ -159,7 +161,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 			res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + this.WINDOW_SIZE_IN_SECONDS).toString());
 
 			logger.security('access', 'Rate limit check passed', {
-				ip,
+				ip: ipDisplay,
 				path: req.path,
 				requestCounts: { current: requests },
 				remaining: maxRequests - requests,
@@ -180,7 +182,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 
 			logger.systemError(normalizedError, {
 				contextMessage: 'Rate limit middleware error',
-				ip,
+				ip: ipDisplay,
 				path: req.path,
 			});
 

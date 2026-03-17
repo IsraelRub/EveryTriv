@@ -1,4 +1,4 @@
-import type { UnifiedQuerySignatureInput } from '@shared/types';
+import type { UnifiedQuerySignatureInput } from '@internal/types';
 
 export function buildUnifiedQuerySignature(includeSections?: string[], options?: UnifiedQuerySignatureInput): string {
 	const sections =

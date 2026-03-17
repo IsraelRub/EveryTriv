@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { SERVER_CACHE_KEYS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 
 import { CacheService } from './cache.service';

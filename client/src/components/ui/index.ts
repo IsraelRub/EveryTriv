@@ -17,6 +17,7 @@ export * from './progress';
 export * from './radio-group';
 export * from './select';
 export * from './separator';
+export * from './SectionCard';
 export * from './skeleton';
 export * from './spinner';
 export * from './slider';

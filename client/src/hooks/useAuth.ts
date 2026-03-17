@@ -4,16 +4,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
 
-import { QUERY_KEYS, STORAGE_KEYS } from '@/constants';
+import { AUTH_TOKEN_CHANGED_EVENT, QUERY_KEYS, STORAGE_KEYS } from '@/constants';
+import type { UseUserRoleReturn } from '@/types';
 import { authService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
 import { store } from '@/redux/store';
 
 function useHasToken(): boolean {
 	const [hasToken, setHasToken] = useState<boolean>(() => {
-		// Initialize synchronously from localStorage
 		try {
-			const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+			const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 			return !!token;
 		} catch {
 			return false;
@@ -21,38 +21,24 @@ function useHasToken(): boolean {
 	});
 
 	useEffect(() => {
-		// Check token synchronously from localStorage
 		const checkToken = () => {
 			try {
-				const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+				const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 				setHasToken(!!token);
 			} catch {
 				setHasToken(false);
 			}
 		};
 
-		// Listen for storage changes from other windows/tabs
-		const handleStorageChange = (e: StorageEvent) => {
-			if (e.key === STORAGE_KEYS.AUTH_TOKEN) {
-				checkToken();
-			}
-		};
-
-		window.addEventListener('storage', handleStorageChange);
-		window.addEventListener('auth-token-changed', checkToken);
+		window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, checkToken);
 
 		return () => {
-			window.removeEventListener('storage', handleStorageChange);
-			window.removeEventListener('auth-token-changed', checkToken);
+			window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, checkToken);
 		};
 	}, []);
 
 	return hasToken;
 }
-
-// ============================================================================
-// Authentication Mutations (Login/Register)
-// ============================================================================
 
 export const useLogin = () => {
 	const queryClient = useQueryClient();
@@ -140,10 +126,6 @@ export const useRegister = () => {
 	});
 };
 
-// ============================================================================
-// Authentication State Hooks
-// ============================================================================
-
 export const useCurrentUser = () => {
 	const hasToken = useHasToken();
 
@@ -177,9 +159,10 @@ export const useIsAuthenticated = (): boolean => {
 	return isSuccess && !isError && currentUser !== null && currentUser !== undefined;
 };
 
-export const useUserRole = (): UserRole | undefined => {
+export const useUserRole = (): UseUserRoleReturn => {
 	const { data: currentUser } = useCurrentUser();
-	return currentUser?.role ?? UserRole.USER;
+	const role = currentUser?.role ?? UserRole.USER;
+	return { role, isAdmin: role === UserRole.ADMIN };
 };
 
 export const useCurrentUserData = (): BasicUser | null => {
@@ -187,19 +170,11 @@ export const useCurrentUserData = (): BasicUser | null => {
 	return currentUser ?? null;
 };
 
-// ============================================================================
-// Account Management
-// ============================================================================
-
 export const useChangePassword = () => {
 	return useMutation({
 		mutationFn: (passwordData: ChangePasswordData) => authService.changePassword(passwordData),
 	});
 };
-
-// ============================================================================
-// Logout Handler
-// ============================================================================
 
 export function useAuthLogoutHandler(): void {
 	useEffect(() => {

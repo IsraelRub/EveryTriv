@@ -1,17 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 
-import { TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
-import type { TokenPayload } from '@shared/types';
+import { API_ENDPOINTS, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { Cache, CurrentUser, Roles } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
+import type { CreditPackageConfigItem, TokenPayload } from '@internal/types';
 
-import { Cache, CurrentUser, Roles } from '../../common';
+import { CreditsService, UpdateCreditPackagesDto } from '../credits';
 import { AdminService } from './admin.service';
 
-@Controller('/admin')
+@Controller(API_ENDPOINTS.ADMIN.BASE)
 export class AdminController {
-	constructor(private readonly adminService: AdminService) {}
+	constructor(
+		private readonly adminService: AdminService,
+		private readonly creditsService: CreditsService
+	) {}
 
 	@Get('statistics')
 	@Roles(UserRole.ADMIN)
@@ -21,7 +25,7 @@ export class AdminController {
 			const statistics = await this.adminService.getAdminStatistics();
 
 			logger.apiRead('admin_game_statistics', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				totalGames: statistics.totalGames,
 				chart: 'admin_game_statistics',
@@ -37,7 +41,7 @@ export class AdminController {
 		} catch (error) {
 			logger.gameError('Failed to get game statistics', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
@@ -58,7 +62,7 @@ export class AdminController {
 				topicCounts[t] = (topicCounts[t] ?? 0) + 1;
 			}
 			logger.apiRead('admin_get_all_trivia', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				chart: 'admin_trivia',
 				count: questions.length,
@@ -69,8 +73,46 @@ export class AdminController {
 		} catch (error) {
 			logger.gameError('Failed to get all trivia questions', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
+			});
+			throw error;
+		}
+	}
+
+	@Get('pricing')
+	@Roles(UserRole.ADMIN)
+	async getPricing(@CurrentUser() user: TokenPayload) {
+		try {
+			const result = await this.creditsService.getCreditPackagesForAdmin();
+			logger.apiRead('admin_pricing_get', { userId: user.sub, role: user.role });
+			return result;
+		} catch (error) {
+			logger.userError('Failed to get admin pricing', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: user.sub,
+			});
+			throw error;
+		}
+	}
+
+	@Put('pricing')
+	@Roles(UserRole.ADMIN)
+	async updatePricing(@CurrentUser() user: TokenPayload, @Body() body: UpdateCreditPackagesDto) {
+		try {
+			const items: CreditPackageConfigItem[] = body.packages.map(p => ({
+				id: p.id,
+				credits: p.credits,
+				price: p.price,
+				tier: p.tier,
+			}));
+			await this.creditsService.setCreditPackages(items);
+			logger.apiUpdate('admin_pricing_put', { userId: user.sub, role: user.role, count: items.length });
+			return { success: true };
+		} catch (error) {
+			logger.userError('Failed to update admin pricing', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId: user.sub,
 			});
 			throw error;
 		}

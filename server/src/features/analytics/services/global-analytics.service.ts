@@ -2,15 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 
-import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
+import { TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	CountRecord,
 	DifficultyBreakdown,
-	DifficultyStatsRaw,
 	GameAnalyticsQuery,
 	GameStatsData,
-	GameStatsSummary,
 	GlobalStatsResponse,
 	TopicAnalyticsRecord,
 	TopicStatsData,
@@ -28,21 +26,26 @@ import {
 } from '@shared/utils';
 import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
-import { SQL_CONDITIONS } from '@internal/constants';
+import { SERVER_CACHE_KEYS, SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import type { DifficultyStatsRecord, NumericQueryResult, UserIdSuccessRateRecord } from '@internal/types';
-import { addDateRangeConditions, computeMeanVarianceStddev } from '@internal/utils';
-
+import type {
+	DifficultyStatRow,
+	DifficultyStatsRaw,
+	GameStatsSummary,
+	NumericQueryResult,
+	UserIdSuccessRateRecord,
+} from '@internal/types';
 import {
+	addDateRangeConditions,
+	computeMeanVarianceStddev,
 	isAnalyticsResponseUserTrendPointArray,
 	isDifficultyStatsRecord,
 	isTopicAnalyticsRecordArray,
-} from '../../../internal/utils/entityGuards';
-import { AnalyticsCommonService } from './common-analytics.service';
+} from '@internal/utils';
 
-type DifficultyStatRow = DifficultyStatsRecord & { totalQuestions?: number; scoreSum?: number };
+import { AnalyticsCommonService } from './common-analytics.service';
 
 @Injectable()
 export class GlobalAnalyticsService {
@@ -98,8 +101,8 @@ export class GlobalAnalyticsService {
 					const result: DifficultyBreakdown = {};
 					difficultyStats.forEach(stat => {
 						if (stat?.difficulty && isGameDifficulty(stat.difficulty) && stat.total != null && stat.correct != null) {
-							const totalQuestions = stat.totalQuestions ?? 0;
-							const scoreSum = stat.scoreSum ?? 0;
+							const totalQuestions = stat.totalQuestions;
+							const scoreSum = stat.scoreSum;
 							result[stat.difficulty] = {
 								total: stat.total,
 								correct: stat.correct,

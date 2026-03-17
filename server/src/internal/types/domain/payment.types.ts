@@ -1,12 +1,4 @@
-import { PayPalEnvironment } from '@shared/constants';
 import type { PaymentMetadata } from '@shared/types';
-
-export interface PayPalConfig {
-	clientId: string;
-	clientSecret: string;
-	merchantId: string;
-	environment: PayPalEnvironment;
-}
 
 export interface PersonalPaymentData {
 	firstName: string;

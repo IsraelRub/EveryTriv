@@ -1,16 +1,18 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Share2 } from 'lucide-react';
 
 import { isSocialLinkItem } from '@shared/utils';
 
-import { FOOTER_SECTIONS, SOCIAL_DATA } from '@/constants';
-import { NavLink } from '@/components';
+import { FOOTER_SECTIONS, FooterSectionType, SOCIAL_DATA } from '@/constants';
 import { cn } from '@/utils';
+import { NavLink } from '@/components';
 
 export default function Footer() {
+	const { t } = useTranslation();
 	const socialLinks = useMemo(() => SOCIAL_DATA.filter(isSocialLinkItem), []);
-	const socialCells = useMemo((): ReactNode[] => {
-		const cells: ReactNode[] = [];
+	const socialCells = useMemo((): ReactElement[] => {
+		const cells: ReactElement[] = [];
 		let iconIndex = 0;
 		const totalSlots = Math.ceil(socialLinks.length / 3) * 4;
 		for (let slot = 0; slot < totalSlots; slot++) {
@@ -43,10 +45,10 @@ export default function Footer() {
 			<div className='container mx-auto px-4 py-4'>
 				<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
 					{FOOTER_SECTIONS.map(section => (
-						<div key={section.title} className='flex flex-col gap-2'>
-							<h5 className='text-sm font-semibold text-muted-foreground mb-2'>{section.title}</h5>
-							{section.type === 'social' && <div className='grid grid-cols-4 gap-3'>{socialCells}</div>}
-							{section.type === 'links' && (
+						<div key={section.titleKey} className='flex flex-col gap-2'>
+							<h5 className='text-sm font-semibold text-muted-foreground mb-2'>{t(section.titleKey)}</h5>
+							{section.type === FooterSectionType.SOCIAL && <div className='grid grid-cols-4 gap-3'>{socialCells}</div>}
+							{section.type === FooterSectionType.LINKS && (
 								<div className='flex flex-col gap-2'>
 									{section.links.map(link => (
 										<NavLink
@@ -54,12 +56,12 @@ export default function Footer() {
 											to={link.path}
 											className='text-xs text-muted-foreground hover:text-foreground transition-colors'
 										>
-											{link.label}
+											{t(link.labelKey)}
 										</NavLink>
 									))}
 								</div>
 							)}
-							{section.type === 'copyright' && (
+							{section.type === FooterSectionType.COPYRIGHT && (
 								<p className='text-xs text-muted-foreground mt-2'>© {new Date().getFullYear()} RubinshDesign Inc</p>
 							)}
 						</div>

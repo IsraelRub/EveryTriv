@@ -2,9 +2,10 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
-import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 
 import { AppConfig } from '@config';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalAccessTokenResponse } from '@internal/types';

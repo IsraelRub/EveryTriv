@@ -50,6 +50,15 @@ When creating new code, verify:
 - Keep shared types under the relevant domain-specific folder in `shared/types/` and reuse existing definitions.
 - Use TypeORM decorators for entity definitions.
 
+### Null vs Undefined
+
+- **`null`**: שדות DB עם `nullable: true` – `Type | null = null`; ערך "אין" מפורש במודל.
+- **`undefined`**: DTO/פרמטרים אופציונליים (`Type?`), שדות computed שלא קיימים.
+- DTO → Entity: המר `undefined` ל-`null` לפני שמירה ל-DB.
+- Entity → Response: אפשר להחזיר `field ?? undefined` לשדות אופציונליים.
+- בדיקה: `value == null` / `value != null`; ברירת מחדל: `??`.
+- מדיניות מלאה: `docs/shared/NULL_UNDEFINED_POLICY.md`.
+
 ## 🌐 API Design
 
 - Use NestJS decorators for route definitions (`@Controller`, `@Get`, etc.).

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule as CommonAuthModule } from 'src/common/auth';
 
+import { CommonAuthModule } from '@common/auth';
+import { UserDataPipe } from '@common/pipes';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, UserCoreModule } from '@internal/modules';
 
-import { UserDataPipe } from '../../common/pipes';
 import { AuthModule } from '../auth';
 import { CreditsModule } from '../credits';
 import { UserController } from './user.controller';

@@ -1487,6 +1487,31 @@
           "description": "Start, submit answers, finalize game session",
           "item": [
         {
+          "name": "Get Surprise Pick",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/surprise-pick?scope=both",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "surprise-pick"],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "both",
+                  "description": "Optional. What the AI should pick: 'topic' (topic only), 'difficulty' (difficulty only), or 'both' (default). Response contains only the requested fields."
+                }
+              ]
+            },
+            "description": "AI picks topic and/or difficulty for surprise-me flow. Optional query: scope = topic | difficulty | both (default: both). Response: partial object { topic?: string, difficulty?: GameDifficulty } depending on scope."
+          }
+        },
+        {
           "name": "Start Game Session",
           "event": [
             {
@@ -2429,7 +2454,7 @@
     },
     {
       "name": "📊 Analytics",
-      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user analytics\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get Unified User Analytics (Admin) (GET) - Replaces all individual user analytics endpoints\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET)\n- Get Global Stats (GET)\n- Get Global Trends (Admin) (GET)\n- Get Business Metrics (Admin) (GET)\n- Get System Performance (Admin) (GET)\n- Get System Security (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Achievement tracking\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user analytics\n- Global trends aggregation",
+      "description": "📊 **ANALYTICS ENDPOINTS** - Performance & Statistics\n\n**Purpose:** Provide comprehensive analytics, statistics, and performance metrics\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Global stats for comparison\n- 🔐 **Protected Endpoints:** User analytics require authentication\n- 👑 **Admin Endpoints:** User stats management and global trends\n\n**Key Features:**\n- Event tracking and analytics\n- User performance analytics\n- User statistics tracking\n- Activity monitoring and insights\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics for comparison\n- Topic and difficulty analytics\n- Admin user analytics\n- Global trends aggregation\n\n**Available Endpoints:**\n- Track Analytics Event (POST)\n- Get Authenticated User Analytics (GET)\n- Get Unified User Analytics (Admin) (GET) - Replaces all individual user analytics endpoints\n- Get Popular Topics (GET)\n- Get Global Difficulty Statistics (GET)\n- Get Global Stats (GET)\n- Get Global Trends (Admin) (GET)\n- Get Business Metrics (Admin) (GET)\n- Get System Performance (Admin) (GET)\n- Get System Security (Admin) (GET)\n- Get System Recommendations (Admin) (GET)\n- Get System Insights (Admin) (GET)\n- Get Global Leaderboard (GET)\n- Get Leaderboard by Period (GET)\n- Get Leaderboard Stats (GET)\n\n**Analytics Operations:**\n- Event tracking and monitoring\n- User performance tracking\n- Statistics monitoring\n- Activity analysis and insights\n- Trend analysis and comparisons\n- Performance insights\n- Global statistics comparison\n- Admin user analytics\n- Global trends aggregation",
       "item": [
         {
           "name": "🏆 Leaderboard",
@@ -2559,14 +2584,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user/unified?include=statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
+              "raw": "{{baseUrl}}/analytics/user/unified?include=statistics,performance,insights,recommendations,summary,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
               "host": ["{{baseUrl}}"],
               "path": ["analytics", "user", "unified"],
               "query": [
                 {
                   "key": "include",
-                  "value": "statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress",
-                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison"
+                  "value": "statistics,performance,insights,recommendations,summary,trends,activity,progress",
+                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, trends, activity, progress, comparison"
                 },
                 {
                   "key": "startDate",
@@ -2600,7 +2625,7 @@
                 }
               ]
             },
-            "description": "Get unified user analytics for the currently authenticated user with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison). Protected endpoint."
+            "description": "Get unified user analytics for the currently authenticated user with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, trends, activity, progress, comparison). Protected endpoint."
           }
         },
         {
@@ -2614,14 +2639,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/analytics/user/unified/{{userId}}?include=statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
+              "raw": "{{baseUrl}}/analytics/user/unified/{{userId}}?include=statistics,performance,insights,recommendations,summary,trends,activity,progress&startDate=2024-01-01&endDate=2024-12-31&groupBy=daily&activityLimit=50&trendLimit=30&includeActivity=false",
               "host": ["{{baseUrl}}"],
               "path": ["analytics", "user", "unified", "{{userId}}"],
               "query": [
                 {
                   "key": "include",
-                  "value": "statistics,performance,insights,recommendations,summary,achievements,trends,activity,progress",
-                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison"
+                  "value": "statistics,performance,insights,recommendations,summary,trends,activity,progress",
+                  "description": "Comma-separated list of analytics sections to include: statistics, performance, insights, recommendations, summary, trends, activity, progress, comparison"
                 },
                 {
                   "key": "startDate",
@@ -2655,7 +2680,104 @@
                 }
               ]
             },
-            "description": "Get unified user analytics with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, achievements, trends, activity, progress, comparison). Admin only."
+            "description": "Get unified user analytics with customizable sections. Replaces all individual user analytics endpoints (statistics, performance, insights, recommendations, summary, trends, activity, progress, comparison). Admin only."
+          }
+        },
+        {
+          "name": "Get User Summary (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/summary/{{userId}}?includeActivity=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "summary", "{{userId}}"],
+              "query": [
+                {
+                  "key": "includeActivity",
+                  "value": "false",
+                  "description": "Include full activity history in the summary (boolean)"
+                }
+              ]
+            },
+            "description": "Get user summary (highlights, top topics). Admin only."
+          }
+        },
+        {
+          "name": "Get User Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/statistics/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "statistics", "{{userId}}"]
+            },
+            "description": "Get user statistics (success rate, questions answered, average score, total play time). Admin only."
+          }
+        },
+        {
+          "name": "Get User Performance (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/performance/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "performance", "{{userId}}"]
+            },
+            "description": "Get user performance metrics (streak, strongest/weakest topic, improvement rate). Admin only."
+          }
+        },
+        {
+          "name": "Get User Insights (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/insights/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "insights", "{{userId}}"]
+            },
+            "description": "Get user insights (strengths, improvements, recent highlights). Admin only."
+          }
+        },
+        {
+          "name": "Get User Recommendations (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/user/recommendations/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "user", "recommendations", "{{userId}}"]
+            },
+            "description": "Get user recommendations (personalized + system). Admin only."
           }
         }
           ]
@@ -2905,7 +3027,7 @@
     },
     {
       "name": "🛡️ Admin Management",
-      "description": "👑 **ADMIN MANAGEMENT ENDPOINTS** - Administrative Operations\n\n**Purpose:** Centralized admin endpoints for managing game data, statistics, and system operations\n\n**Authentication Requirements:**\n- 👑 **All Endpoints:** Require admin role (Bearer token with admin role)\n\n**Key Features:**\n- Game statistics and management\n- Trivia question management\n- Game history management\n- User statistics management\n- System administration\n\n**Available Endpoints:**\n- Get Game Statistics (GET)\n- Get All Trivia Questions (GET)\n\n**Admin Operations:**\n- Game data management\n- Trivia question management\n- Statistics management\n- System administration",
+      "description": "👑 **ADMIN MANAGEMENT ENDPOINTS** - Administrative Operations\n\n**Purpose:** Centralized admin endpoints for managing game data, statistics, pricing, and system operations\n\n**Authentication Requirements:**\n- 👑 **All Endpoints:** Require admin role (Bearer token with admin role)\n\n**Key Features:**\n- Game statistics and management\n- Trivia question management\n- Credit packages pricing (GET/PUT /admin/pricing)\n- User statistics management\n- System administration\n\n**Available Endpoints:**\n- Get Game Statistics (GET)\n- Get All Trivia Questions (GET)\n- Get Admin Pricing (GET)\n- Update Admin Pricing (PUT)\n\n**Admin Operations:**\n- Game data management\n- Trivia question management\n- Pricing management\n- Statistics management\n- System administration",
       "item": [
         {
           "name": "Get Game Statistics (Admin)",
@@ -2941,6 +3063,50 @@
               "path": ["admin", "trivia"]
             },
             "description": "Get all trivia questions from the database (admin only)"
+          }
+        },
+        {
+          "name": "Get Admin Pricing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/pricing",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "pricing"]
+            },
+            "description": "Get credit packages configuration (packages and isDefault). Admin only."
+          }
+        },
+        {
+          "name": "Update Admin Pricing",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packages\": [\n    { \"id\": \"package_1\", \"credits\": 100, \"price\": 4.99 },\n    { \"id\": \"package_2\", \"credits\": 500, \"price\": 19.99 },\n    { \"id\": \"package_3\", \"credits\": 1000, \"price\": 34.99 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/pricing",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "pricing"]
+            },
+            "description": "Update credit packages (id, credits, price, optional tier). Admin only."
           }
         }
       ]

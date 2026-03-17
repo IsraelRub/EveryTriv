@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 
-import { UserRole } from '@shared/constants';
-import { mergeUserPreferences } from '@shared/utils';
+import {
+	DEFAULT_GAME_CONFIG,
+	GAME_MODES_CONFIG,
+	GameMode,
+	Locale,
+	UserRole,
+	VALIDATION_COUNT,
+} from '@shared/constants';
+import type { GameConfig } from '@shared/types';
+import { isNonEmptyString, isRecord, mergeUserPreferences } from '@shared/utils';
+import { isGameMode, isLocale, isRegisteredDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { ComponentSize, LoadingMessages, ROUTES } from '@/constants';
+import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import {
 	BackgroundAnimation,
 	CompleteProfile,
@@ -18,8 +28,11 @@ import {
 	PublicRoute,
 	Toaster,
 } from '@/components';
-import { useCurrentUser, useNavigationAnalytics, useRouteBasedMusic } from '@/hooks';
-import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
+import { useCurrentUser, useNavigationAnalytics, useRouteBasedMusic, useUserProfile } from '@/hooks';
+import { useAppDispatch, useAppSelector } from '@/hooks/useRedux';
+import { selectLocale } from '@/redux/selectors';
+import { setGameMode } from '@/redux/slices';
+import { setLocale } from '@/redux/slices/uiPreferencesSlice';
 import {
 	AdminDashboard,
 	ContactView,
@@ -41,8 +54,11 @@ import {
 
 export default function AppRoutes() {
 	const location = useLocation();
+	const dispatch = useAppDispatch();
+	const locale = useAppSelector(selectLocale);
 	const initAuthRanRef = useRef(false);
 	const { data: currentUser, isError, isLoading: isUserLoading } = useCurrentUser();
+	const { data: profileData } = useUserProfile();
 	const [isInitializingAuth, setIsInitializingAuth] = useState(true);
 
 	// Track navigation analytics
@@ -51,8 +67,44 @@ export default function AppRoutes() {
 	// Manage music based on route (game routes = game music, others = background music)
 	useRouteBasedMusic();
 
+	// Sync profile preferences (locale, game) from server to Redux when loaded
+	useEffect(() => {
+		const preferences = profileData?.preferences;
+		if (!isRecord(preferences)) return;
+
+		if (isLocale(preferences.locale)) {
+			dispatch(setLocale(preferences.locale));
+		}
+
+		const game = preferences.game;
+		if (isRecord(game) && Object.keys(game).length > 0) {
+			const mode = isGameMode(game.defaultGameMode) ? game.defaultGameMode : GameMode.QUESTION_LIMITED;
+			const defaults = GAME_MODES_CONFIG[mode]?.defaults ?? GAME_MODES_CONFIG[GameMode.QUESTION_LIMITED].defaults;
+			const config: GameConfig = {
+				mode,
+				topic: isNonEmptyString(game.defaultTopic) ? game.defaultTopic : DEFAULT_GAME_CONFIG.defaultTopic,
+				difficulty:
+					typeof game.defaultDifficulty === 'string' && isRegisteredDifficulty(game.defaultDifficulty)
+						? toDifficultyLevel(game.defaultDifficulty)
+						: DEFAULT_GAME_CONFIG.defaultDifficulty,
+				timeLimit: VALIDATORS.number(game.timeLimit) ? game.timeLimit : defaults.timeLimit,
+				maxQuestionsPerGame: VALIDATORS.number(game.maxQuestionsPerGame)
+					? game.maxQuestionsPerGame
+					: (defaults.maxQuestionsPerGame ?? DEFAULT_GAME_CONFIG.maxQuestionsPerGame),
+				answerCount: VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
+			};
+			dispatch(setGameMode(config));
+		}
+	}, [profileData?.preferences, dispatch]);
+
 	// Check if current route is an authentication page
 	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
+	// Redirect to login on auth failure only when on a protected route (so closing login modal doesn't send user back to login)
+	const isProtectedPath =
+		location.pathname.startsWith('/game') ||
+		location.pathname === ROUTES.PAYMENT ||
+		location.pathname === ROUTES.COMPLETE_PROFILE ||
+		location.pathname === ROUTES.ADMIN;
 
 	useEffect(() => {
 		// Prevent multiple runs of initAuth
@@ -65,24 +117,21 @@ export default function AppRoutes() {
 		const handleInitAuth = async () => {
 			setIsInitializingAuth(true);
 			try {
-				const isAuthenticated = await authService.isAuthenticated();
-				if (!isAuthenticated) {
-					setIsInitializingAuth(false);
+				const { isAuthenticated } = await authService.getAuthState();
+				if (isAuthenticated) {
 					return;
 				}
-
-				// Wait for user query to complete (either success or error)
-				// The useCurrentUser hook will handle the query automatically
-				// We just need to wait for it to finish loading
+				const restored = await authService.tryRestoreSession();
+				if (restored) {
+					return;
+				}
 			} catch {
 				// If authentication check fails, treat as not authenticated
-				setIsInitializingAuth(false);
 			}
+			setIsInitializingAuth(false);
 		};
 
 		handleInitAuth().catch(() => {
-			// Silently handle any unhandled promise rejections from initAuth
-			// These are expected when user is not authenticated
 			setIsInitializingAuth(false);
 		});
 	}, [isAuthPage]);
@@ -109,12 +158,12 @@ export default function AppRoutes() {
 
 				setIsInitializingAuth(false);
 			} else if (isError) {
-				// User query failed - handle auth failure
+				// User query failed - handle auth failure; redirect to login only when on protected path (avoid redirect loop when closing login modal)
 				const handleAuthFailure = async () => {
 					await authService.logout();
 					queryClient.clear();
-					if (!isAuthPage) {
-						window.location.href = ROUTES.LOGIN;
+					if (!isAuthPage && isProtectedPath) {
+						window.location.href = ROUTES.HOME;
 					}
 				};
 				handleAuthFailure().finally(() => {
@@ -125,7 +174,7 @@ export default function AppRoutes() {
 				setIsInitializingAuth(false);
 			}
 		}
-	}, [currentUser, isError, isUserLoading, isAuthPage]);
+	}, [currentUser, isError, isUserLoading, isAuthPage, isProtectedPath]);
 
 	// Show loading indicator during auth initialization
 	if (isInitializingAuth) {
@@ -141,7 +190,7 @@ export default function AppRoutes() {
 		<div className='app-shell'>
 			<BackgroundAnimation />
 			{!isAuthPage && <Navigation />}
-			<main id='main-content' className='app-main'>
+			<main id='main-content' className='app-main' dir={locale === Locale.HE ? 'rtl' : 'ltr'}>
 				<Routes>
 					{/* Public routes */}
 					<Route path={ROUTES.HOME} element={<HomeView />} />

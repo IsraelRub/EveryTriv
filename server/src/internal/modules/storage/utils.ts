@@ -43,6 +43,6 @@ export class StorageUtils {
 	}
 
 	static getPrefixedKey(key: string, prefix: string): string {
-		return `${prefix}${key}`;
+		return prefix + key;
 	}
 }

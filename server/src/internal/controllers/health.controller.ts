@@ -5,11 +5,11 @@ import { DataSource } from 'typeorm';
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, ensureErrorObject } from '@shared/utils';
 
+import { Public } from '@common/decorators';
 import { HealthStatus } from '@internal/constants';
 import type { HealthCheck, HealthCheckResponse, LivenessCheckResponse, ReadinessCheckResponse } from '@internal/types';
 import { SystemAnalyticsService } from '@features/analytics/services';
 
-import { Public } from '../../common';
 import { serverLogger as logger } from '../services';
 
 @Controller('/api/health')

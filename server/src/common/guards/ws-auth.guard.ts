@@ -5,13 +5,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Socket } from 'socket.io';
 import { Repository } from 'typeorm';
 
-import { ErrorCode, USER_ROLES, UserRole } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { AppConfig } from '@config';
 import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
+
+import { resolveAuthenticatedUser } from './authenticatedUser.util';
 
 @Injectable()
 export class WsAuthGuard implements CanActivate {
@@ -55,23 +56,10 @@ export class WsAuthGuard implements CanActivate {
 		}
 
 		try {
-			// Verify JWT token
-			const payload = await this.jwtService.verifyAsync(token, {
-				secret: AppConfig.jwt.secret,
-			});
+			const payload = await resolveAuthenticatedUser(token, this.jwtService, this.userRepository);
 
 			client.data.user = { ...payload };
 			client.data.userId = payload.sub;
-
-			const dbUser = await this.userRepository.findOne({
-				where: { id: payload.sub },
-				select: ['id', 'role'],
-			});
-			if (dbUser) {
-				client.data.user.role = dbUser.role;
-			} else {
-				client.data.user.role = USER_ROLES.has(payload.role) ? payload.role : UserRole.USER;
-			}
 			client.data.userRole = client.data.user.role;
 
 			logger.securityLogin('WebSocket authentication successful', {

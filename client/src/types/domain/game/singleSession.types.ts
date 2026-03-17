@@ -1,19 +1,19 @@
 import type { TriviaQuestion } from '@shared/types';
 
+import type { ExitReason } from '@/constants';
+
 export interface UseSingleSessionReturn {
 	loading: boolean;
 	loadingStep: string;
 	isFetchingMoreQuestions: boolean;
 	showSummaryLoading: boolean;
-	exitReason: 'credits_exhausted' | null;
+	exitReason: ExitReason | null;
 	isFinalizing: boolean;
 	questions: TriviaQuestion[];
 	currentQuestion: TriviaQuestion | null;
 	onBeforeNavigateReset: () => void;
 	handleClose: () => void;
 	navigateToPayment: () => void;
-	showExitDialog: boolean;
-	setShowExitDialog: (open: boolean) => void;
 	showErrorDialog: boolean;
 	setShowErrorDialog: (open: boolean) => void;
 	errorMessage: string;

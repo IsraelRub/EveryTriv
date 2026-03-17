@@ -61,6 +61,8 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"role" character varying NOT NULL DEFAULT '${UserRole.USER}',
 					"preferences" jsonb NOT NULL DEFAULT '{}',
 					"achievements" jsonb NOT NULL DEFAULT '[]',
+					"custom_avatar" bytea NULL,
+					"custom_avatar_mime" character varying(30) NULL,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
 					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
 					CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"),
@@ -104,6 +106,16 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				UPDATE "users"
 				SET "email_verified" = true
 				WHERE "google_id" IS NOT NULL
+			`);
+
+			console.log('Adding custom_avatar columns to users if needed');
+			await queryRunner.query(`
+				ALTER TABLE "users"
+				ADD COLUMN IF NOT EXISTS "custom_avatar" bytea NULL
+			`);
+			await queryRunner.query(`
+				ALTER TABLE "users"
+				ADD COLUMN IF NOT EXISTS "custom_avatar_mime" character varying(30) NULL
 			`);
 
 			// Create indexes for users table
@@ -249,6 +261,21 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					WHEN duplicate_object THEN null;
 				END $$;
 			`);
+
+			// Create credits_config table (key-value store for credit packages etc.)
+			console.log('Creating credits_config table');
+			await queryRunner.query(`
+				CREATE TABLE IF NOT EXISTS "credits_config" (
+					"id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+					"key" character varying(128) NOT NULL,
+					"value" jsonb NOT NULL DEFAULT 'null'::jsonb,
+					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
+					"updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+					CONSTRAINT "UQ_credits_config_key" UNIQUE ("key"),
+					CONSTRAINT "PK_credits_config" PRIMARY KEY ("id")
+				)
+			`);
+			await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_credits_config_key" ON "credits_config" ("key")`);
 
 			// Create game_history table
 			console.log('Creating game_history table');
@@ -560,7 +587,15 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			console.log('Migration completed successfully: CreateCompleteSchema', {
 				migrationName: this.name,
 				operation: 'up',
-				tablesCreated: ['users', 'credit_transactions', 'payment_history', 'game_history', 'trivia', 'user_stats'],
+				tablesCreated: [
+					'users',
+					'credit_transactions',
+					'credits_config',
+					'payment_history',
+					'game_history',
+					'trivia',
+					'user_stats',
+				],
 				enumsCreated: ['credit_transaction_type_enum', 'credit_source_enum'],
 				materializedViewsCreated: ['mv_global_analytics', 'mv_topic_stats'],
 			});
@@ -605,6 +640,10 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			console.log('Dropping credit_transactions table');
 			await queryRunner.query(`DROP TABLE IF EXISTS "credit_transactions" CASCADE`);
 
+			// Drop credits_config table
+			console.log('Dropping credits_config table');
+			await queryRunner.query(`DROP TABLE IF EXISTS "credits_config"`);
+
 			// Drop payment_history table (depends on users)
 			console.log('Dropping payment_history table');
 			await queryRunner.query(`DROP TABLE IF EXISTS "payment_history" CASCADE`);
@@ -617,9 +656,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			console.log('Dropping enums');
 			await queryRunner.query(`DROP TYPE IF EXISTS "credit_source_enum"`);
 			await queryRunner.query(`DROP TYPE IF EXISTS "credit_transaction_type_enum"`);
-
-			console.log('Dropping uuid-ossp extension (if not used elsewhere)');
-			// await queryRunner.query(`DROP EXTENSION IF EXISTS "uuid-ossp"`);
 
 			console.log('Migration rollback completed successfully: CreateCompleteSchema', {
 				migrationName: this.name,

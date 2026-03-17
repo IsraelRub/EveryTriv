@@ -1,6 +1,6 @@
 // API and HTTP type definitions for EveryTriv.
 import { GameMode } from '../../constants';
-import type { BaseApiResponse, BaseData, OffsetPagination, PagePagination } from '../core';
+import type { BaseApiResponse, BaseData, BaseOperationResponse, OffsetPagination, PagePagination } from '../core';
 import type { BasicUser, GameDifficulty, MiddlewareMetrics } from '../domain';
 
 export interface ApiResponse<T = BaseData> extends BaseApiResponse<T> {
@@ -48,6 +48,10 @@ export interface AnswerHistoryBase {
 	question: string;
 	isCorrect: boolean;
 	timeSpent: number;
+
+	correctAnswerText?: string;
+
+	userAnswerText?: string;
 }
 
 export interface AnswerHistoryComplete extends AnswerHistoryBase {
@@ -95,9 +99,7 @@ export interface AdminUsersListResponse extends OffsetPagination {
 	users: AdminUserData[];
 }
 
-export interface UpdateUserFieldResponse {
-	success: boolean;
-	message: string;
+export interface UpdateUserFieldResponse extends BaseOperationResponse {
 	field: string;
 	value: unknown;
 }

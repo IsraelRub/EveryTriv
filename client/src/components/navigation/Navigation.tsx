@@ -1,13 +1,24 @@
 import { Fragment, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CircleUser, LogOut, Menu, Shield } from 'lucide-react';
+import { BrickWallShield, IdCard, LogOut, Menu } from 'lucide-react';
 
-import { APP_NAME, UserRole } from '@shared/constants';
-import { getErrorMessage } from '@shared/utils';
+import { APP_NAME } from '@shared/constants';
+import { getDisplayNameFromUserFields, getErrorMessage } from '@shared/utils';
 
-import { AvatarSize, ButtonSize, DISPLAY_NAME_FALLBACKS, NAVIGATION_LINKS, ROUTES, VariantBase } from '@/constants';
+import {
+	AvatarSize,
+	ButtonSize,
+	CommonKey,
+	DISPLAY_NAME_FALLBACKS,
+	NAVIGATION_LINKS,
+	ROUTES,
+	VariantBase,
+} from '@/constants';
+import type { NavigationLink } from '@/types';
+import { authService, clientLogger as logger } from '@/services';
 import {
 	AudioControls,
 	Button,
@@ -17,24 +28,22 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	LanguageSwitcher,
 	NavLink,
 	ProfileEditDialog,
 	UserAvatar,
 } from '@/components';
 import { useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
-import { authService, clientLogger as logger } from '@/services';
-import type { NavigationLink } from '@/types';
-import { getDisplayNameFromUser } from '@/utils';
 
 export function Navigation() {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const queryClient = useQueryClient();
 
 	const isAuthenticated = useIsAuthenticated();
 	const currentUser = useCurrentUserData();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 	const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 	const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
@@ -68,7 +77,13 @@ export function Navigation() {
 				<div className='flex h-16 items-center justify-between gap-2'>
 					<div className='flex min-w-0 flex-1 items-center gap-4 lg:gap-6'>
 						<NavLink to={ROUTES.HOME} className='flex shrink-0 items-center gap-2 text-2xl font-bold text-foreground'>
-							<img src='/assets/logo.svg' className='h-8 w-8 flex-shrink-0 object-contain' width={32} height={32} />
+							<img
+								src='/assets/logo.svg'
+								alt=''
+								className='h-8 w-8 flex-shrink-0 object-contain'
+								width={32}
+								height={32}
+							/>
 							<span className='truncate'>{APP_NAME}</span>
 						</NavLink>
 
@@ -88,8 +103,8 @@ export function Navigation() {
 											}
 											activeClassName='text-foreground'
 										>
-											{section.showIcon && <Shield className='h-4 w-4 shrink-0' />}
-											{item.label}
+											{section.showIcon && <BrickWallShield className='h-4 w-4 shrink-0' />}
+											{t(item.labelKey)}
 										</NavLink>
 									))}
 								</Fragment>
@@ -119,8 +134,8 @@ export function Navigation() {
 														className={section.showIcon ? 'flex w-full items-center gap-1' : 'flex w-full'}
 														onClick={() => setIsNavMenuOpen(false)}
 													>
-														{section.showIcon && <Shield className='h-4 w-4' />}
-														{item.label}
+														{section.showIcon && <BrickWallShield className='h-4 w-4' />}
+														{t(item.labelKey)}
 													</NavLink>
 												</DropdownMenuItem>
 											))}
@@ -133,6 +148,7 @@ export function Navigation() {
 
 					{/* Right Side Actions */}
 					<div className='flex shrink-0 items-center gap-3 sm:gap-5'>
+						<LanguageSwitcher />
 						{/* Audio Controls */}
 						<AudioControls />
 
@@ -150,13 +166,8 @@ export function Navigation() {
 										{currentUser && (
 											<UserAvatar
 												size={AvatarSize.NAV}
-												className='pointer-events-none'
-												user={{
-													firstName: currentUser.firstName,
-													lastName: currentUser.lastName,
-													email: currentUser.email,
-													avatar: currentUser.avatar,
-												}}
+												source={currentUser}
+												pointerEventsNone
 												fallbackLetter={DISPLAY_NAME_FALLBACKS.USER_SHORT}
 											/>
 										)}
@@ -166,19 +177,19 @@ export function Navigation() {
 									<div className='flex items-center justify-start gap-2 p-2 min-w-0'>
 										<div className='flex flex-col space-y-1 leading-none min-w-0'>
 											<p className='font-medium truncate'>
-												{currentUser ? getDisplayNameFromUser(currentUser) || currentUser.email : ''}
+												{currentUser ? getDisplayNameFromUserFields(currentUser) : ''}
 											</p>
 										</div>
 									</div>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem onClick={() => setIsProfileDialogOpen(true)} className='gap-1'>
-										<CircleUser className='h-4 w-4' />
-										Profile
+										<IdCard className='h-4 w-4' />
+										{t(CommonKey.PROFILE)}
 									</DropdownMenuItem>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem onClick={handleLogout} className='text-destructive gap-1'>
 										<LogOut className='h-4 w-4' />
-										Sign Out
+										{t(CommonKey.SIGN_OUT)}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -187,7 +198,7 @@ export function Navigation() {
 								size={ButtonSize.SM}
 								onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
 							>
-								Sign In
+								{t(CommonKey.SIGN_IN)}
 							</Button>
 						)}
 					</div>

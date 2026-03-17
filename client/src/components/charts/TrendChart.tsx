@@ -1,12 +1,13 @@
 import { memo, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { formatDate, formatNumericValue, mean } from '@shared/utils';
 
-import { CHART_HEIGHTS, CssColor, SkeletonVariant } from '@/constants';
-import { EmptyState, Skeleton } from '@/components';
+import { CHART_HEIGHTS, CssColor, SkeletonVariant, StatisticsPerformanceKey, TREND_CHART_DATA_KEYS } from '@/constants';
 import type { TrendChartProps } from '@/types';
 import { formatDateShort } from '@/utils';
+import { EmptyState, Skeleton } from '@/components';
 import { ChartCard } from './ChartCard';
 
 export const TrendChart = memo(function TrendChart({
@@ -14,12 +15,15 @@ export const TrendChart = memo(function TrendChart({
 	isLoading,
 	height = CHART_HEIGHTS.DEFAULT,
 	xAxisLabel,
-	scoreLabel = 'Score',
-	successRateLabel = 'Success Rate (%)',
+	scoreLabel,
+	successRateLabel,
 	className,
 	hideCard = false,
 	emptyStateData,
 }: TrendChartProps) {
+	const { t } = useTranslation('statistics');
+	const resolvedScoreLabel = scoreLabel ?? t(StatisticsPerformanceKey.SCORE_LABEL);
+	const resolvedSuccessRateLabel = successRateLabel ?? t(StatisticsPerformanceKey.SUCCESS_RATE_PERCENT_LABEL);
 	const chartData = useMemo(() => {
 		if (!data || data.length === 0) return [];
 
@@ -66,18 +70,18 @@ export const TrendChart = memo(function TrendChart({
 					label={xAxisLabel ? { value: xAxisLabel, position: 'insideBottom', offset: -5 } : undefined}
 				/>
 				<YAxis
-					yAxisId='score'
+					yAxisId={TREND_CHART_DATA_KEYS.SCORE}
 					stroke={CssColor.PRIMARY}
 					style={{ fontSize: '12px' }}
-					label={{ value: scoreLabel, angle: -90, position: 'left', style: { textAnchor: 'middle' } }}
+					label={{ value: resolvedScoreLabel, angle: -90, position: 'left', style: { textAnchor: 'middle' } }}
 				/>
 				<YAxis
-					yAxisId='successRate'
+					yAxisId={TREND_CHART_DATA_KEYS.SUCCESS_RATE}
 					orientation='right'
 					stroke={CssColor.SUCCESS_500}
 					style={{ fontSize: '12px' }}
 					domain={[0, 100]}
-					label={{ value: successRateLabel, angle: 90, position: 'right', style: { textAnchor: 'middle' } }}
+					label={{ value: resolvedSuccessRateLabel, angle: 90, position: 'right', style: { textAnchor: 'middle' } }}
 				/>
 				<Tooltip
 					contentStyle={{
@@ -92,11 +96,11 @@ export const TrendChart = memo(function TrendChart({
 						return formatDate(value);
 					}}
 					formatter={(value: number, name: string) => {
-						if (name === 'score') {
-							return [formatNumericValue(value, 0), scoreLabel];
+						if (name === TREND_CHART_DATA_KEYS.SCORE) {
+							return [formatNumericValue(value, 0), resolvedScoreLabel];
 						}
-						if (name === 'successRate') {
-							return [formatNumericValue(value), successRateLabel];
+						if (name === TREND_CHART_DATA_KEYS.SUCCESS_RATE) {
+							return [formatNumericValue(value), resolvedSuccessRateLabel];
 						}
 						return [formatNumericValue(value), name];
 					}}
@@ -104,30 +108,30 @@ export const TrendChart = memo(function TrendChart({
 				<Legend
 					wrapperStyle={{ direction: 'rtl', paddingTop: '20px' }}
 					formatter={value => {
-						if (value === 'score') return scoreLabel;
-						if (value === 'successRate') return successRateLabel;
+						if (value === TREND_CHART_DATA_KEYS.SCORE) return resolvedScoreLabel;
+						if (value === TREND_CHART_DATA_KEYS.SUCCESS_RATE) return resolvedSuccessRateLabel;
 						return value;
 					}}
 				/>
 				<Line
 					type='monotone'
-					dataKey='score'
-					yAxisId='score'
+					dataKey={TREND_CHART_DATA_KEYS.SCORE}
+					yAxisId={TREND_CHART_DATA_KEYS.SCORE}
 					stroke={CssColor.PRIMARY}
 					strokeWidth={2}
 					dot={{ r: 4 }}
 					activeDot={{ r: 6 }}
-					name='score'
+					name={TREND_CHART_DATA_KEYS.SCORE}
 				/>
 				<Line
 					type='monotone'
-					dataKey='successRate'
-					yAxisId='successRate'
+					dataKey={TREND_CHART_DATA_KEYS.SUCCESS_RATE}
+					yAxisId={TREND_CHART_DATA_KEYS.SUCCESS_RATE}
 					stroke={CssColor.SUCCESS_500}
 					strokeWidth={2}
 					dot={{ r: 4 }}
 					activeDot={{ r: 6 }}
-					name='successRate'
+					name={TREND_CHART_DATA_KEYS.SUCCESS_RATE}
 				/>
 			</LineChart>
 		</ResponsiveContainer>
@@ -149,8 +153,8 @@ export const TrendChart = memo(function TrendChart({
 
 	return (
 		<ChartCard
-			title='Performance Trends'
-			description='Score and success rate over time'
+			title={t(StatisticsPerformanceKey.TRENDS_TITLE)}
+			description={t(StatisticsPerformanceKey.TRENDS_DESCRIPTION)}
 			isLoading={isLoading}
 			data={data}
 			className={className}

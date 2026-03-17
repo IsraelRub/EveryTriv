@@ -7,13 +7,16 @@ export const ROLE_BADGE_CLASSES: Record<string, string> = {
 	[UserRole.USER]: 'border-2 border-muted-foreground text-muted-foreground font-medium',
 };
 
+export const ADMIN_TAB_PARAM = 'adminTab';
+export const SYSTEM_SUB_TAB_PARAM = 'systemSub';
+
 export const ADMIN_TABS: TabSpec[] = [
-	{ label: 'Performance', componentName: 'AdminPerformanceTab' },
-	{ label: 'Trivia', componentName: 'AdminTriviaTab' },
-	{ label: 'Users', componentName: 'AdminUsersTab' },
-	{ label: 'Business', componentName: 'AdminBusinessTab' },
-	{ label: 'System', componentName: 'AdminSystemTab' },
-	{ label: 'AI Providers', componentName: 'AdminAiProvidersTab' },
+	{ label: 'Performance', componentName: 'PerformanceTabContent' },
+	{ label: 'Trivia', componentName: 'TriviaManagementTable' },
+	{ label: 'Users', componentName: 'UsersTable' },
+	{ label: 'Business', componentName: 'BusinessTabContent' },
+	{ label: 'System', componentName: 'SystemTabContent' },
+	{ label: 'AI Providers', componentName: 'ProviderManagementSection' },
 ];
 
 export enum UserSortField {
@@ -33,3 +36,19 @@ export enum TriviaSortField {
 }
 
 export const TRIVIA_SORT_FIELDS_SET: ReadonlySet<string> = new Set(Object.values(TriviaSortField));
+
+export enum SystemSubTab {
+	HEALTH = 'health',
+	CONSISTENCY = 'consistency',
+	MAINTENANCE = 'maintenance',
+}
+
+export function isSystemSubTab(value: string): value is SystemSubTab {
+	return value === SystemSubTab.HEALTH || value === SystemSubTab.CONSISTENCY || value === SystemSubTab.MAINTENANCE;
+}
+
+export const SYSTEM_SUB_TABS: ReadonlyArray<{ value: SystemSubTab; label: string }> = [
+	{ value: SystemSubTab.HEALTH, label: 'Health' },
+	{ value: SystemSubTab.CONSISTENCY, label: 'Consistency' },
+	{ value: SystemSubTab.MAINTENANCE, label: 'Maintenance' },
+];

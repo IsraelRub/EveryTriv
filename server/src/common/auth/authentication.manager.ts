@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthenticationEvent, ErrorCode, LogLevel } from '@shared/constants';
-import type { AuthCredentials, AuthenticationResult, UserData } from '@shared/types';
+import { ErrorCode } from '@shared/constants';
+import type { AuthCredentials, AuthenticationResult } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
+import type { UserData } from '@internal/types';
 
 import { JwtTokenService } from './jwt-token.service';
 import { PasswordService } from './password.service';
@@ -20,7 +21,7 @@ export class AuthenticationManager {
 		try {
 			// Check if user is active
 			if (!userData.isActive) {
-				logger.logSecurityEventEnhanced('User account is inactive', LogLevel.WARN, {
+				logger.securityDenied('User account is inactive', {
 					emails: { current: credentials.email },
 					userId: userData.id,
 				});
@@ -33,7 +34,7 @@ export class AuthenticationManager {
 			const isPasswordValid = await this.passwordService.comparePassword(credentials.password, userData.passwordHash);
 
 			if (!isPasswordValid) {
-				logger.logSecurityEventEnhanced('Password verification failed', LogLevel.WARN, {
+				logger.securityDenied('Password verification failed', {
 					emails: { current: credentials.email },
 					userId: userData.id,
 					contextMessage: 'password_mismatch',
@@ -58,7 +59,9 @@ export class AuthenticationManager {
 				};
 			}
 
-			logger.logAuthenticationEnhanced(AuthenticationEvent.LOGIN, userData.id, credentials.email, {
+			logger.securityLogin('Authentication: login', {
+				userId: userData.id,
+				emails: { current: credentials.email },
 				success: true,
 				role: userData.role,
 				context: 'AuthenticationManager',
@@ -137,11 +140,5 @@ export class AuthenticationManager {
 				error: ErrorCode.TOKEN_REFRESH_FAILED,
 			};
 		}
-	}
-
-	async logout(userId: string): Promise<void> {
-		logger.securityLogin('User logout', {
-			userId,
-		});
 	}
 }

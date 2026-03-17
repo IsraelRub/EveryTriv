@@ -12,28 +12,30 @@ import { Server } from 'socket.io';
 
 import {
 	ErrorCode,
-	GAME_MODES_CONFIG,
 	GameMode,
 	HttpMethod,
 	LOCALHOST_CONFIG,
+	MULTIPLAYER_TIME_PER_QUESTION,
 	MultiplayerEvent,
 	PlayerStatus,
 	RoomStatus,
 	TIME_PERIODS_MS,
+	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { GameEvent, GameEventDataMap, GameEventType, MultiplayerRoom } from '@shared/types';
 import { getErrorCode, getErrorMessage } from '@shared/utils';
 import { toDifficultyLevel } from '@shared/validation';
 
+import { WsCurrentUserId } from '@common/decorators';
+import { WsAuthGuard } from '@common/guards';
 import { serverLogger as logger } from '@internal/services';
 import type { TypedSocket } from '@internal/types';
 
-import { WsCurrentUserId } from '../../../common/decorators';
-import { WsAuthGuard } from '../../../common/guards';
 import { GameService } from '../game.service';
-import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto } from './dtos';
+import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
 import { QuestionSchedulerService } from './questionScheduler.service';
+import { RoomService } from './room.service';
 
 @WebSocketGateway({
 	namespace: '/multiplayer',
@@ -55,7 +57,8 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 	constructor(
 		private readonly multiplayerService: MultiplayerService,
 		private readonly questionScheduler: QuestionSchedulerService,
-		private readonly gameService: GameService
+		private readonly gameService: GameService,
+		private readonly roomService: RoomService
 	) {}
 
 	private createGameEvent<T extends GameEventType>(type: T, roomId: string, data: GameEventDataMap[T]): GameEvent {
@@ -146,9 +149,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				difficulty: data.difficulty,
 				questionsPerRequest: data.questionsPerRequest,
 				maxPlayers: data.maxPlayers,
-				gameMode: data.gameMode,
 				answerCount: data.answerCount,
-				timePerQuestion: GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.timePerQuestion,
 				mappedDifficulty: data.mappedDifficulty ?? toDifficultyLevel(data.difficulty),
 			});
 
@@ -201,7 +202,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			}
 
 			// Store player count before join to detect if this is a new join
-			const roomBeforeJoin = await this.multiplayerService.getRoom(data.roomId);
+			const roomBeforeJoin = await this.roomService.getRoom(data.roomId);
 			const playerCountBeforeJoin = roomBeforeJoin?.players.length ?? 0;
 
 			const room = await this.multiplayerService.joinRoom(data.roomId, userId);
@@ -248,7 +249,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 	@SubscribeMessage('leave-room')
 	async handleLeaveRoom(
 		@WsCurrentUserId() userId: string,
-		@MessageBody() data: { roomId: string },
+		@MessageBody() data: RoomActionDto,
 		@ConnectedSocket() client: TypedSocket
 	) {
 		try {
@@ -297,7 +298,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 	@SubscribeMessage('start-game')
 	async handleStartGame(
 		@WsCurrentUserId() userId: string,
-		@MessageBody() data: { roomId: string },
+		@MessageBody() data: RoomActionDto,
 		@ConnectedSocket() client: TypedSocket
 	) {
 		try {
@@ -305,16 +306,43 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				throw new Error(ErrorCode.USER_NOT_AUTHENTICATED);
 			}
 
-			const room = await this.multiplayerService.startGame(data.roomId, userId);
+			let room = await this.roomService.getRoom(data.roomId);
+			if (!room) {
+				throw new Error(ErrorCode.ROOM_NOT_FOUND);
+			}
+			if (room.hostId !== userId) {
+				throw new Error(ErrorCode.ONLY_HOST_CAN_START);
+			}
+			if (room.status !== RoomStatus.WAITING) {
+				throw new Error(ErrorCode.GAME_ALREADY_STARTED_OR_FINISHED);
+			}
+			if (room.players.length < VALIDATION_COUNT.PLAYERS.MIN) {
+				throw new Error(ErrorCode.NEED_AT_LEAST_2_PLAYERS);
+			}
 
-			// Broadcast game started
+			room = await this.roomService.updateRoomStatus(data.roomId, RoomStatus.STARTING);
+			this.broadcastToRoom(data.roomId, this.createGameEvent(MultiplayerEvent.ROOM_UPDATED, data.roomId, { room }));
+
+			try {
+				room = await this.multiplayerService.startGame(data.roomId, userId);
+			} catch (startError) {
+				await this.roomService.updateRoomStatus(data.roomId, RoomStatus.WAITING);
+				const revertedRoom = await this.roomService.getRoom(data.roomId);
+				if (revertedRoom) {
+					this.broadcastToRoom(
+						data.roomId,
+						this.createGameEvent(MultiplayerEvent.ROOM_UPDATED, data.roomId, { room: revertedRoom })
+					);
+				}
+				throw startError;
+			}
+
 			const gameStartedEvent = this.createGameEvent(MultiplayerEvent.GAME_STARTED, data.roomId, {
 				questions: room.questions,
 				config: room.config,
 			});
 			this.broadcastToRoom(data.roomId, gameStartedEvent);
 
-			// Start first question
 			await this.startQuestion(room);
 
 			logger.gameInfo('Game started via WebSocket', {
@@ -402,7 +430,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		);
 		this.broadcastToRoom(room.roomId, questionStartedEvent);
 
-		const durationMs = room.config.timePerQuestion * TIME_PERIODS_MS.SECOND;
+		const durationMs = MULTIPLAYER_TIME_PER_QUESTION * TIME_PERIODS_MS.SECOND;
 		this.questionScheduler.scheduleQuestionEnd(room.roomId, durationMs, async () => {
 			await this.endQuestion(room.roomId);
 		});
@@ -440,7 +468,10 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				this.questionScheduler.cancelSchedule(roomId);
 
 				const finalGameState = await this.multiplayerService.getGameState(roomId);
-				const winner = finalGameState.leaderboard[0] ?? null;
+				const leaderboard = finalGameState.leaderboard;
+				const first = leaderboard[0] ?? null;
+				const tiedAtTop = first !== null && leaderboard.filter(p => p.score === first.score).length > 1;
+				const winner = first !== null && !tiedAtTop ? first : null;
 				const gameDurationMs =
 					updatedRoom.endTime && updatedRoom.startTime
 						? new Date(updatedRoom.endTime).getTime() - new Date(updatedRoom.startTime).getTime()
@@ -501,7 +532,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 
 	private async handleReconnection(client: TypedSocket, userId: string): Promise<void> {
 		try {
-			const rooms = await this.multiplayerService.findRoomsByUserId(userId);
+			const rooms = await this.roomService.findRoomsByUserId(userId);
 			for (const room of rooms) {
 				try {
 					// Rejoin socket to room
@@ -541,11 +572,11 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		// If there's a current question, send question-started event
 		if (room.status === RoomStatus.PLAYING && gameState.currentQuestion && room.currentQuestionStartTime) {
 			const serverStartTimestamp = new Date(room.currentQuestionStartTime).getTime();
-			const serverEndTimestamp = serverStartTimestamp + room.config.timePerQuestion * TIME_PERIODS_MS.SECOND;
+			const serverEndTimestamp = serverStartTimestamp + MULTIPLAYER_TIME_PER_QUESTION * TIME_PERIODS_MS.SECOND;
 			const questionStartedEvent = this.createGameEvent(MultiplayerEvent.QUESTION_STARTED, room.roomId, {
 				question: gameState.currentQuestion,
 				questionIndex: gameState.currentQuestionIndex,
-				timeLimit: room.config.timePerQuestion,
+				timeLimit: MULTIPLAYER_TIME_PER_QUESTION,
 				serverStartTimestamp,
 				serverEndTimestamp,
 			});
@@ -558,7 +589,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			this.questionScheduler.cancelSchedule(roomId);
 
 			// Update room status to cancelled
-			await this.multiplayerService.cancelGame(roomId);
+			await this.roomService.updateRoomStatus(roomId, RoomStatus.CANCELLED);
 
 			// Broadcast game cancelled as error event
 			const errorEvent = this.createGameEvent(MultiplayerEvent.ERROR, roomId, {

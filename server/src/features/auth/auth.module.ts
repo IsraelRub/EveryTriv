@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule as CommonAuthModule } from 'src/common/auth';
-import { AuthGuard, RolesGuard } from 'src/common/guards';
 
+import { CommonAuthModule } from '@common/auth';
+import { LocalAuthGuard, RolesGuard } from '@common/guards';
 import { UserEntity } from '@internal/entities';
 import { CacheModule, StorageModule, UserCoreModule } from '@internal/modules';
 
@@ -21,7 +21,7 @@ import { GoogleStrategy } from './google.strategy';
 		StorageModule,
 	],
 	controllers: [AuthController],
-	providers: [AuthService, GoogleStrategy, AuthGuard, RolesGuard],
-	exports: [AuthService, GoogleStrategy, AuthGuard, RolesGuard, PassportModule],
+	providers: [AuthService, GoogleStrategy, LocalAuthGuard, RolesGuard],
+	exports: [AuthService, GoogleStrategy, LocalAuthGuard, RolesGuard, PassportModule],
 })
 export class AuthModule {}

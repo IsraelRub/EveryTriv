@@ -1,11 +1,10 @@
-import { memo, type ReactNode } from 'react';
+import { memo, type ReactElement } from 'react';
 
 import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
-import { Card, CardContent, CardHeader, EmptyState, PaginationButtons, Skeleton } from '@/components';
 import type { DataTableCardHeaderProps, DataTableCardProps } from '@/types';
+import { Card, CardContent, CardHeader, EmptyState, PaginationButtons, Skeleton } from '@/components';
 import { DataTable } from './DataTable';
 
-/** Single source of truth for table card: wrapper, header layout, filters bar, content spacing. */
 function TableCardHeaderLayout({
 	title,
 	description,
@@ -42,7 +41,7 @@ function DataTableCardInner<T>({
 	const headerBlock = <TableCardHeaderLayout {...header} />;
 	const filtersBlock = filters != null ? <div className='flex flex-wrap items-center gap-4'>{filters}</div> : null;
 
-	const tableContent = ((): ReactNode => {
+	const tableContent = ((): ReactElement | null => {
 		if (isLoading) {
 			return (
 				<div className='space-y-3'>

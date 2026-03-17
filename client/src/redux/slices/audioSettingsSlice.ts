@@ -4,6 +4,8 @@ import type { AudioSettingsState } from '@/types';
 
 const initialState: AudioSettingsState = {
 	volume: 0.7,
+	soundEffectsVolume: 1,
+	musicVolume: 1,
 	isMuted: false,
 	soundEnabled: true,
 	musicEnabled: true,
@@ -21,6 +23,12 @@ export const audioSettingsSlice = createSlice({
 				state.isMuted = false;
 			}
 		},
+		setSoundEffectsVolume: (state, action: PayloadAction<number>) => {
+			state.soundEffectsVolume = action.payload;
+		},
+		setMusicVolume: (state, action: PayloadAction<number>) => {
+			state.musicVolume = action.payload;
+		},
 		setMuted: (state, action: PayloadAction<boolean>) => {
 			state.isMuted = action.payload;
 		},
@@ -30,21 +38,20 @@ export const audioSettingsSlice = createSlice({
 		setMusicEnabled: (state, action: PayloadAction<boolean>) => {
 			state.musicEnabled = action.payload;
 		},
-		toggleMute: state => {
-			state.isMuted = !state.isMuted;
-		},
-		toggleAll: state => {
-			const allEnabled = state.soundEnabled && state.musicEnabled;
-			state.soundEnabled = !allEnabled;
-			state.musicEnabled = !allEnabled;
-		},
 		setInitialized: (state, action: PayloadAction<boolean>) => {
 			state.isInitialized = action.payload;
 		},
 	},
 });
 
-export const { setVolume, setMuted, setSoundEnabled, setMusicEnabled, toggleMute, toggleAll, setInitialized } =
-	audioSettingsSlice.actions;
+export const {
+	setVolume,
+	setSoundEffectsVolume,
+	setMusicVolume,
+	setMuted,
+	setSoundEnabled,
+	setMusicEnabled,
+	setInitialized,
+} = audioSettingsSlice.actions;
 
 export default audioSettingsSlice.reducer;

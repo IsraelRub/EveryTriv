@@ -1,14 +1,3 @@
-// Configuration Types.
-
-import type { PayPalEnvironment } from '@shared/constants';
-
-export interface PayPalConfig {
-	clientId: string;
-	clientSecret: string;
-	merchantId: string;
-	environment: PayPalEnvironment;
-}
-
 export interface ViteProxyConfig {
 	target: string;
 	changeOrigin: boolean;

@@ -1,7 +1,12 @@
 import { cpus, freemem, totalmem } from 'os';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { SYSTEM_HEALTH_THRESHOLDS, TIME_PERIODS_MS } from '@shared/constants';
+import {
+	RecommendationPriority,
+	SYSTEM_HEALTH_THRESHOLDS,
+	SystemInsightStatus,
+	TIME_PERIODS_MS,
+} from '@shared/constants';
 import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
 import { calculatePercentage, getErrorMessage, mean, sum } from '@shared/utils';
 
@@ -86,7 +91,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 					description: `Server response time is ${this.performanceData.responseTime}ms, above optimal levels`,
 					message: 'Consider optimizing database queries or adding caching',
 					action: 'Review slow query logs and optimize frequently accessed endpoints',
-					priority: 'high',
+					priority: RecommendationPriority.HIGH,
 					estimatedImpact: 'Improve user experience and reduce server load',
 					implementationEffort: 'medium',
 				});
@@ -100,7 +105,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 					description: `There have been ${this.securityData.authentication.failedLogins} failed login attempts`,
 					message: 'Consider implementing rate limiting or CAPTCHA',
 					action: 'Review authentication logs and implement additional security measures',
-					priority: 'high',
+					priority: RecommendationPriority.HIGH,
 					estimatedImpact: 'Reduce risk of brute force attacks',
 					implementationEffort: 'low',
 				});
@@ -114,7 +119,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 					description: `Server memory usage is ${this.performanceData.memoryUsage.toFixed(1)}%, approaching capacity`,
 					message: 'Consider optimizing memory usage or scaling resources',
 					action: 'Review memory-intensive operations and optimize data structures',
-					priority: 'medium',
+					priority: RecommendationPriority.MEDIUM,
 					estimatedImpact: 'Prevent memory leaks and improve system stability',
 					implementationEffort: 'medium',
 				});
@@ -128,7 +133,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 					description: `Error rate is ${this.performanceData.errorRate.toFixed(2)}%, above acceptable threshold`,
 					message: 'Review error logs and address common failure points',
 					action: 'Investigate and fix recurring errors, improve error handling',
-					priority: 'high',
+					priority: RecommendationPriority.HIGH,
 					estimatedImpact: 'Improve system reliability and user experience',
 					implementationEffort: 'high',
 				});
@@ -180,8 +185,8 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 			perf.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT ||
 			perf.memoryUsage > SYSTEM_HEALTH_THRESHOLDS.MEMORY_USAGE_ATTENTION_PERCENT ||
 			sec.authentication.failedLogins > SYSTEM_HEALTH_THRESHOLDS.FAILED_LOGINS_ATTENTION_COUNT
-				? 'attention'
-				: 'optimal';
+				? SystemInsightStatus.ATTENTION
+				: SystemInsightStatus.OPTIMAL;
 
 		return {
 			performanceInsights,

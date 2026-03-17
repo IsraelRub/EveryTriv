@@ -1,6 +1,6 @@
 import { mean, sumBy } from '@shared/utils';
 
-import type { MeanVarianceStddev } from '@internal/types';
+import type { MeanVarianceStddev } from '../types';
 
 export function computeMeanVarianceStddev(values: number[]): MeanVarianceStddev {
 	if (values.length === 0) return { mean: 0, variance: 0, standardDeviation: 0 };

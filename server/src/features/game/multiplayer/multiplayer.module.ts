@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-
 import { AppConfig } from '@config';
+import { WsAuthGuard } from '@common/guards';
+import { AUTH_CONSTANTS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
-import { WsAuthGuard } from '../../../common/guards';
+import { CreditsModule } from '../../credits';
 import { GameModule } from '../game.module';
 import { GameStateService } from './gameState.service';
 import { MultiplayerController } from './multiplayer.controller';
@@ -22,6 +22,7 @@ import { RoomService } from './room.service';
 		TypeOrmModule.forFeature([UserEntity]),
 		CacheModule,
 		StorageModule,
+		CreditsModule,
 		GameModule, // Import GameModule to use GameService
 		JwtModule.register({
 			secret: AppConfig.jwt.secret,

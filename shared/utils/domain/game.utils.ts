@@ -1,7 +1,6 @@
 import { DEFAULT_GAME_CONFIG, DIFFICULTY_CONFIG, ERROR_MESSAGES, GameMode } from '../../constants';
 import type { GameData } from '../../types';
 
-/** Tailwind classes for a difficulty badge. Accepts any value (e.g. from API); converts to string internally. */
 export function getDifficultyBadgeClasses(difficulty: unknown): string {
 	const key = String(difficulty ?? '').toLowerCase();
 	return DIFFICULTY_CONFIG[key]?.badgeClasses ?? 'bg-muted/20 border-muted text-muted-foreground';

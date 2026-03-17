@@ -1,75 +1,27 @@
 import {
 	API_ENDPOINTS,
 	ERROR_MESSAGES,
-	GAME_MODES,
-	GAME_STATE_DEFAULTS,
 	GameMode,
+	Locale,
 	QUERY_PARAMS,
+	SurpriseScope,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
 	ClearOperationResponse,
-	GameData,
 	GameDifficulty,
 	GameHistoryEntry,
 	GameHistoryResponse,
 	GameSessionStartResponse,
 	SubmitAnswerResult,
+	SurprisePickResult,
 } from '@shared/types';
-import { getErrorMessage, hasProperty, isNonEmptyString, normalizeGameData } from '@shared/utils';
-import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
+import { getErrorMessage, hasProperty, isNonEmptyString } from '@shared/utils';
 
 import { apiService, clientLogger as logger } from '@/services';
 import { validateListQueryParams } from '@/utils';
 
 class GameHistoryService {
-	async saveGameResult(gameData: GameData): Promise<GameHistoryEntry> {
-		try {
-			if (!isNonEmptyString(gameData.userId)) {
-				throw new Error(ERROR_MESSAGES.user.USER_ID_REQUIRED_FOR_HISTORY);
-			}
-			const userId = gameData.userId;
-
-			if (!isValidDifficulty(gameData.difficulty)) {
-				throw new Error(ERROR_MESSAGES.validation.INVALID_DIFFICULTY_LEVEL(gameData.difficulty));
-			}
-			if (!GAME_MODES.has(gameData.gameMode)) {
-				throw new Error(ERROR_MESSAGES.validation.INVALID_GAME_MODE(gameData.gameMode));
-			}
-
-			const createGameHistoryDto = normalizeGameData(gameData, {
-				userId,
-				topic: GAME_STATE_DEFAULTS.TOPIC,
-			});
-			await apiService.post<void>(API_ENDPOINTS.GAME.HISTORY, createGameHistoryDto);
-
-			// Create a GameHistoryEntry since saveGameHistory returns void
-			const gameHistory: GameHistoryEntry = {
-				id: `game_${Date.now()}`,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				topic: gameData.topic || GAME_STATE_DEFAULTS.TOPIC,
-				difficulty: toDifficultyLevel(gameData.difficulty),
-				gameMode: gameData.gameMode,
-				score: gameData.score,
-				gameQuestionCount: gameData.gameQuestionCount,
-				correctAnswers: gameData.correctAnswers,
-				timeSpent: gameData.timeSpent ?? 0,
-				creditsUsed: gameData.creditsUsed ?? 0,
-				answerHistory: gameData.answerHistory ?? [],
-				userId,
-			};
-
-			return gameHistory;
-		} catch (error) {
-			logger.gameError('Failed to save game result', {
-				errorInfo: { message: getErrorMessage(error) },
-				gameData,
-			});
-			throw error;
-		}
-	}
-
 	async getUserGameHistory(limit: number = 20, offset: number = 0): Promise<GameHistoryEntry[]> {
 		validateListQueryParams(limit, offset);
 
@@ -79,7 +31,7 @@ class GameHistoryService {
 			if (offset != null) searchParams.append(QUERY_PARAMS.OFFSET, String(offset));
 			const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-			const response = await apiService.get<GameHistoryResponse>(`${API_ENDPOINTS.GAME.HISTORY}${query}`);
+			const response = await apiService.get<GameHistoryResponse>(API_ENDPOINTS.GAME.HISTORY + query);
 			const responseData = response.data;
 
 			// Server returns GameHistoryResponse with games array
@@ -132,6 +84,23 @@ class GameHistoryService {
 		}
 	}
 
+	async getSurprisePick(scope?: SurpriseScope, locale?: Locale): Promise<SurprisePickResult> {
+		try {
+			const params = new URLSearchParams();
+			if (scope) params.set('scope', scope);
+			if (locale) params.set('locale', locale);
+			const query = params.toString();
+			const url = query ? `${API_ENDPOINTS.GAME.SURPRISE_PICK}?${query}` : API_ENDPOINTS.GAME.SURPRISE_PICK;
+			const response = await apiService.get<SurprisePickResult>(url);
+			return response.data;
+		} catch (error) {
+			logger.gameError('Failed to get surprise pick', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
 	async startGameSession(
 		gameId: string,
 		topic: string,
@@ -165,8 +134,9 @@ class GameHistoryService {
 	): Promise<SubmitAnswerResult> {
 		try {
 			// Validate answer value (0 to MAX_ANSWER_COUNT-1)
+			const minAnswerIndex = 0;
 			const maxAnswerIndex = VALIDATION_COUNT.ANSWER_COUNT.MAX - 1;
-			if (typeof answer !== 'number' || isNaN(answer) || answer < 0 || answer > maxAnswerIndex) {
+			if (typeof answer !== 'number' || isNaN(answer) || answer < minAnswerIndex || answer > maxAnswerIndex) {
 				throw new Error(ERROR_MESSAGES.game.INVALID_ANSWER_INDEX(maxAnswerIndex));
 			}
 

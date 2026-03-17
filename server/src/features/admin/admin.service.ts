@@ -2,21 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
-import type { AdminGameStatistics, AdminStatisticsRaw, CountRecord, TriviaQuestion } from '@shared/types';
+import { TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import type { AdminGameStatistics, AdminTriviaQuestion, CountRecord, TriviaQuestionsResponse } from '@shared/types';
 import { buildCountRecord, calculateScoreRate, getErrorMessage } from '@shared/utils';
 
-import { SQL_CONDITIONS } from '@internal/constants';
+import { restoreGameDifficulty } from '@common/validation';
+import { SERVER_CACHE_KEYS, SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import type { DifficultyCountRecord, NumericQueryResult, TopicCountRecord } from '@internal/types';
-import { addDateRangeConditions, createGroupByQuery } from '@internal/utils';
-
-import { restoreGameDifficulty } from '../../common/validation/difficulty.validation';
-import { isAdminGameStatistics } from '../../internal/utils/entityGuards';
-
-type AdminStatisticsRawWithScore = AdminStatisticsRaw & { totalScore?: number };
+import type { AdminStatisticsRaw, DifficultyCountRecord, NumericQueryResult, TopicCountRecord } from '@internal/types';
+import { addDateRangeConditions, createGroupByQuery, isAdminGameStatistics } from '@internal/utils';
 
 @Injectable()
 export class AdminService {
@@ -54,7 +50,7 @@ export class AdminService {
 			.addSelect('CAST(SUM(game.correct_answers) AS INTEGER)', 'correctAnswers')
 			.addSelect('CAST(SUM(game.score) AS INTEGER)', 'totalScore')
 			.addSelect('MAX(game.created_at)', 'lastActivity')
-			.getRawOne<AdminStatisticsRawWithScore>();
+			.getRawOne<AdminStatisticsRaw>();
 
 		const topicQueryBuilder = createGroupByQuery(this.gameHistoryRepository, 'game', 'topic', 'count', {
 			topic: SQL_CONDITIONS.IS_NOT_NULL,
@@ -126,7 +122,7 @@ export class AdminService {
 		};
 	}
 
-	async getAllTriviaQuestions() {
+	async getAllTriviaQuestions(): Promise<TriviaQuestionsResponse> {
 		try {
 			const questionEntities = await this.triviaRepository.find({
 				order: { createdAt: 'DESC' },
@@ -141,7 +137,7 @@ export class AdminService {
 
 					const { user: _user, difficulty: _difficulty, ...rest } = questionEntity;
 
-					const triviaQuestion: TriviaQuestion & { userId: string | null; isCorrect: boolean | null } = {
+					const triviaQuestion: AdminTriviaQuestion = {
 						...rest,
 						difficulty: restoredDifficulty,
 						userId: questionEntity.userId,

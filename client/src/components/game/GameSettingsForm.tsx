@@ -1,30 +1,54 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
-import { CheckSquare, Clock, FileQuestion, Gauge, Tag, UserPlus } from 'lucide-react';
+import { FileQuestion, Gauge, LayoutList, Tag, TimerReset, UserPlus, Wand2 } from 'lucide-react';
 
 import {
 	DIFFICULTY_CONFIG,
 	DifficultyLevel,
 	GAME_MODES_CONFIG,
-	TIME_DURATIONS_SECONDS,
+	SurpriseScope,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
-import { formatTitle, namesMatch } from '@shared/utils';
+import { namesMatch } from '@shared/utils';
+import { extractCustomDifficultyText, isCustomDifficulty, matchesLocaleText } from '@shared/validation';
 
 import {
 	AlertVariant,
-	BASIC_TOPICS,
 	ButtonSize,
+	ComponentSize,
+	DialogContentSize,
+	GameKey,
 	isTopicBadgeType,
+	SURPRISE_SCOPE_LABEL_KEYS,
+	TextLanguageStatus,
+	TOPIC_BADGE_LABEL_KEYS,
 	TOPIC_BADGE_META,
 	TopicBadgeType,
 	VariantBase,
 } from '@/constants';
-import { Alert, AlertDescription, Badge, Button, Input, Label, NumberInput, Textarea } from '@/components';
-import { usePopularTopics, useUserAnalytics } from '@/hooks';
 import type { GameSettingsFormProps, TopicWithMeta } from '@/types';
-import { cn } from '@/utils';
+import { gameHistoryService } from '@/services';
+import { cn, formatTimeLimitDisplay, getDifficultyDisplayLabel } from '@/utils';
+import {
+	Alert,
+	AlertDescription,
+	Badge,
+	Button,
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Input,
+	Label,
+	NumberInput,
+	Spinner,
+	Textarea,
+} from '@/components';
+import { useAppSelector, usePopularTopics, useUserAnalytics } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 
 const topicChipVariants = cva(
 	'inline-flex items-center rounded-md border transition-colors h-auto py-1.5 gap-2 shrink-0',
@@ -54,23 +78,20 @@ const topicChipVariants = cva(
 	}
 );
 
-const difficultyOptions = Object.values(DifficultyLevel)
-	.sort((a, b) => (DIFFICULTY_CONFIG[a]?.order ?? 0) - (DIFFICULTY_CONFIG[b]?.order ?? 0))
-	.flatMap(level => {
-		const config = DIFFICULTY_CONFIG[level];
-		return config ? [{ level, ...config }] : [];
-	});
-
 export function GameSettingsForm({
 	topic,
 	onTopicChange,
 	topicError,
+	topicLanguageError,
+	topicLanguageStatus,
 	selectedDifficulty,
 	onDifficultyChange,
 	customDifficulty,
 	onCustomDifficultyChange,
 	customDifficultyError,
 	onCustomDifficultyErrorChange,
+	customDifficultyLanguageError,
+	customDifficultyLanguageStatus,
 	answerCount,
 	onAnswerCountChange,
 	selectedMode,
@@ -82,8 +103,63 @@ export function GameSettingsForm({
 	onMaxPlayersChange,
 	showMaxPlayers = false,
 }: GameSettingsFormProps): JSX.Element {
+	const { t } = useTranslation('game');
+	const locale = useAppSelector(selectLocale);
 	const { data: analytics } = useUserAnalytics({ staleTime: TIME_PERIODS_MS.THIRTY_MINUTES, refetchOnMount: false });
 	const { data: popularTopicsData } = usePopularTopics(undefined, { enabled: true });
+
+	const [surprisePopupOpen, setSurprisePopupOpen] = useState(false);
+	const [surpriseTopicChosen, setSurpriseTopicChosen] = useState(true);
+	const [surpriseLevelChosen, setSurpriseLevelChosen] = useState(false);
+	const [surpriseLoading, setSurpriseLoading] = useState(false);
+
+	const surpriseScope: SurpriseScope =
+		surpriseTopicChosen && surpriseLevelChosen
+			? SurpriseScope.BOTH
+			: surpriseTopicChosen
+				? SurpriseScope.TOPIC
+				: SurpriseScope.DIFFICULTY;
+
+	const answerCountInput = useMemo(
+		() => (
+			<NumberInput
+				label={t(GameKey.ANSWER_CHOICES)}
+				labelIcon={<LayoutList />}
+				value={answerCount}
+				onChange={onAnswerCountChange}
+				min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
+				max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
+			/>
+		),
+		[t, answerCount, onAnswerCountChange]
+	);
+
+	const handlePickForMe = useCallback(async () => {
+		setSurpriseLoading(true);
+		try {
+			const data = await gameHistoryService.getSurprisePick(surpriseScope, locale);
+			if (data.topic !== undefined) {
+				onTopicChange(data.topic);
+			}
+			if (data.difficulty !== undefined) {
+				onDifficultyChange(DifficultyLevel.CUSTOM);
+				onCustomDifficultyChange(
+					isCustomDifficulty(data.difficulty) ? extractCustomDifficultyText(data.difficulty) : data.difficulty
+				);
+				onCustomDifficultyErrorChange('');
+			}
+			setSurprisePopupOpen(false);
+		} finally {
+			setSurpriseLoading(false);
+		}
+	}, [
+		surpriseScope,
+		locale,
+		onTopicChange,
+		onDifficultyChange,
+		onCustomDifficultyChange,
+		onCustomDifficultyErrorChange,
+	]);
 
 	// Memoize topic extraction to avoid recalculation
 	// Limit to 3 topics per category to reduce UI clutter
@@ -110,16 +186,23 @@ export function GameSettingsForm({
 		const topicsPlayed = analytics?.game?.topicsPlayed;
 		const list: TopicWithMeta[] = [];
 		const listHasName = (name: string) => list.some(t => namesMatch(t.name, name));
+		const canShowTopic = (name: string) => matchesLocaleText(name, locale);
 
-		// Add basic topics first (excluding duplicates)
-		BASIC_TOPICS.forEach(t => {
-			if (!listHasName(t)) {
-				list.push({ name: t, type: TopicBadgeType.BASIC });
+		// Add basic topics first (excluding duplicates); t(GameKey.BASIC_TOPICS, { returnObjects: true })
+		const basicLabels = (() => {
+			const raw = t(GameKey.BASIC_TOPICS, { returnObjects: true });
+			return Array.isArray(raw)
+				? raw.filter((value): value is string => typeof value === 'string' && canShowTopic(value))
+				: [];
+		})();
+		basicLabels.forEach(name => {
+			if (!listHasName(name)) {
+				list.push({ name, type: TopicBadgeType.BASIC });
 			}
 		});
 
 		// Add most played topic (if exists, excluding basic topics)
-		if (mostPlayedTopic && mostPlayedTopic !== 'None') {
+		if (mostPlayedTopic && canShowTopic(mostPlayedTopic)) {
 			if (!listHasName(mostPlayedTopic)) {
 				list.push({
 					name: mostPlayedTopic,
@@ -131,7 +214,7 @@ export function GameSettingsForm({
 
 		// Add user topics (excluding most played and basic to avoid duplicates)
 		userTopics.forEach(t => {
-			if (!namesMatch(t, mostPlayedTopic ?? '') && !listHasName(t)) {
+			if (canShowTopic(t) && !namesMatch(t, mostPlayedTopic ?? '') && !listHasName(t)) {
 				list.push({
 					name: t,
 					type: TopicBadgeType.YOUR,
@@ -142,17 +225,30 @@ export function GameSettingsForm({
 
 		// Add popular topics (excluding duplicates)
 		popularTopics.forEach(t => {
-			if (!listHasName(t)) {
+			if (canShowTopic(t) && !listHasName(t)) {
 				list.push({ name: t, type: TopicBadgeType.POPULAR });
 			}
 		});
 
 		return list;
-	}, [mostPlayedTopic, userTopics, popularTopics, analytics?.game?.topicsPlayed]);
+	}, [mostPlayedTopic, userTopics, popularTopics, analytics?.game?.topicsPlayed, locale, t]);
 
 	// Determine visibility based on selectedMode or default behavior
 	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
 	const shouldShowTimeLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showTimeLimit : false; // Never show time limit in multiplayer
+
+	const questionsLimitInput =
+		shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange ? (
+			<NumberInput
+				label={t(GameKey.QUESTIONS_LABEL)}
+				labelIcon={<FileQuestion />}
+				value={maxQuestionsPerGame}
+				onChange={onMaxQuestionsPerGameChange}
+				min={VALIDATION_COUNT.QUESTIONS.MIN}
+				max={VALIDATION_COUNT.QUESTIONS.MAX}
+				step={VALIDATION_COUNT.QUESTIONS.STEP}
+			/>
+		) : null;
 
 	return (
 		<div className='space-y-6 py-4'>
@@ -160,10 +256,10 @@ export function GameSettingsForm({
 			<div className='space-y-3'>
 				<Label className='flex items-center gap-2'>
 					<Tag className='h-4 w-4 text-muted-foreground' />
-					Topic
+					{t(GameKey.TOPIC)}
 				</Label>
 				<Input
-					placeholder='Enter a topic or leave empty for random...'
+					placeholder={t(GameKey.ENTER_TOPIC_OR_LEAVE_EMPTY)}
 					value={topic}
 					onChange={e => onTopicChange(e.target.value)}
 				/>
@@ -172,11 +268,19 @@ export function GameSettingsForm({
 						<AlertDescription className='text-xs'>{topicError}</AlertDescription>
 					</Alert>
 				)}
+				{topicLanguageStatus === TextLanguageStatus.PENDING && (
+					<p className='text-xs text-muted-foreground'>{t(GameKey.VALIDATING_SPELLING_AND_LANGUAGE)}</p>
+				)}
+				{topicLanguageError && topicLanguageStatus === TextLanguageStatus.INVALID && (
+					<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
+						<AlertDescription className='text-xs'>{topicLanguageError}</AlertDescription>
+					</Alert>
+				)}
 
 				{/* Combined Topics List with Badges */}
 				{topicsList.length > 0 && (
 					<div className='space-y-3'>
-						<Label className='text-xs text-muted-foreground'>Suggested Topics</Label>
+						<Label className='text-xs text-muted-foreground'>{t(GameKey.SUGGESTED_TOPICS)}</Label>
 						<div className='flex flex-col gap-2'>
 							{topicsList
 								.filter(t => t.type === TopicBadgeType.MOST_PLAYED)
@@ -195,19 +299,21 @@ export function GameSettingsForm({
 											onClick={() => onTopicChange(isSelected ? '' : name)}
 										>
 											<span className={type === TopicBadgeType.MOST_PLAYED ? 'font-medium text-sm' : 'text-xs'}>
-												{formatTitle(name)}
+												{name}
 											</span>
 											{badge && (
 												<Badge
 													variant={badge.variant}
 													className={cn(
 														'text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5',
-														type === TopicBadgeType.MOST_PLAYED && 'ml-auto gap-1',
+														type === TopicBadgeType.MOST_PLAYED && 'ms-auto gap-1',
 														badge.badgeClassName
 													)}
 												>
 													{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
-													{badge.label}
+													{isTopicBadgeType(type) && TOPIC_BADGE_LABEL_KEYS[type]
+														? t(TOPIC_BADGE_LABEL_KEYS[type])
+														: badge?.label}
 												</Badge>
 											)}
 										</Button>
@@ -230,7 +336,7 @@ export function GameSettingsForm({
 												className={topicChipVariants({ type: chipType, selected: isSelected })}
 												onClick={() => onTopicChange(isSelected ? '' : name)}
 											>
-												<span className='text-xs'>{formatTitle(name)}</span>
+												<span className='text-xs'>{name}</span>
 												{badge && (
 													<Badge
 														variant={badge.variant}
@@ -240,7 +346,9 @@ export function GameSettingsForm({
 														)}
 													>
 														{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
-														{badge.label}
+														{isTopicBadgeType(type) && TOPIC_BADGE_LABEL_KEYS[type]
+															? t(TOPIC_BADGE_LABEL_KEYS[type])
+															: badge?.label}
 													</Badge>
 												)}
 											</Button>
@@ -250,40 +358,126 @@ export function GameSettingsForm({
 						</div>
 					</div>
 				)}
+
+				{/* Surprise me: interactive button opens popup with topic/level toggles (single player only) */}
+				{!showMaxPlayers && (
+					<>
+						<Button
+							type='button'
+							variant={VariantBase.OUTLINE}
+							size={ButtonSize.SM}
+							onClick={() => setSurprisePopupOpen(true)}
+							className='gap-2'
+						>
+							<Wand2 className='h-4 w-4' />
+							{t(GameKey.SURPRISE_ME)}
+						</Button>
+						<Dialog open={surprisePopupOpen} onOpenChange={setSurprisePopupOpen}>
+							<DialogContent size={DialogContentSize.SM} className='max-w-sm'>
+								<DialogHeader>
+									<DialogTitle>{t(GameKey.SURPRISE_ME)}</DialogTitle>
+								</DialogHeader>
+								<div className='space-y-4 py-2'>
+									<p className='text-sm text-muted-foreground'>{t(GameKey.HOW_WOULD_YOU_LIKE_TO_PLAY)}</p>
+									<div className='flex flex-wrap gap-2'>
+										<Button
+											type='button'
+											variant={surpriseTopicChosen ? VariantBase.DEFAULT : VariantBase.OUTLINE}
+											size={ButtonSize.SM}
+											onClick={() =>
+												setSurpriseTopicChosen(prev => {
+													const next = !prev;
+													if (!next && !surpriseLevelChosen) setSurpriseLevelChosen(true);
+													return next;
+												})
+											}
+											disabled={surpriseLoading}
+										>
+											{t(SURPRISE_SCOPE_LABEL_KEYS[SurpriseScope.TOPIC])}
+										</Button>
+										<Button
+											type='button'
+											variant={surpriseLevelChosen ? VariantBase.DEFAULT : VariantBase.OUTLINE}
+											size={ButtonSize.SM}
+											onClick={() =>
+												setSurpriseLevelChosen(prev => {
+													const next = !prev;
+													if (!next && !surpriseTopicChosen) setSurpriseTopicChosen(true);
+													return next;
+												})
+											}
+											disabled={surpriseLoading}
+										>
+											{t(SURPRISE_SCOPE_LABEL_KEYS[SurpriseScope.DIFFICULTY])}
+										</Button>
+									</div>
+								</div>
+								<DialogFooter>
+									<Button
+										type='button'
+										variant={VariantBase.SECONDARY}
+										size={ButtonSize.SM}
+										onClick={handlePickForMe}
+										disabled={surpriseLoading}
+										className='min-w-[6rem] gap-2'
+									>
+										{surpriseLoading ? (
+											<>
+												<Spinner size={ComponentSize.SM} />
+												{t(GameKey.SURPRISE_PICK_LOADING)}
+											</>
+										) : (
+											<>
+												<Wand2 className='h-4 w-4' />
+												{t(GameKey.PICK_FOR_ME)}
+											</>
+										)}
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
+					</>
+				)}
 			</div>
 
 			{/* Difficulty Selection */}
 			<div className='space-y-3'>
 				<Label className='flex items-center gap-2'>
 					<Gauge className='h-4 w-4 text-muted-foreground' />
-					Difficulty
+					{t(GameKey.DIFFICULTY)}
 				</Label>
 				<div className='grid grid-cols-4 gap-2'>
-					{difficultyOptions.map(({ level, label, dotColor }) => {
-						const isSelected = selectedDifficulty === level;
-						return (
-							<Button
-								key={level}
-								type='button'
-								variant={isSelected ? VariantBase.DEFAULT : VariantBase.OUTLINE}
-								size={ButtonSize.SM}
-								onClick={() => onDifficultyChange(level)}
-								className={cn(
-									'flex items-center justify-center gap-2',
-									!isSelected && 'bg-muted/40 hover:bg-primary/20'
-								)}
-							>
-								<span className={cn('w-2 h-2 rounded-full', dotColor)} />
-								{label}
-							</Button>
-						);
-					})}
+					{Object.values(DifficultyLevel)
+						.sort((a, b) => (DIFFICULTY_CONFIG[a]?.order ?? 0) - (DIFFICULTY_CONFIG[b]?.order ?? 0))
+						.flatMap(level => {
+							const config = DIFFICULTY_CONFIG[level];
+							return config ? [{ level, ...config }] : [];
+						})
+						.map(({ level, dotColor }) => {
+							const isSelected = selectedDifficulty === level;
+							return (
+								<Button
+									key={level}
+									type='button'
+									variant={isSelected ? VariantBase.DEFAULT : VariantBase.OUTLINE}
+									size={ButtonSize.SM}
+									onClick={() => onDifficultyChange(level)}
+									className={cn(
+										'flex items-center justify-center gap-2',
+										!isSelected && 'bg-muted/40 hover:bg-primary/20'
+									)}
+								>
+									<span className={cn('w-2 h-2 rounded-full', dotColor)} />
+									{getDifficultyDisplayLabel(level, t)}
+								</Button>
+							);
+						})}
 				</div>
 				{/* Custom Difficulty Input */}
 				{selectedDifficulty === DifficultyLevel.CUSTOM && (
 					<div className='space-y-2'>
 						<Textarea
-							placeholder="Describe your custom difficulty...&#10;Example: 'Questions about advanced quantum physics for PhD students'"
+							placeholder={t(GameKey.CUSTOM_DIFFICULTY_PLACEHOLDER)}
 							value={customDifficulty}
 							onChange={e => {
 								onCustomDifficultyChange(e.target.value);
@@ -299,7 +493,15 @@ export function GameSettingsForm({
 								<AlertDescription className='text-xs'>{customDifficultyError}</AlertDescription>
 							</Alert>
 						)}
-						<p className='text-xs text-muted-foreground'>The AI will generate questions based on your description</p>
+						{customDifficultyLanguageStatus === TextLanguageStatus.PENDING && (
+							<p className='text-xs text-muted-foreground'>{t(GameKey.VALIDATING_SPELLING_AND_LANGUAGE)}</p>
+						)}
+						{customDifficultyLanguageError && customDifficultyLanguageStatus === TextLanguageStatus.INVALID && (
+							<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
+								<AlertDescription className='text-xs'>{customDifficultyLanguageError}</AlertDescription>
+							</Alert>
+						)}
+						<p className='text-xs text-muted-foreground'>{t(GameKey.AI_WILL_GENERATE_QUESTIONS)}</p>
 					</div>
 				)}
 			</div>
@@ -308,83 +510,41 @@ export function GameSettingsForm({
 			{showMaxPlayers ? (
 				/* Multiplayer: three number inputs in one row, evenly distributed */
 				<div className='flex flex-col sm:flex-row gap-4 sm:justify-evenly'>
-					{shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange && (
-						<NumberInput
-							label='Questions'
-							labelIcon={<FileQuestion />}
-							value={maxQuestionsPerGame}
-							onChange={onMaxQuestionsPerGameChange}
-							min={VALIDATION_COUNT.QUESTIONS.MIN}
-							max={VALIDATION_COUNT.QUESTIONS.MAX}
-							step={VALIDATION_COUNT.QUESTIONS.STEP}
-						/>
-					)}
-					<NumberInput
-						label='Answer Choices'
-						labelIcon={<CheckSquare />}
-						value={answerCount}
-						onChange={onAnswerCountChange}
-						min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
-						max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
-						step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
-					/>
+					{questionsLimitInput}
+					{answerCountInput}
 					{maxPlayers !== undefined && onMaxPlayersChange && (
 						<NumberInput
-							label='Max Players'
+							label={t(GameKey.MAX_PLAYERS)}
 							labelIcon={<UserPlus />}
 							value={maxPlayers}
 							onChange={onMaxPlayersChange}
 							min={VALIDATION_COUNT.PLAYERS.MIN}
 							max={VALIDATION_COUNT.PLAYERS.MAX}
-							step={1}
 						/>
 					)}
 				</div>
 			) : (
 				<div className='flex flex-col sm:flex-row flex-wrap gap-4 sm:justify-evenly'>
-					{/* Question Limit */}
-					{shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange && (
-						<NumberInput
-							label='Questions'
-							labelIcon={<FileQuestion />}
-							value={maxQuestionsPerGame}
-							onChange={onMaxQuestionsPerGameChange}
-							min={VALIDATION_COUNT.QUESTIONS.MIN}
-							max={VALIDATION_COUNT.QUESTIONS.MAX}
-							step={VALIDATION_COUNT.QUESTIONS.STEP}
-						/>
-					)}
+					{questionsLimitInput}
 
 					{/* Time Limit */}
 					{shouldShowTimeLimit && timeLimit !== undefined && onTimeLimitChange && (
 						<div className='flex flex-col items-center space-y-3'>
 							<NumberInput
-								label='Time Limit (seconds)'
-								labelIcon={<Clock />}
+								label={t(GameKey.TIME_LIMIT_SECONDS)}
+								labelIcon={<TimerReset />}
 								value={timeLimit}
 								onChange={onTimeLimitChange}
 								min={VALIDATION_COUNT.TIME_LIMIT.MIN}
 								max={VALIDATION_COUNT.TIME_LIMIT.MAX}
 								step={VALIDATION_COUNT.TIME_LIMIT.STEP}
 							/>
-							<p className='text-xs text-muted-foreground text-center'>
-								{timeLimit < TIME_DURATIONS_SECONDS.MINUTE
-									? `${timeLimit}s`
-									: `${Math.floor(timeLimit / TIME_DURATIONS_SECONDS.MINUTE)}m ${timeLimit % TIME_DURATIONS_SECONDS.MINUTE ? `${timeLimit % TIME_DURATIONS_SECONDS.MINUTE}s` : ''}`}
-							</p>
+							<p className='text-xs text-muted-foreground text-center'>{formatTimeLimitDisplay(timeLimit)}</p>
 						</div>
 					)}
 
 					{/* Answer Count Selection - Always shown */}
-					<NumberInput
-						label='Answer Choices'
-						labelIcon={<CheckSquare />}
-						value={answerCount}
-						onChange={onAnswerCountChange}
-						min={VALIDATION_COUNT.ANSWER_COUNT.MIN}
-						max={VALIDATION_COUNT.ANSWER_COUNT.MAX}
-						step={VALIDATION_COUNT.ANSWER_COUNT.STEP}
-					/>
+					{answerCountInput}
 				</div>
 			)}
 		</div>

@@ -4,12 +4,13 @@ import { EntityManager, Repository } from 'typeorm';
 
 import {
 	CREDIT_PURCHASE_PACKAGES,
+	CREDITS_CONFIG_KEY_PACKAGES,
 	CreditSource,
 	CreditTransactionType,
 	ERROR_MESSAGES,
 	ErrorCode,
 	GameMode,
-	SERVER_CACHE_KEYS,
+	PaymentMethod,
 	TIME_DURATIONS_SECONDS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
@@ -19,21 +20,46 @@ import {
 	calculateRequiredCredits,
 	ensureErrorObject,
 	getErrorMessage,
+	isNonEmptyString,
+	isRecord,
 	validateGameMode,
 } from '@shared/utils';
-import { isUuid } from '@shared/validation';
+import { isUuid, VALIDATORS } from '@shared/validation';
 
-import { CreditTransactionEntity, UserEntity } from '@internal/entities';
+import { SERVER_CACHE_KEYS } from '@internal/constants';
+import { CreditsConfigEntity, CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
+import type { CreditPackageConfigItem } from '@internal/types';
+import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '@internal/utils';
 
-import { isCreditBalanceCacheEntry, isCreditPurchaseOptionArray } from '../../internal/utils/entityGuards';
+function isCreditPackageConfigItem(value: unknown): value is CreditPackageConfigItem {
+	if (!isRecord(value) || Array.isArray(value)) return false;
+	const id = value.id;
+	const credits = value.credits;
+	const price = value.price;
+	const tier = value.tier;
+	return (
+		isNonEmptyString(id) &&
+		VALIDATORS.number(credits) &&
+		credits > 0 &&
+		VALIDATORS.number(price) &&
+		price > 0 &&
+		(tier === undefined || VALIDATORS.string(tier))
+	);
+}
+
+function isCreditPackageConfigItemArray(value: unknown): value is CreditPackageConfigItem[] {
+	return Array.isArray(value) && value.length > 0 && value.every(isCreditPackageConfigItem);
+}
 
 @Injectable()
 export class CreditsService {
 	constructor(
 		@InjectRepository(CreditTransactionEntity)
 		private readonly creditTransactionRepository: Repository<CreditTransactionEntity>,
+		@InjectRepository(CreditsConfigEntity)
+		private readonly creditsConfigRepository: Repository<CreditsConfigEntity>,
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
 		private readonly cacheService: CacheService
@@ -97,6 +123,29 @@ export class CreditsService {
 		}
 	}
 
+	private mapConfigToPurchaseOption(pkg: CreditPackageConfigItem): CreditPurchaseOption {
+		const priceDisplay = `$${Number(pkg.price).toFixed(2)}`;
+		const pricePerCredit = pkg.credits > 0 ? pkg.price / pkg.credits : 0;
+		return {
+			id: pkg.id,
+			credits: pkg.credits,
+			price: pkg.price,
+			priceDisplay,
+			pricePerCredit,
+			paypalProductId: `everytriv_credits_${pkg.credits}`,
+			paypalPrice: Number(pkg.price).toFixed(2),
+			supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
+		};
+	}
+
+	private async getCreditPackagesFromDb(): Promise<CreditPurchaseOption[] | null> {
+		const row = await this.creditsConfigRepository.findOne({
+			where: { key: CREDITS_CONFIG_KEY_PACKAGES },
+		});
+		if (!row?.value || !isCreditPackageConfigItemArray(row.value)) return null;
+		return row.value.map(pkg => this.mapConfigToPurchaseOption(pkg));
+	}
+
 	async getCreditPackages(): Promise<CreditPurchaseOption[]> {
 		try {
 			const cacheKey = SERVER_CACHE_KEYS.CREDITS.PACKAGES_ALL;
@@ -104,15 +153,18 @@ export class CreditsService {
 			return await this.cacheService.getOrSet<CreditPurchaseOption[]>(
 				cacheKey,
 				async () => {
-					const packages: CreditPurchaseOption[] = CREDIT_PURCHASE_PACKAGES.map(pkg => ({
+					const fromDb = await this.getCreditPackagesFromDb();
+					if (fromDb && fromDb.length > 0) return fromDb;
+					return CREDIT_PURCHASE_PACKAGES.map(pkg => ({
 						id: pkg.id,
 						credits: pkg.credits,
 						price: pkg.price,
 						priceDisplay: pkg.priceDisplay,
 						pricePerCredit: pkg.pricePerCredit,
+						paypalProductId: pkg.paypalProductId,
+						paypalPrice: pkg.paypalPrice,
+						supportedMethods: pkg.supportedMethods,
 					}));
-
-					return packages;
 				},
 				TIME_DURATIONS_SECONDS.HOUR,
 				isCreditPurchaseOptionArray
@@ -123,6 +175,51 @@ export class CreditsService {
 			});
 			throw error;
 		}
+	}
+
+	async setCreditPackages(packages: CreditPackageConfigItem[]): Promise<void> {
+		if (!isCreditPackageConfigItemArray(packages)) {
+			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
+		}
+		let row = await this.creditsConfigRepository.findOne({
+			where: { key: CREDITS_CONFIG_KEY_PACKAGES },
+		});
+		if (row) {
+			row.value = packages;
+			await this.creditsConfigRepository.save(row);
+		} else {
+			row = this.creditsConfigRepository.create({ key: CREDITS_CONFIG_KEY_PACKAGES, value: packages });
+			await this.creditsConfigRepository.save(row);
+		}
+		await this.cacheService.invalidate(SERVER_CACHE_KEYS.CREDITS.PACKAGES_ALL);
+	}
+
+	async getPackageById(packageId: string): Promise<CreditPurchaseOption | null> {
+		const packages = await this.getCreditPackages();
+		const creditsMatch = packageId.match(/package_(\d+)/);
+		if (creditsMatch?.[1]) {
+			const credits = parseInt(creditsMatch[1], 10);
+			return packages.find(p => p.credits === credits) ?? null;
+		}
+		return packages.find(p => p.id === packageId) ?? null;
+	}
+
+	async getCreditPackagesForAdmin(): Promise<{ packages: CreditPurchaseOption[]; isDefault: boolean }> {
+		const fromDb = await this.getCreditPackagesFromDb();
+		if (fromDb && fromDb.length > 0) {
+			return { packages: fromDb, isDefault: false };
+		}
+		const packages = CREDIT_PURCHASE_PACKAGES.map(pkg => ({
+			id: pkg.id,
+			credits: pkg.credits,
+			price: pkg.price,
+			priceDisplay: pkg.priceDisplay,
+			pricePerCredit: pkg.pricePerCredit,
+			paypalProductId: pkg.paypalProductId,
+			paypalPrice: pkg.paypalPrice,
+			supportedMethods: pkg.supportedMethods,
+		}));
+		return { packages, isDefault: true };
 	}
 
 	async canPlay(
@@ -221,25 +318,35 @@ export class CreditsService {
 			}
 
 			// For TIME_LIMITED mode, validate time in seconds (30-300)
-			// For other modes, validate as questions (1-10 or -1)
+			// For MULTIPLAYER, validate total credits (questions × players) in allowed range
+			// For other modes, validate as questions (1-50 or -1)
 			if (gameMode === GameMode.TIME_LIMITED) {
 				const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
 				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < MIN || questionsPerRequest > MAX) {
 					throw new BadRequestException(ERROR_MESSAGES.validation.TIME_LIMIT_RANGE(MIN, MAX));
+				}
+			} else if (gameMode === GameMode.MULTIPLAYER) {
+				const minTotal = VALIDATION_COUNT.PLAYERS.MIN * VALIDATION_COUNT.QUESTIONS.MIN;
+				const maxTotal = VALIDATION_COUNT.QUESTIONS.MAX * VALIDATION_COUNT.PLAYERS.MAX;
+				if (!Number.isFinite(questionsPerRequest) || questionsPerRequest < minTotal || questionsPerRequest > maxTotal) {
+					throw new BadRequestException(ERROR_MESSAGES.validation.QUESTIONS_PER_REQUEST_RANGE(minTotal, maxTotal, -1));
 				}
 			} else {
 				this.assertQuestionsPerRequestWithinLimits(questionsPerRequest);
 			}
 
 			// For TIME_LIMITED, use questionsPerRequest directly as time in seconds
+			// For MULTIPLAYER, use as total credits (already questions × players)
 			// For other modes, convert UNLIMITED_QUESTIONS (-1) to MAX for credit calculation
 			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
 			const normalizedQuestionsPerRequest =
 				gameMode === GameMode.TIME_LIMITED
 					? questionsPerRequest
-					: questionsPerRequest === UNLIMITED
-						? MAX
-						: questionsPerRequest;
+					: gameMode === GameMode.MULTIPLAYER
+						? questionsPerRequest
+						: questionsPerRequest === UNLIMITED
+							? MAX
+							: questionsPerRequest;
 
 			if (!validateGameMode(gameMode)) {
 				throw new BadRequestException(ErrorCode.INVALID_GAME_MODE);
@@ -420,6 +527,19 @@ export class CreditsService {
 			});
 			throw error;
 		}
+	}
+
+	async hasCreditsAddedForPayment(paymentId: string): Promise<boolean> {
+		if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+			return false;
+		}
+		const existing = await this.creditTransactionRepository.findOne({
+			where: {
+				paymentId: paymentId.trim(),
+				type: CreditTransactionType.PURCHASE,
+			},
+		});
+		return existing != null;
 	}
 
 	async addCredits(

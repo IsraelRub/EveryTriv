@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 import type { AnalyticsEventData, TrackEventResponse } from '@shared/types';
 import { getErrorMessage, isStringArray } from '@shared/utils';
 
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 

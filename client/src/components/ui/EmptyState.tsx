@@ -1,18 +1,20 @@
+import { useTranslation } from 'react-i18next';
 import { GamepadIcon, Play, UserX } from 'lucide-react';
 
-import { ButtonSize, ROUTES, VariantBase } from '@/constants';
+import { ButtonSize, HomeKey, ROUTES, VariantBase } from '@/constants';
 import type { EmptyStateProps } from '@/types';
 import { LinkButton } from './button';
 
 export function EmptyState({ data, title, description, showPlayNow = true }: EmptyStateProps) {
+	const { t } = useTranslation();
 	const Icon = showPlayNow ? GamepadIcon : UserX;
-	const displayTitle = title ?? 'No Games Yet';
-	const displayDescription = description ?? `Start playing to see ${data} here!`;
+	const displayTitle = title ?? t(HomeKey.NO_GAMES_YET);
+	const displayDescription = description ?? t(HomeKey.START_PLAYING_TO_SEE_HERE, { what: data });
 
 	const actionNode = showPlayNow ? (
 		<LinkButton to={ROUTES.GAME} size={ButtonSize.LG} variant={VariantBase.DEFAULT}>
-			<Play className='h-4 w-4 mr-2' />
-			Play Now
+			<Play className='h-4 w-4 me-2' />
+			{t(HomeKey.PLAY_NOW)}
 		</LinkButton>
 	) : null;
 

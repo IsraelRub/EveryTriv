@@ -1,4 +1,5 @@
-// Expected errors that are not caused by bugs in the code
+export const ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+
 export const EXPECTED_ERROR_CODES = new Set<string>([
 	// Authentication - expected user errors
 	'INVALID_CREDENTIALS',

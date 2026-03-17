@@ -1,58 +1,64 @@
-import { forwardRef, type HTMLAttributes } from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { forwardRef, HTMLAttributes } from 'react';
+import { cva } from 'class-variance-authority';
 import { AlertTriangle } from 'lucide-react';
 
-import { AlertVariant } from '@/constants';
+import { AlertIconSize, AlertVariant } from '@/constants';
+import type { AlertProps } from '@/types';
 import { cn } from '@/utils';
 
-const ALERT_ICON_SIZE_CLASS = {
-	sm: 'h-3 w-3',
-	md: 'h-4 w-4',
-	base: 'h-6 w-6',
-	lg: 'h-5 w-5',
-	xl: 'h-10 w-10',
-	'2xl': 'h-16 w-16',
-} as const;
+const ALERT_ICON_SIZE_CLASSES: Record<AlertIconSize, string> = {
+	[AlertIconSize.SM]: 'h-3 w-3',
+	[AlertIconSize.MD]: 'h-4 w-4',
+	[AlertIconSize.BASE]: 'h-6 w-6',
+	[AlertIconSize.LG]: 'h-5 w-5',
+	[AlertIconSize.XL]: 'h-10 w-10',
+	[AlertIconSize.XXL]: 'h-16 w-16',
+};
+
+function getAlertSvgSizeClass(size: AlertIconSize): string {
+	const base = ALERT_ICON_SIZE_CLASSES[size];
+	return base
+		? base
+				.split(' ')
+				.map(c => `[&_svg]:${c}`)
+				.join(' ')
+		: '';
+}
 
 const alertVariants = cva(
-	'relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground',
+	'flex w-full items-center gap-3 rounded-lg border p-4 [&>svg]:shrink-0 [&>svg]:text-foreground',
 	{
 		variants: {
 			variant: {
 				[AlertVariant.DEFAULT]: 'bg-background text-foreground',
-				[AlertVariant.DESTRUCTIVE]: 'border-destructive/50 text-destructive [&>svg]:text-destructive',
+				[AlertVariant.DESTRUCTIVE]: 'border-destructive/50 bg-destructive/5 text-destructive [&>svg]:text-destructive',
 			},
 		},
 		defaultVariants: { variant: AlertVariant.DEFAULT },
 	}
 );
 
-export interface AlertProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertVariants> {
-	showIcon?: boolean;
-}
-
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(
 	({ className, variant, showIcon = true, children, ...props }, ref) => (
-		<div ref={ref} className={alertVariants({ variant, className })} {...props}>
-			{variant === AlertVariant.DESTRUCTIVE && showIcon && <AlertTriangle className={ALERT_ICON_SIZE_CLASS.md} />}
+		<div
+			ref={ref}
+			className={cn(alertVariants({ variant }), getAlertSvgSizeClass(AlertIconSize.MD), className)}
+			{...props}
+		>
+			{variant === AlertVariant.DESTRUCTIVE && showIcon && (
+				<span className='flex shrink-0 text-destructive'>
+					<AlertTriangle className='stroke-current' strokeWidth={2} />
+				</span>
+			)}
 			{children}
 		</div>
 	)
 );
 Alert.displayName = 'Alert';
 
-export function AlertIcon({
-	size = 'md',
-	className,
-}: {
-	size?: keyof typeof ALERT_ICON_SIZE_CLASS;
-	className?: string;
-}) {
-	return <AlertTriangle className={cn(ALERT_ICON_SIZE_CLASS[size], className)} />;
+export function AlertIcon({ size = AlertIconSize.MD, className }: { size?: AlertIconSize; className?: string }) {
+	return <AlertTriangle className={cn(ALERT_ICON_SIZE_CLASSES[size], className)} />;
 }
-
-/** Lucide icon component for use in StatCard etc. when icon prop expects a component (e.g. icon={AlertIconSource}). */
-export { AlertTriangle as AlertIconSource };
 
 export const AlertTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHeadingElement>>(
 	({ className, ...props }, ref) => (

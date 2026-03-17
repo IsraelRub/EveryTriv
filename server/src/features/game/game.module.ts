@@ -1,11 +1,11 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { CustomDifficultyPipe, TriviaRequestPipe } from '@common/pipes';
+import { ValidationModule } from '@common/validation';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
-import { CustomDifficultyPipe, TriviaRequestPipe } from '../../common/pipes';
-import { ValidationModule } from '../../common/validation';
 import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
 import { UserModule } from '../user';

@@ -1,9 +1,19 @@
-import { Calendar, Clock, Trophy, User, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Calendar, Clock, Star, User, Users } from 'lucide-react';
 
 import { GameMode } from '@shared/constants';
-import { formatDate, formatDifficulty, getDifficultyBadgeClasses } from '@shared/utils';
+import { formatDate, formatTitle, getDifficultyBadgeClasses } from '@shared/utils';
 
-import { Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase, ViewAllDestination } from '@/constants';
+import {
+	Colors,
+	GameKey,
+	HomeKey,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	VariantBase,
+	ViewAllDestination,
+} from '@/constants';
+import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Badge,
 	Card,
@@ -16,9 +26,9 @@ import {
 	ViewAllButton,
 } from '@/components';
 import { useGameHistory } from '@/hooks';
-import { cn } from '@/utils';
 
 export function RecentGames() {
+	const { t } = useTranslation();
 	const { data: historyData, isLoading } = useGameHistory(3, 0);
 	const recentGames = Array.isArray(historyData) ? historyData : [];
 
@@ -28,9 +38,9 @@ export function RecentGames() {
 				<div className='space-y-1'>
 					<CardTitle className='text-xl flex items-center gap-2'>
 						<Clock className='w-5 h-5 text-primary' />
-						Recent Games
+						{t(HomeKey.RECENT_GAMES)}
 					</CardTitle>
-					<CardDescription>Your last played games</CardDescription>
+					<CardDescription>{t(HomeKey.RECENT_GAMES_DESC)}</CardDescription>
 				</div>
 				<ViewAllButton destination={ViewAllDestination.HISTORY} visible={recentGames.length > 0} />
 			</CardHeader>
@@ -48,8 +58,10 @@ export function RecentGames() {
 							>
 								<div className='space-y-1'>
 									<div className='flex items-center gap-2 text-sm font-medium'>
-										<Trophy className={cn('w-3 h-3', Colors.YELLOW_500.text)} />
-										<span>{game.score} points</span>
+										<Star className={cn('w-3 h-3', Colors.YELLOW_500.text)} fill='currentColor' strokeWidth={0} />
+										<span>
+											{game.score} {t(HomeKey.POINTS)}
+										</span>
 									</div>
 									<div className='flex items-center gap-2 text-xs text-muted-foreground'>
 										<Calendar className='w-3 h-3' />
@@ -57,22 +69,25 @@ export function RecentGames() {
 									</div>
 								</div>
 								<div className='text-right shrink-0 flex flex-col items-end gap-1'>
+									<Badge variant={VariantBase.OUTLINE} className='shrink-0'>
+										{formatTitle(game.topic ?? t(GameKey.DEFAULT_TOPIC))}
+									</Badge>
 									<Badge
 										variant={VariantBase.OUTLINE}
 										className={cn('shrink-0', getDifficultyBadgeClasses(game.difficulty))}
 									>
-										{formatDifficulty(game.difficulty)}
+										{getDifficultyDisplayLabel(game.difficulty, t)}
 									</Badge>
 									<span className='text-[10px] text-muted-foreground flex items-center gap-1 justify-end'>
 										{game.gameMode === GameMode.MULTIPLAYER ? (
 											<>
 												<Users className='w-3 h-3 shrink-0' />
-												Multiplayer
+												{t(GameKey.MULTIPLAYER)}
 											</>
 										) : (
 											<>
 												<User className='w-3 h-3 shrink-0' />
-												Single
+												{t(GameKey.SINGLE_PLAYER)}
 											</>
 										)}
 									</span>
@@ -82,7 +97,11 @@ export function RecentGames() {
 					</div>
 				) : (
 					<div className='h-full'>
-						<EmptyState data='recent games' />
+						<EmptyState
+							data='recent games'
+							title={t(HomeKey.NO_RECENT_GAMES)}
+							description={t(HomeKey.NO_RECENT_GAMES_DESCRIPTION)}
+						/>
 					</div>
 				)}
 			</CardContent>

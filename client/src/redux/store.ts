@@ -18,13 +18,13 @@ const gameModePersistConfig = {
 const audioSettingsPersistConfig = {
 	key: 'audioSettings',
 	storage,
-	whitelist: ['volume', 'isMuted', 'soundEnabled', 'musicEnabled'],
+	whitelist: ['volume', 'soundEffectsVolume', 'musicVolume', 'isMuted', 'soundEnabled', 'musicEnabled'],
 };
 
 const uiPreferencesPersistConfig = {
 	key: 'uiPreferences',
-	storage: storageSession,
-	whitelist: ['leaderboardPeriod'],
+	storage,
+	whitelist: ['leaderboardPeriod', 'locale'],
 };
 
 const gameSessionPersistConfig = {

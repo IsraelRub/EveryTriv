@@ -37,7 +37,8 @@ export class CustomDifficultyPipe implements PipeTransform {
 			const languageValidation = await this.languageToolService.checkText(value.customText, {
 				enableSpellCheck: true,
 				enableGrammarCheck: true,
-				useExternalAPI: true, // Will fallback to local if API unavailable
+				useExternalAPI: true,
+				...(value.language != null ? { language: value.language, detectLanguage: false } : { detectLanguage: true }),
 			});
 
 			// Log API call for validation result

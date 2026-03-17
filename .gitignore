@@ -16,6 +16,7 @@ dist-temp/
 .vscode/
 .idea/
 .cursor/
+.cursorrules
 *.swp
 *.swo
 *~

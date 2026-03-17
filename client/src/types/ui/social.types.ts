@@ -1,5 +1,7 @@
 import type { IconType } from 'react-icons';
 
+import { SocialShareMode } from '@/constants';
+
 export interface SocialLinkItem {
 	name: string;
 	url: string;
@@ -19,6 +21,8 @@ export interface SocialSharePlatform {
 
 export interface SocialPlatformData {
 	name: string;
+
+	nameKey?: string;
 	url: string;
 	hoverColor: string;
 	shareColor: string;
@@ -31,10 +35,6 @@ export interface SocialShareProps {
 	total: number;
 	topic: string;
 	difficulty: string;
-	dialogTitle?: string;
-	dialogDescription?: string;
+	mode: SocialShareMode;
 	shareText?: string;
-	buttonLabel?: string;
-	/** Applied to the share trigger button (e.g. "w-full" for equal width in a flex row). */
-	triggerClassName?: string;
 }

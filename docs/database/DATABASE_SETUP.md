@@ -152,10 +152,10 @@ export class UserEntity extends BaseEntity {
   role: UserRole = UserRole.USER; // תפקיד (user, admin, guest, premium)
 
   @Column('jsonb', { default: {} })
-  preferences: Partial<UserPreferences> = {}; // העדפות משתמש (כולל avatar: number 1-16)
+  preferences: Partial<UserPreferences> = {}; // העדפות משתמש (כולל avatar: number 1-15)
 
   @Column('jsonb', { default: [] })
-  achievements: Achievement[];   // הישגים
+  achievements: SavedAchievement[];   // legacy, לא בשימוש
 
   // BaseEntity fields: id, createdAt, updatedAt
 }
@@ -384,7 +384,7 @@ export class PaymentHistoryEntity extends BaseEntity {
   user!: UserEntity;             // קשר למשתמש
 
   @Column({ name: 'payment_id', type: 'varchar' })
-  paymentId!: string;            // מזהה תשלום (Stripe payment intent ID)
+  paymentId!: string;            // מזהה תשלום (provider transaction id, e.g. pi_* or PayPal)
 
   @Column({ name: 'amount', type: 'int' })
   amount: number = 0;            // סכום בסנטים
@@ -396,7 +396,7 @@ export class PaymentHistoryEntity extends BaseEntity {
   status: PaymentStatus = PaymentStatus.PENDING; // סטטוס תשלום
 
   @Column({ name: 'payment_method', type: 'varchar', nullable: true })
-  paymentMethod?: PaymentMethod; // שיטת תשלום (STRIPE, PAYPAL, MANUAL_CREDIT)
+  paymentMethod?: PaymentMethod; // שיטת תשלום (PAYPAL, MANUAL_CREDIT)
 
   @Column({ nullable: true })
   description?: string;          // תיאור התשלום

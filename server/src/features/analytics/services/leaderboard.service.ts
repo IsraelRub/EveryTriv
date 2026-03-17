@@ -2,17 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import {
-	ERROR_MESSAGES,
-	LeaderboardPeriod,
-	SERVER_CACHE_KEYS,
-	TIME_DURATIONS_SECONDS,
-	VALIDATION_COUNT,
-} from '@shared/constants';
+import { ERROR_MESSAGES, LeaderboardPeriod, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type { LeaderboardStats } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { LEADERBOARD_PERIOD_CONFIG } from '@internal/constants';
+import { LEADERBOARD_PERIOD_CONFIG, SERVER_CACHE_KEYS } from '@internal/constants';
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';

@@ -1,6 +1,6 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
-import { SQL_CONDITIONS, WildcardPattern as WildcardPatternEnum } from '@internal/constants';
+import { SQL_CONDITIONS, WildcardPattern } from '@internal/constants';
 
 export function addDateRangeConditions<T extends ObjectLiteral>(
 	queryBuilder: SelectQueryBuilder<T>,
@@ -55,14 +55,11 @@ export function createGroupByQuery<T extends ObjectLiteral>(
 	return queryBuilder;
 }
 
-const SEARCH_PATTERN_BUILDERS: Record<
-	(typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum],
-	(term: string) => string
-> = {
-	[WildcardPatternEnum.BOTH]: t => `%${t}%`,
-	[WildcardPatternEnum.START]: t => `${t}%`,
-	[WildcardPatternEnum.END]: t => `%${t}`,
-	[WildcardPatternEnum.NONE]: t => t,
+const SEARCH_PATTERN_BUILDERS: Record<WildcardPattern, (term: string) => string> = {
+	[WildcardPattern.BOTH]: t => `%${t}%`,
+	[WildcardPattern.START]: t => `${t}%`,
+	[WildcardPattern.END]: t => `%${t}`,
+	[WildcardPattern.NONE]: t => t,
 };
 
 export function addSearchConditions<T extends ObjectLiteral>(
@@ -72,7 +69,7 @@ export function addSearchConditions<T extends ObjectLiteral>(
 	searchTerm: string,
 	options: {
 		normalizeTerm?: (term: string) => string;
-		wildcardPattern: (typeof WildcardPatternEnum)[keyof typeof WildcardPatternEnum];
+		wildcardPattern: WildcardPattern;
 	}
 ): SelectQueryBuilder<T> {
 	const normalizedTerm = options.normalizeTerm ? options.normalizeTerm(searchTerm) : searchTerm.trim().toLowerCase();

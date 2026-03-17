@@ -1,17 +1,16 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Coins, Crown, Plus } from 'lucide-react';
 
-import { UserRole } from '@shared/constants';
-
-import { Colors, ComponentSize, LoadingMessages, ROUTES } from '@/constants';
+import { Colors, ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES } from '@/constants';
+import { cn } from '@/utils';
 import { Spinner } from '@/components';
 import { useCreditBalance, useUserRole } from '@/hooks';
-import { cn } from '@/utils';
 
 export function CreditBalance() {
+	const { t } = useTranslation(['game', 'payment', 'loading']);
 	const { data: creditBalance, isLoading } = useCreditBalance();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	if (isLoading) {
 		return (
@@ -19,7 +18,7 @@ export function CreditBalance() {
 				<Spinner
 					size={ComponentSize.SM}
 					className='text-muted-foreground'
-					message={LoadingMessages.LOADING_BALANCE}
+					message={t(LoadingKey.LOADING_BALANCE)}
 					messageInline
 				/>
 			</div>
@@ -34,7 +33,7 @@ export function CreditBalance() {
 			<div className='flex items-center gap-2 px-3 py-1.5'>
 				<Coins className={cn('w-4 h-4', Colors.YELLOW_500.text)} />
 				<span className={cn('text-sm font-medium', Colors.YELLOW_500.text)}>
-					{isAdmin ? 'Unlimited' : totalCredits}
+					{isAdmin ? t(GameKey.UNLIMITED) : totalCredits}
 				</span>
 			</div>
 
@@ -60,7 +59,7 @@ export function CreditBalance() {
 							Colors.YELLOW_500.text
 						)}
 					>
-						ADD
+						{t(PaymentKey.ADD_CREDITS)}
 					</span>
 				</Link>
 			)}

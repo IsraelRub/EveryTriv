@@ -1,5 +1,13 @@
-import { EMPTY_VALUE } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, EMPTY_VALUE, VALIDATION_LENGTH } from '@shared/constants';
 import { extractCustomDifficultyText, isCustomDifficulty, VALIDATORS } from '@shared/validation';
+
+import { isNonEmptyString } from './data.utils';
+
+export function truncateWithEllipsis(str: string, maxLength: number): string {
+	if (str.length <= maxLength) return str;
+	if (maxLength <= 3) return '...'.slice(0, maxLength);
+	return `${str.substring(0, maxLength - 3)}...`;
+}
 
 export function formatNumericValue(
 	value: number | null | undefined,
@@ -7,12 +15,11 @@ export function formatNumericValue(
 	suffix?: string,
 	prefix?: string
 ): string {
-	const n = value ?? 0;
-	const formatted = n.toLocaleString(undefined, {
+	const formatted = (value ?? 0).toLocaleString(undefined, {
 		minimumFractionDigits: decimals,
 		maximumFractionDigits: decimals,
 	});
-	return (prefix ?? '') + formatted + (suffix ?? '');
+	return `${prefix ?? ''}${formatted}${suffix ?? ''}`;
 }
 
 export function formatCurrency(amountCents: number, currency: string = 'USD'): string {
@@ -34,28 +41,29 @@ export function formatDate(date: Date | string | null | undefined, defaultValue:
 }
 
 export function capitalize(word: string | null | undefined): string {
-	if (word == null || word.trim().length === 0) return '';
+	if (!isNonEmptyString(word)) return '';
 	return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
 export function formatTitle(topic: string | null | undefined): string {
-	if (!topic?.trim()) return '';
-	const words = topic
-		.trim()
+	if (!isNonEmptyString(topic)) return '';
+	const t = topic.trim();
+	const words = t
 		.replace(/([a-z])([A-Z])/g, (_, a: string, b: string) => `${a} ${b.toLowerCase()}`)
 		.toLowerCase()
 		.split(/\s+/);
 	return words.map(capitalize).join(' ');
 }
 
-export function formatDifficulty(difficulty: string, maxLength: number = 50): string {
-	if (!isCustomDifficulty(difficulty)) {
-		return formatTitle(difficulty);
+export function formatDifficulty(
+	difficulty: string | null | undefined,
+	maxLength: number = VALIDATION_LENGTH.STRING_TRUNCATION.SHORT
+): string {
+	const value = difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty;
+	if (!isCustomDifficulty(value)) {
+		return formatTitle(value);
 	}
-	const customText = extractCustomDifficultyText(difficulty);
+	const customText = extractCustomDifficultyText(value);
 	const formatted = formatTitle(customText);
-	if (formatted.length <= maxLength) {
-		return formatted;
-	}
-	return formatted.substring(0, maxLength - 3) + '...';
+	return truncateWithEllipsis(formatted, maxLength);
 }

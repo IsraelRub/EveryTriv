@@ -6,10 +6,9 @@ import { TIME_PERIODS_MS, UserRole, VALIDATION_COUNT } from '@shared/constants';
 import { delay, ensureErrorObject } from '@shared/utils';
 
 import { AppConfig } from '@config';
+import { PasswordService } from '@common/auth';
 import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
-
-import { PasswordService } from '../../common/auth';
 
 @Injectable()
 export class AdminBootstrapService implements OnModuleInit {

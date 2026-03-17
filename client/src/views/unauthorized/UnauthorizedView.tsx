@@ -1,11 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldX } from 'lucide-react';
 
-import { ButtonSize, ROUTES, VariantBase } from '@/constants';
+import { AuthKey, ButtonSize, CommonKey, ROUTES, VariantBase } from '@/constants';
 import { Button, Card, HomeButton } from '@/components';
 
 export function UnauthorizedView() {
+	const { t } = useTranslation(['common', 'auth']);
 	const navigate = useNavigate();
 
 	return (
@@ -19,8 +21,8 @@ export function UnauthorizedView() {
 					<ShieldX className='h-12 md:h-16 w-12 md:w-16 text-destructive' />
 				</div>
 				<div>
-					<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>Access Denied</h1>
-					<p className='text-sm md:text-base text-muted-foreground'>You don't have permission to access this page</p>
+					<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>{t(CommonKey.ACCESS_DENIED)}</h1>
+					<p className='text-sm md:text-base text-muted-foreground'>{t(CommonKey.ACCESS_DENIED_DESCRIPTION)}</p>
 				</div>
 				<div className='flex flex-col gap-2'>
 					<HomeButton />
@@ -29,7 +31,7 @@ export function UnauthorizedView() {
 						variant={VariantBase.OUTLINE}
 						size={ButtonSize.LG}
 					>
-						Sign In
+						{t(AuthKey.SIGN_IN)}
 					</Button>
 				</div>
 			</Card>

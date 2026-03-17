@@ -5,15 +5,19 @@ import {
 	selectAudioInitialized,
 	selectIsMuted,
 	selectMusicEnabled,
+	selectMusicVolume,
+	selectSoundEffectsVolume,
 	selectSoundEnabled,
 	selectVolume,
 } from '@/redux/selectors';
-import { setInitialized, setMuted, setVolume } from '@/redux/slices';
+import { setInitialized, setMusicVolume, setMuted, setSoundEffectsVolume, setVolume } from '@/redux/slices';
 import { useAppDispatch, useAppSelector } from '../useRedux';
 
 export function useAudioState() {
 	const dispatch = useAppDispatch();
 	const volume = useAppSelector(selectVolume);
+	const soundEffectsVolume = useAppSelector(selectSoundEffectsVolume);
+	const musicVolume = useAppSelector(selectMusicVolume);
 	const isMuted = useAppSelector(selectIsMuted);
 	const soundEnabled = useAppSelector(selectSoundEnabled);
 	const musicEnabled = useAppSelector(selectMusicEnabled);
@@ -49,18 +53,38 @@ export function useAudioState() {
 		[isMuted, dispatch]
 	);
 
+	const handleSoundEffectsVolumeChange = useCallback(
+		(values: number[]) => {
+			const v = values[0];
+			if (v != null) dispatch(setSoundEffectsVolume(v));
+		},
+		[dispatch]
+	);
+
+	const handleMusicVolumeChange = useCallback(
+		(values: number[]) => {
+			const v = values[0];
+			if (v != null) dispatch(setMusicVolume(v));
+		},
+		[dispatch]
+	);
+
 	const handleMuteToggle = useCallback(() => {
 		dispatch(setMuted(!isMuted));
 	}, [isMuted, dispatch]);
 
 	return {
 		volume,
+		soundEffectsVolume,
+		musicVolume,
 		isMuted,
 		soundEnabled,
 		musicEnabled,
 		isInitialized: isInitializedRef.current || isInitialized,
 		isInitializedRef,
 		handleVolumeChange,
+		handleSoundEffectsVolumeChange,
+		handleMusicVolumeChange,
 		handleMuteToggle,
 	};
 }

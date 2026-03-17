@@ -2,22 +2,15 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Inject, Param, Req 
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Redis } from 'ioredis';
 
-import {
-	ErrorCode,
-	RATE_LIMIT_DEFAULTS,
-	SERVER_CACHE_KEYS,
-	TIME_DURATIONS_SECONDS,
-	TIME_PERIODS_MS,
-	UserRole,
-} from '@shared/constants';
+import { ErrorCode, RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { StorageOperation } from '@internal/constants';
+import { Cache, Roles } from '@common/decorators';
+import { SERVER_CACHE_KEYS, StorageOperation } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type { NestRequest } from '@internal/types';
 import { createCacheError } from '@internal/utils';
 
-import { Cache, Roles } from '../../../common';
 import { CacheService } from './cache.service';
 
 @ApiTags('Cache Management')

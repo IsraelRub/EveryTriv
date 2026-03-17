@@ -23,10 +23,7 @@
 
 ## טיפוסים
 
-טיפוסים ספציפיים לשרת נמצאים ב-`@internal/types`:
-- `TriviaQuestionMetadata` - metadata עבור שאלות שנוצרו
-- `QuestionCacheEntry` - ערך cache עבור שאלות (משתמש ב-`TriviaQuestion`)
-- `QuestionCacheMap` - מפה של מפתחות שאלות לערכי cache
+טיפוסים ספציפיים לשרת (params, session, socket) נמצאים ב-`@internal/types` (game.types.ts).
 
 טיפוסים משותפים נמצאים ב-`@shared/types`:
 - `TriviaQuestion` - שאלת טריוויה
@@ -69,7 +66,7 @@ server/src/features/game/
 
 1. **Prompt Generation** (`prompts.ts`):
    - `generateTriviaQuestion()` - יוצר prompt דינמי לפי פרמטרים (נושא, קושי, מספר תשובות)
-   - `SYSTEM_PROMPT` - prompt קבוע עם הנחיות כלליות ל-AI
+   - `TRIVIA_GENERATION_SYSTEM_PROMPT` - prompt קבוע עם הנחיות כלליות ל-AI ליצירת שאלות
    - `getDifficultyGuidance()` - מספק הנחיות ספציפיות לפי רמת קושי
 
 2. **Provider** (`groq.provider.ts`):
@@ -79,7 +76,7 @@ server/src/features/game/
    - יוצר אובייקט TriviaQuestion
 
 3. **API Client** (`groq.apiClient.ts`):
-   - בונה בקשת API עם SYSTEM_PROMPT + User Prompt
+   - בונה בקשת API עם TRIVIA_GENERATION_SYSTEM_PROMPT + User Prompt
    - בוחר מודל לפי priority
    - מטפל ב-retry logic ו-error handling
 

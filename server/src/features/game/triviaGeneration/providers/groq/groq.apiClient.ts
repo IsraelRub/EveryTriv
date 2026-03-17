@@ -5,8 +5,9 @@ import {
 	HTTP_STATUS_CODES,
 	HTTP_TIMEOUTS,
 	HttpMethod,
+	VALIDATION_LENGTH,
 } from '@shared/constants';
-import { executeRetry, getErrorMessage, isProviderAuthError, isRecord } from '@shared/utils';
+import { executeRetry, getErrorMessage, isProviderAuthError, isRecord, truncateWithEllipsis } from '@shared/utils';
 
 import {
 	GROQ_API_BASE_URL,
@@ -18,10 +19,12 @@ import {
 	GROQ_PROVIDER_NAME_LOWERCASE,
 } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
-import type { LLMResponse, ProviderConfig } from '@internal/types';
+import type { GroqMessageForLog, LLMResponse, ProviderConfig } from '@internal/types';
 import { createAuthError } from '@internal/utils';
 
-import { SYSTEM_PROMPT } from '../prompts';
+import { TRIVIA_GENERATION_SYSTEM_PROMPT } from '../prompts';
+
+const DEFAULT_SYSTEM_PROMPT = TRIVIA_GENERATION_SYSTEM_PROMPT;
 
 export class GroqApiClient {
 	constructor(
@@ -44,9 +47,10 @@ export class GroqApiClient {
 		return selectedModel;
 	}
 
-	getProviderConfig(prompt: string): ProviderConfig {
+	getProviderConfig(prompt: string, systemPrompt?: string): ProviderConfig {
 		const selectedModel = this.selectModel();
 		const modelConfig = GROQ_MODELS[selectedModel];
+		const systemContent = systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
 
 		return {
 			name: GROQ_PROVIDER_NAME_LOWERCASE,
@@ -65,7 +69,7 @@ export class GroqApiClient {
 				messages: [
 					{
 						role: 'system',
-						content: SYSTEM_PROMPT,
+						content: systemContent,
 					},
 					{ role: 'user', content: prompt },
 				],
@@ -75,19 +79,22 @@ export class GroqApiClient {
 		};
 	}
 
-	async makeApiCall(prompt: string): Promise<LLMResponse> {
+	async makeApiCall(prompt: string, systemPrompt?: string): Promise<LLMResponse> {
 		if (!this.apiKey) {
 			throw createAuthError(ErrorCode.API_KEY_NOT_CONFIGURED);
 		}
 
-		const config = this.getProviderConfig(prompt);
+		const config = this.getProviderConfig(prompt, systemPrompt);
 
 		// Log initial request with detailed info (redact sensitive data)
 		const sanitizedBody = config.body ? { ...config.body } : {};
 		if ('messages' in sanitizedBody && Array.isArray(sanitizedBody.messages)) {
-			sanitizedBody.messages = sanitizedBody.messages.map((msg: { role?: string; content?: unknown }) => ({
+			sanitizedBody.messages = sanitizedBody.messages.map((msg: GroqMessageForLog) => ({
 				role: msg.role,
-				content: typeof msg.content === 'string' ? `${msg.content.substring(0, 100)}...` : '[content]',
+				content:
+					typeof msg.content === 'string'
+						? truncateWithEllipsis(msg.content, VALIDATION_LENGTH.STRING_TRUNCATION.CONTENT_PREVIEW)
+						: '[content]',
 			}));
 		}
 
@@ -210,10 +217,11 @@ export class GroqApiClient {
 				maxRetries: config.maxRetries,
 				baseDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY,
 				timeout: config.timeout,
-				retryOnAuthError: false, // Don't retry on 401
-				retryOnRateLimit: true, // Retry on 429
-				retryOnServerError: true, // Retry on 5xx
-				retryOnNetworkError: true, // Retry on network errors
+				maxTotalTimeMs: 60_000,
+				retryOnAuthError: false,
+				retryOnRateLimit: true,
+				retryOnServerError: true,
+				retryOnNetworkError: true,
 				shouldRetry: error => {
 					// Don't retry on auth errors
 					if (isProviderAuthError(error)) {

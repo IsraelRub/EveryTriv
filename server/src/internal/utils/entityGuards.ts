@@ -17,6 +17,8 @@ import type {
 import { isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
+import { UNIFIED_SECTION_KEYS } from '@internal/constants';
+
 // Type guard for required basic values (string, number, boolean).
 // Uses VALIDATORS for consistent validation (includes Number.isFinite check for numbers).
 // Additional checks for numbers: !Number.isNaN() to prevent NaN values.
@@ -230,19 +232,6 @@ const isUserTrendPoint = (value: unknown): value is UserTrendPoint => {
 };
 
 export const isUserTrendPointArray = createArrayGuard(isUserTrendPoint);
-
-const UNIFIED_SECTION_KEYS = new Set([
-	'statistics',
-	'performance',
-	'insights',
-	'recommendations',
-	'summary',
-	'achievements',
-	'trends',
-	'activity',
-	'progress',
-	'comparison',
-]);
 
 export const isUnifiedUserAnalyticsResponse = (value: unknown): value is UnifiedUserAnalyticsResponse => {
 	if (!isRecord(value)) {

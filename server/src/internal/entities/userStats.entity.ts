@@ -1,7 +1,8 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, VersionColumn } from 'typeorm';
 
-import type { CategoryStatistics, RecentGameActivity } from '@shared/types';
+import type { CategoryStatistics } from '@shared/types';
 
+import type { RecentGameActivity } from '../types';
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 

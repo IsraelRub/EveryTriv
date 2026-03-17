@@ -36,7 +36,7 @@ export enum AudioCategory {
 	MUSIC = 'MUSIC',     // מוזיקת רקע
 	EFFECTS = 'EFFECTS', // אפקטים מיוחדים
 	GAMEPLAY = 'GAMEPLAY', // צלילי משחק ספציפיים
-	ACHIEVEMENT = 'ACHIEVEMENT', // צלילי הישגים
+	// צלילי סיום משחק משתמשים ב־gameEndSoundsPath
 }
 ```
 
@@ -83,7 +83,7 @@ client/public/assets/sounds/
 - **איכות**: 128-192 kbps
 - **סגנון**: אמביינט, לא מסיח דעת
 
-#### צלילי הישגים
+#### צלילי סיום משחק
 - **משך**: 1-3 שניות
 - **פורמט**: WAV
 - **איכות**: גבוהה
@@ -130,16 +130,13 @@ const MyComponent = () => {
 
 ```typescript
 // הגדרת נפח כללי (master volume)
-audioService.setMasterVolume(0.7); // או setVolume(0.7)
+audioService.setMasterVolume(0.7);
 
 // השתקה/הפעלה
 audioService.mute();
 audioService.unmute();
-audioService.toggleMute(); // מחזיר את מצב ההשתקה החדש
 
-// בדיקת מצב
-const isEnabled = audioService.isEnabled; // true אם לא מושתק
-const currentVolume = audioService.volume; // מחזיר 0 אם מושתק, אחרת masterVolume
+// מצב נפח והשתקה מסונכרנים עם Redux (audioSettingsSlice) דרך useAudioSync; לקריאת מצב השתמש ב-useAudioState / selectVolume / selectIsMuted
 ```
 
 ### שמירת מצב
@@ -160,7 +157,7 @@ const currentVolume = audioService.volume; // מחזיר 0 אם מושתק, אח
 
 2. **טעינה על דרישה**
    - צלילי משחק ספציפיים
-   - צלילי הישגים
+   - צלילי סיום משחק
    - צלילי התראה
 
 ### ניהול זיכרון

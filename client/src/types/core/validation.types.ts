@@ -6,3 +6,9 @@ export interface ValidationHookOptions {
 	customValidator?: (value: string) => boolean;
 	errorMessage?: string;
 }
+
+export interface LanguageValidationOptions {
+	enableSpellCheck?: boolean;
+	enableGrammarCheck?: boolean;
+	useExternalAPI?: boolean;
+}

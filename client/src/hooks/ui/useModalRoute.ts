@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { isRecord } from '@shared/utils';
+import { isNonEmptyString, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { ROUTES } from '@/constants';
@@ -10,10 +10,10 @@ function parseModalState(state: unknown): { modal: boolean; returnUrl?: string }
 	if (!isRecord(state)) return null;
 	const modal = state.modal;
 	const returnUrl = state.returnUrl;
-	if ((modal === undefined || VALIDATORS.boolean(modal)) && (returnUrl === undefined || VALIDATORS.string(returnUrl))) {
+	if ((modal === undefined || VALIDATORS.boolean(modal)) && (returnUrl === undefined || isNonEmptyString(returnUrl))) {
 		return {
 			modal: !!modal,
-			...(returnUrl !== undefined && { returnUrl }),
+			...(isNonEmptyString(returnUrl) && { returnUrl }),
 		};
 	}
 	return null;

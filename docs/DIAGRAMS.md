@@ -2,6 +2,56 @@
 
 קובץ זה מכיל את כל הדיאגרמות המתארות את הארכיטקטורה, הקשרים והיחסים בפרויקט EveryTriv.
 
+## דוח התאמה: תרחישים מול קוד ותרשימים קיימים
+
+(עדכון: בדיקה שיטתית מול הקוד ומול התרשימים בקובץ זה.)
+
+### 1. האם תוכן תרשימי הזרימה (ארכיטקטורה, Auth, Single/Multi, Payment, Trivia, Admin, Maintenance, Entities, Redux) משקף את הפרויקט?
+
+| תרחיש / רכיב | התאמה לקוד | הערות |
+|--------------|-------------|--------|
+| **ארכיטקטורה** (Client, Server, PostgreSQL, Redis, Groq, PayPal) | כן | תואם. |
+| **Authentication** (LoginView, Email/Google, validateUser, JWT, Redis session, Redux) | כן | זרימת אימות וניהול סשן תואמת. |
+| **Single Player** (GameSetupView, credits.canPlay, session/start, deduct, TriviaGeneration, PlayArea, submit, finalize, Summary) | כן | שמות Views ו-API תואמים. שים לב: שאלות טריוויה – **POST** `/game/trivia` (לא GET). |
+| **Multiplayer** (WebSocket: create-room, join-room, start-game, question-started, submit-answer, game-ended) | כן | אירועי Gateway תואמים ל-`multiplayer.gateway.ts`. |
+| **Payment & Credits** (PayPal, createOrder, webhook, addCredits, invalidate cache) | כן | PayPal + Credits; אין Stripe/מנוי. |
+| **Trivia Generation** (TriviaRequestPipe, DB vs Groq, GroqResponseParser, שמירה) | כן | תואם ל-TriviaGenerationService ו-Pipes. |
+| **Admin** (Guards, טאבים: Business, Performance, System, Trivia, Users; Maintenance תחת System) | כן | טאבים תואמים; Maintenance כחלק מ-System. |
+| **Maintenance – Schedulers** | חלקי | **GameSessionScheduler**: בקוד רץ כל 5 דקות ומסיים sessions ישנים (מעל שעה); בתרשים לעיתים "hourly". **ScoreResetScheduler**: בקוד – איפוס שבועי/חודשי/שנתי + consistency יומי ב-2AM; בתרשים "Reset weekly scores (daily)" – לא מדויק (שבועי לא יומי). **Daily Free Questions Reset**: המתודה `CreditsService.resetDailyFreeQuestions()` קיימת אך **אינה נקראת משום Cron** – אין scheduler ייעודי ל-reset שאלות חינם יומיות. |
+| **Entities** (User, GameHistory, Trivia, CreditTransaction) | כן | תואם; ב-ERD בקובץ יש עוד ישויות (UserStats, Leaderboard, PaymentHistory). |
+| **Redux** (gameModeSlice, gameSessionSlice, multiplayerSlice, audioSettingsSlice, uiPreferencesSlice) | כן | כל ה-slices קיימים. |
+
+### 2. האם התוכן מתקף (משתקף) בתרשימים הקיימים ב-DIAGRAMS.md?
+
+| תרחיש | יש תרשים ב-DIAGRAMS.md? | הערות |
+|-------|-------------------------|--------|
+| ארכיטקטורה כללית | כן | דיאגרמת ארכיטקטורה, מודולי Backend, היררכיות. |
+| Authentication | כן | "דיאגרמת זרימת אימות". |
+| יצירת שאלות / Trivia | כן | "זרימת נתונים – יצירת שאלה", "זרימת Prompt – יצירת שאלת טריוויה", "AI Providers". |
+| תשובה לשאלה / ניקוד | כן | "זרימת נתונים – תשובה לשאלה". |
+| **Single Player – זרימה מלאה (Setup → Credits → Session Start → Deduct → שאלות → Finalize → Summary)** | חלקי | "דיאגרמת זרימת משחק מלא" היא state diagram כללי (GameConfig → GameSession → Question → …); **אין** sequence/flowchart שמראה במפורש: בדיקת credits, POST session/start, ניכוי נקודות, finalize. |
+| **Multiplayer (WebSocket)** | **לא** | **חסר**: אין דיאגרמת זרימה למשחק מרובה משתתפים (create-room, join-room, start-game, question-started, submit-answer, game-ended). |
+| Payment & Credits | כן | "דיאגרמת זרימת תשלומים" (עודכן ל-PayPal + Credits). |
+| Admin Dashboard | כן | "דיאגרמת זרימת Admin Dashboard". |
+| **Maintenance & Schedulers** | **לא** | **חסר**: אין תרשים ל-Cron jobs (GameSessionScheduler, ScoreResetScheduler, consistency, retry stats). אין תרשים ל-DataMaintenanceService / UserStatsMaintenanceService. |
+| Entities / ERD | כן | "דיאגרמת מסד נתונים (ERD)". |
+| Redux / React Query | כן | "דיאגרמת Redux State", "דיאגרמת React Query Cache". |
+
+### 3. האם יש בפרויקט flowcharts שמשקפים את **כל** התרחישים?
+
+**חסרים מול רשימת התרחישים בפרויקט:**
+
+1. **Multiplayer Game Flow** – זרימה מפורשת (WebSocket: התחברות, create/join room, Lobby, start-game, שאלות, submit-answer, game-ended, Summary).
+2. **Maintenance & Schedulers** – אילו Cron קיימים, מתי רצים, ומה עושים (ניקוי sessions, איפוס ניקוד שבועי/חודשי/שנתי, consistency יומי, retry stats); איפה נכנסים DataMaintenanceService ו-UserStatsMaintenanceService.
+3. **Single Session – פירוט מלא** – flowchart/sequence אחד שמשלב: GameSetupView → בדיקת credits → POST session/start → ניכוי נקודות → טעינת שאלות (POST trivia) → משחק → POST session/answer → finalize → Summary (אופציונלי: להרחיב את "זרימת משחק מלא" או להוסיף sequence נפרד).
+
+**אי-התאמות קטנות בתרשימים הקיימים (מול הקוד):**
+
+- דיאגרמת תשלומים – עודכנה ל-PayPal + Credits (ללא Stripe/מנוי).
+- זרימת תשובה לשאלה – הנתיב הוא POST `/game/session/answer` (תואם לקוד).
+
+---
+
 ## דיאגרמת ארכיטקטורה כללית
 
 ```mermaid
@@ -40,7 +90,7 @@ graph LR
         AG --> AK[credits.service]
         AG --> AL[payment.service]
         AG --> AM[gameHistory.service]
-        AG --> AN[customDifficulty.service]
+        AG --> AN[game.service<br/>trivia, validateText, validateCustomDifficulty]
         AG --> AO[audio.service]
         AG --> AP[storage.service]
         AG --> AQ[score.service]
@@ -144,7 +194,7 @@ graph LR
         DW --> DZ[Pipes]
         DW --> EA[Decorators]
         DI --> EB[ValidationModule]
-        EB --> EC[Validation Service]
+        EB --> EC[LanguageToolService<br/>+ @shared/validation]
     end
 
     subgraph "Database"
@@ -347,7 +397,7 @@ graph TB
 
     subgraph "Common Layer - Services"
         F[Auth Services<br/>AuthenticationManager<br/>PasswordService<br/>JwtTokenService]
-        G[Validation Services<br/>ValidationService<br/>LanguageToolService]
+        G[Validation<br/>@shared/validation<br/>LanguageToolService]
         H[ValidationModule<br/>NestJS Module]
     end
 
@@ -914,7 +964,7 @@ sequenceDiagram
     
     GP->>AC: makeApiCall(userPrompt)
     
-    Note over AC: Build API request with:<br/>- SYSTEM_PROMPT (system message)<br/>- User prompt (user message)<br/>- Model selection<br/>- Temperature: 0.7<br/>- Max tokens: 512
+    Note over AC: Build API request with:<br/>- TRIVIA_GENERATION_SYSTEM_PROMPT (system message)<br/>- User prompt (user message)<br/>- Model selection<br/>- Temperature: 0.7<br/>- Max tokens: 512
     AC->>AC: selectModel() (priority-based)
     AC->>AC: getProviderConfig(prompt)
     AC->>AI: POST /chat/completions
@@ -945,7 +995,7 @@ sequenceDiagram
 
 **רכיבים:**
 - **PromptTemplates**: יוצר prompts דינמיים עם הנחיות איכות וקושי
-- **SYSTEM_PROMPT**: קבוע - הנחיות כלליות ל-AI
+- **TRIVIA_GENERATION_SYSTEM_PROMPT**: קבוע - הנחיות כלליות ל-AI ליצירת שאלות
 - **GroqApiClient**: מנהל את הקריאה ל-API עם retry logic ו-error handling
 - **GroqResponseParser**: מנתח ומאמת את התשובה מה-AI
 
@@ -1094,6 +1144,8 @@ graph LR
 
 ## דיאגרמת זרימת תשלומים
 
+(המערכת משתמשת ב-**PayPal** ו-**נקודות (Credits)**; אין מנוי/Stripe.)
+
 ```mermaid
 sequenceDiagram
     participant U as User
@@ -1101,21 +1153,22 @@ sequenceDiagram
     participant P as PaymentService
     participant S as PayPal
     participant DB as PostgreSQL
+    participant C as CreditsService
 
     U->>F: בחירת חבילת נקודות
     F->>P: POST /api/payment/create
-    P->>S: יצירת session
-    S->>P: Session ID
-    P->>F: החזרת Session ID
-    F->>S: הפניה ל-Stripe Checkout
-    S->>U: טופס תשלום
+    P->>S: PayPalApi.createOrder()
+    S->>P: Order ID
+    P->>F: החזרת Order ID
+    F->>S: הפניה לפורטל PayPal
+    S->>U: טופס תשלום PayPal
     U->>S: אישור תשלום
-    S->>P: Webhook
-    P->>DB: שמירת תשלום
-    P->>SUB: יצירת מנוי
-    SUB->>DB: שמירת מנוי
-    SUB->>F: עדכון סטטוס
-    F->>U: אישור מנוי
+    S->>P: Webhook (POST /payment/webhooks/paypal)
+    P->>DB: שמירת תשלום (PaymentHistory)
+    P->>C: CreditsService.addCredits()
+    C->>DB: CreditTransaction + עדכון יתרה
+    C->>F: invalidation cache / עדכון יתרה
+    F->>U: אישור – נקודות נוספו
 ```
 
 ## דיאגרמת Views מלאה
@@ -1318,7 +1371,7 @@ graph LR
     end
 
     subgraph "Analytics Hooks"
-        ANALYTICS[Analytics Hooks<br/>useAnalyticsDashboard<br/>useUserStatisticsById<br/>useUserPerformanceById<br/>useUserProgressById<br/>useUserActivityById<br/>useUserInsightsById<br/>useUserRecommendationsById<br/>useUserAchievementsById<br/>useUserTrendsById<br/>useCompareUserPerformance<br/>useUserSummaryById, etc.]
+        ANALYTICS[Analytics Hooks<br/>useAnalyticsDashboard<br/>useUserStatisticsById<br/>useUserPerformanceById<br/>useUserProgressById<br/>useUserActivityById<br/>useUserInsightsById<br/>useUserRecommendationsById<br/>useUserTrendsById<br/>useCompareUserPerformance<br/>useUserSummaryById, etc.]
     end
 
     subgraph "Utility Hooks"
@@ -1381,7 +1434,7 @@ graph LR
         D[credits.service]
         E[payment.service]
         F[gameHistory.service]
-        G[customDifficulty.service]
+        G[game.service<br/>trivia, validate-text, validate-custom]
         H[score.service]
     end
 
@@ -1402,7 +1455,6 @@ graph LR
     subgraph "External APIs"
         Q[Backend API]
         R[PayPal API]
-        S[Stripe API]
     end
 
     A --> Q
@@ -1414,7 +1466,6 @@ graph LR
     G --> Q
     H --> Q
     E --> R
-    E --> S
     A --> L
     A --> M
     A --> N

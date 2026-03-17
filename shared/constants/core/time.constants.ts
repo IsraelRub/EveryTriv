@@ -1,7 +1,6 @@
 // Time durations in seconds
 const MINUTE = 60;
 
-// Used for: cache TTL, storage TTL, intervals, delays, animation durations (in seconds)
 export const TIME_DURATIONS_SECONDS = {
 	// Very short durations (for intervals, delays, animations)
 	SECOND: 1,
@@ -38,7 +37,6 @@ const millisecondsFromSeconds = Object.fromEntries(
 	Object.entries(TIME_DURATIONS_SECONDS).map(([key, value]) => [key, value * 1000])
 );
 
-// Add very short durations in milliseconds (for delays, retries, etc.)
 export const TIME_PERIODS_MS = {
 	...millisecondsFromSeconds,
 	// Very short durations in milliseconds (for delays, retries, exponential backoff)

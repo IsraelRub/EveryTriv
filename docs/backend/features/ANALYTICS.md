@@ -183,15 +183,6 @@ AnalyticsResponse<UserInsightsData>
 AnalyticsResponse<SystemRecommendation[]>
 ```
 
-### GET /analytics/user-achievements/:userId (Admin only)
-
-אחזור הישגים של משתמש (מנהלים בלבד).
-
-**Response:**
-```typescript
-AnalyticsResponse<Achievement[]>
-```
-
 ### GET /analytics/user-trends/:userId (Admin only)
 
 אחזור מגמות משתמש לאורך זמן (מנהלים בלבד).
@@ -466,18 +457,6 @@ export class AnalyticsService implements OnModuleInit {
 
     return {
       data: recommendations,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  /**
-   * Get user achievements
-   */
-  async getUserAchievements(userId: string): Promise<AnalyticsResponse<Achievement[]>> {
-    const achievements = await this.calculateUserAchievements(userId);
-
-    return {
-      data: achievements,
       timestamp: new Date().toISOString(),
     };
   }

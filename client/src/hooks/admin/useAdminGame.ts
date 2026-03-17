@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import { ERROR_MESSAGES, TIME_PERIODS_MS } from '@shared/constants';
 
 import { QUERY_KEYS } from '@/constants';
 import { adminService, apiService, gameService } from '@/services';
 import { useUserRole } from '../useAuth';
 
 export const useGameStatistics = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery({
 		queryKey: QUERY_KEYS.admin.gameStatistics(),
@@ -26,8 +25,7 @@ export const useGameStatistics = (enabled?: boolean) => {
 
 export const useClearAllGameHistory = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: async () => {
@@ -46,8 +44,7 @@ export const useClearAllGameHistory = () => {
 };
 
 export const useAllTriviaQuestions = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery({
 		queryKey: QUERY_KEYS.admin.allTriviaQuestions(),
@@ -65,8 +62,7 @@ export const useAllTriviaQuestions = (enabled?: boolean) => {
 
 export const useClearAllTrivia = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: async () => {
@@ -93,18 +89,15 @@ export const useAllUsers = (limit: number = 50, offset: number = 0) => {
 };
 
 export const useUserSearch = (query: string, limit: number = 50) => {
+	const trimmedQuery = query.trim();
 	return useQuery({
-		queryKey: QUERY_KEYS.admin.userSearch(query, limit),
-		queryFn: () => apiService.searchUsers(query.trim(), limit),
-		enabled: query.trim().length >= 2,
+		queryKey: QUERY_KEYS.admin.userSearch(trimmedQuery, limit),
+		queryFn: () => apiService.searchUsers(trimmedQuery, limit),
+		enabled: trimmedQuery.length >= 2,
 		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});
 };
-
-// ============================================================================
-// AI Providers Management
-// ============================================================================
 
 export const useAiProviderStats = () => {
 	return useQuery({

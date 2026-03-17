@@ -1,39 +1,45 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FileQuestion, Gauge, PartyPopper, RotateCcw, Tag, Trophy, Users } from 'lucide-react';
+import { FileQuestion, Gauge, Hash, PartyPopper, Tag, Trophy, Users } from 'lucide-react';
 
 import { APP_NAME, DEFAULT_GAME_CONFIG } from '@shared/constants';
 import type { Player } from '@shared/types';
-import { calculatePercentage, formatDifficulty, formatTitle, isRecord } from '@shared/utils';
+import { calculatePercentage, formatTitle, getDisplayNameFromUserFields, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import {
 	ANIMATION_DELAYS,
 	AvatarSize,
-	ButtonSize,
+	AvatarVariant,
 	Colors,
+	GameKey,
 	getMultiplayerSummaryStorageKey,
+	MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY,
+	MULTIPLAYER_SUMMARY_LEADERBOARD_KEY,
+	MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY,
 	PODIUM_SLOTS,
 	ROUTES,
+	SocialShareMode,
 	SPRING_CONFIGS,
-	VariantBase,
 } from '@/constants';
+import type { MultiplayerAnswerBreakdownEntry } from '@/types';
+import { queryInvalidationService } from '@/services';
+import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
-	Button,
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
-	HomeButton,
-	SocialShare,
+	QuestionBreakdown,
 	StatCard,
+	SummaryActionButtons,
 	UserAvatar,
 } from '@/components';
-import { useCurrentUserData, useMultiplayer } from '@/hooks';
-import { queryInvalidationService } from '@/services';
-import { cn, getDisplayNameFromPlayer } from '@/utils';
+import { useAppSelector, useCurrentUserData, useMultiplayer } from '@/hooks';
+import { selectMultiplayerPersonalAnswerHistory } from '@/redux/selectors';
 
 function isPlayerLike(value: unknown): value is Player {
 	if (!isRecord(value)) return false;
@@ -42,44 +48,70 @@ function isPlayerLike(value: unknown): value is Player {
 	);
 }
 
-const MULTIPLAYER_SUMMARY_LEADERBOARD_KEY = 'leaderboard';
-const MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY = 'questionCount';
+function isBreakdownEntry(value: unknown): value is MultiplayerAnswerBreakdownEntry {
+	return (
+		isRecord(value) &&
+		VALIDATORS.string(value.question) &&
+		typeof value.isCorrect === 'boolean' &&
+		(value.correctAnswerText === undefined || typeof value.correctAnswerText === 'string') &&
+		(value.userAnswerText === undefined || typeof value.userAnswerText === 'string')
+	);
+}
 
-function parsePersistedSummary(roomId: string): { leaderboard: Player[]; questionCount: number | null } {
+function parsePersistedSummary(roomId: string): {
+	leaderboard: Player[];
+	questionCount: number | null;
+	personalAnswerHistory: MultiplayerAnswerBreakdownEntry[];
+} {
 	try {
 		const key = getMultiplayerSummaryStorageKey(roomId);
 		const raw = sessionStorage.getItem(key);
-		if (!raw) return { leaderboard: [], questionCount: null };
+		if (!raw) return { leaderboard: [], questionCount: null, personalAnswerHistory: [] };
 		const parsed: unknown = JSON.parse(raw);
+		let leaderboard: Player[] = [];
+		let questionCount: number | null = null;
+		let personalAnswerHistory: MultiplayerAnswerBreakdownEntry[] = [];
 		if (isRecord(parsed) && MULTIPLAYER_SUMMARY_LEADERBOARD_KEY in parsed) {
 			const arr = parsed[MULTIPLAYER_SUMMARY_LEADERBOARD_KEY];
-			const count =
-				typeof parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY] === 'number'
-					? parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY]
-					: null;
-			if (!Array.isArray(arr) || arr.length === 0 || !arr.every(isPlayerLike))
-				return { leaderboard: [], questionCount: null };
-			return { leaderboard: arr, questionCount: count };
+			if (Array.isArray(arr) && arr.length > 0 && arr.every(isPlayerLike)) leaderboard = arr;
+			if (VALIDATORS.number(parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY]))
+				questionCount = parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY];
+			const history = parsed[MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY];
+			if (Array.isArray(history) && history.every(isBreakdownEntry)) personalAnswerHistory = history;
+			return { leaderboard, questionCount, personalAnswerHistory };
 		}
-		if (!Array.isArray(parsed) || parsed.length === 0) return { leaderboard: [], questionCount: null };
-		if (!parsed.every(isPlayerLike)) return { leaderboard: [], questionCount: null };
-		return { leaderboard: parsed, questionCount: null };
+		if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(isPlayerLike))
+			return { leaderboard: parsed, questionCount: null, personalAnswerHistory: [] };
+		return { leaderboard: [], questionCount: null, personalAnswerHistory: [] };
 	} catch {
-		return { leaderboard: [], questionCount: null };
+		return { leaderboard: [], questionCount: null, personalAnswerHistory: [] };
 	}
 }
 
 export function MultiplayerSummaryView() {
-	const navigate = useNavigate();
+	const { t } = useTranslation();
 	const { roomId } = useParams<{ roomId: string }>();
 
 	const { leaderboard, room, disconnect } = useMultiplayer();
 	const currentUser = useCurrentUserData();
 
 	const persistedSummary = useMemo(
-		() => (roomId ? parsePersistedSummary(roomId) : { leaderboard: [], questionCount: null }),
+		() =>
+			roomId
+				? parsePersistedSummary(roomId)
+				: {
+						leaderboard: [],
+						questionCount: null,
+						personalAnswerHistory: [] satisfies MultiplayerAnswerBreakdownEntry[],
+					},
 		[roomId]
 	);
+
+	const reduxPersonalHistory = useAppSelector(selectMultiplayerPersonalAnswerHistory);
+	const personalAnswerHistory = useMemo(() => {
+		if (reduxPersonalHistory.length > 0) return reduxPersonalHistory;
+		return persistedSummary.personalAnswerHistory;
+	}, [reduxPersonalHistory, persistedSummary.personalAnswerHistory]);
 
 	const results = useMemo(() => {
 		if (leaderboard.length > 0) return leaderboard;
@@ -87,8 +119,18 @@ export function MultiplayerSummaryView() {
 		return [];
 	}, [leaderboard, persistedSummary.leaderboard]);
 
-	const winner = results[0];
-	const isWinner = winner?.userId === currentUser?.id;
+	const { winner, isWinner } = useMemo((): { winner: Player | null; isWinner: boolean } => {
+		const first = results[0];
+		if (!first || results.length === 0) return { winner: null, isWinner: false };
+		const topScore = first.score;
+		const tiedCount = results.filter(p => p.score === topScore).length;
+		const hasSingleWinner = tiedCount === 1;
+		const winner: Player | null = hasSingleWinner ? first : null;
+		return {
+			winner,
+			isWinner: winner !== null && winner.userId === currentUser?.id,
+		};
+	}, [results, currentUser?.id]);
 
 	const clearPersistedSummary = useCallback(() => {
 		if (roomId) {
@@ -100,11 +142,10 @@ export function MultiplayerSummaryView() {
 		}
 	}, [roomId]);
 
-	const handlePlayAgain = useCallback(() => {
+	const onBeforeNavigate = useCallback(() => {
 		clearPersistedSummary();
 		disconnect();
-		navigate(ROUTES.MULTIPLAYER);
-	}, [clearPersistedSummary, disconnect, navigate]);
+	}, [clearPersistedSummary, disconnect]);
 
 	const queryClient = useQueryClient();
 
@@ -125,18 +166,31 @@ export function MultiplayerSummaryView() {
 	const shareScore = myResult?.correctAnswers ?? 0;
 	const shareTotal = room?.questions?.length ?? persistedSummary.questionCount ?? 0;
 	const shareTopic = formatTitle(room?.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic);
-	const shareDifficulty = (room?.config?.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty).toString();
-	const sharePercentage = shareTotal > 0 ? calculatePercentage(shareScore, shareTotal) : 0;
+	const shareDifficulty = room?.config?.difficulty;
+	const sharePercentage = calculatePercentage(shareScore, shareTotal);
+	const shareInterpolation = {
+		appName: APP_NAME,
+		topic: shareTopic,
+		difficulty: getDifficultyDisplayLabel(shareDifficulty, t),
+		score: shareScore,
+		total: shareTotal,
+		percentage: sharePercentage,
+		points: myResult?.score ?? 0,
+	};
 	const multiplayerShareText =
 		shareTotal > 0
-			? `${isWinner ? 'I won' : `I scored ${shareScore}/${shareTotal} (${sharePercentage}%)`} in an EveryTriv multiplayer game on ${shareTopic} (${formatDifficulty(shareDifficulty)})! Think you can beat my score?`
-			: `I just played ${APP_NAME} multiplayer! ${isWinner ? 'I won!' : `Final score: ${myResult?.score ?? 0} points`}. Can you beat it?`;
+			? isWinner
+				? t(GameKey.SHARE_MULTIPLAYER_FULL_WON, shareInterpolation)
+				: t(GameKey.SHARE_MULTIPLAYER_FULL_SCORED, shareInterpolation)
+			: isWinner
+				? t(GameKey.SHARE_MULTIPLAYER_SHORT_WON, shareInterpolation)
+				: t(GameKey.SHARE_MULTIPLAYER_SHORT_SCORED, shareInterpolation);
 
 	return (
 		<main className='view-main animate-fade-in-scale-simple'>
 			<div className='view-content-3xl-scroll'>
 				{/* Winner Announcement */}
-				<div className='text-center flex-shrink-0'>
+				<div className='text-center flex-shrink-0 mb-8'>
 					{isWinner && (
 						<motion.div
 							initial={{ scale: 0, rotate: -90 }}
@@ -157,10 +211,10 @@ export function MultiplayerSummaryView() {
 						{isWinner ? (
 							<>
 								<PartyPopper className={cn('w-8 h-8 md:w-10 md:h-10', Colors.AMBER_600.text)} />
-								You Won!
+								{t(GameKey.YOU_WON)}
 							</>
 						) : (
-							'Game Over!'
+							t(GameKey.GAME_OVER)
 						)}
 					</motion.h1>
 					{winner && (
@@ -170,59 +224,66 @@ export function MultiplayerSummaryView() {
 							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
 							className='text-xl text-muted-foreground'
 						>
-							Winner: <span className='font-bold text-primary'>{getDisplayNameFromPlayer(winner)}</span> with{' '}
-							<span className='font-bold'>{winner.score}</span> points
+							{t(GameKey.WINNER)} <span className='font-bold text-primary'>{getDisplayNameFromUserFields(winner)}</span>{' '}
+							{t(GameKey.WITH_POINTS, { count: winner.score })}
 						</motion.p>
 					)}
 				</div>
 
-				{/* Podium for top 3 */}
-				{results.length >= 3 && (
-					<div className='flex justify-center items-end gap-4 h-48'>
-						{PODIUM_SLOTS.map((slot, displayIndex) => {
-							const player = results[slot.resultIndex];
-							if (!player) return null;
-							const Icon = slot.icon;
-							return (
-								<motion.div
-									key={player.userId}
-									initial={{ opacity: 0, y: 50 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{
-										delay:
-											ANIMATION_DELAYS.SEQUENCE_STEP +
-											ANIMATION_DELAYS.SEQUENCE_MEDIUM +
-											displayIndex * ANIMATION_DELAYS.STAGGER_LARGE,
-									}}
-									className='flex flex-col items-center'
-								>
-									<UserAvatar player={player} size={AvatarSize.LG} className='border-2 border-background shadow-lg' />
-									<span className='text-sm font-medium mt-1 max-w-20 truncate'>{getDisplayNameFromPlayer(player)}</span>
-									<span className='text-xs text-muted-foreground'>{player.score} pts</span>
-									<div
-										className={cn(
-											'w-20 rounded-t-lg flex items-center justify-center mt-2',
-											slot.rank === 1 && cn('h-40', Colors.YELLOW_500.bg),
-											slot.rank === 2 && cn('h-32', Colors.GRAY_400.bg),
-											slot.rank === 3 && cn('h-24', Colors.AMBER_600.bg)
-										)}
-									>
-										<Icon className='h-8 w-8 text-white' />
-									</div>
-								</motion.div>
-							);
-						})}
-					</div>
-				)}
+				{/* Podium for top 2 or 3 */}
+				{results.length >= 2 &&
+					(() => {
+						const slots = PODIUM_SLOTS.filter(s => s.rank <= results.length)
+							.slice()
+							.sort((a, b) => a.podiumSlotIndex - b.podiumSlotIndex);
+						return (
+							<div className='flex justify-center items-end gap-4 min-h-48'>
+								{slots.map((slot, displayIndex) => {
+									const player = results[slot.resultIndex];
+									if (!player) return null;
+									const Icon = slot.icon;
+									return (
+										<motion.div
+											key={player.userId}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{
+												delay: ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER + displayIndex * ANIMATION_DELAYS.STAGGER_LARGE,
+											}}
+											className='flex flex-col items-center'
+										>
+											<UserAvatar source={player} size={AvatarSize.LG} variant={AvatarVariant.ELEVATED} />
+											<span className='text-sm font-medium mt-1 max-w-20 truncate'>
+												{getDisplayNameFromUserFields(player)}
+											</span>
+											<span className='text-xs text-muted-foreground'>
+												{player.score} {t(GameKey.PTS)}
+											</span>
+											<div
+												className={cn(
+													'w-20 rounded-t-lg flex items-center justify-center mt-2',
+													slot.rank === 1 && cn('h-40', Colors.YELLOW_500.bg),
+													slot.rank === 2 && cn('h-32', Colors.GRAY_400.bg),
+													slot.rank === 3 && cn('h-24', Colors.AMBER_600.bg)
+												)}
+											>
+												<Icon className='h-8 w-8 text-white' />
+											</div>
+										</motion.div>
+									);
+								})}
+							</div>
+						);
+					})()}
 
 				{/* Full Results */}
 				<Card>
 					<CardHeader>
-						<CardTitle>Final Standings</CardTitle>
+						<CardTitle>{t(GameKey.FINAL_STANDINGS)}</CardTitle>
 					</CardHeader>
 					<CardContent className='space-y-3'>
 						{results.length === 0 ? (
-							<p className='text-center text-muted-foreground py-6'>No results to display.</p>
+							<p className='text-center text-muted-foreground py-6'>{t(GameKey.NO_RESULTS_TO_DISPLAY)}</p>
 						) : (
 							results.map((player, index) => {
 								const isCurrentUser = player.userId === currentUser?.id;
@@ -245,26 +306,29 @@ export function MultiplayerSummaryView() {
 									>
 										<span
 											className={cn(
-												'text-3xl font-bold w-12',
+												'flex items-center gap-0.5 text-3xl font-bold w-12',
 												index + 1 === 1 && Colors.YELLOW_500.text,
 												index + 1 === 2 && Colors.GRAY_400.text,
 												index + 1 === 3 && Colors.AMBER_600.text,
 												index + 1 > 3 && 'text-muted-foreground'
 											)}
 										>
-											#{index + 1}
+											<Hash className='h-6 w-6 flex-shrink-0' />
+											{index + 1}
 										</span>
-										<UserAvatar player={player} size={AvatarSize.MD} />
+										<UserAvatar source={player} size={AvatarSize.MD} />
 										<div className='flex-1'>
 											<div className='font-semibold flex items-center gap-2'>
-												{getDisplayNameFromPlayer(player)}
-												{isCurrentUser && <span className='text-xs text-muted-foreground'>(You)</span>}
+												{getDisplayNameFromUserFields(player)}
+												{isCurrentUser && <span className='text-xs text-muted-foreground'>{t(GameKey.YOU)}</span>}
 											</div>
-											<div className='text-sm text-muted-foreground'>{player.correctAnswers ?? 0} correct answers</div>
+											<div className='text-sm text-muted-foreground'>
+												{player.correctAnswers ?? 0} {t(GameKey.CORRECT_ANSWERS_SUFFIX)}
+											</div>
 										</div>
 										<div className='text-right'>
 											<div className='text-2xl font-bold text-primary'>{player.score}</div>
-											<div className='text-xs text-muted-foreground'>points</div>
+											<div className='text-xs text-muted-foreground'>{t(GameKey.POINTS)}</div>
 										</div>
 									</motion.div>
 								);
@@ -273,32 +337,38 @@ export function MultiplayerSummaryView() {
 					</CardContent>
 				</Card>
 
+				{/* Personal questions breakdown */}
+				<QuestionBreakdown entries={personalAnswerHistory} />
+
 				{/* Game Stats */}
 				{room && (
 					<Card>
 						<CardHeader>
-							<CardTitle>Game Stats</CardTitle>
+							<CardTitle>{t(GameKey.GAME_STATS)}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-								<StatCard icon={Users} label='Players' value={room.players?.length ?? 0} color={Colors.BLUE_500.text} />
+								<StatCard
+									icon={Users}
+									label={t(GameKey.PLAYERS)}
+									value={room.players?.length ?? 0}
+									color={Colors.BLUE_500.text}
+								/>
 								<StatCard
 									icon={FileQuestion}
-									label='Questions'
+									label={t(GameKey.QUESTIONS_LABEL)}
 									value={room.questions?.length ?? 0}
 									color={Colors.GREEN_500.text}
 								/>
 								<StatCard
 									icon={Gauge}
-									label='Difficulty'
-									value={formatDifficulty(
-										(room.config?.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty).toString()
-									)}
+									label={t(GameKey.DIFFICULTY)}
+									value={getDifficultyDisplayLabel(room.config?.difficulty, t)}
 									color={Colors.YELLOW_500.text}
 								/>
 								<StatCard
 									icon={Tag}
-									label='Topic'
+									label={t(GameKey.TOPIC)}
 									value={formatTitle(room.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic)}
 									color={Colors.PURPLE_500.text}
 								/>
@@ -307,41 +377,22 @@ export function MultiplayerSummaryView() {
 					</Card>
 				)}
 
-				{/* Action Buttons */}
-				<div className='flex flex-col sm:flex-row gap-4'>
-					<Button
-						className='flex-1 min-w-0'
-						variant={VariantBase.OUTLINE}
-						size={ButtonSize.LG}
-						onClick={handlePlayAgain}
-					>
-						<RotateCcw className='h-4 w-4 mr-2' />
-						Play Again
-					</Button>
-					{results.length > 0 && (
-						<div className='flex-1 min-w-0 flex'>
-							<SocialShare
-								score={shareScore}
-								total={shareTotal > 0 ? shareTotal : 1}
-								topic={shareTopic}
-								difficulty={shareDifficulty}
-								buttonLabel='Share Result'
-								dialogTitle='Share your multiplayer result!'
-								dialogDescription='Challenge your friends to beat your score in multiplayer.'
-								shareText={multiplayerShareText}
-								triggerClassName='w-full'
-							/>
-						</div>
-					)}
-					<HomeButton
-						className='flex-1 min-w-0'
-						onClick={() => {
-							clearPersistedSummary();
-							disconnect();
-							navigate(ROUTES.HOME, { replace: true });
-						}}
-					/>
-				</div>
+				<SummaryActionButtons
+					playAgainTo={ROUTES.MULTIPLAYER}
+					onBeforeNavigate={onBeforeNavigate}
+					share={
+						results.length > 0
+							? {
+									score: shareScore,
+									total: shareTotal > 0 ? shareTotal : 1,
+									topic: shareTopic,
+									difficulty: getDifficultyDisplayLabel(shareDifficulty, t),
+									mode: SocialShareMode.MULTIPLAYER,
+									shareText: multiplayerShareText,
+								}
+							: undefined
+					}
+				/>
 			</div>
 		</main>
 	);

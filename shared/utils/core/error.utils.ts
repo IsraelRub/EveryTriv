@@ -8,7 +8,7 @@ import {
 } from '../../constants';
 import type { ProviderAuthError, ProviderRateLimitError } from '../../types';
 import { VALIDATORS } from '../../validation';
-import { hasProperty, isRecord } from './data.utils';
+import { hasProperty, isNonEmptyString, isRecord } from './data.utils';
 
 export function isErrorWithProperties(error: unknown): error is { name?: string; message?: string } {
 	if (!isRecord(error)) {
@@ -119,6 +119,8 @@ const ERROR_CODE_TO_USER_MESSAGE: Partial<Record<ErrorCode, string>> = {
 	[ErrorCode.NETWORK_ERROR]: ERROR_MESSAGES.api.NETWORK_ERROR,
 	[ErrorCode.USER_DATA_VALIDATION_FAILED]: ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED,
 	[ErrorCode.AVATAR_ID_OUT_OF_RANGE]: ERROR_MESSAGES.user.AVATAR_ID_OUT_OF_RANGE,
+	[ErrorCode.AVATAR_UPLOAD_FILE_TOO_LARGE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_FILE_TOO_LARGE,
+	[ErrorCode.AVATAR_UPLOAD_INVALID_TYPE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_INVALID_TYPE,
 	[ErrorCode.SEARCH_QUERY_TOO_SHORT]: ERROR_MESSAGES.user.SEARCH_QUERY_REQUIRED,
 	[ErrorCode.REQUIRED_USER_ID]: ERROR_MESSAGES.user.USER_ID_REQUIRED,
 	[ErrorCode.ROOM_NOT_FOUND]: ERROR_MESSAGES.api.NOT_FOUND,
@@ -156,15 +158,11 @@ const isErrorCode = (message: string): boolean => {
 	return message === message.toUpperCase() && /^[A-Z_]+$/.test(message);
 };
 
-/**
- * Extracts a known error code from an error (e.g. Nest exception message or Error.message).
- * Returns undefined if no recognized ErrorCode is found.
- */
 export function getErrorCode(error: unknown): string | undefined {
 	if (error instanceof Error && error.message && isErrorCodeValue(error.message)) {
 		return error.message;
 	}
-	if (isRecord(error) && 'message' in error && VALIDATORS.string(error.message) && isErrorCodeValue(error.message)) {
+	if (isRecord(error) && 'message' in error && isNonEmptyString(error.message) && isErrorCodeValue(error.message)) {
 		return error.message;
 	}
 	return undefined;

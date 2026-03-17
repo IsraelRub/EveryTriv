@@ -25,8 +25,7 @@
     "migration:show": "ts-node --project tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:show -d src/config/dataSource.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "schema:drop": "typeorm-ts-node-commonjs schema:drop -d src/config/dataSource.ts",
-    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix",
-    "maintenance:cleanup-achievements": "ts-node -r tsconfig-paths/register scripts/run-cleanup-obsolete-achievements.ts"
+    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.1",

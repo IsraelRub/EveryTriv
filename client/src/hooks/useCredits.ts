@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { GameMode, TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import { GameMode, TIME_PERIODS_MS } from '@shared/constants';
 import type { CreditBalance, CreditsPurchaseRequest, PaymentResult } from '@shared/types';
 import { calculateNewBalance, calculateRequiredCredits, getErrorMessage, isRecord } from '@shared/utils';
 
 import { QUERY_KEYS } from '@/constants';
-import { creditsService, clientLogger as logger, paymentService, queryInvalidationService } from '@/services';
 import type { DeductCreditsParams } from '@/types';
+import { creditsService, clientLogger as logger, paymentService, queryInvalidationService } from '@/services';
 import { useIsAuthenticated, useUserRole } from './useAuth';
 
 export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode = GameMode.QUESTION_LIMITED) => {
 	const { data: creditBalance } = useCreditBalance();
-	const userRole = useUserRole();
+	const { isAdmin } = useUserRole();
 
 	// Admin users can always play without credits
-	if (userRole === UserRole.ADMIN) {
+	if (isAdmin) {
 		return {
 			data: true,
 			isLoading: false,
@@ -44,14 +44,14 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 
 export const useDeductCredits = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: ({ questionsPerRequest, gameMode }: DeductCreditsParams) =>
 			creditsService.deductCredits(questionsPerRequest, gameMode ?? GameMode.QUESTION_LIMITED),
 		onMutate: async ({ questionsPerRequest, gameMode }: DeductCreditsParams) => {
 			// Skip optimistic update for admin users (server handles it)
-			if (userRole === UserRole.ADMIN) {
+			if (isAdmin) {
 				return { previousBalance: queryClient.getQueryData(QUERY_KEYS.credits.balance()) };
 			}
 			// Cancel any outgoing refetches

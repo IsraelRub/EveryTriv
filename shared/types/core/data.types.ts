@@ -25,28 +25,12 @@ export interface BaseCacheEntry extends BaseTimestamps {
 	lastAccessed: Date;
 }
 
-export interface SelectOption {
-	value: string;
-	label: string;
-}
-
 export interface ActivityEntry {
 	date: string;
 	action: string;
 	detail?: string;
 	topic?: string;
 	durationSeconds?: number;
-}
-
-export interface RecentGameActivity {
-	gameId: string;
-	score: number;
-	correctAnswers: number;
-	totalQuestions: number;
-	timeSpent: number;
-	topic: string;
-	difficulty: string;
-	createdAt: Date;
 }
 
 export type CountRecord = Record<string, number>;
@@ -60,13 +44,4 @@ export interface DifficultyStats extends TotalCorrectStats {
 	successRate?: number;
 }
 
-export interface DifficultyStatsRaw extends TotalCorrectStats {
-	difficulty: string;
-}
-
 export type DifficultyBreakdown = Record<string, DifficultyStats>;
-
-export interface TextPosition {
-	start: number;
-	end: number;
-}

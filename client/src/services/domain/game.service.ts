@@ -1,16 +1,15 @@
-import { API_ENDPOINTS, HTTP_TIMEOUTS } from '@shared/constants';
+import { API_ENDPOINTS, HTTP_TIMEOUTS, Locale } from '@shared/constants';
 import type {
 	AdminGameStatistics,
-	BaseValidationResult,
 	ClearOperationResponse,
-	CustomDifficultyRequest,
 	GameSessionValidationResponse,
+	LanguageValidationResult,
 	TriviaResponse,
 } from '@shared/types';
 import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 
-import { apiService, clientLogger as logger } from '@/services';
 import type { TriviaQuestionsResponse, TriviaRequestWithSignal } from '@/types';
+import { apiService, clientLogger as logger } from '@/services';
 
 class GameService {
 	async getTrivia(request: TriviaRequestWithSignal): Promise<TriviaResponse> {
@@ -45,16 +44,22 @@ class GameService {
 		}
 	}
 
-	async validateCustomDifficulty(customText: string): Promise<BaseValidationResult> {
+	async validateText(
+		text: string,
+		context?: 'topic' | 'customDifficulty',
+		language?: Locale
+	): Promise<LanguageValidationResult> {
 		try {
-			// Server-side validation handles all checks via CustomDifficultyPipe
-			const request: CustomDifficultyRequest = { customText };
-			const apiResponse = await apiService.post<BaseValidationResult>(API_ENDPOINTS.GAME.VALIDATE_CUSTOM, request);
+			const apiResponse = await apiService.post<LanguageValidationResult>(API_ENDPOINTS.GAME.VALIDATE_TEXT, {
+				text: text.trim(),
+				...(context && { context }),
+				...(language && { language }),
+			});
 			return apiResponse.data;
 		} catch (error) {
-			logger.userError('Failed to validate custom difficulty', {
+			logger.userError('Failed to validate text', {
 				errorInfo: { message: getErrorMessage(error) },
-				customText,
+				validateTextContext: context,
 			});
 			throw error;
 		}

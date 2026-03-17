@@ -1,8 +1,12 @@
-import { ButtonSize, VariantBase } from '@/constants';
-import { Button } from '@/components';
-import type { GoogleAuthButtonProps } from '@/types';
+import { useTranslation } from 'react-i18next';
 
-export function GoogleAuthButton({ onClick, disabled, text = 'Continue with Google' }: GoogleAuthButtonProps) {
+import { AuthKey, ButtonSize, VariantBase } from '@/constants';
+import type { GoogleAuthButtonProps } from '@/types';
+import { Button } from '@/components';
+
+export function GoogleAuthButton({ onClick, disabled, text }: GoogleAuthButtonProps) {
+	const { t } = useTranslation();
+	const label = text ?? t(AuthKey.CONTINUE_WITH_GOOGLE);
 	return (
 		<Button
 			type='button'
@@ -12,7 +16,7 @@ export function GoogleAuthButton({ onClick, disabled, text = 'Continue with Goog
 			onClick={onClick}
 			disabled={disabled}
 		>
-			<svg className='mr-2 h-4 w-4' viewBox='0 0 24 24'>
+			<svg className='me-2 h-4 w-4' viewBox='0 0 24 24'>
 				<path
 					d='M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'
 					fill='#4285F4'
@@ -30,7 +34,7 @@ export function GoogleAuthButton({ onClick, disabled, text = 'Continue with Goog
 					fill='#EA4335'
 				/>
 			</svg>
-			{text}
+			{label}
 		</Button>
 	);
 }

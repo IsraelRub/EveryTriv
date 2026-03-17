@@ -1,6 +1,22 @@
 import type { LucideIcon } from 'lucide-react';
 
-import type { TriviaQuestion } from '@shared/types';
+import type { CreditPurchaseOption } from '@shared/types';
+
+export interface AdminPricingResponse {
+	packages: CreditPurchaseOption[];
+	isDefault: boolean;
+}
+
+export interface CreditPackageEditItem {
+	id: string;
+	credits: number;
+	price: number;
+	tier?: string;
+}
+
+export interface AdminPricingUpdatePayload {
+	packages: CreditPackageEditItem[];
+}
 
 export interface ClearOperation {
 	id: string;
@@ -8,20 +24,12 @@ export interface ClearOperation {
 	description: string;
 	itemName: string;
 	currentCount?: number;
-	onClear: () => void;
+	onClear: () => void | Promise<void>;
 	isLoading?: boolean;
 	icon: LucideIcon;
 }
 
-export interface AdminTriviaQuestion extends TriviaQuestion {
-	userId: string | null;
-	isCorrect: boolean | null;
-}
-
-export interface TriviaQuestionsResponse {
-	questions: AdminTriviaQuestion[];
-	totalCount: number;
-}
+export type { TriviaQuestionsResponse } from '@shared/types';
 
 export interface PlatformTrendsSectionStats {
 	icon: LucideIcon;

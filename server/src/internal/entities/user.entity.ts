@@ -58,6 +58,12 @@ export class UserEntity extends BaseEntity {
 	@Column('jsonb', { default: {} })
 	preferences: Partial<UserPreferences> = {};
 
+	@Column({ name: 'custom_avatar', type: 'bytea', nullable: true })
+	customAvatar?: Buffer;
+
+	@Column({ name: 'custom_avatar_mime', type: 'varchar', length: 30, nullable: true })
+	customAvatarMime?: string;
+
 	@Column('jsonb', { default: [] })
 	achievements: SavedAchievement[];
 

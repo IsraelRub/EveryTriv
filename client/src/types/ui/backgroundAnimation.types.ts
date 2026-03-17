@@ -1,6 +1,4 @@
-import type { ANIMATION_COLORS, ANIMATION_FONTS, TRIVIA_WORDS, WordDirection } from '@/constants';
-
-export type TriviaWord = (typeof TRIVIA_WORDS)[number];
+import type { ANIMATION_COLORS, ANIMATION_FONTS, WordDirection } from '@/constants';
 
 export type AnimationFont = (typeof ANIMATION_FONTS)[number];
 
@@ -13,7 +11,8 @@ export interface ScreenPosition {
 
 export interface AnimatedWord {
 	id: string;
-	text: TriviaWord;
+
+	text: string;
 	startPosition: ScreenPosition;
 	endPosition: ScreenPosition;
 	direction: WordDirection;

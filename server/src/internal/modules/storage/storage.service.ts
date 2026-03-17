@@ -2,22 +2,20 @@ import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 
 import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
-import type {
-	StorageService as IStorageService,
-	StorageCleanupOptions,
-	StorageConfig,
-	StorageItemMetadata,
-	StorageMetrics,
-	StorageOperationResult,
-	StorageStats,
-	StorageValue,
-	TypeGuard,
-} from '@shared/types';
+import type { StorageOperationResult, StorageValue, TypeGuard } from '@shared/types';
 import { calculatePercentage, getErrorMessage } from '@shared/utils';
 import { createTimedResult } from '@shared/utils/infrastructure/storage.utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { SERVER_STORAGE_CONFIG, StorageOperation } from '@internal/constants';
+import type {
+	IStorageService,
+	StorageCleanupOptions,
+	StorageConfig,
+	StorageItemMetadata,
+	StorageMetrics,
+	StorageStats,
+} from '@internal/types';
 
 import { StorageMetricsTracker } from '../../services';
 import { deleteKeysByPattern, scanKeys } from '../../utils';
@@ -295,7 +293,7 @@ export class StorageService implements IStorageService {
 			}
 
 			const averageSize = totalItems > 0 ? totalSize / totalItems : 0;
-			const utilization = this.config.maxSize ? calculatePercentage(totalSize, this.config.maxSize) : 0;
+			const utilization = calculatePercentage(totalSize, this.config.maxSize ?? 0);
 
 			return StorageUtils.createSuccessResult<StorageStats>(
 				{

@@ -11,6 +11,11 @@ export interface AuthState {
 	token: string | null;
 }
 
+export interface ParsedJwtAuthToken {
+	email: string | null;
+	userId: string | null;
+}
+
 export interface CreditsPurchaseResponse extends PaymentResult {
 	balance?: CreditBalance;
 }

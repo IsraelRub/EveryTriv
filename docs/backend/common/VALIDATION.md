@@ -1,249 +1,58 @@
 # Validation - Common Structure
 
-תיעוד מפורט על Validation Service ו-LanguageTool Service, כולל כל הולידציות הזמינות ושימוש.
+תיעוד על שימוש בולידציה בצד השרת ו-LanguageTool Service.
 
 ## סקירה כללית
 
-Validation Service מספק ולידציה משותפת לכל השרת, תוך שימוש בפונקציות ולידציה משותפות מ-`@shared/utils` ו-`@shared/validation`.
+בפרויקט **אין** קובץ `validation.service.ts`. Pipes ו-Services משתמשים **ישירות** ב-`@shared/validation` וב-`@shared/constants` לכללי ולידציה (topic, difficulty, email, password, name, payment, וכו'). רשימת פונקציות הוולידציה והשימוש בהן מתועדת ב-[docs/shared/VALIDATION.md](../../shared/VALIDATION.md).
 
 **מיקום:** `server/src/common/validation/`
 
 **קבצים:**
-- `validation.service.ts` - שירות ולידציה מרכזי
-- `languageTool.service.ts` - שירות אינטגרציה עם LanguageTool API
-- `validation.module.ts` - מודול ולידציה
+- `languageTool.service.ts` – שירות אינטגרציה עם LanguageTool API (ולידציית שפה, איות, דקדוק)
+- `language.validation.ts` – fallback לוקאלי כש-LanguageTool לא זמין
+- `validation.module.ts` – מודול Nest (מספק LanguageToolService)
+- `difficulty.validation.ts` – פונקציה שרתית `restoreGameDifficulty` (משתמשת ב-`@shared/validation`)
 
-## Validation Service
+## שימוש בולידציה בשרת
 
-**מיקום:** `server/src/common/validation/validation.service.ts`
+- **TriviaRequestPipe**: קורא ל-`validateTriviaRequest(payload.topic, payload.difficulty)` מ-`@shared/validation` אחרי בניית ה-payload; אם `!result.isValid` זורק `BadRequestException` עם `result.errors`.
+- **CustomDifficultyPipe**: קורא ל-`validateCustomDifficultyText` מ-`@shared/validation` ואז ל-`LanguageToolService.checkText`.
+- **PaymentDataPipe**: קורא ל-`validateStringLength` (מפתח `CARDHOLDER_NAME`), `validateExpiryDate`, `validateCVV`, `isValidCardNumber` מ-`@shared/validation`.
+- **UserDataPipe**: קורא ל-`validateStringLength` (מפתחות `FIRST_NAME`, `LAST_NAME`) מ-`@shared/validation`.
+- **DTOs**: משתמשים ב-`VALIDATION_LENGTH`, `VALIDATION_COUNT` מ-`@shared/constants` וב-decorators של class-validator (כולל `@IsGameDifficulty` שמבוסס על `@shared/validation`).
 
-**תפקיד:**
-- ולידציה של נתוני קלט (username, email, password, וכו')
-- שימוש בפונקציות ולידציה משותפות
-- רישום לוגים מפורטים
-- סניטיזציה של קלט
+---
 
-### ולידציות זמינות
+## Reference: פונקציות ולידציה משותפות (מקור: shared)
 
-#### 1. validateUsername(value: string, options?: ValidationOptions)
+להרשימה המלאה והדוגמאות ראו [docs/shared/VALIDATION.md](../../shared/VALIDATION.md). סיכום קצר:
 
-**תפקיד:** ולידציה של username.
+### פונקציות רלוונטיות (מ-@shared/validation / @shared/utils)
 
-**ולידציות:**
-- אורך: מ-3 עד 30 תווים
-- תווים מותרים: אותיות, מספרים, underscore, hyphen
-- לא מתחיל/מסתיים ב-underscore או hyphen
-- שימוש ב-`validateUsername()` מ-`@shared/utils`
+- `validateStringLength` + `validateNoForbiddenWords` עם מפתח `'TOPIC'`/`'CUSTOM_DIFFICULTY'`, `validateTriviaRequest`, `validateTriviaInputQuick` – נושא וקושי
+- `validateCustomDifficultyText`, `createCustomDifficulty`, `isCustomDifficulty`, `isRegisteredDifficulty` – קושי מותאם
+- `validateEmail`, `validateStringLength` (מפתחות `PASSWORD`, `FIRST_NAME`, `LAST_NAME`, `CARDHOLDER_NAME` וכו'), `validatePasswordMatch` – משתמש ותשלום
+- `validateExpiryDate`, `validateCVV`, `isValidCardNumber`, `isPaymentMethod` – תשלום
+- `VALIDATORS`, `isUuid`, `isRoomId`, `isGameDifficulty` – type guards וכללים
 
-**דוגמה:**
-```typescript
-const result = await validationService.validateUsername('john_doe');
-// { isValid: true, errors: [] }
-```
-
-#### 2. validateEmail(value: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של email.
-
-**ולידציות:**
-- פורמט email תקין
-- סניטיזציה (הסרת רווחים, וכו')
-- שימוש ב-`validateEmail()` מ-`@shared/utils`
+**תפקיד:** ולידציה של topic + difficulty (אורך נושא, קושי רשום או קושי מותאם). משמש ב-TriviaRequestPipe.
 
 **דוגמה:**
 ```typescript
-const result = await validationService.validateEmail('user@example.com');
-// { isValid: true, errors: [] }
+import { validateTriviaRequest } from '@shared/validation';
+
+const result = validateTriviaRequest(payload.topic, payload.difficulty);
+if (!result.isValid) {
+  throw new BadRequestException({ message: 'Trivia request validation failed', errors: result.errors });
+}
 ```
 
-#### 3. validatePassword(value: string, options?: ValidationOptions)
+---
 
-**תפקיד:** ולידציה של password.
+## LanguageTool וולידציית שפה
 
-**ולידציות:**
-- אורך: מ-6 עד 15 תווים
-- שימוש ב-`validatePassword()` מ-`@shared/utils`
-
-**הערה:** Password לא נרשם בלוגים (REDACTED).
-
-**דוגמה:**
-```typescript
-const result = await validationService.validatePassword('password123');
-// { isValid: true, errors: [] }
-```
-
-#### 4. validateInputContent(value: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של תוכן כללי (שאלות, תשובות, וכו').
-
-**ולידציות:**
-- אורך מינימלי ומקסימלי
-- בדיקת תווים מותרים
-- סניטיזציה (הסרת HTML tags)
-- שימוש ב-`validateInputContent()` מ-`@shared/utils`
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateInputContent('What is the capital of France?');
-// { isValid: true, errors: [] }
-```
-
-#### 5. validateCustomDifficultyText(value: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של קושי מותאם.
-
-**ולידציות:**
-- אורך מינימלי ומקסימלי
-- בדיקת תווים מותרים
-- שימוש ב-`validateCustomDifficultyText()` מ-`@shared/validation`
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateCustomDifficultyText('Very Hard');
-// { isValid: true, errors: [] }
-```
-
-#### 6. validateTopicLength(value: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של אורך נושא (topic).
-
-**ולידציות:**
-- אורך מינימלי ומקסימלי (לפי VALIDATION_LIMITS)
-- סניטיזציה
-- שימוש ב-`validateTopicLength()` מ-`@shared/utils`
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateTopicLength('Science');
-// { isValid: true, errors: [] }
-```
-
-#### 7. validateTriviaRequest(topic: string, difficulty: GameDifficulty, count: number)
-
-**תפקיד:** ולידציה של trivia request מלא.
-
-**ולידציות:**
-- **Topic:** ולידציית אורך דרך `validateTopicLength()`
-- **Difficulty:** בדיקת difficulty תקין (VALID_DIFFICULTIES_SET) או custom difficulty
-- **Requested Questions:** בדיקת טווח (MIN-MAX לפי VALIDATION_LIMITS.REQUESTED_QUESTIONS)
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateTriviaRequest(
-  'Science',
-  'medium',
-  10
-);
-// { isValid: true, errors: [] }
-```
-
-#### 8. validateCreditsPurchase(userId: string, packageId: string)
-
-**תפקיד:** ולידציה של בקשת רכישת קרדיטים.
-
-**ולידציות:**
-- **User ID:** חייב להיות לא ריק
-- **Package ID:** פורמט תקין (`package_<number>`) וטווח נקודות (1-10000)
-
-**דוגמה:**
-```typescript
-const result = await validationService.validatePointsPurchase(
-  'user-id-123',
-  'package_100'
-);
-// { isValid: true, errors: [] }
-```
-
-#### 9. validatePaymentData(data: PersonalPaymentData | CreatePaymentDto)
-
-**תפקיד:** ולידציה של נתוני תשלום.
-
-**ולידציות לפי Payment Method:**
-- **MANUAL_CREDIT:** Card Number, CVV, Expiry Date, Cardholder Name
-- **PAYPAL:** PayPal Order ID או Payment ID
-- שיטות אחרות: ולידציה בסיסית
-
-**דוגמה:**
-```typescript
-const result = await validationService.validatePaymentData({
-  paymentMethod: PaymentMethod.MANUAL_CREDIT,
-  cardNumber: '4111111111111111',
-  cvv: '123',
-  expiryDate: '12/25',
-  cardHolderName: 'John Doe'
-});
-// { isValid: true, errors: [] }
-```
-
-#### 10. validateAnalyticsEvent(eventData: AnalyticsEventData)
-
-**תפקיד:** ולידציה של נתוני analytics event.
-
-**ולידציות:**
-- **Event Type:** חייב להיות לא ריק
-- **Timestamp:** חייב להיות לא ריק ובפורמט תקין
-- **Properties (optional):** אם קיים → חייב להיות object
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateAnalyticsEvent({
-  eventType: 'game_started',
-  timestamp: '2025-01-15T10:00:00.000Z',
-  properties: { topic: 'Science', difficulty: 'medium' }
-});
-// { isValid: true, errors: [] }
-```
-
-#### 11. validateGameAnswer(answer: string, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של תשובת משחק.
-
-**ולידציות:**
-- אורך: לא ריק, מקסימום 1000 תווים
-- בדיקת תוכן לא הולם (spam, fake, dummy)
-- בדיקת חזרתיות מוגזמת
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateGameAnswer('Paris');
-// { isValid: true, errors: [] }
-```
-
-#### 12. validateUserProfile(profileData: UpdateUserProfileData, options?: ValidationOptions)
-
-**תפקיד:** ולידציה של נתוני פרופיל משתמש.
-
-**ולידציות:**
-- **Username (optional):** אם קיים → `validateUsername()`
-- **FirstName (optional):** מקסימום 50 תווים, רק אותיות, רווחים, apostrophes, ו-hyphens
-- **LastName (optional):** מקסימום 50 תווים, רק אותיות, רווחים, apostrophes, ו-hyphens
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateUserProfile({
-  username: 'john_doe',
-  firstName: 'John',
-  lastName: 'Doe'
-});
-// { isValid: true, errors: [] }
-```
-
-#### 14. validateCreditsAmount(amount: number)
-
-**תפקיד:** ולידציה של סכום קרדיטים.
-
-**ולידציות:**
-- חייב להיות >= 0
-- חייב להיות <= 100,000
-- חייב להיות מספר שלם
-
-**דוגמה:**
-```typescript
-const result = await validationService.validateCreditsAmount(100);
-// { isValid: true, errors: [] }
-```
-
-#### 15. validateInputWithLanguageTool(value: string, options?: LanguageValidationOptions)
+### validateInputWithLanguageTool / LanguageToolService.checkText(value: string, options?)
 
 **תפקיד:** ולידציית שפה עם LanguageTool API (איות ודקדוק).
 
@@ -254,11 +63,11 @@ const result = await validationService.validateCreditsAmount(100);
 
 **דוגמה:**
 ```typescript
-const result = await validationService.validateInputWithLanguageTool(
-  'What is the captal of France?',
-  { enableSpellCheck: true, enableGrammarCheck: true }
-);
-// { isValid: false, errors: ['Possible spelling mistake...'], suggestion: 'capital' }
+const result = await this.languageToolService.checkText(text, {
+  enableSpellCheck: true,
+  enableGrammarCheck: true,
+});
+// { isValid: false, errors: [...], suggestions: ['capital'] }
 ```
 
 ### Validation Result Format
@@ -412,16 +221,15 @@ const result = await languageToolService.checkText(
 - Default: English
 - הגדרה דרך `options.language`
 
-### אינטגרציה עם ValidationService
+### שימוש ב-LanguageToolService
 
-`ValidationService` משתמש ב-`LanguageToolService` לוולידציית שפה מורכבת:
+CustomDifficultyPipe ו-endpoint לולידציית טקסט (validate-text) מזריקים את `LanguageToolService` ומשתמשים ב-`checkText`:
 
 ```typescript
-// validation.service.ts
-constructor(private readonly languageToolService: LanguageToolService) {}
-
-// שימוש:
-const languageResult = await this.languageToolService.checkText(text, options);
+const result = await this.languageToolService.checkText(text, {
+  enableSpellCheck: true,
+  enableGrammarCheck: true,
+});
 ```
 
 ## Validation Module
@@ -430,55 +238,47 @@ const languageResult = await this.languageToolService.checkText(text, options);
 
 **תפקיד:**
 - הגדרת ValidationModule
-- Export של ValidationService ו-LanguageToolService
-- זמינות ב-feature modules
+- Export של LanguageToolService בלבד (אין ValidationService)
+- זמינות ב-GameModule וכו' עבור Pipes שצריכים LanguageTool
 
 ### שימוש במודולים
 
 ```typescript
 // game.module.ts
-import { ValidationModule } from '../../common/validation/validation.module';
+import { ValidationModule } from '../../common/validation';
 
 @Module({
   imports: [ValidationModule, ...],
-  providers: [
-    TriviaRequestPipe, // משתמש ב-ValidationService
-    // ...
-  ],
+  providers: [TriviaRequestPipe, ...],
 })
 export class GameModule {}
 ```
 
 ## אינטגרציה עם Pipes
 
-כל ה-Pipes משתמשים ב-ValidationService:
+ה-Pipes משתמשים ישירות ב-`@shared/validation` וב-`LanguageToolService` (כשנדרש):
 
 ```typescript
 // triviaRequest.pipe.ts
-constructor(private readonly validationService: ValidationService) {}
+import { validateTriviaRequest } from '@shared/validation';
 
-async transform(value: TriviaRequest | string): Promise<TriviaRequest> {
-  const triviaValidation = await this.validationService.validateTriviaRequest(
-    payload.topic,
-    payload.difficulty,
-    payload.requestedQuestions
-  );
-  // ...
+const triviaValidation = validateTriviaRequest(payload.topic, payload.difficulty);
+if (!triviaValidation.isValid) {
+  throw new BadRequestException({ message: '...', errors: triviaValidation.errors });
 }
 ```
 
 ## Best Practices
 
-### 1. שימוש ב-ValidationService עבור ולידציה עסקית
+### 1. שימוש ב-@shared/validation לוולידציה עסקית
 
 ```typescript
-// ✅ טוב - ולידציה עסקית דרך ValidationService
-const result = await validationService.validateTriviaRequest(topic, difficulty, count);
+// ✅ טוב - ולידציה עסקית מפונקציות משותפות
+const result = validateTriviaRequest(topic, difficulty);
+if (!result.isValid) throw new BadRequestException({ errors: result.errors });
 
 // ❌ רע - ולידציה ישירה בקוד
-if (count < 1 || count > 100) {
-  throw new BadRequestException();
-}
+if (count < 1 || count > 100) throw new BadRequestException();
 ```
 
 ### 2. שימוש בפונקציות משותפות
@@ -533,7 +333,7 @@ const timeout = options?.timeout || 5000; // 0 יהפוך ל-5000!
 
 ## הפניות
 
-- [Pipes](./PIPES.md) - איך Pipes משתמשים ב-ValidationService
+- [Pipes](./PIPES.md) - איך Pipes משתמשים ב-@shared/validation וב-LanguageToolService
 - [Shared Validation](../../shared/VALIDATION.md) - ולידציות משותפות מ-`@shared/validation`
 - [Shared Utils](../../shared/LOGGING_MONITORING.md) - פונקציות ולידציה מ-`@shared/utils`
 - **[Null/Undefined Policy](../../shared/NULL_UNDEFINED_POLICY.md)** - מדיניות טיפול ב-null ו-undefined

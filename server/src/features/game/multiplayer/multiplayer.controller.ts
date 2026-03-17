@@ -11,11 +11,12 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { API_ENDPOINTS, ErrorCode, GAME_MODES_CONFIG, GameMode, LOCALHOST_CONFIG } from '@shared/constants';
+import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG } from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
 import { isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
+import { CurrentUserId, Public } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	LeaveRoomHttpResponse,
@@ -24,15 +25,18 @@ import type {
 	SubmitAnswerHttpResponse,
 } from '@internal/types';
 
-import { CurrentUserId, Public } from '../../../common';
 import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
 import { MultiplayerService } from './multiplayer.service';
+import { RoomService } from './room.service';
 
 @Controller(API_ENDPOINTS.MULTIPLAYER.BASE)
 export class MultiplayerController {
 	private readonly roomCache = new Map<string, MultiplayerRoom>();
 
-	constructor(private readonly multiplayerService: MultiplayerService) {}
+	constructor(
+		private readonly multiplayerService: MultiplayerService,
+		private readonly roomService: RoomService
+	) {}
 
 	@Get()
 	@Public()
@@ -64,9 +68,7 @@ export class MultiplayerController {
 				difficulty: body.difficulty,
 				questionsPerRequest: body.questionsPerRequest,
 				maxPlayers: body.maxPlayers,
-				gameMode: body.gameMode,
 				answerCount: body.answerCount,
-				timePerQuestion: GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.timePerQuestion,
 				mappedDifficulty: body.mappedDifficulty ?? toDifficultyLevel(body.difficulty),
 			};
 			const result = await this.multiplayerService.createRoom(userId, config);
@@ -131,7 +133,7 @@ export class MultiplayerController {
 			const normalizedRoomId = body.roomId.toUpperCase();
 			const room = await this.multiplayerService.leaveRoom(normalizedRoomId, userId);
 			const remainingPlayers = room?.players.length ?? 0;
-			const status = room ? ('player-left' as const) : ('room-closed' as const);
+			const status: LeaveRoomHttpResponse['status'] = room ? 'player-left' : 'room-closed';
 
 			if (room) {
 				this.roomCache.set(room.roomId, room);
@@ -210,7 +212,7 @@ export class MultiplayerController {
 				body.timeSpent
 			);
 
-			const cachedRoom = await this.multiplayerService.getRoom(normalizedRoomId);
+			const cachedRoom = await this.roomService.getRoom(normalizedRoomId);
 			if (cachedRoom) {
 				this.roomCache.set(normalizedRoomId, cachedRoom);
 			}
@@ -335,7 +337,7 @@ export class MultiplayerController {
 					logger.gameInfo('Restoring HTTP multiplayer room snapshot', {
 						roomId,
 					});
-					await this.multiplayerService.restoreRoom(snapshot);
+					await this.roomService.restoreRoom(snapshot);
 					return operation();
 				} else {
 					logger.gameInfo('No cached multiplayer room snapshot found for HTTP retry', { roomId });

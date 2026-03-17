@@ -105,7 +105,7 @@ export class ScoreResetScheduler {
 		}
 	}
 
-	// ==================== Stats Synchronization Jobs ====================
+	// Stats synchronization jobs
 
 	@Cron('0 */6 * * *') // Every 6 hours
 	async retryFailedStatsUpdates() {
@@ -139,7 +139,7 @@ export class ScoreResetScheduler {
 			// Auto-fix inconsistencies if there are any
 			if (result.inconsistentUsers > 0) {
 				logger.systemInfo('Auto-fixing inconsistent users', {
-					count: result.inconsistentUsers,
+					inconsistentUsers: result.inconsistentUsers,
 				});
 
 				let fixedCount = 0;
@@ -158,7 +158,7 @@ export class ScoreResetScheduler {
 				}
 
 				logger.systemInfo('Auto-fix completed', {
-					attempt: result.inconsistentUsers,
+					inconsistentUsers: result.inconsistentUsers,
 					fixedCount: fixedCount,
 				});
 			}

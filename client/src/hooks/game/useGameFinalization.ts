@@ -13,9 +13,9 @@ import {
 import type { CompleteUserAnalytics } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AudioKey, QUERY_KEYS } from '@/constants';
-import { audioService, clientLogger as logger, queryInvalidationService } from '@/services';
+import { AudioKey, QUERY_KEYS, ROUTES } from '@/constants';
 import type { FinalizeGameOptions } from '@/types';
+import { audioService, clientLogger as logger, queryInvalidationService } from '@/services';
 import {
 	selectCorrectAnswers,
 	selectCurrentDifficulty,
@@ -147,7 +147,7 @@ export const useGameFinalization = () => {
 
 						// Navigate to summary if requested (URL includes gameId for consistency with multiplayer)
 						if (navigateToSummary) {
-							navigate(`/game/single/summary/${sessionGameId}`);
+							navigate(ROUTES.GAME_SINGLE_SUMMARY.replace(':gameId', sessionGameId));
 						}
 
 						// Execute custom success callback with saved history

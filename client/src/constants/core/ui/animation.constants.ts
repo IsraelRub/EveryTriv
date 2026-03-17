@@ -8,6 +8,7 @@ export const ANIMATION_CONFIG = {
 	},
 	EASING_NAMES: {
 		EASE_OUT: 'easeOut',
+		LINEAR: 'linear',
 	},
 } as const;
 
@@ -19,6 +20,8 @@ export const ANIMATION_DELAYS = {
 	SEQUENCE_STEP: 0.1,
 	SEQUENCE_MEDIUM: 0.2,
 	SEQUENCE_LARGE: 0.4,
+	SEQUENCE_AFTER_HEADER: 0.7,
+	SEQUENCE_STATS_BASE: 0.8,
 } as const;
 
 export const SPRING_CONFIGS = {

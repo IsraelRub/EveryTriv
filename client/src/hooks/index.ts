@@ -21,18 +21,20 @@ export {
 export {
 	useGameHistory,
 	useGameSettingsForm,
-	useValidateCustomDifficulty,
 	useTriviaQuestionMutation,
 	useClearGameHistory,
 	useDeleteGameHistory,
-	useStartGameSession,
-	useSubmitAnswerToSession,
-	useFinalizeGameSession,
 	useGameFinalization,
 	useSingleSession,
 } from './game';
 
-export { useSetAvatar, useUpdateUserProfile, useUserProfile, useUpdateUserPreferences } from './useUser';
+export {
+	useSetAvatar,
+	useUploadAvatar,
+	useUpdateUserProfile,
+	useUserProfile,
+	useUpdateUserPreferences,
+} from './useUser';
 
 export {
 	useGlobalDifficultyStats,
@@ -48,14 +50,15 @@ export {
 } from './useAnalyticsDashboard';
 
 export {
+	useAdminPricing,
 	useBusinessMetrics,
 	useClearAllLeaderboard,
+	useUpdateAdminPricing,
 	useClearAllUserStats,
 	useSystemInsights,
 	useSystemPerformanceMetrics,
 	useSystemRecommendations,
 	useSystemSecurityMetrics,
-	useUserAchievementsById,
 	useUserInsightsById,
 	useUserPerformanceById,
 	useUserRecommendationsById,

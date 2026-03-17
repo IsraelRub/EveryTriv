@@ -3,18 +3,6 @@ import { ComparisonTarget, TimePeriod, TrendPeriod } from '@shared/constants';
 
 import type { CorePagination } from '../../core';
 
-export interface UnifiedQuerySignatureInput {
-	includeSections?: string[];
-	startDate?: Date;
-	endDate?: Date;
-	groupBy?: TimePeriod;
-	activityLimit?: number;
-	trendLimit?: number;
-	includeActivity?: boolean;
-	targetUserId?: string;
-	comparisonTarget?: ComparisonTarget;
-}
-
 export interface TimeStat {
 	averageTime: number | null;
 	medianTime: number | null;

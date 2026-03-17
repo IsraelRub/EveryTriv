@@ -4,11 +4,11 @@ import { motion } from 'framer-motion';
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { VALIDATORS } from '@shared/validation';
 
-import { SkeletonVariant, StatCardVariant } from '@/constants';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
-import { useCountUp } from '@/hooks';
+import { DEFAULT_STATS_GRID_COLS, SkeletonVariant, StatCardVariant } from '@/constants';
 import type { StatCardProps, StatsSectionCardProps } from '@/types';
 import { cn } from '@/utils';
+import { Card, CardContent, SectionCard, Skeleton } from '@/components';
+import { useCountUp } from '@/hooks';
 import { useRefreshAnimationGeneration } from '@/contexts';
 
 export const StatCard = memo(function StatCard({
@@ -105,46 +105,29 @@ export const StatCard = memo(function StatCard({
 	}
 });
 
-const DEFAULT_GRID_COLS = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
-
 export const StatsSectionCard = memo(function StatsSectionCard({
 	title,
 	description,
 	titleIcon: TitleIcon,
 	stats,
 	variant = StatCardVariant.HORIZONTAL,
-	gridCols = DEFAULT_GRID_COLS,
+	gridCols = DEFAULT_STATS_GRID_COLS,
 	isLoading: sectionLoading,
 	className,
 }: StatsSectionCardProps) {
 	return (
-		<Card className={className}>
-			{(title ?? description) && (
-				<CardHeader>
-					{title && (
-						<CardTitle className={cn('flex items-center gap-2 m-0', variant === StatCardVariant.CENTERED && 'text-xl')}>
-							<span className='flex shrink-0 items-center'>
-								{TitleIcon && <TitleIcon className='h-5 w-5 text-primary' />}
-							</span>
-							<span className='leading-none'>{title}</span>
-						</CardTitle>
-					)}
-					{description && <CardDescription>{description}</CardDescription>}
-				</CardHeader>
-			)}
-			<CardContent>
-				<div className={cn('grid gap-4', gridCols)}>
-					{stats.map(stat => (
-						<StatCard
-							key={stat.label}
-							{...stat}
-							variant={stat.variant ?? variant}
-							animate={stat.animate ?? variant === StatCardVariant.CENTERED}
-							isLoading={stat.isLoading ?? sectionLoading}
-						/>
-					))}
-				</div>
-			</CardContent>
-		</Card>
+		<SectionCard className={className} title={title ?? ''} icon={TitleIcon} description={description}>
+			<div className={cn('grid gap-4', gridCols)}>
+				{stats.map(stat => (
+					<StatCard
+						key={stat.label}
+						{...stat}
+						variant={stat.variant ?? variant}
+						animate={stat.animate ?? variant === StatCardVariant.CENTERED}
+						isLoading={stat.isLoading ?? sectionLoading}
+					/>
+				))}
+			</div>
+		</SectionCard>
 	);
 });

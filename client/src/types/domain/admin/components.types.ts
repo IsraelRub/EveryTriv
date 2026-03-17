@@ -1,10 +1,7 @@
-import type { AdminTriviaQuestion } from './admin.types';
+import type { ClearOperation } from './admin.types';
 
-export interface TriviaTableProps {
-	questions: AdminTriviaQuestion[];
-	totalCount: number;
-	isLoading: boolean;
-	onClearAll?: () => void;
+export interface ManagementActionsProps {
+	operations: ClearOperation[];
 }
 
 export interface ConfirmClearDialogProps {
@@ -13,7 +10,7 @@ export interface ConfirmClearDialogProps {
 	title: string;
 	description: string;
 	itemName: string;
-	onConfirm: () => void;
+	onConfirm: () => void | Promise<void>;
 	isLoading: boolean;
 }
 
@@ -23,6 +20,8 @@ export interface UserTableRow {
 	role: string;
 	createdAt: string;
 	lastLogin: string;
+	firstName?: string;
+	lastName?: string;
 }
 
 export interface ConsistencyDiscrepancy {
@@ -39,4 +38,12 @@ export interface ConsistencyResultRow {
 		correctAnswers: ConsistencyDiscrepancy;
 		totalScore: ConsistencyDiscrepancy;
 	};
+}
+
+export interface CheckAllUsersConsistencyResponse {
+	totalUsers: number;
+	usersWithGames: number;
+	consistentUsers: number;
+	inconsistentUsers: number;
+	results: ConsistencyResultRow[];
 }

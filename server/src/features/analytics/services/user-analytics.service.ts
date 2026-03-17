@@ -5,23 +5,20 @@ import { Repository } from 'typeorm';
 import {
 	ComparisonTarget,
 	ErrorCode,
-	SERVER_CACHE_KEYS,
+	RecommendationPriority,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
 	TimePeriod,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type {
-	AchievementCalculationContext,
 	ActivityEntry,
 	AnalyticsResponse,
 	ComparisonQueryOptions,
 	CompleteUserAnalytics,
 	CountRecord,
 	DifficultyBreakdown,
-	GameStatsSummary,
 	HistoryFilterOptions,
-	SavedAchievement,
 	SystemRecommendation,
 	TrendQueryOptions,
 	UnifiedUserAnalyticsResponse,
@@ -37,23 +34,20 @@ import type {
 import { calculateScoreRate, clamp, formatDate, formatTitle, getErrorMessage, sumBy } from '@shared/utils';
 import { isGameDifficulty, isUuid } from '@shared/validation';
 
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import type { TopicAnalyticsAccumulator, UserWithHistoryResult } from '@internal/types';
+import type { GameStatsSummary, TopicAnalyticsAccumulator, UserWithHistoryResult } from '@internal/types';
 import {
-	buildAchievementFromSaved,
-	buildAllAchievements,
 	calculateCategoryPerformance,
 	calculateStreak,
 	computeMeanVarianceStddev,
 	createNotFoundError,
-} from '@internal/utils';
-
-import {
 	isAnalyticsResponseUnifiedUserAnalytics,
 	isCompleteUserAnalyticsData,
-} from '../../../internal/utils/entityGuards';
+} from '@internal/utils';
+
 import { AnalyticsCommonService } from './common-analytics.service';
 import { SystemAnalyticsService } from './system-analytics.service';
 import { buildUnifiedQuerySignature } from './unifiedAnalyticsCache.utils';
@@ -244,7 +238,6 @@ export class UserAnalyticsService {
 						includeSet.has('insights') ||
 						includeSet.has('recommendations') ||
 						includeSet.has('summary') ||
-						includeSet.has('achievements') ||
 						includeSet.has('comparison')
 					) {
 						stats = await this.getUserStats(userId);
@@ -259,7 +252,6 @@ export class UserAnalyticsService {
 						includeSet.has('insights') ||
 						includeSet.has('recommendations') ||
 						includeSet.has('summary') ||
-						includeSet.has('achievements') ||
 						includeSet.has('trends') ||
 						includeSet.has('activity') ||
 						includeSet.has('progress') ||
@@ -283,7 +275,6 @@ export class UserAnalyticsService {
 							includeSet.has('insights') ||
 							includeSet.has('recommendations') ||
 							includeSet.has('summary') ||
-							includeSet.has('achievements') ||
 							includeSet.has('comparison')
 						) {
 							performance = this.calculatePerformanceMetrics(history);
@@ -321,31 +312,6 @@ export class UserAnalyticsService {
 						response.recommendations = [...recommendations, ...systemRecommendations.slice(0, 2)];
 					}
 
-					let builtAchievements: { list: SavedAchievement[]; savedIds: Set<string> } | undefined;
-					if (
-						(includeSet.has('achievements') || includeSet.has('summary')) &&
-						stats &&
-						performance &&
-						user &&
-						history
-					) {
-						builtAchievements = this.mergeSavedAndComputedAchievements(user, stats, performance, history);
-					}
-
-					if (includeSet.has('achievements') && builtAchievements) {
-						response.achievements = [...builtAchievements.list].sort((a, b) => {
-							const timeA = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
-							const timeB = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
-							return timeB - timeA;
-						});
-						const newToSave = builtAchievements.list.filter(
-							ach => ach.unlockedAt && !builtAchievements.savedIds.has(ach.id)
-						);
-						if (newToSave.length > 0) {
-							await this.saveNewAchievements(userId, newToSave);
-						}
-					}
-
 					// Build trends if needed
 					if (includeSet.has('trends') && history) {
 						response.trends = this.analyticsCommon.buildTrends(history, {
@@ -361,10 +327,9 @@ export class UserAnalyticsService {
 
 					// Build summary if needed
 					if (includeSet.has('summary') && stats && performance && user && history) {
-						const achievements = builtAchievements?.list ?? [];
 						const progressData = progress ?? this.buildUserProgressAnalytics(history);
 						const insights = this.buildUserInsights(stats, performance, progressData.topics);
-						const summary = this.buildUserSummary(user, stats, performance, achievements, progressData, insights);
+						const summary = this.buildUserSummary(user, stats, performance, progressData, insights);
 
 						if (options?.includeActivity) {
 							const activityEntries = this.buildUserActivityEntries(history, 5);
@@ -702,7 +667,7 @@ export class UserAnalyticsService {
 				description: `Your current success rate is ${stats.successRate.toFixed(1)}%.`,
 				message: 'Try solving puzzles at an easier difficulty level to build confidence.',
 				action: 'Start a series of games in your favorite topics at easy level.',
-				priority: 'medium',
+				priority: RecommendationPriority.MEDIUM,
 				estimatedImpact: 'Gradual improvement in answer accuracy',
 				implementationEffort: 'low',
 			});
@@ -721,7 +686,7 @@ export class UserAnalyticsService {
 				description: `Your average response time is particularly high in topics: ${slowTopics.join(', ')}.`,
 				message: 'Practice games with time limits to sharpen your speed.',
 				action: 'Play in "Time Attack" mode in these topics twice a day.',
-				priority: 'medium',
+				priority: RecommendationPriority.MEDIUM,
 				estimatedImpact: 'Improved puzzle solving speed',
 				implementationEffort: 'medium',
 			});
@@ -735,91 +700,13 @@ export class UserAnalyticsService {
 				description: 'Your active day streak is relatively short.',
 				message: 'To improve your streak, it is recommended to play at least one short game every day.',
 				action: 'Set a daily reminder for a short game of five questions.',
-				priority: 'low',
+				priority: RecommendationPriority.LOW,
 				estimatedImpact: 'Increased daily engagement',
 				implementationEffort: 'low',
 			});
 		}
 
 		return recommendations;
-	}
-
-	private mergeSavedAndComputedAchievements(
-		user: UserEntity,
-		stats: UserAnalyticsRecord,
-		performance: UserPerformanceMetrics,
-		history: GameHistoryEntity[]
-	): { list: SavedAchievement[]; savedIds: Set<string> } {
-		const savedAchievements: SavedAchievement[] = Array.isArray(user.achievements)
-			? user.achievements.filter(ach => ach?.id && (ach.unlockedAt ?? ach.progress !== undefined))
-			: [];
-		const context: AchievementCalculationContext = {
-			totalGames: stats.totalGames,
-			bestScore: stats.bestScore,
-			successRate: stats.successRate,
-			totalQuestionsAnswered: stats.totalQuestionsAnswered,
-			streakDays: performance.streakDays,
-			bestStreak: performance.bestStreak,
-			topicsPlayed: stats.topicsPlayed ?? {},
-		};
-		const allComputed = buildAllAchievements(context);
-		const savedIds = new Set(savedAchievements.map(ach => ach.id));
-		const lastPlayed = history[0]?.createdAt ? new Date(history[0].createdAt).toISOString() : undefined;
-		const merged = new Map<string, SavedAchievement>();
-		for (const saved of savedAchievements) {
-			const minimal = buildAchievementFromSaved(saved);
-			if (minimal) merged.set(minimal.id, minimal);
-		}
-		for (const computed of allComputed) {
-			if (!merged.has(computed.id)) {
-				const isNew = !savedIds.has(computed.id);
-				merged.set(computed.id, {
-					...computed,
-					unlockedAt: isNew ? lastPlayed : undefined,
-				});
-			}
-		}
-		return { list: Array.from(merged.values()), savedIds };
-	}
-
-	private async saveNewAchievements(userId: string, newAchievements: SavedAchievement[]): Promise<void> {
-		try {
-			const user = await this.userRepo.findOne({ where: { id: userId } });
-			if (!user) {
-				return;
-			}
-
-			const existing: SavedAchievement[] = Array.isArray(user.achievements) ? user.achievements : [];
-			const byId: Record<string, SavedAchievement> = {};
-			for (const ach of existing) {
-				if (ach?.id) byId[ach.id] = ach;
-			}
-
-			for (const ach of newAchievements) {
-				if (ach?.id && (ach.unlockedAt ?? ach.progress !== undefined)) {
-					byId[ach.id] = {
-						id: ach.id,
-						unlockedAt: ach.unlockedAt,
-						points: ach.points,
-						progress: ach.progress,
-						maxProgress: ach.maxProgress,
-					};
-				}
-			}
-
-			user.achievements = Object.values(byId);
-			await this.userRepo.save(user);
-
-			logger.analyticsStats('achievements_saved', {
-				userId,
-				count: newAchievements.length,
-			});
-		} catch (error) {
-			logger.analyticsError('Failed to save new achievements', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-			});
-		}
 	}
 
 	private async buildUserComparison(
@@ -928,7 +815,6 @@ export class UserAnalyticsService {
 		user: UserEntity,
 		stats: UserAnalyticsRecord,
 		performance: UserPerformanceMetrics,
-		achievements: SavedAchievement[],
 		progress: UserProgressAnalytics,
 		insights: UserInsightsData
 	): UserSummaryData {
@@ -960,7 +846,6 @@ export class UserAnalyticsService {
 				totalGames: stats.totalGames,
 				bestScore: Math.round(stats.bestScore),
 				topTopics,
-				achievementsUnlocked: achievements.length,
 			},
 			performance,
 			insights: mergedInsights,
@@ -1000,7 +885,7 @@ export class UserAnalyticsService {
 
 			// Most played topic: pick by max count from merged, then display form
 			const mostPlayedTopicKey = Object.entries(topicsPlayedMerged).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-			const mostPlayedTopic = mostPlayedTopicKey ? formatTitle(mostPlayedTopicKey) : 'None';
+			const mostPlayedTopic = mostPlayedTopicKey ? formatTitle(mostPlayedTopicKey) : undefined;
 
 			// Use difficultyStats from UserStatsEntity instead of querying GameHistory
 			const difficultyBreakdown: DifficultyBreakdown = {};

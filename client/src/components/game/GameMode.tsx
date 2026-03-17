@@ -1,18 +1,25 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, CreditCard, Crown, Infinity, ListOrdered, LucideIcon, Play, Users } from 'lucide-react';
+import { CreditCard, Crown, Infinity, ListOrdered, LucideIcon, Play, Timer, Users } from 'lucide-react';
 
-import {
-	GAME_MODES_CONFIG,
-	GAME_STATE_DEFAULTS,
-	GameMode as GameModeEnum,
-	TIME_DURATIONS_SECONDS,
-} from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, GAME_MODES_CONFIG, GameMode as GameModeEnum, VALIDATION_COUNT } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
 import { calculateRequiredCredits } from '@shared/utils';
 
-import { AlertVariant, ANIMATION_DELAYS, Colors, GAME_MODES_SET, ROUTES, VariantBase } from '@/constants';
+import {
+	AlertIconSize,
+	AlertVariant,
+	ANIMATION_DELAYS,
+	Colors,
+	GAME_MODES_SET,
+	GameKey,
+	ROUTES,
+	VariantBase,
+} from '@/constants';
+import type { GameModeOption } from '@/types';
+import { cn } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
@@ -28,19 +35,33 @@ import {
 	DialogTitle,
 } from '@/components';
 import { useCanPlay, useGameSettingsForm } from '@/hooks';
-import type { GameModeOption } from '@/types';
-import { cn } from '@/utils';
 import { GameSettingsForm } from './GameSettingsForm';
 
 // Icon mapping for game modes
 const GAME_MODE_ICONS: Record<GameModeEnum, LucideIcon> = {
 	[GameModeEnum.QUESTION_LIMITED]: ListOrdered,
-	[GameModeEnum.TIME_LIMITED]: Clock,
+	[GameModeEnum.TIME_LIMITED]: Timer,
 	[GameModeEnum.UNLIMITED]: Infinity,
 	[GameModeEnum.MULTIPLAYER]: Users,
 } as const;
 
-const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption][] = Object.keys(GAME_MODES_CONFIG)
+const GAME_MODE_NAME_KEYS: Record<GameModeEnum, string> = {
+	[GameModeEnum.QUESTION_LIMITED]: 'game:modeQuestionLimited',
+	[GameModeEnum.TIME_LIMITED]: 'game:modeTimeLimited',
+	[GameModeEnum.UNLIMITED]: 'game:modeUnlimited',
+	[GameModeEnum.MULTIPLAYER]: 'game:multiplayer',
+} as const;
+
+const GAME_MODE_DESC_KEYS: Record<GameModeEnum, string> = {
+	[GameModeEnum.QUESTION_LIMITED]: 'game:modeQuestionLimitedDescription',
+	[GameModeEnum.TIME_LIMITED]: 'game:modeTimeLimitedDescription',
+	[GameModeEnum.UNLIMITED]: 'game:modeUnlimitedDescription',
+	[GameModeEnum.MULTIPLAYER]: 'game:competeWithFriends',
+} as const;
+
+const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption & { nameKey: string; descKey: string }][] = Object.keys(
+	GAME_MODES_CONFIG
+)
 	.filter((key: string): key is GameModeEnum => GAME_MODES_SET.has(key))
 	.filter(mode => mode !== GameModeEnum.MULTIPLAYER)
 	.map(mode => [
@@ -48,6 +69,8 @@ const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption][] = Object.keys(GAME_MO
 		{
 			name: GAME_MODES_CONFIG[mode].name,
 			description: GAME_MODES_CONFIG[mode].description,
+			nameKey: GAME_MODE_NAME_KEYS[mode],
+			descKey: GAME_MODE_DESC_KEYS[mode],
 			icon: GAME_MODE_ICONS[mode],
 			showQuestionLimit: GAME_MODES_CONFIG[mode].showQuestionLimit,
 			showTimeLimit: GAME_MODES_CONFIG[mode].showTimeLimit,
@@ -55,6 +78,7 @@ const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption][] = Object.keys(GAME_MO
 	]);
 
 export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig) => void }): JSX.Element {
+	const { t } = useTranslation('game');
 	const navigate = useNavigate();
 	const [selectedMode, setSelectedMode] = useState<GameModeEnum | undefined>(undefined);
 	const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,11 +88,16 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const {
 		topic,
 		topicError,
+		topicLanguageStatus,
+		topicLanguageError,
 		selectedDifficulty,
 		customDifficulty,
 		customDifficultyError,
+		customDifficultyLanguageStatus,
+		customDifficultyLanguageError,
 		answerCount,
 		isAdmin,
+		canSubmitLanguage,
 		handleTopicChange,
 		setSelectedDifficulty,
 		setCustomDifficulty,
@@ -83,7 +112,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 		GAME_MODES_CONFIG[GameModeEnum.QUESTION_LIMITED].defaults.maxQuestionsPerGame ?? 10
 	);
 	const [timeLimit, setTimeLimit] = useState<number>(
-		GAME_MODES_CONFIG[GameModeEnum.TIME_LIMITED].defaults.timeLimit ?? TIME_DURATIONS_SECONDS.MINUTE
+		GAME_MODES_CONFIG[GameModeEnum.TIME_LIMITED].defaults.timeLimit ?? VALIDATION_COUNT.TIME_LIMIT.DEFAULT
 	);
 
 	// Credit check
@@ -162,12 +191,13 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 
 		const { isValid, finalDifficulty } = validateSettings();
 		if (!isValid) return;
+		if (!canSubmitLanguage) return;
 
 		const modeConfig = GAME_MODES_CONFIG[selectedMode];
 		const settings: GameConfig = {
 			mode: selectedMode,
 			difficulty: finalDifficulty,
-			topic: topic.trim() || GAME_STATE_DEFAULTS.TOPIC,
+			topic: topic.trim() || DEFAULT_GAME_CONFIG.defaultTopic,
 			maxQuestionsPerGame: modeConfig.showQuestionLimit ? maxQuestionsPerGame : modeConfig.defaults.maxQuestionsPerGame,
 			timeLimit: modeConfig.showTimeLimit ? timeLimit : undefined,
 			answerCount,
@@ -201,10 +231,10 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 										</div>
 									</div>
 									<div>
-										<h3 className='text-xl font-semibold mb-1'>{config.name}</h3>
-										<p className='text-muted-foreground text-sm'>{config.description}</p>
+										<h3 className='text-xl font-semibold mb-1'>{t(config.nameKey)}</h3>
+										<p className='text-muted-foreground text-sm'>{t(config.descKey)}</p>
 									</div>
-									<p className='text-xs text-muted-foreground'>Click to customize</p>
+									<p className='text-xs text-muted-foreground'>{t(GameKey.CLICK_TO_CUSTOMIZE)}</p>
 								</div>
 							</Card>
 						</motion.div>
@@ -220,56 +250,58 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							{selectedMode && SelectedModeIcon && selectedModeConfig && (
 								<>
 									<SelectedModeIcon className='w-5 h-5 text-primary' />
-									{selectedModeConfig.name}
+									{t(GAME_MODE_NAME_KEYS[selectedMode])}
 								</>
 							)}
 							{isAdmin && (
 								<Badge
 									variant={VariantBase.SECONDARY}
 									className={cn(
-										'ml-2',
+										'ms-2',
 										`${Colors.AMBER_600.border}/30`,
 										`${Colors.AMBER_600.bg}/10`,
 										Colors.AMBER_600.text
 									)}
 								>
-									<Crown className='w-3 h-3 mr-1' />
-									Free Play
+									<Crown className='w-3 h-3 me-1' />
+									{t(GameKey.FREE_PLAY)}
 								</Badge>
 							)}
 						</DialogTitle>
-						<DialogDescription>Customize your game settings before starting</DialogDescription>
+						<DialogDescription>{t(GameKey.CUSTOMIZE_GAME_SETTINGS_BEFORE_STARTING)}</DialogDescription>
 					</DialogHeader>
 
 					<div className='flex-1 overflow-y-auto space-y-4 py-4'>
 						{/* Credit Cost Display */}
 						{!isAdmin && selectedMode && (
-							<div className='p-3 rounded-lg bg-muted/50 border'>
+							<Card className='p-3 bg-muted/50'>
 								<div className='flex items-center justify-between'>
 									<span className='text-sm text-muted-foreground flex items-center gap-2'>
 										<CreditCard className='h-4 w-4' />
-										Credit Cost:
+										{t(GameKey.CREDIT_COST)}
 									</span>
 									<span className='font-semibold'>
 										{selectedMode === GameModeEnum.UNLIMITED ? (
-											<span className='text-muted-foreground text-xs'>Charged after game (1 credit/question)</span>
+											<span className='text-muted-foreground text-xs'>{t(GameKey.CHARGED_AFTER_GAME)}</span>
 										) : (
 											<>
-												{displayedCreditCost} {displayedCreditCost === 1 ? 'credit' : 'credits'}
+												{displayedCreditCost} {displayedCreditCost === 1 ? t(GameKey.CREDIT) : t(GameKey.CREDITS)}
 												{selectedMode === GameModeEnum.TIME_LIMITED && (
-													<span className='text-xs text-muted-foreground ml-1'>(fixed)</span>
+													<span className='text-xs text-muted-foreground ms-1'>({t(GameKey.FIXED)})</span>
 												)}
 											</>
 										)}
 									</span>
 								</div>
-							</div>
+							</Card>
 						)}
 
 						{/* Credit Warning */}
 						{!isAdmin && !canPlay && (
 							<Alert variant={AlertVariant.DESTRUCTIVE}>
-								<AlertDescription>Not enough credits. You need {displayedCreditCost} credits to play.</AlertDescription>
+								<AlertDescription>
+									{t(GameKey.NOT_ENOUGH_CREDITS_IN_DIALOG, { count: displayedCreditCost })}
+								</AlertDescription>
 							</Alert>
 						)}
 
@@ -277,12 +309,16 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							topic={topic}
 							onTopicChange={handleTopicChange}
 							topicError={topicError}
+							topicLanguageError={topicLanguageError}
+							topicLanguageStatus={topicLanguageStatus}
 							selectedDifficulty={selectedDifficulty}
 							onDifficultyChange={setSelectedDifficulty}
 							customDifficulty={customDifficulty}
 							onCustomDifficultyChange={setCustomDifficulty}
 							customDifficultyError={customDifficultyError}
 							onCustomDifficultyErrorChange={setCustomDifficultyError}
+							customDifficultyLanguageError={customDifficultyLanguageError}
+							customDifficultyLanguageStatus={customDifficultyLanguageStatus}
 							answerCount={answerCount}
 							onAnswerCountChange={setAnswerCount}
 							selectedMode={selectedMode}
@@ -295,11 +331,11 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 
 					<DialogFooter className='flex-shrink-0 gap-2 sm:gap-0'>
 						<Button variant={VariantBase.OUTLINE} onClick={() => setDialogOpen(false)}>
-							Cancel
+							{t(GameKey.CANCEL)}
 						</Button>
-						<Button onClick={handleStartGame} disabled={!isAdmin && !canPlay}>
-							<Play className='h-4 w-4 mr-2' />
-							Start Game
+						<Button onClick={handleStartGame} disabled={(!isAdmin && !canPlay) || !canSubmitLanguage}>
+							<Play className='h-4 w-4 me-2' />
+							{t(GameKey.START_GAME)}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -310,25 +346,23 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle className='flex items-center gap-2 text-destructive'>
-							<AlertIcon size='lg' />
-							Not Enough Credits
+							<AlertIcon size={AlertIconSize.LG} />
+							{t(GameKey.NOT_ENOUGH_CREDITS)}
 						</DialogTitle>
-						<DialogDescription>
-							You don't have enough credits to start this game. Purchase more credits to continue playing.
-						</DialogDescription>
+						<DialogDescription>{t(GameKey.YOU_DONT_HAVE_ENOUGH_CREDITS)}</DialogDescription>
 					</DialogHeader>
 					<div className='py-4'>
 						<p className='text-sm text-muted-foreground mb-4'>
-							You need <span className='font-bold text-foreground'>{displayedCreditCost}</span> credits for this game.
+							{t(GameKey.YOU_NEED_CREDITS_FOR_THIS_GAME, { count: displayedCreditCost })}
 						</p>
 					</div>
 					<DialogFooter className='gap-2 sm:gap-0'>
 						<Button variant={VariantBase.OUTLINE} onClick={() => setNoCreditsDialogOpen(false)}>
-							Cancel
+							{t(GameKey.CANCEL)}
 						</Button>
 						<Button onClick={() => navigate(ROUTES.PAYMENT, { state: { modal: true, returnUrl: ROUTES.GAME_SINGLE } })}>
-							<CreditCard className='w-4 h-4 mr-2' />
-							Get Credits
+							<CreditCard className='w-4 h-4 me-2' />
+							{t(GameKey.GET_CREDITS)}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

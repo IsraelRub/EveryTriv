@@ -1,6 +1,7 @@
 import type { DifficultyConfigEntry } from '@shared/types';
 
 import { TIME_DURATIONS_SECONDS } from '../core/time.constants';
+import { VALIDATION_COUNT } from '../core/validation.constants';
 
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
 
@@ -100,7 +101,7 @@ export const GAME_MODES_CONFIG = {
 		showQuestionLimit: false,
 		showTimeLimit: true,
 		defaults: {
-			timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
+			timeLimit: VALIDATION_COUNT.TIME_LIMIT.DEFAULT,
 			maxQuestionsPerGame: undefined,
 		},
 		costPerQuestion: undefined,
@@ -142,25 +143,21 @@ export const GAME_MODES_CONFIG = {
 	},
 } as const;
 
+export const MULTIPLAYER_TIME_PER_QUESTION = GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.timePerQuestion;
+
 export const DEFAULT_GAME_CONFIG = {
-	defaultDifficulty: DifficultyLevel.MEDIUM,
 	defaultTopic: 'General Knowledge',
+	defaultDifficulty: DifficultyLevel.MEDIUM,
 	maxQuestionsPerGame: 10,
 	timeLimit: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,
 } as const;
 
-export const GAME_STATE_DEFAULTS = {
-	SCORE: 0,
-	STREAK: 0,
-	QUESTIONS_ANSWERED: 0,
-	QUESTIONS_CORRECT: 0,
-	QUESTIONS_INCORRECT: 0,
-	TIME_ELAPSED: 0,
-	IS_GAME_ACTIVE: false,
-	IS_GAME_PAUSED: false,
-	IS_GAME_OVER: false,
-	QUESTION_INDEX: 0,
-	TOTAL_QUESTIONS: DEFAULT_GAME_CONFIG.maxQuestionsPerGame,
-	DIFFICULTY: DEFAULT_GAME_CONFIG.defaultDifficulty,
-	TOPIC: DEFAULT_GAME_CONFIG.defaultTopic,
-} as const;
+export enum SurpriseScope {
+	TOPIC = 'topic',
+	DIFFICULTY = 'difficulty',
+	BOTH = 'both',
+}
+
+export const SURPRISE_SCOPE_DEFAULT = SurpriseScope.BOTH;
+
+export const SURPRISE_SCOPES: SurpriseScope[] = Object.values(SurpriseScope);

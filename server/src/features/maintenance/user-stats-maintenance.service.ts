@@ -8,6 +8,7 @@ import { calculateScoreRate, getErrorMessage, namesMatch, sumBy } from '@shared/
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheInvalidationService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
+import type { UserIdRow } from '@internal/types';
 import { calculateCategoryStats } from '@internal/utils';
 
 import { UserStatsUpdateService } from '../analytics/services/user-stats-update.service';
@@ -308,7 +309,7 @@ export class UserStatsMaintenanceService {
 			const usersWithGamesRaw = await this.gameHistoryRepo
 				.createQueryBuilder('game')
 				.select('DISTINCT game.user_id', 'userId')
-				.getRawMany<{ userId: string }>();
+				.getRawMany<UserIdRow>();
 
 			const userIds = usersWithGamesRaw.map(r => r.userId).filter((id): id is string => !!id);
 			const usersWithGames = userIds.length;
@@ -420,7 +421,7 @@ export class UserStatsMaintenanceService {
 		}
 	}
 
-	// ==================== Private Recalculation Methods ====================
+	// Private recalculation methods
 
 	private recalculateBasicStats(userStats: UserStatsEntity, gameHistory: GameHistoryEntity[]): void {
 		userStats.totalGames = gameHistory.length;

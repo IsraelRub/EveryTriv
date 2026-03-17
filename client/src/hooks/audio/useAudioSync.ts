@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 
 import { mergeUserPreferences } from '@shared/utils';
 
-import { audioService } from '@/services';
 import type { UseAudioSyncProps } from '@/types';
+import { audioService } from '@/services';
 
 export function useAudioSync({
 	volume,
+	soundEffectsVolume,
+	musicVolume,
 	isMuted,
 	soundEnabled,
 	musicEnabled,
@@ -26,9 +28,11 @@ export function useAudioSync({
 				audioService.unmute();
 			}
 			audioService.setMasterVolume(volume);
+			audioService.setSoundEffectsVolume(soundEffectsVolume);
+			audioService.setMusicVolume(musicVolume);
 			isInitializedRef.current = true;
 		}
-	}, [isInitialized, isMuted, volume, isInitializedRef]);
+	}, [isInitialized, isMuted, volume, soundEffectsVolume, musicVolume, isInitializedRef]);
 
 	// Sync audio service with user preferences
 	// Note: We don't play background music here to avoid duplication with useAudioPreferences
@@ -42,12 +46,24 @@ export function useAudioSync({
 		audioService.setUserPreferences(mergedPreferences);
 	}, [preferences, isAuthenticated, soundEnabled, musicEnabled]);
 
-	// Sync volume with audioService (only after initialization)
+	// Sync volumes with audioService (only after initialization)
 	useEffect(() => {
 		if (isInitializedRef.current) {
 			audioService.setMasterVolume(volume);
 		}
 	}, [volume, isInitializedRef]);
+
+	useEffect(() => {
+		if (isInitializedRef.current) {
+			audioService.setSoundEffectsVolume(soundEffectsVolume);
+		}
+	}, [soundEffectsVolume, isInitializedRef]);
+
+	useEffect(() => {
+		if (isInitializedRef.current) {
+			audioService.setMusicVolume(musicVolume);
+		}
+	}, [musicVolume, isInitializedRef]);
 
 	// Sync mute state with audioService (only after initialization)
 	useEffect(() => {

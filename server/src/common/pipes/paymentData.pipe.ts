@@ -1,14 +1,15 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ErrorCode, PaymentMethod, VALIDATION_PAYMENT } from '@shared/constants';
+import { ErrorCode, PaymentMethod, VALIDATION_LENGTH } from '@shared/constants';
 import type { ValidationResult } from '@shared/types';
 import { calculateDuration, isNonEmptyString, isRecord, sanitizeCardNumber } from '@shared/utils';
 import {
 	isPaymentMethod,
 	isValidCardNumber,
+	LengthKey,
 	validateCVV,
 	validateExpiryDate,
-	validateName,
+	validateStringLength,
 	VALIDATORS,
 } from '@shared/validation';
 
@@ -104,9 +105,13 @@ export class PaymentDataPipe implements PipeTransform {
 			suggestions.push('Please enter your card number');
 		} else {
 			const sanitizedCardNumber = sanitizeCardNumber(data.cardNumber);
-			if (!isValidCardNumber(sanitizedCardNumber)) {
-				errors.push('Card number must be between 12-19 digits and pass Luhn algorithm validation');
+			const lengthResult = validateStringLength(sanitizedCardNumber, LengthKey.CARD_NUMBER);
+			if (!lengthResult.isValid) {
+				errors.push(...lengthResult.errors);
 				suggestions.push('Enter a valid card number (12-19 digits)');
+			} else if (!isValidCardNumber(sanitizedCardNumber)) {
+				errors.push('Card number must pass Luhn algorithm validation');
+				suggestions.push('Enter a valid card number');
 			}
 		}
 
@@ -129,18 +134,24 @@ export class PaymentDataPipe implements PipeTransform {
 			errors.push('CVV is required');
 			suggestions.push('Please enter your 3-4 digit CVV');
 		} else {
-			const cvvValidation = validateCVV(data.cvv);
-			if (!cvvValidation.isValid) {
-				errors.push(...cvvValidation.errors);
-				if (cvvValidation.suggestion) {
-					suggestions.push(cvvValidation.suggestion);
+			const lengthResult = validateStringLength(data.cvv, LengthKey.CVV);
+			if (!lengthResult.isValid) {
+				errors.push(...lengthResult.errors);
+				suggestions.push('CVV must be 3 or 4 digits');
+			} else {
+				const cvvValidation = validateCVV(data.cvv);
+				if (!cvvValidation.isValid) {
+					errors.push(...cvvValidation.errors);
+					if (cvvValidation.suggestion) {
+						suggestions.push(cvvValidation.suggestion);
+					}
 				}
 			}
 		}
 
 		// Validate cardholder name if provided using shared validation function
 		if (data.cardHolderName) {
-			const nameValidation = validateName(data.cardHolderName, { fieldName: 'Cardholder name' });
+			const nameValidation = validateStringLength(data.cardHolderName, LengthKey.CARDHOLDER_NAME);
 			if (!nameValidation.isValid) {
 				errors.push(...nameValidation.errors);
 				suggestions.push('Enter the full name as it appears on your card');
@@ -156,10 +167,9 @@ export class PaymentDataPipe implements PipeTransform {
 
 	private ensurePayPalOrderId(value: PersonalPaymentData | CreatePaymentDto): void {
 		if (
-			(!VALIDATORS.string(value.paypalOrderId) ||
-				value.paypalOrderId.trim().length < VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH) &&
+			(!VALIDATORS.string(value.paypalOrderId) || value.paypalOrderId.trim().length < VALIDATION_LENGTH.ORDER_ID.MIN) &&
 			(!VALIDATORS.string(value.paypalPaymentId) ||
-				value.paypalPaymentId.trim().length < VALIDATION_PAYMENT.ORDER_ID_MIN_LENGTH)
+				value.paypalPaymentId.trim().length < VALIDATION_LENGTH.ORDER_ID.MIN)
 		) {
 			throw new BadRequestException(ErrorCode.PAYPAL_ORDER_ID_REQUIRED);
 		}
@@ -190,7 +200,7 @@ export class PaymentDataPipe implements PipeTransform {
 			return false;
 		}
 
-		return VALIDATORS.string(value.cardNumber) && VALIDATORS.string(value.cvv);
+		return isNonEmptyString(value.cardNumber) && isNonEmptyString(value.cvv);
 	}
 
 	private sanitizeManualPaymentValue<T extends PersonalPaymentData | CreatePaymentDto>(value: T): T {

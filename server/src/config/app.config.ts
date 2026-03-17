@@ -27,6 +27,10 @@ export class AppConfig {
 		return process.env.DOMAIN ?? LOCALHOST_CONFIG.hosts.DOMAIN;
 	}
 
+	static get apiPublicBaseUrl(): string {
+		return process.env.API_PUBLIC_BASE_URL ?? LOCALHOST_CONFIG.urls.SERVER;
+	}
+
 	static get corsOrigin() {
 		return process.env.CORS_ORIGIN ?? LOCALHOST_CONFIG.urls.CLIENT;
 	}

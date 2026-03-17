@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ERROR_MESSAGES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import { ERROR_MESSAGES, TIME_PERIODS_MS } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	BusinessMetrics,
@@ -15,13 +15,12 @@ import type {
 } from '@shared/types';
 
 import { QUERY_KEYS } from '@/constants';
-import { analyticsService, queryInvalidationService } from '@/services';
-import type { Achievement } from '@/types';
+import type { AdminPricingResponse, AdminPricingUpdatePayload } from '@/types';
+import { adminService, analyticsService, queryInvalidationService } from '@/services';
 import { useUserRole } from '../useAuth';
 
 export const useUserSummaryById = (userId: string, includeActivity: boolean = false, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<AnalyticsResponse<UserSummaryData>>({
 		queryKey: QUERY_KEYS.admin.userSummary(userId, includeActivity),
@@ -38,8 +37,7 @@ export const useUserSummaryById = (userId: string, includeActivity: boolean = fa
 };
 
 export const useUserStatisticsById = (userId: string, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<AnalyticsResponse<UserAnalyticsRecord>>({
 		queryKey: QUERY_KEYS.admin.userStatistics(userId),
@@ -56,8 +54,7 @@ export const useUserStatisticsById = (userId: string, enabled?: boolean) => {
 };
 
 export const useUserPerformanceById = (userId: string, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<AnalyticsResponse<UserPerformanceMetrics>>({
 		queryKey: QUERY_KEYS.admin.userPerformance(userId),
@@ -74,8 +71,7 @@ export const useUserPerformanceById = (userId: string, enabled?: boolean) => {
 };
 
 export const useUserInsightsById = (userId: string, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<AnalyticsResponse<UserInsightsData>>({
 		queryKey: QUERY_KEYS.admin.userInsights(userId),
@@ -92,8 +88,7 @@ export const useUserInsightsById = (userId: string, enabled?: boolean) => {
 };
 
 export const useUserRecommendationsById = (userId: string, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<AnalyticsResponse<SystemRecommendation[]>>({
 		queryKey: QUERY_KEYS.admin.userRecommendations(userId),
@@ -109,28 +104,9 @@ export const useUserRecommendationsById = (userId: string, enabled?: boolean) =>
 	});
 };
 
-export const useUserAchievementsById = (userId: string, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
-
-	return useQuery<AnalyticsResponse<Achievement[]>>({
-		queryKey: QUERY_KEYS.admin.userAchievements(userId),
-		queryFn: async () => {
-			if (!isAdmin) {
-				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
-			}
-			return analyticsService.getUserAchievementsById(userId);
-		},
-		enabled: enabled !== undefined ? enabled && isAdmin : !!userId && isAdmin,
-		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
-		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
-	});
-};
-
 export const useClearAllUserStats = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: async () => {
@@ -150,7 +126,6 @@ export const useClearAllUserStats = () => {
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userActivity() });
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userInsights() });
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userRecommendations() });
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userAchievements() });
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userTrends() });
 			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userComparison() });
 		},
@@ -159,8 +134,7 @@ export const useClearAllUserStats = () => {
 
 export const useClearAllLeaderboard = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: async () => {
@@ -177,13 +151,8 @@ export const useClearAllLeaderboard = () => {
 	});
 };
 
-// ============================================================================
-// MAINTENANCE OPERATIONS - Consistency Checks
-// ============================================================================
-
 export const useCheckAllUsersConsistency = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery({
 		queryKey: QUERY_KEYS.admin.allUsersConsistency(),
@@ -200,8 +169,7 @@ export const useCheckAllUsersConsistency = (enabled?: boolean) => {
 };
 
 export const useCheckUserStatsConsistency = (userId: string | null, enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery({
 		queryKey: QUERY_KEYS.admin.userStatsConsistency(userId ?? ''),
@@ -219,8 +187,7 @@ export const useCheckUserStatsConsistency = (userId: string | null, enabled?: bo
 
 export const useFixUserStatsConsistency = () => {
 	const queryClient = useQueryClient();
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useMutation({
 		mutationFn: async (userId: string) => {
@@ -239,8 +206,7 @@ export const useFixUserStatsConsistency = () => {
 };
 
 export const useBusinessMetrics = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<BusinessMetrics>({
 		queryKey: QUERY_KEYS.admin.businessMetrics(),
@@ -256,9 +222,37 @@ export const useBusinessMetrics = (enabled?: boolean) => {
 	});
 };
 
+export const useAdminPricing = (enabled?: boolean) => {
+	const { isAdmin } = useUserRole();
+
+	return useQuery<AdminPricingResponse>({
+		queryKey: QUERY_KEYS.admin.pricing(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return adminService.getAdminPricing();
+		},
+		enabled: enabled !== undefined ? enabled && isAdmin : isAdmin,
+		staleTime: TIME_PERIODS_MS.MINUTE,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+};
+
+export const useUpdateAdminPricing = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (payload: AdminPricingUpdatePayload) => adminService.updateAdminPricing(payload),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.pricing() });
+			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.packages() });
+		},
+	});
+};
+
 export const useSystemPerformanceMetrics = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<SystemPerformanceMetrics>({
 		queryKey: QUERY_KEYS.admin.systemPerformance(),
@@ -276,8 +270,7 @@ export const useSystemPerformanceMetrics = (enabled?: boolean) => {
 };
 
 export const useSystemSecurityMetrics = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<SecurityMetrics>({
 		queryKey: QUERY_KEYS.admin.systemSecurity(),
@@ -295,8 +288,7 @@ export const useSystemSecurityMetrics = (enabled?: boolean) => {
 };
 
 export const useSystemRecommendations = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<SystemRecommendation[]>({
 		queryKey: QUERY_KEYS.admin.systemRecommendations(),
@@ -313,8 +305,7 @@ export const useSystemRecommendations = (enabled?: boolean) => {
 };
 
 export const useSystemInsights = (enabled?: boolean) => {
-	const userRole = useUserRole();
-	const isAdmin = userRole === UserRole.ADMIN;
+	const { isAdmin } = useUserRole();
 
 	return useQuery<SystemInsights>({
 		queryKey: QUERY_KEYS.admin.systemInsights(),

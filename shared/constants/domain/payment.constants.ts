@@ -69,14 +69,6 @@ export const CREDIT_PURCHASE_PACKAGES = [
 	bonus: 0,
 }));
 
-export const CREDIT_PURCHASE_PACKAGES_BY_ID = new Map<string, (typeof CREDIT_PURCHASE_PACKAGES)[number]>(
-	CREDIT_PURCHASE_PACKAGES.map(pkg => [pkg.id, pkg])
-);
-
-export const CREDIT_PURCHASE_PACKAGES_BY_CREDITS = new Map<number, (typeof CREDIT_PURCHASE_PACKAGES)[number]>(
-	CREDIT_PURCHASE_PACKAGES.map(pkg => [pkg.credits, pkg])
-);
-
 export const PAYPAL_API_BASE_URLS = {
 	SANDBOX: 'https://api.sandbox.paypal.com',
 	PRODUCTION: 'https://api.paypal.com',
@@ -110,3 +102,5 @@ export const PAYPAL_RETRY_CONFIG = {
 	MAX_DELAY_MS: TIME_PERIODS_MS.TEN_SECONDS,
 	BACKOFF_MULTIPLIER: 2,
 } as const;
+
+export const AMOUNT_MIN = 0.5;

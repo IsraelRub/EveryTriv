@@ -64,18 +64,4 @@ export class UserCoreService {
 			return null;
 		}
 	}
-
-	async getUserByEmail(email: string): Promise<UserEntity | null> {
-		try {
-			const user = await this.userRepository.findOne({ where: { email } });
-			return user;
-		} catch (error) {
-			logger.userError('Failed to get user by email', {
-				context: 'UserCoreService',
-				errorInfo: { message: getErrorMessage(error) },
-				emails: { current: email.substring(0, 10) + '...' },
-			});
-			return null;
-		}
-	}
 }

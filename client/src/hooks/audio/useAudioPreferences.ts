@@ -4,9 +4,9 @@ import { DEFAULT_USER_PREFERENCES } from '@shared/constants';
 import { mergeUserPreferences } from '@shared/utils';
 
 import { AudioKey } from '@/constants';
-import { useIsAuthenticated, useUpdateUserPreferences, useUserProfile } from '@/hooks';
-import { audioService } from '@/services';
 import type { UseAudioPreferencesProps } from '@/types';
+import { audioService } from '@/services';
+import { useIsAuthenticated, useUpdateUserPreferences, useUserProfile } from '@/hooks';
 import { setMusicEnabled, setSoundEnabled } from '@/redux/slices';
 import { useAppDispatch } from '../useRedux';
 

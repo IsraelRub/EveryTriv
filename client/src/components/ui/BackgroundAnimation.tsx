@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 import { ERROR_MESSAGES } from '@shared/constants';
 
 import {
 	ANIMATION_COLORS,
+	ANIMATION_CONFIG,
 	ANIMATION_FONTS,
 	BACKGROUND_ANIMATION_CONFIG,
-	Easing,
-	TRIVIA_WORDS,
+	GameKey,
 	WORD_DIRECTIONS,
 	WordDirection,
 } from '@/constants';
 import type { AnimatedWord, ScreenPosition } from '@/types';
+import { useAppSelector } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 
 const randomBetween = (min: number, max: number): number => {
 	return Math.random() * (max - min) + min;
@@ -51,7 +54,7 @@ const calculateEndPosition = (start: ScreenPosition, direction: WordDirection): 
 	}
 };
 
-const generateWord = (): AnimatedWord => {
+const createGenerateWord = (triviaWords: readonly string[]) => (): AnimatedWord => {
 	const direction = randomItem(WORD_DIRECTIONS);
 	const startPosition: ScreenPosition = {
 		x: randomBetween(BACKGROUND_ANIMATION_CONFIG.minStartPosition, BACKGROUND_ANIMATION_CONFIG.maxStartPosition),
@@ -61,7 +64,7 @@ const generateWord = (): AnimatedWord => {
 
 	return {
 		id: `word-${Date.now()}-${Math.random()}`,
-		text: randomItem(TRIVIA_WORDS),
+		text: randomItem(triviaWords),
 		startPosition,
 		endPosition,
 		direction,
@@ -75,18 +78,32 @@ const generateWord = (): AnimatedWord => {
 };
 
 export function BackgroundAnimation() {
+	const { t } = useTranslation('game');
+	const locale = useAppSelector(selectLocale);
+	const triviaWords = useMemo(() => {
+		const raw = t(GameKey.BACKGROUND_WORDS, { returnObjects: true, lng: locale });
+		if (Array.isArray(raw) && raw.length > 0 && raw.every((x): x is string => typeof x === 'string')) {
+			return raw;
+		}
+		const fallback = t(GameKey.BACKGROUND_WORDS_FALLBACK, { returnObjects: true, lng: locale });
+		if (Array.isArray(fallback) && fallback.length > 0 && fallback.every((x): x is string => typeof x === 'string')) {
+			return fallback;
+		}
+		return locale === 'he' ? ['טריוויה', 'ידע'] : ['Trivia', 'Knowledge'];
+	}, [t, locale]);
+	const generateWord = useMemo(() => createGenerateWord(triviaWords), [triviaWords]);
+
 	const [words, setWords] = useState<AnimatedWord[]>([]);
 	const timeoutRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
-	// Initialize words on mount
+	// Initialize words on mount and when locale changes
 	useEffect(() => {
+		setWords([]);
 		const timeouts = new Set<NodeJS.Timeout>();
 
-		// Stagger the initial word creation
 		for (let i = 0; i < BACKGROUND_ANIMATION_CONFIG.wordCount; i++) {
 			const timeoutId = setTimeout(() => {
-				const word = generateWord();
-				setWords(prev => [...prev, word]);
+				setWords(prev => [...prev, generateWord()]);
 			}, i * BACKGROUND_ANIMATION_CONFIG.spawnDelay);
 			timeouts.add(timeoutId);
 		}
@@ -101,21 +118,21 @@ export function BackgroundAnimation() {
 			});
 			timeoutRef.current.clear();
 		};
-	}, []);
+	}, [locale, generateWord]);
 
-	// Replace word when animation completes
-	// Use useCallback to prevent creating new function on every render
-	const handleAnimationComplete = useCallback((wordId: string) => {
-		setWords(prev => {
-			// Use functional update to avoid stale closure issues
-			const filtered = prev.filter(w => w.id !== wordId);
-			// Only add new word if we still have words in the array (prevent memory leaks)
-			if (filtered.length < BACKGROUND_ANIMATION_CONFIG.wordCount) {
-				return [...filtered, generateWord()];
-			}
-			return filtered;
-		});
-	}, []);
+	// Replace word when animation completes. Depends on generateWord so new words use current locale.
+	const handleAnimationComplete = useCallback(
+		(wordId: string) => {
+			setWords(prev => {
+				const filtered = prev.filter(w => w.id !== wordId);
+				if (filtered.length < BACKGROUND_ANIMATION_CONFIG.wordCount) {
+					return [...filtered, generateWord()];
+				}
+				return filtered;
+			});
+		},
+		[generateWord]
+	);
 
 	// Memoize word components to prevent unnecessary re-renders
 	const wordComponents = useMemo(
@@ -137,7 +154,7 @@ export function BackgroundAnimation() {
 					}}
 					transition={{
 						duration: word.duration,
-						ease: Easing.LINEAR,
+						ease: ANIMATION_CONFIG.EASING_NAMES.LINEAR,
 						opacity: {
 							times: [0, BACKGROUND_ANIMATION_CONFIG.fadeFraction, 1 - BACKGROUND_ANIMATION_CONFIG.fadeFraction, 1],
 							duration: word.duration,

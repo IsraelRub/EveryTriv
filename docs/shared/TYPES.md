@@ -22,7 +22,7 @@ shared/types/
 │   ├── game/                  # טיפוסי משחק
 │   │   ├── game.types.ts      # ישויות משחק
 │   │   ├── trivia.types.ts    # ישויות טריוויה
-│   │   ├── achievements.types.ts # הישגים
+│   │   ├── achievements.types.ts # legacy (SavedAchievement ל־DB)
 │   │   ├── gameCache.types.ts # Cache משחק
 │   │   └── index.ts
 │   ├── user/                  # טיפוסי משתמש
@@ -219,19 +219,6 @@ export interface UserRankData {
   percentile: number;
 }
 
-/**
- * User stats data interface
- */
-export interface UserStatsData {
-  userId: string;
-  gamesPlayed: number;
-  correctAnswers: number;
-  totalQuestions: number;
-  averageScore: number;
-  bestScore: number;
-  successRate: number;
-  totalPlayTime: number;
-}
 ```
 
 ### trivia.types.ts
@@ -338,7 +325,6 @@ export interface UserPrivacyPreferences {
   profileVisibility?: 'public' | 'private' | 'friends';
   showOnlineStatus?: boolean;
   showActivity?: boolean;
-  showAchievements?: boolean;
 }
 
 /**
@@ -377,7 +363,7 @@ export interface User extends UserProfile {
   totalCredits: number;
   dailyFreeQuestions: number;
   remainingFreeQuestions: number;
-  achievements: Achievement[];
+  achievements: SavedAchievement[];  // legacy, לא בשימוש
   stats: BaseGameStatistics;
 }
 ```
@@ -489,14 +475,6 @@ export interface LoggerConfigUpdate {
   logLevel?: 'error' | 'warn' | 'info' | 'debug';
 }
 
-/**
- * Enhanced logger interface
- */
-export interface EnhancedLogger {
-  // Enhanced logging methods
-  logSecurityEventEnhanced(message: string, level: LogLevel, context?: LogMeta): void;
-  logAuthenticationEnhanced(action: string, userId: string, email: string, context?: LogMeta): void;
-}
 ```
 
 ## Validation Types
@@ -580,9 +558,9 @@ export interface PaymentResult {
 }
 
 /**
- * Payment method types
+ * Payment method types (matches shared/constants/domain/payment.constants.ts)
  */
-export type PaymentMethod = 'credit_card' | 'paypal' | 'stripe' | 'bank_transfer';
+export type PaymentMethod = 'manual_credit' | 'paypal';
 ```
 
 ## עקרונות עיצוב

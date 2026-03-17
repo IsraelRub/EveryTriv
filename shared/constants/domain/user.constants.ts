@@ -30,7 +30,6 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	privacy: {
 		showOnlineStatus: true,
 		showActivity: true,
-		showAchievements: true,
 	},
 	game: {
 		...DEFAULT_GAME_CONFIG,

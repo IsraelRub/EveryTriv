@@ -8,7 +8,6 @@ export enum RoomStatus {
 
 export enum PlayerStatus {
 	WAITING = 'waiting',
-	READY = 'ready',
 	PLAYING = 'playing',
 	ANSWERED = 'answered',
 	DISCONNECTED = 'disconnected',
@@ -31,7 +30,6 @@ export enum MultiplayerEvent {
 	// Player events
 	PLAYER_JOINED = 'player-joined',
 	PLAYER_LEFT = 'player-left',
-	PLAYER_READY = 'player-ready',
 
 	// Game events
 	GAME_STARTED = 'game-started',

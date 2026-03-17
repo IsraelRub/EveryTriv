@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import type { NavLinkProps as RouterNavLinkProps } from 'react-router-dom';
 
-import type { ComponentSize } from '@/constants';
+import type { ComponentSize, NavKeyType } from '@/constants';
 
 export interface NavigationLink {
-	readonly label: string;
+	readonly labelKey: NavKeyType;
 	readonly path: string;
 }
 
@@ -58,7 +58,7 @@ export interface NavigationActionsProps {
 	onLogout: () => void;
 	onSignUp: () => void;
 	onSignIn: () => void;
-	children?: ReactNode;
+	children?: ReactElement | ReactElement[] | null;
 }
 
 export interface NavigationCreditsState {

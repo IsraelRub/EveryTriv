@@ -2,17 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 
-import { DifficultyLevel, ErrorCode, ProviderHealthStatus } from '@shared/constants';
+import { DifficultyLevel, ErrorCode, Locale, ProviderHealthStatus, SurpriseScope } from '@shared/constants';
 import type {
 	AiProviderHealth,
 	AiProviderStats,
 	GameDifficulty,
+	SurprisePickResult,
 	TriviaQuestionCore,
 	TriviaQuestionDetailsMetadata,
 	TriviaQuestionInput,
 } from '@shared/types';
 import { calculatePercentage, getErrorMessage, isNonEmptyString, normalizeStringArray } from '@shared/utils';
-import { isCustomDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
+import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
@@ -45,6 +46,11 @@ export class TriviaGenerationService {
 			}
 
 			const triviaEntity = this.convertQuestionToEntity(question, userId);
+			if (params.outputLanguage != null && triviaEntity.metadata != null) {
+				triviaEntity.metadata = { ...triviaEntity.metadata, language: params.outputLanguage };
+			} else if (params.outputLanguage != null) {
+				triviaEntity.metadata = { language: params.outputLanguage };
+			}
 			const savedQuestion = await this.saveQuestion(triviaEntity);
 
 			return savedQuestion;
@@ -61,12 +67,21 @@ export class TriviaGenerationService {
 		}
 	}
 
+	async getSurprisePick(options: {
+		excludeTopics: string[];
+		scope: SurpriseScope;
+		locale?: Locale;
+	}): Promise<SurprisePickResult> {
+		return this.groqProvider.pickSurpriseTopicAndDifficulty(options);
+	}
+
 	async getAvailableQuestions(
 		topic: string,
 		difficulty: GameDifficulty,
 		count: number,
 		excludeQuestionTexts: string[] = [],
-		excludeQuestionIds: string[] = []
+		excludeQuestionIds: string[] = [],
+		outputLanguage?: Locale
 	): Promise<TriviaEntity[]> {
 		try {
 			const difficultyLevel = toDifficultyLevel(difficulty);
@@ -76,6 +91,13 @@ export class TriviaGenerationService {
 				.andWhere('trivia.difficulty = :difficulty', {
 					difficulty: difficultyLevel,
 				});
+
+			if (outputLanguage != null) {
+				queryBuilder.andWhere(
+					"(trivia.metadata->>'language' = :outputLanguage OR (trivia.metadata->>'language' IS NULL AND :outputLanguage = :enLocale))",
+					{ outputLanguage, enLocale: Locale.EN }
+				);
+			}
 
 			if (excludeQuestionTexts.length > 0) {
 				const normalizedExcludes = excludeQuestionTexts.map(q => q.toLowerCase().trim());
@@ -104,16 +126,28 @@ export class TriviaGenerationService {
 		}
 	}
 
-	async hasQuestionsForTopicAndDifficulty(topic: string, difficulty: GameDifficulty): Promise<boolean> {
+	async hasQuestionsForTopicAndDifficulty(
+		topic: string,
+		difficulty: GameDifficulty,
+		outputLanguage?: Locale
+	): Promise<boolean> {
 		try {
 			const difficultyLevel = toDifficultyLevel(difficulty);
-			const count = await this.triviaRepository
+			const queryBuilder = this.triviaRepository
 				.createQueryBuilder('trivia')
 				.where('LOWER(trivia.topic) = LOWER(:topic)', { topic })
 				.andWhere('trivia.difficulty = :difficulty', {
 					difficulty: difficultyLevel,
-				})
-				.getCount();
+				});
+
+			if (outputLanguage != null) {
+				queryBuilder.andWhere(
+					"(trivia.metadata->>'language' = :outputLanguage OR (trivia.metadata->>'language' IS NULL AND :outputLanguage = :enLocale))",
+					{ outputLanguage, enLocale: Locale.EN }
+				);
+			}
+
+			const count = await queryBuilder.getCount();
 
 			return count > 0;
 		} catch (error) {
@@ -176,22 +210,12 @@ export class TriviaGenerationService {
 			tags: normalizeStringArray(base.tags),
 			providerName: isNonEmptyString(base.providerName) ? base.providerName : undefined,
 			difficulty: base.difficulty ?? difficulty,
-			difficultyScore: VALIDATORS.number(base.difficultyScore) ? base.difficultyScore : undefined,
 			customDifficultyDescription: isNonEmptyString(base.customDifficultyDescription)
 				? base.customDifficultyDescription
 				: undefined,
 			generatedAt,
 			language: isNonEmptyString(base.language) ? base.language : undefined,
 			explanation: isNonEmptyString(base.explanation) ? base.explanation : fallbackExplanation,
-			referenceUrls: normalizeStringArray(base.referenceUrls),
-			hints: normalizeStringArray(base.hints),
-			usageCount: VALIDATORS.number(base.usageCount) ? base.usageCount : undefined,
-			correctAnswerCount: VALIDATORS.number(base.correctAnswerCount) ? base.correctAnswerCount : undefined,
-			aiConfidenceScore: VALIDATORS.number(base.aiConfidenceScore) ? base.aiConfidenceScore : undefined,
-			safeContentScore: VALIDATORS.number(base.safeContentScore) ? base.safeContentScore : undefined,
-			flaggedReasons: normalizeStringArray(base.flaggedReasons),
-			popularityScore: VALIDATORS.number(base.popularityScore) ? base.popularityScore : undefined,
-			averageAnswerTimeMs: VALIDATORS.number(base.averageAnswerTimeMs) ? base.averageAnswerTimeMs : undefined,
 			mappedDifficulty: base.mappedDifficulty ?? undefined,
 		};
 	}
@@ -307,8 +331,8 @@ export class TriviaGenerationService {
 					requests: totalRequests,
 					successes: provider.successCount,
 					failures: provider.errorCount,
-					successRate: totalRequests > 0 ? calculatePercentage(provider.successCount, totalRequests) : 0,
-					errorRate: totalRequests > 0 ? calculatePercentage(provider.errorCount, totalRequests) : 0,
+					successRate: calculatePercentage(provider.successCount, totalRequests),
+					errorRate: calculatePercentage(provider.errorCount, totalRequests),
 					averageResponseTime: provider.averageResponseTime,
 					lastUsed: provider.isAvailable ? new Date().toISOString() : undefined,
 				},

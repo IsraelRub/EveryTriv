@@ -1,16 +1,10 @@
 import { LogLevel } from '@shared/constants';
 import { BaseLoggerService } from '@shared/services';
-import type {
-	EnhancedLogger,
-	LogAuthEnhancedFn,
-	LoggerConfigUpdate,
-	LogMessageFn,
-	LogMeta,
-	LogSecurityEnhancedFn,
-	TraceStorage,
-} from '@shared/types';
-import { hasProperty, hasPropertyOfType, isRecord, sanitizeLogMessage } from '@shared/utils';
+import type { LoggerConfigUpdate, LogMessageFn, LogMeta } from '@shared/types';
+import { hasProperty, hasPropertyOfType, isNonEmptyString, isRecord, sanitizeLogMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
+
+import type { TraceStorage } from '@internal/types';
 
 // Conditional imports for Node.js modules
 let fs: typeof import('fs') | undefined;
@@ -28,11 +22,10 @@ if (typeof process !== 'undefined' && process.versions?.node) {
 	}
 }
 
-export class ServerLoggerService extends BaseLoggerService implements EnhancedLogger {
+export class ServerLoggerService extends BaseLoggerService {
 	private readonly traceStorage: TraceStorage;
 	private logDir: string;
 	private logFile: string;
-	private performanceMetrics: Map<string, { startTime: number; endTime?: number; duration?: number }>;
 	private errorCounts: Map<string, number>;
 
 	constructor(config?: LoggerConfigUpdate) {
@@ -49,7 +42,6 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 			enableUserActivityLogging: config?.enableUserActivityLogging ?? true,
 		};
 
-		this.performanceMetrics = new Map();
 		this.errorCounts = new Map();
 
 		// Guard: avoid Node-only APIs when bundled in browser accidentally
@@ -146,74 +138,6 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 		}
 	}
 
-	public startPerformanceTracking(operationId: string): void {
-		this.performanceMetrics.set(operationId, {
-			startTime: Date.now(),
-		});
-	}
-
-	public endPerformanceTracking(operationId: string, meta?: LogMeta): number {
-		const metric = this.performanceMetrics.get(operationId);
-		if (!metric) {
-			this.warn(`Performance tracking not found for operation: ${operationId}`);
-			return 0;
-		}
-
-		const endTime = Date.now();
-		const duration = endTime - metric.startTime;
-
-		metric.endTime = endTime;
-		metric.duration = duration;
-
-		this.info(`Performance tracking completed for ${operationId}`, {
-			...meta,
-			operationId,
-			duration,
-			startTime: metric.startTime,
-			endTime,
-		});
-
-		if (this.performanceMetrics.size > 100) {
-			const firstKey = this.performanceMetrics.keys().next().value;
-			if (firstKey) {
-				this.performanceMetrics.delete(firstKey);
-			}
-		}
-
-		return duration;
-	}
-
-	public logSecurityEventEnhanced: LogSecurityEnhancedFn = (message, level, context) => {
-		if (!this.config.enableSecurityLogging) return;
-
-		const metadata = {
-			...context,
-		};
-
-		switch (level) {
-			case LogLevel.INFO:
-				this.securityLogin(message, metadata);
-				break;
-			case LogLevel.WARN:
-				this.securityDenied(message, metadata);
-				break;
-			case LogLevel.ERROR:
-				this.securityError(message, metadata);
-				break;
-		}
-	};
-
-	public logAuthenticationEnhanced: LogAuthEnhancedFn = (event, userId, email, metadata) => {
-		const context = {
-			userId,
-			email,
-			event,
-			...metadata,
-		};
-
-		this.securityLogin(`Authentication: ${event}`, context);
-	};
-
 	public override newTrace(): string {
 		const traceId = super.newTrace();
 		this.traceStorage.enterWith(traceId);
@@ -222,7 +146,7 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 
 	public override getTraceId(): string {
 		const activeTraceId = this.traceStorage.getStore();
-		if (VALIDATORS.string(activeTraceId) && activeTraceId.length > 0) {
+		if (isNonEmptyString(activeTraceId)) {
 			return activeTraceId;
 		}
 
@@ -292,7 +216,7 @@ export class ServerLoggerService extends BaseLoggerService implements EnhancedLo
 				},
 				getStore(): string | undefined {
 					const store = storageInstance.getStore();
-					if (VALIDATORS.string(store) && store.length > 0) {
+					if (isNonEmptyString(store)) {
 						return store;
 					}
 

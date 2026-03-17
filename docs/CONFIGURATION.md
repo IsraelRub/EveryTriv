@@ -282,7 +282,7 @@ COPY client/nginx.conf /etc/nginx/nginx.conf
 - Use tabs: `true`
 - Single quote: `true`
 - Semicolons: `true`
-- Plugin: `@ianvs/prettier-plugin-sort-imports` (מיון ייבואים אוטומטי)
+- Plugin: `@ianvs/prettier-plugin-sort-imports` (מיון ייבואים אוטומטי: סדר בלוקים + **מיון ABC של שמות בתוך כל `import { ... }`**). פירוט: `tools/IMPORT_CONVENTIONS.md`.
 
 **Import Order:**
 1. React packages

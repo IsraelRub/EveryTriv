@@ -3,18 +3,19 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Param, Post } from 
 import { ErrorCode, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { Cache, Public, Roles } from '@common/decorators';
 import { CacheService } from '@internal/modules';
-import { serverLogger as logger, metricsService } from '@internal/services';
+import { serverLogger as logger, MetricsService } from '@internal/services';
 import { createStorageError } from '@internal/utils';
 
-import { Cache, Public, Roles } from '../../../common';
 import { StorageService } from './storage.service';
 
 @Controller('storage')
 export class StorageController {
 	constructor(
 		private readonly storageService: StorageService,
-		private readonly cacheService: CacheService
+		private readonly cacheService: CacheService,
+		private readonly metricsService: MetricsService
 	) {}
 
 	@Get('metrics')
@@ -22,7 +23,7 @@ export class StorageController {
 	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getMetrics() {
 		try {
-			const metrics = metricsService.getMetrics();
+			const metrics = this.metricsService.getMetrics();
 			const [storageResult, cacheResult] = await Promise.all([
 				this.storageService.getStats(),
 				this.cacheService.getStats(),
@@ -61,7 +62,7 @@ export class StorageController {
 	@Roles(UserRole.ADMIN)
 	async resetMetrics() {
 		try {
-			metricsService.resetMetrics();
+			this.metricsService.resetMetrics();
 
 			logger.apiUpdate('storage_metrics_reset', {});
 

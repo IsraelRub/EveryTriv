@@ -1,7 +1,4 @@
-export interface Position {
-	start: number;
-	end: number;
-}
+import type { Locale } from '@shared/constants';
 
 export interface BaseValidationResult {
 	isValid: boolean;
@@ -11,7 +8,7 @@ export interface BaseValidationResult {
 
 export interface ValidationResult extends BaseValidationResult {
 	suggestion?: string;
-	position?: Position;
+	position?: { start: number; end: number };
 }
 
 export interface ValidationOptions {
@@ -27,51 +24,7 @@ export interface ValidationOptions {
 
 export interface CustomDifficultyRequest {
 	customText: string;
-}
-
-export interface LanguageToolError {
-	message: string;
-	shortMessage: string;
-	replacements: { value: string }[];
-	offset: number;
-	length: number;
-	rule: {
-		id: string;
-		description: string;
-		category: {
-			id: string;
-			name: string;
-		};
-	};
-}
-
-export interface LanguageToolResponse {
-	software: {
-		name: string;
-		version: string;
-		buildDate: string;
-		apiVersion: number;
-		status: string;
-	};
-	warnings: {
-		incompleteResults: boolean;
-	};
-	language: {
-		name: string;
-		code: string;
-		detectedLanguage: {
-			name: string;
-			code: string;
-			confidence: number;
-		};
-	};
-	matches: LanguageToolError[];
-}
-
-export interface LanguageValidationOptions {
-	enableSpellCheck?: boolean;
-	enableGrammarCheck?: boolean;
-	useExternalAPI?: boolean;
+	language?: Locale;
 }
 
 export interface LanguageValidationResult extends BaseValidationResult {

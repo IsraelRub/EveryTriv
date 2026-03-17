@@ -4,16 +4,18 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { ErrorCode, USER_ROLES, UserRole } from '@shared/constants';
+import { ErrorCode } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { AppConfig } from '@config';
+import { AUTH_CONSTANTS, COOKIE_NAMES } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
-import { serverLogger as logger, TokenExtractionService } from '@internal/services';
+import { serverLogger as logger } from '@internal/services';
 import { isPublicEndpoint } from '@internal/utils';
 
+import { resolveAuthenticatedUser } from './authenticatedUser.util';
+
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class LocalAuthGuard implements CanActivate {
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly reflector: Reflector,
@@ -28,7 +30,7 @@ export class AuthGuard implements CanActivate {
 
 		const isHardcodedPublic = isPublicEndpoint(request.path ?? '');
 
-		logger.authDebug('AuthGuard check', {
+		logger.authDebug('LocalAuthGuard check', {
 			path: request.path,
 			method: request.method,
 			isPublic,
@@ -39,7 +41,13 @@ export class AuthGuard implements CanActivate {
 			logger.authDebug('Public endpoint - skipping auth check');
 			return true;
 		}
-		const token = TokenExtractionService.extractTokenFromRequest(request);
+
+		const authHeader = request.headers?.[AUTH_CONSTANTS.AUTH_HEADER.toLowerCase()];
+		const authHeaderString = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+		const token = authHeaderString?.startsWith(`${AUTH_CONSTANTS.TOKEN_TYPE} `)
+			? authHeaderString.substring(AUTH_CONSTANTS.TOKEN_TYPE.length + 1)
+			: (request.cookies?.[COOKIE_NAMES.AUTH_TOKEN] ??
+				(authHeaderString && !authHeaderString.startsWith('Bearer ') ? authHeaderString : null));
 
 		if (!token) {
 			logger.securityDenied('No authentication token provided');
@@ -47,21 +55,9 @@ export class AuthGuard implements CanActivate {
 		}
 
 		try {
-			const payload = await this.jwtService.verifyAsync(token, {
-				secret: AppConfig.jwt.secret,
-			});
+			const payload = await resolveAuthenticatedUser(token, this.jwtService, this.userRepository);
 
 			request.user = { ...payload };
-
-			const dbUser = await this.userRepository.findOne({
-				where: { id: payload.sub },
-				select: ['id', 'role'],
-			});
-			if (dbUser) {
-				request.user.role = dbUser.role;
-			} else {
-				request.user.role = USER_ROLES.has(payload.role) ? payload.role : UserRole.USER;
-			}
 			request.userRole = request.user.role;
 
 			logger.authDebug('JWT token verified, role from DB', {

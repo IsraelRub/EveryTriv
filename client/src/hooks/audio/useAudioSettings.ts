@@ -31,6 +31,8 @@ export function useAudioSettings() {
 	// Sync with AudioService
 	useAudioSync({
 		volume: audioState.volume,
+		soundEffectsVolume: audioState.soundEffectsVolume,
+		musicVolume: audioState.musicVolume,
 		isMuted: audioState.isMuted,
 		soundEnabled: audioState.soundEnabled,
 		musicEnabled: audioState.musicEnabled,
@@ -53,6 +55,8 @@ export function useAudioSettings() {
 	return {
 		state: {
 			volume: audioState.volume,
+			soundEffectsVolume: audioState.soundEffectsVolume,
+			musicVolume: audioState.musicVolume,
 			isMuted: audioState.isMuted,
 			soundEnabled: audioState.soundEnabled,
 			musicEnabled: audioState.musicEnabled,
@@ -60,6 +64,8 @@ export function useAudioSettings() {
 		},
 		handlers: {
 			handleVolumeChange,
+			handleSoundEffectsVolumeChange: audioState.handleSoundEffectsVolumeChange,
+			handleMusicVolumeChange: audioState.handleMusicVolumeChange,
 			handleMuteToggle: audioState.handleMuteToggle,
 			handleToggleAll: preferenceHandlers.handleToggleAll,
 			handleSoundEnabledChange: preferenceHandlers.handleSoundEnabledChange,

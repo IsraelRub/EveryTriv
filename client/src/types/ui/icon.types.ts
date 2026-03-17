@@ -1,7 +1,7 @@
-import { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 
 import { ComponentSize } from '@/constants';
-import { BaseComponentProps } from '@/types';
+import type { BaseComponentProps } from '../core';
 
 export interface IconProps extends BaseComponentProps {
 	name: string;

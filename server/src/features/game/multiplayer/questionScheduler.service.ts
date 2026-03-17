@@ -9,12 +9,6 @@ import type { QuestionSchedule } from '@internal/types';
 export class QuestionSchedulerService implements OnModuleDestroy {
 	private readonly activeSchedules = new Map<string, QuestionSchedule>();
 
-	/**
-	 * Schedules question end by timer only. No early end when all players have answered.
-	 * @param roomId - Room id
-	 * @param durationMs - Question duration in milliseconds (e.g. timePerQuestion * 1000)
-	 * @param endCallback - Called when the timer expires
-	 */
 	scheduleQuestionEnd(roomId: string, durationMs: number, endCallback: () => Promise<void>): void {
 		this.cancelSchedule(roomId);
 

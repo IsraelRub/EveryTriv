@@ -24,7 +24,7 @@ export const DropdownMenuSubTrigger = forwardRef<
 		{...props}
 	>
 		{children}
-		<ChevronRight className='ml-auto h-4 w-4' />
+		<ChevronRight className='ml-auto h-4 w-4 rtl:scale-x-[-1]' />
 	</DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger';

@@ -109,6 +109,7 @@ export class AuthResponseDto {
 		firstName?: string;
 		lastName?: string;
 		avatar?: number;
+		avatarUrl?: string;
 		role: string;
 		emailVerified?: boolean;
 	};

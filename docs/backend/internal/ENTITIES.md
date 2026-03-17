@@ -57,7 +57,7 @@ export class UserEntity extends BaseEntity {
 
 **תפקיד:**
 - ייצוג משתמש במערכת
-- שמירת פרטי משתמש, נקודות, העדפות, והישגים
+- שמירת פרטי משתמש, נקודות והעדפות
 
 ### שדות
 
@@ -81,9 +81,9 @@ export class UserEntity extends BaseEntity {
 - `isActive` (boolean, default: true) - האם משתמש פעיל
 - `role` (UserRole enum, default: USER) - תפקיד משתמש (USER, ADMIN)
 
-**העדפות והישגים:**
-- `preferences` (jsonb, default: {}) - העדפות משתמש (UserPreferences, כולל avatar: number 1-16)
-- `achievements` (jsonb, default: []) - הישגים (Achievement[])
+**העדפות:**
+- `preferences` (jsonb, default: {}) - העדפות משתמש (UserPreferences, כולל avatar: number 1-15)
+- `achievements` (jsonb, default: []) - legacy, לא בשימוש
 
 ### אינדקסים
 

@@ -1,11 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { LeaderboardPeriod } from '@shared/constants';
+import { DEFAULT_LANGUAGE, LeaderboardPeriod, type Locale } from '@shared/constants';
 
 import type { UIPreferencesState } from '@/types';
 
 const initialState: UIPreferencesState = {
 	leaderboardPeriod: LeaderboardPeriod.GLOBAL,
+	locale: DEFAULT_LANGUAGE,
 };
 
 export const uiPreferencesSlice = createSlice({
@@ -18,9 +19,12 @@ export const uiPreferencesSlice = createSlice({
 		resetLeaderboardPeriod: state => {
 			state.leaderboardPeriod = LeaderboardPeriod.GLOBAL;
 		},
+		setLocale: (state, action: PayloadAction<Locale>) => {
+			state.locale = action.payload;
+		},
 	},
 });
 
-export const { setLeaderboardPeriod, resetLeaderboardPeriod } = uiPreferencesSlice.actions;
+export const { setLeaderboardPeriod, resetLeaderboardPeriod, setLocale } = uiPreferencesSlice.actions;
 
 export default uiPreferencesSlice.reducer;

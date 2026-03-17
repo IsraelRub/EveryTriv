@@ -1,11 +1,16 @@
 import { FaFacebook, FaInstagram, FaTelegram, FaWhatsapp, FaXTwitter, FaYoutube } from 'react-icons/fa6';
 
 import type { SocialPlatformData } from '@/types';
-import { Colors } from './color.constants';
+
+export enum SocialShareMode {
+	SINGLE = 'single',
+	MULTIPLAYER = 'multiplayer',
+}
 
 export const SOCIAL_DATA: SocialPlatformData[] = [
 	{
 		name: 'Facebook',
+		nameKey: 'facebook',
 		url: 'https://www.facebook.com/',
 		hoverColor: 'hover:text-blue-600',
 		shareColor: 'bg-blue-600 hover:bg-blue-700',
@@ -15,9 +20,10 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 	},
 	{
 		name: 'X',
+		nameKey: 'x',
 		url: 'https://twitter.com/netanyahu',
 		hoverColor: 'hover:text-white',
-		shareColor: `${Colors.BLUE_500.bg} hover:bg-blue-600`,
+		shareColor: 'bg-blue-500 hover:bg-blue-600',
 		icon: FaXTwitter,
 		getShareUrl: (text: string, url: string) =>
 			`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=EveryTriv,Trivia,Quiz`,
@@ -26,13 +32,14 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 		name: 'YouTube',
 		url: 'https://www.youtube.com/@amits24',
 		hoverColor: 'hover:text-red-600',
-		shareColor: `${Colors.RED_500.bg} hover:bg-red-600`,
+		shareColor: 'bg-red-500 hover:bg-red-600',
 		icon: FaYoutube,
 	},
 	{
 		name: 'Instagram',
+		nameKey: 'instagram',
 		url: 'https://www.instagram.com/idfonline/',
-		hoverColor: `hover:${Colors.PURPLE_500.text}`,
+		hoverColor: 'hover:text-purple-500',
 		shareColor: 'bg-pink-500 hover:bg-pink-600',
 		icon: FaInstagram,
 	},
@@ -40,16 +47,17 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 		name: 'Telegram',
 		url: 'https://t.me/s/yinonews',
 		hoverColor: 'hover:text-cyan-400',
-		shareColor: `${Colors.BLUE_500.bg} hover:bg-blue-600`,
+		shareColor: 'bg-blue-500 hover:bg-blue-600',
 		icon: FaTelegram,
 		getShareUrl: (text: string, url: string) =>
 			`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
 	},
 	{
 		name: 'WhatsApp',
+		nameKey: 'whatsapp',
 		url: 'https://wa.me/',
-		hoverColor: `hover:${Colors.GREEN_500.text}`,
-		shareColor: `${Colors.GREEN_500.bg} hover:bg-green-600`,
+		hoverColor: 'hover:text-green-500',
+		shareColor: 'bg-green-500 hover:bg-green-600',
 		icon: FaWhatsapp,
 		getShareUrl: (text: string, url: string) => `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
 	},

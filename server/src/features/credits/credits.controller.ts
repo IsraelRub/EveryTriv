@@ -9,9 +9,9 @@ import {
 } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { Cache, CurrentUserId, NoCache } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 
-import { Cache, CurrentUserId, NoCache } from '../../common';
 import { CreditsService } from './credits.service';
 import { CanPlayDto, DeductCreditsDto } from './dtos';
 
@@ -47,7 +47,7 @@ export class CreditsController {
 	@Cache(TIME_DURATIONS_SECONDS.HOUR)
 	async getCreditPackages() {
 		try {
-			const result = this.creditsService.getCreditPackages();
+			const result = await this.creditsService.getCreditPackages();
 
 			logger.apiRead('credits_packages', {});
 
@@ -109,9 +109,7 @@ export class CreditsController {
 				userId,
 				questionsPerRequest: body.questionsPerRequest,
 				gameMode: body.gameMode,
-				data: {
-					body,
-				},
+				reason: body.reason,
 			});
 
 			const questionsPerRequest = body.questionsPerRequest ?? questionsPerRequestParam;
@@ -120,9 +118,7 @@ export class CreditsController {
 					userId,
 					questionsPerRequest: body.questionsPerRequest,
 					gameMode: body.gameMode,
-					data: {
-						body,
-					},
+					reason: body.reason,
 				});
 				throw new HttpException(ErrorCode.QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}

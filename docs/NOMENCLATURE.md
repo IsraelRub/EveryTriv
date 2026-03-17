@@ -307,7 +307,6 @@
 | `SaveGameHistoryData` | `shared/types/domain/game/game.types.ts` | נתונים לשמירת היסטוריה |
 | `LeaderboardEntry` | `shared/types/domain/game/game.types.ts` | רשומה בטבלת לוחות |
 | `UserRankData` | `shared/types/domain/game/game.types.ts` | נתוני דירוג משתמש |
-| `UserStatsData` | `shared/types/domain/game/game.types.ts` | נתוני סטטיסטיקות משתמש |
 | `GameModeConfig` | `shared/types/domain/game/game.types.ts` | הגדרות מצב משחק |
 | `GameConfig` | `shared/types/domain/game/game.types.ts` | הגדרות משחק |
 | `LeaderboardResponse` | `shared/types/domain/game/game.types.ts` | תגובת טבלת לוחות |
@@ -333,7 +332,6 @@
 | `RoomStateResponse` | `shared/types/domain/game/multiplayer.types.ts` | תגובת מצב חדר |
 | `MultiplayerAnswerResult` | `shared/types/domain/game/multiplayer.types.ts` | תוצאות תשובה מרובה משתמשים |
 | `QuestionEndResult` | `shared/types/domain/game/multiplayer.types.ts` | תוצאות סיום שאלה |
-| `BaseTriviaParams` | `shared/types/domain/game/trivia.types.ts` | פרמטרים בסיסיים טריוויה |
 | `TriviaQuestionDetailsMetadata` | `shared/types/domain/game/trivia.types.ts` | מטא-דאטה פרטי שאלת טריוויה |
 | `TriviaAnswer` | `shared/types/domain/game/trivia.types.ts` | תשובת טריוויה |
 | `BaseGameTopicDifficulty` | `shared/types/domain/game/trivia.types.ts` | בסיס נושא-קושי משחק |
@@ -341,13 +339,14 @@
 | `CustomDifficultyString` | `shared/types/domain/game/trivia.types.ts` | type מחרוזת קושי מותאם |
 | `GameDifficulty` | `shared/types/domain/game/trivia.types.ts` | type קושי משחק |
 | `TriviaQuestion` | `shared/types/domain/game/trivia.types.ts` | interface שאלת טריוויה |
-| `BaseAnswerPayload` | `shared/types/domain/game/trivia.types.ts` | interface payload תשובה בסיסי |
+| `AdminTriviaFields` | `shared/types/domain/game/trivia.types.ts` | interface שדות אדמין לשאלה (userId, isCorrect) |
+| `AdminTriviaQuestion` | `shared/types/domain/game/trivia.types.ts` | type שאלת טריוויה אדמין (TriviaQuestion & AdminTriviaFields) |
+| `TriviaQuestionsResponse` | `shared/types/domain/game/trivia.types.ts` | interface תגובת רשימת שאלות טריוויה (אדמין) |
 | `TriviaRequest` | `shared/types/domain/game/trivia.types.ts` | interface בקשת טריוויה |
 | `TriviaInputValidationResult` | `shared/types/domain/game/trivia.types.ts` | interface תוצאת ולידציית קלט טריוויה |
 | `TriviaResponse` | `shared/types/domain/game/trivia.types.ts` | interface תגובת טריוויה |
 | `AnswerResult` | `shared/types/domain/game/trivia.types.ts` | interface תוצאת תשובה |
 | `SavedGameConfiguration` | `shared/types/domain/game/gameCache.types.ts` | interface הגדרות משחק שמורות |
-| `Achievement` | `shared/types/domain/game/achievements.types.ts` | interface הישג |
 | `GroqModelConfig` | `shared/types/domain/game/groq.types.ts` | interface הגדרות מודל Groq |
 
 #### User Types
@@ -385,7 +384,7 @@
 | `GameAnalyticsQuery` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface שאילתת אנליטיקה משחק |
 | `GameAnalyticsStatsEntry` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface רשומת סטטיסטיקות אנליטיקה משחק |
 | `GameAnalyticsStats` | `shared/types/domain/analytics/analyticsGame.types.ts` | type סטטיסטיקות אנליטיקה משחק |
-| `GameStatsCore` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface ליבת סטטיסטיקות משחק |
+| `GameStatsCore` | `shared/types/domain/analytics/analyticsGame.types.ts` | type (Pick מ-BaseGameStatistics) ליבת סטטיסטיקות משחק |
 | `GameStatsData` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface נתוני סטטיסטיקות משחק |
 | `TopicStatsData` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface נתוני סטטיסטיקות נושא |
 | `DifficultyStatsData` | `shared/types/domain/analytics/analyticsGame.types.ts` | interface נתוני סטטיסטיקות קושי |
@@ -445,7 +444,7 @@
 | `DifficultyStats` | `shared/types/core/data.types.ts` | interface סטטיסטיקות קושי |
 | `DifficultyStatsRaw` | `shared/types/core/data.types.ts` | interface סטטיסטיקות קושי גולמיות |
 | `DifficultyBreakdown` | `shared/types/core/data.types.ts` | type פירוט קושי |
-| `TextPosition` | `shared/types/core/data.types.ts` | interface מיקום טקסט |
+| `Position` | `shared/types/core/data.types.ts` | interface מיקום (start, end) – משותף לולידציה וטקסט |
 
 #### Core Response Types
 | שם Interface/Type | מיקום קובץ | תיאור |
@@ -562,7 +561,6 @@
 | `NavigationLogger` | `shared/types/infrastructure/logging.types.ts` | interface לוגר ניווט |
 | `GameLogger` | `shared/types/infrastructure/logging.types.ts` | interface לוגר משחק |
 | `MediaLogger` | `shared/types/infrastructure/logging.types.ts` | interface לוגר מדיה |
-| `EnhancedLogger` | `shared/types/infrastructure/logging.types.ts` | interface לוגר משופר |
 | `Logger` | `shared/types/infrastructure/logging.types.ts` | interface לוגר |
 | `LogUserIds` | `shared/types/infrastructure/logging.types.ts` | interface ID משתמשים לוג |
 | `LogUserName` | `shared/types/infrastructure/logging.types.ts` | interface שם משתמש לוג |
@@ -574,8 +572,6 @@
 | `LoggerConfig` | `shared/types/infrastructure/logging.types.ts` | interface הגדרות לוגר |
 | `LoggerConfigUpdate` | `shared/types/infrastructure/logging.types.ts` | interface עדכון הגדרות לוגר |
 | `LogMessageFn` | `shared/types/infrastructure/logging.types.ts` | type function הודעת לוג |
-| `LogAuthEnhancedFn` | `shared/types/infrastructure/logging.types.ts` | type function לוג אימות משופר |
-| `LogSecurityEnhancedFn` | `shared/types/infrastructure/logging.types.ts` | type function לוג אבטחה משופר |
 | `LogComponentErrorFn` | `shared/types/infrastructure/logging.types.ts` | type function שגיאת רכיב לוג |
 | `LogPaymentErrorFn` | `shared/types/infrastructure/logging.types.ts` | type function שגיאת תשלום לוג |
 | `LogProviderErrorFn` | `shared/types/infrastructure/logging.types.ts` | type function שגיאת ספק לוג |
@@ -631,7 +627,6 @@
 #### Validation Types
 | שם Interface/Type | מיקום קובץ | תיאור |
 |------------------|------------|-------|
-| `Position` | `shared/types/domain/validation.types.ts` | interface מיקום |
 | `BaseValidationResult` | `shared/types/domain/validation.types.ts` | interface תוצאת ולידציה בסיסית |
 | `ValidationResult` | `shared/types/domain/validation.types.ts` | interface תוצאת ולידציה |
 | `ValidationOptions` | `shared/types/domain/validation.types.ts` | interface אפשרויות ולידציה |
@@ -712,8 +707,8 @@
 | `PayPalButtonInstance` | `client/src/types/domain/payment/components.types.ts` | interface instance כפתור PayPal |
 | `PaymentDialogProps` | `client/src/types/domain/payment/components.types.ts` | interface props דיאלוג תשלום |
 | `ClearOperation` | `client/src/types/domain/admin/components.types.ts` | interface פעולת ניקוי |
-| `AdminTriviaQuestion` | `client/src/types/domain/admin/components.types.ts` | interface שאלת טריוויה אדמין |
-| `TriviaQuestionsResponse` | `client/src/types/domain/admin/components.types.ts` | interface תגובת שאלות טריוויה |
+| `AdminTriviaQuestion` | `shared/types/domain/game/trivia.types.ts` | type שאלת טריוויה אדמין (TriviaQuestion & AdminTriviaFields) |
+| `TriviaQuestionsResponse` | `shared/types/domain/game/trivia.types.ts` | interface תגובת רשימת שאלות טריוויה (אדמין) |
 | `CurrentGameStats` | `client/src/types/domain/game/game.types.ts` | interface סטטיסטיקות משחק נוכחי |
 
 #### Core Types (Client)
@@ -733,8 +728,8 @@
 | שם Function | מיקום קובץ | תיאור |
 |------------|------------|-------|
 | `validateEmail` | `shared/validation/core/email.validation.ts` | ולידציית אימייל |
-| `validatePassword` | `shared/validation/core/password.validation.ts` | ולידציית סיסמה |
-| `validateTopicLength` | `shared/validation/core/topic.validation.ts` | ולידציית אורך נושא |
+| `validateStringLength` | `shared/validation/core/length.validation.ts` | ולידציית אורך לפי מפתח (למשל `PASSWORD`, `TOPIC`) |
+| `validateStringLength` + `validateNoForbiddenWords` עם מפתח `'TOPIC'`/`'CUSTOM_DIFFICULTY'` | `shared/validation` | ולידציית נושא/תיאור (אורך + מילים אסורות) |
 | `isUuid` | `shared/validation/core/id.validation.ts` | בדיקת type guard ל-UUID |
 | `isRoomId` | `shared/validation/core/id.validation.ts` | בדיקת type guard ל-room ID |
 | `isGeneratedPaymentIntentId` | `shared/validation/core/generatedId.validation.ts` | בדיקת type guard ל-generated payment intent ID |
@@ -750,7 +745,6 @@
 | `restoreGameDifficulty` | `shared/validation/domain/difficulty.validation.ts` | שחזור קושי משחק |
 | `isCustomDifficulty` | `shared/validation/domain/difficulty.validation.ts` | בדיקת type guard לקושי מותאם |
 | `isRegisteredDifficulty` | `shared/validation/domain/difficulty.validation.ts` | בדיקת type guard לקושי רשום |
-| `isValidDifficulty` | `shared/validation/domain/difficulty.validation.ts` | בדיקת תקינות קושי |
 | `isGameDifficulty` | `shared/validation/domain/difficulty.validation.ts` | בדיקת type guard לקושי משחק |
 | `extractCustomDifficultyText` | `shared/validation/domain/difficulty.validation.ts` | חילוץ טקסט קושי מותאם |
 | `createCustomDifficulty` | `shared/validation/domain/difficulty.validation.ts` | יצירת קושי מותאם |
@@ -800,21 +794,21 @@
 | `isGameEndedEvent` | `shared/utils/domain/multiplayerGuards.ts` | בדיקת type guard לאירוע משחק הסתיים |
 | `isLeaderboardUpdateEvent` | `shared/utils/domain/multiplayerGuards.ts` | בדיקת type guard לאירוע עדכון טבלת לוחות |
 | `isRoomUpdatedEvent` | `shared/utils/domain/multiplayerGuards.ts` | בדיקת type guard לאירוע חדר עודכן |
-| `createArrayGuard` | `shared/utils/domain/entityGuards.ts` | יצירת type guard למערך |
-| `createNullableGuard` | `shared/utils/domain/entityGuards.ts` | יצירת type guard ל-nullable |
-| `createLeaderboardEntryGuard` | `shared/utils/domain/entityGuards.ts` | יצירת type guard לרשומת טבלת לוחות |
-| `isCreditBalanceCacheEntry` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לרשומת cache יתרה |
-| `isCreditPurchaseOption` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לאפשרות רכישת נקודות |
-| `isCreditPurchaseOptionArray` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard למערך אפשרויות רכישה |
-| `isTopicAnalyticsRecordArray` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard למערך רשומות אנליטיקה נושא |
-| `isTriviaQuestionArray` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard למערך שאלות טריוויה |
-| `isDifficultyStatsRecord` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לרשומת סטטיסטיקות קושי |
-| `isBusinessMetricsData` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לנתוני מטריקות עסקיות |
-| `isCompleteUserAnalyticsData` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לנתוני אנליטיקה משתמש מלאים |
-| `isUserSearchCacheEntry` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לרשומת cache חיפוש משתמש |
-| `isAuditLogEntry` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לרשומת audit log |
-| `isSavedGameConfiguration` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard להגדרות משחק שמורות |
-| `isUserProgressData` | `shared/utils/domain/entityGuards.ts` | בדיקת type guard לנתוני התקדמות משתמש |
+| `createArrayGuard` | `server/src/internal/utils/entityGuards.ts` | יצירת type guard למערך |
+| `isCreditBalanceCacheEntry` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לרשומת cache יתרה |
+| `isCreditPurchaseOption` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לאפשרות רכישת נקודות |
+| `isCreditPurchaseOptionArray` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard למערך אפשרויות רכישה |
+| `isTopicAnalyticsRecordArray` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard למערך רשומות אנליטיקה נושא |
+| `isTriviaQuestionArray` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard למערך שאלות טריוויה |
+| `isDifficultyStatsRecord` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לרשומת סטטיסטיקות קושי |
+| `isBusinessMetricsData` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לנתוני מטריקות עסקיות |
+| `isCompleteUserAnalyticsData` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לנתוני אנליטיקה משתמש מלאים |
+| `isUserSearchCacheEntry` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לרשומת cache חיפוש משתמש |
+| `isAdminGameStatistics` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לסטטיסטיקות אדמין |
+| `isUserTrendPointArray` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard למערך נקודות מגמה |
+| `isUnifiedUserAnalyticsResponse` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לתגובת אנליטיקה מאוחדת |
+| `isAnalyticsResponseUserTrendPointArray` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard למערך מגמות בתגובת אנליטיקה |
+| `isAnalyticsResponseUnifiedUserAnalytics` | `server/src/internal/utils/entityGuards.ts` | בדיקת type guard לאנליטיקה מאוחדת בתגובה |
 
 #### Core Utils
 | שם Function | מיקום קובץ | תיאור |
@@ -906,7 +900,7 @@
 | `isLeaderboardEntityArray` | `server/src/internal/utils/guards.utils.ts` | בדיקת type guard למערך Entities טבלת לוחות |
 | `isLeaderboardStats` | `server/src/internal/utils/guards.utils.ts` | בדיקת type guard לסטטיסטיקות טבלת לוחות |
 | `validateTriviaQuestion` | `server/src/internal/validation/domain/trivia.validation.ts` | ולידציית שאלת טריוויה |
-| `validateName` | `server/src/internal/validation/core/name.validation.ts` | ולידציית שם |
+| `validateStringLength` (מפתחות NAME/FIRST_NAME/LAST_NAME/CARDHOLDER_NAME) | `shared/validation/core/length.validation.ts` | ולידציית אורך ושם (כולל פורמט תווים) |
 | `createRedisKey` | `server/src/internal/utils/redis.utils.ts` | יצירת מפתח Redis |
 | `deleteKeysByPattern` | `server/src/internal/utils/redis.utils.ts` | מחיקת מפתחות לפי דפוס |
 | `scanKeys` | `server/src/internal/utils/redis.utils.ts` | סריקת מפתחות |
@@ -915,7 +909,8 @@
 | שם Function/Constant | מיקום קובץ | סוג | תיאור |
 |---------------------|------------|-----|-------|
 | `generateTriviaQuestion` | `server/src/features/game/logic/providers/prompts/prompts.ts` | function | יצירת שאלת טריוויה |
-| `SYSTEM_PROMPT` | `server/src/features/game/logic/providers/prompts/prompts.ts` | const string | system prompt ליצירת שאלות |
+| `TRIVIA_GENERATION_SYSTEM_PROMPT` | `server/src/features/game/triviaGeneration/providers/prompts/prompts.ts` | const string | system prompt ליצירת שאלות טריוויה |
+| `SURPRISE_PICK_SYSTEM_PROMPT` | `server/src/features/game/triviaGeneration/providers/prompts/prompts.ts` | const string | system prompt לבחירת נושא/קושי (הפתעה) |
 
 ---
 
@@ -975,7 +970,6 @@
 | `TIME_LIMITED_CREDITS_PER_30_SECONDS` | `shared/constants/domain/game.constants.ts` | const number | נקודות מוגבלות זמן לכל 30 שניות |
 | `GAME_MODES_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות מצבי משחק (שם, תיאור, ברירות מחדל, עלויות נקודות) |
 | `DEFAULT_GAME_CONFIG` | `shared/constants/domain/game.constants.ts` | const object | הגדרות משחק ברירת מחדל |
-| `GAME_STATE_DEFAULTS` | `shared/constants/domain/game.constants.ts` | const object | ברירות מחדל מצב משחק |
 | `BASIC_TOPICS` | `shared/constants/domain/game.constants.ts` | const array | נושאים בסיסיים |
 | `GROQ_FREE_TIER_MODELS` | `shared/constants/domain/game.constants.ts` | const array | מודלי Groq חינמיים (ברירת מחדל = אלמנט ראשון) |
 | `GROQ_MODELS` | `shared/constants/domain/game.constants.ts` | const object | מודלי Groq |
@@ -1009,8 +1003,6 @@
 | `PlanType` | `shared/constants/domain/payment.constants.ts` | enum | סוגי תוכניות |
 | `PAYMENT_METHODS` | `shared/constants/domain/payment.constants.ts` | const Set | Set שיטות תשלום תקינות |
 | `CREDIT_PURCHASE_PACKAGES` | `shared/constants/domain/payment.constants.ts` | const array | חבילות רכישת נקודות |
-| `CREDIT_PURCHASE_PACKAGES_BY_ID` | `shared/constants/domain/payment.constants.ts` | const Map | Map חבילות רכישה לפי ID |
-| `CREDIT_PURCHASE_PACKAGES_BY_CREDITS` | `shared/constants/domain/payment.constants.ts` | const Map | Map חבילות רכישה לפי נקודות |
 | `PAYPAL_API_BASE_URLS` | `shared/constants/domain/payment.constants.ts` | const object | כתובות בסיס API PayPal |
 | `PAYPAL_API_ENDPOINTS` | `shared/constants/domain/payment.constants.ts` | const object | נקודות קצה API PayPal |
 | `PAYPAL_ORDER_STATUSES` | `shared/constants/domain/payment.constants.ts` | const object | סטטוסי הזמנה PayPal |
@@ -1064,7 +1056,7 @@
 | `InteractiveSize` | `client/src/constants/core/ui/size.constants.ts` | type | גדלים אינטראקטיביים |
 | `ButtonSize` | `client/src/constants/core/ui/size.constants.ts` | enum | גדלי כפתור |
 | `SpinnerSize` | `client/src/constants/core/ui/size.constants.ts` | enum | גדלי ספינר |
-| `ButtonVariant` | `client/src/constants/core/ui/variant.constants.ts` | type | וריאנט כפתור (VariantBase ללא STATIC) |
+| `ButtonVariant` | `client/src/types/core/variant.types.ts` | type | וריאנט כפתור (alias ל-VariantBase) |
 | `StatCardVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של כרטיס סטטיסטיקה |
 | `ToastVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של toast |
 | `SpinnerVariant` | `client/src/constants/core/ui/variant.constants.ts` | enum | וריאנטים של ספינר |
@@ -1749,15 +1741,12 @@
 | `TypedSocket` | `server/src/internal/types/domain/game.types.ts` | Socket מוטיפוס |
 | `MultiplayerConnectionInfo` | `server/src/internal/types/domain/game.types.ts` | מידע חיבור מרובה משתמשים |
 | `RoomHttpResponse` | `server/src/internal/types/domain/game.types.ts` | תגובת HTTP חדר |
-| `TriviaQuestionMetadata` | `server/src/internal/types/domain/game.types.ts` | מטא-דאטה שאלת טריוויה |
-| `QuestionCacheEntry` | `server/src/internal/types/domain/game.types.ts` | רשומת cache שאלה |
 | `StreakData` | `server/src/internal/types/domain/game.types.ts` | נתוני רצף |
-| `LLMQuestion` | `server/src/internal/types/domain/ai.types.ts` | שאלת LLM |
 | `LLMTriviaResponse` | `server/src/internal/types/domain/ai.types.ts` | תגובת טריוויה LLM |
 | `ProviderConfig` | `server/src/internal/types/domain/ai.types.ts` | הגדרות ספק |
 | `ProviderStats` | `server/src/internal/types/domain/ai.types.ts` | סטטיסטיקות ספק |
 | `TopicAnalyticsAccumulator` | `server/src/internal/types/domain/analytics.types.ts` | מצבר אנליטיקה נושא |
-| `DifficultyStatsRecord` | `server/src/internal/types/domain/analytics.types.ts` | רשומת סטטיסטיקות קושי |
+| `DifficultyStatRow` | `server/src/internal/types/domain/analytics.types.ts` | שורת raw מסטטיסטיקות קושי גלובליות (כולל totalQuestions, scoreSum) |
 | `GetUserSummaryParams` | `server/src/internal/types/domain/analytics.types.ts` | פרמטרים סיכום משתמש |
 | `UserSearchCacheResult` | `server/src/internal/types/domain/user.types.ts` | תוצאות cache חיפוש משתמש |
 | `AuditLogEntry` | `server/src/internal/types/domain/user.types.ts` | רשומת audit log |

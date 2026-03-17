@@ -49,6 +49,14 @@ alwaysApply: false
 - Shared types are located in `shared/types/<topic>/` and imported from there only.
 - Use proper type imports/exports with explicit type-only imports when needed: `import type { ... }`.
 
+### Null vs Undefined
+
+- **`null`**: "אין ערך" מפורש – state (למשל `selectedAnswer: null`), ערכים שמייצגים "ריק" במודל.
+- **`undefined`**: שדה לא הוגדר / לא נטען – optional props, פרמטרים אופציונליים, `data` שעדיין לא נשלף.
+- בדיקת חוסר ערך: `value == null` או `value != null` (מכסה גם null וגם undefined).
+- ברירת מחדל: `??` (nullish coalescing), לא `||`.
+- מדיניות מלאה: `docs/shared/NULL_UNDEFINED_POLICY.md`.
+
 ## 🎨 Component Design
 
 - Functional components with hooks only; no class components.

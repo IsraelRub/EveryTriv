@@ -1,23 +1,12 @@
-import { DifficultyLevel, LLMResponseStatus } from '@shared/constants';
-import type { BaseTriviaConfig, BasicValue, TriviaQuestion, TriviaQuestionCore } from '@shared/types';
-
-/** Parsed LLM question: same shape as TriviaQuestionCore (question + typed answers). */
-export type LLMQuestion = TriviaQuestionCore;
+import { DifficultyLevel, LLMResponseStatus, type Locale } from '@shared/constants';
+import type { BasicValue, GameDifficulty, TriviaQuestion, TriviaQuestionCore } from '@shared/types';
 
 export interface LLMTriviaResponse {
-	questions: LLMQuestion[];
+	questions: TriviaQuestionCore[];
 	explanation?: string;
 	content: string;
 	status: LLMResponseStatus;
 	validationSummary?: string;
-	metadata?: {
-		provider: string;
-		responseTime: number;
-		tokenCount?: number;
-		qualityScore?: number;
-		confidenceScore?: number;
-		warnings?: string[];
-	};
 }
 
 export interface TriviaLLMJsonPayload {
@@ -37,17 +26,14 @@ export interface ProviderConfig {
 	body?: Record<string, unknown>;
 }
 
-export interface PromptParams extends BaseTriviaConfig {
+export interface PromptParams {
+	topic: string;
+	difficulty: GameDifficulty;
 	answerCount: number;
-	customInstructions?: string;
+	outputLanguageLabel: string;
+	outputLanguage?: Locale;
+	excludeQuestions?: string[];
 	isCustomDifficulty?: boolean;
-	excludeQuestions?: string[]; // List of questions to exclude (for preventing duplicates)
-	options?: {
-		includeExplanation?: boolean;
-		includeHints?: boolean;
-		includeReferences?: boolean;
-		qualityCheck?: boolean;
-	};
 }
 
 export interface LLMResponse {

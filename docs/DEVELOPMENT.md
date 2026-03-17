@@ -72,9 +72,12 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 # Priority: 1 (free tier model: llama-3.1-8b-instant)
 GROQ_API_KEY=your-groq-api-key
 
-# Stripe
-STRIPE_SECRET_KEY=your-stripe-key
-STRIPE_WEBHOOK_SECRET=your-webhook-secret
+# PayPal (credits purchase)
+PAYPAL_ENVIRONMENT=sandbox
+PAYPAL_CLIENT_ID=your-paypal-client-id
+PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+PAYPAL_MERCHANT_ID=your-paypal-merchant-id
+PAYPAL_WEBHOOK_ID=your-paypal-webhook-id
 
 # Port
 PORT=3002
@@ -1089,7 +1092,6 @@ GET  /api/game/history
 GET  /api/users/profile
 PUT  /api/users/profile
 GET  /api/users/stats
-GET  /api/users/achievements
 ```
 
 #### תשלומים (Payments)

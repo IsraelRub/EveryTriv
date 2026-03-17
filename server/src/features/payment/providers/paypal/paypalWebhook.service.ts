@@ -2,21 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { PaymentStatus, PAYPAL_WEBHOOK_EVENTS, SERVER_CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { PaymentStatus, PAYPAL_WEBHOOK_EVENTS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { PaymentHistoryEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalWebhookEvent } from '@internal/types';
 import { createServerError } from '@internal/utils';
 
+import { CreditsService } from '../../../credits/credits.service';
+
 @Injectable()
 export class PayPalWebhookService {
 	constructor(
 		@InjectRepository(PaymentHistoryEntity)
 		private readonly paymentHistoryRepository: Repository<PaymentHistoryEntity>,
-		private readonly cacheService: CacheService
+		private readonly cacheService: CacheService,
+		private readonly creditsService: CreditsService
 	) {}
 
 	async handleWebhookEvent(event: PayPalWebhookEvent): Promise<void> {
@@ -83,6 +87,7 @@ export class PayPalWebhookService {
 		}
 
 		if (payment.status === PaymentStatus.COMPLETED) {
+			await this.addCreditsFromWebhookIfNeeded(payment);
 			return;
 		}
 
@@ -98,12 +103,51 @@ export class PayPalWebhookService {
 		await this.paymentHistoryRepository.save(payment);
 		await this.invalidatePaymentHistoryCache(payment.userId);
 
+		await this.addCreditsFromWebhookIfNeeded(payment);
+
 		logger.apiUpdate('paypal_webhook', {
 			eventId: event.id,
 			eventType: event.event_type,
 			paymentId: payment.providerTransactionId,
 			status: 'completed',
 		});
+	}
+
+	private async addCreditsFromWebhookIfNeeded(payment: PaymentHistoryEntity): Promise<void> {
+		const metadata = payment.metadata;
+		if (!metadata || typeof metadata !== 'object') {
+			return;
+		}
+
+		const credits = metadata.credits;
+		const packageId = metadata.packageId;
+		const hasCredits = typeof credits === 'number' && Number.isFinite(credits) && credits > 0 && credits <= 10000;
+		const hasPackageId = typeof packageId === 'string' && packageId.trim().length > 0;
+
+		if (!hasCredits || !hasPackageId) {
+			return;
+		}
+
+		const alreadyAdded = await this.creditsService.hasCreditsAddedForPayment(payment.providerTransactionId);
+		if (alreadyAdded) {
+			return;
+		}
+
+		try {
+			await this.creditsService.addCredits(null, payment.userId, credits, payment.providerTransactionId);
+			logger.apiUpdate('paypal_webhook', {
+				paymentId: payment.providerTransactionId,
+				credits,
+				status: 'credits_added',
+			});
+		} catch (error) {
+			logger.paymentFailed(payment.providerTransactionId, 'Webhook: failed to add credits', {
+				userId: payment.userId,
+				credits,
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw createServerError('add credits from PayPal webhook', error);
+		}
 	}
 
 	private async handleCaptureDenied(event: PayPalWebhookEvent): Promise<void> {

@@ -8,8 +8,8 @@ import {
 	ToastActionType,
 	ToastVariant,
 } from '@/constants';
-import { audioService } from '@/services';
 import type { AddToastOptions, ToastAction, ToasterToast, ToastHelperProps } from '@/types';
+import { audioService } from '@/services';
 
 let count = 0;
 

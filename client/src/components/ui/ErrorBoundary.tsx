@@ -1,12 +1,13 @@
 import { Component, ErrorInfo } from 'react';
+import i18n from 'i18next';
 
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AlertVariant, ButtonSize, ERROR_LOG_KEY_PREFIX, MAX_RETRIES, VariantBase } from '@/constants';
-import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
-import { clientLogger as logger, storageService } from '@/services';
+import { AlertVariant, ButtonSize, ErrorsKey, getErrorLogStorageKey, MAX_RETRIES, VariantBase } from '@/constants';
 import type { ErrorBoundaryProps, ErrorState } from '@/types';
+import { clientLogger as logger, storageService } from '@/services';
+import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 	constructor(props: ErrorBoundaryProps) {
@@ -71,10 +72,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 
 		// Store error in storage for debugging
 		try {
-			await storageService.set(`${ERROR_LOG_KEY_PREFIX}${featureName}`, errorDetails);
+			const errorLogKey = getErrorLogStorageKey(featureName);
+			await storageService.set(errorLogKey, errorDetails);
 			logger.systemInfo('Error log stored for debugging', {
 				feature: featureName,
-				key: `${ERROR_LOG_KEY_PREFIX}${featureName}`,
+				key: errorLogKey,
 			});
 		} catch (storageError) {
 			logger.storageWarn('Failed to store error log', {
@@ -134,29 +136,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 
 			return (
 				<Alert variant={AlertVariant.DESTRUCTIVE} className='my-4'>
-					<AlertTitle>{this.props.featureName ? `${this.props.featureName} Error` : 'Something went wrong'}</AlertTitle>
+					<AlertTitle>
+						{this.props.featureName
+							? i18n.t(ErrorsKey.FEATURE_ERROR, { feature: this.props.featureName })
+							: i18n.t(ErrorsKey.SOMETHING_WENT_WRONG)}
+					</AlertTitle>
 					<AlertDescription className='space-y-3'>
 						<p>{getErrorMessage(this.state.error)}</p>
 
 						<div className='flex gap-2 flex-wrap'>
 							{canRetry ? (
 								<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={this.handleRetry}>
-									Retry ({retriesRemaining} remaining)
+									{i18n.t(ErrorsKey.RETRY_REMAINING, { count: retriesRemaining })}
 								</Button>
 							) : (
 								<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} disabled>
-									Max Retries Reached
+									{i18n.t(ErrorsKey.MAX_RETRIES_REACHED)}
 								</Button>
 							)}
 							<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={this.handleReload}>
-								Reload Page
+								{i18n.t(ErrorsKey.RELOAD_PAGE)}
 							</Button>
 						</div>
 
 						{/* Show error details */}
 						{this.state.error && (
 							<details className='mt-2'>
-								<summary className='cursor-pointer text-xs font-medium'>Error Details</summary>
+								<summary className='cursor-pointer text-xs font-medium'>{i18n.t(ErrorsKey.ERROR_DETAILS)}</summary>
 								<pre className='bg-muted p-2 rounded text-xs overflow-auto max-h-32 mt-2'>
 									{getErrorMessage(this.state.error)}
 									{this.state.errorInfo?.componentStack}

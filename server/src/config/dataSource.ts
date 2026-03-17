@@ -42,8 +42,8 @@ const typeOrmConfig: DataSourceOptions = {
 	type: 'postgres',
 	...dbConfigRest,
 	database: name,
-	entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-	migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+	entities: [`${__dirname}/../**/*.entity{.ts,.js}`],
+	migrations: [`${__dirname}/../migrations/*{.ts,.js}`],
 	extra: pool,
 };
 

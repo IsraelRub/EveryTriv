@@ -55,11 +55,6 @@ export interface BaseLogger {
 	newTrace(): string;
 }
 
-export interface TraceStorage {
-	enterWith(value: string): void;
-	getStore(): string | undefined;
-}
-
 export interface UserLogger {
 	userInfo(message: string, meta?: LogMeta): void;
 	userError(message: string, meta?: LogMeta): void;
@@ -191,12 +186,6 @@ export interface MediaLogger {
 	audioError(key: string, error: string, meta?: LogMeta): void;
 }
 
-export interface EnhancedLogger {
-	// Enhanced logging methods
-	logSecurityEventEnhanced(message: string, level: LogLevel, context?: LogMeta): void;
-	logAuthenticationEnhanced(action: string, userId: string, email: string, context?: LogMeta): void;
-}
-
 export interface Logger
 	extends BaseLogger,
 		UserLogger,
@@ -273,6 +262,7 @@ export interface LogRequestCounts {
 
 export interface LogMeta {
 	action?: string;
+	accessTokenLength?: number;
 	accuracy?: number;
 	activePlayers24h?: number;
 	activeProviders?: number;
@@ -299,12 +289,13 @@ export interface LogMeta {
 	batchSize?: number;
 	bestScore?: number;
 	bestStreak?: number;
-	body?: string;
+	body?: Record<string, unknown>;
 	bodyLength?: number;
 	burstCount?: number;
 	canPlay?: boolean;
 	canPlayFree?: boolean;
 	captureId?: string;
+	callbackURL?: string;
 	chart?: string;
 	checking?: boolean;
 	clientId?: string;
@@ -315,12 +306,14 @@ export interface LogMeta {
 	component?: string;
 	componentStack?: string;
 	config?: string;
+	contentType?: string;
 	contextMessage?: string;
 	connectTimeout?: number;
 	consistency?: number;
 	context?: LogContext;
 	contactEmail?: string;
 	contactSubject?: string;
+	displayName?: string;
 	correctAnswers?: number;
 	consistentUsers?: number;
 	costPerToken?: number;
@@ -330,7 +323,6 @@ export interface LogMeta {
 	currentQuestionIndex?: number;
 	currentState?: string;
 	customText?: string;
-	data?: Record<string, unknown>;
 	dataKeys?: string[];
 	difficultyBreakdown?: Record<string, unknown>;
 	difficultyDistribution?: Record<string, number>;
@@ -358,6 +350,7 @@ export interface LogMeta {
 	dryRun?: boolean;
 	duration?: number;
 	emails?: LogUserEmails;
+	emailsCount?: number;
 	endpoint?: string;
 	endTime?: number;
 	entries?: number;
@@ -375,6 +368,7 @@ export interface LogMeta {
 	externalService?: string;
 	failedLogins?: number;
 	feature?: string;
+	firstName?: string;
 	finalizedCount?: number;
 	fixed?: boolean;
 	fixedCount?: number;
@@ -384,6 +378,8 @@ export interface LogMeta {
 	freeQuestions?: number;
 	gameData?: GameData;
 	gameId?: string;
+	gameRecord?: Record<string, unknown>;
+	googleIdLength?: number;
 	gameMode?: GameMode;
 	overrideGameId?: string | null;
 	gameModes?: GameMode[];
@@ -412,6 +408,10 @@ export interface LogMeta {
 	isValid?: boolean;
 	isConsistent?: boolean;
 	inconsistentUsers?: number;
+	isNull?: boolean;
+	isObject?: boolean;
+	isPlainObject?: boolean;
+	isString?: boolean;
 	insights?: Record<string, unknown>;
 	jobId?: string | number;
 	key?: string;
@@ -435,6 +435,8 @@ export interface LogMeta {
 	module?: string;
 	name?: string;
 	nameChanges?: LogUserName;
+	nameFamilyName?: string;
+	nameGivenName?: string;
 	needsProfile?: boolean;
 	note?: string;
 	nodeEnv?: string;
@@ -467,13 +469,17 @@ export interface LogMeta {
 	percentile?: number;
 	period?: string;
 	pointsCount?: number;
-	planType?: PlanType;
+	photosCount?: number;
 	plansCount?: number;
+	planType?: PlanType;
 	playerCount?: number;
 	platform?: string;
 	port?: number;
 	preference?: string;
 	preferences?: UserPreferences | Partial<UserPreferences>;
+	preview?: string;
+	profileId?: string;
+	profileKeys?: string[];
 	previousCredits?: number;
 	previousScore?: number;
 	price?: number;
@@ -498,6 +504,8 @@ export interface LogMeta {
 	referrer?: string;
 	remaining?: number;
 	remainingCredits?: number;
+	refreshTokenLength?: number;
+	requestBody?: string;
 	returnedCount?: number;
 	remainingInQueue?: number;
 	requestCount?: number;
@@ -534,6 +542,8 @@ export interface LogMeta {
 	startedAt?: string;
 	status?: string | number;
 	storage?: string;
+	startsWithBrace?: boolean;
+	startsWithBracket?: boolean;
 	success?: boolean;
 	successRate?: number;
 	suggestions?: string[];
@@ -568,6 +578,7 @@ export interface LogMeta {
 	totalProviders?: number;
 	totalRequests?: number;
 	totalScore?: number;
+	totalIdsRemoved?: number;
 	totalSessions?: number;
 	totalSize?: number;
 	totalTopics?: number;
@@ -586,28 +597,21 @@ export interface LogMeta {
 	userIdMatches?: boolean;
 	userIds?: LogUserIds;
 	usersWithGames?: number;
+	usersUpdated?: number;
 	userKeys?: string[] | Record<string, unknown>;
 	userType?: string;
 	usersCount?: number;
 	usersReset?: number;
 	validation?: string;
 	validationType?: string;
+
+	validateTextContext?: 'topic' | 'customDifficulty';
 	value?: BasicValue;
 	valueLength?: number;
 	version?: string;
 	verificationStatus?: string;
 	webhookEventId?: string;
 }
-
-export type LogComponentErrorFn = (component: string, error: string, meta?: LogMeta) => void;
-
-export type LogPaymentErrorFn = (paymentId: string, error: string, meta?: LogMeta) => void;
-
-export type LogProviderErrorFn = (provider: string, error: string, meta?: LogMeta) => void;
-
-export type LogProviderFn = (provider: string, meta?: LogMeta) => void;
-
-export type LogResourceErrorFn = (resource: string, error: string, meta?: LogMeta) => void;
 
 export interface LoggerConfig {
 	level: LogLevel;
@@ -632,7 +636,3 @@ export interface LoggerConfigUpdate {
 export type LogMessageFn = (message: string, meta?: LogMeta) => void;
 
 export type LogErrorFn = (messageOrError: string | Error, meta?: LogMeta) => void;
-
-export type LogAuthEnhancedFn = (event: string, userId: string, email: string, metadata?: LogMeta) => void;
-
-export type LogSecurityEnhancedFn = (message: string, level: LogLevel, context?: LogMeta) => void;

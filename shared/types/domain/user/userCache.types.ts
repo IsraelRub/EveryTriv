@@ -14,6 +14,7 @@ export interface UserSearchCacheResult extends Record<string, unknown> {
 	firstName: string | null;
 	lastName: string | null;
 	avatar: number | null;
+	avatarUrl?: string;
 	displayName: string;
 	role?: string;
 	createdAt?: string;

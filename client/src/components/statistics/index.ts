@@ -1,9 +1,11 @@
-export * from './AchievementCard';
-export * from './AchievementsSection';
-export * from './CategoryAnalysis';
-export * from './DifficultyOverviewChart';
+export * from './history';
+export * from './leaderboard';
+export {
+	CategoryAnalysis,
+	DifficultyOverviewChart,
+	PerformanceAnalysis,
+	PerformanceTabContent as StatisticsPerformanceTabContent,
+	TopicsDistributionChart,
+} from './performance';
 export * from './skeleton';
-export * from './LeaderboardTable';
-export * from './PerformanceAnalysis';
 export * from './StatCard';
-export * from './TopicsDistributionChart';

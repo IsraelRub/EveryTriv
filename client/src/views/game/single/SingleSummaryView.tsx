@@ -1,31 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, CheckCircle2, Clock, RotateCcw, Star, Tag, Trophy, XCircle } from 'lucide-react';
+import { Clock, CopyCheck, Star, Tag, Trophy } from 'lucide-react';
 
-import { DEFAULT_GAME_CONFIG, DifficultyLevel, TIME_PERIODS_MS } from '@shared/constants';
-import {
-	calculatePercentage,
-	calculateScoreRate,
-	formatDifficulty,
-	formatTitle,
-	getErrorMessage,
-	namesMatch,
-} from '@shared/utils';
+import { DEFAULT_GAME_CONFIG, TIME_PERIODS_MS } from '@shared/constants';
+import { calculatePercentage, calculateScoreRate, formatTitle, getErrorMessage, namesMatch } from '@shared/utils';
 
 import {
 	ANIMATION_CONFIG,
 	ANIMATION_DELAYS,
 	AudioKey,
-	ButtonSize,
 	Colors,
+	GameKey,
 	ROUTES,
+	SocialShareMode,
 	SPRING_CONFIGS,
 	STAR_GRADE_LEVELS_AND_THRESHOLDS,
 	TRANSITION_DURATIONS,
-	VariantBase,
 } from '@/constants';
-import { Button, Card, HomeButton, SocialShare } from '@/components';
+import type { GameSummaryStats } from '@/types';
+import { audioService, clientLogger as logger } from '@/services';
+import { cn, formatTime, getDifficultyDisplayLabel } from '@/utils';
+import { Card, QuestionBreakdown, SummaryActionButtons } from '@/components';
 import {
 	useAppSelector,
 	useCountUp,
@@ -34,9 +31,6 @@ import {
 	useNavigationClose,
 	useUserAnalytics,
 } from '@/hooks';
-import { audioService, clientLogger as logger } from '@/services';
-import type { GameKey, GameSummaryStats } from '@/types';
-import { cn, formatTime } from '@/utils';
 import {
 	selectAnswerHistory,
 	selectCorrectAnswers,
@@ -49,7 +43,7 @@ import {
 } from '@/redux/selectors';
 
 export function SingleSummaryView() {
-	const navigate = useNavigate();
+	const { t } = useTranslation();
 	const { gameId: urlGameId } = useParams<{ gameId: string }>();
 	const { handleClose } = useNavigationClose();
 	const { finalizeGameSession } = useGameFinalization();
@@ -77,15 +71,14 @@ export function SingleSummaryView() {
 			time,
 			percentage,
 			topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
-			difficulty: currentDifficulty ?? DifficultyLevel.MEDIUM,
+			difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
 			answerHistory: answerHistory ?? [],
 		};
 	}, [score, correctAnswers, gameQuestionCount, timeSpent, currentTopic, currentDifficulty, answerHistory]);
 
 	// Stars: use the better of score-based rate and accuracy-based rate so e.g. 11/23 correct (48%) isn't under-rewarded when score rate is lower (e.g. time-limited).
 	const scoreRate = calculateScoreRate(gameStats.score, gameStats.total);
-	const accuracyRate = gameStats.total > 0 ? (100 * gameStats.correct) / gameStats.total : 0;
-	const effectiveRate = Math.max(scoreRate, accuracyRate);
+	const effectiveRate = Math.max(scoreRate, gameStats.percentage);
 	const starsCount =
 		Object.values(STAR_GRADE_LEVELS_AND_THRESHOLDS).find(({ threshold }) => effectiveRate >= threshold)?.stars ?? 0;
 
@@ -98,9 +91,13 @@ export function SingleSummaryView() {
 
 	// Track if game has been finalized to prevent duplicate finalization
 	// Use a ref that tracks the last finalized game state to detect new games
-	const lastFinalizedGameRef = useRef<GameKey | null>(null);
+	const lastFinalizedGameRef = useRef<{ score: number; gameQuestionCount: number } | null>(null);
 
-	// Animate stars appearing one by one
+	const starsContainerDelayMs = ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER * 1000;
+	const delayBeforeFirstStarMs = TIME_PERIODS_MS.SECOND + TIME_PERIODS_MS.TWO_HUNDRED_MILLISECONDS; // 1.2s after container
+	const delayBetweenStarsMs = TIME_PERIODS_MS.SECOND; // 1s between each star
+
+	// Animate stars appearing one by one: after page/container visible, then first star, then second, then third
 	useEffect(() => {
 		setVisibleStars(0);
 		if (starsCount === 0) return;
@@ -108,10 +105,10 @@ export function SingleSummaryView() {
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
 
 		for (let i = 0; i < starsCount; i++) {
-			const delay = TIME_PERIODS_MS.THREE_HUNDRED_MILLISECONDS + i * TIME_PERIODS_MS.TWO_HUNDRED_MILLISECONDS;
+			const delay = starsContainerDelayMs + delayBeforeFirstStarMs + i * delayBetweenStarsMs;
 			const timeout = setTimeout(() => {
 				setVisibleStars(i + 1);
-				audioService.play(AudioKey.SUCCESS);
+				audioService.play(AudioKey.STAR_APPEAR);
 			}, delay);
 			timeouts.push(timeout);
 		}
@@ -119,7 +116,7 @@ export function SingleSummaryView() {
 		return () => {
 			timeouts.forEach(timeout => clearTimeout(timeout));
 		};
-	}, [starsCount]);
+	}, [starsCount, delayBeforeFirstStarMs, delayBetweenStarsMs, starsContainerDelayMs]);
 
 	// Prefer gameId from URL (summary/:gameId) so finalize uses the session we navigated to; fallback to Redux for redirect check
 	const reduxGameId = useAppSelector(selectGameId);
@@ -176,10 +173,6 @@ export function SingleSummaryView() {
 		});
 	}, [urlGameId, score, gameQuestionCount, currentUser?.id, finalizeGameSession, handleClose]);
 
-	const handlePlayAgain = useCallback(() => {
-		navigate(ROUTES.GAME_SINGLE);
-	}, [navigate]);
-
 	// Redirect if no game state
 	// Note: score can be 0 if user answered incorrectly - that's valid
 	if (!gameId || !gameQuestionCount || gameQuestionCount === 0) {
@@ -207,14 +200,16 @@ export function SingleSummaryView() {
 							}}
 							className='text-4xl md:text-5xl font-extrabold mb-2 md:mb-4 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent tracking-wider'
 						>
-							Game Over!
+							{t(GameKey.GAME_OVER)}
 						</motion.h1>
 						<motion.div
 							initial={{ scale: 0, rotate: -90 }}
 							animate={{ scale: 1, rotate: 0 }}
 							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM, ...SPRING_CONFIGS.GENTLE }}
 						>
-							<Trophy className='w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 text-primary mx-auto mb-2 md:mb-4' />
+							<Trophy
+								className={cn('w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 mx-auto mb-2 md:mb-4', Colors.YELLOW_500.text)}
+							/>
 						</motion.div>
 						<motion.p
 							initial={{ opacity: 0 }}
@@ -225,26 +220,26 @@ export function SingleSummaryView() {
 							}}
 							className='text-muted-foreground'
 						>
-							{formatTitle(gameStats.topic)} - {formatDifficulty(gameStats.difficulty)}
+							{formatTitle(gameStats.topic)} - {getDifficultyDisplayLabel(gameStats.difficulty, t)}
 						</motion.p>
-						{analytics?.game?.mostPlayedTopic &&
-							analytics.game.mostPlayedTopic !== 'None' &&
-							namesMatch(gameStats.topic, analytics.game.mostPlayedTopic) && (
-								<motion.div
-									initial={{ opacity: 0, scale: 0.9, y: 10 }}
-									animate={{ opacity: 1, scale: 1, y: 0 }}
-									transition={{
-										delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
-										...SPRING_CONFIGS.BOUNCY,
-									}}
-									className='mt-4 p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20'
-								>
+						{analytics?.game?.mostPlayedTopic && namesMatch(gameStats.topic, analytics.game.mostPlayedTopic) && (
+							<motion.div
+								initial={{ opacity: 0, scale: 0.9, y: 10 }}
+								animate={{ opacity: 1, scale: 1, y: 0 }}
+								transition={{
+									delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
+									...SPRING_CONFIGS.BOUNCY,
+								}}
+								className='mt-4'
+							>
+								<Card className='p-4 bg-indigo-500/10 border-indigo-500/20'>
 									<div className='flex items-center gap-3 justify-center'>
 										<Tag className='h-5 w-5 text-indigo-500' />
-										<p className='text-sm font-medium text-indigo-500'> This is your most played topic!</p>
+										<p className='text-sm font-medium text-indigo-500'>{t(GameKey.MOST_PLAYED_TOPIC_BADGE)}</p>
 									</div>
-								</motion.div>
-							)}
+								</Card>
+							</motion.div>
+						)}
 					</div>
 
 					{/* Grade - Stars */}
@@ -252,8 +247,7 @@ export function SingleSummaryView() {
 						initial={{ opacity: 0, scale: 0.8, y: 20 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						transition={{
-							delay:
-								ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
+							delay: ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER,
 							...SPRING_CONFIGS.GENTLE,
 						}}
 					>
@@ -266,15 +260,16 @@ export function SingleSummaryView() {
 									transition={SPRING_CONFIGS.ICON_SPRING}
 								>
 									<Star
-										className={cn(
-											'w-16 h-16 fill-current',
-											index < visibleStars ? Colors.YELLOW_500.text : Colors.GRAY_400.text
-										)}
+										className={cn('w-16 h-16', index < visibleStars ? Colors.YELLOW_500.text : Colors.GRAY_400.text)}
+										fill='currentColor'
+										strokeWidth={0}
 									/>
 								</motion.div>
 							))}
 						</div>
-						<div className='text-2xl text-muted-foreground mt-2'>{gameStats.percentage}% Correct</div>
+						<div className='text-2xl text-muted-foreground mt-2'>
+							{gameStats.percentage}% {t(GameKey.PERCENT_CORRECT)}
+						</div>
 					</motion.div>
 
 					{/* Stats Grid */}
@@ -283,91 +278,51 @@ export function SingleSummaryView() {
 							initial={{ opacity: 0, y: 20, scale: 0.9 }}
 							animate={{ opacity: 1, y: 0, scale: 1 }}
 							transition={{
-								delay: ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								delay: ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
 								...SPRING_CONFIGS.GENTLE,
 							}}
 							className='space-y-2'
 						>
-							<Trophy className='w-8 h-8 text-primary mx-auto' />
+							<Trophy className={cn('w-8 h-8 mx-auto', Colors.YELLOW_500.text)} />
 							<div className='text-3xl font-bold text-primary'>{animatedScore.toLocaleString()}</div>
-							<div className='text-sm text-muted-foreground'>Total Score</div>
+							<div className='text-sm text-muted-foreground'>{t(GameKey.TOTAL_SCORE)}</div>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0, y: 20, scale: 0.9 }}
 							animate={{ opacity: 1, y: 0, scale: 1 }}
 							transition={{
-								delay:
-									ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								delay: ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
 								...SPRING_CONFIGS.GENTLE,
 							}}
 							className='space-y-2'
 						>
-							<Brain className='w-8 h-8 text-primary mx-auto' />
+							<CopyCheck className='w-8 h-8 text-primary mx-auto' />
 							<div className='text-3xl font-bold text-primary'>
 								{animatedCorrect}/{gameStats.total}
 							</div>
-							<div className='text-sm text-muted-foreground'>Correct Answers</div>
+							<div className='text-sm text-muted-foreground'>{t(GameKey.CORRECT_ANSWERS)}</div>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0, y: 20, scale: 0.9 }}
 							animate={{ opacity: 1, y: 0, scale: 1 }}
 							transition={{
-								delay:
-									ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
 								...SPRING_CONFIGS.GENTLE,
 							}}
 							className='space-y-2'
 						>
 							<Clock className='w-8 h-8 text-primary mx-auto' />
 							<div className='text-3xl font-bold text-primary'>{gameStats.time}</div>
-							<div className='text-sm text-muted-foreground'>Time Taken</div>
+							<div className='text-sm text-muted-foreground'>{t(GameKey.TIME_TAKEN)}</div>
 						</motion.div>
 					</div>
 
 					{/* Questions Breakdown */}
-					{gameStats.answerHistory.length > 0 && (
-						<motion.div
-							initial={{ opacity: 0, y: 20, scale: 0.95 }}
-							animate={{ opacity: 1, y: 0, scale: 1 }}
-							transition={{
-								delay:
-									ANIMATION_DELAYS.STAGGER_NORMAL +
-									ANIMATION_DELAYS.SEQUENCE_STEP +
-									ANIMATION_DELAYS.SEQUENCE_LARGE +
-									ANIMATION_DELAYS.SEQUENCE_LARGE,
-								...SPRING_CONFIGS.GENTLE,
-							}}
-							className='text-left'
-						>
-							<h3 className='text-lg font-semibold mb-4'>Question Breakdown</h3>
-							<div className='space-y-3 max-h-64 overflow-y-auto'>
-								{gameStats.answerHistory.map((q, index) => (
-									<div
-										key={index}
-										className={cn(
-											'p-3 rounded-lg border-2',
-											q.isCorrect ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'
-										)}
-									>
-										<div className='flex items-start gap-2'>
-											{q.isCorrect ? (
-												<CheckCircle2 className={cn('w-5 h-5 flex-shrink-0 mt-0.5', Colors.GREEN_500.text)} />
-											) : (
-												<XCircle className={cn('w-5 h-5 flex-shrink-0 mt-0.5', Colors.RED_500.text)} />
-											)}
-											<div className='flex-1 min-w-0'>
-												<p className='text-sm font-medium line-clamp-2 break-words'>{q.question}</p>
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						</motion.div>
-					)}
+					<QuestionBreakdown entries={gameStats.answerHistory} />
 
-					{/* Play Again + Social Share (same row) */}
+					{/* Play Again + Share (same row); Home (row below) */}
 					<motion.div
 						initial={{ opacity: 0, scale: 0.9, y: 10 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -375,41 +330,24 @@ export function SingleSummaryView() {
 							delay:
 								ANIMATION_DELAYS.SEQUENCE_MEDIUM +
 								ANIMATION_DELAYS.SEQUENCE_STEP +
-								ANIMATION_DELAYS.SEQUENCE_LARGE +
-								ANIMATION_DELAYS.SEQUENCE_LARGE,
+								ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
 							...SPRING_CONFIGS.GENTLE,
 						}}
-						className='flex flex-wrap items-center justify-center gap-4'
 					>
-						<Button variant={VariantBase.DEFAULT} size={ButtonSize.LG} onClick={handlePlayAgain}>
-							<RotateCcw className='h-4 w-4 mr-2' />
-							Play Again
-						</Button>
-						{gameStats.total > 0 && (
-							<SocialShare
-								score={gameStats.correct}
-								total={gameStats.total}
-								topic={gameStats.topic}
-								difficulty={gameStats.difficulty}
-							/>
-						)}
-					</motion.div>
-
-					{/* Home (centered, row below) */}
-					<motion.div
-						initial={{ opacity: 0, y: 10 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{
-							delay:
-								ANIMATION_DELAYS.SEQUENCE_LARGE +
-								ANIMATION_DELAYS.SEQUENCE_STEP +
-								ANIMATION_DELAYS.SEQUENCE_LARGE +
-								ANIMATION_DELAYS.SEQUENCE_LARGE,
-							...SPRING_CONFIGS.GENTLE,
-						}}
-						className='flex justify-center'
-					>
-						<HomeButton />
+						<SummaryActionButtons
+							playAgainTo={ROUTES.GAME_SINGLE}
+							share={
+								gameStats.total > 0
+									? {
+											score: gameStats.correct,
+											total: gameStats.total,
+											topic: gameStats.topic,
+											difficulty: gameStats.difficulty,
+											mode: SocialShareMode.SINGLE,
+										}
+									: undefined
+							}
+						/>
 					</motion.div>
 				</Card>
 			</div>

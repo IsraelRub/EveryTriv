@@ -214,7 +214,7 @@ import { clientLogger as logger } from '@shared/services';
 import type { AuthCredentials, AuthenticationResult, BasicUser, User, UserProfileResponseType } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { ensureErrorObject } from '@shared/utils/core/error.utils';
-import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
+import { STORAGE_KEYS } from '@/constants';
 import { isUser } from '../utils/data.utils';
 import { ApiConfig, apiService } from './api.service';
 import { storageService } from './storage.service';
@@ -416,249 +416,22 @@ export const authService = new AuthService();
 
 ### audio.service.ts
 
-```typescript
-import { clientLogger as logger } from '@shared/services';
-import type { UserPreferences } from '@shared/types';
-import { getErrorMessage } from '@shared/utils';
-import {
-  AUDIO_CATEGORIES,
-  AUDIO_CONFIG,
-  AUDIO_PATHS,
-  AudioCategory,
-  AudioKey,
-  DEFAULT_CATEGORY_VOLUMES,
-} from '../constants';
-import { AudioServiceInterface } from '../types';
+מיקום: `client/src/services/infrastructure/audio.service.ts`. משתמש ב-`AUDIO_DATA` ו-`AudioKey` מ-`@/constants` (audio.constants.ts).
 
-export class AudioService implements AudioServiceInterface {
-  private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
-  private isMuted = false;
-  private volumes: Map<AudioKey, number> = new Map();
-  private categoryVolumes: Map<AudioCategory, number>;
-  private masterVolume = 1;
-  private userInteracted = false;
-  private userPreferences: UserPreferences | null = null;
+**API ציבורי:**
 
-  constructor() {
-    const categoryEntries: [AudioCategory, number][] = [];
-    for (const category of Object.values(AudioCategory)) {
-      const defaultVolume = DEFAULT_CATEGORY_VOLUMES[category];
-      if (typeof defaultVolume === 'number') {
-        categoryEntries.push([category, defaultVolume]);
-      }
-    }
-    this.categoryVolumes = new Map<AudioCategory, number>(categoryEntries);
-    this.preloadEssentialAudio();
-    this.setupUserInteractionListener();
-  }
+- `play(key: AudioKey): void` — ניגון צליל. מכבד העדפות משתמש (soundEnabled, musicEnabled), טוען על דרישה, משכפל אפקטים להצלבה.
+- `stop(key: AudioKey): void` — עצירת ניגון לפי מפתח.
+- `isPlaying(key: AudioKey): boolean` — האם הצליל מתנגן כרגע.
+- `mute(): void` / `unmute(): void` — השתקה והפעלה. הסנכרון עם Redux (נפח, השתקה) מתבצע דרך `useAudioSync`.
+- `setMasterVolume(volume: number): void` — נפח כללי (0–1).
+- `setUserPreferences(preferences: UserPreferences | null): void` — עדכון העדפות (soundEnabled, musicEnabled).
+- `markUserInteracted(): void` — סימון אינטראקציה (למשל למוזיקת רקע).
+- `playAnswerFeedback(isCorrect: boolean): void` — ניגון CORRECT_ANSWER או WRONG_ANSWER.
 
-  // Public API methods
-  play(key: AudioKey): void {
-    const audio = this.ensureAudioLoaded(key);
-    if (!audio) return;
+**טעינה מראש:** ERROR, WARNING, SUCCESS, NOTIFICATION, BACKGROUND_MUSIC, GAME_MUSIC, STAR_APPEAR. שאר המפתחות נטענים בעת `play`.
 
-    // Check user preferences
-    if (AUDIO_CATEGORIES[key] === AudioCategory.EFFECTS && this.userPreferences && !this.userPreferences.soundEnabled) {
-      return;
-    }
-    if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC && this.userPreferences && !this.userPreferences.musicEnabled) {
-      return;
-    }
-    if (key === AudioKey.BACKGROUND_MUSIC && !this.userInteracted) {
-      return;
-    }
-
-    // For music, restart from beginning
-    if (AUDIO_CATEGORIES[key] === AudioCategory.MUSIC) {
-      audio.currentTime = 0;
-      const soundVolume = this.volumes.get(key) || 0.7;
-      const category = AUDIO_CATEGORIES[key];
-      const categoryVolume = this.categoryVolumes.get(category) || 1;
-      audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
-      audio.play().catch(err => {
-        logger.audioError(key, err.message, { key, error: err });
-      });
-      return;
-    }
-
-    // For sound effects, clone to allow overlapping playback
-    const clone = audio.cloneNode() as HTMLAudioElement;
-    const soundVolume = this.volumes.get(key) || 0.7;
-    const category = AUDIO_CATEGORIES[key];
-    const categoryVolume = this.categoryVolumes.get(category) || 1;
-    clone.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
-    clone.play().catch(err => {
-      logger.audioError(key, err.message, { key, error: err });
-    });
-    clone.addEventListener('ended', () => clone.remove());
-  }
-
-  stop(key: AudioKey): void {
-    const audio = this.audioElements.get(key);
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-  }
-
-  stopAll(): void {
-    this.audioElements.forEach(audio => {
-      audio.pause();
-      audio.currentTime = 0;
-    });
-  }
-
-  mute(): void {
-    this.isMuted = true;
-    this.audioElements.forEach(audio => {
-      audio.volume = 0;
-    });
-  }
-
-  unmute(): void {
-    this.isMuted = false;
-    this.audioElements.forEach((audio, key) => {
-      const category = AUDIO_CATEGORIES[key];
-      const categoryVolume = this.categoryVolumes.get(category) || 1;
-      const soundVolume = this.volumes.get(key) || 0.7;
-      audio.volume = soundVolume * categoryVolume * this.masterVolume;
-    });
-  }
-
-  toggleMute(): boolean {
-    if (this.isMuted) {
-      this.unmute();
-    } else {
-      this.mute();
-    }
-    return this.isMuted;
-  }
-
-  setMasterVolume(volume: number): void {
-    this.masterVolume = volume;
-    this.audioElements.forEach((audio, key) => {
-      const soundVolume = this.volumes.get(key) || 0.7;
-      const category = AUDIO_CATEGORIES[key];
-      const categoryVolume = this.categoryVolumes.get(category) || 1;
-      audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
-    });
-  }
-
-  setVolume(volume: number): void {
-    // Alias for setMasterVolume
-    this.setMasterVolume(volume);
-  }
-
-  playAchievementSound(score: number, total: number, previousScore: number): void {
-    if (score <= previousScore) return;
-    const scoreIncrease = score - previousScore;
-    const percentage = (score / total) * 100;
-
-    if (percentage >= 100) {
-      this.play(AudioKey.NEW_ACHIEVEMENT);
-    } else if (percentage >= 80) {
-      this.play(AudioKey.LEVEL_UP);
-    } else if (scoreIncrease >= 5) {
-      this.play(AudioKey.SCORE_STREAK);
-    } else if (scoreIncrease >= 2) {
-      this.play(AudioKey.SCORE_EARNED);
-    } else if (scoreIncrease >= 1) {
-      this.play(AudioKey.ACHIEVEMENT);
-    } else {
-      this.play(AudioKey.CLICK);
-    }
-  }
-
-  setUserPreferences(preferences: UserPreferences | null): void {
-    this.userPreferences = preferences;
-  }
-
-  // Getters
-  get isEnabled(): boolean {
-    return !this.isMuted;
-  }
-
-  get volume(): number {
-    return this.isMuted ? 0 : this.masterVolume;
-  }
-
-  // Private methods
-  private ensureAudioLoaded(key: AudioKey): HTMLAudioElement | null {
-    let audio = this.audioElements.get(key);
-    if (!audio) {
-      const path = AUDIO_PATHS[key];
-      if (path) {
-        const category = AUDIO_CATEGORIES[key];
-        const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
-        const config = AUDIO_CONFIG[key] ?? {};
-        this.preloadAudioInternal(key, path, {
-          volume: config.volume ?? defaultVolume,
-          loop: config.loop ?? false,
-        });
-        audio = this.audioElements.get(key);
-      }
-    }
-    return audio || null;
-  }
-
-  private preloadEssentialAudio(): void {
-    const essentialKeys: AudioKey[] = [
-      AudioKey.CLICK,
-      AudioKey.POP,
-      AudioKey.HOVER,
-      AudioKey.BACKGROUND_MUSIC,
-      AudioKey.GAME_MUSIC,
-    ];
-
-    essentialKeys.forEach(key => {
-      const path = AUDIO_PATHS[key];
-      if (path) {
-        const category = AUDIO_CATEGORIES[key];
-        const defaultVolume = this.categoryVolumes.get(category) ?? 0.7;
-        const config = AUDIO_CONFIG[key] ?? {};
-        this.preloadAudioInternal(key, path, {
-          volume: config.volume ?? defaultVolume,
-          loop: config.loop ?? false,
-        });
-      }
-    });
-  }
-
-  private preloadAudioInternal(key: AudioKey, src: string, config: { volume?: number; loop?: boolean }): void {
-    const audio = new Audio();
-    const soundVolume = config.volume ?? 0.7;
-    const category = AUDIO_CATEGORIES[key];
-    const categoryVolume = this.categoryVolumes.get(category) || 1;
-    audio.volume = this.isMuted ? 0 : soundVolume * categoryVolume * this.masterVolume;
-    audio.loop = config.loop ?? false;
-    audio.preload = 'metadata';
-    audio.addEventListener('error', err => {
-      logger.mediaError(`Failed to load audio file: ${key}`, { error: getErrorMessage(err), key, src });
-    });
-    this.audioElements.set(key, audio);
-    this.volumes.set(key, config.volume ?? 0.7);
-    audio.src = src;
-    audio.load();
-  }
-
-  private setupUserInteractionListener(): void {
-    const enableAudio = () => {
-      this.userInteracted = true;
-      if (!this.isMuted) {
-        this.play(AudioKey.BACKGROUND_MUSIC);
-      }
-      document.removeEventListener('click', enableAudio);
-      document.removeEventListener('keydown', enableAudio);
-      document.removeEventListener('touchstart', enableAudio);
-    };
-
-    document.addEventListener('click', enableAudio);
-    document.addEventListener('keydown', enableAudio);
-    document.addEventListener('touchstart', enableAudio);
-  }
-}
-
-export const audioService = new AudioService();
-```
+**מצב נפח והשתקה:** מקור האמת הוא Redux (`audioSettingsSlice`); `useAudioSync` מסנכרן ל-`audioService` (mute/unmute, setMasterVolume). לקריאת מצב יש להשתמש ב-`useAudioState` / `selectVolume` / `selectIsMuted`.
 
 ## שירות אחסון מקומי (Storage Service)
 
@@ -734,11 +507,11 @@ export const storageService = new ClientStorageService();
 ### gameHistory.service.ts
 
 ```typescript
-import { GAME_STATE_DEFAULTS, VALID_GAME_MODES_SET } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, VALID_GAME_MODES_SET } from '@shared/constants';
 import { clientLogger as logger } from '@shared/services';
-import type { GameData, GameHistoryEntry, LeaderboardEntry, UserRankData, UserStatsData } from '@shared/types';
+import type { GameData, GameHistoryEntry, LeaderboardEntry, UserRankData, UserStatistics } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
-import { isValidDifficulty, toDifficultyLevel } from '@shared/validation';
+import { isGameDifficulty, toDifficultyLevel } from '@shared/validation';
 import { apiService } from './api.service';
 
 class ClientGameHistoryService {
@@ -775,13 +548,13 @@ class ClientGameHistoryService {
     }
   }
 
-  async getUserStats(): Promise<UserStatsData> {
+  async getUserStats(): Promise<UserStatistics> {
     try {
       logger.userInfo('Getting user statistics');
       const stats = await apiService.getUserStats();
       logger.userInfo('User statistics retrieved successfully', {
-        totalGames: stats.gamesPlayed,
-        totalScore: stats.correctAnswers,
+        totalGames: stats.totalGames,
+        totalScore: stats.averageScore,
       });
       return stats;
     } catch (error) {
@@ -1208,7 +981,7 @@ export const calculateScore = (
 ```typescript
 import { isCustomDifficulty } from '@shared/validation';
 
-import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
+import { STORAGE_KEYS } from '@/constants';
 import type { HistoryItem } from '../types';
 import { storageService } from './storage.service';
 

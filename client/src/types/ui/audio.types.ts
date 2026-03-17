@@ -2,6 +2,10 @@ import type { MutableRefObject } from 'react';
 
 import type { AudioCategory } from '@/constants';
 
+export interface AudioPreloadConfig {
+	loop: boolean;
+}
+
 export interface AudioData {
 	category: AudioCategory;
 	path: string;
@@ -21,6 +25,8 @@ export interface UseAudioPreferencesProps {
 
 export interface UseAudioSyncProps {
 	volume: number;
+	soundEffectsVolume: number;
+	musicVolume: number;
 	isMuted: boolean;
 	soundEnabled: boolean;
 	musicEnabled: boolean;

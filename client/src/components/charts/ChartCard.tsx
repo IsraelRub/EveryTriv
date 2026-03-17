@@ -1,9 +1,10 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { SkeletonVariant } from '@/constants';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
+import { CommonKey, SkeletonVariant } from '@/constants';
 import type { ChartCardProps } from '@/types';
 import { cn } from '@/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@/components';
 
 export const ChartCard = memo(function ChartCard({
 	title,
@@ -13,6 +14,7 @@ export const ChartCard = memo(function ChartCard({
 	children,
 	className,
 }: ChartCardProps) {
+	const { t } = useTranslation('common');
 	const isEmpty = !isLoading && (!data || (Array.isArray(data) && data.length === 0));
 
 	return (
@@ -27,7 +29,7 @@ export const ChartCard = memo(function ChartCard({
 						<Skeleton variant={SkeletonVariant.Chart} />
 					) : isEmpty ? (
 						<div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>
-							<p>No data available</p>
+							<p>{t(CommonKey.NO_DATA_AVAILABLE)}</p>
 						</div>
 					) : (
 						children

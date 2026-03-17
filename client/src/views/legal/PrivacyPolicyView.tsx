@@ -1,211 +1,152 @@
+import { useTranslation } from 'react-i18next';
 import { Database, Eye, Lock, Mail, Shield } from 'lucide-react';
 
-import { formatDate } from '@shared/utils';
-
-import { ROUTES } from '@/constants';
-import { Card, CardContent, CardHeader, CardTitle, NavLink } from '@/components';
+import { LegalKey, ROUTES } from '@/constants';
+import { NavLink } from '@/components';
+import { LegalPageLayout } from './LegalPageLayout';
 
 export function PrivacyPolicyView() {
+	const { t } = useTranslation('legal');
 	return (
-		<main className='view-main animate-fade-in-up-simple'>
-			<div className='view-content-4xl'>
-				<Card className='flex-1 flex flex-col overflow-hidden'>
-					<CardHeader className='flex-shrink-0'>
-						<div className='flex items-center gap-3 mb-2'>
-							<Shield className='h-6 md:h-8 w-6 md:w-8 text-primary' />
-							<CardTitle className='text-3xl md:text-4xl font-bold'>Privacy Policy</CardTitle>
-						</div>
-						<p className='text-sm md:text-base text-muted-foreground'>Last updated: {formatDate(new Date())}</p>
-					</CardHeader>
-					<CardContent className='view-spacing-legal view-scroll-inline'>
-						<section>
-							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
-								<Lock className='h-6 w-6 text-primary' />
-								1. Introduction
-							</h2>
-							<p className='text-muted-foreground leading-relaxed mb-4'>
-								Welcome to EveryTriv. We are committed to protecting your privacy and ensuring the security of your
-								personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your
-								information when you use our trivia game platform.
-							</p>
-							<p className='text-muted-foreground leading-relaxed'>
-								By using EveryTriv, you agree to the collection and use of information in accordance with this policy.
-								If you do not agree with our policies and practices, please do not use our service.
-							</p>
-						</section>
+		<LegalPageLayout
+			icon={<Shield className='h-6 md:h-8 w-6 md:w-8 text-primary' />}
+			titleKey={LegalKey.PRIVACY_POLICY}
+		>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
+					<Lock className='h-6 w-6 text-primary' />
+					{t(LegalKey.PRIVACY_INTRO_TITLE)}
+				</h2>
+				<p className='text-muted-foreground leading-relaxed mb-4'>{t(LegalKey.PRIVACY_INTRO_P1)}</p>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_INTRO_P2)}</p>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
-								<Database className='h-6 w-6 text-primary' />
-								2. Information We Collect
-							</h2>
-							<div className='space-y-4'>
-								<div>
-									<h3 className='text-xl font-semibold mb-2'>2.1 Personal Information</h3>
-									<p className='text-muted-foreground leading-relaxed mb-2'>
-										When you register for an account, we may collect:
-									</p>
-									<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
-										<li>Email address</li>
-										<li>Username</li>
-										<li>First name and last name (optional)</li>
-										<li>Profile picture/avatar</li>
-										<li>Authentication information (for OAuth providers like Google)</li>
-									</ul>
-								</div>
-								<div>
-									<h3 className='text-xl font-semibold mb-2'>2.2 Game Data</h3>
-									<p className='text-muted-foreground leading-relaxed mb-2'>
-										We collect information about your gameplay, including:
-									</p>
-									<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
-										<li>Game scores and statistics</li>
-										<li>Game history and performance</li>
-										<li>Questions answered and accuracy</li>
-										<li>Time spent on questions</li>
-										<li>Achievements and progress</li>
-									</ul>
-								</div>
-								<div>
-									<h3 className='text-xl font-semibold mb-2'>2.3 Payment Information</h3>
-									<p className='text-muted-foreground leading-relaxed'>
-										When you make purchases, we collect payment information through secure third-party payment
-										processors. We do not store your full credit card details on our servers.
-									</p>
-								</div>
-								<div>
-									<h3 className='text-xl font-semibold mb-2'>2.4 Technical Information</h3>
-									<p className='text-muted-foreground leading-relaxed mb-2'>
-										We automatically collect certain technical information, including:
-									</p>
-									<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
-										<li>IP address</li>
-										<li>Browser type and version</li>
-										<li>Device information</li>
-										<li>Operating system</li>
-										<li>Usage patterns and analytics data</li>
-									</ul>
-								</div>
-							</div>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
+					<Database className='h-6 w-6 text-primary' />
+					{t(LegalKey.PRIVACY_COLLECT_TITLE)}
+				</h2>
+				<div className='space-y-4'>
+					<div>
+						<h3 className='text-xl font-semibold mb-2'>{t(LegalKey.PRIVACY_PERSONAL_TITLE)}</h3>
+						<p className='text-muted-foreground leading-relaxed mb-2'>{t(LegalKey.PRIVACY_PERSONAL_INTRO)}</p>
+						<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
+							<li>{t(LegalKey.PRIVACY_PERSONAL_LI1)}</li>
+							<li>{t(LegalKey.PRIVACY_PERSONAL_LI2)}</li>
+							<li>{t(LegalKey.PRIVACY_PERSONAL_LI3)}</li>
+							<li>{t(LegalKey.PRIVACY_PERSONAL_LI4)}</li>
+							<li>{t(LegalKey.PRIVACY_PERSONAL_LI5)}</li>
+						</ul>
+					</div>
+					<div>
+						<h3 className='text-xl font-semibold mb-2'>{t(LegalKey.PRIVACY_GAME_TITLE)}</h3>
+						<p className='text-muted-foreground leading-relaxed mb-2'>{t(LegalKey.PRIVACY_GAME_INTRO)}</p>
+						<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
+							<li>{t(LegalKey.PRIVACY_GAME_LI1)}</li>
+							<li>{t(LegalKey.PRIVACY_GAME_LI2)}</li>
+							<li>{t(LegalKey.PRIVACY_GAME_LI3)}</li>
+							<li>{t(LegalKey.PRIVACY_GAME_LI4)}</li>
+							<li>{t(LegalKey.PRIVACY_GAME_LI5)}</li>
+						</ul>
+					</div>
+					<div>
+						<h3 className='text-xl font-semibold mb-2'>{t(LegalKey.PRIVACY_PAYMENT_TITLE)}</h3>
+						<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_PAYMENT_BODY)}</p>
+					</div>
+					<div>
+						<h3 className='text-xl font-semibold mb-2'>{t(LegalKey.PRIVACY_TECHNICAL_TITLE)}</h3>
+						<p className='text-muted-foreground leading-relaxed mb-2'>{t(LegalKey.PRIVACY_TECHNICAL_INTRO)}</p>
+						<ul className='list-disc list-inside space-y-1 text-muted-foreground ml-4'>
+							<li>{t(LegalKey.PRIVACY_TECHNICAL_LI1)}</li>
+							<li>{t(LegalKey.PRIVACY_TECHNICAL_LI2)}</li>
+							<li>{t(LegalKey.PRIVACY_TECHNICAL_LI3)}</li>
+							<li>{t(LegalKey.PRIVACY_TECHNICAL_LI4)}</li>
+							<li>{t(LegalKey.PRIVACY_TECHNICAL_LI5)}</li>
+						</ul>
+					</div>
+				</div>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
-								<Eye className='h-6 w-6 text-primary' />
-								3. How We Use Your Information
-							</h2>
-							<p className='text-muted-foreground leading-relaxed mb-4'>
-								We use the information we collect for the following purposes:
-							</p>
-							<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
-								<li>To provide, maintain, and improve our services</li>
-								<li>To process your transactions and manage your account</li>
-								<li>To personalize your gaming experience</li>
-								<li>To track your progress and achievements</li>
-								<li>To communicate with you about your account and our services</li>
-								<li>To send you updates, newsletters, and promotional materials (with your consent)</li>
-								<li>To detect, prevent, and address technical issues and security threats</li>
-								<li>To comply with legal obligations and enforce our terms of service</li>
-							</ul>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
+					<Eye className='h-6 w-6 text-primary' />
+					{t(LegalKey.PRIVACY_USE_TITLE)}
+				</h2>
+				<p className='text-muted-foreground leading-relaxed mb-4'>{t(LegalKey.PRIVACY_USE_INTRO)}</p>
+				<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
+					<li>{t(LegalKey.PRIVACY_USE_LI1)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI2)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI3)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI4)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI5)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI6)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI7)}</li>
+					<li>{t(LegalKey.PRIVACY_USE_LI8)}</li>
+				</ul>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>4. Data Sharing and Disclosure</h2>
-							<p className='text-muted-foreground leading-relaxed mb-4'>
-								We do not sell your personal information. We may share your information only in the following
-								circumstances:
-							</p>
-							<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
-								<li>
-									<strong>Service Providers:</strong> With trusted third-party service providers who assist us in
-									operating our platform
-								</li>
-								<li>
-									<strong>Legal Requirements:</strong> When required by law or to protect our rights and safety
-								</li>
-								<li>
-									<strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets
-								</li>
-								<li>
-									<strong>With Your Consent:</strong> When you explicitly authorize us to share your information
-								</li>
-							</ul>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_SHARING_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed mb-4'>{t(LegalKey.PRIVACY_SHARING_INTRO)}</p>
+				<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
+					<li>{t(LegalKey.PRIVACY_SHARING_LI1)}</li>
+					<li>{t(LegalKey.PRIVACY_SHARING_LI2)}</li>
+					<li>{t(LegalKey.PRIVACY_SHARING_LI3)}</li>
+					<li>{t(LegalKey.PRIVACY_SHARING_LI4)}</li>
+				</ul>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>5. Data Security</h2>
-							<p className='text-muted-foreground leading-relaxed'>
-								We implement appropriate technical and organizational security measures to protect your personal
-								information against unauthorized access, alteration, disclosure, or destruction. However, no method of
-								transmission over the Internet is 100% secure, and we cannot guarantee absolute security.
-							</p>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_SECURITY_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_SECURITY_BODY)}</p>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>6. Your Rights</h2>
-							<p className='text-muted-foreground leading-relaxed mb-4'>
-								Depending on your location, you may have the following rights regarding your personal information:
-							</p>
-							<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
-								<li>Right to access your personal data</li>
-								<li>Right to rectify inaccurate data</li>
-								<li>Right to erasure ("right to be forgotten")</li>
-								<li>Right to restrict processing</li>
-								<li>Right to data portability</li>
-								<li>Right to object to processing</li>
-								<li>Right to withdraw consent</li>
-							</ul>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_RIGHTS_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed mb-4'>{t(LegalKey.PRIVACY_RIGHTS_INTRO)}</p>
+				<ul className='list-disc list-inside space-y-2 text-muted-foreground ml-4'>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI1)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI2)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI3)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI4)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI5)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI6)}</li>
+					<li>{t(LegalKey.PRIVACY_RIGHTS_LI7)}</li>
+				</ul>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>7. Cookies and Tracking Technologies</h2>
-							<p className='text-muted-foreground leading-relaxed'>
-								We use cookies and similar tracking technologies to enhance your experience, analyze usage patterns, and
-								improve our services. You can control cookie preferences through your browser settings.
-							</p>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_COOKIES_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_COOKIES_BODY)}</p>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>8. Children's Privacy</h2>
-							<p className='text-muted-foreground leading-relaxed'>
-								Our service is not intended for children under the age of 13. We do not knowingly collect personal
-								information from children under 13. If you believe we have collected information from a child under 13,
-								please contact us immediately.
-							</p>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_CHILDREN_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_CHILDREN_BODY)}</p>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4'>9. Changes to This Privacy Policy</h2>
-							<p className='text-muted-foreground leading-relaxed'>
-								We may update this Privacy Policy from time to time. We will notify you of any changes by posting the
-								new Privacy Policy on this page and updating the "Last updated" date. You are advised to review this
-								Privacy Policy periodically for any changes.
-							</p>
-						</section>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4'>{t(LegalKey.PRIVACY_CHANGES_TITLE)}</h2>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_CHANGES_BODY)}</p>
+			</section>
 
-						<section>
-							<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
-								<Mail className='h-6 w-6 text-primary' />
-								10. Contact Us
-							</h2>
-							<p className='text-muted-foreground leading-relaxed'>
-								If you have any questions about this Privacy Policy or wish to exercise your rights, please contact us
-								at:
-							</p>
-							<div className='callout-muted'>
-								<p className='font-semibold mb-2'>EveryTriv Support</p>
-								<p className='text-muted-foreground'>Email: privacy@everytriv.com</p>
-								<p className='text-muted-foreground'>
-									Website:{' '}
-									<NavLink to={ROUTES.CONTACT} className='link-primary'>
-										Contact Page
-									</NavLink>
-								</p>
-							</div>
-						</section>
-					</CardContent>
-				</Card>
-			</div>
-		</main>
+			<section>
+				<h2 className='text-2xl font-semibold mb-4 flex items-center gap-2'>
+					<Mail className='h-6 w-6 text-primary' />
+					{t(LegalKey.PRIVACY_CONTACT_TITLE)}
+				</h2>
+				<p className='text-muted-foreground leading-relaxed'>{t(LegalKey.PRIVACY_CONTACT_INTRO)}</p>
+				<div className='callout-muted'>
+					<p className='font-semibold mb-2'>{t(LegalKey.PRIVACY_SUPPORT_NAME)}</p>
+					<p className='text-muted-foreground'>Email: privacy@everytriv.com</p>
+					<p className='text-muted-foreground'>
+						Website:{' '}
+						<NavLink to={ROUTES.CONTACT} className='link-primary'>
+							{t(LegalKey.CONTACT_PAGE)}
+						</NavLink>
+					</p>
+				</div>
+			</section>
+		</LegalPageLayout>
 	);
 }

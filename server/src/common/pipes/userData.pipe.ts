@@ -3,7 +3,7 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { ErrorCode } from '@shared/constants';
 import type { UpdateUserProfileData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
-import { validateName } from '@shared/validation';
+import { LengthKey, validateStringLength } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -22,7 +22,7 @@ export class UserDataPipe implements PipeTransform {
 
 			// Validate first name if provided using shared validation function
 			if (value.firstName) {
-				const firstNameValidation = validateName(value.firstName, { fieldName: 'First name', required: true });
+				const firstNameValidation = validateStringLength(value.firstName, LengthKey.FIRST_NAME);
 				if (!firstNameValidation.isValid) {
 					errors.push(...firstNameValidation.errors);
 				}
@@ -31,7 +31,7 @@ export class UserDataPipe implements PipeTransform {
 			// Validate last name if provided using shared validation function
 			// null is allowed to clear the field (transformed from empty string in DTO)
 			if (value.lastName != null) {
-				const lastNameValidation = validateName(value.lastName, { fieldName: 'Last name', required: false });
+				const lastNameValidation = validateStringLength(value.lastName, LengthKey.LAST_NAME);
 				if (!lastNameValidation.isValid) {
 					errors.push(...lastNameValidation.errors);
 				}

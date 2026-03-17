@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
-import { AUTH_CONSTANTS } from '@shared/constants';
-
 import { AppConfig } from '@config';
+import { AUTH_CONSTANTS } from '@internal/constants';
 
 import { AuthenticationManager } from './authentication.manager';
 import { JwtTokenService } from './jwt-token.service';
@@ -19,4 +18,4 @@ import { PasswordService } from './password.service';
 	providers: [PasswordService, JwtTokenService, AuthenticationManager],
 	exports: [JwtModule, PasswordService, JwtTokenService, AuthenticationManager],
 })
-export class AuthModule {}
+export class CommonAuthModule {}

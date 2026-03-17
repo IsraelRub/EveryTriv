@@ -180,8 +180,7 @@ const { data: creditBalance } = useCreditBalance();
 
 ```typescript
 import { 
-  setGameMode, 
-  resetGameMode,
+  setGameMode,
   startGameSession,
   setQuestions,
   updateScore,
@@ -193,7 +192,6 @@ import {
   updateGameState,
   setVolume,
   setMuted,
-  toggleMute,
   setLeaderboardPeriod
 } from '@/redux/slices';
 import { useAppDispatch } from '@/hooks';
@@ -209,7 +207,6 @@ dispatch(setGameMode({
   timeLimit: 300,
   answerCount: 4
 }));
-dispatch(resetGameMode());
 
 // Game Session Actions
 dispatch(startGameSession({ gameId: '123', gameQuestionCount: 10 }));
@@ -227,7 +224,6 @@ dispatch(updateGameState(gameState));
 // Audio Settings Actions
 dispatch(setVolume(0.8));
 dispatch(setMuted(false));
-dispatch(toggleMute());
 
 // UI Preferences Actions
 dispatch(setLeaderboardPeriod(LeaderboardPeriod.WEEKLY));

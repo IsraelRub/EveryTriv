@@ -161,17 +161,9 @@ export class PaymentService {
   ) {}
 
   /**
-   * Get credit purchase options
+   * Credit purchase options and package lookup are provided by CreditsService
+   * (getCreditPackages, getPackageById). This service only processes payments.
    */
-  async getCreditPurchaseOptions(): Promise<CreditPurchaseOption[]> {
-    return CREDIT_PURCHASE_PACKAGES.map(pkg => ({
-      id: pkg.id,
-      credits: pkg.credits,
-      price: pkg.price,
-      priceDisplay: pkg.priceDisplay,
-      pricePerCredit: pkg.pricePerCredit,
-    }));
-  }
 
   /**
    * Process payment

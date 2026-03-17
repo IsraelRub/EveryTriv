@@ -1,24 +1,40 @@
 import { ReactNode, type ButtonHTMLAttributes, type ComponentPropsWithoutRef, type HTMLAttributes } from 'react';
 import { type LinkProps } from 'react-router-dom';
+import * as AvatarPrimitive from '@radix-ui/react-avatar';
+import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { type VariantProps } from 'class-variance-authority';
 import type { LucideIcon } from 'lucide-react';
 
-import { ButtonSize, ButtonVariant, ComponentSize, LoadingMessages, TabsListVariant, VariantBase } from '@/constants';
+import {
+	AlertVariant,
+	AvatarSize,
+	AvatarVariant,
+	ButtonSize,
+	ComponentSize,
+	TabsListVariant,
+	VariantBase,
+	type ViewAllDestination,
+} from '@/constants';
 import { badgeVariants } from '@/components';
+
+export interface AlertProps extends HTMLAttributes<HTMLDivElement> {
+	variant?: AlertVariant;
+	showIcon?: boolean;
+}
 
 export interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
 	variant?: VariantBase;
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-	variant?: ButtonVariant;
+	variant?: VariantBase;
 	size?: ButtonSize;
 	asChild?: boolean;
 }
 
 export interface LinkButtonProps extends LinkProps {
-	variant?: ButtonVariant;
+	variant?: VariantBase;
 	size?: ButtonSize;
 	children: ReactNode;
 }
@@ -30,8 +46,13 @@ export interface CloseButtonProps {
 }
 
 export interface HomeButtonProps {
-	onClick?: () => void;
+	onBeforeNavigate?: () => void;
 	className?: string;
+}
+
+export interface ViewAllButtonProps {
+	destination: ViewAllDestination;
+	visible?: boolean;
 }
 
 export interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
@@ -44,7 +65,7 @@ export interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
 export type FullPageSpinnerLayout = 'default' | 'appShell';
 
 export interface FullPageSpinnerProps {
-	message: LoadingMessages;
+	message: string;
 	layout?: FullPageSpinnerLayout;
 	showSpinner?: boolean;
 	showHomeButton?: boolean;
@@ -61,7 +82,7 @@ export interface EmptyStateProps {
 	icon?: LucideIcon;
 	title?: string;
 	description?: string;
-	/** When false: no button and UserX icon. When true or omitted: "Play Now" button and GamepadIcon. */
+
 	showPlayNow?: boolean;
 }
 
@@ -75,6 +96,25 @@ export interface PaginationButtonsProps {
 	disabled?: boolean;
 }
 
+export interface SliderProps extends ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
+	size?: 'default' | 'sm';
+}
+
 export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
 	variant?: TabsListVariant;
+}
+
+export interface SectionCardProps {
+	title?: string;
+	description?: string;
+	icon?: LucideIcon;
+	children: ReactNode;
+	className?: string;
+	contentClassName?: string;
+}
+
+export interface AvatarProps extends Omit<ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>, 'className'> {
+	size?: AvatarSize;
+	variant?: AvatarVariant;
+	pointerEventsNone?: boolean;
 }

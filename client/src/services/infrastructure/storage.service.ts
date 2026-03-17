@@ -1,42 +1,20 @@
 import type { StorageOperationResult, TypeGuard } from '@shared/types';
-import { isStringArray } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { STORAGE_KEYS } from '@/constants';
+import { AUTH_STORAGE_KEYS, AUTH_TOKEN_CHANGED_EVENT, STORAGE_KEYS, type StorageKey } from '@/constants';
+
+function getStorage(key: StorageKey): Storage {
+	return AUTH_STORAGE_KEYS.has(key) ? sessionStorage : localStorage;
+}
 
 class StorageService {
-	async getString(key: string): Promise<StorageOperationResult<string>> {
+	async getString(key: StorageKey): Promise<StorageOperationResult<string>> {
 		return this.get(key, VALIDATORS.string);
 	}
 
-	async getNumber(key: string): Promise<StorageOperationResult<number>> {
-		return this.get(key, VALIDATORS.number);
-	}
-
-	async getBoolean(key: string): Promise<StorageOperationResult<boolean>> {
-		return this.get(key, VALIDATORS.boolean);
-	}
-
-	async getStringArray(key: string): Promise<StorageOperationResult<string[]>> {
-		return this.get(key, isStringArray);
-	}
-
-	async getDate(key: string): Promise<StorageOperationResult<Date>> {
-		const result = await this.get(key, VALIDATORS.date);
-		if (result.success && result.data) {
-			// If date was stored as string, convert it to Date object
-			if (typeof result.data === 'string') {
-				return { success: true, data: new Date(result.data), timestamp: new Date() };
-			}
-			// result.data is already a Date (validated by VALIDATORS.date)
-			return { success: true, data: result.data, timestamp: new Date() };
-		}
-		return { success: false, data: undefined, timestamp: new Date() };
-	}
-
-	async get<T>(key: string, validator: TypeGuard<T>): Promise<StorageOperationResult<T>> {
+	private async get<T>(key: StorageKey, validator: TypeGuard<T>): Promise<StorageOperationResult<T>> {
 		try {
-			const item = localStorage.getItem(key);
+			const item = getStorage(key).getItem(key);
 			if (item === null) {
 				return { success: false, data: undefined, timestamp: new Date() };
 			}
@@ -55,13 +33,13 @@ class StorageService {
 		}
 	}
 
-	async set<T>(key: string, value: T): Promise<StorageOperationResult<T>> {
+	async set<T>(key: StorageKey, value: T): Promise<StorageOperationResult<T>> {
 		try {
-			localStorage.setItem(key, JSON.stringify(value));
+			getStorage(key).setItem(key, JSON.stringify(value));
 
 			// Dispatch custom event for auth token changes (same window)
 			if (key === STORAGE_KEYS.AUTH_TOKEN && typeof window !== 'undefined') {
-				window.dispatchEvent(new Event('auth-token-changed'));
+				window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 			}
 
 			return { success: true, data: value, timestamp: new Date() };
@@ -70,13 +48,13 @@ class StorageService {
 		}
 	}
 
-	async delete(key: string): Promise<StorageOperationResult<boolean>> {
+	async delete(key: StorageKey): Promise<StorageOperationResult<boolean>> {
 		try {
-			localStorage.removeItem(key);
+			getStorage(key).removeItem(key);
 
 			// Dispatch custom event for auth token changes (same window)
 			if (key === STORAGE_KEYS.AUTH_TOKEN && typeof window !== 'undefined') {
-				window.dispatchEvent(new Event('auth-token-changed'));
+				window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 			}
 
 			return { success: true, data: true, timestamp: new Date() };

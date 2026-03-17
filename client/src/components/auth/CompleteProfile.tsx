@@ -1,28 +1,25 @@
-import { ChangeEvent, useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import { getErrorMessage } from '@shared/utils';
-import { validateName } from '@shared/validation';
+import { LengthKey, validateStringLength } from '@shared/validation';
 
-import { ComponentSize, LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
-import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
-import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
+import { AlertIconSize, AuthKey, ComponentSize, LoadingKey, QUERY_KEYS, ROUTES } from '@/constants';
 import type { CompleteProfileProps, ProfileFieldErrors, ProfileNameField } from '@/types';
-import { profileResponseToBasicUser } from '@/utils';
-
-const PROFILE_NAME_FIELDS: Record<ProfileNameField, { fieldName: string; required: boolean }> = {
-	firstName: { fieldName: 'First name', required: true },
-	lastName: { fieldName: 'Last name', required: false },
-};
+import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
+import { getTranslatedErrorMessage, profileResponseToBasicUser, translateValidationMessage } from '@/utils';
+import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 
 function validateProfileNameField(name: ProfileNameField, value: string): string | null {
-	const opts = PROFILE_NAME_FIELDS[name];
-	const result = validateName(value, opts);
+	const lengthKey = name === 'firstName' ? LengthKey.FIRST_NAME : LengthKey.LAST_NAME;
+	const result = validateStringLength(value, lengthKey);
 	return result.isValid ? null : (result.errors[0] ?? null);
 }
 
 export function CompleteProfile({ onComplete }: CompleteProfileProps) {
+	const { t } = useTranslation(['auth', 'loading', 'common', 'errors']);
 	const navigate = useNavigate();
 
 	const [form, setForm] = useState({ firstName: '', lastName: '' });
@@ -64,8 +61,8 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				const lastNameError = validateProfileNameField('lastName', form.lastName);
 
 				const newFieldErrors: ProfileFieldErrors = {};
-				if (firstNameError) newFieldErrors.firstName = firstNameError;
-				if (lastNameError) newFieldErrors.lastName = lastNameError;
+				if (firstNameError) newFieldErrors.firstName = translateValidationMessage(firstNameError, t);
+				if (lastNameError) newFieldErrors.lastName = translateValidationMessage(lastNameError, t);
 
 				setFieldErrors(newFieldErrors);
 
@@ -109,12 +106,12 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				logger.userError('Profile completion failed', {
 					errorInfo: { message },
 				});
-				setError(message);
+				setError(getTranslatedErrorMessage(t, err));
 			} finally {
 				setLoading(false);
 			}
 		},
-		[form.firstName, form.lastName, navigate, onComplete, isFormValid]
+		[form.firstName, form.lastName, navigate, onComplete, isFormValid, t]
 	);
 
 	return (
@@ -126,8 +123,8 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 			<Card className='p-6 max-w-md w-full relative'>
 				<CloseButton className='absolute top-4 right-4' />
 				<div className='text-center mb-6'>
-					<h2 className='text-2xl font-bold'>Complete Your Profile</h2>
-					<p className='text-muted-foreground mt-2'>Add some details to personalize your experience</p>
+					<h2 className='text-2xl font-bold'>{t(AuthKey.COMPLETE_YOUR_PROFILE)}</h2>
+					<p className='text-muted-foreground mt-2'>{t(AuthKey.ADD_DETAILS_TO_PERSONALIZE)}</p>
 				</div>
 
 				{error && (
@@ -139,38 +136,38 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div>
 						<Label htmlFor='firstName'>
-							First Name <span className='text-destructive'>*</span>
+							{t(AuthKey.FIRST_NAME)} <span className='text-destructive'>*</span>
 						</Label>
 						<Input
 							id='firstName'
 							name='firstName'
 							value={form.firstName}
 							onChange={handleChange}
-							placeholder='Enter your first name'
+							placeholder={t(AuthKey.ENTER_FIRST_NAME)}
 							disabled={loading}
 							error={!!fieldErrors.firstName}
 						/>
 						{fieldErrors.firstName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.firstName}
 							</p>
 						)}
 					</div>
 					<div>
-						<Label htmlFor='lastName'>Last Name</Label>
+						<Label htmlFor='lastName'>{t(AuthKey.LAST_NAME)}</Label>
 						<Input
 							id='lastName'
 							name='lastName'
 							value={form.lastName}
 							onChange={handleChange}
-							placeholder='Enter your last name'
+							placeholder={t(AuthKey.ENTER_LAST_NAME)}
 							disabled={loading}
 							error={!!fieldErrors.lastName}
 						/>
 						{fieldErrors.lastName && (
 							<p className='text-sm text-destructive flex items-center gap-1 mt-1'>
-								<AlertIcon size='sm' />
+								<AlertIcon size={AlertIconSize.SM} />
 								{fieldErrors.lastName}
 							</p>
 						)}
@@ -179,17 +176,15 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					<div className='flex gap-4'>
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
 							{loading ? (
-								<Spinner size={ComponentSize.SM} message={LoadingMessages.SAVING} messageInline />
+								<Spinner size={ComponentSize.SM} message={t(LoadingKey.SAVING)} messageInline />
 							) : (
-								'Complete Profile'
+								t(AuthKey.COMPLETE_PROFILE_BUTTON)
 							)}
 						</Button>
 					</div>
 				</form>
 
-				<p className='text-xs text-muted-foreground text-center mt-4'>
-					You can always update your profile later in the settings
-				</p>
+				<p className='text-xs text-muted-foreground text-center mt-4'>{t(AuthKey.UPDATE_PROFILE_LATER)}</p>
 			</Card>
 		</motion.div>
 	);

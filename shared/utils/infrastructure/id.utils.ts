@@ -1,7 +1,7 @@
 import { GENERATED_PAYMENT_INTENT_ID_PREFIX } from '@shared/constants';
 import type { GeneratedPaymentIntentId } from '@shared/types';
 
-export function generateId(length: number = 13): string {
+function generateId(length: number = 13): string {
 	return Math.random()
 		.toString(36)
 		.substring(2, 2 + length);

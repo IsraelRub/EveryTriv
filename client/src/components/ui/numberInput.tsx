@@ -1,4 +1,4 @@
-import { ChangeEvent, cloneElement, forwardRef, isValidElement, useCallback, type ReactNode } from 'react';
+import { forwardRef, useCallback, type ChangeEvent } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { clamp } from '@shared/utils';
@@ -86,12 +86,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 		);
 
 		if (label) {
-			let iconNode: ReactNode = labelIcon;
-			if (isValidElement(labelIcon)) {
-				iconNode = cloneElement(labelIcon, {
-					className: 'h-4 w-4 text-muted-foreground',
-				});
-			}
+			const iconNode =
+				labelIcon != null ? (
+					<span className='inline-flex h-4 w-4 items-center justify-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0'>
+						{labelIcon}
+					</span>
+				) : null;
 			return (
 				<div className='flex flex-col items-center space-y-2'>
 					<Label htmlFor={props.id} className='flex items-center justify-center gap-2'>

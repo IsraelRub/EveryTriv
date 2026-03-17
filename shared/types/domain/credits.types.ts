@@ -1,6 +1,5 @@
 // Credits System Types for EveryTriv.
-import { CreditSource, CreditTransactionType, PaymentMethod } from '../../constants';
-import type { BaseTimestamps } from '../core/data.types';
+import { PaymentMethod } from '../../constants';
 import type { ManualPaymentDetails } from './payment.types';
 
 export interface CreditBalance {
@@ -12,7 +11,6 @@ export interface CreditBalance {
 	canPlayFree: boolean;
 	nextResetTime: string | null;
 	userId: string;
-	lastModified?: Date;
 }
 
 export interface CreditPurchaseOption {
@@ -29,29 +27,6 @@ export interface CreditPurchaseOption {
 	paypalProductId?: string;
 	paypalPrice?: string;
 	supportedMethods?: PaymentMethod[];
-}
-
-export interface CreditTransaction extends BaseTimestamps {
-	id: string;
-	userId: string;
-	amount: number;
-	type: CreditTransactionType;
-	source?: CreditSource;
-	balanceAfter: number;
-	description?: string;
-	freeQuestionsAfter: number;
-	purchasedCreditsAfter: number;
-	paymentId?: string;
-	metadata: {
-		questionsPerRequest?: number;
-		requiredCredits?: number;
-		originalAmount?: number;
-		gameMode?: string;
-		freeQuestionsUsed?: number;
-		purchasedCreditsUsed?: number;
-		creditsUsed?: number;
-		reason?: string | null;
-	};
 }
 
 export interface CanPlayResponse {

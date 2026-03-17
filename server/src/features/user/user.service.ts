@@ -3,10 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
+	AVATAR_ALLOWED_MIME_TYPES_SET,
+	AVATAR_UPLOAD_MAX_BYTES,
 	DEFAULT_USER_PREFERENCES,
 	ErrorCode,
-	SERVER_CACHE_KEYS,
 	TIME_DURATIONS_SECONDS,
+	UserRole,
 	UserStatus,
 	VALIDATION_COUNT,
 } from '@shared/constants';
@@ -15,28 +17,40 @@ import type {
 	DeductCreditsResponse,
 	UpdateCreditsData,
 	UpdateUserProfileData,
-	UserPreferences,
+	UserPreferencesPatch,
 	UserSearchCacheEntry,
 } from '@shared/types';
-import { getErrorMessage, mergeUserPreferences, normalizeText, sanitizeInput } from '@shared/utils';
-import { isUserRole, isUserStatus, VALIDATORS } from '@shared/validation';
+import {
+	getDisplayNameFromUserFields,
+	getErrorMessage,
+	mergeUserPreferences,
+	normalizeText,
+	sanitizeInput,
+} from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
-import { WildcardPattern } from '@internal/constants';
+import { AppConfig } from '@config';
+import { SERVER_CACHE_KEYS, WildcardPattern } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
-import { CacheService, UserCoreService } from '@internal/modules';
+import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { UserFieldConfig } from '@internal/types';
-import { addSearchConditions, createNotFoundError, createValidationError } from '@internal/utils';
-
-import { isUserSearchCacheEntry } from '../../internal/utils/entityGuards';
+import {
+	addSearchConditions,
+	buildAvatarUrl,
+	createNotFoundError,
+	createValidationError,
+	getAvatarUrlForUser,
+	isUserSearchCacheEntry,
+	validateAvatarImageSignature,
+} from '@internal/utils';
 
 @Injectable()
 export class UserService {
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly userRepository: Repository<UserEntity>,
-		private readonly cacheService: CacheService,
-		private readonly userCoreService: UserCoreService
+		private readonly cacheService: CacheService
 	) {}
 
 	async getUserProfile(userId: string) {
@@ -46,10 +60,9 @@ export class UserService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Get avatar from preferences
 			const avatar = user.preferences?.avatar;
+			const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
 
-			// Return in UserProfileResponseType format
 			return {
 				profile: {
 					id: user.id,
@@ -57,7 +70,8 @@ export class UserService {
 					role: user.role,
 					firstName: user.firstName,
 					lastName: user.lastName,
-					avatar: avatar,
+					avatar,
+					avatarUrl,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -90,14 +104,13 @@ export class UserService {
 				user.preferences = mergeUserPreferences(user.preferences, profileData.preferences);
 			}
 
-			// Save updated user
 			const updatedUser = await this.userRepository.save(user);
 
-			// Invalidate user profile cache
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
 
-			// Return in UserProfileResponseType format
+			const avatarUrl = getAvatarUrlForUser(updatedUser, AppConfig.apiPublicBaseUrl);
+
 			return {
 				profile: {
 					id: updatedUser.id,
@@ -106,6 +119,7 @@ export class UserService {
 					firstName: updatedUser.firstName,
 					lastName: updatedUser.lastName,
 					avatar: updatedUser.preferences?.avatar,
+					avatarUrl,
 					createdAt: updatedUser.createdAt,
 					updatedAt: updatedUser.updatedAt,
 				},
@@ -134,16 +148,18 @@ export class UserService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
+			user.customAvatar = undefined;
+			user.customAvatarMime = undefined;
 			user.preferences = mergeUserPreferences(user.preferences, {
 				avatar: isClear ? undefined : avatarId,
 			});
 			const updatedUser = await this.userRepository.save(user);
 
-			// Invalidate user profile cache
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
 
-			// Return in UserProfileResponseType format
+			const avatarUrl = getAvatarUrlForUser(updatedUser, AppConfig.apiPublicBaseUrl);
+
 			return {
 				profile: {
 					id: updatedUser.id,
@@ -152,6 +168,7 @@ export class UserService {
 					firstName: updatedUser.firstName,
 					lastName: updatedUser.lastName,
 					avatar: updatedUser.preferences?.avatar,
+					avatarUrl,
 					createdAt: updatedUser.createdAt,
 					updatedAt: updatedUser.updatedAt,
 				},
@@ -166,6 +183,96 @@ export class UserService {
 			});
 			throw error;
 		}
+	}
+
+	async getAvatarImage(userId: string): Promise<{ buffer: Buffer; mime: string } | null> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			select: ['id', 'customAvatar', 'customAvatarMime'],
+		});
+		if (!user?.customAvatar || user.customAvatar.length === 0) {
+			return null;
+		}
+		return {
+			buffer: user.customAvatar,
+			mime: user.customAvatarMime ?? 'image/jpeg',
+		};
+	}
+
+	async uploadAvatar(
+		userId: string,
+		file: { buffer?: Buffer; path?: string; mimetype?: string; size?: number }
+	): Promise<{
+		profile: {
+			id: string;
+			email: string;
+			role: string;
+			firstName?: string;
+			lastName?: string;
+			avatar?: number;
+			avatarUrl?: string;
+			createdAt: Date;
+			updatedAt: Date;
+		};
+		preferences: Record<string, unknown>;
+	}> {
+		if (!file?.buffer && !file?.path) {
+			throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_INVALID_TYPE);
+		}
+		let buffer: Buffer;
+		if (file.buffer) {
+			buffer = file.buffer;
+		} else {
+			if (typeof file.path !== 'string') {
+				throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_INVALID_TYPE);
+			}
+			buffer = await this.readFileToBuffer(file.path);
+		}
+		if (buffer.length > AVATAR_UPLOAD_MAX_BYTES) {
+			throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_FILE_TOO_LARGE);
+		}
+		const mime = (file.mimetype ?? 'image/jpeg').toLowerCase();
+		if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
+			throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_INVALID_TYPE);
+		}
+		if (!validateAvatarImageSignature(buffer, mime)) {
+			throw new BadRequestException(ErrorCode.AVATAR_UPLOAD_INVALID_TYPE);
+		}
+
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
+		}
+
+		user.customAvatar = buffer;
+		user.customAvatarMime = mime;
+		const updatedUser = await this.userRepository.save(user);
+
+		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
+
+		const avatarUrl = buildAvatarUrl(updatedUser.id, AppConfig.apiPublicBaseUrl);
+
+		return {
+			profile: {
+				id: updatedUser.id,
+				email: updatedUser.email,
+				role: updatedUser.role,
+				firstName: updatedUser.firstName,
+				lastName: updatedUser.lastName,
+				avatar: updatedUser.preferences?.avatar,
+				avatarUrl,
+				createdAt: updatedUser.createdAt,
+				updatedAt: updatedUser.updatedAt,
+			},
+			preferences: updatedUser.preferences ?? {},
+		};
+	}
+
+	private async readFileToBuffer(filePath: string): Promise<Buffer> {
+		const fs = await import('fs/promises');
+		const content = await fs.readFile(filePath);
+		return Buffer.isBuffer(content) ? content : Buffer.from(content);
 	}
 
 	async searchUsers(query: string, limit: number = 10): Promise<UserSearchCacheEntry> {
@@ -193,6 +300,7 @@ export class UserService {
 							'user.firstName',
 							'user.lastName',
 							'user.preferences',
+							'user.customAvatar',
 							'user.role',
 							'user.createdAt',
 							'user.lastLogin',
@@ -203,16 +311,17 @@ export class UserService {
 
 					return {
 						query,
-						results: users.map(user => ({
-							id: user.id,
-							email: user.email,
-							firstName: user.firstName ?? null,
-							lastName: user.lastName ?? null,
-							avatar: user.preferences?.avatar ?? null,
-							displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
-							role: user.role,
-							createdAt: user.createdAt ? user.createdAt.toISOString() : undefined,
-							lastLogin: user.lastLogin ? user.lastLogin.toISOString() : undefined,
+						results: users.map(u => ({
+							id: u.id,
+							email: u.email,
+							firstName: u.firstName ?? null,
+							lastName: u.lastName ?? null,
+							avatar: u.preferences?.avatar ?? null,
+							avatarUrl: getAvatarUrlForUser(u, AppConfig.apiPublicBaseUrl),
+							displayName: getDisplayNameFromUserFields(u),
+							role: u.role,
+							createdAt: u.createdAt ? u.createdAt.toISOString() : undefined,
+							lastLogin: u.lastLogin ? u.lastLogin.toISOString() : undefined,
 						})),
 						totalResults: users.length,
 					};
@@ -257,7 +366,7 @@ export class UserService {
 		}
 	}
 
-	async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>) {
+	async updateUserPreferences(userId: string, preferences: UserPreferencesPatch) {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
@@ -286,10 +395,6 @@ export class UserService {
 		}
 	}
 
-	async getUserById(userId: string) {
-		return this.userCoreService.getUserById(userId);
-	}
-
 	async updateUserField(userId: string, field: string, value: BasicValue): Promise<UserEntity> {
 		try {
 			const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -313,16 +418,18 @@ export class UserService {
 			// Handle special fields
 			switch (field) {
 				case 'role': {
-					if (isUserRole(value)) {
-						user.role = value;
+					const role = Object.values(UserRole).find(r => r === value);
+					if (role !== undefined) {
+						user.role = role;
 					} else {
 						throw createValidationError('role', 'string');
 					}
 					break;
 				}
 				case 'status': {
-					if (isUserStatus(value)) {
-						user.isActive = value === UserStatus.ACTIVE;
+					const status = Object.values(UserStatus).find(s => s === value);
+					if (status !== undefined) {
+						user.isActive = status === UserStatus.ACTIVE;
 					} else {
 						throw createValidationError('status', 'string');
 					}
@@ -447,10 +554,6 @@ export class UserService {
 			});
 			throw error;
 		}
-	}
-
-	async getAllUsers(limit: number = 50, offset: number = 0) {
-		return this.userCoreService.getAllUsers(limit, offset);
 	}
 
 	async deductCredits(data: UpdateCreditsData): Promise<DeductCreditsResponse> {

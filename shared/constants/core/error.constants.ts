@@ -56,6 +56,8 @@ export enum ErrorCode {
 	USER_ACCOUNT_DISABLED = 'USER_ACCOUNT_DISABLED',
 	USER_DATA_VALIDATION_FAILED = 'USER_DATA_VALIDATION_FAILED',
 	AVATAR_ID_OUT_OF_RANGE = 'AVATAR_ID_OUT_OF_RANGE',
+	AVATAR_UPLOAD_FILE_TOO_LARGE = 'AVATAR_UPLOAD_FILE_TOO_LARGE',
+	AVATAR_UPLOAD_INVALID_TYPE = 'AVATAR_UPLOAD_INVALID_TYPE',
 	SEARCH_QUERY_TOO_SHORT = 'SEARCH_QUERY_TOO_SHORT',
 	REQUIRED_FIELD_AND_VALUE = 'REQUIRED_FIELD_AND_VALUE',
 	REQUIRED_PREFERENCE_AND_VALUE = 'REQUIRED_PREFERENCE_AND_VALUE',
@@ -160,7 +162,9 @@ export const ERROR_MESSAGES = {
 		USER_ID_REQUIRED: 'User ID is required',
 		USER_ID_REQUIRED_FOR_HISTORY: 'User ID is required to save game history',
 		FIELD_NAME_REQUIRED: 'Field name is required',
-		AVATAR_ID_OUT_OF_RANGE: 'Avatar ID must be 0 (clear) or between 1 and 16',
+		AVATAR_ID_OUT_OF_RANGE: 'Avatar ID must be 0 (clear) or between 1 and 15',
+		AVATAR_UPLOAD_FILE_TOO_LARGE: 'Avatar image is too large. Maximum size is 2MB.',
+		AVATAR_UPLOAD_INVALID_TYPE: 'Invalid image type. Use JPEG, PNG, or WebP.',
 		SEARCH_QUERY_REQUIRED: 'Search query is required',
 		PROFILE_DATA_REQUIRED: 'Profile data is required',
 		FAILED_TO_RETRIEVE_USER_DATA: 'Failed to retrieve user data',
@@ -248,9 +252,16 @@ export const ERROR_MESSAGES = {
 		QUESTIONS_PER_REQUEST_RANGE: (min: number, max: number, unlimited: number) =>
 			`Questions per request must be between ${min} and ${max}, or ${unlimited} for unlimited mode`,
 		MAX_PLAYERS_RANGE: (min: number, max: number) => `Max players must be between ${min} and ${max}`,
+		LENGTH_TOO_SHORT: (field: string, min: number) =>
+			`${field} must be at least ${min} character${min !== 1 ? 's' : ''} long`,
+		LENGTH_TOO_LONG: (field: string, max: number) => `${field} cannot exceed ${max} characters`,
+		FIELD_REQUIRED: (field: string) => `${field} is required`,
+		VALID_FIELD: (field: string) => `Please enter a valid ${field}`,
 		// Dev-only (hook/context)
 		USE_FORM_FIELD_WITHIN_FORM_FIELD: 'useFormField should be used within <FormField>',
 		USE_FORM_FIELD_WITHIN_FORM_ITEM: 'useFormField should be used within <FormItem>',
+		ENTER_IN_ENGLISH: 'Please enter in English',
+		SPELLING_OR_GRAMMAR_ISSUE: 'Spelling or grammar issue detected. Please write in English.',
 	},
 } as const;
 

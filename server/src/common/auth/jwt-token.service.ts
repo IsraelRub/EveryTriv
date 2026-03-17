@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { COOKIE_NAMES, TIME_PERIODS_MS, UserRole } from '@shared/constants';
-import type { AuthenticationRequest, TokenPair, TokenPayload, TokenValidationResult } from '@shared/types';
-import { getCurrentTimestampInSeconds, getErrorMessage } from '@shared/utils';
+import { UserRole } from '@shared/constants';
+import type { TokenPair } from '@shared/types';
+import { getErrorMessage } from '@shared/utils';
 
 import { AppConfig } from '@config';
 import { serverLogger as logger } from '@internal/services';
+import type { TokenPayload, TokenValidationResult } from '@internal/types';
 import { createServerError } from '@internal/utils';
 
 @Injectable()
@@ -44,7 +45,12 @@ export class JwtTokenService {
 		}
 	}
 
-	async generateRefreshToken(userId: string, email: string, role: UserRole, expiresIn: string = '7d'): Promise<string> {
+	private async generateRefreshToken(
+		userId: string,
+		email: string,
+		role: UserRole,
+		expiresIn: string = '7d'
+	): Promise<string> {
 		try {
 			const payload: TokenPayload = {
 				sub: userId,
@@ -132,72 +138,6 @@ export class JwtTokenService {
 				isValid: false,
 				error: getErrorMessage(error),
 			};
-		}
-	}
-
-	extractTokenFromRequest(request: AuthenticationRequest): string | null {
-		try {
-			// Check Authorization header
-			const authHeader = request.headers?.authorization;
-			if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-				return authHeader.substring(7);
-			}
-
-			// Check cookies for access token
-			const cookieToken = request.cookies?.[COOKIE_NAMES.AUTH_TOKEN];
-			if (cookieToken) {
-				return cookieToken;
-			}
-
-			// Check if token is already extracted by middleware
-			if (request.authToken) {
-				return request.authToken;
-			}
-
-			return null;
-		} catch (error) {
-			logger.securityError('Failed to extract token from request', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			return null;
-		}
-	}
-
-	async getUserFromToken(token: string): Promise<TokenPayload | null> {
-		const result = await this.verifyToken(token);
-		return result.isValid ? (result.payload ?? null) : null;
-	}
-
-	isTokenExpired(token: string): boolean {
-		try {
-			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
-			if (!decoded?.exp) {
-				return true;
-			}
-
-			const currentTime = getCurrentTimestampInSeconds();
-			return decoded.exp < currentTime;
-		} catch (error) {
-			logger.securityError('Failed to check token expiration', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			return true;
-		}
-	}
-
-	getTokenExpiration(token: string): Date | null {
-		try {
-			const decoded: TokenPayload | null = this.jwtService.decode<TokenPayload>(token);
-			if (!decoded?.exp) {
-				return null;
-			}
-
-			return new Date(decoded.exp * TIME_PERIODS_MS.SECOND);
-		} catch (error) {
-			logger.securityError('Failed to get token expiration', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			return null;
 		}
 	}
 }

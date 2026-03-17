@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 
-import type { UserTrendPoint } from '@shared/types';
+import type { DifficultyStats, UserTrendPoint } from '@shared/types';
 
-import type { DifficultyStats, TopicData } from './stats.types';
+import type { TopicData } from './stats.types';
 
 export interface PieChartCenterText {
 	primary: string;
@@ -59,7 +59,7 @@ export interface ChartCardProps {
 	description: string;
 	isLoading?: boolean;
 	data?: unknown[] | null | undefined;
-	children: ReactNode;
+	children: ReactElement | ReactElement[];
 	className?: string;
 }
 

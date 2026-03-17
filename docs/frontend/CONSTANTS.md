@@ -128,13 +128,13 @@ export const GAME_STATE_CONFIG = {
   },
   initialGameModeState: {
     currentMode: GameMode.QUESTION_LIMITED,
-    currentTopic: GAME_STATE_DEFAULTS.TOPIC,
-    currentDifficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
+    currentTopic: DEFAULT_GAME_CONFIG.defaultTopic,
+    currentDifficulty: DEFAULT_GAME_CONFIG.defaultDifficulty,
     currentSettings: {
       mode: GameMode.QUESTION_LIMITED,
-      topic: GAME_STATE_DEFAULTS.TOPIC,
-      difficulty: GAME_STATE_DEFAULTS.DIFFICULTY,
-      maxQuestionsPerGame: GAME_STATE_DEFAULTS.TOTAL_QUESTIONS,
+      topic: DEFAULT_GAME_CONFIG.defaultTopic,
+      difficulty: DEFAULT_GAME_CONFIG.defaultDifficulty,
+      maxQuestionsPerGame: DEFAULT_GAME_CONFIG.maxQuestionsPerGame,
       timeLimit: undefined,
       answerCount: undefined,
     },
@@ -292,7 +292,7 @@ export const STORAGE_KEYS = {
 
 **Usage:**
 ```typescript
-import { STORAGE_KEYS } from '@/constants/infrastructure/storage.constants';
+import { STORAGE_KEYS } from '@/constants';
 
 const token = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
 ```
@@ -555,15 +555,14 @@ export enum VariantBase {
   MINIMAL = 'minimal',
   OUTLINE = 'outline',
   SECONDARY = 'secondary',
-  STATIC = 'static',
 }
 ```
 
-**ButtonVariant Type (VariantBase ללא STATIC):**
+**ButtonVariant Type (alias ל-VariantBase):**
 ```typescript
-export type ButtonVariant = Exclude<VariantBase, VariantBase.STATIC>;
+export type ButtonVariant = VariantBase;
 ```
-בכפתורים משתמשים בערכי `VariantBase` (למשל `VariantBase.DEFAULT`, `VariantBase.MINIMAL`). ב-Badge ובממשקים שמקבלים וריאנט משתמשים ב-`VariantBase` או ב-`ButtonVariant` לפי הצורך.
+בכפתורים וב-Badge משתמשים בערכי `VariantBase` (למשל `VariantBase.DEFAULT`, `VariantBase.MINIMAL`). ממשקים שמקבלים וריאנט כפתור משתמשים ב-`ButtonVariant`.
 
 **CardVariant Enum:**
 GLASS, WHITE, TRANSPARENT, GRAY, SOLID, GRADIENT

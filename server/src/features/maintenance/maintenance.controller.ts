@@ -1,12 +1,12 @@
 import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
 
 import { UserRole } from '@shared/constants';
-import type { TokenPayload } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
+import { CurrentUser, Roles } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
+import type { TokenPayload } from '@internal/types';
 
-import { CurrentUser, Roles } from '../../common';
 import { DataMaintenanceService } from './data-maintenance.service';
 import { UserStatsMaintenanceService } from './user-stats-maintenance.service';
 
@@ -17,7 +17,7 @@ export class MaintenanceController {
 		private readonly dataMaintenanceService: DataMaintenanceService
 	) {}
 
-	// ==================== User Stats Consistency Endpoints ====================
+	// User stats consistency endpoints
 
 	@Get('stats/consistency-check/all')
 	@Roles(UserRole.ADMIN)
@@ -26,7 +26,7 @@ export class MaintenanceController {
 			const result = await this.userStatsMaintenanceService.checkAllUsersConsistency();
 
 			logger.apiRead('maintenance_all_users_consistency_check', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				totalUsers: result.totalUsers,
 				usersWithGames: result.usersWithGames,
@@ -38,7 +38,7 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.analyticsError('Error checking all users consistency', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
@@ -102,7 +102,7 @@ export class MaintenanceController {
 			const result = await this.userStatsMaintenanceService.fixAllInconsistentUsers();
 
 			logger.apiUpdate('maintenance_fix_all_users_consistency', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				fixedCount: result.fixedCount,
 				totalInconsistent: result.totalInconsistent,
@@ -112,14 +112,14 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.analyticsError('Error fixing all users stats consistency', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
 		}
 	}
 
-	// ==================== Data Cleanup Endpoints ====================
+	// Data cleanup endpoints
 
 	@Delete('data/game-history/clear-all')
 	@Roles(UserRole.ADMIN)
@@ -128,7 +128,7 @@ export class MaintenanceController {
 			const result = await this.dataMaintenanceService.clearAllGameHistory();
 
 			logger.apiDelete('maintenance_clear_all_game_history', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				deletedCount: result.deletedCount,
 			});
@@ -141,7 +141,7 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.gameError('Failed to clear all game history', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
@@ -155,7 +155,7 @@ export class MaintenanceController {
 			const result = await this.dataMaintenanceService.clearAllTrivia();
 
 			logger.apiDelete('maintenance_clear_all_trivia', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				deletedCount: result.deletedCount,
 			});
@@ -168,7 +168,7 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.gameError('Failed to clear all trivia', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
@@ -182,7 +182,7 @@ export class MaintenanceController {
 			const result = await this.dataMaintenanceService.clearAllUserStats();
 
 			logger.apiDelete('maintenance_clear_all_user_stats', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				deletedCount: result.deletedCount,
 			});
@@ -195,7 +195,7 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.userError('Failed to clear all user stats', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;
@@ -209,7 +209,7 @@ export class MaintenanceController {
 			const result = await this.dataMaintenanceService.cleanupTestUsers();
 
 			logger.apiUpdate('maintenance_cleanup_test_users', {
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 				deletedUsers: result.deletedUsers,
 				deletedGameHistory: result.deletedGameHistory,
@@ -222,30 +222,7 @@ export class MaintenanceController {
 		} catch (error) {
 			logger.userError('Failed to cleanup test users', {
 				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
-		}
-	}
-
-	@Post('data/achievements/cleanup-obsolete')
-	@Roles(UserRole.ADMIN)
-	async cleanupObsoleteAchievements(@CurrentUser() user: TokenPayload) {
-		try {
-			const result = await this.dataMaintenanceService.cleanupObsoleteAchievements();
-
-			logger.apiUpdate('maintenance_cleanup_obsolete_achievements', {
-				id: user.sub,
-				role: user.role,
-				data: { usersUpdated: result.usersUpdated, totalIdsRemoved: result.totalIdsRemoved },
-			});
-
-			return result;
-		} catch (error) {
-			logger.analyticsError('Failed to cleanup obsolete achievements', {
-				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
+				userId: user.sub,
 				role: user.role,
 			});
 			throw error;

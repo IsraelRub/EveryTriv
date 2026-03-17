@@ -1,10 +1,9 @@
 import type { SortDirection } from '@/constants';
-import type { UsePaginationReturn } from '@/types';
+import type { UsePaginationReturn } from '../core';
 
 export interface UseClientTableStateOptions<T> {
 	data: T[];
 	filterFn?: (item: T) => boolean;
-	/** Set for O(1) membership checks when sorting. */
 	sortFields: ReadonlySet<string>;
 	compare: (a: T, b: T, sortBy: string) => number;
 	initialSortBy: string;

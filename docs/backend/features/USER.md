@@ -142,7 +142,7 @@ async updateProfile(@CurrentUserId() userId: string, @Body(UserDataPipe) body: U
 **Request Body:**
 ```typescript
 {
-  avatarId: number;  // מזהה avatar (1-16)
+  avatarId: number;  // מזהה avatar (1-15)
 }
 ```
 

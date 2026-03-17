@@ -1,5 +1,5 @@
 import { API_ENDPOINTS, GameMode, VALIDATION_COUNT } from '@shared/constants';
-import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
+import type { CreditBalance, CreditPurchaseOption } from '@shared/types';
 import { getErrorMessage, normalizeGameMode } from '@shared/utils';
 
 import { VALIDATION_MESSAGES } from '@/constants';
@@ -28,53 +28,9 @@ class CreditsService {
 		}
 	}
 
-	async canPlay(questionsPerRequest: number, gameMode?: GameMode): Promise<CanPlayResponse> {
-		// Validate questions per request based on game mode (if provided)
-		// If gameMode is not provided, use default validation (1-10)
-		const normalizedGameMode = gameMode ? (this.resolveGameMode(gameMode) ?? gameMode) : undefined;
-
-		if (normalizedGameMode === GameMode.TIME_LIMITED) {
-			// For TIME_LIMITED mode, validate time in seconds (30-300)
-			const { MIN, MAX } = VALIDATION_COUNT.TIME_LIMIT;
-			if (questionsPerRequest < MIN || questionsPerRequest > MAX) {
-				throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(MIN, MAX));
-			}
-		} else {
-			// For other modes or when gameMode is not provided, validate as questions (1-10 or -1 for unlimited)
-			const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
-			if (questionsPerRequest !== UNLIMITED && (questionsPerRequest < MIN || questionsPerRequest > MAX)) {
-				throw new Error(VALIDATION_MESSAGES.LIMIT_RANGE(MIN, MAX));
-			}
-		}
-
-		try {
-			const searchParams = new URLSearchParams();
-			searchParams.append('questionsPerRequest', String(questionsPerRequest));
-			if (normalizedGameMode) {
-				searchParams.append('gameMode', normalizedGameMode);
-			}
-			const query = `?${searchParams.toString()}`;
-
-			const response = await apiService.get<CanPlayResponse>(`${API_ENDPOINTS.CREDITS.CAN_PLAY}${query}`);
-			const result = response.data;
-
-			return {
-				canPlay: result.canPlay,
-				reason: result.reason,
-			};
-		} catch (error) {
-			logger.userError('Failed to check if user can play', {
-				errorInfo: { message: getErrorMessage(error) },
-				questionsPerRequest,
-				gameMode: normalizedGameMode,
-			});
-			throw error;
-		}
-	}
-
 	async deductCredits(questionsPerRequest: number, gameMode: GameMode): Promise<CreditBalance> {
 		// Validate questions per request based on game mode
-		const normalizedGameMode = this.resolveGameMode(gameMode) ?? gameMode;
+		const normalizedGameMode = normalizeGameMode(gameMode) ?? gameMode;
 
 		if (normalizedGameMode === GameMode.TIME_LIMITED) {
 			// For TIME_LIMITED mode, validate time in seconds (30-300)
@@ -104,10 +60,6 @@ class CreditsService {
 			});
 			throw error;
 		}
-	}
-
-	private resolveGameMode(gameMode: GameMode): GameMode | undefined {
-		return normalizeGameMode(gameMode);
 	}
 }
 

@@ -22,13 +22,13 @@ import {
   MESSAGE_FORMATTERS,
   TIME_PERIODS_MS,
 } from "@shared/constants";
-import { AUTH_CONSTANTS } from "@shared/constants";
+import { AUTH_CONSTANTS } from "@internal/constants";
 import { calculateDuration, getErrorMessage, getErrorStack, isNonEmptyString } from "@shared/utils";
 
 import { AppModule } from "./app.module";
 import { AppConfig, validateEnvironmentVariables } from "@config";
 import dataSource from "./config/dataSource";
-import { RedisIoAdapter } from "./internal/modules/redis";
+import { RedisIoAdapter } from "@internal/modules";
 
 // Environment configuration
 const environment = process.env.NODE_ENV || "production";
