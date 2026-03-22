@@ -7,12 +7,7 @@ import { ANIMATION_DELAYS, GameKey, ResultTarget, resultVariants, SPRING_CONFIGS
 import type { QuestionBreakdownProps } from '@/types';
 import { Card } from '@/components';
 
-export const QuestionBreakdown = memo(function QuestionBreakdown({
-	entries,
-	animationDelay = ANIMATION_DELAYS.STAGGER_NORMAL +
-		ANIMATION_DELAYS.SEQUENCE_STEP +
-		ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
-}: QuestionBreakdownProps) {
+export const QuestionBreakdown = memo(function QuestionBreakdown({ entries }: QuestionBreakdownProps) {
 	const { t } = useTranslation();
 
 	if (entries.length === 0) return null;
@@ -21,7 +16,7 @@ export const QuestionBreakdown = memo(function QuestionBreakdown({
 		<motion.div
 			initial={{ opacity: 0, y: 20, scale: 0.95 }}
 			animate={{ opacity: 1, y: 0, scale: 1 }}
-			transition={{ delay: animationDelay, ...SPRING_CONFIGS.GENTLE }}
+			transition={{ delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_TIME, ...SPRING_CONFIGS.GENTLE }}
 			className='text-left'
 		>
 			<h3 className='text-lg font-semibold mb-4'>{t(GameKey.QUESTION_BREAKDOWN)}</h3>

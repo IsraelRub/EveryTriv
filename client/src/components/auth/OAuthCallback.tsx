@@ -14,6 +14,7 @@ import {
 	ButtonSize,
 	Colors,
 	ComponentSize,
+	getRegisterOptionalAvatarSearch,
 	QUERY_KEYS,
 	ROUTES,
 	STORAGE_KEYS,
@@ -59,6 +60,11 @@ export function OAuthCallback() {
 
 				// Handle error in callback
 				if (error) {
+					try {
+						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
+					} catch {
+						// ignore
+					}
 					// Create object for getErrorMessage to handle OAuth errors with description
 					const oauthErrorObj = errorDescription ? { error, error_description: errorDescription } : error;
 					const userMessage = getErrorMessage(oauthErrorObj);
@@ -121,22 +127,44 @@ export function OAuthCallback() {
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
 
-					// Check if user needs to complete profile
+					let oauthFromRegistration = false;
+					try {
+						oauthFromRegistration =
+							sessionStorage.getItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION) === '1';
+						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
+					} catch {
+						// sessionStorage unavailable
+					}
+
 					const needsProfile = !user.firstName;
-					const redirectTo = needsProfile ? ROUTES.COMPLETE_PROFILE : ROUTES.HOME;
 
-					logger.authDebug('Redirecting user', {
-						needsProfile,
-						redirectTo,
-					});
+					logger.authDebug('Redirecting user', { needsProfile });
 
-					// Redirect immediately without showing success screen
-					if (needsProfile) {
+					if (oauthFromRegistration) {
+						if (needsProfile) {
+							try {
+								sessionStorage.setItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE, '1');
+							} catch {
+								// sessionStorage unavailable
+							}
+							navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
+						} else {
+							navigate(
+								{ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() },
+								{ replace: true }
+							);
+						}
+					} else if (needsProfile) {
 						navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
 					} else {
 						navigate(ROUTES.HOME, { replace: true });
 					}
 				} else {
+					try {
+						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
+					} catch {
+						// ignore
+					}
 					// No success flag
 					logger.authError('OAuth callback without success parameter', { params });
 					setErrorMessage(getErrorMessage(OAuthErrorType.NO_TOKEN));
@@ -148,6 +176,11 @@ export function OAuthCallback() {
 					}, TIME_PERIODS_MS.THREE_SECONDS);
 				}
 			} catch (error) {
+				try {
+					sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
+				} catch {
+					// ignore
+				}
 				const message = getErrorMessage(error);
 				logger.authError('Unexpected error in OAuth callback', {
 					errorInfo: { message },

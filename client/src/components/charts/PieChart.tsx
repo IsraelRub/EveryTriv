@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -8,7 +8,29 @@ import { VALIDATORS } from '@shared/validation';
 import { CHART_COLORS, CHART_HEIGHTS, CommonKey, CssColor, OTHERS_LABEL, SkeletonVariant } from '@/constants';
 import type { ChartDataPoint, PieChartProps } from '@/types';
 import { EmptyState, Skeleton } from '@/components';
-import { ChartCard } from './ChartCard';
+
+interface LabelLinePoint {
+	x: number;
+	y: number;
+}
+
+interface LabelLineProps {
+	points: LabelLinePoint[];
+	stroke?: string;
+	fill?: string;
+	index?: number;
+}
+
+function renderLabelLine(props: LabelLineProps): ReactElement {
+	const { points, stroke } = props;
+	const [p0, p1] = points;
+	if (!p0 || !p1) return <path d='M0 0' stroke='none' fill='none' />;
+	const pathD =
+		points.length >= 3 && p1 != null
+			? `M${p0.x},${p0.y} L${p1.x},${p1.y} L${p1.x},${p1.y}`
+			: `M${p0.x},${p0.y} L${p1.x},${p0.y} L${p1.x},${p1.y}`;
+	return <path d={pathD} stroke={stroke} strokeWidth={2} fill='none' />;
+}
 
 export const PieChart = memo(function PieChart({
 	data,
@@ -18,8 +40,6 @@ export const PieChart = memo(function PieChart({
 	maxItems = 10,
 	minPercentage = 1,
 	valueLabel,
-	className,
-	hideCard = false,
 	centerText,
 	emptyStateData,
 }: PieChartProps) {
@@ -65,7 +85,45 @@ export const PieChart = memo(function PieChart({
 	}, [data, maxItems, effectiveMinPercentage]);
 	const total = useMemo(() => sumBy(chartData, item => item.value), [chartData]);
 
-	const chartContent = (
+	const labelLineRenderer = useCallback(
+		(props: LabelLineProps) =>
+			renderLabelLine({
+				...props,
+				stroke: colors[(props.index ?? 0) % colors.length] ?? props.fill ?? props.stroke ?? CssColor.PRIMARY,
+			}),
+		[colors]
+	);
+
+	interface PieLabelProps {
+		name: string;
+		percent: number;
+		index?: number;
+		x?: number;
+		y?: number;
+	}
+
+	const labelRenderer = useCallback(
+		(props: PieLabelProps) => {
+			const sliceColor = colors[(props.index ?? 0) % colors.length];
+			const text = `${props.name}: ${formatNumericValue(calculatePercentage(props.percent, 1), 1, '%')}`;
+			const x = props.x ?? 0;
+			const y = props.y ?? 0;
+			return (
+				<text x={x} y={y} fill={sliceColor} textAnchor='middle' dominantBaseline='central'>
+					{text}
+				</text>
+			);
+		},
+		[colors]
+	);
+
+	if (isLoading) {
+		return <Skeleton variant={SkeletonVariant.Chart} style={{ height: `${height}px` }} />;
+	}
+	if (emptyStateData && !data?.length) {
+		return <EmptyState data={emptyStateData} />;
+	}
+	return (
 		<ResponsiveContainer width='100%' height={height}>
 			<RechartsPieChart>
 				<Pie
@@ -74,8 +132,8 @@ export const PieChart = memo(function PieChart({
 					cy='50%'
 					innerRadius={50}
 					outerRadius={85}
-					labelLine={{ stroke: CssColor.PRIMARY, strokeWidth: 2 }}
-					label={({ name, percent }) => `${name}: ${formatNumericValue(calculatePercentage(percent, 1), 1, '%')}`}
+					labelLine={labelLineRenderer}
+					label={labelRenderer}
 					fill={CssColor.PRIMARY}
 					dataKey='value'
 					stroke='none'
@@ -151,31 +209,5 @@ export const PieChart = memo(function PieChart({
 				)}
 			</RechartsPieChart>
 		</ResponsiveContainer>
-	);
-
-	if (hideCard) {
-		if (isLoading) {
-			return <Skeleton variant={SkeletonVariant.Chart} className={className} style={{ height: `${height}px` }} />;
-		}
-		if (emptyStateData && (!data || data.length === 0)) {
-			return (
-				<div className={className}>
-					<EmptyState data={emptyStateData} />
-				</div>
-			);
-		}
-		return <div className={className}>{chartContent}</div>;
-	}
-
-	return (
-		<ChartCard
-			title={t(CommonKey.DISTRIBUTION)}
-			description={t(CommonKey.BREAKDOWN_BY_CATEGORIES)}
-			isLoading={isLoading}
-			data={data}
-			className={className}
-		>
-			{chartContent}
-		</ChartCard>
 	);
 });

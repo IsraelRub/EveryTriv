@@ -105,7 +105,8 @@ class GameHistoryService {
 		gameId: string,
 		topic: string,
 		difficulty: GameDifficulty,
-		gameMode: GameMode
+		gameMode: GameMode,
+		outputLanguage?: Locale
 	): Promise<GameSessionStartResponse> {
 		try {
 			const response = await apiService.post<GameSessionStartResponse>(API_ENDPOINTS.GAME.SESSION_START, {
@@ -113,6 +114,7 @@ class GameHistoryService {
 				topic,
 				difficulty,
 				gameMode,
+				...(outputLanguage !== undefined && { outputLanguage }),
 			});
 			return response.data;
 		} catch (error) {

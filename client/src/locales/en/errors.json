@@ -17,6 +17,7 @@
 	"PAYMENT_PROCESSING_FAILED": "Payment could not be processed. Please try again.",
 	"FAILED_TO_PURCHASE_CREDITS": "Failed to purchase credits. Please try again.",
 	"enterInEnglish": "Please enter in English",
+	"enterInHebrew": "Please enter in Hebrew",
 	"spellingOrGrammarIssue": "Spelling or grammar issue detected. Please write in English.",
 	"inputValidationFailed": "Validation failed. Please check your input.",
 	"invalidInputData": "Invalid input data. Please check your information and try again.",

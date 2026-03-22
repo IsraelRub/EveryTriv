@@ -35,8 +35,8 @@ export interface AvatarSelectorProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	currentAvatarId: number | undefined;
-
 	currentAvatarUrl?: string | null;
+	onAvatarSaved?: () => void;
 }
 
 export interface ProfileEditDialogProps {

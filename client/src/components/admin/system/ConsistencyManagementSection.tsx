@@ -24,11 +24,13 @@ import {
 } from '@/types';
 import { cn } from '@/utils';
 import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
 	AlertIcon,
 	Badge,
 	Button,
-	CardDescription,
-	CardTitle,
 	DataTableCard,
 	SectionCard,
 	Skeleton,
@@ -196,25 +198,34 @@ export function ConsistencyManagementSection() {
 
 			{/* Inconsistent Users Table */}
 			{allConsistency && allConsistency.inconsistentUsers > 0 && (
-				<DataTableCard<ConsistencyResultRow>
-					header={{
-						title: (
-							<CardTitle className='flex items-center gap-2'>
-								<AlertIcon size={AlertIconSize.LG} className='text-destructive' />
+				<Accordion type='multiple' defaultValue={['inconsistent-users']} className='w-full rounded-lg border bg-card'>
+					<AccordionItem value='inconsistent-users'>
+						<AccordionTrigger className='px-4'>
+							<span className='flex items-center gap-2'>
+								<AlertIcon size={AlertIconSize.LG} className='shrink-0 text-destructive' />
 								{t(AdminKey.INCONSISTENT_USERS_HEADER)} ({allConsistency.inconsistentUsers})
-							</CardTitle>
-						),
-						description: <CardDescription>{t(AdminKey.USERS_WITH_INCONSISTENCIES_DESC)}</CardDescription>,
-						pagination: null,
-					}}
-					columns={consistencyColumns}
-					data={inconsistentRows}
-					getRowKey={row => row.userId}
-					emptyState={{
-						title: t(AdminKey.NO_INCONSISTENT_USERS_TITLE),
-						description: t(AdminKey.NO_INCONSISTENT_USERS_DESCRIPTION),
-					}}
-				/>
+							</span>
+						</AccordionTrigger>
+						<AccordionContent className='px-4 pb-4'>
+							<p className='mb-4 text-sm text-muted-foreground'>{t(AdminKey.USERS_WITH_INCONSISTENCIES_DESC)}</p>
+							<DataTableCard<ConsistencyResultRow>
+								hideHeader
+								header={{
+									title: '',
+									description: null,
+									pagination: null,
+								}}
+								columns={consistencyColumns}
+								data={inconsistentRows}
+								getRowKey={row => row.userId}
+								emptyState={{
+									title: t(AdminKey.NO_INCONSISTENT_USERS_TITLE),
+									description: t(AdminKey.NO_INCONSISTENT_USERS_DESCRIPTION),
+								}}
+							/>
+						</AccordionContent>
+					</AccordionItem>
+				</Accordion>
 			)}
 
 			{/* User Details Card */}

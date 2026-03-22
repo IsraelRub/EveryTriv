@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { CustomDifficultyPipe, TriviaRequestPipe } from '@common/pipes';
+import { CustomDifficultyPipe, StartGameSessionPipe, TriviaRequestPipe } from '@common/pipes';
 import { ValidationModule } from '@common/validation';
 import { GameHistoryEntity, TriviaEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
@@ -25,7 +25,7 @@ import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.ser
 		ValidationModule,
 	],
 	controllers: [GameController, AiProvidersController],
-	providers: [GameService, TriviaGenerationService, CustomDifficultyPipe, TriviaRequestPipe],
+	providers: [GameService, TriviaGenerationService, CustomDifficultyPipe, TriviaRequestPipe, StartGameSessionPipe],
 	exports: [GameService],
 })
 export class GameModule {}

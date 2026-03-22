@@ -11,10 +11,12 @@ import {
 import { Server } from 'socket.io';
 
 import {
+	DEFAULT_LANGUAGE,
 	ErrorCode,
 	GameMode,
 	HttpMethod,
 	LOCALHOST_CONFIG,
+	Locale,
 	MULTIPLAYER_TIME_PER_QUESTION,
 	MultiplayerEvent,
 	PlayerStatus,
@@ -24,9 +26,10 @@ import {
 } from '@shared/constants';
 import type { GameEvent, GameEventDataMap, GameEventType, MultiplayerRoom } from '@shared/types';
 import { getErrorCode, getErrorMessage } from '@shared/utils';
-import { toDifficultyLevel } from '@shared/validation';
+import { isLocale, toDifficultyLevel } from '@shared/validation';
 
 import { WsCurrentUserId } from '@common/decorators';
+import { GameTextLanguageGateService } from '@common/validation';
 import { WsAuthGuard } from '@common/guards';
 import { serverLogger as logger } from '@internal/services';
 import type { TypedSocket } from '@internal/types';
@@ -58,7 +61,8 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 		private readonly multiplayerService: MultiplayerService,
 		private readonly questionScheduler: QuestionSchedulerService,
 		private readonly gameService: GameService,
-		private readonly roomService: RoomService
+		private readonly roomService: RoomService,
+		private readonly gameTextLanguageGate: GameTextLanguageGateService
 	) {}
 
 	private createGameEvent<T extends GameEventType>(type: T, roomId: string, data: GameEventDataMap[T]): GameEvent {
@@ -143,6 +147,10 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			if (!userId) {
 				throw new Error(ErrorCode.USER_NOT_AUTHENTICATED);
 			}
+
+			const outputLanguage: Locale =
+				data.outputLanguage != null && isLocale(data.outputLanguage) ? data.outputLanguage : DEFAULT_LANGUAGE;
+			await this.gameTextLanguageGate.assertTriviaGameInputValid(data.topic, data.difficulty, outputLanguage);
 
 			const { room, code } = await this.multiplayerService.createRoom(userId, {
 				topic: data.topic,

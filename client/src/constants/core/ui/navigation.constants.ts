@@ -35,6 +35,14 @@ export const ROUTES = {
 	UNAUTHORIZED: '/unauthorized',
 } as const;
 
+/** Query on `/register` when the user may pick an optional avatar after sign-up (authenticated). */
+export const REGISTER_POST_STEP_QUERY_KEY = 'postStep';
+export const REGISTER_POST_STEP_AVATAR = 'avatar';
+
+export function getRegisterOptionalAvatarSearch(): string {
+	return `?${REGISTER_POST_STEP_QUERY_KEY}=${REGISTER_POST_STEP_AVATAR}`;
+}
+
 const MAIN_NAV_LINKS = [
 	{ labelKey: NavKey.START_GAME, path: ROUTES.GAME },
 	{ labelKey: NavKey.STATISTICS, path: ROUTES.STATISTICS },

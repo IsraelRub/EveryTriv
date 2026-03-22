@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Copy, Crown, Grid2x2Check, Grid2x2Plus, Info, Play } from 'lucide-react';
+import { ArrowLeft, CreditCard, Crown, Grid2x2Check, Grid2x2Plus, Info, Play } from 'lucide-react';
 
 import {
 	DEFAULT_GAME_CONFIG,
@@ -10,11 +10,12 @@ import {
 	GameMode,
 	PlayerStatus,
 	RoomStatus,
+	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { CreateRoomConfig } from '@shared/types';
-import { formatTitle, getDisplayNameFromUserFields } from '@shared/utils';
+import { formatTitle, getDisplayNameFromUserFields, getErrorMessage } from '@shared/utils';
 
 import {
 	AlertVariant,
@@ -35,6 +36,7 @@ import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
+	AnimatedCopyFeedbackIcon,
 	Badge,
 	Button,
 	Card,
@@ -52,7 +54,8 @@ import {
 } from '@/components';
 import { GameSettingsForm } from '@/components/game';
 import { TabsBar } from '@/components/layout';
-import { useCanPlay, useGameSettingsForm, useMultiplayer, useUserRole } from '@/hooks';
+import { useAppSelector, useCanPlay, useGameSettingsForm, useMultiplayer, useUserRole } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 
 const ROOM_STATUS_KEYS: Record<RoomStatus, string> = {
 	[RoomStatus.WAITING]: GameKey.ROOM_STATUS_WAITING,
@@ -65,6 +68,7 @@ const ROOM_STATUS_KEYS: Record<RoomStatus, string> = {
 export function MultiplayerLobbyView() {
 	const { t } = useTranslation(['game', 'loading']);
 	const navigate = useNavigate();
+	const outputLanguage = useAppSelector(selectLocale);
 
 	// Shared game settings form state & validation
 	const {
@@ -117,6 +121,7 @@ export function MultiplayerLobbyView() {
 	const canHostAffordGame = isAdmin || (playerCount < VALIDATION_COUNT.PLAYERS.MIN ? true : hostCanPlay);
 
 	const [joinRoomId, setJoinRoomId] = useState('');
+	const [roomCodeCopied, setRoomCodeCopied] = useState(false);
 
 	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
 		topic: DEFAULT_GAME_CONFIG.defaultTopic,
@@ -124,6 +129,21 @@ export function MultiplayerLobbyView() {
 		questionsPerRequest: GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.maxQuestionsPerGame ?? 10,
 		maxPlayers: VALIDATION_COUNT.PLAYERS.DEFAULT,
 	});
+
+	const createRoomHostCreditPreview = useMemo(() => {
+		const questions = gameSettings.questionsPerRequest;
+		const maxPlayers = gameSettings.maxPlayers;
+		const minPlayers = VALIDATION_COUNT.PLAYERS.MIN;
+		return {
+			questions,
+			minPlayers,
+			maxPlayers,
+			minTotal: questions * minPlayers,
+			maxTotal: questions * maxPlayers,
+			minPerQuestion: minPlayers,
+			maxPerQuestion: maxPlayers,
+		};
+	}, [gameSettings.questionsPerRequest, gameSettings.maxPlayers]);
 
 	const handleCreateRoom = async () => {
 		const { isValid, finalDifficulty } = validateSettings();
@@ -135,6 +155,7 @@ export function MultiplayerLobbyView() {
 			topic: topic.trim() || DEFAULT_GAME_CONFIG.defaultTopic,
 			difficulty: finalDifficulty,
 			answerCount,
+			outputLanguage,
 		});
 	};
 
@@ -147,12 +168,23 @@ export function MultiplayerLobbyView() {
 		await joinRoom(trimmed);
 	};
 
-	const copyRoomCode = () => {
-		if (roomCode) {
-			navigator.clipboard.writeText(roomCode);
+	const copyRoomCode = async () => {
+		if (!roomCode) return;
+		try {
+			await navigator.clipboard.writeText(roomCode);
+			setRoomCodeCopied(true);
+			setTimeout(() => setRoomCodeCopied(false), TIME_PERIODS_MS.TWO_SECONDS);
 			logger.userSuccess('Room code copied to clipboard', { roomCode });
+		} catch (error) {
+			logger.userError('Failed to copy room code', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
 		}
 	};
+
+	useEffect(() => {
+		setRoomCodeCopied(false);
+	}, [roomCode]);
 
 	useEffect(() => {
 		if (error) {
@@ -191,27 +223,37 @@ export function MultiplayerLobbyView() {
 		return (
 			<main className='view-main animate-fade-in-up-simple'>
 				<div className='view-content-2xl-scroll'>
-					<div className='flex-shrink-0 mb-4'>
-						<ExitGameButton
-							variant={ExitGameButtonVariant.ROOM}
-							onConfirm={leaveRoom}
-							size={ButtonSize.LG}
-							disabled={isLoading}
-						/>
-					</div>
-					<div className='text-center flex-shrink-0'>
-						<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>{t(GameKey.MULTIPLAYER_LOBBY)}</h1>
-						{roomCode && (
-							<div className='flex items-center justify-center gap-2'>
-								<span className='text-muted-foreground'>{t(GameKey.ROOM_CODE)}</span>
-								<Badge variant={VariantBase.OUTLINE} className='text-lg font-mono px-3 py-1'>
-									{roomCode}
-								</Badge>
-								<Button variant={VariantBase.MINIMAL} size={ButtonSize.ICON_LG} onClick={copyRoomCode}>
-									<Copy className='h-4 w-4' />
-								</Button>
+					<div className='flex-shrink-0 space-y-3 text-center md:space-y-4'>
+						<h1 className='mb-1 text-2xl font-bold md:mb-2 md:text-3xl'>{t(GameKey.MULTIPLAYER_LOBBY)}</h1>
+						<div className='flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6 sm:gap-y-3'>
+							{roomCode ? (
+								<div className='flex flex-col items-center gap-2'>
+									<span className='text-sm text-muted-foreground'>{t(GameKey.ROOM_CODE)}</span>
+									<div className='flex max-w-full items-stretch overflow-hidden rounded-lg border border-border bg-card shadow-sm'>
+										<span className='flex min-h-10 min-w-0 flex-1 items-center px-4 py-2 font-mono text-lg tracking-wide text-foreground'>
+											{roomCode}
+										</span>
+										<Button
+											type='button'
+											variant={VariantBase.DEFAULT}
+											size={ButtonSize.ICON_LG}
+											onClick={copyRoomCode}
+											className='h-auto min-h-10 w-11 shrink-0 rounded-none rounded-r-lg border-l border-primary-foreground/15'
+										>
+											<AnimatedCopyFeedbackIcon success={roomCodeCopied} variant='onPrimary' />
+										</Button>
+									</div>
+								</div>
+							) : null}
+							<div className='flex w-full justify-center sm:w-auto sm:shrink-0'>
+								<ExitGameButton
+									variant={ExitGameButtonVariant.ROOM}
+									onConfirm={leaveRoom}
+									size={ButtonSize.LG}
+									disabled={isLoading}
+								/>
 							</div>
-						)}
+						</div>
 					</div>
 
 					{error && (
@@ -351,17 +393,7 @@ export function MultiplayerLobbyView() {
 	return (
 		<main className='view-main animate-fade-in-up-simple'>
 			<div className='view-content-2xl-scroll'>
-				<div className='flex-shrink-0 mb-4 flex justify-center'>
-					<Button
-						variant={VariantBase.OUTLINE}
-						size={ButtonSize.LG}
-						onClick={() => navigate(ROUTES.GAME, { replace: true })}
-					>
-						<ArrowLeft className='h-4 w-4 me-2 rtl:scale-x-[-1]' />
-						{t(GameKey.BACK_TO_GAME_TYPE)}
-					</Button>
-				</div>
-				<div className='text-center flex-shrink-0'>
+				<div className='text-center flex-shrink-0 mb-4'>
 					<h1 className='text-2xl md:text-3xl font-bold mb-1 md:mb-2'>{t(GameKey.MULTIPLAYER)}</h1>
 					<p className='text-sm md:text-base text-muted-foreground'>{t(GameKey.MULTIPLAYER_SUBTITLE)}</p>
 				</div>
@@ -373,13 +405,26 @@ export function MultiplayerLobbyView() {
 				)}
 
 				<Tabs defaultValue='create' className='w-full'>
-					<TabsBar
-						items={[
-							{ value: 'create', label: t(GameKey.CREATE_ROOM) },
-							{ value: 'join', label: t(GameKey.JOIN_ROOM) },
-						]}
-						variant={TabsListVariant.COMPACT}
-					/>
+					<div className='mb-6 flex w-full min-w-0 flex-row items-center gap-4'>
+						<Button
+							variant={VariantBase.OUTLINE}
+							size={ButtonSize.LG}
+							className='shrink-0'
+							onClick={() => navigate(ROUTES.GAME, { replace: true })}
+						>
+							<ArrowLeft className='me-2 h-4 w-4 rtl:scale-x-[-1]' />
+							{t(GameKey.BACK_TO_GAME_TYPE)}
+						</Button>
+						<div className='min-w-0 flex-1'>
+							<TabsBar
+								items={[
+									{ value: 'create', label: t(GameKey.CREATE_ROOM) },
+									{ value: 'join', label: t(GameKey.JOIN_ROOM) },
+								]}
+								variant={TabsListVariant.COMPACT}
+							/>
+						</div>
+					</div>
 
 					<TabsContent value='create' className='mt-6'>
 						<Card>
@@ -388,6 +433,32 @@ export function MultiplayerLobbyView() {
 									<Grid2x2Plus className='h-5 w-5 text-primary' />
 									{t(GameKey.CREATE_NEW_ROOM)}
 								</CardTitle>
+								{!isAdmin && (
+									<Card className='border border-border bg-muted/50 p-3'>
+										<div className='mb-2 flex items-center gap-2 text-sm font-medium text-foreground'>
+											<CreditCard className='h-4 w-4 shrink-0 text-muted-foreground' />
+											<span>{t(GameKey.CREDIT_COST)}</span>
+										</div>
+										<p className='text-xs leading-relaxed text-muted-foreground'>
+											{t(GameKey.MULTIPLAYER_CREATE_HOST_CHARGE_LEAD)}
+										</p>
+										<p className='mt-2 text-xs font-medium leading-relaxed text-foreground'>
+											{t(GameKey.MULTIPLAYER_CREATE_HOST_CHARGE_TOTALS, {
+												questions: createRoomHostCreditPreview.questions,
+												minTotal: createRoomHostCreditPreview.minTotal,
+												maxTotal: createRoomHostCreditPreview.maxTotal,
+												minPlayers: createRoomHostCreditPreview.minPlayers,
+												maxPlayers: createRoomHostCreditPreview.maxPlayers,
+											})}
+										</p>
+										<p className='mt-1 text-xs leading-relaxed text-muted-foreground'>
+											{t(GameKey.MULTIPLAYER_CREATE_HOST_CHARGE_PER_QUESTION, {
+												minPerQuestion: createRoomHostCreditPreview.minPerQuestion,
+												maxPerQuestion: createRoomHostCreditPreview.maxPerQuestion,
+											})}
+										</p>
+									</Card>
+								)}
 								<CardDescription>{t(GameKey.SET_UP_GAME_ROOM)}</CardDescription>
 							</CardHeader>
 							<CardContent className='space-y-6'>
@@ -451,7 +522,7 @@ export function MultiplayerLobbyView() {
 							</CardHeader>
 							<CardContent className='space-y-4'>
 								<div className='space-y-2'>
-									<Label htmlFor='roomCode'>{t(GameKey.ROOM_CODE_LABEL)}</Label>
+									<Label>{t(GameKey.ROOM_CODE_LABEL)}</Label>
 									<Input
 										id='roomCode'
 										value={joinRoomId}

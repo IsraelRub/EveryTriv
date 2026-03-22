@@ -34,6 +34,7 @@ export interface StatsSectionCardProps {
 	gridCols?: string;
 	isLoading?: boolean;
 	className?: string;
+	layout?: 'section' | 'plain';
 }
 
 export enum AdminGameStatFormat {

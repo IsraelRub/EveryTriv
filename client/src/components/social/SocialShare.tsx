@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Check, Copy, Hash, Share2 } from 'lucide-react';
+import { Hash, Share2 } from 'lucide-react';
 
 import { APP_NAME, TIME_PERIODS_MS } from '@shared/constants';
 import { calculatePercentage, formatTitle, getErrorMessage, isSocialSharePlatform } from '@shared/utils';
@@ -19,7 +19,15 @@ import {
 import type { SocialShareProps } from '@/types';
 import { clientLogger as logger } from '@/services';
 import { cn, getDifficultyDisplayLabel } from '@/utils';
-import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components';
+import {
+	AnimatedCopyFeedbackIcon,
+	Button,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components';
 
 export function SocialShare({ score, total, topic, difficulty, mode, shareText: shareTextOverride }: SocialShareProps) {
 	const { t } = useTranslation(['social', 'game']);
@@ -50,7 +58,6 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 		const originalPlatform = SOCIAL_DATA.find(p => p.name === platform.name);
 		return {
 			...platform,
-			nameKey: originalPlatform?.nameKey,
 			url: platform.getShareUrl(scoreText, shareUrl),
 			color: platform.shareColor,
 			Icon: originalPlatform?.icon ?? Share2,
@@ -127,18 +134,13 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 					</div>
 
 					{/* Copy Link - Moved up for better UX */}
-					<Button variant={VariantBase.SECONDARY} className='w-full mb-4' onClick={handleCopyLink}>
-						{copied ? (
-							<>
-								<Check className={cn('w-4 h-4 mr-2', Colors.GREEN_500.text)} />
-								{t(SocialKey.COPIED)}
-							</>
-						) : (
-							<>
-								<Copy className='w-4 h-4 mr-2' />
-								{t(SocialKey.COPY_TO_CLIPBOARD)}
-							</>
-						)}
+					<Button
+						variant={VariantBase.SECONDARY}
+						className='mb-4 flex w-full items-center justify-center gap-2'
+						onClick={handleCopyLink}
+					>
+						<AnimatedCopyFeedbackIcon success={copied} />
+						{copied ? t(SocialKey.COPIED) : t(SocialKey.COPY_TO_CLIPBOARD)}
 					</Button>
 
 					{/* Social Platforms */}
@@ -147,7 +149,6 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 						<div className='grid grid-cols-2 gap-2'>
 							{socialPlatforms.map((platform, index) => {
 								const Icon = platform.Icon;
-								const platformLabel = platform.nameKey ? t(`social:${platform.nameKey}`) : platform.name;
 								return (
 									<motion.div
 										key={platform.name}
@@ -158,10 +159,10 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 										<Button
 											variant={VariantBase.OUTLINE}
 											className={cn('w-full text-white border-0', platform.color)}
-											onClick={() => handleShare(platform.url, platformLabel)}
+											onClick={() => handleShare(platform.url, platform.name)}
 										>
 											<Icon className='w-4 h-4 mr-2' />
-											{platformLabel}
+											{platform.name}
 										</Button>
 									</motion.div>
 								);

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, CopyCheck, Star, Tag, Trophy } from 'lucide-react';
+import { Clock, CopyCheck, Star, CircleStar, Tag, Trophy } from 'lucide-react';
 
-import { DEFAULT_GAME_CONFIG, TIME_PERIODS_MS } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG } from '@shared/constants';
 import { calculatePercentage, calculateScoreRate, formatTitle, getErrorMessage, namesMatch } from '@shared/utils';
 
 import {
 	ANIMATION_CONFIG,
 	ANIMATION_DELAYS,
+	SINGLE_SUMMARY_STAR_SEQUENCE_MS,
 	AudioKey,
 	Colors,
 	GameKey,
@@ -93,9 +94,11 @@ export function SingleSummaryView() {
 	// Use a ref that tracks the last finalized game state to detect new games
 	const lastFinalizedGameRef = useRef<{ score: number; gameQuestionCount: number } | null>(null);
 
-	const starsContainerDelayMs = ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER * 1000;
-	const delayBeforeFirstStarMs = TIME_PERIODS_MS.SECOND + TIME_PERIODS_MS.TWO_HUNDRED_MILLISECONDS; // 1.2s after container
-	const delayBetweenStarsMs = TIME_PERIODS_MS.SECOND; // 1s between each star
+	const {
+		CONTAINER_DELAY_MS: starsContainerDelayMs,
+		BEFORE_FIRST_STAR_MS: delayBeforeFirstStarMs,
+		BETWEEN_STARS_MS: delayBetweenStarsMs,
+	} = SINGLE_SUMMARY_STAR_SEQUENCE_MS;
 
 	// Animate stars appearing one by one: after page/container visible, then first star, then second, then third
 	useEffect(() => {
@@ -215,8 +218,7 @@ export function SingleSummaryView() {
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							transition={{
-								delay:
-									ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_LARGE,
+								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_HEADER_TAIL,
 							}}
 							className='text-muted-foreground'
 						>
@@ -227,7 +229,7 @@ export function SingleSummaryView() {
 								initial={{ opacity: 0, scale: 0.9, y: 10 }}
 								animate={{ opacity: 1, scale: 1, y: 0 }}
 								transition={{
-									delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_LARGE,
+									delay: ANIMATION_DELAYS.SINGLE_SUMMARY_HEADER_TAIL,
 									...SPRING_CONFIGS.BOUNCY,
 								}}
 								className='mt-4'
@@ -252,20 +254,33 @@ export function SingleSummaryView() {
 						}}
 					>
 						<div className='flex justify-center items-center gap-4 mb-4'>
-							{[0, 1, 2].map(index => (
-								<motion.div
-									key={index}
-									initial={{ opacity: 0, scale: 0 }}
-									animate={index < visibleStars ? { opacity: 1, scale: 1 } : { opacity: 0.3, scale: 0.5 }}
-									transition={SPRING_CONFIGS.ICON_SPRING}
-								>
-									<Star
-										className={cn('w-16 h-16', index < visibleStars ? Colors.YELLOW_500.text : Colors.GRAY_400.text)}
-										fill='currentColor'
-										strokeWidth={0}
-									/>
-								</motion.div>
-							))}
+							{[0, 1, 2].map(index => {
+								const isEarnedSlot = index < starsCount;
+								const isLit = isEarnedSlot && index < visibleStars;
+
+								return (
+									<motion.div
+										key={`${index}-${isLit}`}
+										initial={isLit ? { opacity: 1, scale: 1 } : false}
+										animate={isLit ? { opacity: 1, scale: [1, 1.5, 1] } : { opacity: 0.35, scale: 1 }}
+										transition={
+											isLit
+												? {
+														duration: 0.55,
+														times: [0, 0.32, 1],
+														ease: ['easeOut', 'easeInOut'],
+													}
+												: { duration: 0.2 }
+										}
+									>
+										<Star
+											className={cn('w-16 h-16', isLit ? Colors.YELLOW_500.text : Colors.GRAY_400.text)}
+											fill='currentColor'
+											strokeWidth={0}
+										/>
+									</motion.div>
+								);
+							})}
 						</div>
 						<div className='text-2xl text-muted-foreground mt-2'>
 							{gameStats.percentage}% {t(GameKey.PERCENT_CORRECT)}
@@ -274,49 +289,41 @@ export function SingleSummaryView() {
 
 					{/* Stats Grid */}
 					<div className='grid grid-cols-3 gap-6'>
-						<motion.div
-							initial={{ opacity: 0, y: 20, scale: 0.9 }}
-							animate={{ opacity: 1, y: 0, scale: 1 }}
-							transition={{
+						{[
+							{
 								delay: ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
-								...SPRING_CONFIGS.GENTLE,
-							}}
-							className='space-y-2'
-						>
-							<Trophy className={cn('w-8 h-8 mx-auto', Colors.YELLOW_500.text)} />
-							<div className='text-3xl font-bold text-primary'>{animatedScore.toLocaleString()}</div>
-							<div className='text-sm text-muted-foreground'>{t(GameKey.TOTAL_SCORE)}</div>
-						</motion.div>
-
-						<motion.div
-							initial={{ opacity: 0, y: 20, scale: 0.9 }}
-							animate={{ opacity: 1, y: 0, scale: 1 }}
-							transition={{
-								delay: ANIMATION_DELAYS.SEQUENCE_STEP + ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
-								...SPRING_CONFIGS.GENTLE,
-							}}
-							className='space-y-2'
-						>
-							<CopyCheck className='w-8 h-8 text-primary mx-auto' />
-							<div className='text-3xl font-bold text-primary'>
-								{animatedCorrect}/{gameStats.total}
-							</div>
-							<div className='text-sm text-muted-foreground'>{t(GameKey.CORRECT_ANSWERS)}</div>
-						</motion.div>
-
-						<motion.div
-							initial={{ opacity: 0, y: 20, scale: 0.9 }}
-							animate={{ opacity: 1, y: 0, scale: 1 }}
-							transition={{
-								delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM + ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
-								...SPRING_CONFIGS.GENTLE,
-							}}
-							className='space-y-2'
-						>
-							<Clock className='w-8 h-8 text-primary mx-auto' />
-							<div className='text-3xl font-bold text-primary'>{gameStats.time}</div>
-							<div className='text-sm text-muted-foreground'>{t(GameKey.TIME_TAKEN)}</div>
-						</motion.div>
+								Icon: CircleStar,
+								value: animatedScore.toLocaleString(),
+								labelKey: GameKey.TOTAL_SCORE,
+							},
+							{
+								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_CORRECT,
+								Icon: CopyCheck,
+								value: `${animatedCorrect}/${gameStats.total}`,
+								labelKey: GameKey.CORRECT_ANSWERS,
+							},
+							{
+								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_TIME,
+								Icon: Clock,
+								value: gameStats.time,
+								labelKey: GameKey.TIME_TAKEN,
+							},
+						].map(({ delay, Icon, value, labelKey }) => (
+							<motion.div
+								key={labelKey}
+								initial={{ opacity: 0, y: 20, scale: 0.9 }}
+								animate={{ opacity: 1, y: 0, scale: 1 }}
+								transition={{
+									delay,
+									...SPRING_CONFIGS.GENTLE,
+								}}
+								className='space-y-2'
+							>
+								<Icon className='w-8 h-8 text-primary mx-auto' />
+								<div className='text-3xl font-bold text-primary'>{value}</div>
+								<div className='text-sm text-muted-foreground'>{t(labelKey)}</div>
+							</motion.div>
+						))}
 					</div>
 
 					{/* Questions Breakdown */}
@@ -327,10 +334,7 @@ export function SingleSummaryView() {
 						initial={{ opacity: 0, scale: 0.9, y: 10 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						transition={{
-							delay:
-								ANIMATION_DELAYS.SEQUENCE_MEDIUM +
-								ANIMATION_DELAYS.SEQUENCE_STEP +
-								ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
+							delay: ANIMATION_DELAYS.SINGLE_SUMMARY_ACTION_BUTTONS,
 							...SPRING_CONFIGS.GENTLE,
 						}}
 					>

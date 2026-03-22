@@ -11,12 +11,13 @@ import {
 	Post,
 } from '@nestjs/common';
 
-import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG } from '@shared/constants';
+import { API_ENDPOINTS, DEFAULT_LANGUAGE, ErrorCode, LOCALHOST_CONFIG, Locale } from '@shared/constants';
 import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-import { isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
+import { isLocale, isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { CurrentUserId, Public } from '@common/decorators';
+import { GameTextLanguageGateService } from '@common/validation';
 import { serverLogger as logger } from '@internal/services';
 import type {
 	LeaveRoomHttpResponse,
@@ -35,7 +36,8 @@ export class MultiplayerController {
 
 	constructor(
 		private readonly multiplayerService: MultiplayerService,
-		private readonly roomService: RoomService
+		private readonly roomService: RoomService,
+		private readonly gameTextLanguageGate: GameTextLanguageGateService
 	) {}
 
 	@Get()
@@ -63,6 +65,10 @@ export class MultiplayerController {
 		this.ensureAuthenticated(userId);
 
 		try {
+			const outputLanguage: Locale =
+				body.outputLanguage != null && isLocale(body.outputLanguage) ? body.outputLanguage : DEFAULT_LANGUAGE;
+			await this.gameTextLanguageGate.assertTriviaGameInputValid(body.topic, body.difficulty, outputLanguage);
+
 			const config: RoomConfig = {
 				topic: body.topic,
 				difficulty: body.difficulty,

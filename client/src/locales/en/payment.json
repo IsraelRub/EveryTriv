@@ -31,5 +31,6 @@
 	"payAmount": "Pay {{amount}}",
 	"paypalSdkFailed": "Failed to load PayPal SDK. Please check your internet connection and try again.",
 	"creditsAddedToAccountShort": "Credits have been added to your account.",
-	"addCredits": "ADD"
+	"addCredits": "ADD",
+	"grantedCreditsRefillHint": "Refill to {{cap}} credits by {{dateTime}}"
 }

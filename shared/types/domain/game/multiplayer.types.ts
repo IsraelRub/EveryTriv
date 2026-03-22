@@ -1,5 +1,5 @@
 // Multiplayer game types for EveryTriv.
-import { DifficultyLevel, MultiplayerEvent, PlayerStatus, QuestionState, RoomStatus } from '@shared/constants';
+import { DifficultyLevel, Locale, MultiplayerEvent, PlayerStatus, QuestionState, RoomStatus } from '@shared/constants';
 
 import type { CountRecord } from '../../core/data.types';
 import type { BaseTriviaConfig, TriviaQuestion } from './trivia.types';
@@ -27,6 +27,8 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	maxPlayers: number;
 	answerCount?: number;
+	/** Sent to server for LanguageTool alignment with UI language */
+	outputLanguage?: Locale;
 }
 
 export interface RoomConfig extends CreateRoomConfig {

@@ -13,7 +13,7 @@ import {
 } from '@shared/constants';
 import type { LanguageValidationResult } from '@shared/types';
 import { delay, getErrorMessage, isNonEmptyString } from '@shared/utils';
-import { isPredominantlyHebrewText, matchesLocaleText, VALIDATORS } from '@shared/validation';
+import { matchesLocaleText, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import type { LanguageToolCheckOptions, LanguageToolResponse } from '@internal/types';
@@ -37,7 +37,6 @@ export class LanguageToolService {
 	private readonly maxRetries: number;
 	private isAvailableCache: boolean | null = null;
 	private availabilityCheckTime: number = 0;
-	private readonly availabilityCacheTTL = TIME_PERIODS_MS.FIVE_MINUTES;
 
 	constructor() {
 		this.baseUrl = LANGUAGE_TOOL_CONSTANTS.BASE_URL;
@@ -45,11 +44,24 @@ export class LanguageToolService {
 		this.maxRetries = LANGUAGE_TOOL_CONSTANTS.MAX_RETRIES;
 	}
 
+	private getAvailabilityCacheTtl(isAvailable: boolean): number {
+		return isAvailable
+			? LANGUAGE_TOOL_CONSTANTS.AVAILABILITY_CACHE_TTL_MS.SUCCESS
+			: LANGUAGE_TOOL_CONSTANTS.AVAILABILITY_CACHE_TTL_MS.FAILURE;
+	}
+
+	private updateAvailabilityCache(isAvailable: boolean, checkedAt: number = Date.now()): void {
+		this.isAvailableCache = isAvailable;
+		this.availabilityCheckTime = checkedAt;
+	}
+
 	private async isAvailable(): Promise<boolean> {
 		const now = Date.now();
-		// Use cached availability if still valid
-		if (this.isAvailableCache !== null && now - this.availabilityCheckTime < this.availabilityCacheTTL) {
-			return this.isAvailableCache;
+		if (this.isAvailableCache !== null) {
+			const ttl = this.getAvailabilityCacheTtl(this.isAvailableCache);
+			if (now - this.availabilityCheckTime < ttl) {
+				return this.isAvailableCache;
+			}
 		}
 
 		try {
@@ -60,17 +72,73 @@ export class LanguageToolService {
 			});
 
 			const isAvailable = response.ok;
-			this.isAvailableCache = isAvailable;
-			this.availabilityCheckTime = now;
+			this.updateAvailabilityCache(isAvailable, now);
 
 			logger.languageToolAvailabilityCheck(isAvailable, response.status);
 			return isAvailable;
 		} catch (error) {
 			logger.languageToolError(`Availability check failed: ${getErrorMessage(error)}`);
-			this.isAvailableCache = false;
-			this.availabilityCheckTime = now;
+			this.updateAvailabilityCache(false, now);
 			return false;
 		}
+	}
+
+	async checkGameNaturalText(
+		text: string,
+		params: { outputLanguage: Locale } | { detectLanguage: true }
+	): Promise<LanguageValidationResult> {
+		const trimmed = text.trim();
+		if (trimmed.length === 0) {
+			return Promise.resolve({
+				isValid: true,
+				errors: [],
+				suggestions: [],
+				confidence: LANGUAGE_TOOL_CONSTANTS.CONFIDENCE.HIGH,
+			});
+		}
+
+		const base = {
+			enableSpellCheck: true,
+			enableGrammarCheck: true,
+			useExternalAPI: true,
+		} as const;
+
+		if ('outputLanguage' in params) {
+			const ltLang =
+				params.outputLanguage === Locale.HE
+					? LANGUAGE_TOOL_CONSTANTS.LANGUAGES.HEBREW
+					: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH;
+			const result = await this.checkText(trimmed, { ...base, language: ltLang, detectLanguage: false });
+			return this.enforceExpectedLocale(result, trimmed, params.outputLanguage);
+		}
+
+		return this.checkText(trimmed, { ...base, detectLanguage: true });
+	}
+
+	private enforceExpectedLocale(
+		result: LanguageValidationResult,
+		input: string,
+		expectedLocale: Locale
+	): LanguageValidationResult {
+		if (matchesLocaleText(input, expectedLocale)) {
+			return result;
+		}
+
+		const localeError =
+			expectedLocale === Locale.HE
+				? ERROR_MESSAGES.validation.ENTER_IN_HEBREW
+				: ERROR_MESSAGES.validation.ENTER_IN_ENGLISH;
+		const errors = result.errors.includes(localeError) ? result.errors : [...result.errors, localeError];
+		const suggestions = result.suggestions.includes(localeError)
+			? result.suggestions
+			: [...result.suggestions, localeError];
+
+		return {
+			...result,
+			isValid: false,
+			errors,
+			suggestions,
+		};
 	}
 
 	async checkText(text: string, options: LanguageToolCheckOptions = {}): Promise<LanguageValidationResult> {
@@ -149,6 +217,9 @@ export class LanguageToolService {
 				});
 
 				if (!response.ok) {
+					if (response.status >= 500) {
+						this.updateAvailabilityCache(false);
+					}
 					const errorMessage = `LanguageTool API returned ${response.status}: ${response.statusText}`;
 					logger.languageToolApiError(response.status, response.statusText, {
 						attempt,
@@ -171,6 +242,7 @@ export class LanguageToolService {
 				}
 
 				const data: LanguageToolResponse = await response.json();
+				this.updateAvailabilityCache(true);
 
 				// Convert API response to LanguageValidationResult
 				const errors: string[] = [];
@@ -219,6 +291,9 @@ export class LanguageToolService {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
 				const statusCode = lastError instanceof LanguageToolClientError ? lastError.statusCode : undefined;
+				if (statusCode == null || statusCode >= 500) {
+					this.updateAvailabilityCache(false);
+				}
 
 				if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
 					throw lastError;
@@ -310,8 +385,8 @@ export class LanguageToolService {
 	private performLocalChecks(input: string): { errors: string[]; suggestions: string[] } {
 		const errors: string[] = [];
 		const suggestions: string[] = [];
-		const predominantlyHebrew = isPredominantlyHebrewText(input);
 		const words = input.split(/\s+/);
+		const containsLatinScript = /[a-zA-Z]/.test(input);
 
 		for (let i = 0; i < words.length - 1; i++) {
 			const currentWord = words[i];
@@ -329,27 +404,23 @@ export class LanguageToolService {
 			suggestions.push('Consider reducing the number of punctuation marks');
 		}
 
-		const wordsWithLatinCaps = words.filter(
-			word => word.length > 1 && /[a-zA-Z]/.test(word) && word === word.toUpperCase()
-		);
-		if (
-			words.length > 0 &&
-			wordsWithLatinCaps.length > words.length * LANGUAGE_VALIDATION_THRESHOLDS.EXCESSIVE_CAPITALIZATION
-		) {
-			errors.push('Excessive capitalization detected');
-			suggestions.push('Consider using normal capitalization');
-		}
+		if (containsLatinScript) {
+			const wordsWithLatinCaps = words.filter(
+				word => word.length > 1 && /[a-zA-Z]/.test(word) && word === word.toUpperCase()
+			);
+			if (
+				words.length > 0 &&
+				wordsWithLatinCaps.length > words.length * LANGUAGE_VALIDATION_THRESHOLDS.EXCESSIVE_CAPITALIZATION
+			) {
+				errors.push('Excessive capitalization detected');
+				suggestions.push('Consider using normal capitalization');
+			}
 
-		const veryShortWords = words.filter(word => word.length === 1 && /[a-zA-Z]/.test(word));
-		if (veryShortWords.length > 0) {
-			errors.push('Single character words detected');
-			suggestions.push('Consider expanding single character words');
-		}
-
-		const nonWhitespace = input.replace(/\s/g, '');
-		if (nonWhitespace.length > 0 && !predominantlyHebrew && !matchesLocaleText(input, Locale.EN)) {
-			errors.push(ERROR_MESSAGES.validation.ENTER_IN_ENGLISH);
-			suggestions.push(ERROR_MESSAGES.validation.ENTER_IN_ENGLISH);
+			const veryShortWords = words.filter(word => word.length === 1 && /[a-zA-Z]/.test(word));
+			if (veryShortWords.length > 0) {
+				errors.push('Single character words detected');
+				suggestions.push('Consider expanding single character words');
+			}
 		}
 
 		return { errors, suggestions };

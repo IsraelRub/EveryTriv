@@ -99,7 +99,13 @@ export const useClearGameHistory = () => {
 export const useStartGameSession = () => {
 	return useMutation({
 		mutationFn: (params: StartGameSessionParams) =>
-			gameHistoryService.startGameSession(params.gameId, params.topic, params.difficulty, params.gameMode),
+			gameHistoryService.startGameSession(
+				params.gameId,
+				params.topic,
+				params.difficulty,
+				params.gameMode,
+				params.outputLanguage
+			),
 		onError: (error: unknown) => {
 			const message = getErrorMessage(error);
 			logger.gameError('Failed to start game session', {

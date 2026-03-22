@@ -5,6 +5,7 @@ export * from './auth';
 export * from './charts';
 export * from './game';
 export * from './home';
+export * from './legal';
 export * from './layout';
 export * from './navigation';
 export * from './payment';

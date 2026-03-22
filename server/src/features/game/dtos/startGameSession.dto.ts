@@ -1,7 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsString, IsUUID, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
-import { DEFAULT_GAME_CONFIG, GameMode } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, DEFAULT_LANGUAGE, GameMode, Locale } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 export class StartGameSessionDto {
@@ -31,4 +31,12 @@ export class StartGameSessionDto {
 	})
 	@IsEnum(GameMode)
 	gameMode!: GameMode;
+
+	@ApiPropertyOptional({
+		description: `Language for topic/custom-difficulty checks (defaults to ${DEFAULT_LANGUAGE})`,
+		enum: Locale,
+	})
+	@IsOptional()
+	@IsEnum(Locale)
+	outputLanguage?: Locale;
 }

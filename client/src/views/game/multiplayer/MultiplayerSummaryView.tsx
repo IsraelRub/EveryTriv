@@ -295,8 +295,7 @@ export function MultiplayerSummaryView() {
 										animate={{ opacity: 1, x: 0 }}
 										transition={{
 											delay:
-												ANIMATION_DELAYS.SEQUENCE_LARGE +
-												ANIMATION_DELAYS.SEQUENCE_STEP +
+												ANIMATION_DELAYS.MULTIPLAYER_STANDINGS_ROW_BASE +
 												index * ANIMATION_DELAYS.STAGGER_NORMAL,
 										}}
 										className={cn(

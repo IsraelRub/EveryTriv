@@ -8,6 +8,10 @@ import { formatNumericValue } from '@shared/utils';
 import { ADMIN_GAME_STATS_SPEC, AdminKey, Colors } from '@/constants';
 import { AdminGameStatFormat, type StatCardProps } from '@/types';
 import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
 	CategoryAnalysis,
 	PerformanceAnalysis,
 	PlatformTrendsSection,
@@ -16,6 +20,12 @@ import {
 	StatsSectionCard,
 } from '@/components';
 import { useGameStatistics, useGlobalDifficultyStats, useGlobalStats, usePopularTopics } from '@/hooks';
+
+const PERFORMANCE_ACCORDION = {
+	GAME_STATS: 'game-stats',
+	TRENDS: 'trends',
+	CHARTS: 'charts',
+} as const;
 
 export function PerformanceTabContent() {
 	const { t } = useTranslation();
@@ -78,19 +88,54 @@ export function PerformanceTabContent() {
 					))}
 				</div>
 			</SectionCard>
-			<StatsSectionCard
-				title={t(AdminKey.GAME_STATISTICS)}
-				description={t(AdminKey.GAME_STATISTICS_DESC)}
-				titleIcon={GamepadIcon}
-				stats={adminGameStats}
-				gridCols='grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-				isLoading={gameStatisticsLoading}
-			/>
-			<PlatformTrendsSection statsLoading={statsLoading} />
-			<div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
-				<PerformanceAnalysis mainData={globalDifficultyStats} isLoading={difficultyLoading} />
-				<CategoryAnalysis topicsData={topicsData?.topics} isLoading={topicsLoading} />
-			</div>
+			<Accordion
+				type='multiple'
+				defaultValue={[
+					PERFORMANCE_ACCORDION.GAME_STATS,
+					PERFORMANCE_ACCORDION.TRENDS,
+					PERFORMANCE_ACCORDION.CHARTS,
+				]}
+				className='w-full rounded-lg border bg-card'
+			>
+				<AccordionItem value={PERFORMANCE_ACCORDION.GAME_STATS}>
+					<AccordionTrigger className='px-4'>
+						<span className='flex items-center gap-2'>
+							<GamepadIcon className='h-4 w-4 shrink-0 text-primary' />
+							{t(AdminKey.GAME_STATISTICS)}
+						</span>
+					</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<StatsSectionCard
+							layout='plain'
+							stats={adminGameStats}
+							gridCols='grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+							isLoading={gameStatisticsLoading}
+						/>
+						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.GAME_STATISTICS_DESC)}</p>
+					</AccordionContent>
+				</AccordionItem>
+				<AccordionItem value={PERFORMANCE_ACCORDION.TRENDS}>
+					<AccordionTrigger className='px-4'>
+						<span className='flex items-center gap-2'>
+							<TrendingUp className='h-4 w-4 shrink-0 text-primary' />
+							{t(AdminKey.PLATFORM_TRENDS)}
+						</span>
+					</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<PlatformTrendsSection statsLoading={statsLoading} embedded />
+						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.PLATFORM_TRENDS_DESC)}</p>
+					</AccordionContent>
+				</AccordionItem>
+				<AccordionItem value={PERFORMANCE_ACCORDION.CHARTS}>
+					<AccordionTrigger className='px-4'>{t(AdminKey.DETAILED_PLATFORM_ANALYTICS)}</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<div className='grid grid-cols-1 gap-8 lg:grid-cols-2'>
+							<PerformanceAnalysis mainData={globalDifficultyStats} isLoading={difficultyLoading} />
+							<CategoryAnalysis topicsData={topicsData?.topics} isLoading={topicsLoading} />
+						</div>
+					</AccordionContent>
+				</AccordionItem>
+			</Accordion>
 		</>
 	);
 }

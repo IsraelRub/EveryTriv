@@ -5,12 +5,11 @@ import { ChevronDown, Volume2, VolumeX } from 'lucide-react';
 import { calculatePercentage } from '@shared/utils';
 
 import { ButtonSize, CommonKey, VariantBase } from '@/constants';
-import type { AudioControlsProps } from '@/types';
 import { cn } from '@/utils';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, Label, Slider } from '@/components';
 import { useAudioSettings } from '@/hooks';
 
-export function AudioControls({ className = '' }: AudioControlsProps) {
+export function AudioControls() {
 	const { t } = useTranslation();
 	const { state, handlers } = useAudioSettings();
 	const [isOpen, setIsOpen] = useState(false);
@@ -18,12 +17,7 @@ export function AudioControls({ className = '' }: AudioControlsProps) {
 	const MainVolumeIcon = state.isMuted ? VolumeX : Volume2;
 
 	return (
-		<div
-			className={cn(
-				'group inline-flex items-center rounded-full bg-background border border-border shadow-sm overflow-hidden',
-				className
-			)}
-		>
+		<div className='group inline-flex items-center rounded-full bg-background border border-border shadow-sm overflow-hidden'>
 			{/* Main button - mute/unmute toggle */}
 			<Button
 				variant={VariantBase.MINIMAL}

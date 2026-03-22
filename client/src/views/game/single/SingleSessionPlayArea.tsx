@@ -1,20 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { Zap } from 'lucide-react';
 
-import { ButtonSize, ComponentSize, GameKey, LoadingKey, TimerMode, VariantBase } from '@/constants';
+import {
+	ButtonSize,
+	ComponentSize,
+	GameKey,
+	GameSessionHudCounterLayout,
+	LoadingKey,
+	TimerMode,
+	VariantBase,
+} from '@/constants';
 import type { UseSingleSessionReturn } from '@/types';
 import { getDifficultyDisplayLabel } from '@/utils';
-import {
-	AnswerButton,
-	Button,
-	Card,
-	ExitGameButton,
-	GameCreditBadge,
-	GameTimer,
-	Progress,
-	QuestionCounter,
-	Spinner,
-} from '@/components';
+import { AnswerButton, Button, Card, ExitGameButton, GameSessionHud, Progress, Spinner } from '@/components';
 
 export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 	const { t } = useTranslation();
@@ -56,37 +54,28 @@ export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 				</div>
 			)}
 			<div className='container mx-auto max-w-4xl h-full flex flex-col'>
-				<div className='flex-shrink-0 mb-4'>
-					{/* Question count centered at top (same as multiplayer and question-limited) */}
-					<div className='flex flex-col items-center text-center mb-3'>
-						<div className='flex items-center justify-center gap-3 flex-wrap'>
-							<QuestionCounter
-								current={currentQuestionIndex + 1}
-								total={hasQuestionLimit ? gameQuestionCount : undefined}
-								size={ComponentSize.SM}
-							/>
-							{isUnlimited && !isAdmin && <GameCreditBadge totalCredits={creditBalanceTotal} />}
-						</div>
-					</div>
-
-					<div className='flex items-center justify-between gap-4 mb-3'>
-						<div className='flex-1'>
-							<GameTimer
-								key='game-timer'
-								mode={isTimeLimited ? TimerMode.COUNTDOWN : TimerMode.ELAPSED}
-								initialTime={isTimeLimited ? timeLimit : undefined}
-								label={isTimeLimited ? t(GameKey.GAME_TIME) : t(GameKey.TIME_ELAPSED)}
-								showProgressBar={isTimeLimited}
-								startTime={gameStartTime ?? undefined}
-								onTimeout={isTimeLimited ? handleGameTimeout : undefined}
-							/>
-						</div>
-						{hasQuestionLimit && (
-							<span className='text-primary font-bold text-sm'>
-								{t(GameKey.SCORE_LABEL)}: {score}
-							</span>
-						)}
-					</div>
+				<div className='mb-4 flex-shrink-0'>
+					<GameSessionHud
+						questionCurrent={currentQuestionIndex + 1}
+						questionTotal={hasQuestionLimit ? gameQuestionCount : undefined}
+						counterLayout={GameSessionHudCounterLayout.SINGLE}
+						showCreditBadge={isUnlimited && !isAdmin}
+						totalCredits={creditBalanceTotal}
+						timerKey='game-timer'
+						mode={isTimeLimited ? TimerMode.COUNTDOWN : TimerMode.ELAPSED}
+						initialTime={isTimeLimited ? timeLimit : undefined}
+						label={isTimeLimited ? t(GameKey.GAME_TIME) : t(GameKey.TIME_ELAPSED)}
+						showProgressBar={isTimeLimited}
+						startTime={gameStartTime ?? undefined}
+						onTimeout={isTimeLimited ? handleGameTimeout : undefined}
+						timerAside={
+							hasQuestionLimit ? (
+								<span className='text-sm font-bold text-primary'>
+									{t(GameKey.SCORE_LABEL)}: {score}
+								</span>
+							) : undefined
+						}
+					/>
 
 					{hasQuestionLimit && (
 						<div className='mb-3'>

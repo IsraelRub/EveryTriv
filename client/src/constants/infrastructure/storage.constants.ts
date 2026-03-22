@@ -27,6 +27,10 @@ export const STORAGE_KEYS = {
 	SCORE_HISTORY: 'score_history',
 
 	// Temporary data (sessionStorage - session only)
+	/** Set before OAuth from registration page; read once in `/auth/callback`. */
+	OAUTH_INITIATED_FROM_REGISTRATION: 'everytriv_oauth_from_registration',
+	/** After OAuth, user must complete profile first; then redirect to optional avatar on `/register`. */
+	PENDING_OPTIONAL_AVATAR_AFTER_PROFILE: 'everytriv_pending_optional_avatar_after_profile',
 	REDIRECT_AFTER_LOGIN: 'redirectAfterLogin',
 	ERROR_LOG: 'error-log',
 	ACTIVE_GAME_SESSION: 'active_game_session',

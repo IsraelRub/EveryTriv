@@ -1,12 +1,4 @@
-import type { ReactNode } from 'react';
-
-import type { FooterKeyType, LegalKeyType, NavKeyType, TabsListVariant } from '@/constants';
-
-export interface LegalPageLayoutProps {
-	icon: ReactNode;
-	titleKey: LegalKeyType;
-	children: ReactNode;
-}
+import type { FooterKey, NavKey, TabsListVariant } from '@/constants';
 
 export interface TabsBarItem {
 	value: string;
@@ -34,6 +26,6 @@ export interface SecondaryTabsBarProps {
 }
 
 export type FooterSection =
-	| { titleKey: FooterKeyType; type: 'social' }
-	| { titleKey: FooterKeyType; type: 'links'; links: readonly { labelKey: NavKeyType; path: string }[] }
-	| { titleKey: FooterKeyType; type: 'copyright' };
+	| { titleKey: FooterKey; type: 'social' }
+	| { titleKey: FooterKey; type: 'links'; links: readonly { labelKey: NavKey; path: string }[] }
+	| { titleKey: FooterKey; type: 'copyright' };

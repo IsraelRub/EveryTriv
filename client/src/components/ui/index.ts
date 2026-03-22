@@ -1,3 +1,5 @@
+export * from './accordion';
+export * from './AnimatedCopyFeedbackIcon';
 export * from './alert';
 export * from './avatar';
 export * from './BackgroundAnimation';
@@ -5,6 +7,7 @@ export * from './badge';
 export * from './button';
 export * from './card';
 export * from './checkbox';
+export * from './collapsible';
 export * from './dialog';
 export * from './dropdown-menu';
 export * from './EmptyState';

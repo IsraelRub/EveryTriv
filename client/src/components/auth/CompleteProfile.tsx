@@ -6,7 +6,16 @@ import { motion } from 'framer-motion';
 import { getErrorMessage } from '@shared/utils';
 import { LengthKey, validateStringLength } from '@shared/validation';
 
-import { AlertIconSize, AuthKey, ComponentSize, LoadingKey, QUERY_KEYS, ROUTES } from '@/constants';
+import {
+	AlertIconSize,
+	AuthKey,
+	ComponentSize,
+	getRegisterOptionalAvatarSearch,
+	LoadingKey,
+	QUERY_KEYS,
+	ROUTES,
+	STORAGE_KEYS,
+} from '@/constants';
 import type { CompleteProfileProps, ProfileFieldErrors, ProfileNameField } from '@/types';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
 import { getTranslatedErrorMessage, profileResponseToBasicUser, translateValidationMessage } from '@/utils';
@@ -98,9 +107,25 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					onComplete({ username: form.firstName, bio: form.lastName });
 				}
 
-				// Navigate to home
-				logger.userInfo('Redirecting to home after profile completion');
-				navigate(ROUTES.HOME, { replace: true });
+				let pendingOptionalAvatar = false;
+				try {
+					pendingOptionalAvatar =
+						sessionStorage.getItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE) === '1';
+					sessionStorage.removeItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE);
+				} catch {
+					// sessionStorage unavailable
+				}
+
+				if (pendingOptionalAvatar) {
+					logger.userInfo('Redirecting to optional avatar step after profile completion');
+					navigate(
+						{ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() },
+						{ replace: true }
+					);
+				} else {
+					logger.userInfo('Redirecting to home after profile completion');
+					navigate(ROUTES.HOME, { replace: true });
+				}
 			} catch (err) {
 				const message = getErrorMessage(err);
 				logger.userError('Profile completion failed', {
@@ -135,7 +160,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				<form onSubmit={handleSubmit} className='space-y-4'>
 					<div>
-						<Label htmlFor='firstName'>
+						<Label>
 							{t(AuthKey.FIRST_NAME)} <span className='text-destructive'>*</span>
 						</Label>
 						<Input
@@ -155,7 +180,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 						)}
 					</div>
 					<div>
-						<Label htmlFor='lastName'>{t(AuthKey.LAST_NAME)}</Label>
+						<Label>{t(AuthKey.LAST_NAME)}</Label>
 						<Input
 							id='lastName'
 							name='lastName'

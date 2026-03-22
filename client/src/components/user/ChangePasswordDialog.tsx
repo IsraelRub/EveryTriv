@@ -131,7 +131,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 
 				<div className='space-y-4 py-4 view-scroll-inline'>
 					<div className='space-y-2'>
-						<Label htmlFor='current-password'>{t(AuthKey.CURRENT_PASSWORD)}</Label>
+						<Label>{t(AuthKey.CURRENT_PASSWORD)}</Label>
 						<Input
 							id='current-password'
 							name='currentPassword'
@@ -155,7 +155,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 						)}
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='new-password'>{t(AuthKey.NEW_PASSWORD)}</Label>
+						<Label>{t(AuthKey.NEW_PASSWORD)}</Label>
 						<Input
 							id='new-password'
 							name='newPassword'
@@ -173,7 +173,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 						)}
 					</div>
 					<div className='space-y-2'>
-						<Label htmlFor='confirm-password'>{t(AuthKey.CONFIRM_NEW_PASSWORD)}</Label>
+						<Label>{t(AuthKey.CONFIRM_NEW_PASSWORD)}</Label>
 						<div className='relative'>
 							<Input
 								id='confirm-password'
@@ -189,8 +189,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 								!passwordFieldErrors.confirmPassword && (
 									<CheckCircle
 										className={cn('form-success-icon', Colors.GREEN_500.text)}
-										fill='currentColor'
-										strokeWidth={0}
 									/>
 								)}
 						</div>

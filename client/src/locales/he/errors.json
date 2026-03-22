@@ -17,6 +17,7 @@
 	"PAYMENT_PROCESSING_FAILED": "לא ניתן לעבד את התשלום. נא לנסות שוב.",
 	"FAILED_TO_PURCHASE_CREDITS": "רכישת קרדיטים נכשלה. נא לנסות שוב.",
 	"enterInEnglish": "נא להזין באנגלית",
+	"enterInHebrew": "נא להזין בעברית",
 	"spellingOrGrammarIssue": "זוהו בעיות איות או דקדוק. נא לכתוב באנגלית.",
 	"inputValidationFailed": "האימות נכשל. נא לבדוק את הנתונים שהזנת.",
 	"invalidInputData": "נתונים לא תקינים. נא לבדוק את המידע ולנסות שוב.",

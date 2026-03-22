@@ -20,10 +20,13 @@ import { VALIDATORS } from '@shared/validation';
 import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
 import { formatDateTime } from '@/utils';
 import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
 	Badge,
 	Card,
 	CardContent,
-	CardDescription,
 	CardHeader,
 	CardTitle,
 	SectionCard,
@@ -155,88 +158,92 @@ export function ProviderManagementSection() {
 							/>
 						</div>
 
-						<Card className='border-muted/50 bg-muted/10'>
-							<CardHeader>
-								<CardTitle>{t(AdminKey.PROVIDER_DETAILS)}</CardTitle>
-								<CardDescription>{t(AdminKey.PROVIDER_DETAILS_DESC)}</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className='space-y-4'>
-									{Object.entries(aiProviderStats.providerDetails).map(([name, providerStats]) => {
-										return (
-											<Card key={name}>
-												<CardHeader className='pb-3'>
-													<div className='flex items-center justify-between'>
-														<CardTitle className='text-lg'>{name}</CardTitle>
-														<Badge
-															variant={
-																providerStats.status === ProviderHealthStatus.HEALTHY ||
+						<Accordion
+							type='multiple'
+							defaultValue={['provider-details']}
+							className='w-full rounded-lg border border-muted/50 bg-muted/10'
+						>
+							<AccordionItem value='provider-details'>
+								<AccordionTrigger className='px-4'>{t(AdminKey.PROVIDER_DETAILS)}</AccordionTrigger>
+								<AccordionContent className='px-4 pb-4'>
+									<p className='mb-4 text-sm text-muted-foreground'>{t(AdminKey.PROVIDER_DETAILS_DESC)}</p>
+									<div className='space-y-4'>
+										{Object.entries(aiProviderStats.providerDetails).map(([name, providerStats]) => {
+											return (
+												<Card key={name}>
+													<CardHeader className='pb-3'>
+														<div className='flex items-center justify-between'>
+															<CardTitle className='text-lg'>{name}</CardTitle>
+															<Badge
+																variant={
+																	providerStats.status === ProviderHealthStatus.HEALTHY ||
+																	providerStats.status === ProviderHealthStatus.AVAILABLE
+																		? VariantBase.DEFAULT
+																		: VariantBase.DESTRUCTIVE
+																}
+															>
+																{providerStats.status === ProviderHealthStatus.HEALTHY ||
 																providerStats.status === ProviderHealthStatus.AVAILABLE
-																	? VariantBase.DEFAULT
-																	: VariantBase.DESTRUCTIVE
-															}
-														>
-															{providerStats.status === ProviderHealthStatus.HEALTHY ||
-															providerStats.status === ProviderHealthStatus.AVAILABLE
-																? t(AdminKey.HEALTH_STATUS_HEALTHY)
-																: providerStats.status === ProviderHealthStatus.UNHEALTHY
-																	? t(AdminKey.HEALTH_STATUS_UNHEALTHY)
-																	: t(AdminKey.HEALTH_STATUS_UNKNOWN)}
-														</Badge>
-													</div>
-												</CardHeader>
-												<CardContent>
-													<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-														<StatCard
-															icon={Send}
-															label={t(AdminKey.REQUESTS)}
-															value={providerStats.requests ?? 0}
-															color={Colors.BLUE_500.text}
-														/>
-														<StatCard
-															icon={CheckCircle2}
-															label={t(AdminKey.SUCCESSES)}
-															value={providerStats.successes ?? 0}
-															color={Colors.GREEN_500.text}
-														/>
-														<StatCard
-															icon={XCircle}
-															label={t(AdminKey.FAILURES)}
-															value={providerStats.failures ?? 0}
-															color={Colors.RED_500.text}
-														/>
-														<StatCard
-															icon={CirclePercent}
-															label={t(AdminKey.SUCCESS_RATE)}
-															value={formatNumericValue(providerStats.successRate, 2, '%')}
-															color={Colors.GREEN_500.text}
-														/>
-														<StatCard
-															icon={Timer}
-															label={t(AdminKey.AVG_RESPONSE_TIME)}
-															value={formatNumericValue(providerStats.averageResponseTime, 2, 'ms')}
-															color={Colors.YELLOW_500.text}
-														/>
-														<StatCard
-															icon={AlertTriangle}
-															label={t(AdminKey.ERROR_RATE)}
-															value={formatNumericValue(providerStats.errorRate, 2, '%')}
-															color={Colors.RED_500.text}
-														/>
-														<StatCard
-															icon={Clock}
-															label={t(AdminKey.LAST_USED)}
-															value={formatDateTime(providerStats.lastUsed, t(AdminKey.DATE_DEFAULT_NEVER))}
-															color={Colors.BLUE_500.text}
-														/>
-													</div>
-												</CardContent>
-											</Card>
-										);
-									})}
-								</div>
-							</CardContent>
-						</Card>
+																	? t(AdminKey.HEALTH_STATUS_HEALTHY)
+																	: providerStats.status === ProviderHealthStatus.UNHEALTHY
+																		? t(AdminKey.HEALTH_STATUS_UNHEALTHY)
+																		: t(AdminKey.HEALTH_STATUS_UNKNOWN)}
+															</Badge>
+														</div>
+													</CardHeader>
+													<CardContent>
+														<div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
+															<StatCard
+																icon={Send}
+																label={t(AdminKey.REQUESTS)}
+																value={providerStats.requests ?? 0}
+																color={Colors.BLUE_500.text}
+															/>
+															<StatCard
+																icon={CheckCircle2}
+																label={t(AdminKey.SUCCESSES)}
+																value={providerStats.successes ?? 0}
+																color={Colors.GREEN_500.text}
+															/>
+															<StatCard
+																icon={XCircle}
+																label={t(AdminKey.FAILURES)}
+																value={providerStats.failures ?? 0}
+																color={Colors.RED_500.text}
+															/>
+															<StatCard
+																icon={CirclePercent}
+																label={t(AdminKey.SUCCESS_RATE)}
+																value={formatNumericValue(providerStats.successRate, 2, '%')}
+																color={Colors.GREEN_500.text}
+															/>
+															<StatCard
+																icon={Timer}
+																label={t(AdminKey.AVG_RESPONSE_TIME)}
+																value={formatNumericValue(providerStats.averageResponseTime, 2, 'ms')}
+																color={Colors.YELLOW_500.text}
+															/>
+															<StatCard
+																icon={AlertTriangle}
+																label={t(AdminKey.ERROR_RATE)}
+																value={formatNumericValue(providerStats.errorRate, 2, '%')}
+																color={Colors.RED_500.text}
+															/>
+															<StatCard
+																icon={Clock}
+																label={t(AdminKey.LAST_USED)}
+																value={formatDateTime(providerStats.lastUsed, t(AdminKey.DATE_DEFAULT_NEVER))}
+																color={Colors.BLUE_500.text}
+															/>
+														</div>
+													</CardContent>
+												</Card>
+											);
+										})}
+									</div>
+								</AccordionContent>
+							</AccordionItem>
+						</Accordion>
 					</div>
 				) : (
 					<div className='text-center py-8 text-muted-foreground'>

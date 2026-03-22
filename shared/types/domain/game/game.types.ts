@@ -1,5 +1,5 @@
 // Game-related types for EveryTriv.
-import { GameMode } from '../../../constants';
+import { GameMode, type Locale } from '../../../constants';
 import type { BaseEntity, BaseOperationResponse, CountRecord, OffsetPagination } from '../../core';
 import type { AnswerHistory } from '../../infrastructure';
 import type { GameDifficulty } from './trivia.types';
@@ -165,6 +165,7 @@ export interface StartGameSessionParams {
 	topic: string;
 	difficulty: GameDifficulty;
 	gameMode: GameMode;
+	outputLanguage?: Locale;
 }
 
 export interface GameSessionStartResponse {

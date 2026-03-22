@@ -159,7 +159,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 								<div className='space-y-4 pt-4 border-t'>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 										<div className='space-y-2'>
-											<Label htmlFor='firstName'>{t(AuthKey.FIRST_NAME)}</Label>
+											<Label>{t(AuthKey.FIRST_NAME)}</Label>
 											<Input
 												id='firstName'
 												value={editData.firstName}
@@ -168,7 +168,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 											/>
 										</div>
 										<div className='space-y-2'>
-											<Label htmlFor='lastName'>{t(AuthKey.LAST_NAME)}</Label>
+											<Label>{t(AuthKey.LAST_NAME)}</Label>
 											<Input
 												id='lastName'
 												value={editData.lastName}

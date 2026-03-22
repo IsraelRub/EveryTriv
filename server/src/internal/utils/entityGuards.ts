@@ -62,7 +62,8 @@ export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalanc
 		hasBasicValue(value.freeQuestions, 'number') &&
 		hasBasicValue(value.dailyLimit, 'number') &&
 		hasBasicValue(value.canPlayFree, 'boolean') &&
-		hasOptionalBasicValue(value.nextResetTime, 'string')
+		hasOptionalBasicValue(value.nextResetTime, 'string') &&
+		hasOptionalBasicValue(value.nextGrantedCreditsRefillAt, 'string')
 	);
 };
 

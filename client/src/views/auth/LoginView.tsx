@@ -130,7 +130,7 @@ export function LoginView() {
 
 	return (
 		<Card className='w-full max-w-md relative'>
-			{!isModal && <CloseButton className='absolute top-4 left-4' />}
+			<CloseButton className='absolute top-4 left-4' />
 			<CardHeader className='text-center space-y-2'>
 				<CardTitle className='text-3xl font-bold'>{t(AuthKey.WELCOME_BACK)}</CardTitle>
 				<CardDescription>{t(AuthKey.SIGN_IN_TO_CONTINUE)}</CardDescription>
@@ -145,7 +145,7 @@ export function LoginView() {
 
 				<form onSubmit={handleLogin} className='space-y-4'>
 					<div className='space-y-2'>
-						<Label htmlFor='email'>{t(AuthKey.EMAIL)}</Label>
+						<Label>{t(AuthKey.EMAIL)}</Label>
 						<Input
 							id='email'
 							name='email'
@@ -166,7 +166,7 @@ export function LoginView() {
 					</div>
 
 					<div className='space-y-2'>
-						<Label htmlFor='password'>{t(AuthKey.PASSWORD)}</Label>
+						<Label>{t(AuthKey.PASSWORD)}</Label>
 						<Input
 							id='password'
 							name='password'

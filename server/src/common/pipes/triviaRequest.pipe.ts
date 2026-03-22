@@ -3,16 +3,16 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { TriviaRequest } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, isRecord, sanitizeInput, truncateWithEllipsis } from '@shared/utils';
-import { isLocale, validateTriviaRequest, VALIDATORS } from '@shared/validation';
+import { isLocale, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import { TriviaRequestDto } from '@features/game/dtos';
 
-import { LanguageToolService } from '../validation';
+import { GameTextLanguageGateService } from '../validation';
 
 @Injectable()
 export class TriviaRequestPipe implements PipeTransform {
-	constructor(private readonly languageToolService: LanguageToolService) {}
+	constructor(private readonly gameTextLanguageGate: GameTextLanguageGateService) {}
 
 	async transform(value: unknown): Promise<TriviaRequestDto> {
 		try {
@@ -28,26 +28,11 @@ export class TriviaRequestPipe implements PipeTransform {
 
 			const payload = this.buildTriviaPayload(value);
 
-			const triviaValidation = validateTriviaRequest(payload.topic, payload.difficulty);
-			if (!triviaValidation.isValid) {
-				throw new BadRequestException({
-					message: 'Trivia request validation failed',
-					errors: triviaValidation.errors,
-				});
-			}
-
-			const topicLanguageValidation = await this.languageToolService.checkText(payload.topic, {
-				enableSpellCheck: true,
-				enableGrammarCheck: true,
-				language: payload.outputLanguage,
-				detectLanguage: false,
-			});
-			if (!topicLanguageValidation.isValid) {
-				throw new BadRequestException({
-					message: 'Topic language validation failed',
-					errors: topicLanguageValidation.errors,
-				});
-			}
+			await this.gameTextLanguageGate.assertTriviaGameInputValid(
+				payload.topic,
+				payload.difficulty,
+				payload.outputLanguage
+			);
 
 			// Convert UNLIMITED_QUESTIONS (-1) to MAX for DTO validation
 			// The DTO validator expects MAX when UNLIMITED is provided

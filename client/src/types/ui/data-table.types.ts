@@ -46,6 +46,9 @@ export interface DataTableProps<T> {
 	sortBy?: string;
 	sortDirection?: SortDirection;
 	onSort?: (field: string, direction: SortDirection) => void;
+	/** When set with `renderExpandedRow`, an extra row opens under the matching row (Radix Collapsible). */
+	expandedRowId?: string | null;
+	renderExpandedRow?: (row: T) => ReactElement | null;
 }
 
 export interface DataTableCardHeaderProps {
@@ -60,4 +63,6 @@ export interface DataTableCardProps<T> extends DataTableProps<T> {
 	header: DataTableCardHeaderProps;
 	filters?: ReactElement | string | null;
 	useCard?: boolean;
+	/** When true, table/filters render without the card title row (e.g. title lives in a parent Accordion). */
+	hideHeader?: boolean;
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { DifficultyLevel, GameMode } from '@shared/constants';
@@ -6,8 +7,8 @@ import type { TriviaAnswer, TriviaQuestion } from '@shared/types';
 import {
 	TextLanguageStatus,
 	type ButtonSize,
-	type ComponentSize,
 	type ExitGameButtonVariant,
+	type GameSessionHudCounterLayout,
 	type TimerMode,
 	type VariantBase,
 } from '@/constants';
@@ -44,16 +45,14 @@ export interface GameTimerProps {
 	showProgressBar?: boolean;
 }
 
-export interface GameCreditBadgeProps {
-	totalCredits: number;
-	className?: string;
-}
-
-export interface QuestionCounterProps {
-	current: number;
-
-	total?: number;
-	size?: ComponentSize.SM | ComponentSize.MD | ComponentSize.LG;
+export interface GameSessionHudProps extends GameTimerProps {
+	timerKey?: string | number;
+	questionCurrent: number;
+	questionTotal?: number;
+	counterLayout: GameSessionHudCounterLayout;
+	showCreditBadge?: boolean;
+	totalCredits?: number;
+	timerAside?: ReactNode;
 }
 
 export interface QuestionBreakdownEntry {
@@ -65,7 +64,6 @@ export interface QuestionBreakdownEntry {
 
 export interface QuestionBreakdownProps {
 	entries: QuestionBreakdownEntry[];
-	animationDelay?: number;
 }
 
 export interface SingleSessionCreditsExitProps {

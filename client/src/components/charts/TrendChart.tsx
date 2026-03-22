@@ -4,11 +4,10 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 
 import { formatDate, formatNumericValue, mean } from '@shared/utils';
 
-import { CHART_HEIGHTS, CssColor, SkeletonVariant, StatisticsPerformanceKey, TREND_CHART_DATA_KEYS } from '@/constants';
+import { CHART_HEIGHTS, CommonKey, CssColor, SkeletonVariant, StatisticsPerformanceKey, TREND_CHART_DATA_KEYS } from '@/constants';
 import type { TrendChartProps } from '@/types';
 import { formatDateShort } from '@/utils';
 import { EmptyState, Skeleton } from '@/components';
-import { ChartCard } from './ChartCard';
 
 export const TrendChart = memo(function TrendChart({
 	data,
@@ -17,15 +16,14 @@ export const TrendChart = memo(function TrendChart({
 	xAxisLabel,
 	scoreLabel,
 	successRateLabel,
-	className,
-	hideCard = false,
 	emptyStateData,
 }: TrendChartProps) {
-	const { t } = useTranslation('statistics');
-	const resolvedScoreLabel = scoreLabel ?? t(StatisticsPerformanceKey.SCORE_LABEL);
-	const resolvedSuccessRateLabel = successRateLabel ?? t(StatisticsPerformanceKey.SUCCESS_RATE_PERCENT_LABEL);
+	const { t: tStat } = useTranslation('statistics');
+	const { t: tCommon } = useTranslation('common');
+	const resolvedScoreLabel = scoreLabel ?? tStat(StatisticsPerformanceKey.SCORE_LABEL);
+	const resolvedSuccessRateLabel = successRateLabel ?? tStat(StatisticsPerformanceKey.SUCCESS_RATE_PERCENT_LABEL);
 	const chartData = useMemo(() => {
-		if (!data || data.length === 0) return [];
+		if (!data?.length) return [];
 
 		const isoKey = (d: string) => (d || '').substring(0, 10);
 		const buckets = new Map<string, { fullDate: string; scores: number[]; successRates: number[] }>();
@@ -55,7 +53,20 @@ export const TrendChart = memo(function TrendChart({
 			}));
 	}, [data]);
 
-	const chartContent = (
+	if (isLoading) {
+		return <Skeleton variant={SkeletonVariant.Chart} style={{ height: `${height}px` }} />;
+	}
+	if (!data?.length) {
+		if (emptyStateData) {
+			return <EmptyState data={emptyStateData} />;
+		}
+		return (
+			<div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>
+				<p>{tCommon(CommonKey.NO_DATA_AVAILABLE)}</p>
+			</div>
+		);
+	}
+	return (
 		<ResponsiveContainer width='100%' height={height}>
 			<LineChart data={chartData} margin={{ top: 5, right: 50, left: 50, bottom: 30 }} style={{ direction: 'ltr' }}>
 				<CartesianGrid strokeDasharray='3 3' stroke={CssColor.MUTED_FOREGROUND_20} />
@@ -135,31 +146,5 @@ export const TrendChart = memo(function TrendChart({
 				/>
 			</LineChart>
 		</ResponsiveContainer>
-	);
-
-	if (hideCard) {
-		if (isLoading) {
-			return <Skeleton variant={SkeletonVariant.Chart} className={className} style={{ height: `${height}px` }} />;
-		}
-		if (emptyStateData && (!data || data.length === 0)) {
-			return (
-				<div className={className}>
-					<EmptyState data={emptyStateData} />
-				</div>
-			);
-		}
-		return <div className={className}>{chartContent}</div>;
-	}
-
-	return (
-		<ChartCard
-			title={t(StatisticsPerformanceKey.TRENDS_TITLE)}
-			description={t(StatisticsPerformanceKey.TRENDS_DESCRIPTION)}
-			isLoading={isLoading}
-			data={data}
-			className={className}
-		>
-			{chartContent}
-		</ChartCard>
 	);
 });

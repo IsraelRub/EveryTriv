@@ -84,6 +84,7 @@ export const useDeductCredits = () => {
 						'dailyLimit' in value &&
 						'canPlayFree' in value &&
 						'nextResetTime' in value &&
+						'nextGrantedCreditsRefillAt' in value &&
 						'userId' in value
 					);
 				};
@@ -98,6 +99,7 @@ export const useDeductCredits = () => {
 						dailyLimit: 0,
 						canPlayFree: false,
 						nextResetTime: new Date().toISOString(),
+						nextGrantedCreditsRefillAt: null,
 						userId: '',
 					};
 				}

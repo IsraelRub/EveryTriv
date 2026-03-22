@@ -215,8 +215,13 @@ export const LANGUAGE_TOOL_CONSTANTS = {
 	},
 	TIMEOUT: TIME_PERIODS_MS.TEN_SECONDS,
 	MAX_RETRIES: 3,
+	AVAILABILITY_CACHE_TTL_MS: {
+		SUCCESS: TIME_PERIODS_MS.FIVE_MINUTES,
+		FAILURE: TIME_PERIODS_MS.THIRTY_SECONDS,
+	},
 
-	MIN_TEXT_LENGTH_FOR_API: 15,
+	/** Minimum trimmed length to prefer LanguageTool HTTP API over local heuristics (single chars still checked locally if API is down). */
+	MIN_TEXT_LENGTH_FOR_API: 1,
 } as const;
 
 export const COMMON_MISSPELLINGS = {

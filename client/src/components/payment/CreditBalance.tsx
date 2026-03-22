@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Coins, Crown, Plus } from 'lucide-react';
+
+import { GRANTED_CREDITS_CAP } from '@shared/constants';
 
 import { Colors, ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES } from '@/constants';
 import { cn } from '@/utils';
@@ -8,9 +11,24 @@ import { Spinner } from '@/components';
 import { useCreditBalance, useUserRole } from '@/hooks';
 
 export function CreditBalance() {
-	const { t } = useTranslation(['game', 'payment', 'loading']);
+	const { t, i18n } = useTranslation(['game', 'payment', 'loading']);
 	const { data: creditBalance, isLoading } = useCreditBalance();
 	const { isAdmin } = useUserRole();
+
+	const grantedRefillHint = useMemo(() => {
+		if (isAdmin || !creditBalance?.nextGrantedCreditsRefillAt) {
+			return null;
+		}
+		if ((creditBalance.credits ?? 0) >= GRANTED_CREDITS_CAP) {
+			return null;
+		}
+		const locale = i18n.language === 'he' ? 'he-IL' : 'en-US';
+		const dateTime = new Date(creditBalance.nextGrantedCreditsRefillAt).toLocaleString(locale, {
+			dateStyle: 'short',
+			timeStyle: 'short',
+		});
+		return t(PaymentKey.GRANTED_CREDITS_REFILL_HINT, { cap: GRANTED_CREDITS_CAP, dateTime });
+	}, [creditBalance, i18n.language, isAdmin, t]);
 
 	if (isLoading) {
 		return (
@@ -30,11 +48,21 @@ export function CreditBalance() {
 	return (
 		<div className='flex items-center rounded-full bg-primary/10 overflow-hidden'>
 			{/* Credit Information Display */}
-			<div className='flex items-center gap-2 px-3 py-1.5'>
-				<Coins className={cn('w-4 h-4', Colors.YELLOW_500.text)} />
-				<span className={cn('text-sm font-medium', Colors.YELLOW_500.text)}>
-					{isAdmin ? t(GameKey.UNLIMITED) : totalCredits}
-				</span>
+			<div className='flex items-center gap-2 px-3 py-1.5 min-w-0'>
+				<Coins className={cn('w-4 h-4 shrink-0', Colors.YELLOW_500.text)} />
+				<div className='flex min-w-0 flex-col items-start'>
+					<span className={cn('text-sm font-medium', Colors.YELLOW_500.text)}>
+						{isAdmin ? t(GameKey.UNLIMITED) : totalCredits}
+					</span>
+					{grantedRefillHint ? (
+						<span
+							className='max-w-[160px] truncate text-[10px] font-normal leading-tight text-muted-foreground'
+							title={grantedRefillHint}
+						>
+							{grantedRefillHint}
+						</span>
+					) : null}
+				</div>
 			</div>
 
 			{/* Divider */}

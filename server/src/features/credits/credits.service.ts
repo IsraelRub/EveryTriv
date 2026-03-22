@@ -10,6 +10,8 @@ import {
 	ERROR_MESSAGES,
 	ErrorCode,
 	GameMode,
+	GRANTED_CREDITS_CAP,
+	GRANTED_CREDITS_REFILL_INTERVAL_MS,
 	PaymentMethod,
 	TIME_DURATIONS_SECONDS,
 	VALIDATION_COUNT,
@@ -65,6 +67,72 @@ export class CreditsService {
 		private readonly cacheService: CacheService
 	) {}
 
+	private computeNextGrantedCreditsRefillAtIso(user: UserEntity): string | null {
+		if (user.credits === null) {
+			return null;
+		}
+		if ((user.credits ?? 0) >= GRANTED_CREDITS_CAP) {
+			return null;
+		}
+		const anchor = user.lastGrantedCreditsRefillAt ?? user.createdAt;
+		const next = new Date(anchor.getTime() + GRANTED_CREDITS_REFILL_INTERVAL_MS);
+		return next.toISOString();
+	}
+
+	private mapUserToCreditBalance(user: UserEntity): CreditBalance {
+		const creditsBalance = user.credits ?? 0;
+		const purchasedCredits = user.purchasedCredits ?? 0;
+		const freeQuestions = user.remainingFreeQuestions ?? 0;
+		const totalCredits = creditsBalance + purchasedCredits + freeQuestions;
+
+		return {
+			totalCredits,
+			credits: creditsBalance,
+			purchasedCredits,
+			freeQuestions,
+			dailyLimit: user.dailyFreeQuestions ?? 0,
+			canPlayFree: freeQuestions > 0,
+			nextResetTime: user.lastFreeQuestionsReset ? user.lastFreeQuestionsReset.toISOString() : null,
+			nextGrantedCreditsRefillAt: this.computeNextGrantedCreditsRefillAtIso(user),
+			userId: user.id,
+		};
+	}
+
+	private async applyGrantedCreditsRefillIfNeeded(
+		user: UserEntity,
+		transactionalEntityManager?: EntityManager
+	): Promise<UserEntity> {
+		if (user.credits === null) {
+			return user;
+		}
+		const current = user.credits ?? 0;
+		if (current >= GRANTED_CREDITS_CAP) {
+			return user;
+		}
+		const anchor = user.lastGrantedCreditsRefillAt ?? user.createdAt;
+		const nextEligibleMs = anchor.getTime() + GRANTED_CREDITS_REFILL_INTERVAL_MS;
+		if (Date.now() < nextEligibleMs) {
+			return user;
+		}
+		user.credits = GRANTED_CREDITS_CAP;
+		user.lastGrantedCreditsRefillAt = new Date();
+		const repo = transactionalEntityManager
+			? transactionalEntityManager.getRepository(UserEntity)
+			: this.userRepository;
+		const saved = await repo.save(user);
+		if (!transactionalEntityManager) {
+			try {
+				await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id));
+			} catch (error) {
+				logger.cacheError('Failed to invalidate credits cache after granted refill', SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id), {
+					errorInfo: { message: getErrorMessage(error) },
+					userId: saved.id,
+				});
+			}
+		}
+		return saved;
+	}
+
 	private assertQuestionsPerRequestWithinLimits(questionsPerRequest: number): void {
 		const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 		if (
@@ -93,23 +161,8 @@ export class CreditsService {
 						throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 					}
 
-					const credits = user.credits ?? 0;
-					const purchasedCredits = user.purchasedCredits ?? 0;
-					const freeQuestions = user.remainingFreeQuestions ?? 0;
-					const totalCredits = credits + purchasedCredits + freeQuestions;
-
-					const balance: CreditBalance = {
-						totalCredits,
-						credits,
-						purchasedCredits,
-						freeQuestions,
-						dailyLimit: user.dailyFreeQuestions,
-						canPlayFree: freeQuestions > 0,
-						nextResetTime: user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null,
-						userId: user.id,
-					};
-
-					return balance;
+					const refreshed = await this.applyGrantedCreditsRefillIfNeeded(user);
+					return this.mapUserToCreditBalance(refreshed);
 				},
 				TIME_DURATIONS_SECONDS.HOUR,
 				isCreditBalanceCacheEntry
@@ -253,10 +306,12 @@ export class CreditsService {
 						? MAX
 						: questionsPerRequest;
 
-			const user = await this.userRepository.findOne({ where: { id: userId } });
+			let user = await this.userRepository.findOne({ where: { id: userId } });
 			if (!user) {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
+
+			user = await this.applyGrantedCreditsRefillIfNeeded(user);
 
 			// Users with NULL credits (admins) can always play without credits
 			if (user.credits === null) {
@@ -367,31 +422,14 @@ export class CreditsService {
 
 				// Users with NULL credits (admins) don't need credit deduction
 				if (user.credits === null) {
-					const nextResetTime = user.lastFreeQuestionsReset
-						? new Date(user.lastFreeQuestionsReset).toISOString()
-						: null;
-					const credits = user.credits ?? 0;
-					const purchasedCredits = user.purchasedCredits ?? 0;
-					const freeQuestions = user.remainingFreeQuestions ?? 0;
-					const totalCredits = credits + purchasedCredits + freeQuestions;
-
-					return {
-						totalCredits,
-						credits,
-						purchasedCredits,
-						freeQuestions,
-						dailyLimit: user.dailyFreeQuestions,
-						canPlayFree: freeQuestions > 0,
-						nextResetTime,
-						userId: user.id,
-					};
+					return this.mapUserToCreditBalance(user);
 				}
 
-				// Calculate current balance from user
-				const nextResetTime = user.lastFreeQuestionsReset ? new Date(user.lastFreeQuestionsReset).toISOString() : null;
-				const credits = user.credits ?? 0;
-				const purchasedCredits = user.purchasedCredits ?? 0;
-				const freeQuestions = user.remainingFreeQuestions ?? 0;
+				const userAfterRefill = await this.applyGrantedCreditsRefillIfNeeded(user, transactionalEntityManager);
+
+				const credits = userAfterRefill.credits ?? 0;
+				const purchasedCredits = userAfterRefill.purchasedCredits ?? 0;
+				const freeQuestions = userAfterRefill.remainingFreeQuestions ?? 0;
 				const totalCredits = credits + purchasedCredits + freeQuestions;
 
 				// Validate canPlay inside transaction to prevent race conditions
@@ -409,16 +447,7 @@ export class CreditsService {
 					);
 				}
 
-				const currentBalance: CreditBalance = {
-					totalCredits,
-					credits,
-					purchasedCredits,
-					freeQuestions,
-					canPlayFree: freeQuestions > 0,
-					dailyLimit: user.dailyFreeQuestions,
-					nextResetTime,
-					userId: user.id,
-				};
+				const currentBalance = this.mapUserToCreditBalance(userAfterRefill);
 
 				const deductionResult = calculateNewBalance(currentBalance, normalizedQuestionsPerRequest, gameMode);
 
@@ -500,23 +529,7 @@ export class CreditsService {
 				// Invalidate credits cache (outside transaction for performance)
 				this.invalidateCreditsCacheAsync(userId);
 
-				const finalCredits = updatedUser.credits ?? 0;
-				const finalPurchasedCredits = updatedUser.purchasedCredits ?? 0;
-				const finalFreeQuestions = updatedUser.remainingFreeQuestions ?? 0;
-				const finalTotalCredits = finalCredits + finalPurchasedCredits + finalFreeQuestions;
-
-				const balance: CreditBalance = {
-					totalCredits: finalTotalCredits,
-					credits: finalCredits,
-					purchasedCredits: finalPurchasedCredits,
-					freeQuestions: finalFreeQuestions,
-					dailyLimit: updatedUser.dailyFreeQuestions,
-					canPlayFree: finalFreeQuestions > 0,
-					nextResetTime,
-					userId: updatedUser.id,
-				};
-
-				return balance;
+				return this.mapUserToCreditBalance(updatedUser);
 			});
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), {
@@ -568,19 +581,23 @@ export class CreditsService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
+			const userAfterRefill = entityManager
+				? await this.applyGrantedCreditsRefillIfNeeded(user, entityManager)
+				: await this.applyGrantedCreditsRefillIfNeeded(user);
+
 			// Update user credits
-			user.credits = (user.credits ?? 0) + credits;
-			user.purchasedCredits = (user.purchasedCredits ?? 0) + credits;
-			await userRepo.save(user);
+			userAfterRefill.credits = (userAfterRefill.credits ?? 0) + credits;
+			userAfterRefill.purchasedCredits = (userAfterRefill.purchasedCredits ?? 0) + credits;
+			await userRepo.save(userAfterRefill);
 
 			const creditTransaction = transactionRepo.create({
 				userId,
 				type: CreditTransactionType.PURCHASE,
 				source: CreditSource.PURCHASED,
 				amount: credits,
-				balanceAfter: user.credits ?? 0,
-				freeQuestionsAfter: user.remainingFreeQuestions,
-				purchasedCreditsAfter: user.purchasedCredits,
+				balanceAfter: userAfterRefill.credits ?? 0,
+				freeQuestionsAfter: userAfterRefill.remainingFreeQuestions,
+				purchasedCreditsAfter: userAfterRefill.purchasedCredits,
 				description: `Credits purchase: ${credits} credits`,
 				paymentId,
 				metadata: {
@@ -592,7 +609,7 @@ export class CreditsService {
 			// Invalidate cache
 			await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(userId));
 
-			return this.buildCreditBalance(user);
+			return this.mapUserToCreditBalance(userAfterRefill);
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), {
 				contextMessage: 'Failed to add credits',
@@ -602,24 +619,6 @@ export class CreditsService {
 			});
 			throw error;
 		}
-	}
-
-	private buildCreditBalance(user: UserEntity): CreditBalance {
-		const creditsBalance = user.credits ?? 0;
-		const purchasedCredits = user.purchasedCredits ?? 0;
-		const freeQuestions = user.remainingFreeQuestions ?? 0;
-		const totalCredits = creditsBalance + purchasedCredits + freeQuestions;
-
-		return {
-			totalCredits,
-			credits: creditsBalance,
-			purchasedCredits,
-			freeQuestions,
-			dailyLimit: user.dailyFreeQuestions ?? 0,
-			canPlayFree: freeQuestions > 0,
-			nextResetTime: user.lastFreeQuestionsReset ? user.lastFreeQuestionsReset.toISOString() : null,
-			userId: user.id,
-		};
 	}
 
 	async resetDailyFreeQuestions(): Promise<void> {

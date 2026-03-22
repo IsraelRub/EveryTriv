@@ -2,6 +2,7 @@ import { memo, type ReactElement } from 'react';
 
 import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
 import type { DataTableCardHeaderProps, DataTableCardProps } from '@/types';
+import { cn } from '@/utils';
 import { Card, CardContent, CardHeader, EmptyState, PaginationButtons, Skeleton } from '@/components';
 import { DataTable } from './DataTable';
 
@@ -33,12 +34,13 @@ function DataTableCardInner<T>({
 	header,
 	filters,
 	useCard = true,
+	hideHeader = false,
 	isLoading,
 	data,
 	emptyState,
 	...tableProps
 }: DataTableCardProps<T>): JSX.Element {
-	const headerBlock = <TableCardHeaderLayout {...header} />;
+	const headerBlock = hideHeader ? null : <TableCardHeaderLayout {...header} />;
 	const filtersBlock = filters != null ? <div className='flex flex-wrap items-center gap-4'>{filters}</div> : null;
 
 	const tableContent = ((): ReactElement | null => {
@@ -70,8 +72,8 @@ function DataTableCardInner<T>({
 	if (useCard) {
 		return (
 			<Card className='card-muted-tint'>
-				<CardHeader>{headerBlock}</CardHeader>
-				<CardContent className='space-y-6'>{contentBlock}</CardContent>
+				{headerBlock != null ? <CardHeader>{headerBlock}</CardHeader> : null}
+				<CardContent className={cn('space-y-6', hideHeader && 'pt-6')}>{contentBlock}</CardContent>
 			</Card>
 		);
 	}
@@ -79,7 +81,7 @@ function DataTableCardInner<T>({
 	return (
 		<>
 			{headerBlock}
-			<div className='mt-4 space-y-6'>
+			<div className={hideHeader ? 'space-y-6' : 'mt-4 space-y-6'}>
 				{filtersBlock}
 				{tableContent}
 			</div>

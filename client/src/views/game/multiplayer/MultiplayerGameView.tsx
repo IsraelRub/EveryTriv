@@ -11,6 +11,7 @@ import {
 	ComponentSize,
 	ExitGameButtonVariant,
 	GameKey,
+	GameSessionHudCounterLayout,
 	LoadingMessages,
 	ROUTES,
 	TimerMode,
@@ -24,13 +25,11 @@ import {
 	CardHeader,
 	CardTitle,
 	ExitGameButton,
-	GameCreditBadge,
-	GameTimer,
-	QuestionCounter,
+	GameSessionHud,
 	Spinner,
 	UserAvatar,
 } from '@/components';
-import { useCreditBalance, useCurrentUserData, useMultiplayer, useUserRole } from '@/hooks';
+import { useCurrentUserData, useMultiplayer } from '@/hooks';
 import { useAppSelector } from '@/hooks/useRedux';
 
 export function MultiplayerGameView() {
@@ -40,9 +39,6 @@ export function MultiplayerGameView() {
 
 	const currentUser = useCurrentUserData();
 	const { room, gameState, leaderboard, submitAnswer, leaveRoom, loadingStep, displayMessage } = useMultiplayer(roomId);
-	const { data: creditBalance } = useCreditBalance();
-	const { isAdmin } = useUserRole();
-	const creditBalanceTotal = creditBalance?.totalCredits ?? 0;
 	const revealPhase = useAppSelector(state => state.multiplayer.revealPhase);
 	const answerCountsForQuestionId = useAppSelector(state => state.multiplayer.answerCountsForQuestionId);
 
@@ -165,20 +161,17 @@ export function MultiplayerGameView() {
 					<div className='flex flex-row gap-3 mb-3 flex-shrink-0 min-h-0'>
 						<Card className='flex-[2] min-w-0 basis-0'>
 							<CardContent className='pt-4 pb-4'>
-								<div className='flex flex-col items-center text-center mb-3'>
-									<div className='flex items-center justify-center gap-3 flex-wrap'>
-										<QuestionCounter current={questionIndex + 1} total={gameQuestionCount} size={ComponentSize.MD} />
-										{!isAdmin && <GameCreditBadge totalCredits={creditBalanceTotal} />}
-									</div>
-								</div>
-								<GameTimer
+								<GameSessionHud
+									questionCurrent={questionIndex + 1}
+									questionTotal={gameQuestionCount > 0 ? gameQuestionCount : undefined}
+									counterLayout={GameSessionHudCounterLayout.MULTIPLAYER}
+									timerKey={questionIndex}
 									mode={TimerMode.COUNTDOWN}
 									initialTime={timePerQuestion}
 									startTime={questionStartTime}
 									serverStartTimestamp={serverStartTimestamp}
 									serverEndTimestamp={serverEndTimestamp}
 									onTimeout={handleTimerTimeout}
-									key={questionIndex}
 									label={t(GameKey.TIME_REMAINING)}
 								/>
 							</CardContent>

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-import { DEFAULT_GAME_CONFIG, DifficultyLevel, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, DifficultyLevel, Locale, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 
 import { IsGameDifficulty } from '@common/decorators';
@@ -63,4 +63,12 @@ export class CreateRoomDto {
 	@Min(VALIDATION_COUNT.ANSWER_COUNT.MIN)
 	@Max(VALIDATION_COUNT.ANSWER_COUNT.MAX)
 	answerCount?: number;
+
+	@ApiPropertyOptional({
+		description: 'Language for topic/custom-difficulty checks (defaults to app default)',
+		enum: Locale,
+	})
+	@IsOptional()
+	@IsEnum(Locale)
+	outputLanguage?: Locale;
 }

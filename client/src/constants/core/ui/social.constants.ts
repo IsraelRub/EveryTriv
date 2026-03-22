@@ -10,7 +10,6 @@ export enum SocialShareMode {
 export const SOCIAL_DATA: SocialPlatformData[] = [
 	{
 		name: 'Facebook',
-		nameKey: 'facebook',
 		url: 'https://www.facebook.com/',
 		hoverColor: 'hover:text-blue-600',
 		shareColor: 'bg-blue-600 hover:bg-blue-700',
@@ -20,7 +19,6 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 	},
 	{
 		name: 'X',
-		nameKey: 'x',
 		url: 'https://twitter.com/netanyahu',
 		hoverColor: 'hover:text-white',
 		shareColor: 'bg-blue-500 hover:bg-blue-600',
@@ -32,15 +30,12 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 		name: 'YouTube',
 		url: 'https://www.youtube.com/@amits24',
 		hoverColor: 'hover:text-red-600',
-		shareColor: 'bg-red-500 hover:bg-red-600',
 		icon: FaYoutube,
 	},
 	{
 		name: 'Instagram',
-		nameKey: 'instagram',
 		url: 'https://www.instagram.com/idfonline/',
-		hoverColor: 'hover:text-purple-500',
-		shareColor: 'bg-pink-500 hover:bg-pink-600',
+		hoverColor: 'hover:text-fuchsia-500',
 		icon: FaInstagram,
 	},
 	{
@@ -54,7 +49,6 @@ export const SOCIAL_DATA: SocialPlatformData[] = [
 	},
 	{
 		name: 'WhatsApp',
-		nameKey: 'whatsapp',
 		url: 'https://wa.me/',
 		hoverColor: 'hover:text-green-500',
 		shareColor: 'bg-green-500 hover:bg-green-600',

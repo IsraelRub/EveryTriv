@@ -50,11 +50,12 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"google_id" character varying,
 					"first_name" character varying,
 					"last_name" character varying,
-					"credits" integer DEFAULT '100',
+					"credits" integer DEFAULT '150',
 					"purchased_credits" integer NOT NULL DEFAULT '0',
 					"daily_free_questions" integer NOT NULL DEFAULT '20',
 					"remaining_free_questions" integer NOT NULL DEFAULT '20',
 					"last_free_questions_reset" date,
+					"last_granted_credits_refill_at" TIMESTAMP NULL,
 					"last_login" TIMESTAMP,
 					"is_active" boolean NOT NULL DEFAULT true,
 					"email_verified" boolean NOT NULL DEFAULT false,
@@ -95,6 +96,17 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				UPDATE "users" 
 				SET "credits" = NULL 
 				WHERE "role" = '${UserRole.ADMIN}';
+			`);
+
+			// Granted credits rolling refill (merged from AddLastGrantedCreditsRefill migration)
+			console.log('Adding last_granted_credits_refill_at and credits default 150 if needed');
+			await queryRunner.query(`
+				ALTER TABLE "users"
+				ADD COLUMN IF NOT EXISTS "last_granted_credits_refill_at" TIMESTAMP NULL;
+			`);
+			await queryRunner.query(`
+				ALTER TABLE "users"
+				ALTER COLUMN "credits" SET DEFAULT 150;
 			`);
 
 			console.log('Adding email_verified column to users if needed');

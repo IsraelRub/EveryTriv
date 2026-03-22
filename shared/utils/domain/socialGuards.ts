@@ -6,7 +6,6 @@ export function isSocialLinkItem(value: unknown): value is {
 	name: string;
 	url: string;
 	hoverColor: string;
-	shareColor: string;
 	icon?: unknown;
 } {
 	if (!isRecord(value)) {
@@ -17,7 +16,6 @@ export function isSocialLinkItem(value: unknown): value is {
 		VALIDATORS.string(value.name) &&
 		VALIDATORS.string(value.url) &&
 		VALIDATORS.string(value.hoverColor) &&
-		VALIDATORS.string(value.shareColor) &&
 		(value.icon === undefined || VALIDATORS.function(value.icon))
 	);
 }

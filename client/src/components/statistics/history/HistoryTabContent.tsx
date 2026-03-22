@@ -21,7 +21,6 @@ import {
 	SortField,
 	StatisticsHistoryKey,
 	VariantBase,
-	type StatisticsHistoryKeyType,
 } from '@/constants';
 import { DataTableColumnType, type DataTableColumn } from '@/types';
 import { clientLogger as logger } from '@/services';
@@ -55,7 +54,7 @@ import {
 } from '@/components';
 import { useClearGameHistory, useClientTableState, useDeleteGameHistory, useGameHistory } from '@/hooks';
 
-function getGameModeHistoryLabelKey(gameMode: GameMode): StatisticsHistoryKeyType {
+function getGameModeHistoryLabelKey(gameMode: GameMode): StatisticsHistoryKey {
 	return gameMode === GameMode.MULTIPLAYER ? StatisticsHistoryKey.MODE_MULTIPLAYER : StatisticsHistoryKey.MODE_SINGLE;
 }
 

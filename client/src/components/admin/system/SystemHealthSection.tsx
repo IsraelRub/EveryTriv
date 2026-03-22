@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
 	Activity,
@@ -30,6 +31,10 @@ import { formatNumericValue } from '@shared/utils';
 import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
 import { formatDateTime } from '@/utils';
 import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
 	Badge,
 	Card,
 	CardContent,
@@ -47,12 +52,37 @@ import {
 	useSystemSecurityMetrics,
 } from '@/hooks';
 
+const SECURITY_ACCORDION = {
+	AUTH: 'security-auth',
+	AUTHZ: 'security-authz',
+	DATA: 'security-data',
+} as const;
+
+const SYSTEM_INSIGHT_ACCORDION = {
+	PERF: 'si-perf',
+	SEC: 'si-sec',
+	USER: 'si-user',
+	HEALTH: 'si-health',
+	TRENDS: 'si-trends',
+} as const;
+
 export function SystemHealthSection() {
 	const { t } = useTranslation();
 	const { data: systemPerformance, isLoading: systemPerformanceLoading } = useSystemPerformanceMetrics();
 	const { data: systemSecurity, isLoading: systemSecurityLoading } = useSystemSecurityMetrics();
 	const { data: systemRecommendations, isLoading: systemRecommendationsLoading } = useSystemRecommendations();
 	const { data: systemInsights, isLoading: systemInsightsLoading } = useSystemInsights();
+
+	const systemInsightsAccordionDefault = useMemo((): string[] => {
+		if (systemInsights == null) return [];
+		const v: string[] = [];
+		if (systemInsights.performanceInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.PERF);
+		if (systemInsights.securityInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.SEC);
+		if (systemInsights.userBehaviorInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.USER);
+		if (systemInsights.systemHealthInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.HEALTH);
+		if (systemInsights.trends.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.TRENDS);
+		return v;
+	}, [systemInsights]);
 
 	return (
 		<div className='space-y-8'>
@@ -124,17 +154,24 @@ export function SystemHealthSection() {
 						<Skeleton variant={SkeletonVariant.Card} count={3} />
 					</div>
 				) : systemSecurity ? (
-					<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-						{/* Authentication Metrics */}
-						<Card>
-							<CardHeader className='pb-3'>
-								<CardTitle className='text-lg flex items-center gap-2'>
-									<LogIn className='h-5 w-5 text-primary' />
+					<Accordion
+						type='multiple'
+						defaultValue={[
+							SECURITY_ACCORDION.AUTH,
+							SECURITY_ACCORDION.AUTHZ,
+							SECURITY_ACCORDION.DATA,
+						]}
+						className='w-full'
+					>
+						<AccordionItem value={SECURITY_ACCORDION.AUTH}>
+							<AccordionTrigger>
+								<span className='flex items-center gap-2'>
+									<LogIn className='h-5 w-5 shrink-0 text-primary' />
 									{t(AdminKey.AUTHENTICATION)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className='space-y-4'>
+								</span>
+							</AccordionTrigger>
+							<AccordionContent>
+								<div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
 									<StatCard
 										icon={AlertTriangle}
 										label={t(AdminKey.FAILED_LOGINS)}
@@ -154,19 +191,17 @@ export function SystemHealthSection() {
 										color={Colors.YELLOW_500.text}
 									/>
 								</div>
-							</CardContent>
-						</Card>
-
-						{/* Authorization Metrics */}
-						<Card>
-							<CardHeader className='pb-3'>
-								<CardTitle className='text-lg flex items-center gap-2'>
-									<KeyRound className='h-5 w-5 text-primary' />
+							</AccordionContent>
+						</AccordionItem>
+						<AccordionItem value={SECURITY_ACCORDION.AUTHZ}>
+							<AccordionTrigger>
+								<span className='flex items-center gap-2'>
+									<KeyRound className='h-5 w-5 shrink-0 text-primary' />
 									{t(AdminKey.AUTHORIZATION)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className='space-y-4'>
+								</span>
+							</AccordionTrigger>
+							<AccordionContent>
+								<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
 									<StatCard
 										icon={AlertTriangle}
 										label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
@@ -180,19 +215,17 @@ export function SystemHealthSection() {
 										color={Colors.ORANGE_500.text}
 									/>
 								</div>
-							</CardContent>
-						</Card>
-
-						{/* Data Security Metrics */}
-						<Card>
-							<CardHeader className='pb-3'>
-								<CardTitle className='text-lg flex items-center gap-2'>
-									<Database className='h-5 w-5 text-primary' />
+							</AccordionContent>
+						</AccordionItem>
+						<AccordionItem value={SECURITY_ACCORDION.DATA}>
+							<AccordionTrigger>
+								<span className='flex items-center gap-2'>
+									<Database className='h-5 w-5 shrink-0 text-primary' />
 									{t(AdminKey.DATA_SECURITY)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className='space-y-4'>
+								</span>
+							</AccordionTrigger>
+							<AccordionContent>
+								<div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
 									<StatCard
 										icon={AlertTriangle}
 										label={t(AdminKey.DATA_BREACHES)}
@@ -212,9 +245,9 @@ export function SystemHealthSection() {
 										color={Colors.GREEN_500.text}
 									/>
 								</div>
-							</CardContent>
-						</Card>
-					</div>
+							</AccordionContent>
+						</AccordionItem>
+					</Accordion>
 				) : (
 					<div className='text-center py-8 text-muted-foreground'>
 						<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
@@ -225,57 +258,69 @@ export function SystemHealthSection() {
 
 			{/* System Recommendations */}
 			{systemRecommendations && systemRecommendations.length > 0 && (
-				<SectionCard
-					title={t(AdminKey.SYSTEM_RECOMMENDATIONS)}
-					icon={Lightbulb}
-					description={t(AdminKey.SECURITY_RECOMMENDATIONS_DESC)}
+				<Accordion
+					type='multiple'
+					defaultValue={['system-recommendations']}
+					className='w-full rounded-lg border bg-card'
 				>
-					{systemRecommendationsLoading ? (
-						<div className='space-y-4'>
-							<Skeleton variant={SkeletonVariant.BlockTall} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
-						</div>
-					) : (
-						<div className='space-y-4'>
-							{systemRecommendations.map(recommendation => (
-								<Card key={recommendation.id} className='card-accent-left-warning'>
-									<CardHeader className='pb-3'>
-										<div className='flex items-start justify-between'>
-											<div className='flex-1'>
-												<CardTitle className='text-lg mb-1'>{recommendation.title}</CardTitle>
-												<CardDescription>{recommendation.description}</CardDescription>
-											</div>
-											<Badge
-												variant={
-													recommendation.priority === RecommendationPriority.HIGH
-														? VariantBase.DESTRUCTIVE
-														: VariantBase.SECONDARY
-												}
-											>
-												{recommendation.priority}
-											</Badge>
-										</div>
-									</CardHeader>
-									<CardContent>
-										<div className='space-y-2'>
-											<p className='text-sm'>{recommendation.message}</p>
-											<div className='flex flex-wrap gap-4 text-xs text-muted-foreground'>
-												<span>
-													<strong>{t(AdminKey.RECOMMENDATION_ACTION)}:</strong> {recommendation.action}
-												</span>
-												<span>
-													<strong>{t(AdminKey.RECOMMENDATION_IMPACT)}:</strong> {recommendation.estimatedImpact}
-												</span>
-												<span>
-													<strong>{t(AdminKey.RECOMMENDATION_EFFORT)}:</strong> {recommendation.implementationEffort}
-												</span>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					)}
-				</SectionCard>
+					<AccordionItem value='system-recommendations'>
+						<AccordionTrigger className='px-4'>
+							<span className='flex items-center gap-2'>
+								<Lightbulb className='h-4 w-4 shrink-0 text-primary' />
+								{t(AdminKey.SYSTEM_RECOMMENDATIONS)}
+							</span>
+						</AccordionTrigger>
+						<AccordionContent className='px-4 pb-4'>
+							<p className='mb-4 text-sm text-muted-foreground'>{t(AdminKey.SECURITY_RECOMMENDATIONS_DESC)}</p>
+							{systemRecommendationsLoading ? (
+								<div className='space-y-4'>
+									<Skeleton variant={SkeletonVariant.BlockTall} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
+								</div>
+							) : (
+								<div className='space-y-4'>
+									{systemRecommendations.map(recommendation => (
+										<Card key={recommendation.id} className='card-accent-left-warning'>
+											<CardHeader className='pb-3'>
+												<div className='flex items-start justify-between'>
+													<div className='flex-1'>
+														<CardTitle className='mb-1 text-lg'>{recommendation.title}</CardTitle>
+														<CardDescription>{recommendation.description}</CardDescription>
+													</div>
+													<Badge
+														variant={
+															recommendation.priority === RecommendationPriority.HIGH
+																? VariantBase.DESTRUCTIVE
+																: VariantBase.SECONDARY
+														}
+													>
+														{recommendation.priority}
+													</Badge>
+												</div>
+											</CardHeader>
+											<CardContent>
+												<div className='space-y-2'>
+													<p className='text-sm'>{recommendation.message}</p>
+													<div className='flex flex-wrap gap-4 text-xs text-muted-foreground'>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_ACTION)}:</strong> {recommendation.action}
+														</span>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_IMPACT)}:</strong> {recommendation.estimatedImpact}
+														</span>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_EFFORT)}:</strong>{' '}
+															{recommendation.implementationEffort}
+														</span>
+													</div>
+												</div>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							)}
+						</AccordionContent>
+					</AccordionItem>
+				</Accordion>
 			)}
 
 			{/* System Insights */}
@@ -287,7 +332,7 @@ export function SystemHealthSection() {
 						</div>
 					) : systemInsights ? (
 						<div className='space-y-6'>
-							<div className='flex items-center gap-2 mb-4'>
+							<div className='mb-4 flex items-center gap-2'>
 								<Badge
 									variant={
 										systemInsights.status === SystemInsightStatus.OPTIMAL
@@ -304,107 +349,110 @@ export function SystemHealthSection() {
 								</span>
 							</div>
 
-							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-								{systemInsights.performanceInsights.length > 0 && (
-									<Card>
-										<CardHeader className='pb-3'>
-											<CardTitle className='text-lg flex items-center gap-2'>
-												<Zap className='h-5 w-5 text-primary' />
-												Performance Insights
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
+							{systemInsightsAccordionDefault.length === 0 ? (
+								<div className='py-6 text-center text-muted-foreground'>
+									<ScanEye className='mx-auto mb-4 h-12 w-12 opacity-50' />
+									<p>{t(AdminKey.NO_SYSTEM_INSIGHTS_AVAILABLE)}</p>
+								</div>
+							) : (
+							<Accordion type='multiple' defaultValue={systemInsightsAccordionDefault} className='w-full'>
+								{systemInsights.performanceInsights.length > 0 ? (
+									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.PERF}>
+										<AccordionTrigger>
+											<span className='flex items-center gap-2'>
+												<Zap className='h-5 w-5 shrink-0 text-primary' />
+												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
+											</span>
+										</AccordionTrigger>
+										<AccordionContent>
 											<div className='space-y-3'>
 												{systemInsights.performanceInsights.map((insight, index) => (
-													<div key={index} className='p-3 rounded-lg bg-muted/50'>
+													<div key={index} className='rounded-lg bg-muted/50 p-3'>
 														<span className='text-sm'>{insight}</span>
 													</div>
 												))}
 											</div>
-										</CardContent>
-									</Card>
-								)}
-
-								{systemInsights.securityInsights.length > 0 && (
-									<Card>
-										<CardHeader className='pb-3'>
-											<CardTitle className='text-lg flex items-center gap-2'>
-												<Shield className='h-5 w-5 text-primary' />
-												Security Insights
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
+										</AccordionContent>
+									</AccordionItem>
+								) : null}
+								{systemInsights.securityInsights.length > 0 ? (
+									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.SEC}>
+										<AccordionTrigger>
+											<span className='flex items-center gap-2'>
+												<Shield className='h-5 w-5 shrink-0 text-primary' />
+												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
+											</span>
+										</AccordionTrigger>
+										<AccordionContent>
 											<div className='space-y-3'>
 												{systemInsights.securityInsights.map((insight, index) => (
-													<div key={index} className='p-3 rounded-lg bg-muted/50'>
+													<div key={index} className='rounded-lg bg-muted/50 p-3'>
 														<span className='text-sm'>{insight}</span>
 													</div>
 												))}
 											</div>
-										</CardContent>
-									</Card>
-								)}
-
-								{systemInsights.userBehaviorInsights.length > 0 && (
-									<Card>
-										<CardHeader className='pb-3'>
-											<CardTitle className='text-lg flex items-center gap-2'>
-												<Activity className='h-5 w-5 text-primary' />
-												User Behavior Insights
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
+										</AccordionContent>
+									</AccordionItem>
+								) : null}
+								{systemInsights.userBehaviorInsights.length > 0 ? (
+									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.USER}>
+										<AccordionTrigger>
+											<span className='flex items-center gap-2'>
+												<Activity className='h-5 w-5 shrink-0 text-primary' />
+												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
+											</span>
+										</AccordionTrigger>
+										<AccordionContent>
 											<div className='space-y-3'>
 												{systemInsights.userBehaviorInsights.map((insight, index) => (
-													<div key={index} className='p-3 rounded-lg bg-muted/50'>
+													<div key={index} className='rounded-lg bg-muted/50 p-3'>
 														<span className='text-sm'>{insight}</span>
 													</div>
 												))}
 											</div>
-										</CardContent>
-									</Card>
-								)}
-
-								{systemInsights.systemHealthInsights.length > 0 && (
-									<Card>
-										<CardHeader className='pb-3'>
-											<CardTitle className='text-lg flex items-center gap-2'>
-												<Activity className='h-5 w-5 text-primary' />
-												System Health Insights
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
+										</AccordionContent>
+									</AccordionItem>
+								) : null}
+								{systemInsights.systemHealthInsights.length > 0 ? (
+									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.HEALTH}>
+										<AccordionTrigger>
+											<span className='flex items-center gap-2'>
+												<Activity className='h-5 w-5 shrink-0 text-primary' />
+												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
+											</span>
+										</AccordionTrigger>
+										<AccordionContent>
 											<div className='space-y-3'>
 												{systemInsights.systemHealthInsights.map((insight, index) => (
-													<div key={index} className='p-3 rounded-lg bg-muted/50'>
+													<div key={index} className='rounded-lg bg-muted/50 p-3'>
 														<span className='text-sm'>{insight}</span>
 													</div>
 												))}
 											</div>
-										</CardContent>
-									</Card>
-								)}
-
-								{systemInsights.trends.length > 0 && (
-									<Card>
-										<CardHeader className='pb-3'>
-											<CardTitle className='text-lg flex items-center gap-2'>
-												<TrendingUp className='h-5 w-5 text-primary' />
-												Trends
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
+										</AccordionContent>
+									</AccordionItem>
+								) : null}
+								{systemInsights.trends.length > 0 ? (
+									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.TRENDS}>
+										<AccordionTrigger>
+											<span className='flex items-center gap-2'>
+												<TrendingUp className='h-5 w-5 shrink-0 text-primary' />
+												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
+											</span>
+										</AccordionTrigger>
+										<AccordionContent>
 											<div className='space-y-3'>
 												{systemInsights.trends.map((trend, index) => (
-													<div key={index} className='p-3 rounded-lg bg-muted/50'>
+													<div key={index} className='rounded-lg bg-muted/50 p-3'>
 														<span className='text-sm'>{trend}</span>
 													</div>
 												))}
 											</div>
-										</CardContent>
-									</Card>
-								)}
-							</div>
+										</AccordionContent>
+									</AccordionItem>
+								) : null}
+							</Accordion>
+							)}
 						</div>
 					) : (
 						<div className='text-center py-8 text-muted-foreground'>

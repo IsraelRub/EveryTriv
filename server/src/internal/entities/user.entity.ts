@@ -28,8 +28,11 @@ export class UserEntity extends BaseEntity {
 	@Column({ name: 'last_name', nullable: true })
 	lastName?: string;
 
-	@Column('int', { nullable: true, default: 100 })
-	credits: number | null = 100;
+	@Column('int', { nullable: true, default: 150 })
+	credits: number | null = 150;
+
+	@Column({ name: 'last_granted_credits_refill_at', type: 'timestamp', nullable: true })
+	lastGrantedCreditsRefillAt?: Date | null;
 
 	@Column({ name: 'purchased_credits', type: 'int', default: 0 })
 	purchasedCredits: number = 0;

@@ -13,10 +13,6 @@ export interface AudioData {
 	volume: number;
 }
 
-export interface AudioControlsProps {
-	className?: string;
-}
-
 export interface UseAudioPreferencesProps {
 	soundEnabled: boolean;
 	musicEnabled: boolean;

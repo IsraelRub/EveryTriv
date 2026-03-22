@@ -6,7 +6,6 @@ export interface SocialLinkItem {
 	name: string;
 	url: string;
 	hoverColor: string;
-	shareColor: string;
 	icon?: IconType;
 }
 
@@ -21,11 +20,9 @@ export interface SocialSharePlatform {
 
 export interface SocialPlatformData {
 	name: string;
-
-	nameKey?: string;
 	url: string;
 	hoverColor: string;
-	shareColor: string;
+	shareColor?: string;
 	icon?: IconType;
 	getShareUrl?: (text: string, url: string) => string;
 }

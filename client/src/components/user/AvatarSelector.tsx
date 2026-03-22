@@ -37,7 +37,7 @@ import {
 } from '@/components';
 import { useSetAvatar, useUploadAvatar } from '@/hooks';
 
-export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAvatarUrl }: AvatarSelectorProps) {
+export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAvatarUrl, onAvatarSaved }: AvatarSelectorProps) {
 	const { t } = useTranslation(['auth', 'loading', 'common']);
 	const [selectedAvatarId, setSelectedAvatarId] = useState<number>(currentAvatarId ?? AVATAR_ID_CLEAR);
 	const setAvatar = useSetAvatar();
@@ -59,6 +59,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 		try {
 			await setAvatar.mutateAsync(selectedAvatarId);
 			logger.userSuccess('Avatar updated successfully', { avatar: selectedAvatarId });
+			onAvatarSaved?.();
 			onOpenChange(false);
 		} catch (error) {
 			const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPDATE_FAILED);
@@ -86,6 +87,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 			try {
 				await uploadAvatar.mutateAsync(file);
 				logger.userSuccess('Avatar uploaded successfully');
+				onAvatarSaved?.();
 				onOpenChange(false);
 			} catch (error) {
 				const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPLOAD_FAILED);
@@ -93,7 +95,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 			}
 			e.target.value = '';
 		},
-		[uploadAvatar, onOpenChange, t]
+		[uploadAvatar, onOpenChange, onAvatarSaved, t]
 	);
 
 	const handleRemoveCustom = useCallback(async () => {
@@ -153,7 +155,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 									ref={fileInputRef}
 									type='file'
 									accept={ACCEPT_IMAGE}
-									className='sr-only'
+									className='hidden'
 									onChange={handleFileChange}
 								/>
 								<Button

@@ -4,51 +4,43 @@
 
 ## דוח התאמה: תרחישים מול קוד ותרשימים קיימים
 
-(עדכון: בדיקה שיטתית מול הקוד ומול התרשימים בקובץ זה.)
+(עדכון: מסונכרן עם הקוד, `server/src/migrations/1780000000000-CreateCompleteSchema.ts`, ומודולי `server/src/app.module.ts`.)
 
-### 1. האם תוכן תרשימי הזרימה (ארכיטקטורה, Auth, Single/Multi, Payment, Trivia, Admin, Maintenance, Entities, Redux) משקף את הפרויקט?
+### 1. האם תוכן תרשימי הזרימה משקף את הפרויקט?
 
 | תרחיש / רכיב | התאמה לקוד | הערות |
 |--------------|-------------|--------|
-| **ארכיטקטורה** (Client, Server, PostgreSQL, Redis, Groq, PayPal) | כן | תואם. |
-| **Authentication** (LoginView, Email/Google, validateUser, JWT, Redis session, Redux) | כן | זרימת אימות וניהול סשן תואמת. |
-| **Single Player** (GameSetupView, credits.canPlay, session/start, deduct, TriviaGeneration, PlayArea, submit, finalize, Summary) | כן | שמות Views ו-API תואמים. שים לב: שאלות טריוויה – **POST** `/game/trivia` (לא GET). |
-| **Multiplayer** (WebSocket: create-room, join-room, start-game, question-started, submit-answer, game-ended) | כן | אירועי Gateway תואמים ל-`multiplayer.gateway.ts`. |
-| **Payment & Credits** (PayPal, createOrder, webhook, addCredits, invalidate cache) | כן | PayPal + Credits; אין Stripe/מנוי. |
-| **Trivia Generation** (TriviaRequestPipe, DB vs Groq, GroqResponseParser, שמירה) | כן | תואם ל-TriviaGenerationService ו-Pipes. |
-| **Admin** (Guards, טאבים: Business, Performance, System, Trivia, Users; Maintenance תחת System) | כן | טאבים תואמים; Maintenance כחלק מ-System. |
-| **Maintenance – Schedulers** | חלקי | **GameSessionScheduler**: בקוד רץ כל 5 דקות ומסיים sessions ישנים (מעל שעה); בתרשים לעיתים "hourly". **ScoreResetScheduler**: בקוד – איפוס שבועי/חודשי/שנתי + consistency יומי ב-2AM; בתרשים "Reset weekly scores (daily)" – לא מדויק (שבועי לא יומי). **Daily Free Questions Reset**: המתודה `CreditsService.resetDailyFreeQuestions()` קיימת אך **אינה נקראת משום Cron** – אין scheduler ייעודי ל-reset שאלות חינם יומיות. |
-| **Entities** (User, GameHistory, Trivia, CreditTransaction) | כן | תואם; ב-ERD בקובץ יש עוד ישויות (UserStats, Leaderboard, PaymentHistory). |
-| **Redux** (gameModeSlice, gameSessionSlice, multiplayerSlice, audioSettingsSlice, uiPreferencesSlice) | כן | כל ה-slices קיימים. |
+| **ארכיטקטורה** (Client, Server, PostgreSQL, Redis, Groq, PayPal) | כן | כולל `MultiplayerModule`, `MaintenanceModule`, `AdminModule`. |
+| **Authentication** (LoginView, Email/Google, JWT, cache, Redux) | כן | |
+| **Single Player** (`GameSetupView`, `canPlay`, `session/start`, deduct, `POST /game/trivia`, PlayArea, `session/answer`, finalize, `SingleSummaryView`) | כן | ראו גם דיאגרמת "זרימת סשן יחיד". |
+| **Multiplayer** (Socket.IO namespace `/multiplayer`, אירועי `MultiplayerEvent`) | כן | ראו דיאגרמת "זרימת מולטיפלייר (WebSocket)". |
+| **Payment & Credits** (PayPal, webhook, `CreditTransaction`, cache) | כן | אין Stripe/מנוי. |
+| **Trivia Generation** | כן | `TriviaRequestPipe`, `CustomDifficultyPipe`, `StartGameSessionPipe` וכו'. |
+| **Admin** | כן | |
+| **Maintenance – Schedulers** | כן | ראו דיאגרמת "תחזוקה ו-Schedulers". `resetDailyFreeQuestions` אינה מחוברת ל-Cron (אם תרצו איפוס יומי אוטומטי – יש להוסיף קריאה מתוזמנת). |
+| **Entities / ERD** | כן | ללא טבלת `leaderboard` (הוסרה במיגרציה); לוחות תוצאות נגזרים מ-`user_stats`. יש `credits_config`. |
+| **Redux** | כן | `gameModeSlice`, `gameSessionSlice`, `multiplayerSlice`, `audioSettingsSlice`, `uiPreferencesSlice`. |
 
-### 2. האם התוכן מתקף (משתקף) בתרשימים הקיימים ב-DIAGRAMS.md?
+### 2. מיפוי תרשימים בקובץ זה
 
-| תרחיש | יש תרשים ב-DIAGRAMS.md? | הערות |
-|-------|-------------------------|--------|
-| ארכיטקטורה כללית | כן | דיאגרמת ארכיטקטורה, מודולי Backend, היררכיות. |
-| Authentication | כן | "דיאגרמת זרימת אימות". |
-| יצירת שאלות / Trivia | כן | "זרימת נתונים – יצירת שאלה", "זרימת Prompt – יצירת שאלת טריוויה", "AI Providers". |
-| תשובה לשאלה / ניקוד | כן | "זרימת נתונים – תשובה לשאלה". |
-| **Single Player – זרימה מלאה (Setup → Credits → Session Start → Deduct → שאלות → Finalize → Summary)** | חלקי | "דיאגרמת זרימת משחק מלא" היא state diagram כללי (GameConfig → GameSession → Question → …); **אין** sequence/flowchart שמראה במפורש: בדיקת credits, POST session/start, ניכוי נקודות, finalize. |
-| **Multiplayer (WebSocket)** | **לא** | **חסר**: אין דיאגרמת זרימה למשחק מרובה משתתפים (create-room, join-room, start-game, question-started, submit-answer, game-ended). |
-| Payment & Credits | כן | "דיאגרמת זרימת תשלומים" (עודכן ל-PayPal + Credits). |
-| Admin Dashboard | כן | "דיאגרמת זרימת Admin Dashboard". |
-| **Maintenance & Schedulers** | **לא** | **חסר**: אין תרשים ל-Cron jobs (GameSessionScheduler, ScoreResetScheduler, consistency, retry stats). אין תרשים ל-DataMaintenanceService / UserStatsMaintenanceService. |
-| Entities / ERD | כן | "דיאגרמת מסד נתונים (ERD)". |
-| Redux / React Query | כן | "דיאגרמת Redux State", "דיאגרמת React Query Cache". |
+| תרחיש | תרשים ב-DIAGRAMS.md |
+|-------|---------------------|
+| ארכיטקטורה, מודולי Backend, שכבות | כן |
+| Authentication | כן |
+| Trivia / Prompt / AI Providers | כן |
+| תשובה לשאלה | כן |
+| סשן יחיד (מפורט) | כן – "זרימת סשן יחיד" |
+| מולטיפלייר WebSocket | כן – "זרימת מולטיפלייר" |
+| תחזוקה ו-Cron | כן – "תחזוקה ו-Schedulers" |
+| תשלומים | כן |
+| ERD | כן – מעודכן למיגרציה ולישויות TypeORM |
+| Redux / React Query | כן |
+| Middleware | כן – מעודכן (קצה: `RateLimitMiddleware` ב-`AppModule`) |
 
-### 3. האם יש בפרויקט flowcharts שמשקפים את **כל** התרחישים?
+### 3. הערות שימוש
 
-**חסרים מול רשימת התרחישים בפרויקט:**
-
-1. **Multiplayer Game Flow** – זרימה מפורשת (WebSocket: התחברות, create/join room, Lobby, start-game, שאלות, submit-answer, game-ended, Summary).
-2. **Maintenance & Schedulers** – אילו Cron קיימים, מתי רצים, ומה עושים (ניקוי sessions, איפוס ניקוד שבועי/חודשי/שנתי, consistency יומי, retry stats); איפה נכנסים DataMaintenanceService ו-UserStatsMaintenanceService.
-3. **Single Session – פירוט מלא** – flowchart/sequence אחד שמשלב: GameSetupView → בדיקת credits → POST session/start → ניכוי נקודות → טעינת שאלות (POST trivia) → משחק → POST session/answer → finalize → Summary (אופציונלי: להרחיב את "זרימת משחק מלא" או להוסיף sequence נפרד).
-
-**אי-התאמות קטנות בתרשימים הקיימים (מול הקוד):**
-
-- דיאגרמת תשלומים – עודכנה ל-PayPal + Credits (ללא Stripe/מנוי).
-- זרימת תשובה לשאלה – הנתיב הוא POST `/game/session/answer` (תואם לקוד).
+- **Materialized views** (PostgreSQL): `mv_global_analytics`, `mv_topic_stats` – לא מוצגות כישויות ב-ERD; נוצרות במיגרציה לאנליטיקה.
+- נתיבי API בדיאגרמות מניחים קידומת בסיס ה-HTTP כפי שמוגדר בלקוח (לרוב `/api/...`).
 
 ---
 
@@ -61,48 +53,33 @@ graph LR
         B --> C[Views]
         B --> D[Components]
         C --> E[HomeView]
-        C --> F[GameSessionView]
-        C --> G[GameSummaryView]
-        C --> I[UserProfile]
-        C --> J[GameHistory]
-        C --> K[AnalyticsView]
-        C --> L[AdminDashboard]
-        C --> M[LeaderboardView]
+        C --> F[GameSetupView]
+        C --> G[SingleSessionView]
+        C --> H[SingleSummaryView]
+        C --> I[MultiplayerLobbyView]
+        C --> J[MultiplayerGameView]
+        C --> K[MultiplayerResultsView]
+        C --> L[StatisticsView]
+        C --> M[AdminDashboard]
         C --> N[PaymentView]
-        C --> O[CreditsView]
-        C --> P[SettingsView]
-        C --> Q[LoginView]
-        C --> R[RegistrationView]
-        C --> S[UnauthorizedView]
-        D --> T[Game Components]
-        D --> U[UI Components]
-        D --> V[Layout Components]
-        D --> W[Navigation Components]
-        D --> X[AudioControls]
-        D --> Y[ProtectedRoute]
-        A --> Z[Redux Store]
-        Z --> AE[gameModeSlice]
-        A --> AF[React Query]
-        A --> AG[Services]
-        AG --> AH[api.service]
-        AG --> AI[auth.service]
-        AG --> AJ[user.service]
-        AG --> AK[credits.service]
-        AG --> AL[payment.service]
-        AG --> AM[gameHistory.service]
-        AG --> AN[game.service<br/>trivia, validateText, validateCustomDifficulty]
-        AG --> AO[audio.service]
-        AG --> AP[storage.service]
-        AG --> AQ[score.service]
-        AG --> AR[queryClient.service]
-        A --> AS[Hooks]
-        AS --> AT[useAuth]
-        AS --> AU[useTrivia]
-        AS --> AV[useCredits]
-        AS --> AW[useUser]
-        AS --> AX[useUserStats]
-        AS --> AY[useAnalyticsDashboard]
-        AS --> AZ[useAdminAnalytics]
+        C --> O[LoginView]
+        C --> P[RegistrationView]
+        C --> Q[UnauthorizedView]
+        D --> R[Game Components]
+        D --> S[UI Components]
+        D --> T[Layout / Navigation]
+        D --> U[AudioControls]
+        D --> V[ProtectedRoute / PublicRoute]
+        A --> W[Redux Store]
+        W --> X[gameModeSlice, gameSessionSlice, multiplayerSlice, ...]
+        A --> Y[React Query]
+        A --> Z[Services]
+        Z --> ZA[api.service]
+        Z --> ZB[auth.service]
+        Z --> ZC[user.service]
+        Z --> ZD[credits / payment / game / gameHistory / analytics]
+        A --> ZE[Hooks]
+        ZE --> ZF[useAuth, useTrivia, useCredits, useSingleSession, useMultiplayer, useAnalyticsDashboard, ...]
     end
 
     subgraph "Shared Package"
@@ -170,31 +147,24 @@ graph LR
 
     subgraph "Server - NestJS Backend"
         DH[main.ts] --> DI[AppModule]
-        DI --> DJ[Features Modules]
+        DI --> DJ[Feature Modules]
         DJ --> DK[AuthModule]
         DJ --> DL[GameModule]
-        DJ --> DM[UserModule]
-        DJ --> DN[CreditsModule]
-        DJ --> DO[PaymentModule]
-        DJ --> DQ[LeaderboardModule]
-        DJ --> DR[AnalyticsModule]
-        DL --> DQ
-        DL --> DR
-        DR --> DQ
-        DM --> DO
-        DO --> DP
-        DN --> DO
-        DI --> DS[Internal Modules]
-        DS --> DT[RedisModule]
-        DS --> DU[StorageModule]
-        DS --> DV[CacheModule]
-        DI --> DW[Common]
-        DW --> DX[Guards]
-        DW --> DY[Interceptors]
-        DW --> DZ[Pipes]
-        DW --> EA[Decorators]
-        DI --> EB[ValidationModule]
-        EB --> EC[LanguageToolService<br/>+ @shared/validation]
+        DJ --> DM[MultiplayerModule]
+        DJ --> DN[UserModule]
+        DJ --> DO[CreditsModule]
+        DJ --> DP[PaymentModule]
+        DJ --> DQ[AnalyticsModule]
+        DJ --> DR[AdminModule]
+        DJ --> DS[MaintenanceModule]
+        DI --> DT[Internal Modules]
+        DT --> DU[CacheModule]
+        DT --> DV[StorageModule]
+        DT --> DW[RedisModule]
+        DI --> DX[Common]
+        DX --> DY[Guards, Interceptors, Pipes, Decorators]
+        DI --> DZ[ValidationModule]
+        DZ --> EA[LanguageToolService, GameTextLanguageGate, @shared/validation]
     end
 
     subgraph "Database"
@@ -202,19 +172,14 @@ graph LR
         EE[(Redis)]
     end
 
-    AH --> DI
-    AI --> DK
+    ZA --> DI
+    ZB --> DK
     DI --> ED
-    DS --> EE
+    DT --> EE
     DJ --> BA
     DJ --> BP
-    DJ --> CD
-    DJ --> CL
-    DJ --> DC
-    AG --> BA
-    AG --> BP
-    AG --> CD
-    AG --> CL
+    Z --> BA
+    Z --> BP
 ```
 
 ## דיאגרמת זרימת נתונים - יצירת שאלה
@@ -304,20 +269,21 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph "Feature Modules"
-        A[AuthModule] --> B[UserModule]
-        C[GameModule] --> D[CreditsModule]
-        C --> E[AnalyticsModule]
-        C --> F[LeaderboardModule]
-        E --> F
-        D --> F
-        B --> G[PaymentModule]
-        D --> G
+    subgraph "Feature Modules (AppModule)"
+        A[AuthModule]
+        B[UserModule]
+        C[GameModule]
+        D[MultiplayerModule]
+        E[CreditsModule]
+        F[PaymentModule]
+        G[AnalyticsModule]
+        H[AdminModule]
+        I[MaintenanceModule]
     end
 
     subgraph "Common Layer"
-        CL[Common Layer<br/>Guards, Interceptors, Pipes<br/>Decorators, Validation<br/>Auth Services]
-        OA[Query Helpers<br/>DateRange, GroupBy<br/>Search, Random]
+        CL[Guards, Interceptors, Pipes, Decorators]
+        OA[Query Helpers<br/>DateRange, Search, …]
     end
 
     subgraph "Internal Modules"
@@ -326,10 +292,9 @@ graph TB
         P[RedisModule]
     end
 
-    subgraph "Internal Layer"
-        Q[Entities]
-        R[Repositories]
-        S[Middleware]
+    subgraph "Data"
+        Q[TypeORM Entities / Repositories]
+        MW[RateLimitMiddleware]
     end
 
     subgraph "Infrastructure"
@@ -345,9 +310,9 @@ graph TB
     F --> CL
     G --> CL
     H --> CL
+    I --> CL
     C --> OA
-    E --> OA
-    F --> OA
+    G --> OA
     A --> Q
     B --> Q
     C --> Q
@@ -356,20 +321,17 @@ graph TB
     F --> Q
     G --> Q
     H --> Q
-    Q --> R
-    R --> T
+    I --> Q
+    Q --> T
     C --> N
     C --> O
-    E --> N
-    F --> N
-    B --> N
     G --> N
-    H --> N
+    D --> N
+    B --> N
+    F --> N
     N --> P
     P --> U
-    S --> A
-    S --> B
-    S --> C
+    MW --> U
 
     style CL fill:#e3f2fd,color:#000000
     style OA fill:#fff9c4,color:#000000
@@ -377,8 +339,7 @@ graph TB
     style O fill:#fff4e6,color:#000000
     style P fill:#fff4e6,color:#000000
     style Q fill:#e8f5e9,color:#000000
-    style R fill:#e8f5e9,color:#000000
-    style S fill:#fce4ec,color:#000000
+    style MW fill:#fce4ec,color:#000000
     style T fill:#e1f5ff,color:#000000
     style U fill:#ffebee,color:#000000
 ```
@@ -391,7 +352,7 @@ graph TB
         A[Decorators<br/>Public, Roles<br/>Cache, NoCache<br/>CurrentUser, CurrentUserId]
         B[Guards<br/>AuthGuard<br/>RolesGuard]
         C[Interceptors<br/>CacheInterceptor<br/>PerformanceInterceptor<br/>ResponseFormattingInterceptor]
-        D[Pipes<br/>UserDataPipe<br/>TriviaRequestPipe<br/>GameAnswerPipe<br/>CustomDifficultyPipe<br/>PaymentDataPipe]
+        D[Pipes<br/>UserDataPipe, TriviaRequestPipe<br/>StartGameSessionPipe, CustomDifficultyPipe<br/>PaymentDataPipe]
         E[Query Helpers<br/>DateRange<br/>GroupBy<br/>Search<br/>Random]
     end
 
@@ -444,7 +405,7 @@ graph LR
         E2[GameHistoryEntity]
         E3[TriviaEntity]
         E4[UserStatsEntity]
-        E5[LeaderboardEntity]
+        E5[CreditsConfigEntity]
         E6[PaymentHistoryEntity]
         E7[CreditTransactionEntity]
         BE[BaseEntity<br/>id, createdAt, updatedAt]
@@ -455,7 +416,7 @@ graph LR
         R2[GameHistoryRepository]
         R3[TriviaRepository]
         R4[UserStatsRepository]
-        R5[LeaderboardRepository]
+        R5[CreditsConfigRepository]
         R6[PaymentRepository]
         R7[CreditTransactionRepository]
     end
@@ -467,9 +428,7 @@ graph LR
     end
 
     subgraph "Internal Layer - Middleware"
-        MW1[RateLimitMiddleware<br/>Rate Limiting]
-        MW2[DecoratorAwareMiddleware<br/>Metadata Extraction]
-        MW3[BulkOperationsMiddleware<br/>Bulk Operations]
+        MW1[RateLimitMiddleware<br/>מוחל על כל הראוטים ב-AppModule]
     end
 
     subgraph "Internal Layer - Controllers"
@@ -501,7 +460,6 @@ graph LR
     BE --> E5
     BE --> E6
     BE --> E7
-    BE --> E8
 
     E1 --> R1
     E2 --> R2
@@ -510,7 +468,6 @@ graph LR
     E5 --> R5
     E6 --> R6
     E7 --> R7
-    E8 --> R8
 
     R1 --> DB
     R2 --> DB
@@ -519,7 +476,6 @@ graph LR
     R5 --> DB
     R6 --> DB
     R7 --> DB
-    R8 --> DB
 
     CM --> RM
     SM --> RM
@@ -532,14 +488,11 @@ graph LR
     FEATURES --> R5
     FEATURES --> R6
     FEATURES --> R7
-    FEATURES --> R8
 
     FEATURES --> CM
     FEATURES --> SM
 
     MW1 --> REDIS
-    MW2 --> FEATURES
-    MW3 --> FEATURES
 
     style BE fill:#fff4e6,color:#000000
     style E1 fill:#fff4e6,color:#000000
@@ -549,7 +502,6 @@ graph LR
     style E5 fill:#fff4e6,color:#000000
     style E6 fill:#fff4e6,color:#000000
     style E7 fill:#fff4e6,color:#000000
-    style E8 fill:#fff4e6,color:#000000
     style R1 fill:#f3e5f5,color:#000000
     style R2 fill:#f3e5f5,color:#000000
     style R3 fill:#f3e5f5,color:#000000
@@ -557,15 +509,11 @@ graph LR
     style R5 fill:#f3e5f5,color:#000000
     style R6 fill:#f3e5f5,color:#000000
     style R7 fill:#f3e5f5,color:#000000
-    style R8 fill:#f3e5f5,color:#000000
     style CM fill:#e3f2fd,color:#000000
     style SM fill:#e3f2fd,color:#000000
     style RM fill:#e3f2fd,color:#000000
     style MW1 fill:#e8f5e9,color:#000000
-    style MW2 fill:#e8f5e9,color:#000000
-    style MW3 fill:#e8f5e9,color:#000000
     style C1 fill:#fce4ec,color:#000000
-    style C2 fill:#fce4ec,color:#000000
     style IC1 fill:#fff9c4,color:#000000
     style IC2 fill:#fff9c4,color:#000000
     style IC3 fill:#fff9c4,color:#000000
@@ -583,19 +531,18 @@ graph LR
 graph LR
     subgraph "Views Layer"
         A[HomeView]
-        B[GameSessionView]
-        C[GameSummaryView]
-        E[UserProfile]
-        F[GameHistory]
-        G[AnalyticsView]
-        H[AdminDashboard]
-        I[LeaderboardView]
+        B[GameSetupView]
+        C[SingleSessionView]
+        D[SingleSummaryView]
+        E[MultiplayerLobbyView]
+        F[MultiplayerGameView]
+        G[MultiplayerResultsView]
+        H[StatisticsView]
+        I[AdminDashboard]
         J[PaymentView]
-        K[CreditsView]
-        L[SettingsView]
-        M[LoginView]
-        N[RegistrationView]
-        O[UnauthorizedView]
+        K[LoginView]
+        L[RegistrationView]
+        M[UnauthorizedView]
     end
 
     subgraph "Supporting Layers"
@@ -621,8 +568,6 @@ graph LR
     K --> COMP
     L --> COMP
     M --> COMP
-    N --> COMP
-    O --> COMP
 
     A --> STATE
     B --> STATE
@@ -632,8 +577,11 @@ graph LR
     F --> STATE
     G --> STATE
     H --> STATE
+    I --> STATE
+    J --> STATE
     K --> STATE
     L --> STATE
+    M --> STATE
 
     COMP --> HOOKS
     HOOKS --> SERV
@@ -655,31 +603,39 @@ graph LR
 
 ## דיאגרמת מסד נתונים (ERD)
 
+מבוסס על `CreateCompleteSchema1780000000000` וישויות TypeORM ב-`server/src/internal/entities/`. **אין טבלת `leaderboard`** – דירוגים מחושבים מ-`user_stats` (למשל ב-`LeaderboardAnalyticsService`). יש גם **views** ממומשות: `mv_global_analytics`, `mv_topic_stats`.
+
 ```mermaid
 erDiagram
     USERS ||--o{ TRIVIA : "creates"
     USERS ||--o{ GAME_HISTORY : "plays"
-    USERS ||--o{ USER_STATS : "has"
+    USERS ||--o| USER_STATS : "has"
     USERS ||--o{ PAYMENT_HISTORY : "makes"
     USERS ||--o{ CREDIT_TRANSACTIONS : "transacts"
-    USERS ||--o{ LEADERBOARD : "ranks"
     PAYMENT_HISTORY ||--o{ CREDIT_TRANSACTIONS : "generates"
-    GAME_HISTORY ||--o{ CREDIT_TRANSACTIONS : "triggers"
+    GAME_HISTORY ||--o{ CREDIT_TRANSACTIONS : "references"
 
     USERS {
         uuid id PK
-        string username UK
         string email UK
         string password_hash
         string google_id
+        string first_name
+        string last_name
         int credits
         int purchased_credits
         int daily_free_questions
         int remaining_free_questions
+        date last_free_questions_reset
+        timestamp last_granted_credits_refill_at
+        timestamp last_login
         boolean is_active
+        boolean email_verified
         string role
         jsonb preferences
         jsonb achievements
+        bytea custom_avatar
+        string custom_avatar_mime
         timestamp created_at
         timestamp updated_at
     }
@@ -688,7 +644,7 @@ erDiagram
         uuid id PK
         string topic
         string difficulty
-        string question
+        text question
         jsonb answers
         int correct_answer_index
         uuid user_id FK
@@ -701,32 +657,47 @@ erDiagram
     GAME_HISTORY {
         uuid id PK
         uuid user_id FK
-        int score
-        int total_questions
-        int correct_answers
-        string difficulty
         string topic
+        string difficulty
+        int score
+        int game_question_count
+        int correct_answers
         string game_mode
         int time_spent
         int credits_used
         jsonb questions_data
+        uuid client_mutation_id
         timestamp created_at
+        timestamp updated_at
     }
 
     USER_STATS {
         uuid id PK
-        uuid user_id FK
-        int total_games_played
+        uuid user_id UK
+        int total_games
         int total_questions_answered
         int correct_answers
-        int total_score
-        decimal average_score
-        int best_score
+        int incorrect_answers
+        int overall_success_rate
         int current_streak
         int longest_streak
-        timestamp last_played
-        jsonb difficulty_stats
+        timestamp last_play_date
+        int consecutive_days_played
         jsonb topic_stats
+        jsonb difficulty_stats
+        int weekly_score
+        int monthly_score
+        int yearly_score
+        timestamp last_weekly_reset
+        timestamp last_monthly_reset
+        timestamp last_yearly_reset
+        int average_time_per_question
+        int total_play_time
+        int best_game_score
+        timestamp best_game_date
+        int total_score
+        jsonb recent_activity
+        int version
         timestamp created_at
         timestamp updated_at
     }
@@ -735,24 +706,29 @@ erDiagram
         uuid id PK
         uuid user_id FK
         string payment_id UK
-        decimal amount
+        int amount
         string currency
+        string status
         string payment_method
-        string payment_status
-        string plan_type
+        string description
         jsonb metadata
+        timestamp completed_at
+        timestamp failed_at
         timestamp created_at
+        timestamp updated_at
     }
 
     CREDIT_TRANSACTIONS {
         uuid id PK
         uuid user_id FK
-        string transaction_type
-        string source
-        int credits_amount
+        varchar type
+        varchar source
+        int amount
         int balance_after
+        int free_questions_after
+        int purchased_credits_after
         string description
-        uuid game_history_id FK
+        string game_history_id
         string payment_id FK
         jsonb metadata
         date transaction_date
@@ -760,20 +736,96 @@ erDiagram
         timestamp updated_at
     }
 
-    LEADERBOARD {
+    CREDITS_CONFIG {
         uuid id PK
-        uuid user_id FK
-        string period_type
-        date period_start
-        date period_end
-        int score
-        int rank
-        int games_played
-        int correct_answers
-        int total_questions
+        string key UK
+        jsonb value
         timestamp created_at
         timestamp updated_at
     }
+```
+
+## זרימת סשן יחיד (Single Player)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant V as GameSetupView
+    participant API as Game / Credits API
+    participant R as Redis / Storage
+    participant DB as PostgreSQL
+
+    U->>V: בחירת נושא, קושי, מצב
+    V->>API: GET /credits/can-play (או בדיקת יתרה דרך React Query)
+    API->>DB: משתמש / נקודות
+    DB-->>API: מותר לשחק
+    V->>API: POST /game/session/start
+    API->>DB: יצירת session / game id
+    API->>DB: ניכוי נקודות (Credits) אם נדרש
+    API->>R: שמירת מצב סשן (אם רלוונטי)
+    loop שאלות
+        V->>API: POST /game/trivia
+        API->>DB: טריוויה (DB / AI)
+        V->>API: POST /game/session/answer
+        API->>R: עדכון סשן
+    end
+    V->>API: POST /game/session/finalize
+    API->>DB: יצירת game_history, טרנזקציות נקודות
+    V->>U: SingleSummaryView
+```
+
+## זרימת מולטיפלייר (WebSocket)
+
+Namespace Socket.IO: `/multiplayer`. אירועי לקוח (לרוב `subscribe`): `create-room`, `join-room`, `leave-room`, `start-game`, `submit-answer`. אירועי שרת (למשל ב-`MultiplayerEvent`): `room-created`, `room-joined`, `player-joined`, `game-started`, `question-started`, `answer-received`, `question-ended`, `game-ended`, `room-updated`.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as MultiplayerGateway
+    participant S as MultiplayerService
+    participant R as Room / Redis
+
+    C->>G: connect + auth token
+    C->>G: create-room
+    G->>S: יצירת חדר
+    S->>R: מצב חדר
+    G-->>C: room-created / room-updated
+    C->>G: join-room
+    G-->>C: room-joined / player-joined
+    C->>G: start-game
+    loop סיבוב שאלה
+        G-->>C: question-started
+        C->>G: submit-answer
+        G-->>C: answer-received / question-ended
+    end
+    G-->>C: game-ended
+    C->>G: leave-room (או disconnect)
+```
+
+## תחזוקה ו-Schedulers
+
+| קומפוננטה | תזמון | תפקיד |
+|-----------|--------|--------|
+| `GameSessionScheduler.finalizeStaleSessions` | כל 5 דקות | סיום סשנים ישנים ב-Redis (מעל ~שעה) דרך `GameService.finalizeGameSession` |
+| `ScoreResetScheduler.resetWeeklyScores` | שבועי | איפוס `weekly_score` ב-`user_stats` |
+| `ScoreResetScheduler.resetMonthlyScores` | בתחילת חודש | איפוס `monthly_score` |
+| `ScoreResetScheduler.resetYearlyScores` | 1 בינואר | איפוס `yearly_score` |
+| `ScoreResetScheduler.retryFailedStatsUpdates` | כל 6 שעות | `UserStatsUpdateService.retryFailedUpdates` |
+| `ScoreResetScheduler.checkAllUsersConsistency` | יומי 02:00 | `UserStatsMaintenanceService.checkAllUsersConsistency` + תיקון אוטומטי |
+
+```mermaid
+graph LR
+    subgraph Cron
+        A[כל 5 דקות] --> B[GameSessionScheduler]
+        C[שבועי / חודשי / שנתי] --> D[ScoreResetScheduler]
+        E[כל 6 שעות] --> F[retry stats]
+        G[יומי 02:00] --> H[consistency]
+    end
+    B --> I[(Redis sessions)]
+    B --> J[GameService]
+    D --> K[(user_stats)]
+    F --> L[UserStatsUpdateService]
+    H --> M[UserStatsMaintenanceService]
 ```
 
 ## דיאגרמת זרימת אימות
@@ -807,20 +859,17 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> HomeView: כניסה לאפליקציה
-    HomeView --> GameConfig: בחירת נושא וקושי
-    GameConfig --> GameSession: התחלת משחק
-    GameSession --> Question: טעינת שאלה
+    HomeView --> GameSetupView: בחירת נושא וקושי
+    GameSetupView --> SingleSessionView: התחלת סשן / טעינת שאלות
+    SingleSessionView --> Question: טעינת שאלה
     Question --> Answer: הצגת שאלה
     Answer --> Validate: שליחת תשובה
     Validate --> Score: חישוב ניקוד
-    Score --> UpdateStats: עדכון סטטיסטיקות
+    Score --> UpdateStats: עדכון סטטיסטיקות מקומי
     UpdateStats --> NextQuestion: שאלה נוספת?
     NextQuestion --> Question: כן
-    NextQuestion --> GameSummary: לא
-    GameSummary --> GameHistory: שמירת משחק
-    GameSummary --> Leaderboard: עדכון לוח תוצאות
-    Leaderboard --> HomeView: חזרה לדף הבית
-    GameHistory --> HomeView: חזרה לדף הבית
+    NextQuestion --> SingleSummaryView: לא (אחרי finalize)
+    SingleSummaryView --> HomeView: חזרה לדף הבית
 ```
 
 ## דיאגרמת חבילה משותפת (Shared)
@@ -1003,22 +1052,21 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    A[Incoming Request] --> B[DecoratorAwareMiddleware]
-    B --> C[RateLimitMiddleware]
-    C --> D[BulkOperationsMiddleware]
-    D --> E[AuthGuard]
-    E --> F[RolesGuard]
-    F --> G[ValidationPipe]
-    G --> H[Controller]
-    H --> I[Service]
-    I --> J[CacheInterceptor]
-    I --> K[ResponseFormattingInterceptor]
-    I --> L[PerformanceMonitoringInterceptor]
-    J --> M[Response]
-    K --> M
-    L --> M
-    M --> N[GlobalExceptionFilter]
-    N --> O[Outgoing Response]
+    A[Incoming Request] --> B[RateLimitMiddleware]
+    B --> C[LocalAuthGuard]
+    C --> D[RolesGuard]
+    D --> E[UserStatusGuard]
+    E --> F[ValidationPipe גלובלי]
+    F --> G[Controller]
+    G --> H[Service]
+    H --> I[CacheInterceptor]
+    H --> J[ResponseFormatter]
+    H --> K[PerformanceInterceptor]
+    I --> L[Response]
+    J --> L
+    K --> L
+    L --> M[GlobalExceptionFilter]
+    M --> N[Outgoing Response]
 ```
 
 ## דיאגרמת Redux State
@@ -1075,71 +1123,42 @@ graph TB
 
 ## דיאגרמת React Query Cache
 
+דוגמאות נתיבים (הקידומת בסיסית כמו בלקוח, לרוב `/api`). לוחות תוצאות: תחת **`/analytics/leaderboard`** (לא `/leaderboard`).
+
 ```mermaid
 graph LR
     A[React Query Client] --> B[useCurrentUser]
     A --> C[useUserProfile]
     A --> D[useTrivia]
-    A --> E[useUserStats]
+    A --> E[useUserAnalytics]
     A --> F[useGameHistory]
-    A --> G[useLeaderboard]
-    A --> H[useLeaderboardStats]
-    A --> I[useUserAnalytics]
-    A --> J[useAdminAnalytics]
-    A --> K[usePopularTopics]
-    A --> L[useDifficultyStats]
-    A --> M[useGlobalStats]
-    A --> N[useUserRanking]
-    A --> O[useGlobalLeaderboard]
-    A --> P[useLeaderboardByPeriod]
-    
-    B --> Q[GET /api/auth/me]
-    C --> R[GET /api/users/profile]
-    D --> S[POST /api/game/trivia]
-    E --> T[GET /api/users/stats]
-    F --> U[GET /api/game/history]
-    G --> V[GET /api/leaderboard]
-    H --> W[GET /api/leaderboard/stats]
-    I --> X[GET /api/analytics/user]
-    J --> Y[GET /api/admin/analytics]
-    J --> Z[GET /api/admin/users/:id/statistics]
-    K --> AA[GET /api/analytics/topics]
-    L --> AB[GET /api/analytics/difficulty]
-    M --> AC[GET /api/analytics/global]
-    N --> AD[GET /api/leaderboard/rank]
-    O --> V
-    P --> AE[GET /api/leaderboard/:period]
-    
-    Q --> AF[Cache: currentUser]
-    R --> AG[Cache: userProfile]
-    S --> AH[Cache: question]
-    T --> AI[Cache: stats]
-    U --> AJ[Cache: history]
-    V --> AK[Cache: leaderboard]
-    W --> AL[Cache: leaderboardStats]
-    X --> AM[Cache: userAnalytics]
-    Y --> AN[Cache: adminAnalytics]
-    Z --> AO[Cache: userStatistics]
-    AA --> AP[Cache: popularTopics]
-    AB --> AQ[Cache: difficultyStats]
-    AC --> AR[Cache: globalStats]
-    AD --> AS[Cache: userRanking]
-    AE --> AK
-    
-    AF --> AT[Stale Time: 5min]
-    AG --> AT
-    AH --> AU[Stale Time: 1min]
-    AI --> AV[Stale Time: 10min]
-    AJ --> AW[Stale Time: 5min]
-    AK --> AX[Stale Time: 2min]
-    AL --> AX
-    AM --> AV
-    AN --> AY[Stale Time: 5min]
-    AO --> AY
-    AP --> AV
-    AQ --> AV
-    AR --> AY
-    AS --> AX
+    A --> G[useGlobalLeaderboard]
+    A --> H[useLeaderboardByPeriod]
+    A --> I[useLeaderboardStats]
+    A --> J[usePopularTopics]
+    A --> K[useGlobalStats]
+    A --> L[useAdminAnalytics]
+
+    B --> M[GET /auth/me]
+    C --> N[GET /users/profile]
+    D --> O[POST /game/trivia]
+    E --> P[GET /analytics/user]
+    F --> Q[GET /game/history]
+    G --> R[GET /analytics/leaderboard/global]
+    H --> S[GET /analytics/leaderboard/period/:period]
+    I --> T[GET /analytics/leaderboard/stats]
+    J --> U[GET /analytics/global/topics/popular]
+    K --> V[GET /analytics/global/stats]
+    L --> W[מגוון נתיבי /admin ו-/analytics]
+
+    M --> X[Cache keys: user]
+    N --> X
+    O --> Y[Cache: trivia]
+    P --> Z[Cache: analytics]
+    Q --> AA[Cache: history]
+    R --> AB[Cache: leaderboard]
+    S --> AB
+    T --> AC[Cache: leaderboardStats]
 ```
 
 ## דיאגרמת זרימת תשלומים
@@ -1179,54 +1198,44 @@ graph LR
         A[HomeView]
         B[LoginView]
         C[RegistrationView]
-        D[LeaderboardView]
+        D[StatisticsView]
         E[UnauthorizedView]
+        F[PrivacyPolicyView / Terms / Contact]
     end
 
-    subgraph "Protected Views"
-        F[GameSessionView]
-        G[GameSummaryView]
-        I[UserProfile]
-        J[GameHistory]
-        K[AnalyticsView]
-        L[PaymentView]
-        M[CreditsView]
-        N[SettingsView]
+    subgraph "Game Views"
+        G[GameSetupView]
+        H[SingleSessionView]
+        I[SingleSummaryView]
+        J[MultiplayerLobbyView]
+        K[MultiplayerGameView]
+        L[MultiplayerResultsView]
     end
 
-    subgraph "Admin Views"
+    subgraph "Account / Payment"
+        M[PaymentView]
+        N[CompleteProfile]
+    end
+
+    subgraph "Admin"
         O[AdminDashboard]
     end
 
-    A --> P[Game Components]
-    A --> Q[Navigation Components]
-    F --> P
+    A --> P[Components]
     G --> P
-    H --> R[Form Components]
-    I --> S[User Components]
-    I --> T[UI Components]
-    J --> U[Stats Components]
-    K --> U
-    L --> V[Payment Components]
-    M --> T
-    N --> T
-    O --> U
-    O --> W[Admin Components]
+    H --> P
+    D --> Q[Statistics / Leaderboard tabs]
+    M --> R[Payment UI]
+    O --> S[Admin Components]
 
     subgraph "State Management"
-        SM[State Management<br/>Redux Store<br/>React Query]
+        SM[Redux + React Query]
     end
-
     A --> SM
-    F --> SM
+    D --> SM
     G --> SM
     H --> SM
-    I --> SM
-    J --> SM
-    K --> SM
-    L --> SM
     M --> SM
-    N --> SM
     O --> SM
 
     style SM fill:#e3f2fd,color:#000000
@@ -1277,7 +1286,7 @@ graph TB
 
     subgraph "Stats Components"
         BB[ScoringSystem]
-        BC[Leaderboard]
+        BC[LeaderboardTable / LeaderboardTabContent]
         BD[CustomDifficultyHistory]
     end
 
@@ -1342,7 +1351,7 @@ graph TB
 ```mermaid
 graph LR
     subgraph "React Query Hooks"
-        RQH[React Query Hooks<br/>useUserProfile, useUserStats<br/>useGameHistory, useLeaderboard<br/>useAnalytics, useAdminAnalytics<br/>usePopularTopics, useDifficultyStats<br/>useGlobalStats, useUserRanking<br/>useGlobalLeaderboard, etc.]
+        RQH[React Query Hooks<br/>useUserProfile, useGameHistory<br/>useGlobalLeaderboard, useLeaderboardByPeriod<br/>useUserAnalytics, useAdminAnalytics<br/>usePopularTopics, useGlobalStats, etc.]
     end
 
     subgraph "Redux Hooks"
@@ -1382,7 +1391,7 @@ graph LR
         BD[useValueChange]
         BE[useValidation]
         BF[useNavigationController]
-        BG[useLeaderboardFeatures]
+        BG[useGlobalLeaderboard / useLeaderboardByPeriod]
     end
 
     subgraph "Services"
@@ -1481,64 +1490,49 @@ graph LR
 
 ## דיאגרמת Routes/Navigation
 
+מסלולים עיקריים מ-`ROUTES` ב-`navigation.constants.ts` (משחק יחיד/מרובה תחת `/game/...`).
+
 ```mermaid
 graph LR
     subgraph "App Routes"
         A[AppRoutes.tsx]
-        A --> B[Public Routes]
-        A --> C[Protected Routes]
-        A --> D[Admin Routes]
+        A --> B[Public]
+        A --> C[Protected]
+        A --> D[Admin]
     end
 
-    subgraph "Public Routes"
-        E[- HomeView]
-        F[leaderboard - LeaderboardView]
-        G[login - LoginView]
-        H[register - RegistrationView]
-        I[unauthorized - UnauthorizedView]
+    subgraph "Public"
+        E[/ - HomeView]
+        F[/statistics - StatisticsView]
+        G[/login, /register]
+        H[/privacy, /terms, /contact]
     end
 
-    subgraph "Game Routes"
-        J[game/play - GameSessionView]
-        K[game/summary - GameSummaryView]
+    subgraph "Game"
+        I[/game - GameSetupView]
+        J[/game/single/play/:gameId]
+        K[/game/single/summary/:gameId]
+        L[/game/multiplayer/...]
     end
 
-    subgraph "Protected Routes"
-        M[profile - UserProfile]
-        N[history - GameHistory]
-        O[payment - PaymentView]
-        P[credits - CreditsView]
-        Q[analytics - AnalyticsView]
-        R[settings - SettingsView]
-        S[complete-profile - CompleteProfile]
+    subgraph "Protected"
+        M[/payment - PaymentView]
+        N[/complete-profile]
     end
 
-    subgraph "Admin Routes"
-        T[admin - AdminDashboard]
+    subgraph "Admin"
+        O[/admin - AdminDashboard]
     end
 
-    subgraph "Route Protection"
-        U[ProtectedRoute]
-        V[PublicRoute]
-        W[Navigation]
+    subgraph "Guards"
+        P[ProtectedRoute]
+        Q[PublicRoute]
     end
 
-    C --> U
-    D --> U
-    B --> V
-    M --> U
-    N --> U
-    O --> U
-    P --> U
-    Q --> U
-    R --> U
-    S --> U
-    T --> U
-    G --> V
-    H --> V
-    W --> X[NavigationBrand]
-    W --> Y[NavigationActions]
-    W --> Z[NavigationMenu]
+    C --> P
+    D --> P
+    B --> Q
+    G --> Q
 ```
 
 ## דיאגרמת זרימת Analytics
@@ -1546,14 +1540,14 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant AV as AnalyticsView
+    participant AV as StatisticsView
     participant ADH as useAnalyticsDashboard
     participant AS as api.service
     participant AM as AnalyticsModule
     participant DB as PostgreSQL
     participant C as Redis Cache
 
-    U->>AV: פתיחת Analytics
+    U->>AV: פתיחת Statistics / אנליטיקה
     AV->>ADH: useUserAnalytics
     ADH->>AS: GET /api/analytics/user
     AS->>AM: בקשה לאנליטיקה
@@ -1637,7 +1631,7 @@ graph TB
         E2[GameHistoryEntity]
         E3[TriviaEntity]
         E4[UserStatsEntity]
-        E5[LeaderboardEntity]
+        E5[CreditsConfigEntity]
         E6[PaymentHistoryEntity]
         E7[CreditTransactionEntity]
     end
@@ -1647,39 +1641,37 @@ graph TB
         R2[GameHistoryRepository]
         R3[TriviaRepository]
         R4[UserStatsRepository]
-        R5[LeaderboardRepository]
+        R5[CreditsConfigRepository]
         R6[PaymentRepository]
         R7[CreditTransactionRepository]
     end
 
     subgraph "TypeORM QueryBuilder (Complex Queries Only)"
-        QB[QueryBuilder<br/>- Aggregations<br/>- GROUP BY<br/>- JOIN<br/>- Date Range<br/>- ILIKE Search]
+        QB[QueryBuilder<br/>Aggregations, JOIN, טווחי תאריכים]
     end
 
     subgraph "Common Layer (Query Helpers)"
-        QH[Query Helpers<br/>- addDateRangeConditions<br/>- addSearchConditions<br/>- createGroupByQuery]
+        QH[Query Helpers]
     end
 
     subgraph "Services Layer (Business Logic)"
         S1[UserService]
         S2[GameService]
-        S3[AnalyticsService]
-        S4[LeaderboardService]
-        S5[CreditsService]
-        S6[PaymentService]
+        S3[Analytics services<br/>כולל LeaderboardAnalyticsService]
+        S4[CreditsService]
+        S5[PaymentService]
     end
 
     subgraph "Controllers Layer (HTTP Handling)"
         C1[UserController]
         C2[GameController]
-        C3[AnalyticsController]
-        C4[LeaderboardController]
-        C5[CreditsController]
-        C6[PaymentController]
+        C3[AnalyticsController<br/>כולל /analytics/leaderboard]
+        C4[CreditsController]
+        C5[PaymentController]
     end
 
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment]
+        API[REST + WebSocket<br/>/auth, /game, /multiplayer<br/>/users, /credits, /analytics<br/>/payment, /admin, /ai-providers]
     end
 
     DB --> E1
@@ -1699,15 +1691,15 @@ graph TB
     E7 --> R7
 
     subgraph "Repositories Group"
-        REPOS[Repositories<br/>R1, R2, R3, R4<br/>R5, R6, R7]
+        REPOS[Repositories R1–R7]
     end
 
     subgraph "Services Group"
-        SERVS[Services<br/>S1, S2, S3, S4<br/>S5, S6, S7]
+        SERVS[Services S1–S5]
     end
 
     subgraph "Controllers Group"
-        CONTRS[Controllers<br/>C1, C2, C3, C4<br/>C5, C6, C7]
+        CONTRS[Controllers C1–C5 + נוספים]
     end
 
     REPOS --> QB
@@ -1743,15 +1735,11 @@ graph TB
     style S3 fill:#e8f5e9,color:#000000
     style S4 fill:#e8f5e9,color:#000000
     style S5 fill:#e8f5e9,color:#000000
-    style S6 fill:#e8f5e9,color:#000000
-    style S7 fill:#e8f5e9,color:#000000
     style C1 fill:#fce4ec,color:#000000
     style C2 fill:#fce4ec,color:#000000
     style C3 fill:#fce4ec,color:#000000
     style C4 fill:#fce4ec,color:#000000
     style C5 fill:#fce4ec,color:#000000
-    style C6 fill:#fce4ec,color:#000000
-    style C7 fill:#fce4ec,color:#000000
     style API fill:#ffebee,color:#000000
 ```
 
@@ -1760,7 +1748,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "HTTP API Layer"
-        API[REST API<br/>/auth<br/>/game<br/>/users<br/>/credits<br/>/leaderboard<br/>/analytics<br/>/payment]
+        API[REST + WS<br/>לוחות תוצאות: /analytics/leaderboard]
     end
 
     subgraph "API Service Layer (HTTP Client)"
@@ -1772,11 +1760,11 @@ graph TB
     end
 
     subgraph "React Query Hooks Group"
-        RQ_ALL[React Query Hooks<br/>useAuth, useTrivia<br/>useUser, useCredits<br/>useUserStats, etc.]
+        RQ_ALL[React Query Hooks<br/>useAuth, useTrivia, useSingleSession<br/>useUser, useCredits, useMultiplayer, etc.]
     end
 
     subgraph "Components Group"
-        COMPS[Components<br/>GameSessionView, UserProfile<br/>GameHistory, AnalyticsView<br/>LeaderboardView, etc.]
+        COMPS[Views + Components<br/>SingleSessionView, StatisticsView<br/>MultiplayerGameView, PaymentView, etc.]
     end
 
     API --> AS
@@ -1800,33 +1788,33 @@ graph TB
     end
 
     subgraph "Backend - TypeORM Layer"
-        E[TypeORM Entities<br/>UserEntity<br/>GameHistoryEntity<br/>TriviaEntity<br/>UserStatsEntity<br/>etc.]
-        R[TypeORM Repositories<br/>UserRepository<br/>GameHistoryRepository<br/>TriviaRepository<br/>etc.]
-        QB[TypeORM QueryBuilder<br/>Complex Queries Only]
-        QH[Query Helpers<br/>common/queries<br/>Date Range, Search<br/>Random, GroupBy]
+        E[TypeORM Entities<br/>כולל CreditsConfigEntity]
+        R[Repositories]
+        QB[QueryBuilder]
+        QH[Query Helpers]
     end
 
     subgraph "Backend - Business Logic Layer"
-        S[Services<br/>UserService<br/>GameService<br/>AnalyticsService<br/>LeaderboardService<br/>etc.]
+        S[Services<br/>כולל LeaderboardAnalyticsService]
     end
 
     subgraph "Backend - HTTP Layer"
-        C[Controllers<br/>UserController<br/>GameController<br/>AnalyticsController<br/>etc.]
-        API[HTTP API<br/>REST Endpoints]
+        C[Controllers]
+        API[REST + WebSocket]
     end
 
     subgraph "Frontend - HTTP Client Layer"
-        AS[API Service<br/>api.service<br/>HTTP Client with Interceptors]
+        AS[api.service]
     end
 
     subgraph "Frontend - State Management Layer"
-        RS[Redux Store<br/>gameModeSlice]
-        RQ[React Query Hooks<br/>useAuth<br/>useTrivia<br/>useUser<br/>useCredits<br/>etc.]
-        QC[React Query Client<br/>Cache Management]
+        RS[Redux]
+        RQ[React Query Hooks]
+        QC[QueryClient]
     end
 
     subgraph "Frontend - UI Layer"
-        COM[Components<br/>GameSessionView<br/>UserProfile<br/>AnalyticsView<br/>LeaderboardView<br/>etc.]
+        COM[Views: SingleSessionView, StatisticsView, Multiplayer…]
     end
 
     DB -->|Schema| E

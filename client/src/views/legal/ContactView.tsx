@@ -149,8 +149,6 @@ export function ContactView() {
 									<div className='flex flex-col items-center justify-center py-12 space-y-4'>
 										<CheckCircle
 											className={cn('h-16 w-16', Colors.GREEN_500.text)}
-											fill='currentColor'
-											strokeWidth={0}
 										/>
 										<h4 className='text-xl font-semibold'>{t(LegalKey.MESSAGE_SENT_SUCCESSFULLY)}</h4>
 										<p className='text-muted-foreground text-center'>{t(LegalKey.THANK_YOU_CONTACT_SHORT)}</p>
@@ -158,7 +156,7 @@ export function ContactView() {
 								) : (
 									<form onSubmit={handleSubmit} className='space-y-4'>
 										<div>
-											<Label htmlFor='name' className='block text-sm font-medium mb-2'>
+											<Label className='block text-sm font-medium mb-2'>
 												{t(LegalKey.NAME)} *
 											</Label>
 											<Input
@@ -173,7 +171,7 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<Label htmlFor='email' className='block text-sm font-medium mb-2'>
+											<Label className='block text-sm font-medium mb-2'>
 												{t(LegalKey.EMAIL)} {t(LegalKey.REQUIRED_ASTERISK)}
 											</Label>
 											<Input
@@ -188,7 +186,7 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<Label htmlFor='subject' className='block text-sm font-medium mb-2'>
+											<Label className='block text-sm font-medium mb-2'>
 												{t(LegalKey.SUBJECT)} *
 											</Label>
 											<Input
@@ -203,7 +201,7 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<Label htmlFor='message' className='block text-sm font-medium mb-2'>
+											<Label className='block text-sm font-medium mb-2'>
 												{t(LegalKey.MESSAGE)} *
 											</Label>
 											<Textarea

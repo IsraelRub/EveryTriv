@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 
 import {
@@ -13,13 +13,13 @@ import type { GameConfig } from '@shared/types';
 import { isNonEmptyString, isRecord, mergeUserPreferences } from '@shared/utils';
 import { isGameMode, isLocale, isRegisteredDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
-import { ComponentSize, LoadingMessages, ROUTES } from '@/constants';
+import { ComponentSize, ROUTES } from '@/constants';
+import { isProtectedAppPath } from '@/utils';
 import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import {
 	BackgroundAnimation,
 	CompleteProfile,
 	Footer,
-	FullPageSpinner,
 	ModalRouteWrapper,
 	Navigation,
 	NotFound,
@@ -56,10 +56,8 @@ export default function AppRoutes() {
 	const location = useLocation();
 	const dispatch = useAppDispatch();
 	const locale = useAppSelector(selectLocale);
-	const initAuthRanRef = useRef(false);
 	const { data: currentUser, isError, isLoading: isUserLoading } = useCurrentUser();
 	const { data: profileData } = useUserProfile();
-	const [isInitializingAuth, setIsInitializingAuth] = useState(true);
 
 	// Track navigation analytics
 	useNavigationAnalytics();
@@ -100,91 +98,38 @@ export default function AppRoutes() {
 	// Check if current route is an authentication page
 	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
 	// Redirect to login on auth failure only when on a protected route (so closing login modal doesn't send user back to login)
-	const isProtectedPath =
-		location.pathname.startsWith('/game') ||
-		location.pathname === ROUTES.PAYMENT ||
-		location.pathname === ROUTES.COMPLETE_PROFILE ||
-		location.pathname === ROUTES.ADMIN;
+	const isProtectedPath = isProtectedAppPath(location.pathname);
 
+	// Session restore and /me run in AppAuthBootstrap; here we sync audio, prefetch after login, and handle token expiry during the session.
 	useEffect(() => {
-		// Prevent multiple runs of initAuth
-		if (initAuthRanRef.current) {
+		if (currentUser) {
+			if ('preferences' in currentUser && currentUser.preferences) {
+				const mergedPreferences = mergeUserPreferences(null, currentUser.preferences);
+				audioService.setUserPreferences(mergedPreferences);
+			}
+
+			const handlePrefetchQueries = async () => {
+				try {
+					await prefetchAuthenticatedQueries();
+				} catch {
+					// Silently handle prefetch errors
+				}
+			};
+			void handlePrefetchQueries();
 			return;
 		}
 
-		initAuthRanRef.current = true;
-
-		const handleInitAuth = async () => {
-			setIsInitializingAuth(true);
-			try {
-				const { isAuthenticated } = await authService.getAuthState();
-				if (isAuthenticated) {
-					return;
+		if (!isUserLoading && isError) {
+			const handleAuthFailure = async () => {
+				await authService.logout();
+				queryClient.clear();
+				if (!isAuthPage && isProtectedPath) {
+					window.location.href = ROUTES.HOME;
 				}
-				const restored = await authService.tryRestoreSession();
-				if (restored) {
-					return;
-				}
-			} catch {
-				// If authentication check fails, treat as not authenticated
-			}
-			setIsInitializingAuth(false);
-		};
-
-		handleInitAuth().catch(() => {
-			setIsInitializingAuth(false);
-		});
-	}, [isAuthPage]);
-
-	// Handle user data when it's loaded
-	useEffect(() => {
-		if (!isUserLoading && initAuthRanRef.current) {
-			if (currentUser) {
-				// Set user preferences for audio service (if available)
-				if ('preferences' in currentUser && currentUser.preferences) {
-					const mergedPreferences = mergeUserPreferences(null, currentUser.preferences);
-					audioService.setUserPreferences(mergedPreferences);
-				}
-
-				// Prefetch authenticated-only data
-				const handlePrefetchQueries = async () => {
-					try {
-						await prefetchAuthenticatedQueries();
-					} catch {
-						// Silently handle prefetch errors
-					}
-				};
-				handlePrefetchQueries();
-
-				setIsInitializingAuth(false);
-			} else if (isError) {
-				// User query failed - handle auth failure; redirect to login only when on protected path (avoid redirect loop when closing login modal)
-				const handleAuthFailure = async () => {
-					await authService.logout();
-					queryClient.clear();
-					if (!isAuthPage && isProtectedPath) {
-						window.location.href = ROUTES.HOME;
-					}
-				};
-				handleAuthFailure().finally(() => {
-					setIsInitializingAuth(false);
-				});
-			} else if (!isUserLoading) {
-				// Query completed but no user data - not authenticated
-				setIsInitializingAuth(false);
-			}
+			};
+			void handleAuthFailure();
 		}
 	}, [currentUser, isError, isUserLoading, isAuthPage, isProtectedPath]);
-
-	// Show loading indicator during auth initialization
-	if (isInitializingAuth) {
-		return (
-			<div className='app-shell'>
-				<BackgroundAnimation />
-				<FullPageSpinner message={LoadingMessages.LOADING_APP} layout='appShell' showHomeButton={false} />
-			</div>
-		);
-	}
 
 	return (
 		<div className='app-shell'>

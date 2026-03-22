@@ -94,7 +94,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 				) : null;
 			return (
 				<div className='flex flex-col items-center space-y-2'>
-					<Label htmlFor={props.id} className='flex items-center justify-center gap-2'>
+					<Label className='flex items-center justify-center gap-2'>
 						{iconNode}
 						{label}
 					</Label>

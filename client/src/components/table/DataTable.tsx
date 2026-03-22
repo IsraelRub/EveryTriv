@@ -1,4 +1,4 @@
-import { memo, type ReactElement } from 'react';
+import { Fragment, memo, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ArrowDown, ArrowUp } from 'lucide-react';
@@ -28,6 +28,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
 function wrapHeaderIcon(node: ReactElement | null): ReactElement | null {
 	if (node == null) return null;
@@ -185,8 +186,11 @@ function DataTableInner<T>({
 	sortBy,
 	sortDirection,
 	onSort,
+	expandedRowId = null,
+	renderExpandedRow,
 }: DataTableProps<T>): JSX.Element | null {
 	const { t } = useTranslation();
+	const expandEnabled = renderExpandedRow != null;
 
 	if (isLoading) {
 		return (
@@ -219,15 +223,38 @@ function DataTableInner<T>({
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{data.map(row => (
-						<TableRow key={getRowKey(row)}>
-							{columns.map(col => (
-								<TableCell key={col.id} className={cn(getCellClassName(col), col.cellClassName)}>
-									{renderCell(col, row, emptyValue, t)}
-								</TableCell>
-							))}
-						</TableRow>
-					))}
+					{data.map(row => {
+						const rowKey = getRowKey(row);
+						const dataRow = (
+							<TableRow key={`${rowKey}-data`}>
+								{columns.map(col => (
+									<TableCell key={col.id} className={cn(getCellClassName(col), col.cellClassName)}>
+										{renderCell(col, row, emptyValue, t)}
+									</TableCell>
+								))}
+							</TableRow>
+						);
+
+						if (!expandEnabled) {
+							return <Fragment key={rowKey}>{dataRow}</Fragment>;
+						}
+
+						const expanded = renderExpandedRow(row);
+						const isOpen = expandedRowId === rowKey;
+
+						return (
+							<Fragment key={rowKey}>
+								{dataRow}
+								<TableRow key={`${rowKey}-expand`} className='border-b border-border hover:bg-transparent'>
+									<TableCell colSpan={columns.length} className='p-0 align-top'>
+										<Collapsible open={isOpen}>
+											<CollapsibleContent>{expanded}</CollapsibleContent>
+										</Collapsible>
+									</TableCell>
+								</TableRow>
+							</Fragment>
+						);
+					})}
 				</TableBody>
 			</Table>
 		</div>

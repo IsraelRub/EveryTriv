@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { PersistGate } from 'redux-persist/integration/react';
 
 import { LoadingMessages } from '@/constants';
-import { BackgroundAnimation, ErrorBoundary, FullPageSpinner, LocaleSync } from '@/components';
+import { AppAuthBootstrap, BackgroundAnimation, ErrorBoundary, FullPageSpinner, LocaleSync } from '@/components';
 import { useAppInitialization, useAuthLogoutHandler } from '@/hooks';
 import { persistor } from '@/redux/store';
 import AppRoutes from './AppRoutes';
@@ -24,7 +24,9 @@ export default function App() {
 			>
 				<Fragment>
 					<LocaleSync />
-					<AppRoutes />
+					<AppAuthBootstrap>
+						<AppRoutes />
+					</AppAuthBootstrap>
 				</Fragment>
 			</PersistGate>
 		</ErrorBoundary>

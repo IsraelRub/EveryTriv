@@ -102,7 +102,7 @@ function CreditPackageCard({
 				)}
 				<CardHeader>
 					<CardTitle className='flex items-center gap-2'>
-						<Coins className='h-5 w-5 text-primary' fill='currentColor' strokeWidth={0} />
+						<Coins className='h-5 w-5 text-primary' />
 						{pkg.description ?? t(PaymentKey.CREDITS_PACKAGE, { count: pkg.credits })}
 					</CardTitle>
 					{hasBonus && (
@@ -339,7 +339,7 @@ export function PaymentView() {
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle className={cn('flex items-center gap-2', Colors.GREEN_500.text)}>
-							<CheckCircle className='w-6 h-6' fill='currentColor' strokeWidth={0} />
+							<CheckCircle className='w-6 h-6' />
 							{t(PaymentKey.PURCHASE_COMPLETE)}
 						</DialogTitle>
 						<DialogDescription>{t(PaymentKey.CREDITS_ADDED_TO_ACCOUNT)}</DialogDescription>

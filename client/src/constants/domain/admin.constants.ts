@@ -1,5 +1,6 @@
 import { UserRole } from '@shared/constants';
 
+import { AdminKey } from '../core/ui/localeKeys.constants';
 import type { TabSpec } from '@/types';
 
 export const ROLE_BADGE_CLASSES: Record<string, string> = {
@@ -47,8 +48,8 @@ export function isSystemSubTab(value: string): value is SystemSubTab {
 	return value === SystemSubTab.HEALTH || value === SystemSubTab.CONSISTENCY || value === SystemSubTab.MAINTENANCE;
 }
 
-export const SYSTEM_SUB_TABS: ReadonlyArray<{ value: SystemSubTab; label: string }> = [
-	{ value: SystemSubTab.HEALTH, label: 'Health' },
-	{ value: SystemSubTab.CONSISTENCY, label: 'Consistency' },
-	{ value: SystemSubTab.MAINTENANCE, label: 'Maintenance' },
+export const SYSTEM_SUB_TABS: ReadonlyArray<{ value: SystemSubTab; labelKey: string }> = [
+	{ value: SystemSubTab.HEALTH, labelKey: AdminKey.SYSTEM_SUB_HEALTH },
+	{ value: SystemSubTab.CONSISTENCY, labelKey: AdminKey.SYSTEM_SUB_CONSISTENCY },
+	{ value: SystemSubTab.MAINTENANCE, labelKey: AdminKey.SYSTEM_SUB_MAINTENANCE },
 ];

@@ -46,6 +46,12 @@ export enum DialogContentSize {
 	LG = ComponentSize.LG,
 }
 
+/** Question-index pill density in `GameSessionHud` (only layouts we actually use). */
+export enum GameSessionHudCounterLayout {
+	SINGLE = 'single',
+	MULTIPLAYER = 'multiplayer',
+}
+
 export const DEFAULT_ITEMS_PER_PAGE = 10;
 
 export const RESULT_ICON_SIZE_CLASSES = {

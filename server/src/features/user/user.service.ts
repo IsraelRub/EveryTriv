@@ -279,7 +279,7 @@ export class UserService {
 		try {
 			// Normalize search query
 			const normalizedQuery = normalizeText(query);
-			if (!normalizedQuery || normalizedQuery.length < 2) {
+			if (!normalizedQuery) {
 				throw new BadRequestException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
 			}
 

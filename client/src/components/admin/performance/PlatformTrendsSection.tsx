@@ -7,15 +7,25 @@ import { AdminKey, CHART_HEIGHTS } from '@/constants';
 import { SectionCard, TrendChart } from '@/components';
 import { useGlobalTrends } from '@/hooks';
 
-export function PlatformTrendsSection(props: { statsLoading: boolean }) {
+export function PlatformTrendsSection(props: { statsLoading: boolean; embedded?: boolean }) {
 	const { t } = useTranslation('admin');
 	const { data: globalTrends, isLoading: trendsLoading } = useGlobalTrends({ groupBy: TimePeriod.DAILY, limit: 30 });
 	const isLoading = props.statsLoading || trendsLoading;
 
+	const chart = (
+		<div className='col-span-full w-full'>
+			<TrendChart data={globalTrends} isLoading={isLoading} height={CHART_HEIGHTS.LARGE} />
+		</div>
+	);
+
+	if (props.embedded === true) {
+		return chart;
+	}
+
 	return (
 		<div className='space-y-8'>
 			<SectionCard title={t(AdminKey.PLATFORM_TRENDS)} icon={TrendingUp} description={t(AdminKey.PLATFORM_TRENDS_DESC)}>
-				<TrendChart data={globalTrends} isLoading={isLoading} height={CHART_HEIGHTS.LARGE} className='col-span-full' />
+				{chart}
 			</SectionCard>
 		</div>
 	);

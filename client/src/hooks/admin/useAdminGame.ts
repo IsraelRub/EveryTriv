@@ -93,7 +93,7 @@ export const useUserSearch = (query: string, limit: number = 50) => {
 	return useQuery({
 		queryKey: QUERY_KEYS.admin.userSearch(trimmedQuery, limit),
 		queryFn: () => apiService.searchUsers(trimmedQuery, limit),
-		enabled: trimmedQuery.length >= 2,
+		enabled: !!trimmedQuery,
 		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 	});

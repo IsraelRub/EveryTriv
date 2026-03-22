@@ -14,7 +14,7 @@ import { calculateDuration, getErrorMessage } from '@shared/utils';
 import { isLocale } from '@shared/validation';
 
 import { Cache, CurrentUserId, NoCache } from '@common/decorators';
-import { CustomDifficultyPipe, TriviaRequestPipe } from '@common/pipes';
+import { CustomDifficultyPipe, StartGameSessionPipe, TriviaRequestPipe } from '@common/pipes';
 import { LanguageToolService } from '@common/validation';
 import { serverLogger as logger } from '@internal/services';
 
@@ -67,7 +67,7 @@ export class GameController {
 
 	@Post('session/start')
 	@NoCache()
-	async startGameSession(@CurrentUserId() userId: string, @Body() body: StartGameSessionDto) {
+	async startGameSession(@CurrentUserId() userId: string, @Body(StartGameSessionPipe) body: StartGameSessionDto) {
 		try {
 			const result = await this.gameService.startGameSession(
 				userId,
@@ -380,11 +380,11 @@ export class GameController {
 	@NoCache()
 	async validateText(@Body() body: ValidateTextDto) {
 		try {
-			const result = await this.languageToolService.checkText(body.text.trim(), {
-				enableSpellCheck: true,
-				enableGrammarCheck: true,
-				...(body.language != null ? { language: body.language, detectLanguage: false } : { detectLanguage: true }),
-			});
+			const trimmed = body.text.trim();
+			const result =
+				body.language != null
+					? await this.languageToolService.checkGameNaturalText(trimmed, { outputLanguage: body.language })
+					: await this.languageToolService.checkGameNaturalText(trimmed, { detectLanguage: true });
 			return result;
 		} catch (error) {
 			logger.gameError('Error validating text', {

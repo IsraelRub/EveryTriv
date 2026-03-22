@@ -1,5 +1,3 @@
-import type { ReactElement } from 'react';
-
 import type { DifficultyStats, UserTrendPoint } from '@shared/types';
 
 import type { TopicData } from './stats.types';
@@ -36,8 +34,6 @@ export interface PieChartProps {
 	maxItems?: number;
 	minPercentage?: number;
 	valueLabel?: string;
-	className?: string;
-	hideCard?: boolean;
 	centerText?: string | PieChartCenterText;
 	emptyStateData?: string;
 }
@@ -49,18 +45,7 @@ export interface TrendChartProps {
 	xAxisLabel?: string;
 	scoreLabel?: string;
 	successRateLabel?: string;
-	className?: string;
-	hideCard?: boolean;
 	emptyStateData?: string;
-}
-
-export interface ChartCardProps {
-	title: string;
-	description: string;
-	isLoading?: boolean;
-	data?: unknown[] | null | undefined;
-	children: ReactElement | ReactElement[];
-	className?: string;
 }
 
 export interface TopicsDistributionChartProps {
@@ -72,7 +57,6 @@ export interface TopicsDistributionChartProps {
 	valueLabel?: string;
 	centerText?: string | PieChartCenterText;
 	centerPrimaryLabel?: string;
-	className?: string;
 }
 
 export interface DifficultyOverviewChartProps {

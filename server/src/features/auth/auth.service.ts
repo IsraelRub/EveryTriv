@@ -38,35 +38,7 @@ export class AuthService {
 		});
 
 		if (existingUser) {
-			const passwordMatches = existingUser.passwordHash
-				? await this.passwordService.comparePassword(registerDto.password, existingUser.passwordHash)
-				: false;
-
-			if (!passwordMatches) {
-				throw new BadRequestException(ErrorCode.EMAIL_ALREADY_REGISTERED);
-			}
-
-			const tokenPair = await this.jwtTokenService.generateTokenPair(
-				existingUser.id,
-				existingUser.email,
-				existingUser.role
-			);
-
-			const avatarUrl = getAvatarUrlForUser(existingUser, AppConfig.apiPublicBaseUrl);
-			return {
-				accessToken: tokenPair.accessToken,
-				refreshToken: tokenPair.refreshToken,
-				user: {
-					id: existingUser.id,
-					email: existingUser.email,
-					firstName: existingUser.firstName ?? undefined,
-					lastName: existingUser.lastName ?? undefined,
-					avatar: existingUser.preferences?.avatar,
-					avatarUrl,
-					role: existingUser.role,
-					emailVerified: existingUser.emailVerified,
-				},
-			};
+			throw new BadRequestException(ErrorCode.EMAIL_ALREADY_REGISTERED);
 		}
 
 		const adminExists = await this.userRepository.existsBy({
@@ -87,7 +59,7 @@ export class AuthService {
 			role: roleForNewUser,
 			isActive: true,
 			emailVerified: false,
-			credits: isAdmin ? null : undefined, // NULL for admin (not applicable), default (100) for regular users
+			credits: isAdmin ? null : undefined, // NULL for admin (not applicable), default (150) for regular users
 			purchasedCredits: 0,
 			dailyFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions
 			remainingFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions

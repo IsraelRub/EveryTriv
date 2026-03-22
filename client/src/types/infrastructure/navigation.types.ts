@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react';
 import type { NavLinkProps as RouterNavLinkProps } from 'react-router-dom';
 
-import type { ComponentSize, NavKeyType } from '@/constants';
+import type { ComponentSize, NavKey } from '@/constants';
 
 export interface NavigationLink {
-	readonly labelKey: NavKeyType;
+	readonly labelKey: NavKey;
 	readonly path: string;
 }
 

@@ -15,7 +15,6 @@ export const TopicsDistributionChart = memo(function TopicsDistributionChart({
 	valueLabel = 'Games Played',
 	centerText,
 	centerPrimaryLabel,
-	className,
 }: TopicsDistributionChartProps) {
 	const effectiveMinPercentage = minPercentage === 0 ? undefined : minPercentage;
 	const rawData: ChartDataPoint[] = useMemo(() => {
@@ -45,9 +44,7 @@ export const TopicsDistributionChart = memo(function TopicsDistributionChart({
 			minPercentage={effectiveMinPercentage}
 			valueLabel={valueLabel}
 			colors={CHART_COLORS}
-			hideCard
 			centerText={defaultCenterText}
-			className={className}
 			isLoading={isLoading}
 		/>
 	);

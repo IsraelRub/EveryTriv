@@ -261,6 +261,7 @@ export const ERROR_MESSAGES = {
 		USE_FORM_FIELD_WITHIN_FORM_FIELD: 'useFormField should be used within <FormField>',
 		USE_FORM_FIELD_WITHIN_FORM_ITEM: 'useFormField should be used within <FormItem>',
 		ENTER_IN_ENGLISH: 'Please enter in English',
+		ENTER_IN_HEBREW: 'Please enter in Hebrew',
 		SPELLING_OR_GRAMMAR_ISSUE: 'Spelling or grammar issue detected. Please write in English.',
 	},
 } as const;

@@ -15,8 +15,25 @@ import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 
 import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
-import { Card, CardContent, PricingConfigurationSection, SectionCard, Skeleton, StatCard } from '@/components';
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+	Card,
+	CardContent,
+	PricingConfigurationSection,
+	SectionCard,
+	Skeleton,
+	StatCard,
+} from '@/components';
 import { useBusinessMetrics } from '@/hooks';
+
+const BUSINESS_ACCORDION = {
+	USER_METRICS: 'user-metrics',
+	ENGAGEMENT: 'engagement',
+	PRICING: 'pricing',
+} as const;
 
 export function BusinessTabContent() {
 	const { t } = useTranslation('admin');
@@ -70,74 +87,100 @@ export function BusinessTabContent() {
 				</div>
 			</SectionCard>
 
-			<SectionCard
-				className='card-muted-tint'
-				title={t(AdminKey.USER_METRICS)}
-				icon={Users}
-				description={t(AdminKey.USER_GROWTH_DESC)}
+			<Accordion
+				type='multiple'
+				defaultValue={[
+					BUSINESS_ACCORDION.USER_METRICS,
+					BUSINESS_ACCORDION.ENGAGEMENT,
+					BUSINESS_ACCORDION.PRICING,
+				]}
+				className='w-full rounded-lg border bg-card'
 			>
-				<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-					<StatCard
-						icon={Users}
-						label={t(AdminKey.TOTAL_USERS)}
-						value={businessMetrics.users.total.toLocaleString()}
-						color={Colors.BLUE_500.text}
-					/>
-					<StatCard
-						icon={UserCheck}
-						label={t(AdminKey.ACTIVE_USERS)}
-						value={businessMetrics.users.active.toLocaleString()}
-						color={Colors.GREEN_500.text}
-					/>
-					<StatCard
-						icon={TrendingUp}
-						label={t(AdminKey.NEW_THIS_MONTH)}
-						value={businessMetrics.users.newThisMonth.toLocaleString()}
-						color={Colors.PURPLE_500.text}
-					/>
-					<StatCard
-						icon={AlertTriangle}
-						label={t(AdminKey.CHURN_RATE)}
-						value={formatNumericValue(businessMetrics.users.churnRate, 2, '%')}
-						color={Colors.RED_500.text}
-					/>
-				</div>
-			</SectionCard>
-
-			<SectionCard title={t(AdminKey.ENGAGEMENT_METRICS)} icon={Activity} description={t(AdminKey.ENGAGEMENT_DESC)}>
-				<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-					<StatCard
-						icon={Activity}
-						label={t(AdminKey.DAILY_ACTIVE_USERS)}
-						value={businessMetrics.engagement.dau.toLocaleString()}
-						color={Colors.BLUE_500.text}
-					/>
-					<StatCard
-						icon={Users}
-						label={t(AdminKey.WEEKLY_ACTIVE_USERS)}
-						value={businessMetrics.engagement.wau.toLocaleString()}
-						color={Colors.GREEN_500.text}
-					/>
-					<StatCard
-						icon={CalendarDays}
-						label={t(AdminKey.MONTHLY_ACTIVE_USERS)}
-						value={businessMetrics.engagement.mau.toLocaleString()}
-						color={Colors.PURPLE_500.text}
-					/>
-					<StatCard
-						icon={Timer}
-						label={t(AdminKey.AVG_SESSION_DURATION)}
-						value={formatNumericValue(
-							businessMetrics.engagement.avgSessionDuration / TIME_DURATIONS_SECONDS.MINUTE,
-							2,
-							'm'
-						)}
-						color={Colors.YELLOW_500.text}
-					/>
-				</div>
-			</SectionCard>
-
-			<PricingConfigurationSection />
+				<AccordionItem value={BUSINESS_ACCORDION.USER_METRICS}>
+					<AccordionTrigger className='px-4'>
+						<span className='flex items-center gap-2'>
+							<Users className='h-4 w-4 shrink-0 text-primary' />
+							{t(AdminKey.USER_METRICS)}
+						</span>
+					</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<div className='grid grid-cols-1 gap-4 md:grid-cols-4'>
+							<StatCard
+								icon={Users}
+								label={t(AdminKey.TOTAL_USERS)}
+								value={businessMetrics.users.total.toLocaleString()}
+								color={Colors.BLUE_500.text}
+							/>
+							<StatCard
+								icon={UserCheck}
+								label={t(AdminKey.ACTIVE_USERS)}
+								value={businessMetrics.users.active.toLocaleString()}
+								color={Colors.GREEN_500.text}
+							/>
+							<StatCard
+								icon={TrendingUp}
+								label={t(AdminKey.NEW_THIS_MONTH)}
+								value={businessMetrics.users.newThisMonth.toLocaleString()}
+								color={Colors.PURPLE_500.text}
+							/>
+							<StatCard
+								icon={AlertTriangle}
+								label={t(AdminKey.CHURN_RATE)}
+								value={formatNumericValue(businessMetrics.users.churnRate, 2, '%')}
+								color={Colors.RED_500.text}
+							/>
+						</div>
+						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.USER_GROWTH_DESC)}</p>
+					</AccordionContent>
+				</AccordionItem>
+				<AccordionItem value={BUSINESS_ACCORDION.ENGAGEMENT}>
+					<AccordionTrigger className='px-4'>
+						<span className='flex items-center gap-2'>
+							<Activity className='h-4 w-4 shrink-0 text-primary' />
+							{t(AdminKey.ENGAGEMENT_METRICS)}
+						</span>
+					</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<div className='grid grid-cols-1 gap-4 md:grid-cols-4'>
+							<StatCard
+								icon={Activity}
+								label={t(AdminKey.DAILY_ACTIVE_USERS)}
+								value={businessMetrics.engagement.dau.toLocaleString()}
+								color={Colors.BLUE_500.text}
+							/>
+							<StatCard
+								icon={Users}
+								label={t(AdminKey.WEEKLY_ACTIVE_USERS)}
+								value={businessMetrics.engagement.wau.toLocaleString()}
+								color={Colors.GREEN_500.text}
+							/>
+							<StatCard
+								icon={CalendarDays}
+								label={t(AdminKey.MONTHLY_ACTIVE_USERS)}
+								value={businessMetrics.engagement.mau.toLocaleString()}
+								color={Colors.PURPLE_500.text}
+							/>
+							<StatCard
+								icon={Timer}
+								label={t(AdminKey.AVG_SESSION_DURATION)}
+								value={formatNumericValue(
+									businessMetrics.engagement.avgSessionDuration / TIME_DURATIONS_SECONDS.MINUTE,
+									2,
+									'm'
+								)}
+								color={Colors.YELLOW_500.text}
+							/>
+						</div>
+						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.ENGAGEMENT_DESC)}</p>
+					</AccordionContent>
+				</AccordionItem>
+				<AccordionItem value={BUSINESS_ACCORDION.PRICING}>
+					<AccordionTrigger className='px-4'>{t(AdminKey.PRICING_CONFIG_TITLE)}</AccordionTrigger>
+					<AccordionContent className='px-4'>
+						<PricingConfigurationSection />
+					</AccordionContent>
+				</AccordionItem>
+			</Accordion>
 		</>
 	);
 }

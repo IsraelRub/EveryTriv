@@ -114,20 +114,29 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 	gridCols = DEFAULT_STATS_GRID_COLS,
 	isLoading: sectionLoading,
 	className,
+	layout = 'section',
 }: StatsSectionCardProps) {
+	const grid = (
+		<div className={cn('grid gap-4', gridCols)}>
+			{stats.map(stat => (
+				<StatCard
+					key={stat.label}
+					{...stat}
+					variant={stat.variant ?? variant}
+					animate={stat.animate ?? variant === StatCardVariant.CENTERED}
+					isLoading={stat.isLoading ?? sectionLoading}
+				/>
+			))}
+		</div>
+	);
+
+	if (layout === 'plain') {
+		return <div className={className}>{grid}</div>;
+	}
+
 	return (
 		<SectionCard className={className} title={title ?? ''} icon={TitleIcon} description={description}>
-			<div className={cn('grid gap-4', gridCols)}>
-				{stats.map(stat => (
-					<StatCard
-						key={stat.label}
-						{...stat}
-						variant={stat.variant ?? variant}
-						animate={stat.animate ?? variant === StatCardVariant.CENTERED}
-						isLoading={stat.isLoading ?? sectionLoading}
-					/>
-				))}
-			</div>
+			{grid}
 		</SectionCard>
 	);
 });

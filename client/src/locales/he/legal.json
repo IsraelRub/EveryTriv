@@ -25,6 +25,8 @@
 	"termsOfService": "תנאי שימוש",
 	"privacyPolicy": "מדיניות פרטיות",
 	"lastUpdated": "עודכן לאחרונה:",
+	"accordionOpenAll": "פתח את כל הסעיפים",
+	"accordionCloseAll": "סגור את כל הסעיפים",
 	"messageSentSuccessfully": "ההודעה נשלחה בהצלחה!",
 	"sendUsMessage": "שלח לנו הודעה",
 	"subjectPlaceholder2": "בנושא מה?",

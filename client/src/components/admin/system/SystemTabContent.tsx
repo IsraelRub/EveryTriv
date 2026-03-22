@@ -116,7 +116,10 @@ export function SystemTabContent() {
 
 	return (
 		<Tabs value={currentSubTab} onValueChange={handleSubTabChange} className='w-full'>
-			<SecondaryTabsBar items={SYSTEM_SUB_TABS} columns={3} />
+			<SecondaryTabsBar items={useMemo(
+		() => SYSTEM_SUB_TABS.map(tab => ({ value: tab.value, label: t(tab.labelKey) })),
+		[t],
+	)} columns={3} />
 			<TabsContent value={SystemSubTab.HEALTH} className='mt-0'>
 				<div className='space-y-8'>
 					<SystemHealthSection />

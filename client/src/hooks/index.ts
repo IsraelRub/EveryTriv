@@ -2,6 +2,7 @@ export {
 	useLogin,
 	useRegister,
 	useCurrentUser,
+	useHasToken,
 	useIsAuthenticated,
 	useUserRole,
 	useCurrentUserData,

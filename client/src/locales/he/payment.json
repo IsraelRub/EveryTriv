@@ -31,5 +31,6 @@
 	"payAmount": "שלם {{amount}}",
 	"paypalSdkFailed": "טעינת PayPal נכשלה. בדוק את החיבור לאינטרנט ונסה שוב.",
 	"creditsAddedToAccountShort": "הקרדיטים נוספו לחשבונך.",
-	"addCredits": "הוסף"
+	"addCredits": "הוסף",
+	"grantedCreditsRefillHint": "מילוי ל-{{cap}} קרדיטים עד {{dateTime}}"
 }

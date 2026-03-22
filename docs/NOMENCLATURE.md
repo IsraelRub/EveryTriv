@@ -688,7 +688,6 @@
 | `FeatureErrorBoundaryProps` | `client/src/types/core/ui-base.types.ts` | interface props גבול שגיאות תכונה |
 | `ErrorState` | `client/src/types/core/ui-base.types.ts` | interface מצב שגיאה |
 | `AudioData` | `client/src/types/ui/audio.types.ts` | interface נתוני אודיו |
-| `AudioControlsProps` | `client/src/types/ui/audio.types.ts` | interface props בקרות אודיו |
 | `IconProps` | `client/src/types/ui/icon.types.ts` | interface props אייקון |
 | `IconAnimation` | `client/src/types/ui/icon.types.ts` | interface אנימציית אייקון |
 | `BackgroundAnimationProps` | `client/src/types/ui/backgroundAnimation.types.ts` | interface props אנימציית רקע |
@@ -696,7 +695,6 @@
 | `TrendChartProps` | `client/src/types/ui/charts.types.ts` | interface props גרף מגמה |
 | `DistributionDataPoint` | `client/src/types/ui/charts.types.ts` | interface נקודת נתונים התפלגות (משמש גם לגרפי עוגה) |
 | `DistributionChartProps` | `client/src/types/ui/charts.types.ts` | interface props גרף התפלגות |
-| `ChartCardProps` | `client/src/types/ui/charts.types.ts` | interface props כרטיס גרף |
 | `LeaderboardEntry` | `client/src/types/ui/leaderboard.types.ts` | interface רשומה בטבלת לוחות |
 | `SocialShareProps` | `client/src/types/ui/social.types.ts` | interface props שיתוף חברתי |
 | `StatCardProps` | `client/src/types/ui/stats.types.ts` | interface props כרטיס סטטיסטיקה |
@@ -1322,7 +1320,6 @@
 | `PieChart` | `client/src/components/charts/PieChart.tsx` | גרף עוגה |
 | `TrendChart` | `client/src/components/charts/TrendChart.tsx` | גרף מגמה |
 | `DistributionChart` | `client/src/components/charts/DistributionChart.tsx` | גרף התפלגות |
-| `ChartCard` | `client/src/components/charts/ChartCard.tsx` | כרטיס גרף |
 
 ### Admin Components
 | שם Component | מיקום קובץ | תיאור |

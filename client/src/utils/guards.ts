@@ -39,3 +39,13 @@ export function isAuthPage(): boolean {
 	const currentPath = window.location.pathname;
 	return currentPath === ROUTES.LOGIN || currentPath === ROUTES.REGISTER;
 }
+
+/** Paths that require an authenticated session (must stay in sync with ProtectedRoute / AppRoutes). */
+export function isProtectedAppPath(pathname: string): boolean {
+	return (
+		pathname.startsWith('/game') ||
+		pathname === ROUTES.PAYMENT ||
+		pathname === ROUTES.COMPLETE_PROFILE ||
+		pathname === ROUTES.ADMIN
+	);
+}

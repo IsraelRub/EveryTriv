@@ -10,7 +10,7 @@ import { authService, clientLogger as logger, queryInvalidationService } from '@
 import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
 import { store } from '@/redux/store';
 
-function useHasToken(): boolean {
+export function useHasToken(): boolean {
 	const [hasToken, setHasToken] = useState<boolean>(() => {
 		try {
 			const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);

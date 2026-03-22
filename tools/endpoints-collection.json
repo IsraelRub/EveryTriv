@@ -97,6 +97,12 @@
       "type": "string"
     },
     {
+      "key": "emailVerifyToken",
+      "value": "",
+      "type": "string",
+      "description": "Set by Request Verification Email → Verify Email before PUT /users/profile (RequireEmailVerified)"
+    },
+    {
       "key": "creditsBalance",
       "value": "",
       "type": "string"
@@ -1033,6 +1039,63 @@
           }
         },
         {
+          "name": "Request Verification Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    try {",
+                  "        const raw = pm.response.json();",
+                  "        const body = raw && raw.data ? raw.data : raw;",
+                  "        const link = body && body.verificationLink ? body.verificationLink : null;",
+                  "        if (link && typeof link === 'string') {",
+                  "            const m = link.match(/token=([^&]+)/);",
+                  "            if (m && m[1]) pm.collectionVariables.set('emailVerifyToken', m[1]);",
+                  "        }",
+                  "    } catch (e) { console.warn('request verification parse', e); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/request-verification-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "request-verification-email"]
+            },
+            "description": "Required before PUT /users/profile: that route uses @RequireEmailVerified(). Response is wrapped as { success, data: { verificationLink } }."
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email?token={{emailVerifyToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{emailVerifyToken}}"
+                }
+              ]
+            },
+            "description": "Public GET; uses token extracted from verificationLink. Skipped if request-verification-email failed (e.g. already verified)."
+          }
+        },
+        {
           "name": "Update User Profile",
           "request": {
             "method": "PUT",
@@ -1429,7 +1492,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"topic\": \"science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 5\n}"
+              "raw": "{\n  \"topic\": \"science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 5,\n  \"answerCount\": 4,\n  \"outputLanguage\": \"en\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/game/trivia",
@@ -1845,14 +1908,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"topic\": \"Science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 10,\n  \"maxPlayers\": 2,\n  \"gameMode\": \"question-limited\"\n}"
+              "raw": "{\n  \"topic\": \"Science\",\n  \"difficulty\": \"medium\",\n  \"questionsPerRequest\": 10,\n  \"maxPlayers\": 2\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/multiplayer/rooms",
               "host": ["{{baseUrl}}"],
               "path": ["multiplayer", "rooms"]
             },
-            "description": "**REST Proxy:** `POST /multiplayer/rooms`\n\nCreates a new multiplayer room using user token\n\n**WebSocket Event Mirrored:** `create-room`\n\n**Emit (Socket.IO):** `socket.emit('create-room', { topic, difficulty, questionsPerRequest, maxPlayers, gameMode })`\n\n**HTTP Response:** `{ room, code }`\n\n**WebSocket Response Events:**\n- `room-created` - Returns { room, code }\n- `player-joined` - Broadcast to all players\n- `error` - If creation fails\n\n**Room Code:** Short 6-character code for easy sharing (first 6 chars of room ID)"
+            "description": "**REST Proxy:** `POST /multiplayer/rooms`\n\nCreates a new multiplayer room using user token\n\n**WebSocket Event Mirrored:** `create-room`\n\n**Emit (Socket.IO):** `socket.emit('create-room', { topic, difficulty, questionsPerRequest, maxPlayers })`\n\n**HTTP Response:** `{ room, code }`\n\n**WebSocket Response Events:**\n- `room-created` - Returns { room, code }\n- `player-joined` - Broadcast to all players\n- `error` - If creation fails\n\n**Room Code:** Short 6-character code for easy sharing (first 6 chars of room ID)"
           }
         },
         {

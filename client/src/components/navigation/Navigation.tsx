@@ -194,12 +194,23 @@ export function Navigation() {
 								</DropdownMenuContent>
 							</DropdownMenu>
 						) : (
-							<Button
-								size={ButtonSize.SM}
-								onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
-							>
-								{t(CommonKey.SIGN_IN)}
-							</Button>
+							<div className='ms-8 flex shrink-0 items-center gap-1.5 sm:ms-12 sm:gap-2 md:ms-16'>
+								<Button
+									size={ButtonSize.SM}
+									onClick={() =>
+										navigate(ROUTES.REGISTER, { state: { modal: true, returnUrl: location.pathname } })
+									}
+								>
+									{t(CommonKey.SIGN_UP)}
+								</Button>
+								<Button
+									variant={VariantBase.OUTLINE}
+									size={ButtonSize.SM}
+									onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
+								>
+									{t(CommonKey.SIGN_IN)}
+								</Button>
+							</div>
 						)}
 					</div>
 				</div>

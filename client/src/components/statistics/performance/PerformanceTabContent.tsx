@@ -294,7 +294,7 @@ export function PerformanceTabContent() {
 					icon={TrendingUp}
 					description={t(StatisticsPerformanceKey.TRENDS_DESCRIPTION)}
 				>
-					<TrendChart data={analytics.trends} isLoading={analyticsLoading} height={CHART_HEIGHTS.LARGE} hideCard />
+					<TrendChart data={analytics.trends} isLoading={analyticsLoading} height={CHART_HEIGHTS.LARGE} />
 				</SectionCard>
 			)}
 

@@ -371,14 +371,14 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 						<RadioGroup value={selectedMethod} onValueChange={handlePaymentMethodChange} className='space-y-2'>
 							<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
 								<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
-								<Label htmlFor='paypal' className='flex-1 cursor-pointer flex items-center gap-2'>
+								<Label className='flex-1 cursor-pointer flex items-center gap-2'>
 									<FaPaypal className='h-5 w-5 text-white' />
 									<span>PayPal</span>
 								</Label>
 							</Card>
 							<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
 								<RadioGroupItem value={PaymentMethod.MANUAL_CREDIT} id='manual' />
-								<Label htmlFor='manual' className='flex-1 cursor-pointer flex items-center gap-2'>
+								<Label className='flex-1 cursor-pointer flex items-center gap-2'>
 									<CreditCard className='h-5 w-5' />
 									<span>{t(PaymentKey.CREDIT_CARD_MANUAL)}</span>
 								</Label>

@@ -22,14 +22,14 @@ export function isStringArray(value: unknown): value is string[] {
 }
 
 export function isNonEmptyString(value: unknown): value is string {
-	return value != null && VALIDATORS.string(value) && value.trim().length > 0;
+	return value != null && VALIDATORS.string(value) && !!value.trim();
 }
 
 export function normalizeStringArray(value?: unknown): string[] | undefined {
 	if (!Array.isArray(value)) {
 		return undefined;
 	}
-	const normalized = value.filter((item): item is string => VALIDATORS.string(item) && item.trim().length > 0);
+	const normalized = value.filter((item): item is string => VALIDATORS.string(item) && !!item.trim());
 	return normalized.length > 0 ? normalized : undefined;
 }
 

@@ -1,17 +1,15 @@
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart3, History, Trophy } from 'lucide-react';
 
 import { APP_NAME } from '@shared/constants';
 
-import { ANIMATION_CONFIG, ANIMATION_DELAYS, HomeKey, ROUTES, VariantBase } from '@/constants';
+import { ANIMATION_CONFIG, ANIMATION_DELAYS, HomeKey } from '@/constants';
 import type { HomeHeaderProps } from '@/types';
-import { Button, Card } from '@/components';
+import { Card } from '@/components';
 
 export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestContent, action }: HomeHeaderProps) {
 	const { t } = useTranslation();
-	const navigate = useNavigate();
 
 	return (
 		<div className='space-y-3 md:space-y-4 lg:space-y-6 flex-shrink-0'>
@@ -25,7 +23,6 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 					<img
 						src='/assets/logo.svg'
 						alt=''
-						aria-hidden='true'
 						className='h-24 w-24 shrink-0 object-contain md:h-28 md:w-28 lg:h-32 lg:w-32'
 						width={128}
 						height={128}
@@ -49,7 +46,7 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 						{isAuthenticated && firstName ? (
 							<>
 								{t(HomeKey.WELCOME_BACK_PREFIX)}
-								<span className='text-blue-600 font-medium'>{firstName}</span>!
+								<span className='text-primary font-bold'>{firstName}</span>!
 							</>
 						) : (
 							t(HomeKey.GUEST_CTA)
@@ -95,16 +92,6 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 								<p className='text-sm text-muted-foreground'>{t(HomeKey.SAVE_HISTORY_DESC)}</p>
 							</div>
 						</Card>
-
-						<div className='col-span-full text-center mt-4'>
-							<p className='text-muted-foreground mb-4'>{t(HomeKey.CREATE_ACCOUNT_CTA)}</p>
-							<div className='flex justify-center gap-4'>
-								<Button onClick={() => navigate(ROUTES.REGISTER)}>{t(HomeKey.REGISTER_NOW)}</Button>
-								<Button variant={VariantBase.OUTLINE} onClick={() => navigate(ROUTES.LOGIN)}>
-									{t(HomeKey.LOGIN)}
-								</Button>
-							</div>
-						</div>
 					</div>
 				</motion.div>
 			)}

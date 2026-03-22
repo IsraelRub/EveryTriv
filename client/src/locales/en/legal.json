@@ -25,6 +25,8 @@
 	"termsOfService": "Terms of Service",
 	"privacyPolicy": "Privacy Policy",
 	"lastUpdated": "Last updated:",
+	"accordionOpenAll": "Expand all sections",
+	"accordionCloseAll": "Collapse all sections",
 	"messageSentSuccessfully": "Message Sent Successfully!",
 	"sendUsMessage": "Send us a Message",
 	"subjectPlaceholder2": "What is this regarding?",

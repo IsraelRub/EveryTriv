@@ -76,9 +76,9 @@ FormItem.displayName = 'FormItem';
 
 export const FormLabel = forwardRef<ElementRef<typeof LabelRoot>, ComponentPropsWithoutRef<typeof LabelRoot>>(
 	({ className, ...props }, ref) => {
-		const { error, formItemId } = useFormField();
+		const { error } = useFormField();
 
-		return <Label ref={ref} className={cn(error && 'text-destructive', className)} htmlFor={formItemId} {...props} />;
+		return <Label ref={ref} className={cn(error && 'text-destructive', className)} {...props} />;
 	}
 );
 FormLabel.displayName = 'FormLabel';

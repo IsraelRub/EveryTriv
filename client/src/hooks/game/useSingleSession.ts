@@ -349,6 +349,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 						topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
 						difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
 						gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
+						outputLanguage: locale,
 					});
 					const sessionStartTimeoutMs = 15 * TIME_PERIODS_MS.SECOND;
 					const timeoutPromise = new Promise<never>((_, reject) => {
@@ -578,6 +579,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		currentSettings?.answerCount,
 		questions.length,
 		isGameFinalized,
+		locale,
 	]);
 
 	const handleGameTimeout = useCallback(() => {
