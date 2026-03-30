@@ -1,3 +1,11 @@
+import type {
+	SystemRecommendation,
+	UserAnalyticsRecord,
+	UserInsightsData,
+	UserPerformanceMetrics,
+	UserSummaryData,
+} from '@shared/types';
+
 import type { ClearOperation } from './admin.types';
 
 export interface ManagementActionsProps {
@@ -46,4 +54,14 @@ export interface CheckAllUsersConsistencyResponse {
 	consistentUsers: number;
 	inconsistentUsers: number;
 	results: ConsistencyResultRow[];
+}
+
+export interface UserAnalysisExpandedPanelProps {
+	analysisLoading: boolean;
+	summaryError: boolean;
+	summaryData: UserSummaryData | undefined;
+	statisticsData: UserAnalyticsRecord | undefined;
+	performanceData: UserPerformanceMetrics | undefined;
+	insightsData: UserInsightsData | undefined;
+	recommendationsData: SystemRecommendation[] | undefined;
 }

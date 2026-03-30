@@ -1,27 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
-import { FileQuestion, Gauge, LayoutList, Tag, TimerReset, UserPlus, Wand2 } from 'lucide-react';
+import { FileQuestion, Gauge, LayoutList, Tag, TimerReset, UserPlus } from 'lucide-react';
 
-import {
-	DIFFICULTY_CONFIG,
-	DifficultyLevel,
-	GAME_MODES_CONFIG,
-	SurpriseScope,
-	TIME_PERIODS_MS,
-	VALIDATION_COUNT,
-} from '@shared/constants';
+import { DIFFICULTY_CONFIG, DifficultyLevel, GAME_MODES_CONFIG, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import { namesMatch } from '@shared/utils';
-import { extractCustomDifficultyText, isCustomDifficulty, matchesLocaleText } from '@shared/validation';
+import { matchesLocaleText } from '@shared/validation';
 
 import {
 	AlertVariant,
 	ButtonSize,
-	ComponentSize,
-	DialogContentSize,
 	GameKey,
 	isTopicBadgeType,
-	SURPRISE_SCOPE_LABEL_KEYS,
 	TextLanguageStatus,
 	TOPIC_BADGE_LABEL_KEYS,
 	TOPIC_BADGE_META,
@@ -29,24 +19,18 @@ import {
 	VariantBase,
 } from '@/constants';
 import type { GameSettingsFormProps, TopicWithMeta } from '@/types';
-import { gameHistoryService } from '@/services';
 import { cn, formatTimeLimitDisplay, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
 	Badge,
 	Button,
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
 	Input,
 	Label,
 	NumberInput,
-	Spinner,
 	Textarea,
 } from '@/components';
+import { SurpriseMeDialog } from './surpriseMeDialog';
 import { useAppSelector, usePopularTopics, useUserAnalytics } from '@/hooks';
 import { selectLocale } from '@/redux/selectors';
 
@@ -108,18 +92,6 @@ export function GameSettingsForm({
 	const { data: analytics } = useUserAnalytics({ staleTime: TIME_PERIODS_MS.THIRTY_MINUTES, refetchOnMount: false });
 	const { data: popularTopicsData } = usePopularTopics(undefined, { enabled: true });
 
-	const [surprisePopupOpen, setSurprisePopupOpen] = useState(false);
-	const [surpriseTopicChosen, setSurpriseTopicChosen] = useState(true);
-	const [surpriseLevelChosen, setSurpriseLevelChosen] = useState(false);
-	const [surpriseLoading, setSurpriseLoading] = useState(false);
-
-	const surpriseScope: SurpriseScope =
-		surpriseTopicChosen && surpriseLevelChosen
-			? SurpriseScope.BOTH
-			: surpriseTopicChosen
-				? SurpriseScope.TOPIC
-				: SurpriseScope.DIFFICULTY;
-
 	const answerCountInput = useMemo(
 		() => (
 			<NumberInput
@@ -133,33 +105,6 @@ export function GameSettingsForm({
 		),
 		[t, answerCount, onAnswerCountChange]
 	);
-
-	const handlePickForMe = useCallback(async () => {
-		setSurpriseLoading(true);
-		try {
-			const data = await gameHistoryService.getSurprisePick(surpriseScope, locale);
-			if (data.topic !== undefined) {
-				onTopicChange(data.topic);
-			}
-			if (data.difficulty !== undefined) {
-				onDifficultyChange(DifficultyLevel.CUSTOM);
-				onCustomDifficultyChange(
-					isCustomDifficulty(data.difficulty) ? extractCustomDifficultyText(data.difficulty) : data.difficulty
-				);
-				onCustomDifficultyErrorChange('');
-			}
-			setSurprisePopupOpen(false);
-		} finally {
-			setSurpriseLoading(false);
-		}
-	}, [
-		surpriseScope,
-		locale,
-		onTopicChange,
-		onDifficultyChange,
-		onCustomDifficultyChange,
-		onCustomDifficultyErrorChange,
-	]);
 
 	// Memoize topic extraction to avoid recalculation
 	// Limit to 3 topics per category to reduce UI clutter
@@ -359,85 +304,12 @@ export function GameSettingsForm({
 					</div>
 				)}
 
-				{/* Surprise me: interactive button opens popup with topic/level toggles (single player only) */}
-				{!showMaxPlayers && (
-					<>
-						<Button
-							type='button'
-							variant={VariantBase.OUTLINE}
-							size={ButtonSize.SM}
-							onClick={() => setSurprisePopupOpen(true)}
-							className='gap-2'
-						>
-							<Wand2 className='h-4 w-4' />
-							{t(GameKey.SURPRISE_ME)}
-						</Button>
-						<Dialog open={surprisePopupOpen} onOpenChange={setSurprisePopupOpen}>
-							<DialogContent size={DialogContentSize.SM} className='max-w-sm'>
-								<DialogHeader>
-									<DialogTitle>{t(GameKey.SURPRISE_ME)}</DialogTitle>
-								</DialogHeader>
-								<div className='space-y-4 py-2'>
-									<p className='text-sm text-muted-foreground'>{t(GameKey.HOW_WOULD_YOU_LIKE_TO_PLAY)}</p>
-									<div className='flex flex-wrap gap-2'>
-										<Button
-											type='button'
-											variant={surpriseTopicChosen ? VariantBase.DEFAULT : VariantBase.OUTLINE}
-											size={ButtonSize.SM}
-											onClick={() =>
-												setSurpriseTopicChosen(prev => {
-													const next = !prev;
-													if (!next && !surpriseLevelChosen) setSurpriseLevelChosen(true);
-													return next;
-												})
-											}
-											disabled={surpriseLoading}
-										>
-											{t(SURPRISE_SCOPE_LABEL_KEYS[SurpriseScope.TOPIC])}
-										</Button>
-										<Button
-											type='button'
-											variant={surpriseLevelChosen ? VariantBase.DEFAULT : VariantBase.OUTLINE}
-											size={ButtonSize.SM}
-											onClick={() =>
-												setSurpriseLevelChosen(prev => {
-													const next = !prev;
-													if (!next && !surpriseTopicChosen) setSurpriseTopicChosen(true);
-													return next;
-												})
-											}
-											disabled={surpriseLoading}
-										>
-											{t(SURPRISE_SCOPE_LABEL_KEYS[SurpriseScope.DIFFICULTY])}
-										</Button>
-									</div>
-								</div>
-								<DialogFooter>
-									<Button
-										type='button'
-										variant={VariantBase.SECONDARY}
-										size={ButtonSize.SM}
-										onClick={handlePickForMe}
-										disabled={surpriseLoading}
-										className='min-w-[6rem] gap-2'
-									>
-										{surpriseLoading ? (
-											<>
-												<Spinner size={ComponentSize.SM} />
-												{t(GameKey.SURPRISE_PICK_LOADING)}
-											</>
-										) : (
-											<>
-												<Wand2 className='h-4 w-4' />
-												{t(GameKey.PICK_FOR_ME)}
-											</>
-										)}
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
-					</>
-				)}
+				<SurpriseMeDialog
+					onTopicChange={onTopicChange}
+					onDifficultyChange={onDifficultyChange}
+					onCustomDifficultyChange={onCustomDifficultyChange}
+					onCustomDifficultyErrorChange={onCustomDifficultyErrorChange}
+				/>
 			</div>
 
 			{/* Difficulty Selection */}

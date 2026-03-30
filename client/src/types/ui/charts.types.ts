@@ -2,10 +2,6 @@ import type { DifficultyStats, UserTrendPoint } from '@shared/types';
 
 import type { TopicData } from './stats.types';
 
-export interface PieChartCenterText {
-	primary: string;
-	secondary?: string;
-}
 
 export interface ChartDataPoint {
 	name: string;
@@ -13,12 +9,6 @@ export interface ChartDataPoint {
 	count?: number;
 }
 
-export interface DistributionTooltipPoint {
-	fullName: string;
-	value: number;
-	count: number;
-	comparisonValue?: number;
-}
 
 export interface DifficultyTooltipPoint {
 	name: string;
@@ -64,3 +54,15 @@ export interface DifficultyOverviewChartProps {
 	height?: number;
 	valueLabel?: string;
 }
+export interface PieChartCenterText {
+	primary: string;
+	secondary?: string;
+}
+
+export interface DistributionTooltipPoint {
+	fullName: string;
+	value: number;
+	count: number;
+	comparisonValue?: number;
+}
+

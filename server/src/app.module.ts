@@ -3,11 +3,10 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, Reflector } from '@ne
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AppConfig, DatabaseConfig } from '@config';
+import { AppConfig } from '@config';
 import { GlobalExceptionFilter } from '@common/globalException.filter';
 import { LocalAuthGuard, RolesGuard, UserStatusGuard } from '@common/guards';
 import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from '@common/interceptors';
-import { AUTH_CONSTANTS } from '@internal/constants';
 import { HealthController, MetricsController } from '@internal/controllers';
 import { UserEntity } from '@internal/entities';
 import { RateLimitMiddleware } from '@internal/middleware';
@@ -30,13 +29,16 @@ import { SystemAnalyticsService } from './features/analytics/services';
 @Module({
 	imports: [
 		// TypeORM Module
-		TypeOrmModule.forRoot(DatabaseConfig),
+		TypeOrmModule.forRoot({
+			...AppConfig.createTypeOrmDataSourceOptions(),
+			autoLoadEntities: true,
+		}),
 		TypeOrmModule.forFeature([UserEntity]),
 		StorageModule,
 		// JWT Module for middleware
 		JwtModule.register({
 			secret: AppConfig.jwt.secret,
-			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
+			signOptions: { expiresIn: AppConfig.jwt.expiresIn },
 		}),
 		// Feature Modules - Direct imports instead of TriviaModule
 		AuthModule,

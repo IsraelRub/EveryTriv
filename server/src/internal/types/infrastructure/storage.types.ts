@@ -53,6 +53,7 @@ export interface StorageStatsItem {
 	size: number;
 }
 
+
 export type StorageStatsItemByType = Record<StorageType, StorageStatsItem>;
 
 export interface StorageStats {

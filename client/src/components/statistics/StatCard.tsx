@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { VALIDATORS } from '@shared/validation';
 
-import { DEFAULT_STATS_GRID_COLS, SkeletonVariant, StatCardVariant } from '@/constants';
+import { DEFAULT_STATS_GRID_COLS, SkeletonVariant, StatCardVariant, StatsSectionLayout } from '@/constants';
 import type { StatCardProps, StatsSectionCardProps } from '@/types';
 import { cn } from '@/utils';
 import { Card, CardContent, SectionCard, Skeleton } from '@/components';
@@ -114,7 +114,7 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 	gridCols = DEFAULT_STATS_GRID_COLS,
 	isLoading: sectionLoading,
 	className,
-	layout = 'section',
+	layout = StatsSectionLayout.SECTION,
 }: StatsSectionCardProps) {
 	const grid = (
 		<div className={cn('grid gap-4', gridCols)}>
@@ -130,7 +130,7 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 		</div>
 	);
 
-	if (layout === 'plain') {
+	if (layout === StatsSectionLayout.PLAIN) {
 		return <div className={className}>{grid}</div>;
 	}
 

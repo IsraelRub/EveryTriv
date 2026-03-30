@@ -4,22 +4,11 @@ import { cva } from 'class-variance-authority';
 import { Circle, Loader2 } from 'lucide-react';
 
 import { APP_SHELL_MAIN_CLASS, APP_SHELL_MAIN_ID, ComponentSize, VIEW_MAIN_CLASS } from '@/constants';
+import { FullPageSpinnerLayout } from '@/constants';
 import type { FullPageSpinnerProps, SpinnerProps } from '@/types';
 import { cn } from '@/utils';
 import { HomeButton } from './button';
 
-export const spinnerSizeVariants = cva('', {
-	variants: {
-		size: {
-			[ComponentSize.SM]: 'h-4 w-4',
-			[ComponentSize.MD]: 'h-5 w-5',
-			[ComponentSize.LG]: 'h-6 w-6',
-			[ComponentSize.XL]: 'h-12 w-12',
-			[ComponentSize.FULL]: 'h-16 w-16',
-		},
-	},
-	defaultVariants: { size: ComponentSize.MD },
-});
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>((props, ref) => {
 	const { message, messageInline, size, className, ...rest } = props;
@@ -48,13 +37,13 @@ Spinner.displayName = 'Spinner';
 
 export function FullPageSpinner({
 	message,
-	layout = 'default',
+	layout = FullPageSpinnerLayout.DEFAULT,
 	showSpinner = true,
 	showHomeButton = true,
 	onBeforeNavigate,
 }: FullPageSpinnerProps) {
 	const { t } = useTranslation();
-	const isAppShell = layout === 'appShell';
+	const isAppShell = layout === FullPageSpinnerLayout.APP_SHELL;
 	const mainClassName = isAppShell ? APP_SHELL_MAIN_CLASS : VIEW_MAIN_CLASS;
 	const mainId = isAppShell ? APP_SHELL_MAIN_ID : undefined;
 
@@ -68,3 +57,16 @@ export function FullPageSpinner({
 		</main>
 	);
 }
+const spinnerSizeVariants = cva('', {
+	variants: {
+		size: {
+			[ComponentSize.SM]: 'h-4 w-4',
+			[ComponentSize.MD]: 'h-5 w-5',
+			[ComponentSize.LG]: 'h-6 w-6',
+			[ComponentSize.XL]: 'h-12 w-12',
+			[ComponentSize.FULL]: 'h-16 w-16',
+		},
+	},
+	defaultVariants: { size: ComponentSize.MD },
+});
+

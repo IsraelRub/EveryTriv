@@ -40,6 +40,11 @@ export enum AvatarVariant {
 	PLACEHOLDER = 'placeholder',
 }
 
+export enum SliderSize {
+	DEFAULT = 'default',
+	SM = 'sm',
+}
+
 export enum DialogContentSize {
 	SM = ComponentSize.SM,
 	MD = ComponentSize.MD,

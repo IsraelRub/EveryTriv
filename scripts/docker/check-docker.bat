@@ -32,7 +32,7 @@ docker version --format "{{.Server.Version}}"
 
 echo.
 echo Docker Compose version:
-docker-compose version --short
+docker compose version
 
 echo.
 echo Available Docker resources:

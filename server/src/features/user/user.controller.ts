@@ -354,8 +354,6 @@ export class UserController {
 				'isActive',
 				'credits',
 				'purchasedCredits',
-				'dailyFreeQuestions',
-				'remainingFreeQuestions',
 				'role',
 				'status',
 			]);

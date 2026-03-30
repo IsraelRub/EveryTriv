@@ -1,4 +1,3 @@
-export * from './achievements.types';
 export * from './difficulty.types';
 export * from './game.types';
 export * from './multiplayer.types';

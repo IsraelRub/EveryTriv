@@ -82,17 +82,12 @@ export class CreditsService {
 	private mapUserToCreditBalance(user: UserEntity): CreditBalance {
 		const creditsBalance = user.credits ?? 0;
 		const purchasedCredits = user.purchasedCredits ?? 0;
-		const freeQuestions = user.remainingFreeQuestions ?? 0;
-		const totalCredits = creditsBalance + purchasedCredits + freeQuestions;
+		const totalCredits = creditsBalance + purchasedCredits;
 
 		return {
 			totalCredits,
 			credits: creditsBalance,
 			purchasedCredits,
-			freeQuestions,
-			dailyLimit: user.dailyFreeQuestions ?? 0,
-			canPlayFree: freeQuestions > 0,
-			nextResetTime: user.lastFreeQuestionsReset ? user.lastFreeQuestionsReset.toISOString() : null,
 			nextGrantedCreditsRefillAt: this.computeNextGrantedCreditsRefillAtIso(user),
 			userId: user.id,
 		};
@@ -320,26 +315,14 @@ export class CreditsService {
 
 			const credits = user.credits ?? 0;
 			const purchasedCredits = user.purchasedCredits ?? 0;
-			const freeQuestions = user.remainingFreeQuestions ?? 0;
-			const totalAvailable = credits + purchasedCredits + freeQuestions;
+			const totalAvailable = credits + purchasedCredits;
 
 			// Calculate required credits based on game mode (uses new methodology)
 			// TIME_LIMITED = 10 fixed, QUESTION_LIMITED/UNLIMITED/MULTIPLAYER = 1 per question
 			const requiredCredits = calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
 
-			// Check if user has free questions available (free questions cover the required credits)
-			if (freeQuestions >= requiredCredits) {
-				return { canPlay: true, reason: 'Free questions available' };
-			}
-
-			// Check if user has enough purchased credits
-			if (purchasedCredits >= requiredCredits) {
-				return { canPlay: true, reason: 'Sufficient purchased credits' };
-			}
-
-			// Check if user has enough total credits
 			if (totalAvailable >= requiredCredits) {
-				return { canPlay: true, reason: 'Sufficient total credits' };
+				return { canPlay: true, reason: 'Sufficient credits' };
 			}
 
 			return {
@@ -429,18 +412,16 @@ export class CreditsService {
 
 				const credits = userAfterRefill.credits ?? 0;
 				const purchasedCredits = userAfterRefill.purchasedCredits ?? 0;
-				const freeQuestions = userAfterRefill.remainingFreeQuestions ?? 0;
-				const totalCredits = credits + purchasedCredits + freeQuestions;
+				const totalPlayableCredits = credits + purchasedCredits;
 
 				// Validate canPlay inside transaction to prevent race conditions
 				// This ensures we check the balance atomically with the update
 				const requiredCredits = calculateRequiredCredits(normalizedQuestionsPerRequest, gameMode);
 
-				// Check if user has sufficient credits (same logic as canPlay, but inside transaction)
-				if (freeQuestions < requiredCredits && purchasedCredits < requiredCredits && totalCredits < requiredCredits) {
+				if (totalPlayableCredits < requiredCredits) {
 					throw new BadRequestException(
 						ERROR_MESSAGES.game.INSUFFICIENT_CREDITS_DETAIL(
-							totalCredits,
+							totalPlayableCredits,
 							requiredCredits,
 							`${normalizedQuestionsPerRequest} questions × ${gameMode} mode`
 						)
@@ -462,7 +443,6 @@ export class CreditsService {
 					.createQueryBuilder()
 					.update(UserEntity)
 					.set({
-						remainingFreeQuestions: deductionResult.newBalance.freeQuestions,
 						purchasedCredits: deductionResult.newBalance.purchasedCredits,
 						credits: deductionResult.newBalance.credits,
 					})
@@ -470,9 +450,6 @@ export class CreditsService {
 					.andWhere('credits = :currentCredits', { currentCredits: credits })
 					.andWhere('purchased_credits = :currentPurchased', {
 						currentPurchased: purchasedCredits,
-					})
-					.andWhere('remaining_free_questions = :currentFree', {
-						currentFree: freeQuestions,
 					})
 					.execute();
 
@@ -495,10 +472,9 @@ export class CreditsService {
 					source:
 						deductionResult.deductionDetails.purchasedCreditsUsed > 0
 							? CreditSource.PURCHASED
-							: CreditSource.FREE_DAILY,
+							: CreditSource.GRANTED,
 					amount: -totalCreditsDeducted,
 					balanceAfter: updatedUser.credits ?? 0,
-					freeQuestionsAfter: updatedUser.remainingFreeQuestions,
 					purchasedCreditsAfter: updatedUser.purchasedCredits,
 					description: reason
 						? `Credits deducted (${reason}): ${requiredCredits} credits required, ${totalCreditsDeducted} credits deducted`
@@ -507,7 +483,6 @@ export class CreditsService {
 						gameMode,
 						questionsPerRequest,
 						requiredCredits,
-						freeQuestionsUsed: deductionResult.deductionDetails.freeQuestionsUsed,
 						purchasedCreditsUsed: deductionResult.deductionDetails.purchasedCreditsUsed,
 						creditsUsed: deductionResult.deductionDetails.creditsUsed,
 						reason: reason ?? null,
@@ -596,7 +571,6 @@ export class CreditsService {
 				source: CreditSource.PURCHASED,
 				amount: credits,
 				balanceAfter: userAfterRefill.credits ?? 0,
-				freeQuestionsAfter: userAfterRefill.remainingFreeQuestions,
 				purchasedCreditsAfter: userAfterRefill.purchasedCredits,
 				description: `Credits purchase: ${credits} credits`,
 				paymentId,
@@ -616,32 +590,6 @@ export class CreditsService {
 				userId,
 				credits,
 				paymentId,
-			});
-			throw error;
-		}
-	}
-
-	async resetDailyFreeQuestions(): Promise<void> {
-		try {
-			const users = await this.userRepository.find();
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
-
-			for (const user of users) {
-				const lastReset = user.lastFreeQuestionsReset;
-				const lastResetDate = lastReset ? new Date(lastReset) : null;
-				lastResetDate?.setHours(0, 0, 0, 0);
-
-				// Reset if it's a new day
-				if (!lastResetDate || lastResetDate.getTime() !== today.getTime()) {
-					user.remainingFreeQuestions = user.dailyFreeQuestions;
-					user.lastFreeQuestionsReset = new Date();
-					await this.userRepository.save(user);
-				}
-			}
-		} catch (error) {
-			logger.databaseError(ensureErrorObject(error), {
-				contextMessage: 'Failed to reset daily free questions',
 			});
 			throw error;
 		}

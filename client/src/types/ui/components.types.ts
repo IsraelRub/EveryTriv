@@ -12,6 +12,8 @@ import {
 	AvatarVariant,
 	ButtonSize,
 	ComponentSize,
+	FullPageSpinnerLayout,
+	SliderSize,
 	TabsListVariant,
 	VariantBase,
 	type ViewAllDestination,
@@ -62,7 +64,6 @@ export interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
 	messageInline?: boolean;
 }
 
-export type FullPageSpinnerLayout = 'default' | 'appShell';
 
 export interface FullPageSpinnerProps {
 	message: string;
@@ -97,7 +98,7 @@ export interface PaginationButtonsProps {
 }
 
 export interface SliderProps extends ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
-	size?: 'default' | 'sm';
+	size?: SliderSize;
 }
 
 export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {

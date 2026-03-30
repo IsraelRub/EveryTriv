@@ -188,6 +188,19 @@ class MultiplayerService {
 		this.socket.emit(event, data);
 	}
 
+	clearAppListeners(): void {
+		this.pendingListeners = [];
+		if (!this.socket) {
+			return;
+		}
+		this.listeners.forEach((callbacks, event) => {
+			callbacks.forEach(cb => {
+				this.socket?.off(event, cb);
+			});
+		});
+		this.listeners.clear();
+	}
+
 	on(eventListener: MultiplayerEventListener): void {
 		const wrappedCallback = (data: unknown): void => {
 			eventListener.callback(data);

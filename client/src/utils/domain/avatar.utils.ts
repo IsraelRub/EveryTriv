@@ -1,9 +1,5 @@
 import { VALIDATION_COUNT } from '@shared/constants';
 
-export const isValidAvatarId = (id: number): boolean => {
-	const { MIN, MAX } = VALIDATION_COUNT.AVATAR_ID;
-	return Number.isInteger(id) && id >= MIN && id <= MAX;
-};
 
 export const isAvatarIdOrClear = (id: number): boolean => id === 0 || isValidAvatarId(id);
 
@@ -25,3 +21,8 @@ export function toAbsoluteAvatarUrl(url: string | null | undefined, apiBaseUrl: 
 	const base = apiBaseUrl.replace(/\/$/, '');
 	return url.startsWith('/') ? base + url : `${base}/${url}`;
 }
+const isValidAvatarId = (id: number): boolean => {
+	const { MIN, MAX } = VALIDATION_COUNT.AVATAR_ID;
+	return Number.isInteger(id) && id >= MIN && id <= MAX;
+};
+

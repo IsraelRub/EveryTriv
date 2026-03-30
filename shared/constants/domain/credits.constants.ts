@@ -16,9 +16,8 @@ export enum CreditTransactionType {
 	REFUND = 'REFUND',
 }
 
+/** `credit_transactions.source`: rolling grant vs purchased pool. */
 export enum CreditSource {
-	FREE_DAILY = 'FREE_DAILY',
+	GRANTED = 'GRANTED',
 	PURCHASED = 'PURCHASED',
-	BONUS = 'BONUS',
-	REFUND = 'REFUND',
 }

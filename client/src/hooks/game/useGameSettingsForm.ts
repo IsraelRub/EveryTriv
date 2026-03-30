@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { DEFAULT_GAME_CONFIG, DifficultyLevel, Locale, VALIDATION_COUNT } from '@shared/constants';
+import {
+	DEFAULT_GAME_CONFIG,
+	DifficultyLevel,
+	Locale,
+	ValidateTextContext,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
 import {
 	createCustomDifficulty,
@@ -95,7 +101,7 @@ export function useGameSettingsForm(): UseGameSettingsFormReturn {
 			topicDebounceRef.current = null;
 			const requestId = trimmed;
 			try {
-				const res = await gameService.validateText(trimmed, 'topic', validationLanguage);
+				const res = await gameService.validateText(trimmed, ValidateTextContext.TOPIC, validationLanguage);
 				if (topicRequestRef.current !== requestId) return;
 				setTopicLanguageStatus(res.isValid ? TextLanguageStatus.VALID : TextLanguageStatus.INVALID);
 				setTopicLanguageError(res.isValid ? '' : translateValidationMessage(res.errors[0] ?? '', t));
@@ -129,7 +135,7 @@ export function useGameSettingsForm(): UseGameSettingsFormReturn {
 			customDebounceRef.current = null;
 			const requestId = trimmed;
 			try {
-				const res = await gameService.validateText(trimmed, 'customDifficulty', validationLanguage);
+				const res = await gameService.validateText(trimmed, ValidateTextContext.CUSTOM_DIFFICULTY, validationLanguage);
 				if (customRequestRef.current !== requestId) return;
 				setCustomDifficultyLanguageStatus(res.isValid ? TextLanguageStatus.VALID : TextLanguageStatus.INVALID);
 				setCustomDifficultyLanguageError(res.isValid ? '' : translateValidationMessage(res.errors[0] ?? '', t));

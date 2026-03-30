@@ -1,9 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
-import { Locale, VALIDATION_LENGTH } from '@shared/constants';
-
-import { VALIDATE_TEXT_CONTEXT, type ValidateTextContext } from '@internal/constants';
+import { Locale, VALIDATION_LENGTH, ValidateTextContext } from '@shared/constants';
 
 export class ValidateTextDto {
 	@ApiProperty({ description: 'Text to validate (topic or custom difficulty description)' })
@@ -14,10 +12,10 @@ export class ValidateTextDto {
 
 	@ApiPropertyOptional({
 		description: 'Context for optional length rules',
-		enum: VALIDATE_TEXT_CONTEXT,
+		enum: ValidateTextContext,
 	})
 	@IsOptional()
-	@IsIn(VALIDATE_TEXT_CONTEXT)
+	@IsIn(Object.values(ValidateTextContext))
 	context?: ValidateTextContext;
 
 	@ApiPropertyOptional({

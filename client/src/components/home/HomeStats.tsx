@@ -85,21 +85,23 @@ export function HomeStats() {
 					<CardDescription>{description}</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{isLoading ? (
+					{!isLoading ? (
+						isError ? (
+							<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={() => refetch()}>
+								{t(HomeKey.TRY_AGAIN)}
+							</Button>
+						) : (
+							<EmptyState
+								data='stats'
+								title={t(HomeKey.YOUR_OVERVIEW)}
+								description={t(HomeKey.EMPTY_STATS_DESCRIPTION)}
+							/>
+						)
+					) : (
 						<>
 							<Skeleton variant={SkeletonVariant.TextLarge} className='mb-2' />
 							<Skeleton variant={SkeletonVariant.InputMedium} />
 						</>
-					) : isError ? (
-						<Button variant={VariantBase.OUTLINE} size={ButtonSize.SM} onClick={() => refetch()}>
-							{t(HomeKey.TRY_AGAIN)}
-						</Button>
-					) : (
-						<EmptyState
-							data='stats'
-							title={t(HomeKey.YOUR_OVERVIEW)}
-							description={t(HomeKey.EMPTY_STATS_DESCRIPTION)}
-						/>
 					)}
 				</CardContent>
 			</Card>

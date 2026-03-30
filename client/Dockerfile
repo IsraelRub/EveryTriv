@@ -1,8 +1,8 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine AS builder
+# Align Node major with server image (pnpm workspace build)
+FROM node:20-alpine AS builder
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm (match server / lockfile)
+RUN npm install -g pnpm@9
 
 # Set working directory
 WORKDIR /app
@@ -23,7 +23,7 @@ COPY .npmrc ./
 RUN pnpm install
 
 
-# Switch back to client directory and build
+# Build production client bundle
 WORKDIR /app/client
 RUN pnpm run build
 

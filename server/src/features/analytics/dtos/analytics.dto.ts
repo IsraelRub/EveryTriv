@@ -168,41 +168,6 @@ export class UserIdParamDto {
 	userId!: string;
 }
 
-export class UserActivityQueryDto {
-	@ApiPropertyOptional({
-		description: 'Maximum number of activity entries to return',
-		minimum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN,
-		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
-	})
-	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
-	@IsNumber({}, { message: 'Limit must be a number' })
-	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
-		message: `Limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
-	})
-	@Max(VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX, {
-		message: `Limit cannot exceed ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX}`,
-	})
-	limit?: number;
-
-	@ApiPropertyOptional({
-		description: 'Start date for activity range filter',
-		example: '2024-01-01',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'Start date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
-	startDate?: Date;
-
-	@ApiPropertyOptional({
-		description: 'End date for activity range filter',
-		example: '2024-01-31',
-	})
-	@IsOptional()
-	@IsDateString({}, { message: 'End date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
-	endDate?: Date;
-}
 
 export class UserTrendQueryDto {
 	@ApiPropertyOptional({
@@ -444,3 +409,4 @@ export class UnifiedUserAnalyticsQueryDto {
 	@IsEnum(ComparisonTarget, { message: 'Target must be either global or user' })
 	comparisonTarget?: ComparisonTarget;
 }
+

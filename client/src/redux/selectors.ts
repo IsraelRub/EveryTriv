@@ -7,7 +7,6 @@ export const selectCurrentTopic = (state: RootState) => state.gameMode.currentTo
 export const selectCurrentDifficulty = (state: RootState) => state.gameMode.currentDifficulty;
 export const selectCurrentSettings = (state: RootState) => state.gameMode.currentSettings;
 
-export const selectGameSession = (state: RootState) => state.gameSession;
 export const selectGameId = (state: RootState) => state.gameSession.gameId;
 export const selectCurrentQuestionIndex = (state: RootState) => state.gameSession.currentQuestionIndex;
 export const selectGameQuestionCount = (state: RootState) => state.gameSession.gameQuestionCount;
@@ -33,17 +32,13 @@ export const selectCurrentQuestion = createSelector(
 	}
 );
 
-export const selectMultiplayer = (state: RootState) => state.multiplayer;
 export const selectIsConnected = (state: RootState) => state.multiplayer.isConnected;
 export const selectMultiplayerRoom = (state: RootState) => state.multiplayer.room;
 export const selectMultiplayerGameState = (state: RootState) => state.multiplayer.gameState;
-export const selectMultiplayerLeaderboard = (state: RootState) => state.multiplayer.gameState?.leaderboard ?? [];
 export const selectMultiplayerError = (state: RootState) => state.multiplayer.error;
 export const selectMultiplayerLoading = (state: RootState) => state.multiplayer.isLoading;
-export const selectRevealPhase = (state: RootState) => state.multiplayer.revealPhase;
 export const selectMultiplayerPersonalAnswerHistory = (state: RootState) => state.multiplayer.personalAnswerHistory;
 
-export const selectAudioSettings = (state: RootState) => state.audioSettings;
 export const selectVolume = (state: RootState) => state.audioSettings.volume;
 export const selectSoundEffectsVolume = (state: RootState) => state.audioSettings.soundEffectsVolume ?? 1;
 export const selectMusicVolume = (state: RootState) => state.audioSettings.musicVolume ?? 1;
@@ -52,6 +47,6 @@ export const selectSoundEnabled = (state: RootState) => state.audioSettings.soun
 export const selectMusicEnabled = (state: RootState) => state.audioSettings.musicEnabled;
 export const selectAudioInitialized = (state: RootState) => state.audioSettings.isInitialized;
 
-export const selectUIPreferences = (state: RootState) => state.uiPreferences;
 export const selectLeaderboardPeriod = (state: RootState) => state.uiPreferences.leaderboardPeriod;
 export const selectLocale = (state: RootState) => state.uiPreferences.locale;
+

@@ -18,6 +18,21 @@ export interface NavigationLinks {
 	};
 }
 
+
+
+
+
+
+
+
+export interface NavLinkProps extends RouterNavLinkProps {
+	activeClassName?: string;
+}
+
+export interface UseNavigationCloseOptions {
+	defaultRoute?: string;
+	onBeforeClose?: () => void;
+}
 export interface NavigationMenuLink extends NavigationLink {
 	readonly isActive: boolean;
 }
@@ -44,7 +59,6 @@ export interface NavigationMenuProps {
 	isAuthenticated: boolean;
 	creditsDisplay?: string;
 	totalCredits?: number;
-	nextResetTime?: string | null;
 	userDisplay?: NavigationUserDisplay;
 	onLogout: () => void;
 	onSignUp: () => void;
@@ -64,14 +78,5 @@ export interface NavigationActionsProps {
 export interface NavigationCreditsState {
 	display: string;
 	total?: number;
-	nextResetTime: string | null;
 }
 
-export interface NavLinkProps extends RouterNavLinkProps {
-	activeClassName?: string;
-}
-
-export interface UseNavigationCloseOptions {
-	defaultRoute?: string;
-	onBeforeClose?: () => void;
-}

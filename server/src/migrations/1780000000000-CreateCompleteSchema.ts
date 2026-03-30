@@ -33,7 +33,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			await queryRunner.query(`
 				DO $$ BEGIN
 					CREATE TYPE "credit_source_enum" AS ENUM(
-						'FREE_DAILY', 'PURCHASED', 'BONUS', 'REFUND'
+						'GRANTED', 'PURCHASED'
 					);
 				EXCEPTION
 					WHEN duplicate_object THEN null;
@@ -52,16 +52,12 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"last_name" character varying,
 					"credits" integer DEFAULT '150',
 					"purchased_credits" integer NOT NULL DEFAULT '0',
-					"daily_free_questions" integer NOT NULL DEFAULT '20',
-					"remaining_free_questions" integer NOT NULL DEFAULT '20',
-					"last_free_questions_reset" date,
 					"last_granted_credits_refill_at" TIMESTAMP NULL,
 					"last_login" TIMESTAMP,
 					"is_active" boolean NOT NULL DEFAULT true,
 					"email_verified" boolean NOT NULL DEFAULT false,
 					"role" character varying NOT NULL DEFAULT '${UserRole.USER}',
 					"preferences" jsonb NOT NULL DEFAULT '{}',
-					"achievements" jsonb NOT NULL DEFAULT '[]',
 					"custom_avatar" bytea NULL,
 					"custom_avatar_mime" character varying(30) NULL,
 					"created_at" TIMESTAMP NOT NULL DEFAULT now(),
@@ -69,6 +65,21 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"),
 					CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id")
 				)
+			`);
+
+			// Legacy free-question columns removed (credits pool is granted + purchased only).
+			// DROP IF EXISTS supports DBs created before this column removal.
+			console.log('Dropping legacy users free-question columns if present');
+			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "last_free_questions_reset"`);
+			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "daily_free_questions"`);
+			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "remaining_free_questions"`);
+
+			// CREATE TABLE defines the full schema for new DBs; following ALTER … IF NOT EXISTS
+			// blocks upgrade older installations where "users" already existed without some columns.
+
+			console.log('Dropping users.achievements column if present (legacy)');
+			await queryRunner.query(`
+				ALTER TABLE "users" DROP COLUMN IF EXISTS "achievements"
 			`);
 
 			// If table already exists with NOT NULL constraint, make credits nullable
@@ -130,9 +141,8 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				ADD COLUMN IF NOT EXISTS "custom_avatar_mime" character varying(30) NULL
 			`);
 
-			// Create indexes for users table
+			// Create indexes for users table (email already indexed via UNIQUE constraint)
 			console.log('Creating indexes for users table');
-			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_users_email" ON "users" ("email")`);
 			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_users_google_id" ON "users" ("google_id")`);
 			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_users_created_at" ON "users" ("created_at")`);
 
@@ -179,9 +189,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				`CREATE INDEX IF NOT EXISTS "IDX_payment_history_user_id" ON "payment_history" ("user_id")`
 			);
 			await queryRunner.query(
-				`CREATE INDEX IF NOT EXISTS "IDX_payment_history_payment_id" ON "payment_history" ("payment_id")`
-			);
-			await queryRunner.query(
 				`CREATE INDEX IF NOT EXISTS "IDX_payment_history_status" ON "payment_history" ("status")`
 			);
 			await queryRunner.query(
@@ -194,7 +201,7 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				`CREATE INDEX IF NOT EXISTS "IDX_payment_history_failed_at" ON "payment_history" ("failed_at")`
 			);
 
-			// Add UNIQUE constraint on payment_history.payment_id (required for FK from credit_transactions)
+			// UNIQUE on payment_id: FK target for credit_transactions + index (no duplicate btree on payment_id)
 			await queryRunner.query(`
 				DO $$ BEGIN
 					ALTER TABLE "payment_history"
@@ -225,7 +232,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"source" "credit_source_enum",
 					"amount" integer NOT NULL,
 					"balance_after" integer NOT NULL,
-					"free_questions_after" integer NOT NULL DEFAULT 0,
 					"purchased_credits_after" integer NOT NULL DEFAULT 0,
 					"description" character varying,
 					"game_history_id" character varying,
@@ -237,6 +243,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					CONSTRAINT "PK_credit_transactions_id" PRIMARY KEY ("id")
 				)
 			`);
+
+			console.log('Dropping legacy credit_transactions.free_questions_after if present');
+			await queryRunner.query(`ALTER TABLE "credit_transactions" DROP COLUMN IF EXISTS "free_questions_after"`);
 
 			// Create indexes for credit_transactions table
 			console.log('Creating indexes for credit_transactions table');
@@ -287,7 +296,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					CONSTRAINT "PK_credits_config" PRIMARY KEY ("id")
 				)
 			`);
-			await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_credits_config_key" ON "credits_config" ("key")`);
 
 			// Create game_history table
 			console.log('Creating game_history table');
@@ -431,9 +439,8 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				END $$;
 			`);
 
-			// Create indexes for user_stats table
+			// Create indexes for user_stats table (user_id already indexed via UNIQUE ("user_id"))
 			console.log('Creating indexes for user_stats table');
-			await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_user_stats_user_id" ON "user_stats" ("user_id")`);
 			await queryRunner.query(
 				`CREATE INDEX IF NOT EXISTS "IDX_user_stats_total_games" ON "user_stats" ("total_games")`
 			);

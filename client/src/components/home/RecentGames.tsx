@@ -45,11 +45,8 @@ export function RecentGames() {
 				<ViewAllButton destination={ViewAllDestination.HISTORY} visible={recentGames.length > 0} />
 			</CardHeader>
 			<CardContent className='flex-1'>
-				{isLoading ? (
-					<div className='space-y-4'>
-						<Skeleton variant={SkeletonVariant.Row} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
-					</div>
-				) : recentGames.length > 0 ? (
+				{!isLoading ? (
+					recentGames.length > 0 ? (
 					<div className='space-y-4'>
 						{recentGames.map(game => (
 							<div
@@ -102,6 +99,10 @@ export function RecentGames() {
 							title={t(HomeKey.NO_RECENT_GAMES)}
 							description={t(HomeKey.NO_RECENT_GAMES_DESCRIPTION)}
 						/>
+					</div>
+				)) : (
+					<div className='space-y-4'>
+						<Skeleton variant={SkeletonVariant.Row} count={SKELETON_PLACEHOLDER_COUNTS.MEDIUM} />
 					</div>
 				)}
 			</CardContent>

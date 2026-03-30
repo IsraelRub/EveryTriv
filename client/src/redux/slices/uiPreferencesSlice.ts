@@ -9,7 +9,7 @@ const initialState: UIPreferencesState = {
 	locale: DEFAULT_LANGUAGE,
 };
 
-export const uiPreferencesSlice = createSlice({
+const uiPreferencesSlice = createSlice({
 	name: 'uiPreferences',
 	initialState,
 	reducers: {

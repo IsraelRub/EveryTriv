@@ -1,19 +1,7 @@
 import type { ReactElement } from 'react';
 
-import type { SortDirection, VariantBase } from '@/constants';
+import type { DataTableColumnType, SortDirection, VariantBase } from '@/constants';
 import type { PaginationButtonsProps } from './components.types';
-
-export enum DataTableColumnType {
-	TEXT = 'text',
-	TEXT_PRIMARY = 'text-primary',
-	DATE = 'date',
-	DATE_OPTIONAL = 'date-optional',
-	BADGE = 'badge',
-	BADGE_DIFFICULTY = 'badge-difficulty',
-	BADGE_ROLE = 'badge-role',
-	TRUNCATE = 'truncate',
-	CUSTOM = 'custom',
-}
 
 export interface DataTableColumn<T> {
 	id: string;
@@ -46,7 +34,6 @@ export interface DataTableProps<T> {
 	sortBy?: string;
 	sortDirection?: SortDirection;
 	onSort?: (field: string, direction: SortDirection) => void;
-	/** When set with `renderExpandedRow`, an extra row opens under the matching row (Radix Collapsible). */
 	expandedRowId?: string | null;
 	renderExpandedRow?: (row: T) => ReactElement | null;
 }

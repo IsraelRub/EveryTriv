@@ -12,3 +12,9 @@ export enum ToastActionType {
 	DISMISS_TOAST = 'DISMISS_TOAST',
 	REMOVE_TOAST = 'REMOVE_TOAST',
 }
+
+export enum ToastType {
+	ERROR = 'error',
+	WARNING = 'warning',
+	SUCCESS = 'success',
+}

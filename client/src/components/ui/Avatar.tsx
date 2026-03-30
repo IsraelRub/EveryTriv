@@ -6,7 +6,7 @@ import { AvatarSize, AvatarVariant } from '@/constants';
 import type { AvatarProps } from '@/types';
 import { cn } from '@/utils';
 
-export const avatarVariants = cva('relative flex shrink-0 overflow-hidden rounded-full', {
+const avatarVariants = cva('relative flex shrink-0 overflow-hidden rounded-full', {
 	variants: {
 		size: {
 			[AvatarSize.SM]: 'h-6 w-6',

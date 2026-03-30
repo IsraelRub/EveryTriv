@@ -6,8 +6,6 @@ import { cn } from '@/utils';
 
 export const Select = SelectPrimitive.Root;
 
-export const SelectGroup = SelectPrimitive.Group;
-
 export const SelectValue = SelectPrimitive.Value;
 
 export const SelectTrigger = forwardRef<
@@ -30,7 +28,7 @@ export const SelectTrigger = forwardRef<
 ));
 SelectTrigger.displayName = 'SelectTrigger';
 
-export const SelectScrollUpButton = forwardRef<
+const SelectScrollUpButton = forwardRef<
 	ElementRef<typeof SelectPrimitive.ScrollUpButton>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
 >(({ className, ...props }, ref) => (
@@ -44,7 +42,7 @@ export const SelectScrollUpButton = forwardRef<
 ));
 SelectScrollUpButton.displayName = 'SelectScrollUpButton';
 
-export const SelectScrollDownButton = forwardRef<
+const SelectScrollDownButton = forwardRef<
 	ElementRef<typeof SelectPrimitive.ScrollDownButton>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
 >(({ className, ...props }, ref) => (
@@ -90,14 +88,6 @@ export const SelectContent = forwardRef<
 ));
 SelectContent.displayName = 'SelectContent';
 
-export const SelectLabel = forwardRef<
-	ElementRef<typeof SelectPrimitive.Label>,
-	ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
->(({ className, ...props }, ref) => (
-	<SelectPrimitive.Label ref={ref} className={cn('py-1.5 pl-8 pr-2 text-sm font-semibold', className)} {...props} />
-));
-SelectLabel.displayName = 'SelectLabel';
-
 export const SelectItem = forwardRef<
 	ElementRef<typeof SelectPrimitive.Item>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -120,10 +110,3 @@ export const SelectItem = forwardRef<
 ));
 SelectItem.displayName = 'SelectItem';
 
-export const SelectSeparator = forwardRef<
-	ElementRef<typeof SelectPrimitive.Separator>,
-	ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
->(({ className, ...props }, ref) => (
-	<SelectPrimitive.Separator ref={ref} className={cn('-mx-1 my-1 h-px bg-muted', className)} {...props} />
-));
-SelectSeparator.displayName = 'SelectSeparator';

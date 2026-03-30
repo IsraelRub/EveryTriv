@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
-import { ERROR_MESSAGES } from '@shared/constants';
+import { ERROR_MESSAGES, Locale } from '@shared/constants';
 
 import {
 	ANIMATION_COLORS,
@@ -85,11 +85,7 @@ export function BackgroundAnimation() {
 		if (Array.isArray(raw) && raw.length > 0 && raw.every((x): x is string => typeof x === 'string')) {
 			return raw;
 		}
-		const fallback = t(GameKey.BACKGROUND_WORDS_FALLBACK, { returnObjects: true, lng: locale });
-		if (Array.isArray(fallback) && fallback.length > 0 && fallback.every((x): x is string => typeof x === 'string')) {
-			return fallback;
-		}
-		return locale === 'he' ? ['טריוויה', 'ידע'] : ['Trivia', 'Knowledge'];
+		return locale === Locale.HE ? ['טריוויה', 'ידע'] : ['Trivia', 'Knowledge'];
 	}, [t, locale]);
 	const generateWord = useMemo(() => createGenerateWord(triviaWords), [triviaWords]);
 

@@ -27,12 +27,7 @@ export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode =
 	// TIME_LIMITED = 10 fixed, QUESTION_LIMITED/UNLIMITED/MULTIPLAYER = 1 per question
 	const requiredCredits = calculateRequiredCredits(questionsPerRequest, gameMode);
 
-	// Check if user has free questions available (free questions cover the required credits)
-	const canPlayFree = creditBalance?.canPlayFree ?? false;
-	const hasFreeQuestions = canPlayFree && (creditBalance?.freeQuestions ?? 0) >= requiredCredits;
-
-	// Calculate if user can play based on React Query state
-	const canPlay = hasFreeQuestions || (creditBalance?.totalCredits ?? 0) >= requiredCredits;
+	const canPlay = (creditBalance?.totalCredits ?? 0) >= requiredCredits;
 
 	return {
 		data: canPlay,
@@ -80,10 +75,6 @@ export const useDeductCredits = () => {
 						'totalCredits' in value &&
 						'credits' in value &&
 						'purchasedCredits' in value &&
-						'freeQuestions' in value &&
-						'dailyLimit' in value &&
-						'canPlayFree' in value &&
-						'nextResetTime' in value &&
 						'nextGrantedCreditsRefillAt' in value &&
 						'userId' in value
 					);
@@ -94,11 +85,7 @@ export const useDeductCredits = () => {
 					return {
 						totalCredits: 0,
 						credits: 0,
-						freeQuestions: 0,
 						purchasedCredits: 0,
-						dailyLimit: 0,
-						canPlayFree: false,
-						nextResetTime: new Date().toISOString(),
 						nextGrantedCreditsRefillAt: null,
 						userId: '',
 					};

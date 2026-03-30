@@ -1,4 +1,6 @@
 import { EMPTY_VALUE, TIME_DURATIONS_SECONDS } from '@shared/constants';
+
+import { PlayTimeUnit } from '@/constants';
 import { formatDate, pad2 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
@@ -26,8 +28,8 @@ export function formatTime(totalSeconds: number): string {
 	return `${pad2(minutes)}:${pad2(seconds)}`;
 }
 
-export function formatPlayTime(time: number, unit: 'seconds' | 'minutes' = 'seconds'): string {
-	const totalSeconds = unit === 'seconds' ? time : time * TIME_DURATIONS_SECONDS.MINUTE;
+export function formatPlayTime(time: number, unit: PlayTimeUnit = PlayTimeUnit.SECONDS): string {
+	const totalSeconds = unit === PlayTimeUnit.SECONDS ? time : time * TIME_DURATIONS_SECONDS.MINUTE;
 	const hours = Math.floor(totalSeconds / TIME_DURATIONS_SECONDS.HOUR);
 	const minutes = Math.floor((totalSeconds % TIME_DURATIONS_SECONDS.HOUR) / TIME_DURATIONS_SECONDS.MINUTE);
 

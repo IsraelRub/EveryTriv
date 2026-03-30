@@ -8,6 +8,7 @@ import { formatDate, formatTitle, getDifficultyBadgeClasses } from '@shared/util
 import { VALIDATORS } from '@shared/validation';
 
 import {
+	DataTableColumnType,
 	EMPTY_CELL_CLASS,
 	HEADER_ICON_CLASS,
 	SKELETON_PLACEHOLDER_COUNTS,
@@ -15,7 +16,7 @@ import {
 	SortDirection,
 	VariantBase,
 } from '@/constants';
-import { DataTableColumnType, type DataTableColumn, type DataTableProps } from '@/types';
+import type { DataTableColumn, DataTableProps } from '@/types';
 import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Badge,

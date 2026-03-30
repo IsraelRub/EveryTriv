@@ -6,10 +6,6 @@ import { ClientValidationType } from '@shared/constants';
 import { FormFieldType } from '@/constants';
 import type { LanguageValidationOptions, ValidationHookOptions } from '../core';
 
-export interface SelectOption {
-	value: string;
-	label: string;
-}
 
 export interface FormField {
 	name: string;
@@ -20,6 +16,49 @@ export interface FormField {
 	placeholder?: string;
 	options?: SelectOption[];
 	validationOptions?: ValidationHookOptions;
+}
+
+
+
+export type FormFieldContextValue<
+	TFieldValues extends FieldValues = FieldValues,
+	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+> = {
+	name: TName;
+};
+
+export type InputProps = ComponentProps<'input'> & { error?: boolean };
+
+export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'className'> {
+	value: number;
+	onChange: (value: number) => void;
+	min: number;
+	max: number;
+	step?: number;
+	label?: string;
+	labelIcon?: ReactElement | null;
+}
+
+
+
+export interface RegistrationFieldErrors extends BaseFormFieldErrors {
+	email?: string;
+	password?: string;
+	confirmPassword?: string;
+}
+
+export interface LoginFieldErrors extends BaseFormFieldErrors {
+	email?: string;
+	password?: string;
+}
+
+export interface ProfileFieldErrors extends BaseFormFieldErrors {
+	firstName?: string;
+	lastName?: string;
+}
+export interface SelectOption {
+	value: string;
+	label: string;
 }
 
 export interface ValidatedFormProps<T extends Record<string, string>> {
@@ -51,25 +90,6 @@ export interface ValidatedInputProps extends Omit<InputHTMLAttributes<HTMLInputE
 	className?: string;
 }
 
-export type FormFieldContextValue<
-	TFieldValues extends FieldValues = FieldValues,
-	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
-> = {
-	name: TName;
-};
-
-export type InputProps = ComponentProps<'input'> & { error?: boolean };
-
-export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'className'> {
-	value: number;
-	onChange: (value: number) => void;
-	min: number;
-	max: number;
-	step?: number;
-	label?: string;
-	labelIcon?: ReactElement | null;
-}
-
 export type BaseFormFieldErrors<T extends Record<string, string> = Record<string, string>> = {
 	[K in keyof T]?: string;
 };
@@ -80,18 +100,3 @@ export interface PasswordFieldErrors extends BaseFormFieldErrors {
 	confirmPassword?: string;
 }
 
-export interface RegistrationFieldErrors extends BaseFormFieldErrors {
-	email?: string;
-	password?: string;
-	confirmPassword?: string;
-}
-
-export interface LoginFieldErrors extends BaseFormFieldErrors {
-	email?: string;
-	password?: string;
-}
-
-export interface ProfileFieldErrors extends BaseFormFieldErrors {
-	firstName?: string;
-	lastName?: string;
-}

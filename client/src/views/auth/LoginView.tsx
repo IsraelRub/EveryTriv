@@ -187,10 +187,10 @@ export function LoginView() {
 					</div>
 
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid}>
-						{isLoading ? (
-							<Spinner size={ComponentSize.SM} message={t(LoadingKey.SIGNING_IN)} messageInline />
-						) : (
+						{!isLoading ? (
 							t(AuthKey.SIGN_IN)
+						) : (
+							<Spinner size={ComponentSize.SM} message={t(LoadingKey.SIGNING_IN)} messageInline />
 						)}
 					</Button>
 				</form>

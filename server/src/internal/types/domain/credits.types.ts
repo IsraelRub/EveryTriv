@@ -15,7 +15,6 @@ export interface CreditTransaction {
 	source?: CreditSource;
 	balanceAfter: number;
 	description?: string;
-	freeQuestionsAfter: number;
 	purchasedCreditsAfter: number;
 	paymentId?: string;
 	metadata: {
@@ -23,7 +22,6 @@ export interface CreditTransaction {
 		requiredCredits?: number;
 		originalAmount?: number;
 		gameMode?: string;
-		freeQuestionsUsed?: number;
 		purchasedCreditsUsed?: number;
 		creditsUsed?: number;
 		reason?: string | null;

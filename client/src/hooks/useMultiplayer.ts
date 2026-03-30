@@ -55,7 +55,6 @@ export const useMultiplayer = (roomId?: string) => {
 	const leaderboard = gameState?.leaderboard ?? [];
 	const tokenRef = useRef<string | null>(null);
 	const isConnectingRef = useRef(false);
-	const hasSetupListenersRef = useRef(false);
 	const isLoadingRef = useRef(false);
 	const currentUserIdRef = useRef<string | undefined>(undefined);
 	const lastSubmittedAnswerRef = useRef<{ questionId: string; answerIndex: number } | null>(null);
@@ -64,12 +63,9 @@ export const useMultiplayer = (roomId?: string) => {
 	currentUserIdRef.current = currentUser?.id;
 
 	const setupEventListeners = useCallback(() => {
-		// Prevent setting up listeners multiple times
-		if (hasSetupListenersRef.current) {
-			return;
-		}
-
-		hasSetupListenersRef.current = true;
+		// Drop previous app handlers so remounts / repeated connect() do not stack duplicate socket listeners
+		// (e.g. React Strict Mode double mount → duplicate QUESTION_ENDED → duplicate breakdown rows).
+		multiplayerService.clearAppListeners();
 
 		// Room events
 		multiplayerService.on({
@@ -280,6 +276,7 @@ export const useMultiplayer = (roomId?: string) => {
 							dispatch(
 								pushPersonalAnswerEntry({
 									question: questionText,
+									questionId: event.data.questionId,
 									isCorrect: myResult.isCorrect,
 									...(correctAnswerText !== undefined && { correctAnswerText }),
 									...(userAnswerText !== undefined && { userAnswerText }),

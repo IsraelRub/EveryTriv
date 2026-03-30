@@ -5,8 +5,15 @@ import { Binoculars, GamepadIcon, Timer, TrendingUp } from 'lucide-react';
 import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 
-import { ADMIN_GAME_STATS_SPEC, AdminKey, Colors } from '@/constants';
-import { AdminGameStatFormat, type StatCardProps } from '@/types';
+import {
+	ADMIN_GAME_STATS_SPEC,
+	AdminGameStatFormat,
+	AdminKey,
+	Colors,
+	PerformanceTabAccordion,
+	StatsSectionLayout,
+} from '@/constants';
+import type { StatCardProps } from '@/types';
 import {
 	Accordion,
 	AccordionContent,
@@ -20,12 +27,6 @@ import {
 	StatsSectionCard,
 } from '@/components';
 import { useGameStatistics, useGlobalDifficultyStats, useGlobalStats, usePopularTopics } from '@/hooks';
-
-const PERFORMANCE_ACCORDION = {
-	GAME_STATS: 'game-stats',
-	TRENDS: 'trends',
-	CHARTS: 'charts',
-} as const;
 
 export function PerformanceTabContent() {
 	const { t } = useTranslation();
@@ -91,13 +92,13 @@ export function PerformanceTabContent() {
 			<Accordion
 				type='multiple'
 				defaultValue={[
-					PERFORMANCE_ACCORDION.GAME_STATS,
-					PERFORMANCE_ACCORDION.TRENDS,
-					PERFORMANCE_ACCORDION.CHARTS,
+					PerformanceTabAccordion.GAME_STATS,
+					PerformanceTabAccordion.TRENDS,
+					PerformanceTabAccordion.CHARTS,
 				]}
 				className='w-full rounded-lg border bg-card'
 			>
-				<AccordionItem value={PERFORMANCE_ACCORDION.GAME_STATS}>
+				<AccordionItem value={PerformanceTabAccordion.GAME_STATS}>
 					<AccordionTrigger className='px-4'>
 						<span className='flex items-center gap-2'>
 							<GamepadIcon className='h-4 w-4 shrink-0 text-primary' />
@@ -106,7 +107,7 @@ export function PerformanceTabContent() {
 					</AccordionTrigger>
 					<AccordionContent className='px-4'>
 						<StatsSectionCard
-							layout='plain'
+							layout={StatsSectionLayout.PLAIN}
 							stats={adminGameStats}
 							gridCols='grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
 							isLoading={gameStatisticsLoading}
@@ -114,7 +115,7 @@ export function PerformanceTabContent() {
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.GAME_STATISTICS_DESC)}</p>
 					</AccordionContent>
 				</AccordionItem>
-				<AccordionItem value={PERFORMANCE_ACCORDION.TRENDS}>
+				<AccordionItem value={PerformanceTabAccordion.TRENDS}>
 					<AccordionTrigger className='px-4'>
 						<span className='flex items-center gap-2'>
 							<TrendingUp className='h-4 w-4 shrink-0 text-primary' />
@@ -126,7 +127,7 @@ export function PerformanceTabContent() {
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.PLATFORM_TRENDS_DESC)}</p>
 					</AccordionContent>
 				</AccordionItem>
-				<AccordionItem value={PERFORMANCE_ACCORDION.CHARTS}>
+				<AccordionItem value={PerformanceTabAccordion.CHARTS}>
 					<AccordionTrigger className='px-4'>{t(AdminKey.DETAILED_PLATFORM_ANALYTICS)}</AccordionTrigger>
 					<AccordionContent className='px-4'>
 						<div className='grid grid-cols-1 gap-8 lg:grid-cols-2'>

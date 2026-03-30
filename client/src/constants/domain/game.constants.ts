@@ -8,8 +8,8 @@ import { GameKey } from '../core/ui/localeKeys.constants';
 import { VariantBase } from '../core/ui/variant.constants';
 
 export const SURPRISE_SCOPE_LABEL_KEYS: Record<SurpriseScope, string> = {
-	[SurpriseScope.TOPIC]: GameKey.SURPRISE_TOPIC_ONLY,
-	[SurpriseScope.DIFFICULTY]: GameKey.SURPRISE_DIFFICULTY_ONLY,
+	[SurpriseScope.TOPIC]: GameKey.SURPRISE_TOPIC,
+	[SurpriseScope.DIFFICULTY]: GameKey.SURPRISE_DIFFICULTY,
 	[SurpriseScope.BOTH]: GameKey.SURPRISE_BOTH,
 };
 
@@ -132,12 +132,6 @@ export const TOPIC_BADGE_LABEL_KEYS: Partial<Record<TopicBadgeType, string>> = {
 	[TopicBadgeType.POPULAR]: GameKey.POPULAR,
 };
 
-export const TOPIC_BADGE_TYPE_SET: ReadonlySet<string> = new Set([
-	TopicBadgeType.MOST_PLAYED,
-	TopicBadgeType.YOUR,
-	TopicBadgeType.BASIC,
-	TopicBadgeType.POPULAR,
-]);
 
 export function isTopicBadgeType(value: string): value is TopicBadgeType {
 	return TOPIC_BADGE_TYPE_SET.has(value);
@@ -178,10 +172,10 @@ export enum ExitGameButtonVariant {
 	ROOM = 'room',
 }
 
-export const CREDITS_EXIT_MESSAGES = {
-	TITLE: "You've run out of credits",
-	DESCRIPTION: 'Your game progress has been saved. You can view your summary or get more credits to continue playing.',
-	VIEW_SUMMARY: 'View game summary',
-	GET_CREDITS: 'Get credits',
-	GO_HOME: 'Go to home',
-} as const;
+const TOPIC_BADGE_TYPE_SET: ReadonlySet<string> = new Set([
+	TopicBadgeType.MOST_PLAYED,
+	TopicBadgeType.YOUR,
+	TopicBadgeType.BASIC,
+	TopicBadgeType.POPULAR,
+]);
+

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { ErrorCode } from '@shared/constants';
+import { ErrorCode, LogContext } from '@shared/constants';
 import type { AuthCredentials, AuthenticationResult } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
@@ -64,7 +64,7 @@ export class AuthenticationManager {
 				emails: { current: credentials.email },
 				success: true,
 				role: userData.role,
-				context: 'AuthenticationManager',
+				context: LogContext.AUTHENTICATION_MANAGER,
 			});
 
 			return {

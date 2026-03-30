@@ -15,7 +15,7 @@ const initialState: MultiplayerState = {
 	answerCountsForQuestionId: null,
 };
 
-export const multiplayerSlice = createSlice({
+const multiplayerSlice = createSlice({
 	name: 'multiplayer',
 	initialState,
 	reducers: {
@@ -60,7 +60,14 @@ export const multiplayerSlice = createSlice({
 			state.revealPhase = action.payload;
 		},
 		pushPersonalAnswerEntry: (state, action: PayloadAction<MultiplayerAnswerBreakdownEntry>) => {
-			state.personalAnswerHistory.push(action.payload);
+			const payload = action.payload;
+			if (payload.questionId !== undefined && payload.questionId !== '') {
+				const exists = state.personalAnswerHistory.some(e => e.questionId === payload.questionId);
+				if (exists) {
+					return;
+				}
+			}
+			state.personalAnswerHistory.push(payload);
 		},
 		clearPersonalAnswerHistory: state => {
 			state.personalAnswerHistory = [];

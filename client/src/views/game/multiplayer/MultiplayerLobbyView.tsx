@@ -31,6 +31,7 @@ import {
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
+import { AnimatedCopyFeedbackIconVariant } from '@/constants';
 import { clientLogger as logger } from '@/services';
 import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
@@ -240,7 +241,7 @@ export function MultiplayerLobbyView() {
 											onClick={copyRoomCode}
 											className='h-auto min-h-10 w-11 shrink-0 rounded-none rounded-r-lg border-l border-primary-foreground/15'
 										>
-											<AnimatedCopyFeedbackIcon success={roomCodeCopied} variant='onPrimary' />
+											<AnimatedCopyFeedbackIcon success={roomCodeCopied} variant={AnimatedCopyFeedbackIconVariant.ON_PRIMARY} />
 										</Button>
 									</div>
 								</div>

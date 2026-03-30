@@ -15,10 +15,9 @@ import {
 } from 'lucide-react';
 
 import { AlertIconSize, LegalKey, ROUTES } from '@/constants';
+import type { LegalDocumentSectionSpec } from '@/types';
 import { NavLink } from '@/components/navigation/NavLink';
 import { AlertIcon } from '@/components/ui/alert';
-
-import type { LegalDocumentSectionSpec } from './LegalDocumentPage';
 
 export function buildTermsOfServiceSections(t: TFunction<'legal'>): LegalDocumentSectionSpec[] {
 	return [

@@ -5,6 +5,12 @@ import { VALIDATION_COUNT } from '../core/validation.constants';
 
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
 
+/** API / logging context for `validateText` (topic field vs custom difficulty description). */
+export enum ValidateTextContext {
+	TOPIC = 'topic',
+	CUSTOM_DIFFICULTY = 'customDifficulty',
+}
+
 export enum DifficultyLevel {
 	EASY = 'easy',
 	MEDIUM = 'medium',

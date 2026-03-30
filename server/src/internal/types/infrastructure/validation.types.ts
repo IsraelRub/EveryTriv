@@ -1,3 +1,4 @@
+
 export interface LanguageToolError {
 	message: string;
 	shortMessage: string;

@@ -2,7 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
-import { PERFORMANCE_THRESHOLDS } from '@shared/constants';
+import { LogContext, PERFORMANCE_THRESHOLDS } from '@shared/constants';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger, metricsService } from '@internal/services';
@@ -93,7 +93,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 			method,
 			userId,
 			userAgent: userAgent.substring(0, 100), // Truncate long user agents
-			context: 'PerformanceInterceptor',
+			context: LogContext.PERFORMANCE_INTERCEPTOR,
 		});
 	}
 
@@ -106,7 +106,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 			userId,
 			threshold: this.SLOW_REQUEST_THRESHOLD,
 			severity,
-			context: 'PerformanceInterceptor',
+			context: LogContext.PERFORMANCE_INTERCEPTOR,
 		});
 
 		// Track slow request metrics
@@ -131,7 +131,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 			method,
 			userId,
 			errorInfo: { message: getErrorMessage(error) },
-			context: 'PerformanceInterceptor',
+			context: LogContext.PERFORMANCE_INTERCEPTOR,
 		});
 
 		// Track error performance metrics

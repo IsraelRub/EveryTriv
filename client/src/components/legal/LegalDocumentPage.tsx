@@ -1,42 +1,30 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 
 import { formatDate } from '@shared/utils';
 
 import { ButtonSize, LegalKey, VariantBase } from '@/constants';
+import { LegalDocumentLayoutVariant } from '@/constants';
+import type { LegalDocumentPageProps } from '@/types';
 import { cn } from '@/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export interface LegalDocumentSectionSpec {
-	id: string;
-	trigger: ReactNode;
-	content: ReactNode;
-}
 
-export type LegalDocumentLayoutVariant = 'page' | 'embedded';
-
-export interface LegalDocumentPageProps {
-	icon: ReactNode;
-	titleKey: LegalKey;
-	sections: LegalDocumentSectionSpec[];
-	/** `embedded`: scrollable body for use inside dialogs; `page` (default): full view layout. */
-	variant?: LegalDocumentLayoutVariant;
-}
 
 /** Legal policy/terms: page chrome, accordion sections (closed by default), expand/collapse all. */
 export function LegalDocumentPage({
 	icon,
 	titleKey,
 	sections,
-	variant = 'page',
+	variant = LegalDocumentLayoutVariant.PAGE,
 }: LegalDocumentPageProps): JSX.Element {
 	const { t } = useTranslation('legal');
 	const [openSectionIds, setOpenSectionIds] = useState<string[]>([]);
 	const allSectionIds = useMemo(() => sections.map(s => s.id), [sections]);
-	const isEmbedded = variant === 'embedded';
+	const isEmbedded = variant === LegalDocumentLayoutVariant.EMBEDDED;
 
 	const allExpanded =
 		allSectionIds.length > 0 &&
@@ -136,3 +124,4 @@ export function LegalDocumentPage({
 
 	return <main className='view-main animate-fade-in-up-simple'>{outer}</main>;
 }
+

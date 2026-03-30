@@ -102,19 +102,15 @@ function extractComponentsFromCode(filePath) {
 function extractModulesFromCode(filePath) {
   const content = readFileSync(filePath, 'utf8');
   const modules = [];
-  
-  // Extract NestJS modules
-  const moduleRegex = /@Module\(/g;
+
+  // NestJS: `export class AuthModule {}` appears after `@Module({...})` — match the class name directly
+  // `implements OnModuleInit` may appear before `{`
+  const exportModuleRegex = /export\s+class\s+([A-Z][a-zA-Z0-9]*Module)\b/g;
   let match;
-  while ((match = moduleRegex.exec(content))) {
-    // Try to find the class name before @Module
-    const beforeModule = content.substring(0, match.index);
-    const classMatch = beforeModule.match(/(?:export\s+)?class\s+([A-Z][a-zA-Z0-9]*)/);
-    if (classMatch) {
-      modules.push(classMatch[1]);
-    }
+  while ((match = exportModuleRegex.exec(content))) {
+    modules.push(match[1]);
   }
-  
+
   return modules;
 }
 
@@ -478,7 +474,8 @@ function checkDocumentationConsistency() {
     const existingServices = new Set();
     
     for (const file of clientFiles) {
-      if (file.includes('/services/') && file.endsWith('.ts')) {
+      const normalized = file.replace(/\\/g, '/');
+      if (normalized.includes('/services/') && file.endsWith('.ts')) {
         const services = extractServicesFromCode(file);
         services.forEach(service => existingServices.add(service));
       }

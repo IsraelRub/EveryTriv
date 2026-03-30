@@ -1,7 +1,27 @@
 import { Activity, Brain, CirclePercent, FileQuestion, GamepadIcon, Medal } from 'lucide-react';
 
-import { AdminGameStatFormat, type AdminGameStatSpec, type TabSpec } from '@/types';
+import type { AdminGameStatSpec, TabSpec } from '@/types';
 import { Colors } from '../core/ui/color.constants';
+
+export enum StatsSectionLayout {
+	SECTION = 'section',
+	PLAIN = 'plain',
+}
+
+export enum AdminGameStatFormat {
+	INTEGER = 'integer',
+	DECIMAL = 'decimal',
+	PERCENT = 'percent',
+}
+
+export enum AdminGameStatKey {
+	TOTAL_GAMES = 'totalGames',
+	BEST_SCORE = 'bestScore',
+	AVERAGE_SCORE = 'averageScore',
+	ACCURACY = 'accuracy',
+	ACTIVE_PLAYERS_24H = 'activePlayers24h',
+	TOTAL_QUESTIONS_ANSWERED = 'totalQuestionsAnswered',
+}
 
 export const STATISTICS_TAB_PARAM = 'tab';
 export const LEADERBOARD_PERIOD_PARAM = 'leaderboardPeriod';
@@ -13,12 +33,10 @@ export enum ViewAllDestination {
 	STATISTICS = 'statistics',
 }
 
-export const STATISTICS_TAB_LEADERBOARD_LABEL = 'Leaderboard';
-
 export const STATISTICS_TABS: TabSpec[] = [
 	{ label: 'Performance', componentName: 'PerformanceTabContent' },
 	{ label: 'History', componentName: 'HistoryTabContent' },
-	{ label: STATISTICS_TAB_LEADERBOARD_LABEL, componentName: 'LeaderboardTabContent' },
+	{ label: 'Leaderboard', componentName: 'LeaderboardTabContent' },
 ];
 
 export const FILTER_ALL_VALUE = '__all__';
@@ -43,42 +61,42 @@ export const ADMIN_GAME_STATS_SPEC: AdminGameStatSpec[] = [
 		icon: GamepadIcon,
 		label: 'Total Games',
 		color: Colors.BLUE_500.text,
-		key: 'totalGames',
+		key: AdminGameStatKey.TOTAL_GAMES,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: Medal,
 		label: 'Best Score',
 		color: Colors.YELLOW_500.text,
-		key: 'bestScore',
+		key: AdminGameStatKey.BEST_SCORE,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: CirclePercent,
 		label: 'Average Score',
 		color: Colors.GREEN_500.text,
-		key: 'averageScore',
+		key: AdminGameStatKey.AVERAGE_SCORE,
 		format: AdminGameStatFormat.DECIMAL,
 	},
 	{
 		icon: Brain,
 		label: 'Accuracy',
 		color: Colors.PURPLE_500.text,
-		key: 'accuracy',
+		key: AdminGameStatKey.ACCURACY,
 		format: AdminGameStatFormat.PERCENT,
 	},
 	{
 		icon: Activity,
 		label: 'Active Players (24h)',
 		color: Colors.ORANGE_500.text,
-		key: 'activePlayers24h',
+		key: AdminGameStatKey.ACTIVE_PLAYERS_24H,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: FileQuestion,
 		label: 'Questions Answered',
 		color: Colors.CYAN_500.text,
-		key: 'totalQuestionsAnswered',
+		key: AdminGameStatKey.TOTAL_QUESTIONS_ANSWERED,
 		format: AdminGameStatFormat.INTEGER,
 	},
 ];

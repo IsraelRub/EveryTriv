@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ensureErrorObject } from '@shared/utils';
 
 import { LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
+import { FullPageSpinnerLayout } from '@/constants';
 import { isProtectedAppPath } from '@/utils';
 import { authService, clientLogger as logger, prefetchAuthenticatedQueries } from '@/services';
 import { BackgroundAnimation } from '@/components/ui/BackgroundAnimation';
@@ -97,7 +98,7 @@ export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Eleme
 		return (
 			<div className='app-shell'>
 				<BackgroundAnimation />
-				<FullPageSpinner message={spinnerMessage} layout='appShell' showHomeButton={false} />
+				<FullPageSpinner message={spinnerMessage} layout={FullPageSpinnerLayout.APP_SHELL} showHomeButton={false} />
 			</div>
 		);
 	}

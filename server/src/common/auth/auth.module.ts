@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AppConfig } from '@config';
-import { AUTH_CONSTANTS } from '@internal/constants';
 
 import { AuthenticationManager } from './authentication.manager';
 import { JwtTokenService } from './jwt-token.service';
@@ -12,7 +11,7 @@ import { PasswordService } from './password.service';
 	imports: [
 		JwtModule.register({
 			secret: AppConfig.jwt.secret,
-			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
+			signOptions: { expiresIn: AppConfig.jwt.expiresIn },
 		}),
 	],
 	providers: [PasswordService, JwtTokenService, AuthenticationManager],

@@ -1,7 +1,6 @@
 export const AUTH_CONSTANTS = {
-	JWT_EXPIRATION: '24h',
+	JWT_EXPIRATION: '1h',
 	JWT_REFRESH_EXPIRATION: '7d',
-	REFRESH_TOKEN_EXPIRATION: '7d',
 	TOKEN_TYPE: 'Bearer',
 	AUTH_HEADER: 'Authorization',
 } as const;

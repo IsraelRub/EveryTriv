@@ -53,6 +53,7 @@ function isBreakdownEntry(value: unknown): value is MultiplayerAnswerBreakdownEn
 		isRecord(value) &&
 		VALIDATORS.string(value.question) &&
 		typeof value.isCorrect === 'boolean' &&
+		(value.questionId === undefined || typeof value.questionId === 'string') &&
 		(value.correctAnswerText === undefined || typeof value.correctAnswerText === 'string') &&
 		(value.userAnswerText === undefined || typeof value.userAnswerText === 'string')
 	);

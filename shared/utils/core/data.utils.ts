@@ -33,7 +33,7 @@ export function normalizeStringArray(value?: unknown): string[] | undefined {
 	return normalized.length > 0 ? normalized : undefined;
 }
 
-export function groupByBy<T>(arr: T[], getKey: (item: T) => string): Record<string, T[]> {
+export function groupByKey<T>(arr: T[], getKey: (item: T) => string): Record<string, T[]> {
 	const grouped: Record<string, T[]> = {};
 	for (const item of arr) {
 		const key = getKey(item);

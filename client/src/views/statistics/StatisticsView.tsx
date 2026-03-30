@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { STATISTICS_TAB_PARAM, STATISTICS_TABS, StatisticsKey } from '@/constants';
+import { DashboardTabBundle, STATISTICS_TAB_PARAM, STATISTICS_TABS, StatisticsKey } from '@/constants';
 import { queryInvalidationService } from '@/services';
 import { createTabLoader } from '@/utils';
 import { DashboardWithTabs } from '@/components';
@@ -13,7 +13,7 @@ export function StatisticsView() {
 	const queryClient = useQueryClient();
 	const currentUser = useCurrentUserData();
 	const isAuthenticated = useIsAuthenticated();
-	const loadModule = useMemo(() => createTabLoader('statistics'), []);
+	const loadModule = useMemo(() => createTabLoader(DashboardTabBundle.STATISTICS), []);
 
 	const onRefresh = useCallback(async () => {
 		await queryInvalidationService.invalidateGameQueries(queryClient, currentUser?.id);

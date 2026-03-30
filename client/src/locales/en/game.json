@@ -134,8 +134,8 @@
 	"correctAnswersSuffix": "correct answers",
 	"unlimited": "Unlimited",
 	"surpriseMe": "Surprise me",
-	"surpriseTopicOnly": "Surprise topic only",
-	"surpriseDifficultyOnly": "Surprise difficulty only",
+	"surpriseTopic": "Surprise topic",
+	"surpriseDifficulty": "Surprise difficulty",
 	"surpriseBoth": "Surprise topic and difficulty",
 	"pickForMe": "Pick for me",
 	"pickedForYou": "Picked for you",
@@ -147,6 +147,5 @@
 	"shareMultiplayerShortWon": "I just played {{appName}} multiplayer! I won!",
 	"shareMultiplayerShortScored": "I just played {{appName}} multiplayer! Final score: {{points}} points.",
 	"shareSingleScore": "I scored {{score}}/{{total}} ({{percentage}}%) on {{topic}} {{difficulty}} difficulty in {{appName}}!",
-	"backgroundWords": ["History", "Science", "Sports", "Geography", "Art", "Music", "Cinema", "Literature", "Technology", "Mathematics", "Biology", "Physics", "Chemistry", "Politics", "Economics", "Philosophy", "Psychology", "Astronomy", "Mythology", "Culture", "Nature", "Animals", "Food", "Fashion", "Architecture", "Medicine", "Engineering", "Space", "Ocean", "Ecology", "Anthropology", "Archaeology", "Linguistics", "Geology", "Botany", "Zoology", "Anatomy", "Genetics", "Robotics", "Programming", "Gaming", "Comics", "Television", "Theater", "Dance", "Photography", "Sculpture", "Painting", "Poetry", "Novels", "Biography", "Military", "Aviation"],
-	"backgroundWordsFallback": ["Trivia", "Knowledge"]
+	"backgroundWords": ["History", "Science", "Sports", "Geography", "Art", "Music", "Cinema", "Literature", "Technology", "Mathematics", "Biology", "Physics", "Chemistry", "Politics", "Economics", "Philosophy", "Psychology", "Astronomy", "Mythology", "Culture", "Nature", "Animals", "Food", "Fashion", "Architecture", "Medicine", "Engineering", "Space", "Ocean", "Ecology", "Anthropology", "Archaeology", "Linguistics", "Geology", "Botany", "Zoology", "Anatomy", "Genetics", "Robotics", "Programming", "Gaming", "Comics", "Television", "Theater", "Dance", "Photography", "Sculpture", "Painting", "Poetry", "Novels", "Biography", "Military", "Aviation"]
 }

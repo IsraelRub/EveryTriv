@@ -2,8 +2,8 @@ export enum FormFieldType {
 	TEXT = 'text',
 	EMAIL = 'email',
 	PASSWORD = 'password',
-	TEXTAREA = 'textarea',
 	SELECT = 'select',
+	TEXTAREA = 'textarea',
 }
 
 export const PLACEHOLDER_EMAIL = 'your@email.com';

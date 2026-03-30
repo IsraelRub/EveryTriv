@@ -1,6 +1,6 @@
 import { TIME_PERIODS_MS } from '@shared/constants';
 import type { CategoryStatistics, CountRecord } from '@shared/types';
-import { calculateScoreRate, groupByBy, sumBy } from '@shared/utils';
+import { calculateScoreRate, groupByKey, sumBy } from '@shared/utils';
 
 import type { GameHistoryEntity } from '@internal/entities';
 import type { StreakData } from '@internal/types';
@@ -87,7 +87,7 @@ export function calculateCategoryStats(
 ): Record<string, CategoryStatistics> {
 	const getKey = (game: GameHistoryEntity) =>
 		category === 'topic' ? String(game.topic).toLowerCase() : String(game[category]);
-	const groupedByCategory = groupByBy(gameHistory, getKey);
+	const groupedByCategory = groupByKey(gameHistory, getKey);
 	const categoryStats: Record<string, CategoryStatistics> = {};
 
 	Object.entries(groupedByCategory).forEach(([categoryKey, games]) => {
@@ -119,7 +119,7 @@ export function calculateCategoryPerformance(
 	gameHistory: GameHistoryEntity[],
 	category: 'topic' | 'difficulty'
 ): CountRecord {
-	const groupedByCategory = groupByBy(gameHistory, game => String(game[category]));
+	const groupedByCategory = groupByKey(gameHistory, game => String(game[category]));
 	const performance: CountRecord = {};
 
 	Object.entries(groupedByCategory).forEach(([categoryKey, games]) => {

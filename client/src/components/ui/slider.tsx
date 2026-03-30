@@ -1,21 +1,22 @@
 import { forwardRef, type ElementRef } from 'react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 
+import { SliderSize } from '@/constants';
 import type { SliderProps } from '@/types';
 import { cn } from '@/utils';
 
-const trackSizes = {
-	default: 'h-2',
-	sm: 'h-1',
-} as const;
+const trackSizes: Record<SliderSize, string> = {
+	[SliderSize.DEFAULT]: 'h-2',
+	[SliderSize.SM]: 'h-1',
+};
 
-const thumbSizes = {
-	default: 'h-5 w-5',
-	sm: 'h-3 w-3',
-} as const;
+const thumbSizes: Record<SliderSize, string> = {
+	[SliderSize.DEFAULT]: 'h-5 w-5',
+	[SliderSize.SM]: 'h-3 w-3',
+};
 
 export const Slider = forwardRef<ElementRef<typeof SliderPrimitive.Root>, SliderProps>(
-	({ className, size = 'default', ...props }, ref) => (
+	({ className, size = SliderSize.DEFAULT, ...props }, ref) => (
 		<SliderPrimitive.Root
 			ref={ref}
 			className={cn('relative flex w-full touch-none select-none items-center', className)}

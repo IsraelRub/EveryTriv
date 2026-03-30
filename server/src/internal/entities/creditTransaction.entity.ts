@@ -38,9 +38,6 @@ export class CreditTransactionEntity extends BaseEntity {
 	@Column({ name: 'balance_after', type: 'int' })
 	balanceAfter: number;
 
-	@Column({ name: 'free_questions_after', type: 'int', default: 0 })
-	freeQuestionsAfter: number;
-
 	@Column({ name: 'purchased_credits_after', type: 'int', default: 0 })
 	purchasedCreditsAfter: number;
 

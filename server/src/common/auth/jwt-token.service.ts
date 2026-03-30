@@ -14,7 +14,12 @@ import { createServerError } from '@internal/utils';
 export class JwtTokenService {
 	constructor(private readonly jwtService: JwtService) {}
 
-	async generateAccessToken(userId: string, email: string, role: UserRole, expiresIn: string = '1h'): Promise<string> {
+	async generateAccessToken(
+		userId: string,
+		email: string,
+		role: UserRole,
+		expiresIn: string = AppConfig.jwt.expiresIn
+	): Promise<string> {
 		try {
 			const payload: TokenPayload = {
 				sub: userId,
@@ -49,7 +54,7 @@ export class JwtTokenService {
 		userId: string,
 		email: string,
 		role: UserRole,
-		expiresIn: string = '7d'
+		expiresIn: string = AppConfig.jwt.refreshExpiresIn
 	): Promise<string> {
 		try {
 			const payload: TokenPayload = {
@@ -85,8 +90,8 @@ export class JwtTokenService {
 		userId: string,
 		email: string,
 		role: UserRole,
-		accessExpiresIn: string = '1h',
-		refreshExpiresIn: string = '7d'
+		accessExpiresIn: string = AppConfig.jwt.expiresIn,
+		refreshExpiresIn: string = AppConfig.jwt.refreshExpiresIn
 	): Promise<TokenPair> {
 		try {
 			const [accessToken, refreshToken] = await Promise.all([

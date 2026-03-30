@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { LogContext } from '@shared/constants';
 import type { AdminUserData, AdminUsersListResponse } from '@shared/types';
 import { clamp, getErrorMessage } from '@shared/utils';
 
@@ -44,7 +45,7 @@ export class UserCoreService {
 			};
 		} catch (error) {
 			logger.userError('Failed to get all users', {
-				context: 'UserCoreService',
+				context: LogContext.USER_CORE_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 			});
 			throw error;
@@ -57,7 +58,7 @@ export class UserCoreService {
 			return user;
 		} catch (error) {
 			logger.userError('Failed to get user by ID', {
-				context: 'UserCoreService',
+				context: LogContext.USER_CORE_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});

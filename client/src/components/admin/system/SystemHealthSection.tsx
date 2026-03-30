@@ -28,7 +28,15 @@ import {
 } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 
-import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
+import {
+	AdminKey,
+	Colors,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	SystemInsightAccordion,
+	SystemSecurityAccordion,
+	VariantBase,
+} from '@/constants';
 import { formatDateTime } from '@/utils';
 import {
 	Accordion,
@@ -52,20 +60,6 @@ import {
 	useSystemSecurityMetrics,
 } from '@/hooks';
 
-const SECURITY_ACCORDION = {
-	AUTH: 'security-auth',
-	AUTHZ: 'security-authz',
-	DATA: 'security-data',
-} as const;
-
-const SYSTEM_INSIGHT_ACCORDION = {
-	PERF: 'si-perf',
-	SEC: 'si-sec',
-	USER: 'si-user',
-	HEALTH: 'si-health',
-	TRENDS: 'si-trends',
-} as const;
-
 export function SystemHealthSection() {
 	const { t } = useTranslation();
 	const { data: systemPerformance, isLoading: systemPerformanceLoading } = useSystemPerformanceMetrics();
@@ -73,14 +67,14 @@ export function SystemHealthSection() {
 	const { data: systemRecommendations, isLoading: systemRecommendationsLoading } = useSystemRecommendations();
 	const { data: systemInsights, isLoading: systemInsightsLoading } = useSystemInsights();
 
-	const systemInsightsAccordionDefault = useMemo((): string[] => {
+	const systemInsightsAccordionDefault = useMemo((): SystemInsightAccordion[] => {
 		if (systemInsights == null) return [];
-		const v: string[] = [];
-		if (systemInsights.performanceInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.PERF);
-		if (systemInsights.securityInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.SEC);
-		if (systemInsights.userBehaviorInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.USER);
-		if (systemInsights.systemHealthInsights.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.HEALTH);
-		if (systemInsights.trends.length > 0) v.push(SYSTEM_INSIGHT_ACCORDION.TRENDS);
+		const v: SystemInsightAccordion[] = [];
+		if (systemInsights.performanceInsights.length > 0) v.push(SystemInsightAccordion.PERF);
+		if (systemInsights.securityInsights.length > 0) v.push(SystemInsightAccordion.SEC);
+		if (systemInsights.userBehaviorInsights.length > 0) v.push(SystemInsightAccordion.USER);
+		if (systemInsights.systemHealthInsights.length > 0) v.push(SystemInsightAccordion.HEALTH);
+		if (systemInsights.trends.length > 0) v.push(SystemInsightAccordion.TRENDS);
 		return v;
 	}, [systemInsights]);
 
@@ -156,14 +150,10 @@ export function SystemHealthSection() {
 				) : systemSecurity ? (
 					<Accordion
 						type='multiple'
-						defaultValue={[
-							SECURITY_ACCORDION.AUTH,
-							SECURITY_ACCORDION.AUTHZ,
-							SECURITY_ACCORDION.DATA,
-						]}
+						defaultValue={[SystemSecurityAccordion.AUTH, SystemSecurityAccordion.AUTHZ, SystemSecurityAccordion.DATA]}
 						className='w-full'
 					>
-						<AccordionItem value={SECURITY_ACCORDION.AUTH}>
+						<AccordionItem value={SystemSecurityAccordion.AUTH}>
 							<AccordionTrigger>
 								<span className='flex items-center gap-2'>
 									<LogIn className='h-5 w-5 shrink-0 text-primary' />
@@ -193,7 +183,7 @@ export function SystemHealthSection() {
 								</div>
 							</AccordionContent>
 						</AccordionItem>
-						<AccordionItem value={SECURITY_ACCORDION.AUTHZ}>
+						<AccordionItem value={SystemSecurityAccordion.AUTHZ}>
 							<AccordionTrigger>
 								<span className='flex items-center gap-2'>
 									<KeyRound className='h-5 w-5 shrink-0 text-primary' />
@@ -217,7 +207,7 @@ export function SystemHealthSection() {
 								</div>
 							</AccordionContent>
 						</AccordionItem>
-						<AccordionItem value={SECURITY_ACCORDION.DATA}>
+						<AccordionItem value={SystemSecurityAccordion.DATA}>
 							<AccordionTrigger>
 								<span className='flex items-center gap-2'>
 									<Database className='h-5 w-5 shrink-0 text-primary' />
@@ -355,103 +345,103 @@ export function SystemHealthSection() {
 									<p>{t(AdminKey.NO_SYSTEM_INSIGHTS_AVAILABLE)}</p>
 								</div>
 							) : (
-							<Accordion type='multiple' defaultValue={systemInsightsAccordionDefault} className='w-full'>
-								{systemInsights.performanceInsights.length > 0 ? (
-									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.PERF}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Zap className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.performanceInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.securityInsights.length > 0 ? (
-									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.SEC}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Shield className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.securityInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.userBehaviorInsights.length > 0 ? (
-									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.USER}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Activity className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.userBehaviorInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.systemHealthInsights.length > 0 ? (
-									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.HEALTH}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Activity className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.systemHealthInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.trends.length > 0 ? (
-									<AccordionItem value={SYSTEM_INSIGHT_ACCORDION.TRENDS}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<TrendingUp className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.trends.map((trend, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{trend}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-							</Accordion>
+								<Accordion type='multiple' defaultValue={systemInsightsAccordionDefault} className='w-full'>
+									{systemInsights.performanceInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.PERF}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Zap className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className='space-y-3'>
+													{systemInsights.performanceInsights.map((insight, index) => (
+														<div key={index} className='rounded-lg bg-muted/50 p-3'>
+															<span className='text-sm'>{insight}</span>
+														</div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.securityInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.SEC}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Shield className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className='space-y-3'>
+													{systemInsights.securityInsights.map((insight, index) => (
+														<div key={index} className='rounded-lg bg-muted/50 p-3'>
+															<span className='text-sm'>{insight}</span>
+														</div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.userBehaviorInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.USER}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Activity className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className='space-y-3'>
+													{systemInsights.userBehaviorInsights.map((insight, index) => (
+														<div key={index} className='rounded-lg bg-muted/50 p-3'>
+															<span className='text-sm'>{insight}</span>
+														</div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.systemHealthInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.HEALTH}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Activity className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className='space-y-3'>
+													{systemInsights.systemHealthInsights.map((insight, index) => (
+														<div key={index} className='rounded-lg bg-muted/50 p-3'>
+															<span className='text-sm'>{insight}</span>
+														</div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.trends.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.TRENDS}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<TrendingUp className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className='space-y-3'>
+													{systemInsights.trends.map((trend, index) => (
+														<div key={index} className='rounded-lg bg-muted/50 p-3'>
+															<span className='text-sm'>{trend}</span>
+														</div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+								</Accordion>
 							)}
 						</div>
 					) : (

@@ -98,9 +98,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 						<DialogDescription>{t(AuthKey.MANAGE_PROFILE_INFO)}</DialogDescription>
 					</DialogHeader>
 
-					{isLoading ? (
-						<div className='py-8 text-center text-muted-foreground flex-1'>{t(LoadingKey.LOADING_PROFILE)}</div>
-					) : (
+					{!isLoading ? (
 						<div className='dialog-body'>
 							{/* Two Column Layout */}
 							<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -182,12 +180,14 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 											{t(CommonKey.CANCEL)}
 										</Button>
 										<Button onClick={handleSave} disabled={updateProfile.isPending}>
-											{updateProfile.isPending ? t(LoadingKey.SAVING) : t(CommonKey.SAVE)}
+											{!updateProfile.isPending ? t(CommonKey.SAVE) : t(LoadingKey.SAVING)}
 										</Button>
 									</div>
 								</div>
 							)}
 						</div>
+					) : (
+						<div className='py-8 text-center text-muted-foreground flex-1'>{t(LoadingKey.LOADING_PROFILE)}</div>
 					)}
 				</DialogContent>
 			</Dialog>

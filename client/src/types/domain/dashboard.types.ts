@@ -9,10 +9,6 @@ export interface TabSpec {
 	componentName: string;
 }
 
-export interface DashboardTabEntry {
-	label: string;
-	loader: () => Promise<{ default: ComponentType<object> }>;
-}
 
 export interface NormalizedDashboardTab {
 	label: string;
@@ -32,3 +28,8 @@ export interface DashboardWithTabsProps {
 	defaultTab?: string;
 	suspenseFallback?: ReactElement | null;
 }
+export interface DashboardTabEntry {
+	label: string;
+	loader: () => Promise<{ default: ComponentType<object> }>;
+}
+

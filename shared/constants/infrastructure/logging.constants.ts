@@ -8,6 +8,35 @@ export enum LogLevel {
 	DEBUG = 'debug',
 }
 
+/** Structured log `meta.context` — keep string values stable (observability / filters). */
+export enum LogContext {
+	API = 'API',
+	AUTH = 'AUTH',
+	DATABASE = 'DATABASE',
+	USER = 'USER',
+	PERFORMANCE = 'PERFORMANCE',
+	VALIDATION = 'VALIDATION',
+	SECURITY = 'SECURITY',
+	SYSTEM = 'SYSTEM',
+	HTTP = 'HTTP',
+	GAME = 'GAME',
+	PAYMENT = 'PAYMENT',
+	TRIVIA = 'TRIVIA',
+	CACHE = 'CACHE',
+	REPOSITORY = 'REPOSITORY',
+	ANALYTICS = 'ANALYTICS',
+	PROVIDER = 'PROVIDER',
+	STORAGE = 'STORAGE',
+	NAVIGATION = 'NAVIGATION',
+	LANGUAGE_TOOL = 'LANGUAGE_TOOL',
+	PERFORMANCE_INTERCEPTOR = 'PerformanceInterceptor',
+	USER_SERVICE = 'UserService',
+	USER_CORE_SERVICE = 'UserCoreService',
+	AI_PROVIDERS_SERVICE = 'AiProvidersService',
+	AUTHENTICATION_MANAGER = 'AuthenticationManager',
+	GOOGLE_STRATEGY = 'GoogleStrategy',
+}
+
 export const LOG_ICONS = {
 	// Basic log levels
 	ERROR: '🔴',

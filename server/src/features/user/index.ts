@@ -1,7 +1,9 @@
 export * from './dtos';
 
-export { UserController } from './user.controller';
+
 
 export { UserModule } from './user.module';
 
+
+export { UserController } from './user.controller';
 export { UserService } from './user.service';

@@ -11,17 +11,13 @@ import {
 	AlertIconSize,
 	ButtonSize,
 	Colors,
+	DataTableColumnType,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
 	StatCardVariant,
 	VariantBase,
 } from '@/constants';
-import {
-	DataTableColumnType,
-	type ConsistencyDiscrepancy,
-	type ConsistencyResultRow,
-	type DataTableColumn,
-} from '@/types';
+import type { ConsistencyDiscrepancy, ConsistencyResultRow, DataTableColumn } from '@/types';
 import { cn } from '@/utils';
 import {
 	Accordion,
@@ -141,7 +137,7 @@ export function ConsistencyManagementSection() {
 							onClick={() => handleFixUser(row.userId)}
 							disabled={fixConsistency.isPending}
 						>
-							{fixConsistency.isPending ? <RefreshCw className='h-4 w-4 animate-spin-slow' /> : t(AdminKey.FIX)}
+							{!fixConsistency.isPending ? t(AdminKey.FIX) : <RefreshCw className='h-4 w-4 animate-spin-slow' />}
 						</Button>
 					</div>
 				),
@@ -327,15 +323,15 @@ export function ConsistencyManagementSection() {
 										disabled={fixConsistency.isPending}
 										className='w-full'
 									>
-										{fixConsistency.isPending ? (
-											<>
-												<RefreshCw className='h-4 w-4 me-2 animate-spin-slow' />
-												{t(AdminKey.FIXING)}
-											</>
-										) : (
+										{!fixConsistency.isPending ? (
 											<>
 												<RefreshCw className='h-4 w-4 me-2' />
 												{t(AdminKey.FIX_CONSISTENCY)}
+											</>
+										) : (
+											<>
+												<RefreshCw className='h-4 w-4 me-2 animate-spin-slow' />
+												{t(AdminKey.FIXING)}
 											</>
 										)}
 									</Button>

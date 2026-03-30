@@ -3,18 +3,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 
 import { Colors, SPRING_CONFIGS } from '@/constants';
+import { AnimatedCopyFeedbackIconVariant } from '@/constants';
 import { cn } from '@/utils';
 
-export type AnimatedCopyFeedbackIconVariant = 'default' | 'onPrimary';
 
 export const AnimatedCopyFeedbackIcon = memo(function AnimatedCopyFeedbackIcon({
 	success,
-	variant = 'default',
+	variant = AnimatedCopyFeedbackIconVariant.DEFAULT,
 }: {
 	success: boolean;
 	variant?: AnimatedCopyFeedbackIconVariant;
 }) {
-	const onPrimary = variant === 'onPrimary';
+	const onPrimary = variant === AnimatedCopyFeedbackIconVariant.ON_PRIMARY;
 	const copyIconClass = cn('h-4 w-4', onPrimary && 'text-primary-foreground');
 	const checkIconClass = cn('h-4 w-4', onPrimary ? 'text-primary-foreground' : Colors.GREEN_500.text);
 
@@ -48,3 +48,4 @@ export const AnimatedCopyFeedbackIcon = memo(function AnimatedCopyFeedbackIcon({
 		</span>
 	);
 });
+

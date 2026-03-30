@@ -5,8 +5,6 @@ import { cn } from '@/utils';
 
 export const Collapsible = CollapsiblePrimitive.Root;
 
-export const CollapsibleTrigger = CollapsiblePrimitive.CollapsibleTrigger;
-
 export const CollapsibleContent = forwardRef<
 	ElementRef<typeof CollapsiblePrimitive.CollapsibleContent>,
 	ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleContent>

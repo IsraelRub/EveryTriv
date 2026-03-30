@@ -12,7 +12,7 @@ const initialState: AudioSettingsState = {
 	isInitialized: false,
 };
 
-export const audioSettingsSlice = createSlice({
+const audioSettingsSlice = createSlice({
 	name: 'audioSettings',
 	initialState,
 	reducers: {

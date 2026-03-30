@@ -8,7 +8,6 @@ import type {
 	CreditPurchaseOption,
 	DifficultyStats,
 	TopicAnalyticsRecord,
-	TriviaQuestion,
 	TypeGuard,
 	UnifiedUserAnalyticsResponse,
 	UserSearchCacheEntry,
@@ -45,10 +44,11 @@ const hasOptionalBasicValue = (value: unknown, type: BasicValue): boolean => {
 	return hasBasicValue(value, type);
 };
 
-export const createArrayGuard =
+const createArrayGuard =
 	<T>(itemGuard: TypeGuard<T>): TypeGuard<T[]> =>
 	(value: unknown): value is T[] =>
 		Array.isArray(value) && value.every(itemGuard);
+
 
 export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalance => {
 	if (!isRecord(value)) {
@@ -59,58 +59,39 @@ export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalanc
 		hasBasicValue(value.totalCredits, 'number') &&
 		hasBasicValue(value.credits, 'number') &&
 		hasBasicValue(value.purchasedCredits, 'number') &&
-		hasBasicValue(value.freeQuestions, 'number') &&
-		hasBasicValue(value.dailyLimit, 'number') &&
-		hasBasicValue(value.canPlayFree, 'boolean') &&
-		hasOptionalBasicValue(value.nextResetTime, 'string') &&
+		hasBasicValue(value.userId, 'string') &&
 		hasOptionalBasicValue(value.nextGrantedCreditsRefillAt, 'string')
 	);
 };
 
-export const isCreditPurchaseOption = (value: unknown): value is CreditPurchaseOption => {
-	if (!isRecord(value)) {
-		return false;
+export const isCreditPurchaseOptionArray = createArrayGuard(
+	(value: unknown): value is CreditPurchaseOption => {
+		if (!isRecord(value)) {
+			return false;
+		}
+
+		return (
+			hasBasicValue(value.id, 'string') &&
+			hasBasicValue(value.credits, 'number') &&
+			hasBasicValue(value.price, 'number') &&
+			hasBasicValue(value.priceDisplay, 'string') &&
+			hasBasicValue(value.pricePerCredit, 'number') &&
+			hasOptionalBasicValue(value.description, 'string') &&
+			hasOptionalBasicValue(value.currency, 'string') &&
+			hasOptionalBasicValue(value.bonus, 'number') &&
+			hasOptionalBasicValue(value.savings, 'string') &&
+			hasOptionalBasicValue(value.popular, 'boolean') &&
+			hasOptionalBasicValue(value.paypalProductId, 'string') &&
+			hasOptionalBasicValue(value.paypalPrice, 'string') &&
+			(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
+		);
 	}
+);
 
-	return (
-		hasBasicValue(value.id, 'string') &&
-		hasBasicValue(value.credits, 'number') &&
-		hasBasicValue(value.price, 'number') &&
-		hasBasicValue(value.priceDisplay, 'string') &&
-		hasBasicValue(value.pricePerCredit, 'number') &&
-		hasOptionalBasicValue(value.description, 'string') &&
-		hasOptionalBasicValue(value.currency, 'string') &&
-		hasOptionalBasicValue(value.bonus, 'number') &&
-		hasOptionalBasicValue(value.savings, 'string') &&
-		hasOptionalBasicValue(value.popular, 'boolean') &&
-		hasOptionalBasicValue(value.paypalProductId, 'string') &&
-		hasOptionalBasicValue(value.paypalPrice, 'string') &&
-		(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
-	);
-};
-
-export const isCreditPurchaseOptionArray = createArrayGuard(isCreditPurchaseOption);
-
-const isTopicAnalyticsRecord = (value: unknown): value is TopicAnalyticsRecord => {
-	return isRecord(value) && hasBasicValue(value.topic, 'string') && hasBasicValue(value.totalGames, 'number');
-};
-
-export const isTopicAnalyticsRecordArray = createArrayGuard(isTopicAnalyticsRecord);
-
-export const isTriviaQuestionArray = (value: unknown): value is TriviaQuestion[] => {
-	return (
-		Array.isArray(value) &&
-		value.every(
-			question =>
-				isRecord(question) &&
-				hasBasicValue(question.question, 'string') &&
-				Array.isArray(question.answers) &&
-				hasBasicValue(question.correctAnswerIndex, 'number') &&
-				hasBasicValue(question.topic, 'string') &&
-				hasBasicValue(question.difficulty, 'string')
-		)
-	);
-};
+export const isTopicAnalyticsRecordArray = createArrayGuard(
+	(value: unknown): value is TopicAnalyticsRecord =>
+		isRecord(value) && hasBasicValue(value.topic, 'string') && hasBasicValue(value.totalGames, 'number')
+);
 
 export const isDifficultyStatsRecord = (value: unknown): value is Record<string, DifficultyStats> => {
 	if (!isRecord(value)) {
@@ -217,7 +198,7 @@ export const isAdminGameStatistics = (value: unknown): value is AdminGameStatist
 	);
 };
 
-const isUserTrendPoint = (value: unknown): value is UserTrendPoint => {
+const isUserTrendPointArray = createArrayGuard((value: unknown): value is UserTrendPoint => {
 	if (!isRecord(value)) {
 		return false;
 	}
@@ -230,11 +211,9 @@ const isUserTrendPoint = (value: unknown): value is UserTrendPoint => {
 		hasOptionalBasicValue(value.topic, 'string') &&
 		hasOptionalBasicValue(value.difficulty, 'string')
 	);
-};
+});
 
-export const isUserTrendPointArray = createArrayGuard(isUserTrendPoint);
-
-export const isUnifiedUserAnalyticsResponse = (value: unknown): value is UnifiedUserAnalyticsResponse => {
+const isUnifiedUserAnalyticsResponse = (value: unknown): value is UnifiedUserAnalyticsResponse => {
 	if (!isRecord(value)) {
 		return false;
 	}
@@ -262,6 +241,8 @@ export const isUnifiedUserAnalyticsResponse = (value: unknown): value is Unified
 	return true;
 };
 
+
+
 export const isAnalyticsResponseUserTrendPointArray = (
 	value: unknown
 ): value is AnalyticsResponse<UserTrendPoint[]> => {
@@ -271,7 +252,7 @@ export const isAnalyticsResponseUserTrendPointArray = (
 	return (
 		hasBasicValue(value.timestamp, 'string') &&
 		Array.isArray(value.data) &&
-		createArrayGuard(isUserTrendPoint)(value.data)
+		isUserTrendPointArray(value.data)
 	);
 };
 

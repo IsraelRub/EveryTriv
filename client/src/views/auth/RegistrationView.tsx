@@ -23,6 +23,7 @@ import {
 	VariantBase,
 	getRegisterOptionalAvatarSearch,
 } from '@/constants';
+import { LegalDocumentKind } from '@/constants';
 import type { RegistrationFieldErrors } from '@/types';
 import { audioService, authService } from '@/services';
 import { cn, getTranslatedErrorMessage, translateValidationMessage } from '@/utils';
@@ -45,7 +46,6 @@ import {
 	LegalDocumentModal,
 	Separator,
 	Spinner,
-	type LegalDocumentKind,
 } from '@/components';
 import { useCurrentUserData, useIsAuthenticated, useModalRoute, useRegister } from '@/hooks';
 
@@ -422,7 +422,7 @@ export function RegistrationView() {
 												onClick={e => {
 													e.preventDefault();
 													e.stopPropagation();
-													setLegalModalDocument('terms');
+													setLegalModalDocument(LegalDocumentKind.TERMS);
 												}}
 											/>
 										),
@@ -433,7 +433,7 @@ export function RegistrationView() {
 												onClick={e => {
 													e.preventDefault();
 													e.stopPropagation();
-													setLegalModalDocument('privacy');
+													setLegalModalDocument(LegalDocumentKind.PRIVACY);
 												}}
 											/>
 										),
@@ -450,10 +450,10 @@ export function RegistrationView() {
 					</div>
 
 					<Button type='submit' className='w-full' size={ButtonSize.LG} disabled={isLoading || !isFormValid}>
-						{isLoading ? (
-							<Spinner size={ComponentSize.SM} message={LoadingMessages.CREATING_ACCOUNT} messageInline />
-						) : (
+						{!isLoading ? (
 							t(AuthKey.CREATE_ACCOUNT)
+						) : (
+							<Spinner size={ComponentSize.SM} message={LoadingMessages.CREATING_ACCOUNT} messageInline />
 						)}
 					</Button>
 				</form>

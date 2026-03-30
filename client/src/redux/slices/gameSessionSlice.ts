@@ -26,7 +26,7 @@ const initialState: GameSessionState = {
 	lastScoreEarned: null,
 };
 
-export const gameSessionSlice = createSlice({
+const gameSessionSlice = createSlice({
 	name: 'gameSession',
 	initialState,
 	reducers: {

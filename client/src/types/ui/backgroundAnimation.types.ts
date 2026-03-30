@@ -1,8 +1,6 @@
 import type { ANIMATION_COLORS, ANIMATION_FONTS, WordDirection } from '@/constants';
 
-export type AnimationFont = (typeof ANIMATION_FONTS)[number];
 
-export type AnimationColor = (typeof ANIMATION_COLORS)[number];
 
 export interface ScreenPosition {
 	x: number;
@@ -23,3 +21,7 @@ export interface AnimatedWord {
 	maxOpacity: number;
 	rotation: number;
 }
+export type AnimationFont = (typeof ANIMATION_FONTS)[number];
+
+export type AnimationColor = (typeof ANIMATION_COLORS)[number];
+

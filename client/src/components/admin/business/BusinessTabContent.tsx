@@ -14,7 +14,7 @@ import {
 import { TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 
-import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
+import { AdminKey, BusinessTabAccordion, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
 import {
 	Accordion,
 	AccordionContent,
@@ -28,12 +28,6 @@ import {
 	StatCard,
 } from '@/components';
 import { useBusinessMetrics } from '@/hooks';
-
-const BUSINESS_ACCORDION = {
-	USER_METRICS: 'user-metrics',
-	ENGAGEMENT: 'engagement',
-	PRICING: 'pricing',
-} as const;
 
 export function BusinessTabContent() {
 	const { t } = useTranslation('admin');
@@ -90,13 +84,13 @@ export function BusinessTabContent() {
 			<Accordion
 				type='multiple'
 				defaultValue={[
-					BUSINESS_ACCORDION.USER_METRICS,
-					BUSINESS_ACCORDION.ENGAGEMENT,
-					BUSINESS_ACCORDION.PRICING,
+					BusinessTabAccordion.USER_METRICS,
+					BusinessTabAccordion.ENGAGEMENT,
+					BusinessTabAccordion.PRICING,
 				]}
 				className='w-full rounded-lg border bg-card'
 			>
-				<AccordionItem value={BUSINESS_ACCORDION.USER_METRICS}>
+				<AccordionItem value={BusinessTabAccordion.USER_METRICS}>
 					<AccordionTrigger className='px-4'>
 						<span className='flex items-center gap-2'>
 							<Users className='h-4 w-4 shrink-0 text-primary' />
@@ -133,7 +127,7 @@ export function BusinessTabContent() {
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.USER_GROWTH_DESC)}</p>
 					</AccordionContent>
 				</AccordionItem>
-				<AccordionItem value={BUSINESS_ACCORDION.ENGAGEMENT}>
+				<AccordionItem value={BusinessTabAccordion.ENGAGEMENT}>
 					<AccordionTrigger className='px-4'>
 						<span className='flex items-center gap-2'>
 							<Activity className='h-4 w-4 shrink-0 text-primary' />
@@ -174,7 +168,7 @@ export function BusinessTabContent() {
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.ENGAGEMENT_DESC)}</p>
 					</AccordionContent>
 				</AccordionItem>
-				<AccordionItem value={BUSINESS_ACCORDION.PRICING}>
+				<AccordionItem value={BusinessTabAccordion.PRICING}>
 					<AccordionTrigger className='px-4'>{t(AdminKey.PRICING_CONFIG_TITLE)}</AccordionTrigger>
 					<AccordionContent className='px-4'>
 						<PricingConfigurationSection />

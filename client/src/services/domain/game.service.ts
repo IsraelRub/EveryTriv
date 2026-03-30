@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, HTTP_TIMEOUTS, Locale } from '@shared/constants';
+import { API_ENDPOINTS, HTTP_TIMEOUTS, Locale, ValidateTextContext } from '@shared/constants';
 import type {
 	AdminGameStatistics,
 	ClearOperationResponse,
@@ -46,7 +46,7 @@ class GameService {
 
 	async validateText(
 		text: string,
-		context?: 'topic' | 'customDifficulty',
+		context?: ValidateTextContext,
 		language?: Locale
 	): Promise<LanguageValidationResult> {
 		try {

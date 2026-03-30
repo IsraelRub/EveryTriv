@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfig } from '@config';
 import { WsAuthGuard } from '@common/guards';
 import { ValidationModule } from '@common/validation';
-import { AUTH_CONSTANTS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheModule, StorageModule } from '@internal/modules';
 
@@ -28,7 +27,7 @@ import { RoomService } from './room.service';
 		GameModule, // Import GameModule to use GameService
 		JwtModule.register({
 			secret: AppConfig.jwt.secret,
-			signOptions: { expiresIn: AUTH_CONSTANTS.JWT_EXPIRATION },
+			signOptions: { expiresIn: AppConfig.jwt.expiresIn },
 		}),
 	],
 	providers: [

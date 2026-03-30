@@ -21,6 +21,7 @@ import {
 	CHART_HEIGHTS,
 	Colors,
 	CommonKey,
+	PlayTimeUnit,
 	QUERY_KEYS,
 	StatisticsPerformanceKey,
 	StatusDirection,
@@ -137,7 +138,7 @@ export function PerformanceTabContent() {
 					<StatCard
 						icon={Timer}
 						label={t(StatisticsPerformanceKey.TOTAL_PLAY_TIME)}
-						value={formatPlayTime(gameStats?.totalPlayTime ?? 0, 'seconds')}
+						value={formatPlayTime(gameStats?.totalPlayTime ?? 0, PlayTimeUnit.SECONDS)}
 						color={Colors.PURPLE_500.text}
 						isLoading={analyticsLoading}
 					/>

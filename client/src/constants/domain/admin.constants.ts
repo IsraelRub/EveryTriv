@@ -53,3 +53,42 @@ export const SYSTEM_SUB_TABS: ReadonlyArray<{ value: SystemSubTab; labelKey: str
 	{ value: SystemSubTab.CONSISTENCY, labelKey: AdminKey.SYSTEM_SUB_CONSISTENCY },
 	{ value: SystemSubTab.MAINTENANCE, labelKey: AdminKey.SYSTEM_SUB_MAINTENANCE },
 ];
+
+/** Radix Accordion `value` ids — Performance tab (admin). */
+export enum PerformanceTabAccordion {
+	GAME_STATS = 'game-stats',
+	TRENDS = 'trends',
+	CHARTS = 'charts',
+}
+
+/** Radix Accordion `value` ids — Business tab (admin). */
+export enum BusinessTabAccordion {
+	USER_METRICS = 'user-metrics',
+	ENGAGEMENT = 'engagement',
+	PRICING = 'pricing',
+}
+
+/** Radix Accordion `value` ids — expanded user analysis panel. */
+export enum UserAnalysisAccordion {
+	OVERVIEW = 'overview',
+	STATISTICS = 'statistics',
+	PERFORMANCE = 'performance',
+	INSIGHTS = 'insights',
+	RECOMMENDATIONS = 'recommendations',
+}
+
+/** Radix Accordion `value` ids — security subsection (system health). */
+export enum SystemSecurityAccordion {
+	AUTH = 'security-auth',
+	AUTHZ = 'security-authz',
+	DATA = 'security-data',
+}
+
+/** Radix Accordion `value` ids — system insights subsection. */
+export enum SystemInsightAccordion {
+	PERF = 'si-perf',
+	SEC = 'si-sec',
+	USER = 'si-user',
+	HEALTH = 'si-health',
+	TRENDS = 'si-trends',
+}

@@ -30,8 +30,8 @@ export function LeaderboardPreview() {
 				</div>
 				<ViewAllButton destination={ViewAllDestination.LEADERBOARD} visible={topPlayers.length > 0} />
 			</CardHeader>
-			<CardContent className='flex-1'>
-				<LeaderboardTable entries={topPlayers} isLoading={isLoading} />
+			<CardContent className='flex min-h-[22rem] flex-1 flex-col'>
+				<LeaderboardTable entries={topPlayers} isLoading={isLoading} fillEmptyStateHeight={true} />
 			</CardContent>
 		</Card>
 	);

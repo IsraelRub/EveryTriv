@@ -1,21 +1,9 @@
 import type { AvatarSize, AvatarVariant } from '@/constants';
 
-export interface ProfileCompletionData {
-	username: string;
-	bio: string;
-}
-
 export interface CompleteProfileProps {
 	onComplete?: (data: ProfileCompletionData) => void;
 }
 
-export interface UserAvatarSource {
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-	avatar?: number | null;
-	avatarUrl?: string | null;
-}
 
 export type UserAvatarProps = {
 	source?: UserAvatarSource | null;
@@ -49,15 +37,22 @@ export interface ChangePasswordDialogProps {
 	onOpenChange: (open: boolean) => void;
 }
 
-export type ChangePasswordValidationErrorKey =
-	| 'currentPasswordRequired'
-	| 'passwordInvalid'
-	| 'passwordConfirmationInvalid';
-
 export interface GoogleAuthButtonProps {
 	onClick: () => void | Promise<void>;
 	disabled: boolean;
 	text?: string;
 }
 
-export type ProfileNameField = 'firstName' | 'lastName';
+export interface ProfileCompletionData {
+	username: string;
+	bio: string;
+}
+
+export interface UserAvatarSource {
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+	avatar?: number | null;
+	avatarUrl?: string | null;
+}
+

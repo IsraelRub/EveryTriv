@@ -2,7 +2,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { AnalyticsResult, LeaderboardPeriod, TIME_PERIODS_MS } from '@shared/constants';
 import type {
-	AnalyticsResponse,
 	BasicValue,
 	CompleteUserAnalytics,
 	DifficultyBreakdown,
@@ -10,7 +9,6 @@ import type {
 	LeaderboardStats,
 	TrackEventResponse,
 	TrendQueryOptions,
-	UnifiedUserAnalyticsResponse,
 	UserAnalyticsQuery,
 	UserTrendPoint,
 } from '@shared/types';
@@ -29,19 +27,6 @@ export const useUserAnalytics = (options?: { staleTime?: number; refetchOnMount?
 		enabled: useIsAuthenticated(),
 		refetchOnMount: options?.refetchOnMount ?? 'always',
 		refetchOnWindowFocus: true,
-		refetchOnReconnect: true,
-	});
-};
-
-export const useUnifiedUserAnalytics = (includeSections: string[] = []) => {
-	return useQuery<AnalyticsResponse<UnifiedUserAnalyticsResponse>>({
-		queryKey: [...QUERY_KEYS.analytics.user(), 'unified', ...includeSections],
-		queryFn: () => analyticsService.getUnifiedUserAnalytics(includeSections),
-		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
-		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
-		enabled: useIsAuthenticated(),
-		refetchOnMount: 'always',
-		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,
 	});
 };

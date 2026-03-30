@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import type { DifficultyStats, LeaderboardEntry } from '@shared/types';
 
-import { StatCardVariant } from '@/constants';
+import { AdminGameStatFormat, AdminGameStatKey, StatCardVariant, StatsSectionLayout } from '@/constants';
 
 export interface UseCountUpOptions {
 	duration?: number;
@@ -34,22 +34,8 @@ export interface StatsSectionCardProps {
 	gridCols?: string;
 	isLoading?: boolean;
 	className?: string;
-	layout?: 'section' | 'plain';
+	layout?: StatsSectionLayout;
 }
-
-export enum AdminGameStatFormat {
-	INTEGER = 'integer',
-	DECIMAL = 'decimal',
-	PERCENT = 'percent',
-}
-
-export type AdminGameStatKey =
-	| 'totalGames'
-	| 'bestScore'
-	| 'averageScore'
-	| 'accuracy'
-	| 'activePlayers24h'
-	| 'totalQuestionsAnswered';
 
 export type AdminGameStatSpec = Omit<StatCardProps, 'value'> & {
 	key: AdminGameStatKey;
@@ -59,6 +45,7 @@ export type AdminGameStatSpec = Omit<StatCardProps, 'value'> & {
 export interface LeaderboardTableProps {
 	entries: LeaderboardEntry[];
 	isLoading: boolean;
+	fillEmptyStateHeight?: boolean;
 }
 
 export interface TopicData {

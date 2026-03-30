@@ -2,21 +2,7 @@ import type { IconType } from 'react-icons';
 
 import { SocialShareMode } from '@/constants';
 
-export interface SocialLinkItem {
-	name: string;
-	url: string;
-	hoverColor: string;
-	icon?: IconType;
-}
 
-export interface SocialSharePlatform {
-	name: string;
-	url: string;
-	hoverColor: string;
-	shareColor: string;
-	icon?: IconType;
-	getShareUrl: (text: string, url: string) => string;
-}
 
 export interface SocialPlatformData {
 	name: string;
@@ -35,3 +21,19 @@ export interface SocialShareProps {
 	mode: SocialShareMode;
 	shareText?: string;
 }
+export interface SocialLinkItem {
+	name: string;
+	url: string;
+	hoverColor: string;
+	icon?: IconType;
+}
+
+export interface SocialSharePlatform {
+	name: string;
+	url: string;
+	hoverColor: string;
+	shareColor: string;
+	icon?: IconType;
+	getShareUrl: (text: string, url: string) => string;
+}
+

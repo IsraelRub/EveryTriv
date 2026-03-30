@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { FileText, Shield } from 'lucide-react';
 
 import { AuthKey, ButtonSize, DialogContentSize, LegalKey, ROUTES, VariantBase } from '@/constants';
+import { LegalDocumentKind, LegalDocumentLayoutVariant } from '@/constants';
+import type { LegalDocumentModalProps } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -11,31 +13,23 @@ import { LegalDocumentPage } from './LegalDocumentPage';
 import { buildPrivacyPolicySections } from './privacyPolicySections';
 import { buildTermsOfServiceSections } from './termsOfServiceSections';
 
-export type LegalDocumentKind = 'terms' | 'privacy';
-
-export interface LegalDocumentModalProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	document: LegalDocumentKind | null;
-}
-
 export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocumentModalProps): JSX.Element {
 	const { t } = useTranslation(['legal', 'auth']);
 
 	const sections = useMemo(() => {
-		if (document === 'terms') {
+		if (document === LegalDocumentKind.TERMS) {
 			return buildTermsOfServiceSections(t);
 		}
-		if (document === 'privacy') {
+		if (document === LegalDocumentKind.PRIVACY) {
 			return buildPrivacyPolicySections(t);
 		}
 		return [];
 	}, [document, t]);
 
-	const titleKey = document === 'privacy' ? LegalKey.PRIVACY_POLICY : LegalKey.TERMS_OF_SERVICE;
-	const fullPageTo = document === 'privacy' ? ROUTES.PRIVACY : ROUTES.TERMS;
+	const titleKey = document === LegalDocumentKind.PRIVACY ? LegalKey.PRIVACY_POLICY : LegalKey.TERMS_OF_SERVICE;
+	const fullPageTo = document === LegalDocumentKind.PRIVACY ? ROUTES.PRIVACY : ROUTES.TERMS;
 	const icon =
-		document === 'privacy' ? (
+		document === LegalDocumentKind.PRIVACY ? (
 			<Shield className='h-6 w-6 text-primary md:h-8 md:w-8' />
 		) : (
 			<FileText className='h-6 w-6 text-primary md:h-8 md:w-8' />
@@ -52,7 +46,7 @@ export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocume
 						<DialogDescription className='sr-only'>{t(titleKey)}</DialogDescription>
 						<div className='flex min-h-0 flex-1 flex-col px-4 pt-4'>
 							<LegalDocumentPage
-								variant='embedded'
+								variant={LegalDocumentLayoutVariant.EMBEDDED}
 								icon={icon}
 								titleKey={titleKey}
 								sections={sections}
@@ -77,3 +71,4 @@ export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocume
 		</Dialog>
 	);
 }
+

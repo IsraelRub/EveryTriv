@@ -5,7 +5,7 @@ import type { GameConfig } from '@shared/types';
 
 import { initialGameModeState } from '@/constants';
 
-export const gameModeStateSlice = createSlice({
+const gameModeStateSlice = createSlice({
 	name: 'gameMode',
 	initialState: initialGameModeState,
 	reducers: {

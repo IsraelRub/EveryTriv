@@ -1,9 +1,10 @@
 import { lazy } from 'react';
 
+import { DashboardTabBundle } from '@/constants';
 import type { NormalizedDashboardTab, TabImportsMap, TabModuleLoader, TabSpec } from '@/types';
 
-const TAB_IMPORTS: Record<'statistics' | 'admin', TabImportsMap> = {
-	statistics: {
+const TAB_IMPORTS: Record<DashboardTabBundle, TabImportsMap> = {
+	[DashboardTabBundle.STATISTICS]: {
 		PerformanceTabContent: () => import('@/components/statistics/performance/PerformanceTabContent'),
 		HistoryTabContent: () => import('@/components/statistics/history/HistoryTabContent'),
 		LeaderboardTabContent: () => import('@/components/statistics/leaderboard/LeaderboardTabContent'),
@@ -31,7 +32,7 @@ export function buildDashboardTabsConfig(tabs: TabSpec[], loadModule: TabModuleL
 	}));
 }
 
-export function createTabLoader(kind: 'statistics' | 'admin'): TabModuleLoader {
+export function createTabLoader(kind: DashboardTabBundle): TabModuleLoader {
 	const imports = TAB_IMPORTS[kind];
 	return (componentName: string) => {
 		const load = imports[componentName];

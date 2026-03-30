@@ -1,50 +1,5 @@
-export { default as gameModeSlice, setGameMode } from './gameModeSlice';
-export {
-	default as gameSessionSlice,
-	ensureGameStartTime,
-	startGameSession,
-	setQuestions,
-	appendQuestions,
-	setGameQuestionCount,
-	setQuestionIndex,
-	selectAnswer,
-	setAnswered,
-	updateScore,
-	updateTimeSpent,
-	moveToNextQuestion,
-	setLoading,
-	setCreditsDeducted,
-	addAnswerHistory,
-	setAnswerHistory,
-	finalizeGame,
-	syncGameId,
-	resetGameSession,
-} from './gameSessionSlice';
-export {
-	default as multiplayerSlice,
-	setConnectionStatus,
-	setRoom,
-	updateGameState,
-	setError,
-	setMultiplayerLoading,
-	setRevealPhase,
-	pushPersonalAnswerEntry,
-	clearPersonalAnswerHistory,
-	resetMultiplayer,
-} from './multiplayerSlice';
-export {
-	default as audioSettingsSlice,
-	setVolume,
-	setSoundEffectsVolume,
-	setMusicVolume,
-	setMuted,
-	setSoundEnabled,
-	setMusicEnabled,
-	setInitialized,
-} from './audioSettingsSlice';
-export {
-	default as uiPreferencesSlice,
-	setLeaderboardPeriod,
-	resetLeaderboardPeriod,
-	setLocale,
-} from './uiPreferencesSlice';
+export { setGameMode } from './gameModeSlice';
+export { ensureGameStartTime, startGameSession, setQuestions, appendQuestions, setGameQuestionCount, setQuestionIndex, selectAnswer, setAnswered, updateScore, updateTimeSpent, moveToNextQuestion, setLoading, setCreditsDeducted, addAnswerHistory, setAnswerHistory, finalizeGame, syncGameId, resetGameSession } from './gameSessionSlice';
+export { setConnectionStatus, setRoom, updateGameState, setError, setMultiplayerLoading, setRevealPhase, pushPersonalAnswerEntry, clearPersonalAnswerHistory, resetMultiplayer } from './multiplayerSlice';
+export { setVolume, setSoundEffectsVolume, setMusicVolume, setMuted, setSoundEnabled, setMusicEnabled, setInitialized } from './audioSettingsSlice';
+export { setLeaderboardPeriod, resetLeaderboardPeriod } from './uiPreferencesSlice';

@@ -52,7 +52,7 @@ export function ConfirmClearDialog({
 						}}
 						disabled={isLoading}
 					>
-						{isLoading ? t(LoadingKey.CLEARING) : t(AdminKey.CLEAR_ALL_ITEM, { itemName })}
+						{!isLoading ? t(AdminKey.CLEAR_ALL_ITEM, { itemName }) : t(LoadingKey.CLEARING)}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

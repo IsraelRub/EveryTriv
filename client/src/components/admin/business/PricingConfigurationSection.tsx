@@ -126,7 +126,7 @@ export function PricingConfigurationSection() {
 							{t(AdminKey.RESTORE_DEFAULTS)}
 						</Button>
 						<Button size={ButtonSize.SM} onClick={handleSave} disabled={!hasChanges || updatePricing.isPending}>
-							{updatePricing.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+							{!updatePricing.isPending ? <Save className='h-4 w-4' /> : <Loader2 className='h-4 w-4 animate-spin' />}
 							{t(CommonKey.SAVE)}
 						</Button>
 					</div>

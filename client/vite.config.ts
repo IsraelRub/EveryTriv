@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 
 import type { ViteProxyConfig } from '@shared/types';
 
-import { APP_NAME, HttpMethod, LOCALHOST_CONFIG } from '../shared/constants';
+import { APP_NAME, HttpMethod, LOCALHOST_CONFIG, TIME_PERIODS_MS } from '../shared/constants';
 
 const HTML_APP_NAME_PLACEHOLDER = '__APP_NAME__';
 
@@ -23,8 +23,10 @@ export default defineConfig({
 		emptyOutDir: true,
 		rollupOptions: {
 			external: id => {
-				const nodeModules = ['fs', 'path', 'util', 'stream'];
-				return nodeModules.some(module => id.includes(module));
+				// Match Node core modules only by exact id — do NOT use id.includes('util')
+				// or '@shared/utils' is treated as external (substring "util" inside "utils").
+				const core = ['fs', 'path', 'util', 'stream'] as const;
+				return core.some(m => id === m || id === `node:${m}`);
 			},
 		},
 	},
@@ -68,7 +70,7 @@ export default defineConfig({
 			overlay: false, // Disable error overlay that can interfere with extensions
 			port: 24678, // Use a specific port for HMR
 			clientPort: 24678, // Ensure client connects to the right port
-			timeout: 30000, // Increase timeout to prevent connection issues
+			timeout: TIME_PERIODS_MS.THIRTY_SECONDS, // Increase timeout to prevent connection issues
 			protocol: 'ws', // Use WebSocket protocol
 			host: 'localhost', // Use localhost for HMR
 		},
@@ -77,14 +79,13 @@ export default defineConfig({
 	},
 	// Handle SPA routing - serve index.html for all routes
 	preview: {
-		port: 5173,
+		port: LOCALHOST_CONFIG.ports.CLIENT,
 	},
 	resolve: {
 		alias: {
-			'@': path.resolve(__dirname, './src'), // This maps @/* to ./src/*
-			src: path.resolve(__dirname, './src'), // This maps src/* to ./src/*
-			'@shared': path.resolve(__dirname, '../shared'), // This maps @shared to ../shared
-			'@shared/*': path.resolve(__dirname, '../shared/*'), // This maps @shared/* to ../shared/*
+			'@': path.resolve(__dirname, './src'),
+			src: path.resolve(__dirname, './src'),
+			'@shared': path.resolve(__dirname, '../shared'),
 		},
 	},
 	define: {

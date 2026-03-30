@@ -2,9 +2,8 @@ import type { TFunction } from 'i18next';
 import { Baby, Cookie, Database, Eye, History, Lock, Mail, Scale, Share, ShieldCheck } from 'lucide-react';
 
 import { LegalKey, ROUTES } from '@/constants';
+import type { LegalDocumentSectionSpec } from '@/types';
 import { NavLink } from '@/components/navigation/NavLink';
-
-import type { LegalDocumentSectionSpec } from './LegalDocumentPage';
 
 export function buildPrivacyPolicySections(t: TFunction<'legal'>): LegalDocumentSectionSpec[] {
 	return [

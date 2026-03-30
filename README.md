@@ -18,7 +18,7 @@
 
 תיעוד מפורט נוסף מחולק לפי תחומים חדשים:
 
-- Backend Features: `docs/backend/features/` (מודולים: Auth, User, Game, Analytics, Leaderboard, Credits, Payment)
+- Backend Features: `docs/backend/features/README.md` (כולל Auth, User, Game, Multiplayer, Analytics, Leaderboard, Credits, Payment, Admin, Maintenance)
 - Frontend Structure: `docs/frontend/` (State, Hooks, Services, Components, Routing)
 - Shared Layer: `docs/shared/` (Types, Validation, Constants, Utilities)
 

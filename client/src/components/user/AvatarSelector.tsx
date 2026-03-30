@@ -167,7 +167,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 									className='gap-2'
 								>
 									<Upload className='h-4 w-4' />
-									{uploadAvatar.isPending ? t(LoadingKey.SAVING) : t(AuthKey.UPLOAD_PHOTO)}
+									{!uploadAvatar.isPending ? t(AuthKey.UPLOAD_PHOTO) : t(LoadingKey.SAVING)}
 								</Button>
 								<p className='text-xs text-muted-foreground'>{t(AuthKey.IMAGE_FORMAT_HINT)}</p>
 							</>
@@ -243,7 +243,7 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 						{t(CommonKey.CANCEL)}
 					</Button>
 					<Button onClick={handleSave} disabled={setAvatar.isPending || uploadAvatar.isPending}>
-						{setAvatar.isPending ? t(LoadingKey.SAVING) : t(CommonKey.SAVE)}
+						{!setAvatar.isPending ? t(CommonKey.SAVE) : t(LoadingKey.SAVING)}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

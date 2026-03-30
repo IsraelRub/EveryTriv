@@ -9,6 +9,7 @@ import {
 	AdminKey,
 	ButtonSize,
 	CommonKey,
+	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
 	ROLE_BADGE_CLASSES,
 	SortDirection,
@@ -16,7 +17,7 @@ import {
 	UserSortField,
 	VariantBase,
 } from '@/constants';
-import { DataTableColumnType, type DataTableColumn, type UserTableRow } from '@/types';
+import type { DataTableColumn, UserTableRow } from '@/types';
 import { calculateTotalPages } from '@/utils';
 import { Button, Card, CardContent, CardDescription, CardTitle, DataTableCard, Input, Label } from '@/components';
 import {
@@ -253,77 +254,77 @@ export function UsersTable() {
 
 	return (
 		<DataTableCard<UserTableRow>
-				header={{
-					title: (
-						<CardTitle className='flex items-center gap-2'>
-							<BookUser className='h-5 w-5 text-primary' />
-							{t(AdminKey.ALL_USERS)}
-						</CardTitle>
-					),
-					description: (
-						<CardDescription>
-							{isSearchMode
-								? `${displayTotal} result${displayTotal !== 1 ? 's' : ''} for "${searchSubmitted}"`
-								: `Showing ${startIndex + 1}-${endIndex} of ${totalUsers} users`}
-							{isSearchMode && totalUsers > 0 ? ` (${totalUsers} total)` : ''}
-						</CardDescription>
-					),
-					pagination:
-						!isSearchMode && totalPages > 1
-							? (() => {
-									const hasPrevious = offset > 0;
-									const hasNext = offset + limit < totalUsers;
-									return {
-										hasPrevious,
-										hasNext,
-										onPrevious: () => hasPrevious && setOffset(offset - limit),
-										onNext: () => hasNext && setOffset(offset + limit),
-										currentPage: Math.floor(offset / limit) + 1,
-										totalPages,
-										disabled: isLoading,
-									};
-								})()
-							: null,
-				}}
-				filters={
-					<>
-						<div className='flex items-center gap-2'>
-							<Label className='text-sm font-medium'>{t(CommonKey.SEARCH)}:</Label>
-							<Input
-								placeholder={t(AdminKey.USERS_SEARCH_PLACEHOLDER)}
-								value={searchQuery}
-								onChange={e => setSearchQuery(e.target.value)}
-								className='w-full min-w-0 max-w-[220px]'
-							/>
-						</div>
-						{searchQuery.length > 0 && (
-							<Button
-								variant={VariantBase.MINIMAL}
-								size={ButtonSize.SM}
-								onClick={() => {
-									setSearchQuery('');
-									setSearchSubmitted('');
-								}}
-							>
-								{t(AdminKey.CLEAR_SEARCH)}
-							</Button>
-						)}
-					</>
-				}
-				columns={columns}
-				data={paginatedList}
-				getRowKey={row => row.id}
-				isLoading={isLoadingTable}
-				emptyState={{
-					title: isSearchMode ? t(AdminKey.NO_MATCHING_USERS) : t(AdminKey.NO_USERS_FOUND),
-					description: isSearchMode ? t(AdminKey.NO_MATCHING_USERS_DESC) : t(AdminKey.NO_USERS_FOUND_DESC),
-				}}
-				emptyValue={EMPTY_VALUE}
-				sortBy={sortBy}
-				sortDirection={sortDirection}
-				onSort={onSort}
-				expandedRowId={selectedUserId}
-				renderExpandedRow={renderExpandedRow}
-			/>
+			header={{
+				title: (
+					<CardTitle className='flex items-center gap-2'>
+						<BookUser className='h-5 w-5 text-primary' />
+						{t(AdminKey.ALL_USERS)}
+					</CardTitle>
+				),
+				description: (
+					<CardDescription>
+						{isSearchMode
+							? `${displayTotal} result${displayTotal !== 1 ? 's' : ''} for "${searchSubmitted}"`
+							: `Showing ${startIndex + 1}-${endIndex} of ${totalUsers} users`}
+						{isSearchMode && totalUsers > 0 ? ` (${totalUsers} total)` : ''}
+					</CardDescription>
+				),
+				pagination:
+					!isSearchMode && totalPages > 1
+						? (() => {
+								const hasPrevious = offset > 0;
+								const hasNext = offset + limit < totalUsers;
+								return {
+									hasPrevious,
+									hasNext,
+									onPrevious: () => hasPrevious && setOffset(offset - limit),
+									onNext: () => hasNext && setOffset(offset + limit),
+									currentPage: Math.floor(offset / limit) + 1,
+									totalPages,
+									disabled: isLoading,
+								};
+							})()
+						: null,
+			}}
+			filters={
+				<>
+					<div className='flex items-center gap-2'>
+						<Label className='text-sm font-medium'>{t(CommonKey.SEARCH)}:</Label>
+						<Input
+							placeholder={t(AdminKey.USERS_SEARCH_PLACEHOLDER)}
+							value={searchQuery}
+							onChange={e => setSearchQuery(e.target.value)}
+							className='w-full min-w-0 max-w-[220px]'
+						/>
+					</div>
+					{searchQuery.length > 0 && (
+						<Button
+							variant={VariantBase.MINIMAL}
+							size={ButtonSize.SM}
+							onClick={() => {
+								setSearchQuery('');
+								setSearchSubmitted('');
+							}}
+						>
+							{t(AdminKey.CLEAR_SEARCH)}
+						</Button>
+					)}
+				</>
+			}
+			columns={columns}
+			data={paginatedList}
+			getRowKey={row => row.id}
+			isLoading={isLoadingTable}
+			emptyState={{
+				title: isSearchMode ? t(AdminKey.NO_MATCHING_USERS) : t(AdminKey.NO_USERS_FOUND),
+				description: isSearchMode ? t(AdminKey.NO_MATCHING_USERS_DESC) : t(AdminKey.NO_USERS_FOUND_DESC),
+			}}
+			emptyValue={EMPTY_VALUE}
+			sortBy={sortBy}
+			sortDirection={sortDirection}
+			onSort={onSort}
+			expandedRowId={selectedUserId}
+			renderExpandedRow={renderExpandedRow}
+		/>
 	);
 }

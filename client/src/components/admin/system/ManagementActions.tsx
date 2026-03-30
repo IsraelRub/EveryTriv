@@ -45,10 +45,10 @@ export function ManagementActions({ operations }: ManagementActionsProps) {
 											{t(AdminKey.RECORDS)}
 										</p>
 										<div className='text-2xl font-bold'>
-											{operation.isLoading ? (
-												<Skeleton variant={SkeletonVariant.IconNarrow} />
-											) : (
+											{!operation.isLoading ? (
 												operation.currentCount.toLocaleString()
+											) : (
+												<Skeleton variant={SkeletonVariant.IconNarrow} />
 											)}
 										</div>
 									</div>
@@ -65,7 +65,7 @@ export function ManagementActions({ operations }: ManagementActionsProps) {
 									className='w-full'
 								>
 									<Trash2 className='h-4 w-4 me-2 shrink-0' />
-									{operation.isLoading ? t(LoadingKey.CLEARING) : t(AdminKey.CLEAR_ALL)}
+									{!operation.isLoading ? t(AdminKey.CLEAR_ALL) : t(LoadingKey.CLEARING)}
 								</Button>
 							</AccordionContent>
 						</AccordionItem>

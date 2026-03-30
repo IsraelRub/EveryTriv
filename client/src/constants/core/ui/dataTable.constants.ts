@@ -2,11 +2,14 @@ export const EMPTY_CELL_CLASS = 'text-muted-foreground';
 
 export const HEADER_ICON_CLASS = 'h-4 w-4';
 
-export const TABLE_HEADER_LABELS = {
-	USER_ID: 'User ID',
-	EMAIL: 'Email',
-	NAME: 'Name',
-	ROLE: 'Role',
-	CREATED_AT: 'Created At',
-	LAST_LOGIN: 'Last Login',
-} as const;
+export enum DataTableColumnType {
+	TEXT = 'text',
+	TEXT_PRIMARY = 'text-primary',
+	DATE = 'date',
+	DATE_OPTIONAL = 'date-optional',
+	BADGE = 'badge',
+	BADGE_DIFFICULTY = 'badge-difficulty',
+	BADGE_ROLE = 'badge-role',
+	TRUNCATE = 'truncate',
+	CUSTOM = 'custom',
+}

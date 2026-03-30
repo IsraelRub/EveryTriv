@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "$comment": "Shared files are ignored because they are used via TypeScript path aliases (@shared/*) which knip doesn't fully detect. All shared/**/*.ts files are actively used in the codebase.",
   "workspaces": {
     ".": {
       "entry": [],
@@ -28,6 +27,15 @@
     "client/src/redux/slices/index.ts",
     "client/src/types/user/index.ts",
     "client/src/views/leaderboard/index.ts",
+    "client/src/components/statistics/performance/PerformanceTabContent.tsx",
+    "client/src/components/statistics/history/HistoryTabContent.tsx",
+    "client/src/components/statistics/leaderboard/LeaderboardTabContent.tsx",
+    "client/src/components/admin/performance/PerformanceTabContent.tsx",
+    "client/src/components/admin/trivia/TriviaManagementTable.tsx",
+    "client/src/components/admin/users/UsersTable.tsx",
+    "client/src/components/admin/business/BusinessTabContent.tsx",
+    "client/src/components/admin/system/SystemTabContent.tsx",
+    "client/src/components/admin/aiProviders/ProviderManagementSection.tsx",
     "server/src/features/**/index.ts",
     "server/src/internal/modules/**/index.ts",
     "server/src/internal/modules/cache/dtos/**/*.ts",
@@ -35,46 +43,24 @@
     "tools/.prettierrc",
     "OLD/**/*"
   ],
-  "ignoreDependencies": [
-    "@types/*",
-    "typescript",
-    "eslint*",
-    "prettier*",
-    "@ianvs/prettier-plugin-sort-imports",
-    "ts-node",
-    "tsconfig-paths",
-    "source-map-support",
-    "rimraf",
-    "ts-loader",
-    "supertest",
-    "autoprefixer",
-    "postcss",
-    "@typescript-eslint/eslint-plugin",
-    "@typescript-eslint/parser",
-    "eslint-import-resolver-typescript",
-    "eslint-plugin-import",
-    "eslint-plugin-react"
-  ],
+  "ignoreDependencies": ["@types/*", "eslint*", "prettier*"],
   "ignoreBinaries": [
-    "tsc",
-    "nest",
-    "vite",
+    "powershell",
+    "repomix",
     "rimraf",
-    "copy",
     "webdb",
-    "docker-compose"
+    "docker",
+    "scriptsdevelopmentstart-dev-with-info.bat",
+    "scriptsdockerstart-docker-with-info.bat"
   ],
-  "tsconfig": {
-    "client": "./client/tsconfig.json",
-    "server": "./server/tsconfig.json",
-    ".": "./shared/tsconfig.json"
-  },
   "rules": {
     "exports": "warn",
     "files": "warn",
     "dependencies": "warn",
     "devDependencies": "warn",
     "unlisted": "warn",
-    "binaries": "warn"
+    "binaries": "warn",
+    "types": "off",
+    "enumMembers": "off"
   }
 }

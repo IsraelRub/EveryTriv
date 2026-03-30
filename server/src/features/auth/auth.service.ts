@@ -3,7 +3,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { ErrorCode, TIME_DURATIONS_SECONDS, UserRole, VALIDATION_LENGTH } from '@shared/constants';
+import { ErrorCode, LogContext, TIME_DURATIONS_SECONDS, UserRole, VALIDATION_LENGTH } from '@shared/constants';
 import type { ChangePasswordData } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, sanitizeEmail, truncateWithEllipsis } from '@shared/utils';
 
@@ -61,8 +61,6 @@ export class AuthService {
 			emailVerified: false,
 			credits: isAdmin ? null : undefined, // NULL for admin (not applicable), default (150) for regular users
 			purchasedCredits: 0,
-			dailyFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions
-			remainingFreeQuestions: isAdmin ? 0 : undefined, // Admin doesn't need free questions
 		});
 
 		const savedUser = await this.userRepository.save(user);
@@ -149,7 +147,7 @@ export class AuthService {
 
 		if (!sessionResult.success) {
 			logger.userWarn('Failed to store user session data', {
-				context: 'AUTH',
+				context: LogContext.AUTH,
 				userId: user.id,
 				errorInfo: { message: getErrorMessage(sessionResult.error) },
 			});
@@ -497,7 +495,7 @@ export class AuthService {
 			return 'Password changed successfully';
 		} catch (error) {
 			logger.authError('Failed to change password', {
-				context: 'AUTH',
+				context: LogContext.AUTH,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
@@ -519,7 +517,8 @@ export class AuthService {
 		const token = randomUUID();
 		const cacheKey = SERVER_CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
 		await this.cacheService.set(cacheKey, userId, TIME_DURATIONS_SECONDS.DAY);
-		const baseUrl = process.env.SERVER_PUBLIC_URL ?? `http://${AppConfig.domain}:${AppConfig.port}`;
+		const baseUrl =
+			process.env.SERVER_PUBLIC_URL ?? process.env.SERVER_URL ?? `http://${AppConfig.domain}:${AppConfig.port}`;
 		const verificationLink = `${baseUrl}/auth/verify-email?token=${token}`;
 		logger.authInfo('Verification link requested', { userId });
 		return { verificationLink };

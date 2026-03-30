@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 
-import { ErrorCode, LOCALHOST_CONFIG, VALIDATION_LENGTH } from '@shared/constants';
+import { ErrorCode, LOCALHOST_CONFIG, LogContext, VALIDATION_LENGTH } from '@shared/constants';
 import { getErrorMessage, isRecord, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
@@ -137,7 +137,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				logger.securityError('Google OAuth profile missing ID', {
 					errorInfo: { message: ErrorCode.PROFILE_ID_MISSING },
 					provider: 'google',
-					context: 'GoogleStrategy',
+					context: LogContext.GOOGLE_STRATEGY,
 					profileKeys: Object.keys(actualProfile),
 				});
 				throw new Error(ErrorCode.GOOGLE_PROFILE_ID_MISSING);
@@ -149,7 +149,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				emails: { current: actualProfile.emails?.[0]?.value ?? '' },
 				id: actualProfile.id,
 				provider: 'google',
-				context: 'GoogleStrategy',
+				context: LogContext.GOOGLE_STRATEGY,
 			});
 
 			// Extract name from Google profile
@@ -207,7 +207,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 				errorInfo: { message: getErrorMessage(error) },
 				id: profileId,
 				provider: 'google',
-				context: 'GoogleStrategy',
+				context: LogContext.GOOGLE_STRATEGY,
 			});
 			throw error;
 		}

@@ -1,7 +1,7 @@
 import { Column, Entity, Index, OneToMany, OneToOne } from 'typeorm';
 
 import { UserRole } from '@shared/constants';
-import type { SavedAchievement, UserPreferences } from '@shared/types';
+import type { UserPreferences } from '@shared/types';
 
 import { BaseEntity } from './base.entity';
 import { CreditTransactionEntity } from './creditTransaction.entity';
@@ -37,15 +37,6 @@ export class UserEntity extends BaseEntity {
 	@Column({ name: 'purchased_credits', type: 'int', default: 0 })
 	purchasedCredits: number = 0;
 
-	@Column({ name: 'daily_free_questions', type: 'int', default: 20 })
-	dailyFreeQuestions: number = 20;
-
-	@Column({ name: 'remaining_free_questions', type: 'int', default: 20 })
-	remainingFreeQuestions: number = 20;
-
-	@Column({ name: 'last_free_questions_reset', type: 'date', nullable: true })
-	lastFreeQuestionsReset?: Date;
-
 	@Column({ name: 'last_login', type: 'timestamp', nullable: true })
 	lastLogin?: Date;
 
@@ -62,15 +53,11 @@ export class UserEntity extends BaseEntity {
 	preferences: Partial<UserPreferences> = {};
 
 	@Column({ name: 'custom_avatar', type: 'bytea', nullable: true })
-	customAvatar?: Buffer;
+	customAvatar?: Buffer | null;
 
 	@Column({ name: 'custom_avatar_mime', type: 'varchar', length: 30, nullable: true })
-	customAvatarMime?: string;
+	customAvatarMime?: string | null;
 
-	@Column('jsonb', { default: [] })
-	achievements: SavedAchievement[];
-
-	// Relations
 	@OneToOne(() => UserStatsEntity, userStats => userStats.user)
 	userStats?: UserStatsEntity;
 

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { ADMIN_TAB_PARAM, ADMIN_TABS, AdminKey } from '@/constants';
+import { ADMIN_TAB_PARAM, ADMIN_TABS, AdminKey, DashboardTabBundle } from '@/constants';
 import { queryInvalidationService } from '@/services';
 import { createTabLoader } from '@/utils';
 import { DashboardWithTabs } from '@/components';
@@ -12,7 +12,7 @@ export function AdminDashboard() {
 	const { t } = useTranslation('admin');
 	const queryClient = useQueryClient();
 	const { refetch } = useGlobalStats(true);
-	const loadModule = useMemo(() => createTabLoader('admin'), []);
+	const loadModule = useMemo(() => createTabLoader(DashboardTabBundle.ADMIN), []);
 
 	const onRefresh = useCallback(async () => {
 		await queryInvalidationService.invalidateAdminDashboardQueries(queryClient);

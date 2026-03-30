@@ -7,6 +7,7 @@ import {
 	HTTP_CLIENT_CONFIG,
 	HTTP_STATUS_CODES,
 	HttpMethod,
+	isLocalhostClientOrigin,
 	LOCALHOST_CONFIG,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
@@ -51,11 +52,14 @@ export class ApiConfig {
 	}
 
 	static getOAuthBaseUrl(): string {
-		if (typeof window !== 'undefined' && window.location?.origin === LOCALHOST_CONFIG.urls.CLIENT) {
+		if (
+			typeof window !== 'undefined' &&
+			isNonEmptyString(window.location?.origin) &&
+			isLocalhostClientOrigin(window.location.origin)
+		) {
 			return LOCALHOST_CONFIG.urls.SERVER;
 		}
-		const serverUrl = import.meta.env.VITE_SERVER_URL;
-		return isNonEmptyString(serverUrl) ? serverUrl : ApiConfig.getBaseUrl();
+		return ApiConfig.getBaseUrl();
 	}
 }
 

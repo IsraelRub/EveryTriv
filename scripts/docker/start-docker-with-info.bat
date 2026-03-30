@@ -14,8 +14,10 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo Building and starting Docker containers...
-docker-compose -f tools/docker/docker-compose.yaml up --build -d
+echo Building and starting Docker containers (app + dev profile: pgAdmin, Redis Commander, WebDB)...
+pushd "%~dp0..\.."
+docker compose --profile dev up --build -d
+popd
 
 echo.
 echo Waiting for services to be ready...
@@ -23,7 +25,9 @@ timeout /t 15 /nobreak >nul
 
 echo.
 echo Checking service status...
-docker-compose -f tools/docker/docker-compose.yaml ps
+pushd "%~dp0..\.."
+docker compose ps
+popd
 
 echo.
 echo ========================================
@@ -51,4 +55,6 @@ pause >nul
 
 echo.
 echo Showing live logs (Ctrl+C to exit):
-docker-compose -f tools/docker/docker-compose.yaml logs -f
+pushd "%~dp0..\.."
+docker compose logs -f
+popd

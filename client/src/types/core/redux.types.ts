@@ -4,7 +4,6 @@ import type { AnswerHistory, GameState, MultiplayerRoom, TriviaQuestion } from '
 import { LoadingMessages } from '@/constants';
 import type { GameModeState } from '../domain/game';
 
-export type { AppDispatch } from '@/redux/store';
 
 export interface GameSessionState {
 	gameId: string | null;
@@ -39,6 +38,8 @@ export interface AudioSettingsState {
 
 export interface MultiplayerAnswerBreakdownEntry {
 	question: string;
+	/** Stable id for dedupe when the same question text appears more than once */
+	questionId?: string;
 	isCorrect: boolean;
 	correctAnswerText?: string;
 	userAnswerText?: string;
@@ -52,7 +53,6 @@ export interface MultiplayerState {
 	isLoading: boolean;
 	revealPhase: boolean;
 	personalAnswerHistory: MultiplayerAnswerBreakdownEntry[];
-
 	answerCountsForQuestionId: string | null;
 }
 

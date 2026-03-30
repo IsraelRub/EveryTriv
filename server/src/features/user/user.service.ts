@@ -7,6 +7,7 @@ import {
 	AVATAR_UPLOAD_MAX_BYTES,
 	DEFAULT_USER_PREFERENCES,
 	ErrorCode,
+	LogContext,
 	TIME_DURATIONS_SECONDS,
 	UserRole,
 	UserStatus,
@@ -79,7 +80,7 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.userError('Failed to get user profile', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
@@ -127,7 +128,7 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.userError('Failed to update user profile', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
@@ -148,8 +149,8 @@ export class UserService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			user.customAvatar = undefined;
-			user.customAvatarMime = undefined;
+			user.customAvatar = null;
+			user.customAvatarMime = null;
 			user.preferences = mergeUserPreferences(user.preferences, {
 				avatar: isClear ? undefined : avatarId,
 			});
@@ -176,7 +177,7 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.userError('Failed to set user avatar', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				avatar: avatarId,
@@ -246,6 +247,7 @@ export class UserService {
 
 		user.customAvatar = buffer;
 		user.customAvatarMime = mime;
+		user.preferences = mergeUserPreferences(user.preferences, { avatar: undefined });
 		const updatedUser = await this.userRepository.save(user);
 
 		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
@@ -331,7 +333,7 @@ export class UserService {
 			);
 		} catch (error) {
 			logger.userError('Failed to search users', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				query,
 			});
@@ -358,7 +360,7 @@ export class UserService {
 			return 'Account deleted successfully';
 		} catch (error) {
 			logger.userError('Failed to delete user account', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
@@ -387,7 +389,7 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.userError('Failed to update user preferences', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});
@@ -411,8 +413,6 @@ export class UserService {
 				isActive: { type: 'boolean' },
 				credits: { type: 'number' },
 				purchasedCredits: { type: 'number' },
-				dailyFreeQuestions: { type: 'number' },
-				remainingFreeQuestions: { type: 'number' },
 			};
 
 			// Handle special fields
@@ -451,7 +451,7 @@ export class UserService {
 			return updatedUser;
 		} catch (error) {
 			logger.userError('Failed to update user field', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				fields: [field],
@@ -485,7 +485,7 @@ export class UserService {
 			return updatedUser;
 		} catch (error) {
 			logger.userError('Failed to update single preference', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				preference,
@@ -514,7 +514,7 @@ export class UserService {
 			return updatedUser;
 		} catch (error) {
 			logger.userError('Failed to update user credits', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId: data.userId,
 				amount: data.amount,
@@ -526,7 +526,7 @@ export class UserService {
 	async updateUserStatus(userId: string, status: UserStatus): Promise<UserEntity> {
 		try {
 			logger.userInfo('Updating user status', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				userId,
 				status,
 			});
@@ -547,7 +547,7 @@ export class UserService {
 			return updatedUser;
 		} catch (error) {
 			logger.userError('Failed to update user status', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 				status,
@@ -587,7 +587,7 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.userError('Failed to deduct credits', {
-				context: 'UserService',
+				context: LogContext.USER_SERVICE,
 				errorInfo: { message: getErrorMessage(error) },
 				userId: data.userId,
 				amount: data.amount,

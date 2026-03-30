@@ -6,6 +6,7 @@ export interface PayPalLinks {
 	method: string;
 }
 
+
 export interface PayPalAccessTokenResponse {
 	access_token: string;
 	token_type: string;
@@ -35,6 +36,8 @@ export interface PayPalPurchaseUnit {
 	};
 }
 
+
+
 export interface PayPalOrderResponse {
 	id: string;
 	intent: string;
@@ -53,6 +56,7 @@ export interface PayPalCapture {
 	create_time: string;
 	update_time: string;
 }
+
 
 export interface PayPalCaptureResponse {
 	id: string;

@@ -15,6 +15,7 @@ import {
 	ErrorCode,
 	GameMode,
 	HttpMethod,
+	LOCALHOST_CLIENT_ORIGINS,
 	LOCALHOST_CONFIG,
 	Locale,
 	MULTIPLAYER_TIME_PER_QUESTION,
@@ -43,7 +44,12 @@ import { RoomService } from './room.service';
 @WebSocketGateway({
 	namespace: '/multiplayer',
 	cors: {
-		origin: [process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT, 'http://localhost:5173', 'http://localhost:3001'],
+		origin: [
+			...new Set([
+				process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT,
+				...LOCALHOST_CLIENT_ORIGINS,
+			]),
+		],
 		methods: [HttpMethod.GET, HttpMethod.POST],
 		credentials: true,
 	},

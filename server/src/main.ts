@@ -2,13 +2,7 @@
 // prettier-ignore
 import 'tsconfig-paths/register';
 
-// eslint-disable-next-line simple-import-sort/imports
-// prettier-ignore
-import * as dotenv from 'dotenv';
-
-// eslint-disable-next-line simple-import-sort/imports
-// prettier-ignore
-dotenv.config({ override: true });
+import './load-env';
 
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
@@ -18,6 +12,7 @@ import { json, urlencoded } from "express";
 import {
   API_VERSION,
   HttpMethod,
+  LOCALHOST_CLIENT_ORIGINS,
   LOCALHOST_CONFIG,
   MESSAGE_FORMATTERS,
   TIME_PERIODS_MS,
@@ -64,12 +59,17 @@ async function bootstrap() {
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-    if (
-      !googleClientId ||
-      !googleClientSecret ||
-      googleClientId === "your-google-client-id.apps.googleusercontent.com" ||
-      googleClientSecret === "GOCSPX-your-google-client-secret"
-    ) {
+    const googleClientIdValue = googleClientId?.trim().toLowerCase() ?? "";
+    const googleClientSecretValue = googleClientSecret?.trim().toLowerCase() ?? "";
+    const hasGooglePlaceholderValue =
+      googleClientIdValue === "your-google-client-id.apps.googleusercontent.com" ||
+      googleClientIdValue === "your-google-client-id-here" ||
+      googleClientIdValue.includes("your-google-client-id") ||
+      googleClientSecretValue === "gocspx-your-google-client-secret" ||
+      googleClientSecretValue === "your-google-client-secret-here" ||
+      googleClientSecretValue.includes("your-google-client-secret");
+
+    if (!googleClientId || !googleClientSecret || hasGooglePlaceholderValue) {
       console.warn(MESSAGE_FORMATTERS.oauth.credentialsMissing("GoogleOAuth"));
       console.warn(
         MESSAGE_FORMATTERS.oauth.warn(
@@ -116,8 +116,15 @@ async function bootstrap() {
     await redisIoAdapter.connectToRedis();
     app.useWebSocketAdapter(redisIoAdapter);
 
+    const corsOrigins = [
+      ...new Set([
+        process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT,
+        ...LOCALHOST_CLIENT_ORIGINS,
+      ]),
+    ];
+
     app.enableCors({
-      origin: process.env.CLIENT_URL || LOCALHOST_CONFIG.urls.CLIENT,
+      origin: corsOrigins,
       credentials: true,
       methods: Object.values(HttpMethod),
       allowedHeaders: [

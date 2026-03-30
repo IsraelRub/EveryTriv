@@ -55,12 +55,6 @@ export interface GameSessionHudProps extends GameTimerProps {
 	timerAside?: ReactNode;
 }
 
-export interface QuestionBreakdownEntry {
-	question: string;
-	isCorrect: boolean;
-	correctAnswerText?: string;
-	userAnswerText?: string;
-}
 
 export interface QuestionBreakdownProps {
 	entries: QuestionBreakdownEntry[];
@@ -120,8 +114,22 @@ export interface GameSettingsFormProps {
 	showMaxPlayers?: boolean;
 }
 
+export interface SurpriseMeDialogProps {
+	onTopicChange: (topic: string) => void;
+	onDifficultyChange: (difficulty: DifficultyLevel) => void;
+	onCustomDifficultyChange: (customDifficulty: string) => void;
+	onCustomDifficultyErrorChange: (error: string) => void;
+}
+
 export interface SummaryActionButtonsProps {
 	playAgainTo: string;
 	onBeforeNavigate?: () => void;
 	share?: SocialShareProps;
 }
+export interface QuestionBreakdownEntry {
+	question: string;
+	isCorrect: boolean;
+	correctAnswerText?: string;
+	userAnswerText?: string;
+}
+

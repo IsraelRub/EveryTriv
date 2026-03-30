@@ -1,10 +1,10 @@
+import type { DataSourceOptions } from 'typeorm';
 import { ERROR_MESSAGES, LOCALHOST_CONFIG, PayPalEnvironment } from '@shared/constants';
 
 import {
-	ADMIN_CREDENTIALS_DEFAULTS,
+	AUTH_CONSTANTS,
 	DATABASE_DEFAULTS,
 	DATABASE_POOL_CONFIG,
-	JWT_DEFAULTS,
 	REDIS_DEFAULTS,
 	REDIS_RETRY_STRATEGY_CONFIG,
 } from '@internal/constants';
@@ -28,18 +28,18 @@ export class AppConfig {
 	}
 
 	static get apiPublicBaseUrl(): string {
-		return process.env.API_PUBLIC_BASE_URL ?? LOCALHOST_CONFIG.urls.SERVER;
+		return process.env.API_PUBLIC_BASE_URL ?? process.env.SERVER_URL ?? LOCALHOST_CONFIG.urls.SERVER;
 	}
 
 	static get corsOrigin() {
-		return process.env.CORS_ORIGIN ?? LOCALHOST_CONFIG.urls.CLIENT;
+		return process.env.CORS_ORIGIN ?? process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT;
 	}
 
 	static get cookieSecret() {
 		return process.env.COOKIE_SECRET;
 	}
 
-	static createDatabaseConfig() {
+	static get database() {
 		const password = process.env.DATABASE_PASSWORD;
 		if (!password || typeof password !== 'string') {
 			throw new Error(ERROR_MESSAGES.config.DATABASE_PASSWORD_REQUIRED);
@@ -58,8 +58,17 @@ export class AppConfig {
 		};
 	}
 
-	static get database() {
-		return AppConfig.createDatabaseConfig();
+	static createTypeOrmDataSourceOptions(): DataSourceOptions {
+		const db = AppConfig.database;
+		const { name, pool, ...connection } = db;
+		return {
+			type: 'postgres',
+			...connection,
+			database: name,
+			entities: [`${__dirname}/../**/*.entity{.ts,.js}`],
+			migrations: [`${__dirname}/../migrations/*{.ts,.js}`],
+			extra: { ...pool },
+		};
 	}
 
 	static get redis() {
@@ -90,8 +99,8 @@ export class AppConfig {
 	static get jwt() {
 		return {
 			secret: process.env.JWT_SECRET,
-			expiresIn: process.env.JWT_EXPIRES_IN ?? JWT_DEFAULTS.expiresIn,
-			refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? JWT_DEFAULTS.refreshExpiresIn,
+			expiresIn: process.env.JWT_EXPIRES_IN ?? AUTH_CONSTANTS.JWT_EXPIRATION,
+			refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? AUTH_CONSTANTS.JWT_REFRESH_EXPIRATION,
 		};
 	}
 
@@ -100,13 +109,6 @@ export class AppConfig {
 			rateLimitingEnabled: process.env.ENABLE_RATE_LIMIT !== 'false',
 			aiFallbackEnabled: process.env.DISABLE_AI_FALLBACK !== 'true',
 			bypassRateLimitForLocalhost: process.env.DISABLE_RATE_LIMIT_FOR_LOCALHOST !== 'false',
-		};
-	}
-
-	static get adminCredentials() {
-		return {
-			email: process.env.ADMIN_EMAIL?.trim() ?? ADMIN_CREDENTIALS_DEFAULTS.email,
-			password: process.env.ADMIN_PASSWORD ?? ADMIN_CREDENTIALS_DEFAULTS.password,
 		};
 	}
 

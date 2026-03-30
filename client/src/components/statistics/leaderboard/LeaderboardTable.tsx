@@ -16,23 +16,28 @@ import { cn } from '@/utils';
 import { EmptyState, UserAvatar } from '@/components';
 import { LeaderboardSkeleton } from '../skeleton';
 
-export const LeaderboardTable = memo(function LeaderboardTable({ entries, isLoading }: LeaderboardTableProps) {
+export const LeaderboardTable = memo(function LeaderboardTable({
+	entries,
+	isLoading,
+	fillEmptyStateHeight = false,
+}: LeaderboardTableProps) {
 	const { t } = useTranslation();
 	if (isLoading) {
 		return <LeaderboardSkeleton />;
 	}
 
-	// Ensure entries is an array
 	const entriesArray = Array.isArray(entries) ? entries : [];
 
 	if (!entriesArray || entriesArray.length === 0) {
 		return (
-			<EmptyState
-				data='leaderboard'
-				title={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_TITLE)}
-				description={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_DESCRIPTION)}
-				showPlayNow={false}
-			/>
+			<div className={cn('flex items-center justify-center', fillEmptyStateHeight && 'h-full')}>
+				<EmptyState
+					data='leaderboard'
+					title={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_TITLE)}
+					description={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_DESCRIPTION)}
+					showPlayNow={false}
+				/>
+			</div>
 		);
 	}
 

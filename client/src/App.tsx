@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { PersistGate } from 'redux-persist/integration/react';
 
-import { LoadingMessages } from '@/constants';
+import { FullPageSpinnerLayout, LoadingMessages } from '@/constants';
 import { AppAuthBootstrap, BackgroundAnimation, ErrorBoundary, FullPageSpinner, LocaleSync } from '@/components';
 import { useAppInitialization, useAuthLogoutHandler } from '@/hooks';
 import { persistor } from '@/redux/store';
@@ -17,7 +17,7 @@ export default function App() {
 				loading={
 					<div className='app-shell'>
 						<BackgroundAnimation />
-						<FullPageSpinner message={LoadingMessages.LOADING_APP} layout='appShell' showHomeButton={false} />
+						<FullPageSpinner message={LoadingMessages.LOADING_APP} layout={FullPageSpinnerLayout.APP_SHELL} showHomeButton={false} />
 					</div>
 				}
 				persistor={persistor}

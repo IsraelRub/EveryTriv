@@ -12,7 +12,6 @@ export * from './dialog';
 export * from './dropdown-menu';
 export * from './EmptyState';
 export * from './ErrorBoundary';
-export * from './form';
 export * from './input';
 export * from './label';
 export * from './numberInput';

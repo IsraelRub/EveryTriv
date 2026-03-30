@@ -57,11 +57,4 @@ export class GameHistoryEntity extends BaseEntity {
 	@Column({ name: 'client_mutation_id', type: 'uuid', nullable: true })
 	@Index({ unique: true, where: 'client_mutation_id IS NOT NULL' })
 	clientMutationId?: string;
-
-	get incorrectAnswers(): number {
-		return Math.max(0, this.gameQuestionCount - this.correctAnswers);
-	}
 }
-
-// Index on createdAt (inherited from BaseEntity)
-// This index is also defined in the migration: IDX_game_history_created_at

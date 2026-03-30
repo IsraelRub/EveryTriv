@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { TIME_PERIODS_MS, TimePeriod, VALIDATION_COUNT } from '@shared/constants';
 import type { AnalyticsResponse, CountRecord, UserTrendPoint } from '@shared/types';
-import { calculateScoreRate, clamp, groupByBy, sumBy } from '@shared/utils';
+import { calculateScoreRate, clamp, groupByKey, sumBy } from '@shared/utils';
 
 import type { GameHistoryEntity } from '@internal/entities';
 import type { BuildTrendsOptions } from '@internal/types';
@@ -97,7 +97,7 @@ export class AnalyticsCommonService {
 			});
 		}
 
-		const grouped = groupByBy(gameHistory, game => {
+		const grouped = groupByKey(gameHistory, game => {
 			const createdAt = game.createdAt ? new Date(game.createdAt) : new Date();
 			return this.getPeriodKey(createdAt, groupBy);
 		});

@@ -8,7 +8,6 @@ export const Colors = {
 	CYAN_500: { text: 'text-cyan-500', bg: 'bg-cyan-500', border: 'border-cyan-500' },
 	GRAY_400: { text: 'text-gray-400', bg: 'bg-gray-400', border: 'border-gray-400' },
 	AMBER_600: { text: 'text-amber-600', bg: 'bg-amber-600', border: 'border-amber-600' },
-	INDIGO_500: { text: 'text-indigo-500', bg: 'bg-indigo-500', border: 'border-indigo-500' },
 };
 
 export enum CssColor {
@@ -17,7 +16,6 @@ export enum CssColor {
 	CARD = 'hsl(var(--card))',
 	BORDER = 'hsl(var(--border))',
 	FOREGROUND = 'hsl(var(--foreground))',
-	MUTED = 'hsl(var(--muted))',
 	SUCCESS_500 = 'hsl(var(--color-success-500))',
 	WARNING_500 = 'hsl(var(--color-warning-500))',
 	DESTRUCTIVE = 'hsl(var(--destructive))',
@@ -29,6 +27,7 @@ export enum CssColor {
 	CHART_5 = 'hsl(var(--chart-5))',
 	MUTED_FOREGROUND_20 = 'hsl(var(--muted-foreground) / 0.2)',
 	MUTED_20 = 'hsl(var(--muted) / 0.2)',
+	MUTED = 'hsl(var(--muted))',
 }
 
 export const CHART_COLORS = [

@@ -33,15 +33,7 @@ export const PopularTopicsSection = memo(function PopularTopicsSection() {
 				<CardDescription>{t(HomeKey.POPULAR_TOPICS_DESC)}</CardDescription>
 			</CardHeader>
 			<CardContent className='flex-1'>
-				{isLoading ? (
-					<div className='flex flex-col gap-2'>
-						<Skeleton
-							variant={SkeletonVariant.IconNarrow}
-							count={SKELETON_PLACEHOLDER_COUNTS.LIST}
-							className='rounded-full'
-						/>
-					</div>
-				) : (
+				{!isLoading ? (
 					<div className='flex flex-col gap-2 items-start'>
 						{topics.map(topicItem => (
 							<Badge
@@ -58,6 +50,14 @@ export const PopularTopicsSection = memo(function PopularTopicsSection() {
 								)}
 							</Badge>
 						))}
+					</div>
+				) : (
+					<div className='flex flex-col gap-2'>
+						<Skeleton
+							variant={SkeletonVariant.IconNarrow}
+							count={SKELETON_PLACEHOLDER_COUNTS.LIST}
+							className='rounded-full'
+						/>
 					</div>
 				)}
 			</CardContent>

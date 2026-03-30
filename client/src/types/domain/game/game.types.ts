@@ -5,11 +5,6 @@ import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry, Trivi
 
 import { RANK_DISPLAY, TextLanguageStatus } from '@/constants';
 
-export interface CustomSettings {
-	questionCount: number;
-	timePerQuestion: number;
-	difficultyValue: number;
-}
 
 export interface GameModeState {
 	currentMode: GameMode;
@@ -93,3 +88,9 @@ export interface UseGameSettingsFormReturn {
 	validateSettings: () => GameSettingsValidationResult;
 	resetForm: () => void;
 }
+export interface CustomSettings {
+	questionCount: number;
+	timePerQuestion: number;
+	difficultyValue: number;
+}
+

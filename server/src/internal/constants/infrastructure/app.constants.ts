@@ -28,12 +28,9 @@ export const REDIS_RETRY_STRATEGY_CONFIG = {
 	targetError: 'READONLY',
 } as const;
 
-export const JWT_DEFAULTS = {
-	expiresIn: '1h',
-	refreshExpiresIn: '7d',
-} as const;
-
 export const ADMIN_CREDENTIALS_DEFAULTS = {
 	email: 'admin@example.com',
 	password: 'AdminPass123!',
+	firstName: 'Admin',
+	lastName: 'Tester',
 } as const;

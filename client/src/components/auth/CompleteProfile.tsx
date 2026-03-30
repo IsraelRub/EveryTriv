@@ -16,13 +16,14 @@ import {
 	ROUTES,
 	STORAGE_KEYS,
 } from '@/constants';
-import type { CompleteProfileProps, ProfileFieldErrors, ProfileNameField } from '@/types';
+import { ProfileNameField } from '@/constants';
+import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
 import { getTranslatedErrorMessage, profileResponseToBasicUser, translateValidationMessage } from '@/utils';
 import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 
 function validateProfileNameField(name: ProfileNameField, value: string): string | null {
-	const lengthKey = name === 'firstName' ? LengthKey.FIRST_NAME : LengthKey.LAST_NAME;
+	const lengthKey = name === ProfileNameField.FIRST_NAME ? LengthKey.FIRST_NAME : LengthKey.LAST_NAME;
 	const result = validateStringLength(value, lengthKey);
 	return result.isValid ? null : (result.errors[0] ?? null);
 }
@@ -40,14 +41,14 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 	const isFormValid = useCallback((): boolean => {
 		return (
-			validateProfileNameField('firstName', form.firstName) === null &&
-			validateProfileNameField('lastName', form.lastName) === null
+			validateProfileNameField(ProfileNameField.FIRST_NAME, form.firstName) === null &&
+			validateProfileNameField(ProfileNameField.LAST_NAME, form.lastName) === null
 		);
 	}, [form.firstName, form.lastName]);
 
 	const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
-		if (name !== 'firstName' && name !== 'lastName') return;
+		if (name !== ProfileNameField.FIRST_NAME && name !== ProfileNameField.LAST_NAME) return;
 		setForm(prev => ({ ...prev, [name]: value }));
 		setError(null);
 		const fieldError = validateProfileNameField(name, value);
@@ -66,8 +67,8 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 			logger.userInfo('Profile completion started');
 
 			try {
-				const firstNameError = validateProfileNameField('firstName', form.firstName);
-				const lastNameError = validateProfileNameField('lastName', form.lastName);
+				const firstNameError = validateProfileNameField(ProfileNameField.FIRST_NAME, form.firstName);
+				const lastNameError = validateProfileNameField(ProfileNameField.LAST_NAME, form.lastName);
 
 				const newFieldErrors: ProfileFieldErrors = {};
 				if (firstNameError) newFieldErrors.firstName = translateValidationMessage(firstNameError, t);
@@ -200,10 +201,10 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 					<div className='flex gap-4'>
 						<Button type='submit' className='flex-1' disabled={loading || !isFormValid()}>
-							{loading ? (
-								<Spinner size={ComponentSize.SM} message={t(LoadingKey.SAVING)} messageInline />
-							) : (
+							{!loading ? (
 								t(AuthKey.COMPLETE_PROFILE_BUTTON)
+							) : (
+								<Spinner size={ComponentSize.SM} message={t(LoadingKey.SAVING)} messageInline />
 							)}
 						</Button>
 					</div>

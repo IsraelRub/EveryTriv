@@ -10,6 +10,7 @@ import {
 	AdminKey,
 	ButtonSize,
 	CommonKey,
+	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
 	FILTER_ALL_VALUE,
 	SortDirection,
@@ -17,7 +18,7 @@ import {
 	TriviaSortField,
 	VariantBase,
 } from '@/constants';
-import { DataTableColumnType, type DataTableColumn } from '@/types';
+import type { DataTableColumn } from '@/types';
 import { getDifficultyDisplayLabel } from '@/utils';
 import {
 	Button,

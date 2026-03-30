@@ -17,38 +17,15 @@ import {
 } from 'lucide-react';
 
 import { EMPTY_VALUE } from '@shared/constants';
-import type {
-	SystemRecommendation,
-	UserAnalyticsRecord,
-	UserInsightsData,
-	UserPerformanceMetrics,
-	UserSummaryData,
-} from '@shared/types';
 import { formatDate, formatNumericValue, formatTitle } from '@shared/utils';
 
 import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, StatCardVariant } from '@/constants';
+import { UserAnalysisAccordion } from '@/constants';
+import type { UserAnalysisExpandedPanelProps } from '@/types';
+import { cn } from '@/utils';
 import { StatCard } from '@/components/statistics/StatCard';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/utils';
-
-const USER_ANALYSIS_ACCORDION_VALUES = {
-	OVERVIEW: 'overview',
-	STATISTICS: 'statistics',
-	PERFORMANCE: 'performance',
-	INSIGHTS: 'insights',
-	RECOMMENDATIONS: 'recommendations',
-} as const;
-
-export interface UserAnalysisExpandedPanelProps {
-	analysisLoading: boolean;
-	summaryError: boolean;
-	summaryData: UserSummaryData | undefined;
-	statisticsData: UserAnalyticsRecord | undefined;
-	performanceData: UserPerformanceMetrics | undefined;
-	insightsData: UserInsightsData | undefined;
-	recommendationsData: SystemRecommendation[] | undefined;
-}
 
 export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel({
 	analysisLoading,
@@ -71,12 +48,12 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 		);
 	}, [insightsData, summaryData]);
 
-	const defaultOpenSections = useMemo((): string[] => {
-		const keys: string[] = [USER_ANALYSIS_ACCORDION_VALUES.OVERVIEW];
-		if (statisticsData != null) keys.push(USER_ANALYSIS_ACCORDION_VALUES.STATISTICS);
-		if (performanceData != null) keys.push(USER_ANALYSIS_ACCORDION_VALUES.PERFORMANCE);
-		if (hasInsightsBlock) keys.push(USER_ANALYSIS_ACCORDION_VALUES.INSIGHTS);
-		if ((recommendationsData?.length ?? 0) > 0) keys.push(USER_ANALYSIS_ACCORDION_VALUES.RECOMMENDATIONS);
+	const defaultOpenSections = useMemo((): UserAnalysisAccordion[] => {
+		const keys: UserAnalysisAccordion[] = [UserAnalysisAccordion.OVERVIEW];
+		if (statisticsData != null) keys.push(UserAnalysisAccordion.STATISTICS);
+		if (performanceData != null) keys.push(UserAnalysisAccordion.PERFORMANCE);
+		if (hasInsightsBlock) keys.push(UserAnalysisAccordion.INSIGHTS);
+		if ((recommendationsData?.length ?? 0) > 0) keys.push(UserAnalysisAccordion.RECOMMENDATIONS);
 		return keys;
 	}, [statisticsData, performanceData, hasInsightsBlock, recommendationsData]);
 
@@ -109,7 +86,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 	return (
 		<div className='space-y-3 p-4 pt-0'>
 			<Accordion type='multiple' defaultValue={defaultOpenSections} className='w-full'>
-				<AccordionItem value={USER_ANALYSIS_ACCORDION_VALUES.OVERVIEW}>
+				<AccordionItem value={UserAnalysisAccordion.OVERVIEW}>
 					<AccordionTrigger>{t(AdminKey.USER_ANALYSIS_SECTION_OVERVIEW)}</AccordionTrigger>
 					<AccordionContent className='space-y-4'>
 						<div className='grid grid-cols-1 gap-4 text-sm'>
@@ -162,7 +139,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 				</AccordionItem>
 
 				{statisticsData != null ? (
-					<AccordionItem value={USER_ANALYSIS_ACCORDION_VALUES.STATISTICS}>
+					<AccordionItem value={UserAnalysisAccordion.STATISTICS}>
 						<AccordionTrigger>{t(AdminKey.USER_ANALYSIS_SECTION_STATISTICS)}</AccordionTrigger>
 						<AccordionContent>
 							<div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
@@ -201,7 +178,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 				) : null}
 
 				{performanceData != null ? (
-					<AccordionItem value={USER_ANALYSIS_ACCORDION_VALUES.PERFORMANCE}>
+					<AccordionItem value={UserAnalysisAccordion.PERFORMANCE}>
 						<AccordionTrigger>{t(AdminKey.USER_ANALYSIS_SECTION_PERFORMANCE)}</AccordionTrigger>
 						<AccordionContent>
 							<div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
@@ -239,7 +216,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 				) : null}
 
 				{hasInsightsBlock && insightsData != null ? (
-					<AccordionItem value={USER_ANALYSIS_ACCORDION_VALUES.INSIGHTS}>
+					<AccordionItem value={UserAnalysisAccordion.INSIGHTS}>
 						<AccordionTrigger>{t(AdminKey.INSIGHTS)}</AccordionTrigger>
 						<AccordionContent>
 							<div className='grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-4'>
@@ -278,9 +255,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 									<div className='rounded-lg bg-muted/50 p-4 transition-colors hover-row'>
 										<div className='mb-2 flex items-center gap-2'>
 											<TrendingUp className={cn('h-5 w-5 flex-shrink-0', Colors.AMBER_600.text)} strokeWidth={2.25} />
-											<span className='font-medium text-amber-600 dark:text-amber-400'>
-												{t(AdminKey.IMPROVEMENTS)}
-											</span>
+											<span className='font-medium text-amber-600 dark:text-amber-400'>{t(AdminKey.IMPROVEMENTS)}</span>
 										</div>
 										<ul className='list-inside list-disc space-y-0.5'>
 											{insightsData.improvements.map((s, i) => (
@@ -308,7 +283,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 				) : null}
 
 				{recommendationsData != null && recommendationsData.length > 0 ? (
-					<AccordionItem value={USER_ANALYSIS_ACCORDION_VALUES.RECOMMENDATIONS}>
+					<AccordionItem value={UserAnalysisAccordion.RECOMMENDATIONS}>
 						<AccordionTrigger>{t(AdminKey.RECOMMENDATIONS)}</AccordionTrigger>
 						<AccordionContent>
 							<div className='flex flex-wrap gap-2'>

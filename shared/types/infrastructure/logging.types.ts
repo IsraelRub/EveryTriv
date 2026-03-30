@@ -1,6 +1,15 @@
 // Shared types for logging system across client and server.
 import type { GameData } from '..';
-import type { GameMode, LogLevel, PaymentMethod, PlanType, UserRole, UserStatus } from '../../constants';
+import {
+	LogContext,
+	type GameMode,
+	type LogLevel,
+	type PaymentMethod,
+	type PlanType,
+	type UserRole,
+	type UserStatus,
+	type ValidateTextContext,
+} from '../../constants';
 import type { BasicValue } from '../core';
 import type { GameDifficulty } from '../domain/game/trivia.types';
 import { User, UserPreferences } from '../domain/user/user.types';
@@ -20,33 +29,6 @@ export interface HttpLogData {
 	sessionId?: string;
 	additionalData?: Record<string, BasicValue>;
 }
-
-export type LogContext =
-	| 'API'
-	| 'AUTH'
-	| 'DATABASE'
-	| 'USER'
-	| 'PERFORMANCE'
-	| 'VALIDATION'
-	| 'SECURITY'
-	| 'SYSTEM'
-	| 'HTTP'
-	| 'GAME'
-	| 'PAYMENT'
-	| 'TRIVIA'
-	| 'CACHE'
-	| 'REPOSITORY'
-	| 'ANALYTICS'
-	| 'PROVIDER'
-	| 'STORAGE'
-	| 'NAVIGATION'
-	| 'LANGUAGE_TOOL'
-	| 'PerformanceInterceptor'
-	| 'UserService'
-	| 'UserCoreService'
-	| 'AiProvidersService'
-	| 'AuthenticationManager'
-	| 'GoogleStrategy';
 
 export interface BaseLogger {
 	// Session and trace management
@@ -293,7 +275,6 @@ export interface LogMeta {
 	bodyLength?: number;
 	burstCount?: number;
 	canPlay?: boolean;
-	canPlayFree?: boolean;
 	captureId?: string;
 	callbackURL?: string;
 	chart?: string;
@@ -372,10 +353,9 @@ export interface LogMeta {
 	finalizedCount?: number;
 	fixed?: boolean;
 	fixedCount?: number;
-	field?: keyof User | 'isActive' | 'dailyFreeQuestions' | 'remainingFreeQuestions';
+	field?: keyof User | 'isActive';
 	fields?: string[];
 	forceFullUpdate?: boolean;
-	freeQuestions?: number;
 	gameData?: GameData;
 	gameId?: string;
 	gameRecord?: Record<string, unknown>;
@@ -605,7 +585,7 @@ export interface LogMeta {
 	validation?: string;
 	validationType?: string;
 
-	validateTextContext?: 'topic' | 'customDifficulty';
+	validateTextContext?: ValidateTextContext;
 	value?: BasicValue;
 	valueLength?: number;
 	version?: string;
@@ -636,3 +616,5 @@ export interface LoggerConfigUpdate {
 export type LogMessageFn = (message: string, meta?: LogMeta) => void;
 
 export type LogErrorFn = (messageOrError: string | Error, meta?: LogMeta) => void;
+
+export { LogContext };

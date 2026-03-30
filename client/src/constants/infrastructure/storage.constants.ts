@@ -40,18 +40,9 @@ export const STORAGE_KEYS = {
 
 export const AUTH_TOKEN_CHANGED_EVENT = 'auth-token-changed';
 
-export type StaticStorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
-export type MultiplayerSummaryStorageKey = `${typeof STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX}${string}`;
-export type ErrorLogStorageKey = `error-log-${string}`;
 export type StorageKey = StaticStorageKey | MultiplayerSummaryStorageKey | ErrorLogStorageKey;
 
-export function isMultiplayerSummaryStorageKey(key: string): key is MultiplayerSummaryStorageKey {
-	return key.startsWith(STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX);
-}
 
-export function isErrorLogStorageKey(key: string): key is ErrorLogStorageKey {
-	return key.startsWith(`${STORAGE_KEYS.ERROR_LOG}-`);
-}
 
 export function getMultiplayerSummaryStorageKey(roomId: string): MultiplayerSummaryStorageKey {
 	const key = `${STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX}${roomId}`;
@@ -65,13 +56,27 @@ export function getErrorLogStorageKey(featureName: string): ErrorLogStorageKey {
 	return key;
 }
 
-export type SessionStorageKey =
-	| typeof STORAGE_KEYS.AUTH_TOKEN
-	| typeof STORAGE_KEYS.REFRESH_TOKEN
-	| typeof STORAGE_KEYS.AUTH_USER;
 
 export const AUTH_STORAGE_KEYS = new Set<StorageKey>([
 	STORAGE_KEYS.AUTH_TOKEN,
 	STORAGE_KEYS.REFRESH_TOKEN,
 	STORAGE_KEYS.AUTH_USER,
 ]);
+function isMultiplayerSummaryStorageKey(key: string): key is MultiplayerSummaryStorageKey {
+	return key.startsWith(STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX);
+}
+
+function isErrorLogStorageKey(key: string): key is ErrorLogStorageKey {
+	return key.startsWith(`${STORAGE_KEYS.ERROR_LOG}-`);
+}
+
+export type StaticStorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
+
+export type MultiplayerSummaryStorageKey = `${typeof STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX}${string}`;
+export type ErrorLogStorageKey = `error-log-${string}`;
+
+export type SessionStorageKey =
+	| typeof STORAGE_KEYS.AUTH_TOKEN
+	| typeof STORAGE_KEYS.REFRESH_TOKEN
+	| typeof STORAGE_KEYS.AUTH_USER;
+

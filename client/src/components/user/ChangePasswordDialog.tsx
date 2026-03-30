@@ -5,7 +5,8 @@ import { CheckCircle, Key } from 'lucide-react';
 import { LengthKey, validatePasswordMatch, validateStringLength } from '@shared/validation';
 
 import { AlertIconSize, AuthKey, Colors, CommonKey, ValidationKey, VariantBase } from '@/constants';
-import type { ChangePasswordDialogProps, ChangePasswordValidationErrorKey } from '@/types';
+import { ChangePasswordValidationErrorKey } from '@/constants';
+import type { ChangePasswordDialogProps } from '@/types';
 import { clientLogger as logger } from '@/services';
 import { cn } from '@/utils';
 import {
@@ -35,15 +36,15 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 
 	const validatePasswordField = (name: string, value: string): ChangePasswordValidationErrorKey | null => {
 		if (name === 'currentPassword') {
-			if (!value.trim()) return 'currentPasswordRequired';
+			if (!value.trim()) return ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED;
 		}
 		if (name === 'newPassword') {
 			const validation = validateStringLength(value, LengthKey.PASSWORD);
-			return validation.isValid ? null : 'passwordInvalid';
+			return validation.isValid ? null : ChangePasswordValidationErrorKey.PASSWORD_INVALID;
 		}
 		if (name === 'confirmPassword') {
 			const validation = validatePasswordMatch(passwordData.newPassword, value);
-			return validation.isValid ? null : 'passwordConfirmationInvalid';
+			return validation.isValid ? null : ChangePasswordValidationErrorKey.PASSWORD_CONFIRMATION_INVALID;
 		}
 		return null;
 	};
@@ -145,9 +146,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							<p className='text-sm text-destructive flex items-center gap-1'>
 								<AlertIcon size={AlertIconSize.SM} />
 								{t(
-									passwordFieldErrors.currentPassword === 'currentPasswordRequired'
+									passwordFieldErrors.currentPassword ===
+										ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
 										? ValidationKey.CURRENT_PASSWORD_REQUIRED
-										: passwordFieldErrors.currentPassword === 'passwordInvalid'
+										: passwordFieldErrors.currentPassword === ChangePasswordValidationErrorKey.PASSWORD_INVALID
 											? ValidationKey.PASSWORD_INVALID
 											: ValidationKey.PASSWORD_CONFIRMATION_INVALID
 								)}
@@ -196,9 +198,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							<p className='text-sm text-destructive flex items-center gap-1'>
 								<AlertIcon size={AlertIconSize.SM} />
 								{t(
-									passwordFieldErrors.confirmPassword === 'currentPasswordRequired'
+									passwordFieldErrors.confirmPassword ===
+										ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
 										? ValidationKey.CURRENT_PASSWORD_REQUIRED
-										: passwordFieldErrors.confirmPassword === 'passwordInvalid'
+										: passwordFieldErrors.confirmPassword === ChangePasswordValidationErrorKey.PASSWORD_INVALID
 											? ValidationKey.PASSWORD_INVALID
 											: ValidationKey.PASSWORD_CONFIRMATION_INVALID
 								)}
@@ -210,7 +213,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							{t(CommonKey.CANCEL)}
 						</Button>
 						<Button onClick={handlePasswordSave} disabled={changePassword.isPending || !isPasswordFormValid}>
-							{changePassword.isPending ? t(AuthKey.CHANGING) : t(AuthKey.CHANGE_PASSWORD_BUTTON)}
+							{!changePassword.isPending ? t(AuthKey.CHANGE_PASSWORD_BUTTON) : t(AuthKey.CHANGING)}
 						</Button>
 					</div>
 				</div>

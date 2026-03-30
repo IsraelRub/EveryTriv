@@ -140,8 +140,7 @@ export class UserAnalyticsService {
 
 					const credits = user.credits ?? 0;
 					const purchasedCredits = user.purchasedCredits ?? 0;
-					const freeQuestions = user.remainingFreeQuestions ?? 0;
-					const totalCredits = credits + purchasedCredits + freeQuestions;
+					const totalCredits = credits + purchasedCredits;
 
 					const difficultyBreakdown: DifficultyBreakdown = {};
 					const breakdownEntries = gameAnalytics.difficultyBreakdown ?? {};
@@ -820,8 +819,7 @@ export class UserAnalyticsService {
 	): UserSummaryData {
 		const credits = user.credits ?? 0;
 		const purchasedCredits = user.purchasedCredits ?? 0;
-		const freeQuestions = user.remainingFreeQuestions ?? 0;
-		const totalCredits = credits + purchasedCredits + freeQuestions;
+		const totalCredits = credits + purchasedCredits;
 
 		const basicInfo = {
 			userId: user.id,

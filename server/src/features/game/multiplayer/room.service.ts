@@ -470,8 +470,8 @@ export class RoomService {
 					if (incoming.joinedAt !== undefined) existing.joinedAt = RoomService.toDate(incoming.joinedAt);
 					if (incoming.lastActivity !== undefined) existing.lastActivity = RoomService.toDate(incoming.lastActivity);
 					if (incoming.isHost !== undefined) existing.isHost = incoming.isHost;
-					if (incoming.currentAnswer !== undefined) existing.currentAnswer = incoming.currentAnswer;
-					if (incoming.timeSpent !== undefined) existing.timeSpent = incoming.timeSpent;
+					if ('currentAnswer' in incoming) existing.currentAnswer = incoming.currentAnswer;
+					if ('timeSpent' in incoming) existing.timeSpent = incoming.timeSpent;
 					if (incoming.answersSubmitted !== undefined) existing.answersSubmitted = incoming.answersSubmitted;
 					if (incoming.correctAnswers !== undefined) existing.correctAnswers = incoming.correctAnswers;
 				} else {

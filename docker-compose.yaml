@@ -7,7 +7,8 @@ services:
     environment:
       POSTGRES_DB: everytriv
       POSTGRES_USER: everytriv_user
-      POSTGRES_PASSWORD: test123
+      # Same value as server DATABASE_PASSWORD (project .env when present).
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-test123}
     ports:
       - '5432:5432'
     volumes:
@@ -25,13 +26,17 @@ services:
     image: redis:7-alpine
     container_name: everytriv-redis
     restart: unless-stopped
-    command: redis-server --requirepass R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!}
+      # So redis-cli in healthcheck authenticates (matches requirepass).
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!}
+    command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     ports:
       - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,49 +48,12 @@ services:
     build: 
       context: .
       dockerfile: server/Dockerfile
-      args:
-        NODE_ENV: prod
-        DATABASE_HOST: postgres
-        DATABASE_PORT: 5432
-        DATABASE_USERNAME: everytriv_user
-        DATABASE_NAME: everytriv
-        REDIS_HOST: redis
-        REDIS_PORT: 6379
-        PORT: 3002
-        LANGUAGE_TOOL_API_KEY: ${LANGUAGE_TOOL_API_KEY:-your-language-tool-api-key-here}
     container_name: everytriv-server
     restart: unless-stopped
-    environment:
-      - NODE_ENV=prod
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5432
-      - DATABASE_USERNAME=everytriv_user
-      - DATABASE_NAME=everytriv
-      - DATABASE_SCHEMA=public
-      - DATABASE_SSL=false
-      - DATABASE_PASSWORD=test123
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - REDIS_PASSWORD=R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
-      - JWT_EXPIRES_IN=1d
-      - PORT=3002
-      - CORS_ORIGIN=http://localhost:3000
-      - LOG_LEVEL=info
-      - LOG_FILE_PATH=./logs/app.log
-      - DATABASE_LOGGING=${DATABASE_LOGGING:-false}
-      - ENABLE_DEBUG_LOGGING=${ENABLE_DEBUG_LOGGING:-false}
-      - COOKIE_SECURE=${COOKIE_SECURE:-true}
-      - RATE_LIMIT_WINDOW_MS=900000
-      - RATE_LIMIT_MAX_REQUESTS=100
-      - MAX_FILE_SIZE=10485760
-      - UPLOAD_PATH=./uploads
-      - LANGUAGE_TOOL_API_KEY=${LANGUAGE_TOOL_API_KEY:-your-language-tool-api-key-here}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      # AI Providers API Keys (ordered by priority - lower number = selected first)
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    env_file:
+      - path: .env
+        required: false
+    # Runtime config: root `.env` only (avoids contradicting overrides vs env_file).
     ports:
       - '3002:3002'
     depends_on:
@@ -97,12 +65,7 @@ services:
       - ./server/logs:/app/logs
     networks:
       - everytriv-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/api/health/liveness"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    # HEALTHCHECK: defined in server/Dockerfile (single definition)
 
   # Frontend Client
   client:
@@ -142,7 +105,7 @@ services:
     container_name: everytriv-redis-commander
     restart: unless-stopped
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-R3d!s_Pr0d_P@ssw0rd_2025_S3cur3!}
     ports:
       - "8081:8081"
     depends_on:
@@ -152,7 +115,7 @@ services:
     profiles:
       - dev
 
-  # WebDB - Modern web-based database client
+  # WebDB — DB UI (development); start with: docker compose --profile dev up
   webdb:
     image: webdb/app:latest
     container_name: everytriv-webdb
@@ -168,6 +131,8 @@ services:
         condition: service_healthy
     networks:
       - everytriv-network
+    profiles:
+      - dev
 
 volumes:
   postgres_data:
@@ -176,4 +141,6 @@ volumes:
 
 networks:
   everytriv-network:
+    # Explicit Docker name avoids default "{project}_everytriv-network" (duplicate "everytriv").
+    name: everytriv-net
     driver: bridge

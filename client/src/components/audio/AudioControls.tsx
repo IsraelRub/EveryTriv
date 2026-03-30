@@ -4,7 +4,7 @@ import { ChevronDown, Volume2, VolumeX } from 'lucide-react';
 
 import { calculatePercentage } from '@shared/utils';
 
-import { ButtonSize, CommonKey, VariantBase } from '@/constants';
+import { ButtonSize, CommonKey, SliderSize, VariantBase } from '@/constants';
 import { cn } from '@/utils';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, Label, Slider } from '@/components';
 import { useAudioSettings } from '@/hooks';
@@ -75,7 +75,7 @@ export function AudioControls() {
 									</span>
 								</div>
 								<Slider
-									size='sm'
+									size={SliderSize.SM}
 									value={[state.soundEffectsVolume]}
 									onValueChange={handlers.handleSoundEffectsVolumeChange}
 									min={0}
@@ -94,7 +94,7 @@ export function AudioControls() {
 									</span>
 								</div>
 								<Slider
-									size='sm'
+									size={SliderSize.SM}
 									value={[state.musicVolume]}
 									onValueChange={handlers.handleMusicVolumeChange}
 									min={0}

@@ -5,7 +5,7 @@ import { AUDIO_DATA, AudioCategory, AudioKey } from '@/constants';
 import type { AudioPreloadConfig } from '@/types';
 import { clientLogger as logger } from '@/services';
 
-export class AudioService {
+class AudioService {
 	private audioElements: Map<AudioKey, HTMLAudioElement> = new Map();
 	private isMuted = false;
 	private masterVolume = 1;

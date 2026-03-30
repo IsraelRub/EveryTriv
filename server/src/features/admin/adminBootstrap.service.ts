@@ -5,9 +5,9 @@ import { DataSource, Repository } from 'typeorm';
 import { TIME_PERIODS_MS, UserRole, VALIDATION_COUNT } from '@shared/constants';
 import { delay, ensureErrorObject } from '@shared/utils';
 
-import { AppConfig } from '@config';
 import { PasswordService } from '@common/auth';
 import { UserEntity } from '@internal/entities';
+import { ADMIN_CREDENTIALS_DEFAULTS } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 
 @Injectable()
@@ -26,24 +26,17 @@ export class AdminBootstrapService implements OnModuleInit {
 
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
-				const { email, password } = AppConfig.adminCredentials;
+				const { email, password, firstName, lastName } = ADMIN_CREDENTIALS_DEFAULTS;
 				const defaultAccount = await this.userRepository.findOne({
 					where: { email },
 				});
 
 				if (defaultAccount) {
-					await this.ensureUserIsAdmin(defaultAccount, password);
+					await this.ensureUserIsAdmin(defaultAccount, password, firstName, lastName);
 					return;
 				}
 
-				const adminExists = await this.userRepository.existsBy({
-					role: UserRole.ADMIN,
-				});
-				if (adminExists) {
-					return;
-				}
-
-				await this.createDefaultAdmin(email, password);
+				await this.createDefaultAdmin(email, password, firstName, lastName);
 				return;
 			} catch (error) {
 				const normalizedError = ensureErrorObject(error);
@@ -67,7 +60,12 @@ export class AdminBootstrapService implements OnModuleInit {
 		}
 	}
 
-	private async ensureUserIsAdmin(user: UserEntity, password: string | undefined): Promise<void> {
+	private async ensureUserIsAdmin(
+		user: UserEntity,
+		password: string | undefined,
+		firstName: string,
+		lastName: string
+	): Promise<void> {
 		let hasChanges = false;
 
 		if (user.role !== UserRole.ADMIN) {
@@ -75,8 +73,12 @@ export class AdminBootstrapService implements OnModuleInit {
 			// Admin users don't need credits - set to NULL when role changes to ADMIN
 			user.credits = null;
 			user.purchasedCredits = 0;
-			user.dailyFreeQuestions = 0;
-			user.remainingFreeQuestions = 0;
+			hasChanges = true;
+		}
+
+		if (user.firstName !== firstName || user.lastName !== lastName) {
+			user.firstName = firstName;
+			user.lastName = lastName;
 			hasChanges = true;
 		}
 
@@ -94,7 +96,12 @@ export class AdminBootstrapService implements OnModuleInit {
 		}
 	}
 
-	private async createDefaultAdmin(email: string, password: string | undefined): Promise<void> {
+	private async createDefaultAdmin(
+		email: string,
+		password: string | undefined,
+		firstName: string,
+		lastName: string
+	): Promise<void> {
 		if (!password) {
 			logger.securityWarn('Default admin password missing. Skipping admin account creation.', {
 				emails: { current: email },
@@ -106,12 +113,12 @@ export class AdminBootstrapService implements OnModuleInit {
 		const adminUser = this.userRepository.create({
 			email,
 			passwordHash,
+			firstName,
+			lastName,
 			role: UserRole.ADMIN,
 			isActive: true,
 			credits: null, // NULL for admin (credits not applicable - unlimited access)
 			purchasedCredits: 0,
-			dailyFreeQuestions: 0, // Admin doesn't need free questions
-			remainingFreeQuestions: 0, // Admin doesn't need free questions
 		});
 
 		const savedUser = await this.userRepository.save(adminUser);

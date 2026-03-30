@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Coins, Crown, Plus } from 'lucide-react';
 
-import { GRANTED_CREDITS_CAP } from '@shared/constants';
+import { GRANTED_CREDITS_CAP, Locale } from '@shared/constants';
 
 import { Colors, ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES } from '@/constants';
 import { cn } from '@/utils';
@@ -16,14 +16,12 @@ export function CreditBalance() {
 	const { isAdmin } = useUserRole();
 
 	const grantedRefillHint = useMemo(() => {
-		if (isAdmin || !creditBalance?.nextGrantedCreditsRefillAt) {
+		const nextRefillAt = creditBalance?.nextGrantedCreditsRefillAt;
+		if (isAdmin || nextRefillAt == null || (creditBalance?.credits ?? 0) >= GRANTED_CREDITS_CAP) {
 			return null;
 		}
-		if ((creditBalance.credits ?? 0) >= GRANTED_CREDITS_CAP) {
-			return null;
-		}
-		const locale = i18n.language === 'he' ? 'he-IL' : 'en-US';
-		const dateTime = new Date(creditBalance.nextGrantedCreditsRefillAt).toLocaleString(locale, {
+		const locale = i18n.language === Locale.HE ? 'he-IL' : 'en-US';
+		const dateTime = new Date(nextRefillAt).toLocaleString(locale, {
 			dateStyle: 'short',
 			timeStyle: 'short',
 		});
@@ -47,7 +45,6 @@ export function CreditBalance() {
 
 	return (
 		<div className='flex items-center rounded-full bg-primary/10 overflow-hidden'>
-			{/* Credit Information Display */}
 			<div className='flex items-center gap-2 px-3 py-1.5 min-w-0'>
 				<Coins className={cn('w-4 h-4 shrink-0', Colors.YELLOW_500.text)} />
 				<div className='flex min-w-0 flex-col items-start'>
@@ -68,7 +65,7 @@ export function CreditBalance() {
 			{/* Divider */}
 			<div className='h-6 w-px bg-border/50' />
 
-			{/* Right Side - Crown for admin, Add button for regular users */}
+			{/* Credits Actions */}
 			{isAdmin ? (
 				<div className='flex items-center gap-1.5 px-3 py-1.5'>
 					<Crown className={cn('w-4 h-4', Colors.AMBER_600.text)} />

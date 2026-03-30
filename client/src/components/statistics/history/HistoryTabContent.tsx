@@ -12,17 +12,19 @@ import {
 	ButtonSize,
 	CommonKey,
 	ComponentSize,
+	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
 	FILTER_ALL_VALUE,
 	GameKey,
 	LoadingMessages,
+	PlayTimeUnit,
 	SORT_FIELD_VALUES,
 	SortDirection,
 	SortField,
 	StatisticsHistoryKey,
 	VariantBase,
 } from '@/constants';
-import { DataTableColumnType, type DataTableColumn } from '@/types';
+import type { DataTableColumn } from '@/types';
 import { clientLogger as logger } from '@/services';
 import { formatPlayTime, getDifficultyDisplayLabel } from '@/utils';
 import {
@@ -181,7 +183,7 @@ export function HistoryTabContent() {
 				headerLabel: t(StatisticsHistoryKey.COLUMN_DURATION),
 				type: DataTableColumnType.TEXT,
 				getValue: row => row.timeSpent,
-				format: (_, row) => ((row.timeSpent ?? 0) > 0 ? formatPlayTime(row.timeSpent ?? 0, 'seconds') : EMPTY_VALUE),
+				format: (_, row) => ((row.timeSpent ?? 0) > 0 ? formatPlayTime(row.timeSpent ?? 0, PlayTimeUnit.SECONDS) : EMPTY_VALUE),
 				headerIcon: <Timer />,
 			},
 			{
@@ -403,10 +405,10 @@ export function HistoryTabContent() {
 							onClick={handleClearAll}
 							disabled={clearHistory.isPending}
 						>
-							{clearHistory.isPending ? (
-								<Spinner size={ComponentSize.SM} message={LoadingMessages.CLEARING} messageInline />
-							) : (
+							{!clearHistory.isPending ? (
 								t(StatisticsHistoryKey.CLEAR_ALL)
+							) : (
+								<Spinner size={ComponentSize.SM} message={LoadingMessages.CLEARING} messageInline />
 							)}
 						</AlertDialogAction>
 					</AlertDialogFooter>

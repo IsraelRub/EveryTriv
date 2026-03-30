@@ -64,13 +64,13 @@ function BalanceCard({ balance, isLoading, t }: { balance: number; isLoading: bo
 				</CardTitle>
 			</CardHeader>
 			<CardContent className='text-center'>
-				{isLoading ? (
-					<Skeleton variant={SkeletonVariant.Input} className='mx-auto' />
-				) : (
+				{!isLoading ? (
 					<div className='flex items-baseline justify-center gap-2'>
 						<span className='text-4xl font-bold text-primary'>{balance}</span>
 						<span className='text-muted-foreground'>{t(PaymentKey.CREDITS)}</span>
 					</div>
+				) : (
+					<Skeleton variant={SkeletonVariant.Input} className='mx-auto' />
 				)}
 			</CardContent>
 		</Card>
@@ -119,7 +119,7 @@ function CreditPackageCard({
 				</CardContent>
 				<CardFooter>
 					<Button className='w-full' onClick={onPurchase} disabled={isPurchasing}>
-						{isPurchasing ? t(LoadingKey.PROCESSING) : t(PaymentKey.PURCHASE)}
+						{!isPurchasing ? t(PaymentKey.PURCHASE) : t(LoadingKey.PROCESSING)}
 					</Button>
 				</CardFooter>
 			</Card>

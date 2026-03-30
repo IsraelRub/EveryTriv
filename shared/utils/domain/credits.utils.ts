@@ -37,61 +37,42 @@ export function calculateNewBalance(
 ): {
 	newBalance: CreditBalance;
 	deductionDetails: {
-		freeQuestionsUsed: number;
 		purchasedCreditsUsed: number;
 		creditsUsed: number;
 	};
 } {
 	let newPurchasedCredits = currentBalance.purchasedCredits ?? 0;
-	let newFreeQuestions = currentBalance.freeQuestions ?? 0;
 	let newCredits = currentBalance.credits ?? 0;
 
-	let freeQuestionsUsed = 0;
 	let purchasedCreditsUsed = 0;
 	let creditsUsed = 0;
 
-	// Calculate required credits based on game mode
-	// New methodology: 1 credit = 1 question (except TIME_LIMITED which is fixed 10)
 	const requiredCredits = calculateRequiredCredits(questionsPerRequest, gameMode);
 
-	// DEDUCTION LOGIC: Use free questions first, then purchased credits, then credits
-	// With new methodology, 1 free question = 1 credit (simple 1:1 ratio)
 	let remainingCreditsToDeduct = requiredCredits;
 
-	// Step 1: Use free questions first (1 free question = 1 credit)
-	if (newFreeQuestions > 0 && remainingCreditsToDeduct > 0) {
-		freeQuestionsUsed = Math.min(newFreeQuestions, remainingCreditsToDeduct);
-		newFreeQuestions -= freeQuestionsUsed;
-		remainingCreditsToDeduct -= freeQuestionsUsed;
-	}
-
-	// Step 2: Use purchased credits if needed
 	if (remainingCreditsToDeduct > 0 && newPurchasedCredits > 0) {
 		purchasedCreditsUsed = Math.min(newPurchasedCredits, remainingCreditsToDeduct);
 		newPurchasedCredits -= purchasedCreditsUsed;
 		remainingCreditsToDeduct -= purchasedCreditsUsed;
 	}
 
-	// Step 3: Use regular credits if still needed
 	if (remainingCreditsToDeduct > 0) {
 		creditsUsed = remainingCreditsToDeduct;
 		newCredits = Math.max(0, newCredits - creditsUsed);
 	}
 
-	// Calculate totalCredits as sum of all sources
-	const newTotalCredits = newCredits + newPurchasedCredits + newFreeQuestions;
+	const newTotalCredits = newCredits + newPurchasedCredits;
 
 	return {
 		newBalance: {
-			...currentBalance,
+			userId: currentBalance.userId,
 			totalCredits: newTotalCredits,
 			credits: newCredits,
 			purchasedCredits: newPurchasedCredits,
-			freeQuestions: newFreeQuestions,
-			canPlayFree: newFreeQuestions > 0,
+			nextGrantedCreditsRefillAt: currentBalance.nextGrantedCreditsRefillAt,
 		},
 		deductionDetails: {
-			freeQuestionsUsed,
 			purchasedCreditsUsed,
 			creditsUsed,
 		},

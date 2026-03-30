@@ -3,7 +3,7 @@ import { BaseLoggerService } from '@shared/services';
 import type { LogMessageFn, LogMeta } from '@shared/types';
 import { getErrorMessage, sanitizeLogMessage } from '@shared/utils';
 
-import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS } from '@/constants';
+import { AudioKey, LOGGER_CSS_COLORS, ToastType, TOAST_ENABLED_METHODS } from '@/constants';
 import type {
 	LogComponentErrorFn,
 	LogPaymentErrorFn,
@@ -11,7 +11,6 @@ import type {
 	LogProviderFn,
 	LogResourceErrorFn,
 	ToastOptions,
-	ToastType,
 } from '@/types';
 import { audioService } from '@/services';
 import { toast } from '@/hooks';
@@ -81,7 +80,7 @@ class ClientLoggerService extends BaseLoggerService {
 				audioService.play(toastConfig.audioKey);
 			}
 
-			const toastFn = toast[toastConfig?.type ?? 'error'];
+			const toastFn = toast[toastConfig?.type ?? ToastType.ERROR];
 			toastFn({
 				title: toastConfig?.title ?? 'Error',
 				description: this.extractUserMessage(message),
@@ -95,7 +94,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userError.bind(this),
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -108,7 +107,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userWarn.bind(this),
 			toast: {
-				type: 'warning',
+				type: ToastType.WARNING,
 				title: 'Warning',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -121,7 +120,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.userInfo.bind(this),
 			toast: {
-				type: 'success',
+				type: ToastType.SUCCESS,
 				title: 'Success',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.THREE_SECONDS,
@@ -152,7 +151,7 @@ class ClientLoggerService extends BaseLoggerService {
 		const message = messageOrError instanceof Error ? getErrorMessage(messageOrError) : messageOrError;
 		this.log(LogLevel.ERROR, message, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Authentication error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -165,7 +164,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.authInfo.bind(this),
 			toast: {
-				type: 'success',
+				type: ToastType.SUCCESS,
 				title: 'Success',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.THREE_SECONDS,
@@ -180,7 +179,7 @@ class ClientLoggerService extends BaseLoggerService {
 		const message = messageOrError instanceof Error ? getErrorMessage(messageOrError) : messageOrError;
 		this.log(LogLevel.ERROR, message, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'System error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -194,7 +193,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.apiError.bind(this),
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Request failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -207,7 +206,7 @@ class ClientLoggerService extends BaseLoggerService {
 		BaseLoggerService.prototype.apiUpdateError.call(this, resource, error, meta);
 		this.log(LogLevel.ERROR, error, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Update failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -221,7 +220,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.gameError.bind(this),
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Game error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -235,7 +234,7 @@ class ClientLoggerService extends BaseLoggerService {
 		BaseLoggerService.prototype.paymentFailed.call(this, paymentId, error, meta);
 		this.log(LogLevel.ERROR, error, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Payment failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.EIGHT_SECONDS,
@@ -248,7 +247,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.INFO, message, meta, {
 			baseMethod: BaseLoggerService.prototype.paymentInfo.bind(this),
 			toast: {
-				type: 'success',
+				type: ToastType.SUCCESS,
 				title: 'Payment Successful',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -262,7 +261,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityDenied.bind(this),
 			toast: {
-				type: 'warning',
+				type: ToastType.WARNING,
 				title: 'Access denied',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -275,7 +274,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.WARN, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityWarn.bind(this),
 			toast: {
-				type: 'warning',
+				type: ToastType.WARNING,
 				title: 'Security warning',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -288,7 +287,7 @@ class ClientLoggerService extends BaseLoggerService {
 		this.log(LogLevel.ERROR, message, meta, {
 			baseMethod: BaseLoggerService.prototype.securityError.bind(this),
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Security error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -302,7 +301,7 @@ class ClientLoggerService extends BaseLoggerService {
 		BaseLoggerService.prototype.navigationComponentError.call(this, component, error, meta);
 		this.log(LogLevel.ERROR, `${component}: ${error}`, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Component error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -316,7 +315,7 @@ class ClientLoggerService extends BaseLoggerService {
 		BaseLoggerService.prototype.providerError.call(this, provider, error, meta);
 		this.log(LogLevel.ERROR, `${provider}: ${error}`, meta, {
 			toast: {
-				type: 'error',
+				type: ToastType.ERROR,
 				title: 'Service error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
@@ -334,7 +333,7 @@ class ClientLoggerService extends BaseLoggerService {
 		BaseLoggerService.prototype.providerFallback.call(this, provider, meta);
 		this.log(LogLevel.WARN, `Using fallback for ${provider}`, meta, {
 			toast: {
-				type: 'warning',
+				type: ToastType.WARNING,
 				title: 'Service fallback',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,

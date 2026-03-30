@@ -128,7 +128,7 @@ export function SingleSessionPlayArea(session: UseSingleSessionReturn) {
 							size={ButtonSize.LG}
 							className='w-full py-4 text-base mb-3 flex-shrink-0'
 						>
-							{answered ? t(LoadingKey.PROCESSING) : t(GameKey.SUBMIT_ANSWER)}
+							{!answered ? t(GameKey.SUBMIT_ANSWER) : t(LoadingKey.PROCESSING)}
 						</Button>
 					)}
 

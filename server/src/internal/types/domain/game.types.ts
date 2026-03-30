@@ -21,6 +21,7 @@ export interface SocketData {
 	roomId?: string;
 }
 
+
 export type TypedSocket = Socket & {
 	data: SocketData;
 };
@@ -83,29 +84,13 @@ export interface UserGameHistoryParams {
 	offset?: number;
 }
 
-export interface GameConfigParams {
-	defaultDifficulty?: GameDifficulty;
-	defaultTopic?: string;
-	questionsPerRequest?: number;
-	timeLimit?: number;
-	soundEnabled?: boolean;
-	notifications?: boolean;
-}
 
 export interface SaveGameHistoryParams {
 	userId: string;
 	gameData: SaveGameHistoryData;
 }
 
-export interface CreditsParams {
-	userId: string;
-	credits: number;
-}
 
-export interface SaveGameConfigParams {
-	userId: string;
-	config: GameConfigParams;
-}
 
 export interface DeleteGameHistoryParams {
 	userId: string;
@@ -129,6 +114,7 @@ export interface GameSessionQuestionSnapshot {
 	correctAnswerIndex: number;
 }
 
+
 export interface ServerGameSessionState {
 	gameId: string;
 	userId: string;
@@ -145,3 +131,22 @@ export interface ServerGameSessionState {
 	totalQuestions: number;
 	status: GameStatus;
 }
+export interface GameConfigParams {
+	defaultDifficulty?: GameDifficulty;
+	defaultTopic?: string;
+	questionsPerRequest?: number;
+	timeLimit?: number;
+	soundEnabled?: boolean;
+	notifications?: boolean;
+}
+
+export interface CreditsParams {
+	userId: string;
+	credits: number;
+}
+
+export interface SaveGameConfigParams {
+	userId: string;
+	config: GameConfigParams;
+}
+
